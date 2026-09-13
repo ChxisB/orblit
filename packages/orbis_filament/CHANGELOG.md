@@ -17,13 +17,15 @@
   with the C ABI's capture calls, and Flutter copies those bytes into a texture
   of its own. That is a whole copy per frame, which macOS, iOS and Android all
   avoid, and it is deliberate. The copy-free route on this embedder is a GPU
-  surface, and both of its flavours are closed today: the `D3d11Texture2D` one
+  surface, and neither of its flavours is open today: the `D3d11Texture2D` one
   only accepts a texture made on ANGLE's own D3D device, which the embedder
-  does not expose, and the `DxgiSharedHandle` one — which does cross devices,
-  and is the route this should eventually take — currently crashes under
-  Impeller, which is on by default in the Flutter this package resolves
-  against. `windows/orbis_viewport.h` records what getting off the copy would
-  need, in order.
+  does not expose — an architectural constraint, not a bug — and the
+  `DxgiSharedHandle` one, which does cross devices and is the route this
+  should eventually take, is reported to crash under Impeller, the rasteriser
+  3.47 is understood to default to on Windows. That second premise is
+  unrefuted rather than confirmed: it was not reproduced on a running machine,
+  and `windows/orbis_viewport.h` sets out exactly what was and was not checked,
+  along with what getting off the copy would need, in order.
 
   The frame loop runs on the platform thread, where the method calls also
   arrive, so the renderer is driven from one thread as the C ABI asks: there is
