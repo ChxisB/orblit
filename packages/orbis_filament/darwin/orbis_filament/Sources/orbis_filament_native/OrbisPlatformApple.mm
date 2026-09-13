@@ -11,7 +11,12 @@
 #import <CoreVideo/CoreVideo.h>
 #import <Foundation/Foundation.h>
 #import <ImageIO/ImageIO.h>
+// Metal for one question only — whether Filament will compare depth samples
+// on this device, see shadowComparisonAvailable. The renderer draws through
+// Filament and holds no Metal object of its own.
+#import <Metal/Metal.h>
 #import <QuartzCore/QuartzCore.h>
+#import <TargetConditionals.h>
 
 #include <filament/Engine.h>
 #include <filament/Texture.h>
@@ -50,6 +55,38 @@ void log(const char *format, ...) {
 }
 
 double now() { return CFAbsoluteTimeGetCurrent(); }
+
+bool shadowComparisonAvailable() {
+#if TARGET_OS_IPHONE
+  // Deliberately the deprecated call, and deliberately this exact feature
+  // set: the answer wanted here is not "what can this GPU do" but "what will
+  // Filament decide", and what Filament decides is
+  // `[device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1]` in
+  // MetalState.mm. Asking a different question — supportsFamily:, say —
+  // would be asking about a different thing and could disagree with the
+  // driver that actually builds the sampler. See OrbisPlatform.h.
+  //
+  // TARGET_OS_IPHONE rather than a simulator test because that is the shape
+  // of Filament's own `#if defined(FILAMENT_IOS)`: a device that answered no
+  // would be neutered in exactly the same way, and none this package's iOS
+  // 13 floor admits does.
+  id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+  // No Metal device at all is not this function's business to report; the
+  // engine will fail to start on its own, and saying "shadows work" leaves
+  // that the only failure rather than adding a second.
+  if (device == nil) return true;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+  const bool supported =
+      [device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1];
+#pragma clang diagnostic pop
+  return supported;
+#else
+  // macOS. Filament's rewrite is inside `#if defined(FILAMENT_IOS)`, so a Mac
+  // never reaches it however old its GPU.
+  return true;
+#endif
+}
 
 void parallelFor(size_t count, const std::function<void(size_t)> &body) {
   if (count == 0) return;

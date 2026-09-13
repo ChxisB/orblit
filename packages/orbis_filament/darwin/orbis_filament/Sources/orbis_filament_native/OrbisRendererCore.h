@@ -1246,6 +1246,15 @@ class Renderer {
   /// otherwise be bound reads it too.
   bool _slimSurface{};
 
+  /// Whether a shadow map can be sampled with a depth comparison on this
+  /// device, decided once in startWithWidth for the same reason as the line
+  /// above and never revisited. False means Filament has rewritten the
+  /// shadow sampler's comparison to "never" and the three comparison-based
+  /// shadow kinds all return nought, so applyViewShadows substitutes a
+  /// variance shadow, which compares in the shader instead. See
+  /// orbis::shadowComparisonAvailable in OrbisPlatform.h.
+  bool _shadowComparison{true};
+
   /// Every material the host has named, by its key.
   std::unordered_map<int64_t, Surfaced> _materials{};
 
