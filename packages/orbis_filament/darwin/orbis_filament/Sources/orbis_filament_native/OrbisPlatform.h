@@ -76,6 +76,33 @@ std::string vformat(const char *format, va_list arguments);
 /// corrected.
 double now();
 
+// ---- What the graphics driver will actually do ----
+
+/// Whether a shadow map on this device can be sampled with a depth
+/// comparison — the `sample_compare` a PCF, DPCF or PCSS shadow is made of.
+///
+/// False only on the iOS simulator, and this is a question about Filament
+/// rather than about the hardware. Filament's Metal backend rewrites a
+/// sampler's comparison function to `MTLCompareFunctionNever` whenever an iOS
+/// build's device answers no to `MTLFeatureSet_iOS_GPUFamily3_v1`
+/// (`filament/backend/src/metal/MetalState.mm`, "sample comparison not
+/// supported by this GPU"). `Never` fails every comparison, so every
+/// `sample_compare` returns nought, every receiver is fully shadowed, and the
+/// direct light is multiplied away — which is what a lit scene on the
+/// simulator was, until this was found.
+///
+/// The simulator's virtual GPU declines that feature set, so Filament
+/// disables the comparison. Measured, it performs one perfectly: a depth
+/// texture holding 0.5, sampled `LessEqual` against 0.25, 0.5, 0.75 and 1.0,
+/// answers 1, 1, 0, 0 exactly. So the capability is there and only the
+/// advertisement is missing, and asking Filament's own question is how the
+/// renderer knows to stop asking for a shadow Filament will not compare.
+///
+/// True everywhere else, including on a real iPhone: the feature set Filament
+/// tests is the A9's, every device this package's iOS 13 floor admits is an
+/// A9 or newer, and macOS is not an iOS build at all.
+bool shadowComparisonAvailable();
+
 // ---- Files ----
 
 /// Reads a file whole. False if it cannot be opened or read. An empty file
