@@ -31,6 +31,22 @@
   48 merged slabs to 1 — single levels both, the same float rounding that
   leaves 106 pixels at one member to a chunk.
 
+- **Disposing a renderer with a batch group alive no longer aborts.**
+  `removeEverything` recycled the objects and then cleared the pool of shared
+  colour material instances, on the reasoning — true when it was written, and
+  written down in a comment — that the objects were the only things wearing
+  them. Batch groups wear them too: a chunk is a renderable made of whatever
+  its group took out of that pool, and nothing tore the groups down on the way
+  out. So a renderer disposed while a group was alive destroyed a
+  `MaterialInstance` a live `Renderable` still pointed at, which Filament
+  refuses with a precondition panic and an abort. The groups are now destroyed
+  before the pool, as the objects already were. Reachable before this release
+  only by a host that turned batching on and then closed a viewport — which is
+  what `OrbisViewport.dispose` does on every scene widget that goes away — and
+  the ordinary way every scene shuts down now that batching is on by default.
+  The C ABI's own test covers it, along with the default and both directions
+  of the switch.
+
 - **The placeholder cube's bounding box now contains the cube.** Filament's
   `Box` is a centre and a half-extent. The declaration read
   `{{-1,-1,-1},{1,1,1}}`, which is a {min,max} pair written into it, and
