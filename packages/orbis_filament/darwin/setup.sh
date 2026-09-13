@@ -161,20 +161,28 @@ fi
 # and Filament refused the material at runtime with "was not built for mobile".
 #
 # Which backends the materials carry shaders for: ORBIS_MATC_BACKENDS, a list
-# of metal, vulkan, opengl, or all. Metal alone by default, because it is the
-# only one an Apple build can use and every backend added is another copy of
-# every shader in the binary. A build for anywhere else names its own —
+# of metal, vulkan, opengl, webgpu, or all. Metal alone by default, because it
+# is the only one an Apple build can use and every backend added is another
+# copy of every shader in the binary. A build for anywhere else names its own —
 # "vulkan opengl" for Android or Linux, where OpenGL is the fallback — and
 # "all" is every backend matc knows. The list goes into the stamp below with
 # the rest of the flags, so changing it recompiles everything.
+#
+# webgpu emits WGSL and is only accepted by a matc from a fork configured with
+# -DFILAMENT_SUPPORTS_WEBGPU=ON; the release's matc rejects it, and says so.
+# It is missing from matc's own --help, which lists only the first three, but
+# CommandlineConfig.cpp has taken it since the backend landed. Named here
+# because a WebGPU engine with Metal-only materials starts, refuses every
+# one of them and draws a blank window — the failure this whole stamp exists
+# to prevent.
 ORBIS_MATC_BACKENDS="${ORBIS_MATC_BACKENDS:-metal}"
 MATC_API=""
 for api in ${ORBIS_MATC_BACKENDS//,/ }; do
   case "$api" in
-    metal|vulkan|opengl|all) MATC_API="$MATC_API -a $api" ;;
+    metal|vulkan|opengl|webgpu|all) MATC_API="$MATC_API -a $api" ;;
     *)
       echo "orbis_filament: ORBIS_MATC_BACKENDS names '$api', which is not"
-      echo "  one of metal, vulkan, opengl or all."
+      echo "  one of metal, vulkan, opengl, webgpu or all."
       exit 1
       ;;
   esac
