@@ -13,6 +13,7 @@ is the part of a console port that can be written, and tested, without one.
 orbis_host_platform.h   the machine, behind eight calls
 orbis_host_sdl.c        those eight, answered with SDL3 (macOS, Linux, Windows)
 orbis_pad.h / .c        package:orbis_input's vocabulary and decisions, in C
+orbis_pad_test.c        that they are still the same decisions
 orbis_host.c            the frame loop, the scene, the camera and the walking
 build.sh                macOS and Linux
 CONSOLES.md             what a Switch port and an Xbox port actually are
@@ -46,6 +47,20 @@ shaping, slots and edges rather than a second path that could rot.
 its stick in a circle, which is how the pad path is tested on a machine with
 no controller at all. `package:orbis_input` answers the same problem the same
 way, with `tool/virtual_pad.dart`.
+
+`build.sh test` builds and runs `orbis_pad_test.c` on its own — no Filament
+SDK, no compiled materials, no SDL, no window, under a second. It is
+`package:orbis_input`'s own `shaping_test.dart` and `pads_test.dart` written
+against the C, and it exists because "the two drifting apart is a bug in
+whichever moved" is not a claim anybody can check by reading. Writing it
+found two places they already had. Every build runs it.
+
+One thing worth knowing before blaming the frame loop: SDL ignores pad input
+while the window is not focused, silently, with the pad still enumerated and
+still reading whatever it held when focus went. That is the right default for
+a desktop application and the wrong one for a host shaped like a console
+front end, which has no unfocused window at all, so
+`SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS` is set before `SDL_Init`.
 
 Linux, in the container `tool/linux_container/Dockerfile` builds, with
 `libsdl3-dev` added — Debian trixie has SDL 3.2.10, which is new enough:
