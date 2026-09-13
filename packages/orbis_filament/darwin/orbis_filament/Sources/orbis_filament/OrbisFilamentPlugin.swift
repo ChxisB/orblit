@@ -599,8 +599,9 @@ private struct Scene {
   let precipitationParams: [Float]
   let skyEnabled: Bool
   /// Whether identical objects are merged into instanced draws. Optional on
-  /// the wire and off when absent, so a host that has never heard of it
-  /// draws exactly as it did.
+  /// the wire and on when absent, which is the same default the renderer
+  /// itself starts at: a host that says nothing gets batching, and one that
+  /// does not want it sends `batching: false` rather than leaving it out.
   let batching: Bool
 
   /// Everything done to the image after the scene is drawn.
@@ -951,7 +952,7 @@ private struct Scene {
     self.orthographic = orthographic
     self.viewHeight = Float(viewHeight)
     self.skyParams = skyParams
-    self.batching = arguments["batching"] as? Bool ?? false
+    self.batching = arguments["batching"] as? Bool ?? true
 
     // Absent when a scene has none, which is every scene that never uses
     // them — so this stays optional rather than being required of everybody.

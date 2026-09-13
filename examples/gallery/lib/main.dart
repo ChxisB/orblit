@@ -47,8 +47,9 @@
 ///   ORBIS_SPLAT_COUNT      how many splats the generated ring has
 ///   ORBIS_SPLAT_SORT=0     draw them unsorted, to measure what the sort does
 ///   ORBIS_SPLAT_PILLAR=0   take the solid pillar out of the ring
-///   ORBIS_BATCHING=0/1     batching off or on, for any example, so the same
-///                          frame can be drawn both ways and compared
+///   ORBIS_BATCHING=0/1     batching off or on, for any example, over the
+///                          default (on), so the same frame can be drawn both
+///                          ways and compared
 ///   ORBIS_CRATES           how many crates the Batching example draws
 ///   ORBIS_PALETTE          its colours: One, Six or Every one
 ///   ORBIS_BATCH_MATERIAL=1 its crates made of one shared material
