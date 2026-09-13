@@ -151,6 +151,54 @@ static void reopen_pads(void) {
   SDL_free(ids);
 }
 
+/* ---- A pad that is not there ----
+ *
+ * ORBIS_HOST_VIRTUAL_PAD attaches one of SDL's virtual gamepads and walks its
+ * left stick slowly round a circle, pressing the bottom face button every few
+ * seconds. It is how the pad path is exercised on a machine with no
+ * controller plugged into it: the virtual pad goes in at the bottom of SDL,
+ * so everything above — enumeration, the add event, the token, the shaping,
+ * the slot, the edges and the walking — is the same code a real pad drives,
+ * rather than a second path that could quietly rot.
+ *
+ * package:orbis_input answers the same problem the same way, with
+ * tool/virtual_pad.dart writing uinput events on Linux.
+ */
+static SDL_JoystickID virtual_id;
+
+static void attach_virtual_pad(void) {
+  const char *want = SDL_getenv("ORBIS_HOST_VIRTUAL_PAD");
+  if (want == NULL || want[0] == '\0' || want[0] == '0') return;
+
+  SDL_VirtualJoystickDesc desc;
+  SDL_INIT_INTERFACE(&desc);
+  desc.type = SDL_JOYSTICK_TYPE_GAMEPAD;
+  desc.naxes = SDL_GAMEPAD_AXIS_COUNT;
+  desc.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
+  desc.name = "Orbis virtual pad";
+  virtual_id = SDL_AttachVirtualJoystick(&desc);
+  if (virtual_id == 0) {
+    fprintf(stderr, "no virtual pad: %s\n", SDL_GetError());
+  }
+}
+
+/* Where the virtual pad stands at `seconds`. The stick sweeps round at a rate
+ * that walks a circle comfortably inside the ring — the player's speed
+ * divided by this rate is the radius it traces — and the south button goes
+ * down every four seconds, so the edge detection has something to detect. */
+static void drive_virtual_pad(double seconds) {
+  if (virtual_id == 0) return;
+  SDL_Joystick *stick = SDL_GetJoystickFromID(virtual_id);
+  if (stick == NULL) return;
+  const double angle = seconds * 1.6;
+  SDL_SetJoystickVirtualAxis(stick, SDL_GAMEPAD_AXIS_LEFTX,
+                             (Sint16)(SDL_sin(angle) * 32000.0));
+  SDL_SetJoystickVirtualAxis(stick, SDL_GAMEPAD_AXIS_LEFTY,
+                             (Sint16)(-SDL_cos(angle) * 32000.0));
+  SDL_SetJoystickVirtualButton(stick, SDL_GAMEPAD_BUTTON_SOUTH,
+                               SDL_fmod(seconds, 4.0) < 0.1);
+}
+
 /* A pad made out of the keyboard, when there is no pad.
  *
  * A desktop convenience and nothing more: a console back end has no
@@ -276,12 +324,17 @@ int orbis_host_open(const char *title, int width, int height) {
     orbis_host_close();
     return 0;
   }
+  attach_virtual_pad();
   reopen_pads();
   host.started = 1;
   return 1;
 }
 
 void orbis_host_close(void) {
+  if (virtual_id != 0) {
+    SDL_DetachVirtualJoystick(virtual_id);
+    virtual_id = 0;
+  }
   for (int i = 0; i < kMaxOpen; i++) {
     if (host.open[i] != NULL) SDL_CloseGamepad(host.open[i]);
     host.open[i] = NULL;
@@ -317,6 +370,8 @@ double orbis_host_seconds(void) {
 int orbis_host_pump(int *resized) {
   if (resized != NULL) *resized = 0;
   if (!host.started) return 0;
+
+  drive_virtual_pad(orbis_host_seconds());
 
   int running = 1;
   SDL_Event event;

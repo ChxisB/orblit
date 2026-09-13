@@ -57,7 +57,7 @@ static void place(float *m, float x, float y, float z, float sx, float sy,
   memset(m, 0, 16 * sizeof(float));
   m[0] = c * sx;
   m[2] = -s * sx;
-  m[4] = sy;
+  m[5] = sy;
   m[8] = s * sz;
   m[10] = c * sz;
   m[12] = x;
@@ -157,8 +157,8 @@ int main(int argc, char **argv) {
   float at_z = 0.0f;
   float facing = 0.0f;
   float camera_yaw = 0.0f;
-  float camera_pitch = 0.32f;
-  float camera_distance = 9.0f;
+  float camera_pitch = 0.42f;
+  float camera_distance = 13.0f;
   float height_above = 0.0f; /* A hop, for the south button. */
   float rise = 0.0f;
 
