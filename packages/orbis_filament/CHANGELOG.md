@@ -2,6 +2,35 @@
 
 ## 0.23.0
 
+- **Instance batching is on by default.** `OrbisScene.batching` now defaults to
+  true, as does the renderer a host drives through the C ABI without ever
+  calling `orbis_renderer_set_batching`, and the Swift and Kotlin plugins when
+  a scene message leaves the key out. Three thousand identical crates are 51
+  renderables instead of 3003, and 0.15 ms of CPU instead of 0.81 ms. It was
+  held off for one reason — batched shadow casters moved pixels and nobody
+  could say why — and that reason is gone: the cause was the placeholder
+  cube's bounding box, below, which was wrong on the *unbatched* side and so
+  could never be found by shrinking a batch. What is left after that fix is a
+  group's box being the union of its members', which is bounded (2.27% of
+  pixels, 2.6 levels in 255 on average, confined to shadow edges), saturating
+  (eight members to a chunk measures 2.22%, already as loose as sixty-four's
+  2.27%) and incapable of hiding anything, since a union box can only be a
+  superset of what a member-by-member account would cull. A scene that wants
+  the old path says `batching: false` — per scene, per publish — and gets it
+  exactly, on the Dart side, over the wire and through the C ABI alike.
+
+  That 2.27% is the worst case, not the usual one. It is three thousand
+  crates across a wide grid, where a chunk of sixty-four spans a large volume
+  and its union box is loose to match. Measured the same way — clock pinned,
+  noise floor established at zero by drawing each frame twice — the other
+  shadow-casting scenes that batch barely move: Shadows (12 objects in one
+  group) differs by 7 pixels in a 1600x1200 frame, Benchmark (200 objects in
+  17 groups) by 3, which is inside that scene's own 2-to-4-pixel floor, and
+  Environment volumes (15 objects in two groups) not at all. With the shadow
+  pass off the Batching example itself comes down to 2 pixels, and Overdraw's
+  48 merged slabs to 1 — single levels both, the same float rounding that
+  leaves 106 pixels at one member to a chunk.
+
 - **The placeholder cube's bounding box now contains the cube.** Filament's
   `Box` is a centre and a half-extent. The declaration read
   `{{-1,-1,-1},{1,1,1}}`, which is a {min,max} pair written into it, and
@@ -37,8 +66,8 @@
   axis than any member's, so the shadow camera fits a deeper volume and the
   map's texels land differently. It saturates at once: eight members to a chunk
   is already as loose as sixty-four, so no chunk size buys the difference back
-  while still batching anything. Batching stays off by default here, but the
-  trade is now a named one rather than an open question.
+  while still batching anything. That is what the default above rests on: a
+  named, bounded, saturating trade rather than an open question.
 
 ## 0.22.0
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.23.0
+
+- **Every example batches now.** None of them changed; `OrbisScene.batching`
+  defaults to true, so the fifty scenes here that never mentioned it get
+  merged draws wherever four or more of anything repeat. Batching's own
+  example keeps its switch, and its blurb no longer promises that flipping it
+  moves nothing: one crate in five casts a shadow, and merging moves 2.27% of
+  the frame's pixels along the edges of those shadows. Turn the shadows off
+  and the two are bit-identical.
+
 ## 0.22.0
 
 - **Panel shadows now shows a shadow.** The harness that proved the panel cast

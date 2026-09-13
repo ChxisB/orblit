@@ -16,13 +16,22 @@ import 'surface.dart' show linearOf;
 /// material instance, and the renderer merges their draws into instanced ones
 /// that each carry every copy's own transform.
 ///
-/// Three things are worth trying. Flip Batching and the picture should not
-/// move by a pixel — that is the promise, and it was measured rather than
-/// assumed. Change the palette from one colour to every crate different, and
-/// the batching has nothing left to do, because on the default surface a
-/// crate's colour *is* its material. And turn Moving on: one crate in the
-/// middle keeps turning, and only that one crate's transform is written each
-/// frame, batched or not.
+/// Three things are worth trying. Flip Batching — on by default, here and
+/// everywhere — and the picture barely moves: 2.27% of pixels, by 2.6 parts
+/// in 255 on average, all of it along the edges of the shadows one crate in
+/// five casts. That is the whole of what merging costs, measured rather than
+/// assumed, and it comes from a merged group being culled and shadow-fitted
+/// by one box for up to sixty-four members rather than one box each. Turn the
+/// shadows off and the whole of it goes: two pixels left in the frame, each
+/// by one level. This example is the worst case on purpose — three thousand
+/// crates across a wide grid, so a chunk of sixty-four spans a lot of ground
+/// — and scenes with a dozen or a couple of hundred objects near each other
+/// move by single pixels. Change the palette from one
+/// colour to every crate different, and the batching has nothing left to do,
+/// because on the default surface a crate's colour *is* its material — so the
+/// switch stops changing anything at all. And turn Moving on: one crate in
+/// the middle keeps turning, and only that one crate's transform is written
+/// each frame, batched or not.
 class BatchingExample extends Example {
   BatchingExample();
 
