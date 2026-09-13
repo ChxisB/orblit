@@ -115,6 +115,9 @@ archives=()
 for lib in "${LIBS[@]}"; do archives+=("$SDK/lib/$ARCH/lib$lib.a"); done
 if [ -f "$SDK/lib/$ARCH/libwebgpu_dawn.a" ]; then
   archives+=("$SDK/lib/$ARCH/libwebgpu_dawn.a")
+  # Dawn's own, on a Mac: its Metal back end reads the GPU's registry entry
+  # to name the adapter, which is IOKit and nothing Filament asks for.
+  if [ "$SYSTEM" = "Darwin" ]; then PLATFORM_LINK+=(-framework IOKit); fi
 fi
 
 # C99 and pedantic, so anything C++ that creeps into orbis_renderer.h or
