@@ -24,15 +24,34 @@
 //     which it does not expose. Filament creates its own device, so the two
 //     are always different and this flavour is closed to any plugin that
 //     brings its own renderer.
-//   - kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle crosses devices, which is
-//     why every plugin in the wild that manages copy-free presentation on
-//     Windows uses it: a texture made with D3D11_RESOURCE_MISC_SHARED and
-//     handed over as the HANDLE from IDXGIResource::GetSharedHandle. It is
-//     the route this should eventually take. It is not taken now because
-//     those shared-handle textures currently crash under Impeller, and
-//     Impeller is on by default in the Flutter this package resolves against
-//     (>= 3.47) -- so the copy-free path would be a renderer that reliably
-//     brings the application down, which is worse than a copy.
+//   - kFlutterDesktopGpuSurfaceTypeDxgiSharedHandle does cross devices: a
+//     texture made with D3D11_RESOURCE_MISC_SHARED, handed over as the HANDLE
+//     from IDXGIResource::GetSharedHandle. It is the route this should
+//     eventually take. It is not taken now on the strength of a reported
+//     crash when such textures are presented under Impeller, which is the
+//     rasteriser this package's Flutter (>= 3.47) is understood to default
+//     to on Windows.
+//
+//     That last claim is worth stating precisely, because it is the weakest
+//     link in this argument and it has not been checked on a running
+//     machine. What *is* checked: 3.47's flutter_windows.h carries
+//     FlutterDesktopEngineProperties::impeller_switch, whose values are
+//     DefaultImpeller/EnabledImpeller/DisabledImpeller, so the choice is the
+//     embedder's and the default lives inside flutter_windows.dll rather
+//     than anywhere the tooling or this build can read; the runner reaches
+//     the engine through flutter::DartProject and never sets that switch, so
+//     it takes whatever that default is; and the SDK's own changelog records
+//     neither Impeller becoming the Windows default nor any fix to
+//     shared-handle presentation. So the premise is unrefuted rather than
+//     confirmed, and anyone picking this up should verify it on a real
+//     machine before spending money on the shared-handle path.
+//
+//     Note that it is not load-bearing on its own. The D3d11Texture2D
+//     flavour above is shut by ANGLE's device ownership whatever Impeller
+//     does, which leaves shared handles the only copy-free route; so even if
+//     the crash were fixed tomorrow, taking it still means writing the D3D11
+//     device, the shared texture and the blit that this pixel-buffer path
+//     does not need.
 //
 // A pixel buffer depends on none of that: it works under Impeller and the
 // older rasteriser alike, on whichever backend Filament actually started, and
