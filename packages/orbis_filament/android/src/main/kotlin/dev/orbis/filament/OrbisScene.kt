@@ -83,7 +83,10 @@ internal class OrbisScene private constructor(private val args: Map<String, Any?
     val precipitationParams: FloatArray = args.floats("precipitationParams")
     val skyEnabled: Boolean = args["skyEnabled"] as? Boolean ?: false
     val skyParams: FloatArray = args.floats("skyParams")
-    val batching: Boolean = args["batching"] as? Boolean ?: false
+    // On when absent, the same default the renderer itself starts at: a host
+    // that says nothing gets batching, and one that does not want it sends
+    // `batching: false` rather than leaving it out.
+    val batching: Boolean = args["batching"] as? Boolean ?: true
 
     val postParams: FloatArray = args.floats("postParams")
     val pipelineParams: FloatArray = args.floats("pipelineParams")
