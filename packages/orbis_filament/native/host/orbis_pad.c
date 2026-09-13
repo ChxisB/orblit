@@ -224,9 +224,6 @@ void orbis_pads_poll(orbis_pads *pads, const orbis_pad_raw *raw, int count,
 
     const uint32_t mask = (1u << ORBIS_PAD_BUTTON_COUNT) - 1u;
     state->down = from->buttons & mask;
-    state->pressed = state->down & ~slot->down;
-    state->released = slot->down & ~state->down;
-    slot->down = state->down;
 
     for (int side = 0; side < 2; side++) {
       /* Positive is up. The platforms all report +Y downwards because they
@@ -242,6 +239,29 @@ void orbis_pads_poll(orbis_pads *pads, const orbis_pad_raw *raw, int count,
       state->trigger[side] =
           orbis_shape_scalar(&orbis_shaping_triggers, from->trigger[side]);
     }
+
+    /* A trigger that travels is also a button, so a game can treat it as
+     * either without every game choosing its own threshold. Half way, which
+     * is far enough not to fire on a resting trigger and near enough to feel
+     * immediate — and measured on the *shaped* value, as orbis_input measures
+     * it, so the dead zone is out of the way before the line is drawn.
+     *
+     * Here rather than in the back end because it is a decision and not a
+     * reading: a console back end that reports the axis has the crossing made
+     * for it, and one whose triggers are switches sets the bit itself and
+     * this adds nothing. */
+    if (state->trigger[ORBIS_PAD_LEFT] > 0.5f) {
+      state->down |= 1u << ORBIS_PAD_LEFT_TRIGGER;
+    }
+    if (state->trigger[ORBIS_PAD_RIGHT] > 0.5f) {
+      state->down |= 1u << ORBIS_PAD_RIGHT_TRIGGER;
+    }
+
+    /* The edges last, so a trigger crossing half way is a press exactly as a
+     * button going down is. */
+    state->pressed = state->down & ~slot->down;
+    state->released = slot->down & ~state->down;
+    slot->down = state->down;
   }
 
   /* A slot whose pad is missing this poll reads as absent — which `frame` is

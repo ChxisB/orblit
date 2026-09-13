@@ -50,7 +50,10 @@ typedef enum orbis_pad_button {
   ORBIS_PAD_LEFT_SHOULDER,
   ORBIS_PAD_RIGHT_SHOULDER,
   /* The triggers as buttons, for a pad whose triggers do not travel and as a
-   * threshold crossing on one whose do. */
+   * threshold crossing on one whose do. A back end may report either or
+   * neither; orbis_pads_poll adds the crossing itself, past half way on the
+   * shaped value, so every platform draws the line in the same place and no
+   * game has to choose its own. */
   ORBIS_PAD_LEFT_TRIGGER,
   ORBIS_PAD_RIGHT_TRIGGER,
   ORBIS_PAD_SELECT, /* Back, view, select, the minus key. */
@@ -126,9 +129,15 @@ typedef struct orbis_pad_state {
   /* Shaped, nought to one, never negative whatever the hardware's range. */
   float trigger[2];
 
-  /* Exactly as the hardware reported, normalised to its own range and
-   * otherwise untouched. For a calibration screen, and for a game with a good
-   * reason to shape a stick its own way. Not for ordinary use. */
+  /* As the hardware reported, normalised to its own range and unshaped: no
+   * dead zone, no rescale, no curve. For a calibration screen, and for a game
+   * with a good reason to shape a stick its own way. Not for ordinary use.
+   *
+   * "Unshaped" and not "untouched": positive is still up here, because
+   * orbis_input's PadState.rawAxis is also read after the flip — pads.dart
+   * negates Y before it fills `raw`, not after. A raw value that disagreed
+   * with the shaped one about which way was up would be a trap rather than a
+   * diagnostic. */
   float raw_stick_x[2];
   float raw_stick_y[2];
   float raw_trigger[2];

@@ -73,13 +73,6 @@ static const struct {
     {ORBIS_PAD_DPAD_RIGHT, SDL_GAMEPAD_BUTTON_DPAD_RIGHT},
 };
 
-/* Where a travelling trigger counts as pressed. Not orbis_shaping_triggers'
- * dead zone, which is about a trigger that has not been touched: this is the
- * point past which somebody clearly means it. SDL's own
- * SDL_GAMEPAD_AXIS_MAX / 2 convention, in the same units everything else
- * here uses. */
-static const float kTriggerAsButton = 0.5f;
-
 static float axis_of(SDL_Gamepad *pad, SDL_GamepadAxis axis) {
   const Sint16 raw = SDL_GetGamepadAxis(pad, axis);
   /* Divided by 32767 rather than 32768, so a stick that reaches its stop
@@ -175,6 +168,17 @@ static void attach_virtual_pad(void) {
   desc.type = SDL_JOYSTICK_TYPE_GAMEPAD;
   desc.naxes = SDL_GAMEPAD_AXIS_COUNT;
   desc.nbuttons = SDL_GAMEPAD_BUTTON_COUNT;
+  /* Which of them are real, so SDL writes a gamepad mapping that binds every
+   * one rather than guessing from the counts alone. */
+  desc.axis_mask = (1u << SDL_GAMEPAD_AXIS_LEFTX) |
+                   (1u << SDL_GAMEPAD_AXIS_LEFTY) |
+                   (1u << SDL_GAMEPAD_AXIS_RIGHTX) |
+                   (1u << SDL_GAMEPAD_AXIS_RIGHTY) |
+                   (1u << SDL_GAMEPAD_AXIS_LEFT_TRIGGER) |
+                   (1u << SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
+  for (size_t b = 0; b < sizeof kButtons / sizeof *kButtons; b++) {
+    desc.button_mask |= 1u << (unsigned)kButtons[b].theirs;
+  }
   desc.name = "Orbis virtual pad";
   virtual_id = SDL_AttachVirtualJoystick(&desc);
   if (virtual_id == 0) {
@@ -245,14 +249,12 @@ static int keyboard_pad(orbis_pad_raw *to) {
   if (keys[SDL_SCANCODE_E]) to->trigger[ORBIS_PAD_RIGHT] = 1.0f;
   if (keys[SDL_SCANCODE_SPACE]) to->buttons |= 1u << ORBIS_PAD_SOUTH;
   if (keys[SDL_SCANCODE_RETURN]) to->buttons |= 1u << ORBIS_PAD_START;
-  if (to->trigger[ORBIS_PAD_LEFT] > 0.0f) {
-    to->buttons |= 1u << ORBIS_PAD_LEFT_TRIGGER;
-  }
-  if (to->trigger[ORBIS_PAD_RIGHT] > 0.0f) {
-    to->buttons |= 1u << ORBIS_PAD_RIGHT_TRIGGER;
-  }
 
-  return to->buttons != 0 || length > 0.0f || turn > 0.0f ? 1 : 0;
+  return to->buttons != 0 || length > 0.0f || turn > 0.0f ||
+                 to->trigger[ORBIS_PAD_LEFT] > 0.0f ||
+                 to->trigger[ORBIS_PAD_RIGHT] > 0.0f
+             ? 1
+             : 0;
 }
 
 /* What Filament's createSwapChain takes here. Opaque above this line; below
@@ -292,6 +294,20 @@ int orbis_host_open(const char *title, int width, int height) {
    * Filament build is: SDL_VIDEODRIVER is SDL's own variable. */
   SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11");
 #endif
+
+  /* Pads keep working when the window is not the one being typed into.
+   *
+   * SDL's default is the opposite, and it is the right default for a desktop
+   * application: a game in the background should not walk about because
+   * somebody in another window nudged a stick. It is the wrong default here
+   * twice over. A console front end has no notion of an unfocused window at
+   * all, so a host shaped like one should not inherit a rule that exists
+   * because desktops do. And it is silent — the pad enumerates, takes a slot,
+   * reports its name, and reads exactly the value it had when focus was
+   * lost — which cost this branch an hour: the walk looked pinned at a wall
+   * and the frame loop, the shaping and the slots all looked innocent,
+   * because they were. */
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
   if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
     fprintf(stderr, "SDL would not start: %s\n", SDL_GetError());
@@ -433,16 +449,10 @@ int orbis_host_pump(int *resized) {
         trigger_of(pad, SDL_GAMEPAD_AXIS_LEFT_TRIGGER);
     to->trigger[ORBIS_PAD_RIGHT] =
         trigger_of(pad, SDL_GAMEPAD_AXIS_RIGHT_TRIGGER);
-
-    /* The triggers as buttons. SDL has no such button — a pad whose triggers
-     * travel reports only the axis — so the crossing is made here, which is
-     * what orbis_pad.h says these two mean. */
-    if (to->trigger[ORBIS_PAD_LEFT] >= kTriggerAsButton) {
-      to->buttons |= 1u << ORBIS_PAD_LEFT_TRIGGER;
-    }
-    if (to->trigger[ORBIS_PAD_RIGHT] >= kTriggerAsButton) {
-      to->buttons |= 1u << ORBIS_PAD_RIGHT_TRIGGER;
-    }
+    /* Nothing sets ORBIS_PAD_LEFT_TRIGGER or _RIGHT_TRIGGER here. SDL has no
+     * such button — a pad whose triggers travel reports only the axis — and
+     * orbis_pads_poll makes the crossing on the shaped value, in the one
+     * place every platform shares. */
   }
   if (count == 0) count = keyboard_pad(&raw[0]);
   orbis_pads_poll(host.pads, raw, count, &host.frame);

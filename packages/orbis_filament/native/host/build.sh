@@ -15,6 +15,8 @@
 #
 #   build.sh          builds ./build/orbis_host
 #   build.sh run      and runs it
+#   build.sh test     builds and runs orbis_pad's tests alone, which need no
+#                     Filament, no SDL and no window and take a second
 #
 #   ORBIS_FILAMENT_SDK   a Filament release (the directory holding include/
 #                        and lib/). Defaults to the one darwin/setup.sh
@@ -38,6 +40,21 @@ DARWIN=../../darwin
 SRC="$DARWIN/orbis_filament/Sources/orbis_filament_native"
 OUT="${ORBIS_BUILD_DIR:-build}"
 SYSTEM="$(uname -s)"
+
+# The pad tests, before anything else, because they are the only part of this
+# directory that needs none of what the rest of the script goes looking for --
+# no Filament SDK, no compiled materials, no SDL, no window. That is
+# deliberate: it is the half a console toolchain can run on its first day,
+# before there is anything to draw into. Run on every build, not only on
+# `build.sh test`, because they take under a second and the thing they are
+# guarding against is package:orbis_input and this drifting apart quietly.
+mkdir -p "$OUT"
+clang -std=c99 -O1 -Wall -Wextra -Werror -pedantic -I . \
+  orbis_pad.c orbis_pad_test.c -lm -o "$OUT/orbis_pad_test"
+if [ "${1:-}" = "test" ]; then
+  exec "$OUT/orbis_pad_test"
+fi
+"$OUT/orbis_pad_test"
 
 case "$SYSTEM" in
   Darwin)
@@ -73,6 +90,7 @@ case "$SYSTEM" in
     exit 1
     ;;
 esac
+
 
 if [ ! -d "$SDK/lib/$ARCH" ]; then
   echo "no $ARCH slice in $SDK/lib; it has: $(ls "$SDK/lib" 2>/dev/null)"
