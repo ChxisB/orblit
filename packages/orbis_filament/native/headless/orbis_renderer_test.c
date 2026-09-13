@@ -94,6 +94,81 @@ int main(void) {
            "stats are there to read");
   }
 
+  /* Batching is on for a renderer nobody has told anything.
+   *
+   * This is the C ABI's half of the default, and the half no Flutter host
+   * exercises: the Dart side always puts `batching` on the wire, so the
+   * plugins never fall back and the initial state below is only reached by a
+   * host that calls orbis_renderer_set_batching never or late — a console
+   * host, a Linux or Windows plugin. Six placeholder cubes alike in mesh,
+   * material, colour and flags are a group by the census's rule of four, so
+   * the stats say plainly which way the renderer started. */
+  {
+    const uint32_t count = 6;
+    int64_t keys[6];
+    float transforms[6 * 16];
+    float colours[6 * 3];
+    int32_t meshes[6];
+    int32_t flags[6];
+    int32_t materials[6];
+    int32_t morphs[6];
+    for (uint32_t i = 0; i < count; i++) {
+      keys[i] = (int64_t)(100 + i);
+      for (int f = 0; f < 16; f++) transforms[i * 16 + f] = 0.0f;
+      transforms[i * 16 + 0] = 1.0f;
+      transforms[i * 16 + 5] = 1.0f;
+      transforms[i * 16 + 10] = 1.0f;
+      transforms[i * 16 + 12] = (float)i * 3.0f; /* spread along x */
+      transforms[i * 16 + 15] = 1.0f;
+      colours[i * 3 + 0] = 0.5f;
+      colours[i * 3 + 1] = 0.4f;
+      colours[i * 3 + 2] = 0.3f;
+      meshes[i] = -1;    /* the built-in cube */
+      materials[i] = -1; /* the default surface, where colour is the material */
+      flags[i] = 1 | 2 | 4; /* casts, receives, visible, layer nought */
+      morphs[i] = 0;
+    }
+
+    orbis_stats stats;
+    expect(orbis_renderer_apply_objects(renderer, count, keys, transforms,
+                                        count * 16, colours, count * 3, meshes,
+                                        flags, materials, morphs, NULL, 0, NULL,
+                                        0) == ORBIS_OK,
+           "six identical cubes are taken");
+    expect(orbis_renderer_stats(renderer, &stats) == ORBIS_OK,
+           "stats are there to read after publishing objects");
+    expect(stats.batched_objects == count && stats.batch_groups == 1,
+           "a renderer nobody configured batches: six objects, one group");
+
+    /* And off is reachable, which is the half a flipped default makes easy to
+     * lose. Nought batched, and the objects are still all there — batching
+     * decides how they are drawn, never whether they exist. */
+    expect(orbis_renderer_set_batching(renderer, 0) == ORBIS_OK,
+           "batching can be turned off");
+    expect(orbis_renderer_apply_objects(renderer, count, keys, transforms,
+                                        count * 16, colours, count * 3, meshes,
+                                        flags, materials, morphs, NULL, 0, NULL,
+                                        0) == ORBIS_OK,
+           "the same six cubes are taken again");
+    expect(orbis_renderer_stats(renderer, &stats) == ORBIS_OK,
+           "stats are there to read with batching off");
+    expect(stats.batched_objects == 0 && stats.batch_groups == 0,
+           "nothing is batched once batching is turned off");
+
+    /* Back on by asking, not only by never having asked. */
+    expect(orbis_renderer_set_batching(renderer, 1) == ORBIS_OK,
+           "batching can be turned on again");
+    expect(orbis_renderer_apply_objects(renderer, count, keys, transforms,
+                                        count * 16, colours, count * 3, meshes,
+                                        flags, materials, morphs, NULL, 0, NULL,
+                                        0) == ORBIS_OK,
+           "the same six cubes are taken a third time");
+    expect(orbis_renderer_stats(renderer, &stats) == ORBIS_OK,
+           "stats are there to read with batching on again");
+    expect(stats.batched_objects == count && stats.batch_groups == 1,
+           "the group comes back when batching is turned back on");
+  }
+
   orbis_renderer_destroy(renderer);
   if (failures == 0) printf("the C ABI refuses what it should and draws\n");
   return failures == 0 ? 0 : 1;

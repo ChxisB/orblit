@@ -1077,7 +1077,22 @@ void Renderer::recycle(Drawn &drawn) {
 void Renderer::removeEverything() {
   for (auto &pair : _drawn) recycle(pair.second);
   _drawn.clear();
-  // After the objects, which were the only things wearing these.
+
+  // The groups, which wear pooled colour instances exactly as the objects
+  // above do. They did not exist when this function was written and nothing
+  // here took them down, so a renderer disposed with a group alive destroyed
+  // a MaterialInstance that a chunk renderable still pointed at — which
+  // Filament refuses outright, with "destroying MaterialInstance which is
+  // still in use by Renderable", and then aborts. It was reachable before
+  // only by a host that turned batching on and then closed its window; with
+  // batching on by default it is the ordinary way every scene shuts down.
+  for (auto &pair : _groups) destroyBatchGroup(pair.second);
+  _groups.clear();
+  _batchedObjects = 0;
+  _batchGroups = 0;
+
+  // After the objects and their groups, which were the only things wearing
+  // these.
   _colourPool.clear([this](MaterialInstance *spent) { _engine->destroy(spent); });
 
   auto &entities = utils::EntityManager::get();
