@@ -108,7 +108,9 @@ void main() {
       final prepare = native.substring(at);
 
       // Where it decides there is nothing to blur and returns.
-      final givesUp = prepare.indexOf('if (cameraScale <= 0.0 && !drewObjects)');
+      final givesUp = prepare.indexOf(
+        'if (cameraScale <= 0.0 && !drewObjects)',
+      );
       expect(givesUp, greaterThan(0), reason: 'prepare still returns early');
 
       for (final binding in const [
