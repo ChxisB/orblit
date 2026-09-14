@@ -46,7 +46,11 @@ void main() {
       'an environment': (OrblitEnvironment.stride, 'environmentStride', null),
       'a graph pass': (OrblitRenderGraph.passStride, 'passStride', null),
       'a graph target': (OrblitRenderGraph.targetStride, 'targetStride', null),
-      'a material': (OrblitMaterial.stride, 'materialStride', 'kMaterialParams'),
+      'a material': (
+        OrblitMaterial.stride,
+        'materialStride',
+        'kMaterialParams',
+      ),
       "a material's maps": (
         OrblitMaterial.mapCount,
         'materialMaps',
@@ -54,7 +58,11 @@ void main() {
       ),
       'a video': (OrblitVideo.stride, 'videoStride', 'kVideoParams'),
       'fog': (OrblitFog.stride, 'fogStride', null),
-      'precipitation': (OrblitPrecipitation.stride, 'precipitationStride', null),
+      'precipitation': (
+        OrblitPrecipitation.stride,
+        'precipitationStride',
+        null,
+      ),
       'the sky': (OrblitSky.stride, 'skyStride', null),
       'a decal': (OrblitDecal.stride, 'decalStride', 'kDecalStride'),
       // The renderer's side of this one is in the outline's own header,
@@ -217,7 +225,10 @@ void _screenEffects(String swift) {
       expect(_swiftValue(swift, 'godRayStride'), OrblitGodRays.stride);
       expect(_swiftValue(swift, 'distortionStride'), OrblitDistortion.stride);
       expect(_nativeValue(screen, 'kGodRayStride'), OrblitGodRays.stride);
-      expect(_nativeValue(screen, 'kDistortionStride'), OrblitDistortion.stride);
+      expect(
+        _nativeValue(screen, 'kDistortionStride'),
+        OrblitDistortion.stride,
+      );
       expect(
         _nativeValue(screen, 'kDistortionCapacity'),
         OrblitDistortion.capacity,

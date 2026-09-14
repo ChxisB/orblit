@@ -287,7 +287,10 @@ class OrblitWebViewport {
       // rather than by a per-field accessor, because the ABI hands the whole
       // struct back at once.
       final stats = heap.ints(const [0, 0, 0, 0, 0, 0, 0]);
-      final ok = orblitCall(module, 'orblit_renderer_stats', [_renderer, stats]);
+      final ok = orblitCall(module, 'orblit_renderer_stats', [
+        _renderer,
+        stats,
+      ]);
       if (ok != 0) return const {};
       final bytes = module.HEAPU8.toDart;
       final view = bytes.buffer.asByteData(bytes.offsetInBytes + stats);

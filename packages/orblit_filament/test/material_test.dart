@@ -9,7 +9,10 @@ import 'package:vector_math/vector_math_64.dart';
 Matcher near(double value) => closeTo(value, 1e-6);
 
 void main() {
-  OrblitScene sceneOf(List<OrblitObject> objects, List<OrblitMaterial> materials) {
+  OrblitScene sceneOf(
+    List<OrblitObject> objects,
+    List<OrblitMaterial> materials,
+  ) {
     return OrblitScene(
       objects: objects,
       materials: materials,

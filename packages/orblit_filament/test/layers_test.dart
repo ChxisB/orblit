@@ -16,7 +16,10 @@ void main() {
       OrblitScene(
         objects: objects,
         graph: graph,
-        camera: OrblitCamera(position: Vector3(0, 0, 5), target: Vector3.zero()),
+        camera: OrblitCamera(
+          position: Vector3(0, 0, 5),
+          target: Vector3.zero(),
+        ),
       );
 
   group('render layers', () {

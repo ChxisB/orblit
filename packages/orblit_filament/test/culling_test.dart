@@ -211,9 +211,10 @@ void main() {
 
       expect(tree.nodeCount, nodesBefore);
       expect(tree.bounds!.maximum.x, closeTo(50.5, 1e-9));
-      expect(tree.inside(OrblitBounds(Vector3(49, -1, -1), Vector3(51, 1, 1))), [
-        2,
-      ]);
+      expect(
+        tree.inside(OrblitBounds(Vector3(49, -1, -1), Vector3(51, 1, 1))),
+        [2],
+      );
       // The one that did not move is where it was.
       expect(tree.inside(OrblitBounds(Vector3(-1, -1, -1), Vector3(1, 1, 1))), [
         1,

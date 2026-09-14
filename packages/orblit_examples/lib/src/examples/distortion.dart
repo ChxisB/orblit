@@ -122,7 +122,8 @@ class DistortionExample extends Example {
           speed: 1.2,
           seconds: seconds,
         ),
-      if (lens != 0) OrblitDistortion.lens(strength: lens, chromatic: chromatic),
+      if (lens != 0)
+        OrblitDistortion.lens(strength: lens, chromatic: chromatic),
     ],
     camera: camera,
   );

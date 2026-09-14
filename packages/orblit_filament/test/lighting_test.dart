@@ -42,7 +42,11 @@ void main() {
       // through to one it does, so the index matters as much as the floats.
       final kinds =
           sceneWith(
-                OrblitLight(key: 1, kind: OrblitLightKind.area, intensity: 5000),
+                OrblitLight(
+                  key: 1,
+                  kind: OrblitLightKind.area,
+                  intensity: 5000,
+                ),
               ).toMessage(1)['lightKinds']!
               as List<int>;
       expect(kinds.single, OrblitLightKind.area.index);
@@ -72,7 +76,10 @@ void main() {
       // took a light from sixteen floats to eighteen.
       final scene = OrblitScene(
         objects: const [],
-        camera: OrblitCamera(position: Vector3(0, 0, 5), target: Vector3.zero()),
+        camera: OrblitCamera(
+          position: Vector3(0, 0, 5),
+          target: Vector3.zero(),
+        ),
         lights: [
           OrblitLight(
             key: 1,
@@ -151,7 +158,10 @@ void main() {
     test('is a shading model, not a blend mode', () {
       // Its blending is fixed by what it is: a surface that is only its own
       // shadow is see-through by definition.
-      const floor = OrblitMaterial(key: 9, shading: OrblitShading.shadowCatcher);
+      const floor = OrblitMaterial(
+        key: 9,
+        shading: OrblitShading.shadowCatcher,
+      );
       expect(floor.shading, OrblitShading.shadowCatcher);
       expect(OrblitShading.shadowCatcher.isSurface, isFalse);
       expect(OrblitShading.lit.isSurface, isTrue);
@@ -160,7 +170,10 @@ void main() {
     test('it reaches the renderer as a shading model in the flags', () {
       final scene = OrblitScene(
         objects: const [],
-        camera: OrblitCamera(position: Vector3(0, 0, 5), target: Vector3.zero()),
+        camera: OrblitCamera(
+          position: Vector3(0, 0, 5),
+          target: Vector3.zero(),
+        ),
         materials: const [
           OrblitMaterial(key: 9, shading: OrblitShading.shadowCatcher),
         ],
