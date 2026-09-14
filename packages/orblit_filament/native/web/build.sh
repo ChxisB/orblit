@@ -31,7 +31,7 @@
 #
 # Needs, both required:
 #   EMSDK                    an activated Emscripten SDK (see README.md)
-#   ORBLIT_FILAMENT_WASM_SRC  a checkout of Orblit-Engine/orblit-filament built
+#   ORBLIT_FILAMENT_WASM_SRC  a checkout of ChxisB/orblit-filament built
 #                            for wasm: ./build.sh -p wasm release there first
 set -euo pipefail
 cd "$(dirname "$0")"
@@ -43,7 +43,7 @@ if ! command -v emcc >/dev/null 2>&1; then
 fi
 if [ -z "${ORBLIT_FILAMENT_WASM_SRC:-}" ]; then
   echo "native/web/build.sh: ORBLIT_FILAMENT_WASM_SRC is not set. Point it at" >&2
-  echo "  a checkout of Orblit-Engine/orblit-filament built with" >&2
+  echo "  a checkout of ChxisB/orblit-filament built with" >&2
   echo "  ./build.sh -p wasm release (see README.md)." >&2
   exit 1
 fi

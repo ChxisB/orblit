@@ -3,7 +3,7 @@
 What moves things that decide for themselves — steering behaviours that say
 where to go, and behaviour trees that say what to want.
 
-Part of [Orblit](https://github.com/Orblit-Engine/orblit), a Dart-first 3D game
+Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
 
 ## Using it
@@ -12,7 +12,7 @@ engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.ver
 dependencies:
   orblit_agent:
     git:
-      url: https://github.com/Orblit-Engine/orblit.git
+      url: https://github.com/ChxisB/orblit.git
       path: packages/orblit_agent
 ```
 

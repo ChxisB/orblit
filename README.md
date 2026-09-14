@@ -18,9 +18,9 @@ the rendering.
 
 | Repository | What it is |
 | --- | --- |
-| [`orblit-net`](https://github.com/Orblit-Engine/orblit-net) | Multiplayer. Replicates component columns, with ownership rules and interpolation. |
-| [`orblit-script`](https://github.com/Orblit-Engine/orblit-script) | TypeScript scripting on QuickJS, as a peer of Dart over the same core. |
-| [`orblit-examples`](https://github.com/Orblit-Engine/orblit-examples) | Worked examples of what the engine does, and how. |
+| [`orblit-net`](https://github.com/ChxisB/orblit-net) | Multiplayer. Replicates component columns, with ownership rules and interpolation. |
+| [`orblit-script`](https://github.com/ChxisB/orblit-script) | TypeScript scripting on QuickJS, as a peer of Dart over the same core. |
+| [`orblit-examples`](https://github.com/ChxisB/orblit-examples) | Worked examples of what the engine does, and how. |
 
 Design notes live outside these repositories, as Claude artifacts, so a
 checkout carries what it needs to build and run and nothing else.

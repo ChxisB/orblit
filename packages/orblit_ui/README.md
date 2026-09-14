@@ -4,7 +4,7 @@ The interface a game draws: a tree of elements with a utility class list or
 CSS on each, built into real Flutter widgets. One document, whether it was
 laid out by hand in the editor or described by a script.
 
-Part of [Orblit](https://github.com/Orblit-Engine/orblit), a Dart-first 3D game
+Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
 
 ## Using it
@@ -13,7 +13,7 @@ engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.ver
 dependencies:
   orblit_ui:
     git:
-      url: https://github.com/Orblit-Engine/orblit.git
+      url: https://github.com/ChxisB/orblit.git
       path: packages/orblit_ui
 ```
 
