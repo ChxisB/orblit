@@ -906,6 +906,7 @@ class OrbisScene {
     List<OrbisDecal>? decals,
     OrbisOutline? outline,
     this.batching = false,
+    this.depthPrepass = false,
     OrbisGodRays? godRays,
     List<OrbisDistortion>? distortions,
   }) : lights = lights ?? const [],
@@ -957,6 +958,7 @@ class OrbisScene {
     List<OrbisDecal>? decals,
     OrbisOutline? outline,
     bool? batching,
+    bool? depthPrepass,
     OrbisGodRays? godRays,
     List<OrbisDistortion>? distortions,
   }) => OrbisScene(
@@ -969,6 +971,7 @@ class OrbisScene {
     field: field ?? this.field,
     volumes: volumes ?? this.volumes,
     batching: batching ?? this.batching,
+    depthPrepass: depthPrepass ?? this.depthPrepass,
     objects: objects ?? this.objects,
     populations: populations ?? this.populations,
     splats: splats ?? this.splats,
@@ -1234,6 +1237,93 @@ class OrbisScene {
   /// unset does.
   final bool batching;
 
+  /// Whether opaque objects are drawn into depth alone before they are shaded.
+  ///
+  /// A depth prepass draws every opaque object twice: once writing depth and
+  /// no colour, then once shaded. The second time, every fragment the first
+  /// pass already covered from in front fails the depth test and is thrown
+  /// away before a single light is evaluated — so a pixel is shaded once
+  /// however many surfaces stand over it. What it costs is a second entity,
+  /// a second frustum cull and a second draw for every object it covers.
+  ///
+  /// **Which objects it covers.** Ones drawn as the placeholder cube, that
+  /// are visible, and whose surface is opaque. A model out of a glTF file is
+  /// not covered: Filament's public `RenderableManager` has `setGeometryAt`
+  /// but no matching getter, so there is no way to ask a primitive which
+  /// buffers it draws and therefore no way to build a second renderable over
+  /// the same geometry. A masked surface punches its own pixels out by alpha
+  /// and a blended one never owns its pixels, so depth written for either
+  /// would be depth in the wrong place. Anything not covered draws exactly as
+  /// it always did — it simply gets no help. This is also true of objects
+  /// merged by [batching]: a batched group is one instanced renderable and
+  /// gets no prepass, so the two switches do not compound.
+  ///
+  /// **Off by default, and that is a measurement rather than caution.** On an
+  /// Apple GPU this is worth nothing, because the hardware already does it:
+  /// a tile-based renderer works out which surface wins a tile before it
+  /// shades any of it, which is a prepass in silicon, so there is no fragment
+  /// cost left for a second pass to save and the second pass is pure addition.
+  /// Measured on an M4 Pro, on the Overdraw example — the scene built
+  /// precisely to make overdraw expensive, every slab crossing every other so
+  /// that no order of objects is the right order for any pixel — three runs
+  /// each way, medians of recent frames:
+  ///
+  /// | slabs | prepass off | prepass on |
+  /// |-------|-------------|------------|
+  /// | 96    | 3.97 ms     | 4.10 ms    |
+  /// | 48    | 3.84 ms     | 3.89 ms    |
+  /// | 1     | 3.47 ms     | 3.47 ms    |
+  ///
+  /// Run to run within one setting the spread is a hundredth of a millisecond,
+  /// so the ninety-six-slab figure is a real and repeatable *loss* of about
+  /// three per cent, not noise: the second pass adds ninety-seven draws and
+  /// ninety-seven culls and saves nothing, because there was nothing to save.
+  /// See the Overdraw example for the exact commands.
+  ///
+  /// **On an immediate-mode GPU it is the other way round.** Such a GPU shades
+  /// every layer it is handed in the order it is handed them, so hidden
+  /// surface costs real time and removing it saves real time. Measured on the
+  /// same scene through the same renderer, on Mesa's llvmpipe under Vulkan —
+  /// a software rasteriser, and immediate-mode by construction — medians of
+  /// three runs each way:
+  ///
+  /// | slabs | prepass off | prepass on |
+  /// |-------|-------------|------------|
+  /// | 96    | 40.9 ms     | 21.3 ms    |
+  /// | 48    | 44.0 ms     | 17.3 ms    |
+  /// | 1     | 11.0 ms     | 11.3 ms    |
+  ///
+  /// Roughly half the frame, where there is real depth complexity to remove.
+  /// The one-slab row is the control and it says the same thing on both
+  /// machines: with nothing hidden there is nothing to save, and the second
+  /// pass costs about three per cent for its trouble.
+  ///
+  /// **Why it still ships off.** The obvious move — default it on wherever the
+  /// backend is not Metal — is not supported by what was actually measured.
+  /// The only immediate-mode hardware available here was a software
+  /// rasteriser, and a software rasteriser is the most favourable possible
+  /// case for a prepass: it has no early-Z, no hierarchical depth and no
+  /// compression, so every fragment it skips is a fragment genuinely shaded on
+  /// the CPU. A real desktop GPU has all three and behaves far more like the
+  /// tile-based case for this workload. Defaulting this on for every non-Metal
+  /// backend would be extrapolating from llvmpipe to hardware nobody has
+  /// measured, so it stays an opt-in until somebody measures a discrete GPU.
+  ///
+  /// So: turn it on for a backend and a scene you have measured, and leave it
+  /// off otherwise. The picture is identical either way — bit-for-bit, on both
+  /// Metal and Vulkan — so the only thing at stake is time.
+  ///
+  /// **What it does not change.** The shaded draws keep the depth test they
+  /// already had. Filament renders reversed-Z and its opaque draws test
+  /// greater-or-equal, so a fragment the prepass has covered is already
+  /// rejected; tightening the test to equal would reject the same fragments
+  /// and gain nothing, while risking an object vanishing outright if the two
+  /// vertex shaders disagree about a position by one unit in the last place.
+  ///
+  /// Turned off with `depthPrepass: false`, which is also what leaving this
+  /// unset does.
+  final bool depthPrepass;
+
   /// The highest layer an object may be on.
   ///
   /// Seven of them, because the renderer's own mask is eight bits and the
@@ -1447,6 +1537,7 @@ class OrbisScene {
       'meshPaths': paths,
       'objectMaterials': objectMaterials,
       'batching': batching,
+      'depthPrepass': depthPrepass,
       'materialKeys': materialKeys,
       'materialFlags': materialFlags,
       'materialParams': materialParams,
