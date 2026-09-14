@@ -280,6 +280,12 @@ int orbis_renderer_draw(orbis_renderer *renderer, double seconds) {
                  [&](orbis::Renderer &core) { core.renderAtTime(seconds); });
 }
 
+uint64_t orbis_renderer_rendered_frames(const orbis_renderer *renderer) {
+  return renderer != nullptr && renderer->core != nullptr
+             ? renderer->core->renderedFrames()
+             : 0;
+}
+
 // ---- The scene ----
 
 int orbis_renderer_apply_objects(orbis_renderer *renderer, uint32_t count,

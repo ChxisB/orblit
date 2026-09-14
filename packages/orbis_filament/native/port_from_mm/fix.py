@@ -25,6 +25,9 @@ def resub(pattern, new, flags=0):
 
 
 # ---- targeted substitutions (before the whole-function replacements) ----
+sub('"[orbis] frame %d: cpu', '"[orbis] frame %llu: cpu')
+sub('_frameCount, cpuMilliseconds(), gpuMilliseconds(),',
+    'static_cast<unsigned long long>(_frameCount), cpuMilliseconds(), gpuMilliseconds(),')
 sub('  _presentLock = [[NSLock alloc] init];\n  _aimLock = [[NSLock alloc] init];\n', '')
 sub('  _assetNotes = [NSMutableDictionary dictionary];\n'
     '  _objectNotes = [NSMutableDictionary dictionary];\n'
