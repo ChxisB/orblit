@@ -7,9 +7,17 @@
 # Nothing here changes the default backend or any release material set.
 #
 #   ORBIS_FILAMENT_WEBGPU_SRC=/path/to/orbis-filament ./build.sh test
+#   ORBIS_MATC_BACKENDS=all compiles Metal, Vulkan, OpenGL and WebGPU into
+#   generated/webgpu-all, for comparing APIs on the same fork runtime.
 #
 set -euo pipefail
+CALLER="$PWD"
 cd "$(dirname "$0")"
+
+if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
+  echo "native/webgpu/build.sh: this host build currently requires Apple silicon macOS" >&2
+  exit 1
+fi
 
 PACKAGE="../.."
 DARWIN="$PACKAGE/darwin"
@@ -21,19 +29,42 @@ if [ -z "$FORK" ]; then
   echo "  point it at the matching orbis-filament checkout" >&2
   exit 1
 fi
+case "$FORK" in
+  /*) ;;
+  *) FORK="$CALLER/$FORK" ;;
+esac
+FORK="$(cd "$FORK" && pwd)"
 
 FILAMENT="$FORK/out/webgpu-release/filament"
 MATC="${ORBIS_FILAMENT_WEBGPU_MATC:-$FORK/out/cmake-webgpu-release/tools/matc/matc}"
-if [ ! -x "$MATC" ]; then
+if [ -z "${ORBIS_FILAMENT_WEBGPU_MATC:-}" ] && [ ! -x "$MATC" ]; then
   MATC="$FILAMENT/bin/matc"
 fi
-if [ ! -x "$MATC" ] || [ ! -f "$FILAMENT/lib/arm64/libwebgpu_dawn.a" ]; then
+case "$MATC" in
+  /*) ;;
+  *) MATC="$CALLER/$MATC" ;;
+esac
+if [ ! -x "$MATC" ]; then
+  echo "native/webgpu/build.sh: material compiler is not executable: $MATC" >&2
+  exit 1
+fi
+if [ ! -f "$FILAMENT/include/filament/Engine.h" ] ||
+   [ ! -f "$FILAMENT/lib/arm64/libwebgpu_dawn.a" ]; then
   echo "native/webgpu/build.sh: no installed WebGPU runtime at $FILAMENT" >&2
   echo "  build the fork with WebGPU support and install webgpu-release first" >&2
   exit 1
 fi
 
-GENERATED="$SRC/generated/webgpu"
+API="${ORBIS_MATC_BACKENDS:-webgpu}"
+case "$API" in
+  webgpu) GENERATED_SET=webgpu ;;
+  all) GENERATED_SET=webgpu-all ;;
+  *)
+    echo "native/webgpu/build.sh: ORBIS_MATC_BACKENDS must be webgpu or all" >&2
+    exit 1
+    ;;
+esac
+GENERATED="$SRC/generated/$GENERATED_SET"
 mkdir -p "$GENERATED"
 
 # These are backend-independent lookup data, not compiled materials. Reuse
@@ -52,13 +83,26 @@ for table in AreaTex.h SearchTex.h LtcTables.h; do
 done
 
 fork_id="$(git -C "$FORK" rev-parse HEAD 2>/dev/null || echo unknown)"
-MATC_FLAGS="-a webgpu -p all"
-MATC_WANT="set=webgpu runtime=webgpu fork=$fork_id flags=$MATC_FLAGS"
+MATC_FLAGS=(-a "$API" -p all)
+# A checkout revision alone cannot identify built binaries: matc can be
+# rebuilt without committing, and the installed runtime can be older.
+compiler_id="$(shasum -a 256 "$MATC" | cut -d ' ' -f 1)"
+runtime_id="$(shasum -a 256 "$FILAMENT"/lib/arm64/*.a | shasum -a 256 | cut -d ' ' -f 1)"
+MATC_WANT="set=$GENERATED_SET runtime=webgpu fork=$fork_id compiler=$compiler_id archives=$runtime_id flags=${MATC_FLAGS[*]}"
 STAMP="$GENERATED/.matc"
 STALE=""
 if [ "$(cat "$STAMP" 2>/dev/null || true)" != "$MATC_WANT" ]; then
   STALE=1
+  # An interrupted rebuild must not leave an old stamp blessing a mixture.
+  rm -f "$STAMP"
 fi
+
+MATERIAL_TMP="$(mktemp -d "${TMPDIR:-/tmp}/orbis-webgpu.XXXXXX")"
+cleanup() {
+  rm -f "$MATERIAL_TMP/input.mat" "$MATERIAL_TMP/material.filamat" "$MATERIAL_TMP/header.h"
+  rmdir "$MATERIAL_TMP"
+}
+trap cleanup EXIT
 
 BLENDS="opaque transparent fade masked add"
 VARIANTS="lit lit_slim unlit video"
@@ -66,19 +110,19 @@ VARIANTS="lit lit_slim unlit video"
 compile() {
   local source="$1" name="$2" blend="${3:-}"
   local header="$GENERATED/${name}_material.h"
-  if [ -z "$STALE" ] && [ -f "$header" ] && [ ! "$source" -nt "$header" ]; then
+  if [ -z "$STALE" ] && [ -s "$header" ] && [ ! "$source" -nt "$header" ]; then
     return
   fi
   echo "native/webgpu: compiling $name"
   local input="$source"
   if [ -n "$blend" ]; then
-    input="/tmp/orbis_webgpu_src_$name.mat"
+    input="$MATERIAL_TMP/input.mat"
     sed "s/^\( *blending *: *\)[a-z]*,/\1$blend,/" "$source" > "$input"
   fi
-  "$MATC" $MATC_FLAGS -o "/tmp/orbis_webgpu_$name.filamat" "$input"
-  (cd /tmp && xxd -i "orbis_webgpu_$name.filamat") \
-    | sed "s/orbis_webgpu_${name}_filamat/k${name}Material/g" > "$header"
-  rm -f "/tmp/orbis_webgpu_$name.filamat" "/tmp/orbis_webgpu_src_$name.mat"
+  "$MATC" "${MATC_FLAGS[@]}" -o "$MATERIAL_TMP/material.filamat" "$input"
+  (cd "$MATERIAL_TMP" && xxd -i material.filamat) \
+    | sed "s/material_filamat/k${name}Material/g" > "$MATERIAL_TMP/header.h"
+  mv "$MATERIAL_TMP/header.h" "$header"
 }
 
 for mat in "$MATERIALS"/*.mat; do
@@ -102,7 +146,7 @@ case "$OUT" in
   *) OUT="$PWD/$OUT" ;;
 esac
 ORBIS_FILAMENT_SDK="$FILAMENT" \
-ORBIS_GENERATED_SET=webgpu \
+ORBIS_GENERATED_SET="$GENERATED_SET" \
 ORBIS_FILAMENT_BACKEND=webgpu \
 ORBIS_BUILD_DIR="$OUT" \
   bash ../headless/build.sh
