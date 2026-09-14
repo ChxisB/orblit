@@ -2,6 +2,88 @@
 
 ## 0.23.0
 
+- **Instance batching is on by default.** `OrbisScene.batching` now defaults to
+  true, as does the renderer a host drives through the C ABI without ever
+  calling `orbis_renderer_set_batching`, and the Swift and Kotlin plugins when
+  a scene message leaves the key out. Three thousand identical crates are 51
+  renderables instead of 3003, and 0.15 ms of CPU instead of 0.81 ms. It was
+  held off for one reason — batched shadow casters moved pixels and nobody
+  could say why — and that reason is gone: the cause was the placeholder
+  cube's bounding box, below, which was wrong on the *unbatched* side and so
+  could never be found by shrinking a batch. What is left after that fix is a
+  group's box being the union of its members', which is bounded (2.27% of
+  pixels, 2.6 levels in 255 on average, confined to shadow edges), saturating
+  (eight members to a chunk measures 2.22%, already as loose as sixty-four's
+  2.27%) and incapable of hiding anything, since a union box can only be a
+  superset of what a member-by-member account would cull. A scene that wants
+  the old path says `batching: false` — per scene, per publish — and gets it
+  exactly, on the Dart side, over the wire and through the C ABI alike.
+
+  That 2.27% is the worst case, not the usual one. It is three thousand
+  crates across a wide grid, where a chunk of sixty-four spans a large volume
+  and its union box is loose to match. Measured the same way — clock pinned,
+  noise floor established at zero by drawing each frame twice — the other
+  shadow-casting scenes that batch barely move: Shadows (12 objects in one
+  group) differs by 7 pixels in a 1600x1200 frame, Benchmark (200 objects in
+  17 groups) by 3, which is inside that scene's own 2-to-4-pixel floor, and
+  Environment volumes (15 objects in two groups) not at all. With the shadow
+  pass off the Batching example itself comes down to 2 pixels, and Overdraw's
+  48 merged slabs to 1 — single levels both, the same float rounding that
+  leaves 106 pixels at one member to a chunk.
+
+- **Disposing a renderer with a batch group alive no longer aborts.**
+  `removeEverything` recycled the objects and then cleared the pool of shared
+  colour material instances, on the reasoning — true when it was written, and
+  written down in a comment — that the objects were the only things wearing
+  them. Batch groups wear them too: a chunk is a renderable made of whatever
+  its group took out of that pool, and nothing tore the groups down on the way
+  out. So a renderer disposed while a group was alive destroyed a
+  `MaterialInstance` a live `Renderable` still pointed at, which Filament
+  refuses with a precondition panic and an abort. The groups are now destroyed
+  before the pool, as the objects already were. Reachable before this release
+  only by a host that turned batching on and then closed a viewport — which is
+  what `OrbisViewport.dispose` does on every scene widget that goes away — and
+  the ordinary way every scene shuts down now that batching is on by default.
+  The C ABI's own test covers it, along with the default and both directions
+  of the switch.
+
+- **The placeholder cube's bounding box now contains the cube.** Filament's
+  `Box` is a centre and a half-extent. The declaration read
+  `{{-1,-1,-1},{1,1,1}}`, which is a {min,max} pair written into it, and
+  describes a cube centred on (-1,-1,-1) that stops at the origin. The
+  geometry spans -1..+1 about the origin, so the box never contained the thing
+  it stood for, and the error grew with the object's scale: a floor slab at
+  scale 30 declared a box thirty metres from the floor. A caster's world box is
+  the only input to the directional shadow camera's fit — `ShadowMap` takes the
+  near plane from the casters and the far plane and x-y focus from the
+  receivers — so every scene drawing the placeholder cube fitted its shadow map
+  to the wrong volume. Reference frames across the gallery move as a result,
+  with the clock pinned and the noise floor measured at exactly zero: 2.75% of
+  pixels in Batching unbatched, 0.54% in Shadows, 0.49% in A thousand objects
+  and 0.23% in Meshes. Panel shadows moves on 69% of its pixels but by a single
+  level on almost every one of them, with the frame's mean unchanged to three
+  decimal places — that is the dither re-rolling under a shift smaller than one
+  quantisation step, not something to see. Nothing is culled differently in any
+  of them — every pixel that moves is a shading or shadow change, not an object
+  appearing or disappearing — though the box was a culling hazard too, since
+  Filament culls from the same box it fits shadows from.
+
+- **What instance batching still costs, measured against a correct baseline.**
+  Three thousand crates batched, against the same crates drawn one by one,
+  differ by 2.27% of pixels at the default sixty-four members to a chunk, 2.22%
+  at eight, and 0.0055% at one — a hundred and six pixels in a 1600x1200 frame,
+  every one of them differing by exactly one level, which is the last of the
+  float rounding in recovering a chunk's half-extent from the union of its
+  members'. Before the box was fixed
+  the same three measurements were 2.97%, 2.96% and 2.75%: what survived
+  shrinking the group was the unbatched side's wrong box, which is why
+  shrinking never disposed of it. What remains is the grouping itself, and it
+  behaves as a union of boxes should — a chunk's box is looser along the light
+  axis than any member's, so the shadow camera fits a deeper volume and the
+  map's texels land differently. It saturates at once: eight members to a chunk
+  is already as loose as sixty-four, so no chunk size buys the difference back
+  while still batching anything. That is what the default above rests on: a
+  named, bounded, saturating trade rather than an open question.
 - **A depth prepass, off by default.** With `OrbisScene.depthPrepass` on, every
   opaque object the prepass covers is drawn twice: once writing depth and no
   colour, then once shaded. The second time, every fragment the first pass
@@ -185,29 +267,17 @@
   average, 68 at the worst — all of it along the edges of shadows. With the
   shadow pass off the two frames are identical, which is what places it there.
 
-  **It is not the group's bounding box, and not how Filament fits its
-  cascades.** That was the standing explanation and it is wrong. A group's box
-  is the union of its members', so the test is to shrink the group: sixty-four
-  members to a chunk differ by 2.97% of pixels, thirty-two by 2.96%, and one
-  member to a chunk — where every number a cascade is fitted from is identical
-  to the unbatched frame, the same box, the same renderable count, the same
-  culling — still by 2.75%. Nine tenths of the difference survives the thing
-  that was supposed to cause all of it. Two further checks agree: the
-  world-space caster and receiver volumes are identical either way, because a
-  chunk's box is the exact union of its members' and a union of unions is the
-  same union; and squaring every crate to the axes, so no transform can round
-  differently, leaves 3.28%. What remains needs batched *casters*: batch the
-  same three thousand crates with nothing in the scene casting, so the shadow
-  pass still runs and still fits itself to the receivers, and the frame is
-  bit-identical — which disposes of the receiver side, and with it the idea
-  that a batched row is admitted to the receiver bounds whole. So it is
-  something in how an instanced caster is drawn into the shadow map, and it is
-  not yet named. The fix that was expected to work, handing Filament the
-  shadow scene bounds from the embedder, would have addressed about a
-  fourteenth of the difference, and was not made. The frame's stats report how
-  many objects were batched and into how many groups. A depth prepass was
-  measured and not built: on Apple's tile-based GPUs there is no overdraw cost
-  for it to remove.
+  Most of that turned out to be a fault on the *unbatched* side rather than in
+  the batching, and is fixed in 0.23.0: the placeholder cube declared a
+  bounding box that did not contain it, so an unbatched crate's shadows were
+  fitted from the wrong volume and the batched path — which works a chunk's box
+  out from its members' transforms — was the one that was right. That is why
+  shrinking a group to one member never disposed of the difference, and why
+  this entry's reasoning from that test was wrong. 0.23.0 carries the
+  measurements against a corrected baseline. The frame's stats report how many
+  objects were batched and into how many groups. A depth prepass was measured
+  and not built: on Apple's tile-based GPUs there is no overdraw cost for it to
+  remove.
 
 - **God rays and screen distortion.** `OrbisScene.godRays` adds shafts of light
   from the scene's own directional light, by Mitchell's screen-space light

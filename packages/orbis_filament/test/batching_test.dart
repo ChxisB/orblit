@@ -29,17 +29,26 @@ void main() {
         : OrbisScene(objects: objects, camera: camera, batching: batching);
   }
 
-  test('is off unless asked for', () {
-    // Still off by default even now that the renderer builds a merged group
-    // as one manually-instanced renderable rather than asking Filament's own
-    // automatic instancing to notice one after the fact: proven bit-identical
-    // wherever nothing casts a shadow onto or out of a batched group, but not
-    // proven where one does — see the field's own doc comment for the
-    // measurements this rests on. A scene written before batching existed,
-    // or one that never turns it on, draws exactly as it always did either
-    // way.
-    expect(sceneOf().batching, isFalse);
-    expect(sceneOf().toMessage(1)['batching'], isFalse);
+  test('is on unless turned off', () {
+    // On by default since the cause of the batched-shadow difference was
+    // found: the placeholder cube declared a bounding box that did not
+    // contain it, so the *unbatched* side was fitting its shadows from the
+    // wrong volume. With that corrected, what is left is a group's box being
+    // the union of its members', which is bounded, confined to shadow edges
+    // and saturating at eight members to a chunk — see the field's own doc
+    // comment for the measurements this rests on. A scene that says nothing
+    // gets the merged draws.
+    expect(sceneOf().batching, isTrue);
+    expect(sceneOf().toMessage(1)['batching'], isTrue);
+  });
+
+  test('is turned off by saying so, not by saying nothing', () {
+    // The half of the switch that is easy to lose when a default is flipped:
+    // a scene that wants every renderable culled on its own must still be
+    // able to have that, and must be able to say it explicitly rather than
+    // by omission.
+    expect(sceneOf(batching: false).batching, isFalse);
+    expect(sceneOf(batching: false).toMessage(1)['batching'], isFalse);
   });
 
   test('reaches the message when asked for', () {
@@ -64,6 +73,14 @@ void main() {
     // which is the way a flag added to a copyWith is usually lost.
     expect(on.copyWith(sky: OrbisSky()).batching, isTrue);
     expect(on.copyWith(batching: false).batching, isFalse);
-    expect(sceneOf().copyWith(batching: true).batching, isTrue);
+    expect(sceneOf(batching: false).copyWith(batching: true).batching, isTrue);
+    // The direction that a flipped default makes easy to break: `off` is no
+    // longer the same value as "not stated", so a copyWith that resolved the
+    // flag with `batching ?? true` rather than `batching ?? this.batching`
+    // would turn a deliberately unbatched scene back on the first time
+    // anything else about it was changed.
+    final off = sceneOf(batching: false);
+    expect(off.copyWith(sky: OrbisSky()).batching, isFalse);
+    expect(off.copyWith(sky: OrbisSky()).toMessage(1)['batching'], isFalse);
   });
 }

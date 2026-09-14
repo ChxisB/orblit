@@ -49,8 +49,9 @@
 ///   ORBIS_SPLAT_PILLAR=0   take the solid pillar out of the ring
 ///   ORBIS_SPLAT_HARMONICS  how many bands of a capture's view-dependent
 ///                          colour to read: 0, 1, 2 or 3
-///   ORBIS_BATCHING=0/1     batching off or on, for any example, so the same
-///                          frame can be drawn both ways and compared
+///   ORBIS_BATCHING=0/1     batching off or on, for any example, over the
+///                          default (on), so the same frame can be drawn both
+///                          ways and compared
 ///   ORBIS_PREPASS=0/1      the depth prepass off or on, for any example, so
 ///                          the same frame can be timed both ways
 ///   ORBIS_CRATES           how many crates the Batching example draws

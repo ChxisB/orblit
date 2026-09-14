@@ -59,10 +59,15 @@ NS_ASSUME_NONNULL_BEGIN
 /// Whether identical objects are drawn as one instanced draw.
 ///
 /// Objects with the same mesh, the same material (and, for the placeholder
-/// cube, the same colour) and the same shadow and layer flags are made to
-/// share one material instance, and Filament's automatic instancing merges
-/// their draws. They stay separate objects: a transform written to one moves
+/// cube, the same colour) and the same shadow and layer flags are built as a
+/// handful of manually instanced renderables — one per chunk of sixty-four —
+/// rather than one renderable each. Not Filament's automatic instancing,
+/// which this deliberately does not use; see OrbisScene.batching on the Dart
+/// side for why. They stay separate objects: a transform written to one moves
 /// that one. Set before `applyObjects`, which is where the sharing is decided.
+///
+/// On for a renderer that has just been created, so this only has to be
+/// called to turn it off.
 - (void)setBatching:(BOOL)enabled;
 
 /// What the last `applyObjects` batched: objects in groups large enough to
