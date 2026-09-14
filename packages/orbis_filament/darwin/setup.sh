@@ -82,8 +82,27 @@ fi
 
 # Materials are compiled to a C array rather than shipped as an asset, so the
 # renderer has no file to find at runtime and no asset bundle to depend on.
-GENERATED="orbis_filament/Sources/orbis_filament_native/generated"
+# Keep each compiler/runtime pair in its own directory: a WebGPU material made
+# by the fork is not valid for the released runtime, and must never replace the
+# headers an Apple or Linux release build includes. ORBIS_GENERATED_SET is a
+# name, not a path, so an accidental absolute path cannot escape this tree.
+GENERATED_ROOT="orbis_filament/Sources/orbis_filament_native/generated"
+if [ -n "${ORBIS_GENERATED_SET:-}" ]; then
+  MATERIAL_SET="$ORBIS_GENERATED_SET"
+elif [ -n "${ORBIS_FILAMENT_SRC:-}" ]; then
+  MATERIAL_SET="darwin-source"
+else
+  MATERIAL_SET="darwin-release"
+fi
+case "$MATERIAL_SET" in
+  ''|.|..|*/*)
+    echo "orbis_filament: ORBIS_GENERATED_SET must be a simple directory name" >&2
+    exit 1
+    ;;
+esac
+GENERATED="$GENERATED_ROOT/$MATERIAL_SET"
 mkdir -p "$GENERATED"
+echo "orbis_filament: generated materials -> $GENERATED"
 
 # SMAA's two lookup tables, fetched rather than committed.
 #
@@ -179,11 +198,12 @@ for api in ${ORBIS_MATC_BACKENDS//,/ }; do
       ;;
   esac
 done
-# The default comes out as exactly the flags this used before there was a
-# choice, so an existing checkout's stamp still matches and nothing rebuilds.
+# The selected set is part of the stamp as well as the compiler identity, so
+# switching runtime/backend sets never makes one set look current because a
+# different set happened to be generated last.
 MATC_FLAGS="${MATC_API# } -p all"
 MATC_STAMP="$GENERATED/.matc"
-MATC_WANT="$SDK_ID $MATC_FLAGS"
+MATC_WANT="set=$MATERIAL_SET sdk=$SDK_ID flags=$MATC_FLAGS"
 STALE=""
 if [ "$(cat "$MATC_STAMP" 2>/dev/null || true)" != "$MATC_WANT" ]; then
   STALE=1

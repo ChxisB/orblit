@@ -12,7 +12,7 @@
 #include <cstdio>
 #include <cstring>
 
-#include "generated/splat_material.h"
+#include "splat_material.h"
 
 namespace orbis {
 

@@ -14,6 +14,13 @@ let filament = "third_party/Filament.xcframework"
 // Checked here so a fresh clone is told what to run, rather than being handed
 // whatever SwiftPM says about a path that is not there.
 let here = URL(fileURLWithPath: #filePath).deletingLastPathComponent()
+let generatedSet = ProcessInfo.processInfo.environment["ORBIS_GENERATED_SET"]
+  ?? (ProcessInfo.processInfo.environment["ORBIS_FILAMENT_SRC"] == nil
+    ? "darwin-release"
+    : "darwin-source")
+guard generatedSet.range(of: "^[A-Za-z0-9_-]+$", options: .regularExpression) != nil else {
+  fatalError("orbis_filament: ORBIS_GENERATED_SET must be a simple directory name")
+}
 if !FileManager.default.fileExists(atPath: here.appendingPathComponent(filament).path) {
   fatalError(
     """
@@ -57,7 +64,8 @@ let package = Package(
       name: "orbis_filament_native",
       dependencies: ["Filament"],
       cSettings: [
-        .headerSearchPath("include")
+        .headerSearchPath("include"),
+        .headerSearchPath("generated/\(generatedSet)")
       ],
       linkerSettings: [
         .linkedFramework("Metal"),
