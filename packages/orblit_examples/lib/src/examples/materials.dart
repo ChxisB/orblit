@@ -329,7 +329,9 @@ class MaterialsExample extends Example {
         ),
       ],
       sky: OrblitSky(colour: Vector3(0.12, 0.15, 0.21), ambient: 26000),
-      post: OrblitPostProcess(bloom: OrblitBloom(enabled: true, strength: 0.18)),
+      post: OrblitPostProcess(
+        bloom: OrblitBloom(enabled: true, strength: 0.18),
+      ),
     );
   }
 

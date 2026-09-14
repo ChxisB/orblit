@@ -121,15 +121,16 @@ void main() {
 
 void _fadeTests() {
   group('how a member goes at the range', () {
-    OrblitPopulation one({OrblitFade fade = OrblitFade.sink}) => OrblitPopulation(
-      key: 1,
-      transforms: Float32List(16),
-      colours: Float32List(3),
-      minimum: Vector3.zero(),
-      maximum: Vector3.all(1),
-      range: 50,
-      fade: fade,
-    );
+    OrblitPopulation one({OrblitFade fade = OrblitFade.sink}) =>
+        OrblitPopulation(
+          key: 1,
+          transforms: Float32List(16),
+          colours: Float32List(3),
+          minimum: Vector3.zero(),
+          maximum: Vector3.all(1),
+          range: 50,
+          fade: fade,
+        );
 
     test('sinking is the default, and is bit two clear', () {
       expect(one().flags & 4, 0);

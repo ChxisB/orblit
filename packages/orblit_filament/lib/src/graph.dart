@@ -384,7 +384,8 @@ class OrblitRenderGraph {
     targets: targets ?? this.targets,
   );
 
-  OrblitRenderGraph with_(OrblitPass pass) => copyWith(passes: [...passes, pass]);
+  OrblitRenderGraph with_(OrblitPass pass) =>
+      copyWith(passes: [...passes, pass]);
 
   OrblitRenderGraph withTarget(OrblitTarget target) =>
       copyWith(targets: [...targets, target]);

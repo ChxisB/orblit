@@ -128,7 +128,9 @@ class PipelineExample extends Example {
           options: [for (final one in OrblitDetail.values) one.label],
           selected: detail.label,
           onSelect: (label) {
-            _retier(OrblitDetail.values.firstWhere((one) => one.label == label));
+            _retier(
+              OrblitDetail.values.firstWhere((one) => one.label == label),
+            );
             changed();
           },
         ),

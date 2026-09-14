@@ -58,7 +58,9 @@ void main() {
     });
 
     test('flags are one and nought rather than anything else', () {
-      final packed = OrblitPostProcess(bloom: OrblitBloom(enabled: true)).packed;
+      final packed = OrblitPostProcess(
+        bloom: OrblitBloom(enabled: true),
+      ).packed;
 
       for (final value in packed) {
         expect(value.isFinite, isTrue);

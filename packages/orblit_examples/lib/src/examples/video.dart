@@ -137,7 +137,9 @@ class VideoExample extends Example {
         ),
       ],
       sky: OrblitSky(colour: Vector3(0.05, 0.06, 0.08), ambient: 6000),
-      post: OrblitPostProcess(bloom: OrblitBloom(enabled: true, strength: 0.14)),
+      post: OrblitPostProcess(
+        bloom: OrblitBloom(enabled: true, strength: 0.14),
+      ),
     );
   }
 

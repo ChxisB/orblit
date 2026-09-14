@@ -310,7 +310,11 @@ void main() {
         OrblitTarget(name: 'shadowless', depth: true, colour: false),
       ],
       passes: const [
-        OrblitPass(name: 'frame', reads: ['mirror', 'shadowless'], layers: 0x0F),
+        OrblitPass(
+          name: 'frame',
+          reads: ['mirror', 'shadowless'],
+          layers: 0x0F,
+        ),
         OrblitPass(name: 'prepass', into: 'shadowless'),
         OrblitPass(
           name: 'water',

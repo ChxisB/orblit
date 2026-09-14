@@ -152,7 +152,8 @@ class OrblitFilamentWeb {
       default:
         throw PlatformException(
           code: 'not-implemented',
-          message: 'orblit_filament has no web implementation of ${call.method}',
+          message:
+              'orblit_filament has no web implementation of ${call.method}',
         );
     }
   }
