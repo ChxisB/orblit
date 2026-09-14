@@ -280,6 +280,27 @@
 
 ## 0.22.0
 
+- **A lit scene on the iOS simulator is lit again.** A shadow-casting
+  directional light left every receiver black there: the cube's three visible
+  faces read (6.2, 1.4, 1.3), (6.6, 1.5, 1.5) and (5.8, 1.3, 1.3) with the
+  clock pinned, flat and about thirty times too dark, while the same scene on
+  macOS and on the Android emulator drew correctly. Filament's Metal backend
+  rewrites a shadow sampler's comparison to `MTLCompareFunctionNever` when an
+  iOS build's device declines `MTLFeatureSet_iOS_GPUFamily3_v1`, which the
+  simulator's virtual GPU does; `Never` fails every comparison, so the three
+  comparison-based shadow kinds each returned nought for every receiver and
+  the direct term was multiplied away. Measured on that same device, the
+  comparison itself works perfectly — only the advertisement is missing — but
+  the decision is Filament's and iOS links it as a published binary. So the
+  renderer now asks Filament's own question once at startup and draws a
+  variance shadow, which compares in the shader rather than in the sampler,
+  in place of whichever comparison kind was asked for; the scene reads
+  (197.9, 77.9, 47.5) and (149.0, 42.6, 24.4) with a cast shadow present.
+  A host is told under `notes()["shadows"]`, because a variance shadow has
+  softer edges than the one asked for and can bleed light through a thin
+  occluder. Nothing changes anywhere the comparison works, which is macOS,
+  Android, the web, and every iPhone the package's iOS 13 floor admits — all
+  of which are an A9 or newer and pass the feature set Filament tests.
 - **Direct light reaches the web build again.** The renderer core in a browser
   drew every scene by ambient light alone: the sun, and every other
   directional light, contributed nothing, and no note, log or error said so.
