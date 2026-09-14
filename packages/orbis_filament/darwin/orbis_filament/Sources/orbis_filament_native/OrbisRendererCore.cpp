@@ -441,7 +441,9 @@ void Renderer::buildMist() {
 
     utils::Entity entity = entities.create();
     RenderableManager::Builder(1)
-        .boundingBox({{-1, -0.02f, -1}, {1, 0.02f, 1}})
+        // Filament's Box is {centre, half-extent}; the quad spans -1..1
+        // around the origin and is only two hundredths deep.
+        .boundingBox({{0, 0, 0}, {1, 0.02f, 1}})
         .material(0, instance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                   _quadVertices, _quadIndices, 0, 6)
@@ -581,8 +583,8 @@ void Renderer::buildClouds() {
 
   _cloudEntity = utils::EntityManager::get().create();
   RenderableManager::Builder(1)
-      .boundingBox({{-kSkyRadius, -kSkyRadius, -kSkyRadius},
-                    {kSkyRadius, kSkyRadius, kSkyRadius}})
+      // The vertices are a unit dome and the transform supplies the radius.
+      .boundingBox({{0, 0, 0}, {1, 1, 1}})
       .material(0, _cloudInstance)
       .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, _skyVertices,
                 _skyIndices, 0, rings * segments * 6)
@@ -690,7 +692,9 @@ void Renderer::buildRain() {
 
     utils::Entity entity = entities.create();
     RenderableManager::Builder(1)
-        .boundingBox({{-1, -0.02f, -1}, {1, 0.02f, 1}})
+        // Filament's Box is {centre, half-extent}; the quad spans -1..1
+        // around the origin and is only two hundredths deep.
+        .boundingBox({{0, 0, 0}, {1, 0.02f, 1}})
         .material(0, instance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                   _quadVertices, _quadIndices, 0, 6)
@@ -1319,8 +1323,13 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
                              .build(*_engine);
   }
 
-  const Box box{{bounds[0], bounds[1], bounds[2]},
-                {bounds[3], bounds[4], bounds[5]}};
+  // Dart sends the public minimum/maximum pair. Filament's Box is a
+  // centre/half-extent pair, so passing those six values straight through
+  // puts the population's box at its minimum instead of around the lot.
+  const float3 minimum{bounds[0], bounds[1], bounds[2]};
+  const float3 maximum{bounds[3], bounds[4], bounds[5]};
+  const Box box{(minimum + maximum) * 0.5f,
+                (maximum - minimum) * 0.5f};
 
   const uint32_t texels = count * kTexelsPerMember;
   const uint32_t rows = (texels + kBookWidth - 1) / kBookWidth;
@@ -3102,7 +3111,8 @@ bool Renderer::buildEffect(GraphPass &pass) {
   RenderableManager::Builder(1)
       // Never culled: it is the screen, so a box that decides otherwise is a
       // box that is wrong.
-      .boundingBox({{-1, -1, -1}, {1, 1, 1}})
+      // The device-space triangle covers -1..3 in x and y, at z zero.
+      .boundingBox({{1, 1, 0}, {2, 2, 1}})
       .culling(false)
       .material(0, pass.effectMaterial)
       .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertices,
@@ -5274,7 +5284,8 @@ bool Renderer::buildField() {
   _fieldInstance = _fieldMaterial->createInstance();
   _fieldEntity = utils::EntityManager::get().create();
   RenderableManager::Builder(1)
-      .boundingBox({{-1, -1, -1}, {1, 1, 1}})
+      // The device-space triangle covers -1..3 in x and y, at z zero.
+      .boundingBox({{1, 1, 0}, {2, 2, 1}})
       .culling(false)
       .material(0, _fieldInstance)
       .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertices,
