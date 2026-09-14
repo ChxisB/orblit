@@ -35,11 +35,32 @@ bool shadowSettingsDiffer(const float *a, size_t countA, const float *b,
   return false;
 }
 
-void applyViewShadows(View &view, const float *params, size_t count) {
+bool applyViewShadows(View &view, const float *params, size_t count,
+                      bool comparisonAvailable) {
   using namespace pipeline;
   view.setShadowingEnabled(at(params, count, kShadowsOn, 1.0f) != 0.0f);
 
-  switch (static_cast<int>(at(params, count, kShadowKind, 0.0f))) {
+  int kind = static_cast<int>(at(params, count, kShadowKind, 0.0f));
+
+  // Three of the four kinds are made of `sample_compare`, and on a device
+  // where Filament has disabled the comparison every one of them returns
+  // nought for every receiver — not a soft shadow or a wrong shadow but a
+  // scene with its direct light multiplied away, lit by ambient alone. See
+  // orbis::shadowComparisonAvailable in OrbisPlatform.h for what that device
+  // is and why it is Filament's decision rather than the GPU's.
+  //
+  // Variance shadows are the way out: they keep depth moments in an ordinary
+  // colour texture and compare them with arithmetic in the shader, so they
+  // never ask for the comparison that is missing. A shadow the host did not
+  // choose is worse than one it did, and much better than a black scene —
+  // and the host is told, once, the same way the slim surface says what it
+  // dropped. The dials below are Filament's own defaults unless the host set
+  // them, so a scene that never heard of variance shadows still gets a
+  // reasonable one.
+  const bool substituted = !comparisonAvailable && kind != 3;
+  if (substituted) kind = 3;
+
+  switch (kind) {
     case 1:
       // Asked for by name even though Filament 1.76 marks DPCF deprecated and
       // serves it with PCSS — measured byte-identical to case 2 across a
@@ -86,6 +107,7 @@ void applyViewShadows(View &view, const float *params, size_t count) {
   // `minVarianceScale` is deliberately left at Filament's default: 1.76 marks
   // it deprecated and states it has no effect, so there is nothing to send.
   view.setVsmShadowOptions(vsm);
+  return substituted;
 }
 
 void applyLightShadows(LightManager::ShadowOptions &options,

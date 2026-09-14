@@ -259,6 +259,15 @@ double now() {
   return duration<double>(steady_clock::now().time_since_epoch()).count();
 }
 
+bool shadowComparisonAvailable() {
+  // Filament only ever disables the comparison inside
+  // `#if defined(FILAMENT_IOS)`, so no build that reaches this file — Android,
+  // Linux, Windows, the web — can be the one it disables it on. Android's
+  // emulator draws a cast shadow on the same slim surface, which is the
+  // measurement this claim rests on rather than the reading alone.
+  return true;
+}
+
 void parallelFor(size_t count, const std::function<void(size_t)> &body) {
   if (count == 0) return;
   const size_t cores = std::max(1u, std::thread::hardware_concurrency());

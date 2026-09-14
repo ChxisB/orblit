@@ -254,6 +254,14 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
         int(supported));
   }
 
+  // Asked once, beside the feature level and for the same reason: it is a
+  // property of the device and the driver, and neither changes mid-session.
+  // Unlike the feature level it is not Filament's own answer to a question
+  // about capability but a prediction of what Filament will do — see
+  // orbis::shadowComparisonAvailable.
+  _shadowComparison = _backend != ORBIS_BACKEND_METAL ||
+                      orbis::shadowComparisonAvailable();
+
   _renderer = _engine->createRenderer();
   _scene = _engine->createScene();
   _view = _engine->createView();
@@ -271,6 +279,22 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
   // Every author layer, and not the hidden one. A pass narrows this; a frame
   // with no graph never does.
   _view->setVisibleLayers(0xFF, kAllLayers);
+
+  // Shadows are on before any host has said anything about them, so the
+  // substitution has to be in place before the first frame rather than only
+  // when a pipeline block arrives. No block at all is every default, which is
+  // what an empty one means to applyViewShadows.
+  if (orbis::applyViewShadows(*_view, nullptr, 0, _shadowComparison)) {
+    _surfaceNotes["shadows"] =
+        "Filament does not compare depth samples on this device, so the hard "
+        "and soft shadow kinds would each return nought for every receiver "
+        "and leave the scene lit by ambient alone. Variance shadows are "
+        "drawn instead: they compare in the shader rather than in the "
+        "sampler. Edges are softer than asked for, and a variance shadow can "
+        "bleed light through a thin occluder. Seen only on the iOS "
+        "simulator, whose virtual GPU declines the feature set Filament "
+        "tests; a real device passes it.";
+  }
 
   const float defaultSky[3] = {kDefaultAmbient.x, kDefaultAmbient.y,
                                kDefaultAmbient.z};
@@ -3515,8 +3539,11 @@ void Renderer::setPipeline(const float *params, size_t count) {
   std::memcpy(_pipelineParams, params, sizeof(float) * count);
   _pipelineCount = count;
 
-  // On or off, which kind, and the dials of the soft and variance kinds.
-  orbis::applyViewShadows(*_view, params, count);
+  // On or off, which kind, and the dials of the soft and variance kinds. The
+  // note is left exactly as startWithWidth set it: whether a variance shadow
+  // was substituted cannot change within a session, because what decides it
+  // is the device.
+  orbis::applyViewShadows(*_view, params, count, _shadowComparison);
 
   // The multisample count is the one setting here that reallocates every
   // buffer in the view, so it is set through the same comparison as the rest

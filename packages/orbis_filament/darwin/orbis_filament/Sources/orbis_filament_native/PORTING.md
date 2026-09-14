@@ -123,34 +123,76 @@ Proven on the iOS simulator, added since:
   `examples/gallery/lib/main.dart`, which now reads the real environment
   through `dart:ffi` when `Platform.environment` has nothing, changing
   nothing on a platform where it already did.
-Not correct after all, and the entry that used to sit here said otherwise:
+- **A shadow-casting directional light on the simulator, which used to light
+  nothing.** The entry that sat here explained the dark frames away — "a few
+  parts in 255 where the same content on macOS reads two hundred plus" — as
+  an unpinned clock catching a shadowed face, on the grounds that
+  multiplying the pixels by twenty recovered the right geometry and colour.
+  It recovered the geometry and the colour but not a shading gradient, and
+  that was the part that mattered: the faces were flat.
 
-- **A shadow-casting directional light lights nothing on the simulator.** The
-  dark frames recorded here before — "a few parts in 255 where the same
-  content on macOS reads two hundred plus" — were put down to an unpinned
-  clock catching a shadowed face, on the grounds that multiplying the pixels
-  by twenty recovered the right geometry and colour. It recovered the
-  geometry and the colour, but not a shading gradient, and that is the part
-  that mattered: the faces were flat.
+  Measured with the clock pinned (`ORBIS_SECONDS=1`, `ORBIS_CIRCLING=0`,
+  frame 30, the gallery's first example, one directional light): the cube's
+  three visible faces read (6.2, 1.4, 1.3), (6.6, 1.5, 1.5) and (5.8, 1.3,
+  1.3) — the same within noise, which no directional light can produce —
+  and the floor read (0.3, 0.6, 1.3). Turning off that one cube's
+  `castShadows` and changing nothing else gave (198.0, 77.9, 47.5), (149.3,
+  42.6, 24.4) and a floor of (34.1, 37.7, 41.4): a properly shaded scene,
+  thirty times brighter. So the light was never missing — the directional
+  shadow lookup returned nought for every receiver, the direct term was
+  multiplied away, and what was left was the ambient.
 
-  Measured since, with the clock pinned (`ORBIS_SECONDS=1`, frame 30, the
-  gallery's first example, one directional light at 82000 lux): the cube's
-  three visible faces read (6.2, 1.4, 1.4), (6.6, 1.5, 1.5) and (6.3, 1.4,
-  1.4) — the same within noise, which no directional light can produce. The
-  floor reads (1.6, 0.8, 1.4). Turning off that one cube's `castShadows` and
-  changing nothing else gives (198, 78, 48), (149, 43, 24) and (126, 34, 19),
-  with the floor at (58, 39, 38): a properly shaded scene, thirty times
-  brighter. So the light was never missing — the directional shadow lookup
-  returns nought for every receiver, the direct term is multiplied away, and
-  what is left is the ambient.
+  Not the slim surface and not shadows in general: the same scene on the
+  Android emulator at feature level 1, on the same slim surface with the
+  same light still casting, draws correctly with a visible cast shadow, and
+  so does macOS on the standard surface.
 
-  Not the slim surface, and not shadows in general: the same scene on the
-  Android emulator at feature level 1, on the same slim surface with the same
-  light still casting, draws correctly with a visible cast shadow, and so
-  does macOS on the standard surface. It is the simulator's own virtual GPU —
-  its depth-comparison sampling — which is why it has only ever been seen
-  here. Unfixed, and untested on a real pre-A13 device, which is the other
-  place the slim surface and Metal meet.
+  The cause is Filament's, and it is not the hardware. Its Metal backend
+  rewrites a sampler's comparison function to `MTLCompareFunctionNever`
+  whenever an iOS build's device answers no to
+  `MTLFeatureSet_iOS_GPUFamily3_v1` — `filament/backend/src/metal/
+  MetalState.mm`, which prints "sample comparison not supported by this
+  GPU" on every simulator run, and the line is in every log recorded above.
+  `Never` fails every comparison, so every `sample_compare` returns nought,
+  and PCF, DPCF and PCSS are each made of `sample_compare`. The simulator's
+  virtual GPU declines that feature set.
+
+  It performs the comparison perfectly all the same. A Metal probe built for
+  the simulator and run on its own device — a depth texture holding 0.5,
+  sampled `LessEqual` against 0.25, 0.5, 0.75 and 1.0 — answers 1, 1, 0, 0
+  exactly, and the complement of that under `Greater`. Only the
+  advertisement is missing. But the decision is taken inside the framework
+  this package links as a published binary (see `setup.sh`: a source build
+  of Filament serves macOS, and iOS always comes from the release), so the
+  renderer cannot talk it out of it.
+
+  So the renderer stops asking for a shadow Filament will not compare.
+  `orbis::shadowComparisonAvailable` (`OrbisPlatform.h`) asks Filament's own
+  question once at startup, and `applyViewShadows` substitutes a variance
+  shadow — which keeps depth moments in an ordinary colour texture and
+  compares them with arithmetic in the shader — for whichever comparison
+  kind was asked for. The host is told through `notes()` under "shadows",
+  the same way the slim surface says what it dropped. The same scene now
+  reads (197.9, 77.9, 47.5), (149.0, 42.6, 24.4) and a floor of (34.1,
+  37.7, 41.4), within half a level of the `castShadows` control on the same
+  device and of macOS, with a cast shadow the control has not got; and
+  Filament's warning no longer appears, because no comparison sampler is
+  built. Variance shadows have softer edges than PCF and can bleed light
+  through a thin occluder, which is the cost and which the note says.
+
+  **A real pre-A13 iPhone is not affected**, and that is worth stating
+  because it is the other place the slim surface and Metal meet. The feature
+  set Filament tests is the A9's; every device this package admits is an A9
+  or newer, because the podspec's floor is iOS 13 (the gallery's is 15) and
+  no A8 or older device runs either. An iPhone 6s through an iPhone XS gets
+  feature level 2 and the slim surface — the simulator's combination
+  exactly — and still passes the gate, so its sampler keeps its comparison
+  and its shadows are ordinary PCF. Reasoned from Apple's family-to-silicon
+  mapping and the deployment floor, not measured: there is no device here.
+  What would settle it outright is one run on an A12 or older iPhone —
+  `[device supportsFeatureSet:MTLFeatureSet_iOS_GPUFamily3_v1]` coming back
+  YES, and the gallery's first example drawing a shadow with no note under
+  "shadows". Until somebody does that, the claim rests on the mapping.
 
 Not proven:
 

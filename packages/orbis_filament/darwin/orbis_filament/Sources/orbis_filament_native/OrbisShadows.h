@@ -65,7 +65,17 @@ bool shadowSettingsDiffer(const float *a, size_t countA, const float *b,
 
 /// The view's half of the shadow settings: on or off, which kind, and the
 /// dials the soft and variance kinds have.
-void applyViewShadows(filament::View &view, const float *params, size_t count);
+///
+/// `comparisonAvailable` is orbis::shadowComparisonAvailable() — false on a
+/// device where Filament has disabled depth-sample comparison, which is every
+/// comparison-based kind returning nought and the scene losing its direct
+/// light. When it is false a variance shadow is substituted for whichever
+/// comparison kind was asked for, because that kind compares in the shader
+/// instead. Returns whether that substitution happened, so the caller can say
+/// so through notes() once rather than leaving a host to wonder why its
+/// "Hard" shadow came back soft.
+bool applyViewShadows(filament::View &view, const float *params, size_t count,
+                      bool comparisonAvailable);
 
 /// The light's half: map size, cascades and where they split, biases, how
 /// far, stability, contact shadows. Leaves `shadowBulbRadius` alone, because
