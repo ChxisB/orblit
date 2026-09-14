@@ -73,7 +73,8 @@ directly afterwards with `ninja libfilament-iblprefilter.a` in
 
 ```sh
 cd "$ROOT/.worktrees/orbis-web-core"   # made by .worktrees/new_worktree.sh web-core
-ORBIS_MATC_BACKENDS=opengl bash packages/orbis_filament/darwin/setup.sh
+ORBIS_GENERATED_SET=webgl2 ORBIS_MATC_BACKENDS=opengl \
+  bash packages/orbis_filament/darwin/setup.sh
 source "$ORBIS_CACHE/emsdk/emsdk_env.sh"
 export EMSDK="$ORBIS_CACHE/emsdk"
 export ORBIS_FILAMENT_WASM_SRC="$ROOT/.worktrees/filament-web"
@@ -116,7 +117,7 @@ kill it past a hard ceiling).
 |---|---|
 | `host/orbis_renderer.wasm` | 14.7 MiB (unstripped; `-O2`, not `-O3`; every backend `matc` was told to compile, not opengl alone — see "What's left" below) |
 | `host/orbis_renderer.js` | 117 KiB (Emscripten's glue: memory setup, `ccall`/`cwrap`, the GL emulation shim — no Embind, since this ABI is plain C) |
-| `generated/` (compiled materials, this worktree) | 74 MiB on disk, both `metal` and `opengl` backends — recompiled `opengl`-only for a real build |
+| `generated/webgl2/` (compiled materials, this worktree) | WebGL 2's `opengl` backend, kept separate from release and WebGPU material sets |
 | Filament wasm archives actually linked | 14 MiB of `.a`, out of 53 MiB the full wasm build tree comes to |
 | `native/web/build/` (this package's own `.o` files) | 13 MiB, 13 objects |
 | emsdk 5.0.4 install | 1.9 GiB (toolchain + Node + Python it brings its own copies of) |

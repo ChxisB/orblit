@@ -107,6 +107,16 @@ launcher=$!
 
 trap 'kill "$launcher" 2>/dev/null; xcrun simctl terminate "$udid" "$bundle" 2>/dev/null' EXIT
 
+# Keep the complete simulator log in the CI output. Filtering it down to the
+# two frame lines made a passing run look healthy while hiding an earlier
+# Filament warning — including the shadow-sampler warning that explained the
+# simulator's flat frames.
+show_log() {
+  echo "--- iOS simulator log ---"
+  cat "$log"
+  echo "--- end iOS simulator log ---"
+}
+
 drew=""
 refused=""
 for _ in $(seq "$SECONDS_ALLOWED"); do
@@ -125,13 +135,13 @@ for _ in $(seq "$SECONDS_ALLOWED"); do
 done
 
 if [ -n "$drew" ]; then
-  grep '\[orbis\] frame' "$log" | head -2
+  show_log
   echo "renderer drew a frame on the simulator"
   exit 0
 fi
 
 if [ -n "$refused" ]; then
-  grep -E 'Backend feature level|feature level 3 which is not supported' "$log" | head -2
+  show_log
   echo
   echo "KNOWN: the simulator's GPU is below the standard surface's feature"
   echo "level, so no frame can be drawn here. The build and the engine are"
@@ -139,6 +149,6 @@ if [ -n "$refused" ]; then
   exit 0
 fi
 
-echo "no frame after ${SECONDS_ALLOWED}s. The last thing the app said was:"
-tail -40 "$log"
+echo "no frame after ${SECONDS_ALLOWED}s. The simulator log was:"
+show_log
 exit 1

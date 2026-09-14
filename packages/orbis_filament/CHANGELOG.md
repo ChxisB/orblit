@@ -2,6 +2,18 @@
 
 ## 0.23.0
 
+- Native backend measurement: the headless host accepts `--benchmark` with
+  warmup and resolution, reports actual rendered frames and frame-time
+  percentiles, and keeps capture outside the timed interval. The additive
+  C function `orbis_renderer_rendered_frames` excludes skipped/detached
+  draws without changing `orbis_stats` layout. The fork WebGPU build can
+  produce an isolated `webgpu-all` set for API comparisons and stamps the
+  compiler/runtime binaries. See `native/RENDERING_TARGETS.md` for platform
+  coverage and the presentation work needed for low latency.
+- Fixed upside-down OpenGL captures: Filament already normalizes readback
+  rows, so the shared C++ core no longer flips them a second time. An
+  asymmetric C ABI capture test covers the row-order contract.
+
 - **Instance batching is on by default.** `OrbisScene.batching` now defaults to
   true, as does the renderer a host drives through the C ABI without ever
   calling `orbis_renderer_set_batching`, and the Swift and Kotlin plugins when

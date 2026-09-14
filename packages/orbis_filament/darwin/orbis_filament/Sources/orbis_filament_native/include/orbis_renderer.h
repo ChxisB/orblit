@@ -180,6 +180,12 @@ int orbis_renderer_detach_surface(orbis_renderer *renderer);
 /* Draws one frame at `seconds` and presents it. */
 int orbis_renderer_draw(orbis_renderer *renderer, double seconds);
 
+/* Frames that reached endFrame, excluding skipped draws and draws while
+ * detached. This counts rendering, not display presentations. Read on the
+ * thread that calls draw. Zero for NULL. Kept separate from orbis_stats so
+ * existing callers' struct layouts do not change. */
+uint64_t orbis_renderer_rendered_frames(const orbis_renderer *renderer);
+
 /* ---- The scene ---- */
 
 /* `count` objects: transforms are 16 floats each, column-major; colours 3;

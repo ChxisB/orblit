@@ -23,8 +23,8 @@
 
 // The compiled materials, as C arrays. Included here and only here: each
 // header defines its array rather than declaring it.
-#include "generated/outline_material.h"
-#include "generated/outline_rows_material.h"
+#include "outline_material.h"
+#include "outline_rows_material.h"
 
 namespace orbis {
 

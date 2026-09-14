@@ -40,6 +40,12 @@ without a trip through the CPU.
   # once by hand. Package.swift says so if it has not been.
   s.prepare_command = 'bash setup.sh'
 
+  generated_set = ENV['ORBIS_GENERATED_SET']
+  if generated_set.nil?
+    generated_set = ENV['ORBIS_FILAMENT_SRC'] ? 'darwin-source' : 'darwin-release'
+  end
+  raise "ORBIS_GENERATED_SET must be a simple directory name" unless generated_set.match?(/\A[A-Za-z0-9_-]+\z/)
+
   # The xcframework setup.sh builds, rather than a list of archives from one
   # platform's SDK. It carries a slice per platform — macOS, an iOS device and
   # the iOS simulator — so one line here serves all three, and the same
@@ -56,6 +62,9 @@ without a trip through the CPU.
       # Where the renderer's own headers moved to. A quoted include searches
       # the including file's directory, and that is no longer where they are.
       '"$(PODS_TARGET_SRCROOT)/orbis_filament/Sources/orbis_filament_native/include"',
+      # Compiled materials are selected explicitly so Android, WebGPU and a
+      # source-built fork cannot replace the release materials in this build.
+      '"$(PODS_TARGET_SRCROOT)/orbis_filament/Sources/orbis_filament_native/generated/' + generated_set + '"',
     ].join(' '),
   }
 

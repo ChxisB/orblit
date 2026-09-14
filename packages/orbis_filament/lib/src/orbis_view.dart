@@ -13,11 +13,33 @@ import 'scene.dart';
 /// the whole point of routing Filament through the texture registry rather
 /// than a platform view.
 class OrbisView extends StatefulWidget {
-  const OrbisView({super.key, this.scene, this.onSceneNotes, this.onViewport});
+  const OrbisView({
+    super.key,
+    this.scene,
+    this.onSceneNotes,
+    this.onViewport,
+    this.seconds,
+  });
 
   /// What to draw. While this is null the renderer shows its own placeholder,
   /// so an unconfigured view is visibly working rather than merely blank.
   final OrbisScene? scene;
+
+  /// The moment the renderer's own animation is drawn at, in seconds, instead
+  /// of this frame's timestamp.
+  ///
+  /// Some of what moves in a frame is not in the scene: the weather's mist,
+  /// its rain and the cloud on the sky are animated inside the renderer from
+  /// the time the view sends it, and nothing a host writes into [scene] moves
+  /// them. So a host that holds its own clock still — to draw the same frame
+  /// twice and compare the two — still got a different picture each time,
+  /// because the only clock that reached the weather was the wall one. This is
+  /// that clock, and holding it still is what makes two frames of an animating
+  /// scene comparable at all.
+  ///
+  /// Null, the default, is this frame's own timestamp: the right answer for
+  /// anything being watched rather than measured.
+  final double? seconds;
 
   /// Called with anything the scene asked for that could not be given: a mesh
   /// file that would not load, a light the view has no room to shade. Subject
@@ -136,6 +158,8 @@ class _OrbisViewState extends State<OrbisView> {
   /// frame's answer is the right fallback — it means no motion was seen
   /// between two sends, which is true.
   double _frameSeconds() {
+    final held = widget.seconds;
+    if (held != null) return held;
     final binding = SchedulerBinding.instance;
     if (binding.schedulerPhase != SchedulerPhase.idle) {
       _stamp = binding.currentFrameTimeStamp;

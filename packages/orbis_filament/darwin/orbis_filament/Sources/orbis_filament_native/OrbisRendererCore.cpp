@@ -42,46 +42,46 @@ namespace {
 // `klit_opaqueMaterial` into their symbol table, and two copies of the
 // renderer in one binary — as there briefly were while it moved — would not
 // link at all.
-#include "generated/lit_opaque_material.h"
-#include "generated/sharpen_material.h"
-#include "generated/smaa_edges_material.h"
-#include "generated/smaa_weights_material.h"
-#include "generated/smaa_blend_material.h"
-#include "generated/bounce_material.h"
-#include "generated/irradiance_material.h"
-#include "generated/copy_material.h"
+#include "lit_opaque_material.h"
+#include "sharpen_material.h"
+#include "smaa_edges_material.h"
+#include "smaa_weights_material.h"
+#include "smaa_blend_material.h"
+#include "bounce_material.h"
+#include "irradiance_material.h"
+#include "copy_material.h"
 // SMAA's precomputed tables, fetched by setup.sh from the reference
 // implementation. MIT, Jorge Jimenez et al. — see LICENSES/SMAA.txt.
-#include "generated/AreaTex.h"
-#include "generated/SearchTex.h"
-#include "generated/LtcTables.h"
-#include "generated/lit_transparent_material.h"
-#include "generated/lit_fade_material.h"
-#include "generated/lit_masked_material.h"
-#include "generated/lit_add_material.h"
+#include "AreaTex.h"
+#include "SearchTex.h"
+#include "LtcTables.h"
+#include "lit_transparent_material.h"
+#include "lit_fade_material.h"
+#include "lit_masked_material.h"
+#include "lit_add_material.h"
 // The slim lit surface: chosen instead of the five above when the engine
 // cannot manage feature level 3. See lit_slim.mat and surfaceAt below.
-#include "generated/lit_slim_opaque_material.h"
-#include "generated/lit_slim_transparent_material.h"
-#include "generated/lit_slim_fade_material.h"
-#include "generated/lit_slim_masked_material.h"
-#include "generated/lit_slim_add_material.h"
-#include "generated/unlit_opaque_material.h"
-#include "generated/unlit_transparent_material.h"
-#include "generated/unlit_fade_material.h"
-#include "generated/unlit_masked_material.h"
-#include "generated/unlit_add_material.h"
-#include "generated/video_opaque_material.h"
-#include "generated/video_transparent_material.h"
-#include "generated/video_fade_material.h"
-#include "generated/video_masked_material.h"
-#include "generated/video_add_material.h"
-#include "generated/mist_material.h"
-#include "generated/instanced_material.h"
-#include "generated/depth_material.h"
-#include "generated/shadowcatcher_material.h"
-#include "generated/sky_material.h"
-#include "generated/rain_material.h"
+#include "lit_slim_opaque_material.h"
+#include "lit_slim_transparent_material.h"
+#include "lit_slim_fade_material.h"
+#include "lit_slim_masked_material.h"
+#include "lit_slim_add_material.h"
+#include "unlit_opaque_material.h"
+#include "unlit_transparent_material.h"
+#include "unlit_fade_material.h"
+#include "unlit_masked_material.h"
+#include "unlit_add_material.h"
+#include "video_opaque_material.h"
+#include "video_transparent_material.h"
+#include "video_fade_material.h"
+#include "video_masked_material.h"
+#include "video_add_material.h"
+#include "mist_material.h"
+#include "instanced_material.h"
+#include "depth_material.h"
+#include "shadowcatcher_material.h"
+#include "sky_material.h"
+#include "rain_material.h"
 
 }  // namespace
 
@@ -442,7 +442,9 @@ void Renderer::buildMist() {
 
     utils::Entity entity = entities.create();
     RenderableManager::Builder(1)
-        .boundingBox({{-1, -0.02f, -1}, {1, 0.02f, 1}})
+        // Filament's Box is {centre, half-extent}; the quad spans -1..1
+        // around the origin and is only two hundredths deep.
+        .boundingBox({{0, 0, 0}, {1, 0.02f, 1}})
         .material(0, instance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                   _quadVertices, _quadIndices, 0, 6)
@@ -582,8 +584,8 @@ void Renderer::buildClouds() {
 
   _cloudEntity = utils::EntityManager::get().create();
   RenderableManager::Builder(1)
-      .boundingBox({{-kSkyRadius, -kSkyRadius, -kSkyRadius},
-                    {kSkyRadius, kSkyRadius, kSkyRadius}})
+      // The vertices are a unit dome and the transform supplies the radius.
+      .boundingBox({{0, 0, 0}, {1, 1, 1}})
       .material(0, _cloudInstance)
       .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, _skyVertices,
                 _skyIndices, 0, rings * segments * 6)
@@ -691,7 +693,9 @@ void Renderer::buildRain() {
 
     utils::Entity entity = entities.create();
     RenderableManager::Builder(1)
-        .boundingBox({{-1, -0.02f, -1}, {1, 0.02f, 1}})
+        // Filament's Box is {centre, half-extent}; the quad spans -1..1
+        // around the origin and is only two hundredths deep.
+        .boundingBox({{0, 0, 0}, {1, 0.02f, 1}})
         .material(0, instance)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES,
                   _quadVertices, _quadIndices, 0, 6)
@@ -1324,8 +1328,13 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
                              .build(*_engine);
   }
 
-  const Box box{{bounds[0], bounds[1], bounds[2]},
-                {bounds[3], bounds[4], bounds[5]}};
+  // Dart sends the public minimum/maximum pair. Filament's Box is a
+  // centre/half-extent pair, so passing those six values straight through
+  // puts the population's box at its minimum instead of around the lot.
+  const float3 minimum{bounds[0], bounds[1], bounds[2]};
+  const float3 maximum{bounds[3], bounds[4], bounds[5]};
+  const Box box{(minimum + maximum) * 0.5f,
+                (maximum - minimum) * 0.5f};
 
   const uint32_t texels = count * kTexelsPerMember;
   const uint32_t rows = (texels + kBookWidth - 1) / kBookWidth;
@@ -3107,7 +3116,8 @@ bool Renderer::buildEffect(GraphPass &pass) {
   RenderableManager::Builder(1)
       // Never culled: it is the screen, so a box that decides otherwise is a
       // box that is wrong.
-      .boundingBox({{-1, -1, -1}, {1, 1, 1}})
+      // The device-space triangle covers -1..3 in x and y, at z zero.
+      .boundingBox({{1, 1, 0}, {2, 2, 1}})
       .culling(false)
       .material(0, pass.effectMaterial)
       .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertices,
@@ -5518,7 +5528,8 @@ bool Renderer::buildField() {
   _fieldInstance = _fieldMaterial->createInstance();
   _fieldEntity = utils::EntityManager::get().create();
   RenderableManager::Builder(1)
-      .boundingBox({{-1, -1, -1}, {1, 1, 1}})
+      // The device-space triangle covers -1..3 in x and y, at z zero.
+      .boundingBox({{1, 1, 0}, {2, 2, 1}})
       .culling(false)
       .material(0, _fieldInstance)
       .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, vertices,
@@ -6576,10 +6587,10 @@ void Renderer::drawAtTime(double time) {
     // it is visible, unlike the old count-then-hope of automatic instancing.
     // Objects and groups say what was merged to get there: [batchedObjects]
     // renderables became [batchGroups] chunks, each of up to sixty-four.
-    orbis::log("[orbis] frame %d: cpu %.2f ms, gpu %.2f ms (median of recent), "
+    orbis::log("[orbis] frame %llu: cpu %.2f ms, gpu %.2f ms (median of recent), "
           "batching %s, prepass %s over %u, %zu renderables, "
           "%u objects in %u groups",
-          _frameCount, cpuMilliseconds(), gpuMilliseconds(),
+          static_cast<unsigned long long>(_frameCount), cpuMilliseconds(), gpuMilliseconds(),
           _batching ? "on" : "off", _depthPrepass ? "on" : "off",
           _prepassObjects, _scene->getRenderableCount(),
           _batchedObjects, _batchGroups);
@@ -6885,17 +6896,13 @@ void Renderer::readBackIfAsked() {
     Renderer *renderer;
     uint32_t width;
     uint32_t height;
-    bool bottomFirst;
   };
   const size_t bytes = size_t(_width) * _height * 4;
   auto *pixels = static_cast<uint8_t *>(malloc(bytes));
-  // Which way up the rows come. OpenGL reads a framebuffer bottom row first,
-  // as glReadPixels always has. Metal hands back the texture's own rows, top
-  // first — the headless host's first picture came out upside down until
-  // this said so — and Vulkan's framebuffer has its origin at the top left
-  // as Metal's does.
-  auto *arrival = new Arrival{this, _width, _height,
-                              _backend == ORBIS_BACKEND_OPENGL};
+  // Filament's readPixels contract is top-row-first on every backend.
+  // Its OpenGL driver already reverses glReadPixels rows; reversing them
+  // again here turns captures (and CPU-copy presentation) upside down.
+  auto *arrival = new Arrival{this, _width, _height};
   _renderer->readPixels(
       0, 0, _width, _height,
       backend::PixelBufferDescriptor(
@@ -6907,14 +6914,7 @@ void Renderer::readBackIfAsked() {
             const size_t stride = size_t(arrival->width) * 4;
             std::lock_guard<std::mutex> lock(self->_captureLock);
             self->_captured.resize(stride * arrival->height);
-            // Stored top row first, which is how a picture is kept.
-            const auto *source = static_cast<const uint8_t *>(buffer);
-            for (uint32_t row = 0; row < arrival->height; row++) {
-              const uint32_t from =
-                  arrival->bottomFirst ? arrival->height - 1 - row : row;
-              memcpy(self->_captured.data() + size_t(row) * stride,
-                     source + size_t(from) * stride, stride);
-            }
+            memcpy(self->_captured.data(), buffer, stride * arrival->height);
             self->_capturedWidth = arrival->width;
             self->_capturedHeight = arrival->height;
             self->_captureReady = true;

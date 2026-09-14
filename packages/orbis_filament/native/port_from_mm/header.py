@@ -51,6 +51,7 @@ for l in lines[s + 1:e]:
         t = re.sub(r'\bBOOL\b', 'bool', t)
         t = re.sub(r'\bNSUInteger\b', 'size_t', t)
         t = re.sub(r'\bNSInteger\b', 'int', t)
+        t = t.replace('int _frameCount;', 'uint64_t _frameCount;')
         t = re.sub(r'^(\s+)Renderer \*_renderer;', r'\1filament::Renderer *_renderer;', t)
         m = re.match(r'^(\s+)(\S.*?[\s*&])(_\w+)(\[[^\]]+\])?;\s*$', t)
         if m:
