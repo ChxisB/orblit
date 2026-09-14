@@ -6,6 +6,7 @@ import 'outline.dart';
 import 'environment.dart';
 import 'field.dart';
 import 'graph.dart';
+import 'key_list.dart';
 import 'pipeline.dart';
 import 'video.dart';
 import 'post.dart';
@@ -1409,7 +1410,7 @@ class OrbisScene {
     }
 
     final count = objects.length;
-    final keys = Int64List(count);
+    final keys = makeKeyList(count);
     final transforms = Float32List(count * 16);
     final colours = Float32List(count * 3);
     final meshes = Int32List(count);
@@ -1472,7 +1473,7 @@ class OrbisScene {
     // The probes, packed the same way as everything else: keys in one array
     // and a fixed stride of floats in another, so the renderer walks them
     // without matching a single string.
-    final probeKeys = Int64List(probes.length);
+    final probeKeys = makeKeyList(probes.length);
     final probeParams = Float32List(probes.length * OrbisProbe.stride);
     for (var i = 0; i < probes.length; i++) {
       probeKeys[i] = probes[i].key;
@@ -1480,7 +1481,7 @@ class OrbisScene {
     }
 
     final materialCount = materials.length;
-    final materialKeys = Int64List(materialCount);
+    final materialKeys = makeKeyList(materialCount);
     final materialFlags = Int32List(materialCount);
     final materialParams = Float32List(materialCount * OrbisMaterial.stride);
     final materialMaps = Int32List(materialCount * OrbisMaterial.mapCount);
@@ -1518,7 +1519,7 @@ class OrbisScene {
     }
 
     final videoCount = videos.length;
-    final videoKeys = Int64List(videoCount);
+    final videoKeys = makeKeyList(videoCount);
     final videoFlags = Int32List(videoCount);
     final videoParams = Float32List(videoCount * OrbisVideo.stride);
     final videoPaths = <String>[];
@@ -1557,7 +1558,7 @@ class OrbisScene {
     final sun = _sun;
 
     final lightCount = lights.length;
-    final lightKeys = Int64List(lightCount);
+    final lightKeys = makeKeyList(lightCount);
     final lightKinds = Int32List(lightCount);
     final lightFlags = Int32List(lightCount);
     final lightParams = Float32List(lightCount * OrbisLight.stride);
