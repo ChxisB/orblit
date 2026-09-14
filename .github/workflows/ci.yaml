@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [master]
+    branches: [main]
   pull_request:
   # Flutter's stable and master disagree often enough that a build breaking on
   # one is worth being able to check on the other without pushing a commit.
@@ -62,8 +62,8 @@ jobs:
         run: ./tool/check_flutter.sh
 
   # Every package whose library changed has to say so in its version and its
-  # changelog. Only on pull requests: it compares a branch against master, and
-  # on master there is nothing to compare to.
+  # changelog. Only on pull requests: it compares a branch against main, and
+  # on main there is nothing to compare to.
   versions:
     name: Versions
     runs-on: ubuntu-latest
@@ -149,7 +149,7 @@ jobs:
           key: filament-${{ runner.os }}-${{ hashFiles('orbis/packages/orbis_filament/darwin/setup.sh') }}
 
       # Written here rather than by the examples repository's link script.
-      # That script comes from *its* master, so this job's behaviour would
+      # That script comes from *its* main, so this job's behaviour would
       # depend on a file in another repository that this pull request cannot
       # change — which is exactly how this job first failed. The viewport
       # depends on the renderer and nothing else, so the override is two
