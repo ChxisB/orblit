@@ -16,5 +16,4 @@
 // The static type is `List<int>` so that both halves satisfy it. On every
 // platform that has `Int64List` the runtime type is still exactly that, so
 // what reaches Swift and Kotlin is byte-for-byte what it was before.
-export 'key_list_native.dart'
-    if (dart.library.js_interop) 'key_list_web.dart';
+export 'key_list_native.dart' if (dart.library.js_interop) 'key_list_web.dart';

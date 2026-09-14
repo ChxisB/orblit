@@ -249,7 +249,9 @@ class OrbisSceneWeb {
     final videoParams = _floats('videoParams');
     call('orbis_renderer_apply_videos', [
       renderer,
-      videoKeys.isNotEmpty ? videoKeys.length : videoParams.length ~/ _videoStride,
+      videoKeys.isNotEmpty
+          ? videoKeys.length
+          : videoParams.length ~/ _videoStride,
       heap.int64s(videoKeys),
       heap.ints(_ints('videoFlags')),
       heap.floats(videoParams),
@@ -268,7 +270,8 @@ class OrbisSceneWeb {
     final texturePaths = _strings('texturePaths');
     // Absent means "every material has no video", which is -1 each, not an
     // empty array — the same default Kotlin's `intsOr` supplies.
-    final materialVideos = _args['materialVideos'] as Int32List? ??
+    final materialVideos =
+        _args['materialVideos'] as Int32List? ??
         Int32List.fromList(List<int>.filled(materialCount, -1));
     call('orbis_renderer_apply_materials', [
       renderer,
@@ -294,7 +297,8 @@ class OrbisSceneWeb {
     final objectColours = colours;
     final morphWeights = _floats('objectMorphWeights');
     final meshPaths = _strings('meshPaths');
-    final objectMaterials = _args['objectMaterials'] as Int32List? ??
+    final objectMaterials =
+        _args['objectMaterials'] as Int32List? ??
         Int32List.fromList(List<int>.filled(count, -1));
     final morphCounts =
         _args['objectMorphCounts'] as Int32List? ?? Int32List(count);

@@ -44,10 +44,8 @@ class File {
 
   String readAsStringSync() => '';
 
-  Future<File> writeAsBytes(
-    List<int> bytes, {
-    bool flush = false,
-  }) async => this;
+  Future<File> writeAsBytes(List<int> bytes, {bool flush = false}) async =>
+      this;
 
   Future<Uint8List> readAsBytes() async => Uint8List(0);
 }

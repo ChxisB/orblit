@@ -42,9 +42,28 @@ Future<PadFrame> until(Pads pads, bool Function(PadFrame) test) async {
   return frame;
 }
 
+/// Whether this machine will let the test create a device, rather than only
+/// showing it a `/dev/uinput` it cannot open.
+bool _uinputIsWritable() {
+  RandomAccessFile? handle;
+  try {
+    handle = File('/dev/uinput').openSync(mode: FileMode.write);
+    return true;
+  } catch (_) {
+    return false;
+  } finally {
+    handle?.closeSync();
+  }
+}
+
 void main() {
   final reasons = <String>[];
-  if (!File('/dev/uinput').existsSync()) reasons.add('no /dev/uinput');
+  // Writable, not merely present. A CI runner has the uinput module loaded —
+  // so the node exists — while the unprivileged user cannot open it, and the
+  // existence check alone let every test run and then die in setUp with a
+  // LateInitializationError that named the wrong problem. Opening for write
+  // creates no device: that takes the UI_DEV_CREATE ioctl VirtualPad sends.
+  if (!_uinputIsWritable()) reasons.add('no writable /dev/uinput');
   if (!Directory(deviceDirectory).existsSync()) {
     reasons.add('no $deviceDirectory');
   }

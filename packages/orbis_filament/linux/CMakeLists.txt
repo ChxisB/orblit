@@ -118,6 +118,11 @@ target_include_directories(${PLUGIN_NAME} PRIVATE
   "${FILAMENT_DIR}/include"
   "${ORBIS_CORE_DIR}"
   "${ORBIS_CORE_DIR}/include"
+  # The compiled materials. The core includes them by bare name so that the
+  # include path chooses which set is linked — see the darwin and android
+  # builds, which point this at generated/<set>. This plugin's setup.sh
+  # writes the flat generated/ directory, so that is what it names here.
+  "${ORBIS_CORE_DIR}/generated"
   "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # The one public header, reached by the registrant Flutter generates into the

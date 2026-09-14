@@ -96,13 +96,17 @@ class OrbisWebViewport {
     if (_disposed) return;
     final canvas = _canvas;
     if (canvas == null) return;
-    if (canvas.isConnected && canvas.clientWidth > 0 && canvas.clientHeight > 0) {
+    if (canvas.isConnected &&
+        canvas.clientWidth > 0 &&
+        canvas.clientHeight > 0) {
       unawaited(_start());
       return;
     }
-    web.window.requestAnimationFrame((JSNumber _) {
-      _whenLaidOut();
-    }.toJS);
+    web.window.requestAnimationFrame(
+      (JSNumber _) {
+        _whenLaidOut();
+      }.toJS,
+    );
   }
 
   Future<void> _start() async {
@@ -303,7 +307,9 @@ class OrbisWebViewport {
           passCount,
         ]);
         final heapU8 = module.HEAPU8.toDart;
-        final ms = heapU8.buffer.asByteData(heapU8.offsetInBytes + milliseconds);
+        final ms = heapU8.buffer.asByteData(
+          heapU8.offsetInBytes + milliseconds,
+        );
         final dr = heapU8.buffer.asByteData(heapU8.offsetInBytes + drawn);
         for (var i = 0; i < got; i++) {
           timings

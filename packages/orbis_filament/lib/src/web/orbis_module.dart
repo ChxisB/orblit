@@ -173,7 +173,9 @@ class OrbisHeap {
       if (unit < 0x80) {
         utf8.add(unit);
       } else if (unit < 0x800) {
-        utf8..add(0xC0 | (unit >> 6))..add(0x80 | (unit & 0x3F));
+        utf8
+          ..add(0xC0 | (unit >> 6))
+          ..add(0x80 | (unit & 0x3F));
       } else if (unit < 0x10000) {
         utf8
           ..add(0xE0 | (unit >> 12))
@@ -237,11 +239,6 @@ int orbisCall(OrbisModule module, String name, List<Object?> args) {
         throw ArgumentError('orbisCall($name): cannot marshal $arg');
     }
   }
-  final result = module.ccall(
-    name,
-    'number',
-    types.toJS,
-    values.toJS,
-  );
+  final result = module.ccall(name, 'number', types.toJS, values.toJS);
   return (result as JSNumber?)?.toDartInt ?? 0;
 }
