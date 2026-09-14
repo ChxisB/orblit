@@ -287,15 +287,21 @@ class _OrbisViewState extends State<OrbisView> {
     // presentation path on that embedder that does not need Flutter's own
     // GL context, which it offers no public way to obtain; see
     // packages/orbis_filament/linux/.
+    // see packages/orbis_filament/android/. Windows is the same again behind
+    // a Win32 plugin, presenting into a PixelBufferTexture — the copy-free
+    // route there needs a DXGI shared handle, which currently crashes under
+    // Impeller; see packages/orbis_filament/windows/.
     const drawable = {
       TargetPlatform.macOS,
       TargetPlatform.iOS,
       TargetPlatform.android,
       TargetPlatform.linux,
+      TargetPlatform.windows,
     };
     if (!kIsWeb && !drawable.contains(defaultTargetPlatform)) {
       return const _Notice(
-        'Orbis renders on macOS, iOS, Android, Linux and the web so far.',
+        'Orbis renders on macOS, iOS, Android, Linux, Windows and the web '
+        'so far.',
       );
     }
 
