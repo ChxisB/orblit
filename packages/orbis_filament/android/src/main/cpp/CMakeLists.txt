@@ -36,9 +36,16 @@ endif()
 set(ORBIS_CORE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../../darwin/orbis_filament/Sources/orbis_filament_native")
 get_filename_component(ORBIS_CORE_DIR "${ORBIS_CORE_DIR}" ABSOLUTE)
 
-if(NOT EXISTS "${ORBIS_CORE_DIR}/generated/lit_opaque_material.h")
+set(ORBIS_GENERATED_SET "android-release" CACHE STRING
+    "Generated material directory under the renderer core")
+if(NOT ORBIS_GENERATED_SET MATCHES "^[A-Za-z0-9_-]+$")
+    message(FATAL_ERROR "ORBIS_GENERATED_SET must be a simple directory name")
+endif()
+set(ORBIS_GENERATED_DIR "${ORBIS_CORE_DIR}/generated/${ORBIS_GENERATED_SET}")
+
+if(NOT EXISTS "${ORBIS_GENERATED_DIR}/lit_opaque_material.h")
     message(FATAL_ERROR
-        "No compiled materials at ${ORBIS_CORE_DIR}/generated. Run "
+        "No compiled materials at ${ORBIS_GENERATED_DIR}. Run "
         "packages/orbis_filament/android/setup.sh first.")
 endif()
 
@@ -68,6 +75,7 @@ target_include_directories(orbis_filament_native PRIVATE
     "${FILAMENT_DIR}/include"
     "${ORBIS_CORE_DIR}"
     "${ORBIS_CORE_DIR}/include"
+    "${ORBIS_GENERATED_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # ORBIS_PLATFORM_APPLE (OrbisPlatform.h) is already 0 here with no macro of

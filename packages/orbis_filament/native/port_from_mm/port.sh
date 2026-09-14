@@ -22,8 +22,9 @@
 #
 #   - a new #include goes into OrbisRendererCore.h.in, beside the
 #     ScreenEffects and motion blur ones — except a compiled material's
-#     generated/…_material.h, which goes in the anonymous namespace at the
-#     top of core_prologue.cpp, so its arrays stay private to the renderer;
+#     …_material.h, which goes in the anonymous namespace at the top of
+#     core_prologue.cpp, so its arrays stay private to the renderer; the
+#     build supplies the selected generated directory as an include path;
 #   - a new method in include/OrbisRenderer.h goes into the public section of
 #     OrbisRendererCore.h.in and API in header.py, and gets a one-line
 #     forwarder in OrbisRenderer.mm;

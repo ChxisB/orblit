@@ -19,11 +19,11 @@
 // Each compiled material defines a symbol, so each is included by exactly one
 // file. These five are this file's; the renderer builds the gather's instance
 // through gatherPackage() rather than including it a second time.
-#include "generated/motion_blank_material.h"
-#include "generated/motion_gather_material.h"
-#include "generated/motion_resolve_material.h"
-#include "generated/motion_tiles_material.h"
-#include "generated/velocity_material.h"
+#include "motion_blank_material.h"
+#include "motion_gather_material.h"
+#include "motion_resolve_material.h"
+#include "motion_tiles_material.h"
+#include "velocity_material.h"
 
 using namespace filament;
 using namespace filament::math;

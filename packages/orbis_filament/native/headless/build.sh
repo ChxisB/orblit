@@ -19,7 +19,27 @@ DARWIN=../../darwin
 SRC="$DARWIN/orbis_filament/Sources/orbis_filament_native"
 SDK="${ORBIS_FILAMENT_SDK:-$DARWIN/third_party/filament-mac/filament}"
 OUT="${ORBIS_BUILD_DIR:-build}"
+if [ -n "${ORBIS_GENERATED_SET:-}" ]; then
+  GENERATED_SET="$ORBIS_GENERATED_SET"
+elif [ -n "${ORBIS_FILAMENT_SRC:-}" ]; then
+  GENERATED_SET="darwin-source"
+else
+  GENERATED_SET="darwin-release"
+fi
+case "$GENERATED_SET" in
+  ''|.|..|*/*)
+    echo "native/headless/build.sh: ORBIS_GENERATED_SET must be a simple directory name" >&2
+    exit 1
+    ;;
+esac
+GENERATED="$SRC/generated/$GENERATED_SET"
 mkdir -p "$OUT"
+
+if [ ! -f "$GENERATED/lit_opaque_material.h" ]; then
+  echo "native/headless/build.sh: no compiled materials at $GENERATED" >&2
+  echo "  run darwin/setup.sh or set ORBIS_GENERATED_SET to an existing set" >&2
+  exit 1
+fi
 
 # Every plain C++ file beside the renderer, whatever it is called: a helper
 # added later (a new post effect, say) is picked up rather than forgotten.
@@ -28,7 +48,7 @@ for source in "$SRC"/*.cpp; do
   name="$(basename "$source" .cpp)"
   clang++ -std=c++17 -O2 -DORBIS_PLATFORM_PORTABLE \
     -Wall -Wno-deprecated-declarations -Wno-unused-private-field \
-    -I "$SDK/include" -I "$SRC" -I "$SRC/include" \
+    -I "$SDK/include" -I "$SRC" -I "$SRC/include" -I "$GENERATED" \
     -c "$source" -o "$OUT/$name.o"
   objects+=("$OUT/$name.o")
 done

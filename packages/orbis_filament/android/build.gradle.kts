@@ -46,6 +46,8 @@ val orbisFilamentSetup =
         outputs.upToDateWhen { false }
     }
 
+val orbisGeneratedSet = System.getenv("ORBIS_GENERATED_SET") ?: "android-release"
+
 android {
     namespace = "dev.orbis.filament"
 
@@ -86,7 +88,10 @@ android {
                 // joins this one in the same APK and the two pass C++ types
                 // across the boundary between them -- two static libc++
                 // copies in one process is undefined behaviour for that.
-                arguments += listOf("-DANDROID_STL=c++_static")
+                arguments += listOf(
+                    "-DANDROID_STL=c++_static",
+                    "-DORBIS_GENERATED_SET=$orbisGeneratedSet",
+                )
             }
         }
 

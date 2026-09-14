@@ -8,8 +8,8 @@
 
 // The two materials, compiled by setup.sh. Included here and nowhere else —
 // see screenEffectPackage.
-#include "generated/distortion_material.h"
-#include "generated/godrays_material.h"
+#include "distortion_material.h"
+#include "godrays_material.h"
 
 namespace orbis {
 
