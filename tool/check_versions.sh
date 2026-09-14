@@ -11,16 +11,16 @@
 # rename with no behaviour in it — says so with a `Version-exempt: <reason>`
 # line in one of its commit messages, and this honours it and prints it.
 #
-# Usage: check_versions.sh [base ref]   (default: origin/master, else master)
+# Usage: check_versions.sh [base ref]   (default: origin/main, else main)
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
 BASE="${1:-}"
 if [ -z "$BASE" ]; then
-  if git rev-parse --verify --quiet origin/master > /dev/null; then
-    BASE=origin/master
+  if git rev-parse --verify --quiet origin/main > /dev/null; then
+    BASE=origin/main
   else
-    BASE=master
+    BASE=main
   fi
 fi
 
@@ -29,7 +29,7 @@ if ! git rev-parse --verify --quiet "$BASE" > /dev/null; then
   exit 1
 fi
 
-# The merge base, not the tip: comparing against a master that has moved on
+# The merge base, not the tip: comparing against a main that has moved on
 # would demand a bump for somebody else's changes.
 MERGE_BASE=$(git merge-base "$BASE" HEAD) || exit 1
 

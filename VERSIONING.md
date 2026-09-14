@@ -5,11 +5,11 @@ anybody remembering.
 
 ## A feature is a branch
 
-Every feature gets its own branch off `master`, never stacked onto whatever
+Every feature gets its own branch off `main`, never stacked onto whatever
 branch happens to be checked out.
 
 ```sh
-git checkout master
+git checkout main
 git pull
 git checkout -b lighting-probes
 ```
@@ -54,10 +54,10 @@ tests, CI and documentation do not.
 
 ## The check
 
-`tool/check_versions.sh` compares the working branch against `master`. For
+`tool/check_versions.sh` compares the working branch against `main`. For
 every package with a changed file under `lib/`, it requires:
 
-- the package's `version:` to differ from the one on `master`, and
+- the package's `version:` to differ from the one on `main`, and
 - its `CHANGELOG.md` to mention the new version.
 
 It runs in CI on every pull request. A branch that only touches tests, docs,
