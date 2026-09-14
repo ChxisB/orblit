@@ -59,6 +59,21 @@
 ///   ORBIS_SLABS            how many slabs the Overdraw example crosses
 ///   ORBIS_SHADOWS=0        no shadow pass, for any example
 ///   ORBIS_POST=0           no post-processing, for any example
+///   ORBIS_CULLING=0        draw everything in the scene whether the renderer
+///                          thinks it is on screen or not, for any example.
+///                          The one switch that tells a bounding box in the
+///                          wrong place from a thing that was never drawn:
+///                          what the frustum test wrongly throws away is
+///                          exactly what comes back when it is turned off.
+///   ORBIS_WEATHER          which of the Weather example's conditions: Clear,
+///                          Fair, Storm, Misty, Rain or Snow
+///   ORBIS_MIST             how much of its air is drawn as banks of cloud,
+///                          and ORBIS_DENSITY how much as even haze. Separate
+///                          because every condition raises the two together,
+///                          and haze thick enough to go with a real bank of
+///                          mist is haze thick enough to hide whether the
+///                          bank was drawn at all.
+///   ORBIS_RAIN             how hard it is coming down
 ///   ORBIS_PANEL_SHADOW=0   the Panel shadows example's panel casts nothing
 ///   ORBIS_PANEL            its panel's edge in metres
 ///   ORBIS_PANEL_HEIGHT     how high it hangs
@@ -203,6 +218,15 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
   late final Ticker _clock;
 
   double _seconds = 0;
+
+  /// The moment ORBIS_SECONDS asked for, or null for the real clock.
+  ///
+  /// Kept apart from [_seconds] because it is also handed to the view: the
+  /// weather animates inside the renderer, on the clock the view sends rather
+  /// than on anything in the scene, so a held clock that stops at the widget
+  /// leaves the mist and the rain moving and two renders of the same second
+  /// are still two different pictures.
+  double? _held;
 
   /// A scene that is one model and nothing else.
   ///
@@ -375,6 +399,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       drawn.pipeline.shadows.enabled = false;
     }
     if (_orbisEnv['ORBIS_POST'] == '0') drawn.post.enabled = false;
+    // Frustum culling off, so a frame shows what the scene holds rather than
+    // what the renderer believes is in front of the camera. The difference
+    // between the two frames is precisely what the boxes decided, which is
+    // the only way to see a box that is in the wrong place: a thing that is
+    // wrongly culled looks exactly like a thing that was never there.
+    if (_orbisEnv['ORBIS_CULLING'] == '0') drawn.pipeline.culling = false;
     return switch (_orbisEnv['ORBIS_BATCHING']) {
       '1' => drawn.copyWith(batching: true),
       '0' => drawn.copyWith(batching: false),
@@ -446,6 +476,22 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       final far = _number('ORBIS_RANGE');
       if (far != null) example.range = far;
       if (_orbisEnv['ORBIS_TREES'] == '0') example.trees = false;
+    }
+    if (example is WeatherExample) {
+      final condition = _orbisEnv['ORBIS_WEATHER'];
+      if (condition != null && condition.isNotEmpty) {
+        if (WeatherExample.conditions.contains(condition)) {
+          example.apply(condition);
+        } else {
+          stderr.writeln(
+            'no condition called "$condition" — there is '
+            '${WeatherExample.conditions.join(', ')}',
+          );
+        }
+      }
+      example.structure = _number('ORBIS_MIST') ?? example.structure;
+      example.density = _number('ORBIS_DENSITY') ?? example.density;
+      example.rain = _number('ORBIS_RAIN') ?? example.rain;
     }
     if (example is ProbesExample) {
       example.intensity = _number('ORBIS_PROBE') ?? example.intensity;
@@ -631,6 +677,7 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     final held = _number('ORBIS_SECONDS');
     if (held != null) {
       _seconds = held;
+      _held = held;
       _clock = Ticker((_) => setState(() {}))..start();
     } else {
       _clock = Ticker((elapsed) {
@@ -650,6 +697,9 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     body: GestureDetector(
       onPanUpdate: (details) => setState(() => _look.orbit(details.delta)),
       child: OrbisView(
+        // The same moment the example was built at, so ORBIS_SECONDS holds
+        // the weather still as well as the scene.
+        seconds: _held,
         scene: switch (_orbisEnv['ORBIS_MESH']) {
           final path? when path.isNotEmpty => _justTheMesh(path),
           // An effect over a real scene rather than only over a lone model.
