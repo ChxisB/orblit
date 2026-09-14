@@ -69,9 +69,19 @@ if [ "${ORBIS_FILAMENT_BACKEND:-}" = "webgpu" ]; then
 fi
 archives=()
 for lib in "${LIBS[@]}"; do archives+=("$SDK/lib/arm64/lib$lib.a"); done
+# Dawn, which is only in an ORBIS_FILAMENT_SDK built from the fork with
+# -DFILAMENT_SUPPORTS_WEBGPU=ON. Filament's own release does not carry it and
+# does not refer to it, so this is a no-op there and the two need no flag to
+# tell them apart.
+if [ -f "$SDK/lib/arm64/libwebgpu_dawn.a" ] &&
+   [ "${ORBIS_FILAMENT_BACKEND:-}" != "webgpu" ]; then
+  archives+=("$SDK/lib/arm64/libwebgpu_dawn.a")
+fi
 FRAMEWORKS=(-framework Cocoa -framework Metal -framework QuartzCore
             -framework CoreVideo -framework IOSurface -framework OpenGL)
-if [ "${ORBIS_FILAMENT_BACKEND:-}" = "webgpu" ]; then
+# Dawn's own: its Metal back end reads the GPU's registry entry to name the
+# adapter, which is IOKit and nothing Filament itself ever asks for.
+if [ -f "$SDK/lib/arm64/libwebgpu_dawn.a" ]; then
   FRAMEWORKS+=(-framework IOKit)
 fi
 
