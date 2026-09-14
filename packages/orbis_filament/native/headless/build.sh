@@ -8,7 +8,9 @@
 # build takes. OrbisPlatformApple.mm, OrbisSurfaceApple.mm and the
 # Objective-C wrapper are not compiled at all, and the two programs include
 # one header, orbis_renderer.h. The frameworks on the link line are
-# Filament's: its Metal and OpenGL backends are what need them on a Mac.
+# Filament's: its Metal and OpenGL backends are what need them on a Mac. A
+# WebGPU build adds Dawn's native archive through ORBIS_FILAMENT_BACKEND;
+# that archive belongs to the same fork/runtime as the headers and materials.
 #
 #   build.sh            builds both into ./build
 #   build.sh test       and runs the ABI's test
@@ -57,10 +59,21 @@ LIBS=(filament backend filabridge filaflat utils geometry smol-v ibl image
       abseil zstd filament-iblprefilter gltfio_core uberarchive uberzlib
       dracodec meshoptimizer ktxreader stb basis_transcoder mikktspace
       bluegl bluevk)
+if [ "${ORBIS_FILAMENT_BACKEND:-}" = "webgpu" ]; then
+  if [ ! -f "$SDK/lib/arm64/libwebgpu_dawn.a" ]; then
+    echo "native/headless/build.sh: WebGPU runtime has no libwebgpu_dawn.a" >&2
+    echo "  use the matching fork's installed webgpu-release/filament SDK" >&2
+    exit 1
+  fi
+  LIBS+=(webgpu_dawn)
+fi
 archives=()
 for lib in "${LIBS[@]}"; do archives+=("$SDK/lib/arm64/lib$lib.a"); done
 FRAMEWORKS=(-framework Cocoa -framework Metal -framework QuartzCore
             -framework CoreVideo -framework IOSurface -framework OpenGL)
+if [ "${ORBIS_FILAMENT_BACKEND:-}" = "webgpu" ]; then
+  FRAMEWORKS+=(-framework IOKit)
+fi
 
 for program in orbis_renderer_test orbis_headless; do
   # C99 and pedantic, so anything C++ in the header is an error here.
