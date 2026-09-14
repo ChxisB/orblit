@@ -1,10 +1,10 @@
-# A Linux machine for Orbis, for a development host that is not one.
+# A Linux machine for Orblit, for a development host that is not one.
 #
 # There is no Linux box here, so the Linux plugin is built and run in this
 # container: Flutter's Linux toolchain, a software GPU, and the three fixes
 # Filament's Linux release needs. Each of those three cost a build to find,
 # so they are written down here rather than rediscovered --
-# packages/orbis_filament/native/headless/build_linux.sh found them first and
+# packages/orblit_filament/native/headless/build_linux.sh found them first and
 # its header comment is the longer account.
 #
 #   1. trixie, not bookworm. Filament 1.76's Linux release needs glibc 2.38
@@ -23,17 +23,17 @@
 # so whichever it picks has something to run on.
 #
 # Build it:
-#   docker build -t orbis-linux:trixie tool/linux_container
+#   docker build -t orblit-linux:trixie tool/linux_container
 #
 # Then, from the repository root, with <project> the directory the .cache of
-# unpacked Filament releases sits in (ORBIS_FILAMENT_LINUX_DIR is optional --
+# unpacked Filament releases sits in (ORBLIT_FILAMENT_LINUX_DIR is optional --
 # without it setup.sh fetches the release itself, which costs a 53 MB
 # download per fresh container rather than reusing what is already unpacked):
 #
 #   docker run --rm -v "$PWD:/work" -v "<project>/.cache:/cache:ro" \
-#     -v orbis-pub-cache:/root/.pub-cache \
-#     -e ORBIS_FILAMENT_LINUX_DIR=/cache/filament-1.76.0/arm-linux/filament \
-#     orbis-linux:trixie \
+#     -v orblit-pub-cache:/root/.pub-cache \
+#     -e ORBLIT_FILAMENT_LINUX_DIR=/cache/filament-1.76.0/arm-linux/filament \
+#     orblit-linux:trixie \
 #     bash -c 'cd /work/examples/gallery && flutter pub get && flutter build linux --debug'
 #
 # and tool/ci_draw_frame_linux.sh to make it draw one.

@@ -13,20 +13,20 @@ spike/spike
 spike/lit.filamat
 spike/spike_output.png
 
-# Built by packages/orbis_filament/darwin/setup.sh: the fetched SDK, the
+# Built by packages/orblit_filament/darwin/setup.sh: the fetched SDK, the
 # materials compiled out of it, and the one framework Swift Package Manager
 # takes in place of the SDK's twenty archives.
-packages/orbis_filament/darwin/third_party/
-packages/orbis_filament/darwin/orbis_filament/third_party/
-packages/orbis_filament/darwin/orbis_filament/Sources/orbis_filament_native/generated/
+packages/orblit_filament/darwin/third_party/
+packages/orblit_filament/darwin/orblit_filament/third_party/
+packages/orblit_filament/darwin/orblit_filament/Sources/orblit_filament_native/generated/
 
-# Staged by packages/orbis_filament/linux/setup.sh and windows/setup.sh: the
+# Staged by packages/orblit_filament/linux/setup.sh and windows/setup.sh: the
 # Filament Linux and Windows releases, either fetched here or symlinked from
 # the project's own cache. The materials they compile land in darwin/'s
 # generated/ directory, which is already ignored above -- see those scripts
 # for why the platforms share one.
-packages/orbis_filament/linux/third_party/
-packages/orbis_filament/windows/third_party/
+packages/orblit_filament/linux/third_party/
+packages/orblit_filament/windows/third_party/
 
 # Flutter
 .flutter-plugins-dependencies
@@ -51,10 +51,10 @@ packages/orbis_filament/windows/third_party/
 # Fetched by tool/fetch_bistro.sh: a CC BY 4.0 test scene, not ours to ship.
 assets/bistro/
 
-# Built by packages/orbis_filament/native/web/build.sh: object files, and the
+# Built by packages/orblit_filament/native/web/build.sh: object files, and the
 # Emscripten module it links, served straight out of host/ alongside the
 # static index.html/main.js that stay committed.
-packages/orbis_filament/native/web/build/
-packages/orbis_filament/native/web/host/orbis_renderer.js
-packages/orbis_filament/native/web/host/orbis_renderer.wasm
-packages/orbis_filament/native/web/captures/
+packages/orblit_filament/native/web/build/
+packages/orblit_filament/native/web/host/orblit_renderer.js
+packages/orblit_filament/native/web/host/orblit_renderer.wasm
+packages/orblit_filament/native/web/captures/

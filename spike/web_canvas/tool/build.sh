@@ -9,21 +9,21 @@
 # because flutter build copies everything under web/ into build/web.
 #
 # The material is compiled with the Mac SDK's matc, the one
-# packages/orbis_filament/darwin/setup.sh fetches, because a .filamat has to
+# packages/orblit_filament/darwin/setup.sh fetches, because a .filamat has to
 # come from the same Filament release as the engine that loads it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 REPO="$(git rev-parse --show-toplevel)"
 FILAMENT_VERSION=v1.76.0
 
-# The cache sits beside the checkouts (.../Orbis Project/.cache), which is one
+# The cache sits beside the checkouts (.../Orblit Project/.cache), which is one
 # level up from the main checkout and two from a worktree, so look upwards.
-if [ -z "${ORBIS_CACHE:-}" ]; then
+if [ -z "${ORBLIT_CACHE:-}" ]; then
   d="$REPO"
   while [ "$d" != "/" ] && [ ! -d "$d/.cache" ]; do d="$(dirname "$d")"; done
-  if [ "$d" = "/" ]; then ORBIS_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/orbis"; else ORBIS_CACHE="$d/.cache"; fi
+  if [ "$d" = "/" ]; then ORBLIT_CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/orblit"; else ORBLIT_CACHE="$d/.cache"; fi
 fi
-DIR="$ORBIS_CACHE/filament-${FILAMENT_VERSION#v}"
+DIR="$ORBLIT_CACHE/filament-${FILAMENT_VERSION#v}"
 TGZ="$DIR/filament-$FILAMENT_VERSION-web.tgz"
 if [ ! -f "$DIR/web/filament.wasm" ]; then
   mkdir -p "$DIR/web"
@@ -35,9 +35,9 @@ if [ ! -f "$DIR/web/filament.wasm" ]; then
   tar -xzf "$TGZ" -C "$DIR/web"
 fi
 
-MATC="${MATC:-$REPO/packages/orbis_filament/darwin/third_party/filament-mac/filament/bin/matc}"
+MATC="${MATC:-$REPO/packages/orblit_filament/darwin/third_party/filament-mac/filament/bin/matc}"
 if [ ! -x "$MATC" ]; then
-  echo "web_canvas: no matc at $MATC; run packages/orbis_filament/darwin/setup.sh or set MATC" >&2
+  echo "web_canvas: no matc at $MATC; run packages/orblit_filament/darwin/setup.sh or set MATC" >&2
   exit 1
 fi
 

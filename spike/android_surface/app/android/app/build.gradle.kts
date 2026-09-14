@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.orbis.spike.android_surface_spike"
+    namespace = "dev.orblit.spike.android_surface_spike"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -16,7 +16,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "dev.orbis.spike.android_surface_spike"
+        applicationId = "dev.orblit.spike.android_surface_spike"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

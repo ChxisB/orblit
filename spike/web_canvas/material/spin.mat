@@ -6,7 +6,7 @@
 // but name, so it wants the ESSL ("mobile") shaders, not the desktop GLSL ones.
 // A desktop-only package fails to load in the browser.
 material {
-    name : orbisSpin,
+    name : orblitSpin,
     shadingModel : lit,
     // WebGL2 is Filament feature level 1 (OpenGL ES 3.0). Saying so here makes
     // matc refuse anything that would need more, rather than the browser.

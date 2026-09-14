@@ -1,6 +1,6 @@
 {
-    "name": "orbis_gallery",
-    "short_name": "orbis_gallery",
+    "name": "orblit_gallery",
+    "short_name": "orblit_gallery",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

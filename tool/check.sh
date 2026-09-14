@@ -12,21 +12,21 @@ cd "$(dirname "$0")/.."
 # hundred tests nobody was running. What is on disk is checked against this
 # below rather than trusted.
 PACKAGES=(
-  packages/orbis_agent
-  packages/orbis_camera
-  packages/orbis_collide
-  packages/orbis_codegen
-  packages/orbis_core
-  packages/orbis_effect
-  packages/orbis_input
-  packages/orbis_light
-  packages/orbis_mesh
-  packages/orbis_native
-  packages/orbis_noise
-  packages/orbis_rig
-  packages/orbis_sequence
-  packages/orbis_sprite
-  packages/orbis_weather
+  packages/orblit_agent
+  packages/orblit_camera
+  packages/orblit_collide
+  packages/orblit_codegen
+  packages/orblit_core
+  packages/orblit_effect
+  packages/orblit_input
+  packages/orblit_light
+  packages/orblit_mesh
+  packages/orblit_native
+  packages/orblit_noise
+  packages/orblit_rig
+  packages/orblit_sequence
+  packages/orblit_sprite
+  packages/orblit_weather
 )
 
 failures=0
@@ -35,7 +35,7 @@ failures=0
 # neither is checked here, and a package in no list at all is checked by
 # nothing. That last case is the one worth saying out loud: it looks exactly
 # like a passing build.
-listed_elsewhere=$(grep -oE 'packages/orbis_[a-z_]+' tool/check_flutter.sh 2>/dev/null | sort -u)
+listed_elsewhere=$(grep -oE 'packages/orblit_[a-z_]+' tool/check_flutter.sh 2>/dev/null | sort -u)
 for found in packages/*/; do
   name=${found%/}
   # No pubspec is not a package. Moving a package to its own repository leaves
@@ -48,30 +48,30 @@ for found in packages/*/; do
 done
 
 echo "== native =="
-if ./tool/check_native.sh > /tmp/orbis_native.log 2>&1; then
+if ./tool/check_native.sh > /tmp/orblit_native.log 2>&1; then
   echo "  ok    core C++ checks"
 else
-  echo "  FAIL  core C++ checks"; tail -20 /tmp/orbis_native.log; failures=$((failures+1))
+  echo "  FAIL  core C++ checks"; tail -20 /tmp/orblit_native.log; failures=$((failures+1))
 fi
 
 for package in "${PACKAGES[@]}"; do
   echo "== $package =="
   (cd "$package" && dart pub get > /dev/null 2>&1)
 
-  if (cd "$package" && dart analyze > /tmp/orbis_analyze.log 2>&1); then
+  if (cd "$package" && dart analyze > /tmp/orblit_analyze.log 2>&1); then
     echo "  ok    analyze"
   else
-    echo "  FAIL  analyze"; tail -20 /tmp/orbis_analyze.log; failures=$((failures+1))
+    echo "  FAIL  analyze"; tail -20 /tmp/orblit_analyze.log; failures=$((failures+1))
   fi
 
-  if (cd "$package" && dart test > /tmp/orbis_test.log 2>&1); then
+  if (cd "$package" && dart test > /tmp/orblit_test.log 2>&1); then
     # The reporter redraws one line with carriage returns and colour, so the
     # summary is the last of those, stripped.
-    summary=$(tr '\r' '\n' < /tmp/orbis_test.log | tail -1 \
+    summary=$(tr '\r' '\n' < /tmp/orblit_test.log | tail -1 \
       | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^[0-9:]* //')
     echo "  ok    $summary"
   else
-    echo "  FAIL  tests"; tail -25 /tmp/orbis_test.log; failures=$((failures+1))
+    echo "  FAIL  tests"; tail -25 /tmp/orblit_test.log; failures=$((failures+1))
   fi
 done
 

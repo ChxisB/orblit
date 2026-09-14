@@ -1,4 +1,4 @@
-name: orbis_gallery
+name: orblit_gallery
 description: "Runs the worked examples, one to a window, so a frame of one can be looked at."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
@@ -31,10 +31,10 @@ dependencies:
   flutter:
     sdk: flutter
 
-  orbis_examples:
-    path: ../../packages/orbis_examples
-  orbis_filament:
-    path: ../../packages/orbis_filament
+  orblit_examples:
+    path: ../../packages/orblit_examples
+  orblit_filament:
+    path: ../../packages/orblit_filament
   vector_math: ^2.1.4
 
   # The following adds the Cupertino Icons font to your application.

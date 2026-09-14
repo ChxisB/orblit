@@ -1,6 +1,6 @@
 {
-    "name": "orbis_web_canvas",
-    "short_name": "orbis_web_canvas",
+    "name": "orblit_web_canvas",
+    "short_name": "orblit_web_canvas",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

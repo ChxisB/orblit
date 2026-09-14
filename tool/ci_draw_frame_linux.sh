@@ -9,8 +9,8 @@
 # engine starts. Xvfb is started here when there is none. And the "written"
 # line comes from the plugin rather than from the renderer's surface: a
 # headless swap chain has no buffer to write out, so
-# packages/orbis_filament/linux/orbis_viewport.cc writes the picture from the
-# pixels it has already read back, in the shape OrbisSurfaceApple.mm prints.
+# packages/orblit_filament/linux/orblit_viewport.cc writes the picture from the
+# pixels it has already read back, in the shape OrblitSurfaceApple.mm prints.
 #
 # Three outcomes, as the macOS script distinguishes them:
 #   0  a frame was drawn
@@ -19,12 +19,12 @@
 set -uo pipefail
 
 BUNDLE="${1:?usage: ci_draw_frame_linux.sh <path to the bundle directory>}"
-SECONDS_ALLOWED="${ORBIS_FRAME_TIMEOUT:-120}"
-BINARY="$BUNDLE/orbis_gallery"
+SECONDS_ALLOWED="${ORBLIT_FRAME_TIMEOUT:-120}"
+BINARY="$BUNDLE/orblit_gallery"
 [ -x "$BINARY" ] || { echo "no executable at $BINARY"; exit 1; }
 
-: "${ORBIS_DUMP_FRAME:=30}"
-export ORBIS_DUMP_FRAME
+: "${ORBLIT_DUMP_FRAME:=30}"
+export ORBLIT_DUMP_FRAME
 
 # A software rasteriser unless the host has something better. Both are named
 # because Filament asks for Vulkan first and falls back to OpenGL, and which
@@ -45,7 +45,7 @@ if [ -z "${DISPLAY:-}" ]; then
   done
 fi
 
-log=$(mktemp -t orbis_ci_frame.XXXXXX)
+log=$(mktemp -t orblit_ci_frame.XXXXXX)
 "$BINARY" > "$log" 2>&1 &
 app=$!
 
@@ -54,7 +54,7 @@ trap 'kill "$app" 2>/dev/null; wait "$app" 2>/dev/null;
 
 drew=""
 for _ in $(seq "$SECONDS_ALLOWED"); do
-  if grep -q '\[orbis\] frame .* -> .*: written' "$log" 2>/dev/null; then
+  if grep -q '\[orblit\] frame .* -> .*: written' "$log" 2>/dev/null; then
     drew=yes
     break
   fi
@@ -65,7 +65,7 @@ done
 if [ -n "$drew" ]; then
   # Both lines: the renderer's own, saying what the frame cost, and the
   # plugin's, saying where the picture went.
-  grep '\[orbis\] frame' "$log" | head -2
+  grep '\[orblit\] frame' "$log" | head -2
   echo "renderer drew a frame"
   exit 0
 fi

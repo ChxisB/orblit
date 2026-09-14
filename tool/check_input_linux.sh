@@ -1,11 +1,11 @@
 #!/bin/bash
-# Runs orbis_input's tests on Linux, against a gamepad the kernel invents.
+# Runs orblit_input's tests on Linux, against a gamepad the kernel invents.
 #
 # There is no controller attached to the machine this was developed on and no
 # Steam Deck, so the read path is exercised the only honest way available:
 # `/dev/uinput` is asked to create an event device with a pad's buttons, axes
 # and ranges, and the backend opens and reads it exactly as it would hardware.
-# What that proves and what it does not is in packages/orbis_input/README.md.
+# What that proves and what it does not is in packages/orblit_input/README.md.
 #
 # Two things about containers are worth knowing, because both cost a while to
 # work out and neither announces itself:
@@ -14,7 +14,7 @@
 #      under /sys/class/input straight away — but no node is ever made for it,
 #      because devtmpfs is what makes nodes and it is not mounted there. So
 #      this mounts a real devtmpfs at /devfs and points the tests at
-#      /devfs/input through ORBIS_INPUT_DEV. The failure without it is a pad
+#      /devfs/input through ORBLIT_INPUT_DEV. The failure without it is a pad
 #      that sysfs can see and nothing can open.
 #
 #   2. Writing /dev/uinput needs more than the node being passed in with
@@ -25,19 +25,19 @@
 # The image needs a Dart SDK and nothing else: this package is pure Dart and
 # `dart:ffi` straight to libc, so there is no Flutter, no Filament and no GPU
 # in the way. The Linux container from tool/linux_container/Dockerfile works
-# too and already carries a Dart — name it in ORBIS_INPUT_IMAGE.
+# too and already carries a Dart — name it in ORBLIT_INPUT_IMAGE.
 #
 #   ./tool/check_input_linux.sh
-#   ORBIS_INPUT_IMAGE=orbis-linux:trixie ./tool/check_input_linux.sh
+#   ORBLIT_INPUT_IMAGE=orblit-linux:trixie ./tool/check_input_linux.sh
 set -uo pipefail
 cd "$(dirname "$0")/.."
 
-IMAGE="${ORBIS_INPUT_IMAGE:-dart:stable}"
+IMAGE="${ORBLIT_INPUT_IMAGE:-dart:stable}"
 
 # On a Linux host with uinput there is no reason to start a container at all.
 if [ "$(uname -s)" = "Linux" ] && [ -w /dev/uinput ]; then
-  echo "== orbis_input on this host =="
-  cd packages/orbis_input || exit 1
+  echo "== orblit_input on this host =="
+  cd packages/orblit_input || exit 1
   dart pub get > /dev/null 2>&1
   dart analyze && dart test
   exit $?
@@ -50,10 +50,10 @@ if ! command -v docker > /dev/null; then
   exit 0
 fi
 
-echo "== orbis_input in $IMAGE =="
+echo "== orblit_input in $IMAGE =="
 docker run --rm --privileged \
-  -v "$PWD:/work" -w /work/packages/orbis_input \
-  -e ORBIS_INPUT_DEV=/devfs/input \
+  -v "$PWD:/work" -w /work/packages/orblit_input \
+  -e ORBLIT_INPUT_DEV=/devfs/input \
   "$IMAGE" bash -c '
     set -e
     # The real device filesystem, because the container /dev is a tmpfs that

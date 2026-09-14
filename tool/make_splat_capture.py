@@ -4,7 +4,7 @@
 A trained capture is hundreds of megabytes of somebody else's photographs, and
 the repository carries none. This writes one from nothing instead — the same
 binary little-endian `.ply` the reference trainer writes, `f_rest_*` bands and
-all — so that a change to how Orbis reads or draws spherical harmonics can be
+all — so that a change to how Orblit reads or draws spherical harmonics can be
 looked at rather than reasoned about. A hundred and twenty thousand splats is
 twenty megabytes and a couple of seconds.
 
@@ -30,12 +30,12 @@ wrong side of the ring instead of merely looking a bit different.
 
 Then, with the gallery built:
 
-    ORBIS_EXAMPLE="Gaussian splats" ORBIS_SPLAT=<path> ORBIS_YAW=0.6 \
-      ORBIS_SECONDS=3 ORBIS_DUMP_FRAME=60 <the app's binary>
+    ORBLIT_EXAMPLE="Gaussian splats" ORBLIT_SPLAT=<path> ORBLIT_YAW=0.6 \
+      ORBLIT_SECONDS=3 ORBLIT_DUMP_FRAME=60 <the app's binary>
 
 Note that a sandboxed macOS build can only read the file from inside its own
 container, so put it under
-~/Library/Containers/dev.orbis.orbisGallery/Data/tmp.
+~/Library/Containers/dev.orblit.orblitGallery/Data/tmp.
 """
 
 import argparse

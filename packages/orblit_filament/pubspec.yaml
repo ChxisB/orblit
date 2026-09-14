@@ -1,0 +1,68 @@
+name: orblit_filament
+description: >-
+  Filament rendering for Orblit, composited by Flutter. Renders into
+  IOSurface-backed pixel buffers the texture registry adopts without a readback.
+version: 0.24.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+  flutter: '>=3.47.0'
+
+dependencies:
+  vector_math: ^2.1.4
+  flutter:
+    sdk: flutter
+  # The web implementation only. Both resolve on every platform — they are
+  # plain pub packages — but nothing outside lib/src/web/ imports them, and
+  # that directory is only ever compiled for a web target.
+  flutter_web_plugins:
+    sdk: flutter
+  web: ^1.1.0
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  plugin:
+    # Both Apple platforms reach the same sources in darwin/, through the
+    # symlinks in ios/ and macos/. Flutter also offers sharedDarwinSource for
+    # this, but the symlinks are what the macOS build here is already known to
+    # work with, including under Swift Package Manager, and swapping mechanism
+    # and adding a platform in one change makes a failure ambiguous.
+    platforms:
+      macos:
+        pluginClass: OrblitFilamentPlugin
+      ios:
+        pluginClass: OrblitFilamentPlugin
+      android:
+        package: dev.orblit.filament
+        pluginClass: OrblitFilamentPlugin
+      # The renderer core, compiled to WebAssembly, drawing into a <canvas>
+      # shown as a platform view. Unlike the three above there is no native
+      # build step here that Flutter knows about: the app's own web/ directory
+      # has to carry orblit_renderer.js and orblit_renderer.wasm, built by
+      # native/web/build.sh. See that directory's README.md.
+      web:
+        pluginClass: OrblitFilamentWeb
+        fileName: src/web/orblit_filament_web.dart
+      # Linux reaches the same portable core through the same C ABI, behind
+      # Flutter's GTK embedder. `pluginClass` here names a C function rather
+      # than a class: the generated registrant calls
+      # orblit_filament_plugin_register_with_registrar and includes
+      # <orblit_filament/orblit_filament_plugin.h>, which is why linux/include
+      # carries that one public header.
+      linux:
+        pluginClass: OrblitFilamentPlugin
+      # Windows reaches the same portable core through the same C ABI, behind
+      # Flutter's Windows embedder. `pluginClass` here names neither a class
+      # nor a snake-cased function but the stem both are derived from: the
+      # generated registrant includes
+      # <orblit_filament/orblit_filament_plugin.h> — the class snake-cased —
+      # and calls OrblitFilamentPluginRegisterWithRegistrar — the class with a
+      # suffix. That is why windows/include carries that one public header
+      # and why the exported symbol is spelled the way it is.
+      windows:
+        pluginClass: OrblitFilamentPlugin

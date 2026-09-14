@@ -14,9 +14,9 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 PACKAGES=(
-  packages/orbis_examples
-  packages/orbis_filament
-  packages/orbis_ui
+  packages/orblit_examples
+  packages/orblit_filament
+  packages/orblit_ui
   # An app rather than a package, and here for the one test it carries: that
   # every worked example can be built and asked for a scene. The gallery opens
   # straight into one of them, so an example that throws on construction takes
@@ -30,13 +30,13 @@ for package in "${PACKAGES[@]}"; do
   echo "== $package =="
   (cd "$package" && flutter pub get > /dev/null 2>&1)
 
-  if (cd "$package" && flutter analyze > /tmp/orbis_flutter_analyze.log 2>&1); then
+  if (cd "$package" && flutter analyze > /tmp/orblit_flutter_analyze.log 2>&1); then
     echo "  ok    analyze"
   else
-    echo "  FAIL  analyze"; tail -20 /tmp/orbis_flutter_analyze.log; failures=$((failures+1))
+    echo "  FAIL  analyze"; tail -20 /tmp/orblit_flutter_analyze.log; failures=$((failures+1))
   fi
 
-  # A package can legitimately have nothing to run — orbis_examples is scenes
+  # A package can legitimately have nothing to run — orblit_examples is scenes
   # to be drawn, and its checking is that it analyzes and that the apps which
   # show it build. Skipped rather than failed, but said out loud, so an
   # emptied test directory does not read as a passing suite.
@@ -45,12 +45,12 @@ for package in "${PACKAGES[@]}"; do
     continue
   fi
 
-  if (cd "$package" && flutter test > /tmp/orbis_flutter_test.log 2>&1); then
-    summary=$(tr '\r' '\n' < /tmp/orbis_flutter_test.log | tail -1 \
+  if (cd "$package" && flutter test > /tmp/orblit_flutter_test.log 2>&1); then
+    summary=$(tr '\r' '\n' < /tmp/orblit_flutter_test.log | tail -1 \
       | sed -e 's/\x1b\[[0-9;]*m//g' -e 's/^[0-9:]* //')
     echo "  ok    $summary"
   else
-    echo "  FAIL  tests"; tail -25 /tmp/orbis_flutter_test.log; failures=$((failures+1))
+    echo "  FAIL  tests"; tail -25 /tmp/orblit_flutter_test.log; failures=$((failures+1))
   fi
 done
 

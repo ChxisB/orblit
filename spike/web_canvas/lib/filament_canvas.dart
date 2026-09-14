@@ -1,6 +1,6 @@
 // The Dart half of the canvas: puts a <canvas> into the widget tree as a
 // platform view, and talks to the JavaScript renderer that draws into it with
-// Filament (web/orbis_filament_view.js).
+// Filament (web/orblit_filament_view.js).
 //
 // Everything that crosses goes through dart:js_interop, and the scene crosses
 // as bytes (scene_message.dart); Dart never holds a Filament object. That
@@ -18,12 +18,12 @@ import 'package:web/web.dart' as web;
 import 'scene_message.dart';
 
 /// The platform view type the canvas is registered under.
-const String filamentViewType = 'orbis-filament-canvas';
+const String filamentViewType = 'orblit-filament-canvas';
 
-@JS('orbisWeb.mount')
+@JS('orblitWeb.mount')
 external JSPromise<_JsRenderer> _mount(web.HTMLCanvasElement canvas);
 
-/// What orbisWeb.mount resolves to: one renderer per canvas.
+/// What orblitWeb.mount resolves to: one renderer per canvas.
 extension type _JsRenderer._(JSObject _) implements JSObject {
   external void apply(JSUint8Array message);
   external _JsStats stats();
@@ -52,7 +52,7 @@ void registerFilamentCanvas() {
   ui_web.platformViewRegistry.registerViewFactory(filamentViewType, (
     int viewId,
   ) {
-    final canvas = web.HTMLCanvasElement()..id = 'orbis-filament-$viewId';
+    final canvas = web.HTMLCanvasElement()..id = 'orblit-filament-$viewId';
     // Flutter sizes the platform view's box; the canvas fills it, and the
     // renderer matches its drawing buffer to that size each frame.
     canvas.style

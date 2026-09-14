@@ -37,7 +37,7 @@ takes the major.
 ### Why bump per feature rather than per release
 
 Because the version is the only thing a consumer can point at. Once these
-repositories are public, somebody depending on `orbis_filament` at a git
+repositories are public, somebody depending on `orblit_filament` at a git
 revision has no way to say "the one before the render graph landed" — but they
 can say `^0.4.0`. A version that only moves at release time is a version that
 is wrong for most of the month.
@@ -71,7 +71,7 @@ there are, and git's whitespace-blind comparison works within a line rather
 than across two. Rather than guess, say so in a commit message:
 
 ```
-Version-exempt: orbis_camera orbis_light - dart format only
+Version-exempt: orblit_camera orblit_light - dart format only
 Version-exempt: all - repository-wide reformat
 ```
 

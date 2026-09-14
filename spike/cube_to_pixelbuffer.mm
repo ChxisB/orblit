@@ -1,4 +1,4 @@
-// Orbis spike: prove Filament renders straight into a CVPixelBuffer.
+// Orblit spike: prove Filament renders straight into a CVPixelBuffer.
 //
 // The CVPixelBuffer is the handoff Flutter's macOS/iOS texture registry takes
 // from FlutterTexture.copyPixelBuffer, so a swap chain built on one is the whole
@@ -179,7 +179,7 @@ int main() {
         mi->setParameter("baseColor", float3{0.85f, 0.28f, 0.18f});
         mi->setParameter("roughness", 0.35f);
         mi->setParameter("metallic", 0.0f);
-        printf("OK    material orbisLit compiled and instanced\n");
+        printf("OK    material orblitLit compiled and instanced\n");
 
         utils::Entity cube = utils::EntityManager::get().create();
         RenderableManager::Builder(1)

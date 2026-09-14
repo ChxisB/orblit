@@ -33,8 +33,8 @@
 set -uo pipefail
 
 APP="${1:?usage: ci_draw_frame_ios.sh <path to .app>}"
-SECONDS_ALLOWED="${ORBIS_FRAME_TIMEOUT:-90}"
-DEVICE="${ORBIS_SIM_DEVICE:-iPhone 16}"
+SECONDS_ALLOWED="${ORBLIT_FRAME_TIMEOUT:-90}"
+DEVICE="${ORBLIT_SIM_DEVICE:-iPhone 16}"
 
 [ -d "$APP" ] || { echo "no app bundle at $APP"; exit 1; }
 
@@ -51,8 +51,8 @@ print(next((x["udid"] for v in d.values() for x in v if x.get("state")=="Booted"
 
 if [ -z "$udid" ]; then
   udid=$(xcrun simctl list devices available -j 2>/dev/null \
-    | ORBIS_SIM_DEVICE="$DEVICE" /usr/bin/python3 -c 'import json,os,sys
-want=os.environ["ORBIS_SIM_DEVICE"]
+    | ORBLIT_SIM_DEVICE="$DEVICE" /usr/bin/python3 -c 'import json,os,sys
+want=os.environ["ORBLIT_SIM_DEVICE"]
 d=json.load(sys.stdin)["devices"]
 # Newest runtime first, so a host with several picks the one most like a
 # current device rather than whichever the dictionary happened to order first.
@@ -86,19 +86,19 @@ fi
 
 xcrun simctl install "$udid" "$APP" || { echo "the app would not install"; exit 1; }
 
-: "${ORBIS_DUMP_FRAME:=30}"
-export ORBIS_DUMP_FRAME
-# Every ORBIS_ switch, not only the frame to dump. simctl hands an app only the
+: "${ORBLIT_DUMP_FRAME:=30}"
+export ORBLIT_DUMP_FRAME
+# Every ORBLIT_ switch, not only the frame to dump. simctl hands an app only the
 # variables prefixed SIMCTL_CHILD_, so a switch left unprefixed does nothing at
-# all — ORBIS_EXAMPLE=Decals would quietly draw the first example instead, which
+# all — ORBLIT_EXAMPLE=Decals would quietly draw the first example instead, which
 # is what made the simulator look as if it could only draw a placeholder.
 while IFS='=' read -r name value; do
   case "$name" in
-    ORBIS_*) export "SIMCTL_CHILD_$name=$value" ;;
+    ORBLIT_*) export "SIMCTL_CHILD_$name=$value" ;;
   esac
 done < <(env)
 
-log=$(mktemp -t orbis_ci_frame_ios)
+log=$(mktemp -t orblit_ci_frame_ios)
 # --console-pty rather than --console: without a pty the app's stdout is fully
 # buffered and nothing arrives until it exits, which for an app that is meant
 # to keep running means nothing arrives at all.
@@ -123,7 +123,7 @@ for _ in $(seq "$SECONDS_ALLOWED"); do
   # The line that ends in "written", for the same reason the macOS script waits
   # for it: the renderer prints the frame's cost first and the picture only
   # after it has been read back.
-  if grep -q '\[orbis\] frame .* -> .*: written' "$log" 2>/dev/null; then
+  if grep -q '\[orblit\] frame .* -> .*: written' "$log" 2>/dev/null; then
     drew=yes
     break
   fi

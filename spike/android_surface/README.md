@@ -10,7 +10,7 @@ what was true at that point.
 Filament 1.76 can draw into an Android `Surface` that Flutter's texture
 registry owns, with nothing copied through the CPU, and the result composites
 correctly alongside ordinary Flutter widgets. That was the actual risk in
-bringing Orbis to Android — the Apple path proved Filament-into-Flutter works
+bringing Orblit to Android — the Apple path proved Filament-into-Flutter works
 at all (`spike/cube_to_pixelbuffer.mm`, CPU-side `CVPixelBuffer`), but Android
 has no equivalent handoff. This spike proves the Android-shaped one instead:
 a producer/consumer `Surface` Flutter hands out and Filament writes into
@@ -44,7 +44,7 @@ directly.
 
 No pixel is read back and no copy is made anywhere in this path. That's the
 point, and it's why this is a different mechanism from Apple's
-`CVPixelBuffer` path rather than a port of it — see the OrbisSurface verdict
+`CVPixelBuffer` path rather than a port of it — see the OrblitSurface verdict
 below for how that difference does and doesn't matter to the portable core.
 
 ### Lifecycle: what was verified, what wasn't
@@ -135,13 +135,13 @@ callbacks" below). What crosses is control and polled diagnostics:
 
 A real plugin's channel would look the same shape — thin control surface,
 native render loop — but `start`'s job changes from "build one hardcoded
-cube" to "create an `orbis_renderer` and publish a scene": the JNI layer
-would call `orbis_renderer_create` with an `ORBIS_SURFACE_WINDOW` descriptor
+cube" to "create an `orblit_renderer` and publish a scene": the JNI layer
+would call `orblit_renderer_create` with an `ORBLIT_SURFACE_WINDOW` descriptor
 instead of `SpikeRenderer::create`, and the per-scene calls
-(`orbis_renderer_apply_objects`, `_apply_materials`, `_set_camera`, ...) would
+(`orblit_renderer_apply_objects`, `_apply_materials`, `_set_camera`, ...) would
 arrive over additional channel methods this spike has no reason to have. The
 presentation-lifecycle calls (attach/detach a surface across backgrounding)
-are the one piece with no equivalent yet on the `orbis_renderer.h` side — see
+are the one piece with no equivalent yet on the `orblit_renderer.h` side — see
 the verdict below.
 
 ### Choreographer, not Flutter's frame callbacks
@@ -194,13 +194,13 @@ on the Dart side. Three reasons, in order of how much they'd bite:
   share `libc++_shared.so` with, and static avoids shipping it plus the
   whole class of bug where two libraries disagree about which `libc++` they
   linked. This stops being automatically correct the moment a *second*
-  native `.so` joins it (e.g. `orbis_native` built separately from this
+  native `.so` joins it (e.g. `orblit_native` built separately from this
   Filament-linking one) and they pass C++ types — `std::string`, an
   exception — across the boundary between them: two static `libc++` copies
   in one process is undefined behaviour for that. If the real plugin keeps
-  Orbis's core and Filament in one combined `.so` (as this spike does with
+  Orblit's core and Filament in one combined `.so` (as this spike does with
   everything it links), `c++_static` stays fine regardless of how much
-  Orbis code that `.so` grows to hold.
+  Orblit code that `.so` grows to hold.
 - **Two flags judged and removed**: `-ffunction-sections -fdata-sections`
   plus `-Wl,--gc-sections` were in the CMakeLists this spike inherited,
   justified there as taking the `.so` from ~90 MB to ~9 MB. Judgment: risk
@@ -215,7 +215,7 @@ on the Dart side. Three reasons, in order of how much they'd bite:
   other flag in the file earns its keep against what *this spike* is
   actually for; these two didn't, so they came out. (Separately, and not the
   same finding: the Gradle `packaging.jniLibs.keepDebugSymbols` block had an
-  inverted effect from its own comment — it listed `liborbis_spike.so` as a
+  inverted effect from its own comment — it listed `liborblit_spike.so` as a
   library to leave *unstripped*, which is what `keepDebugSymbols` means,
   while the comment claimed it was *shrinking* the library. Fixed by
   deleting the block; AGP already strips by default, which is what the
@@ -234,7 +234,7 @@ different cube faces (proving rotation, not a static frame).
 Filament: [Android Emulator OpenGL ES Translator (ANGLE (..., SwiftShader Device ...))],
           [OpenGL ES 3.1 (OpenGL ES 3.1.0 (ANGLE ...))], [OpenGL ES GLSL ES 3.10]
 Filament: Feature level: 1
-OrbisSpike: engine up: backend=OpenGL activeFeatureLevel=1 supportedFeatureLevel=1
+OrblitSpike: engine up: backend=OpenGL activeFeatureLevel=1 supportedFeatureLevel=1
 ```
 
 Worked cleanly, no black frames, no errors. Frame timing was the weakest
@@ -250,7 +250,7 @@ settling to a real, if middling, ~20 fps once warmed up).
 Filament: Vulkan device driver: SwiftShader driver
 Filament: Selected physical device 'SwiftShader Device (LLVM 10.0.0)' ... api 1.3
 Filament: Backend feature level: 3
-OrbisSpike: engine up: backend=Vulkan activeFeatureLevel=1 supportedFeatureLevel=3
+OrblitSpike: engine up: backend=Vulkan activeFeatureLevel=1 supportedFeatureLevel=3
 ```
 
 Also worked cleanly. Noticeably *better* than OpenGL ES on this emulator once
@@ -261,7 +261,7 @@ system image).
 
 ## Feature level — the central question, answered plainly
 
-Orbis's standard lit surface needs feature level 3 (twelve samplers: seven
+Orblit's standard lit surface needs feature level 3 (twelve samplers: seven
 maps, light data, the area shadow, the field atlas, two for decals — per
 `PORTING.md`). Below that, per `PORTING.md`, the renderer does not start.
 What this emulator actually does, verified rather than assumed, backend by
@@ -282,9 +282,9 @@ level 3, not a null engine or a silent downgrade. Confirmed with a second,
 purpose-built check (`requestFeatureLevel3`, added to this spike specifically
 to answer this): the cube rendered correctly at feature level 3 under
 Vulkan, with the skybox and the label composited exactly as at level 1. So
-on Android, backend choice is not a minor performance knob for Orbis — it is
+on Android, backend choice is not a minor performance knob for Orblit — it is
 the difference between the real renderer starting at all and refusing to.
-`orbis::backendCandidates` (`OrbisBackend.cpp`) already tries Vulkan before
+`orblit::backendCandidates` (`OrblitBackend.cpp`) already tries Vulkan before
 OpenGL ES on Android for other reasons (a stated preference, not yet tested
 against this specific question); this spike's finding is a second, sharper
 reason that ordering matters here, provided the standard surface is what's
@@ -310,11 +310,11 @@ on Android. Filed as a corrected assumption, not a solved question.
 
 `flutter build apk --profile --target-platform=android-arm64 --split-per-abi`
 (not `--debug` — see "APK size" below), `adb install -r`, `adb shell am
-start -n dev.orbis.spike.android_surface_spike/.MainActivity`, then
+start -n dev.orblit.spike.android_surface_spike/.MainActivity`, then
 `adb exec-out screencap -p > frame.png`, read with the Read tool. Two
 captures roughly a second apart show different cube faces each time (proof
 of animation, not just a colourful static frame); `adb logcat -s
-OrbisSpike:V Filament:V` carries the backend/feature-level lines quoted
+OrblitSpike:V Filament:V` carries the backend/feature-level lines quoted
 above. Frame timing comes straight off the device via the `stats` method
 call, shown live in the app's own overlay (`fps`, `rendered`, `skipped`,
 `worstFrameIntervalMs`) as well as loggable on demand — no separate profiling
@@ -358,7 +358,7 @@ tool needed for the numbers quoted in this document.
 6. **Shared emulator too full to use**: rather than clear space on the
    pre-existing `Medium_Phone_API_36.0` AVD (which had other projects'
    apps on it, not mine to remove), created a dedicated one
-   (`orbis_spike_arm64`, 8 GB data partition) and left the shared one
+   (`orblit_spike_arm64`, 8 GB data partition) and left the shared one
    untouched.
 7. **Emulator GPU mode is a real tradeoff, not a default to ignore**:
    `-no-window -gpu auto` silently resolved to `swiftshader_indirect`
@@ -377,23 +377,23 @@ tool needed for the numbers quoted in this document.
    next should budget time to find a config that has neither problem, or
    accept this tradeoff and know why.
 8. **JNI name mangling for an underscore in the package name**:
-   `dev.orbis.spike.filament_surface` → `Java_dev_orbis_spike_filament_1surface_...`
+   `dev.orblit.spike.filament_surface` → `Java_dev_orblit_spike_filament_1surface_...`
    (JNI escapes `_` in a Java identifier as `_1`). Correct in the code as
    found; noted here because it is the easiest way to get a silent
    `UnsatisfiedLinkError` on first run if the package or class is ever
    renamed without updating the C++ side to match.
 
-## The `OrbisSurface` verdict
+## The `OrblitSurface` verdict
 
-Read: `orbis_renderer.h`, `OrbisSurface.h`, `OrbisPlatform.h`, `PORTING.md`
-(`packages/orbis_filament/darwin/orbis_filament/Sources/orbis_filament_native/`
-in the `orbis-integration` worktree), plus `OrbisSurfaceHeadless.cpp` and
-`OrbisRendererC.cpp`/`OrbisRendererCore.h` to see how `ORBIS_SURFACE_WINDOW`
+Read: `orblit_renderer.h`, `OrblitSurface.h`, `OrblitPlatform.h`, `PORTING.md`
+(`packages/orblit_filament/darwin/orblit_filament/Sources/orblit_filament_native/`
+in the `orblit-integration` worktree), plus `OrblitSurfaceHeadless.cpp` and
+`OrblitRendererC.cpp`/`OrblitRendererCore.h` to see how `ORBLIT_SURFACE_WINDOW`
 is actually wired today.
 
 **The swap-chain creation itself fits Android exactly as written, no changes
-needed.** `OrbisCreateWindowSurface(void* window)` is already portable C++
-(it lives in `OrbisSurfaceHeadless.cpp`, not an `Apple.mm` file, and includes
+needed.** `OrblitCreateWindowSurface(void* window)` is already portable C++
+(it lives in `OrblitSurfaceHeadless.cpp`, not an `Apple.mm` file, and includes
 nothing platform-specific), and its window branch —
 
 ```cpp
@@ -404,9 +404,9 @@ _chain = _window != nullptr
 
 — is the identical call this spike makes directly with an `ANativeWindow*`
 cast to `void*`. A real Android JNI/C++ plugin would call
-`orbis_renderer_create(backend, &(orbis_surface_desc){ORBIS_SURFACE_WINDOW,
+`orblit_renderer_create(backend, &(orblit_surface_desc){ORBLIT_SURFACE_WINDOW,
 nativeWindow}, width, height)` and get exactly the presentation path this
-spike proved, for free. The `count`-buffers shape of `OrbisSurface::allocate`
+spike proved, for free. The `count`-buffers shape of `OrblitSurface::allocate`
 looks at first glance like it might not fit Android (Apple's path needs
 several independent `CVPixelBuffer`s because render and present run on
 different threads there), but it already doesn't need to: for a window,
@@ -418,9 +418,9 @@ model there in the first place. Good design already, not something this
 spike had to work around.
 
 **What's missing is entirely at the layer above it: surface lifecycle.**
-`orbis_renderer.h` has a create call and a `resize` call and nothing
-in between for "the window changed." `OrbisRendererCore.h` confirms why: `
-_surface` and `_swapChains[kOrbisBufferCount]` are private members wired up
+`orblit_renderer.h` has a create call and a `resize` call and nothing
+in between for "the window changed." `OrblitRendererCore.h` confirms why: `
+_surface` and `_swapChains[kOrblitBufferCount]` are private members wired up
 once, in the constructor and `initWithWidth`, and `resizeToWidth` only ever
 touches dimensions — never the surface or swap chains themselves. That
 model is correct for Apple, where the texture-sharing surface is stable for
@@ -428,25 +428,25 @@ the renderer's whole life. It is not correct for Android, where — as this
 spike's own `SpikeRenderer::attachSurface`/`detachSurface` exists specifically
 to handle — the `Surface` can be destroyed and replaced any number of times
 while the engine, scene and every GPU resource in it need to survive
-untouched. There is no `orbis_renderer_attach_surface`/`_detach_surface` (or
+untouched. There is no `orblit_renderer_attach_surface`/`_detach_surface` (or
 equivalent) in the C ABI to call when that happens.
 
 The fix is additive, not a redesign: a new pair of calls —
 
 ```c
-int orbis_renderer_attach_surface(orbis_renderer *renderer,
-                                   const orbis_surface_desc *surface,
+int orblit_renderer_attach_surface(orblit_renderer *renderer,
+                                   const orblit_surface_desc *surface,
                                    uint32_t width, uint32_t height);
-int orbis_renderer_detach_surface(orbis_renderer *renderer);
+int orblit_renderer_detach_surface(orblit_renderer *renderer);
 ```
 
-— doing at the `orbis::Renderer` level exactly what `SpikeRenderer`'s two
-methods already do: `detach` destroys the swap chain(s) via `OrbisSurface::
+— doing at the `orblit::Renderer` level exactly what `SpikeRenderer`'s two
+methods already do: `detach` destroys the swap chain(s) via `OrblitSurface::
 release`, calls `engine->flushAndWait()` (the ordering this spike found is
 load-bearing — see "Lifecycle" above — and that the core does not currently
-know it needs), *then* lets go of the window; `attach` calls `OrbisSurface::
+know it needs), *then* lets go of the window; `attach` calls `OrblitSurface::
 allocate` again against the new window and rebuilds the swap chain(s) into
-`_swapChains`. `orbis_renderer.h`'s own threading rule — "one thread drives
+`_swapChains`. `orblit_renderer.h`'s own threading rule — "one thread drives
 a renderer, apart from `set_camera`, `resize` and `copy_presented`, which are
 safe from any thread" — should cover these too: this spike keeps the whole
 presentation lifecycle on the Android main thread (see the class comment on
@@ -481,7 +481,7 @@ new one.
   documented behaviour, not directly observed on this platform — nobody
   has yet tried loading `lit.mat` on an Android engine running below level 3
   to watch it refuse.
-- **The `orbis_renderer_attach_surface`/`_detach_surface` addition above** is
+- **The `orblit_renderer_attach_surface`/`_detach_surface` addition above** is
   a design, argued from the existing code and this spike's own working
   implementation of the same idea — it has not been built or tested against
   the real core.
@@ -490,7 +490,7 @@ new one.
 
 - `filament_surface/` — the plugin: `android/build.gradle.kts`,
   `android/src/main/cpp/{CMakeLists.txt,spike_renderer.cpp}`,
-  `android/src/main/kotlin/dev/orbis/spike/filament_surface/{FilamentSurfacePlugin,FilamentSurfaceSession,SpikeRenderer}.kt`,
+  `android/src/main/kotlin/dev/orblit/spike/filament_surface/{FilamentSurfacePlugin,FilamentSurfaceSession,SpikeRenderer}.kt`,
   `android/src/main/materials/unlit_colour.mat`, `lib/filament_surface.dart`.
 - `app/` — the demo: `lib/main.dart` (backend picker, `Texture` widget, live
   feature-level/stats overlay, `Recreate surface`/`Back` controls).

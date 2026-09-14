@@ -10,7 +10,7 @@
 #
 # The app is run through its executable rather than `open`, so its log arrives
 # on this script's stderr and the frame can be waited for by reading it. The
-# renderer prints "[orbis] frame N ... -> path" when ORBIS_DUMP_FRAME says to,
+# renderer prints "[orblit] frame N ... -> path" when ORBLIT_DUMP_FRAME says to,
 # and that line is the proof: it is printed after Filament has rendered and the
 # pixels have been read back, so nothing before it can have aborted.
 #
@@ -24,16 +24,16 @@
 set -uo pipefail
 
 APP="${1:?usage: ci_draw_frame.sh <path to .app>}"
-SECONDS_ALLOWED="${ORBIS_FRAME_TIMEOUT:-90}"
+SECONDS_ALLOWED="${ORBLIT_FRAME_TIMEOUT:-90}"
 
 name=$(basename "$APP" .app)
 binary="$APP/Contents/MacOS/$name"
 [ -x "$binary" ] || { echo "no executable at $binary"; exit 1; }
 
-: "${ORBIS_DUMP_FRAME:=30}"
-export ORBIS_DUMP_FRAME
+: "${ORBLIT_DUMP_FRAME:=30}"
+export ORBLIT_DUMP_FRAME
 
-log=$(mktemp -t orbis_ci_frame)
+log=$(mktemp -t orblit_ci_frame)
 "$binary" > "$log" 2>&1 &
 app=$!
 
@@ -43,12 +43,12 @@ trap 'kill "$app" 2>/dev/null; wait "$app" 2>/dev/null' EXIT
 
 drew=""
 for _ in $(seq "$SECONDS_ALLOWED"); do
-  # The line that ends in "written", not merely one that starts "[orbis]
+  # The line that ends in "written", not merely one that starts "[orblit]
   # frame": the renderer prints the frame's cost first and the picture after
   # it has been read back, and stopping at the first of the two killed the app
   # before the second — a pass that had not proved the readback, and a PNG that
   # anybody measuring from it found missing.
-  if grep -q '\[orbis\] frame .* -> .*: written' "$log" 2>/dev/null; then
+  if grep -q '\[orblit\] frame .* -> .*: written' "$log" 2>/dev/null; then
     drew=yes
     break
   fi
@@ -62,7 +62,7 @@ if [ -n "$drew" ]; then
   # Both lines: the one proving a frame exists, and the one saying what it
   # cost. The cost is printed on every run so a regression shows up as a
   # number in a build log rather than as somebody eventually noticing.
-  grep '\[orbis\] frame' "$log" | head -2
+  grep '\[orblit\] frame' "$log" | head -2
   echo "renderer drew a frame"
   exit 0
 fi
