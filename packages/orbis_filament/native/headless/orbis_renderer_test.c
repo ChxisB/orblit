@@ -25,6 +25,7 @@ int main(void) {
          "a null renderer is refused, not dereferenced");
   orbis_renderer_destroy(NULL);
   expect(orbis_renderer_notes(NULL) == 0, "a null renderer has no notes");
+  expect(orbis_renderer_rendered_frames(NULL) == 0, "a null renderer has no frames");
 
   /* The rows are the renderer's to say, so a host need not copy them. */
   expect(orbis_renderer_stride(ORBIS_STRIDE_LIGHT) == 22,
@@ -38,8 +39,8 @@ int main(void) {
   orbis_renderer *renderer =
       orbis_renderer_create(ORBIS_BACKEND_DEFAULT, &headless, 64, 48);
   if (renderer == NULL) {
-    printf("no renderer could start here; the ABI compiled and linked\n");
-    return failures == 0 ? 0 : 1;
+    fprintf(stderr, "FAIL: no renderer could start; build-only is not a runtime pass\n");
+    return 1;
   }
 
   /* A short array is refused, and nothing is applied. */
@@ -75,6 +76,8 @@ int main(void) {
   }
 
   /* It draws, and the frame comes back. */
+  expect(orbis_renderer_rendered_frames(renderer) == 0,
+         "a new renderer has not rendered a frame");
   orbis_renderer_request_capture(renderer);
   for (int frame = 0; frame < 6; frame++) {
     expect(orbis_renderer_draw(renderer, frame / 60.0) == ORBIS_OK,
@@ -92,6 +95,23 @@ int main(void) {
     orbis_stats stats;
     expect(orbis_renderer_stats(renderer, &stats) == ORBIS_OK,
            "stats are there to read");
+  }
+
+  {
+    const uint64_t frames = orbis_renderer_rendered_frames(renderer);
+    expect(frames > 0 && frames <= 6, "only completed draws count as frames");
+    expect(orbis_renderer_detach_surface(renderer) == ORBIS_OK, "surface detaches");
+    expect(orbis_renderer_draw(renderer, 1.0) == ORBIS_OK, "detached draw is safe");
+    expect(orbis_renderer_rendered_frames(renderer) == frames,
+           "a successful detached draw is not counted as a rendered frame");
+    expect(orbis_renderer_attach_surface(renderer, &headless, 64, 48) == ORBIS_OK,
+           "surface reattaches");
+    for (int frame = 0; frame < 6; frame++) {
+      expect(orbis_renderer_draw(renderer, 2.0 + frame / 60.0) == ORBIS_OK,
+             "reattached renderer draws");
+    }
+    expect(orbis_renderer_rendered_frames(renderer) > frames,
+           "rendered frame count survives surface replacement");
   }
 
   /* Batching is on for a renderer nobody has told anything.
@@ -167,6 +187,41 @@ int main(void) {
            "stats are there to read with batching on again");
     expect(stats.batched_objects == count && stats.batch_groups == 1,
            "the group comes back when batching is turned back on");
+
+    /* Capture rows must be top-first on every backend. A red cube below
+     * the camera's aim leaves blue sky above it: an asymmetric fixture
+     * catches an extra OpenGL row flip that a centred cube cannot. */
+    transforms[13] = -1.0f;
+    colours[0] = 1.0f;
+    colours[1] = 0.02f;
+    colours[2] = 0.01f;
+    expect(orbis_renderer_apply_objects(renderer, 1, keys, transforms, 16,
+                                        colours, 3, meshes, flags, materials,
+                                        morphs, NULL, 0, NULL, 0) == ORBIS_OK,
+           "an asymmetric capture fixture is taken");
+    const float sky[3] = {0.1f, 0.2f, 0.8f};
+    const float eye[3] = {0, 0, 6};
+    const float look[3] = {0, 0, 0};
+    orbis_renderer_set_sky_colour(renderer, sky, 20000.0f, 1);
+    orbis_renderer_set_camera(renderer, eye, look, 42.0f, 0, 10.0f, 0.0);
+    orbis_renderer_set_exposure(renderer, 16.0f, 1.0f / 125.0f, 100.0f);
+    for (int frame = 0; frame < 6; frame++) {
+      orbis_renderer_request_capture(renderer);
+      expect(orbis_renderer_draw(renderer, 3.0 + frame / 60.0) == ORBIS_OK,
+             "the asymmetric fixture draws");
+    }
+    uint8_t pixels[64 * 48 * 4];
+    uint32_t width = 0, height = 0;
+    const size_t bytes = orbis_renderer_read_capture(
+        renderer, pixels, sizeof pixels, &width, &height);
+    expect(bytes == sizeof pixels && width == 64 && height == 48,
+           "the asymmetric fixture is captured");
+    if (bytes == sizeof pixels && width == 64 && height == 48) {
+      const uint8_t *top = pixels + (12 * 64 + 32) * 4;
+      const uint8_t *bottom = pixels + (36 * 64 + 32) * 4;
+      expect(top[2] > top[0] + 10, "blue sky is above the cube in capture");
+      expect(bottom[0] > bottom[2] + 10, "red cube is below the sky in capture");
+    }
   }
 
   orbis_renderer_destroy(renderer);
