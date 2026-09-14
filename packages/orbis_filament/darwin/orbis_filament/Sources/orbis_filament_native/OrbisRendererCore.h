@@ -1239,7 +1239,15 @@ class Renderer {
   /// Whether identical objects are drawn as manually-instanced groups. See
   /// OrbisBatching.h for how a scene is divided into groups and
   /// reconcileBatchGroups for how a group becomes renderables.
-  bool _batching{};
+  ///
+  /// On unless a host turns it off, which is what every host that says
+  /// nothing gets: this is the initial state the C ABI documents, so a
+  /// console host that never calls orbis_renderer_set_batching batches, and
+  /// one that calls it with 0 does not. What it costs against what it saves
+  /// is set out on OrbisScene.batching (Dart side); the short of it is fifty
+  /// one renderables where three thousand would do, against a bounded
+  /// difference at the edges of shadows.
+  bool _batching{true};
   orbis::BatchCensus _census{};
 
   /// Whether opaque objects are drawn twice: once into depth alone, then

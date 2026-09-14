@@ -199,6 +199,16 @@ int orbis_renderer_apply_objects(orbis_renderer *renderer, uint32_t count,
                                  const char *const *paths,
                                  uint32_t path_count);
 
+/* Whether objects that are the same thing are drawn together: four or more
+ * sharing a mesh, a material and their flags become a handful of manually
+ * instanced renderables rather than one each.
+ *
+ * On for a renderer that has just been created, so a host that never calls
+ * this batches. Pass 0 to turn it off — worth doing for a scene that wants
+ * every renderable culled on its own, because a merged group is culled by
+ * one box for up to sixty-four members and its shadows are fitted from that
+ * same looser box. See OrbisScene.batching in package:orbis_filament for
+ * what that is measured to cost. */
 int orbis_renderer_set_batching(orbis_renderer *renderer, int enabled);
 
 /* Whether opaque objects are drawn into depth alone before being shaded.
