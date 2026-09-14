@@ -1,4 +1,4 @@
-# Orbis web canvas spike
+# Orblit web canvas spike
 
 Spike: Google Filament 1.76, compiled to WebAssembly, drawing into a
 `<canvas>` embedded in a Flutter web app — proving the shape the real web
@@ -23,7 +23,7 @@ the result is a screenshot, not a claim.
   JavaScript renderer's one entry point, `apply()`. That is the shape the
   real scene message would take crossing this boundary, whichever route
   below ends up owning the other side of it.
-- `matc` (the Mac SDK's, the one `packages/orbis_filament/darwin/setup.sh`
+- `matc` (the Mac SDK's, the one `packages/orblit_filament/darwin/setup.sh`
   fetches) compiles `material/spin.mat` — a feature-level-1 lit material —
   for WebGL2 with `-a opengl -p mobile`, no changes to Filament or matc
   itself needed.
@@ -67,7 +67,7 @@ Console log for the first shot (`captures/1_default_3s.log`) has the
 JavaScript renderer's own report of what it mounted on:
 
 ```
-orbisWeb: mounted orbis-filament-0: {"frames":0,"messages":0,"backend":"OPENGL",
+orblitWeb: mounted orblit-filament-0: {"frames":0,"messages":0,"backend":"OPENGL",
 "activeFeatureLevel":1,"supportedFeatureLevel":1,
 "glVersion":"WebGL 2.0 (OpenGL ES 3.0 Chromium)",
 "glRenderer":"ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0)
@@ -80,17 +80,17 @@ as it should be.)
 
 ## Route to the real renderer
 
-Two ways to get Orbis's actual scene onto that canvas, not just a spinning
+Two ways to get Orblit's actual scene onto that canvas, not just a spinning
 cube.
 
 ### [i] A JavaScript renderer over Filament's JS API
 
-Hand-write a second interpreter of Orbis's scene message, this time in
+Hand-write a second interpreter of Orblit's scene message, this time in
 JavaScript against Filament's own JS/wasm bindings — what
-`web/orbis_filament_view.js` does here, in miniature, for two opcodes
+`web/orblit_filament_view.js` does here, in miniature, for two opcodes
 (`setBaseColour`, `setSpin`) out of the real ABI's twenty-odd.
 
-`include/orbis_renderer.h` is not two calls. It is `apply_objects`,
+`include/orblit_renderer.h` is not two calls. It is `apply_objects`,
 `apply_materials` (with texture maps and video), `apply_lights`,
 `apply_decals`, `set_fog`, `set_post_process`, `apply_probes`,
 `apply_field`, `set_environment`, `set_render_graph`, `set_god_rays`,
@@ -100,66 +100,66 @@ sub-encoding), `apply_splats` (its own binary record format), `set_sky`,
 `set_outline`, plus capture, stats and notes read-back. Route [i] commits to
 reimplementing all of that in JavaScript, by hand, against a different API
 (Filament's JS bindings rather than its C++ classes) — and to
-reimplementing every future addition to `OrbisRendererCore.cpp` a second
+reimplementing every future addition to `OrblitRendererCore.cpp` a second
 time, in a second language, forever, with no mechanical way to prove the two
 stay in sync. That is a second renderer to maintain, not a porting step.
 
 What it buys: no Emscripten toolchain and no C++ compiler anywhere in the
 loop — `tool/build.sh` here is `matc` plus copying two files. Filament's JS
 bindings (`filament.d.ts`, 2,577 lines) are complete enough that this
-spike's 339-line renderer (`web/orbis_filament_view.js`) reaches engine,
+spike's 339-line renderer (`web/orblit_filament_view.js`) reaches engine,
 swap chain, renderer, scene, view, camera, material, mesh (including
 `SurfaceOrientation` for tangent frames), lights and IBL directly, with
 nothing missing so far.
 
 ### [ii] The portable C++ core, compiled to WebAssembly with Emscripten
 
-Orbis already has the pieces this needs, proven rather than hypothetical:
+Orblit already has the pieces this needs, proven rather than hypothetical:
 
-- `orbis::Renderer` (`OrbisRendererCore.h`/`.cpp`) is plain, portable C++
-  already. `PORTING.md`: "compiles with `ORBIS_PLATFORM_PORTABLE`, and
+- `orblit::Renderer` (`OrblitRendererCore.h`/`.cpp`) is plain, portable C++
+  already. `PORTING.md`: "compiles with `ORBLIT_PLATFORM_PORTABLE`, and
   `clang -M` finds no Apple framework, Objective-C or dispatch header among
   the 700 to 900 [headers] each includes."
-- `include/orbis_renderer.h` is a C ABI built for exactly this: "A Kotlin
+- `include/orblit_renderer.h` is a C ABI built for exactly this: "A Kotlin
   plugin calls this through JNI, a Linux or Windows plugin calls it from
   C++, and a console host with no Flutter at all calls it from `main()`."
-  `OrbisBackend` already has `ORBIS_BACKEND_WEBGPU`, "reserved for the web
+  `OrblitBackend` already has `ORBLIT_BACKEND_WEBGPU`, "reserved for the web
   ... until the materials are compiled for it."
-- `packages/orbis_filament/native/headless/orbis_headless.c` is that console
+- `packages/orblit_filament/native/headless/orblit_headless.c` is that console
   host, today: a Flutter-free, Objective-C-free C program that creates a
   renderer, applies a scene, draws frames, reads a capture back and writes a
-  PNG, through nothing but `orbis_renderer.h`. Its `build.sh` compiles
-  `OrbisRendererCore.cpp` and friends with `-DORBIS_PLATFORM_PORTABLE`
+  PNG, through nothing but `orblit_renderer.h`. Its `build.sh` compiles
+  `OrblitRendererCore.cpp` and friends with `-DORBLIT_PLATFORM_PORTABLE`
   using plain `clang++`, then links the two C programs against the Mac
   Filament SDK's static libraries and, only at that final link, Apple's
   frameworks (Metal, Cocoa, OpenGL, ...) — because that SDK's own backends
   need them, not because the renderer does. Point that link step at a
   Filament built for Emscripten instead and the object files do not change.
-- Filament for Emscripten is not a gap either: `orbis-filament/build.sh -p
+- Filament for Emscripten is not a gap either: `orblit-filament/build.sh -p
   wasm` already builds it (`$EMSDK/emsdk_env.sh` sourced, CMake's
   `Emscripten.cmake` toolchain file) and packages `filament.js` /
   `filament.wasm` / `filament.d.ts` into a `filament-*-web.tgz` — which is
   literally how the Google-published release this spike downloads is made.
-  Orbis owns that pipeline already; it does not need to be invented, only
-  pointed at `OrbisRendererCore.cpp` instead of Filament's own JS bindings.
+  Orblit owns that pipeline already; it does not need to be invented, only
+  pointed at `OrblitRendererCore.cpp` instead of Filament's own JS bindings.
 
 What is left, concretely: build Filament for web with that script (needs
 `emsdk` installed and `EMSDK` set — a real but one-time toolchain cost);
 compile the core and the portable half of the platform layer with `emcc`
 against it, the same way `native/headless/build.sh` already does with
-`clang++`; decide what `orbis_surface_desc.window` means for
-`ORBIS_SURFACE_WINDOW` on the web (Filament's own C++ web platform already
+`clang++`; decide what `orblit_surface_desc.window` means for
+`ORBLIT_SURFACE_WINDOW` on the web (Filament's own C++ web platform already
 turns a canvas selector into a swap chain, so this is plausibly a small
-`OrbisSurfaceWeb`, sibling to the existing `OrbisSurfaceHeadless`, not a new
-renderer); and export `orbis_renderer_*` from the resulting
-`orbis_renderer.wasm` (`emcc`'s `-sEXPORTED_FUNCTIONS` / `ccall`/`cwrap`,
+`OrblitSurfaceWeb`, sibling to the existing `OrblitSurfaceHeadless`, not a new
+renderer); and export `orblit_renderer_*` from the resulting
+`orblit_renderer.wasm` (`emcc`'s `-sEXPORTED_FUNCTIONS` / `ccall`/`cwrap`,
 the same mechanism Filament's own `filament.js` glue already uses on top of
-the identical toolchain). The same `OrbisRendererCore.cpp` that draws every
+the identical toolchain). The same `OrblitRendererCore.cpp` that draws every
 other platform would draw the web.
 
 ### Recommendation: [ii]
 
-`orbis_renderer.h`'s surface is large and still growing, with several calls
+`orblit_renderer.h`'s surface is large and still growing, with several calls
 (`apply_populations`, `apply_splats`) carrying their own binary
 sub-encodings. Route [i] means reimplementing all of it by hand in
 JavaScript, then re-reimplementing every future addition the same way,
@@ -167,10 +167,10 @@ forever, with nothing to mechanically check the two stay in sync — a
 correctness and maintenance liability that only grows. Route [ii] has
 already been de-risked twice over by other work in this repository, not by
 this spike: `PORTING.md` proves the core compiles with zero Apple, zero
-Objective-C, zero Flutter in the object files, and `orbis-filament/build.sh
--p wasm` proves Filament itself already has a working, Orbis-owned
+Objective-C, zero Flutter in the object files, and `orblit-filament/build.sh
+-p wasm` proves Filament itself already has a working, Orblit-owned
 Emscripten target. What remains for [ii] is an `emsdk` toolchain and one new
-`OrbisSurface` implementation — not a parallel scene interpreter. Route
+`OrblitSurface` implementation — not a parallel scene interpreter. Route
 [i]'s only real advantage is standing up without any C++ toolchain at all,
 which is exactly why this spike used it: it let the canvas / compositing /
 `dart:js_interop` shape get proven without Emscripten being installed
@@ -189,7 +189,7 @@ backend: OPENGL, activeFeatureLevel: 1, supportedFeatureLevel: 1
 glVersion: WebGL 2.0 (OpenGL ES 3.0 Chromium)
 ```
 
-Orbis's standard lit surface (`lit.mat`) declares `featureLevel : 3` and
+Orblit's standard lit surface (`lit.mat`) declares `featureLevel : 3` and
 binds twelve samplers. `PORTING.md`: "Filament allows a material nine
 [samplers] below the third level ... OpenGL ES 3.0, WebGL 2 and desktop
 OpenGL below 4.3 are feature level 1, so on those the standard surface does
@@ -215,17 +215,17 @@ Two changes, independent of each other and of which route wins:
 
 1. **`dart:ffi` is unconditional today**, which is why none of these
    packages build for web as they stand. `import 'dart:ffi'` appears
-   with no conditional import in `packages/orbis_core/lib/src/world.dart`,
-   `packages/orbis_core/lib/src/bindings.dart`,
-   `packages/orbis_native/lib/src/host.dart` and
-   `packages/orbis_native/lib/src/script.dart` (the QuickJS host) —
+   with no conditional import in `packages/orblit_core/lib/src/world.dart`,
+   `packages/orblit_core/lib/src/bindings.dart`,
+   `packages/orblit_native/lib/src/host.dart` and
+   `packages/orblit_native/lib/src/script.dart` (the QuickJS host) —
    `dart:ffi` does not exist for the web compiler at all. Each needs its
    FFI-backed half split out behind a conditional import (`dart.library.ffi`
    vs. `dart.library.js_interop`, or a stub default with a `dart.library.io`
    override — either direction), with the web side written against
    `dart:js_interop` instead of `DynamicLibrary`/`Struct`.
-   `bindings.dart`'s `OrbisTransformsStruct` and `host.dart`'s
-   `OrbisScriptHost` are `extends Struct`: on the web there is no memory to
+   `bindings.dart`'s `OrblitTransformsStruct` and `host.dart`'s
+   `OrblitScriptHost` are `extends Struct`: on the web there is no memory to
    lay a `Struct` over, so that side has to re-express the same rows as
    encoded bytes — what this spike's `SceneMessage` already sketches for two
    of them — not as FFI structs.
@@ -235,7 +235,7 @@ Two changes, independent of each other and of which route wins:
    call handing a `Uint8Array` of encoded commands to one entry point,
    decoded on the other side. Under route [i] the other side is hand-written
    JavaScript (as here). Under route [ii] it would be `ccall`/`cwrap` into
-   the Emscripten module's exported `orbis_renderer_*` functions instead.
+   the Emscripten module's exported `orblit_renderer_*` functions instead.
    The Dart-side encoding barely changes between the two; only what receives
    it does.
 
@@ -251,7 +251,7 @@ Two changes, independent of each other and of which route wins:
   past a hard ceiling.
 - **`Filament.init` has no failure callback, only a resolve.** A missing or
   mis-served asset (wrong path to the `.filamat`, `matc` not run) hangs
-  forever with no error. `orbis_filament_view.js`'s `initFilament` wraps it
+  forever with no error. `orblit_filament_view.js`'s `initFilament` wraps it
   in a timeout so a broken build fails loudly instead of hanging
   `tool/capture.sh` a second way.
 - **A platform view's element is detached when its `registerViewFactory`
@@ -304,15 +304,15 @@ Two changes, independent of each other and of which route wins:
 
 ## What's still unknown
 
-- Whether route [ii]'s `OrbisSurfaceWeb` is really as small as it looks from
+- Whether route [ii]'s `OrblitSurfaceWeb` is really as small as it looks from
   the outside — untested here; this spike drives Filament through its own
-  JS bindings, never through a compiled `orbis_renderer.wasm`.
+  JS bindings, never through a compiled `orblit_renderer.wasm`.
 - Real GPU WebGL2. This spike only exercises SwiftShader's software path
   (deliberately, for a screenshot that depends on nobody's GPU), so nothing
   here speaks to performance or to driver quirks a real device might hit.
 - Emscripten build time and binary size for the full core against a
   wasm-built Filament — this spike's `filament.wasm` is Google's prebuilt
-  release, not one produced by `orbis-filament/build.sh -p wasm`.
+  release, not one produced by `orblit-filament/build.sh -p wasm`.
 - Whether the slim lit surface (`feat/slim-lit`) shades correctly under
   WebGL2 specifically, as opposed to Metal at feature level 2 (the iOS
   simulator) or Android's OpenGL — not exercised by that branch or by this

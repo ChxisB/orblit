@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:orbis_examples/orbis_examples.dart';
+import 'package:orblit_examples/orblit_examples.dart';
 
 void main() {
   test('every example can be built and asked for a scene', () {

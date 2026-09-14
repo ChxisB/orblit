@@ -1,4 +1,4 @@
-group = "dev.orbis.spike.filament_surface"
+group = "dev.orblit.spike.filament_surface"
 version = "1.0-SNAPSHOT"
 
 buildscript {
@@ -26,7 +26,7 @@ plugins {
 }
 
 android {
-    namespace = "dev.orbis.spike.filament_surface"
+    namespace = "dev.orblit.spike.filament_surface"
 
     compileSdk = 36
 
@@ -59,7 +59,7 @@ android {
                 // links libc++, so there is nothing to share it with, and
                 // static avoids shipping libc++_shared.so and the class of bug
                 // where two libraries disagree about which libc++ they got.
-                // The real Orbis plugin, which will have orbis_native alongside
+                // The real Orblit plugin, which will have orblit_native alongside
                 // this, should switch to c++_shared -- two libraries each with
                 // their own static libc++ passing std:: types between them is
                 // undefined behaviour.
@@ -85,7 +85,7 @@ android {
     }
 
     // Filament's static libs are huge; AGP strips debug symbols from packaged
-    // .so files by default, and that default is what takes liborbis_spike.so
+    // .so files by default, and that default is what takes liborblit_spike.so
     // from ~90 MB to ~9 MB. (This block used to add the library to
     // packaging.jniLibs.keepDebugSymbols -- which lists libraries to leave
     // *unstripped* -- so it was shipping the 90 MB copy while its own comment

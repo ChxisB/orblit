@@ -12,7 +12,7 @@ enum FilamentBackend {
 ///
 /// Deliberately not the federated plugin_platform_interface shape: this spike
 /// has exactly one platform, so the indirection a multi-platform plugin needs
-/// would be ceremony with nothing on the other side of it. A real Orbis
+/// would be ceremony with nothing on the other side of it. A real Orblit
 /// plugin serving iOS, Android, Linux and Windows from one Dart API is where
 /// that pattern earns its keep.
 ///
@@ -30,7 +30,7 @@ class FilamentSurface {
   /// Stops any session already running first -- see the plugin's `start`.
   ///
   /// [requestFeatureLevel3] asks Filament for feature level 3 outright rather
-  /// than leaving the engine at its own default. Orbis's standard lit surface
+  /// than leaving the engine at its own default. Orblit's standard lit surface
   /// needs it (twelve samplers); this is how the spike tells "the backend
   /// reports it could reach level 3" apart from "the engine actually starts
   /// there" -- see the native SpikeRenderer::create for why those can differ.

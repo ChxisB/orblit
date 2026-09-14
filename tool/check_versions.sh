@@ -52,7 +52,7 @@ version_at() {
 # here, so the exception is in the history next to the reason for it.
 # The trailer names the packages it covers, and only those:
 #
-#   Version-exempt: orbis_camera orbis_light - dart format only
+#   Version-exempt: orblit_camera orblit_light - dart format only
 #   Version-exempt: all - repository-wide reformat
 #
 # Naming them matters. A branch-wide exemption exempts everything committed

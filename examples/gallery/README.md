@@ -1,4 +1,4 @@
-# orbis_gallery
+# orblit_gallery
 
 A new Flutter project.
 

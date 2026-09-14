@@ -1,5 +1,5 @@
 material {
-    name : orbisLit,
+    name : orblitLit,
     shadingModel : lit,
     parameters : [
         { type : float3, name : baseColor },

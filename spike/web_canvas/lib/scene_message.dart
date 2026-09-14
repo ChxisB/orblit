@@ -1,8 +1,8 @@
 // The spike's scene message: what Dart tells the renderer, as bytes.
 //
-// The real Orbis scene message is far richer, but on the web it would cross
+// The real Orblit scene message is far richer, but on the web it would cross
 // the same way: encoded here, handed over as one typed array, decoded on the
-// other side. Here the other side is apply() in web/orbis_filament_view.js;
+// other side. Here the other side is apply() in web/orblit_filament_view.js;
 // on route [ii] of README.md it would be the C++ renderer core compiled to
 // WebAssembly, reading the same bytes out of its own heap.
 //
@@ -16,7 +16,7 @@ library;
 
 import 'dart:typed_data';
 
-/// Opcodes, mirrored in web/orbis_filament_view.js.
+/// Opcodes, mirrored in web/orblit_filament_view.js.
 abstract final class SceneOp {
   /// r, g, b: sRGB, 0 to 1.
   static const int setBaseColour = 1;

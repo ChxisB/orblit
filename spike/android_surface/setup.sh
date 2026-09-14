@@ -24,7 +24,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 project_root="$(cd "$here/../../../.." && pwd)"
 
 filament_android="$project_root/.cache/filament-1.76.0/android-native/filament"
-matc="$project_root/orbis/packages/orbis_filament/darwin/third_party/filament-mac/filament/bin/matc"
+matc="$project_root/orblit/packages/orblit_filament/darwin/third_party/filament-mac/filament/bin/matc"
 
 third_party="$here/filament_surface/android/third_party"
 generated="$here/filament_surface/android/src/main/cpp/generated"

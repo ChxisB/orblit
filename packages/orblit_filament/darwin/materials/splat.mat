@@ -1,0 +1,335 @@
+// A cloud of 3D Gaussians, each drawn as a small ellipse facing the camera.
+//
+// 3D Gaussian splatting: Kerbl, Kopanas, Leimkühler and Drettakis, "3D
+// Gaussian Splatting for Real-Time Radiance Field Rendering", ACM TOG
+// (Proc. SIGGRAPH) 42(4), 2023. The projection of a 3D Gaussian to a 2D one
+// is the EWA splatting approximation of Zwicker, Pfister, van Baar and Gross,
+// "EWA Splatting", IEEE TVCG 8(3), 2002 — the local affine approximation of
+// the perspective projection, equations 29 and 31 there. Written for Orblit
+// from those papers and checked line by line against the maths in the
+// authors' reference rasteriser (graphdeco-inria/diff-gaussian-rasterization,
+// forward.cu: computeCov2D, and the eigenvalue and cut-off in preprocess and
+// render); no code is taken from it.
+//
+// Every splat is four corners of its own. Nothing about a splat travels in a
+// vertex attribute: the corners carry only which corner they are, and the
+// vertex's own number says which splat. That number is looked up in the
+// order texture — the splats sorted back to front, rewritten when the camera
+// turns — and the answer is looked up in the splat texture, three texels a
+// splat. So re-sorting a million splats uploads four megabytes of indices and
+// touches nothing else.
+//
+// In the device domain because the corner is placed on screen, not in the
+// world. An ellipse three standard deviations across is a size in pixels, and
+// working it back out into a world position for Filament to project again
+// would be a matrix inverse per corner to arrive where we already were. The
+// clip-space transform is the stable way to say "put it here": the corner's
+// own ±1 picks out the two axes, and the fourth column is the centre.
+material {
+    name : orblitSplat,
+    shadingModel : unlit,
+    blending : transparent,
+    // Behind whatever is solid, but never in front of anything itself. A
+    // splat that wrote depth would hide the splats behind it that were drawn
+    // after it — which, sorted back to front, is none — and would hide the
+    // ones in front that are half transparent, which is most of them.
+    depthWrite : false,
+    depthCulling : true,
+    culling : none,
+    vertexDomain : device,
+    parameters : [
+        // Three texels a splat, as bits: centre and the first element of the
+        // covariance; four more elements; the last, and the colour as bytes.
+        // Unsigned so that nothing on the way filters, converts or quietly
+        // canonicalises a float that happens to spell a NaN.
+        { type : sampler2d, name : splats, format : uint, precision : high },
+        // Which splat is drawn in each slot, back to front.
+        { type : sampler2d, name : order, format : uint, precision : high },
+        // The spherical-harmonic bands above the flat one, quantised to a
+        // byte a coefficient: sixteen to a texel, and one texel a splat for
+        // each degree. Bound even at degree nought, where nothing reads it,
+        // because a sampler a material declares has to be bound.
+        { type : sampler2d, name : harmonics, format : uint, precision : high },
+        // How many of those bands there are: 0, 1, 2 or 3. Zero is a capture
+        // with no view-dependent colour at all, and takes the same path
+        // through this shader that there was before there were any bands.
+        { type : int, name : harmonicDegree },
+        // What a stored byte is worth in each band.
+        { type : float3, name : harmonicScale },
+        { type : float, name : opacity },
+        { type : float, name : brightness }
+    ],
+    variables : [ splatAt, splatColour ]
+}
+
+vertex {
+    // Width of both textures. Matches kSplatTextureWidth in OrblitSplats.h.
+    #define kWidth 2048
+
+    uvec4 splatTexel(int index) {
+        return texelFetch(materialParams_splats,
+                          ivec2(index % kWidth, index / kWidth), 0);
+    }
+
+    uvec4 harmonicTexel(int index) {
+        return texelFetch(materialParams_harmonics,
+                          ivec2(index % kWidth, index / kWidth), 0);
+    }
+
+    // One byte of a splat's harmonics, as the number it stands for: 128 is
+    // nought, and 1 and 255 are the band's scale either way. Sixteen bytes to
+    // a texel, four to each of its unsigned integers, low byte first — the
+    // order OrblitSplats.cpp shifts them into, so neither side depends on how
+    // a processor stores an integer.
+    float harmonicByte(uvec4 texels[3], int index) {
+        uint word = texels[index / 16][(index % 16) / 4];
+        return (float((word >> (8u * uint(index % 4))) & 0xffu) - 128.0) / 127.0;
+    }
+
+    // What the bands above the flat one add to a splat's colour, seen along
+    // the direction d.
+    //
+    // The basis is the real-valued spherical harmonics in Cartesian form:
+    // orthonormal over the sphere, with the Condon-Shortley phase, which is
+    // the convention a trained capture's f_rest coefficients are written in
+    // and the one the reference implementation evaluates them against. The
+    // constants are their normalisations — sqrt(3/4pi) for the first band;
+    // sqrt(15/4pi), sqrt(5/16pi) and sqrt(15/16pi) for the second;
+    // sqrt(35/32pi), sqrt(105/4pi), sqrt(21/32pi), sqrt(7/16pi) and
+    // sqrt(105/16pi) for the third — and the minus signs are that phase,
+    // carried by the terms odd in m. A sign wrong here does not look like
+    // noise: a highlight simply appears on the side of a surface facing away
+    // from whatever made it.
+    //
+    // Evaluated here rather than in the fragment stage because a splat has
+    // one colour, not a colour a pixel: the direction is the one from the
+    // camera to the splat's centre, so this is the same answer the reference
+    // arrives at, worked out four times a splat — against the hundreds of
+    // fragments a 3-sigma ellipse covers, several splats deep, which is what
+    // the fragment stage would charge for the identical number.
+    vec3 harmonicColour(int id, int degree, vec3 d) {
+        float x = d.x;
+        float y = d.y;
+        float z = d.z;
+
+        // The basis, coefficient by coefficient in the order they are stored.
+        float basis[15];
+        basis[0] = -0.4886025119029199 * y;
+        basis[1] = 0.4886025119029199 * z;
+        basis[2] = -0.4886025119029199 * x;
+        int count = 3;
+        if (degree >= 2) {
+            float xx = x * x;
+            float yy = y * y;
+            float zz = z * z;
+            basis[3] = 1.0925484305920792 * x * y;
+            basis[4] = -1.0925484305920792 * y * z;
+            basis[5] = 0.31539156525252005 * (2.0 * zz - xx - yy);
+            basis[6] = -1.0925484305920792 * x * z;
+            basis[7] = 0.5462742152960396 * (xx - yy);
+            count = 8;
+        }
+        if (degree >= 3) {
+            float xx = x * x;
+            float yy = y * y;
+            float zz = z * z;
+            basis[8] = -0.5900435899266435 * y * (3.0 * xx - yy);
+            basis[9] = 2.890611442640554 * x * y * z;
+            basis[10] = -0.4570457994644658 * y * (4.0 * zz - xx - yy);
+            basis[11] = 0.3731763325901154 * z * (2.0 * zz - 3.0 * xx - 3.0 * yy);
+            basis[12] = -0.4570457994644658 * x * (4.0 * zz - xx - yy);
+            basis[13] = 1.445305721320277 * z * (xx - yy);
+            basis[14] = -0.5900435899266435 * x * (xx - 3.0 * yy);
+            count = 15;
+        }
+
+        // One texel a degree, at a known offset, because sixteen quantised
+        // coefficients fit in one and a degree never adds more than sixteen.
+        uvec4 texels[3];
+        texels[0] = harmonicTexel(id * degree);
+        texels[1] = degree >= 2 ? harmonicTexel(id * degree + 1) : uvec4(0u);
+        texels[2] = degree >= 3 ? harmonicTexel(id * degree + 2) : uvec4(0u);
+
+        vec3 sum = vec3(0.0);
+        for (int k = 0; k < count; k++) {
+            // Three bytes a coefficient — red, green and blue together — and
+            // what a byte is worth is the scale of the band it is in.
+            float scale = k < 3 ? materialParams.harmonicScale.x
+                        : (k < 8 ? materialParams.harmonicScale.y
+                                 : materialParams.harmonicScale.z);
+            vec3 coefficient = vec3(harmonicByte(texels, k * 3),
+                                    harmonicByte(texels, k * 3 + 1),
+                                    harmonicByte(texels, k * 3 + 2));
+            sum += basis[k] * scale * coefficient;
+        }
+        return sum;
+    }
+
+    void materialVertex(inout MaterialVertexInputs material) {
+        int vertex = getVertexIndex();
+        int slot = vertex / 4;
+        vec2 corner = getPosition().xy;
+
+        int id = int(texelFetch(materialParams_order,
+                                ivec2(slot % kWidth, slot / kWidth), 0).x);
+
+        uvec4 t0 = splatTexel(id * 3);
+        uvec4 t1 = splatTexel(id * 3 + 1);
+        uvec4 t2 = splatTexel(id * 3 + 2);
+
+        vec3 centre = uintBitsToFloat(t0.xyz);
+        // Symmetric, so six numbers: 00 01 02 11 12 22.
+        float c00 = uintBitsToFloat(t0.w);
+        float c01 = uintBitsToFloat(t1.x);
+        float c02 = uintBitsToFloat(t1.y);
+        float c11 = uintBitsToFloat(t1.z);
+        float c12 = uintBitsToFloat(t1.w);
+        float c22 = uintBitsToFloat(t2.x);
+        mat3 sigma = mat3(c00, c01, c02,
+                          c01, c11, c12,
+                          c02, c12, c22);
+
+        // Model to view in one matrix, so the cloud's own transform — its
+        // scale included — reaches the covariance as well as the centre.
+        mat4 viewFromModel = getViewFromWorldMatrix() * getWorldFromModelMatrix();
+        vec4 view = viewFromModel * vec4(centre, 1.0);
+        vec4 clip = getClipFromViewMatrix() * view;
+
+        // Nothing drawn: every corner in one place, outside the frustum, so
+        // the quad has no area and costs no fragments.
+        material.clipSpaceTransform = mat4(vec4(0.0), vec4(0.0), vec4(0.0),
+                                           vec4(2.0, 2.0, 2.0, 1.0));
+        material.splatAt = vec4(0.0);
+        material.splatColour = vec4(0.0);
+
+        // Filament looks down -z. Depth is measured the positive way round,
+        // and behind the camera — or so near that the Jacobian blows up — is
+        // not drawn, as the reference culls at 0.2.
+        float depth = -view.z;
+        if (depth <= 0.2) return;
+        // A splat whose centre is well off screen still reaches onto it if it
+        // is large, which is why the reference allows 1.3 times the frustum
+        // rather than 1. Beyond that it is dropped.
+        float guard = 1.3 * clip.w;
+        if (abs(clip.x) > guard || abs(clip.y) > guard) return;
+
+        // Focal lengths in pixels, from the projection Filament is really
+        // using rather than from a field of view handed in beside it.
+        vec2 resolution = getResolution().xy;
+        mat4 projection = getClipFromViewMatrix();
+        vec2 focal = vec2(projection[0][0], projection[1][1]) * resolution * 0.5;
+
+        // The Jacobian of the perspective projection at the centre, in pixels
+        // per unit of view space. The reference clamps the angle it is taken
+        // at to 1.3 times the half field of view, so a splat at the edge of
+        // the screen is not stretched into a streak by the derivative there.
+        vec2 limit = 1.3 / vec2(projection[0][0], projection[1][1]);
+        vec2 t = clamp(view.xy / depth, -limit, limit) * depth;
+
+        // Rows of J, written as columns because that is what mat3 takes, so
+        // this constructs J transposed. Signs are for -z forward: x = fx·x/d
+        // with d = -z, so dx/dz = fx·x/d².
+        mat3 jacobianT = mat3(focal.x / depth, 0.0, focal.x * t.x / (depth * depth),
+                              0.0, focal.y / depth, focal.y * t.y / (depth * depth),
+                              0.0, 0.0, 0.0);
+        mat3 rotation = mat3(viewFromModel);
+        // Σ' = J W Σ Wᵀ Jᵀ, equation 31 of the EWA paper.
+        mat3 m = transpose(jacobianT) * rotation;
+        mat3 cov = m * sigma * transpose(m);
+
+        // The low-pass filter: every splat at least about a pixel across, so
+        // one smaller than a pixel is not sampled into flicker.
+        float a = cov[0][0] + 0.3;
+        float b = cov[0][1];
+        float c = cov[1][1] + 0.3;
+
+        // The ellipse's axes are the eigenvectors of the 2D covariance, and
+        // its radii the square roots of the eigenvalues. The reference's
+        // own clamp on the discriminant, so a circle does not divide by zero.
+        float mid = 0.5 * (a + c);
+        float det = a * c - b * b;
+        if (det <= 0.0) return;
+        float spread = sqrt(max(0.1, mid * mid - det));
+        float lambda1 = mid + spread;
+        float lambda2 = max(mid - spread, 0.1);
+
+        vec2 major = abs(b) > 1e-6 ? normalize(vec2(b, lambda1 - a))
+                                   : (a >= c ? vec2(1.0, 0.0) : vec2(0.0, 1.0));
+        vec2 minor = vec2(-major.y, major.x);
+
+        // Three standard deviations each way, as the reference sizes its
+        // tiles; the fragment stage cuts the corners off. Capped at a screen
+        // across, because a splat right in front of the lens can otherwise
+        // ask for a quad the size of a building and fill it.
+        float cap = max(resolution.x, resolution.y);
+        vec2 axis1 = major * min(3.0 * sqrt(lambda1), cap);
+        vec2 axis2 = minor * min(3.0 * sqrt(lambda2), cap);
+
+        // Pixels to clip space: two over the resolution to get to NDC, and
+        // times w because clip space is before the divide.
+        vec2 toClip = 2.0 / resolution * clip.w;
+        material.clipSpaceTransform = mat4(vec4(axis1 * toClip, 0.0, 0.0),
+                                           vec4(axis2 * toClip, 0.0, 0.0),
+                                           vec4(0.0),
+                                           clip);
+
+        // In units of the standard deviation along each axis, so the
+        // Gaussian in the fragment stage is exp(-½|p|²) with nothing else.
+        material.splatAt = vec4(corner * 3.0, 0.0, 0.0);
+
+        uint packed = t2.y;
+        vec4 colour = vec4(float(packed & 0xffu), float((packed >> 8u) & 0xffu),
+                           float((packed >> 16u) & 0xffu),
+                           float((packed >> 24u) & 0xffu)) / 255.0;
+
+        // The view-dependent part, for a capture that carries any. The branch
+        // is on a uniform, so every splat in a cloud takes the same side of
+        // it, and a cloud at degree nought takes exactly the path this shader
+        // had before there were any bands.
+        int degree = materialParams.harmonicDegree;
+        if (degree > 0) {
+            // The direction from the camera to this splat, in the cloud's own
+            // space — the space its coefficients were fitted in. The camera is
+            // the origin of view space, so that direction is the centre
+            // itself, and the model-to-view rotation carries it back
+            // transposed because it is going the other way. Exact for a cloud
+            // that is turned, moved or scaled evenly; a cloud scaled unevenly
+            // skews it a little, as it skews everything else about the splat.
+            vec3 towards = normalize(transpose(mat3(viewFromModel)) * view.xyz);
+            // Never negative: the sum of a few bands can dip below nothing
+            // where the fit had no photographs to hold it up, and the
+            // reference clamps it in the same place for the same reason.
+            colour.rgb = max(colour.rgb + harmonicColour(id, degree, towards),
+                             vec3(0.0));
+        }
+        material.splatColour = colour;
+    }
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+
+        vec2 p = variable_splatAt.xy;
+        float power = -0.5 * dot(p, p);
+
+        // The reference's cut-offs: nothing past three standard deviations,
+        // nothing fainter than a step of eight-bit colour, and never quite
+        // opaque, so what is behind a splat is not lost entirely.
+        if (dot(p, p) > 9.0) discard;
+        vec4 colour = variable_splatColour;
+        float alpha = min(0.99, colour.a * materialParams.opacity * exp(power));
+        if (alpha < 1.0 / 255.0) discard;
+
+        // The colours a capture is trained to are display values, and
+        // Filament blends and grades in linear light. Decoded here so that the
+        // colour reaching the screen is the one the capture meant — the blend
+        // between splats is therefore in linear light rather than in the
+        // display space the reference blends in.
+        vec3 linear = pow(max(colour.rgb, vec3(0.0)), vec3(2.2)) *
+                      materialParams.brightness;
+
+        // Premultiplied, which is what `transparent` blending is.
+        material.baseColor = vec4(linear * alpha, alpha);
+    }
+}

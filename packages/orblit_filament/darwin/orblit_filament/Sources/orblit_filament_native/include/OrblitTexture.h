@@ -1,0 +1,27 @@
+#import <Foundation/Foundation.h>
+#import <TargetConditionals.h>
+
+// The same protocol, in a differently-named module on each platform.
+#if TARGET_OS_IPHONE
+#import <Flutter/Flutter.h>
+#else
+#import <FlutterMacOS/FlutterMacOS.h>
+#endif
+
+#import "OrblitRenderer.h"
+
+NS_ASSUME_NONNULL_BEGIN
+
+/// Adapts a renderer to Flutter's texture registry.
+///
+/// `copyPixelBuffer` is the whole integration: Flutter asks for the latest
+/// frame and gets the IOSurface-backed buffer Filament drew into, which the
+/// compositor wraps as a Metal texture rather than reading back through the
+/// CPU.
+@interface OrblitTexture : NSObject <FlutterTexture>
+
+- (instancetype)initWithRenderer:(OrblitRenderer *)renderer;
+
+@end
+
+NS_ASSUME_NONNULL_END

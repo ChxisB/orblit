@@ -4,8 +4,8 @@
 #
 #   tool/capture_web.sh [example] [milliseconds]
 #
-# The example is chosen the way every ORBIS_* switch is on the web: in the
-# query string (see lib/orbis_env_web.dart), so sweeping one is changing a URL
+# The example is chosen the way every ORBLIT_* switch is on the web: in the
+# query string (see lib/orblit_env_web.dart), so sweeping one is changing a URL
 # rather than rebuilding.
 #
 # WebGL 2 comes from SwiftShader, Chrome's software rasteriser, so a shot does
@@ -20,7 +20,7 @@ PORT="${PORT:-8811}"
 CHROME="${CHROME:-/Applications/Google Chrome.app/Contents/MacOS/Google Chrome}"
 OUT="${OUT:-captures}"
 [ -f build/web/index.html ] || { echo "capture: no build/web; run flutter build web" >&2; exit 1; }
-[ -f build/web/orbis_renderer.wasm ] || { echo "capture: build/web has no orbis_renderer.wasm" >&2; exit 1; }
+[ -f build/web/orblit_renderer.wasm ] || { echo "capture: build/web has no orblit_renderer.wasm" >&2; exit 1; }
 mkdir -p "$OUT"
 
 python3 -m http.server "$PORT" --bind 127.0.0.1 --directory build/web >/dev/null 2>&1 &
@@ -33,7 +33,7 @@ for _ in $(seq 100); do
 done
 
 NAME="$(echo "$EXAMPLE" | tr '[:upper:]' '[:lower:]')"
-URL="http://127.0.0.1:$PORT/?ORBIS_EXAMPLE=$EXAMPLE&ORBIS_SECONDS=1.5"
+URL="http://127.0.0.1:$PORT/?ORBLIT_EXAMPLE=$EXAMPLE&ORBLIT_SECONDS=1.5"
 
 # The wait below polls for the screenshot, so a shot left over from a previous
 # run would end it immediately and leave a stale picture looking like a fresh
@@ -70,4 +70,4 @@ done
 wait "$PID" 2>/dev/null || true
 
 echo "capture: $OUT/$NAME.png"
-grep -E "orbis|Filament|feature level|WebGL" "$OUT/$NAME.log" | head -20 || true
+grep -E "orblit|Filament|feature level|WebGL" "$OUT/$NAME.log" | head -20 || true

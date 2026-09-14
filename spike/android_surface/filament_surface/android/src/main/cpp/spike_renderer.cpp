@@ -1,4 +1,4 @@
-// Orbis spike: prove Filament draws into a Flutter texture on Android.
+// Orblit spike: prove Filament draws into a Flutter texture on Android.
 //
 // The Apple path was proved by spike/cube_to_pixelbuffer.mm: Filament renders
 // into a CVPixelBuffer and Flutter's texture registry takes it. Android has no
@@ -65,7 +65,7 @@ using namespace filament::math;
 using utils::Entity;
 using utils::EntityManager;
 
-#define TAG "OrbisSpike"
+#define TAG "OrblitSpike"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, TAG, __VA_ARGS__)
 #define LOGW(...) __android_log_print(ANDROID_LOG_WARN, TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, TAG, __VA_ARGS__)
@@ -140,7 +140,7 @@ const char* backendName(Engine::Backend b) {
 class SpikeRenderer {
 public:
     // requestFeatureLevel3 exists only to answer one question this spike was
-    // built to answer: is a reported ceiling one Orbis's standard lit surface
+    // built to answer: is a reported ceiling one Orblit's standard lit surface
     // (feature level 3, twelve samplers) could actually reach, or only a
     // number? Left false -- the default -- the engine settles at its own
     // default level and getSupportedFeatureLevel() reports the honest device
@@ -456,7 +456,7 @@ jstring toJString(JNIEnv* env, const std::string& s) {
 }  // namespace
 
 // ---------------------------------------------------------------------------
-// JNI. Names are the mangled form for dev.orbis.spike.filament_surface.
+// JNI. Names are the mangled form for dev.orblit.spike.filament_surface.
 // SpikeRenderer -- note filament_surface becomes filament_1surface, because JNI
 // escapes an underscore in a package name as _1.
 // ---------------------------------------------------------------------------
@@ -464,7 +464,7 @@ jstring toJString(JNIEnv* env, const std::string& s) {
 extern "C" {
 
 JNIEXPORT jlong JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeCreate(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeCreate(
         JNIEnv*, jclass, jint backendOrdinal, jboolean requestFeatureLevel3) {
     // 0 = OpenGL ES, 1 = Vulkan. Kept as an int so the Dart side can ask for a
     // backend by name without the Kotlin layer knowing Filament's enum.
@@ -476,7 +476,7 @@ Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeCreate(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeAttachSurface(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeAttachSurface(
         JNIEnv* env, jclass, jlong handle, jobject surface, jint width, jint height) {
     auto* r = fromHandle(handle);
     if (r == nullptr || surface == nullptr) {
@@ -489,7 +489,7 @@ Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeAttachSurface(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeDetachSurface(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeDetachSurface(
         JNIEnv*, jclass, jlong handle) {
     if (auto* r = fromHandle(handle); r != nullptr) {
         r->detachSurface();
@@ -497,7 +497,7 @@ Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeDetachSurface(
 }
 
 JNIEXPORT void JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeResize(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeResize(
         JNIEnv*, jclass, jlong handle, jint width, jint height) {
     if (auto* r = fromHandle(handle); r != nullptr) {
         r->resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
@@ -505,35 +505,35 @@ Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeResize(
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeRender(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeRender(
         JNIEnv*, jclass, jlong handle, jlong frameTimeNanos) {
     auto* r = fromHandle(handle);
     return (r != nullptr && r->render(frameTimeNanos)) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jboolean JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeHasSurface(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeHasSurface(
         JNIEnv*, jclass, jlong handle) {
     auto* r = fromHandle(handle);
     return (r != nullptr && r->hasSurface()) ? JNI_TRUE : JNI_FALSE;
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeDescribe(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeDescribe(
         JNIEnv* env, jclass, jlong handle) {
     auto* r = fromHandle(handle);
     return toJString(env, r != nullptr ? r->describe() : std::string("error=no renderer\n"));
 }
 
 JNIEXPORT jstring JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeStats(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeStats(
         JNIEnv* env, jclass, jlong handle) {
     auto* r = fromHandle(handle);
     return toJString(env, r != nullptr ? r->stats() : std::string("error=no renderer\n"));
 }
 
 JNIEXPORT void JNICALL
-Java_dev_orbis_spike_filament_1surface_SpikeRenderer_nativeDestroy(
+Java_dev_orblit_spike_filament_1surface_SpikeRenderer_nativeDestroy(
         JNIEnv*, jclass, jlong handle) {
     delete fromHandle(handle);
 }

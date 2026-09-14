@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22.1)
-project(orbis_spike LANGUAGES CXX)
+project(orblit_spike LANGUAGES CXX)
 
 # Filament 1.76 headers are C++17 and its public API uses inline std::string_view
 # and structured bindings; 17 is the floor, and anything newer changes no ABI
@@ -26,15 +26,15 @@ if(NOT EXISTS "${FILAMENT_LIB_DIR}")
     message(FATAL_ERROR "Filament release has no libs for ABI ${ANDROID_ABI}")
 endif()
 
-add_library(orbis_spike SHARED spike_renderer.cpp)
+add_library(orblit_spike SHARED spike_renderer.cpp)
 
-target_include_directories(orbis_spike PRIVATE
+target_include_directories(orblit_spike PRIVATE
     "${FILAMENT_DIR}/include"
     "${CMAKE_CURRENT_SOURCE_DIR}")
 
 # Filament's public headers carry no guard against these and the NDK's default
 # warning set is quiet enough that leaving them on costs nothing.
-target_compile_options(orbis_spike PRIVATE -Wall -Wextra -Wno-unused-parameter)
+target_compile_options(orblit_spike PRIVATE -Wall -Wextra -Wno-unused-parameter)
 
 # Filament ships as a set of static archives with circular dependencies between
 # them: filament needs backend, backend needs filament's utils and filabridge,
@@ -67,7 +67,7 @@ foreach(lib ${FILAMENT_STATIC_LIBS})
     list(APPEND FILAMENT_LINK_LINE "${FILAMENT_LIB_DIR}/lib${lib}.a")
 endforeach()
 
-target_link_libraries(orbis_spike
+target_link_libraries(orblit_spike
     PRIVATE
         -Wl,--start-group
         ${FILAMENT_LINK_LINE}
@@ -96,4 +96,4 @@ target_link_libraries(orbis_spike
 # connection back to the flag that caused it. Risk for little gain, so it
 # stays off; the real plugin can measure and decide with a size budget that
 # actually matters.
-target_link_options(orbis_spike PRIVATE -Wl,--no-undefined)
+target_link_options(orblit_spike PRIVATE -Wl,--no-undefined)

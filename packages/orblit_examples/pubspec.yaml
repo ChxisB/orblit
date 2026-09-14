@@ -1,0 +1,35 @@
+name: orblit_examples
+description: >-
+  One technique at a time: a scene that shows it, the controls that change it,
+  and the lines that do it. Shown by the gallery app and by the editor.
+version: 0.23.0
+publish_to: none
+
+environment:
+  sdk: ^3.13.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  orblit_filament:
+    path: ../orblit_filament
+  orblit_camera:
+    path: ../orblit_camera
+  orblit_weather:
+    path: ../orblit_weather
+  # For a landscape that is the same every time it is generated.
+  orblit_noise:
+    path: ../orblit_noise
+
+  # For choosing a film to play. A file the person picked is the only kind an
+  # example can be sure of: typing a path is a guess, and a guess that fails
+  # looks exactly like a renderer that does not work.
+  file_selector: ^1.0.3
+
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  flutter_lints: ^5.0.0
+  flutter_test:
+    sdk: flutter

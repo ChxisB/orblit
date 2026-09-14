@@ -1,4 +1,4 @@
-name: orbis_web_canvas
+name: orblit_web_canvas
 description: "Spike: Filament (WebAssembly) rendering into a canvas inside a Flutter web app."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.

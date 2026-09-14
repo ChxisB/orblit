@@ -1,4 +1,4 @@
-// Orbis Android spike: a picker for the backend, then Filament's output in a
+// Orblit Android spike: a picker for the backend, then Filament's output in a
 // Texture widget with an ordinary Flutter label drawn over it. The label is
 // the proof that matters as much as the cube -- it shows the compositor is
 // treating the texture as one layer among others, not the whole screen.
@@ -18,7 +18,7 @@ class SpikeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Orbis Android Spike',
+      title: 'Orblit Android Spike',
       theme: ThemeData(colorSchemeSeed: Colors.teal, useMaterial3: true),
       debugShowCheckedModeBanner: false,
       home: const SpikeHome(),
@@ -135,7 +135,7 @@ class _SpikeHomeState extends State<SpikeHome> {
         mainAxisSize: MainAxisSize.min,
         children: [
           const Text(
-            'Orbis Android Spike',
+            'Orblit Android Spike',
             style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -194,7 +194,7 @@ class _SpikeHomeState extends State<SpikeHome> {
           SizedBox(
             width: 260,
             height: 64,
-            // Orbis's standard lit surface needs feature level 3. Vulkan
+            // Orblit's standard lit surface needs feature level 3. Vulkan
             // reports *supporting* it here (see the overlay's supportedFL
             // after the plain Vulkan button) without the engine actually
             // running at it -- this button is the difference between a

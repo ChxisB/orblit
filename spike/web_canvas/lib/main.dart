@@ -18,7 +18,7 @@ import 'package:flutter/material.dart';
 import 'filament_canvas.dart';
 import 'scene_message.dart';
 
-/// The Orbis entity id of the one primitive in the scene, matching the CUBE
+/// The Orblit entity id of the one primitive in the scene, matching the CUBE
 /// the JavaScript renderer knows.
 const int cubeEntity = 1;
 
@@ -35,7 +35,7 @@ class SpikeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Orbis web canvas spike',
+      title: 'Orblit web canvas spike',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -215,7 +215,7 @@ class _Header extends StatelessWidget {
         const Icon(Icons.language, size: 20, color: Color(0xFF7FA8FF)),
         const SizedBox(width: 8),
         Text(
-          'Orbis web spike',
+          'Orblit web spike',
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.2,
@@ -264,7 +264,7 @@ class _CompositingLabel extends StatelessWidget {
 }
 
 /// What Filament reports about the device it actually got. On WebGL 2 the
-/// feature level here is the number that decides whether Orbis's standard lit
+/// feature level here is the number that decides whether Orblit's standard lit
 /// surface can load at all, so it is on screen rather than in a log.
 class _StatsPanel extends StatelessWidget {
   const _StatsPanel({required this.stats, required this.error});

@@ -1,0 +1,858 @@
+import 'dart:typed_data';
+
+/// What a pass draws into, when it is not drawing into the frame.
+///
+/// A named image the renderer keeps between passes: the scene from a mirror's
+/// point of view, a depth buffer an outline is traced from, a thumbnail. It is
+/// a declaration rather than an allocation — the renderer makes it when
+/// something writes it, keeps it while something reads it, and drops it when
+/// nothing does.
+class OrblitTarget {
+  const OrblitTarget({
+    required this.name,
+    this.width = 0,
+    this.height = 0,
+    this.scale = 1.0,
+    this.depth = true,
+    this.colour = true,
+  });
+
+  /// What passes call it. Unique within a graph.
+  final String name;
+
+  /// Its size in pixels, or zero to follow the view's own size.
+  ///
+  /// Following is the right default and the one most passes want: a reflection
+  /// or a depth buffer that did not resize with the window would be sampled at
+  /// the wrong scale from the first drag of its corner.
+  final int width;
+  final int height;
+
+  /// A fraction of the view's size, applied when [width] and [height] are
+  /// zero.
+  ///
+  /// Half-resolution is the usual answer for anything blurred afterwards —
+  /// reflections, occlusion — and costs a quarter of the pixels.
+  final double scale;
+
+  /// Whether it keeps depth, and whether it keeps colour.
+  ///
+  /// A depth prepass writes depth and no colour; a purely two-dimensional
+  /// overlay writes colour and no depth. Both would otherwise pay for a buffer
+  /// nothing reads.
+  final bool depth;
+  final bool colour;
+
+  OrblitTarget copyWith({
+    String? name,
+    int? width,
+    int? height,
+    double? scale,
+    bool? depth,
+    bool? colour,
+  }) => OrblitTarget(
+    name: name ?? this.name,
+    width: width ?? this.width,
+    height: height ?? this.height,
+    scale: scale ?? this.scale,
+    depth: depth ?? this.depth,
+    colour: colour ?? this.colour,
+  );
+
+  @override
+  String toString() => 'OrblitTarget($name)';
+}
+
+/// What a pass is for.
+///
+/// Not a free-form shader hook. Each kind is something the renderer already
+/// knows how to do, and the graph decides how many of them there are, in what
+/// order, and against which targets — which is the part that changes from
+/// scene to scene. A kind nobody has implemented cannot be declared, so a
+/// graph that schedules is a graph that draws.
+///
+/// Short on purpose, and it will stay short until each addition is a pass
+/// that actually runs. A list of kinds longer than the list of things the
+/// renderer does is a list where declaring a pass and getting nothing is a
+/// normal outcome, and there is no way for a host to tell that from a bug.
+/// The screen-space effects the renderer knows how to run.
+///
+/// Each is a compiled shader inside the renderer, so this list is what exists
+/// rather than what a host can invent.
+enum OrblitEffect {
+  /// Puts back the edge the anti-aliasing took off.
+  ///
+  /// Temporal anti-aliasing works by spreading a pixel's history over several
+  /// frames, and the cost of that is a softer picture — the sharpest thing a
+  /// TAA image can be is slightly blurred. This is the usual answer: a small
+  /// contrast-adaptive sharpen afterwards, which lifts detail back without
+  /// ringing the way a plain unsharp mask does, because how much it applies
+  /// depends on how much local contrast is already there.
+  sharpen('Sharpen'),
+
+  /// SMAA, pass one: where the edges are.
+  ///
+  /// Enhanced subpixel morphological anti-aliasing works on the finished
+  /// image, like FXAA, but instead of guessing at an edge and blurring along
+  /// it, it works out the *shape* the edge belongs to and blends by how much
+  /// of the pixel that shape covers. No history, so unlike temporal it cannot
+  /// smear; no guess, so unlike FXAA it does not soften what it should leave
+  /// alone.
+  ///
+  /// Three passes, chained: this one writes a picture of the edges, which
+  /// [smaaWeights] reads.
+  smaaEdges('SMAA edges'),
+
+  /// SMAA, pass two: how much of each pixel the edge covers.
+  ///
+  /// Walks along each edge to find the shape it belongs to and looks that
+  /// shape's coverage up in a precomputed table. Reads what [smaaEdges] wrote.
+  smaaWeights('SMAA weights'),
+
+  /// SMAA, pass three: the blend itself.
+  ///
+  /// Mixes each pixel with its neighbour by the weight pass two decided.
+  /// Reads the original image *and* the weights, in that order, so a graph
+  /// lists both in [OrblitPass.reads].
+  smaaBlend('SMAA blend'),
+
+  /// Light bouncing off what is already on the screen.
+  ///
+  /// A renderer's direct lighting stops at the first surface: a red wall lit
+  /// by the sun is red, and the white wall beside it is white, when in a room
+  /// it would be pink. This puts one bounce back, taken from the only place a
+  /// screen-space effect can take it — the picture that has already been
+  /// drawn.
+  ///
+  /// Each pixel marches the depth buffer outwards along a fan of directions,
+  /// marking off the sectors of its hemisphere that something blocks. A
+  /// sector that has *just* been blocked is a surface the pixel can see, so
+  /// its colour is credited as light arriving from that direction. Counting
+  /// sectors rather than samples is what makes the falloff right without a
+  /// distance term: something twice as far away covers a quarter of the
+  /// sectors, which is the inverse square, arrived at by geometry.
+  ///
+  /// It reads the picture and the depth of the same target, so a graph lists
+  /// that target once in [OrblitPass.reads] and the pass finds both.
+  ///
+  /// The pass reads four dials from [OrblitPass.plane], each defaulting when
+  /// it is left at nought: how far it looks in metres, how much of the bounce
+  /// comes back, how solid the depth buffer's surfaces are taken to be, and
+  /// how many directions each pixel fans along.
+  ///
+  /// It is not cheap, and the last of those dials is why. Measured at
+  /// 800 by 600 against the same graph running a pass that only copies:
+  /// two directions costs **1.9 ms**, four costs **3.7 ms**, eight costs
+  /// **6.7 ms** — near enough a millisecond per direction, and it scales with
+  /// the number of pixels. Four is the default because it is where the grain
+  /// stops being the first thing anybody notices. Running the pass into a
+  /// half-size target is the obvious saving and is not built yet.
+  ///
+  /// What it cannot do is worth knowing. It only knows about surfaces that
+  /// are on screen, so light from behind the camera or off the edge of the
+  /// frame does not arrive, and turning away from a red wall takes its bounce
+  /// with it. And it works on the finished picture rather than inside the
+  /// shading, so it scales the light already there rather than being
+  /// reflected by each surface's own colour — which is why it can tint a lit
+  /// surface but can never light an unlit one.
+  bounce('Bounce'),
+
+  /// A target, put on the screen, and nothing else.
+  ///
+  /// The plainest pass there is, and the one that makes the others possible.
+  /// Anything that reads what the scene drew needs the scene drawn into a
+  /// target rather than onto the screen — and then needs something to put
+  /// that target on the screen. Without this the only way to present one is
+  /// to run an effect that also changes it.
+  copy('Copy'),
+
+  /// Shafts of light through the gaps in whatever stands against the sky.
+  ///
+  /// Each pixel walks towards the light's place on the screen and adds up how
+  /// much of the way is open sky — Mitchell's screen-space light scattering.
+  /// Open sky is read from the depth buffer, so it reads the picture and the
+  /// depth of the same target, the way [bounce] does. Its settings are the
+  /// scene's [OrblitGodRays]; at a strength of nought it is a copy.
+  ///
+  /// A scene with no graph of its own does not need to name this: turning
+  /// god rays on puts it in. A graph that is its own puts it where it wants.
+  godRays('God rays'),
+
+  /// The picture read from a little way off, where air bends the light.
+  ///
+  /// Sums the scene's [OrblitDistortion]s — shockwaves, heat haze, a lens —
+  /// into one offset per pixel. Depth-aware, so it reads depth as well as
+  /// colour: from the first target it reads that kept depth, which lets it
+  /// take its colour from a pass that ran after the world was drawn.
+  distortion('Distortion'),
+
+  /// What moved while the shutter was open, smeared along the way it moved.
+  ///
+  /// Reads the colour and the depth of one target, like [bounce], and is
+  /// usually built by [OrblitMotionBlur.pass] rather than by hand — the plane
+  /// carries its four dials in the order that class writes them.
+  ///
+  /// Four steps inside the renderer, all of them its own business rather
+  /// than passes in the graph: the objects that moved since the scene was
+  /// last published are drawn again with a material that writes how far each
+  /// pixel travelled; that is added to the camera's own motion, rebuilt from
+  /// depth for every pixel; the largest motion in each tile of the screen is
+  /// found; and each pixel gathers along the largest motion near it, weighted
+  /// by depth so that a moving thing smears over what is behind it and not
+  /// the other way round. The last two are McGuire, Hennessy, Bukowski and
+  /// Osman, "A Reconstruction Filter for Plausible Motion Blur" (2012).
+  ///
+  /// Measured at 1600 by 1200 on a GPU shared with other work, against the
+  /// same graph running a pass that only copies: about **2 ms** more with a
+  /// fan and a plate moving under a still camera, and **4 to 5 ms** more
+  /// while the camera pans and every pixel gathers. A frame in which nothing
+  /// moved skips the three inner passes and copies.
+  motionBlur('Motion blur');
+
+  const OrblitEffect(this.label);
+
+  final String label;
+}
+
+enum OrblitPassKind {
+  /// Everything the scene contains, lit, from the scene's own camera.
+  ///
+  /// Into the frame it is the ordinary picture; into a target it is a
+  /// thumbnail, a security monitor, a portal, or the same world seen by
+  /// another eye.
+  scene('Scene'),
+
+  /// The scene reflected in a plane — a mirror, still water.
+  ///
+  /// The same pass from a camera mirrored about [OrblitPass.plane], with the
+  /// winding turned inside out because reflecting the world reverses which
+  /// side of a triangle is facing.
+  reflection('Reflection'),
+
+  /// A material run over every pixel of what another pass drew, rather than a
+  /// camera pointed at the world.
+  ///
+  /// The rails every screen-space effect runs on: it reads a target, writes a
+  /// target, and draws one triangle covering the lot. Which effect it runs is
+  /// [OrblitPass.effect].
+  effect('Effect');
+
+  const OrblitPassKind(this.label);
+
+  final String label;
+}
+
+/// One step of a frame.
+///
+/// A pass says what it draws, where it draws it, and what it needs to have
+/// been drawn first. The order it actually runs in is worked out from the last
+/// of those rather than declared, because an order somebody maintains by hand
+/// is an order that goes wrong the first time a pass is inserted in the middle
+/// — and goes wrong silently, as a frame that samples a target from last
+/// frame.
+class OrblitPass {
+  const OrblitPass({
+    required this.name,
+    this.kind = OrblitPassKind.scene,
+    this.into,
+    this.reads = const [],
+    this.layers = 0xFF,
+    this.enabled = true,
+    this.clear = true,
+    this.plane,
+    this.effect,
+  });
+
+  /// What this pass is called, and what a capture reports it as. Unique
+  /// within a graph.
+  final String name;
+
+  final OrblitPassKind kind;
+
+  /// The target it writes, or null for the frame itself.
+  ///
+  /// Exactly one pass may write the frame. Two would mean the second
+  /// overwriting the first, which is not a graph anybody meant to draw.
+  final String? into;
+
+  /// The targets it samples. What the schedule is worked out from.
+  final List<String> reads;
+
+  /// Which render layers it draws.
+  ///
+  /// A bitfield against [OrblitObject.layer]. This is what makes one scene
+  /// serve several passes: a reflection that leaves out the water it is
+  /// reflecting, a thumbnail without the editor's own gizmos, a shadow-only
+  /// object that is never drawn directly.
+  final int layers;
+
+  /// Whether it happens at all. A pass switched off is skipped and everything
+  /// that reads it gets whatever it held last, rather than the graph refusing
+  /// to schedule.
+  final bool enabled;
+
+  /// Whether its target is cleared first.
+  final bool clear;
+
+  /// The mirror, for a reflection pass: a plane as `nx, ny, nz, d`.
+  final List<double>? plane;
+
+  /// Which screen-space effect this pass runs, for [OrblitPassKind.effect].
+  ///
+  /// One of a set the renderer knows rather than a material somebody wrote:
+  /// an effect needs its own compiled shader, and compiling one at runtime is
+  /// a different and much larger door than this.
+  final OrblitEffect? effect;
+
+  OrblitPass copyWith({
+    String? name,
+    OrblitPassKind? kind,
+    String? into,
+    List<String>? reads,
+    int? layers,
+    bool? enabled,
+    bool? clear,
+    List<double>? plane,
+    OrblitEffect? effect,
+  }) => OrblitPass(
+    name: name ?? this.name,
+    kind: kind ?? this.kind,
+    into: into ?? this.into,
+    reads: reads ?? this.reads,
+    layers: layers ?? this.layers,
+    enabled: enabled ?? this.enabled,
+    clear: clear ?? this.clear,
+    plane: plane ?? this.plane,
+    effect: effect ?? this.effect,
+  );
+
+  @override
+  String toString() => 'OrblitPass($name → ${into ?? 'frame'})';
+}
+
+/// Something a graph says that the renderer cannot do.
+///
+/// Reported rather than thrown. A graph is edited a pass at a time, and half
+/// of the intermediate states are incomplete — a target named before it is
+/// declared, a read added before the pass that writes it. Refusing to draw at
+/// each of those is an editor that goes black while somebody types.
+class OrblitGraphProblem {
+  const OrblitGraphProblem(this.pass, this.what);
+
+  /// The pass it is about, or the empty string for the graph as a whole.
+  final String pass;
+
+  final String what;
+
+  @override
+  String toString() => pass.isEmpty ? what : '$pass: $what';
+}
+
+/// How a frame gets put together.
+///
+/// The passes, the targets between them, and the order that falls out of what
+/// each one reads. [OrblitPipeline] says how much of each step happens; this
+/// says which steps there are.
+///
+/// The default is one pass into the frame, which is exactly what the renderer
+/// did before there was a graph — so a host that never mentions one draws the
+/// same frame it always drew, and nothing pays for the generality until it is
+/// used.
+class OrblitRenderGraph {
+  const OrblitRenderGraph({this.passes = const [], this.targets = const []});
+
+  /// The frame as it was before anything else was possible: everything, lit,
+  /// straight into the picture.
+  factory OrblitRenderGraph.standard() =>
+      const OrblitRenderGraph(passes: [OrblitPass(name: 'scene')]);
+
+  final List<OrblitPass> passes;
+  final List<OrblitTarget> targets;
+
+  /// The most passes a graph may hold.
+  ///
+  /// A limit rather than none, because every pass is a view and a target the
+  /// renderer allocates, and a graph built in a loop that ran away should hit
+  /// something that names the problem rather than the memory ceiling.
+  static const int maxPasses = 32;
+
+  OrblitRenderGraph copyWith({
+    List<OrblitPass>? passes,
+    List<OrblitTarget>? targets,
+  }) => OrblitRenderGraph(
+    passes: passes ?? this.passes,
+    targets: targets ?? this.targets,
+  );
+
+  OrblitRenderGraph with_(OrblitPass pass) => copyWith(passes: [...passes, pass]);
+
+  OrblitRenderGraph withTarget(OrblitTarget target) =>
+      copyWith(targets: [...targets, target]);
+
+  /// The passes that will run, in the order they will run in.
+  ///
+  /// A pass that writes a target comes before every pass that reads it. Among
+  /// passes that do not depend on each other, the order they were declared in
+  /// is kept: two independent passes have no correct order, and the one
+  /// somebody wrote down is the one they will expect to see in a capture.
+  ///
+  /// The pass that writes the frame is last whatever it depends on, because
+  /// the frame is what everything else was for.
+  ///
+  /// Empty when the graph cannot be scheduled at all; [problems] says why.
+  List<OrblitPass> get schedule {
+    if (problems.any((problem) => problem.pass.isEmpty)) return const [];
+
+    final running = [
+      for (final pass in passes)
+        if (pass.enabled) pass,
+    ];
+    final writers = <String, String>{
+      for (final pass in running)
+        if (pass.into != null) pass.into!: pass.name,
+    };
+
+    final done = <String>{};
+    final ordered = <OrblitPass>[];
+    var remaining = [...running];
+
+    while (remaining.isNotEmpty) {
+      final ready = [
+        for (final pass in remaining)
+          if (pass.into != null &&
+              pass.reads.every(
+                (read) => !writers.containsKey(read) || done.contains(read),
+              ))
+            pass,
+      ];
+
+      // Nothing can go next and something is left: the passes still waiting
+      // are waiting on each other. Reported by [problems]; here it simply
+      // stops rather than looping.
+      if (ready.isEmpty) break;
+
+      for (final pass in ready) {
+        ordered.add(pass);
+        if (pass.into != null) done.add(pass.into!);
+      }
+      remaining = [
+        for (final pass in remaining)
+          if (!ready.contains(pass)) pass,
+      ];
+    }
+
+    // The one that draws the picture, after everything that fed it.
+    final frame = [
+      for (final pass in running)
+        if (pass.into == null) pass,
+    ];
+    return [...ordered, ...frame];
+  }
+
+  /// Everything wrong with this graph.
+  ///
+  /// A problem naming a pass is that pass being dropped; a problem naming no
+  /// pass is the graph as a whole failing to schedule, and nothing running.
+  List<OrblitGraphProblem> get problems {
+    final found = <OrblitGraphProblem>[];
+
+    if (passes.length > maxPasses) {
+      found.add(OrblitGraphProblem('', 'more than $maxPasses passes'));
+    }
+
+    final declared = {for (final target in targets) target.name};
+    final names = <String>{};
+    final written = <String>{};
+    var frames = 0;
+
+    for (final pass in passes) {
+      if (!names.add(pass.name)) {
+        found.add(OrblitGraphProblem(pass.name, 'two passes with this name'));
+      }
+      if (pass.into == null) {
+        frames++;
+      } else {
+        if (!declared.contains(pass.into)) {
+          found.add(
+            OrblitGraphProblem(
+              pass.name,
+              'writes ${pass.into}, which is not '
+              'a target of this graph',
+            ),
+          );
+        }
+        if (!written.add(pass.into!)) {
+          found.add(
+            OrblitGraphProblem(
+              pass.name,
+              'writes ${pass.into}, which another '
+              'pass already writes',
+            ),
+          );
+        }
+      }
+      for (final read in pass.reads) {
+        if (!declared.contains(read)) {
+          found.add(
+            OrblitGraphProblem(
+              pass.name,
+              'reads $read, which is not a target '
+              'of this graph',
+            ),
+          );
+        }
+      }
+      if (pass.reads.contains(pass.into)) {
+        found.add(OrblitGraphProblem(pass.name, 'reads the target it writes'));
+      }
+      // An effect that reads the shape of the scene needs a target that kept
+      // it. The renderer skips such a pass rather than sampling a buffer that
+      // is not there — which draws a frame with the effect silently absent,
+      // and that is indistinguishable from the effect not working.
+      if (pass.effect == OrblitEffect.bounce ||
+          pass.effect == OrblitEffect.motionBlur) {
+        for (final read in pass.reads) {
+          final target = targets.where((one) => one.name == read).firstOrNull;
+          if (target != null && !target.depth) {
+            found.add(
+              OrblitGraphProblem(
+                pass.name,
+                pass.effect == OrblitEffect.bounce
+                    ? 'bounces light off $read, which keeps no depth — so '
+                          'there is no telling what is in front of what'
+                    : 'blurs $read, which keeps no depth — so the camera\'s '
+                          'motion cannot be rebuilt and nothing knows what '
+                          'is in front of what',
+              ),
+            );
+          }
+        }
+      }
+      // God rays and distortion need depth too, but from any one of their
+      // reads rather than every one: the distortion takes its colour from the
+      // god rays' output, which is a picture with no depth, and its depth
+      // from the world that pass read.
+      if ((pass.effect == OrblitEffect.godRays ||
+              pass.effect == OrblitEffect.distortion) &&
+          pass.reads.isNotEmpty) {
+        final kept = pass.reads.any(
+          (read) =>
+              targets.where((one) => one.name == read).firstOrNull?.depth ??
+              false,
+        );
+        if (!kept) {
+          found.add(
+            OrblitGraphProblem(
+              pass.name,
+              'reads no target that keeps depth — so there is no telling '
+              'what stands in front of what',
+            ),
+          );
+        }
+      }
+      if (pass.kind == OrblitPassKind.reflection && pass.plane == null) {
+        found.add(
+          OrblitGraphProblem(
+            pass.name,
+            'is a reflection with no plane to '
+            'reflect in',
+          ),
+        );
+      }
+    }
+
+    if (frames == 0 && passes.isNotEmpty) {
+      found.add(OrblitGraphProblem('', 'no pass draws the frame'));
+    }
+    if (frames > 1) {
+      found.add(
+        OrblitGraphProblem(
+          '',
+          '$frames passes draw the frame; the second '
+              'would only overwrite the first',
+        ),
+      );
+    }
+
+    // A cycle is what is left when the ordering runs out of passes it can
+    // place. Worked out here rather than in [schedule] so that schedule can
+    // stay the answer to "what runs" and this stays the answer to "why not".
+    final enabled = [
+      for (final pass in passes)
+        if (pass.enabled && pass.into != null) pass,
+    ];
+    final writers = <String, String>{
+      for (final pass in enabled) pass.into!: pass.name,
+    };
+    final settled = <String>{};
+    var moved = true;
+    while (moved) {
+      moved = false;
+      for (final pass in enabled) {
+        if (settled.contains(pass.into)) continue;
+        if (pass.reads.every(
+          (read) => !writers.containsKey(read) || settled.contains(read),
+        )) {
+          settled.add(pass.into!);
+          moved = true;
+        }
+      }
+    }
+    for (final pass in enabled) {
+      if (!settled.contains(pass.into)) {
+        found.add(
+          OrblitGraphProblem(pass.name, 'waits on a pass that waits on it'),
+        );
+      }
+    }
+
+    return found;
+  }
+
+  /// Whether every pass can run.
+  bool get isRunnable => problems.isEmpty;
+
+  /// Whether this is the frame as the renderer draws it unasked: everything,
+  /// straight into the picture, with nothing after it.
+  bool get isStandard =>
+      passes.isEmpty ||
+      (passes.length == 1 &&
+          passes.first.kind == OrblitPassKind.scene &&
+          passes.first.into == null &&
+          passes.first.enabled);
+
+  /// What the world is drawn into when a scene's god rays or distortion need
+  /// a picture to work on, and what the god rays write when a distortion
+  /// comes after them.
+  static const String screenTarget = 'orblit.screen';
+  static const String raysTarget = 'orblit.rays';
+
+  /// This graph with god rays and distortion put into it.
+  ///
+  /// Only into the renderer's own graph. A scene that never built one should
+  /// get the shafts it asked for without learning what a pass is; a scene
+  /// that did build one has decided its own order, and an effect slotted in
+  /// by guesswork would land somewhere it did not mean — so it is returned
+  /// untouched and places an [OrblitEffect.godRays] or
+  /// [OrblitEffect.distortion] pass itself.
+  ///
+  /// Neither asked for is this graph, unchanged — which is what makes both
+  /// free when off: no texture, no extra pass, the same frame as before.
+  ///
+  /// God rays come before distortion, because hot air bends everything behind
+  /// it, the shafts included.
+  OrblitRenderGraph withScreenEffects({
+    bool godRays = false,
+    bool distortion = false,
+  }) {
+    if (!godRays && !distortion) return this;
+    if (!isStandard) return this;
+
+    final world = passes.isEmpty ? null : passes.first;
+    return OrblitRenderGraph(
+      targets: [
+        const OrblitTarget(name: screenTarget),
+        if (godRays && distortion)
+          const OrblitTarget(name: raysTarget, depth: false),
+      ],
+      passes: [
+        OrblitPass(
+          name: world?.name ?? 'scene',
+          into: screenTarget,
+          layers: world?.layers ?? 0xFF,
+        ),
+        if (godRays)
+          OrblitPass(
+            name: 'god rays',
+            kind: OrblitPassKind.effect,
+            effect: OrblitEffect.godRays,
+            reads: const [screenTarget],
+            into: distortion ? raysTarget : null,
+          ),
+        if (distortion)
+          OrblitPass(
+            name: 'distortion',
+            kind: OrblitPassKind.effect,
+            effect: OrblitEffect.distortion,
+            // The colour to bend first, and the depth to bend it by second.
+            reads: godRays
+                ? const [raysTarget, screenTarget]
+                : const [screenTarget],
+          ),
+      ],
+    );
+  }
+
+  /// The targets nothing reads.
+  ///
+  /// Not an error — a pass may be drawing into a target for a host to pick up
+  /// itself, and a graph half-built has them constantly. Worth surfacing in an
+  /// editor, because the commonest reason a reflection does not appear is that
+  /// the pass that should sample it does not.
+  List<String> get unreadTargets {
+    final read = {for (final pass in passes) ...pass.reads};
+    return [
+      for (final target in targets)
+        if (!read.contains(target.name)) target.name,
+    ];
+  }
+
+  /// How many floats each pass takes on the wire.
+  static const int passStride = 13;
+
+  /// How many floats each target takes.
+  static const int targetStride = 6;
+
+  /// The scheduled passes, in the order the renderer runs them.
+  ///
+  /// Targets travel as indices into [packedTargets] rather than as names: the
+  /// names are for people, and a renderer that had to match strings on every
+  /// frame would be matching the same strings sixty times a second.
+  Float32List get packedPasses {
+    final running = schedule;
+    final index = <String, int>{
+      for (var i = 0; i < targets.length; i++) targets[i].name: i,
+    };
+
+    final out = Float32List(running.length * passStride);
+    for (var i = 0; i < running.length; i++) {
+      final pass = running[i];
+      final at = i * passStride;
+      out[at] = pass.kind.index.toDouble();
+      out[at + 1] = (pass.into == null ? -1 : index[pass.into] ?? -1)
+          .toDouble();
+      out[at + 2] = pass.layers.toDouble();
+      out[at + 3] = pass.clear ? 1 : 0;
+      // Up to four reads, which is more than any pass here needs and few
+      // enough to keep the row a fixed width.
+      for (var r = 0; r < 4; r++) {
+        out[at +
+            4 +
+            r] = (r < pass.reads.length ? index[pass.reads[r]] ?? -1 : -1)
+            .toDouble();
+      }
+      final plane = pass.plane;
+      for (var p = 0; p < 4; p++) {
+        out[at + 8 + p] = plane != null && p < plane.length ? plane[p] : 0;
+      }
+      // Its own slot rather than sharing the plane's, which a reflection uses
+      // and an effect does not. A field that means two things by the value of
+      // another is a field somebody reads wrong once and never finds out.
+      out[at + 12] = (pass.effect?.index ?? -1).toDouble();
+    }
+    return out;
+  }
+
+  Float32List get packedTargets {
+    final out = Float32List(targets.length * targetStride);
+    for (var i = 0; i < targets.length; i++) {
+      final target = targets[i];
+      final at = i * targetStride;
+      out[at] = target.width.toDouble();
+      out[at + 1] = target.height.toDouble();
+      out[at + 2] = target.scale;
+      out[at + 3] = target.depth ? 1 : 0;
+      out[at + 4] = target.colour ? 1 : 0;
+      out[at + 5] = 0;
+    }
+    return out;
+  }
+}
+
+/// What one pass cost, the last time the frame was drawn.
+class OrblitPassTiming {
+  const OrblitPassTiming({
+    required this.name,
+    required this.milliseconds,
+    required this.draws,
+  });
+
+  final String name;
+
+  /// What it cost, in milliseconds.
+  final double milliseconds;
+
+  /// How many draw calls it submitted.
+  final int draws;
+
+  @override
+  String toString() =>
+      '$name ${milliseconds.toStringAsFixed(2)}ms, $draws draws';
+}
+
+/// What actually happened in a frame.
+///
+/// The point of declaring passes rather than hard-coding them: a frame that
+/// says what it did can be looked at. Which passes ran, in what order, what
+/// each cost — the three questions asked of a renderer that is too slow, and
+/// the three a fixed pipeline cannot answer without being instrumented by
+/// hand every time somebody asks.
+class OrblitFrameCapture {
+  const OrblitFrameCapture({
+    this.passes = const [],
+    this.milliseconds = 0,
+    this.batchedObjects = 0,
+    this.batchGroups = 0,
+  });
+
+  final List<OrblitPassTiming> passes;
+
+  /// What the whole frame cost.
+  final double milliseconds;
+
+  /// How many objects the last publish put into a group big enough to merge.
+  ///
+  /// Nought with [OrblitScene.batching] off, and nought with it on in a scene
+  /// where nothing is repeated.
+  final int batchedObjects;
+
+  /// How many manually-instanced renderables those objects came to once
+  /// built — a group of up to sixty-four members is one, so
+  /// [batchedObjects] minus this is exactly the number of draws saved, not
+  /// a ceiling on it: unlike Filament's own automatic instancing, which only
+  /// merges draws that happen to land next to each other once sorted, a
+  /// batched group is built as one renderable from the start and there is
+  /// nothing left for a sort order to get in the way of.
+  final int batchGroups;
+
+  /// Reads a capture out of what the renderer sent back.
+  ///
+  /// Two floats per pass — what it cost and how many draws it made — in the
+  /// order the passes were scheduled, so the names come from this side rather
+  /// than crossing as strings sixty times a second.
+  factory OrblitFrameCapture.from(
+    Float32List packed,
+    List<String> names, {
+    int batchedObjects = 0,
+    int batchGroups = 0,
+  }) {
+    final passes = <OrblitPassTiming>[];
+    for (var i = 0; i < names.length && i * 2 + 1 < packed.length; i++) {
+      passes.add(
+        OrblitPassTiming(
+          name: names[i],
+          milliseconds: packed[i * 2],
+          draws: packed[i * 2 + 1].round(),
+        ),
+      );
+    }
+    return OrblitFrameCapture(
+      passes: passes,
+      milliseconds: passes.fold(0.0, (sum, pass) => sum + pass.milliseconds),
+      batchedObjects: batchedObjects,
+      batchGroups: batchGroups,
+    );
+  }
+
+  /// The pass that cost the most, or null if nothing ran.
+  OrblitPassTiming? get slowest {
+    if (passes.isEmpty) return null;
+    var worst = passes.first;
+    for (final pass in passes) {
+      if (pass.milliseconds > worst.milliseconds) worst = pass;
+    }
+    return worst;
+  }
+
+  int get draws => passes.fold(0, (sum, pass) => sum + pass.draws);
+}

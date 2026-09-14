@@ -81,7 +81,7 @@ get() {
   fi
 }
 
-echo "orbis: fetching the Bistro ($WANT)"
+echo "orblit: fetching the Bistro ($WANT)"
 get LICENSE.txt
 get README.md
 get san_giuseppe_bridge_4k.hdr
@@ -127,7 +127,7 @@ done
 #
 # Done here rather than at runtime because it is seconds of work per image and
 # the answer never changes.
-CMGEN="packages/orbis_filament/darwin/third_party/filament-mac/filament/bin/cmgen"
+CMGEN="packages/orblit_filament/darwin/third_party/filament-mac/filament/bin/cmgen"
 CMGEN="$(cd "$(dirname "$0")/.." && pwd)/$CMGEN"
 HDR="$INTO/san_giuseppe_bridge_4k.hdr"
 if [ -f "$HDR" ] && [ ! -f "$INTO/san_giuseppe_bridge_4k_ibl.ktx" ]; then
@@ -136,7 +136,7 @@ if [ -f "$HDR" ] && [ ! -f "$INTO/san_giuseppe_bridge_4k_ibl.ktx" ]; then
     "$CMGEN" --quiet --format=ktx --size=256 --extract-blur=0.1 \
       --deploy="$INTO" "$HDR" || echo "  cmgen failed; the day scene falls back to a flat ambient"
   else
-    echo "  no cmgen yet — run packages/orbis_filament/darwin/setup.sh first"
+    echo "  no cmgen yet — run packages/orblit_filament/darwin/setup.sh first"
   fi
 fi
 
@@ -261,5 +261,5 @@ PYTHON
 done
 
 echo
-echo "orbis: the Bistro is in $INTO"
+echo "orblit: the Bistro is in $INTO"
 echo "       Amazon Lumberyard Bistro, ORCA — CC BY 4.0. See $INTO/LICENSE.txt."
