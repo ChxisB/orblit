@@ -851,7 +851,7 @@ unlit one.
 ## 0.13.1
 
 - `setup.sh` can build against a Filament we own. `ORBLIT_FILAMENT_SRC` points
-  at a built checkout of `Orblit-Engine/orblit-filament` — a fork of
+  at a built checkout of `ChxisB/orblit-filament` — a fork of
   `google/filament`, Apache 2.0, kept as a fork so its origin stays visible and
   upstream stays mergeable — and the headers, archives and `matc` come from
   there instead of the published tarball.

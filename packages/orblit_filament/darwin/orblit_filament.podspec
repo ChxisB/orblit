@@ -7,7 +7,7 @@ Renders with Google's Filament into IOSurface-backed CVPixelBuffers and hands
 them to Flutter's texture registry, so a 3D scene composites with widgets
 without a trip through the CPU.
                        DESC
-  s.homepage         = 'https://github.com/Orblit-Engine/orblit'
+  s.homepage         = 'https://github.com/ChxisB/orblit'
   s.license          = { :type => 'MIT' }
   s.author           = { 'Chris Beckett' => '49186278+ChxisB@users.noreply.github.com' }
   s.source           = { :path => '.' }

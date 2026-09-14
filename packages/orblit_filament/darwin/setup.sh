@@ -35,7 +35,7 @@ fetch() {
 
 # A Filament built here, rather than the release Google publishes.
 #
-# ORBLIT_FILAMENT_SRC points at a checkout of Orblit-Engine/orblit-filament that
+# ORBLIT_FILAMENT_SRC points at a checkout of ChxisB/orblit-filament that
 # has been built (`./build.sh -p desktop -i release`). Everything downstream —
 # headers, archives, matc — comes from `out/release/filament` instead of the
 # tarball, and nothing else in this script or the package changes.
