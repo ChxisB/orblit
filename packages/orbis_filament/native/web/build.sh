@@ -23,7 +23,9 @@
 #   - Every generated material header needs an opengl variant: WebGL 2 is
 #     Filament's OpenGL backend, and matc's blob carries only the backends
 #     it was told to (packages/orbis_filament/darwin/setup.sh,
-#     ORBIS_MATC_BACKENDS).
+#     ORBIS_MATC_BACKENDS). This script now compiles them itself, with the
+#     matc belonging to the Filament it links — see the materials section
+#     below for why that is not merely tidier.
 #
 #   build.sh                 builds ./build and host/orbis_renderer.{js,wasm}
 #
