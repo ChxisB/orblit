@@ -66,7 +66,14 @@ class WeatherExample extends Example {
     'Snow': [0.04, 0.25, 60.0, 0.0, 2.2, 0.0, 0.75, 0.8],
   };
 
-  void _apply(String name) {
+  /// The conditions on offer, in the order the panel lists them.
+  static List<String> get conditions => _presets.keys.toList();
+
+  /// Sets every slider to one named condition, as picking it in the panel
+  /// does. Public so a frame can be drawn in weather nobody is there to
+  /// choose: the default is Fair, which has barely any mist and no rain, and
+  /// neither of those can be measured when there is none of it.
+  void apply(String name) {
     final preset = _presets[name]!;
     condition = name;
     density = preset[0];
@@ -207,10 +214,10 @@ class WeatherExample extends Example {
       children: [
         Choice(
           label: 'Condition',
-          options: _presets.keys.toList(),
+          options: conditions,
           selected: condition,
           onSelect: (option) {
-            _apply(option);
+            apply(option);
             changed();
           },
         ),

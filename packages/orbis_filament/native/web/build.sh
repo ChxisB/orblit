@@ -55,7 +55,15 @@ fi
 DARWIN=../../darwin
 SRC="$DARWIN/orbis_filament/Sources/orbis_filament_native"
 OUT="${ORBIS_BUILD_DIR:-build}"
+GENERATED_SET="${ORBIS_GENERATED_SET:-webgl2}"
+GENERATED="$SRC/generated/$GENERATED_SET"
 mkdir -p "$OUT" host
+
+if [ ! -f "$GENERATED/lit_opaque_material.h" ]; then
+  echo "native/web/build.sh: no compiled materials at $GENERATED" >&2
+  echo "  run ORBIS_GENERATED_SET=$GENERATED_SET bash packages/orbis_filament/darwin/setup.sh first" >&2
+  exit 1
+fi
 
 # ---- Headers ----
 #
@@ -103,7 +111,7 @@ for source in "$SRC"/*.cpp; do
   echo "native/web/build.sh: compiling $name"
   em++ -std=c++17 -O2 -DORBIS_PLATFORM_PORTABLE -fwasm-exceptions \
     -Wall -Wno-deprecated-declarations -Wno-unused-private-field \
-    "${INCLUDES[@]}" -I "$SRC" -I "$SRC/include" \
+    "${INCLUDES[@]}" -I "$SRC" -I "$SRC/include" -I "$GENERATED" \
     -c "$source" -o "$OUT/$name.o"
   objects+=("$OUT/$name.o")
 done
@@ -112,7 +120,7 @@ done
 for name in OrbisSurfaceWeb orbis_web_host; do
   echo "native/web/build.sh: compiling $name"
   em++ -std=c++17 -O2 -DORBIS_PLATFORM_PORTABLE -fwasm-exceptions \
-    -Wall "${INCLUDES[@]}" -I "$SRC" -I "$SRC/include" \
+    -Wall "${INCLUDES[@]}" -I "$SRC" -I "$SRC/include" -I "$GENERATED" \
     -c "$name.cpp" -o "$OUT/$name.o"
   objects+=("$OUT/$name.o")
 done

@@ -6,15 +6,123 @@
  * it proves is that the renderer's core runs with nobody but a C program in
  * front of it, which is what a console host is. It is also where one starts.
  *
- *   orbis_headless [out.png] [metal|vulkan|opengl]
+ *   orbis_headless [out.png] [metal|vulkan|opengl|webgpu]
+ *   orbis_headless out.png backend --benchmark frames warmup [width height]
  */
+
+#if !defined(_WIN32) && !defined(_POSIX_C_SOURCE)
+#define _POSIX_C_SOURCE 200809L
+#endif
 
 #include "orbis_renderer.h"
 
+#include <errno.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if defined(_WIN32)
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#else
+#include <time.h>
+#endif
+
+static double milliseconds(void) {
+#if defined(_WIN32)
+  LARGE_INTEGER ticks, frequency;
+  if (!QueryPerformanceFrequency(&frequency) || !QueryPerformanceCounter(&ticks)) {
+    fprintf(stderr, "performance clock unavailable\n");
+    exit(1);
+  }
+  return 1000.0 * (double)ticks.QuadPart / (double)frequency.QuadPart;
+#else
+  struct timespec ticks;
+  if (clock_gettime(CLOCK_MONOTONIC, &ticks) != 0) {
+    perror("clock_gettime");
+    exit(1);
+  }
+  return 1000.0 * (double)ticks.tv_sec + (double)ticks.tv_nsec / 1.0e6;
+#endif
+}
+
+static int positive_integer(const char *text, uint32_t limit, uint32_t *value) {
+  if (*text < '0' || *text > '9') return 0;
+  char *end = NULL;
+  errno = 0;
+  const unsigned long number = strtoul(text, &end, 10);
+  if (errno || *end || number == 0 || number > limit) return 0;
+  *value = (uint32_t)number;
+  return 1;
+}
+
+static int compare_costs(const void *a, const void *b) {
+  const double left = *(const double *)a;
+  const double right = *(const double *)b;
+  return (left > right) - (left < right);
+}
+
+/* Nearest-rank percentiles, after sorting at least one observation. */
+static double percentile(const double *costs, uint32_t count, uint32_t percent) {
+  return costs[((uint64_t)count * percent + 99) / 100 - 1];
+}
+
+typedef struct benchmark_result {
+  double first_frame_ms;
+  double elapsed_ms;
+  double p50_ms, p95_ms, p99_ms;
+  uint32_t skipped;
+  orbis_stats stats;
+} benchmark_result;
+
+/* A draw call can succeed without drawing (Filament's frame skipper), so
+ * count endFrame completions. Time includes the core's current GPU wait;
+ * capture/readback, PNG encoding and percentile calculation are outside it.
+ * This is offscreen throughput, not display FPS or input-to-photon latency. */
+static int measure(orbis_renderer *renderer, uint32_t frames, uint32_t warmup,
+                   benchmark_result *result) {
+  double *costs = malloc((size_t)frames * sizeof(double));
+  if (!costs) return 0;
+  uint64_t previous = orbis_renderer_rendered_frames(renderer);
+  const uint64_t target = (uint64_t)frames + warmup;
+  uint64_t completed = 0;
+  double measured_from = 0;
+  const double first_from = milliseconds();
+  for (uint64_t attempt = 0; attempt < target * 100 + 1000; attempt++) {
+    const double before = milliseconds();
+    if (orbis_renderer_draw(renderer, (double)completed / 60.0) != ORBIS_OK) {
+      free(costs);
+      return 0;
+    }
+    const double after = milliseconds();
+    const uint64_t rendered = orbis_renderer_rendered_frames(renderer);
+    if (rendered == previous) {
+      if (completed >= warmup) result->skipped++;
+      continue;
+    }
+    previous = rendered;
+    if (completed == 0) result->first_frame_ms = after - first_from;
+    if (completed >= warmup) costs[completed - warmup] = after - before;
+    completed++;
+    if (completed == warmup) measured_from = after;
+    if (completed == target) {
+      result->elapsed_ms = after - measured_from;
+      if (orbis_renderer_stats(renderer, &result->stats) != ORBIS_OK) {
+        free(costs);
+        return 0;
+      }
+      qsort(costs, frames, sizeof(double), compare_costs);
+      result->p50_ms = percentile(costs, frames, 50);
+      result->p95_ms = percentile(costs, frames, 95);
+      result->p99_ms = percentile(costs, frames, 99);
+      free(costs);
+      return result->elapsed_ms > 0;
+    }
+  }
+  fprintf(stderr, "benchmark stopped: too many draws produced no frame\n");
+  free(costs);
+  return 0;
+}
 
 /* ---- A PNG, written without a library ----
  *
@@ -189,12 +297,28 @@ static int number_from(const char *name, int fallback) {
 }
 
 int main(int argc, char **argv) {
+  if (argc == 2 && strcmp(argv[1], "--help") == 0) {
+    printf("usage: %s [out.png] [metal|vulkan|opengl|webgpu]\n"
+           "       %s out.png backend --benchmark frames warmup [width height]\n",
+           argv[0], argv[0]);
+    return 0;
+  }
   const char *out = argc > 1 ? argv[1] : "orbis_headless.png";
   const OrbisBackend asked = backend_named(argc > 2 ? argv[2] : NULL);
-  const uint32_t width = 960;
-  const uint32_t height = 540;
+  uint32_t width = 960, height = 540, frames = 0, warmup = 0;
+  if ((argc > 2 && asked == ORBIS_BACKEND_DEFAULT) ||
+      (argc > 3 &&
+       ((argc != 6 && argc != 8) || strcmp(argv[3], "--benchmark") != 0 ||
+        !positive_integer(argv[4], 100000, &frames) ||
+        !positive_integer(argv[5], 100000, &warmup) ||
+        (argc == 8 && (!positive_integer(argv[6], 8192, &width) ||
+                       !positive_integer(argv[7], 8192, &height)))))) {
+    fprintf(stderr, "invalid arguments; use --help (counts must be 1..100000, dimensions 1..8192)\n");
+    return 2;
+  }
 
   orbis_surface_desc surface = {ORBIS_SURFACE_HEADLESS, NULL};
+  const double created_from = milliseconds();
   orbis_renderer *renderer =
       orbis_renderer_create(asked, &surface, width, height);
   if (renderer == NULL) {
@@ -203,6 +327,8 @@ int main(int argc, char **argv) {
     fprintf(stderr, "the renderer would not start; the log above says why\n");
     return 1;
   }
+  const double startup_ms = milliseconds() - created_from;
+  benchmark_result benchmark = {0};
   printf("drawing with %s\n", backend_name(orbis_renderer_backend(renderer)));
 
   /* Whether opaque objects are drawn into depth alone before being shaded.
@@ -217,11 +343,6 @@ int main(int argc, char **argv) {
    * measurement: there is almost no hidden surface for a prepass to save. The
    * slabs are the Overdraw example's scene, built to be the opposite. */
   const int slabs = number_from("ORBIS_SLABS", 0);
-
-  /* How many frames to draw before reading one back. More than a handful is
-   * what makes a run worth timing: `time` around the whole program divided by
-   * this is a frame, once the first few have settled. */
-  const int frames = number_from("ORBIS_FRAMES", 4);
 
   /* The sky it stands under, which is also what lights the shadows. */
   const float sky[3] = {0.30f, 0.45f, 0.70f};
@@ -339,10 +460,14 @@ int main(int argc, char **argv) {
                             42.0f, 0, 10.0f, 0.0);
   orbis_renderer_set_exposure(renderer, 16.0f, 1.0f / 125.0f, 100.0f);
 
-  /* The frames that are actually being timed. Nothing here animates, so every
-   * one of them draws the same picture — which is the point: two runs differ
-   * only by the switch under test. */
-  for (int frame = 0; frame < frames; frame++) {
+  if (frames && !measure(renderer, frames, warmup, &benchmark)) {
+    fprintf(stderr, "benchmark failed\n");
+    orbis_renderer_destroy(renderer);
+    return 1;
+  }
+
+  /* A few frames to settle, then one read back. */
+  for (int frame = 0; frame < 4; frame++) {
     orbis_renderer_draw(renderer, frame / 60.0);
   }
   orbis_renderer_request_capture(renderer);
@@ -360,6 +485,10 @@ int main(int argc, char **argv) {
     return 1;
   }
   uint8_t *pixels = malloc(bytes);
+  if (!pixels) {
+    orbis_renderer_destroy(renderer);
+    return 1;
+  }
   orbis_renderer_read_capture(renderer, pixels, bytes, &got_width,
                               &got_height);
 
@@ -380,6 +509,23 @@ int main(int argc, char **argv) {
     if (orbis_renderer_note(renderer, i, &about, &saying) == ORBIS_OK) {
       printf("note: %s: %s\n", about, saying);
     }
+  }
+  if (frames && wrote) {
+    char gpu[64] = "null";
+    if (benchmark.stats.gpu_milliseconds > 0) {
+      snprintf(gpu, sizeof gpu, "%.4f", benchmark.stats.gpu_milliseconds);
+    }
+    printf("{\"backend\":\"%s\",\"width\":%u,\"height\":%u,"
+           "\"frames\":%u,\"warmup\":%u,\"skipped_draws\":%u,"
+           "\"startup_ms\":%.4f,\"first_frame_ms\":%.4f,"
+           "\"elapsed_ms\":%.4f,\"offscreen_fps\":%.2f,"
+           "\"draw_p50_ms\":%.4f,\"draw_p95_ms\":%.4f,\"draw_p99_ms\":%.4f,"
+           "\"reported_cpu_ms\":%.4f,\"reported_gpu_ms\":%s}\n",
+           backend_name(orbis_renderer_backend(renderer)), width, height,
+           frames, warmup, benchmark.skipped, startup_ms, benchmark.first_frame_ms,
+           benchmark.elapsed_ms, 1000.0 * frames / benchmark.elapsed_ms,
+           benchmark.p50_ms, benchmark.p95_ms, benchmark.p99_ms,
+           benchmark.stats.cpu_milliseconds, gpu);
   }
   orbis_renderer_destroy(renderer);
   return wrote ? 0 : 1;

@@ -175,7 +175,6 @@ fragment {
         vec2 uv = getUV0();
         vec4 lit = textureLod(materialParams_source, uv, 0.0);
         vec3 origin = viewPositionAt(uv);
-        // TEMPORARY DIAGNOSTIC
 
         // Nothing was drawn here — the sky, or past the far plane. A march
         // from the background samples the background, and the light it would

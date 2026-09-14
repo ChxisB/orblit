@@ -1064,6 +1064,9 @@ class Renderer {
   /// Which backend the engine was built with, once it has been.
   OrbisBackend backend() const { return _backend; }
 
+  /// Frames that reached endFrame; read on the thread that drives this renderer.
+  uint64_t renderedFrames() const { return _frameCount; }
+
   /// Asks for the next frame drawn to be read back into memory as well as
   /// presented. For a host with nowhere to present to — a test, a server, a
   /// console tool — this is the picture.
@@ -1706,7 +1709,7 @@ class Renderer {
 
   std::mutex _presentLock;
   bool _disposed{};
-  int _frameCount{};
+  uint64_t _frameCount{};
   double _startedAt{};
   float _skyFlash{};
   int _cameraUpdates{};

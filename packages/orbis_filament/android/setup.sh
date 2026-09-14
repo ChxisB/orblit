@@ -9,32 +9,19 @@
 #        A symlink to Filament 1.76.0's unpacked Android release: headers once,
 #        static libraries for all four ABIs. Nothing is copied.
 #
-#   2. ../darwin/orbis_filament/Sources/orbis_filament_native/generated/*.h
+#   2. ../darwin/orbis_filament/Sources/orbis_filament_native/generated/android-release/*.h
 #        The renderer's materials, compiled by the *host* matc (an x86_64/
 #        arm64 macOS binary -- there is no Android build of it) for the
 #        `opengl` and `vulkan` backends, and the SMAA/LTC lookup tables the
-#        renderer also expects there. Written into the *same* generated/
-#        directory darwin/setup.sh writes Metal's materials into, and that is
-#        deliberate, not a shortcut: OrbisRendererCore.cpp is one file
-#        compiled for every platform, its `#include "generated/foo.h"` lines
-#        are unconditional, and C++'s quote-include rule always resolves a
-#        relative include against the *including file's own directory*
-#        first -- before any -I flag a platform's build could add. So there
-#        is exactly one directory either platform's materials can live in for
-#        that file to find them, and sharing it is the only way both
-#        platforms can build from the one source file unmodified.
+#        the renderer also expects there. The portable core uses plain header
+#        names and the Android CMake target supplies this directory explicitly,
+#        so Android no longer overwrites Apple's or WebGPU's materials.
 #
-#        This is safe because darwin/setup.sh already stamps what it built
-#        the materials with (SDK version and matc flags, in generated/.matc)
-#        and recompiles everything whenever that stamp does not match what it
-#        is about to build -- which is exactly "the other platform's setup.sh
-#        ran more recently". The cost is a re-compile (a few seconds; matc is
-#        fast) the first time you switch which platform you are building
-#        after touching the other; the materials are never stale. Every
-#        Android build here re-runs this script first (see the Gradle
-#        wiring in ../build.gradle.kts) for the same reason darwin's
-#        prepare_command re-runs its own: so this is automatic rather than a
-#        step somebody has to remember.
+#        The selected directory carries a stamp with the runtime set, SDK and
+#        matc flags, so changing any of them recompiles that set without
+#        touching another platform's headers. Every Android build re-runs this
+#        script first (see the Gradle wiring in ../build.gradle.kts), making
+#        this automatic rather than a step somebody has to remember.
 #
 # Re-running is cheap and idempotent. Run it after a fresh clone and any time
 # a .mat file changes.
@@ -57,9 +44,15 @@ FILAMENT_ANDROID_DIR="${ORBIS_FILAMENT_ANDROID_DIR:-$project_root/.cache/filamen
 SDK_DIR="third_party"
 FILAMENT="$SDK_DIR/filament"
 DARWIN_NATIVE="../darwin/orbis_filament/Sources/orbis_filament_native"
-GENERATED="$DARWIN_NATIVE/generated"
-
 fail() { echo "orbis_filament/android/setup.sh: $*" >&2; exit 1; }
+GENERATED_ROOT="$DARWIN_NATIVE/generated"
+MATERIAL_SET="${ORBIS_GENERATED_SET:-android-release}"
+case "$MATERIAL_SET" in
+  ''|.|..|*/*)
+    fail "ORBIS_GENERATED_SET must be a simple directory name"
+    ;;
+esac
+GENERATED="$GENERATED_ROOT/$MATERIAL_SET"
 
 # matc is a host tool -- it compiles materials on whatever machine runs this
 # script, not on the target (Android) -- so which one is right depends on
@@ -178,7 +171,7 @@ done
 MATC_PROFILE="${ORBIS_MATC_PROFILE:-mobile}"
 MATC_FLAGS="${MATC_API# } -p $MATC_PROFILE"
 MATC_STAMP="$GENERATED/.matc"
-MATC_WANT="$FILAMENT_VERSION android $MATC_FLAGS"
+MATC_WANT="set=$MATERIAL_SET sdk=$FILAMENT_VERSION android flags=$MATC_FLAGS"
 STALE=""
 if [ "$(cat "$MATC_STAMP" 2>/dev/null || true)" != "$MATC_WANT" ]; then
   STALE=1
