@@ -578,17 +578,13 @@ void Renderer::readBackIfAsked() {
     Renderer *renderer;
     uint32_t width;
     uint32_t height;
-    bool bottomFirst;
   };
   const size_t bytes = size_t(_width) * _height * 4;
   auto *pixels = static_cast<uint8_t *>(malloc(bytes));
-  // Which way up the rows come. OpenGL reads a framebuffer bottom row first,
-  // as glReadPixels always has. Metal hands back the texture's own rows, top
-  // first — the headless host's first picture came out upside down until
-  // this said so — and Vulkan's framebuffer has its origin at the top left
-  // as Metal's does.
-  auto *arrival = new Arrival{this, _width, _height,
-                              _backend == ORBIS_BACKEND_OPENGL};
+  // Filament's readPixels contract is top-row-first on every backend.
+  // Its OpenGL driver already reverses glReadPixels rows; reversing them
+  // again here turns captures (and CPU-copy presentation) upside down.
+  auto *arrival = new Arrival{this, _width, _height};
   _renderer->readPixels(
       0, 0, _width, _height,
       backend::PixelBufferDescriptor(
@@ -600,14 +596,7 @@ void Renderer::readBackIfAsked() {
             const size_t stride = size_t(arrival->width) * 4;
             std::lock_guard<std::mutex> lock(self->_captureLock);
             self->_captured.resize(stride * arrival->height);
-            // Stored top row first, which is how a picture is kept.
-            const auto *source = static_cast<const uint8_t *>(buffer);
-            for (uint32_t row = 0; row < arrival->height; row++) {
-              const uint32_t from =
-                  arrival->bottomFirst ? arrival->height - 1 - row : row;
-              memcpy(self->_captured.data() + size_t(row) * stride,
-                     source + size_t(from) * stride, stride);
-            }
+            memcpy(self->_captured.data(), buffer, stride * arrival->height);
             self->_capturedWidth = arrival->width;
             self->_capturedHeight = arrival->height;
             self->_captureReady = true;
