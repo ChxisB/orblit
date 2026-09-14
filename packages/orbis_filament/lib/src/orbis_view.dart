@@ -282,14 +282,20 @@ class _OrbisViewState extends State<OrbisView> {
     // a Texture the web has no registry for. There the renderer is the same
     // core compiled to WebAssembly, drawing into its own canvas — see
     // lib/src/web/ and packages/orbis_filament/native/web/.
+    // see packages/orbis_filament/android/. Linux is the same again behind
+    // a GTK plugin, presenting into an FlPixelBufferTexture — the one
+    // presentation path on that embedder that does not need Flutter's own
+    // GL context, which it offers no public way to obtain; see
+    // packages/orbis_filament/linux/.
     const drawable = {
       TargetPlatform.macOS,
       TargetPlatform.iOS,
       TargetPlatform.android,
+      TargetPlatform.linux,
     };
     if (!kIsWeb && !drawable.contains(defaultTargetPlatform)) {
       return const _Notice(
-        'Orbis renders on macOS, iOS, Android and the web so far.',
+        'Orbis renders on macOS, iOS, Android, Linux and the web so far.',
       );
     }
 
