@@ -31,7 +31,6 @@ import 'orbis_module.dart';
 const int _lightStride = 22;
 const int _probeStride = 8;
 const int _materialStride = 37;
-const int _materialMaps = 7;
 const int _videoStride = 4;
 const int _decalStride = 22;
 const int _splatStride = 18;

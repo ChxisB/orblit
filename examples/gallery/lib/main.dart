@@ -431,7 +431,9 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
         if (WeatherExample.conditions.contains(condition)) {
           example.apply(condition);
         } else {
-          stderr.writeln(
+          // debugPrint rather than stderr: this app also builds for the
+          // web, where dart:io does not exist.
+          debugPrint(
             'no condition called "$condition" — there is '
             '${WeatherExample.conditions.join(', ')}',
           );
