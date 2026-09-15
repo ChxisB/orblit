@@ -732,6 +732,51 @@ void Renderer::buildRain() {
   }
 }
 
+namespace {
+
+/// Which axis a stated field of view is measured across.
+///
+/// Filament's four-argument setProjection measures it vertically. That is
+/// right for a window wider than it is tall and wrong for one that is not:
+/// the vertical extent stays where it was put while the horizontal collapses
+/// with the aspect ratio. A phone held upright is 384 by 832, and showed 24
+/// degrees across where a 1600 by 1200 desktop window showed 64 -- roughly a
+/// third of the width -- so every scene looked as though the camera had been
+/// shoved into it, and the examples framed for a desktop did not survive the
+/// trip. Measuring across whichever axis is shorter means a stated 50 degrees
+/// is 50 degrees of the dimension that actually constrains the shot.
+///
+/// Landscape is arithmetically untouched: aspect >= 1 takes the branch
+/// setProjection would have taken on its own, so every frame this repository
+/// has ever drawn or compared is the frame it was.
+Camera::Fov fovAxisFor(double aspect) {
+  return aspect < 1.0 ? Camera::Fov::HORIZONTAL : Camera::Fov::VERTICAL;
+}
+
+/// The frustum's half-extents one unit in front of the camera.
+///
+/// Anything sizing itself to cover the view has to agree with the projection
+/// about which axis the angle belongs to, or it covers the wrong one. The
+/// rain panes are the reason this is written down rather than open-coded a
+/// second time: they were a tangent of the vertical half-angle times the
+/// aspect ratio, which is the same arithmetic setProjection does and was
+/// correct only while the two agreed.
+void frustumHalfExtents(float fovDegrees, float aspect, float *halfWidth,
+                        float *halfHeight) {
+  const float stated =
+      std::tan((fovDegrees > 0 ? fovDegrees : 50.0f) * float(M_PI) / 360.0f);
+  const float safe = std::max(aspect, 0.0001f);
+  if (safe < 1.0f) {
+    *halfWidth = stated;
+    *halfHeight = stated / safe;
+  } else {
+    *halfHeight = stated;
+    *halfWidth = stated * safe;
+  }
+}
+
+} // namespace
+
 /// Hangs the panes in front of the camera and lets the weather fall past.
 ///
 /// Turned to face the viewer every frame, and sampled in world space, so
@@ -751,14 +796,15 @@ void Renderer::updateRainAtTime(double time) {
   const float3 up = normalize(_camera->getUpVector());
 
   const float aspect = float(_width) / float(std::max(_height, 1u));
-  const float half =
-      std::tan((_fieldOfView > 0 ? _fieldOfView : 50.0f) * float(M_PI) / 360.0f);
+  float halfWidth = 0.0f;
+  float halfHeight = 0.0f;
+  frustumHalfExtents(_fieldOfView, aspect, &halfWidth, &halfHeight);
 
   for (size_t pane = 0; pane < _rainEntities.size(); pane++) {
     const float distance = kRainDistances[pane];
     // A quarter over the frustum, so the edges of a pane are never on screen.
-    const float height = distance * half * 1.25f;
-    const float width = height * aspect;
+    const float height = distance * halfHeight * 1.25f;
+    const float width = distance * halfWidth * 1.25f;
 
     const mat4f placement{
         float4{right * width, 0},
@@ -3398,7 +3444,7 @@ void Renderer::aimPass(GraphPass &pass, uint32_t wide, uint32_t tall) {
 
   pass.camera->setModelMatrix(mat4f(model));
   pass.camera->setProjection(_fieldOfView > 0 ? _fieldOfView : 50.0, aspect,
-                             0.1, 1000.0);
+                             0.1, 1000.0, fovAxisFor(aspect));
   pass.camera->setExposure(_camera->getAperture(), _camera->getShutterSpeed(),
                            _camera->getSensitivity());
 }
@@ -6181,7 +6227,7 @@ void Renderer::projectWith(float fieldOfView, bool orthographic, float tall) {
   }
 
   _camera->setProjection(fieldOfView > 0 ? fieldOfView : 50.0, aspect, 0.1,
-                         1000.0);
+                         1000.0, fovAxisFor(aspect));
 }
 
 void Renderer::setExposure(float aperture, float shutter, float sensitivity) {

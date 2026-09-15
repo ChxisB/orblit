@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.25.0
+
+- **A stated field of view is measured across the shorter axis.** Filament's
+  four-argument `setProjection` measures it vertically, and the fifth argument
+  it defaults for is the one that matters on a handset: the vertical extent
+  stays where it was put while the horizontal collapses with the aspect ratio.
+  A phone held upright is 384 by 832 and showed 24.3 degrees across, where a
+  1600 by 1200 window shows 63.7 — 46 per cent of the width — so every scene
+  framed on a desktop looked as though the camera had been shoved into it, and
+  several of the examples did not survive the trip. The angle is now measured
+  across whichever axis is shorter, so a stated 50 degrees is 50 degrees of the
+  dimension that actually constrains the shot.
+
+  Landscape is arithmetically untouched. `Fov::VERTICAL` is what that overload
+  already defaulted to and anything with an aspect ratio of 1 or more still
+  takes it, so every frame this repository has drawn or compared is the frame
+  it was — the macOS frame smoke draws the same picture either side of this.
+
+  Three places had to agree rather than one: the view, the reflection pass —
+  which projects the world it mirrors and would otherwise disagree with the
+  view it appears in — and the rain panes, which size quads to cover the
+  frustum and would have stopped covering the top and bottom of a window taller
+  than it is wide. The last two now share `frustumHalfExtents`, so the next
+  time this question comes up it is answered in one place.
+
+  Unverified: the portrait half at runtime. The frame smoke proves landscape is
+  unchanged, which is the half that was never at risk.
+
 ## 0.23.0
 
 - **A display's own half of the quality question.** `OrblitDisplay` states a
