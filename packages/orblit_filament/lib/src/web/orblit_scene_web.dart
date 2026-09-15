@@ -375,6 +375,30 @@ class OrblitSceneWeb {
       splatData.length,
     ]);
 
+    // 9b. Sprites.
+    final spriteKeys = _ints('spriteKeys');
+    final spriteParams = _floats('spriteParams');
+    final spritePaths = _strings('spritePaths');
+    final spriteChanged = _ints('spriteChanged');
+    final spriteData = _floats('spriteData');
+    call('orblit_renderer_apply_sprites', [
+      renderer,
+      spriteKeys.length,
+      heap.ints(spriteKeys),
+      heap.ints(_ints('spriteFlags')),
+      heap.ints(_ints('spriteOrders')),
+      heap.ints(_ints('spriteRevisions')),
+      heap.floats(spriteParams),
+      spriteParams.length,
+      heap.strings(spritePaths),
+      spritePaths.length,
+      heap.ints(spriteChanged),
+      heap.ints(_ints('spriteChangedCounts')),
+      spriteChanged.length,
+      heap.floats(spriteData),
+      spriteData.length,
+    ]);
+
     // 10. Lights.
     final lightKeys = _keys('lightKeys');
     final lightParams = _floats('lightParams');

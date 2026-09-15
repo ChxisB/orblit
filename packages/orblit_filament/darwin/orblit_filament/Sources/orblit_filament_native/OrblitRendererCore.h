@@ -66,6 +66,7 @@
 #include "OrblitPlatform.h"
 #include "OrblitShadows.h"
 #include "OrblitSplatSet.h"
+#include "OrblitSprites.h"
 #include "OrblitSurface.h"
 #include "OrblitResources.h"
 #include "orblit_renderer.h"
@@ -1039,6 +1040,13 @@ class Renderer {
                    const int32_t *changed, const int32_t *changedCounts,
                    uint32_t changedCount, const uint8_t *data,
                    size_t dataLength, uint32_t count);
+  bool hasSprites();
+  void applySprites(const int32_t *keys, const int32_t *flags,
+                    const int32_t *orders, const int32_t *revisions,
+                    const float *params, const std::vector<std::string> &paths,
+                    const int32_t *changed, const int32_t *changedCounts,
+                    uint32_t changedCount, const float *records,
+                    size_t recordFloats, uint32_t count);
   void setSkyEnabled(bool enabled, const float *params);
   void setPrecipitationEnabled(bool enabled, const float *params);
   Notes notes();
@@ -1661,6 +1669,8 @@ class Renderer {
   /// passes on what it could not load.
   std::unique_ptr<orblit::SplatScene> _splats{};
   Notes _splatNotes{};
+  std::unique_ptr<orblit::SpriteScene> _sprites{};
+  Notes _spriteNotes{};
   VertexBuffer *_vertexBuffer{};
   IndexBuffer *_indexBuffer{};
 

@@ -21,6 +21,20 @@
   starts — and a low, medium or high `tier` with starting budgets for texture
   size, splat count and spherical-harmonic degree. `orblit_renderer_capability`
   in the C ABI.
+- **Sprites.** `OrblitScene.sprites` takes layers of flat pictures — one
+  image and any number of rectangles cut from it — drawn after the solid
+  scene, in their layers' order and then in the order given. A layer is one
+  draw however many sprites it holds: its corners are built on the processor
+  into a single vertex buffer, so it needs nothing OpenGL ES 3.0 does not
+  have, and a phone below the standard surface or WebGL 2 draws it as a
+  desktop does. Sharp or smooth sampling, vertices snapped to whole pixels,
+  and additive layers. Sprites are unlit, so they draw the colour they were
+  given whatever the camera's exposure.
+  A layer's transform and tint move without resending its sprites, which is
+  how a backdrop scrolls. `orblit_renderer_apply_sprites` in the C ABI.
+- A scene with environment volumes no longer resends every in-memory splat
+  cloud on every frame: the revisions the renderer already held were dropped
+  on the way through `resolved()`.
 
 ## 0.25.0
 

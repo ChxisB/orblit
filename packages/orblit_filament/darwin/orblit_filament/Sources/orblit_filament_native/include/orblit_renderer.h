@@ -124,7 +124,9 @@ typedef enum orblit_stride {
   ORBLIT_STRIDE_SKY,
   ORBLIT_STRIDE_PRECIPITATION,
   ORBLIT_STRIDE_OUTLINE,
-  ORBLIT_STRIDE_PIPELINE
+  ORBLIT_STRIDE_PIPELINE,
+  ORBLIT_STRIDE_SPRITE_LAYER,
+  ORBLIT_STRIDE_SPRITE
 } orblit_stride;
 
 /* How wide one row of `which` is, in floats (bytes for a splat record), or
@@ -342,6 +344,31 @@ int orblit_renderer_apply_splats(orblit_renderer *renderer, uint32_t count,
                                 const int32_t *changed_counts,
                                 uint32_t changed_count, const uint8_t *data,
                                 size_t data_length);
+
+/* `count` sprite layers of ORBLIT_STRIDE_SPRITE_LAYER floats each — a
+ * column-major transform and an RGBA tint — with an image path ("" for plain
+ * white), flags and a draw order each. The `changed` layers' sprites,
+ * ORBLIT_STRIDE_SPRITE floats a sprite, are in `records` end to end, in the
+ * order `changed` names them; a layer named but not changed keeps the sprites
+ * it had, and a layer not named has gone.
+ *
+ * A sprite is x, y, depth, rotation in radians, width, height, the pivot as a
+ * fraction of the size, the rectangle of the image as u0 v0 u1 v1 with v0 at
+ * the top, and a linear RGBA colour. Flags: 1 sharp (nearest) sampling, 2
+ * vertices snapped to whole pixels, 4 an image of measurements rather than
+ * colour, 8 additive. Sprites are unlit, so exposure does not reach them. Layers draw lowest
+ * order first, and within a layer in the order given. Refused whole, with
+ * ORBLIT_ERROR_LENGTH, when `records` is shorter than the changed counts add
+ * up to. */
+int orblit_renderer_apply_sprites(orblit_renderer *renderer, uint32_t count,
+                                 const int32_t *keys, const int32_t *flags,
+                                 const int32_t *orders,
+                                 const int32_t *revisions, const float *params,
+                                 size_t param_floats, const char *const *paths,
+                                 uint32_t path_count, const int32_t *changed,
+                                 const int32_t *changed_counts,
+                                 uint32_t changed_count, const float *records,
+                                 size_t record_floats);
 
 int orblit_renderer_set_sky(orblit_renderer *renderer, int enabled,
                            const float *params, size_t count);

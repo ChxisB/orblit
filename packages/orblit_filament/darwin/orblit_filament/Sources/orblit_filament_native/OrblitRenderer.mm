@@ -219,6 +219,27 @@ std::string OrblitString(NSString *string) {
                           transforms, colours, count);
 }
 
+- (BOOL)hasSprites {
+  return _core->hasSprites();
+}
+
+- (void)applySprites:(const int32_t *)keys
+               flags:(const int32_t *)flags
+              orders:(const int32_t *)orders
+           revisions:(const int32_t *)revisions
+              params:(const float *)params
+               paths:(NSArray<NSString *> *)paths
+             changed:(const int32_t *)changed
+       changedCounts:(const int32_t *)changedCounts
+        changedCount:(uint32_t)changedCount
+             records:(const float *)records
+        recordFloats:(size_t)recordFloats
+               count:(uint32_t)count {
+  _core->applySprites(keys, flags, orders, revisions, params,
+                      OrblitStrings(paths), changed, changedCounts,
+                      changedCount, records, recordFloats, count);
+}
+
 - (BOOL)hasSplats {
   return _core->hasSplats();
 }
