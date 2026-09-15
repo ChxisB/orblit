@@ -35,6 +35,12 @@
 - A scene with environment volumes no longer resends every in-memory splat
   cloud on every frame: the revisions the renderer already held were dropped
   on the way through `resolved()`.
+- **On the web, bytes sent once arrive.** A scene sent before the browser's
+  renderer had started was held and replaced by the next one, but answered
+  straight away — so the view marked a population's, a splat cloud's or a
+  sprite layer's bytes as delivered when they never were, and never sent them
+  again. A sprite backdrop sent once came up empty in the browser and nowhere
+  else. The call is now answered when its scene is really in.
 
 ## 0.25.0
 

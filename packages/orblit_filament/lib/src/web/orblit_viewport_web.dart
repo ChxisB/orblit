@@ -68,6 +68,19 @@ class OrblitWebViewport {
   /// A scene that arrived before the renderer existed, applied at start.
   OrblitSceneWeb? _pending;
 
+  /// Every call still waiting for a scene to be applied: one per scene that
+  /// arrived before the renderer existed, the newest of which is [_pending].
+  ///
+  /// Answered only once a scene is really in. The view marks a population's,
+  /// a splat cloud's or a sprite layer's bytes as delivered when this call
+  /// returns, and sends them again only when their revision moves — so
+  /// answering straight away, for a scene about to be replaced by the next
+  /// frame's, told it bytes had arrived that never did. A sprite backdrop sent
+  /// once came up empty on the web and nowhere else. Held like this, every
+  /// scene sent before the renderer starts still carries its bytes, and the
+  /// one applied at start has all of them.
+  final List<Completer<Map<String, String>>> _waiting = [];
+
   /// The notes from the last scene applied, as `setScene` answers with.
   Map<String, String> _notes = const {};
 
@@ -147,6 +160,7 @@ class OrblitWebViewport {
         heap.free();
       }
       if (_renderer == 0) {
+        _answerWaiting(const {});
         web.console.error(
           '[orblit] the renderer would not start on #$elementId — see the '
                   'console for what Filament refused and why.'
@@ -157,7 +171,7 @@ class OrblitWebViewport {
 
       final pending = _pending;
       _pending = null;
-      if (pending != null) applyScene(pending);
+      if (pending != null) _answerWaiting(_applyNow(pending));
 
       web.window.requestAnimationFrame(_frame.toJS);
     } finally {
@@ -223,13 +237,26 @@ class OrblitWebViewport {
     _height = height;
   }
 
-  /// Applies a scene, or holds it until the renderer exists.
-  Map<String, String> applyScene(OrblitSceneWeb scene) {
-    final module = _module;
-    if (_renderer == 0 || module == null) {
+  /// Applies a scene, or holds it until the renderer exists and answers then.
+  Future<Map<String, String>> applyScene(OrblitSceneWeb scene) {
+    if (_renderer == 0 || _module == null) {
       _pending = scene;
-      return const {};
+      final applied = Completer<Map<String, String>>();
+      _waiting.add(applied);
+      return applied.future;
     }
+    return Future.value(_applyNow(scene));
+  }
+
+  void _answerWaiting(Map<String, String> notes) {
+    for (final waiting in _waiting) {
+      waiting.complete(notes);
+    }
+    _waiting.clear();
+  }
+
+  Map<String, String> _applyNow(OrblitSceneWeb scene) {
+    final module = _module!;
     scene.applyTo(module, _renderer);
     final was = _notes;
     _notes = _readNotes(module);
@@ -384,6 +411,8 @@ class OrblitWebViewport {
 
   void dispose() {
     _disposed = true;
+    _pending = null;
+    _answerWaiting(const {});
     final module = _module;
     if (module != null && _renderer != 0) {
       orblitCall(module, 'orblit_renderer_destroy', [_renderer]);
