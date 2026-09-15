@@ -131,6 +131,17 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
     val splatChangedCounts: IntArray = args.ints("splatChangedCounts")
     val splatData: ByteArray = args.bytes("splatData")
 
+    // Sprites: OrblitSpriteMessage.swift's own field names, unchanged.
+    val spriteKeys: IntArray = args.ints("spriteKeys")
+    val spriteFlags: IntArray = args.ints("spriteFlags")
+    val spriteOrders: IntArray = args.ints("spriteOrders")
+    val spriteRevisions: IntArray = args.ints("spriteRevisions")
+    val spriteParams: FloatArray = args.floats("spriteParams")
+    val spritePaths: List<String> = args.strings("spritePaths")
+    val spriteChanged: IntArray = args.ints("spriteChanged")
+    val spriteChangedCounts: IntArray = args.ints("spriteChangedCounts")
+    val spriteData: FloatArray = args.floats("spriteData")
+
     /** Applies every part of the scene, in the order Viewport.write(scene:) does. */
     fun applyTo(handle: Long) {
         OrblitNative.nativeSetEnvironment(handle, environmentRadiance, environmentSkybox, environmentParams)
@@ -194,6 +205,19 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
             splatChanged,
             splatChangedCounts,
             splatData,
+        )
+
+        OrblitNative.nativeApplySprites(
+            handle,
+            spriteKeys,
+            spriteFlags,
+            spriteOrders,
+            spriteRevisions,
+            spriteParams,
+            spritePaths.toTypedArray(),
+            spriteChanged,
+            spriteChangedCounts,
+            spriteData,
         )
 
         OrblitNative.nativeApplyLights(handle, lightKeys, lightKinds, lightFlags, lightParams)

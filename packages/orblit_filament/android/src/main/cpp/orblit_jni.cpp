@@ -529,6 +529,26 @@ Java_dev_orblit_filament_OrblitNative_nativeApplySplats(JNIEnv *env, jclass, jlo
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeApplySprites(JNIEnv *env, jclass, jlong handleValue,
+        jintArray keys, jintArray flags, jintArray orders, jintArray revisions, jfloatArray params,
+        jobjectArray paths, jintArray changed, jintArray changedCounts, jfloatArray records) {
+  auto *handle = fromHandle(handleValue);
+  if (handle == nullptr) return ORBLIT_ERROR_NULL;
+  Ints k(env, keys);
+  Ints f(env, flags);
+  Ints o(env, orders);
+  Ints rev(env, revisions);
+  Floats pr(env, params);
+  Strings p(env, paths);
+  Ints ch(env, changed);
+  Ints cc(env, changedCounts);
+  Floats rec(env, records);
+  return orblit_renderer_apply_sprites(handle->renderer, k.count(), k.ptr(), f.ptr(), o.ptr(),
+      rev.ptr(), pr.ptr(), pr.count(), p.ptr(), p.count(), ch.ptr(), cc.ptr(), ch.count(),
+      rec.ptr(), rec.count());
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_orblit_filament_OrblitNative_nativeSetSky(JNIEnv *env, jclass, jlong handleValue,
         jboolean enabled, jfloatArray params) {
   auto *handle = fromHandle(handleValue);

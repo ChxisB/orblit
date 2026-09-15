@@ -162,6 +162,9 @@ class _OrblitViewState extends State<OrblitView> {
   /// The same, for splat clouds held in memory.
   final Map<int, int> _sentSplatRevisions = {};
 
+  /// The same, for sprite layers.
+  final Map<int, int> _sentSpriteRevisions = {};
+
   Duration _stamp = Duration.zero;
 
   /// This frame's moment, in seconds, on Flutter's own clock.
@@ -197,6 +200,7 @@ class _OrblitViewState extends State<OrblitView> {
           id,
           sentRevisions: _sentRevisions,
           sentSplatRevisions: _sentSplatRevisions,
+          sentSpriteRevisions: _sentSpriteRevisions,
           // The frame's own timestamp, which is the clock everything in the
           // frame was worked out on — including wherever the camera decided
           // to be.
@@ -218,6 +222,11 @@ class _OrblitViewState extends State<OrblitView> {
         ..addAll({
           for (final cloud in scene.splats)
             if (cloud.data != null) cloud.key: cloud.revision,
+        });
+      _sentSpriteRevisions
+        ..clear()
+        ..addAll({
+          for (final layer in scene.sprites) layer.key: layer.revision,
         });
       if (notes != null && notes.isNotEmpty) {
         widget.onSceneNotes?.call(notes);

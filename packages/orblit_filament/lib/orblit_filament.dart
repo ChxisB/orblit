@@ -54,6 +54,7 @@ export 'src/pipeline.dart'
 export 'src/population.dart' show OrblitFade, OrblitPopulation;
 export 'src/resources.dart' show OrblitResources;
 export 'src/splats.dart' show OrblitSplats;
+export 'src/sprites.dart' show OrblitSprite, OrblitSpriteBlend, OrblitSprites;
 export 'src/screen.dart'
     show OrblitDistortion, OrblitDistortionKind, OrblitGodRays;
 export 'src/video.dart' show OrblitVideo;

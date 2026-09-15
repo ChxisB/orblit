@@ -1792,6 +1792,65 @@ void Renderer::applySplats(const int32_t *keys, const int32_t *flags, const int3
   }
 }
 
+bool Renderer::hasSprites() {
+  return _sprites != nullptr && !_sprites->empty();
+}
+
+void Renderer::applySprites(const int32_t *keys, const int32_t *flags,
+                            const int32_t *orders, const int32_t *revisions,
+                            const float *params,
+                            const std::vector<std::string> &paths,
+                            const int32_t *changed,
+                            const int32_t *changedCounts,
+                            uint32_t changedCount, const float *records,
+                            size_t recordFloats, uint32_t count) {
+  if (_disposed) return;
+  if (_sprites == nullptr) {
+    if (count == 0) return;
+    // Images through the renderer's own cache, so one shared with a material
+    // is loaded once, and bytes provided by name are found before the disk.
+    _sprites = std::make_unique<orblit::SpriteScene>(
+        *_engine, *_scene, [this](const std::string &path, bool srgb) {
+          return textureAtPath(path, srgb);
+        });
+  }
+
+  // Where each changed layer's sprites begin in the packed floats.
+  std::unordered_map<int32_t, std::pair<size_t, size_t>> arriving;
+  size_t at = 0;
+  for (uint32_t c = 0; c < changedCount; c++) {
+    const size_t sprites = size_t(std::max(changedCounts[c], 0));
+    const size_t floats = sprites * orblit::kSpriteRecordFloats;
+    if (at + floats > recordFloats) break;
+    arriving[changed[c]] = {at, sprites};
+    at += floats;
+  }
+
+  std::vector<orblit::SpriteRequest> requests(count);
+  for (uint32_t i = 0; i < count; i++) {
+    orblit::SpriteRequest &request = requests[i];
+    request.key = keys[i];
+    request.flags = flags[i];
+    request.order = orders[i];
+    request.revision = revisions[i];
+    request.params = params + size_t(i) * orblit::kSpriteLayerParams;
+    request.path = i < paths.size() ? paths[i] : std::string();
+    auto found = arriving.find(keys[i]);
+    if (found != arriving.end()) {
+      request.records = records + found->second.first;
+      request.count = found->second.second;
+      request.arrived = true;
+    }
+  }
+
+  // Returned rather than logged: a scene is published every frame, and a
+  // missing image would otherwise say so sixty times a second.
+  std::vector<std::pair<std::string, std::string>> notes;
+  _sprites->apply(requests, notes);
+  _spriteNotes.clear();
+  for (const auto &note : notes) _spriteNotes[note.first] = note.second;
+}
+
 void Renderer::applyPopulations(const int32_t *keys, const int32_t *counts, const int32_t *meshes, const int32_t *flags, const int32_t *revisions, const float *ranges, const float *bounds, const std::vector<std::string> &paths, const int32_t *changed, uint32_t changedCount, const float *transforms, const float *colours, uint32_t count) {
   if (_disposed) return;
 
@@ -6793,6 +6852,7 @@ void Renderer::dispose() {
   // Its renderables, instances, textures and material, and its sorting
   // threads joined, while the engine they belong to is still there.
   _splats.reset();
+  _sprites.reset();
 
   // The graph's own views, cameras and targets, before the scene they point
   // at goes. _disposed is already set, so releaseGraph has to be able to run
@@ -7034,6 +7094,7 @@ Notes Renderer::notes() {
   for (const auto &entry : _lightNotes) all[entry.first] = entry.second;
   for (const auto &entry : _decalNotes) all[entry.first] = entry.second;
   for (const auto &entry : _splatNotes) all[entry.first] = entry.second;
+  for (const auto &entry : _spriteNotes) all[entry.first] = entry.second;
   for (const auto &entry : _videoNotes) all[entry.first] = entry.second;
   for (const auto &entry : _surfaceNotes) all[entry.first] = entry.second;
   return all;

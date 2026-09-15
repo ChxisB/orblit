@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_filament/orblit_filament.dart';
@@ -154,6 +155,71 @@ void main() {
       expect([
         for (final family in OrblitTextureFamily.values) family.bit,
       ], bits);
+    });
+  });
+
+  group('the numbers sprites share', () {
+    final spriteSwift = _read(
+      'darwin/orblit_filament/Sources/orblit_filament/OrblitSpriteMessage.swift',
+    );
+    final spriteNative = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitSprites.h',
+    );
+
+    test('a layer is ${OrblitSprites.layerStride} floats wide everywhere', () {
+      expect(
+        _swiftValue(spriteSwift, 'spriteLayerStride'),
+        OrblitSprites.layerStride,
+      );
+      expect(
+        _nativeValue(spriteNative, 'kSpriteLayerParams'),
+        OrblitSprites.layerStride,
+      );
+    });
+
+    test('a sprite is ${OrblitSprites.stride} floats wide everywhere', () {
+      expect(_swiftValue(spriteSwift, 'spriteStride'), OrblitSprites.stride);
+      expect(
+        _nativeValue(spriteNative, 'kSpriteRecordFloats'),
+        OrblitSprites.stride,
+      );
+    });
+
+    test('the flags mean the same bits on both sides', () {
+      int bit(String name) {
+        final found = RegExp(
+          r'constexpr int32_t ' + name + r'\s*=\s*1 << (\d+);',
+        ).firstMatch(spriteNative);
+        expect(
+          found,
+          isNotNull,
+          reason: 'OrblitSprites.h no longer says $name',
+        );
+        return 1 << int.parse(found!.group(1)!);
+      }
+
+      OrblitSprites layer({
+        OrblitFilter filter = OrblitFilter.smooth,
+        bool snap = false,
+        OrblitTexture? image,
+        OrblitSpriteBlend blend = OrblitSpriteBlend.alpha,
+      }) => OrblitSprites(
+        key: 1,
+        sprites: Float32List(0),
+        filter: filter,
+        snap: snap,
+        image: image,
+        blend: blend,
+      );
+
+      expect(layer().flags, 0);
+      expect(layer(filter: OrblitFilter.sharp).flags, bit('kSpriteSharp'));
+      expect(layer(snap: true).flags, bit('kSpriteSnap'));
+      expect(
+        layer(image: const OrblitTexture('a.png', srgb: false)).flags,
+        bit('kSpriteLinearImage'),
+      );
+      expect(layer(blend: OrblitSpriteBlend.add).flags, bit('kSpriteAdditive'));
     });
   });
 

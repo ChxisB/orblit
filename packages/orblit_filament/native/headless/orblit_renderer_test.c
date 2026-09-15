@@ -198,6 +198,162 @@ static int draw_both_ways(orblit_renderer *renderer, const char *path,
 }
 
 
+/* ---- Sprites ----
+ *
+ * A two-by-two white PNG, handed over as bytes rather than written to disk,
+ * as a browser or an APK hands a picture over. */
+static const uint8_t kWhitePng[] = {
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x02,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x72, 0xb6, 0x0d, 0x24, 0x00, 0x00, 0x00,
+    0x0e, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0x0f, 0x05, 0x0c,
+    0x30, 0x06, 0x00, 0x8f, 0x82, 0x0f, 0xf1, 0x3c, 0xa5, 0x56, 0x51, 0x00,
+    0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82};
+
+/* One layer of one sprite covering the whole view, at a depth in front of
+ * anything the renderer puts there by itself. */
+static int sprite_layer(orblit_renderer *renderer, int32_t key, int32_t order,
+                        const char *image, float red, float green,
+                        float blue) {
+  const int32_t keys[1] = {key};
+  const int32_t flags[1] = {1}; /* sharp, and nothing else */
+  const int32_t orders[1] = {order};
+  const int32_t revisions[1] = {0};
+  float params[20];
+  memset(params, 0, sizeof params);
+  params[0] = params[5] = params[10] = params[15] = 1.0f;
+  params[16] = params[17] = params[18] = params[19] = 1.0f;
+  const char *paths[1] = {image};
+  const float sprite[16] = {0.0f, 0.0f, 5.0f, 0.0f, 40.0f, 40.0f, 0.5f, 0.5f,
+                            0.0f, 0.0f, 1.0f, 1.0f, red,  green, blue,  1.0f};
+  const int32_t changed[1] = {key};
+  const int32_t counts[1] = {1};
+  return orblit_renderer_apply_sprites(renderer, 1, keys, flags, orders,
+                                      revisions, params, 20, paths, 1, changed,
+                                      counts, 1, sprite, 16);
+}
+
+/* Both layers at once, in one message, as a scene states them. */
+static int two_layers(orblit_renderer *renderer, int32_t grey_order,
+                      int32_t green_order) {
+  const int32_t keys[2] = {1, 2};
+  const int32_t flags[2] = {1, 1};
+  const int32_t orders[2] = {grey_order, green_order};
+  const int32_t revisions[2] = {0, 0};
+  float params[40];
+  memset(params, 0, sizeof params);
+  for (int layer = 0; layer < 2; layer++) {
+    float *p = params + layer * 20;
+    p[0] = p[5] = p[10] = p[15] = 1.0f;
+    p[16] = p[17] = p[18] = p[19] = 1.0f;
+  }
+  const char *paths[2] = {"orblit:resource/test/white.png", ""};
+  const float sprites[32] = {
+      0.0f, 0.0f, 5.0f, 0.0f, 40.0f, 40.0f, 0.5f, 0.5f,
+      0.0f, 0.0f, 1.0f, 1.0f, 0.2f,  0.2f,  0.2f, 1.0f,
+      0.0f, 0.0f, 5.0f, 0.0f, 40.0f, 40.0f, 0.5f, 0.5f,
+      0.0f, 0.0f, 1.0f, 1.0f, 0.0f,  0.2f,  0.0f, 1.0f};
+  const int32_t changed[2] = {1, 2};
+  const int32_t counts[2] = {1, 1};
+  return orblit_renderer_apply_sprites(renderer, 2, keys, flags, orders,
+                                      revisions, params, 40, paths, 2, changed,
+                                      counts, 2, sprites, 32);
+}
+
+/* What a sprite draws is the colour it was given, and layers draw in order.
+ *
+ * Measured through the whole path a 2D scene takes: an orthographic camera,
+ * straight-through tone mapping, an image provided as bytes, and the camera
+ * at an exposure that is not one — which a sprite's colour must ignore,
+ * because an artist's colours are not a photograph of anything. Linear 0.2
+ * is 124 in sRGB; had the exposure reached it, it would read 114. The
+ * renderer's own placeholder cube stays in the scene, so this is also a
+ * sprite drawn in front of something solid, under an orthographic camera. */
+static void sprites_draw_in_order(void) {
+  orblit_surface_desc headless = {ORBLIT_SURFACE_HEADLESS, NULL};
+  orblit_renderer *renderer =
+      orblit_renderer_create(ORBLIT_BACKEND_DEFAULT, &headless, 64, 48);
+  expect(renderer != NULL, "a renderer for the sprites starts");
+  if (renderer == NULL) return;
+
+  /* Post-processing on, with no anti-aliasing, no dithering and the linear
+   * tone mapper (the fourth, after filmic, ACES and legacy ACES), the
+   * grading's multipliers at one. Offsets are OrblitPostProcess.packed's. */
+  float post[49];
+  memset(post, 0, sizeof post);
+  post[0] = 1.0f;
+  post[33] = 3.0f;
+  post[35] = post[36] = post[37] = 1.0f;
+  for (int i = 40; i < 49; i++) post[i] = 1.0f;
+  expect(orblit_renderer_set_post_process(renderer, post, 49) == ORBLIT_OK,
+         "the sprites' post-processing can be set");
+  orblit_renderer_set_exposure(renderer, 1.0f, 1.0f, 100.0f);
+  const float black[3] = {0.0f, 0.0f, 0.0f};
+  orblit_renderer_set_sky_colour(renderer, black, 0.0f, 0);
+  const float from[3] = {0.0f, 0.0f, 10.0f};
+  const float look[3] = {0.0f, 0.0f, 0.0f};
+  orblit_renderer_set_camera(renderer, from, look, 50.0f, 1, 10.0f, 0.0);
+
+  expect(orblit_renderer_provide_resource("orblit:resource/test/white.png",
+                                         kWhitePng, sizeof kWhitePng) ==
+             ORBLIT_OK,
+         "the sprite's image can be provided as bytes");
+
+  /* Refused whole when the sprites are fewer than the counts say. */
+  {
+    const int32_t key = 1;
+    const int32_t zero = 0;
+    const int32_t two = 2;
+    float params[20];
+    memset(params, 0, sizeof params);
+    const char *paths[1] = {""};
+    const float one[16] = {0};
+    expect(orblit_renderer_apply_sprites(renderer, 1, &key, &zero, &zero, &zero,
+                                        params, 20, paths, 1, &key, &two, 1,
+                                        one, 16) == ORBLIT_ERROR_LENGTH,
+           "a layer that says two sprites and sends one is refused");
+  }
+
+  float grey[3] = {0.0f, 0.0f, 0.0f};
+  expect(sprite_layer(renderer, 1, 0, "orblit:resource/test/white.png", 0.2f,
+                      0.2f, 0.2f) == ORBLIT_OK,
+         "a sprite layer can be stated");
+  const int drew_grey = middle_colour(renderer, 1.0, grey);
+  printf("sprites: one grey layer %.0f/%.0f/%.0f\n", (double)grey[0],
+         (double)grey[1], (double)grey[2]);
+  expect(drew_grey, "a sprite draws");
+  if (drew_grey) {
+    expect(fabsf(grey[0] - 124.0f) <= 4.0f && fabsf(grey[1] - 124.0f) <= 4.0f &&
+               fabsf(grey[2] - 124.0f) <= 4.0f,
+           "a sprite's colour is the one it was given, whatever the exposure");
+  }
+
+  float green_on_top[3] = {0.0f, 0.0f, 0.0f};
+  float grey_on_top[3] = {0.0f, 0.0f, 0.0f};
+  expect(two_layers(renderer, 0, 1) == ORBLIT_OK, "two layers can be stated");
+  const int drew_green = middle_colour(renderer, 2.0, green_on_top);
+  expect(two_layers(renderer, 2, 1) == ORBLIT_OK,
+         "and their order changed without sending anything else");
+  const int drew_swapped = middle_colour(renderer, 3.0, grey_on_top);
+  printf("sprites: green over grey %.0f/%.0f/%.0f, grey over green "
+         "%.0f/%.0f/%.0f\n",
+         (double)green_on_top[0], (double)green_on_top[1],
+         (double)green_on_top[2], (double)grey_on_top[0],
+         (double)grey_on_top[1], (double)grey_on_top[2]);
+  if (drew_green && drew_swapped) {
+    expect(green_on_top[1] > green_on_top[0] + 60.0f,
+           "the layer with the higher order draws on top");
+    expect(fabsf(grey_on_top[0] - grey_on_top[1]) <= 4.0f &&
+               grey_on_top[0] > 60.0f,
+           "and swapping the orders swaps what is on top");
+  }
+
+  expect(orblit_renderer_release_resource("orblit:resource/test/white.png") ==
+             ORBLIT_OK,
+         "the sprite's image can be let go of");
+  orblit_renderer_destroy(renderer);
+}
+
 /* How many times the graph below is replaced. Any number above one would
  * catch the fault; several make it plain that what leaked scaled with the
  * changes rather than being a single stray object. */
@@ -732,6 +888,9 @@ int main(void) {
 
   /* Its own renderer, because what it checks is the teardown. */
   graph_changes_and_goes_down();
+
+  /* Their own renderer, because they want a 2D view of an empty scene. */
+  sprites_draw_in_order();
 
   if (failures == 0) printf("the C ABI refuses what it should and draws\n");
   return failures == 0 ? 0 : 1;

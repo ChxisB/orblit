@@ -336,6 +336,24 @@ NS_ASSUME_NONNULL_BEGIN
          dataLength:(size_t)dataLength
               count:(uint32_t)count;
 
+/// Whether any sprite layers are held, so a scene with none skips the call.
+@property(nonatomic, readonly) BOOL hasSprites;
+
+/// States the scene's sprite layers: flat pictures, drawn in the order given.
+/// The whole list every time; see orblit_renderer_apply_sprites for the rows.
+- (void)applySprites:(const int32_t *)keys
+               flags:(const int32_t *)flags
+              orders:(const int32_t *)orders
+           revisions:(const int32_t *)revisions
+              params:(const float *)params
+               paths:(NSArray<NSString *> *)paths
+             changed:(const int32_t *)changed
+       changedCounts:(const int32_t *)changedCounts
+        changedCount:(uint32_t)changedCount
+             records:(const float *)records
+        recordFloats:(size_t)recordFloats
+               count:(uint32_t)count;
+
 /// Sets the sky: its gradient, the body in it, its cloud, and its lightning.
 ///
 /// `params` is thirty-one floats, in the order `OrblitSky` packs them: the
