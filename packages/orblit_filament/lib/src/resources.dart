@@ -41,8 +41,8 @@ abstract final class OrblitResources {
   /// Keeps [bytes] under [name] for every renderer in the application.
   ///
   /// Copied on the way in, so [bytes] may be reused or dropped as soon as
-  /// this completes. On Apple platforms and Android the copy happens off the
-  /// platform thread.
+  /// this completes. On iOS and Android the copy happens off the platform
+  /// thread.
   static Future<void> provide(String name, Uint8List bytes) {
     if (name.isEmpty) {
       throw ArgumentError.value(name, 'name', 'a resource needs a name');

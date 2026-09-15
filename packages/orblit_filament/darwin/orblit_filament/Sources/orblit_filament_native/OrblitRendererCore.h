@@ -1363,6 +1363,10 @@ class Renderer {
   bool _capabilitiesMeasured{};
   void measureCapabilities(filament::Engine::FeatureLevel supported);
 
+  /// Whether a mesh that could not be loaded may load now, because bytes
+  /// have been provided since it was looked for.
+  bool meshMayHaveArrived(const std::string &path) const;
+
   /// Whether a shadow map can be sampled with a depth comparison on this
   /// device, decided once in startWithWidth for the same reason as the line
   /// above and never revisited. False means Filament has rewritten the
