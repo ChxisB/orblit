@@ -21,6 +21,11 @@ material {
     // A sprite flipped by a negative size is still a sprite.
     culling : none,
     requires : [ uv0, color ],
+    // Read as given. Filament flips v by default, for a convention glTF
+    // loading relies on; a sprite's rectangle is measured from the top of its
+    // picture, as an atlas measures it, and flipped it drew every sheet upside
+    // down — a coin from the empty bottom row, a brick where a spark belonged.
+    flipUV : false,
     parameters : [
         { type : sampler2d, name : image },
         // The whole layer's colour, over each sprite's own.

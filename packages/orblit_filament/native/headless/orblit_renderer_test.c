@@ -474,6 +474,40 @@ static int two_layers(orblit_renderer *renderer, int32_t grey_order,
                                       counts, 2, sprites, 32);
 }
 
+/* One pixel of red over one of green: a picture with a top. */
+static const uint8_t kRedOverGreenPng[] = {
+    0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
+    0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02,
+    0x08, 0x06, 0x00, 0x00, 0x00, 0x99, 0x81, 0xb6, 0x27, 0x00, 0x00, 0x00,
+    0x0e, 0x49, 0x44, 0x41, 0x54, 0x78, 0x9c, 0x63, 0xf8, 0xcf, 0xc0, 0x00,
+    0x46, 0xff, 0x01, 0x12, 0xf7, 0x03, 0xfd, 0xd9, 0xb3, 0x1f, 0x2d, 0x00,
+    0x00, 0x00, 0x00, 0x49, 0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82};
+
+/* The colour of the frame a quarter of the way down, or three quarters. */
+static int row_colour(orblit_renderer *renderer, double seconds, int lower,
+                      float rgb[3]) {
+  for (int frame = 0; frame < 4; frame++) {
+    orblit_renderer_draw(renderer, seconds + frame / 60.0);
+  }
+  orblit_renderer_request_capture(renderer);
+  for (int frame = 4; frame < 10; frame++) {
+    orblit_renderer_draw(renderer, seconds + frame / 60.0);
+  }
+  uint32_t width = 0;
+  uint32_t height = 0;
+  const size_t bytes =
+      orblit_renderer_read_capture(renderer, NULL, 0, &width, &height);
+  if (bytes == 0 || width < 8 || height < 8) return 0;
+  uint8_t *pixels = malloc(bytes);
+  if (pixels == NULL) return 0;
+  orblit_renderer_read_capture(renderer, pixels, bytes, &width, &height);
+  const uint32_t y = lower ? height * 3 / 4 : height / 4;
+  const uint8_t *pixel = pixels + ((size_t)y * width + width / 2) * 4;
+  for (int c = 0; c < 3; c++) rgb[c] = (float)pixel[c];
+  free(pixels);
+  return 1;
+}
+
 /* What a sprite draws is the colour it was given, and layers draw in order.
  *
  * Measured through the whole path a 2D scene takes: an orthographic camera,
@@ -565,6 +599,49 @@ static void sprites_draw_in_order(void) {
   expect(orblit_renderer_release_resource("orblit:resource/test/white.png") ==
              ORBLIT_OK,
          "the sprite's image can be let go of");
+
+  /* The right way up. A rectangle's v0 is the top of the picture, so a
+   * picture of red over green, cut whole, is red at the top of the sprite. A
+   * white picture cannot tell a flipped sprite from a correct one, which is
+   * how a whole sprite sheet once drew upside down past every other check. */
+  expect(orblit_renderer_provide_resource("orblit:resource/test/redgreen.png",
+                                         kRedOverGreenPng,
+                                         sizeof kRedOverGreenPng) == ORBLIT_OK,
+         "a picture with a top can be provided");
+  expect(two_layers(renderer, 0, 1) == ORBLIT_OK, "the layers can be reset");
+  {
+    const int32_t keys[1] = {1};
+    const int32_t flags[1] = {1};
+    const int32_t orders[1] = {0};
+    const int32_t revisions[1] = {1};
+    float params[20];
+    memset(params, 0, sizeof params);
+    params[0] = params[5] = params[10] = params[15] = 1.0f;
+    params[16] = params[17] = params[18] = params[19] = 1.0f;
+    const char *paths[1] = {"orblit:resource/test/redgreen.png"};
+    const float sprite[16] = {0.0f, 0.0f, 5.0f, 0.0f, 40.0f, 40.0f,
+                              0.5f, 0.5f, 0.0f, 0.0f, 1.0f, 1.0f,
+                              1.0f, 1.0f, 1.0f, 1.0f};
+    const int32_t changed[1] = {1};
+    const int32_t counts[1] = {1};
+    expect(orblit_renderer_apply_sprites(renderer, 1, keys, flags, orders,
+                                        revisions, params, 20, paths, 1,
+                                        changed, counts, 1, sprite, 16) ==
+               ORBLIT_OK,
+           "a sprite of the whole picture can be stated");
+  }
+  float top[3] = {0.0f, 0.0f, 0.0f};
+  float bottom[3] = {0.0f, 0.0f, 0.0f};
+  const int drew_top = row_colour(renderer, 4.0, 0, top);
+  const int drew_bottom = row_colour(renderer, 5.0, 1, bottom);
+  printf("sprites: top %.0f/%.0f/%.0f, bottom %.0f/%.0f/%.0f\n",
+         (double)top[0], (double)top[1], (double)top[2], (double)bottom[0],
+         (double)bottom[1], (double)bottom[2]);
+  if (drew_top && drew_bottom) {
+    expect(top[0] > top[1] + 100.0f, "the top of the picture is at the top");
+    expect(bottom[1] > bottom[0] + 100.0f,
+           "and the bottom of it at the bottom");
+  }
   orblit_renderer_destroy(renderer);
 }
 
