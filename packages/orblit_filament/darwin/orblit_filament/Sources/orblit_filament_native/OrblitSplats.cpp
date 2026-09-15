@@ -1,5 +1,7 @@
 #include "OrblitSplats.h"
 
+#include "OrblitResources.h"
+
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -439,15 +441,8 @@ bool readSplatPly(const uint8_t *data, size_t length, uint32_t maxDegree,
 
 bool loadSplatFile(const std::string &path, uint32_t maxDegree,
                    SplatCloud &into, std::string &error) {
-  std::ifstream file(path, std::ios::binary | std::ios::ate);
-  if (!file) {
-    error = "cannot open " + path;
-    return false;
-  }
-  const std::streamsize size = file.tellg();
-  file.seekg(0);
-  std::vector<uint8_t> bytes(size_t(std::max<std::streamsize>(size, 0)));
-  if (size > 0 && !file.read(reinterpret_cast<char *>(bytes.data()), size)) {
+  const SharedBytes bytes = readResource(path);
+  if (!bytes) {
     error = "cannot read " + path;
     return false;
   }
@@ -456,8 +451,8 @@ bool loadSplatFile(const std::string &path, uint32_t maxDegree,
   std::transform(lower.begin(), lower.end(), lower.begin(),
                  [](unsigned char c) { return char(std::tolower(c)); });
   const bool ply = lower.size() >= 4 && lower.compare(lower.size() - 4, 4, ".ply") == 0;
-  return ply ? readSplatPly(bytes.data(), bytes.size(), maxDegree, into, error)
-             : readSplatRecords(bytes.data(), bytes.size(), into, error);
+  return ply ? readSplatPly(bytes->data(), bytes->size(), maxDegree, into, error)
+             : readSplatRecords(bytes->data(), bytes->size(), into, error);
 }
 
 void packSplatTexels(const SplatCloud &cloud, std::vector<uint32_t> &texels) {

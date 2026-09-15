@@ -8,6 +8,13 @@ library;
 export 'src/orblit_view.dart' show OrblitView;
 export 'src/bvh.dart' show OrblitBounds, OrblitBvh, OrblitVolume;
 export 'src/decal.dart' show OrblitDecal;
+export 'src/device_profile.dart'
+    show
+        OrblitCapability,
+        OrblitDeviceProfile,
+        OrblitDeviceTier,
+        OrblitGraphicsApi,
+        OrblitTextureFamily;
 export 'src/detail.dart' show OrblitDetailState, OrblitLod, OrblitStep;
 export 'src/material.dart'
     show
@@ -45,7 +52,9 @@ export 'src/pipeline.dart'
         OrblitShadows,
         OrblitVarianceShadows;
 export 'src/population.dart' show OrblitFade, OrblitPopulation;
+export 'src/resources.dart' show OrblitResources;
 export 'src/splats.dart' show OrblitSplats;
+export 'src/sprites.dart' show OrblitSprite, OrblitSpriteBlend, OrblitSprites;
 export 'src/screen.dart'
     show OrblitDistortion, OrblitDistortionKind, OrblitGodRays;
 export 'src/video.dart' show OrblitVideo;

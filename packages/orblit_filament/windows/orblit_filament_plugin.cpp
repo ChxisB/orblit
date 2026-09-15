@@ -6,6 +6,8 @@
 
 #include <map>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "orblit_scene.h"
 #include "orblit_viewport.h"
@@ -52,6 +54,30 @@ bool ReadInt(const EncodableValue* args, const char* key, int64_t* out) {
   return false;
 }
 
+// A non-empty string field, or false.
+bool ReadString(const EncodableValue* args, const char* key, std::string* out) {
+  if (args == nullptr) return false;
+  const auto* map = std::get_if<EncodableMap>(args);
+  if (map == nullptr) return false;
+  const auto found = map->find(EncodableValue(std::string(key)));
+  if (found == map->end()) return false;
+  const auto* text = std::get_if<std::string>(&found->second);
+  if (text == nullptr || text->empty()) return false;
+  *out = *text;
+  return true;
+}
+
+// A byte field as the codec carries a Uint8List, or null.
+const std::vector<uint8_t>* ReadBytes(const EncodableValue* args,
+                                      const char* key) {
+  if (args == nullptr) return nullptr;
+  const auto* map = std::get_if<EncodableMap>(args);
+  if (map == nullptr) return nullptr;
+  const auto found = map->find(EncodableValue(std::string(key)));
+  if (found == map->end()) return nullptr;
+  return std::get_if<std::vector<uint8_t>>(&found->second);
+}
+
 }  // namespace
 
 class OrblitFilamentPlugin : public flutter::Plugin {
@@ -85,9 +111,18 @@ class OrblitFilamentPlugin : public flutter::Plugin {
              std::unique_ptr<MethodResultValue> result);
   void Dispose(const EncodableValue* args,
                std::unique_ptr<MethodResultValue> result);
+  void Capabilities(const EncodableValue* args,
+                    std::unique_ptr<MethodResultValue> result);
+
+  // `provide` and `release` on orblit_filament/resources: bytes by name for
+  // every renderer in the process, so no viewport is needed.
+  static void HandleResourceCall(
+      const flutter::MethodCall<EncodableValue>& call,
+      std::unique_ptr<MethodResultValue> result);
 
   flutter::TextureRegistrar* textures_ = nullptr;  // borrowed
   std::unique_ptr<flutter::MethodChannel<EncodableValue>> channel_;
+  std::unique_ptr<flutter::MethodChannel<EncodableValue>> resources_;
   std::map<int64_t, std::unique_ptr<Viewport>> viewports_;
 };
 
@@ -108,6 +143,17 @@ void OrblitFilamentPlugin::RegisterWithRegistrar(
   // The channel is kept by the plugin, and the plugin by the registrar, so
   // the handler above outlives neither.
   plugin->channel_ = std::move(channel);
+
+  // Bytes by name, on a channel of their own. This embedder has no background
+  // queue to put them on, so they arrive on the platform thread; the copy into
+  // the store is the whole of the work.
+  auto resources = std::make_unique<flutter::MethodChannel<EncodableValue>>(
+      registrar->messenger(), "orblit_filament/resources",
+      &flutter::StandardMethodCodec::GetInstance());
+  resources->SetMethodCallHandler([](const auto& call, auto result) {
+    OrblitFilamentPlugin::HandleResourceCall(call, std::move(result));
+  });
+  plugin->resources_ = std::move(resources);
   registrar->AddPlugin(std::move(plugin));
 }
 
@@ -125,6 +171,8 @@ void OrblitFilamentPlugin::HandleMethodCall(
     SetScene(args, std::move(result));
   } else if (method == "stats") {
     Stats(args, std::move(result));
+  } else if (method == "capabilities") {
+    Capabilities(args, std::move(result));
   } else if (method == "dispose") {
     Dispose(args, std::move(result));
   } else {
@@ -234,6 +282,47 @@ void OrblitFilamentPlugin::Dispose(const EncodableValue* args,
   }
   viewports_.erase(texture_id);
   result->Success();
+}
+
+void OrblitFilamentPlugin::Capabilities(
+    const EncodableValue* args, std::unique_ptr<MethodResultValue> result) {
+  int64_t texture_id = 0;
+  Viewport* viewport =
+      ReadInt(args, "textureId", &texture_id) ? Find(texture_id) : nullptr;
+  if (viewport == nullptr) {
+    result->Success();
+    return;
+  }
+  result->Success(EncodableValue(viewport->Capabilities()));
+}
+
+void OrblitFilamentPlugin::HandleResourceCall(
+    const flutter::MethodCall<EncodableValue>& call,
+    std::unique_ptr<MethodResultValue> result) {
+  const EncodableValue* args = call.arguments();
+  std::string name;
+  if (!ReadString(args, "name", &name)) {
+    result->Error("bad-args", call.method_name() + " needs a name");
+    return;
+  }
+  if (call.method_name() == "provide") {
+    const std::vector<uint8_t>* bytes = ReadBytes(args, "bytes");
+    if (bytes == nullptr) {
+      result->Error("bad-args", "provide needs bytes");
+      return;
+    }
+    if (orblit_renderer_provide_resource(name.c_str(), bytes->data(),
+                                        bytes->size()) != ORBLIT_OK) {
+      result->Error("orblit_failed", "the renderer could not keep " + name);
+      return;
+    }
+    result->Success();
+  } else if (call.method_name() == "release") {
+    result->Success(EncodableValue(
+        orblit_renderer_release_resource(name.c_str()) == ORBLIT_OK));
+  } else {
+    result->NotImplemented();
+  }
 }
 
 }  // namespace orblit_windows

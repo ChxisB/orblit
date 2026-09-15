@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.24.0
+
+- **Sprites.** A 2D scene drawn by the same renderer as the 3D ones: a sprite
+  sheet painted in code and handed over as bytes, cut into frames with
+  `orblit_sprite`, a backdrop that scrolls by moving its layer rather than
+  resending a tile, spinning coins, and additive sparks — one draw a layer.
+
 ## 0.23.0
 
 - **Every example batches now.** None of them changed; `OrblitScene.batching`

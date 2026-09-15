@@ -181,6 +181,16 @@ class Scene {
   Ints splat_changed_;
   Ints splat_changed_counts_;
   Bytes splat_data_;
+
+  Ints sprite_keys_;
+  Ints sprite_flags_;
+  Ints sprite_orders_;
+  Ints sprite_revisions_;
+  Floats sprite_params_;
+  Strings sprite_paths_;
+  Ints sprite_changed_;
+  Ints sprite_changed_counts_;
+  Floats sprite_data_;
 };
 
 }  // namespace orblit_linux

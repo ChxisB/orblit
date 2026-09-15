@@ -17,6 +17,7 @@ import 'package:vector_math/vector_math_64.dart';
 
 import 'population.dart';
 import 'splats.dart';
+import 'sprites.dart';
 
 /// One thing to draw: where it is, what it is made of, and how it behaves
 /// towards light.
@@ -895,6 +896,7 @@ class OrblitScene {
     OrblitPrecipitation? precipitation,
     List<OrblitPopulation>? populations,
     List<OrblitSplats>? splats,
+    List<OrblitSprites>? sprites,
     List<OrblitMaterial>? materials,
     List<OrblitVideo>? videos,
     OrblitPostProcess? post,
@@ -926,6 +928,7 @@ class OrblitScene {
        post = post ?? OrblitPostProcess(),
        populations = populations ?? const [],
        splats = splats ?? const [],
+       sprites = sprites ?? const [],
        sky = sky ?? OrblitSky(),
        fog = fog ?? OrblitFog.none,
        precipitation = precipitation ?? OrblitPrecipitation.none;
@@ -939,6 +942,7 @@ class OrblitScene {
   /// twice with one setting moved. All of those otherwise mean rebuilding a
   /// dozen fields by hand and quietly dropping the one that was added last.
   OrblitScene copyWith({
+    List<OrblitSprites>? sprites,
     List<OrblitObject>? objects,
     List<OrblitPopulation>? populations,
     List<OrblitSplats>? splats,
@@ -976,6 +980,7 @@ class OrblitScene {
     objects: objects ?? this.objects,
     populations: populations ?? this.populations,
     splats: splats ?? this.splats,
+    sprites: sprites ?? this.sprites,
     lights: lights ?? this.lights,
     materials: materials ?? this.materials,
     videos: videos ?? this.videos,
@@ -1007,6 +1012,14 @@ class OrblitScene {
   /// They are drawn after everything solid, sorted back to front among
   /// themselves, and hidden by anything solid in front of them.
   final List<OrblitSplats> splats;
+
+  /// Layers of flat pictures: sprites, tiles, a scrolling backdrop.
+  ///
+  /// Drawn after everything solid, in their layers' order and then in the
+  /// order each layer gives them, which is what a 2D scene means by "on top".
+  /// A scene of nothing else, seen through an orthographic camera, is a 2D
+  /// game drawn by the same renderer as a 3D one.
+  final List<OrblitSprites> sprites;
 
   /// Every light in the scene. A scene with none is lit by its sky alone,
   /// which is dim and even and perfectly legitimate.
@@ -1396,6 +1409,7 @@ class OrblitScene {
     int textureId, {
     Map<int, int>? sentRevisions,
     Map<int, int>? sentSplatRevisions,
+    Map<int, int>? sentSpriteRevisions,
     double? at,
   }) {
     // Volumes are resolved here, where the scene is packed, so that every
@@ -1405,6 +1419,8 @@ class OrblitScene {
       return resolved().toMessage(
         textureId,
         sentRevisions: sentRevisions,
+        sentSplatRevisions: sentSplatRevisions,
+        sentSpriteRevisions: sentSpriteRevisions,
         at: at,
       );
     }
@@ -1652,6 +1668,7 @@ class OrblitScene {
       'at': at ?? 0.0,
       ...?_populationMessage(sentRevisions),
       ...?_splatMessage(sentSplatRevisions),
+      ...?_spriteMessage(sentSpriteRevisions),
     };
   }
 
@@ -1708,6 +1725,64 @@ class OrblitScene {
       'splatChanged': changedKeys,
       'splatChangedCounts': changedCounts,
       'splatData': data,
+    };
+  }
+
+  /// What the renderer needs to know about the sprite layers.
+  ///
+  /// Absent when there are none. Every layer's settings travel every time —
+  /// they are twenty floats, and moving a whole layer by its transform is how
+  /// a backdrop scrolls without sending a sprite — but its sprites travel only
+  /// when its revision is not the one the renderer holds, [sent].
+  Map<String, Object>? _spriteMessage(Map<int, int>? sent) {
+    if (sprites.isEmpty) return null;
+
+    final count = sprites.length;
+    final keys = Int32List(count);
+    final flags = Int32List(count);
+    final orders = Int32List(count);
+    final revisions = Int32List(count);
+    final params = Float32List(count * OrblitSprites.layerStride);
+    final paths = <String>[];
+    final changed = <OrblitSprites>[];
+    var floats = 0;
+
+    for (var i = 0; i < count; i++) {
+      final layer = sprites[i];
+      keys[i] = layer.key;
+      flags[i] = layer.flags;
+      orders[i] = layer.order;
+      revisions[i] = layer.revision;
+      layer.packParams(params, i * OrblitSprites.layerStride);
+      paths.add(layer.image?.path ?? '');
+      if (sent == null || sent[layer.key] != layer.revision) {
+        changed.add(layer);
+        floats += layer.sprites.length;
+      }
+    }
+
+    final data = Float32List(floats);
+    final changedKeys = Int32List(changed.length);
+    final changedCounts = Int32List(changed.length);
+    var at = 0;
+    for (var i = 0; i < changed.length; i++) {
+      final records = changed[i].sprites;
+      changedKeys[i] = changed[i].key;
+      changedCounts[i] = changed[i].count;
+      data.setRange(at, at + records.length, records);
+      at += records.length;
+    }
+
+    return {
+      'spriteKeys': keys,
+      'spriteFlags': flags,
+      'spriteOrders': orders,
+      'spriteRevisions': revisions,
+      'spriteParams': params,
+      'spritePaths': paths,
+      'spriteChanged': changedKeys,
+      'spriteChangedCounts': changedCounts,
+      'spriteData': data,
     };
   }
 

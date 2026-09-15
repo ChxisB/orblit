@@ -130,6 +130,10 @@ internal class OrblitViewport(
         )
     }
 
+    /** What the device can do, in orblit_capability's order; null before start. */
+    fun capabilities(): IntArray? =
+        if (handle == 0L) null else OrblitNative.nativeCapabilities(handle)
+
     fun dispose() {
         running = false
         Choreographer.getInstance().removeFrameCallback(this)

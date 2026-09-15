@@ -13,6 +13,7 @@ cd "$(dirname "$0")/.."
 # below rather than trusted.
 PACKAGES=(
   packages/orblit_agent
+  packages/orblit_asset
   packages/orblit_camera
   packages/orblit_collide
   packages/orblit_codegen

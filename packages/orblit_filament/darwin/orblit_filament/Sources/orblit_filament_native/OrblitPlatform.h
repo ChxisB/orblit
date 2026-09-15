@@ -138,6 +138,16 @@ std::string removingPercentEncoding(const std::string &uri);
 /// Whether `text` starts with `prefix`.
 bool hasPrefix(const std::string &text, const char *prefix);
 
+// ---- The machine ----
+
+/// How many threads work spread across could run at once: the cores, or one
+/// where there is no threading at all — a browser build without pthreads.
+uint32_t workerThreads();
+
+/// Physical memory, in bytes, or nought where the platform will not say —
+/// which a browser does not.
+uint64_t systemMemoryBytes();
+
 // ---- Work on every core ----
 
 /// Calls `body` once for every index below `count`, on as many threads as
@@ -147,13 +157,16 @@ void parallelFor(size_t count, const std::function<void(size_t)> &body);
 
 // ---- Pictures ----
 
-/// Reads an image file into a `side` by `side` square of premultiplied sRGB
-/// RGBA, row nought at the top of the picture. Empty on failure.
+/// Decodes an image file's bytes into a `side` by `side` square of
+/// premultiplied sRGB RGBA, row nought at the top of the picture. Empty on
+/// failure. Bytes rather than a path, so a picture provided by name decodes
+/// exactly as one read from disk does.
 ///
 /// ImageIO and Core Graphics on Apple. Elsewhere, stb_image — which
 /// Filament's release already links into libstb.a for gltfio, on every
 /// platform it ships — and Filament's own resampler from libimage.
-std::vector<uint8_t> readPicture(const std::string &path, uint32_t side);
+std::vector<uint8_t> readPicture(const uint8_t *data, size_t size,
+                                 uint32_t side);
 
 // ---- Video ----
 

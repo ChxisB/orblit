@@ -13,11 +13,13 @@ iOS, Android and Windows. Switch 1 and Switch 2 require separate builds and
 validation; Xbox is listed once as a family, with generation coverage to
 confirm before implementation. This list defines scope, not a delivery order.
 
-PlayStation is explicitly out of scope for now. Browsers are not in the
-current list, so browser/WebGL/Wasm development is deferred. Preserve the
-existing web implementation and material sets; do not remove them or break
-their compiler/runtime pairing. Native WebGPU/Dawn is independent of browser
-support and remains an experiment for reaching D3D12.
+PlayStation is explicitly out of scope for now. **Browsers are back in
+scope as of 15 September 2026**, WebGL 2 first: Gaussian splats have to draw
+in a browser, and assets have to reach one without a file system — which
+`orblit_renderer_provide_resource` now makes possible. Keep the existing web
+implementation and material sets, and their compiler/runtime pairing, working
+while that happens. Native WebGPU/Dawn is independent of browser support and
+remains an experiment for reaching D3D12.
 
 These are proposed defaults to validate on representative hardware, not a
 claim that any API is universally fastest. Support in Filament, an Orblit
@@ -34,6 +36,7 @@ milestones.
 | Switch 1 | Vendor-supported native graphics path; evaluate Vulkan against the licensed SDK | SDK-specific adapter/backend if required | Console host groundwork exists on `feat/console-host`; there is no console build here. Confirm device/swapchain, shader and synchronization requirements before promising a Vulkan port. |
 | Switch 2 | Independently validate its SDK's native graphics path | Reuse Switch 1 integration only where verified compatible | Requires Switch 2 SDK access and hardware. Neither a Switch 1 build nor generic Vulkan support establishes a native Switch 2 port. |
 | Xbox | D3D12.x through the Xbox GDK | Dawn bridge and a native Filament D3D12.x backend are now both open options, neither cheap | Requires the GDK with Xbox Extensions, development hardware and shader compilation/cache validation. Source read 14 Sep 2026: vendored Dawn has no Xbox support and four structurally desktop-only subsystems; upstream Dawn lists Xbox as "Not supported". The D3D12.x reference itself is NDA-gated. See the bridge section below. Desktop Dawn/D3D12 success is not Xbox support. |
+| Browser | WebGL 2 through Emscripten | Browser WebGPU once materials are compiled for it | `native/web` builds the portable renderer to WebAssembly and draws a lit scene; splats are not yet drawn there and the build needs emsdk plus a Filament WebAssembly build, neither of which a stock machine has. Next gate: a browser frame check in CI. |
 
 Linux, Windows, iOS shadow and console host changes are still on separate
 branches. Integrate the in-scope core changes, generated material selection,
