@@ -12,8 +12,8 @@
   anything at all. A name looked for before its bytes arrived is looked for
   again once they have. Native side: `orblit_renderer_provide_resource` and
   `orblit_renderer_release_resource` in the C ABI, shared rather than copied
-  on the way to Filament, and on Apple platforms and Android handed over off
-  the platform thread.
+  on the way to Filament, and on iOS and Android handed over off the platform
+  thread.
 - **A viewport says what its device can do.** `OrblitView.profileOf` answers
   with an `OrblitDeviceProfile`: the graphics API, Filament's feature level,
   the largest texture, which block-compressed families can be sampled,

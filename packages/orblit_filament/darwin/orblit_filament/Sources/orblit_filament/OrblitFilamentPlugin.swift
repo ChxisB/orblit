@@ -1099,10 +1099,18 @@ public class OrblitFilamentPlugin: NSObject, FlutterPlugin {
     // Bytes by name, on a channel of their own and off the platform thread
     // wherever the embedder offers a queue for it: a forty-megabyte model
     // decoded out of a message is work the interface should not wait behind.
+    #if os(iOS)
+      let queue = messenger.makeBackgroundTaskQueue?()
+    #else
+      // Not asked for on macOS. The messenger there answers to the selector
+      // and forwards it to an engine that does not implement it, which ends
+      // the application on launch; its channels run on the platform thread.
+      let queue: (any NSObjectProtocol & FlutterTaskQueue)? = nil
+    #endif
     let resources = FlutterMethodChannel(
       name: "orblit_filament/resources", binaryMessenger: messenger,
       codec: FlutterStandardMethodCodec.sharedInstance(),
-      taskQueue: messenger.makeBackgroundTaskQueue?())
+      taskQueue: queue)
     resources.setMethodCallHandler(handleResource)
     resourceChannel = resources
   }

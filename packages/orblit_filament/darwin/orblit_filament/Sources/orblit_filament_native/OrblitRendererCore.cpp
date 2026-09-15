@@ -987,6 +987,12 @@ int32_t Renderer::capability(orblit_capability which) const {
   return _capabilities[size_t(which)];
 }
 
+bool Renderer::meshMayHaveArrived(const std::string &path) const {
+  const auto found = _meshes.find(path);
+  return found != _meshes.end() && found->second.asset == nullptr &&
+         found->second.missingAt != orblit::resourceGeneration();
+}
+
 /// Loads a glTF or glb file, once.
 ///
 /// Returns null and records why if it cannot be read, so the caller draws the
@@ -1032,6 +1038,8 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
     _assetNotes[native] = "This is not a glTF file that Filament can read.";
     return nullptr;
   }
+  // Whatever an earlier attempt said about it is no longer true.
+  _assetNotes.erase(native);
 
   const double providedFrom = orblit::now();
 
@@ -4139,7 +4147,13 @@ void Renderer::applyObjects(const int64_t *keys, const float *transforms, const 
     // A different file is a different object, so it is built again. Nothing
     // else is: the rest is written into what is already there.
     const bool exists = drawn.entity || drawn.instance != nullptr;
-    if (exists && drawn.path != path) {
+    // So is one drawn as the cube because its file was missing, once bytes
+    // may have been provided under that name: a host that fetches a model
+    // names it first and hands it over when it arrives, and restating the
+    // same scene has to be enough to pick it up.
+    const bool arrived = exists && drawn.instance == nullptr && !path.empty() &&
+                         meshMayHaveArrived(path);
+    if (exists && (drawn.path != path || arrived)) {
       recycle(drawn);
       drawn = Drawn{};
     }
