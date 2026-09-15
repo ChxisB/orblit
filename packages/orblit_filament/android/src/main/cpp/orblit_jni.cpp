@@ -659,4 +659,45 @@ Java_dev_orblit_filament_OrblitNative_nativeNotes(JNIEnv *env, jclass, jlong han
   return out;
 }
 
+// ---- What the device can do ------------------------------------------
+
+JNIEXPORT jintArray JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeCapabilities(JNIEnv *env, jclass, jlong handleValue) {
+  jint values[ORBLIT_CAPABILITY_COUNT];
+  auto *handle = fromHandle(handleValue);
+  for (int which = 0; which < ORBLIT_CAPABILITY_COUNT; which++) {
+    values[which] = handle == nullptr
+                        ? -1
+                        : orblit_renderer_capability(handle->renderer, orblit_capability(which));
+  }
+  jintArray out = env->NewIntArray(ORBLIT_CAPABILITY_COUNT);
+  env->SetIntArrayRegion(out, 0, ORBLIT_CAPABILITY_COUNT, values);
+  return out;
+}
+
+// ---- Bytes by name ----------------------------------------------------
+
+JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeProvideResource(JNIEnv *env, jclass, jstring name,
+        jbyteArray bytes) {
+  if (name == nullptr || bytes == nullptr) return ORBLIT_ERROR_NULL;
+  const std::string named = toStdString(env, name);
+  const jsize length = env->GetArrayLength(bytes);
+  // Borrowed rather than copied out first: the renderer takes its own copy
+  // at once, and nothing between here and the release calls back into Java.
+  void *borrowed = env->GetPrimitiveArrayCritical(bytes, nullptr);
+  if (borrowed == nullptr && length > 0) return ORBLIT_ERROR_NULL;
+  const int status = orblit_renderer_provide_resource(
+      named.c_str(), static_cast<const uint8_t *>(borrowed), size_t(length));
+  env->ReleasePrimitiveArrayCritical(bytes, borrowed, JNI_ABORT);
+  return status;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeReleaseResource(JNIEnv *env, jclass, jstring name) {
+  if (name == nullptr) return ORBLIT_ERROR_NULL;
+  const std::string named = toStdString(env, name);
+  return orblit_renderer_release_resource(named.c_str());
+}
+
 }  // extern "C"

@@ -6,6 +6,7 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
+import io.flutter.plugin.common.StandardMethodCodec
 import io.flutter.view.TextureRegistry
 
 /**
@@ -20,6 +21,7 @@ class OrblitFilamentPlugin :
     MethodCallHandler {
 
     private lateinit var channel: MethodChannel
+    private lateinit var resources: MethodChannel
     private var textureRegistry: TextureRegistry? = null
     private val viewports = mutableMapOf<Long, OrblitViewport>()
 
@@ -27,6 +29,50 @@ class OrblitFilamentPlugin :
         textureRegistry = binding.textureRegistry
         channel = MethodChannel(binding.binaryMessenger, "orblit_filament")
         channel.setMethodCallHandler(this)
+
+        // Bytes by name, off the platform thread: a large model decoded out
+        // of a message is work the interface should not wait behind.
+        resources = MethodChannel(
+            binding.binaryMessenger,
+            "orblit_filament/resources",
+            StandardMethodCodec.INSTANCE,
+            binding.binaryMessenger.makeBackgroundTaskQueue(),
+        )
+        resources.setMethodCallHandler { call, result -> onResourceCall(call, result) }
+    }
+
+    /** `provide` and `release`: see orblit_renderer_provide_resource. */
+    private fun onResourceCall(call: MethodCall, result: Result) {
+        val args = call.arguments as? Map<*, *>
+        val name = args?.get("name") as? String
+        if (name.isNullOrEmpty()) {
+            result.error("bad-args", "${call.method} needs a name", null)
+            return
+        }
+        try {
+            when (call.method) {
+                "provide" -> {
+                    val bytes = args?.get("bytes") as? ByteArray
+                    if (bytes == null) {
+                        result.error("bad-args", "provide needs bytes", null)
+                        return
+                    }
+                    val status = OrblitNative.nativeProvideResource(name, bytes)
+                    if (status == 0) {
+                        result.success(null)
+                    } else {
+                        result.error("orblit_failed", "the renderer could not keep $name ($status)", null)
+                    }
+                }
+
+                "release" -> result.success(OrblitNative.nativeReleaseResource(name) == 0)
+
+                else -> result.notImplemented()
+            }
+        } catch (e: Throwable) {
+            Log.e("OrblitFilament", "resource ${call.method} failed", e)
+            result.error("orblit_failed", "${e.javaClass.simpleName}: ${e.message}", null)
+        }
     }
 
     override fun onMethodCall(call: MethodCall, result: Result) {
@@ -114,6 +160,12 @@ class OrblitFilamentPlugin :
                     result.success(viewport.stats())
                 }
 
+                "capabilities" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val textureId = (args?.get("textureId") as? Number)?.toLong()
+                    result.success(textureId?.let { viewports[it] }?.capabilities())
+                }
+
                 "dispose" -> {
                     val args = call.arguments as? Map<*, *>
                     val textureId = (args?.get("textureId") as? Number)?.toLong()
@@ -143,6 +195,7 @@ class OrblitFilamentPlugin :
         for (viewport in viewports.values) viewport.dispose()
         viewports.clear()
         channel.setMethodCallHandler(null)
+        resources.setMethodCallHandler(null)
         textureRegistry = null
     }
 }

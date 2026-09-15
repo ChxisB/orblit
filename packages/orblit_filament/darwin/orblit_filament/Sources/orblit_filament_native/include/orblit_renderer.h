@@ -131,6 +131,34 @@ typedef enum orblit_stride {
  * nought for a value this build does not know. */
 uint32_t orblit_renderer_stride(orblit_stride which);
 
+/* ---- Bytes by name ---- */
+
+/* Keeps a copy of `length` bytes under `name` for every renderer in the
+ * process, including renderers made later. Wherever a scene names a file — a
+ * mesh, a texture, an environment, a decal's picture, a splat capture, and
+ * the files a .gltf names beside itself — the renderer looks for bytes
+ * provided under that name before it asks the disk. That is how a host with
+ * no file system (a browser), one whose assets are inside an archive (an
+ * Android APK) or one that fetched them over a network hands them over.
+ *
+ * A name stands for bytes that do not change. Providing it again replaces
+ * what the next load sees, but nothing already loaded is loaded again, so the
+ * way to change an asset is a new name — a content hash in it is the natural
+ * one. A name looked for before it was provided is tried again once it has
+ * been. `.` and `..` segments are worked out, so a .gltf provided as
+ * "models/robot.gltf" finds "models/../textures/wood.png" provided as
+ * "textures/wood.png".
+ *
+ * Any thread. ORBLIT_ERROR_NULL for a NULL name, or NULL bytes with a
+ * non-zero length; ORBLIT_ERROR_FAILED if the copy could not be allocated. */
+int orblit_renderer_provide_resource(const char *name, const uint8_t *bytes,
+                                    size_t length);
+
+/* Lets go of what was provided under `name`. Anything already loaded from it
+ * stays loaded. ORBLIT_ERROR_RANGE when nothing was provided under that name.
+ * Any thread. */
+int orblit_renderer_release_resource(const char *name);
+
 typedef struct orblit_renderer orblit_renderer;
 
 /* ---- Lifetime ---- */
@@ -339,6 +367,50 @@ int orblit_renderer_set_exposure(orblit_renderer *renderer, float aperture,
 int orblit_renderer_set_outline(orblit_renderer *renderer, const int64_t *keys,
                                uint32_t count, const float *params,
                                size_t param_floats);
+
+/* ---- What the device can do ---- */
+
+/* The questions orblit_renderer_capability answers. Each is asked once, when
+ * the renderer starts, because none of the answers changes mid-session. */
+typedef enum orblit_capability {
+  /* The OrblitBackend actually drawing, which DEFAULT has been resolved to. */
+  ORBLIT_CAPABILITY_BACKEND = 0,
+  /* Filament's feature level the device supports, 0 to 3. Below 3 the
+   * renderer draws the slim lit surface. */
+  ORBLIT_CAPABILITY_FEATURE_LEVEL,
+  /* Texels on a side of the largest 2D texture. */
+  ORBLIT_CAPABILITY_MAX_TEXTURE_SIZE,
+  /* Layers in the largest array texture. */
+  ORBLIT_CAPABILITY_MAX_ARRAY_TEXTURE_LAYERS,
+  /* ORBLIT_FORMAT_* bits: which block-compressed families can be sampled. */
+  ORBLIT_CAPABILITY_COMPRESSED_FORMATS,
+  /* 1 if an RGBA16F texture can be sampled and mipmapped, which rendering an
+   * environment's levels at run time needs. */
+  ORBLIT_CAPABILITY_HALF_FLOAT_TEXTURES,
+  /* Threads work can spread across: the cores, or 1 without threading. */
+  ORBLIT_CAPABILITY_WORKER_THREADS,
+  /* Physical memory in megabytes, or 0 where the platform will not say. */
+  ORBLIT_CAPABILITY_SYSTEM_MEMORY_MEGABYTES,
+  /* How many questions there are. Not a question. */
+  ORBLIT_CAPABILITY_COUNT
+} orblit_capability;
+
+/* Block-compressed texture families, as ORBLIT_CAPABILITY_COMPRESSED_FORMATS
+ * spells them. A family counts only when its linear and sRGB forms are both
+ * there. */
+typedef enum orblit_format_family {
+  ORBLIT_FORMAT_ETC2 = 1 << 0,  /* ETC2 RGBA8, sRGB and linear */
+  ORBLIT_FORMAT_ASTC = 1 << 1,  /* ASTC 4x4 LDR, sRGB and linear */
+  ORBLIT_FORMAT_BC1_3 = 1 << 2, /* S3TC / DXT */
+  ORBLIT_FORMAT_BC4_5 = 1 << 3, /* RGTC: one and two channels */
+  ORBLIT_FORMAT_BC6H = 1 << 4,  /* BPTC half float, unsigned */
+  ORBLIT_FORMAT_BC7 = 1 << 5    /* BPTC, sRGB and linear */
+} orblit_format_family;
+
+/* One answer about the device `renderer` runs on. -1 for a NULL or stopped
+ * renderer, and for a question this build does not know. Any thread. */
+int32_t orblit_renderer_capability(const orblit_renderer *renderer,
+                                  orblit_capability which);
 
 /* ---- What it drew, and what it cost ---- */
 

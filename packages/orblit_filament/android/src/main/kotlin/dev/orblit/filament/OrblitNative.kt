@@ -210,4 +210,17 @@ internal object OrblitNative {
 
     /** Flattened [about0, saying0, about1, saying1, ...]. */
     external fun nativeNotes(handle: Long): Array<String>
+
+    // ---- What the device can do -----------------------------------------
+
+    /** Every orblit_capability, in order; -1 for what is not known. */
+    external fun nativeCapabilities(handle: Long): IntArray
+
+    // ---- Bytes by name ----------------------------------------------------
+
+    /** orblit_renderer_provide_resource: for every renderer, from any thread. */
+    external fun nativeProvideResource(name: String, bytes: ByteArray): Int
+
+    /** orblit_renderer_release_resource. */
+    external fun nativeReleaseResource(name: String): Int
 }

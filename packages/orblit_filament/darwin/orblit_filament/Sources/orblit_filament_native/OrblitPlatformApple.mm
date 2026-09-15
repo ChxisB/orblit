@@ -101,13 +101,17 @@ void parallelFor(size_t count, const std::function<void(size_t)> &body) {
 /// platform writes again: every other port has its own way to read a PNG. The
 /// draw into the bitmap resamples to the square on the way, and premultiplies,
 /// which is what the shader's blend expects. Empty on failure.
-std::vector<uint8_t> readPicture(const std::string &path, uint32_t side) {
+std::vector<uint8_t> readPicture(const uint8_t *data, size_t size,
+                                 uint32_t side) {
   std::vector<uint8_t> pixels;
-  NSString *native = [NSString stringWithUTF8String:path.c_str()];
-  if (native == nil) return pixels;
-  NSURL *url = [NSURL fileURLWithPath:native];
-  CGImageSourceRef source =
-      CGImageSourceCreateWithURL((__bridge CFURLRef)url, nullptr);
+  if (data == nullptr || size == 0) return pixels;
+  // Not copied. The caller holds the bytes until this returns, and the image
+  // made from them is drawn and released before it does.
+  CFDataRef bytes = CFDataCreateWithBytesNoCopy(
+      kCFAllocatorDefault, data, CFIndex(size), kCFAllocatorNull);
+  if (bytes == nullptr) return pixels;
+  CGImageSourceRef source = CGImageSourceCreateWithData(bytes, nullptr);
+  CFRelease(bytes);
   if (source == nullptr) return pixels;
   CGImageRef image = CGImageSourceCreateImageAtIndex(source, 0, nullptr);
   CFRelease(source);

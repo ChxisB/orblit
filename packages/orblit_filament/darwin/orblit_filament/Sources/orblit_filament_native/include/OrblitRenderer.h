@@ -421,6 +421,18 @@ NS_ASSUME_NONNULL_BEGIN
                  count:(uint32_t)count
                 params:(const float *)params;
 
+/// Keeps `bytes` under `name` for every renderer in the process, looked for
+/// before the disk wherever a scene names a file. See
+/// orblit_renderer_provide_resource for what a name promises. Any thread.
++ (void)provideResourceNamed:(NSString *)name bytes:(NSData *)bytes;
+
+/// Lets go of what was provided under `name`. NO when nothing was.
++ (BOOL)releaseResourceNamed:(NSString *)name;
+
+/// What the device can do, in orblit_capability's order. Measured once when
+/// the renderer started; -1 for anything not known.
+@property(nonatomic, readonly) NSArray<NSNumber *> *capabilities;
+
 /// Requests new dimensions. Safe from any thread — the work happens at the
 /// top of the next frame, on the thread that owns the engine.
 - (void)resizeToWidth:(uint32_t)width height:(uint32_t)height;
