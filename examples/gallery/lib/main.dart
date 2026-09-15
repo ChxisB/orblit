@@ -9,6 +9,8 @@
 /// rather than a person dragging:
 ///
 ///   ORBLIT_EXAMPLE=Blocks   which one, by name (default: the first)
+///   ORBLIT_MENU=0           no example chooser and no rotate button,
+///                          whatever the screen size
 ///   ORBLIT_YAW / ORBLIT_PITCH / ORBLIT_DISTANCE   where to look from
 ///   ORBLIT_SECONDS          hold the clock still, for a scene that animates
 ///   ORBLIT_WALK=0           give the camera back, for an example that drives it
@@ -112,6 +114,7 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 import 'package:orblit_examples/orblit_examples.dart';
 import 'package:orblit_filament/orblit_filament.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
@@ -140,20 +143,240 @@ class Gallery extends StatelessWidget {
     title: 'Orblit Gallery',
     debugShowCheckedModeBanner: false,
     theme: ThemeData.dark(useMaterial3: true),
-    home: const _Stage(),
+    home: const _Shell(),
+  );
+}
+
+/// Which example is on screen, and the way to change it without a shell.
+///
+/// ORBLIT_EXAMPLE picks the one to open on, which is every switch a desktop
+/// sweep has ever needed. A handset has no environment to set it from --
+/// `Platform.environment` comes back empty there and the libc path in
+/// orblit_env_native.dart is Darwin's -- so on a phone the chooser always fell
+/// back to the first example and the other thirty were unreachable. That is
+/// what this is for.
+///
+/// It is chrome over a renderer, so it stays out of the picture. No app bar:
+/// one would take a strip off the top of every frame, and the frame is the
+/// thing being looked at. A button floats over the scene instead, on narrow
+/// viewports only, and ORBLIT_MENU=0 turns it off outright -- so every frame
+/// tool/ci_draw_frame*.sh compares is the frame it was before this existed.
+class _Shell extends StatefulWidget {
+  const _Shell();
+
+  @override
+  State<_Shell> createState() => _ShellState();
+}
+
+class _ShellState extends State<_Shell> {
+  late final List<Example> _all = engineExamples();
+  late Example _example = _chosen();
+
+  Example _chosen() {
+    final wanted = _orblitEnv['ORBLIT_EXAMPLE'];
+    if (wanted == null || wanted.isEmpty) return _all.first;
+    return _all.firstWhere(
+      (one) => one.name.toLowerCase() == wanted.toLowerCase(),
+      orElse: () {
+        warn(
+          'no example called "$wanted" \u2014 there is '
+          '${_all.map((e) => e.name).join(', ')}',
+        );
+        return _all.first;
+      },
+    );
+  }
+
+  /// Whether to put the chooser on screen at all.
+  ///
+  /// The shortest side rather than the platform, because what decides it is
+  /// whether there is a shell to set ORBLIT_EXAMPLE from, and a phone browser
+  /// has no more of one than a phone does. It also means a desktop window is
+  /// only ever given the chooser if somebody has made it phone-shaped.
+  bool _chooserWanted(BuildContext context) =>
+      _orblitEnv['ORBLIT_MENU'] != '0' &&
+      MediaQuery.sizeOf(context).shortestSide < 600;
+
+  @override
+  Widget build(BuildContext context) {
+    final wanted = _chooserWanted(context);
+    final portrait = MediaQuery.orientationOf(context) == Orientation.portrait;
+    // One shape whether or not the chooser is on screen.
+    //
+    // The first version of this returned a bare stage when the chooser was
+    // not wanted and a Scaffold around one when it was. MediaQuery has no
+    // size to give on the first build, so every launch took the first branch
+    // and then the second, which moved _Stage to a different slot in the
+    // tree -- and a widget that moves is unmounted and built again, taking
+    // the renderer with it. The log said so plainly: "engine ready" twice,
+    // four seconds apart, and a black window where the first engine's
+    // texture used to be. So the Scaffold and the Stack are unconditional
+    // now, and `wanted` only decides whether a drawer is attached and a
+    // button drawn over the scene. _Stage stays at the same address either
+    // way, which is the whole point.
+    return Scaffold(
+      drawer: wanted ? _chooser(context) : null,
+      // StackFit.expand, which is not the default and has to be said.
+      // A loose Stack takes its size from its largest child that is not
+      // Positioned -- which here was the menu button -- so the stack came out
+      // 48 logical pixels square, Positioned.fill filled that, and the scene
+      // rendered into a thumbnail in the top-left corner while the rest of
+      // the window stayed black. Expanding gives the stage the whole window
+      // and leaves the button, which is Positioned, out of the measurement.
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Keyed on the example, so choosing another builds _StageState
+          // again from the top rather than mutating it. Every ORBLIT_*
+          // switch this gallery reads is applied in initState against
+          // `late final` fields; a setter would have to repeat all of that
+          // and would drift from it by the second example somebody added.
+          // A remount runs the code that is already there -- and here it is
+          // asked for, rather than arrived at by accident.
+          _Stage(key: ValueKey(_example.name), example: _example),
+          // The scene fills the window and the button sits on top of it. An
+          // app bar would shorten the viewport instead, and a renderer's
+          // gallery is the last place to spend pixels of the picture on
+          // chrome.
+          if (wanted)
+            Positioned(
+              left: 0,
+              top: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // Its own context, so Scaffold.of finds the Scaffold
+                      // above rather than looking for one outside this build.
+                      Builder(
+                        builder: (context) => _chromeButton(
+                          icon: Icons.menu,
+                          tooltip: 'Examples',
+                          onPressed: () => Scaffold.of(context).openDrawer(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _chromeButton(
+                        icon: portrait
+                            ? Icons.stay_current_landscape
+                            : Icons.stay_current_portrait,
+                        tooltip: portrait
+                            ? 'Turn it landscape'
+                            : 'Turn it portrait',
+                        onPressed: () => _turn(portrait),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Turns the app the other way up, and keeps it there.
+  ///
+  /// Asked for rather than left to the accelerometer because a handset with
+  /// auto-rotate switched off -- which is most of them, and was this one:
+  /// `settings get system accelerometer_rotation` answered 0 -- never turns
+  /// whatever the manifest allows. Nothing here locks an orientation, so the
+  /// app was already free to rotate and simply never got the chance. A button
+  /// does not care what that setting says.
+  ///
+  /// Both landscapes rather than one, so the phone can still be held either
+  /// way round once it is on its side.
+  void _turn(bool portraitNow) {
+    SystemChrome.setPreferredOrientations(
+      portraitNow
+          ? const [
+              DeviceOrientation.landscapeLeft,
+              DeviceOrientation.landscapeRight,
+            ]
+          : const [DeviceOrientation.portraitUp],
+    );
+  }
+
+  @override
+  void dispose() {
+    // Left as it was found. A preferred orientation outlives the widget that
+    // asked for one, and a gallery that pinned the next thing on screen to
+    // landscape would be a strange thing to have done.
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    super.dispose();
+  }
+
+  /// One round button over the scene.
+  ///
+  /// It carries its own contrast rather than trusting whatever happens to be
+  /// behind it, because what is behind it is the example's business.
+  Widget _chromeButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+  }) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: 0.45),
+      shape: BoxShape.circle,
+    ),
+    child: IconButton(
+      icon: Icon(icon),
+      color: Colors.white,
+      tooltip: tooltip,
+      onPressed: onPressed,
+    ),
+  );
+
+  Widget _chooser(BuildContext context) => Drawer(
+    child: SafeArea(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          ListTile(
+            title: Text(
+              'Examples',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            subtitle: Text('${_all.length} of them'),
+          ),
+          const Divider(height: 1),
+          for (final one in _all)
+            ListTile(
+              selected: identical(one, _example),
+              title: Text(one.name),
+              subtitle: Text(
+                one.blurb,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () {
+                Navigator.of(context).pop();
+                if (!identical(one, _example)) {
+                  setState(() => _example = one);
+                }
+              },
+            ),
+        ],
+      ),
+    ),
   );
 }
 
 class _Stage extends StatefulWidget {
-  const _Stage();
+  const _Stage({super.key, required this.example});
+
+  /// The one to show. Changing it replaces this widget rather than updating
+  /// it -- see the key _ShellState builds it with.
+  final Example example;
 
   @override
   State<_Stage> createState() => _StageState();
 }
 
 class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
-  late final List<Example> _all = engineExamples();
-  late final Example _example = _chosen();
+  Example get _example => widget.example;
   late final GalleryCamera _look = GalleryCamera.from(_example.viewpoint);
   late final Ticker _clock;
 
@@ -396,21 +619,6 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     );
   }
 
-  Example _chosen() {
-    final wanted = _orblitEnv['ORBLIT_EXAMPLE'];
-    if (wanted == null || wanted.isEmpty) return _all.first;
-    return _all.firstWhere(
-      (one) => one.name.toLowerCase() == wanted.toLowerCase(),
-      orElse: () {
-        warn(
-          'no example called "$wanted" — there is '
-          '${_all.map((e) => e.name).join(', ')}',
-        );
-        return _all.first;
-      },
-    );
-  }
-
   @override
   void initState() {
     super.initState();
@@ -565,11 +773,8 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       if (at != null) {
         final scene = example.scene(_look.toRenderCamera(), 0);
         final seen = scene.resolved();
-        String three(Vector3 v) => [
-          v.x,
-          v.y,
-          v.z,
-        ].map((c) => c.toStringAsFixed(4)).join(',');
+        String three(Vector3 v) =>
+            [v.x, v.y, v.z].map((c) => c.toStringAsFixed(4)).join(',');
         warn(
           '[volumes] at=$at z=${scene.camera.position.z.toStringAsFixed(3)} '
           'fogDensity=${seen.fog.density.toStringAsFixed(5)} '
@@ -645,21 +850,19 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    body: GestureDetector(
-      onPanUpdate: (details) => setState(() => _look.orbit(details.delta)),
-      child: OrblitView(
-        // The same moment the example was built at, so ORBLIT_SECONDS holds
-        // the weather still as well as the scene.
-        seconds: _held,
-        scene: switch (_orblitEnv['ORBLIT_MESH']) {
-          final path? when path.isNotEmpty => _justTheMesh(path),
-          // An effect over a real scene rather than only over a lone model.
-          // An effect that has only ever been seen against one mesh on a
-          // plain background is an effect nobody has actually looked at.
-          _ => _underEffect(_example.scene(_look.toRenderCamera(), _seconds)),
-        },
-      ),
+  Widget build(BuildContext context) => GestureDetector(
+    onPanUpdate: (details) => setState(() => _look.orbit(details.delta)),
+    child: OrblitView(
+      // The same moment the example was built at, so ORBLIT_SECONDS holds
+      // the weather still as well as the scene.
+      seconds: _held,
+      scene: switch (_orblitEnv['ORBLIT_MESH']) {
+        final path? when path.isNotEmpty => _justTheMesh(path),
+        // An effect over a real scene rather than only over a lone model.
+        // An effect that has only ever been seen against one mesh on a
+        // plain background is an effect nobody has actually looked at.
+        _ => _underEffect(_example.scene(_look.toRenderCamera(), _seconds)),
+      },
     ),
   );
 }
