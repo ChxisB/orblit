@@ -73,6 +73,7 @@ add_library(${PLUGIN_NAME} SHARED
   "${ORBLIT_CORE_DIR}/OrblitRendererC.cpp"
   "${ORBLIT_CORE_DIR}/OrblitBackend.cpp"
   "${ORBLIT_CORE_DIR}/OrblitPlatform.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitResources.cpp"
   "${ORBLIT_CORE_DIR}/OrblitSurfaceHeadless.cpp"
   "${ORBLIT_CORE_DIR}/OrblitDecals.cpp"
   "${ORBLIT_CORE_DIR}/OrblitOutline.cpp"

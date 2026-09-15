@@ -130,6 +130,8 @@ class Viewport {
   std::vector<double> PassTimings() const;
   // [batchedObjects, batchGroups].
   std::vector<int32_t> Batching() const;
+  // Every orblit_capability, in order; -1 for what is not known.
+  std::vector<int32_t> Capabilities() const;
 
  private:
   Viewport() = default;

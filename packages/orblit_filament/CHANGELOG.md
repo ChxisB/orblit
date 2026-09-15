@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.26.0
+
+- **Assets can be handed to the renderer as bytes.** `OrblitResources.provide`
+  keeps bytes under a name for every renderer in the application, and
+  anywhere a scene names a file — a mesh, a texture, an environment, a
+  decal's picture, a splat capture, and the files a `.gltf` names beside
+  itself — that name is looked for before the disk. A browser has no disk,
+  an Android application's assets are inside its archive, and anything
+  fetched over a network is already bytes, so this is how all three load
+  anything at all. A name looked for before its bytes arrived is looked for
+  again once they have. Native side: `orblit_renderer_provide_resource` and
+  `orblit_renderer_release_resource` in the C ABI, shared rather than copied
+  on the way to Filament, and on Apple platforms and Android handed over off
+  the platform thread.
+- **A viewport says what its device can do.** `OrblitView.profileOf` answers
+  with an `OrblitDeviceProfile`: the graphics API, Filament's feature level,
+  the largest texture, which block-compressed families can be sampled,
+  half-float textures, threads and memory — measured once when the renderer
+  starts — and a low, medium or high `tier` with starting budgets for texture
+  size, splat count and spherical-harmonic degree. `orblit_renderer_capability`
+  in the C ABI.
+
 ## 0.25.0
 
 - **A stated field of view is measured across the shorter axis.** Filament's

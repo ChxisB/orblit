@@ -196,6 +196,9 @@ private final class Viewport {
     engine.sync { [self.renderer.batchedObjects, self.renderer.batchGroups] }
   }
 
+  /// What the device can do, in orblit_capability's order.
+  var capabilities: [NSNumber] { engine.sync { self.renderer.capabilities } }
+
   func start() {
     clock.start { [weak self] in self?.tick() }
   }
@@ -1086,6 +1089,46 @@ public class OrblitFilamentPlugin: NSObject, FlutterPlugin {
       name: "orblit_filament", binaryMessenger: messenger)
     let instance = OrblitFilamentPlugin(registry: textures)
     registrar.addMethodCallDelegate(instance, channel: channel)
+
+    // Bytes by name, on a channel of their own and off the platform thread
+    // wherever the embedder offers a queue for it: a forty-megabyte model
+    // decoded out of a message is work the interface should not wait behind.
+    let resources = FlutterMethodChannel(
+      name: "orblit_filament/resources", binaryMessenger: messenger,
+      codec: FlutterStandardMethodCodec.sharedInstance(),
+      taskQueue: messenger.makeBackgroundTaskQueue?())
+    resources.setMethodCallHandler(handleResource)
+    resourceChannel = resources
+  }
+
+  /// Kept for as long as the process runs, as the store it feeds is.
+  private static var resourceChannel: FlutterMethodChannel?
+
+  /// `provide` and `release`: bytes by name for every renderer in the
+  /// process. See orblit_renderer_provide_resource for what a name promises.
+  private static func handleResource(
+    _ call: FlutterMethodCall, result: @escaping FlutterResult
+  ) {
+    guard let args = call.arguments as? [String: Any],
+          let name = args["name"] as? String, !name.isEmpty else {
+      result(FlutterError(code: "bad-args",
+                          message: "\(call.method) needs a name", details: nil))
+      return
+    }
+    switch call.method {
+    case "provide":
+      guard let bytes = args["bytes"] as? FlutterStandardTypedData else {
+        result(FlutterError(code: "bad-args", message: "provide needs bytes",
+                            details: nil))
+        return
+      }
+      OrblitRenderer.provideResourceNamed(name, bytes: bytes.data)
+      result(nil)
+    case "release":
+      result(OrblitRenderer.releaseResourceNamed(name))
+    default:
+      result(FlutterMethodNotImplemented)
+    }
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -1170,6 +1213,16 @@ public class OrblitFilamentPlugin: NSObject, FlutterPlugin {
         "passTimings": viewport.passTimings,
         "batching": viewport.batching,
       ])
+
+    case "capabilities":
+      guard let arguments = call.arguments as? [String: Any],
+            let textureId = arguments["textureId"] as? Int,
+            let viewport = viewports[Int64(textureId)] else {
+        result(nil)
+        return
+      }
+      // In orblit_capability's order, measured once when the renderer started.
+      result(viewport.capabilities)
 
     case "dispose":
       guard let args = call.arguments as? [String: Any],

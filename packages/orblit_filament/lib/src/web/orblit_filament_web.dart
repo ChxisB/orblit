@@ -30,6 +30,15 @@ class OrblitFilamentWeb {
 
   final Map<int, OrblitWebViewport> _viewports = {};
 
+  /// Every resource provided, kept on this side as well as in each module.
+  ///
+  /// There is a module per canvas, and a canvas does not exist until its view
+  /// has been laid out — so bytes provided before a view opens, which is the
+  /// ordinary order, have no module to go to yet. Kept here, each module is
+  /// handed them as it starts. The price is a second copy while a view is
+  /// open: one here and one in the module's own heap.
+  final Map<String, Uint8List> _resources = {};
+
   /// Ids are minted here rather than by a texture registry. Starting above
   /// zero keeps "no viewport" spellable as 0, as it is on the other sides.
   int _nextId = 1;
@@ -42,6 +51,11 @@ class OrblitFilamentWeb {
       registrar,
     );
     channel.setMethodCallHandler(_instance._handle);
+    MethodChannel(
+      'orblit_filament/resources',
+      const StandardMethodCodec(),
+      registrar,
+    ).setMethodCallHandler(_instance._handleResource);
 
     // One factory for every viewport. Which viewport a canvas belongs to
     // arrives as the view's creation params — the id `create` answered with
@@ -90,7 +104,8 @@ class OrblitFilamentWeb {
         // until the widget carrying this id builds its HtmlElementView, and
         // is not laid out until a frame after that. See OrblitWebViewport.
         final id = _nextId++;
-        _viewports[id] = OrblitWebViewport(id)..resize(width, height);
+        _viewports[id] = OrblitWebViewport(id, resources: _resources)
+          ..resize(width, height);
         return id;
 
       case 'resize':
@@ -137,6 +152,11 @@ class OrblitFilamentWeb {
         if (viewport == null) return null;
         return viewport.stats();
 
+      case 'capabilities':
+        final args = call.arguments as Map?;
+        final id = (args?['textureId'] as num?)?.toInt();
+        return id == null ? null : _viewports[id]?.capabilities();
+
       case 'dispose':
         final args = call.arguments as Map?;
         final id = (args?['textureId'] as num?)?.toInt();
@@ -148,6 +168,48 @@ class OrblitFilamentWeb {
         }
         _viewports.remove(id)?.dispose();
         return null;
+
+      default:
+        throw PlatformException(
+          code: 'not-implemented',
+          message:
+              'orblit_filament has no web implementation of ${call.method}',
+        );
+    }
+  }
+
+  /// `provide` and `release`: bytes by name, for every viewport there is and
+  /// every one opened later.
+  Future<Object?> _handleResource(MethodCall call) async {
+    final args = call.arguments as Map?;
+    final name = args?['name'];
+    if (name is! String || name.isEmpty) {
+      throw PlatformException(
+        code: 'bad-args',
+        message: '${call.method} needs a name',
+      );
+    }
+    switch (call.method) {
+      case 'provide':
+        final bytes = args?['bytes'];
+        if (bytes is! Uint8List) {
+          throw PlatformException(
+            code: 'bad-args',
+            message: 'provide needs bytes',
+          );
+        }
+        _resources[name] = bytes;
+        for (final viewport in _viewports.values) {
+          viewport.provideResource(name, bytes);
+        }
+        return null;
+
+      case 'release':
+        final had = _resources.remove(name) != null;
+        for (final viewport in _viewports.values) {
+          viewport.releaseResource(name);
+        }
+        return had;
 
       default:
         throw PlatformException(

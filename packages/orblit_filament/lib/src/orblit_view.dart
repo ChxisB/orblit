@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
+import 'device_profile.dart';
 import 'graph.dart';
 import 'scene.dart';
 import 'web_view_type.dart';
@@ -69,6 +70,22 @@ class OrblitView extends StatefulWidget {
         .invokeMapMethod<String, Object?>('stats', {'textureId': textureId});
     final cost = stats?['gpuMilliseconds'];
     return cost is num ? cost.toDouble() : 0;
+  }
+
+  /// What the device under this viewport can do, or null until its renderer
+  /// has started — on the web, a frame or two after the view is laid out.
+  ///
+  /// Measured once, when the renderer started, so asking is cheap; but it is
+  /// the same answer every time, so ask once and keep it.
+  static Future<OrblitDeviceProfile?> profileOf(int textureId) async {
+    final answers = await _OrblitViewState._channel.invokeListMethod<Object?>(
+      'capabilities',
+      {'textureId': textureId},
+    );
+    if (answers == null || answers.isEmpty) return null;
+    return OrblitDeviceProfile.fromCapabilities([
+      for (final answer in answers) answer is num ? answer.toInt() : -1,
+    ]);
   }
 
   /// What each pass of the last frame cost, in the order they ran.

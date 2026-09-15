@@ -111,6 +111,52 @@ void main() {
     });
   });
 
+  group('what a device can do', () {
+    final abi = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/include/orblit_renderer.h',
+    );
+
+    test('is asked in the order the C ABI numbers its questions', () {
+      final body = RegExp(
+        r'typedef enum orblit_capability \{(.*?)\} orblit_capability;',
+        dotAll: true,
+      ).firstMatch(abi);
+      expect(body, isNotNull, reason: 'orblit_renderer.h no longer says');
+      final native = [
+        for (final found in RegExp(
+          r'^\s*ORBLIT_CAPABILITY_([A-Z_]+)',
+          multiLine: true,
+        ).allMatches(body!.group(1)!))
+          if (found.group(1) != 'COUNT') found.group(1)!,
+      ];
+      final dart = [
+        for (final question in OrblitCapability.values)
+          question.name
+              .replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m.group(0)}')
+              .toUpperCase(),
+      ];
+      expect(
+        dart,
+        native,
+        reason:
+            'Dart reads each answer by its position, so a question added or '
+            'moved on one side reads another question\'s answer on the other',
+      );
+    });
+
+    test('spells the texture families with the same bits', () {
+      final bits = [
+        for (final found in RegExp(
+          r'ORBLIT_FORMAT_\w+ = 1 << (\d+)',
+        ).allMatches(abi))
+          1 << int.parse(found.group(1)!),
+      ];
+      expect([
+        for (final family in OrblitTextureFamily.values) family.bit,
+      ], bits);
+    });
+  });
+
   test('the decal budget Dart reports against is the one the renderer '
       'paints', () {
     final found = RegExp(

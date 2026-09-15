@@ -292,16 +292,19 @@ void parallelFor(size_t count, const std::function<void(size_t)> &body) {
   for (std::thread &thread : threads) thread.join();
 }
 
-std::vector<uint8_t> readPicture(const std::string &path, uint32_t side) {
+std::vector<uint8_t> readPicture(const uint8_t *data, size_t size,
+                                 uint32_t side) {
   std::vector<uint8_t> pixels;
-  std::vector<uint8_t> file;
-  if (side == 0 || !readFile(path, file) || file.empty()) return pixels;
+  // stb_image measures its input in an int.
+  if (side == 0 || data == nullptr || size == 0 || size > size_t(INT32_MAX)) {
+    return pixels;
+  }
 
   int wide = 0;
   int tall = 0;
   int channels = 0;
-  unsigned char *decoded = stbi_load_from_memory(
-      file.data(), int(file.size()), &wide, &tall, &channels, 4);
+  unsigned char *decoded =
+      stbi_load_from_memory(data, int(size), &wide, &tall, &channels, 4);
   if (decoded == nullptr) return pixels;
   if (wide <= 0 || tall <= 0) {
     stbi_image_free(decoded);
@@ -348,5 +351,53 @@ std::unique_ptr<VideoDecoder> createVideoDecoder() {
 }
 
 #endif  // !ORBLIT_PLATFORM_APPLE
+
+uint32_t workerThreads() {
+  const unsigned reported = std::thread::hardware_concurrency();
+  return reported > 0 ? uint32_t(reported) : 1u;
+}
+
+}  // namespace orblit
+
+// ---- How much memory there is ----
+//
+// Last in the file and with its own includes, because <windows.h> defines
+// macros — `near`, `far`, `small` — that rewrite whatever code follows them.
+#if defined(__APPLE__)
+#include <sys/sysctl.h>
+#elif defined(_WIN32)
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+#endif
+
+namespace orblit {
+
+uint64_t systemMemoryBytes() {
+#if defined(__APPLE__)
+  uint64_t bytes = 0;
+  size_t length = sizeof(bytes);
+  if (sysctlbyname("hw.memsize", &bytes, &length, nullptr, 0) != 0) return 0;
+  return bytes;
+#elif defined(_WIN32)
+  MEMORYSTATUSEX status;
+  status.dwLength = sizeof(status);
+  if (!GlobalMemoryStatusEx(&status)) return 0;
+  return uint64_t(status.ullTotalPhys);
+#elif defined(__EMSCRIPTEN__)
+  // The page will not say, and the WebAssembly heap's ceiling is a limit on
+  // this module rather than an answer about the machine.
+  return 0;
+#else
+  const long pages = sysconf(_SC_PHYS_PAGES);
+  const long pageSize = sysconf(_SC_PAGE_SIZE);
+  if (pages <= 0 || pageSize <= 0) return 0;
+  return uint64_t(pages) * uint64_t(pageSize);
+#endif
+}
 
 }  // namespace orblit

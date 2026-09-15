@@ -21,6 +21,7 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
+import '../device_profile.dart';
 import 'orblit_module.dart';
 import 'orblit_scene_web.dart';
 
@@ -30,7 +31,12 @@ const int _backendOpenGl = 3;
 
 /// One viewport: a canvas, a module instance, and the frame loop over them.
 class OrblitWebViewport {
-  OrblitWebViewport(this.id);
+  OrblitWebViewport(this.id, {Map<String, Uint8List> resources = const {}})
+    : _resources = resources;
+
+  /// Everything provided so far, shared with the plugin that owns it, so a
+  /// module that starts late is handed what arrived before it.
+  final Map<String, Uint8List> _resources;
 
   /// This viewport's number — the "textureId" of the channel contract, minted
   /// by the plugin rather than by a texture registry.
@@ -122,6 +128,9 @@ class OrblitWebViewport {
       final module = await loadOrblitModule(canvas);
       if (_disposed) return;
       _module = module;
+      for (final provided in _resources.entries) {
+        _provideTo(module, provided.key, provided.value);
+      }
 
       // Straight through orblit_web_create_on_canvas, which makes the WebGL 2
       // context current before calling the unmodified orblit_renderer_create —
@@ -275,6 +284,48 @@ class OrblitWebViewport {
       if (now[note.key] != note.value) return false;
     }
     return true;
+  }
+
+  /// Every orblit_capability, in order, or null until the renderer has
+  /// started — which on the web is a frame or two after the view is laid out.
+  List<int>? capabilities() {
+    final module = _module;
+    if (_renderer == 0 || module == null) return null;
+    return [
+      for (final which in OrblitCapability.values)
+        orblitCall(module, 'orblit_renderer_capability', [
+          _renderer,
+          which.index,
+        ]),
+    ];
+  }
+
+  /// Hands [bytes] to this viewport's module if it has one; a module that
+  /// starts later is handed them as it starts.
+  void provideResource(String name, Uint8List bytes) {
+    final module = _module;
+    if (module != null) _provideTo(module, name, bytes);
+  }
+
+  void releaseResource(String name) {
+    final module = _module;
+    if (module == null) return;
+    orblitCall(module, 'orblit_renderer_release_resource', [name]);
+  }
+
+  static void _provideTo(OrblitModule module, String name, Uint8List bytes) {
+    final heap = OrblitHeap(module);
+    try {
+      // Copied into the module's heap for the call and copied again into the
+      // store by the renderer, which keeps its own; this copy is freed below.
+      orblitCall(module, 'orblit_renderer_provide_resource', [
+        heap.string(name),
+        heap.uint8s(bytes),
+        bytes.length,
+      ]);
+    } finally {
+      heap.free();
+    }
   }
 
   /// The same three numbers `stats` answers with everywhere else.

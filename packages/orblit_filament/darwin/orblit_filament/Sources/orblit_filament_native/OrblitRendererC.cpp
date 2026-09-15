@@ -18,6 +18,7 @@
 #include "OrblitDecals.h"
 #include "OrblitOutline.h"
 #include "OrblitRendererCore.h"
+#include "OrblitResources.h"
 #include "OrblitShadows.h"
 #include "OrblitSplats.h"
 #include "ScreenEffects.h"
@@ -211,6 +212,35 @@ OrblitBackend orblit_renderer_backend(const orblit_renderer *renderer) {
     return ORBLIT_BACKEND_DEFAULT;
   }
   return renderer->core->backend();
+}
+
+// ---- Bytes by name ----
+
+int orblit_renderer_provide_resource(const char *name, const uint8_t *bytes,
+                                    size_t length) {
+  if (name == nullptr || (length > 0 && bytes == nullptr)) {
+    return ORBLIT_ERROR_NULL;
+  }
+  try {
+    std::vector<uint8_t> copy(bytes, bytes + length);
+    orblit::provideResource(name, std::move(copy));
+    return ORBLIT_OK;
+  } catch (...) {
+    // Nothing else here can throw: this is a copy that did not fit.
+    orblit::log("[orblit] could not keep %zu bytes for %s", length, name);
+    return ORBLIT_ERROR_FAILED;
+  }
+}
+
+int orblit_renderer_release_resource(const char *name) {
+  if (name == nullptr) return ORBLIT_ERROR_NULL;
+  return orblit::releaseResource(name) ? ORBLIT_OK : ORBLIT_ERROR_RANGE;
+}
+
+int32_t orblit_renderer_capability(const orblit_renderer *renderer,
+                                  orblit_capability which) {
+  if (renderer == nullptr || renderer->core == nullptr) return -1;
+  return renderer->core->capability(which);
 }
 
 int orblit_renderer_resize(orblit_renderer *renderer, uint32_t width,

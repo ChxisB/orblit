@@ -234,6 +234,11 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
     _engine->setActiveFeatureLevel(supported);
   }
 
+  // What the device can do, asked once here beside the feature level and
+  // handed out afterwards without touching the engine, so a host can ask
+  // from any thread — and decide what to load before it loads it.
+  measureCapabilities(supported);
+
   // The standard lit surface needs the third level for its twelve samplers.
   // A device that cannot reach it — the iOS simulator, anything older than
   // an A13, OpenGL ES 3.0, WebGL 2 — gets the slim surface instead: nine
@@ -923,6 +928,65 @@ void Renderer::startAssetLoader() {
   _resourceLoader->addTextureProvider("image/ktx2", _ktxTextures);
 }
 
+void Renderer::measureCapabilities(Engine::FeatureLevel supported) {
+  using Format = Texture::InternalFormat;
+  const auto has = [this](Format format) {
+    return Texture::isTextureFormatSupported(*_engine, format);
+  };
+  const auto clamped = [](size_t value) {
+    return int32_t(std::min<size_t>(value, size_t(INT32_MAX)));
+  };
+
+  // Families rather than single formats, and a family only when its colour
+  // and its sRGB forms are both there: a cooked texture set is chosen per
+  // family, and one that can hold normals but not albedo is no use to it.
+  int32_t formats = 0;
+  if (has(Format::ETC2_EAC_RGBA8) && has(Format::ETC2_EAC_SRGBA8)) {
+    formats |= ORBLIT_FORMAT_ETC2;
+  }
+  if (has(Format::RGBA_ASTC_4x4) && has(Format::SRGB8_ALPHA8_ASTC_4x4)) {
+    formats |= ORBLIT_FORMAT_ASTC;
+  }
+  if (has(Format::DXT5_RGBA) && has(Format::DXT5_SRGBA)) {
+    formats |= ORBLIT_FORMAT_BC1_3;
+  }
+  if (has(Format::RED_RGTC1) && has(Format::RED_GREEN_RGTC2)) {
+    formats |= ORBLIT_FORMAT_BC4_5;
+  }
+  if (has(Format::RGB_BPTC_UNSIGNED_FLOAT)) formats |= ORBLIT_FORMAT_BC6H;
+  if (has(Format::RGBA_BPTC_UNORM) && has(Format::SRGB_ALPHA_BPTC_UNORM)) {
+    formats |= ORBLIT_FORMAT_BC7;
+  }
+
+  _capabilities.fill(-1);
+  _capabilities[ORBLIT_CAPABILITY_BACKEND] = int32_t(_backend);
+  _capabilities[ORBLIT_CAPABILITY_FEATURE_LEVEL] = int32_t(supported);
+  _capabilities[ORBLIT_CAPABILITY_MAX_TEXTURE_SIZE] = clamped(
+      Texture::getMaxTextureSize(*_engine, Texture::Sampler::SAMPLER_2D));
+  _capabilities[ORBLIT_CAPABILITY_MAX_ARRAY_TEXTURE_LAYERS] =
+      clamped(Texture::getMaxArrayTextureLayers(*_engine));
+  _capabilities[ORBLIT_CAPABILITY_COMPRESSED_FORMATS] = formats;
+  // Sampled and mipmapped both: an environment prefiltered at run time
+  // renders into its own levels, so a half-float texture that can only be
+  // read is not the answer that question needs.
+  _capabilities[ORBLIT_CAPABILITY_HALF_FLOAT_TEXTURES] =
+      has(Format::RGBA16F) &&
+              Texture::isTextureFormatMipmappable(*_engine, Format::RGBA16F)
+          ? 1
+          : 0;
+  _capabilities[ORBLIT_CAPABILITY_WORKER_THREADS] =
+      int32_t(orblit::workerThreads());
+  _capabilities[ORBLIT_CAPABILITY_SYSTEM_MEMORY_MEGABYTES] =
+      clamped(size_t(orblit::systemMemoryBytes() / (1024u * 1024u)));
+  _capabilitiesMeasured = true;
+}
+
+int32_t Renderer::capability(orblit_capability which) const {
+  if (!_capabilitiesMeasured || _engine == nullptr) return -1;
+  if (which < 0 || which >= ORBLIT_CAPABILITY_COUNT) return -1;
+  return _capabilities[size_t(which)];
+}
+
 /// Loads a glTF or glb file, once.
 ///
 /// Returns null and records why if it cannot be read, so the caller draws the
@@ -930,7 +994,13 @@ void Renderer::startAssetLoader() {
 Mesh *Renderer::meshAtPath(const std::string &path) {
   auto found = _meshes.find(path);
   if (found != _meshes.end()) {
-    return found->second.asset ? &found->second : nullptr;
+    if (found->second.asset) return &found->second;
+    // Still missing, unless bytes have been provided since it was looked
+    // for: a host that fetches a model and then names it should get the
+    // model, not the answer from the frame before it arrived.
+    if (found->second.missingAt == orblit::resourceGeneration()) {
+      return nullptr;
+    }
   }
 
   // Recorded either way, so a missing file is read from disk once rather than
@@ -939,8 +1009,12 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
 
   const std::string &native = path;
   const double readFrom = orblit::now();
-  std::vector<uint8_t> data;
-  if (!orblit::readFile(native, data)) {
+  // Taken before the read, so bytes provided while it is under way count as
+  // arriving after it and are looked for again.
+  const uint64_t generation = orblit::resourceGeneration();
+  const orblit::SharedBytes data = orblit::readResource(native);
+  if (!data) {
+    entry.missingAt = generation;
     orblit::log("[orblit] mesh unreadable: %s", native.c_str());
     _assetNotes[native] = "The file could not be read.";
     return nullptr;
@@ -949,11 +1023,12 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
   const double parsedFrom = orblit::now();
   gltfio::FilamentInstance *first = nullptr;
   entry.asset = _assetLoader->createInstancedAsset(
-      data.data(), static_cast<uint32_t>(data.size()), &first, 1);
+      data->data(), static_cast<uint32_t>(data->size()), &first, 1);
 
   if (entry.asset == nullptr) {
+    entry.missingAt = generation;
     orblit::log("[orblit] mesh not glTF: %s (%lu bytes)", native.c_str(),
-               (unsigned long)data.size());
+               (unsigned long)data->size());
     _assetNotes[native] = "This is not a glTF file that Filament can read.";
     return nullptr;
   }
@@ -1041,13 +1116,26 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
     // Handed over one at a time, because Filament is not being called from
     // several threads at once and this is not where the time was.
     for (const Wanted &one : wanted) {
-      if (one.bytes == nullptr) {
+      if (one.bytes == nullptr && !one.shared) {
         missing++;
         // A few names, not four hundred. The count is the number that
         // matters and the names are only there to recognise them by.
         if (sample.size() < 3) {
           sample.push_back(orblit::lastPathComponent(one.path));
         }
+        continue;
+      }
+      if (one.shared) {
+        // Shared, not copied: the store keeps its bytes and Filament holds a
+        // reference to them until it has finished with them.
+        auto *holder = new orblit::SharedBytes(one.shared);
+        _resourceLoader->addResourceData(
+            one.uri, filament::backend::BufferDescriptor(
+                         (*holder)->data(), (*holder)->size(),
+                         [](void *, size_t, void *user) {
+                           delete static_cast<orblit::SharedBytes *>(user);
+                         },
+                         holder));
         continue;
       }
       _resourceLoader->addResourceData(
@@ -2052,13 +2140,21 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
   }
 
   auto found = _ownTextures.find(identity);
-  if (found != _ownTextures.end()) return found->second;
+  if (found != _ownTextures.end()) {
+    if (found->second != nullptr) return found->second;
+    const auto missing = _texturesMissingAt.find(identity);
+    if (missing != _texturesMissingAt.end() &&
+        missing->second == orblit::resourceGeneration()) {
+      return nullptr;
+    }
+  }
 
   // A failure is cached as null too. Forty objects naming a file that is not
-  // there would otherwise each read the disk, every frame, forever.
-  std::vector<uint8_t> data;
+  // there would otherwise each read the disk, every frame, forever — until
+  // bytes are provided, the one thing that can change the answer.
+  const uint64_t generation = orblit::resourceGeneration();
   Texture *texture = nullptr;
-  if (orblit::readFile(path, data)) {
+  if (const orblit::SharedBytes data = orblit::readResource(path)) {
     const std::string extension = orblit::lowercasePathExtension(path);
     const char *mime = "image/png";
     gltfio::TextureProvider *provider = _ownStbTextures;
@@ -2069,7 +2165,7 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
       provider = _ownKtxTextures;
     }
     texture = provider->pushTexture(
-        data.data(), data.size(), mime,
+        data->data(), data->size(), mime,
         srgb ? gltfio::TextureProvider::TextureFlags::sRGB
              : gltfio::TextureProvider::TextureFlags::NONE);
     if (texture != nullptr) {
@@ -2079,6 +2175,7 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
     }
   }
   _ownTextures[identity] = texture;
+  if (texture == nullptr) _texturesMissingAt[identity] = generation;
   return texture;
 }
 
@@ -2365,8 +2462,8 @@ Texture *Renderer::cubemapAtPath(const std::string &path, float3 *harmonics,
                                  bool *hasThose, const std::string &note) {
   *hasThose = false;
 
-  std::vector<uint8_t> data;
-  if (!orblit::readFile(path, data)) {
+  const orblit::SharedBytes data = orblit::readResource(path);
+  if (!data) {
     _assetNotes[note] = orblit::format("%s could not be read.",
                                       orblit::lastPathComponent(path).c_str());
     return nullptr;
@@ -2375,8 +2472,8 @@ Texture *Renderer::cubemapAtPath(const std::string &path, float3 *harmonics,
   // The bundle owns the pixels and has to outlive the upload, so it is handed
   // to createTexture along with the callback that frees it once the driver has
   // taken a copy. Freeing it here would be a race with the render thread.
-  auto *bundle = new image::Ktx1Bundle(data.data(),
-                                       static_cast<uint32_t>(data.size()));
+  auto *bundle = new image::Ktx1Bundle(data->data(),
+                                       static_cast<uint32_t>(data->size()));
 
   if (!bundle->isCubemap()) {
     _assetNotes[note] = orblit::format(
@@ -5101,8 +5198,11 @@ int32_t Renderer::decalLayerFor(const std::string &path, Notes &notes,
     if (_decalPictureCount >= kDecalPictureLayers) {
       layer = -2;
     } else {
+      const orblit::SharedBytes file = orblit::readResource(path);
       std::vector<uint8_t> pixels =
-          orblit::readPicture(path, kDecalPictureSide);
+          file ? orblit::readPicture(file->data(), file->size(),
+                                     kDecalPictureSide)
+               : std::vector<uint8_t>();
       if (pixels.empty()) {
         layer = -1;
       } else {

@@ -285,12 +285,58 @@ int main(void) {
   expect(orblit_renderer_stride(ORBLIT_STRIDE_PASS) == 13,
          "a graph pass is thirteen floats");
 
+  /* Bytes by name need no renderer, and refuse what they should. */
+  {
+    const uint8_t three[3] = {1, 2, 3};
+    expect(orblit_renderer_provide_resource(NULL, three, 3) == ORBLIT_ERROR_NULL,
+           "a resource needs a name");
+    expect(orblit_renderer_provide_resource("orblit:resource/x", NULL, 3) ==
+               ORBLIT_ERROR_NULL,
+           "and bytes, when it says it has some");
+    expect(orblit_renderer_provide_resource("orblit:resource/x", three, 3) ==
+               ORBLIT_OK,
+           "a resource can be provided");
+    expect(orblit_renderer_release_resource("orblit:resource/./x") == ORBLIT_OK,
+           "and released under the same name spelled another way");
+    expect(orblit_renderer_release_resource("orblit:resource/x") ==
+               ORBLIT_ERROR_RANGE,
+           "and releasing it twice says there was nothing the second time");
+    expect(orblit_renderer_capability(NULL, ORBLIT_CAPABILITY_FEATURE_LEVEL) == -1,
+           "a null renderer can do nothing");
+  }
+
   orblit_surface_desc headless = {ORBLIT_SURFACE_HEADLESS, NULL};
   orblit_renderer *renderer =
       orblit_renderer_create(ORBLIT_BACKEND_DEFAULT, &headless, 64, 48);
   if (renderer == NULL) {
     fprintf(stderr, "FAIL: no renderer could start; build-only is not a runtime pass\n");
     return 1;
+  }
+
+  /* What the device can do is known as soon as the renderer is. */
+  {
+    const int32_t level =
+        orblit_renderer_capability(renderer, ORBLIT_CAPABILITY_FEATURE_LEVEL);
+    const int32_t side =
+        orblit_renderer_capability(renderer, ORBLIT_CAPABILITY_MAX_TEXTURE_SIZE);
+    const int32_t threads =
+        orblit_renderer_capability(renderer, ORBLIT_CAPABILITY_WORKER_THREADS);
+    printf("capabilities: backend %d, feature level %d, textures to %d, "
+           "formats 0x%x, half float %d, %d threads, %d MB\n",
+           orblit_renderer_capability(renderer, ORBLIT_CAPABILITY_BACKEND),
+           level, side,
+           orblit_renderer_capability(renderer,
+                                     ORBLIT_CAPABILITY_COMPRESSED_FORMATS),
+           orblit_renderer_capability(renderer,
+                                     ORBLIT_CAPABILITY_HALF_FLOAT_TEXTURES),
+           threads,
+           orblit_renderer_capability(renderer,
+                                     ORBLIT_CAPABILITY_SYSTEM_MEMORY_MEGABYTES));
+    expect(level >= 0 && level <= 3, "the feature level is Filament's own");
+    expect(side >= 2048, "every device this runs on has 2048 textures");
+    expect(threads >= 1, "there is at least the thread asking");
+    expect(orblit_renderer_capability(renderer, ORBLIT_CAPABILITY_COUNT) == -1,
+           "the count is not a question");
   }
 
   /* A short array is refused, and nothing is applied. */
@@ -633,6 +679,50 @@ int main(void) {
         expect(left[0] > flat_left[0] + 24.0f &&
                    right[0] + 24.0f < flat_right[0],
                "the bands move the colour away from the flat one, each way");
+      }
+      /* The same capture again, handed over as bytes under a name nothing on
+       * disk has — as a browser, an APK or a download hands it over — and
+       * looked for by a spelling of that name with a detour in it. It is the
+       * same splats, so it is the same picture. */
+      {
+        FILE *file = fopen(path, "rb");
+        long length = -1;
+        uint8_t *bytes = NULL;
+        if (file != NULL && fseek(file, 0, SEEK_END) == 0) {
+          length = ftell(file);
+          rewind(file);
+        }
+        if (length > 0) bytes = (uint8_t *)malloc((size_t)length);
+        const int read_back = bytes != NULL &&
+                              fread(bytes, 1, (size_t)length, file) ==
+                                  (size_t)length;
+        if (file != NULL) fclose(file);
+        expect(read_back, "the capture reads back off disk");
+        if (read_back) {
+          expect(orblit_renderer_provide_resource(
+                     "orblit:resource/captures/five.ply", bytes,
+                     (size_t)length) == ORBLIT_OK,
+                 "a capture can be provided as bytes");
+          free(bytes);
+          float named_left[3] = {0.0f, 0.0f, 0.0f};
+          float named_right[3] = {0.0f, 0.0f, 0.0f};
+          const int drew_named = draw_both_ways(
+              renderer, "orblit:resource/captures/../captures/five.ply", 1,
+              named_left, named_right);
+          expect(drew_named, "a capture provided as bytes draws");
+          if (drew && drew_named) {
+            expect(fabsf(named_left[0] - left[0]) <= 2.0f &&
+                       fabsf(named_left[2] - left[2]) <= 2.0f &&
+                       fabsf(named_right[0] - right[0]) <= 2.0f &&
+                       fabsf(named_right[2] - right[2]) <= 2.0f,
+                   "and draws what the file on disk drew");
+          }
+          expect(orblit_renderer_release_resource(
+                     "orblit:resource/captures/five.ply") == ORBLIT_OK,
+                 "and can be let go of afterwards");
+        } else {
+          free(bytes);
+        }
       }
       remove(path);
     }
