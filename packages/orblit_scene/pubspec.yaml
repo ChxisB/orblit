@@ -1,0 +1,23 @@
+name: orblit_scene
+description: >-
+  A scene as a document: entities with stable ids, a parent and an order,
+  components that describe what each one is, migrations from every older
+  format, and diffs between two documents that can be applied and inverted.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_light:
+    path: ../orblit_light
+  orblit_mesh:
+    path: ../orblit_mesh
+  orblit_weather:
+    path: ../orblit_weather
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

@@ -16,6 +16,7 @@ cd "$(dirname "$0")/.."
 PACKAGES=(
   packages/orblit_examples
   packages/orblit_filament
+  packages/orblit_stage
   packages/orblit_ui
   # An app rather than a package, and here for the one test it carries: that
   # every worked example can be built and asked for a scene. The gallery opens
