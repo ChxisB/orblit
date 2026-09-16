@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.27.0
+
+- **Gaussian splats draw in a browser.** The sorter started a thread for every
+  cloud, and a WebAssembly build without `-pthread` cannot start one: the
+  constructor threw, the C ABI marked the renderer failed, and a page that
+  showed a capture drew nothing at all — not the splats, and not the scene
+  around them either. Sorting now sits behind one interface with three
+  answers: a thread of its own natively, a Web Worker in a browser (the
+  positions handed over once, each finished order transferred back), and the
+  asking thread for a cloud small enough that handing the work over costs more
+  than doing it. A page that will not start a worker sorts where it stands and
+  says so.
+- **A sort leaves out what the camera cannot see.** Splats behind the camera
+  or well past the edge of the screen are dropped before the sort rather than
+  by the shader after it, and only the ones kept are uploaded and drawn — so a
+  camera inside a capture sorts and draws a part of it rather than all of it.
+  The picture does not change: the shader dropped those splats anyway, and the
+  frames this was measured against came back identical to the byte at 300 000
+  splats and at a million.
+- **`OrblitSplats.limit`**, the most splats to draw. A cloud is ranked as it is
+  read — by how opaque each splat is and how much of the screen it can cover —
+  and a limit keeps the ones that add most, so a smaller budget takes the
+  faint and the small first and the rest never reach the GPU at all.
+  `OrblitDeviceProfile.splatBudget` is where a device's own answer starts, and
+  the renderer says in the scene's notes when a limit dropped any.
+- **`OrblitSplats.coarseOrder`** sorts on sixteen bits of depth rather than
+  thirty-two: two radix passes rather than four, for splats within a 65 536th
+  of the visible depth of one another coming out in either order.
+  `OrblitDeviceProfile.coarseSplatOrder` says which devices that is for.
+- **Two more capture formats.** `.spz` — Niantic's compressed format, versions
+  2 and 3 — read and turned from its right-up-back frame into the one a `.ply`
+  from the reference trainer is in, so that one transform stands any capture
+  up. And `.osplat`, Orblit's own: the cloud exactly as the renderer holds it,
+  so that opening one is a read and four copies rather than a parse, an
+  exponential and a quaternion a splat. `native/headless/orblit_splat_cook`
+  writes one from any of the others, at a chosen degree and limit.
+
 ## 0.26.0
 
 - **Assets can be handed to the renderer as bytes.** `OrblitResources.provide`

@@ -474,7 +474,7 @@ int main(int argc, char **argv) {
   size_t bytes = 0;
   uint32_t got_width = 0;
   uint32_t got_height = 0;
-  for (int frame = frames; frame < frames + 8 && bytes == 0; frame++) {
+  for (uint32_t frame = frames; frame < frames + 8 && bytes == 0; frame++) {
     orblit_renderer_draw(renderer, frame / 60.0);
     bytes = orblit_renderer_read_capture(renderer, NULL, 0, &got_width,
                                         &got_height);

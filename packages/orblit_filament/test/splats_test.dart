@@ -131,6 +131,56 @@ void main() {
       );
     });
 
+    test('carry a coarse sort in bit three', () {
+      expect(
+        OrblitSplats(key: 1, path: 'a.ply', coarseOrder: true).flags,
+        1 | (2 << 1) | 8,
+      );
+    });
+
+    test('carry the limit from bit eight up, and nought for none', () {
+      final limited = OrblitSplats(key: 1, path: 'a.ply', limit: 250000);
+      expect(limited.flags >> OrblitSplats.limitShift, 250000);
+      expect(limited.flags & 0xff, 1 | (2 << 1));
+      expect(
+        OrblitSplats(key: 1, path: 'a.ply').flags >> OrblitSplats.limitShift,
+        0,
+      );
+    });
+
+    test('keep the largest limit whole through a signed 32-bit array', () {
+      // The top bit is set, so the wire holds a negative number; read
+      // unsigned, as the renderer reads it, it is the limit again.
+      final message = sceneWith([
+        OrblitSplats(
+          key: 1,
+          path: 'a.ply',
+          limit: OrblitSplats.maxLimit,
+          coarseOrder: true,
+        ),
+      ]).toMessage(1);
+      final flags = (message['splatFlags']! as Int32List)[0];
+      expect(flags, isNegative);
+      final unsigned = flags.toUnsigned(32);
+      expect(unsigned >> OrblitSplats.limitShift, OrblitSplats.maxLimit);
+      expect(unsigned & 8, 8);
+    });
+
+    test('refuse a limit of nothing or past what the flags can hold', () {
+      expect(
+        () => OrblitSplats(key: 1, path: 'a.ply', limit: 0),
+        throwsA(isA<AssertionError>()),
+      );
+      expect(
+        () => OrblitSplats(
+          key: 1,
+          path: 'a.ply',
+          limit: OrblitSplats.maxLimit + 1,
+        ),
+        throwsA(isA<AssertionError>()),
+      );
+    });
+
     test('refuse a degree no capture is trained to', () {
       expect(
         () => OrblitSplats(key: 1, path: 'a.ply', harmonics: 4),

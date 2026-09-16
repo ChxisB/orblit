@@ -15,6 +15,7 @@
 #include <filament/Scene.h>
 #include <filament/Texture.h>
 #include <filament/VertexBuffer.h>
+#include <math/mat4.h>
 #include <math/vec3.h>
 #include <utils/Entity.h>
 
@@ -25,6 +26,16 @@
 #include <vector>
 
 namespace orblit {
+
+/// The camera a frame is drawn from, as the splats need it: which way it
+/// faces, to put them in order, and where it is and what it sees, to leave
+/// out the ones it cannot.
+struct SplatCamera {
+  /// Its forward vector, in world space.
+  filament::math::float3 forward{0, 0, -1};
+  filament::math::mat4f viewFromWorld;
+  filament::math::mat4f clipFromView;
+};
 
 /// One cloud: its data on the GPU, its renderable, and its sorter.
 class SplatSet {
@@ -41,20 +52,31 @@ class SplatSet {
   void setOpacity(float opacity);
   void setBrightness(float brightness);
 
-  /// Off draws the splats in the order they were given, for measuring what
-  /// the sort is worth. On is the only right answer for a picture.
-  void setSorted(bool sorted);
+  /// Whether to sort, and how finely.
+  ///
+  /// Unsorted draws every splat in the order it was given, for measuring what
+  /// the sort is worth; sorted is the only right answer for a picture. A
+  /// coarse sort orders on sixteen bits of depth rather than thirty-two, which
+  /// halves its passes for splats very nearly as far away as one another
+  /// coming out in either order.
+  void setOrdering(bool sorted, bool coarse);
 
-  /// Once a frame, with the camera's forward vector in world space: asks for
-  /// a new order when the view has turned far enough to change one, and
+  /// Once a frame, with the camera the frame is drawn from: asks for a new
+  /// order when the camera has moved or turned since the last one, and
   /// uploads any order that has finished.
-  void update(const filament::math::float3 &forward);
+  void update(const SplatCamera &camera);
 
   uint32_t count() const { return _count; }
+  /// How many splats the order on the GPU draws: all of them until the first
+  /// sort lands, and the ones in view after it.
+  uint32_t drawn() const { return _drawn; }
   double lastSortMilliseconds() const { return _lastSortMs; }
 
  private:
+  void landSort();
+  void uploadGiven();
   void uploadOrder(const std::vector<uint32_t> &order);
+  void setDrawn(uint32_t splats);
 
   filament::Engine &_engine;
   filament::Scene &_scene;
@@ -70,16 +92,23 @@ class SplatSet {
   filament::IndexBuffer *_indices = nullptr;
   filament::MaterialInstance *_instance = nullptr;
   utils::Entity _entity;
+  /// The layers the renderable was built on, given back when a cloud that
+  /// had nothing in view has something again.
+  uint8_t _layers = 1;
+  /// Splats the geometry draws: the first this many slots of the order.
+  uint32_t _drawn = 0;
 
   std::unique_ptr<SplatSorter> _sorter;
   float _matrix[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
   bool _sorted = true;
+  bool _coarse = false;
   /// Whether the order on the GPU is the given one rather than a sort.
   bool _showingGiven = true;
   bool _everSorted = false;
-  /// The model-space direction the order on the GPU, or on its way, was
-  /// sorted along.
-  filament::math::float3 _sortedAlong{0, 0, 0};
+  /// What the order on the GPU, or on its way, was sorted for: the camera,
+  /// as the cloud's own space to clip space, and how finely.
+  filament::math::mat4f _sortedClip;
+  bool _sortedCoarse = false;
   double _lastSortMs = 0;
   uint32_t _sortsLanded = 0;
   bool _warnedDegenerate = false;
@@ -108,7 +137,7 @@ class SplatScene {
   void apply(const std::vector<SplatRequest> &requests,
              std::vector<std::pair<std::string, std::string>> &notes);
 
-  void update(const filament::math::float3 &forward);
+  void update(const SplatCamera &camera);
 
   bool empty() const { return _sets.empty(); }
   void clear();
@@ -118,10 +147,12 @@ class SplatScene {
     std::unique_ptr<SplatSet> set;
     std::string path;
     int32_t revision = 0;
-    /// The spherical-harmonic degree this one was read at. Kept because
-    /// asking for a different one means reading the file again: what was
-    /// dropped on the way in is not on the GPU to be brought back.
+    /// The spherical-harmonic degree this one was read at, and the most
+    /// splats it was asked to keep — nought for all. Kept because asking for
+    /// a different one means reading the cloud again: what was dropped on the
+    /// way in is not on the GPU to be brought back.
     uint32_t degree = 0;
+    uint32_t limit = 0;
     uint64_t seen = 0;
   };
 

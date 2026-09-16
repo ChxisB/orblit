@@ -92,8 +92,25 @@ for program in orblit_renderer_test orblit_headless; do
   clang++ "$OUT/$program.o" "${objects[@]}" "${archives[@]}" \
     "${FRAMEWORKS[@]}" -o "$OUT/$program"
 done
-echo "built $OUT/orblit_renderer_test and $OUT/orblit_headless"
+
+# The splat sort's, cull's and limit's own checks. C++ rather than C, because
+# what they check is behind the ABI rather than in it: see
+# orblit_splats_check.cpp.
+clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
+  -c orblit_splats_check.cpp -o "$OUT/orblit_splats_check.o"
+clang++ "$OUT/orblit_splats_check.o" "${objects[@]}" "${archives[@]}" \
+  "${FRAMEWORKS[@]}" -o "$OUT/orblit_splats_check"
+
+# The cook step for splat captures: a .ply or .spz in, the .osplat a launch
+# reads without parsing out. See orblit_splat_cook.cpp.
+clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
+  -c orblit_splat_cook.cpp -o "$OUT/orblit_splat_cook.o"
+clang++ "$OUT/orblit_splat_cook.o" "${objects[@]}" "${archives[@]}" \
+  "${FRAMEWORKS[@]}" -o "$OUT/orblit_splat_cook"
+echo "built $OUT/orblit_renderer_test, $OUT/orblit_headless," \
+     "$OUT/orblit_splats_check and $OUT/orblit_splat_cook"
 
 if [ "${1:-}" = "test" ]; then
+  "$OUT/orblit_splats_check"
   "$OUT/orblit_renderer_test"
 fi
