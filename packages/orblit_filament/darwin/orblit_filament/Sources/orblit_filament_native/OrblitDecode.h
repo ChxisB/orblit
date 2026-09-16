@@ -460,7 +460,10 @@ namespace decoders {
 /// Workers are only handed a job when one is idle, so a job not picked up is
 /// a worker that is not running: not yet scheduled, stopped by the browser,
 /// or under a headless browser's virtual clock. The splat sorter's half
-/// second, for the same reasons (OrblitSplatSorterWeb.cpp).
+/// second, for the same reasons (OrblitSplatSorterWeb.cpp). Counted only
+/// while the page is free to hear back — a frame at a time, at most a tenth
+/// of a second for each — because a worker's answer cannot arrive while the
+/// page is busy with something else.
 constexpr double kDecodeStartPatienceSeconds = 0.5;
 
 /// How long a job a worker has picked up may take. Longer by far than any
