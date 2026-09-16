@@ -29,7 +29,14 @@ import 'dart:io';
 
 /// Every `ORBLIT_*` switch this process was launched with.
 Map<String, String> readOrblitEnvironment() {
-  final result = <String, String>{};
+  // Lowest of all, the few switches a build can carry as `--dart-define`s:
+  // an Android app is launched by the system, with no environment anybody can
+  // set, so a build that names its example is the only way to point an
+  // emulator at one. Anything the environment says overrides these.
+  final result = <String, String>{
+    for (final entry in _defined.entries)
+      if (entry.value.isNotEmpty) entry.key: entry.value,
+  };
   try {
     result.addAll(_readNativeEnvironment());
   } catch (error) {
@@ -82,3 +89,16 @@ String _readCString(ffi.Pointer<ffi.Uint8> chars) {
   }
   return utf8.decode(bytes, allowMalformed: true);
 }
+
+/// The switches a `--dart-define` may set off the web. `String.fromEnvironment`
+/// needs a literal, so they are named one by one.
+const Map<String, String> _defined = {
+  'ORBLIT_EXAMPLE': String.fromEnvironment('ORBLIT_EXAMPLE'),
+  'ORBLIT_SECONDS': String.fromEnvironment('ORBLIT_SECONDS'),
+  'ORBLIT_CIRCLING': String.fromEnvironment('ORBLIT_CIRCLING'),
+  'ORBLIT_MODEL': String.fromEnvironment('ORBLIT_MODEL'),
+  'ORBLIT_CLIP': String.fromEnvironment('ORBLIT_CLIP'),
+  'ORBLIT_VARIANT': String.fromEnvironment('ORBLIT_VARIANT'),
+  'ORBLIT_DAYLIGHT': String.fromEnvironment('ORBLIT_DAYLIGHT'),
+  'ORBLIT_SAMPLES': String.fromEnvironment('ORBLIT_SAMPLES'),
+};
