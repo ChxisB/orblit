@@ -23,7 +23,9 @@ import 'src/png_codec.dart';
 ///   `--trim-threshold <n>` Alpha at or below this trims (default: 0).
 ///   `--heuristic <name>`   One of short, long, area, corner, contact; left
 ///                          unset, every heuristic is tried and the best kept.
-///   --no-rotate            Never turn a sprite a quarter turn.
+///   --rotate               Let a sprite turn a quarter turn to fit. Off by
+///                          default: the renderer does not draw rotated
+///                          regions yet.
 ///   --no-trim              Never cut transparent borders.
 ///   --no-merge             Never share a rectangle between identical sprites.
 ///   --square               Force every page's width to equal its height.
@@ -54,7 +56,7 @@ Future<void> main(List<String> arguments) async {
   var border = 0;
   var extrude = 1;
   var trimThreshold = 0;
-  var allowRotation = true;
+  var allowRotation = false;
   var trim = true;
   var mergeDuplicates = true;
   var square = false;
@@ -96,8 +98,8 @@ Future<void> main(List<String> arguments) async {
           );
           exit(2);
         }
-      case '--no-rotate':
-        allowRotation = false;
+      case '--rotate':
+        allowRotation = true;
       case '--no-trim':
         trim = false;
       case '--no-merge':

@@ -219,6 +219,7 @@ void main() {
           minPageSize: 1,
           padding: 0,
           border: 0,
+          allowRotation: true,
           trim: false,
           powerOfTwo: false,
           mergeDuplicates: false,

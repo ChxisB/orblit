@@ -67,7 +67,7 @@ class AtlasPackOptions {
     this.minPageSize = 64,
     this.padding = 2,
     this.border = 0,
-    this.allowRotation = true,
+    this.allowRotation = false,
     this.trim = true,
     this.trimAlphaThreshold = 0,
     this.extrude = 1,
@@ -100,11 +100,12 @@ class AtlasPackOptions {
 
   /// Whether a sprite may be turned a quarter turn to fit better.
   ///
-  /// Off by default would waste space that rotation would otherwise use, but
-  /// on is still the caller's call: see the note on rotation in the packer's
-  /// report — nothing in the renderer draws a rotated region's UVs correctly
-  /// yet, so a caller whose sprites must draw today, not once that lands,
-  /// should pass `false`.
+  /// Off by default, because nothing draws a rotated region yet: [Region.uv]
+  /// and `OrblitSprite`'s UV rectangle are both axis-aligned, so a sprite
+  /// packed on its side would be drawn on its side. The data a rotated pack
+  /// writes is correct — it follows the TexturePacker convention [Atlas.read]
+  /// already assumes — so turning this on is right for atlases read by
+  /// something that does honour [Region.rotated].
   final bool allowRotation;
 
   /// Whether transparent borders are cut before packing.
