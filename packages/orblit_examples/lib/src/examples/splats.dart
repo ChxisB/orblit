@@ -25,6 +25,11 @@ import 'surface.dart' show linearOf;
 /// The pillar is solid geometry standing in the ring, to show the other rule:
 /// splats test against the depth of the solid scene and never write their
 /// own, so a wall hides a cloud and a cloud never hides a wall.
+///
+/// And the cloud is held to what the device can carry: no more splats than
+/// its profile budgets, harmonics no higher than its degree, and a coarse
+/// sort where it is low tier — which is how one scene is written once for a
+/// desktop, a phone and a browser.
 class SplatsExample extends Example {
   SplatsExample();
 
@@ -33,8 +38,8 @@ class SplatsExample extends Example {
 
   @override
   String get blurb =>
-      'A cloud of 3D Gaussians, drawn as ellipses and sorted back to front '
-      'every time the camera turns.';
+      'A cloud of 3D Gaussians, drawn as ellipses, sorted back to front off '
+      'the render thread and held to what the device can carry.';
 
   @override
   ViewPoint get viewpoint =>
@@ -62,18 +67,48 @@ class SplatsExample extends Example {
   /// colour from every side however this is set.
   int harmonics = 2;
 
+  /// Whether the device's own budgets apply: no more splats than
+  /// [OrblitDeviceProfile.splatBudget], harmonics no higher than its degree,
+  /// and a coarse sort where it is low tier.
+  bool deviceLimits = true;
+
+  /// A limit of the example's own, which wins over the device's. Null for
+  /// none.
+  int? limit;
+
+  /// Whether to sort coarsely whatever the device says.
+  bool coarseOrder = false;
+
   Uint8List? _data;
   int _builtFor = -1;
+  int? _limitFor;
   int _revision = 0;
 
   static const _counts = {'100k': 100000, '300k': 300000, '1M': 1000000};
 
+  int? get _limit => limit ?? (deviceLimits ? device?.splatBudget : null);
+
+  int get _harmonics {
+    final profile = device;
+    if (!deviceLimits || profile == null) return harmonics;
+    return math.min(harmonics, profile.harmonicDegree);
+  }
+
+  bool get _coarse =>
+      coarseOrder || (deviceLimits && (device?.coarseSplatOrder ?? false));
+
   @override
   OrblitScene scene(OrblitCamera camera, double seconds) {
     final file = path;
-    if (file == null && _builtFor != count) {
-      _data = ring(count);
-      _builtFor = count;
+    final wanted = _limit;
+    if (file == null && (_builtFor != count || _limitFor != wanted)) {
+      if (_builtFor != count) {
+        _data = ring(count);
+        _builtFor = count;
+      }
+      // A limit is applied as a cloud is read, so a cloud held in memory has
+      // to be sent again for a new one to reach it.
+      _limitFor = wanted;
       _revision++;
     }
 
@@ -107,7 +142,9 @@ class SplatsExample extends Example {
           opacity: opacity,
           brightness: brightness,
           sorted: sorted,
-          harmonics: harmonics,
+          harmonics: _harmonics,
+          limit: wanted,
+          coarseOrder: _coarse,
           revision: _revision,
         ),
       ],
@@ -208,6 +245,28 @@ class SplatsExample extends Example {
     );
   }
 
+  /// What the device limits come to, in a sentence.
+  String get _deviceNote {
+    final profile = device;
+    if (profile == null) {
+      return 'Waiting for the renderer to say what this device can do.';
+    }
+    final name = profile.tier.name;
+    final tier = '${name[0].toUpperCase()}${name.substring(1)}';
+    if (!deviceLimits) {
+      return '$tier-tier device, ignored: every splat, at the degree chosen '
+          'below.';
+    }
+    return '$tier-tier device: at most ${_grouped(profile.splatBudget)} '
+        'splats, harmonics to degree ${profile.harmonicDegree}, '
+        '${profile.coarseSplatOrder ? 'a coarse' : 'a full'} sort.';
+  }
+
+  static String _grouped(int value) => value.toString().replaceAllMapped(
+    RegExp(r'\B(?=(\d{3})+(?!\d))'),
+    (_) => ',',
+  );
+
   @override
   Widget settings(BuildContext context, VoidCallback changed) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -216,11 +275,32 @@ class SplatsExample extends Example {
         label: 'Sort back to front',
         value: sorted,
         note: sorted
-            ? 'Re-sorted on its own thread whenever the view turns.'
+            ? 'Re-sorted off the render thread whenever the view moves, '
+                  'leaving out what the camera cannot see.'
             : 'Drawn in the order generated: the far side paints over the '
                   'near one wherever they overlap.',
         onChanged: (value) {
           sorted = value;
+          changed();
+        },
+      ),
+      Toggle(
+        label: 'Coarse sort',
+        value: coarseOrder,
+        note:
+            'Sixteen bits of depth rather than thirty-two: half the passes, '
+            'for splats nearly as far away as one another in either order.',
+        onChanged: (value) {
+          coarseOrder = value;
+          changed();
+        },
+      ),
+      Toggle(
+        label: 'Device limits',
+        value: deviceLimits,
+        note: _deviceNote,
+        onChanged: (value) {
+          deviceLimits = value;
           changed();
         },
       ),
@@ -287,16 +367,23 @@ class SplatsExample extends Example {
 
   @override
   String get code => '''
+// What this device can carry, asked of the view once its renderer is up.
+final device = await OrblitView.profileOf(viewport);
+
 // A capture from a file: the reference trainer's .ply, or a compact .splat.
 OrblitSplats(
   key: 1,
   path: 'garden.ply',
   // Structure-from-motion puts y down. Turned the right way up here.
   transform: Matrix4.rotationX(math.pi),
-  // How much of the capture's view-dependent colour to read: the degree of
-  // its spherical harmonics. Two is what most captures are trained to, and
-  // costs 32 bytes a splat; 0 draws the flat colour alone and costs nothing.
-  harmonics: 2,
+  // How much of the capture's view-dependent colour to read: 16 bytes a splat
+  // for each degree, so a small device reads less of it.
+  harmonics: device.harmonicDegree,
+  // Keeps the most opaque and largest splats, and never sends the rest to the
+  // GPU at all.
+  limit: device.splatBudget,
+  // Sixteen bits of depth where a full sort would lag a turning camera.
+  coarseOrder: device.coarseSplatOrder,
 )
 
 // Or a cloud made in Dart, packed into the same 32-byte layout.
@@ -308,8 +395,9 @@ final data = OrblitSplats.pack(
 );
 OrblitSplats(key: 1, data: data, revision: revision)
 
-// Sorted back to front on a thread of the renderer's own, whenever the view
-// has turned a third of a degree. Drawn after the solid scene, tested against
-// its depth, never writing any.
+// Sorted back to front whenever the camera moves — on a thread of the
+// renderer's own, or a Web Worker in a browser — leaving out what the camera
+// cannot see. Drawn after the solid scene, tested against its depth, never
+// writing any.
 ''';
 }

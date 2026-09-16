@@ -51,6 +51,10 @@
 ///   ORBLIT_SPLAT_PILLAR=0   take the solid pillar out of the ring
 ///   ORBLIT_SPLAT_HARMONICS  how many bands of a capture's view-dependent
 ///                          colour to read: 0, 1, 2 or 3
+///   ORBLIT_SPLAT_LIMIT      the most splats to draw, whatever the device says
+///   ORBLIT_SPLAT_COARSE=1   sort on sixteen bits of depth rather than 32
+///   ORBLIT_SPLAT_DEVICE=0   ignore the device's own splat budget, degree and
+///                          sort, and draw what is asked for instead
 ///   ORBLIT_BATCHING=0/1     batching off or on, for any example, over the
 ///                          default (on), so the same frame can be drawn both
 ///                          ways and compared
@@ -814,6 +818,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       }
       example.harmonics =
           _number('ORBLIT_SPLAT_HARMONICS')?.round() ?? example.harmonics;
+      final limit = _number('ORBLIT_SPLAT_LIMIT')?.round();
+      if (limit != null && limit > 0) example.limit = limit;
+      if (_orblitEnv['ORBLIT_SPLAT_COARSE'] == '1') example.coarseOrder = true;
+      if (_orblitEnv['ORBLIT_SPLAT_DEVICE'] == '0') {
+        example.deviceLimits = false;
+      }
     }
 
     if (example is MotionBlurExample) {
@@ -849,10 +859,30 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     super.dispose();
   }
 
+  /// Asks the viewport what its device can do, and hands the answer to the
+  /// example, which is how one scene scales itself to a desktop, a phone and
+  /// a browser.
+  ///
+  /// Asked again for a few seconds rather than once: on the web the renderer
+  /// starts a frame or two after the view is laid out, and answers nothing
+  /// until it has.
+  Future<void> _learnDevice(int viewport) async {
+    for (var attempt = 0; attempt < 50; attempt++) {
+      if (!mounted) return;
+      final profile = await OrblitView.profileOf(viewport);
+      if (profile != null) {
+        if (mounted) setState(() => _example.device = profile);
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
   @override
   Widget build(BuildContext context) => GestureDetector(
     onPanUpdate: (details) => setState(() => _look.orbit(details.delta)),
     child: OrblitView(
+      onViewport: _learnDevice,
       // The same moment the example was built at, so ORBLIT_SECONDS holds
       // the weather still as well as the scene.
       seconds: _held,

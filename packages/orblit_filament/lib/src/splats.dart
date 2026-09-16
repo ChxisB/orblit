@@ -11,7 +11,8 @@ import 'package:vector_math/vector_math_64.dart';
 /// ellipsoids rather than as surfaces. Each is drawn as an ellipse on screen,
 /// sized from how its ellipsoid projects, faded by a Gaussian and blended over
 /// what is behind it — so they have to be drawn back to front, and the
-/// renderer re-sorts them on a thread of its own whenever the camera turns.
+/// renderer re-sorts them whenever the camera moves, off the render thread (on
+/// a Web Worker in a browser), leaving out the ones the camera cannot see.
 ///
 /// Splats are drawn after the solid scene, test against its depth and do not
 /// write any: a wall in front of a cloud hides it, and a cloud never hides a
@@ -32,6 +33,8 @@ class OrblitSplats {
     this.brightness = 1,
     this.sorted = true,
     this.harmonics = 2,
+    this.limit,
+    this.coarseOrder = false,
     this.revision = 0,
   }) : transform = transform ?? Matrix4.identity(),
        assert(
@@ -43,6 +46,10 @@ class OrblitSplats {
          'a capture carries spherical harmonics of degree 0, 1, 2 or 3',
        ),
        assert(
+         limit == null || (limit > 0 && limit <= maxLimit),
+         'a limit is at least one splat and at most $maxLimit',
+       ),
+       assert(
          data == null || data.length % recordBytes == 0,
          'in-memory splats are whole $recordBytes-byte records',
        );
@@ -51,8 +58,14 @@ class OrblitSplats {
   /// its sorter against this key.
   final int key;
 
-  /// A `.ply` or `.splat` file to read. Read once, and again only when the
-  /// path changes.
+  /// A capture to read: a `.ply` as the reference trainer writes one, a
+  /// compact `.splat`, Niantic's `.spz`, or an `.osplat` cooked from any of
+  /// those.
+  ///
+  /// Read once, and again only when the path, [harmonics] or [limit] changes.
+  /// An `.osplat` is the cloud exactly as the renderer holds it, so opening
+  /// one is a read and four copies rather than a parse, an exponential and a
+  /// quaternion a splat — which is what a launch that must not stall wants.
   final String? path;
 
   /// Splats in the compact 32-byte layout — see [pack].
@@ -77,7 +90,8 @@ class OrblitSplats {
   final double brightness;
 
   /// Whether the splats are sorted back to front. On, always, for a picture:
-  /// this exists so that what the sort is worth can be measured.
+  /// this exists so that what the sort is worth can be measured, and a cloud
+  /// that is not sorted is drawn whole, every splat, in the order given.
   final bool sorted;
 
   /// How much of a capture's view-dependent colour to read: the degree of the
@@ -96,13 +110,38 @@ class OrblitSplats {
   /// for degree 3, on top of the 48 MB the splats themselves take. Two by
   /// default, which is what most captures are trained to and where nearly all
   /// of the effect is; 0 leaves them out and draws exactly what this drew
-  /// before it could read them at all.
+  /// before it could read them at all. [OrblitDeviceProfile.harmonicDegree]
+  /// is where a device's own answer starts.
   ///
   /// Only a `.ply` carries any. The compact 32-byte record has no room for
   /// them, so a cloud from [data] or from a `.splat` is flat whatever this
   /// says. A file trained to a lower degree than this asks for is read as far
   /// as it goes, and one trained higher is read to here and says so.
   final int harmonics;
+
+  /// The most splats to draw, or null for every one.
+  ///
+  /// A cloud is ranked as it is read, by how opaque each splat is and how much
+  /// of the screen it can cover, and a limit keeps the ones that add most. So
+  /// what a smaller budget takes away is the faint, small splats a capture is
+  /// thickest with, not a random share of everything — and the rest never
+  /// reach the GPU, which is the point on a phone. The renderer says, in the
+  /// scene's notes, when a limit dropped any.
+  ///
+  /// [OrblitDeviceProfile.splatBudget] is where a device's own answer starts.
+  ///
+  /// Applied as the cloud is read, so a new limit reads a file again, and a
+  /// cloud from [data] takes it with its next [revision]. At most [maxLimit].
+  final int? limit;
+
+  /// Whether to sort on sixteen bits of depth rather than thirty-two.
+  ///
+  /// Half the passes, for splats within a 65 536th of the visible splats'
+  /// depth of one another coming out in either order — which nobody can see in
+  /// a capture of any size, and which lets the order keep up with a turning
+  /// camera on a device where a full sort would lag behind it.
+  /// [OrblitDeviceProfile.coarseSplatOrder] says which devices those are.
+  final bool coarseOrder;
 
   /// Bumped by whoever writes into [data].
   final int revision;
@@ -111,9 +150,25 @@ class OrblitSplats {
   /// size the renderer finds out when it reads it.
   int get count => data == null ? 0 : data!.length ~/ recordBytes;
 
-  /// Bit flags in the order the renderer reads them: whether to sort, then
-  /// the spherical-harmonic degree in the two bits above that.
-  int get flags => (sorted ? 1 : 0) | (harmonics << 1);
+  /// Bit flags in the order the renderer reads them: whether to sort; the
+  /// spherical-harmonic degree in the two bits above that; whether the sort is
+  /// coarse in bit three; and the limit from bit eight up, nought for none.
+  /// Must match kSplatFlag* in OrblitSplats.h.
+  ///
+  /// A limit near [maxLimit] sets the top bit, so the flags of such a cloud
+  /// are a negative 32-bit integer on the wire. The renderer reads them
+  /// unsigned.
+  int get flags =>
+      (sorted ? 1 : 0) |
+      (harmonics << 1) |
+      (coarseOrder ? 8 : 0) |
+      ((limit ?? 0) << limitShift);
+
+  /// Where the limit starts in [flags]. Must match kSplatFlagLimitShift.
+  static const int limitShift = 8;
+
+  /// The largest limit the flags have room for: twenty-four bits.
+  static const int maxLimit = 0xFFFFFF;
 
   /// Floats per cloud in the scene message: the transform, column-major, then
   /// the opacity and the brightness. Must match splatStride in the plugin and
