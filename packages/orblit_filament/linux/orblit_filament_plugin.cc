@@ -26,6 +26,7 @@ G_DECLARE_FINAL_TYPE(OrblitFilamentPlugin,
 struct _OrblitFilamentPlugin {
   GObject parent_instance;
   FlMethodChannel* channel;
+  FlMethodChannel* resources;
   FlTextureRegistrar* texture_registrar;  // borrowed from the registrar
   std::map<int64_t, std::unique_ptr<orblit_linux::Viewport>>* viewports;
 };
@@ -157,6 +158,68 @@ FlMethodResponse* Stats(OrblitFilamentPlugin* self, FlValue* args) {
   return FL_METHOD_RESPONSE(fl_method_success_response_new(stats));
 }
 
+FlMethodResponse* Capabilities(OrblitFilamentPlugin* self, FlValue* args) {
+  int64_t texture_id = 0;
+  orblit_linux::Viewport* viewport = ReadInt(args, "textureId", &texture_id)
+                                         ? Find(self, texture_id)
+                                         : nullptr;
+  if (viewport == nullptr) {
+    g_autoptr(FlValue) nothing = fl_value_new_null();
+    return FL_METHOD_RESPONSE(fl_method_success_response_new(nothing));
+  }
+  const std::vector<int32_t> answers = viewport->Capabilities();
+  g_autoptr(FlValue) list =
+      fl_value_new_int32_list(answers.data(), answers.size());
+  return FL_METHOD_RESPONSE(fl_method_success_response_new(list));
+}
+
+// `provide` and `release` on orblit_filament/resources: bytes by name for
+// every renderer in the process, so no viewport is needed. GTK's embedder has
+// no background queue for these, so they arrive on the platform thread; the
+// copy into the store is the whole of the work.
+void ResourceCall(FlMethodChannel*, FlMethodCall* method_call, gpointer) {
+  const gchar* method = fl_method_call_get_name(method_call);
+  FlValue* args = fl_method_call_get_args(method_call);
+  FlValue* name = args != nullptr && fl_value_get_type(args) == FL_VALUE_TYPE_MAP
+                      ? fl_value_lookup_string(args, "name")
+                      : nullptr;
+
+  g_autoptr(FlMethodResponse) response = nullptr;
+  if (name == nullptr || fl_value_get_type(name) != FL_VALUE_TYPE_STRING ||
+      fl_value_get_string(name)[0] == '\0') {
+    response = FL_METHOD_RESPONSE(fl_method_error_response_new(
+        "bad-args", "a resource call needs a name", nullptr));
+  } else if (g_strcmp0(method, "provide") == 0) {
+    FlValue* bytes = fl_value_lookup_string(args, "bytes");
+    if (bytes == nullptr ||
+        fl_value_get_type(bytes) != FL_VALUE_TYPE_UINT8_LIST) {
+      response = FL_METHOD_RESPONSE(fl_method_error_response_new(
+          "bad-args", "provide needs bytes", nullptr));
+    } else if (orblit_renderer_provide_resource(
+                   fl_value_get_string(name), fl_value_get_uint8_list(bytes),
+                   fl_value_get_length(bytes)) != ORBLIT_OK) {
+      response = FL_METHOD_RESPONSE(fl_method_error_response_new(
+          "orblit_failed", "the renderer could not keep those bytes", nullptr));
+    } else {
+      g_autoptr(FlValue) nothing = fl_value_new_null();
+      response = FL_METHOD_RESPONSE(fl_method_success_response_new(nothing));
+    }
+  } else if (g_strcmp0(method, "release") == 0) {
+    g_autoptr(FlValue) released = fl_value_new_bool(
+        orblit_renderer_release_resource(fl_value_get_string(name)) ==
+        ORBLIT_OK);
+    response = FL_METHOD_RESPONSE(fl_method_success_response_new(released));
+  } else {
+    response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
+  }
+
+  g_autoptr(GError) error = nullptr;
+  if (!fl_method_call_respond(method_call, response, &error)) {
+    g_warning("orblit_filament: failed to respond to %s: %s", method,
+              error->message);
+  }
+}
+
 FlMethodResponse* Dispose(OrblitFilamentPlugin* self, FlValue* args) {
   int64_t texture_id = 0;
   if (!ReadInt(args, "textureId", &texture_id)) {
@@ -183,6 +246,8 @@ void MethodCall(FlMethodChannel* channel, FlMethodCall* method_call,
     response = SetScene(self, args);
   } else if (g_strcmp0(method, "stats") == 0) {
     response = Stats(self, args);
+  } else if (g_strcmp0(method, "capabilities") == 0) {
+    response = Capabilities(self, args);
   } else if (g_strcmp0(method, "dispose") == 0) {
     response = Dispose(self, args);
   } else {
@@ -207,6 +272,7 @@ static void orblit_filament_plugin_dispose(GObject* object) {
     self->viewports = nullptr;
   }
   g_clear_object(&self->channel);
+  g_clear_object(&self->resources);
   self->texture_registrar = nullptr;
   G_OBJECT_CLASS(orblit_filament_plugin_parent_class)->dispose(object);
 }
@@ -233,6 +299,12 @@ void orblit_filament_plugin_register_with_registrar(
       FL_METHOD_CODEC(codec));
   fl_method_channel_set_method_call_handler(
       plugin->channel, MethodCall, g_object_ref(plugin), g_object_unref);
+
+  plugin->resources = fl_method_channel_new(
+      fl_plugin_registrar_get_messenger(registrar), "orblit_filament/resources",
+      FL_METHOD_CODEC(codec));
+  fl_method_channel_set_method_call_handler(plugin->resources, ResourceCall,
+                                            nullptr, nullptr);
 
   g_object_unref(plugin);
 }

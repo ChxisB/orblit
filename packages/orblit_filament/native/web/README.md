@@ -73,18 +73,20 @@ directly afterwards with `ninja libfilament-iblprefilter.a` in
 
 ```sh
 cd "$ROOT/.worktrees/orblit-web-core"   # made by .worktrees/new_worktree.sh web-core
+export ORBLIT_FILAMENT_WASM_SRC="$ROOT/.worktrees/filament-web"
 ORBLIT_GENERATED_SET=webgl2 ORBLIT_MATC_BACKENDS=opengl \
+  ORBLIT_MATC="$ORBLIT_FILAMENT_WASM_SRC/out/cmake-release/tools/matc/matc" \
   bash packages/orblit_filament/darwin/setup.sh
 source "$ORBLIT_CACHE/emsdk/emsdk_env.sh"
 export EMSDK="$ORBLIT_CACHE/emsdk"
-export ORBLIT_FILAMENT_WASM_SRC="$ROOT/.worktrees/filament-web"
 bash packages/orblit_filament/native/web/build.sh
 ```
 
-`build.sh` compiles the materials itself now, and that used to be a separate
-line here — `ORBLIT_MATC_BACKENDS=opengl bash .../darwin/setup.sh` — run by
-hand before it. Two reasons it moved, and only the first was ever written
-down.
+`build.sh` does not compile the materials — it refuses to start without
+`generated/webgl2` — so the `setup.sh` line above comes first, and it names
+its `matc` explicitly. (An earlier note here said `build.sh` compiled them
+itself; it never did, and a fresh checkout found out on 2026-09-15.) Two
+things that line has to get right, and only the first was ever written down.
 
 The written one: the renderer's compiled materials (`generated/*_material.h`)
 carry shaders only for the backends `ORBLIT_MATC_BACKENDS` named, and the
@@ -104,9 +106,9 @@ it. Every directional light contributed nothing, in silence, and the frame
 still looked lit because the image-based half is outside that guard. Turning
 the ambient off turned the scene black.
 
-So the matc now comes out of `$ORBLIT_FILAMENT_WASM_SRC` beside the archives
+So the matc comes out of `$ORBLIT_FILAMENT_WASM_SRC` beside the archives
 (`out/cmake-release/tools/matc/matc`, which `./build.sh -p wasm release`
-builds on its way through), and `build.sh` refuses to start without it.
+builds on its way through), handed to `setup.sh` as `ORBLIT_MATC`.
 
 ### 4. A frame in the browser
 

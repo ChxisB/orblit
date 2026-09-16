@@ -1,0 +1,75 @@
+// Flat pictures: sprites, tiles, a scrolling backdrop.
+//
+// A layer is one image and any number of rectangles cut from it, built into a
+// single vertex buffer on the processor — see OrblitSprites.cpp — so every
+// corner arrives with its piece of the image and its colour. Nothing is looked up in a texture from the vertex stage and nothing
+// is instanced, so this needs no more of a GPU than OpenGL ES 3.0 has: the
+// phones that draw the slim lit surface, and WebGL 2, draw sprites exactly as
+// a desktop does.
+material {
+    name : orblitSprite,
+    shadingModel : unlit,
+    // Premultiplied, which is what `transparent` is, so a soft edge does not
+    // grow a dark fringe. An additive layer is the same blend with its alpha
+    // written as nought: premultiplied colour over a destination kept at full
+    // strength is addition, and one compiled material does both.
+    blending : transparent,
+    // Behind anything solid, in front of nothing: a 2D scene's order is the
+    // order it was given, not whatever a depth buffer would make of it.
+    depthWrite : false,
+    depthCulling : true,
+    // A sprite flipped by a negative size is still a sprite.
+    culling : none,
+    requires : [ uv0, color ],
+    // Read as given. Filament flips v by default, for a convention glTF
+    // loading relies on; a sprite's rectangle is measured from the top of its
+    // picture, as an atlas measures it, and flipped it drew every sheet upside
+    // down — a coin from the empty bottom row, a brick where a spark belonged.
+    flipUV : false,
+    parameters : [
+        { type : sampler2d, name : image },
+        // The whole layer's colour, over each sprite's own.
+        { type : float4, name : tint },
+        // Corners moved to whole pixels, so pixel art does not shimmer as it
+        // moves by fractions of one.
+        { type : bool, name : snap },
+        { type : bool, name : additive }
+    ]
+}
+
+vertex {
+    void materialVertex(inout MaterialVertexInputs material) {
+        // In the object domain, so Filament projects the corner and measures
+        // its depth exactly as it does every solid surface's. Placing the corner
+        // in clip space by hand, in the device domain, disagreed with that
+        // depth under an orthographic camera — a 2D camera — and every sprite
+        // in front of a solid object was drawn behind it.
+        if (materialParams.snap) {
+            // To the nearest pixel corner, in the target's own pixels, and back
+            // into the camera-relative world Filament keeps.
+            vec4 clip = getClipFromWorldMatrix() * material.worldPosition;
+            vec2 halfPixels = getResolution().xy * 0.5;
+            clip.xy = floor(clip.xy / clip.w * halfPixels + 0.5) / halfPixels *
+                      clip.w;
+            vec4 world = getWorldFromClipMatrix() * clip;
+            material.worldPosition = vec4(world.xyz / world.w, 1.0);
+        }
+    }
+}
+
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec4 colour = texture(materialParams_image, getUV0()) * getColor() *
+                      materialParams.tint;
+        // Fully transparent texels are not drawn at all, which keeps a
+        // cut-out sprite from writing nothing over thousands of pixels.
+        if (colour.a < 1.0 / 255.0) discard;
+
+        // Unlit, so the camera's exposure never reaches it: the colour drawn is
+        // the colour given, whatever the camera is set to.
+        vec3 rgb = colour.rgb * colour.a;
+        material.baseColor =
+            vec4(rgb, materialParams.additive ? 0.0 : colour.a);
+    }
+}

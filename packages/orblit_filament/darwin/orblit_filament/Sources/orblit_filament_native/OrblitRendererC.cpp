@@ -18,8 +18,10 @@
 #include "OrblitDecals.h"
 #include "OrblitOutline.h"
 #include "OrblitRendererCore.h"
+#include "OrblitResources.h"
 #include "OrblitShadows.h"
 #include "OrblitSplats.h"
+#include "OrblitSprites.h"
 #include "ScreenEffects.h"
 
 struct orblit_renderer {
@@ -146,6 +148,10 @@ uint32_t orblit_renderer_stride(orblit_stride which) {
       return uint32_t(orblit::kOutlineParams);
     case ORBLIT_STRIDE_PIPELINE:
       return uint32_t(orblit::pipeline::kPipelineStride);
+    case ORBLIT_STRIDE_SPRITE_LAYER:
+      return uint32_t(orblit::kSpriteLayerParams);
+    case ORBLIT_STRIDE_SPRITE:
+      return uint32_t(orblit::kSpriteRecordFloats);
   }
   return 0;
 }
@@ -211,6 +217,35 @@ OrblitBackend orblit_renderer_backend(const orblit_renderer *renderer) {
     return ORBLIT_BACKEND_DEFAULT;
   }
   return renderer->core->backend();
+}
+
+// ---- Bytes by name ----
+
+int orblit_renderer_provide_resource(const char *name, const uint8_t *bytes,
+                                    size_t length) {
+  if (name == nullptr || (length > 0 && bytes == nullptr)) {
+    return ORBLIT_ERROR_NULL;
+  }
+  try {
+    std::vector<uint8_t> copy(bytes, bytes + length);
+    orblit::provideResource(name, std::move(copy));
+    return ORBLIT_OK;
+  } catch (...) {
+    // Nothing else here can throw: this is a copy that did not fit.
+    orblit::log("[orblit] could not keep %zu bytes for %s", length, name);
+    return ORBLIT_ERROR_FAILED;
+  }
+}
+
+int orblit_renderer_release_resource(const char *name) {
+  if (name == nullptr) return ORBLIT_ERROR_NULL;
+  return orblit::releaseResource(name) ? ORBLIT_OK : ORBLIT_ERROR_RANGE;
+}
+
+int32_t orblit_renderer_capability(const orblit_renderer *renderer,
+                                  orblit_capability which) {
+  if (renderer == nullptr || renderer->core == nullptr) return -1;
+  return renderer->core->capability(which);
 }
 
 int orblit_renderer_resize(orblit_renderer *renderer, uint32_t width,
@@ -581,6 +616,44 @@ int orblit_renderer_apply_splats(orblit_renderer *renderer, uint32_t count,
   return guarded(renderer, [&](orblit::Renderer &core) {
     core.applySplats(keys, flags, revisions, params, named, changed,
                      changed_counts, changed_count, data, data_length, count);
+  });
+}
+
+int orblit_renderer_apply_sprites(orblit_renderer *renderer, uint32_t count,
+                                 const int32_t *keys, const int32_t *flags,
+                                 const int32_t *orders,
+                                 const int32_t *revisions, const float *params,
+                                 size_t param_floats, const char *const *paths,
+                                 uint32_t path_count, const int32_t *changed,
+                                 const int32_t *changed_counts,
+                                 uint32_t changed_count, const float *records,
+                                 size_t record_floats) {
+  if (renderer == nullptr) return ORBLIT_ERROR_NULL;
+  if (!present(count, {keys, flags, orders, revisions})) {
+    return ORBLIT_ERROR_NULL;
+  }
+  if (!holds(params, param_floats, count, orblit::kSpriteLayerParams)) {
+    return ORBLIT_ERROR_LENGTH;
+  }
+  if (!present(changed_count, {changed, changed_counts})) {
+    return ORBLIT_ERROR_NULL;
+  }
+  if (path_count > 0 && paths == nullptr) return ORBLIT_ERROR_NULL;
+  // Measured whole before anything is applied: a layer that ran past the end
+  // would otherwise be half-built from whatever followed the array.
+  size_t wanted = 0;
+  for (uint32_t c = 0; c < changed_count; c++) {
+    if (changed_counts[c] < 0) return ORBLIT_ERROR_RANGE;
+    wanted += size_t(changed_counts[c]) * orblit::kSpriteRecordFloats;
+  }
+  if (record_floats < wanted || (wanted > 0 && records == nullptr)) {
+    return ORBLIT_ERROR_LENGTH;
+  }
+  const std::vector<std::string> named = strings(paths, path_count);
+  return guarded(renderer, [&](orblit::Renderer &core) {
+    core.applySprites(keys, flags, orders, revisions, params, named, changed,
+                      changed_counts, changed_count, records, record_floats,
+                      count);
   });
 }
 

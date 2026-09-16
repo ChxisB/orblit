@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.26.0
+
+- **Assets can be handed to the renderer as bytes.** `OrblitResources.provide`
+  keeps bytes under a name for every renderer in the application, and
+  anywhere a scene names a file — a mesh, a texture, an environment, a
+  decal's picture, a splat capture, and the files a `.gltf` names beside
+  itself — that name is looked for before the disk. A browser has no disk,
+  an Android application's assets are inside its archive, and anything
+  fetched over a network is already bytes, so this is how all three load
+  anything at all. A name looked for before its bytes arrived is looked for
+  again once they have. Native side: `orblit_renderer_provide_resource` and
+  `orblit_renderer_release_resource` in the C ABI, shared rather than copied
+  on the way to Filament, and on iOS and Android handed over off the platform
+  thread.
+- **A viewport says what its device can do.** `OrblitView.profileOf` answers
+  with an `OrblitDeviceProfile`: the graphics API, Filament's feature level,
+  the largest texture, which block-compressed families can be sampled,
+  half-float textures, threads and memory — measured once when the renderer
+  starts — and a low, medium or high `tier` with starting budgets for texture
+  size, splat count and spherical-harmonic degree. `orblit_renderer_capability`
+  in the C ABI.
+- **Sprites.** `OrblitScene.sprites` takes layers of flat pictures — one
+  image and any number of rectangles cut from it — drawn after the solid
+  scene, in their layers' order and then in the order given. A layer is one
+  draw however many sprites it holds: its corners are built on the processor
+  into a single vertex buffer, so it needs nothing OpenGL ES 3.0 does not
+  have, and a phone below the standard surface or WebGL 2 draws it as a
+  desktop does. Sharp or smooth sampling, vertices snapped to whole pixels,
+  and additive layers. Sprites are unlit, so they draw the colour they were
+  given whatever the camera's exposure.
+  A layer's transform and tint move without resending its sprites, which is
+  how a backdrop scrolls. `orblit_renderer_apply_sprites` in the C ABI.
+- A scene with environment volumes no longer resends every in-memory splat
+  cloud on every frame: the revisions the renderer already held were dropped
+  on the way through `resolved()`.
+- **On the web, bytes sent once arrive.** A scene sent before the browser's
+  renderer had started was held and replaced by the next one, but answered
+  straight away — so the view marked a population's, a splat cloud's or a
+  sprite layer's bytes as delivered when they never were, and never sent them
+  again. A sprite backdrop sent once came up empty in the browser and nowhere
+  else. The call is now answered when its scene is really in.
+
 ## 0.25.0
 
 - **A stated field of view is measured across the shorter axis.** Filament's

@@ -196,6 +196,9 @@ private final class Viewport {
     engine.sync { [self.renderer.batchedObjects, self.renderer.batchGroups] }
   }
 
+  /// What the device can do, in orblit_capability's order.
+  var capabilities: [NSNumber] { engine.sync { self.renderer.capabilities } }
+
   func start() {
     clock.start { [weak self] in self?.tick() }
   }
@@ -450,6 +453,7 @@ private final class Viewport {
     }
 
     scene.splats.apply(to: renderer)
+    scene.sprites.apply(to: renderer)
 
     let lightCount = scene.lightCount
     let lightKeys = lightCount == 0 ? [Int64(0)] : scene.lightKeys
@@ -661,6 +665,9 @@ private struct Scene {
 
   /// Gaussian splat clouds, decoded and checked in OrblitSplatMessage.swift.
   let splats: SplatMessage
+
+  /// Sprite layers, decoded and checked in OrblitSpriteMessage.swift.
+  let sprites: SpriteMessage
   let skyParams: [Float]
 
   /// Decals: a fixed stride of floats each, and an index per decal into the
@@ -1034,6 +1041,8 @@ private struct Scene {
     self.decalPaths = decalPaths
     guard let splats = SplatMessage(arguments: arguments) else { return nil }
     self.splats = splats
+    guard let sprites = SpriteMessage(arguments: arguments) else { return nil }
+    self.sprites = sprites
   }
 }
 
@@ -1086,6 +1095,54 @@ public class OrblitFilamentPlugin: NSObject, FlutterPlugin {
       name: "orblit_filament", binaryMessenger: messenger)
     let instance = OrblitFilamentPlugin(registry: textures)
     registrar.addMethodCallDelegate(instance, channel: channel)
+
+    // Bytes by name, on a channel of their own and off the platform thread
+    // wherever the embedder offers a queue for it: a forty-megabyte model
+    // decoded out of a message is work the interface should not wait behind.
+    #if os(iOS)
+      let queue = messenger.makeBackgroundTaskQueue?()
+    #else
+      // Not asked for on macOS. The messenger there answers to the selector
+      // and forwards it to an engine that does not implement it, which ends
+      // the application on launch; its channels run on the platform thread.
+      let queue: (any NSObjectProtocol & FlutterTaskQueue)? = nil
+    #endif
+    let resources = FlutterMethodChannel(
+      name: "orblit_filament/resources", binaryMessenger: messenger,
+      codec: FlutterStandardMethodCodec.sharedInstance(),
+      taskQueue: queue)
+    resources.setMethodCallHandler(handleResource)
+    resourceChannel = resources
+  }
+
+  /// Kept for as long as the process runs, as the store it feeds is.
+  private static var resourceChannel: FlutterMethodChannel?
+
+  /// `provide` and `release`: bytes by name for every renderer in the
+  /// process. See orblit_renderer_provide_resource for what a name promises.
+  private static func handleResource(
+    _ call: FlutterMethodCall, result: @escaping FlutterResult
+  ) {
+    guard let args = call.arguments as? [String: Any],
+          let name = args["name"] as? String, !name.isEmpty else {
+      result(FlutterError(code: "bad-args",
+                          message: "\(call.method) needs a name", details: nil))
+      return
+    }
+    switch call.method {
+    case "provide":
+      guard let bytes = args["bytes"] as? FlutterStandardTypedData else {
+        result(FlutterError(code: "bad-args", message: "provide needs bytes",
+                            details: nil))
+        return
+      }
+      OrblitRenderer.provideResourceNamed(name, bytes: bytes.data)
+      result(nil)
+    case "release":
+      result(OrblitRenderer.releaseResourceNamed(name))
+    default:
+      result(FlutterMethodNotImplemented)
+    }
   }
 
   public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
@@ -1170,6 +1227,16 @@ public class OrblitFilamentPlugin: NSObject, FlutterPlugin {
         "passTimings": viewport.passTimings,
         "batching": viewport.batching,
       ])
+
+    case "capabilities":
+      guard let arguments = call.arguments as? [String: Any],
+            let textureId = arguments["textureId"] as? Int,
+            let viewport = viewports[Int64(textureId)] else {
+        result(nil)
+        return
+      }
+      // In orblit_capability's order, measured once when the renderer started.
+      result(viewport.capabilities)
 
     case "dispose":
       guard let args = call.arguments as? [String: Any],

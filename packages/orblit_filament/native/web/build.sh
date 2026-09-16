@@ -23,9 +23,11 @@
 #   - Every generated material header needs an opengl variant: WebGL 2 is
 #     Filament's OpenGL backend, and matc's blob carries only the backends
 #     it was told to (packages/orblit_filament/darwin/setup.sh,
-#     ORBLIT_MATC_BACKENDS). This script now compiles them itself, with the
-#     matc belonging to the Filament it links — see the materials section
-#     below for why that is not merely tidier.
+#     ORBLIT_MATC_BACKENDS). This script does not compile them: run setup.sh
+#     first with ORBLIT_GENERATED_SET=webgl2, ORBLIT_MATC_BACKENDS=opengl and
+#     ORBLIT_MATC pointing at the matc of the Filament this links
+#     ($ORBLIT_FILAMENT_WASM_SRC/out/cmake-release/tools/matc/matc) — see
+#     README.md, step 3, for why a different matc draws without its sun.
 #
 #   build.sh                 builds ./build and host/orblit_renderer.{js,wasm}
 #

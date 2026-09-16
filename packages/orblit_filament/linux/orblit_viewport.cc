@@ -356,4 +356,14 @@ std::vector<int32_t> Viewport::Batching() const {
   return {int32_t(stats.batched_objects), int32_t(stats.batch_groups)};
 }
 
+std::vector<int32_t> Viewport::Capabilities() const {
+  std::vector<int32_t> answers(ORBLIT_CAPABILITY_COUNT, -1);
+  if (renderer_ == nullptr) return answers;
+  for (int which = 0; which < ORBLIT_CAPABILITY_COUNT; which++) {
+    answers[size_t(which)] =
+        orblit_renderer_capability(renderer_, orblit_capability(which));
+  }
+  return answers;
+}
+
 }  // namespace orblit_linux

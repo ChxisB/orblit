@@ -53,6 +53,7 @@ export 'src/examples/probes.dart' show ProbesExample;
 export 'src/examples/shadows.dart' show ShadowLight, ShadowsExample;
 export 'src/examples/runner.dart' show RunnerExample;
 export 'src/examples/splats.dart' show SplatsExample;
+export 'src/examples/sprites.dart' show SpritesExample;
 export 'src/examples/post.dart' show PostExample;
 export 'src/examples/video.dart' show VideoExample;
 export 'src/examples/voxels.dart' show VoxelExample;
@@ -87,6 +88,7 @@ import 'src/examples/probes.dart';
 import 'src/examples/runner.dart';
 import 'src/examples/post.dart';
 import 'src/examples/splats.dart';
+import 'src/examples/sprites.dart';
 import 'src/examples/surface.dart';
 import 'src/examples/video.dart';
 import 'src/examples/voxels.dart';
@@ -122,6 +124,7 @@ List<Example> engineExamples() => [
   OverdrawExample(),
   CrowdExample(),
   SplatsExample(),
+  SpritesExample(),
   CamerasExample(),
   MeshesExample(),
   MaterialsExample(),
