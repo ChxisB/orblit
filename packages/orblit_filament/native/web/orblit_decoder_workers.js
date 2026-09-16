@@ -132,8 +132,10 @@ Module['orblitDecoders'] = (() => {
   let broken = !source || typeof Worker === 'undefined' ||
     typeof Blob === 'undefined' || typeof URL === 'undefined' ||
     typeof DecompressionStream === 'undefined';
-  // A job was given up on without being picked up. Cleared by the next word
-  // from any worker.
+  // A job was given up on: not picked up in time, or not finished. Cleared
+  // by the next answer from any worker, so a worker that was only late gets
+  // jobs again, and one that picks jobs up and never finishes them does not
+  // take every job with it one bound at a time.
   let stalled = false;
   let warnedStalled = false;
   const counts = { submitted: 0, answered: 0, failed: 0, givenUp: 0 };
@@ -179,7 +181,6 @@ Module['orblitDecoders'] = (() => {
     const worker = { thread, job: 0, idleTimer: 0, everAnswered: false };
     thread.onmessage = (event) => {
       const message = event.data;
-      heard();
       worker.everAnswered = true;
       const job = jobs.get(message.id);
       if (message.started) {
@@ -189,6 +190,7 @@ Module['orblitDecoders'] = (() => {
         }
         return;
       }
+      heard();
       if (worker.job === message.id) release(worker);
       if (message.broken !== undefined) {
         console.warn('[orblit] decoders: the decoder module would not start: ' +
@@ -267,7 +269,8 @@ Module['orblitDecoders'] = (() => {
         counts.givenUp++;
       } else if (job.state === STARTED && now - job.startedAt > runPatience) {
         console.warn('[orblit] decoders: a decoding worker has not finished a job in ' +
-          runPatience + ' ms; stopping it and decoding on the page');
+          runPatience + ' ms; stopping it and decoding on the page until one answers');
+        stalled = true;
         retire(job.worker);
         job.state = FAILED;
         counts.givenUp++;
