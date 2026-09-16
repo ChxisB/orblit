@@ -473,6 +473,67 @@ tool/capture_web.sh 'Gaussian%20splats'
 The ring draws, its near side blended over its far side, with the pillar in
 front of what it stands in.
 
+## Textures and environment pictures, decoded on workers
+
+Natively the texture queue decodes on threads of its own and an environment
+picture is prepared on one. Here all of it ran on the page. Measured in a
+real-time Chrome on an M4 Pro, from the gallery's Textures example:
+
+| Load | Page thread before | Page thread after |
+|---|---|---|
+| twelve 2048² PNGs and JPEGs | 841–854 ms of decoding; tasks up to 130–135 ms | 8–12 ms of handing over, at most 3 ms a frame; no task over 50 ms |
+| twelve 2048² Basis UASTC files | 641–652 ms, and 7 ms of pushing; tasks up to 120–124 ms | 8–12 ms, at most 3 ms a frame; no task over 50 ms |
+| twelve cooked BC7 sets | 30 ms, 3 ms at most | 7–11 ms, at most 4 ms a frame |
+| one 2K `.hdr`, prepared for lighting | one task of 200–201 ms | 5–6 ms; no task over 50 ms |
+
+So the decoding goes to **Web Workers**, each running the *decoder module*:
+
+- `orblit_decoder_module.cpp` is a second WebAssembly module holding the pure
+  readers and nothing of Filament — `OrblitKtx2`, `OrblitHdrImage`,
+  `OrblitTinyExr`, `OrblitEnvironmentBake` and `OrblitDecode.h`, with the zstd,
+  stb and Basis Universal archives the renderer itself links. `build.sh`
+  links it and embeds it in `orblit_renderer.js` as its JavaScript and its
+  `.wasm` gzipped in base64, so a page still serves two files. A worker
+  gunzips it with the browser's own `DecompressionStream`.
+- `OrblitDecodeJobs.cpp` is the one function a worker runs: a job kind, bytes
+  and a few numbers in; parts and numbers out. It is compiled into the
+  renderer too, and the page runs the same job on the same bytes when no
+  worker will, so what the page draws then is what a worker would have drawn.
+- `orblit_decoder_workers.js`, passed to `emcc` as `--pre-js`, is the pool —
+  half the machine's threads, at most four — as `Module.orblitDecoders`;
+  `OrblitDecodersWeb.cpp` reaches it through `EM_JS`. The texture queue and
+  the environment hand a job over only when a worker is idle, so a job not
+  picked up within half a second is a worker that is not running. The page
+  decodes that job, and every job after it until some worker answers. A job
+  picked up and not finished in ten seconds — forty times the slowest job
+  measured, 250 ms — has its worker stopped and is decoded on the page the same way.
+  No `Worker`, no `DecompressionStream`, a refused `blob:` script or a module
+  that will not start: the page decodes everything, and says so once.
+- Basis is chosen and transcoded exactly as Filament's `Ktx2Reader` does it,
+  from the header and with the same arguments, but without `asyncCreate`,
+  which copies the whole file and starts the transcoder on the page first.
+
+Checked, with `ORBLIT_POST=0 ORBLIT_CIRCLING=0 ORBLIT_SECONDS=1.5` so frames
+are exact: each load decoded on workers, on the page with no `Worker`, and by
+the build before this, is the same frame to the pixel — pictures, Basis,
+cooked BC7, and a picture lighting the wall on the GPU route and the CPU one
+(float render targets hidden from WebGL). The page draws the same frame again
+with a worker that never starts, one that never finishes, and a decoder module
+that fails to load.
+
+The decoder module is 988 KB of `.wasm` (392 KB gzipped) and 15 KB of
+JavaScript. Embedded, `orblit_renderer.js` grows from 126 KB to 679 KB — 31 KB
+to 440 KB gzipped — and `orblit_renderer.wasm` by 15 KB. Served beside the
+renderer instead it would cost about the same gzipped, 306 KB with brotli
+against the embedded 427 KB, and would only be fetched once something is
+decoded.
+
+Everything above is from a real-time Chrome driven over the DevTools
+protocol. Under `tool/capture_web.sh`'s virtual clock the Textures example
+does not finish arriving before the shot — before this change or after it,
+at a 12 or a 30 second budget, and about one shot in three is blank either
+way — so that script is no check of this.
+
 ## What this proves, in one line
 
 The same `OrblitRendererCore.cpp` that draws on macOS and the iOS simulator

@@ -9,7 +9,11 @@
 // one budget per frame rather than one per kind of asset. PNG and JPEG are
 // decoded by stb, Basis is transcoded by Filament's own reader, and GPU-ready
 // KTX 2 (OrblitKtx2.h) is only decompressed; all three wait on worker threads
-// and then take their turn at the upload budget.
+// and then take their turn at the upload budget. A browser has no threads:
+// there the same decoding runs on Web Workers, in a decoder module of its own
+// (native/web/orblit_decoder_workers.js), Basis through Basis Universal's
+// transcoder exactly as Filament's reader drives it, and on the drawing
+// thread, a few milliseconds a frame, only when no worker will take it.
 //
 // What a texture shows before it has all arrived is decided here and nowhere
 // else. Filament samples a texture with more than one level through a view of

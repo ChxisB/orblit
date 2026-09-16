@@ -464,10 +464,11 @@ namespace decoders {
 constexpr double kDecodeStartPatienceSeconds = 0.5;
 
 /// How long a job a worker has picked up may take. Longer by far than any
-/// job measured — the slowest, a 2K .hdr prepared for lighting, took
-/// about 0.2 s on an M4 Pro in Chrome — because giving up on a worker that
-/// is merely slow means doing its work a second time on the page. What this
-/// catches is a worker that will never answer.
+/// job measured — the slowest, a 2048² PNG with three others decoding
+/// beside it, took 250 ms on an M4 Pro in Chrome, and a 2K .hdr prepared for
+/// lighting 200 ms — because giving up on a worker that is merely slow means
+/// doing its work a second time on the page, and a phone is several times
+/// slower. What this catches is a worker that will never answer.
 constexpr double kDecodeRunPatienceSeconds = 10.0;
 
 enum class State : int32_t {

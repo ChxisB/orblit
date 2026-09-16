@@ -193,8 +193,10 @@ Module['orblitDecoders'] = (() => {
       heard();
       if (worker.job === message.id) release(worker);
       if (message.broken !== undefined) {
-        console.warn('[orblit] decoders: the decoder module would not start: ' +
-          message.broken + '; decoding on the page instead');
+        if (!broken) {
+          console.warn('[orblit] decoders: the decoder module would not start: ' +
+            message.broken + '; decoding on the page instead');
+        }
         broken = true;
       }
       if (!job) return;

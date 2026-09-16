@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:orblit_filament/orblit_filament.dart';
@@ -35,6 +33,9 @@ import 'surface.dart' show linearOf;
 ///                          Basis or a cooked set's `x.ktx2`
 ///   ORBLIT_PICTURE         an equirectangular `.hdr` or `.exr` to light the
 ///                          wall from, a path natively or a URL on the web
+///   ORBLIT_TEXTURE_SIZE    the largest side a texture is loaded at, so the
+///                          levels left out and the pictures halved can be
+///                          seen; the device's own by default
 class TexturesExample extends Example {
   TexturesExample();
 
@@ -73,6 +74,9 @@ class TexturesExample extends Example {
 
   /// Whether the picture lights the wall, when there is one.
   bool lit = true;
+
+  /// The largest side a texture is loaded at, or null for the device's.
+  int? largestTexture = int.tryParse(_environment['ORBLIT_TEXTURE_SIZE'] ?? '');
 
   /// What each file is named as in the scene, once its bytes are where the
   /// renderer will look: the resource name on the web, the path elsewhere.
@@ -203,6 +207,11 @@ class TexturesExample extends Example {
       objects: objects,
       materials: materials,
       camera: camera,
+      pipeline: largestTexture == null
+          ? null
+          : OrblitPipeline(
+              textures: OrblitTextureLimits(maxSize: largestTexture),
+            ),
       lights: [
         OrblitLight(
           key: 900,
