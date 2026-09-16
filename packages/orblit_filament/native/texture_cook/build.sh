@@ -117,9 +117,15 @@ build_objects() {
       fi
     fi
   done
+  # zstd is C, and a C compiler has no C++ library to choose.
+  local cflags=()
+  local flag
+  for flag in "${flags[@]}"; do
+    [ "$flag" = "-stdlib=libc++" ] || cflags+=("$flag")
+  done
   local zstd_object="$out/basisu/zstd.o"
   if [ ! -f "$zstd_object" ] || [ "$TP/basisu/zstd/zstd.c" -nt "$zstd_object" ]; then
-    "$CC" -w "${flags[@]/-stdlib=libc++/}" -c "$TP/basisu/zstd/zstd.c" -o "$zstd_object.part" &&
+    "$CC" -w "${cflags[@]}" -c "$TP/basisu/zstd/zstd.c" -o "$zstd_object.part" &&
       mv "$zstd_object.part" "$zstd_object" &
     pids+=($!)
   fi

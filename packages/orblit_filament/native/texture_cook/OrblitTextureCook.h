@@ -96,15 +96,26 @@ enum class Edge {
 
 /// Where the ASTC file's blocks come from.
 ///
-/// Measured with orblit_texture_cook_check --measure on 1024 and 2048
-/// textures: from a PNG or JPEG, Basis Universal's own ASTC encoder is 0.9 to
-/// 3.6 dB better at level 0 than transcoding the UASTC encode, and -2.9 to
-/// +3.1 dB half way down the chain (colour always better, normal maps
-/// either way), for two and a half to four times the cook time and files
-/// 3 to 24% larger after zstd. From a Basis .ktx2, whose texels are already
-/// exactly what UASTC can hold, transcoding is 4.9 to 6.3 dB better at level
-/// 0 and direct encoding 0.9 to 1.6 dB better below. The top level is most
-/// of what is on screen, so:
+/// Measured with orblit_texture_cook_check --measure, PSNR against the level
+/// encoded, on seven PNG and JPEG textures of 1024 and 2048 and four of the
+/// Bistro's Basis .ktx2 files:
+///
+///   from PNG or JPEG   Basis Universal's own ASTC encoder beat transcoding
+///                      the UASTC encode at level 0 by 0.9 to 3.6 dB on
+///                      colour, and by -0.9 to +3.1 dB on normal maps; half
+///                      way down the chain by 0.9 to 3.1 dB, except one
+///                      normal map where it lost 2.9. Its files were 3 to 24%
+///                      larger after zstd, and it adds 2.5 to 9.5 s to a 2048
+///                      texture on six threads, where the rest of the cook
+///                      takes 0.8 to 5.8 s.
+///   from a Basis .ktx2 mixed at level 0: transcoding won by 4.9 and 6.3 dB
+///                      on two, lost by 0.2 and 4.2 dB on the other two;
+///                      direct encoding won by 0.9 to 1.6 dB half way down.
+///
+/// So direct encoding where it clearly wins and the cost is paid once per
+/// source image, and transcoding for Basis inputs, where it is no worse on
+/// average and a four-hundred-texture scene cooks in a quarter of an hour
+/// rather than well over an hour.
 enum class AstcRoute {
   /// Direct from a PNG or JPEG, transcoded from a .ktx2.
   kAuto,
