@@ -1,0 +1,31 @@
+name: orblit_stage
+description: >-
+  A scene document, staged for a renderer: entities and components become
+  objects, lights, clouds and sprite layers, and a diff moves only what it
+  touched.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  orblit_filament:
+    path: ../orblit_filament
+  orblit_light:
+    path: ../orblit_light
+  orblit_scene:
+    path: ../orblit_scene
+  orblit_weather:
+    path: ../orblit_weather
+
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
