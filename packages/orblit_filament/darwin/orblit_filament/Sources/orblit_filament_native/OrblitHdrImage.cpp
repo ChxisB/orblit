@@ -137,14 +137,16 @@ HdrDecoded decodeHdrImage(const uint8_t *bytes, size_t size,
 /// decode, then puts back the half step cmgen's own decoder adds.
 ///
 /// Why walk first. The stb_image inside Filament's libstb.a is v2.20, and it
-/// cannot be patched from here. Its HDR loader treats a run of length nought
-/// as a run that never ends, so one zero byte in the pixels — or a file cut
-/// off part-way, whose missing bytes it reads as zeros — loops for ever
-/// (CVE-2021-42715, fixed in stb_image 2.28). A flat file cut short decodes
-/// uninitialised memory as pixels rather than failing. The walk below follows
-/// the loader's reading byte for byte, bounds-checked, and refuses anything
-/// the loader would mishandle; only a file it accepts reaches the loader, so
-/// the loader only ever reads bytes that exist and every run moves.
+/// cannot be patched from here. Past the end of its input it reads zeros
+/// without moving, and its HDR loader takes a zero as a run of no pixels and
+/// asks again — so a file cut off part-way through its run-length pixels
+/// loops for ever (CVE-2021-42715, fixed in stb_image 2.28). Measured against
+/// Filament 1.76.0's libstb.a: a 64-pixel-wide file cut at 50, 77 and 99% of
+/// its length never returned, and cut at 30 and 90% it returned "pixels"
+/// made of the zeros. The walk below follows the loader's reading byte for
+/// byte, bounds-checked, and refuses anything the loader would mishandle;
+/// only a file it accepts reaches the loader, so the loader only ever reads
+/// bytes that exist and every run moves.
 ///
 /// Why the half step. A Radiance pixel is a shared exponent and three 8-bit
 /// mantissas, and each mantissa stands for the whole step between it and the

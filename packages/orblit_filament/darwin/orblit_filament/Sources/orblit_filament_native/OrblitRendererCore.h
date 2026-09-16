@@ -732,6 +732,40 @@ constexpr uint32_t kDecalPictureLevels = 10;
 constexpr int kShadowCatcherSurface = 15;
 constexpr int kSurfaceCount = 16;
 
+/// An environment filtered at run time out of an .hdr or .exr picture, ready
+/// to light a scene: see OrblitEnvironment.cpp.
+///
+/// Kept after the scene stops naming it, a few at a time, under a hash of
+/// the picture's bytes and the sizes it was filtered at — so naming the same
+/// picture again, or the same picture under another name, filters nothing.
+struct EnvironmentLighting {
+  uint64_t hash = 0;
+  /// The sizes and route the key is made of; see EnvironmentPlan.
+  uint32_t reflectionSize = 0;
+  uint32_t largestSkybox = 0;
+  bool onCpu = false;
+
+  /// The blurred chain rough surfaces sample, or null when only the backdrop
+  /// was asked for.
+  filament::Texture *reflections = nullptr;
+  /// The backdrop, sharper than the reflections, or null.
+  filament::Texture *sky = nullptr;
+  /// Three bands, for a matte surface, as cmgen computes them.
+  float3 harmonics[9]{};
+  /// When a scene last used it, in publishes, for choosing what to let go.
+  uint64_t lastUsed = 0;
+};
+
+/// A picture being turned into an EnvironmentLighting: decoded and
+/// summarised on a worker, then uploaded and filtered here over a couple of
+/// frames. Defined in OrblitEnvironment.cpp.
+struct EnvironmentWork;
+
+/// How many pictures every renderer in this process has filtered into an
+/// environment, on either route. A picture found in a renderer's cache is not
+/// counted, which is how a check tells a cache hit from a second filter.
+uint64_t environmentPicturesFiltered();
+
 /// One light as the renderer holds it between frames.
 ///
 /// The whole parameter block is kept rather than the fields that matter,
@@ -1255,6 +1289,15 @@ class Renderer {
   Texture *cubemapAtPath(const std::string &path, float3 *harmonics, bool *hasThose, const std::string &note);
   void rebuildEnvironmentLight();
   void releaseEnvironment();
+  // Environments from .hdr and .exr pictures (OrblitEnvironment.cpp).
+  void requestEnvironmentImages(const std::string &radiance,
+                                const std::string &skybox,
+                                float requestedSize);
+  void pollEnvironment();
+  void installEnvironment(const EnvironmentLighting &lighting, bool light,
+                          bool sky);
+  void showEnvironment();
+  void releaseEnvironmentCache();
   void prepareTargets();
   void rebindTargets();
   void buildSmaaTables();
@@ -1580,6 +1623,40 @@ class Renderer {
   /// environment that lights reflections and nothing matte.
   float3 _environmentHarmonics[9]{};
   bool _environmentHasHarmonics{};
+
+  /// Whether the radiance and backdrop textures above belong to
+  /// _environmentCache rather than to the environment, so releasing the
+  /// environment leaves them for the next scene that names the same picture.
+  bool _environmentRadianceCached{};
+  bool _environmentSkyCached{};
+
+  /// Pictures filtered at run time, most recently used last. See
+  /// EnvironmentLighting.
+  std::vector<EnvironmentLighting> _environmentCache{};
+
+  /// Pictures being decoded or filtered for the environment the scene names.
+  std::vector<std::shared_ptr<EnvironmentWork>> _environmentWork{};
+
+  /// What each picture name was found to be, keyed by name and sizes: its
+  /// hash, or why it could not be used. Good until bytes are provided under
+  /// any name, which is when a name's bytes can have changed.
+  struct EnvironmentName {
+    uint64_t hash = 0;
+    std::string note;
+    uint64_t generation = 0;
+  };
+  std::map<std::string, EnvironmentName> _environmentNames{};
+
+  /// Counts publishes that set an environment, for EnvironmentLighting's
+  /// lastUsed.
+  uint64_t _environmentPublishes{};
+
+  /// The filters an environment picture goes through: an equirectangular
+  /// picture into a cube, and a cube into the blurred chain. Built on first
+  /// use, beside the probes' own filter and sharing its context.
+  IBLPrefilterContext::EquirectangularToCubemap *_equirectangularFilter{};
+  IBLPrefilterContext::SpecularFilter *_environmentFilter{};
+  uint8_t _environmentFilterLevels{};
 
   /// The last flat ambient asked for, kept so it can be put back when an
   /// environment is cleared. The day cycle writes this on every frame and
