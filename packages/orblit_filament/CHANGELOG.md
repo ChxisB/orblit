@@ -1,5 +1,48 @@
 # Changelog
 
+## 0.28.0
+
+- **A model file's own clips play.** `OrblitObject.animation` names one of the
+  file's clips and where it is, and fades from another with `from` and `fade`.
+  The renderer samples it at the moment each frame is drawn, on the host's
+  clock from when the scene was sent — the same moment the camera is placed
+  at — so a clip moves smoothly between sends and stands exactly still on a
+  held clock: the same pose is the same frame to the byte, measured across two
+  runs of the gallery.
+- **Skins pose, and stay on screen while they do.** `OrblitObject.joints` sets
+  a skin's joints by hand after any clip. A skinned part's box now follows its
+  pose rather than staying at the bind pose's, so a character that walks out
+  of where it was bound is not culled while in view — measured: a skin moved
+  ten metres drew 3590 pixels, and none with the fitting turned off. A skin's
+  bones are worked out from its nodes when it is built, so a file bound in one
+  pose and saved in another draws in the one it was saved in.
+- **Material variants.** `OrblitObject.variant` dresses a model in one of its
+  `KHR_materials_variants` looks. A named `OrblitMaterial` still wins.
+- **An object no longer posed goes back exactly as its file had it**, pooled
+  copies included, and a variant taken off leaves the file's own materials.
+- **What a file holds comes back.** `OrblitView.onAssetInfo` reports an
+  `OrblitAssetInfo` whenever something new is made of a file: its clips and
+  their lengths, its skins with every joint's name, parent and rest, its
+  variants, materials, lights and cameras, its bounds, and any glTF extension
+  the renderer does not draw — which is also said as a scene note. It travels
+  in the scene notes under `orblit.model:`, so no plugin needed a new reply;
+  `OrblitAssetInfo.split` takes the descriptions out.
+- **A file's lights are ordinary lights.** gltfio drew `KHR_lights_punctual`
+  lights itself, with no shadows, in candela, uncounted, and a directional one
+  competing with the scene's sun. They are now taken out of the model, and
+  `OrblitAssetInfo.lightsFor` states them as `OrblitLight`s in lumens and lux,
+  placed where the object stands.
+- **FBX and OBJ.** A scene may name a `.fbx` or `.obj` wherever it names a
+  `.glb`. It is converted to glTF with ufbx 0.23.0 — off the drawing thread
+  natively, in place in a browser — kept for the process, and drawn once
+  ready; what could not be carried across is said in the notes.
+  `native/headless/orblit_import` does the same conversion offline. ufbx's
+  licence is in `LICENSES/ufbx.txt`.
+- New C ABI: `orblit_renderer_apply_poses`, and `ORBLIT_STRIDE_POSE_INTS` and
+  `ORBLIT_STRIDE_POSE`, through every plugin. `native/headless/orblit_models_check`
+  measures all of the above against Khronos's samples and converted files,
+  which `tool/fetch_import_samples.sh` fetches.
+
 ## 0.27.0
 
 - **Gaussian splats draw in a browser.** The sorter started a thread for every
