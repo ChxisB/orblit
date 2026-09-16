@@ -59,6 +59,14 @@ abstract class Example {
   /// silence is unhelpful.
   String? note;
 
+  /// What the device under the view can do, once the gallery has asked, or
+  /// null until then.
+  ///
+  /// On the base class for the reason [note] is: the gallery owns the view,
+  /// and an example that scales itself to its device should not need a way to
+  /// reach one.
+  OrblitDeviceProfile? device;
+
   /// Anything drawn over the scene rather than in it.
   ///
   /// Null for the examples that are only about what the renderer does. Call

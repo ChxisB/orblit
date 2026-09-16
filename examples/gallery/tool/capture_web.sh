@@ -32,8 +32,10 @@ for _ in $(seq 100); do
   sleep 0.1
 done
 
-NAME="$(echo "$EXAMPLE" | tr '[:upper:]' '[:lower:]')"
-URL="http://127.0.0.1:$PORT/?ORBLIT_EXAMPLE=$EXAMPLE&ORBLIT_SECONDS=1.5"
+# LABEL names the shot, so two of one example with different switches do not
+# overwrite each other; QUERY is any more of the query string, starting '&'.
+NAME="${LABEL:-$(echo "$EXAMPLE" | tr '[:upper:]' '[:lower:]')}"
+URL="http://127.0.0.1:$PORT/?ORBLIT_EXAMPLE=$EXAMPLE&ORBLIT_SECONDS=1.5${QUERY:-}"
 
 # The wait below polls for the screenshot, so a shot left over from a previous
 # run would end it immediately and leave a stale picture looking like a fresh

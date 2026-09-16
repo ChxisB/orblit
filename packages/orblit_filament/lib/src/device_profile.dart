@@ -191,6 +191,11 @@ class OrblitDeviceProfile {
     OrblitDeviceTier.high => 3,
   };
 
+  /// Whether to sort splats on sixteen bits of depth rather than thirty-two —
+  /// [OrblitSplats.coarseOrder]. On a low-tier device, where a full sort takes
+  /// long enough that the order lags visibly behind a turning camera.
+  bool get coarseSplatOrder => tier == OrblitDeviceTier.low;
+
   @override
   String toString() =>
       'OrblitDeviceProfile(${tier.name}: ${api.name}, feature level '

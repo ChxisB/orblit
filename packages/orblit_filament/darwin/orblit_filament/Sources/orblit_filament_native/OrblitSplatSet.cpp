@@ -22,16 +22,34 @@ using filament::math::mat4f;
 
 namespace {
 
-/// Re-sort once the view has turned by more than this. The order only
-/// depends on the direction the camera faces — moving it along that
-/// direction adds the same amount to every depth — so this is the one thing
-/// worth watching. A third of a degree is below what a slow orbit moves in a
-/// frame and above what a hand resting on a trackpad does.
-const float kResortCos = std::cos(0.3f * float(M_PI) / 180.0f);
-
 uint32_t rowsFor(size_t texels) {
   return uint32_t(std::max<size_t>(
       1, (texels + kSplatTextureWidth - 1) / kSplatTextureWidth));
+}
+
+/// Whether two matrices are the same camera, give or take the last bits of a
+/// float.
+///
+/// The order depends on where the camera is as well as which way it faces,
+/// now that a sort leaves out what the camera cannot see: a camera that steps
+/// sideways brings splats into view that the last sort left out. So a new
+/// sort is asked for whenever the cloud's own space to clip space changes,
+/// where once it was only when the view turned by a third of a degree. A
+/// camera holding still hands back the same matrix every frame and sorts
+/// nothing; a ten-thousandth either way is a hundredth of a degree of turn,
+/// which no sort would order differently.
+bool sameCamera(const mat4f &a, const mat4f &b) {
+  for (int column = 0; column < 4; column++) {
+    for (int row = 0; row < 4; row++) {
+      const float x = a[column][row];
+      const float y = b[column][row];
+      if (!(std::abs(x - y) <=
+            1e-4f * std::max({1.0f, std::abs(x), std::abs(y)}))) {
+        return false;
+      }
+    }
+  }
+  return true;
 }
 
 }  // namespace
@@ -72,9 +90,6 @@ SplatSet::SplatSet(Engine &engine, Scene &scene, Material &material,
                .sampler(Texture::Sampler::SAMPLER_2D)
                .format(Texture::InternalFormat::R32UI)
                .build(engine);
-  std::vector<uint32_t> given(_count);
-  for (uint32_t i = 0; i < _count; i++) given[i] = i;
-  uploadOrder(given);
 
   // The spherical-harmonic bands above the flat colour, when the cloud has
   // any.
@@ -209,16 +224,22 @@ SplatSet::SplatSet(Engine &engine, Scene &scene, Material &material,
   engine.getTransformManager().create(_entity);
   _scene.addEntity(_entity);
 
+  // Every splat, in the order given, until the first sort lands.
+  auto &renderables = engine.getRenderableManager();
+  _layers = renderables.getLayerMask(renderables.getInstance(_entity));
+  _drawn = count;
+  uploadGiven();
+
   // The positions go to the sorter and nowhere else. Shared, and never
-  // written again, which is what lets the worker read them without a lock.
+  // written again, which is what lets a sort read them without a lock.
   auto positions =
       std::make_shared<const std::vector<float>>(std::move(cloud.positions));
-  _sorter = std::make_unique<SplatSorter>(std::move(positions), _count);
+  _sorter = makeSplatSorter(std::move(positions), _count);
 }
 
 SplatSet::~SplatSet() {
-  // The worker first: it holds nothing of Filament's, but it is the one
-  // thing here that runs on its own.
+  // The sorter first: it holds nothing of Filament's, but it is the one
+  // thing here that may be running on its own.
   _sorter.reset();
 
   // Renderable, then the instance it wears, then what the instance samples
@@ -255,46 +276,30 @@ void SplatSet::setBrightness(float brightness) {
   _instance->setParameter("brightness", brightness);
 }
 
-void SplatSet::setSorted(bool sorted) { _sorted = sorted; }
+void SplatSet::setOrdering(bool sorted, bool coarse) {
+  _sorted = sorted;
+  _coarse = coarse;
+}
 
-void SplatSet::update(const float3 &forward) {
+void SplatSet::update(const SplatCamera &camera) {
   if (_count == 0) return;
 
   if (!_sorted) {
     if (!_showingGiven) {
-      std::vector<uint32_t> given(_count);
-      for (uint32_t i = 0; i < _count; i++) given[i] = i;
-      uploadOrder(given);
+      uploadGiven();
       _showingGiven = true;
       _everSorted = false;
     }
     return;
   }
 
-  std::vector<uint32_t> order;
-  double took = 0;
-  if (_sorter->take(order, took)) {
-    uploadOrder(order);
-    _lastSortMs = took;
-    _showingGiven = false;
-    // What a sort costs is the number anybody tuning this wants, and it is
-    // off the render thread so the frame timings do not show it. The first
-    // few and then one in fifty, so a camera that never stops turning does
-    // not fill the log.
-    _sortsLanded++;
-    if (_sortsLanded <= 3 || _sortsLanded % 50 == 0) {
-      std::fprintf(stderr,
-                   "[orblit] splats: sort %u of %u splats took %.2f ms on the "
-                   "sorting thread (first %u, middle %u)\n",
-                   _sortsLanded, _count, took, order.empty() ? 0 : order[0],
-                   order.empty() ? 0 : order[order.size() / 2]);
-    }
-  }
+  landSort();
 
   // Depth along the camera's forward, in the cloud's own space: that is
   // the transpose of the model matrix's upper 3x3 applied to forward, so
   // one dot product a splat, and a cloud that is scaled or turned sorts
   // exactly as it is drawn.
+  const float3 &forward = camera.forward;
   float3 along{
       _matrix[0] * forward.x + _matrix[1] * forward.y + _matrix[2] * forward.z,
       _matrix[4] * forward.x + _matrix[5] * forward.y + _matrix[6] * forward.z,
@@ -317,31 +322,83 @@ void SplatSet::update(const float3 &forward) {
   }
   along /= length;
 
-  // Written so that anything that is not clearly the same direction —
-  // including a comparison with NaN, which is false both ways — counts as
-  // turned.
-  const bool turned = !_everSorted || !(dot(along, _sortedAlong) >= kResortCos);
-  // One in flight at a time. A camera that keeps turning gets a new sort
-  // as soon as the last one lands, which is the most often it can have one.
-  if (turned && !_sorter->busy()) {
-    const float direction[3] = {along.x, along.y, along.z};
-    _sorter->request(direction);
-    _sortedAlong = along;
+  // The cloud's own space to the camera's and on to the screen: what a sort
+  // culls with, and what says whether the order on the GPU is still the
+  // right one.
+  mat4f model;
+  for (int column = 0; column < 4; column++) {
+    for (int row = 0; row < 4; row++) {
+      model[column][row] = _matrix[column * 4 + row];
+    }
+  }
+  const mat4f viewFromModel = camera.viewFromWorld * model;
+  const mat4f clipFromModel = camera.clipFromView * viewFromModel;
+
+  const bool stale = !_everSorted || _coarse != _sortedCoarse ||
+                     !sameCamera(clipFromModel, _sortedClip);
+  // One in flight at a time. A camera that keeps moving gets a new sort as
+  // soon as the last one lands, which is the most often it can have one.
+  if (stale && !_sorter->busy()) {
+    SplatSortRequest request;
+    request.direction[0] = along.x;
+    request.direction[1] = along.y;
+    request.direction[2] = along.z;
+    request.cull = true;
+    std::memcpy(request.viewFromModel, viewFromModel.asArray(),
+                sizeof(request.viewFromModel));
+    std::memcpy(request.clipFromModel, clipFromModel.asArray(),
+                sizeof(request.clipFromModel));
+    request.coarse = _coarse;
+    _sorter->request(request);
+    _sortedClip = clipFromModel;
+    _sortedCoarse = _coarse;
     _everSorted = true;
+    // A cloud small enough to be sorted where it asked has its answer
+    // already, and it goes up with this frame rather than the next.
+    if (!_sorter->busy()) landSort();
   }
 }
 
+void SplatSet::landSort() {
+  std::vector<uint32_t> order;
+  double took = 0;
+  if (!_sorter->take(order, took)) return;
+  uploadOrder(order);
+  _lastSortMs = took;
+  _showingGiven = false;
+  // What a sort costs and how much it kept are the numbers anybody tuning
+  // this wants, and the frame timings do not show a sort that ran elsewhere.
+  // The first few and then one in fifty, so a camera that never stops moving
+  // does not fill the log.
+  _sortsLanded++;
+  if (_sortsLanded <= 3 || _sortsLanded % 50 == 0) {
+    std::fprintf(stderr,
+                 "[orblit] splats: sort %u took %.2f ms and kept %u of %u "
+                 "splats (first %u, middle %u)\n",
+                 _sortsLanded, took, uint32_t(order.size()), _count,
+                 order.empty() ? 0 : order[0],
+                 order.empty() ? 0 : order[order.size() / 2]);
+  }
+}
+
+void SplatSet::uploadGiven() {
+  std::vector<uint32_t> given(_count);
+  for (uint32_t i = 0; i < _count; i++) given[i] = i;
+  uploadOrder(given);
+}
+
 void SplatSet::uploadOrder(const std::vector<uint32_t> &order) {
-  const uint32_t rows = rowsFor(std::max<uint32_t>(_count, 1));
+  const uint32_t drawn = uint32_t(std::min<size_t>(order.size(), _count));
+  // Only the rows the order reaches. A camera inside a capture sees a part of
+  // it, and the slots past the last splat kept are never read: the geometry
+  // stops there.
+  const uint32_t rows = rowsFor(std::max<uint32_t>(drawn, 1));
   const size_t texels = size_t(rows) * kSplatTextureWidth;
   auto *bytes = new uint32_t[texels];
-  std::memcpy(bytes, order.data(),
-              std::min(order.size(), texels) * sizeof(uint32_t));
-  if (order.size() < texels) {
-    std::fill(bytes + order.size(), bytes + texels, 0u);
-  }
+  if (drawn > 0) std::memcpy(bytes, order.data(), drawn * sizeof(uint32_t));
+  std::fill(bytes + drawn, bytes + texels, 0u);
   _order->setImage(
-      _engine, 0,
+      _engine, 0, 0, 0, kSplatTextureWidth, rows,
       Texture::PixelBufferDescriptor(
           bytes, texels * sizeof(uint32_t),
           Texture::PixelBufferDescriptor::PixelDataFormat::R_INTEGER,
@@ -349,6 +406,23 @@ void SplatSet::uploadOrder(const std::vector<uint32_t> &order) {
           [](void *buffer, size_t, void *) {
             delete[] static_cast<uint32_t *>(buffer);
           }));
+  setDrawn(drawn);
+}
+
+void SplatSet::setDrawn(uint32_t splats) {
+  if (splats == _drawn) return;
+  _drawn = splats;
+  auto &renderables = _engine.getRenderableManager();
+  const auto instance = renderables.getInstance(_entity);
+  // Nothing in view is nothing drawn. A primitive cannot be asked to draw
+  // none of its indices, so the renderable is taken off every layer instead,
+  // and put back on its own when something comes into view.
+  renderables.setLayerMask(instance, 0xff, splats == 0 ? uint8_t(0) : _layers);
+  if (splats > 0) {
+    renderables.setGeometryAt(instance, 0,
+                              RenderableManager::PrimitiveType::TRIANGLES,
+                              _corners, _indices, 0, size_t(splats) * 6);
+  }
 }
 
 SplatScene::SplatScene(Engine &engine, Scene &scene)
@@ -375,17 +449,22 @@ void SplatScene::apply(const std::vector<SplatRequest> &requests,
     // A file is read when its path changes; a cloud sent in memory is
     // rebuilt when its data arrives, which is only when its revision moved.
     const bool fromFile = !request.path.empty();
-    // Bit nought of the flags says whether the cloud is sorted; the two above
-    // it say how many spherical-harmonic bands to read, which is a property
-    // of the reading rather than of the drawing — so a cloud asked for at a
-    // different degree is read again, because what was left out on the way in
-    // is not on the card to be brought back.
-    const uint32_t degree = std::min<uint32_t>(uint32_t((request.flags >> 1) & 3),
-                                               kSplatMaxHarmonicDegree);
-    const bool wanted = fromFile ? (!kept.set || kept.path != request.path ||
-                                    kept.degree != degree)
-                                 : (request.data != nullptr &&
-                                    (!kept.set || kept.revision != request.revision));
+    const std::string about =
+        fromFile ? request.path : "splats " + std::to_string(request.key);
+    // The degree and the limit in the flags are properties of the reading
+    // rather than of the drawing, so a cloud asked for at a different one is
+    // read again: what was left out on the way in is not on the card to be
+    // brought back. Whether it is sorted, and how finely, is only drawing.
+    const uint32_t degree = std::min<uint32_t>(
+        uint32_t((request.flags >> kSplatFlagDegreeShift) & 3),
+        kSplatMaxHarmonicDegree);
+    const uint32_t limit = uint32_t(request.flags) >> kSplatFlagLimitShift;
+    const bool wanted =
+        fromFile ? (!kept.set || kept.path != request.path ||
+                    kept.degree != degree || kept.limit != limit)
+                 : (request.data != nullptr &&
+                    (!kept.set || kept.revision != request.revision ||
+                     kept.limit != limit));
     if (wanted) {
       SplatCloud cloud;
       std::string error;
@@ -396,22 +475,30 @@ void SplatScene::apply(const std::vector<SplatRequest> &requests,
       kept.path = request.path;
       kept.revision = request.revision;
       kept.degree = degree;
+      kept.limit = limit;
       if (!read) {
-        notes.emplace_back(fromFile ? request.path
-                                    : "splats " + std::to_string(request.key),
-                           error);
+        notes.emplace_back(about, error);
         continue;
       }
+
+      std::string said;
       if (cloud.droppedHigherBands && fromFile) {
-        notes.emplace_back(
-            request.path,
-            cloud.harmonicDegree == 0
-                ? "drawn with degree-0 colour only; the file's higher "
-                  "spherical-harmonic bands were not read"
-                : "drawn to spherical-harmonic degree " +
-                      std::to_string(cloud.harmonicDegree) +
-                      "; the bands the file has above that were not read");
+        said = cloud.harmonicDegree == 0
+                   ? "drawn with degree-0 colour only; the file's higher "
+                     "spherical-harmonic bands were not read"
+                   : "drawn to spherical-harmonic degree " +
+                         std::to_string(cloud.harmonicDegree) +
+                         "; the bands the file has above that were not read";
       }
+      const uint32_t had = keepMostVisibleSplats(cloud, limit);
+      if (had > cloud.count) {
+        if (!said.empty()) said += "; ";
+        said += "drawn with the " + std::to_string(cloud.count) +
+                " largest and most opaque of its " + std::to_string(had) +
+                " splats, the limit it was given";
+      }
+      if (!said.empty()) notes.emplace_back(about, said);
+
       if (_material == nullptr) {
         _material = Material::Builder()
                         .package(ksplatMaterial, ksplatMaterial_len)
@@ -419,13 +506,19 @@ void SplatScene::apply(const std::vector<SplatRequest> &requests,
       }
       kept.set = std::make_unique<SplatSet>(_engine, _scene, *_material,
                                             std::move(cloud));
+    } else if (kept.set && !fromFile && kept.limit != limit) {
+      // The records are not here to be read again: the view sends a cloud
+      // held in memory only when its revision moves.
+      notes.emplace_back(about, "a new limit reaches a cloud held in memory "
+                                "with its next revision");
     }
 
     if (!kept.set) continue;
     kept.set->setTransform(request.params);
     kept.set->setOpacity(request.params[16]);
     kept.set->setBrightness(request.params[17]);
-    kept.set->setSorted((request.flags & 1) != 0);
+    kept.set->setOrdering((request.flags & kSplatFlagSorted) != 0,
+                          (request.flags & kSplatFlagCoarse) != 0);
   }
 
   for (auto it = _sets.begin(); it != _sets.end();) {
@@ -437,9 +530,9 @@ void SplatScene::apply(const std::vector<SplatRequest> &requests,
   }
 }
 
-void SplatScene::update(const float3 &forward) {
+void SplatScene::update(const SplatCamera &camera) {
   for (auto &pair : _sets) {
-    if (pair.second.set) pair.second.set->update(forward);
+    if (pair.second.set) pair.second.set->update(camera);
   }
 }
 
