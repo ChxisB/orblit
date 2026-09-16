@@ -29,6 +29,7 @@ class MeshComponent extends SceneComponent {
     this.castShadows = true,
     this.receiveShadows = true,
     this.sway = 0,
+    this.authored = false,
   });
 
   static MeshComponent fromJson(Map<String, Object?> json) => MeshComponent(
@@ -44,6 +45,7 @@ class MeshComponent extends SceneComponent {
     castShadows: Values.flag(json, 'castShadows', fallback: true),
     receiveShadows: Values.flag(json, 'receiveShadows', fallback: true),
     sway: Values.number(json, 'sway', 0),
+    authored: Values.flag(json, 'authored', fallback: false),
   );
 
   /// A mesh file, relative to the project, or null for geometry held here.
@@ -75,6 +77,20 @@ class MeshComponent extends SceneComponent {
   /// How much this moves in wind, from nothing to fully.
   final double sway;
 
+  /// Whether the geometry belongs to this document rather than to a file.
+  ///
+  /// The difference between something somebody is modelling here — a box they
+  /// can still pull a face off — and something exported from elsewhere that
+  /// this scene only places. A tool offers to edit the first and not the
+  /// second, and the two are otherwise indistinguishable: an authored shape
+  /// that has not been touched yet has no geometry stored, and a referenced
+  /// model given a boundary has some.
+  ///
+  /// Stated rather than guessed from which fields are filled in, because the
+  /// guess is wrong in both directions and what it costs is somebody's
+  /// modelling panel disappearing when they reopen the file.
+  final bool authored;
+
   @override
   String get type => SceneComponents.mesh;
 
@@ -92,6 +108,8 @@ class MeshComponent extends SceneComponent {
     // Left out when there is none, because almost nothing sways and a key
     // on every mesh in every scene is noise in somebody's diff.
     'sway': sway > 0 ? sway : null,
+    // Likewise: most things in most scenes are placed, not modelled.
+    'authored': authored ? true : null,
   });
 }
 
