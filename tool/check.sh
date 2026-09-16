@@ -25,6 +25,7 @@ PACKAGES=(
   packages/orblit_native
   packages/orblit_noise
   packages/orblit_rig
+  packages/orblit_scene
   packages/orblit_sequence
   packages/orblit_sprite
   packages/orblit_weather
