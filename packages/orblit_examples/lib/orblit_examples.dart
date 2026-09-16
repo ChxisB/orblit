@@ -52,6 +52,7 @@ export 'src/examples/pipeline.dart' show PipelineExample;
 export 'src/examples/probes.dart' show ProbesExample;
 export 'src/examples/shadows.dart' show ShadowLight, ShadowsExample;
 export 'src/examples/runner.dart' show RunnerExample;
+export 'src/examples/scene_files.dart' show SceneFilesExample;
 export 'src/examples/splats.dart' show SplatsExample;
 export 'src/examples/sprites.dart' show SpritesExample;
 export 'src/examples/post.dart' show PostExample;
@@ -87,6 +88,7 @@ import 'src/examples/pipeline.dart';
 import 'src/examples/probes.dart';
 import 'src/examples/runner.dart';
 import 'src/examples/post.dart';
+import 'src/examples/scene_files.dart';
 import 'src/examples/splats.dart';
 import 'src/examples/sprites.dart';
 import 'src/examples/surface.dart';
@@ -123,6 +125,7 @@ List<Example> engineExamples() => [
   BatchingExample(),
   OverdrawExample(),
   CrowdExample(),
+  SceneFilesExample(),
   SplatsExample(),
   SpritesExample(),
   CamerasExample(),
