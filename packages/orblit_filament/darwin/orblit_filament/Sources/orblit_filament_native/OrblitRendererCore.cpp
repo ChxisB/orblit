@@ -25,6 +25,7 @@
 
 #include "OrblitBackend.h"
 #include "OrblitDecals.h"
+#include "OrblitHdrImage.h"
 #include "OrblitImport.h"
 
 // M_PI is POSIX rather than C++, and MSVC only defines it when asked to.
@@ -2626,8 +2627,11 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
 
   const std::string wantedRadiance(radiance);
   const std::string wantedSkybox(skybox);
+  // The fourth number is the size a picture is filtered at, so a change to it
+  // is a change to what is built, not a number moving on what is there.
   const bool sameFiles = wantedRadiance == _environmentRadiancePath &&
-                         wantedSkybox == _environmentSkyboxPath;
+                         wantedSkybox == _environmentSkyboxPath &&
+                         params[3] == _environmentParams[3];
 
   // The numbers can move without the files changing — an environment being
   // turned, or brought up and down — and rebuilding a cubemap for that would
@@ -2637,7 +2641,10 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
     return;
   }
 
-  const bool onlyNumbersMoved = sameFiles && _environmentRadiance != nullptr;
+  // A picture still being filtered counts as there: when it arrives it is
+  // built from the numbers as they are by then.
+  const bool onlyNumbersMoved =
+      sameFiles && (_environmentRadiance != nullptr || !_environmentWork.empty());
   memcpy(_environmentParams, params, sizeof(_environmentParams));
 
   if (onlyNumbersMoved) {
@@ -2653,8 +2660,18 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
   releaseEnvironment();
   _environmentRadiancePath = wantedRadiance;
   _environmentSkyboxPath = wantedSkybox;
+  // What was said about the last files is not about these.
+  _assetNotes.erase("environment");
+  _assetNotes.erase("skybox");
 
-  if (!wantedRadiance.empty()) {
+  // An .hdr or .exr is a picture to filter here (OrblitEnvironment.cpp);
+  // anything else is a cubemap cmgen baked, read as it always was.
+  const bool radianceIsPicture =
+      orblit::hdrFormatOfName(wantedRadiance) != orblit::HdrFormat::unknown;
+  const bool skyboxIsPicture =
+      orblit::hdrFormatOfName(wantedSkybox) != orblit::HdrFormat::unknown;
+
+  if (!wantedRadiance.empty() && !radianceIsPicture) {
     float3 harmonics[9];
     bool hasHarmonics = false;
     _environmentRadiance = cubemapAtPath(radiance, harmonics, &hasHarmonics, "environment");
@@ -2680,7 +2697,7 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
     }
   }
 
-  if (!wantedSkybox.empty()) {
+  if (!wantedSkybox.empty() && !skyboxIsPicture) {
     float3 unused[9];
     bool ignored = false;
     _environmentSkyTexture = cubemapAtPath(skybox, unused, &ignored, "skybox");
@@ -2697,6 +2714,21 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
 
   }
 
+  if (radianceIsPicture || skyboxIsPicture) {
+    // Lit at once if these pictures were filtered before; otherwise started,
+    // and lit a few frames from now by pollEnvironment.
+    requestEnvironmentImages(radianceIsPicture ? wantedRadiance : std::string(),
+                             skyboxIsPicture ? wantedSkybox : std::string(),
+                             _environmentParams[3]);
+  }
+
+  showEnvironment();
+}
+
+/// Puts whatever environment is built in charge of the scene's light and
+/// backdrop, or the flat ambient and procedural sky back where there is none.
+/// After the files change, and again when a picture finishes filtering.
+void Renderer::showEnvironment() {
   if (_environmentLight != nullptr) {
     // The flat ambient steps aside rather than being blended with: a scene
     // lit by a photograph of a room and by an even wash is lit twice.
@@ -2704,7 +2736,9 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
       _engine->destroy(_ambient);
       _ambient = nullptr;
     }
-    _scene->setIndirectLight(_environmentLight);
+    // A probe the camera is standing in stays in charge; chooseProbe hands
+    // the scene back to this light when the camera leaves it.
+    if (_activeProbe == 0) _scene->setIndirectLight(_environmentLight);
   } else {
     // Nothing loaded, so the sky the day cycle has been writing goes back.
     setAmbientColour(_ambientColour, _ambientIntensity);
@@ -2764,14 +2798,18 @@ void Renderer::releaseEnvironment() {
     _environmentSkybox = nullptr;
   }
   _showingEnvironmentSkybox = false;
+  // A texture filtered from a picture belongs to the cache, which keeps it
+  // for the next scene that names the same picture.
   if (_environmentRadiance != nullptr) {
-    _engine->destroy(_environmentRadiance);
+    if (!_environmentRadianceCached) _engine->destroy(_environmentRadiance);
     _environmentRadiance = nullptr;
   }
   if (_environmentSkyTexture != nullptr) {
-    _engine->destroy(_environmentSkyTexture);
+    if (!_environmentSkyCached) _engine->destroy(_environmentSkyTexture);
     _environmentSkyTexture = nullptr;
   }
+  _environmentRadianceCached = false;
+  _environmentSkyCached = false;
   _environmentRadiancePath.clear();
   _environmentSkyboxPath.clear();
   _environmentHasHarmonics = false;
@@ -5570,8 +5608,9 @@ void Renderer::capture(Probe &probe, uint8_t layers) {
 
   // Built once and kept: the filter compiles its own materials and holds a
   // kernel texture, so one per renderer rather than one per capture.
-  if (_prefilter == nullptr) {
-    _prefilter = new IBLPrefilterContext(*_engine);
+  // The context may already exist, made by an environment picture's filter.
+  if (_prefilter == nullptr) _prefilter = new IBLPrefilterContext(*_engine);
+  if (_specularFilter == nullptr) {
     _specularFilter = new IBLPrefilterContext::SpecularFilter(*_prefilter);
   }
   if (probe.filtered != nullptr) {
@@ -6742,6 +6781,9 @@ void Renderer::drawAtTime(double time) {
   updateMistAtTime(time);
   updateRainAtTime(time);
   pollTextures();
+  // Before the frame begins: a stage of it renders standalone views of its
+  // own, which Filament takes outside beginFrame and endFrame.
+  pollEnvironment();
   pumpVideos();
 
   if (!_renderer->beginFrame(target)) return;
@@ -7020,6 +7062,8 @@ void Renderer::dispose() {
     _engine->destroy(_captureView);
     _captureView = nullptr;
   }
+  // Before the context the filters were made from.
+  releaseEnvironmentCache();
   delete _specularFilter;
   _specularFilter = nullptr;
   delete _prefilter;
@@ -7175,6 +7219,10 @@ Notes Renderer::notes() {
   for (const auto &pair : _drawn) {
     if (!pair.second.path.empty()) asked.insert(pair.second.path);
   }
+  // The environment's are kept under these two names rather than its paths,
+  // and are about the scene for as long as it names an environment.
+  if (!_environmentRadiancePath.empty()) asked.insert("environment");
+  if (!_environmentSkyboxPath.empty()) asked.insert("skybox");
 
   Notes all;
   for (const auto &entry : _assetNotes) {
