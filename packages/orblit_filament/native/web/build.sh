@@ -120,8 +120,9 @@ for source in "$SRC"/*.cpp; do
   objects+=("$OUT/$name.o")
 done
 
-# This directory's own sources: the web surface and the JS-friendly wrapper.
-for name in OrblitSurfaceWeb orblit_web_host; do
+# This directory's own sources: the web surface, the JS-friendly wrapper, and
+# the splat sorter that runs on a Web Worker because there are no threads.
+for name in OrblitSurfaceWeb orblit_web_host OrblitSplatSorterWeb; do
   echo "native/web/build.sh: compiling $name"
   em++ -std=c++17 -O2 -DORBLIT_PLATFORM_PORTABLE -fwasm-exceptions \
     -Wall "${INCLUDES[@]}" -I "$SRC" -I "$SRC/include" -I "$GENERATED" \
@@ -177,8 +178,12 @@ for fn in $abi_funcs; do exported="$exported,_$fn"; done
 # web/filament-js/CMakeLists.txt's own LOPTS — the flags Filament's own web
 # target links with — so this build's GL entry points match what its
 # archives were built expecting.
+#
+# --pre-js puts orblit_splat_worker.js inside the module's factory, where
+# OrblitSplatSorterWeb.cpp's EM_JS calls find it as Module.orblitSplatWorkers.
 em++ -fwasm-exceptions -O2 \
   "${objects[@]}" "${archives[@]}" \
+  --pre-js orblit_splat_worker.js \
   -s ALLOW_MEMORY_GROWTH=1 \
   -s USE_WEBGL2=1 -s FULL_ES3 -s MIN_WEBGL_VERSION=2 -s MAX_WEBGL_VERSION=2 \
   -s ENVIRONMENT=web \

@@ -430,6 +430,49 @@ level 1, upstream of everything here; nothing in this directory or in
 Android's OpenGL ES — the other feature-level-1 host, and the one place the
 same question can be asked without a browser in the way.
 
+## Gaussian splats, and the sort that has no thread
+
+A cloud is sorted back to front every time the camera moves, and this build
+has no threads: `-pthread` is not on the link line, and `std::thread`'s
+constructor throws "Not supported" the moment one is constructed. The sorter
+built one per cloud, so the first scene carrying splats did not merely fail to
+draw them — the C ABI caught the exception, marked the renderer failed, and
+every later call was refused. A browser drew a black canvas.
+
+The sort now goes to a **Web Worker**:
+
+- `OrblitSplats.cpp`'s `makeSplatSorter` chooses where a sort runs: a thread
+  natively, the asking thread for a cloud small enough that handing the work
+  over costs more than doing it, and here `makeWorkerSplatSorter`.
+- `OrblitSplatSorterWeb.cpp` (this directory) is that sorter. Its `EM_JS`
+  calls reach `orblit_splat_worker.js`, which `build.sh` passes to `emcc` as
+  `--pre-js` so that it lands inside the module's factory as
+  `Module.orblitSplatWorkers`.
+- The worker's own program is a function in that file turned back into source
+  text and started from a `Blob`, so a page still serves
+  `orblit_renderer.js` and `.wasm` and nothing else. The positions cross once,
+  when the cloud is made; each sort sends 35 floats of camera across and the
+  finished order comes back as a transferred buffer.
+- A page that will not start a worker at all — no `Worker`, or a content
+  security policy that refuses a `blob:` script — sorts on the page's own
+  thread and says so in the console. It draws; it stutters.
+
+**Not pthreads**, deliberately: threads in a browser need the page served
+cross-origin isolated *and* every object in the link — Filament's own archives
+included — rebuilt with `-pthread`, which is a second Filament build and a
+second renderer to ship beside this one. A sort shares nothing but the
+positions, so a worker gets the whole benefit at none of that cost, on every
+page, isolated or not.
+
+Checked in headless Chrome, from `examples/gallery`:
+
+```sh
+tool/capture_web.sh 'Gaussian%20splats'
+```
+
+The ring draws, its near side blended over its far side, with the pillar in
+front of what it stands in.
+
 ## What this proves, in one line
 
 The same `OrblitRendererCore.cpp` that draws on macOS and the iOS simulator

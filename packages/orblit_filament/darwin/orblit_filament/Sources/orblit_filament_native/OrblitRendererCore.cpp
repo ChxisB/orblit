@@ -6637,11 +6637,16 @@ void Renderer::drawAtTime(double time) {
   if (_motionBlur) _motionBlur->frameBegan(*_camera);
   rangePopulations();
   // After the camera is placed, because the order depends on which way it
-  // faces. The sort itself is on the sorter's own thread; this only asks for
-  // one and uploads whichever has finished.
+  // faces and what it can see. The sort itself is off this thread for any
+  // cloud large enough to need it; this only asks for one and uploads
+  // whichever has finished.
   if (_splats != nullptr) {
     const auto forward = _camera->getForwardVector();
-    _splats->update(float3{float(forward.x), float(forward.y), float(forward.z)});
+    orblit::SplatCamera view;
+    view.forward = float3{float(forward.x), float(forward.y), float(forward.z)};
+    view.viewFromWorld = mat4f(_camera->getViewMatrix());
+    view.clipFromView = mat4f(_camera->getProjectionMatrix());
+    _splats->update(view);
   }
 
   SwapChain *target = _swapChains[_backIndex];

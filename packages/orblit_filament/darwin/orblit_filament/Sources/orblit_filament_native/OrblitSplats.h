@@ -11,13 +11,10 @@
 // viewer introduced and most tools now write.
 #pragma once
 
-#include <condition_variable>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <mutex>
 #include <string>
-#include <thread>
 #include <vector>
 
 namespace orblit {
@@ -26,6 +23,15 @@ namespace orblit {
 /// opacity multiplier and a brightness multiplier. Must match
 /// OrblitSplats.stride in Dart and splatStride in the plugin.
 constexpr size_t kSplatParams = 18;
+
+/// The bits of a cloud's flags in the scene message, low to high: whether it
+/// is sorted; the spherical-harmonic degree, two bits; whether the sort is
+/// coarse; and, from bit eight up, how many splats to keep at most, nought
+/// for all of them. Must match OrblitSplats.flags in Dart.
+constexpr int32_t kSplatFlagSorted = 1 << 0;
+constexpr int kSplatFlagDegreeShift = 1;
+constexpr int32_t kSplatFlagCoarse = 1 << 3;
+constexpr int kSplatFlagLimitShift = 8;
 
 /// Bytes per splat in the compact layout, which is also the layout an
 /// in-memory cloud travels in: position, scale, colour, rotation.
@@ -77,6 +83,24 @@ constexpr uint32_t splatHarmonicBytes(uint32_t degree) {
 /// nought exactly and 1 and 255 are the scale itself either way. Must match
 /// the decode in splat.mat.
 constexpr float kSplatHarmonicSteps = 127.0f;
+
+/// Clouds of up to this many splats are sorted by the thread that asks.
+///
+/// Below this a sort takes a fraction of a millisecond, which is less than
+/// handing the work to a thread or a worker and taking it back costs — and it
+/// means a small cloud is in order on the very frame it asked to be.
+constexpr uint32_t kSplatInlineSortLimit = 16384;
+
+/// How far past the edge of the screen, in clip space, a splat's centre may
+/// be and still be kept by a sort that culls.
+///
+/// splat.mat drops a centre past 1.3, so a splat that reaches onto the screen
+/// from just off it still draws. Wider here, so that what a sort keeps is
+/// always more than the shader would draw from the same camera, and so that a
+/// camera turning while the next sort is on its way has some way to turn
+/// before it sees past the last one. Must match GUARD in
+/// native/web/orblit_splat_worker.js.
+constexpr float kSplatCullGuard = 1.5f;
 
 /// A cloud as the renderer holds it, already turned into what the shader
 /// reads: a centre, the six numbers of a symmetric 3D covariance, and a
@@ -132,11 +156,51 @@ bool readSplatRecords(const uint8_t *data, size_t length, SplatCloud &into,
 bool readSplatPly(const uint8_t *data, size_t length, uint32_t maxDegree,
                   SplatCloud &into, std::string &error);
 
-/// Either of the above, chosen by the file's extension, from bytes provided
-/// under `path` or else the file of that name. A `.splat` has no room for
-/// higher bands, so `maxDegree` only reaches a `.ply`.
+/// Reads Niantic's `.spz`, versions 2 and 3: a gzip-compressed 16-byte header
+/// and then each attribute in a block of its own — positions as 24-bit fixed
+/// point, then alphas, colours, scales, rotations, and the bands above the
+/// flat colour a byte a coefficient.
+///
+/// A `.spz` holds its capture right-up-back, where a `.ply` from the reference
+/// trainer is right-down-front, so this turns it into the trainer's frame:
+/// every file this renderer reads then needs the same transform to stand it
+/// up. Version 1, and the version-4 stream format, are refused and say so.
+bool readSplatSpz(const uint8_t *data, size_t length, uint32_t maxDegree,
+                  SplatCloud &into, std::string &error);
+
+/// Reads Orblit's own `.osplat`: the cloud exactly as the renderer holds it —
+/// centres, covariances, colours and quantised harmonics — so that opening
+/// one is a read and four copies, rather than a parse, an exponential, a
+/// quaternion and a covariance a splat.
+///
+/// What a cook step writes and a launch that must not stall reads. Bytes as
+/// this machine stores them, little-endian, like the `.ply` reader above:
+/// this is a file made for the device that reads it.
+bool readSplatCooked(const uint8_t *data, size_t length, uint32_t maxDegree,
+                     SplatCloud &into, std::string &error);
+
+/// That file, from a cloud read out of any of the others.
+std::vector<uint8_t> writeSplatCooked(const SplatCloud &cloud);
+
+/// Whichever of the readers above the file's extension names — `.ply`,
+/// `.spz`, `.osplat`, or the compact records of anything else — from bytes
+/// provided under `path` or else the file of that name.
+///
+/// `maxDegree` reaches every format that carries bands at all; a `.splat` has
+/// no room for any, so one is flat whatever is asked for.
 bool loadSplatFile(const std::string &path, uint32_t maxDegree,
                    SplatCloud &into, std::string &error);
+
+/// Keeps the `limit` splats that add most to a picture, and drops the rest.
+///
+/// Ranked by opacity times how much of the screen a splat can cover, so a
+/// limit takes the faint and the small first: what a capture loses is the
+/// dust it is thickest with, not its walls. The splats kept stay in the order
+/// they came, and the box is measured again round them. Nought, or a limit of
+/// at least the cloud's size, keeps everything and changes nothing.
+///
+/// Answers how many splats there were, so a caller can say what it dropped.
+uint32_t keepMostVisibleSplats(SplatCloud &cloud, uint32_t limit);
 
 /// The cloud as the RGBA32UI texels the shader fetches, padded out to whole
 /// rows of kSplatTextureWidth.
@@ -159,63 +223,83 @@ inline uint32_t sortableBits(float value) {
   return (bits & 0x80000000u) ? ~bits : (bits | 0x80000000u);
 }
 
-/// Puts every splat in order, farthest along `direction` first.
-///
-/// An LSD radix sort on a 32-bit key: the float depth made sortable, then
-/// inverted so that ascending order is back to front. Four passes of eight
-/// bits, each skipped when every key agrees on that byte. `scratch` is kept
-/// by the caller so a million-splat sort does not allocate each time.
-void sortSplatsBackToFront(const float *positions, uint32_t count,
-                           const float direction[3],
-                           std::vector<uint32_t> &order,
-                           std::vector<uint32_t> &scratch);
+/// What one sort is asked for: which way the camera faces and, to leave out
+/// what it cannot see, where it is.
+struct SplatSortRequest {
+  /// The camera's forward vector in the cloud's own space, unit length. The
+  /// order is by distance along it, farthest first.
+  float direction[3] = {0, 0, -1};
 
-/// Sorts on a thread of its own, so the render thread never waits for one.
+  /// Whether to leave out the splats the camera cannot see: a centre not in
+  /// front of it, or past kSplatCullGuard of the screen either way. The order
+  /// then holds only the splats kept.
+  bool cull = false;
+
+  /// Model to view and model to clip, column-major. Read only when culling.
+  float viewFromModel[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  float clipFromModel[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+
+  /// Sixteen bits of depth rather than thirty-two: two radix passes rather
+  /// than four, and splats within a 65 536th of the kept splats' depth of one
+  /// another in either order. For a device where the sort is what a frame
+  /// waits on.
+  bool coarse = false;
+};
+
+/// Puts the splats in order, farthest first, leaving out what `request`
+/// culls.
+///
+/// An LSD radix sort. With a full key — the float depth made sortable, then
+/// inverted so that ascending order is back to front — in four passes of
+/// eight bits; with a coarse one, the depth measured across the kept splats'
+/// own range in 65 536 steps, in two. A pass is skipped when every key agrees
+/// on its byte. Stable, so culling only takes splats out: the ones kept come
+/// in the order a sort of all of them would have put them in, and the shader
+/// drops every splat culled here anyway, so from the camera it was sorted for
+/// the picture is the same one from fewer quads.
+///
+/// `scratch` is kept by the caller so a million-splat sort does not allocate
+/// each time.
+void sortSplats(const float *positions, uint32_t count,
+                const SplatSortRequest &request, std::vector<uint32_t> &order,
+                std::vector<uint32_t> &scratch);
+
+/// Sorts a cloud without the render thread waiting for it.
 ///
 /// The render thread asks, carries on drawing with the order it already has,
 /// and picks the answer up on whichever frame it is ready. At a million
 /// splats a sort is tens of milliseconds, and a frame that waited for it
 /// would be the hitch every camera turn produced.
 ///
-/// The positions are shared and never written after construction, so the
-/// worker reads them without a lock. Only the request and the answer cross
-/// between the threads, and both are behind one.
+/// Where the sort runs is makeSplatSorter's choice: on a thread of its own
+/// natively, on a Web Worker in a browser without threads, and on the thread
+/// that asks for a cloud too small for either to be worth it.
 class SplatSorter {
  public:
-  SplatSorter(std::shared_ptr<const std::vector<float>> positions,
-              uint32_t count);
-  ~SplatSorter();
+  virtual ~SplatSorter() = default;
 
-  SplatSorter(const SplatSorter &) = delete;
-  SplatSorter &operator=(const SplatSorter &) = delete;
-
-  /// Asks for a sort along `direction`. A request made while another is
-  /// still waiting replaces it: only the newest camera matters.
-  void request(const float direction[3]);
+  /// Asks for a sort. Ask only when not busy: a request made while another is
+  /// in flight may replace it or wait behind it, depending on where it runs.
+  virtual void request(const SplatSortRequest &request) = 0;
 
   /// Whether a request is waiting or being worked on.
-  bool busy();
+  virtual bool busy() = 0;
 
   /// Hands over the newest finished order, if there is one since last time.
-  bool take(std::vector<uint32_t> &order, double &milliseconds);
-
- private:
-  void run();
-
-  std::shared_ptr<const std::vector<float>> _positions;
-  uint32_t _count;
-
-  std::mutex _lock;
-  std::condition_variable _wake;
-  bool _stopping = false;
-  bool _pending = false;
-  bool _working = false;
-  bool _ready = false;
-  float _direction[3] = {0, 0, -1};
-  std::vector<uint32_t> _result;
-  double _milliseconds = 0;
-
-  std::thread _worker;
+  virtual bool take(std::vector<uint32_t> &order, double &milliseconds) = 0;
 };
+
+/// The sorter for a cloud of `count` splats at `positions`, which are shared
+/// and never written again — which is what lets a sort read them without a
+/// lock.
+std::unique_ptr<SplatSorter> makeSplatSorter(
+    std::shared_ptr<const std::vector<float>> positions, uint32_t count);
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+/// A sorter on a Web Worker, or null where the page will not start one.
+/// Defined beside the web build, in native/web/OrblitSplatSorterWeb.cpp.
+std::unique_ptr<SplatSorter> makeWorkerSplatSorter(
+    std::shared_ptr<const std::vector<float>> positions, uint32_t count);
+#endif
 
 }  // namespace orblit
