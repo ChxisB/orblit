@@ -83,6 +83,10 @@ add_library(orblit_filament_native SHARED
     "${ORBLIT_CORE_DIR}/OrblitTinyExr.cpp"
     "${ORBLIT_CORE_DIR}/OrblitEnvironmentBake.cpp"
     "${ORBLIT_CORE_DIR}/OrblitEnvironment.cpp"
+    # Textures: the GPU-ready KTX 2 reader, and the queue that decodes and
+    # uploads every texture under a budget a frame.
+    "${ORBLIT_CORE_DIR}/OrblitKtx2.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitTextures.cpp"
 )
 
 target_include_directories(orblit_filament_native PRIVATE
