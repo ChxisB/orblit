@@ -37,6 +37,10 @@ dependencies:
 
   vector_math: ^2.1.4
 
+  # The browser's own fetch, for an example's files on the web; see
+  # lib/src/platform/fetch.dart for why not NetworkAssetBundle.
+  web: ^1.1.0
+
 dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_test:
