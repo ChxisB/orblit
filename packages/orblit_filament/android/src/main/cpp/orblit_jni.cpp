@@ -529,6 +529,26 @@ Java_dev_orblit_filament_OrblitNative_nativeApplySplats(JNIEnv *env, jclass, jlo
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeApplySprites(JNIEnv *env, jclass, jlong handleValue,
+        jintArray keys, jintArray flags, jintArray orders, jintArray revisions, jfloatArray params,
+        jobjectArray paths, jintArray changed, jintArray changedCounts, jfloatArray records) {
+  auto *handle = fromHandle(handleValue);
+  if (handle == nullptr) return ORBLIT_ERROR_NULL;
+  Ints k(env, keys);
+  Ints f(env, flags);
+  Ints o(env, orders);
+  Ints rev(env, revisions);
+  Floats pr(env, params);
+  Strings p(env, paths);
+  Ints ch(env, changed);
+  Ints cc(env, changedCounts);
+  Floats rec(env, records);
+  return orblit_renderer_apply_sprites(handle->renderer, k.count(), k.ptr(), f.ptr(), o.ptr(),
+      rev.ptr(), pr.ptr(), pr.count(), p.ptr(), p.count(), ch.ptr(), cc.ptr(), ch.count(),
+      rec.ptr(), rec.count());
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_orblit_filament_OrblitNative_nativeSetSky(JNIEnv *env, jclass, jlong handleValue,
         jboolean enabled, jfloatArray params) {
   auto *handle = fromHandle(handleValue);
@@ -657,6 +677,47 @@ Java_dev_orblit_filament_OrblitNative_nativeNotes(JNIEnv *env, jclass, jlong han
         out, jsize(i * 2 + 1), toJString(env, saying != nullptr ? saying : ""));
   }
   return out;
+}
+
+// ---- What the device can do ------------------------------------------
+
+JNIEXPORT jintArray JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeCapabilities(JNIEnv *env, jclass, jlong handleValue) {
+  jint values[ORBLIT_CAPABILITY_COUNT];
+  auto *handle = fromHandle(handleValue);
+  for (int which = 0; which < ORBLIT_CAPABILITY_COUNT; which++) {
+    values[which] = handle == nullptr
+                        ? -1
+                        : orblit_renderer_capability(handle->renderer, orblit_capability(which));
+  }
+  jintArray out = env->NewIntArray(ORBLIT_CAPABILITY_COUNT);
+  env->SetIntArrayRegion(out, 0, ORBLIT_CAPABILITY_COUNT, values);
+  return out;
+}
+
+// ---- Bytes by name ----------------------------------------------------
+
+JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeProvideResource(JNIEnv *env, jclass, jstring name,
+        jbyteArray bytes) {
+  if (name == nullptr || bytes == nullptr) return ORBLIT_ERROR_NULL;
+  const std::string named = toStdString(env, name);
+  const jsize length = env->GetArrayLength(bytes);
+  // Borrowed rather than copied out first: the renderer takes its own copy
+  // at once, and nothing between here and the release calls back into Java.
+  void *borrowed = env->GetPrimitiveArrayCritical(bytes, nullptr);
+  if (borrowed == nullptr && length > 0) return ORBLIT_ERROR_NULL;
+  const int status = orblit_renderer_provide_resource(
+      named.c_str(), static_cast<const uint8_t *>(borrowed), size_t(length));
+  env->ReleasePrimitiveArrayCritical(bytes, borrowed, JNI_ABORT);
+  return status;
+}
+
+JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeReleaseResource(JNIEnv *env, jclass, jstring name) {
+  if (name == nullptr) return ORBLIT_ERROR_NULL;
+  const std::string named = toStdString(env, name);
+  return orblit_renderer_release_resource(named.c_str());
 }
 
 }  // extern "C"

@@ -21,6 +21,7 @@ import 'dart:typed_data';
 
 import 'package:web/web.dart' as web;
 
+import '../device_profile.dart';
 import 'orblit_module.dart';
 import 'orblit_scene_web.dart';
 
@@ -30,7 +31,12 @@ const int _backendOpenGl = 3;
 
 /// One viewport: a canvas, a module instance, and the frame loop over them.
 class OrblitWebViewport {
-  OrblitWebViewport(this.id);
+  OrblitWebViewport(this.id, {Map<String, Uint8List> resources = const {}})
+    : _resources = resources;
+
+  /// Everything provided so far, shared with the plugin that owns it, so a
+  /// module that starts late is handed what arrived before it.
+  final Map<String, Uint8List> _resources;
 
   /// This viewport's number — the "textureId" of the channel contract, minted
   /// by the plugin rather than by a texture registry.
@@ -61,6 +67,19 @@ class OrblitWebViewport {
 
   /// A scene that arrived before the renderer existed, applied at start.
   OrblitSceneWeb? _pending;
+
+  /// Every call still waiting for a scene to be applied: one per scene that
+  /// arrived before the renderer existed, the newest of which is [_pending].
+  ///
+  /// Answered only once a scene is really in. The view marks a population's,
+  /// a splat cloud's or a sprite layer's bytes as delivered when this call
+  /// returns, and sends them again only when their revision moves — so
+  /// answering straight away, for a scene about to be replaced by the next
+  /// frame's, told it bytes had arrived that never did. A sprite backdrop sent
+  /// once came up empty on the web and nowhere else. Held like this, every
+  /// scene sent before the renderer starts still carries its bytes, and the
+  /// one applied at start has all of them.
+  final List<Completer<Map<String, String>>> _waiting = [];
 
   /// The notes from the last scene applied, as `setScene` answers with.
   Map<String, String> _notes = const {};
@@ -122,6 +141,9 @@ class OrblitWebViewport {
       final module = await loadOrblitModule(canvas);
       if (_disposed) return;
       _module = module;
+      for (final provided in _resources.entries) {
+        _provideTo(module, provided.key, provided.value);
+      }
 
       // Straight through orblit_web_create_on_canvas, which makes the WebGL 2
       // context current before calling the unmodified orblit_renderer_create —
@@ -138,6 +160,7 @@ class OrblitWebViewport {
         heap.free();
       }
       if (_renderer == 0) {
+        _answerWaiting(const {});
         web.console.error(
           '[orblit] the renderer would not start on #$elementId — see the '
                   'console for what Filament refused and why.'
@@ -148,7 +171,7 @@ class OrblitWebViewport {
 
       final pending = _pending;
       _pending = null;
-      if (pending != null) applyScene(pending);
+      if (pending != null) _answerWaiting(_applyNow(pending));
 
       web.window.requestAnimationFrame(_frame.toJS);
     } finally {
@@ -214,13 +237,26 @@ class OrblitWebViewport {
     _height = height;
   }
 
-  /// Applies a scene, or holds it until the renderer exists.
-  Map<String, String> applyScene(OrblitSceneWeb scene) {
-    final module = _module;
-    if (_renderer == 0 || module == null) {
+  /// Applies a scene, or holds it until the renderer exists and answers then.
+  Future<Map<String, String>> applyScene(OrblitSceneWeb scene) {
+    if (_renderer == 0 || _module == null) {
       _pending = scene;
-      return const {};
+      final applied = Completer<Map<String, String>>();
+      _waiting.add(applied);
+      return applied.future;
     }
+    return Future.value(_applyNow(scene));
+  }
+
+  void _answerWaiting(Map<String, String> notes) {
+    for (final waiting in _waiting) {
+      waiting.complete(notes);
+    }
+    _waiting.clear();
+  }
+
+  Map<String, String> _applyNow(OrblitSceneWeb scene) {
+    final module = _module!;
     scene.applyTo(module, _renderer);
     final was = _notes;
     _notes = _readNotes(module);
@@ -275,6 +311,48 @@ class OrblitWebViewport {
       if (now[note.key] != note.value) return false;
     }
     return true;
+  }
+
+  /// Every orblit_capability, in order, or null until the renderer has
+  /// started — which on the web is a frame or two after the view is laid out.
+  List<int>? capabilities() {
+    final module = _module;
+    if (_renderer == 0 || module == null) return null;
+    return [
+      for (final which in OrblitCapability.values)
+        orblitCall(module, 'orblit_renderer_capability', [
+          _renderer,
+          which.index,
+        ]),
+    ];
+  }
+
+  /// Hands [bytes] to this viewport's module if it has one; a module that
+  /// starts later is handed them as it starts.
+  void provideResource(String name, Uint8List bytes) {
+    final module = _module;
+    if (module != null) _provideTo(module, name, bytes);
+  }
+
+  void releaseResource(String name) {
+    final module = _module;
+    if (module == null) return;
+    orblitCall(module, 'orblit_renderer_release_resource', [name]);
+  }
+
+  static void _provideTo(OrblitModule module, String name, Uint8List bytes) {
+    final heap = OrblitHeap(module);
+    try {
+      // Copied into the module's heap for the call and copied again into the
+      // store by the renderer, which keeps its own; this copy is freed below.
+      orblitCall(module, 'orblit_renderer_provide_resource', [
+        heap.string(name),
+        heap.uint8s(bytes),
+        bytes.length,
+      ]);
+    } finally {
+      heap.free();
+    }
   }
 
   /// The same three numbers `stats` answers with everywhere else.
@@ -333,6 +411,8 @@ class OrblitWebViewport {
 
   void dispose() {
     _disposed = true;
+    _pending = null;
+    _answerWaiting(const {});
     final module = _module;
     if (module != null && _renderer != 0) {
       orblitCall(module, 'orblit_renderer_destroy', [_renderer]);

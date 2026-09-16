@@ -80,6 +80,8 @@ class Viewport {
   std::vector<double> PassTimings() const;
   // [batchedObjects, batchGroups].
   std::vector<int32_t> Batching() const;
+  // Every orblit_capability, in order; -1 for what is not known.
+  std::vector<int32_t> Capabilities() const;
 
   // Called on Flutter's render thread by the texture's copy_pixels.
   bool CopyPixels(const uint8_t** buffer, uint32_t* width, uint32_t* height);

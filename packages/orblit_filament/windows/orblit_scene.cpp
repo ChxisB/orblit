@@ -258,6 +258,15 @@ std::unique_ptr<Scene> Scene::From(const flutter::EncodableValue* args) {
   scene->splat_changed_ = ReadInts(map, "splatChanged");
   scene->splat_changed_counts_ = ReadInts(map, "splatChangedCounts");
   scene->splat_data_ = ReadBytes(map, "splatData");
+  scene->sprite_keys_ = ReadInts(map, "spriteKeys");
+  scene->sprite_flags_ = ReadInts(map, "spriteFlags");
+  scene->sprite_orders_ = ReadInts(map, "spriteOrders");
+  scene->sprite_revisions_ = ReadInts(map, "spriteRevisions");
+  scene->sprite_params_ = ReadFloats(map, "spriteParams");
+  scene->sprite_paths_ = ReadStrings(map, "spritePaths");
+  scene->sprite_changed_ = ReadInts(map, "spriteChanged");
+  scene->sprite_changed_counts_ = ReadInts(map, "spriteChangedCounts");
+  scene->sprite_data_ = ReadFloats(map, "spriteData");
 
   return scene;
 }
@@ -323,6 +332,13 @@ void Scene::ApplyTo(orblit_renderer* renderer) const {
       splat_paths_.ptr(), splat_paths_.count(), splat_changed_.ptr(),
       splat_changed_counts_.ptr(), splat_changed_.count32(),
       splat_data_.ptr(), splat_data_.count());
+
+  orblit_renderer_apply_sprites(
+      renderer, sprite_keys_.count32(), sprite_keys_.ptr(), sprite_flags_.ptr(),
+      sprite_orders_.ptr(), sprite_revisions_.ptr(), sprite_params_.ptr(),
+      sprite_params_.count(), sprite_paths_.ptr(), sprite_paths_.count(),
+      sprite_changed_.ptr(), sprite_changed_counts_.ptr(),
+      sprite_changed_.count32(), sprite_data_.ptr(), sprite_data_.count());
 
   orblit_renderer_apply_lights(renderer, light_keys_.count32(),
                               light_keys_.ptr(), light_kinds_.ptr(),

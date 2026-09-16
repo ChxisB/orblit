@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "OrblitRendererCore.h"
+#include "OrblitResources.h"
 
 /// The Objective-C face of the renderer, and nothing more.
 ///
@@ -218,6 +219,27 @@ std::string OrblitString(NSString *string) {
                           transforms, colours, count);
 }
 
+- (BOOL)hasSprites {
+  return _core->hasSprites();
+}
+
+- (void)applySprites:(const int32_t *)keys
+               flags:(const int32_t *)flags
+              orders:(const int32_t *)orders
+           revisions:(const int32_t *)revisions
+              params:(const float *)params
+               paths:(NSArray<NSString *> *)paths
+             changed:(const int32_t *)changed
+       changedCounts:(const int32_t *)changedCounts
+        changedCount:(uint32_t)changedCount
+             records:(const float *)records
+        recordFloats:(size_t)recordFloats
+               count:(uint32_t)count {
+  _core->applySprites(keys, flags, orders, revisions, params,
+                      OrblitStrings(paths), changed, changedCounts,
+                      changedCount, records, recordFloats, count);
+}
+
 - (BOOL)hasSplats {
   return _core->hasSplats();
 }
@@ -284,6 +306,25 @@ std::string OrblitString(NSString *string) {
                  count:(uint32_t)count
                 params:(const float *)params {
   _core->setOutlineKeys(keys, count, params);
+}
+
++ (void)provideResourceNamed:(NSString *)name bytes:(NSData *)bytes {
+  const auto *start = static_cast<const uint8_t *>(bytes.bytes);
+  std::vector<uint8_t> copy(start, start + bytes.length);
+  orblit::provideResource(OrblitString(name), std::move(copy));
+}
+
++ (BOOL)releaseResourceNamed:(NSString *)name {
+  return orblit::releaseResource(OrblitString(name)) ? YES : NO;
+}
+
+- (NSArray<NSNumber *> *)capabilities {
+  NSMutableArray<NSNumber *> *out =
+      [NSMutableArray arrayWithCapacity:ORBLIT_CAPABILITY_COUNT];
+  for (int which = 0; which < ORBLIT_CAPABILITY_COUNT; which++) {
+    [out addObject:@(_core->capability(orblit_capability(which)))];
+  }
+  return out;
 }
 
 - (void)resizeToWidth:(uint32_t)width height:(uint32_t)height {

@@ -132,8 +132,9 @@ bool readSplatRecords(const uint8_t *data, size_t length, SplatCloud &into,
 bool readSplatPly(const uint8_t *data, size_t length, uint32_t maxDegree,
                   SplatCloud &into, std::string &error);
 
-/// Either of the above, chosen by the file's extension. A `.splat` has no
-/// room for higher bands, so `maxDegree` only reaches a `.ply`.
+/// Either of the above, chosen by the file's extension, from bytes provided
+/// under `path` or else the file of that name. A `.splat` has no room for
+/// higher bands, so `maxDegree` only reaches a `.ply`.
 bool loadSplatFile(const std::string &path, uint32_t maxDegree,
                    SplatCloud &into, std::string &error);
 

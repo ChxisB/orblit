@@ -336,6 +336,24 @@ NS_ASSUME_NONNULL_BEGIN
          dataLength:(size_t)dataLength
               count:(uint32_t)count;
 
+/// Whether any sprite layers are held, so a scene with none skips the call.
+@property(nonatomic, readonly) BOOL hasSprites;
+
+/// States the scene's sprite layers: flat pictures, drawn in the order given.
+/// The whole list every time; see orblit_renderer_apply_sprites for the rows.
+- (void)applySprites:(const int32_t *)keys
+               flags:(const int32_t *)flags
+              orders:(const int32_t *)orders
+           revisions:(const int32_t *)revisions
+              params:(const float *)params
+               paths:(NSArray<NSString *> *)paths
+             changed:(const int32_t *)changed
+       changedCounts:(const int32_t *)changedCounts
+        changedCount:(uint32_t)changedCount
+             records:(const float *)records
+        recordFloats:(size_t)recordFloats
+               count:(uint32_t)count;
+
 /// Sets the sky: its gradient, the body in it, its cloud, and its lightning.
 ///
 /// `params` is thirty-one floats, in the order `OrblitSky` packs them: the
@@ -420,6 +438,18 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setOutlineKeys:(const int64_t *)keys
                  count:(uint32_t)count
                 params:(const float *)params;
+
+/// Keeps `bytes` under `name` for every renderer in the process, looked for
+/// before the disk wherever a scene names a file. See
+/// orblit_renderer_provide_resource for what a name promises. Any thread.
++ (void)provideResourceNamed:(NSString *)name bytes:(NSData *)bytes;
+
+/// Lets go of what was provided under `name`. NO when nothing was.
++ (BOOL)releaseResourceNamed:(NSString *)name;
+
+/// What the device can do, in orblit_capability's order. Measured once when
+/// the renderer started; -1 for anything not known.
+@property(nonatomic, readonly) NSArray<NSNumber *> *capabilities;
 
 /// Requests new dimensions. Safe from any thread — the work happens at the
 /// top of the next frame, on the thread that owns the engine.

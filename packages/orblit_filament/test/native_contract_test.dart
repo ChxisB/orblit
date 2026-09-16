@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_filament/orblit_filament.dart';
@@ -108,6 +109,117 @@ void main() {
           );
         }
       });
+    });
+  });
+
+  group('what a device can do', () {
+    final abi = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/include/orblit_renderer.h',
+    );
+
+    test('is asked in the order the C ABI numbers its questions', () {
+      final body = RegExp(
+        r'typedef enum orblit_capability \{(.*?)\} orblit_capability;',
+        dotAll: true,
+      ).firstMatch(abi);
+      expect(body, isNotNull, reason: 'orblit_renderer.h no longer says');
+      final native = [
+        for (final found in RegExp(
+          r'^\s*ORBLIT_CAPABILITY_([A-Z_]+)',
+          multiLine: true,
+        ).allMatches(body!.group(1)!))
+          if (found.group(1) != 'COUNT') found.group(1)!,
+      ];
+      final dart = [
+        for (final question in OrblitCapability.values)
+          question.name
+              .replaceAllMapped(RegExp('[A-Z]'), (m) => '_${m.group(0)}')
+              .toUpperCase(),
+      ];
+      expect(
+        dart,
+        native,
+        reason:
+            'Dart reads each answer by its position, so a question added or '
+            'moved on one side reads another question\'s answer on the other',
+      );
+    });
+
+    test('spells the texture families with the same bits', () {
+      final bits = [
+        for (final found in RegExp(
+          r'ORBLIT_FORMAT_\w+ = 1 << (\d+)',
+        ).allMatches(abi))
+          1 << int.parse(found.group(1)!),
+      ];
+      expect([
+        for (final family in OrblitTextureFamily.values) family.bit,
+      ], bits);
+    });
+  });
+
+  group('the numbers sprites share', () {
+    final spriteSwift = _read(
+      'darwin/orblit_filament/Sources/orblit_filament/OrblitSpriteMessage.swift',
+    );
+    final spriteNative = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitSprites.h',
+    );
+
+    test('a layer is ${OrblitSprites.layerStride} floats wide everywhere', () {
+      expect(
+        _swiftValue(spriteSwift, 'spriteLayerStride'),
+        OrblitSprites.layerStride,
+      );
+      expect(
+        _nativeValue(spriteNative, 'kSpriteLayerParams'),
+        OrblitSprites.layerStride,
+      );
+    });
+
+    test('a sprite is ${OrblitSprites.stride} floats wide everywhere', () {
+      expect(_swiftValue(spriteSwift, 'spriteStride'), OrblitSprites.stride);
+      expect(
+        _nativeValue(spriteNative, 'kSpriteRecordFloats'),
+        OrblitSprites.stride,
+      );
+    });
+
+    test('the flags mean the same bits on both sides', () {
+      int bit(String name) {
+        final found = RegExp(
+          r'constexpr int32_t ' + name + r'\s*=\s*1 << (\d+);',
+        ).firstMatch(spriteNative);
+        expect(
+          found,
+          isNotNull,
+          reason: 'OrblitSprites.h no longer says $name',
+        );
+        return 1 << int.parse(found!.group(1)!);
+      }
+
+      OrblitSprites layer({
+        OrblitFilter filter = OrblitFilter.smooth,
+        bool snap = false,
+        OrblitTexture? image,
+        OrblitSpriteBlend blend = OrblitSpriteBlend.alpha,
+      }) => OrblitSprites(
+        key: 1,
+        sprites: Float32List(0),
+        filter: filter,
+        snap: snap,
+        image: image,
+        blend: blend,
+      );
+
+      expect(layer().flags, 0);
+      expect(layer(filter: OrblitFilter.sharp).flags, bit('kSpriteSharp'));
+      expect(layer(snap: true).flags, bit('kSpriteSnap'));
+      expect(
+        layer(image: const OrblitTexture('a.png', srgb: false)).flags,
+        bit('kSpriteLinearImage'),
+      );
+      expect(layer(blend: OrblitSpriteBlend.add).flags, bit('kSpriteAdditive'));
     });
   });
 

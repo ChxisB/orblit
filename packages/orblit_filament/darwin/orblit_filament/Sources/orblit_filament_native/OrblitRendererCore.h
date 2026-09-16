@@ -66,7 +66,9 @@
 #include "OrblitPlatform.h"
 #include "OrblitShadows.h"
 #include "OrblitSplatSet.h"
+#include "OrblitSprites.h"
 #include "OrblitSurface.h"
+#include "OrblitResources.h"
 #include "orblit_renderer.h"
 // Hook (screen effects): god rays and distortion live in plain C++, beside
 // this file, so the port to the renderer's C++ class carries them unchanged.
@@ -121,6 +123,9 @@ struct Mesh {
   filament::gltfio::FilamentAsset *asset = nullptr;
   std::vector<filament::gltfio::FilamentInstance *> all;
   std::vector<filament::gltfio::FilamentInstance *> spare;
+  /// The resource generation a load of this failed at. Tried again once
+  /// bytes have been provided since — see orblit::resourceGeneration.
+  uint64_t missingAt = 0;
 };
 
 /// The most copies Filament will draw from one renderable.
@@ -425,9 +430,13 @@ struct Wanted {
   std::string path;
   void *bytes;
   size_t size;
+  /// Set instead of `bytes` when they were provided rather than read, and
+  /// shared with the store rather than copied out of it.
+  orblit::SharedBytes shared{};
 };
 
-/// Reads one file whole, or leaves it null.
+/// Reads one file whole — or takes what was provided under its name — or
+/// leaves it null.
 ///
 /// Null is not an error here — it is the answer to "is this file there",
 /// which is what the caller is asking. A model that names four hundred
@@ -440,6 +449,14 @@ struct Wanted {
 /// reading them. This data is read once, immediately, in full: the access
 /// pattern a plain read is for.
 inline void readWholeFile(Wanted &one) {
+  if (orblit::SharedBytes provided = orblit::findResource(one.path)) {
+    // Empty counts as missing, as an empty file does.
+    if (!provided->empty()) {
+      one.size = provided->size();
+      one.shared = std::move(provided);
+    }
+    return;
+  }
   orblit::readWholeFile(one.path, &one.bytes, &one.size);
 }
 
@@ -1023,6 +1040,13 @@ class Renderer {
                    const int32_t *changed, const int32_t *changedCounts,
                    uint32_t changedCount, const uint8_t *data,
                    size_t dataLength, uint32_t count);
+  bool hasSprites();
+  void applySprites(const int32_t *keys, const int32_t *flags,
+                    const int32_t *orders, const int32_t *revisions,
+                    const float *params, const std::vector<std::string> &paths,
+                    const int32_t *changed, const int32_t *changedCounts,
+                    uint32_t changedCount, const float *records,
+                    size_t recordFloats, uint32_t count);
   void setSkyEnabled(bool enabled, const float *params);
   void setPrecipitationEnabled(bool enabled, const float *params);
   Notes notes();
@@ -1063,6 +1087,11 @@ class Renderer {
 
   /// Which backend the engine was built with, once it has been.
   OrblitBackend backend() const { return _backend; }
+
+  /// One answer about the device, asked once when the engine started — see
+  /// orblit_capability. -1 before that, after dispose, and for a question
+  /// this build does not know.
+  int32_t capability(orblit_capability which) const;
 
   /// Frames that reached endFrame; read on the thread that drives this renderer.
   uint64_t renderedFrames() const { return _frameCount; }
@@ -1328,6 +1357,16 @@ class Renderer {
   /// otherwise be bound reads it too.
   bool _slimSurface{};
 
+  /// What capability() answers, measured once by measureCapabilities while
+  /// the engine starts and never again: none of it changes mid-session.
+  std::array<int32_t, ORBLIT_CAPABILITY_COUNT> _capabilities{};
+  bool _capabilitiesMeasured{};
+  void measureCapabilities(filament::Engine::FeatureLevel supported);
+
+  /// Whether a mesh that could not be loaded may load now, because bytes
+  /// have been provided since it was looked for.
+  bool meshMayHaveArrived(const std::string &path) const;
+
   /// Whether a shadow map can be sampled with a depth comparison on this
   /// device, decided once in startWithWidth for the same reason as the line
   /// above and never revisited. False means Filament has rewritten the
@@ -1360,6 +1399,9 @@ class Renderer {
   /// read as sRGB and as linear is two textures, and asking for one when the
   /// other is loaded would be a silent wrong answer.
   std::unordered_map<std::string, filament::Texture *> _ownTextures{};
+  /// For each texture that could not be loaded, the resource generation it
+  /// failed at — see Mesh::missingAt.
+  std::unordered_map<std::string, uint64_t> _texturesMissingAt{};
 
   /// Whether any of those are still decoding, so the queue is only polled
   /// while there is something in it.
@@ -1631,6 +1673,8 @@ class Renderer {
   /// passes on what it could not load.
   std::unique_ptr<orblit::SplatScene> _splats{};
   Notes _splatNotes{};
+  std::unique_ptr<orblit::SpriteScene> _sprites{};
+  Notes _spriteNotes{};
   VertexBuffer *_vertexBuffer{};
   IndexBuffer *_indexBuffer{};
 
