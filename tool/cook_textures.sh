@@ -2,7 +2,7 @@
 # Cooks a folder of textures into GPU-ready KTX2, with mipmaps, beside it.
 #
 #   cook_textures.sh <folder> [--gltf scene.gltf] [--targets astc,bc,etc2,basis]
-#                    [--threads N] [--max-size N] [--into DIR]
+#                    [--threads N] [--max-size N] [--into DIR] [--lossless]
 #
 # Every .png, .jpg and Basis .ktx2 in <folder> goes through
 # orblit_texture_cook (packages/orblit_filament/native/texture_cook) into
@@ -25,6 +25,9 @@
 #             *Emissive* are sRGB colour; any other PNG or JPEG is linear.
 #             A Basis .ktx2 carries sRGB or linear in its own header. No
 #             cut-outs: nothing in a name says where the alpha test is.
+#
+# --lossless cooks every texture in the folder as pixel art: R8G8B8A8 in
+# x.ktx2, bit for bit, no mips and no siblings. For a folder of sprites.
 #
 # Resumable, and settings-aware: a texture is skipped when every file it
 # should make is newer than its source and was made with the same flags,
@@ -59,7 +62,7 @@ COOK_DIR="$ROOT/packages/orblit_filament/native/texture_cook"
 
 usage() {
   echo "usage: cook_textures.sh <folder> [--gltf scene.gltf] [--targets astc,bc,etc2,basis]"
-  echo "                        [--threads N] [--max-size N] [--into DIR]"
+  echo "                        [--threads N] [--max-size N] [--into DIR] [--lossless]"
   exit 2
 }
 
@@ -76,6 +79,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --gltf) [ $# -ge 2 ] || usage; GLTF="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
     --into) [ $# -ge 2 ] || usage; INTO="$2"; shift 2 ;;
+    --lossless) common+=("$1"); settings+=("$1"); shift ;;
     --threads) [ $# -ge 2 ] || usage; common+=("$1" "$2"); shift 2 ;;
     --targets|--max-size) [ $# -ge 2 ] || usage; common+=("$1" "$2"); settings+=("$1" "$2"); shift 2 ;;
     *) usage ;;
@@ -180,20 +184,19 @@ for name in names:
     if role[0] == 'unused':
         print(f"  note: {name} is not used by the glTF; skipped", file=sys.stderr)
         continue
+    # A Basis .ktx2 says sRGB or linear itself, so colour and data from one
+    # need no flag. A normal map is linear whatever its header claims: the
+    # cooker refuses one marked sRGB rather than guess, and the glTF naming it
+    # a normal map is the word that settles it.
     if role[0] == 'normal':
-        flags = '--normal' + ('' if ktx2 else ' --linear')
+        flags = '--normal --linear'
     elif role[0] == 'cutout':
         flags = '--cutout %g' % role[1]
     elif role[0] == 'colour':
         flags = ''
     else:
         flags = '' if ktx2 else '--linear'
-
-    # A Basis .ktx2 says sRGB or linear itself, and a normal map that says
-    # sRGB is refused rather than guessed at; the glTF's word is enough here.
-    if role[0] == 'normal' and ktx2:
-        flags += ' --linear'
-    print(f"{name}\t{flags.strip()}")
+    print(f"{name}\t{flags}")
 PYTHON
 [ $? -eq 0 ] || { echo "could not read the textures' roles"; exit 1; }
 
@@ -222,7 +225,7 @@ while IFS=$'\t' read -r name flags; do
   stamp="$VERSION $flags ${settings[*]:-}"
 
   expected=()
-  case "$flags" in
+  case "$flags ${settings[*]:-}" in
     *--lossless*) expected=("$COOKED/$stem.ktx2") ;;
     *)
       IFS=',' read -r -a wanted <<< "$targets"

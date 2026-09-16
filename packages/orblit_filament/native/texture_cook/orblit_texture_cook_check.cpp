@@ -655,14 +655,10 @@ std::vector<Fixture> fixtures() {
 // ---------------------------------------------------------------------------
 // Checks
 
-/// Reads every file a cook made and checks it against the levels it was
-/// made from. Returns PSNR at level 0 per suffix, for the caller to print.
+/// Reads every file a cook made back and checks it against the levels it
+/// was made from: structure, formats for the content, every level decoded.
 void checkRoundTrip(const std::string &name, const Cooked &cooked, double floor) {
   const Report &r = cooked.report;
-  const bool alpha = r.content == Content::kColour &&
-                     std::any_of(cooked.levels.front().rgba.begin() + 3,
-                                 cooked.levels.front().rgba.end(), [](uint8_t) { return false; });
-  (void)alpha;
   bool hasAlpha = false;
   for (size_t i = 3; i < cooked.levels.front().rgba.size(); i += 4) {
     hasAlpha = hasAlpha || cooked.levels.front().rgba[i] != 255;
