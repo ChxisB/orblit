@@ -119,6 +119,16 @@ Module['orblitDecoders'] = (() => {
   // to: one environment picture can leave a few hundred megabytes behind.
   const IDLE_MILLISECONDS = 15000;
 
+  // The most one poll adds to how long a job has waited. A worker's messages
+  // are delivered between the page's own tasks, so time the page spent busy
+  // is time no answer could arrive in, and does not count against the
+  // worker: in Chrome a glTF model's first frame compiled shaders for a
+  // second straight after its textures were handed over, and every one of
+  // them was given up on and decoded on the page although the workers had
+  // started at once. Polls come a frame apart, so this only ever trims a
+  // stall of the page's.
+  const MOST_PER_POLL = 100;
+
   // Half the machine, at most four, as the native queue takes half of it.
   const most = Math.max(1, Math.min(4,
     Math.floor((globalThis.navigator?.hardwareConcurrency || 2) / 2)));
@@ -186,7 +196,7 @@ Module['orblitDecoders'] = (() => {
       if (message.started) {
         if (job && job.state === WAITING) {
           job.state = STARTED;
-          job.startedAt = performance.now();
+          job.waited = 0;
         }
         return;
       }
@@ -246,7 +256,7 @@ Module['orblitDecoders'] = (() => {
       clearTimeout(worker.idleTimer);
       const id = next++;
       worker.job = id;
-      jobs.set(id, { worker, state: WAITING, at: performance.now(), startedAt: 0, answer: null });
+      jobs.set(id, { worker, state: WAITING, polledAt: performance.now(), waited: 0, answer: null });
       worker.thread.postMessage(
         { id, kind, bytes: bytes.buffer, parameters, name },
         [bytes.buffer, parameters.buffer],
@@ -260,7 +270,11 @@ Module['orblitDecoders'] = (() => {
       const job = jobs.get(id);
       if (!job) return FAILED;
       const now = performance.now();
-      if (job.state === WAITING && now - job.at > startPatience) {
+      if (job.state === WAITING || job.state === STARTED) {
+        job.waited += Math.min(now - job.polledAt, MOST_PER_POLL);
+        job.polledAt = now;
+      }
+      if (job.state === WAITING && job.waited > startPatience) {
         if (!warnedStalled) {
           console.warn('[orblit] decoders: a decoding worker has not started a job in ' +
             startPatience + ' ms; decoding on the page until one answers');
@@ -269,7 +283,7 @@ Module['orblitDecoders'] = (() => {
         stalled = true;
         job.state = FAILED;
         counts.givenUp++;
-      } else if (job.state === STARTED && now - job.startedAt > runPatience) {
+      } else if (job.state === STARTED && job.waited > runPatience) {
         console.warn('[orblit] decoders: a decoding worker has not finished a job in ' +
           runPatience + ' ms; stopping it and decoding on the page until one answers');
         stalled = true;
