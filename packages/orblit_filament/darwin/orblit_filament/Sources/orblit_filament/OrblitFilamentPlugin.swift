@@ -399,6 +399,10 @@ private final class Viewport {
       }
     }
 
+    // Poses address the objects just applied by key, so they come straight
+    // after them.
+    scene.poses.apply(to: renderer, at: scene.at)
+
     // Populations. Everything about them travels in parallel arrays, and the
     // buffers only travel for the ones whose revision has moved — which for a
     // scene that is standing still is none of them.
@@ -668,6 +672,10 @@ private struct Scene {
 
   /// Sprite layers, decoded and checked in OrblitSpriteMessage.swift.
   let sprites: SpriteMessage
+
+  /// Clips, variants and hand-set joints of models out of files, decoded and
+  /// checked in OrblitPoseMessage.swift.
+  let poses: PoseMessage
   let skyParams: [Float]
 
   /// Decals: a fixed stride of floats each, and an index per decal into the
@@ -1043,6 +1051,8 @@ private struct Scene {
     self.splats = splats
     guard let sprites = SpriteMessage(arguments: arguments) else { return nil }
     self.sprites = sprites
+    guard let poses = PoseMessage(arguments: arguments) else { return nil }
+    self.poses = poses
   }
 }
 

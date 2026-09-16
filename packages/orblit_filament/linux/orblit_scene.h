@@ -191,6 +191,15 @@ class Scene {
   Ints sprite_changed_;
   Ints sprite_changed_counts_;
   Floats sprite_data_;
+
+  // Poses: after the objects, which they address by key. Absent altogether
+  // when nothing is posed, which reads as none.
+  Longs pose_keys_;
+  Ints pose_ints_;
+  Floats pose_floats_;
+  Ints pose_joint_counts_;
+  Ints pose_joints_;
+  Floats pose_joint_transforms_;
 };
 
 }  // namespace orblit_linux

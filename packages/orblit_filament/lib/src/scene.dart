@@ -15,6 +15,7 @@ import 'volumes.dart';
 
 import 'package:vector_math/vector_math_64.dart';
 
+import 'models.dart';
 import 'population.dart';
 import 'splats.dart';
 import 'sprites.dart';
@@ -46,7 +47,28 @@ class OrblitObject {
     this.visible = true,
     this.layer = 0,
     this.morphWeights,
+    this.animation,
+    this.variant,
+    this.joints,
   });
+
+  /// Which of the mesh file's own clips plays, and where it is.
+  ///
+  /// Null plays nothing, and an object that stops naming a clip goes back to
+  /// the pose its file rests in. What a file has is in [OrblitAssetInfo],
+  /// which [OrblitView] reports as models are loaded. Ignored for the built-in
+  /// cube, which has no clips.
+  final OrblitAnimation? animation;
+
+  /// Which of the mesh file's material variants the object wears, by its
+  /// position in [OrblitAssetInfo.variants] — the same model as a red shoe or
+  /// a blue one, sharing one load. Null wears the file's own materials, and
+  /// [material] still overrides every variant.
+  final int? variant;
+
+  /// Joints of the mesh's skins set by hand, after any clip. See
+  /// [OrblitJointPose].
+  final List<OrblitJointPose>? joints;
 
   /// How far each of the mesh's shapes is dialled in, nought to one.
   ///
@@ -1669,6 +1691,10 @@ class OrblitScene {
       ...?_populationMessage(sentRevisions),
       ...?_splatMessage(sentSplatRevisions),
       ...?_spriteMessage(sentSpriteRevisions),
+      // What models' own files do to them: clips, variants, joints. Measured
+      // from `at` above, so the renderer can sample a clip at the moment each
+      // frame is drawn rather than the moment this arrived.
+      ...?packPoses(objects),
     };
   }
 

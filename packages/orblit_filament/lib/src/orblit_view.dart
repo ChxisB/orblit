@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 
 import 'device_profile.dart';
 import 'graph.dart';
+import 'models.dart';
 import 'scene.dart';
 import 'web_view_type.dart';
 
@@ -19,6 +20,7 @@ class OrblitView extends StatefulWidget {
     super.key,
     this.scene,
     this.onSceneNotes,
+    this.onAssetInfo,
     this.onViewport,
     this.seconds,
   });
@@ -48,6 +50,16 @@ class OrblitView extends StatefulWidget {
   /// to reason, so a host can say which rather than that something went
   /// wrong.
   final ValueChanged<Map<String, String>>? onSceneNotes;
+
+  /// Called with what a model file holds — its clips, skins, material
+  /// variants, lights and cameras — whenever the scene builds something new
+  /// out of that file.
+  ///
+  /// Not once per file for the life of the view: a host that forgot, or a
+  /// view built later over a renderer that already had the file, hears again
+  /// the next time an object is made of it. Nothing is sent while a scene is
+  /// only moving.
+  final ValueChanged<OrblitAssetInfo>? onAssetInfo;
 
   /// Called once with this view's own number, when the renderer has one.
   ///
@@ -229,7 +241,13 @@ class _OrblitViewState extends State<OrblitView> {
           for (final layer in scene.sprites) layer.key: layer.revision,
         });
       if (notes != null && notes.isNotEmpty) {
-        widget.onSceneNotes?.call(notes);
+        // Descriptions of models ride home with the problems; see
+        // OrblitAssetInfo.split for why they share the map.
+        final split = OrblitAssetInfo.split(notes);
+        for (final model in split.models) {
+          widget.onAssetInfo?.call(model);
+        }
+        if (split.notes.isNotEmpty) widget.onSceneNotes?.call(split.notes);
       }
     } catch (error) {
       if (mounted) setState(() => _error = error);

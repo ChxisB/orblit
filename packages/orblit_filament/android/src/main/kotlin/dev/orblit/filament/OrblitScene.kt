@@ -142,6 +142,15 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
     val spriteChangedCounts: IntArray = args.ints("spriteChangedCounts")
     val spriteData: FloatArray = args.floats("spriteData")
 
+    // Poses: OrblitPoseMessage.swift's own field names, unchanged. Absent
+    // altogether when nothing is posed, which decodes to none.
+    val poseKeys: LongArray = args.longs("poseKeys")
+    val poseInts: IntArray = args.ints("poseInts")
+    val poseFloats: FloatArray = args.floats("poseFloats")
+    val poseJointCounts: IntArray = args.ints("poseJointCounts")
+    val poseJoints: IntArray = args.ints("poseJoints")
+    val poseJointTransforms: FloatArray = args.floats("poseJointTransforms")
+
     /** Applies every part of the scene, in the order Viewport.write(scene:) does. */
     fun applyTo(handle: Long) {
         OrblitNative.nativeSetEnvironment(handle, environmentRadiance, environmentSkybox, environmentParams)
@@ -176,6 +185,20 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
             objectMorphCounts,
             objectMorphWeights,
             paths.toTypedArray(),
+        )
+
+        // Poses address the objects just applied by key, so they come
+        // straight after them -- and every time, even with none, so an object
+        // that stops being posed goes back to rest.
+        OrblitNative.nativeApplyPoses(
+            handle,
+            poseKeys,
+            poseInts,
+            poseFloats,
+            poseJointCounts,
+            poseJoints,
+            poseJointTransforms,
+            at,
         )
 
         if (populationKeys.isNotEmpty()) {
@@ -273,8 +296,26 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
             ) {
                 return null
             }
+            // Poses, checked as OrblitPoseMessage.swift checks them: parallel
+            // arrays per pose, and joints end to end whose length is the sum
+            // of the counts. A count below nought would make that sum lie.
+            val poses = scene.poseKeys.size
+            if (scene.poseJointCounts.any { it < 0 }) return null
+            val joints = scene.poseJointCounts.fold(0L) { sum, n -> sum + n }
+            if (scene.poseInts.size != poses * POSE_INT_STRIDE ||
+                scene.poseFloats.size != poses * POSE_STRIDE ||
+                scene.poseJointCounts.size != poses ||
+                scene.poseJoints.size.toLong() != joints * 2 ||
+                scene.poseJointTransforms.size.toLong() != joints * 16
+            ) {
+                return null
+            }
             return scene
         }
+
+        /** OrblitAnimation.intStride and .stride; kPoseInts and kPoseFloats. */
+        private const val POSE_INT_STRIDE = 4
+        private const val POSE_STRIDE = 5
     }
 }
 

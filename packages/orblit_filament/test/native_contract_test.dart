@@ -223,6 +223,53 @@ void main() {
     });
   });
 
+  // Poses are decoded in a file of their own on the Swift side, like sprites,
+  // and their widths live in the renderer's core header.
+  group('the numbers poses share', () {
+    final poseSwift = _read(
+      'darwin/orblit_filament/Sources/orblit_filament/OrblitPoseMessage.swift',
+    );
+
+    test('a pose is ${OrblitAnimation.intStride} whole numbers wide '
+        'everywhere', () {
+      expect(
+        _swiftValue(poseSwift, 'poseIntStride'),
+        OrblitAnimation.intStride,
+        reason:
+            'Dart packs ${OrblitAnimation.intStride} ints per pose and the '
+            'plugin checks for a different number, so it will refuse every '
+            'scene with a posed object',
+      );
+      expect(
+        _nativeValue(native, 'kPoseInts'),
+        OrblitAnimation.intStride,
+        reason:
+            'Dart packs ${OrblitAnimation.intStride} ints per pose and the '
+            'renderer reads a different number, so it will read the wrong '
+            'offsets',
+      );
+    });
+
+    test('a pose is ${OrblitAnimation.stride} floats wide everywhere', () {
+      expect(
+        _swiftValue(poseSwift, 'poseStride'),
+        OrblitAnimation.stride,
+        reason:
+            'Dart packs ${OrblitAnimation.stride} floats per pose and the '
+            'plugin checks for a different number, so it will refuse every '
+            'scene with a posed object',
+      );
+      expect(
+        _nativeValue(native, 'kPoseFloats'),
+        OrblitAnimation.stride,
+        reason:
+            'Dart packs ${OrblitAnimation.stride} floats per pose and the '
+            'renderer reads a different number, so it will read the wrong '
+            'offsets',
+      );
+    });
+  });
+
   test('the decal budget Dart reports against is the one the renderer '
       'paints', () {
     final found = RegExp(

@@ -29,6 +29,15 @@ export 'src/material.dart'
         OrblitWrap;
 export 'src/environment.dart' show OrblitEnvironment, OrblitProbe;
 export 'src/field.dart' show OrblitField;
+export 'src/models.dart'
+    show
+        OrblitAnimation,
+        OrblitAssetInfo,
+        OrblitClipInfo,
+        OrblitFileCamera,
+        OrblitFileLight,
+        OrblitJointPose,
+        OrblitSkinInfo;
 export 'src/motion_blur.dart' show OrblitMotionBlur;
 export 'src/outline.dart' show OrblitOccluded, OrblitOutline;
 export 'src/graph.dart'

@@ -31,6 +31,7 @@
 #include <vector>
 
 #include <filament-iblprefilter/IBLPrefilterContext.h>
+#include <filament/Box.h>
 #include <filament/Camera.h>
 #include <filament/ColorGrading.h>
 #include <filament/Engine.h>
@@ -60,6 +61,7 @@
 #include <math/vec3.h>
 #include <math/vec4.h>
 #include <utils/Entity.h>
+#include <utils/NameComponentManager.h>
 
 #include "OrblitBatching.h"
 #include "OrblitOutline.h"
@@ -110,6 +112,13 @@ using filament::math::quatf;
 /// Objective-C wrapper turns it back into the dictionary Swift reads.
 using Notes = std::map<std::string, std::string>;
 
+/// The start of a note's key that carries what a model file holds rather than
+/// something wrong with the scene: the rest of the key is the file's path and
+/// the note is JSON. Riding on the notes means every host that already hands
+/// them back — five plugins and a browser — hands this back too, unchanged;
+/// the Dart side takes these out before anybody reads the rest as problems.
+constexpr const char *kModelInfoPrefix = "orblit.model:";
+
 
 /// One loaded glTF file, and the copies made from that one parse.
 ///
@@ -126,6 +135,53 @@ struct Mesh {
   /// The resource generation a load of this failed at. Tried again once
   /// bytes have been provided since — see orblit::resourceGeneration.
   uint64_t missingAt = 0;
+
+  /// Every node's own transform as the file left it, in the order each copy
+  /// lists its entities — which is the same order for every copy, because
+  /// each is made by walking the same tree. What an object that stops
+  /// animating, or goes back in the pool mid-stride, is put back to.
+  std::vector<filament::math::mat4f> rest;
+
+  /// Each entity's box as the file declared it, in the same order, and which
+  /// of those entities are skinned. A skinned box is the bind pose's, and a
+  /// character that walks out of it is culled while still on screen — so
+  /// these are what each frame's box is worked out from. See fitSkinnedBoxes.
+  std::vector<filament::Box> boxes;
+  std::vector<uint32_t> skinned;
+
+  /// What the file holds — clips, skins, variants, lights, cameras — as the
+  /// JSON a host reads it back as. See describeModel.
+  std::string info;
+};
+
+/// One animation clip playing on an object, as the host last described it.
+struct Played {
+  /// Which of the file's animations, or -1 for none.
+  int32_t clip = -1;
+  /// Where it was at the host's moment the pose describes, and how many of
+  /// its seconds pass per second of the host's clock.
+  float seconds = 0;
+  float speed = 0;
+  /// Whether it wraps past its end, or holds the last frame.
+  bool loops = false;
+};
+
+/// What a file's own animation is doing to one object.
+struct Posed {
+  Played now;
+  /// The clip being left, and how far the fade to `now` has gone: one is all
+  /// `now`, nought is all `from`.
+  Played from;
+  float fade = 1;
+  /// The host's seconds this was stated at, which each frame's time is
+  /// measured from.
+  double at = 0;
+  /// Joints set by hand, as local transforms, after the clips — resolved to
+  /// entities when the pose arrives, so a frame does not look them up.
+  std::vector<std::pair<utils::Entity, filament::math::mat4f>> joints;
+  /// Whether anything has moved this object's nodes away from the file's
+  /// rest, so putting them back is only done when there is something to undo.
+  bool moved = false;
 };
 
 /// The most copies Filament will draw from one renderable.
@@ -406,6 +462,24 @@ struct Drawn {
   /// Empty while nothing has been overridden, which is the usual case.
   std::vector<filament::MaterialInstance *> ownMaterials;
 
+  /// The loaded file the instance came from, for as long as there is one.
+  /// Held here so a frame of animation does not look the path up.
+  Mesh *mesh = nullptr;
+
+  /// What the file's animation is doing to it. See Renderer::applyPoses.
+  Posed pose;
+
+  /// The shapes the host dialled in, kept only for an animated mesh: a clip
+  /// that animates weights would otherwise overwrite them every frame.
+  std::vector<float> morphWeights;
+
+  /// Which of the file's material variants it wears, -1 for the file's own
+  /// materials, and those own materials — kept the first time a variant is
+  /// chosen, because a variant only names the primitives it changes and
+  /// everything else has to go back to what it was.
+  int32_t variant = -1;
+  std::vector<filament::MaterialInstance *> fileMaterials;
+
   /// The publish that last mentioned this object. Anything not stamped by the
   /// current one has left the scene.
   uint64_t seen = 0;
@@ -416,6 +490,15 @@ struct Drawn {
 /// the plugin, which checks the array lengths before any of this is reached.
 constexpr size_t kMaterialParams = 37;
 constexpr size_t kMaterialMaps = 7;
+
+/// One pose's row, as OrblitAnimation packs it: whole numbers — the clip,
+/// the clip being left, the flags below and the material variant — and then
+/// the clip's seconds and speed, the left clip's seconds and speed, and how
+/// far the fade has gone.
+constexpr size_t kPoseInts = 4;
+constexpr size_t kPoseFloats = 5;
+constexpr int32_t kPoseLoops = 1 << 0;
+constexpr int32_t kPoseFromLoops = 1 << 1;
 
 /// The maps a lit surface has, in the order the Dart side packs them.
 ///
@@ -991,6 +1074,11 @@ class Renderer {
                     const int32_t *flags, const int32_t *materials,
                     const int32_t *morphCounts, const float *morphWeights,
                     const std::vector<std::string> &paths, uint32_t count);
+  bool hasPoses();
+  void applyPoses(const int64_t *keys, const int32_t *ints,
+                  const float *floats, const int32_t *jointCounts,
+                  const int32_t *joints, const float *jointTransforms,
+                  double at, uint32_t count);
   void setBatching(bool enabled);
   uint32_t batchedObjects();
   uint32_t batchGroups();
@@ -1126,6 +1214,20 @@ class Renderer {
   void morph(const Drawn &drawn, const float *weights, size_t count);
   void applyFlags(int32_t flags, const Drawn &drawn);
   void build(Drawn &drawn, const std::string &path);
+
+  // Models out of files: what they hold, and what their own animation does.
+  // In OrblitModels.cpp.
+  SharedBytes convertedModel(const std::string &path,
+                             const SharedBytes &source, std::string &carried);
+  void readModel(Mesh &mesh, gltfio::FilamentInstance *first);
+  void describeModel(Mesh &mesh, gltfio::FilamentInstance *first,
+                     const std::string &path, const uint8_t *bytes,
+                     size_t size);
+  void dropFileLights(gltfio::FilamentInstance *instance);
+  void animate();
+  void restPose(Drawn &drawn);
+  void fitSkinnedBoxes(Drawn &drawn);
+  void wearVariant(Drawn &drawn, int32_t variant);
   bool prepassCovers(int32_t flags, int32_t material, const Drawn &drawn);
   void syncPrepass(Drawn &drawn, int32_t flags, int32_t material);
   void dropPrepass(Drawn &drawn);
@@ -1637,6 +1739,26 @@ class Renderer {
   /// honour. Replaced on every publish, so fixing the scene clears it.
   Notes _objectNotes{};
   Notes _lightNotes{};
+  Notes _poseNotes{};
+
+  /// What each model built by the last publish holds, under kModelInfoPrefix
+  /// and its path. Filled as objects are built rather than on every publish:
+  /// a host learns what a file contains when something new is made of it,
+  /// and a scene that is only moving costs nothing here.
+  Notes _modelInfo{};
+
+  /// The objects the last applyPoses gave a pose, which are the only ones a
+  /// frame has to animate.
+  std::vector<int64_t> _posed{};
+
+  /// The objects the last applyPoses dressed in a material variant, so the
+  /// next can take it off any it no longer names without walking the scene.
+  std::vector<int64_t> _varied{};
+
+  /// Names for the entities files make, so a joint, a light and a camera can
+  /// be reported by what the file calls them. gltfio fills this only when it
+  /// is given one.
+  utils::NameComponentManager *_names{};
 
   /// What the slim surface cost, said once rather than left for a host to
   /// notice by its absence. "surface" is set once, in startWithWidth, and
@@ -1737,6 +1859,14 @@ class Renderer {
   /// The word this is currently predicting from, and how wrong the last
   /// prediction turned out to be — carried, and decaying.
   double _spokeAt{};
+
+  /// The host's moment this frame is drawn at, as placeCamera works it out,
+  /// and whether it has. Animation is sampled at the same moment the camera
+  /// is, so a character and the camera following it never disagree about
+  /// when it is — and on a held clock this is exactly the moment the host
+  /// stated, so a frame is the same every time.
+  double _drawnHostSeconds{};
+  bool _drawnHostSecondsKnown{};
   float3 _spokePosition{0.0f, 0.0f, 0.0f};
   float3 _spokeTarget{0.0f, 0.0f, 0.0f};
   float3 _carriedPosition{0.0f, 0.0f, 0.0f};

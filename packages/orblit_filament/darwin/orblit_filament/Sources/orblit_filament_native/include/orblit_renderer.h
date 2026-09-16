@@ -126,7 +126,10 @@ typedef enum orblit_stride {
   ORBLIT_STRIDE_OUTLINE,
   ORBLIT_STRIDE_PIPELINE,
   ORBLIT_STRIDE_SPRITE_LAYER,
-  ORBLIT_STRIDE_SPRITE
+  ORBLIT_STRIDE_SPRITE,
+  /* A pose's whole numbers and its floats: see orblit_renderer_apply_poses. */
+  ORBLIT_STRIDE_POSE_INTS,
+  ORBLIT_STRIDE_POSE
 } orblit_stride;
 
 /* How wide one row of `which` is, in floats (bytes for a splat record), or
@@ -219,7 +222,9 @@ uint64_t orblit_renderer_rendered_frames(const orblit_renderer *renderer);
 /* ---- The scene ---- */
 
 /* `count` objects: transforms are 16 floats each, column-major; colours 3;
- * meshes index `paths` or are -1 for the built-in cube; flags as
+ * meshes index `paths` — a .gltf, .glb, .fbx or .obj, the last two converted
+ * to glTF off the drawing thread before they draw — or are -1 for the
+ * built-in cube; flags as
  * OrblitObject packs them; materials index the last apply_materials or are
  * -1; morph_counts say how many of `morph_weights` each takes, end to end. */
 int orblit_renderer_apply_objects(orblit_renderer *renderer, uint32_t count,
@@ -234,6 +239,34 @@ int orblit_renderer_apply_objects(orblit_renderer *renderer, uint32_t count,
                                  size_t morph_weight_floats,
                                  const char *const *paths,
                                  uint32_t path_count);
+
+/* What each model's own file does to it, for `count` objects of the last
+ * apply_objects, by key. Call it after apply_objects, and whole every time:
+ * an object it does not name goes back to the file's rest pose and its own
+ * materials.
+ *
+ * Per pose, ORBLIT_STRIDE_POSE_INTS whole numbers — the clip playing (-1 for
+ * none), the clip being faded from (-1), flags (1: the clip loops, 2: the
+ * faded-from clip loops) and the material variant (-1 for the file's own) —
+ * and ORBLIT_STRIDE_POSE floats: the clip's seconds and its speed, the
+ * faded-from clip's seconds and speed, and how far the fade has gone, one
+ * being all the clip. `joint_counts` says how many joints each pose sets, end
+ * to end in `joints` (a skin and a joint of it, two each) and
+ * `joint_transforms` (a column-major local transform, sixteen each), which
+ * replace what the clips gave those joints.
+ *
+ * `at` is the host's seconds these describe, on the clock set_camera's `at`
+ * is on. Each frame samples the clips at the moment that frame is drawn, so a
+ * clip moves smoothly between publishes and stands exactly still on a held
+ * clock. A clip, variant or joint the file does not have is a note. */
+int orblit_renderer_apply_poses(orblit_renderer *renderer, uint32_t count,
+                               const int64_t *keys, const int32_t *ints,
+                               size_t int_count, const float *floats,
+                               size_t float_count,
+                               const int32_t *joint_counts,
+                               const int32_t *joints, size_t joint_ints,
+                               const float *joint_transforms,
+                               size_t joint_transform_floats, double at);
 
 /* Whether objects that are the same thing are drawn together: four or more
  * sharing a mesh, a material and their flags become a handful of manually
@@ -479,7 +512,12 @@ void *orblit_renderer_copy_presented(orblit_renderer *renderer);
 /* ---- What it could not do ---- */
 
 /* Takes a snapshot of what the scene asked for that could not be given, and
- * returns how many notes it holds. */
+ * returns how many notes it holds.
+ *
+ * Also in it, and not problems: a description of each model file the last
+ * apply_objects built something new out of — its clips, skins, material
+ * variants, lights and cameras — as JSON, under "orblit.model:" and the path
+ * the scene named it by. A host that only wants problems passes those over. */
 uint32_t orblit_renderer_notes(orblit_renderer *renderer);
 
 /* One note of the last snapshot: what it is about, and what it says. The
