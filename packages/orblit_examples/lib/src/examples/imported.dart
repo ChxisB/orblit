@@ -12,7 +12,12 @@ import 'surface.dart' show linearOf;
 
 /// One of the files this example can show, and what it is there to show.
 class ImportedSample {
-  const ImportedSample(this.name, this.file, this.shows);
+  const ImportedSample(
+    this.name,
+    this.file,
+    this.shows, {
+    this.companions = const [],
+  });
 
   /// What the list calls it.
   final String name;
@@ -22,9 +27,14 @@ class ImportedSample {
 
   /// Why it is in the list.
   final String shows;
+
+  /// The files it names beside itself — an OBJ's material library and its
+  /// pictures — handed over under names beside its own, as a host serving
+  /// them from one directory would.
+  final List<String> companions;
 }
 
-/// Somebody else's models, and what their files hold.
+/// Somebody else's models, and what their files hold — glTF, FBX and OBJ.
 ///
 /// Meshes shows that a file loads. This shows what is in one beyond the
 /// geometry: the clips a character can play, the looks a product comes in,
@@ -57,6 +67,22 @@ class ImportedExample extends Example {
       'Barn lamp',
       'AnisotropyBarnLamp.glb',
       'Something the renderer cannot draw, said out loud',
+    ),
+    ImportedSample(
+      'Dancer',
+      'Samba Dancing.fbx',
+      'An FBX from Mixamo, converted on the way in',
+    ),
+    ImportedSample(
+      'Man',
+      'male02/male02.obj',
+      'An OBJ with its material library and pictures',
+      companions: [
+        'male02/male02.mtl',
+        'male02/01_-_Default1noCulling.JPG',
+        'male02/male-02-1noCulling.JPG',
+        'male02/orig_02_-_Defaul1noCulling.JPG',
+      ],
     ),
   ];
 
@@ -136,16 +162,27 @@ class ImportedExample extends Example {
   void _provide(ImportedSample sample) {
     final resource = OrblitResources.nameFor('samples/${sample.file}');
     if (_provided.contains(resource) || !_reading.add(resource)) return;
-    _read(sample.file)
-        .then((bytes) async {
-          if (bytes == null) {
-            note =
-                'No ${sample.file} in $directory. Fetch it with '
-                'tool/fetch_import_samples.sh.';
-            return;
-          }
-          await OrblitResources.provide(resource, bytes);
-          _provided.add(resource);
+    // The companions first, so the file is never named before what it names.
+    Future<bool> handOver() async {
+      for (final file in [...sample.companions, sample.file]) {
+        final bytes = await _read(file);
+        if (bytes == null) {
+          note =
+              'No $file in $directory. Fetch it with '
+              'tool/fetch_import_samples.sh.';
+          return false;
+        }
+        await OrblitResources.provide(
+          OrblitResources.nameFor('samples/$file'),
+          bytes,
+        );
+      }
+      return true;
+    }
+
+    handOver()
+        .then((whole) {
+          if (whole) _provided.add(resource);
         })
         .whenComplete(() => _reading.remove(resource));
   }
@@ -153,7 +190,8 @@ class ImportedExample extends Example {
   static Future<Uint8List?> _read(String file) async {
     if (kIsWeb) {
       try {
-        final data = await NetworkAssetBundle(Uri.base).load('samples/$file');
+        final data = await NetworkAssetBundle(Uri.base)
+            .load(Uri(path: 'samples/$file').toString());
         return data.buffer.asUint8List();
       } on Object {
         return null;
@@ -249,9 +287,21 @@ class ImportedExample extends Example {
       ],
       sky: OrblitSky(
         colour: linearOf(const Color(0xFF1B222C)),
-        ambient: daylight ? 14000 : 40,
+        ambient: daylight ? 14000 : 2,
       ),
-      camera: camera,
+      // At night, a camera for night. A file's lights are stated as the file
+      // made them, and the lamp's bulb is about twenty lumens — a real bulb's
+      // worth, which at a daylight exposure is black.
+      camera: daylight
+          ? camera
+          : OrblitCamera(
+              position: camera.position,
+              target: camera.target,
+              fieldOfView: camera.fieldOfView,
+              aperture: 1.4,
+              shutterSpeed: 1 / 30,
+              sensitivity: 3200,
+            ),
     );
   }
 
