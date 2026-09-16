@@ -2,14 +2,16 @@
 # Cooks a folder of textures into GPU-ready KTX2, with mipmaps, beside it.
 #
 #   cook_textures.sh <folder> [--gltf scene.gltf] [--targets astc,bc,etc2,basis]
-#                    [--threads N] [--max-size N]
+#                    [--threads N] [--max-size N] [--into DIR]
 #
 # Every .png, .jpg and Basis .ktx2 in <folder> goes through
 # orblit_texture_cook (packages/orblit_filament/native/texture_cook) into
 # <folder>.cooked/: x.ktx2 plus x.astc.ktx2, x.bc.ktx2 and x.etc2.ktx2, each a
 # full mip chain in a format a GPU samples directly. The loader, asked for
 # x.ktx2, takes the first sibling the device supports. Point a scene at the
-# cooked folder in place of the original.
+# cooked folder in place of the original. --into writes somewhere else: a
+# folder named for what the scene calls its textures, say, beside a copy of
+# the scene.
 #
 # What each texture is decides how it is cooked, and a file does not say:
 #
@@ -57,7 +59,7 @@ COOK_DIR="$ROOT/packages/orblit_filament/native/texture_cook"
 
 usage() {
   echo "usage: cook_textures.sh <folder> [--gltf scene.gltf] [--targets astc,bc,etc2,basis]"
-  echo "                        [--threads N] [--max-size N]"
+  echo "                        [--threads N] [--max-size N] [--into DIR]"
   exit 2
 }
 
@@ -66,11 +68,16 @@ usage() {
 FOLDER="$(cd "$1" && pwd)"
 shift
 GLTF=""
+INTO=""
 common=()
+# What changes the bytes, for the stamp: everything but the thread count.
+settings=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --gltf) [ $# -ge 2 ] || usage; GLTF="$(cd "$(dirname "$2")" && pwd)/$(basename "$2")"; shift 2 ;;
-    --targets|--threads|--max-size) [ $# -ge 2 ] || usage; common+=("$1" "$2"); shift 2 ;;
+    --into) [ $# -ge 2 ] || usage; INTO="$2"; shift 2 ;;
+    --threads) [ $# -ge 2 ] || usage; common+=("$1" "$2"); shift 2 ;;
+    --targets|--max-size) [ $# -ge 2 ] || usage; common+=("$1" "$2"); settings+=("$1" "$2"); shift 2 ;;
     *) usage ;;
   esac
 done
@@ -83,7 +90,13 @@ if [ ! -x "$COOKER" ]; then
 fi
 
 VERSION="$("$COOKER" --version)" || { echo "$COOKER does not run"; exit 1; }
-COOKED="$(dirname "$FOLDER")/$(basename "$FOLDER").cooked"
+if [ -n "$INTO" ]; then
+  mkdir -p "$INTO" || exit 1
+  COOKED="$(cd "$INTO" && pwd)"
+else
+  COOKED="$(dirname "$FOLDER")/$(basename "$FOLDER").cooked"
+fi
+[ "$COOKED" != "$FOLDER" ] || { echo "cooking into the folder being cooked would overwrite it"; exit 1; }
 mkdir -p "$COOKED/.flags"
 
 # The plan: one line per texture, its file name and the flags it cooks with.
@@ -167,10 +180,15 @@ for name in names:
     if role[0] == 'unused':
         print(f"  note: {name} is not used by the glTF; skipped", file=sys.stderr)
         continue
-    flags = {'normal': '--normal' + ('' if ktx2 else ' --linear'),
-             'cutout': '--cutout %g' % role[-1],
-             'colour': '',
-             'linear': '' if ktx2 else '--linear'}[role[0]]
+    if role[0] == 'normal':
+        flags = '--normal' + ('' if ktx2 else ' --linear')
+    elif role[0] == 'cutout':
+        flags = '--cutout %g' % role[1]
+    elif role[0] == 'colour':
+        flags = ''
+    else:
+        flags = '' if ktx2 else '--linear'
+
     # A Basis .ktx2 says sRGB or linear itself, and a normal map that says
     # sRGB is refused rather than guessed at; the glTF's word is enough here.
     if role[0] == 'normal' and ktx2:
@@ -201,7 +219,7 @@ while IFS=$'\t' read -r name flags; do
   stem="${name%.*}"
   # One flag set per texture, with the cooker's version, so a changed setting
   # or a cooker that cooks differently cooks it again.
-  stamp="$VERSION $flags ${common[*]:-}"
+  stamp="$VERSION $flags ${settings[*]:-}"
 
   expected=()
   case "$flags" in
