@@ -162,6 +162,8 @@ struct File {
   /// The descriptor's transfer function: 1 linear, 2 sRGB.
   uint8_t transfer = 2;
   bool premultiplied = false;
+  /// Six for a cubemap, whose levels then hold every face end to end.
+  uint32_t faces = 1;
 };
 
 /// A file whose levels are each one solid colour, `colourOf(level)`.
@@ -208,7 +210,7 @@ inline std::vector<uint8_t> write(const File &file) {
   put32(out, 16, file.kind.typeSize);
   put32(out, 20, file.width);
   put32(out, 24, file.height);
-  put32(out, 36, 1);
+  put32(out, 36, file.faces);
   put32(out, 40, levels);
   put32(out, 44, file.zstd ? 2 : 0);
   put32(out, 48, uint32_t(dfdAt));

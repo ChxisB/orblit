@@ -109,6 +109,34 @@ void filesReadBackAsWritten() {
          sizeof cases / sizeof cases[0]);
 }
 
+void cubemapsReadEveryFace() {
+  // Six faces a level, each its own colour, end to end as KTX 2 lays them.
+  fixtures::File file;
+  file.kind = fixtures::bc7(false);
+  file.width = file.height = 16;
+  file.zstd = true;
+  file.faces = 6;
+  for (uint32_t level = 0; level < 5; level++) {
+    const uint32_t side = 16 >> level;
+    std::vector<uint8_t> faces;
+    for (uint32_t face = 0; face < 6; face++) {
+      const std::vector<uint8_t> one =
+          fixtures::solidLevel(file.kind, side, side, rainbow(face));
+      faces.insert(faces.end(), one.begin(), one.end());
+    }
+    file.levels.push_back(faces);
+  }
+  const std::vector<uint8_t> bytes = fixtures::write(file);
+  ktx2::Header header;
+  const std::string why = ktx2::read(bytes.data(), bytes.size(), header);
+  expect(why.empty() && header.faces == 6, "a cubemap reads: " + why);
+  bool same = true;
+  for (uint32_t i = 0; i < header.levels; i++) {
+    same = same && level(bytes, header, i) == file.levels[i];
+  }
+  expect(same, "every face of every level reads back as written");
+}
+
 void theDescriptorIsRead() {
   fixtures::File file =
       fixtures::solid(fixtures::bc7(false), 8, 8, 1, false, rainbow);
@@ -413,6 +441,7 @@ void realFilesRead() {
 
 int main() {
   filesReadBackAsWritten();
+  cubemapsReadEveryFace();
   theDescriptorIsRead();
   theLargestLevelsAreLeftOut();
   namesAndTwins();
