@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.25.0
+
+- **The Gaussian splats example scales itself to its device.** It is handed
+  what the view's renderer measured — `OrblitView.profileOf`, which the
+  gallery now gives to every example as `Example.device` — and holds its cloud
+  to it: no more splats than the device's budget, harmonics no higher than its
+  degree, and a coarse sort where a full one would lag a turning camera. A
+  toggle turns the limits off, so what they cost and what they save can be
+  seen rather than argued about.
+
 ## 0.24.0
 
 - **Sprites.** A 2D scene drawn by the same renderer as the 3D ones: a sprite
