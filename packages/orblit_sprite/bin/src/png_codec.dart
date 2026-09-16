@@ -20,7 +20,11 @@ import 'dart:typed_data';
 /// A decoded picture: RGBA8, straight alpha, row nought at the top — the
 /// same shape [AtlasSprite] and the rest of the packer expect.
 class DecodedPng {
-  const DecodedPng({required this.width, required this.height, required this.pixels});
+  const DecodedPng({
+    required this.width,
+    required this.height,
+    required this.pixels,
+  });
   final int width;
   final int height;
   final Uint8List pixels;
@@ -63,14 +67,18 @@ DecodedPng decodePng(Uint8List bytes) {
 
     switch (type) {
       case 'IHDR':
-        if (data.length != 13) throw const PngFormatException('IHDR is the wrong size');
+        if (data.length != 13) {
+          throw const PngFormatException('IHDR is the wrong size');
+        }
         width = _readUint32(data, 0);
         height = _readUint32(data, 4);
         bitDepth = data[8];
         colorType = data[9];
         final interlace = data[12];
         if (interlace != 0) {
-          throw const PngFormatException('interlaced PNGs are not supported by this cooker');
+          throw const PngFormatException(
+            'interlaced PNGs are not supported by this cooker',
+          );
         }
       case 'PLTE':
         palette = data;
@@ -85,7 +93,10 @@ DecodedPng decodePng(Uint8List bytes) {
     offset = dataEnd + 4;
   }
 
-  if (width == null || height == null || bitDepth == null || colorType == null) {
+  if (width == null ||
+      height == null ||
+      bitDepth == null ||
+      colorType == null) {
     throw const PngFormatException('no IHDR chunk');
   }
   if (![1, 2, 4, 8, 16].contains(bitDepth)) {
@@ -116,7 +127,9 @@ DecodedPng decodePng(Uint8List bytes) {
   var previous = Uint8List(bytesPerScanline);
   var read = 0;
   for (var y = 0; y < height; y++) {
-    if (read >= raw.length) throw const PngFormatException('ran out of pixel data early');
+    if (read >= raw.length) {
+      throw const PngFormatException('ran out of pixel data early');
+    }
     final filterType = raw[read];
     read++;
     final row = Uint8List(bytesPerScanline);
@@ -131,7 +144,9 @@ DecodedPng decodePng(Uint8List bytes) {
         2 => raw0 + b,
         3 => raw0 + ((a + b) >> 1),
         4 => raw0 + _paeth(a, b, c),
-        _ => throw PngFormatException('unsupported scanline filter $filterType'),
+        _ => throw PngFormatException(
+          'unsupported scanline filter $filterType',
+        ),
       };
       row[x] = value & 0xff;
     }
@@ -156,8 +171,18 @@ DecodedPng decodePng(Uint8List bytes) {
           pixels[di + 3] = _keyedAlpha1(transparency, raw0);
         case 2:
           final r = _sample(unfiltered, rowStart, pixelBit, bitDepth);
-          final g = _sample(unfiltered, rowStart, pixelBit + bitDepth, bitDepth);
-          final b = _sample(unfiltered, rowStart, pixelBit + bitDepth * 2, bitDepth);
+          final g = _sample(
+            unfiltered,
+            rowStart,
+            pixelBit + bitDepth,
+            bitDepth,
+          );
+          final b = _sample(
+            unfiltered,
+            rowStart,
+            pixelBit + bitDepth * 2,
+            bitDepth,
+          );
           pixels[di] = _to8(r, bitDepth);
           pixels[di + 1] = _to8(g, bitDepth);
           pixels[di + 2] = _to8(b, bitDepth);
@@ -170,10 +195,17 @@ DecodedPng decodePng(Uint8List bytes) {
             pixels[di + 1] = p[index * 3 + 1];
             pixels[di + 2] = p[index * 3 + 2];
           }
-          pixels[di + 3] = transparency != null && index < transparency.length ? transparency[index] : 255;
+          pixels[di + 3] = transparency != null && index < transparency.length
+              ? transparency[index]
+              : 255;
         case 4:
           final v = _sample(unfiltered, rowStart, pixelBit, bitDepth);
-          final a = _sample(unfiltered, rowStart, pixelBit + bitDepth, bitDepth);
+          final a = _sample(
+            unfiltered,
+            rowStart,
+            pixelBit + bitDepth,
+            bitDepth,
+          );
           final v8 = _to8(v, bitDepth);
           pixels[di] = v8;
           pixels[di + 1] = v8;
@@ -181,9 +213,24 @@ DecodedPng decodePng(Uint8List bytes) {
           pixels[di + 3] = _to8(a, bitDepth);
         case 6:
           final r = _sample(unfiltered, rowStart, pixelBit, bitDepth);
-          final g = _sample(unfiltered, rowStart, pixelBit + bitDepth, bitDepth);
-          final b = _sample(unfiltered, rowStart, pixelBit + bitDepth * 2, bitDepth);
-          final a = _sample(unfiltered, rowStart, pixelBit + bitDepth * 3, bitDepth);
+          final g = _sample(
+            unfiltered,
+            rowStart,
+            pixelBit + bitDepth,
+            bitDepth,
+          );
+          final b = _sample(
+            unfiltered,
+            rowStart,
+            pixelBit + bitDepth * 2,
+            bitDepth,
+          );
+          final a = _sample(
+            unfiltered,
+            rowStart,
+            pixelBit + bitDepth * 3,
+            bitDepth,
+          );
           pixels[di] = _to8(r, bitDepth);
           pixels[di + 1] = _to8(g, bitDepth);
           pixels[di + 2] = _to8(b, bitDepth);
@@ -250,7 +297,10 @@ bool _startsWith(Uint8List bytes, List<int> prefix) {
 }
 
 int _readUint32(Uint8List bytes, int offset) =>
-    (bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3];
+    (bytes[offset] << 24) |
+    (bytes[offset + 1] << 16) |
+    (bytes[offset + 2] << 8) |
+    bytes[offset + 3];
 
 void _writeUint32(Uint8List bytes, int offset, int value) {
   bytes[offset] = (value >> 24) & 0xff;

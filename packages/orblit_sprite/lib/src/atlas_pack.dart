@@ -257,12 +257,23 @@ AtlasPackResult packAtlas(
 
   for (final sprite in sprites) {
     if (sprite.width <= 0 || sprite.height <= 0) {
-      emptyRegions[sprite.name] = Region(name: sprite.name, x: 0, y: 0, width: 0, height: 0);
+      emptyRegions[sprite.name] = Region(
+        name: sprite.name,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      );
       continue;
     }
 
     final box = options.trim
-        ? _trimBox(sprite.pixels, sprite.width, sprite.height, options.trimAlphaThreshold)
+        ? _trimBox(
+            sprite.pixels,
+            sprite.width,
+            sprite.height,
+            options.trimAlphaThreshold,
+          )
         : (x: 0, y: 0, w: sprite.width, h: sprite.height);
 
     if (box.w <= 0 || box.h <= 0) {
@@ -292,19 +303,42 @@ AtlasPackResult packAtlas(
         sourceWidth: trimmed ? sprite.width : 0,
         sourceHeight: trimmed ? sprite.height : 0,
         trimmed: trimmed,
-        pixels: _copyBox(sprite.pixels, sprite.width, box.x, box.y, box.w, box.h),
+        pixels: _copyBox(
+          sprite.pixels,
+          sprite.width,
+          box.x,
+          box.y,
+          box.w,
+          box.h,
+        ),
       ),
     );
   }
 
-  final pieces = options.mergeDuplicates ? _groupDuplicates(prepared) : [for (final p in prepared) _Piece(width: p.width, height: p.height, pixels: p.pixels, members: [p])];
+  final pieces = options.mergeDuplicates
+      ? _groupDuplicates(prepared)
+      : [
+          for (final p in prepared)
+            _Piece(
+              width: p.width,
+              height: p.height,
+              pixels: p.pixels,
+              members: [p],
+            ),
+        ];
 
   final available = options.maxPageSize - 2 * options.border;
   final packable = <_Piece>[];
   for (final piece in pieces) {
     final fits =
         _fitsFootprint(piece.width, piece.height, options.padding, available) ||
-        (options.allowRotation && _fitsFootprint(piece.height, piece.width, options.padding, available));
+        (options.allowRotation &&
+            _fitsFootprint(
+              piece.height,
+              piece.width,
+              options.padding,
+              available,
+            ));
     if (fits) {
       packable.add(piece);
     } else {
@@ -322,7 +356,9 @@ AtlasPackResult packAtlas(
 
   packable.sort(_comparePieces);
 
-  final heuristics = options.heuristic != null ? [options.heuristic!] : MaxRectsHeuristic.values;
+  final heuristics = options.heuristic != null
+      ? [options.heuristic!]
+      : MaxRectsHeuristic.values;
   _PackRun? bestRun;
   var bestHeuristic = heuristics.first;
   for (final heuristic in heuristics) {
@@ -334,9 +370,18 @@ AtlasPackResult packAtlas(
   }
 
   final pieceByKey = {for (final piece in packable) piece.key: piece};
-  final pages = _render(bestRun ?? _PackRun([]), options, pieceByKey, emptyRegions);
+  final pages = _render(
+    bestRun ?? _PackRun([]),
+    options,
+    pieceByKey,
+    emptyRegions,
+  );
 
-  return AtlasPackResult(pages: pages, problems: problems, heuristic: bestHeuristic);
+  return AtlasPackResult(
+    pages: pages,
+    problems: problems,
+    heuristic: bestHeuristic,
+  );
 }
 
 /// [atlas] written as the same TexturePacker-shaped JSON [Atlas.read]
@@ -350,7 +395,9 @@ AtlasPackResult packAtlas(
 String writeAtlas(Atlas atlas) {
   final names = atlas.regions.keys.toList()..sort();
   final json = <String, Object?>{
-    'frames': {for (final name in names) name: _regionJson(atlas.regions[name]!)},
+    'frames': {
+      for (final name in names) name: _regionJson(atlas.regions[name]!),
+    },
     'meta': {
       'image': atlas.image,
       'size': {'w': atlas.width, 'h': atlas.height},
@@ -360,7 +407,12 @@ String writeAtlas(Atlas atlas) {
 }
 
 Map<String, Object?> _regionJson(Region region) => {
-  'frame': {'x': region.x, 'y': region.y, 'w': region.width, 'h': region.height},
+  'frame': {
+    'x': region.x,
+    'y': region.y,
+    'w': region.width,
+    'h': region.height,
+  },
   'rotated': region.rotated,
   'trimmed': region.trimmed,
   'spriteSourceSize': {'x': region.offsetX, 'y': region.offsetY},
@@ -391,15 +443,32 @@ Uint8List extractRegionPixels({
 
   final physWidth = region.rotated ? region.height : region.width;
   final physHeight = region.rotated ? region.width : region.height;
-  final block = _copyBox(pagePixels, pageWidth, region.x, region.y, physWidth, physHeight);
-  final trimmedBlock = region.rotated ? _rotateCcw(block, physWidth, physHeight) : block;
+  final block = _copyBox(
+    pagePixels,
+    pageWidth,
+    region.x,
+    region.y,
+    physWidth,
+    physHeight,
+  );
+  final trimmedBlock = region.rotated
+      ? _rotateCcw(block, physWidth, physHeight)
+      : block;
 
   if (!region.trimmed || region.sourceWidth <= 0 || region.sourceHeight <= 0) {
     return trimmedBlock;
   }
 
   final canvas = Uint8List(region.sourceWidth * region.sourceHeight * 4);
-  _pasteBox(canvas, region.sourceWidth, region.offsetX, region.offsetY, region.width, region.height, trimmedBlock);
+  _pasteBox(
+    canvas,
+    region.sourceWidth,
+    region.offsetX,
+    region.offsetY,
+    region.width,
+    region.height,
+    trimmedBlock,
+  );
   return canvas;
 }
 
@@ -430,8 +499,12 @@ class _Prepared {
 }
 
 class _Piece {
-  _Piece({required this.width, required this.height, required this.pixels, required List<_Prepared> members})
-    : members = members..sort((a, b) => a.name.compareTo(b.name));
+  _Piece({
+    required this.width,
+    required this.height,
+    required this.pixels,
+    required List<_Prepared> members,
+  }) : members = members..sort((a, b) => a.name.compareTo(b.name));
 
   final int width;
   final int height;
@@ -443,7 +516,12 @@ class _Piece {
   String get key => members.first.name;
 }
 
-({int x, int y, int w, int h}) _trimBox(Uint8List pixels, int width, int height, int threshold) {
+({int x, int y, int w, int h}) _trimBox(
+  Uint8List pixels,
+  int width,
+  int height,
+  int threshold,
+) {
   var minX = width;
   var minY = height;
   var maxX = -1;
@@ -473,7 +551,15 @@ Uint8List _copyBox(Uint8List src, int srcWidth, int x, int y, int w, int h) {
   return out;
 }
 
-void _pasteBox(Uint8List dst, int dstWidth, int x, int y, int w, int h, Uint8List block) {
+void _pasteBox(
+  Uint8List dst,
+  int dstWidth,
+  int x,
+  int y,
+  int w,
+  int h,
+  Uint8List block,
+) {
   for (var row = 0; row < h; row++) {
     final dstStart = ((y + row) * dstWidth + x) * 4;
     final srcStart = row * w * 4;
@@ -531,11 +617,17 @@ Uint8List _rotateCcw(Uint8List src, int width, int height) {
 List<_Piece> _groupDuplicates(List<_Prepared> prepared) {
   final buckets = <int, List<_Piece>>{};
   for (final candidate in prepared) {
-    final hash = _contentHash(candidate.pixels, candidate.width, candidate.height);
+    final hash = _contentHash(
+      candidate.pixels,
+      candidate.width,
+      candidate.height,
+    );
     final bucket = buckets.putIfAbsent(hash, () => []);
     _Piece? match;
     for (final piece in bucket) {
-      if (piece.width == candidate.width && piece.height == candidate.height && _bytesEqual(piece.pixels, candidate.pixels)) {
+      if (piece.width == candidate.width &&
+          piece.height == candidate.height &&
+          _bytesEqual(piece.pixels, candidate.pixels)) {
         match = piece;
         break;
       }
@@ -545,7 +637,14 @@ List<_Piece> _groupDuplicates(List<_Prepared> prepared) {
         ..add(candidate)
         ..sort((a, b) => a.name.compareTo(b.name));
     } else {
-      bucket.add(_Piece(width: candidate.width, height: candidate.height, pixels: candidate.pixels, members: [candidate]));
+      bucket.add(
+        _Piece(
+          width: candidate.width,
+          height: candidate.height,
+          pixels: candidate.pixels,
+          members: [candidate],
+        ),
+      );
     }
   }
   return [for (final bucket in buckets.values) ...bucket];
@@ -575,7 +674,8 @@ bool _bytesEqual(Uint8List a, Uint8List b) {
   return true;
 }
 
-bool _fitsFootprint(int w, int h, int padding, int available) => (w + padding) <= available && (h + padding) <= available;
+bool _fitsFootprint(int w, int h, int padding, int available) =>
+    (w + padding) <= available && (h + padding) <= available;
 
 int _comparePieces(_Piece a, _Piece b) {
   final aMax = a.width > a.height ? a.width : a.height;
@@ -613,7 +713,8 @@ class _Placement {
 }
 
 class _PageBuild {
-  _PageBuild(this.size, this.border) : free = [_FreeRect(border, border, size - 2 * border, size - 2 * border)];
+  _PageBuild(this.size, this.border)
+    : free = [_FreeRect(border, border, size - 2 * border, size - 2 * border)];
 
   final int size;
   final int border;
@@ -623,7 +724,11 @@ class _PageBuild {
   int maxX = 0;
   int maxY = 0;
 
-  bool tryPlace(_Piece piece, AtlasPackOptions options, MaxRectsHeuristic heuristic) {
+  bool tryPlace(
+    _Piece piece,
+    AtlasPackOptions options,
+    MaxRectsHeuristic heuristic,
+  ) {
     final fw = piece.width + options.padding;
     final fh = piece.height + options.padding;
 
@@ -634,13 +739,17 @@ class _PageBuild {
     var found = false;
 
     for (final rect in free) {
-      final orientations = options.allowRotation ? const [false, true] : const [false];
+      final orientations = options.allowRotation
+          ? const [false, true]
+          : const [false];
       for (final rotated in orientations) {
         final pw = rotated ? fh : fw;
         final ph = rotated ? fw : fh;
         if (pw > rect.w || ph > rect.h) continue;
         final (score1, score2) = _score(heuristic, rect, pw, ph);
-        if (!found || score1 < bestScore1 || (score1 == bestScore1 && score2 < bestScore2)) {
+        if (!found ||
+            score1 < bestScore1 ||
+            (score1 == bestScore1 && score2 < bestScore2)) {
           found = true;
           bestFree = rect;
           bestRotated = rotated;
@@ -715,13 +824,27 @@ class _PageBuild {
         next.add(_FreeRect(rect.x, rect.y, placedRect.x - rect.x, rect.h));
       }
       if (placedRect.x + placedRect.w < rect.x + rect.w) {
-        next.add(_FreeRect(placedRect.x + placedRect.w, rect.y, rect.x + rect.w - (placedRect.x + placedRect.w), rect.h));
+        next.add(
+          _FreeRect(
+            placedRect.x + placedRect.w,
+            rect.y,
+            rect.x + rect.w - (placedRect.x + placedRect.w),
+            rect.h,
+          ),
+        );
       }
       if (placedRect.y > rect.y) {
         next.add(_FreeRect(rect.x, rect.y, rect.w, placedRect.y - rect.y));
       }
       if (placedRect.y + placedRect.h < rect.y + rect.h) {
-        next.add(_FreeRect(rect.x, placedRect.y + placedRect.h, rect.w, rect.y + rect.h - (placedRect.y + placedRect.h)));
+        next.add(
+          _FreeRect(
+            rect.x,
+            placedRect.y + placedRect.h,
+            rect.w,
+            rect.y + rect.h - (placedRect.y + placedRect.h),
+          ),
+        );
       }
     }
     free
@@ -739,7 +862,8 @@ class _PageBuild {
       var dominated = false;
       for (var j = 0; j < free.length; j++) {
         if (i == j) continue;
-        if (_containsRect(free[j], free[i]) && (!_sameRect(free[i], free[j]) || j < i)) {
+        if (_containsRect(free[j], free[i]) &&
+            (!_sameRect(free[i], free[j]) || j < i)) {
           dominated = true;
           break;
         }
@@ -751,12 +875,17 @@ class _PageBuild {
       ..addAll(keep);
   }
 
-  static bool _intersects(_FreeRect a, _Placed b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  static bool _intersects(_FreeRect a, _Placed b) =>
+      a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
 
   static bool _containsRect(_FreeRect outer, _FreeRect inner) =>
-      inner.x >= outer.x && inner.y >= outer.y && inner.x + inner.w <= outer.x + outer.w && inner.y + inner.h <= outer.y + outer.h;
+      inner.x >= outer.x &&
+      inner.y >= outer.y &&
+      inner.x + inner.w <= outer.x + outer.w &&
+      inner.y + inner.h <= outer.y + outer.h;
 
-  static bool _sameRect(_FreeRect a, _FreeRect b) => a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h;
+  static bool _sameRect(_FreeRect a, _FreeRect b) =>
+      a.x == b.x && a.y == b.y && a.w == b.w && a.h == b.h;
 }
 
 class _PackRun {
@@ -764,7 +893,11 @@ class _PackRun {
   final List<_PageBuild> pages;
 }
 
-_PackRun _packOnce(List<_Piece> pieces, AtlasPackOptions options, MaxRectsHeuristic heuristic) {
+_PackRun _packOnce(
+  List<_Piece> pieces,
+  AtlasPackOptions options,
+  MaxRectsHeuristic heuristic,
+) {
   final pages = <_PageBuild>[];
   for (final piece in pieces) {
     var placed = false;
@@ -809,17 +942,32 @@ List<AtlasPackPage> _render(
 ) {
   if (run.pages.isEmpty) {
     if (emptyRegions.isEmpty) return const [];
-    final size = options.minPageSize < options.maxPageSize ? options.minPageSize : options.maxPageSize;
-    return [AtlasPackPage(width: size, height: size, pixels: Uint8List(size * size * 4), regions: Map.of(emptyRegions))];
+    final size = options.minPageSize < options.maxPageSize
+        ? options.minPageSize
+        : options.maxPageSize;
+    return [
+      AtlasPackPage(
+        width: size,
+        height: size,
+        pixels: Uint8List(size * size * 4),
+        regions: Map.of(emptyRegions),
+      ),
+    ];
   }
 
   final pages = <AtlasPackPage>[];
   for (var i = 0; i < run.pages.length; i++) {
     final build = run.pages[i];
     final isLast = i == run.pages.length - 1;
-    final width = isLast ? _shrunkSize(build.maxX + build.border, options) : options.maxPageSize;
-    final height = isLast ? _shrunkSize(build.maxY + build.border, options) : options.maxPageSize;
-    final finalWidth = options.square ? (width > height ? width : height) : width;
+    final width = isLast
+        ? _shrunkSize(build.maxX + build.border, options)
+        : options.maxPageSize;
+    final height = isLast
+        ? _shrunkSize(build.maxY + build.border, options)
+        : options.maxPageSize;
+    final finalWidth = options.square
+        ? (width > height ? width : height)
+        : width;
     final finalHeight = options.square ? finalWidth : height;
 
     final pixels = Uint8List(finalWidth * finalHeight * 4);
@@ -827,11 +975,33 @@ List<AtlasPackPage> _render(
 
     build.placements.forEach((key, placement) {
       final piece = pieceByKey[key]!;
-      final block = placement.rotated ? _rotateCw(piece.pixels, piece.width, piece.height) : piece.pixels;
+      final block = placement.rotated
+          ? _rotateCw(piece.pixels, piece.width, piece.height)
+          : piece.pixels;
       final physWidth = placement.rotated ? piece.height : piece.width;
       final physHeight = placement.rotated ? piece.width : piece.height;
-      _pasteBox(pixels, finalWidth, placement.x, placement.y, physWidth, physHeight, block);
-      _extrudeRegion(pixels, finalWidth, finalHeight, placement.x, placement.y, physWidth, physHeight, options.extrude.clamp(0, options.padding == 0 ? options.extrude : options.padding));
+      _pasteBox(
+        pixels,
+        finalWidth,
+        placement.x,
+        placement.y,
+        physWidth,
+        physHeight,
+        block,
+      );
+      _extrudeRegion(
+        pixels,
+        finalWidth,
+        finalHeight,
+        placement.x,
+        placement.y,
+        physWidth,
+        physHeight,
+        options.extrude.clamp(
+          0,
+          options.padding == 0 ? options.extrude : options.padding,
+        ),
+      );
 
       for (final member in piece.members) {
         regions[member.name] = Region(
@@ -851,7 +1021,14 @@ List<AtlasPackPage> _render(
     });
 
     if (isLast) regions.addAll(emptyRegions);
-    pages.add(AtlasPackPage(width: finalWidth, height: finalHeight, pixels: pixels, regions: regions));
+    pages.add(
+      AtlasPackPage(
+        width: finalWidth,
+        height: finalHeight,
+        pixels: pixels,
+        regions: regions,
+      ),
+    );
   }
   return pages;
 }
@@ -861,7 +1038,9 @@ int _shrunkSize(int content, AtlasPackOptions options) {
   // the default floor for a small pack — a 32-texel page for a handful of
   // icons, say — and that has to win rather than making clamp's own range
   // check the one that reports the mistake.
-  final floor = options.minPageSize < options.maxPageSize ? options.minPageSize : options.maxPageSize;
+  final floor = options.minPageSize < options.maxPageSize
+      ? options.minPageSize
+      : options.maxPageSize;
   var size = content.clamp(floor, options.maxPageSize);
   if (options.powerOfTwo) {
     size = _nextPowerOfTwo(size).clamp(floor, options.maxPageSize);
@@ -877,7 +1056,16 @@ int _nextPowerOfTwo(int value) {
   return size;
 }
 
-void _extrudeRegion(Uint8List page, int pageWidth, int pageHeight, int x, int y, int w, int h, int amount) {
+void _extrudeRegion(
+  Uint8List page,
+  int pageWidth,
+  int pageHeight,
+  int x,
+  int y,
+  int w,
+  int h,
+  int amount,
+) {
   if (amount <= 0 || w <= 0 || h <= 0) return;
   int index(int px, int py) => (py * pageWidth + px) * 4;
   void copyTexel(int dst, int src) {
