@@ -9,6 +9,7 @@
 
 #include <ktxreader/Ktx2Reader.h>
 
+#include "OrblitDecode.h"
 #include "OrblitPlatform.h"
 
 // stb_image's own declarations, as OrblitPlatform.cpp has them and for the
@@ -180,66 +181,6 @@ void placeholderBlock(const ktx2::Format &format, uint8_t block[16]) {
   }
 }
 
-/// A level of an sRGB picture halved, averaging in linear light so that a
-/// texture that has had its largest level left out is not darker than the
-/// one that has not. Alpha is averaged as it is.
-std::vector<uint8_t> halved(const uint8_t *rgba, uint32_t width,
-                            uint32_t height, bool srgb, uint32_t *outWidth,
-                            uint32_t *outHeight) {
-  static const auto linear = [] {
-    std::array<float, 256> table{};
-    for (int i = 0; i < 256; i++) {
-      const float c = float(i) / 255.0f;
-      table[size_t(i)] = c <= 0.04045f ? c / 12.92f
-                                       : std::pow((c + 0.055f) / 1.055f, 2.4f);
-    }
-    return table;
-  }();
-  static const auto encoded = [] {
-    std::array<uint8_t, 4096> table{};
-    for (int i = 0; i < 4096; i++) {
-      const float c = float(i) / 4095.0f;
-      const float s = c <= 0.0031308f
-                          ? c * 12.92f
-                          : 1.055f * std::pow(c, 1.0f / 2.4f) - 0.055f;
-      table[size_t(i)] = uint8_t(std::lround(std::clamp(s, 0.0f, 1.0f) * 255));
-    }
-    return table;
-  }();
-
-  const uint32_t w = std::max<uint32_t>(1, width / 2);
-  const uint32_t h = std::max<uint32_t>(1, height / 2);
-  std::vector<uint8_t> out(size_t(w) * h * 4);
-  for (uint32_t y = 0; y < h; y++) {
-    const uint32_t y0 = std::min(y * 2, height - 1);
-    const uint32_t y1 = std::min(y * 2 + 1, height - 1);
-    for (uint32_t x = 0; x < w; x++) {
-      const uint32_t x0 = std::min(x * 2, width - 1);
-      const uint32_t x1 = std::min(x * 2 + 1, width - 1);
-      const uint8_t *taps[4] = {
-          rgba + (size_t(y0) * width + x0) * 4,
-          rgba + (size_t(y0) * width + x1) * 4,
-          rgba + (size_t(y1) * width + x0) * 4,
-          rgba + (size_t(y1) * width + x1) * 4};
-      uint8_t *to = out.data() + (size_t(y) * w + x) * 4;
-      for (int c = 0; c < 4; c++) {
-        if (srgb && c < 3) {
-          float sum = 0;
-          for (const uint8_t *tap : taps) sum += linear[tap[c]];
-          to[c] = encoded[size_t(std::lround(sum * 0.25f * 4095.0f))];
-        } else {
-          unsigned sum = 0;
-          for (const uint8_t *tap : taps) sum += tap[c];
-          to[c] = uint8_t((sum + 2) / 4);
-        }
-      }
-    }
-  }
-  *outWidth = w;
-  *outHeight = h;
-  return out;
-}
-
 uint32_t mipLevels(uint32_t width, uint32_t height) {
   uint32_t side = std::max(width, height);
   uint32_t levels = 1;
@@ -257,6 +198,26 @@ constexpr const char *kKtx2 = "image/ktx2";
 /// What decoding on the thread that draws may spend in a frame, in a build
 /// with no threads to decode on: a browser without pthreads.
 constexpr double kInlineDecodeSeconds = 0.004;
+
+/// What Basis becomes, best first. ASTC is nearly what UASTC already is;
+/// BC7 is the desktop's best; ETC2 and BC3 are the floors of GLES and of
+/// WebGL; uncompressed is the last resort. The reader takes the first one
+/// the device supports whose transfer function matches the request.
+constexpr InternalFormat kBasisTargets[] = {
+    IF::SRGB8_ALPHA8_ASTC_4x4, IF::RGBA_ASTC_4x4,   IF::SRGB_ALPHA_BPTC_UNORM,
+    IF::RGBA_BPTC_UNORM,       IF::ETC2_EAC_SRGBA8, IF::ETC2_EAC_RGBA8,
+    IF::DXT5_SRGBA,            IF::DXT5_RGBA,       IF::SRGB8_A8,
+    IF::RGBA8};
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+/// How many bytes of decoded answers a frame copies back from the decoder
+/// workers into this module's memory, beyond the first answer, which always
+/// comes. Copying is the page's part of a worker's decode: about a
+/// millisecond for each eight megabytes in Chrome. Twice what the fastest
+/// tier uploads in a frame, so the answers keep ahead of the uploads without
+/// a frame spending long on copies nothing can upload yet.
+constexpr uint64_t kAnswerBytesPerFrame = uint64_t(16) << 20;
+#endif
 
 /// Whether a texture whose smaller levels generateMipmaps makes is given a
 /// placeholder in its smallest level while it waits.
@@ -374,6 +335,15 @@ struct TextureQueue::Item {
   bool srgb = false;
   bool generateMipmaps = false;
   ktxreader::Ktx2Reader::Async *async = nullptr;
+  /// Basis in a browser, transcoded by a decode job rather than by `async`:
+  /// what it becomes, as basist::transcoder_texture_format numbers it.
+  int32_t basisFormat = 0;
+  bool basisCompressed = false;
+
+  // A browser's decoder workers, the engine's thread only: the job a worker
+  // has, or nought, and whether a worker gave it back to be decoded here.
+  int32_t job = 0;
+  bool onPage = false;
 
   // Shared with the decoder, under the queue's lock.
   std::deque<Unit> ready{};
@@ -409,15 +379,6 @@ TextureQueue::TextureQueue(filament::Engine &engine, uint32_t deviceLargest,
       any({145, 146, 141, 139});
   _familyUsable[size_t(ktx2::Family::etc2)] = any({151, 152, 147, 155, 153});
 
-  // What Basis becomes, best first. ASTC is nearly what UASTC already is;
-  // BC7 is the desktop's best; ETC2 and BC3 are the floors of GLES and of
-  // WebGL; uncompressed is the last resort. The reader takes the first one
-  // the device supports whose transfer function matches the request.
-  const InternalFormat kBasisTargets[] = {
-      IF::SRGB8_ALPHA8_ASTC_4x4, IF::RGBA_ASTC_4x4,   IF::SRGB_ALPHA_BPTC_UNORM,
-      IF::RGBA_BPTC_UNORM,       IF::ETC2_EAC_SRGBA8, IF::ETC2_EAC_RGBA8,
-      IF::DXT5_SRGBA,            IF::DXT5_RGBA,       IF::SRGB8_A8,
-      IF::RGBA8};
   for (InternalFormat target : kBasisTargets) _basis->requestFormat(target);
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
@@ -678,6 +639,60 @@ Texture *TextureQueue::pushBasis(const Request &request, const uint8_t *data,
     return nullptr;
   }
 
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  // In a browser the file goes to a decoder worker, so it is not copied and
+  // started here as asyncCreate would: the target is chosen from the header
+  // exactly as Ktx2Reader chooses it, and the texture made as it makes it.
+  (void)header;
+  std::vector<web::BasisCandidate> candidates;
+  for (InternalFormat target : kBasisTargets) {
+    if (const ktx2::Format *format = formatOfInternal(target)) {
+      candidates.push_back(
+          {format->vkFormat, Texture::isTextureFormatSupported(_engine, target)});
+    }
+  }
+  web::BasisTarget target;
+  why = web::chooseBasisTarget(data, size, request.srgb, candidates.data(),
+                               candidates.size(), target);
+  if (!why.empty()) return nullptr;
+  const GpuFormat *gpu = gpuFormatOf(target.vkFormat);
+  if (gpu == nullptr || target.levels == 0) {
+    why = "Filament's Basis reader would not take it: it may be a cubemap or "
+          "an array, or transcode to nothing this device samples.";
+    return nullptr;
+  }
+  Texture *texture = Texture::Builder()
+                         .width(target.width)
+                         .height(target.height)
+                         .levels(uint8_t(target.levels))
+                         .sampler(Texture::Sampler::SAMPLER_2D)
+                         .format(gpu->internal)
+                         .build(_engine);
+  if (texture == nullptr) {
+    why = "Filament would not make a texture of it.";
+    return nullptr;
+  }
+  writePlaceholder(texture, *ktx2::formatOf(target.vkFormat), target.levels - 1);
+
+  auto item = std::make_shared<Item>();
+  item->kind = Item::Kind::basis;
+  item->client = request.client;
+  item->owner = request.owner;
+  item->name = request.name;
+  item->texture = texture;
+  item->gpu = gpu;
+  item->basisFormat = target.transcoderFormat;
+  item->basisCompressed = target.compressed;
+  if (!smaller.empty()) {
+    item->source = std::make_shared<const std::vector<uint8_t>>(std::move(smaller));
+  } else if (request.shared) {
+    item->source = request.shared;
+  } else {
+    item->source = std::make_shared<const std::vector<uint8_t>>(data, data + size);
+  }
+  enqueue(item);
+  return texture;
+#else
   using Transfer = ktxreader::Ktx2Reader::TransferFunction;
   ktxreader::Ktx2Reader::Async *async = _basis->asyncCreate(
       data, size, request.srgb ? Transfer::sRGB : Transfer::LINEAR);
@@ -710,6 +725,7 @@ Texture *TextureQueue::pushBasis(const Request &request, const uint8_t *data,
   item->async = async;
   enqueue(item);
   return texture;
+#endif
 }
 
 Texture *TextureQueue::pushPicture(const Request &request, const uint8_t *data,
@@ -890,8 +906,20 @@ void TextureQueue::decodeInline() {
         _waiting.pop_front();
       }
       if (_waiting.empty()) return;
-      item = std::move(_waiting.front());
-      _waiting.pop_front();
+      auto next = _waiting.begin();
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+      // What a decoder worker will take is left for one. Decoded here: what
+      // a worker gave back, and everything while no worker is to be used.
+      if (web::decoders::capacity() >= 0) {
+        next = std::find_if(_waiting.begin(), _waiting.end(),
+                            [](const std::shared_ptr<Item> &waiting) {
+                              return waiting->onPage && !waiting->abandoned;
+                            });
+        if (next == _waiting.end()) return;
+      }
+#endif
+      item = std::move(*next);
+      _waiting.erase(next);
       item->decoding = true;
     }
     const double started = now();
@@ -960,38 +988,19 @@ void TextureQueue::decode(Item &item) {
 
     case Item::Kind::picture: {
       const SharedBytes &source = item.source;
-      int wide = 0;
-      int tall = 0;
-      int channels = 0;
-      uint8_t *pixels =
-          stbi_load_from_memory(source->data(), int(source->size()), &wide,
-                                &tall, &channels, 4);
-      if (pixels == nullptr) {
-        fail("It could not be decoded.");
+      DecodedPicture decoded;
+      std::string why = decodePicture(source->data(), source->size(),
+                                      item.skip, item.srgb, decoded);
+      if (!why.empty()) {
+        fail(std::move(why));
         return;
       }
       Unit unit;
       unit.kind = Unit::Kind::picture;
       unit.level = 0;
-      unit.bytes = pixels;
-      unit.fromStb = true;
-      unit.size = size_t(wide) * size_t(tall) * 4;
-      uint32_t width = uint32_t(wide);
-      uint32_t height = uint32_t(tall);
-      for (uint32_t i = 0; i < item.skip; i++) {
-        std::vector<uint8_t> smaller =
-            halved(unit.bytes, width, height, item.srgb, &width, &height);
-        auto *copy = static_cast<uint8_t *>(malloc(smaller.size()));
-        if (copy == nullptr) {
-          fail("There was no memory to make it smaller.");
-          return;
-        }
-        memcpy(copy, smaller.data(), smaller.size());
-        unit = Unit();
-        unit.kind = Unit::Kind::picture;
-        unit.bytes = copy;
-        unit.size = smaller.size();
-      }
+      unit.bytes = decoded.pixels;
+      unit.fromStb = decoded.fromStb;
+      unit.size = decoded.size;
       unit.budget = unit.size;
       publish(item, std::move(unit));
       std::lock_guard<std::mutex> hold(_lock);
@@ -1000,6 +1009,17 @@ void TextureQueue::decode(Item &item) {
     }
 
     case Item::Kind::basis: {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+      // The decoder workers' own job, run here, so what the page draws when
+      // no worker answers is what a worker would have drawn.
+      web::DecodeAnswer answer;
+      const double parameters[] = {double(item.basisFormat),
+                                   item.basisCompressed ? 1.0 : 0.0};
+      web::runDecodeJob(web::DecodeJob::basis, item.source->data(),
+                        item.source->size(), parameters, 2, item.name, answer);
+      publishAnswer(item, answer);
+      return;
+#else
       using Result = ktxreader::Ktx2Reader::Result;
       if (item.async->doTranscoding() != Result::SUCCESS) {
         fail("Its Basis data could not be transcoded.");
@@ -1023,6 +1043,7 @@ void TextureQueue::decode(Item &item) {
       }
       publish(item, std::move(unit));
       return;
+#endif
     }
   }
 }
@@ -1069,6 +1090,9 @@ void TextureQueue::release(Item &item) {
 }
 
 void TextureQueue::pump() {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  if (_inline) decodeOnWorkers();
+#endif
   if (_inline) decodeInline();
 
   // Whatever placeholders push wrote since the last pump count against this
@@ -1161,13 +1185,181 @@ void TextureQueue::pump() {
           (unsigned long long)_inlineCount, _inlineSeconds * 1000.0,
           _longestInline * 1000.0, _pushSeconds * 1000.0);
     }
+    if (_offThreadCount > 0) {
+      log("[orblit] %llu of them decoded on workers: %.0f ms of decoding, "
+          "%.0f ms the longest; handing them over and back took the drawing "
+          "thread %.0f ms, %.0f ms at most in a frame; pushing them took "
+          "%.0f ms",
+          (unsigned long long)_offThreadCount, _offThreadSeconds * 1000.0,
+          _longestOffThread * 1000.0, _handoverSeconds * 1000.0,
+          _longestHandover * 1000.0, _pushSeconds * 1000.0);
+    }
     _batchCount = 0;
     _pushSeconds = 0;
     _inlineCount = 0;
     _inlineSeconds = 0;
     _longestInline = 0;
+    _offThreadCount = 0;
+    _offThreadSeconds = 0;
+    _longestOffThread = 0;
+    _handoverSeconds = 0;
+    _longestHandover = 0;
   }
 }
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+
+void TextureQueue::decodeOnWorkers() {
+  namespace decoders = web::decoders;
+  const double from = now();
+
+  // Answers first, so a worker one frees can take another job this frame.
+  std::vector<std::shared_ptr<Item>> posted;
+  {
+    std::lock_guard<std::mutex> hold(_lock);
+    posted = _posted;
+  }
+  uint64_t copied = 0;
+  size_t answers = 0;
+  for (const std::shared_ptr<Item> &item : posted) {
+    const decoders::State state = decoders::poll(item->job);
+    if (state == decoders::State::waiting ||
+        state == decoders::State::started) {
+      continue;
+    }
+    if (state == decoders::State::done && answers > 0 &&
+        copied >= kAnswerBytesPerFrame) {
+      continue;
+    }
+    web::DecodeAnswer answer;
+    const bool answered =
+        state == decoders::State::done && decoders::take(item->job, answer);
+    if (!answered) decoders::cancel(item->job);
+    item->job = 0;
+    {
+      std::lock_guard<std::mutex> hold(_lock);
+      _posted.erase(std::find(_posted.begin(), _posted.end(), item));
+      if (!answered) {
+        // Failed or given up on: decoded here, before anything newer.
+        item->onPage = true;
+        if (!item->abandoned) _waiting.push_front(item);
+      }
+    }
+    if (!answered) continue;
+    answers++;
+    for (const web::DecodedPart &part : answer.parts) copied += part.size;
+    _offThreadCount++;
+    _offThreadSeconds += answer.milliseconds / 1000.0;
+    _longestOffThread = std::max(_longestOffThread, answer.milliseconds / 1000.0);
+    publishAnswer(*item, answer);
+    std::lock_guard<std::mutex> hold(_lock);
+    item->decoded = true;
+  }
+
+  // Then new jobs, one for each idle worker.
+  while (decoders::capacity() > 0) {
+    std::shared_ptr<Item> item;
+    {
+      std::lock_guard<std::mutex> hold(_lock);
+      const auto next = std::find_if(
+          _waiting.begin(), _waiting.end(),
+          [](const std::shared_ptr<Item> &waiting) {
+            return !waiting->onPage && !waiting->abandoned;
+          });
+      if (next == _waiting.end()) break;
+      item = *next;
+      _waiting.erase(next);
+    }
+    web::DecodeJob job = web::DecodeJob::ktx2Levels;
+    std::vector<double> parameters;
+    switch (item->kind) {
+      case Item::Kind::ktx2:
+        job = web::DecodeJob::ktx2Levels;
+        parameters = {double(item->skip)};
+        break;
+      case Item::Kind::picture:
+        job = web::DecodeJob::picture;
+        parameters = {double(item->skip), item->srgb ? 1.0 : 0.0};
+        break;
+      case Item::Kind::basis:
+        job = web::DecodeJob::basis;
+        parameters = {double(item->basisFormat),
+                      item->basisCompressed ? 1.0 : 0.0};
+        break;
+    }
+    const int32_t id = decoders::submit(job, item->source->data(),
+                                        item->source->size(), parameters,
+                                        item->name);
+    std::lock_guard<std::mutex> hold(_lock);
+    if (id == 0) {
+      _waiting.push_front(item);
+      break;
+    }
+    item->job = id;
+    _posted.push_back(item);
+  }
+
+  const double took = now() - from;
+  if (!posted.empty() || !_posted.empty()) {
+    _handoverSeconds += took;
+    _longestHandover = std::max(_longestHandover, took);
+  }
+}
+
+void TextureQueue::publishAnswer(Item &item, web::DecodeAnswer &answer) {
+  if (!answer.note.empty()) {
+    std::lock_guard<std::mutex> hold(_lock);
+    item.failure = answer.note;
+    return;
+  }
+  const size_t parts = answer.parts.size();
+  const auto levelOf = [&answer](size_t i) {
+    return i < answer.numbers.size() ? uint32_t(answer.numbers[i]) : 0u;
+  };
+  const auto unitOf = [&answer](size_t i, Unit::Kind kind, uint32_t level) {
+    Unit unit;
+    unit.kind = kind;
+    unit.level = level;
+    unit.size = answer.parts[i].size;
+    unit.bytes = answer.takePart(i);
+    unit.budget = unit.size;
+    return unit;
+  };
+  switch (item.kind) {
+    case Item::Kind::ktx2:
+      // Smallest first already, as the job reads them.
+      for (size_t i = 0; i < parts; i++) {
+        const Unit::Kind kind =
+            item.generateMipmaps ? Unit::Kind::picture : Unit::Kind::level;
+        if (!publish(item, unitOf(i, kind, levelOf(i) - item.skip))) return;
+      }
+      break;
+    case Item::Kind::picture:
+      if (parts > 0) publish(item, unitOf(0, Unit::Kind::picture, 0));
+      break;
+    case Item::Kind::basis:
+      // Largest first, as Basis Universal transcodes them; uploaded smallest
+      // first, as every other texture's levels are.
+      for (size_t i = parts; i-- > 0;) {
+        if (!publish(item, unitOf(i, Unit::Kind::level, levelOf(i)))) return;
+      }
+      break;
+  }
+  std::lock_guard<std::mutex> hold(_lock);
+  item.source.reset();
+}
+
+void TextureQueue::cancelJobs(const std::vector<std::shared_ptr<Item>> &items) {
+  for (const std::shared_ptr<Item> &item : items) {
+    if (item->job == 0) continue;
+    web::decoders::cancel(item->job);
+    item->job = 0;
+    _posted.erase(std::remove(_posted.begin(), _posted.end(), item),
+                  _posted.end());
+  }
+}
+
+#endif
 
 bool TextureQueue::pop(const void *client, Popped &out) {
   std::lock_guard<std::mutex> hold(_lock);
@@ -1259,6 +1451,9 @@ void TextureQueue::forget(const void *owner) {
       return true;
     });
   }
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  cancelJobs(dropped);
+#endif
   for (const std::shared_ptr<Item> &item : dropped) release(*item);
 }
 
@@ -1283,6 +1478,9 @@ void TextureQueue::shutdown() {
     if (worker.joinable()) worker.join();
   }
   _workers.clear();
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  cancelJobs(dropped);
+#endif
   for (const std::shared_ptr<Item> &item : dropped) release(*item);
   _placeholders.clear();
 }
