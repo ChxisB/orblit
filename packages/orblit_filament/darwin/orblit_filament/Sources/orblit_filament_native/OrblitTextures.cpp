@@ -258,6 +258,31 @@ constexpr const char *kKtx2 = "image/ktx2";
 /// with no threads to decode on: a browser without pthreads.
 constexpr double kInlineDecodeSeconds = 0.004;
 
+/// Whether a texture whose smaller levels generateMipmaps makes is given a
+/// placeholder in its smallest level while it waits.
+///
+/// Not in a browser, because there the placeholder is what breaks it. A
+/// placeholder in the smallest level makes Filament sample the texture
+/// through a view of that one level, and Filament's OpenGL backend keeps a
+/// view as GL_TEXTURE_BASE_LEVEL and GL_TEXTURE_MAX_LEVEL on the one GL
+/// texture the view shares, set whenever the view is bound to draw.
+/// OpenGLDriver::generateMipmaps binds the texture without putting them back,
+/// so glGenerateMipmap, which fills the levels above the base level up to the
+/// maximum, fills none: every level but the largest keeps the placeholder's
+/// nothing, and a picture drawn at any distance is black. Seen in Chrome:
+/// of twelve pictures named at once, only the one whose level arrived before
+/// its view was ever drawn had its mipmaps. WebGL gives every texture's
+/// storage zeros when it is made, which for the uncompressed formats this
+/// applies to is the same transparent black the placeholder writes, so a
+/// browser loses nothing by going without. Native OpenGL and OpenGL ES make
+/// no such promise and keep the placeholder, and so keep the fault, until
+/// the backend resets the levels before it generates.
+#if defined(__EMSCRIPTEN__)
+constexpr bool kPlaceholderBeforeGeneratedLevels = false;
+#else
+constexpr bool kPlaceholderBeforeGeneratedLevels = true;
+#endif
+
 /// Frees a level's bytes: ours are malloc's, a picture straight from stb is
 /// stb's.
 void freeBytes(void *bytes, size_t, void *fromStb) {
@@ -520,6 +545,7 @@ Texture *TextureQueue::push(const Request &request, std::string &why) {
     return nullptr;
   }
 
+  const double started = now();
   Texture *texture = nullptr;
   if (request.mime == kKtx2 || ktx2::isKtx2(data, size)) {
     texture = pushKtx2(request, data, size, why);
@@ -534,6 +560,7 @@ Texture *TextureQueue::push(const Request &request, std::string &why) {
     std::lock_guard<std::mutex> hold(_lock);
     _counts[request.client].pushed++;
   }
+  _pushSeconds += now() - started;
   return texture;
 }
 
@@ -607,7 +634,9 @@ Texture *TextureQueue::pushKtx2(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  writePlaceholder(texture, *format, levels - 1);
+  if (!generate || kPlaceholderBeforeGeneratedLevels) {
+    writePlaceholder(texture, *format, levels - 1);
+  }
 
   auto item = std::make_shared<Item>();
   item->kind = Item::Kind::ktx2;
@@ -728,8 +757,10 @@ Texture *TextureQueue::pushPicture(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  writePlaceholder(texture, *ktx2::formatOf(request.srgb ? 43 : 37),
-                   levels - 1);
+  if (kPlaceholderBeforeGeneratedLevels) {
+    writePlaceholder(texture, *ktx2::formatOf(request.srgb ? 43 : 37),
+                     levels - 1);
+  }
 
   auto item = std::make_shared<Item>();
   item->kind = Item::Kind::picture;
@@ -863,7 +894,14 @@ void TextureQueue::decodeInline() {
       _waiting.pop_front();
       item->decoding = true;
     }
+    const double started = now();
     decode(*item);
+    // What decoding cost the thread that draws, said with the batch: the
+    // number a worker is there to bring down.
+    const double took = now() - started;
+    _inlineSeconds += took;
+    _longestInline = std::max(_longestInline, took);
+    _inlineCount++;
     std::lock_guard<std::mutex> hold(_lock);
     item->decoding = false;
     item->decoded = true;
@@ -1117,7 +1155,17 @@ void TextureQueue::pump() {
         "upload(s) in one frame",
         (unsigned long long)_batchCount, (now() - _batchFrom) * 1000.0,
         (unsigned long long)(frames.mostBytes / 1024), frames.mostUploads);
+    if (_inlineCount > 0) {
+      log("[orblit] %llu of them decoded on the drawing thread: %.0f ms in "
+          "all, %.0f ms the longest; pushing them took %.0f ms",
+          (unsigned long long)_inlineCount, _inlineSeconds * 1000.0,
+          _longestInline * 1000.0, _pushSeconds * 1000.0);
+    }
     _batchCount = 0;
+    _pushSeconds = 0;
+    _inlineCount = 0;
+    _inlineSeconds = 0;
+    _longestInline = 0;
   }
 }
 

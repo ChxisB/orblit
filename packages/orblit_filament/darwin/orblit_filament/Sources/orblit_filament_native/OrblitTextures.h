@@ -271,6 +271,12 @@ class TextureQueue {
   /// finishes.
   double _batchFrom = 0;
   uint64_t _batchCount = 0;
+  /// Of the batch, what was decoded on the drawing thread, and what that
+  /// cost it. The engine's thread only.
+  uint64_t _inlineCount = 0;
+  double _pushSeconds = 0;
+  double _inlineSeconds = 0;
+  double _longestInline = 0;
 
   struct Cooked {
     uint64_t generation;
