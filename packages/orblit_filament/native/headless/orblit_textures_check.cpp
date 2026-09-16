@@ -875,6 +875,24 @@ void aTextureThatNeverArrivesShowsItsPlaceholder(const Supported &supported) {
   settled(renderer);
   expect(noted(renderer, "never/cut.ktx2", "could not be loaded"),
          "a truncated texture is refused with a note");
+
+  // A refusal is remembered, so naming the file again reads nothing — until
+  // bytes are provided under any name, which is what can change the answer.
+  if (supported.bc7) {
+    sprite(renderer, "later/wood.ktx2", false, revision++);
+    const Colour missing = settled(renderer);
+    provide("later/wood.ktx2",
+            fixtures::write(fixtures::solid(
+                fixtures::bc7(true), 16, 16, 5, true,
+                [](uint32_t) { return Rgba{41, 201, 41, 255}; })));
+    sprite(renderer, "later/wood.ktx2", false, revision++);
+    const Colour arrived = settled(renderer);
+    printf("textures: a texture named before its bytes draws %s, and after "
+           "they are provided %s\n",
+           said(missing).c_str(), said(arrived).c_str());
+    expect(!near(missing, 41, 201, 41) && near(arrived, 41, 201, 41),
+           "a texture that was missing is loaded once its bytes arrive");
+  }
   orblit_renderer_destroy(renderer);
 }
 
