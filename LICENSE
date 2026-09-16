@@ -47,3 +47,18 @@ Third-party software linked into builds of this engine:
   orblit_filament_native/third_party/ufbx/, which is redistribution; the MIT
   licence asks for its notice to travel with copies, and the licence file as
   ufbx ships it is at LICENSES/ufbx.txt.
+
+  tinyexr, by Syoyo Fujita and contributors — BSD 3-Clause License, and the
+  OpenEXR notice (Industrial Light & Magic, BSD-style) for the OpenEXR code
+  it contains.
+  https://github.com/syoyo/tinyexr
+
+  miniz, by Rich Geldreich, RAD Game Tools and Valve Software — MIT License.
+  https://github.com/richgel999/miniz
+
+  The renderer compiles tinyexr, with miniz as its deflate, to read OpenEXR
+  environments at run time. Both are vendored under
+  packages/orblit_filament/darwin/orblit_filament/Sources/
+  orblit_filament_native/third_party/ (tinyexr unmodified; miniz with one
+  declaration moved so it compiles as C++), which is redistribution; their
+  notices are at LICENSES/tinyexr.txt and LICENSES/miniz.txt.
