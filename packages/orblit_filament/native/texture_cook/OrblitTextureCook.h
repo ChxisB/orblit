@@ -96,14 +96,15 @@ enum class Edge {
 
 /// Where the ASTC file's blocks come from.
 ///
-/// Measured with orblit_texture_cook_check --measure on 2048 and 1024
-/// textures (see the report that added this): from a PNG or JPEG, Basis
-/// Universal's own ASTC encoder is 0.9 to 3.6 dB better at level 0 and 1.4
-/// to 3.1 dB better half way down the chain than transcoding the UASTC
-/// encode, for about three times the cook time; from a Basis .ktx2, whose
-/// texels are already exactly what UASTC can hold, transcoding is 4.9 to
-/// 6.3 dB better at level 0 and direct encoding 0.9 to 1.6 dB better below.
-/// The top level is most of what a player sees, so:
+/// Measured with orblit_texture_cook_check --measure on 1024 and 2048
+/// textures: from a PNG or JPEG, Basis Universal's own ASTC encoder is 0.9 to
+/// 3.6 dB better at level 0 than transcoding the UASTC encode, and -2.9 to
+/// +3.1 dB half way down the chain (colour always better, normal maps
+/// either way), for two and a half to four times the cook time and files
+/// 3 to 24% larger after zstd. From a Basis .ktx2, whose texels are already
+/// exactly what UASTC can hold, transcoding is 4.9 to 6.3 dB better at level
+/// 0 and direct encoding 0.9 to 1.6 dB better below. The top level is most
+/// of what is on screen, so:
 enum class AstcRoute {
   /// Direct from a PNG or JPEG, transcoded from a .ktx2.
   kAuto,

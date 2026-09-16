@@ -51,6 +51,18 @@ TP="$HERE/third_party"
 DEFINES=(-DNDEBUG -DBASISU_SUPPORT_SSE=0 -DBASISU_SUPPORT_OPENCL=0
          -DBASISD_SUPPORT_KTX2_ZSTD=1 -DBASISU_DISABLE_ANDROID_ASTC_DECOMP=0)
 COMMON=(-ffp-contract=off -fno-strict-aliasing -pthread)
+# LLVM's C++ library on every platform, not only on Apple's. What Basis
+# Universal's direct ASTC encoder writes depends on the library: built
+# against GNU's libstdc++ on Linux, the check's four directly encoded ASTC
+# files came out different from the same cooks on macOS (the other twenty-one
+# were identical), and against libc++ all twenty-five were identical. The
+# likely reason is std::sort over candidates that compare equal, whose order
+# each library's algorithm settles its own way. Filament's Linux
+# release needs libc++ too (see native/headless/build_linux.sh), so a machine
+# that builds the renderer already has it.
+if "$CXX" --version 2>/dev/null | grep -q clang; then
+  COMMON+=(-stdlib=libc++)
+fi
 SANITIZE=()
 if [ "$MODE" = "fuzz" ]; then
   OUT="$OUT/sanitized"
@@ -98,7 +110,7 @@ build_objects() {
   done
   local zstd_object="$out/basisu/zstd.o"
   if [ ! -f "$zstd_object" ] || [ "$TP/basisu/zstd/zstd.c" -nt "$zstd_object" ]; then
-    "$CC" -w "${flags[@]}" -c "$TP/basisu/zstd/zstd.c" -o "$zstd_object.part" &&
+    "$CC" -w "${flags[@]/-stdlib=libc++/}" -c "$TP/basisu/zstd/zstd.c" -o "$zstd_object.part" &&
       mv "$zstd_object.part" "$zstd_object" &
     pids+=($!)
   fi
