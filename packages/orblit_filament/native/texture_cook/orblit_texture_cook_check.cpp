@@ -48,22 +48,8 @@
 #include "transcoder/basisu_transcoder_uastc.h"
 #include "zstd/zstd.h"
 
-#if defined(__clang__)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-field-initializers"
-#pragma clang diagnostic ignored "-Wunused-function"
-#elif defined(__GNUC__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-#endif
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
-#include "stb_image_write.h"
-#if defined(__clang__)
-#pragma clang diagnostic pop
-#elif defined(__GNUC__)
-#pragma GCC diagnostic pop
-#endif
+#include "stb_image_write.h"  // implemented in OrblitStbWrite.cpp
 
 #include <dirent.h>
 #include <sys/stat.h>

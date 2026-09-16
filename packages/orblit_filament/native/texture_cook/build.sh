@@ -14,9 +14,15 @@
 #                          compares the files byte for byte
 #   build.sh fuzz [N]      builds under AddressSanitizer and
 #                          UndefinedBehaviorSanitizer into
-#                          $ORBLIT_BUILD_DIR/sanitized, and runs N mutated
-#                          inputs through the cooker and the check's reader
-#                          (default 3000)
+#                          $ORBLIT_BUILD_DIR/texture_cook/sanitized, and runs N
+#                          mutated inputs through the cooker and the check's
+#                          reader (default 3000)
+#
+# The two programs land in $ORBLIT_BUILD_DIR itself; every object goes under
+# $ORBLIT_BUILD_DIR/texture_cook/. native/headless/build.sh points this at its
+# own directory, where the renderer's objects are named after its sources —
+# and a renderer file called OrblitStb.cpp one day must not quietly swap
+# objects with this one.
 #
 #   ORBLIT_COOK_OPT        the optimisation flag (default -O2)
 #   CXX, CC                the compilers (default clang++ and clang)
@@ -65,7 +71,7 @@ if "$CXX" --version 2>/dev/null | grep -q clang; then
 fi
 SANITIZE=()
 if [ "$MODE" = "fuzz" ]; then
-  OUT="$OUT/sanitized"
+  OUT="$OUT/texture_cook/sanitized"
   OPT="-O1"
   # Alignment is left out, as Basis Universal's own sanitised build leaves it
   # out: it reads packed blocks through wider types on purpose, which is not
@@ -74,12 +80,15 @@ if [ "$MODE" = "fuzz" ]; then
             -fno-sanitize-recover=undefined -fno-omit-frame-pointer)
 fi
 
+# build_objects <directory for the programs> <optimisation flag>
 build_objects() {
-  local out="$1"
+  local bin="$1"
   local opt="$2"
-  shift 2
+  local out="$bin/texture_cook"
+  # A build of its own (sanitised, -O0) is already a directory of its own.
+  case "$bin" in */texture_cook/*) out="$bin/objects" ;; esac
   local flags=("$opt" "${COMMON[@]}" "${DEFINES[@]}" ${SANITIZE[@]+"${SANITIZE[@]}"})
-  mkdir -p "$out/basisu"
+  mkdir -p "$bin" "$out/basisu"
   # Objects built with other flags are not these objects.
   local signature="$CXX $CC ${flags[*]}"
   if [ "$(cat "$out/basisu/flags" 2>/dev/null)" != "$signature" ]; then
@@ -125,18 +134,27 @@ build_objects() {
   [ -f "$zstd_object" ] || { echo "texture_cook/build.sh: zstd.c did not compile" >&2; exit 1; }
 
   # Ours, always, held to -Wall -Wextra.
-  for source in OrblitTextureCook OrblitStb orblit_texture_cook orblit_texture_cook_check; do
+  for source in OrblitTextureCook OrblitStb OrblitStbWrite orblit_texture_cook \
+                orblit_texture_cook_check; do
     local warnings=(-Wall -Wextra)
-    # stb_image's own warnings are its business.
-    [ "$source" = "OrblitStb" ] && warnings=(-w)
-    "$CXX" -std=c++17 "${warnings[@]}" "${flags[@]}" -I "$TP/basisu" -I "$TP/stb" -I "$HERE" \
-      -c "$HERE/$source.cpp" -o "$out/$source.o"
+    local extra=()
+    # stb's own warnings are its business.
+    case "$source" in
+      OrblitStb) warnings=(-w) ;;
+      OrblitStbWrite)
+        warnings=(-w)
+        # See OrblitStbWrite.cpp: the check's fixture writer, not an input path.
+        [ ${#SANITIZE[@]} -gt 0 ] && extra=(-fno-sanitize=shift)
+        ;;
+    esac
+    "$CXX" -std=c++17 "${warnings[@]}" "${flags[@]}" ${extra[@]+"${extra[@]}"} \
+      -I "$TP/basisu" -I "$TP/stb" -I "$HERE" -c "$HERE/$source.cpp" -o "$out/$source.o"
   done
 
   local library=("$out/OrblitTextureCook.o" "$out/OrblitStb.o" "$out"/basisu/*.o)
-  "$CXX" "${flags[@]}" "$out/orblit_texture_cook.o" "${library[@]}" -o "$out/orblit_texture_cook"
-  "$CXX" "${flags[@]}" "$out/orblit_texture_cook_check.o" "${library[@]}" \
-    -o "$out/orblit_texture_cook_check"
+  "$CXX" "${flags[@]}" "$out/orblit_texture_cook.o" "${library[@]}" -o "$bin/orblit_texture_cook"
+  "$CXX" "${flags[@]}" "$out/orblit_texture_cook_check.o" "$out/OrblitStbWrite.o" "${library[@]}" \
+    -o "$bin/orblit_texture_cook_check"
 }
 
 build_objects "$OUT" "$OPT"
@@ -151,10 +169,10 @@ case "$MODE" in
   determinism)
     # The fixtures, then every cook of them from both builds at two thread
     # counts, compared with the first.
-    work="$OUT/determinism"
+    work="$OUT/texture_cook/determinism"
     rm -r -f "$work"
     mkdir -p "$work/fixtures"
-    build_objects "$OUT/O0" -O0
+    build_objects "$OUT/texture_cook/O0" -O0
     "$OUT/orblit_texture_cook_check" --write-fixtures "$work/fixtures"
     shopt -s nullglob
     fixtures=("$work/fixtures"/*.png "$work/fixtures"/*.jpg "$work/fixtures"/*.ktx2)
@@ -171,7 +189,7 @@ case "$MODE" in
         *cutout*) flags=(--cutout 0.5) ;;
         *pixel*) flags=(--lossless) ;;
       esac
-      for build in O2:"$OUT" O0:"$OUT/O0"; do
+      for build in O2:"$OUT" O0:"$OUT/texture_cook/O0"; do
         for threads in 1 8; do
           into="$work/${build%%:*}-t$threads"
           mkdir -p "$into"
