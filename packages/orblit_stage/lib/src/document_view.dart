@@ -330,6 +330,18 @@ class OrblitDocumentView {
     if (entity[SceneComponents.sprite] case final SpriteComponent sprite) {
       if (shown) _sprites[entity.id] = _spriteFrom(entity, sprite, world);
     }
+
+    // Tilemaps, parallax backdrops, canvases and data files are read from the
+    // document, kept, written back and diffed like everything else — and not
+    // drawn here yet. Said out loud rather than left as an absence, because
+    // an entity that quietly does nothing is indistinguishable from a bug.
+    //
+    // Each is waiting on something that is a phase of its own rather than on
+    // work here. A tilemap names a map file and nothing reads one yet; a
+    // parallax is layers of pictures, which wants the texture pipeline; a
+    // canvas is an interface, which is orblit_ui's to draw. None of the three
+    // is a line of code away, and guessing at any of them would mean a scene
+    // that looks right here and wrong once the real one arrives.
   }
 
   /// The point of view, from the first camera entity there is.
