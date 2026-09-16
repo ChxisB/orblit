@@ -99,6 +99,21 @@ void main() {
       expect(high.harmonicDegree, 3);
     });
 
+    test('sort splats coarsely only where the tier is low', () {
+      expect(
+        OrblitDeviceProfile.fromCapabilities(browser).coarseSplatOrder,
+        isTrue,
+      );
+      expect(
+        OrblitDeviceProfile.fromCapabilities(phone).coarseSplatOrder,
+        isFalse,
+      );
+      expect(
+        OrblitDeviceProfile.fromCapabilities(desktop).coarseSplatOrder,
+        isFalse,
+      );
+    });
+
     test('never ask for a texture larger than the device can hold', () {
       const tiny = OrblitDeviceProfile(
         featureLevel: 3,
