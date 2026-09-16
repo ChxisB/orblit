@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.26.0
+
+- **A Scene files example, which reads a scene rather than building one.**
+  Every other example states its scene in Dart; this one parses an `.oscene`
+  document — the same text the editor saves — and hands what comes out to the
+  renderer, in 2D and in 3D. Neither document names a file on disk, so it
+  works in a browser and in a sandbox. Its slider edits the document and
+  applies the difference as a `SceneDiff`, which rebuilds the one entity that
+  moved and leaves the rest as objects the renderer already has.
+
 ## 0.25.0
 
 - **The Gaussian splats example scales itself to its device.** It is handed
