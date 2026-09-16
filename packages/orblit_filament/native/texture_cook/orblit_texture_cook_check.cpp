@@ -23,6 +23,9 @@
 //   orblit_texture_cook_check --write-fixtures DIR
 //                                             the fixtures as files, for
 //                                             build.sh determinism
+//   orblit_texture_cook_check --read FILE...  cooked .ktx2 files on disk,
+//                                             through the reader here: every
+//                                             level inflated and decoded
 //   orblit_texture_cook_check --measure FILE [cook flags]
 //                                             PSNR per family per level,
 //                                             sizes and times for a real
@@ -1246,6 +1249,19 @@ int measure(int argc, char **argv) {
       std::printf("\n  plain filter:");
       for (double c : r.naiveCoverage) std::printf(" %.4f", c);
       std::printf("\n");
+      // And as each family's blocks hold it, which is what the GPU tests.
+      for (const File &file : cooked.files) {
+        Ktx2File k;
+        std::string why;
+        if (!readKtx2(file.bytes, k, why)) continue;
+        std::printf("  %-12s decoded:", file.suffix.c_str());
+        for (uint32_t i = 0; i < k.levels.size(); i++) {
+          Image level;
+          decodeLevel(k, i, level);
+          std::printf(" %.4f", coverageOf(level, r.cutout));
+        }
+        std::printf("\n");
+      }
     }
   };
 
@@ -1257,6 +1273,40 @@ int measure(int argc, char **argv) {
   direct.families = kFamilyAstc;
   run(direct, "ASTC encoded directly");
   return failures > 0 ? 1 : 0;
+}
+
+/// Reads cooked files from disk the way the renderer's loader would be
+/// checked against: the same reader and decoders the round trip uses.
+int readFiles(int argc, char **argv) {
+  int bad = 0;
+  uint64_t bytes = 0;
+  for (int i = 2; i < argc; i++) {
+    std::vector<uint8_t> data;
+    Ktx2File k;
+    std::string why;
+    if (!readFile(argv[i], data)) {
+      why = "cannot read the file";
+    } else if (readKtx2(data, k, why)) {
+      Image image;
+      for (uint32_t l = 0; l < k.levels.size() && why.empty(); l++) {
+        if (!decodeLevel(k, l, image)) why = "level " + std::to_string(l) + " does not decode";
+      }
+    }
+    if (!why.empty()) {
+      std::printf("BAD  %s: %s\n", argv[i], why.c_str());
+      bad++;
+      continue;
+    }
+    bytes += data.size();
+    Expected e;
+    const char *name = k.vkFormat == 0 ? "UASTC" : expectedFor(k.vkFormat, e) ? e.name : "?";
+    std::printf("ok   %s: %s, %ux%u, %zu levels, %s, %.3f MB\n", argv[i], name, k.width, k.height,
+                k.levels.size(), k.transfer == 2 ? "sRGB" : "linear",
+                double(data.size()) / (1024.0 * 1024.0));
+  }
+  std::printf("%d of %d files read and decoded, %.1f MB\n", argc - 2 - bad, argc - 2,
+              double(bytes) / (1024.0 * 1024.0));
+  return bad > 0 ? 1 : 0;
 }
 
 bool writeFixtures(const std::string &directory) {
@@ -1278,6 +1328,7 @@ bool writeFixtures(const std::string &directory) {
 int main(int argc, char **argv) {
   const std::string mode = argc > 1 ? argv[1] : "";
   if (mode == "--measure") return measure(argc, argv);
+  if (mode == "--read") return readFiles(argc, argv);
   if (mode == "--write-fixtures") {
     if (argc < 3) return 2;
     return writeFixtures(argv[2]) ? 0 : 1;
@@ -1297,7 +1348,7 @@ int main(int argc, char **argv) {
   }
   if (!mode.empty()) {
     std::fprintf(stderr, "usage: orblit_texture_cook_check [--fuzz N | --write-fixtures DIR | "
-                         "--measure FILE [flags]]\n");
+                         "--read FILE... | --measure FILE [flags]]\n");
     return 2;
   }
 
