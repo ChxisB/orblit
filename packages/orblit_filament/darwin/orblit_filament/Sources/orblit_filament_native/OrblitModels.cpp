@@ -238,6 +238,10 @@ void convert(const std::string &path, const SharedBytes &source) {
                   std::move(imported.glb));
 }
 
+/// The most parents a joint is looked up through for the joint it hangs from:
+/// the depth the converter refuses a file past, and far past any real rig.
+constexpr int kDeepestNode = 256;
+
 /// How far a frame may sample past, or before, the moment a pose was stated.
 /// The same quarter second the camera takes for a pause rather than a rate: a
 /// host that has stopped describing a pose has stopped its clip with it.
@@ -425,8 +429,11 @@ void Renderer::describeModel(Mesh &mesh, gltfio::FilamentInstance *first,
       if (j > 0) out.push_back(',');
       int32_t parent = -1;
       auto node = transforms.getInstance(joints[j]);
+      // Bounded, because the tree is the file's: a glTF's nodes are meant to
+      // be one, and nothing between the file and here promises they are.
+      int climbed = 0;
       for (utils::Entity up = node ? transforms.getParent(node) : utils::Entity();
-           up && parent < 0;) {
+           up && parent < 0 && climbed++ < kDeepestNode;) {
         for (size_t k = 0; k < jointCount; k++) {
           if (joints[k] == up) parent = int32_t(k);
         }
