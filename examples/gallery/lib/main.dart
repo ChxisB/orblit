@@ -812,6 +812,8 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     }
 
     if (example is ImportedExample) {
+      final samples = _orblitEnv['ORBLIT_SAMPLES'];
+      if (samples != null && samples.isNotEmpty) example.directory = samples;
       final model = _orblitEnv['ORBLIT_MODEL'];
       if (model != null && model.isNotEmpty) example.model = model;
       example.clip = _number('ORBLIT_CLIP')?.round();

@@ -109,7 +109,11 @@ class ImportedExample extends Example {
 
   /// Where the fetch script puts the files, and an override for a checkout
   /// somewhere else, or a sandbox that can only read its own container.
-  static String get directory =>
+  ///
+  /// Settable rather than read only from `Platform.environment`, which on the
+  /// iOS simulator is always empty however the app is launched: the gallery
+  /// reads the real environment its own way and says here what it found.
+  String directory =
       Platform.environment['ORBLIT_SAMPLES'] ?? '../orblit/assets/samples';
 
   /// Which sample is showing, by its [ImportedSample.name].
@@ -187,7 +191,7 @@ class ImportedExample extends Example {
         .whenComplete(() => _reading.remove(resource));
   }
 
-  static Future<Uint8List?> _read(String file) async {
+  Future<Uint8List?> _read(String file) async {
     if (kIsWeb) return fetchBytes(Uri(path: 'samples/$file').toString());
     final found = File('$directory/$file');
     if (!found.existsSync()) return null;
