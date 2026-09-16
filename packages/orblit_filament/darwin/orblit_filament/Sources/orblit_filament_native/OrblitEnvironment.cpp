@@ -27,11 +27,13 @@
 //     cube of them at the reflections' size, mirror it, and project it onto
 //     three bands of spherical harmonics — the diffuse light. Then bring the
 //     picture down to the size the GPU needs and pack it as half floats.
-//  2. First frame after that: upload the picture, and convert it to a cube
-//     twice with Filament's EquirectangularToCubemap — once at the
-//     reflections' size, once at the backdrop's sharper one.
-//  3. Next frame: SpecularFilter blurs the reflections' cube into its chain.
-//     The light is built and the scene is lit.
+//  2. The first time, a frame to build the filters: their materials, and the
+//     specular filter's sample kernel, rendered once.
+//  3. A frame to upload the picture and convert it to a cube twice with
+//     Filament's EquirectangularToCubemap — once at the reflections' size,
+//     once at the backdrop's sharper one.
+//  4. A frame for SpecularFilter to blur the reflections' cube into its
+//     chain. The light is built and the scene is lit.
 //
 // Where the GPU cannot filter (no half-float render targets) the worker runs
 // cmgen's own roughness filter on a small cube instead, and there is no GPU
@@ -39,7 +41,11 @@
 // floating-point cubemap, the scene notes say to bake.
 //
 // Every stage one frame at a time, so no frame waits on more than one
-// filter pass, and nothing on the drawing thread waits on a decode.
+// filter pass, and nothing on the drawing thread waits on a decode. Measured
+// on an M4 Pro (Metal) with 2K pictures, over three runs: building 1–3 ms,
+// upload and conversion 3–8 ms, the filter 21–54 ms — the one frame over a
+// 60 Hz budget, once per picture; with a cold Metal shader cache the first
+// picture a machine ever filters took 225 and 504 ms instead.
 
 #include <algorithm>
 #include <atomic>
@@ -391,22 +397,29 @@ void Renderer::requestEnvironmentImages(const std::string &radiance,
     const bool sky = path == skybox;
     const std::string name = lastPathComponent(path);
 
+    bool installed = false;
     const auto known = _environmentNames.find(path + "|" + plan.key());
-    if (known != _environmentNames.end() &&
-        known->second.generation == generation) {
-      if (!known->second.note.empty()) {
+    if (known != _environmentNames.end()) {
+      const bool unchanged = known->second.generation == generation;
+      if (unchanged && !known->second.note.empty()) {
         noteFor(light, sky, known->second.note);
         continue;
       }
-      bool installed = false;
-      for (EnvironmentLighting &entry : _environmentCache) {
-        if (coversRequest(entry, plan, known->second.hash, light, sky)) {
-          installEnvironment(entry, light, sky);
-          installed = true;
-          break;
+      if (known->second.note.empty()) {
+        for (EnvironmentLighting &entry : _environmentCache) {
+          if (coversRequest(entry, plan, known->second.hash, light, sky)) {
+            installEnvironment(entry, light, sky);
+            installed = true;
+            break;
+          }
         }
       }
-      if (installed) continue;
+      if (installed && unchanged) continue;
+      // Bytes have been provided under some name since this one was read,
+      // which is when its own bytes may have changed. What it was lights the
+      // scene meanwhile, rather than a frame or two of flat ambient, and a
+      // worker hashes it again: the same bytes find the same light, and
+      // different ones are filtered and replace it.
     }
 
     bool pending = false;
@@ -444,10 +457,12 @@ void Renderer::requestEnvironmentImages(const std::string &radiance,
       if (!threaded) prepare(*work);
 #endif
     }
-    noteFor(light, sky,
-            format("%s is being filtered, and %s once that has finished.",
-                   name.c_str(),
-                   light ? "lights the scene" : "becomes the backdrop"));
+    if (!installed) {
+      noteFor(light, sky,
+              format("%s is being filtered, and %s once that has finished.",
+                     name.c_str(),
+                     light ? "lights the scene" : "becomes the backdrop"));
+    }
   }
 }
 
@@ -504,11 +519,28 @@ void Renderer::pollEnvironment() {
   if (_environmentWork.empty() || _disposed || _engine == nullptr) return;
 
   const EnvironmentPlan current = planFor(*this, _environmentParams[3]);
-  const auto filtersReady = [this](uint32_t reflectionSize) {
+  const auto filtersReady = [this](const EnvironmentWork &work) {
     return _prefilter != nullptr && _equirectangularFilter != nullptr &&
-           _environmentFilter != nullptr &&
-           _environmentFilterLevels == prefilterLevelCount(reflectionSize);
+           (!work.wantsLight ||
+            (_environmentFilter != nullptr &&
+             _environmentFilterLevels == prefilterLevelCount(work.plan.reflectionSize)));
   };
+
+  // Finished work nobody wants now — the scene moved on while it decoded,
+  // or a new render graph let go of the environment for a publish — is kept
+  // rather than thrown away, two at most, so a scene that names it again
+  // picks it up where it stands.
+  size_t unwanted = 0;
+  for (size_t i = _environmentWork.size(); i-- > 0;) {
+    const EnvironmentWork &work = *_environmentWork[i];
+    const bool wanted =
+        work.plan.key() == current.key() &&
+        ((work.wantsLight && work.path == _environmentRadiancePath) ||
+         (work.wantsSky && work.path == _environmentSkyboxPath));
+    if (!work.finished.load() || work.stage != 0 || wanted) continue;
+    if (++unwanted > 2) _environmentWork.erase(_environmentWork.begin() + long(i));
+  }
+
   for (size_t i = 0; i < _environmentWork.size(); i++) {
     const std::shared_ptr<EnvironmentWork> work = _environmentWork[i];
     if (!work->finished.load()) continue;
@@ -539,10 +571,7 @@ void Renderer::pollEnvironment() {
         forget();
         return;
       }
-      if (!light && !sky) {
-        forget();
-        return;
-      }
+      if (!light && !sky) continue;
       if (work->cached) {
         bool installed = false;
         for (EnvironmentLighting &entry : _environmentCache) {
@@ -614,7 +643,7 @@ void Renderer::pollEnvironment() {
           name.c_str(), size, work->readMilliseconds, work->decodeMilliseconds,
           work->harmonicsMilliseconds, work->prepareMilliseconds,
           (now() - started) * 1000);
-    } else if (work->stage == 0 && !filtersReady(work->plan.reflectionSize)) {
+    } else if (!filtersReady(*work)) {
       // A frame of its own the first time: building the filters compiles
       // their materials and renders the specular filter's sample kernel,
       // which on a first run is most of what the whole job costs.
@@ -625,7 +654,8 @@ void Renderer::pollEnvironment() {
             new IBLPrefilterContext::EquirectangularToCubemap(*_prefilter);
       }
       const uint8_t levels = uint8_t(prefilterLevelCount(work->plan.reflectionSize));
-      if (_environmentFilter == nullptr || _environmentFilterLevels != levels) {
+      if (work->wantsLight &&
+          (_environmentFilter == nullptr || _environmentFilterLevels != levels)) {
         delete _environmentFilter;
         IBLPrefilterContext::SpecularFilter::Config config;
         config.sampleCount = kGpuSamples;
