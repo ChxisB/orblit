@@ -481,10 +481,16 @@ real-time Chrome on an M4 Pro, from the gallery's Textures example:
 
 | Load | Page thread before | Page thread after |
 |---|---|---|
-| twelve 2048² PNGs and JPEGs | 841–854 ms of decoding; tasks up to 130–135 ms | 8–12 ms of handing over, at most 3 ms a frame; no task over 50 ms |
-| twelve 2048² Basis UASTC files | 641–652 ms, and 7 ms of pushing; tasks up to 120–124 ms | 8–12 ms, at most 3 ms a frame; no task over 50 ms |
-| twelve cooked BC7 sets | 30 ms, 3 ms at most | 7–11 ms, at most 4 ms a frame |
-| one 2K `.hdr`, prepared for lighting | one task of 200–201 ms | 5–6 ms; no task over 50 ms |
+| twelve 2048² PNGs and JPEGs | 841–854 ms of decoding; tasks up to 130–135 ms | 9–12 ms of handing over, at most 4 ms in a frame; no task over 50 ms |
+| twelve 2048² Basis UASTC files | 641–652 ms, and 6–7 ms of pushing; tasks up to 118–124 ms | 10–12 ms, at most 3 ms in a frame, and 4 ms of pushing; no task over 50 ms |
+| twelve cooked BC7 sets | 30–31 ms, 3 ms at most | 7–11 ms, at most 4 ms in a frame |
+| one 2K `.hdr`, prepared for lighting | one task of 199–206 ms | 5–6 ms; no task over 50 ms |
+
+Six runs each, before and after interleaved, with other agents' builds and a
+virus scanner on the same machine. The PNGs and JPEGs arrive in 380–510 ms
+rather than 875–910, and Basis in 405–450 rather than 685–700. The cooked sets,
+already cheap, arrive in 110–120 ms rather than 77–79: the copies there and
+back cost about what zstd did.
 
 So the decoding goes to **Web Workers**, each running the *decoder module*:
 
