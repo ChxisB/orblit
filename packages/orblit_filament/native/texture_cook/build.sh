@@ -45,7 +45,10 @@ OPT="${ORBLIT_COOK_OPT:--O2}"
 ./fetch.sh
 
 TP="$HERE/third_party"
-DEFINES=(-DBASISU_SUPPORT_SSE=0 -DBASISU_SUPPORT_OPENCL=0
+# NDEBUG as Basis Universal's own release build has it: its block decoders
+# assert on a block that does not decode, which is exactly what a damaged
+# file holds, and without NDEBUG that is an abort rather than a false return.
+DEFINES=(-DNDEBUG -DBASISU_SUPPORT_SSE=0 -DBASISU_SUPPORT_OPENCL=0
          -DBASISD_SUPPORT_KTX2_ZSTD=1 -DBASISU_DISABLE_ANDROID_ASTC_DECOMP=0)
 COMMON=(-ffp-contract=off -fno-strict-aliasing -pthread)
 SANITIZE=()
@@ -110,7 +113,6 @@ build_objects() {
   [ -f "$zstd_object" ] || { echo "texture_cook/build.sh: zstd.c did not compile" >&2; exit 1; }
 
   # Ours, always, held to -Wall -Wextra.
-  local ours=()
   for source in OrblitTextureCook OrblitStb orblit_texture_cook orblit_texture_cook_check; do
     local warnings=(-Wall -Wextra)
     # stb_image's own warnings are its business.
@@ -148,7 +150,8 @@ case "$MODE" in
     differ=0
     for fixture in "${fixtures[@]}"; do
       name="$(basename "$fixture")"
-      stem="${name%.*}"
+      # colour.png and colour.jpg are different fixtures.
+      stem="${name//./_}"
       flags=()
       case "$stem" in
         *normal*) flags=(--normal) ;;

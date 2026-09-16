@@ -94,9 +94,29 @@ enum class Edge {
   kWrap,
 };
 
-/// The zstd level every file is compressed at unless told otherwise. See
-/// build notes in orblit_texture_cook.cpp for the measurement it was chosen
-/// on.
+/// Where the ASTC file's blocks come from.
+///
+/// Measured with orblit_texture_cook_check --measure on 2048 and 1024
+/// textures (see the report that added this): from a PNG or JPEG, Basis
+/// Universal's own ASTC encoder is 0.9 to 3.6 dB better at level 0 and 1.4
+/// to 3.1 dB better half way down the chain than transcoding the UASTC
+/// encode, for about three times the cook time; from a Basis .ktx2, whose
+/// texels are already exactly what UASTC can hold, transcoding is 4.9 to
+/// 6.3 dB better at level 0 and direct encoding 0.9 to 1.6 dB better below.
+/// The top level is most of what a player sees, so:
+enum class AstcRoute {
+  /// Direct from a PNG or JPEG, transcoded from a .ktx2.
+  kAuto,
+  /// Transcoded from the UASTC blocks every other family comes from.
+  kTranscoded,
+  /// Basis Universal's ASTC LDR encoder, at its default effort.
+  kDirect,
+};
+
+/// The zstd level every file is compressed at unless told otherwise. On a
+/// 2048 colour texture's four files, level 3 made 12.08 MB in 0.02 s, 9 made
+/// 11.27 MB, 15 11.20 MB, 19 10.84 MB in 0.85 s and 22 10.84 MB in 0.95 s;
+/// decompression costs the same at any level, and a cook is paid once.
 constexpr int kDefaultZstdLevel = 19;
 
 /// UASTC's own effort level, 0 (fastest) to 4 (slowest).
@@ -116,9 +136,7 @@ struct Settings {
   /// Levels larger than this on either side are dropped; 0 keeps them all.
   uint32_t maxSize = 0;
   Edge edge = Edge::kClamp;
-  /// ASTC from Basis Universal's own ASTC encoder rather than transcoded
-  /// from the UASTC encode. Measured against each other by the check.
-  bool directAstc = false;
+  AstcRoute astc = AstcRoute::kAuto;
   int zstdLevel = kDefaultZstdLevel;
   int uastcLevel = kDefaultUastcLevel;
   /// 0: one per hardware thread.
@@ -163,6 +181,8 @@ struct Report {
   bool srgb = true;
   Content content = Content::kColour;
   bool lossless = false;
+  /// Whether the ASTC file was encoded directly (see AstcRoute).
+  bool directAstc = false;
   float cutout = -1.0f;
   uint32_t width = 0;
   uint32_t height = 0;
