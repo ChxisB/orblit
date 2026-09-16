@@ -37,6 +37,25 @@ esac
 GENERATED="$SRC/generated/$GENERATED_SET"
 mkdir -p "$OUT"
 
+# The FBX and OBJ importer's tool and checks, before anything else, because
+# they need none of what the rest of this script goes looking for: no
+# Filament, no compiled materials, no renderer core — the importer and ufbx
+# alone, so they build and run even while the renderer does not. Held to
+# -Wextra as well; ufbx's own warnings are quieted inside OrblitUfbx.cpp. The
+# loop below links these same two objects into the renderer rather than
+# compiling thirty thousand lines of ufbx a second time.
+import_objects=()
+for name in OrblitImport OrblitUfbx; do
+  clang++ -std=c++17 -O2 -DORBLIT_PLATFORM_PORTABLE -Wall -Wextra \
+    -I "$SRC" -I "$SRC/include" -c "$SRC/$name.cpp" -o "$OUT/$name.o"
+  import_objects+=("$OUT/$name.o")
+done
+for program in orblit_import orblit_import_check; do
+  clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
+    -c "$program.cpp" -o "$OUT/$program.o"
+  clang++ "$OUT/$program.o" "${import_objects[@]}" -o "$OUT/$program"
+done
+
 if [ ! -f "$GENERATED/lit_opaque_material.h" ]; then
   echo "native/headless/build.sh: no compiled materials at $GENERATED" >&2
   echo "  run darwin/setup.sh or set ORBLIT_GENERATED_SET to an existing set" >&2
@@ -48,6 +67,9 @@ fi
 objects=()
 for source in "$SRC"/*.cpp; do
   name="$(basename "$source" .cpp)"
+  case "$name" in
+    OrblitImport|OrblitUfbx) objects+=("$OUT/$name.o"); continue ;;
+  esac
   clang++ -std=c++17 -O2 -DORBLIT_PLATFORM_PORTABLE \
     -Wall -Wno-deprecated-declarations -Wno-unused-private-field \
     -I "$SDK/include" -I "$SRC" -I "$SRC/include" -I "$GENERATED" \
@@ -85,7 +107,7 @@ if [ -f "$SDK/lib/arm64/libwebgpu_dawn.a" ]; then
   FRAMEWORKS+=(-framework IOKit)
 fi
 
-for program in orblit_renderer_test orblit_headless; do
+for program in orblit_renderer_test orblit_headless orblit_models_check; do
   # C99 and pedantic, so anything C++ in the header is an error here.
   clang -std=c99 -Wall -Wextra -Werror -pedantic -I "$SRC/include" \
     -c "$program.c" -o "$OUT/$program.o"
@@ -108,9 +130,19 @@ clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
 clang++ "$OUT/orblit_splat_cook.o" "${objects[@]}" "${archives[@]}" \
   "${FRAMEWORKS[@]}" -o "$OUT/orblit_splat_cook"
 echo "built $OUT/orblit_renderer_test, $OUT/orblit_headless," \
-     "$OUT/orblit_splats_check and $OUT/orblit_splat_cook"
+     "$OUT/orblit_models_check, $OUT/orblit_splats_check," \
+     "$OUT/orblit_splat_cook," \
+     "$OUT/orblit_import and $OUT/orblit_import_check"
 
 if [ "${1:-}" = "test" ]; then
+  # Real FBX and OBJ files are read from ORBLIT_IMPORT_SAMPLES when it is
+  # set; without it the check runs its in-memory cases and says it skipped
+  # the rest.
+  "$OUT/orblit_import_check"
   "$OUT/orblit_splats_check"
   "$OUT/orblit_renderer_test"
+  # Khronos's samples and the converted ones, from ORBLIT_SAMPLES when it is
+  # set (tool/fetch_import_samples.sh puts them in assets/samples); without it
+  # only the ABI is checked.
+  "$OUT/orblit_models_check"
 fi

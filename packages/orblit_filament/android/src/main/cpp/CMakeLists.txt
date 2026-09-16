@@ -71,6 +71,11 @@ add_library(orblit_filament_native SHARED
     "${ORBLIT_CORE_DIR}/OrblitSprites.cpp"
     "${ORBLIT_CORE_DIR}/OrblitMotionBlur.cpp"
     "${ORBLIT_CORE_DIR}/ScreenEffects.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitModels.cpp"
+    # FBX and OBJ to GLB, and ufbx compiled as C++ through one file (see
+    # OrblitUfbx.cpp for why a .cpp includes a .c).
+    "${ORBLIT_CORE_DIR}/OrblitImport.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitUfbx.cpp"
 )
 
 target_include_directories(orblit_filament_native PRIVATE

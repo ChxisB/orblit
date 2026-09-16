@@ -80,6 +80,18 @@ internal object OrblitNative {
         paths: Array<String>,
     ): Int
 
+    /** orblit_renderer_apply_poses: after nativeApplyObjects, whole every time. */
+    external fun nativeApplyPoses(
+        handle: Long,
+        keys: LongArray,
+        ints: IntArray,
+        floats: FloatArray,
+        jointCounts: IntArray,
+        joints: IntArray,
+        jointTransforms: FloatArray,
+        at: Double,
+    ): Int
+
     external fun nativeSetBatching(handle: Long, enabled: Boolean): Int
 
     external fun nativeSetDepthPrepass(handle: Long, enabled: Boolean): Int

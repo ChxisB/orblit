@@ -152,6 +152,10 @@ uint32_t orblit_renderer_stride(orblit_stride which) {
       return uint32_t(orblit::kSpriteLayerParams);
     case ORBLIT_STRIDE_SPRITE:
       return uint32_t(orblit::kSpriteRecordFloats);
+    case ORBLIT_STRIDE_POSE_INTS:
+      return uint32_t(orblit::kPoseInts);
+    case ORBLIT_STRIDE_POSE:
+      return uint32_t(orblit::kPoseFloats);
   }
   return 0;
 }
@@ -359,6 +363,40 @@ int orblit_renderer_apply_objects(orblit_renderer *renderer, uint32_t count,
                       morph_counts,
                       morph_weights != nullptr ? morph_weights : kNoWeights,
                       named, count);
+  });
+}
+
+int orblit_renderer_apply_poses(orblit_renderer *renderer, uint32_t count,
+                               const int64_t *keys, const int32_t *ints,
+                               size_t int_count, const float *floats,
+                               size_t float_count,
+                               const int32_t *joint_counts,
+                               const int32_t *joints, size_t joint_ints,
+                               const float *joint_transforms,
+                               size_t joint_transform_floats, double at) {
+  if (renderer == nullptr) return ORBLIT_ERROR_NULL;
+  if (!present(count, {keys, joint_counts})) return ORBLIT_ERROR_NULL;
+  if (!holds(ints, int_count, count, orblit::kPoseInts) ||
+      !holds(floats, float_count, count, orblit::kPoseFloats)) {
+    return ORBLIT_ERROR_LENGTH;
+  }
+  // The joints are end to end, so what they need is the sum of the counts.
+  size_t set = 0;
+  for (uint32_t i = 0; i < count; i++) {
+    set += size_t(std::max(joint_counts[i], 0));
+  }
+  if (!holds(joints, joint_ints, set, 2) ||
+      !holds(joint_transforms, joint_transform_floats, set, kTransformFloats)) {
+    return ORBLIT_ERROR_LENGTH;
+  }
+  static const int32_t kNoJoints[2] = {0, 0};
+  static const float kNoTransforms[16] = {};
+  return guarded(renderer, [&](orblit::Renderer &core) {
+    core.applyPoses(keys, ints, floats, joint_counts,
+                    joints != nullptr ? joints : kNoJoints,
+                    joint_transforms != nullptr ? joint_transforms
+                                                : kNoTransforms,
+                    at, count);
   });
 }
 

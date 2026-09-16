@@ -56,6 +56,23 @@ NS_ASSUME_NONNULL_BEGIN
                paths:(NSArray<NSString *> *)paths
                count:(uint32_t)count;
 
+/// Whether anything is posed or wearing a variant, so a scene with no models
+/// out of files can skip `applyPoses` entirely.
+@property(nonatomic, readonly) BOOL hasPoses;
+
+/// What each model's own file does to it: which clip plays and where it is,
+/// which it fades from, which material variant it wears, and joints set by
+/// hand. After `applyObjects`, and whole every time; see
+/// orblit_renderer_apply_poses for the rows.
+- (void)applyPoses:(const int64_t *)keys
+              ints:(const int32_t *)ints
+            floats:(const float *)floats
+       jointCounts:(const int32_t *)jointCounts
+            joints:(const int32_t *)joints
+   jointTransforms:(const float *)jointTransforms
+                at:(double)at
+             count:(uint32_t)count;
+
 /// Whether identical objects are drawn as one instanced draw.
 ///
 /// Objects with the same mesh, the same material (and, for the placeholder
