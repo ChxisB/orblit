@@ -3,7 +3,7 @@ description: >-
   A scene document, staged for a renderer: entities and components become
   objects, lights, clouds and sprite layers, and a diff moves only what it
   touched.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

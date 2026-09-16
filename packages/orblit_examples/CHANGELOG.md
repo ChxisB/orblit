@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.27.0
+
+- **An Imported models example.** Khronos's glTF samples, a Mixamo FBX and an
+  OBJ with its material library, read as bytes and handed to the renderer, so
+  it works in a browser too. Each file's clips and material variants are
+  offered by the names the renderer reports back, a change of clip fades, and
+  a lamp's own lights shine at night. `tool/fetch_import_samples.sh` fetches
+  the files; `ORBLIT_MODEL`, `ORBLIT_CLIP`, `ORBLIT_VARIANT`, `ORBLIT_DAYLIGHT`
+  and `ORBLIT_SAMPLES` choose from a shell or a URL.
+- `Example.models`, what each model an example's scene named holds, filled by
+  the host from `OrblitView.onAssetInfo`.
+- In a browser an example's files are read with the browser's own fetch.
+
 ## 0.26.0
 
 - **A Scene files example, which reads a scene rather than building one.**
