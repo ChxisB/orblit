@@ -89,7 +89,7 @@ void main() {
     // A scene written before these dials existed must draw the same, so
     // every default here is Filament's own.
     final packed = OrblitPipeline().packed;
-    expect(packed, hasLength(28));
+    expect(packed, hasLength(30));
     expect(packed.sublist(18, 21), [0, 0, 0], reason: 'lambda places them');
     expect(packed[21], 1, reason: 'physical penumbra falloff');
     expect(packed[22], 0, reason: 'no anisotropy');
@@ -98,6 +98,7 @@ void main() {
     expect(packed[25], 1, reason: 'one sample');
     expect(packed[26], closeTo(0.3, 1e-6));
     expect(packed[27], 8);
+    expect(packed.sublist(28), [0, 0], reason: 'the device\'s own textures');
   });
 
   test(
@@ -148,6 +149,30 @@ void main() {
       ).packed[15],
       1,
     );
+  });
+
+  group('texture limits', () {
+    test('are the device\'s own unless given, which travels as nought', () {
+      final packed = OrblitPipeline().packed;
+      expect(packed[28], 0);
+      expect(packed[29], 0);
+    });
+
+    test('travel after the shadows when given', () {
+      final packed = OrblitPipeline(
+        textures: OrblitTextureLimits(maxSize: 1024, uploadKilobytes: 8192),
+      ).packed;
+      expect(packed[28], 1024);
+      expect(packed[29], 8192);
+    });
+
+    test('are held to what a float carries exactly', () {
+      final packed = OrblitPipeline(
+        textures: OrblitTextureLimits(maxSize: -5, uploadKilobytes: 1 << 30),
+      ).packed;
+      expect(packed[28], 0);
+      expect(packed[29], 1 << 24);
+    });
   });
 
   test('a scene carries a pipeline whether or not one was given', () {

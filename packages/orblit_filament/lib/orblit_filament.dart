@@ -59,6 +59,7 @@ export 'src/pipeline.dart'
         OrblitResolution,
         OrblitShadowKind,
         OrblitShadows,
+        OrblitTextureLimits,
         OrblitVarianceShadows;
 export 'src/population.dart' show OrblitFade, OrblitPopulation;
 export 'src/resources.dart' show OrblitResources;

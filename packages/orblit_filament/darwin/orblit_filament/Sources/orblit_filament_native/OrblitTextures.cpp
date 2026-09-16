@@ -381,7 +381,7 @@ TextureQueue::TextureQueue(filament::Engine &engine, uint32_t deviceLargest,
   };
   _familyUsable[size_t(ktx2::Family::astc)] = any({157, 158});
   _familyUsable[size_t(ktx2::Family::bc)] =
-      any({145, 146, 141, 139, 137, 138, 131});
+      any({145, 146, 141, 139});
   _familyUsable[size_t(ktx2::Family::etc2)] = any({151, 152, 147, 155, 153});
 
   // What Basis becomes, best first. ASTC is nearly what UASTC already is;
