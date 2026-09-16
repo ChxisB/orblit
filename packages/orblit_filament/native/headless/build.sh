@@ -56,6 +56,15 @@ for program in orblit_import orblit_import_check; do
   clang++ "$OUT/$program.o" "${import_objects[@]}" -o "$OUT/$program"
 done
 
+# The KTX 2 reader's checks, likewise before anything that needs Filament:
+# the reader is bytes in and bytes out, and needs only zstd.
+clang++ -std=c++17 -O2 -DORBLIT_PLATFORM_PORTABLE -Wall -Wextra \
+  -I "$SRC" -c "$SRC/OrblitKtx2.cpp" -o "$OUT/OrblitKtx2.o"
+clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
+  -c orblit_ktx2_check.cpp -o "$OUT/orblit_ktx2_check.o"
+clang++ "$OUT/orblit_ktx2_check.o" "$OUT/OrblitKtx2.o" \
+  "$SDK/lib/arm64/libzstd.a" -o "$OUT/orblit_ktx2_check"
+
 if [ ! -f "$GENERATED/lit_opaque_material.h" ]; then
   echo "native/headless/build.sh: no compiled materials at $GENERATED" >&2
   echo "  run darwin/setup.sh or set ORBLIT_GENERATED_SET to an existing set" >&2
@@ -68,7 +77,7 @@ objects=()
 for source in "$SRC"/*.cpp; do
   name="$(basename "$source" .cpp)"
   case "$name" in
-    OrblitImport|OrblitUfbx) objects+=("$OUT/$name.o"); continue ;;
+    OrblitImport|OrblitUfbx|OrblitKtx2) objects+=("$OUT/$name.o"); continue ;;
   esac
   clang++ -std=c++17 -O2 -DORBLIT_PLATFORM_PORTABLE \
     -Wall -Wno-deprecated-declarations -Wno-unused-private-field \
@@ -123,6 +132,14 @@ clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
 clang++ "$OUT/orblit_splats_check.o" "${objects[@]}" "${archives[@]}" \
   "${FRAMEWORKS[@]}" -o "$OUT/orblit_splats_check"
 
+# Textures through the GPU: the upload queue counted, and formats, siblings,
+# limits and arrival read back in pixels. See orblit_textures_check.cpp.
+clang++ -std=c++17 -O2 -Wall -Wextra -Wno-deprecated-declarations \
+  -I "$SDK/include" -I "$SRC" -I "$SRC/include" \
+  -c orblit_textures_check.cpp -o "$OUT/orblit_textures_check.o"
+clang++ "$OUT/orblit_textures_check.o" "${objects[@]}" "${archives[@]}" \
+  "${FRAMEWORKS[@]}" -o "$OUT/orblit_textures_check"
+
 # The cook step for splat captures: a .ply or .spz in, the .osplat a launch
 # reads without parsing out. See orblit_splat_cook.cpp.
 clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
@@ -131,6 +148,7 @@ clang++ "$OUT/orblit_splat_cook.o" "${objects[@]}" "${archives[@]}" \
   "${FRAMEWORKS[@]}" -o "$OUT/orblit_splat_cook"
 echo "built $OUT/orblit_renderer_test, $OUT/orblit_headless," \
      "$OUT/orblit_models_check, $OUT/orblit_splats_check," \
+     "$OUT/orblit_ktx2_check, $OUT/orblit_textures_check," \
      "$OUT/orblit_splat_cook," \
      "$OUT/orblit_import and $OUT/orblit_import_check"
 
@@ -139,7 +157,10 @@ if [ "${1:-}" = "test" ]; then
   # set; without it the check runs its in-memory cases and says it skipped
   # the rest.
   "$OUT/orblit_import_check"
+  # Real Basis files from ORBLIT_KTX2_SAMPLES when it is set.
+  "$OUT/orblit_ktx2_check"
   "$OUT/orblit_splats_check"
+  "$OUT/orblit_textures_check"
   "$OUT/orblit_renderer_test"
   # Khronos's samples and the converted ones, from ORBLIT_SAMPLES when it is
   # set (tool/fetch_import_samples.sh puts them in assets/samples); without it

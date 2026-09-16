@@ -418,16 +418,41 @@ bool TextureQueue::supports(const ktx2::Format &format) const {
          _supported.end();
 }
 
+const ktx2::Format *TextureQueue::sampledAs(const ktx2::Format &format,
+                                            int transfer, bool strict) const {
+  const ktx2::Format *twin =
+      transfer < 0 ? &format : ktx2::withTransfer(format, transfer == 1);
+  const ktx2::Format *order[2] = {twin, nullptr};
+  if (twin == nullptr || (!strict && twin != &format)) {
+    order[twin == nullptr ? 0 : 1] = &format;
+  }
+  for (const ktx2::Format *candidate : order) {
+    if (candidate == nullptr) continue;
+    if (supports(*candidate)) return candidate;
+    // BC1's two forms differ only in what index three of a three-colour
+    // block means — black, or transparent black — so where a device has only
+    // the form with alpha, it stands in.
+    if (candidate->vkFormat == 131 || candidate->vkFormat == 132) {
+      const ktx2::Format *withAlpha = ktx2::formatOf(candidate->vkFormat + 2);
+      if (withAlpha != nullptr && supports(*withAlpha)) return withAlpha;
+    }
+  }
+  return nullptr;
+}
+
 SharedBytes TextureQueue::readCooked(const std::string &path,
-                                     std::string *chosen) {
+                                     std::string *chosen, int transfer) {
   if (chosen != nullptr) *chosen = path;
   if (!ktx2::namesCookedSet(path)) return readResource(path);
 
   const uint64_t generation = resourceGeneration();
+  const std::string key = path + (transfer < 0    ? "|?"
+                                  : transfer == 0 ? "|l"
+                                                  : "|s");
   std::string remembered;
   {
     std::lock_guard<std::mutex> hold(_cookedLock);
-    const auto found = _cooked.find(path);
+    const auto found = _cooked.find(key);
     if (found != _cooked.end() && found->second.generation == generation) {
       remembered = found->second.name;
     }
@@ -441,7 +466,7 @@ SharedBytes TextureQueue::readCooked(const std::string &path,
 
   const auto remember = [&](const std::string &name) {
     std::lock_guard<std::mutex> hold(_cookedLock);
-    _cooked[path] = {generation, name};
+    _cooked[key] = {generation, name};
     if (chosen != nullptr) *chosen = name;
   };
 
@@ -466,9 +491,12 @@ SharedBytes TextureQueue::readCooked(const std::string &path,
           name.c_str(), lastPathComponent(path).c_str());
       continue;
     }
-    if (!supports(*header.format)) {
+    if (sampledAs(*header.format, transfer, true) == nullptr) {
+      const ktx2::Format *wanted =
+          transfer < 0 ? header.format
+                       : ktx2::withTransfer(*header.format, transfer == 1);
       log("[orblit] %s passed over: this device does not sample %s",
-          name.c_str(), header.format->name);
+          name.c_str(), (wanted != nullptr ? wanted : header.format)->name);
       continue;
     }
     remember(name);
@@ -525,11 +553,20 @@ Texture *TextureQueue::pushKtx2(const Request &request, const uint8_t *data,
   // format are the same bytes, so a map cooked one way is read the other at
   // no cost. Where the format has no twin, or the device lacks it, the file's
   // own is used.
-  const ktx2::Format *format = ktx2::withTransfer(*header.format, request.srgb);
-  if (format == nullptr || !supports(*format)) format = header.format;
-  if (!supports(*format)) {
-    why = orblit::format("This device cannot sample %s.", format->name);
+  const ktx2::Format *format =
+      sampledAs(*header.format, request.srgb ? 1 : 0, false);
+  if (format == nullptr) {
+    why = orblit::format("This device cannot sample %s.", header.format->name);
     return nullptr;
+  }
+  if (format->srgb != request.srgb &&
+      ktx2::withTransfer(*format, request.srgb) != nullptr) {
+    // Drawn, but not in the colour space it is used as. Said rather than
+    // refused: a texture a little too light or dark is easier to find than
+    // one that is missing.
+    log("[orblit] %s is sampled as %s: this device has no %s",
+        request.name.c_str(), format->name,
+        ktx2::withTransfer(*format, request.srgb)->name);
   }
   const GpuFormat *gpu = gpuFormatOf(format->vkFormat);
   if (gpu == nullptr) {
@@ -1154,18 +1191,17 @@ void TextureQueue::forget(const void *owner) {
                                     return item->owner == owner;
                                   }),
                    _waiting.end());
-    // Popped entries hold texture pointers that are about to be destroyed.
-    // Which entries belong to `owner` is not kept once complete, so the
-    // textures are matched instead.
+    // Arrived and not yet popped: those hold texture pointers that are about
+    // to be destroyed, and will never be popped either.
     for (auto &entry : _poppable) {
       auto &queue = entry.second;
       for (auto it = queue.begin(); it != queue.end();) {
-        const bool ours = std::any_of(
-            dropped.begin(), dropped.end(),
-            [&](const std::shared_ptr<Item> &item) {
-              return item->texture == it->texture;
-            });
-        it = ours ? queue.erase(it) : it + 1;
+        if (it->owner == owner) {
+          _counts[entry.first].popped++;
+          it = queue.erase(it);
+        } else {
+          ++it;
+        }
       }
     }
     _idle.wait(hold, [&] {
