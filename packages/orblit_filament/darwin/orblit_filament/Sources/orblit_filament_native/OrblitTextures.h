@@ -46,6 +46,14 @@ namespace ktxreader {
 class Ktx2Reader;
 }
 
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+namespace orblit {
+namespace web {
+struct DecodeAnswer;
+}
+}  // namespace orblit
+#endif
+
 namespace orblit {
 
 // ---- Defaults from the device ----
@@ -236,6 +244,16 @@ class TextureQueue {
   void decodeInline();
   void upload(Item &item, Unit &unit);
   void release(Item &item);
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  /// A browser's decoding: jobs handed to the decoder workers and their
+  /// answers taken back (native/web/orblit_decoder_workers.js). What they
+  /// will not take, decodeInline decodes.
+  void decodeOnWorkers();
+  void publishAnswer(Item &item, web::DecodeAnswer &answer);
+  void cancelJobs(const std::vector<std::shared_ptr<Item>> &items);
+  /// Items a worker is decoding. The engine's thread only.
+  std::vector<std::shared_ptr<Item>> _posted{};
+#endif
 
   filament::Engine &_engine;
   const uint32_t _deviceLargest;
@@ -275,6 +293,13 @@ class TextureQueue {
   /// cost it. The engine's thread only.
   uint64_t _inlineCount = 0;
   double _pushSeconds = 0;
+  /// Of the batch, what decoder workers decoded, what that took them, and
+  /// what handing it over and back cost the drawing thread.
+  uint64_t _offThreadCount = 0;
+  double _offThreadSeconds = 0;
+  double _longestOffThread = 0;
+  double _handoverSeconds = 0;
+  double _longestHandover = 0;
   double _inlineSeconds = 0;
   double _longestInline = 0;
 
