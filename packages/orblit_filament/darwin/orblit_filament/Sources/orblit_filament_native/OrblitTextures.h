@@ -112,6 +112,16 @@ class TextureQueue {
   /// the queue was made. Any thread.
   bool supports(const ktx2::Format &format) const;
 
+  /// What a file's blocks are sampled as: their twin in the transfer function
+  /// asked for (-1 unknown, 0 linear, 1 sRGB), else the file's own, else —
+  /// for BC1 without alpha, which Metal lacks — BC1 with it. Null when the
+  /// device samples none of those. `strict` refuses the file's own format
+  /// when its twin was wanted and is missing, which is how a sibling that
+  /// would draw in the wrong colour space is passed over for one that will
+  /// not. Any thread.
+  const ktx2::Format *sampledAs(const ktx2::Format &format, int transfer,
+                                bool strict) const;
+
   struct Request {
     /// The bytes, copied. Ignored when `shared` is set, which is kept
     /// instead.
@@ -184,9 +194,11 @@ class TextureQueue {
   /// For `x.ktx2`, the first of `x.astc.ktx2`, `x.bc.ktx2` and `x.etc2.ktx2`
   /// that exists and holds a format this device samples — its actual
   /// vkFormat, not its name — and otherwise `x.ktx2` itself. Anything else is
-  /// read as it is. Remembered per path until the resource generation moves.
+  /// read as it is. Remembered per path, transfer function and resource
+  /// generation. `transfer` is how it will be sampled, as sampledAs takes it.
   /// `chosen` is the name read. Any thread.
-  SharedBytes readCooked(const std::string &path, std::string *chosen);
+  SharedBytes readCooked(const std::string &path, std::string *chosen,
+                         int transfer = -1);
 
  private:
   struct Item;

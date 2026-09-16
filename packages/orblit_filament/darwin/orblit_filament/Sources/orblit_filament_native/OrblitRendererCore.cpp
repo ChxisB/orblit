@@ -2344,7 +2344,8 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
   // A cooked set is chosen from here: `x.ktx2` is the best sibling this
   // device samples, or itself.
   std::string chosen;
-  if (const orblit::SharedBytes data = _textureQueue->readCooked(path, &chosen)) {
+  if (const orblit::SharedBytes data =
+          _textureQueue->readCooked(path, &chosen, srgb ? 1 : 0)) {
     orblit::TextureQueue::Request request;
     request.shared = data;
     request.srgb = srgb;
@@ -7282,17 +7283,6 @@ Notes Renderer::notes() {
   for (const auto &entry : _assetNotes) {
     if (asked.count(entry.first) != 0) all[entry.first] = entry.second;
   }
-  // A texture's problem, while what named it is still named: its model among
-  // the objects, or its path among the materials' or the sprite layers'.
-  for (const auto &entry : _textureNotes) {
-    const auto by = _textureNotedFor.find(entry.first);
-    const std::string model = by != _textureNotedFor.end() ? by->second : "";
-    const bool named = model.empty()
-                           ? _materialTexturePaths.count(entry.first) != 0 ||
-                                 _spriteTexturePaths.count(entry.first) != 0
-                           : asked.count(model) != 0;
-    if (named) all[entry.first] = entry.second;
-  }
 
   // These are already about the scene as it stands rather than about a
   // file, so they are reported as they are. Later ones win a shared key, as
@@ -7303,6 +7293,19 @@ Notes Renderer::notes() {
   for (const auto &entry : _decalNotes) all[entry.first] = entry.second;
   for (const auto &entry : _splatNotes) all[entry.first] = entry.second;
   for (const auto &entry : _spriteNotes) all[entry.first] = entry.second;
+  // A texture's problem, while what named it is still named: its model among
+  // the objects, or its path among the materials' or the sprite layers'.
+  // After the sprites', whose note for an image that did not load only says
+  // that it did not; this says why.
+  for (const auto &entry : _textureNotes) {
+    const auto by = _textureNotedFor.find(entry.first);
+    const std::string model = by != _textureNotedFor.end() ? by->second : "";
+    const bool named = model.empty()
+                           ? _materialTexturePaths.count(entry.first) != 0 ||
+                                 _spriteTexturePaths.count(entry.first) != 0
+                           : asked.count(model) != 0;
+    if (named) all[entry.first] = entry.second;
+  }
   for (const auto &entry : _videoNotes) all[entry.first] = entry.second;
   for (const auto &entry : _surfaceNotes) all[entry.first] = entry.second;
   // Not problems, and not about the scene as a whole: what each model built
