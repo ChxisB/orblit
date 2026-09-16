@@ -112,6 +112,35 @@ void main() {
     });
   });
 
+  group('what the environment\'s four floats mean', () {
+    // The stride check above cannot see a float change meaning. The fourth
+    // was unused until pictures, and a renderer that went on ignoring it
+    // would filter every picture at the device's size whatever a scene asked.
+    final core = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitRendererCore.cpp',
+    );
+    final environment = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitEnvironment.cpp',
+    );
+
+    test('the fourth is the size a picture is filtered at, on both sides', () {
+      expect(
+        const OrblitEnvironment.fromImage('/a.hdr', size: 128).packed[3],
+        128,
+      );
+      expect(
+        core,
+        contains('params[3] == _environmentParams[3]'),
+        reason: 'a new size is a new environment, not a number moving',
+      );
+      expect(
+        environment,
+        contains('planFor(*this, _environmentParams[3])'),
+        reason: 'the plan a picture is filtered to reads it',
+      );
+    });
+  });
+
   group('what a device can do', () {
     final abi = _read(
       'darwin/orblit_filament/Sources/orblit_filament_native/include/orblit_renderer.h',
