@@ -9,6 +9,7 @@
 #include <filament/TransformManager.h>
 #include <filament/Viewport.h>
 #include <geometry/SurfaceOrientation.h>
+#include <gltfio/Animator.h>
 #include <gltfio/materials/uberarchive.h>
 #include <image/Ktx1Bundle.h>
 #include <ktxreader/Ktx1Reader.h>
@@ -24,6 +25,7 @@
 
 #include "OrblitBackend.h"
 #include "OrblitDecals.h"
+#include "OrblitImport.h"
 
 // M_PI is POSIX rather than C++, and MSVC only defines it when asked to.
 #ifndef M_PI
@@ -906,9 +908,14 @@ void Renderer::startAssetLoader() {
   _materialProvider = gltfio::createUbershaderProvider(
       _engine, UBERARCHIVE_DEFAULT_DATA, UBERARCHIVE_DEFAULT_SIZE);
 
+  // Names, so a model's joints, lights and cameras can be reported by what the
+  // file calls them. gltfio only keeps them when it is given somewhere to.
+  _names = new utils::NameComponentManager(utils::EntityManager::get());
+
   gltfio::AssetConfiguration assetConfig{};
   assetConfig.engine = _engine;
   assetConfig.materials = _materialProvider;
+  assetConfig.names = _names;
   _assetLoader = gltfio::AssetLoader::create(assetConfig);
 
   gltfio::ResourceConfiguration resourceConfig{};
@@ -1018,12 +1025,24 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
   // Taken before the read, so bytes provided while it is under way count as
   // arriving after it and are looked for again.
   const uint64_t generation = orblit::resourceGeneration();
-  const orblit::SharedBytes data = orblit::readResource(native);
+  orblit::SharedBytes data = orblit::readResource(native);
   if (!data) {
     entry.missingAt = generation;
     orblit::log("[orblit] mesh unreadable: %s", native.c_str());
     _assetNotes[native] = "The file could not be read.";
     return nullptr;
+  }
+
+  // An FBX or an OBJ is converted to a GLB first, and from here on is one.
+  // The path stays the original's, so the textures it names are looked for
+  // beside it.
+  std::string carried;
+  if (orblit::importsAsGlb(native)) {
+    data = convertedModel(native, data, carried);
+    if (!data) {
+      entry.missingAt = generation;
+      return nullptr;
+    }
   }
 
   const double parsedFrom = orblit::now();
@@ -1038,8 +1057,10 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
     _assetNotes[native] = "This is not a glTF file that Filament can read.";
     return nullptr;
   }
-  // Whatever an earlier attempt said about it is no longer true.
+  // Whatever an earlier attempt said about it is no longer true — except what
+  // converting it left behind, which is.
   _assetNotes.erase(native);
+  if (!carried.empty()) _assetNotes[native] = carried;
 
   const double providedFrom = orblit::now();
 
@@ -1189,6 +1210,14 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
                (_loadingFrom - providedFrom) * 1000);
   }
 
+  // What the file holds and how its nodes stand, taken before anything moves
+  // them — and after the load has begun, which is when gltfio makes the
+  // animator the clips are read from. Its lights are described before they
+  // are taken out.
+  readModel(entry, first);
+  describeModel(entry, first, native, data->data(), data->size());
+  dropFileLights(first);
+
   // Deliberately not calling releaseSourceData: more instances can only be
   // made while it is still there, and a second object using this mesh is the
   // ordinary case rather than the exception.
@@ -1208,6 +1237,7 @@ gltfio::FilamentInstance *Renderer::takeInstanceOf(Mesh *mesh) {
   // A refusal means no more instances are possible; the object falls back to
   // the placeholder rather than vanishing.
   if (extra == nullptr) return nullptr;
+  dropFileLights(extra);
   mesh->all.push_back(extra);
   return extra;
 }
@@ -1229,6 +1259,11 @@ void Renderer::recycle(Drawn &drawn) {
       dress(drawn, -1);
       drawn.ownMaterials.clear();
     }
+    // And back in the file's own pose and materials, for the same reason: the
+    // next object to take this copy out expects the model the file describes,
+    // not one stopped mid-stride in another object's variant.
+    restPose(drawn);
+    wearVariant(drawn, -1);
     drawn.surface = -2;
     _scene->removeEntities(drawn.instance->getEntities(),
                            drawn.instance->getEntityCount());
@@ -1252,6 +1287,8 @@ void Renderer::recycle(Drawn &drawn) {
 void Renderer::removeEverything() {
   for (auto &pair : _drawn) recycle(pair.second);
   _drawn.clear();
+  _posed.clear();
+  _varied.clear();
 
   // The groups, which wear pooled colour instances exactly as the objects
   // above do. They did not exist when this function was written and nothing
@@ -1348,8 +1385,25 @@ void Renderer::build(Drawn &drawn, const std::string &path) {
     Mesh *mesh = meshAtPath(path);
     if (mesh != nullptr) drawn.instance = takeInstanceOf(mesh);
     if (drawn.instance != nullptr) {
+      drawn.mesh = mesh;
       _scene->addEntities(drawn.instance->getEntities(),
                           drawn.instance->getEntityCount());
+      // A skin's bones as its nodes stand, rather than gltfio's starting
+      // identity. Identity draws the mesh as it was bound, which is not
+      // always the pose the file rests in — a character bound in a T and
+      // saved standing in an A draws in the T until something animates it —
+      // and it is also not what putting an animated copy back at rest gives,
+      // so the two would differ.
+      if (drawn.instance->getSkinCount() > 0) {
+        if (auto *animator = drawn.instance->getAnimator()) {
+          animator->updateBoneMatrices();
+        }
+      }
+      // Something new is made of this file, so the host hears what the file
+      // holds — once per object built rather than on every publish.
+      if (!mesh->info.empty()) {
+        _modelInfo[std::string(kModelInfoPrefix) + path] = mesh->info;
+      }
       return;
     }
     // Fell through: the file is missing or unreadable, so the object is drawn
@@ -4043,6 +4097,8 @@ void Renderer::applyObjects(const int64_t *keys, const float *transforms, const 
 
   const uint64_t generation = ++_objectGeneration;
   auto &transformManager = _engine->getTransformManager();
+  // Only what this publish builds is described; see build.
+  _modelInfo.clear();
 
   // Motion blur hook: a publish begins. Nothing is remembered unless a graph
   // blurs objects by their own motion.
@@ -4258,6 +4314,14 @@ void Renderer::applyObjects(const int64_t *keys, const float *transforms, const 
     const size_t shapes = size_t(std::max(morphCounts[i], 0));
     if (shapes > 0) {
       morph(drawn, morphWeights + morphAt, shapes);
+      // Kept for a frame of animation to lay back over whatever a clip does
+      // to the same shapes. Assigned, which reuses the storage it already has.
+      if (drawn.instance != nullptr) {
+        drawn.morphWeights.assign(morphWeights + morphAt,
+                                  morphWeights + morphAt + shapes);
+      }
+    } else if (!drawn.morphWeights.empty()) {
+      drawn.morphWeights.clear();
     }
     morphAt += shapes;
   }
@@ -6264,6 +6328,9 @@ void Renderer::placeCamera() {
     _fieldOfView = now.fieldOfView;
     _camera->lookAt(now.position, now.target, {0, 1, 0});
     projectWith(now.fieldOfView, now.orthographic, now.viewHeight);
+    // Paused, or held: the moment drawn is the moment stated, exactly.
+    _drawnHostSeconds = now.at;
+    _drawnHostSecondsKnown = true;
     return;
   }
 
@@ -6353,6 +6420,8 @@ void Renderer::placeCamera() {
   _carriedTarget *= keep;
 
   const float by = leadFrom(now.at);
+  _drawnHostSeconds = now.at + double(by);
+  _drawnHostSecondsKnown = true;
 
   if (_pacing) {
     _reachedCount++;
@@ -6632,6 +6701,9 @@ void Renderer::drawAtTime(double time) {
   }
 
   placeCamera();
+  // Straight after the camera, whose moment on the host's clock the clips are
+  // sampled at, and before anything that reads where objects are.
+  animate();
   // Motion blur hook: the camera this frame is drawn from, remembered
   // against the last frame's.
   if (_motionBlur) _motionBlur->frameBegan(*_camera);
@@ -6956,6 +7028,9 @@ void Renderer::dispose() {
   delete _resourceLoader;
   _resourceLoader = nullptr;
   gltfio::AssetLoader::destroy(&_assetLoader);
+  // After the loader, whose assets named their entities in it.
+  delete _names;
+  _names = nullptr;
   _materialProvider->destroyMaterials();
   delete _materialProvider;
   _materialProvider = nullptr;
@@ -7110,12 +7185,16 @@ Notes Renderer::notes() {
   // file, so they are reported as they are. Later ones win a shared key, as
   // addEntriesFromDictionary: had it.
   for (const auto &entry : _objectNotes) all[entry.first] = entry.second;
+  for (const auto &entry : _poseNotes) all[entry.first] = entry.second;
   for (const auto &entry : _lightNotes) all[entry.first] = entry.second;
   for (const auto &entry : _decalNotes) all[entry.first] = entry.second;
   for (const auto &entry : _splatNotes) all[entry.first] = entry.second;
   for (const auto &entry : _spriteNotes) all[entry.first] = entry.second;
   for (const auto &entry : _videoNotes) all[entry.first] = entry.second;
   for (const auto &entry : _surfaceNotes) all[entry.first] = entry.second;
+  // Not problems, and not about the scene as a whole: what each model built
+  // by the last publish holds, keyed so the Dart side can take them out.
+  for (const auto &entry : _modelInfo) all[entry.first] = entry.second;
   return all;
 }
 

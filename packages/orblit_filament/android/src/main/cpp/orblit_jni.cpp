@@ -329,6 +329,22 @@ Java_dev_orblit_filament_OrblitNative_nativeApplyObjects(JNIEnv *env, jclass, jl
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeApplyPoses(JNIEnv *env, jclass, jlong handleValue,
+        jlongArray keys, jintArray ints, jfloatArray floats, jintArray jointCounts,
+        jintArray joints, jfloatArray jointTransforms, jdouble at) {
+  auto *handle = fromHandle(handleValue);
+  if (handle == nullptr) return ORBLIT_ERROR_NULL;
+  Longs k(env, keys);
+  Ints in(env, ints);
+  Floats fl(env, floats);
+  Ints jc(env, jointCounts);
+  Ints jo(env, joints);
+  Floats jt(env, jointTransforms);
+  return orblit_renderer_apply_poses(handle->renderer, k.count(), k.ptr(), in.ptr(), in.count(),
+      fl.ptr(), fl.count(), jc.ptr(), jo.ptr(), jo.count(), jt.ptr(), jt.count(), double(at));
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_orblit_filament_OrblitNative_nativeSetBatching(JNIEnv *, jclass, jlong handleValue,
         jboolean enabled) {
   auto *handle = fromHandle(handleValue);

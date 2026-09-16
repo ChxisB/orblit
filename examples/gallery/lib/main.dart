@@ -46,6 +46,11 @@
 ///   ORBLIT_AA               off, fxaa or temporal, under the Outline example
 ///   ORBLIT_SPLAT            a .ply or .splat capture for the Gaussian splats
 ///                          example to show instead of its generated ring
+///   ORBLIT_MODEL            which Imported models sample: Fox, Shoe, Lamp...
+///   ORBLIT_CLIP             which of its clips plays, from 0
+///   ORBLIT_VARIANT          which of its material variants it wears, from 0
+///   ORBLIT_DAYLIGHT         0 to take the sun down, so a file's lights show
+///   ORBLIT_SAMPLES          where tool/fetch_import_samples.sh put them
 ///   ORBLIT_SPLAT_COUNT      how many splats the generated ring has
 ///   ORBLIT_SPLAT_SORT=0     draw them unsorted, to measure what the sort does
 ///   ORBLIT_SPLAT_PILLAR=0   take the solid pillar out of the ring
@@ -806,6 +811,16 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       }
     }
 
+    if (example is ImportedExample) {
+      final samples = _orblitEnv['ORBLIT_SAMPLES'];
+      if (samples != null && samples.isNotEmpty) example.directory = samples;
+      final model = _orblitEnv['ORBLIT_MODEL'];
+      if (model != null && model.isNotEmpty) example.model = model;
+      example.clip = _number('ORBLIT_CLIP')?.round();
+      example.variant = _number('ORBLIT_VARIANT')?.round();
+      if (_orblitEnv['ORBLIT_DAYLIGHT'] == '0') example.daylight = false;
+    }
+
     if (example is SplatsExample) {
       final capture = _orblitEnv['ORBLIT_SPLAT'];
       if (capture != null && capture.isNotEmpty) example.path = capture;
@@ -883,6 +898,9 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     onPanUpdate: (details) => setState(() => _look.orbit(details.delta)),
     child: OrblitView(
       onViewport: _learnDevice,
+      // What each model file holds, for the examples that offer its clips
+      // and looks by name.
+      onAssetInfo: (info) => setState(() => _example.models[info.path] = info),
       // The same moment the example was built at, so ORBLIT_SECONDS holds
       // the weather still as well as the scene.
       seconds: _held,

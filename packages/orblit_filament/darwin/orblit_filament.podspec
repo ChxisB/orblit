@@ -19,6 +19,10 @@ without a trip through the CPU.
   # into files that could be compiled anywhere, and a pattern that stopped at
   # .mm would leave CocoaPods linking a renderer with half of it missing.
   s.source_files     = "#{src}/**/*.{h,m,mm,cpp,swift}"
+  # ufbx.c is not a source of its own here — the pattern above does not match
+  # .c, which is right, because OrblitUfbx.cpp compiles it by #include — but
+  # it has to stay on disk for that include to find it.
+  s.preserve_paths   = "#{src}/orblit_filament_native/third_party/ufbx/ufbx.c"
   # The compiled material is an implementation detail and defines a symbol, so
   # it stays out of the umbrella header the module exposes.
   s.public_header_files = "#{src}/orblit_filament_native/include/*.h"

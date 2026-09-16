@@ -320,6 +320,31 @@ class OrblitSceneWeb {
       meshPaths.length,
     ]);
 
+    // 7b. Poses. They address the objects just applied by key, so they come
+    // straight after them — and every time, even with none, so an object
+    // that stops being posed goes back to rest. Absent from the message when
+    // nothing is posed, which reads as none.
+    final poseKeys = _keys('poseKeys');
+    final poseInts = _ints('poseInts');
+    final poseFloats = _floats('poseFloats');
+    final poseJoints = _ints('poseJoints');
+    final poseJointTransforms = _floats('poseJointTransforms');
+    call('orblit_renderer_apply_poses', [
+      renderer,
+      poseKeys.length,
+      heap.int64s(poseKeys),
+      heap.ints(poseInts),
+      poseInts.length,
+      heap.floats(poseFloats),
+      poseFloats.length,
+      heap.ints(_ints('poseJointCounts')),
+      heap.ints(poseJoints),
+      poseJoints.length,
+      heap.floats(poseJointTransforms),
+      poseJointTransforms.length,
+      _number('at', 0),
+    ]);
+
     // 8. Populations. Absent altogether when a scene has none.
     final populationKeys = _ints('populationKeys');
     if (populationKeys.isNotEmpty) {
