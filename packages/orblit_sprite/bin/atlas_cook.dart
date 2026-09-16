@@ -35,7 +35,9 @@ import 'src/png_codec.dart';
 /// belong to the asset pipeline as a whole.
 Future<void> main(List<String> arguments) async {
   if (arguments.isEmpty || arguments.first == '--help') {
-    stdout.writeln('Usage: dart run orblit_sprite:atlas_cook <folder> [options]');
+    stdout.writeln(
+      'Usage: dart run orblit_sprite:atlas_cook <folder> [options]',
+    );
     exit(arguments.isEmpty ? 2 : 0);
   }
 
@@ -89,7 +91,9 @@ Future<void> main(List<String> arguments) async {
         final name = next();
         heuristic = heuristicsByName[name];
         if (heuristic == null) {
-          stderr.writeln('Unknown heuristic "$name"; want one of ${heuristicsByName.keys.join(', ')}.');
+          stderr.writeln(
+            'Unknown heuristic "$name"; want one of ${heuristicsByName.keys.join(', ')}.',
+          );
           exit(2);
         }
       case '--no-rotate':
@@ -108,12 +112,13 @@ Future<void> main(List<String> arguments) async {
     }
   }
 
-  final files = input
-      .listSync()
-      .whereType<File>()
-      .where((f) => f.path.toLowerCase().endsWith('.png'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final files =
+      input
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.toLowerCase().endsWith('.png'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   if (files.isEmpty) {
     stderr.writeln('No .png files in ${input.path}.');
@@ -122,10 +127,20 @@ Future<void> main(List<String> arguments) async {
 
   final sprites = <AtlasSprite>[];
   for (final file in files) {
-    final name = file.uri.pathSegments.last.replaceAll(RegExp(r'\.png$', caseSensitive: false), '');
+    final name = file.uri.pathSegments.last.replaceAll(
+      RegExp(r'\.png$', caseSensitive: false),
+      '',
+    );
     try {
       final decoded = decodePng(file.readAsBytesSync());
-      sprites.add(AtlasSprite(name: name, width: decoded.width, height: decoded.height, pixels: decoded.pixels));
+      sprites.add(
+        AtlasSprite(
+          name: name,
+          width: decoded.width,
+          height: decoded.height,
+          pixels: decoded.pixels,
+        ),
+      );
     } on PngFormatException catch (error) {
       stderr.writeln('Skipped ${file.path}: $error');
     }
@@ -149,11 +164,14 @@ Future<void> main(List<String> arguments) async {
   final result = await packAtlasInBackground(sprites, options);
   stopwatch.stop();
 
-  final destination = Directory(outDir ?? input.path)..createSync(recursive: true);
+  final destination = Directory(outDir ?? input.path)
+    ..createSync(recursive: true);
   for (var i = 0; i < result.pages.length; i++) {
     final page = result.pages[i];
     final imageName = '$prefix$i.png';
-    File('${destination.path}/$imageName').writeAsBytesSync(encodePng(page.width, page.height, page.pixels));
+    File(
+      '${destination.path}/$imageName',
+    ).writeAsBytesSync(encodePng(page.width, page.height, page.pixels));
     File(
       '${destination.path}/$prefix$i.json',
     ).writeAsStringSync(writeAtlas(page.toAtlas(imageName)));
