@@ -341,6 +341,75 @@ void main() {
     });
   });
 
+  group('what a drawable is made of', () {
+    test('a shape says the geometry is this document\'s to edit', () {
+      final load = SceneDocument.decode(
+        oldScene(3, {
+          'objects': [
+            {'id': 'arch', 'kind': 'shape'},
+            {'id': 'model', 'kind': 'mesh', 'mesh': 'models/tree.glb'},
+          ],
+        }),
+      );
+
+      final arch =
+          load.document['arch']![SceneComponents.mesh]! as MeshComponent;
+      final model =
+          load.document['model']![SceneComponents.mesh]! as MeshComponent;
+      expect(arch.authored, isTrue);
+      expect(model.authored, isFalse);
+
+      // And it survives the file, which is the whole point of stating it:
+      // guessed from which fields are filled in, an untouched shape looks
+      // exactly like a referenced model that names nothing.
+      final again = SceneDocument.decode(load.document.encode()).document;
+      expect(
+        (again['arch']![SceneComponents.mesh]! as MeshComponent).authored,
+        isTrue,
+      );
+      expect(
+        (again['model']![SceneComponents.mesh]! as MeshComponent).authored,
+        isFalse,
+      );
+    });
+
+    test('a placed model says nothing, so it stays out of the diff', () {
+      expect(const MeshComponent().toJson().containsKey('authored'), isFalse);
+    });
+  });
+
+  group('one object on its own, for a clipboard or a prefab', () {
+    test('runs the same chain a file does', () {
+      final notes = <String>[];
+      final entity = SceneMigrations.entity(
+        {'id': 'sun', 'kind': 'light', 'lightType': 'sun', 'power': 1000.0},
+        version: 1,
+        notes: notes,
+      );
+
+      final light =
+          SceneEntity.fromJson(entity!)![SceneComponents.light]!
+              as LightComponent;
+      // Version two's conversion, applied to something that was never in a
+      // file — which is exactly what a prefab written that long ago is.
+      expect(light.power, closeTo(1000 / (4 * math.pi), 1e-9));
+      expect(notes, isNotEmpty);
+    });
+
+    test('a current one is handed back as it came', () {
+      final already = {
+        'id': 'crate',
+        'name': 'Crate',
+        'components': {'mesh': const MeshComponent().toJson()},
+      };
+      expect(SceneMigrations.entity(already, version: 4), same(already));
+    });
+
+    test('something with nothing usable in it comes back null', () {
+      expect(SceneMigrations.entity({'kind': 'mesh'}, version: 3), isNull);
+    });
+  });
+
   group('every version arrives at the same place', () {
     test('a version-one file runs the whole chain', () {
       final load = SceneDocument.decode(

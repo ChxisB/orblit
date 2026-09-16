@@ -68,6 +68,39 @@ abstract final class SceneMigrations {
     return current;
   }
 
+  /// One object from an older file, as an entity.
+  ///
+  /// For the things that are made of scene objects without being scenes: what
+  /// is on the clipboard, and what a prefab file holds. Both carry the format
+  /// version they were written at and both have to survive one changing, and
+  /// neither should grow its own half-copy of the conversion — the day those
+  /// two disagree with the file's is the day pasting an object loses a field
+  /// that saving it keeps.
+  ///
+  /// Runs the whole chain by wrapping the object in the scene it would be
+  /// alone in, so a version-one object gets version one's light conversion
+  /// exactly as a version-one file's would. Returns null when there is nothing
+  /// usable in it.
+  static Map<String, Object?>? entity(
+    Map<String, Object?> object, {
+    required int version,
+    List<String>? notes,
+  }) {
+    if (version >= 4) return object;
+    final migrated = run(
+      {
+        'formatVersion': version,
+        'objects': [object],
+      },
+      version,
+      notes ?? <String>[],
+    );
+    final entities = migrated['entities'];
+    if (entities is! List || entities.isEmpty) return null;
+    final first = entities.first;
+    return first is Map<String, Object?> ? first : null;
+  }
+
   /// Scenes written before objects carried transforms.
   ///
   /// The shape only existed briefly and it holds names but no positions, so it
@@ -358,6 +391,9 @@ class _ObjectsWithKinds extends SceneMigration {
         'sway': Values.number(json, 'sway', 0) > 0
             ? Values.number(json, 'sway', 0)
             : null,
+        // Version three had two drawable kinds, and the difference between
+        // them was whether the geometry was this document's to edit.
+        'authored': kind == 'shape' ? true : null,
       });
     }
 
