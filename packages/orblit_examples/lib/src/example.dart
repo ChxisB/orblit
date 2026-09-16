@@ -67,6 +67,13 @@ abstract class Example {
   /// reach one.
   OrblitDeviceProfile? device;
 
+  /// What each model file this example's scene named holds, by the path it
+  /// was named by, as the renderer has reported them so far.
+  ///
+  /// On the base class for the reason [note] is: the gallery owns the view the
+  /// reports arrive through. Empty until a model has been built.
+  final Map<String, OrblitAssetInfo> models = {};
+
   /// Anything drawn over the scene rather than in it.
   ///
   /// Null for the examples that are only about what the renderer does. Call
