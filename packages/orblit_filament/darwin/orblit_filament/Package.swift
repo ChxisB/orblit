@@ -63,6 +63,9 @@ let package = Package(
     .target(
       name: "orblit_filament_native",
       dependencies: ["Filament"],
+      // ufbx is compiled once, as C++, by OrblitUfbx.cpp including it. Left
+      // in, SwiftPM would also compile the .c on its own and link ufbx twice.
+      exclude: ["third_party/ufbx/ufbx.c"],
       cSettings: [
         .headerSearchPath("include"),
         .headerSearchPath("generated/\(generatedSet)")

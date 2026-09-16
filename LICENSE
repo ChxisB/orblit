@@ -36,3 +36,14 @@ Third-party software linked into builds of this engine:
   current Xcode cannot regenerate it. That is redistribution rather than
   linking, so a full copy of the Apache License 2.0 is included at
   LICENSES/Apache-2.0.txt, which is what section 4 of that licence asks for.
+
+  ufbx, by Samuli Raivio — MIT License, or public domain (the Unlicense), at
+  the user's choice.
+  https://github.com/ufbx/ufbx
+
+  The renderer compiles ufbx to read FBX and OBJ files, so an application
+  built with Orblit contains ufbx code. Its source is vendored, unmodified,
+  under packages/orblit_filament/darwin/orblit_filament/Sources/
+  orblit_filament_native/third_party/ufbx/, which is redistribution; the MIT
+  licence asks for its notice to travel with copies, and the licence file as
+  ufbx ships it is at LICENSES/ufbx.txt.
