@@ -83,6 +83,11 @@ add_library(${PLUGIN_NAME} SHARED
   "${ORBLIT_CORE_DIR}/OrblitSprites.cpp"
   "${ORBLIT_CORE_DIR}/OrblitMotionBlur.cpp"
   "${ORBLIT_CORE_DIR}/ScreenEffects.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitModels.cpp"
+  # FBX and OBJ to GLB, and ufbx compiled as C++ through one file (see
+  # OrblitUfbx.cpp for why a .cpp includes a .c).
+  "${ORBLIT_CORE_DIR}/OrblitImport.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitUfbx.cpp"
 )
 
 # Not apply_standard_settings(): that helper pins C++14 and turns on -Werror,

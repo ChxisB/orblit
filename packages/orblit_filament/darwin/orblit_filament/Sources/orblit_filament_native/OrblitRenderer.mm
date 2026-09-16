@@ -73,6 +73,22 @@ std::string OrblitString(NSString *string) {
                       morphCounts, morphWeights, OrblitStrings(paths), count);
 }
 
+- (BOOL)hasPoses {
+  return _core->hasPoses();
+}
+
+- (void)applyPoses:(const int64_t *)keys
+              ints:(const int32_t *)ints
+            floats:(const float *)floats
+       jointCounts:(const int32_t *)jointCounts
+            joints:(const int32_t *)joints
+   jointTransforms:(const float *)jointTransforms
+                at:(double)at
+             count:(uint32_t)count {
+  _core->applyPoses(keys, ints, floats, jointCounts, joints, jointTransforms,
+                    at, count);
+}
+
 - (void)setBatching:(BOOL)enabled {
   _core->setBatching(enabled);
 }

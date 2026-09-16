@@ -18,6 +18,8 @@ spike/spike_output.png
 # takes in place of the SDK's twenty archives.
 packages/orblit_filament/darwin/third_party/
 packages/orblit_filament/darwin/orblit_filament/third_party/
+# Swift Package Manager's cache, made by any build that resolves the package.
+packages/orblit_filament/darwin/orblit_filament/.build/
 packages/orblit_filament/darwin/orblit_filament/Sources/orblit_filament_native/generated/
 
 # Staged by packages/orblit_filament/linux/setup.sh and windows/setup.sh: the
@@ -50,6 +52,7 @@ packages/orblit_filament/windows/third_party/
 
 # Fetched by tool/fetch_bistro.sh: a CC BY 4.0 test scene, not ours to ship.
 assets/bistro/
+assets/samples/
 
 # Built by packages/orblit_filament/native/web/build.sh: object files, and the
 # Emscripten module it links, served straight out of host/ alongside the

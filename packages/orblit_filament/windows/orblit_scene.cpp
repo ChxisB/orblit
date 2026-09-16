@@ -267,6 +267,12 @@ std::unique_ptr<Scene> Scene::From(const flutter::EncodableValue* args) {
   scene->sprite_changed_ = ReadInts(map, "spriteChanged");
   scene->sprite_changed_counts_ = ReadInts(map, "spriteChangedCounts");
   scene->sprite_data_ = ReadFloats(map, "spriteData");
+  scene->pose_keys_ = ReadLongs(map, "poseKeys");
+  scene->pose_ints_ = ReadInts(map, "poseInts");
+  scene->pose_floats_ = ReadFloats(map, "poseFloats");
+  scene->pose_joint_counts_ = ReadInts(map, "poseJointCounts");
+  scene->pose_joints_ = ReadInts(map, "poseJoints");
+  scene->pose_joint_transforms_ = ReadFloats(map, "poseJointTransforms");
 
   return scene;
 }
@@ -312,6 +318,16 @@ void Scene::ApplyTo(orblit_renderer* renderer) const {
       object_materials_.data(), object_morph_counts_.data(),
       object_morph_weights_.ptr(), object_morph_weights_.count(), paths_.ptr(),
       paths_.count());
+
+  // Poses address the objects just applied by key, so they come straight
+  // after them -- and every time, even with none, so an object that stops
+  // being posed goes back to rest. The ABI checks every length against the
+  // count and the joint counts.
+  orblit_renderer_apply_poses(
+      renderer, pose_keys_.count32(), pose_keys_.ptr(), pose_ints_.ptr(),
+      pose_ints_.count(), pose_floats_.ptr(), pose_floats_.count(),
+      pose_joint_counts_.ptr(), pose_joints_.ptr(), pose_joints_.count(),
+      pose_joint_transforms_.ptr(), pose_joint_transforms_.count(), at_);
 
   if (population_keys_.count() > 0) {
     orblit_renderer_apply_populations(

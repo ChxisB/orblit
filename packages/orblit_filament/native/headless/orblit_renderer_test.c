@@ -349,14 +349,17 @@ static const uint8_t kCubeGlb[] = {
     0x00, 0x00, 0x00, 0xbf, 0x00, 0x00, 0x80, 0xbf, 0x00, 0x00, 0x00, 0x3f,
     0x00, 0x00, 0x80, 0xbf};
 
-/* Whether the renderer's notes say anything about a name containing `name`. */
+/* Whether the renderer's notes say anything about a name containing `name`.
+ * A description of a model that loaded is not a problem with it, so those —
+ * the notes under "orblit.model:" — are passed over. */
 static int noted(orblit_renderer *renderer, const char *name) {
   const uint32_t count = orblit_renderer_notes(renderer);
   for (uint32_t i = 0; i < count; i++) {
     const char *about = NULL;
     const char *saying = NULL;
     if (orblit_renderer_note(renderer, i, &about, &saying) == ORBLIT_OK &&
-        about != NULL && strstr(about, name) != NULL) {
+        about != NULL && strncmp(about, "orblit.model:", 13) != 0 &&
+        strstr(about, name) != NULL) {
       return 1;
     }
   }
