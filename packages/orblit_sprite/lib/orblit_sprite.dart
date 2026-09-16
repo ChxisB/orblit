@@ -12,6 +12,18 @@
 library;
 
 export 'src/animation.dart' show Flipbook, Frame, SpriteAnimation;
-export 'src/atlas.dart' show Atlas, Region;
+export 'src/atlas.dart' show Atlas, AtlasSet, Region;
+export 'src/atlas_pack.dart'
+    show
+        AtlasPackOptions,
+        AtlasPackPage,
+        AtlasPackProblem,
+        AtlasPackResult,
+        AtlasSprite,
+        MaxRectsHeuristic,
+        extractRegionPixels,
+        packAtlas,
+        writeAtlas;
+export 'src/atlas_pack_isolate.dart' show packAtlasInBackground;
 export 'src/parallax.dart' show Layer, Parallax, View2;
 export 'src/tiles.dart' show TileLayer, TileMap, Tileset;
