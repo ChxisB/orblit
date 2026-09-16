@@ -12,11 +12,15 @@
 //                                       lossless) or the top level alone
 //       [--max-size N]                  drop levels larger than N
 //       [--wrap]                        the texture tiles: filter across edges
-//       [--astc-direct]                 ASTC from its own encoder, not UASTC
+//       [--astc direct|transcoded]      ASTC from its own encoder, or from
+//                                       the UASTC blocks (default: direct
+//                                       from a PNG or JPEG, transcoded from
+//                                       a .ktx2; see AstcRoute)
 //       [--uastc L]                     UASTC effort, 0-4 (default 2)
 //       [--zstd L]                      zstd level, 1-22 (default 19)
 //       [--threads N]                   default: one per hardware thread
 //       [--quiet]
+//   orblit_texture_cook --version
 //
 // An output ending in / or naming a directory gets the input's name without
 // its extension: `Textures/Wall.ktx2 cooked/` writes cooked/Wall.ktx2,
@@ -143,7 +147,7 @@ int usage() {
                "usage: orblit_texture_cook <in.png|in.jpg|in.ktx2> <out-dir/|out-stem>\n"
                "  [--targets astc,bc,etc2,basis] [--normal] [--single-channel]\n"
                "  [--srgb|--linear] [--cutout T] [--lossless] [--mips|--no-mips]\n"
-               "  [--max-size N] [--wrap] [--astc-direct] [--uastc L] [--zstd L]\n"
+               "  [--max-size N] [--wrap] [--astc direct|transcoded] [--uastc L] [--zstd L]\n"
                "  [--threads N] [--quiet]\n");
   return 2;
 }
@@ -158,6 +162,12 @@ bool number(const char *text, long low, long high, long &value) {
 }  // namespace
 
 int main(int argc, char **argv) {
+  if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
+    // What a cook script stamps its outputs with: a new version means the
+    // same input and settings cook to different bytes.
+    std::printf("orblit_texture_cook %d\n", kCookVersion);
+    return 0;
+  }
   if (argc < 3) return usage();
   const std::string in = argv[1];
   const std::string out = argv[2];
@@ -199,8 +209,18 @@ int main(int argc, char **argv) {
       i++;
     } else if (name == "--wrap") {
       settings.edge = Edge::kWrap;
-    } else if (name == "--astc-direct") {
-      settings.directAstc = true;
+    } else if (name == "--astc" && hasValue) {
+      const std::string route = argv[++i];
+      if (route == "direct") {
+        settings.astc = AstcRoute::kDirect;
+      } else if (route == "transcoded") {
+        settings.astc = AstcRoute::kTranscoded;
+      } else if (route == "auto") {
+        settings.astc = AstcRoute::kAuto;
+      } else {
+        std::fprintf(stderr, "orblit_texture_cook: --astc takes direct, transcoded or auto\n");
+        return 2;
+      }
     } else if (name == "--uastc" && hasValue && number(argv[i + 1], 0, 4, value)) {
       settings.uastcLevel = int(value);
       i++;
@@ -283,9 +303,11 @@ int main(int argc, char **argv) {
     std::printf("\n");
   }
   for (const File &file : cooked.files) {
-    std::printf("  %-22s %-10s vkFormat %3u  %8.3f MB\n", baseName(stem + file.suffix).c_str(),
+    std::printf("  %-22s %-10s vkFormat %3u  %8.3f MB%s\n", baseName(stem + file.suffix).c_str(),
                 file.format.c_str(), file.vkFormat,
-                double(file.bytes.size()) / (1024.0 * 1024.0));
+                double(file.bytes.size()) / (1024.0 * 1024.0),
+                file.family == kFamilyAstc ? (r.directAstc ? "  (encoded directly)" : "  (transcoded)")
+                                           : "");
   }
   for (const std::string &stale : removed) {
     std::printf("  removed %s: a lossless texture has no siblings\n", stale.c_str());

@@ -20,7 +20,8 @@
 // is three encodes where there was one. What that costs in quality is
 // measured, not assumed: orblit_texture_cook_check --measure prints the PSNR
 // of every family at every level against the level it was encoded from, and
-// the same for Basis Universal's direct ASTC encoder (--astc-direct here).
+// the same for Basis Universal's direct ASTC encoder, which is what an ASTC
+// file from a PNG or JPEG comes from (see AstcRoute).
 
 #include "OrblitTextureCook.h"
 
@@ -34,6 +35,7 @@
 #include "stb_image.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -503,9 +505,15 @@ Planes toPlanes(const Image &image, const Plan &plan) {
 /// fraction of its texels pass the alpha test as passed at level 0.
 ///
 /// Castaño ("Computing alpha mipmaps", 2010) finds it by bisection; this
-/// finds it directly. The texels that should pass are the `keep` with the
-/// most alpha, so the scale puts the threshold between the keep-th largest
-/// alpha and the one after it.
+/// finds it directly. A texel passes when alpha * scale reaches the
+/// threshold, so choosing the scale is choosing a cut in the level's alpha
+/// values: everything at or above the cut passes. The `keep` texels with the
+/// most alpha are the ones that should, so the cut goes just below the
+/// keep-th largest alpha — or just above it, when that value is shared by a
+/// crowd of texels (the solid middle of every leaf is exactly 1.0) and
+/// leaving the whole crowd out lands nearer the target than letting it in.
+/// Either way the cut sits halfway to the neighbouring value, as far from
+/// both as it can be.
 double coverageScale(const std::vector<float> &alpha, double target,
                      uint32_t threshold8) {
   const size_t count = alpha.size();
@@ -521,25 +529,35 @@ double coverageScale(const std::vector<float> &alpha, double target,
     largest = std::max(largest, double(a));
   }
   if (largest <= 0.0) return 1.0;  // Nothing to scale.
-
-  // Everything passes that can: the faintest texel is lifted over the line.
-  const double all = smallestPositive > 0.0 ? threshold / smallestPositive * 1.0001 : 1.0;
+  // Every texel with any alpha at all passes; a zero never can.
+  const double everything = threshold / (smallestPositive * 0.5);
   if (keep == 0) return std::min(1.0, 0.5 * threshold / largest);
-  if (keep >= count) return all;
+  if (keep >= count) return everything;
 
   std::vector<float> sorted(alpha);
   std::nth_element(sorted.begin(), sorted.begin() + (keep - 1), sorted.end(),
                    std::greater<float>());
-  const double above = sorted[keep - 1];
-  std::nth_element(sorted.begin() + keep, sorted.begin() + keep, sorted.end(),
-                   std::greater<float>());
-  const double below = sorted[keep];
-  if (above <= 0.0) return all;
-  if (above == below) {
-    // A tie across the line: keep all of it rather than none.
-    return threshold / above * 1.0001;
+  const float value = sorted[keep - 1];
+  if (value <= 0.0f) return everything;
+
+  size_t above = 0, atOrAbove = 0;
+  float nextBelow = 0.0f;       // the largest alpha under `value`
+  float nextAbove = 2.0f;       // the smallest alpha over it
+  for (float a : alpha) {
+    if (a > value) {
+      above++;
+      nextAbove = std::min(nextAbove, a);
+    } else if (a < value) {
+      nextBelow = std::max(nextBelow, a);
+    }
+    if (a >= value) atOrAbove++;
   }
-  return threshold / ((above + below) * 0.5);
+  const size_t missIn = atOrAbove - keep;  // atOrAbove >= keep by construction
+  const size_t missOut = keep - above;
+  if (missIn <= missOut) {
+    return threshold / ((double(value) + double(nextBelow)) * 0.5);
+  }
+  return threshold / ((double(value) + double(nextAbove)) * 0.5);
 }
 
 uint8_t scaledAlpha(float alpha, double scale) {
@@ -770,36 +788,57 @@ struct KeyValue {
   std::string value;  // written with its terminating NUL
 };
 
-/// A KTX 2.0 file: header, level index, descriptor, key/value data, then the
-/// levels smallest first, each compressed with zstd on its own.
-bool writeKtx2(uint32_t vkFormat, const std::vector<uint8_t> &dfd, uint32_t width,
-               uint32_t height, const std::vector<std::vector<uint8_t>> &levels,
-               std::vector<KeyValue> keyValues, int zstdLevel, uint32_t threads,
-               std::vector<uint8_t> &out, std::string &why) {
-  const uint32_t count = uint32_t(levels.size());
-  std::vector<std::vector<uint8_t>> compressed(count);
+/// Compresses blobs with zstd, each on its own, all at once: a work queue
+/// the threads take from, largest first so the long jobs start together.
+/// Each output depends only on its own input, so the order they finish in
+/// changes nothing.
+bool compressAll(const std::vector<const std::vector<uint8_t> *> &inputs, int zstdLevel,
+                 uint32_t threads, std::vector<std::vector<uint8_t>> &outputs,
+                 std::string &why) {
+  const uint32_t count = uint32_t(inputs.size());
+  outputs.assign(count, {});
+  std::vector<uint32_t> order(count);
+  for (uint32_t i = 0; i < count; i++) order[i] = i;
+  std::stable_sort(order.begin(), order.end(), [&](uint32_t a, uint32_t b) {
+    return inputs[a]->size() > inputs[b]->size();
+  });
   std::vector<std::string> errors(count);
-  parallel(count, threads, [&](uint32_t begin, uint32_t end) {
-    for (uint32_t i = begin; i < end; i++) {
-      const std::vector<uint8_t> &level = levels[i];
-      std::vector<uint8_t> packed(ZSTD_compressBound(level.size()));
-      const size_t size = ZSTD_compress(packed.data(), packed.size(), level.data(),
-                                        level.size(), zstdLevel);
+  std::atomic<uint32_t> next(0);
+  const auto work = [&] {
+    for (uint32_t taken = next++; taken < count; taken = next++) {
+      const uint32_t i = order[taken];
+      const std::vector<uint8_t> &input = *inputs[i];
+      std::vector<uint8_t> packed(ZSTD_compressBound(input.size()));
+      const size_t size =
+          ZSTD_compress(packed.data(), packed.size(), input.data(), input.size(), zstdLevel);
       if (ZSTD_isError(size)) {
         errors[i] = ZSTD_getErrorName(size);
         continue;
       }
       packed.resize(size);
-      compressed[i] = std::move(packed);
+      outputs[i] = std::move(packed);
     }
-  });
+  };
+  std::vector<std::thread> pool;
+  for (uint32_t t = 1; t < std::min(threads, count); t++) pool.emplace_back(work);
+  work();
+  for (std::thread &thread : pool) thread.join();
   for (const std::string &error : errors) {
     if (!error.empty()) {
       why = "zstd could not compress a level: " + error;
       return false;
     }
   }
+  return true;
+}
 
+/// A KTX 2.0 file: header, level index, descriptor, key/value data, then the
+/// levels smallest first, each already compressed with zstd on its own.
+void writeKtx2(uint32_t vkFormat, const std::vector<uint8_t> &dfd, uint32_t width,
+               uint32_t height, const std::vector<std::vector<uint8_t>> &levels,
+               const std::vector<std::vector<uint8_t>> &compressed,
+               std::vector<KeyValue> keyValues, std::vector<uint8_t> &out) {
+  const uint32_t count = uint32_t(levels.size());
   std::sort(keyValues.begin(), keyValues.end(),
             [](const KeyValue &a, const KeyValue &b) { return a.key < b.key; });
   std::vector<uint8_t> kvd;
@@ -847,7 +886,6 @@ bool writeKtx2(uint32_t vkFormat, const std::vector<uint8_t> &dfd, uint32_t widt
     set64(out, at + 16, levels[i].size());
     out.insert(out.end(), compressed[i].begin(), compressed[i].end());
   }
-  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -969,8 +1007,6 @@ bool encodeAstcDirect(const Image &image, bool srgb, uint32_t threads,
   }
   return true;
 }
-
-std::vector<uint8_t> rawLevel(const Image &image) { return image.rgba; }
 
 const char *contentName(Content content) {
   switch (content) {
@@ -1217,7 +1253,7 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
     std::snprintf(text, sizeof(text), " --cutout %.4f", double(plan.cutout));
     parameters += text;
   }
-  std::string directParameters = parameters + " --astc-direct";
+  std::string directParameters = parameters + " --astc direct";
   const std::string writer = "Orblit texture cook " + std::to_string(kCookVersion) +
                              " (Basis Universal 2.1.0r, zstd " + ZSTD_versionString() + ")";
   const auto keyValues = [&](const std::string &scParameters) {
@@ -1226,91 +1262,101 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
                                  {"KTXwriterScParams", scParameters}};
   };
 
-  const auto addFile = [&](Family family, Encoding encoding,
-                           const std::vector<std::vector<uint8_t>> &data,
-                           uint32_t uastcChannel, const std::string &scParameters) {
-    const Format &format = formatOf(encoding);
-    File file;
-    file.family = family;
-    file.suffix = suffixOf(family);
-    file.format = format.name;
-    file.vkFormat = srgb && format.vkFormatSrgb != 0 ? format.vkFormatSrgb
-                                                     : format.vkFormatLinear;
-    const bool fileSrgb = srgb && (format.vkFormatSrgb != 0 || encoding == Encoding::kUastc);
-    const std::vector<uint8_t> dfd = descriptorFor(format, fileSrgb, uastcChannel);
-    std::string error;
-    if (!writeKtx2(file.vkFormat, dfd, report.width, report.height, data,
-                   keyValues(scParameters), settings.zstdLevel, threads, file.bytes,
-                   error)) {
-      return error;
-    }
-    cooked.files.push_back(std::move(file));
-    return std::string();
+  // Every file's levels, encoded; then all of them compressed together;
+  // then each file assembled.
+  struct Pending {
+    Family family;
+    Encoding encoding;
+    std::vector<std::vector<uint8_t>> levels;
+    std::string scParameters;
   };
-
-  if (lossless) {
-    from = Clock::now();
-    std::vector<std::vector<uint8_t>> data;
-    for (const Image &level : levels) data.push_back(rawLevel(level));
-    const std::string error = addFile(kFamilyBasis, Encoding::kRgba8, data, 0, parameters);
-    report.compressSeconds = secondsSince(from);
-    if (!error.empty()) return refuse(cooked, error);
-    return cooked;
-  }
-
-  const uint32_t families = settings.families;
-  const bool needUastc = (families & (kFamilyBasis | kFamilyBc | kFamilyEtc2)) != 0 ||
-                         ((families & kFamilyAstc) != 0 && !settings.directAstc);
-  std::vector<std::vector<basist::uastc_block>> uastc;
-  if (needUastc) {
-    from = Clock::now();
-    for (const Image &level : levels) {
-      uastc.push_back(encodeUastc(level, settings.uastcLevel, threads));
-    }
-    report.uastcSeconds = secondsSince(from);
-  }
-
+  std::vector<Pending> pending;
   uint32_t uastcChannel = hasAlpha ? kUastcRgba : kUastcRgb;
   if (content == Content::kSingleChannel) uastcChannel = kUastcRrr;
 
-  struct Job {
-    Family family;
-    Encoding encoding;
-  };
-  std::vector<Job> jobs;
-  if (families & kFamilyAstc) jobs.push_back({kFamilyAstc, Encoding::kAstc4x4});
-  if (families & kFamilyBc) {
-    jobs.push_back({kFamilyBc, content == Content::kNormal          ? Encoding::kBc5
-                               : content == Content::kSingleChannel ? Encoding::kBc4
-                                                                    : Encoding::kBc7});
-  }
-  if (families & kFamilyEtc2) {
-    jobs.push_back({kFamilyEtc2, content == Content::kNormal          ? Encoding::kEacRg11
-                                 : content == Content::kSingleChannel ? Encoding::kEacR11
-                                 : hasAlpha                           ? Encoding::kEtc2Rgba
-                                                                      : Encoding::kEtc2Rgb});
-  }
-  if (families & kFamilyBasis) jobs.push_back({kFamilyBasis, Encoding::kUastc});
-
-  for (const Job &job : jobs) {
-    from = Clock::now();
-    std::vector<std::vector<uint8_t>> data(levels.size());
-    const bool direct = job.encoding == Encoding::kAstc4x4 && settings.directAstc;
-    for (size_t i = 0; i < levels.size(); i++) {
-      const bool ok = direct ? encodeAstcDirect(levels[i], srgb, threads, data[i])
-                             : transcodeLevel(uastc[i], job.encoding, threads, data[i]);
-      if (!ok) {
-        return refuse(cooked, std::string("could not encode level ") + std::to_string(i) +
-                                  " as " + formatOf(job.encoding).name);
+  if (lossless) {
+    Pending file{kFamilyBasis, Encoding::kRgba8, {}, parameters};
+    for (const Image &level : levels) file.levels.push_back(level.rgba);
+    pending.push_back(std::move(file));
+  } else {
+    const uint32_t families = settings.families;
+    const bool directAstc =
+        settings.astc == AstcRoute::kDirect ||
+        (settings.astc == AstcRoute::kAuto && source.container != "ktx2");
+    report.directAstc = directAstc && (families & kFamilyAstc) != 0;
+    const bool needUastc = (families & (kFamilyBasis | kFamilyBc | kFamilyEtc2)) != 0 ||
+                           ((families & kFamilyAstc) != 0 && !directAstc);
+    std::vector<std::vector<basist::uastc_block>> uastc;
+    if (needUastc) {
+      from = Clock::now();
+      for (const Image &level : levels) {
+        uastc.push_back(encodeUastc(level, settings.uastcLevel, threads));
       }
+      report.uastcSeconds = secondsSince(from);
     }
-    report.familySeconds += secondsSince(from);
+
+    std::vector<std::pair<Family, Encoding>> jobs;
+    if (families & kFamilyAstc) jobs.push_back({kFamilyAstc, Encoding::kAstc4x4});
+    if (families & kFamilyBc) {
+      jobs.push_back({kFamilyBc, content == Content::kNormal          ? Encoding::kBc5
+                                 : content == Content::kSingleChannel ? Encoding::kBc4
+                                                                      : Encoding::kBc7});
+    }
+    if (families & kFamilyEtc2) {
+      jobs.push_back({kFamilyEtc2, content == Content::kNormal          ? Encoding::kEacRg11
+                                   : content == Content::kSingleChannel ? Encoding::kEacR11
+                                   : hasAlpha                           ? Encoding::kEtc2Rgba
+                                                                        : Encoding::kEtc2Rgb});
+    }
+    if (families & kFamilyBasis) jobs.push_back({kFamilyBasis, Encoding::kUastc});
+
     from = Clock::now();
-    const std::string error = addFile(job.family, job.encoding, data, uastcChannel,
-                                      direct ? directParameters : parameters);
-    report.compressSeconds += secondsSince(from);
-    if (!error.empty()) return refuse(cooked, error);
+    for (const auto &job : jobs) {
+      const bool direct = job.second == Encoding::kAstc4x4 && directAstc;
+      Pending file{job.first, job.second, std::vector<std::vector<uint8_t>>(levels.size()),
+                   direct ? directParameters : parameters};
+      for (size_t i = 0; i < levels.size(); i++) {
+        const bool ok = direct ? encodeAstcDirect(levels[i], srgb, threads, file.levels[i])
+                               : transcodeLevel(uastc[i], job.second, threads, file.levels[i]);
+        if (!ok) {
+          return refuse(cooked, std::string("could not encode level ") + std::to_string(i) +
+                                    " as " + formatOf(job.second).name);
+        }
+      }
+      pending.push_back(std::move(file));
+    }
+    report.familySeconds = secondsSince(from);
   }
+
+  from = Clock::now();
+  std::vector<const std::vector<uint8_t> *> blobs;
+  for (const Pending &file : pending) {
+    for (const std::vector<uint8_t> &level : file.levels) blobs.push_back(&level);
+  }
+  std::vector<std::vector<uint8_t>> compressed;
+  if (!compressAll(blobs, settings.zstdLevel, threads, compressed, why)) {
+    return refuse(cooked, why);
+  }
+  size_t taken = 0;
+  for (Pending &file : pending) {
+    const Format &format = formatOf(file.encoding);
+    File out;
+    out.family = file.family;
+    out.suffix = suffixOf(file.family);
+    out.format = format.name;
+    out.vkFormat = srgb && format.vkFormatSrgb != 0 ? format.vkFormatSrgb
+                                                    : format.vkFormatLinear;
+    const bool fileSrgb =
+        srgb && (format.vkFormatSrgb != 0 || file.encoding == Encoding::kUastc);
+    const std::vector<std::vector<uint8_t>> levelBlobs(
+        std::make_move_iterator(compressed.begin() + std::ptrdiff_t(taken)),
+        std::make_move_iterator(compressed.begin() + std::ptrdiff_t(taken + file.levels.size())));
+    taken += file.levels.size();
+    writeKtx2(out.vkFormat, descriptorFor(format, fileSrgb, uastcChannel), report.width,
+              report.height, file.levels, levelBlobs, keyValues(file.scParameters), out.bytes);
+    cooked.files.push_back(std::move(out));
+  }
+  report.compressSeconds = secondsSince(from);
   return cooked;
 }
 
