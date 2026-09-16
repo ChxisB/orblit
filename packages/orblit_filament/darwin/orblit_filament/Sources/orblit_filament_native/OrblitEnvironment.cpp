@@ -832,6 +832,11 @@ void Renderer::releaseEnvironmentCache() {
   if (_engine == nullptr) return;
   releaseEnvironment();
   for (const auto &work : _environmentWork) {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    // A picture still with a decoder worker: its answer is not wanted.
+    web::decoders::cancel(work->job);
+    work->job = 0;
+#endif
     if (work->source != nullptr) _engine->destroy(work->source);
     if (work->sky != nullptr) _engine->destroy(work->sky);
     work->source = work->sky = nullptr;
