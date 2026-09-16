@@ -79,7 +79,17 @@ constexpr uint32_t kTierTextureSides[3] = {1024, 2048, 4096};
 
 /// OrblitDeviceProfile.textureUploadKilobytes, by tier: how much texture data
 /// a frame hands the GPU at most, beyond the one level every frame gets.
-constexpr uint32_t kTierUploadKilobytes[3] = {4096, 16384, 32768};
+///
+/// Measured on an M4 Pro through Filament's Metal backend, four hundred 2048²
+/// BC7 textures with their mipmaps arriving at once, each frame's uploads
+/// waited for (orblit_textures_check bench), on a machine busy with other
+/// builds: 32 MB a frame made 26 to 31 ms frames; 16 MB, a 99th percentile of
+/// 4.4 ms on one run and 19.9 ms on the next; 8 MB, 4.8 and 2.9 ms, arriving
+/// in 5.8 s; 2 MB, 2.5 to 3.5 ms and 14.4 s. The high tier takes 8 MB, the
+/// most that held on every run. Phones and browsers are not measured: medium
+/// and low take a half and a quarter of it, and are the first numbers to move
+/// once they are.
+constexpr uint32_t kTierUploadKilobytes[3] = {2048, 4096, 8192};
 
 /// The tier of a device from what its renderer measured. An answer below
 /// nought is one the device would not give, read as Dart reads it.
@@ -283,9 +293,12 @@ class QueuedTextureProvider final : public filament::gltfio::TextureProvider {
   /// What the textures pushed from now on belong to.
   void setOwner(const void *owner) { _owner = owner; }
 
-  /// The file a model's bytes came from, so a note can name it. Only for as
-  /// long as the bytes are being handed over; see forgetNames.
-  void nameBytes(const uint8_t *data, const std::string &name);
+  /// The file a model's bytes came from, so a note can name it, and the
+  /// shared bytes themselves when they are shared, so a push keeps them
+  /// rather than copying them. Only for as long as the bytes are being handed
+  /// over; see forgetNames.
+  void nameBytes(const uint8_t *data, const std::string &name,
+                 SharedBytes shared = {});
   void forgetNames() { _names.clear(); }
 
   /// A problem with one of a model's textures.
@@ -315,7 +328,8 @@ class QueuedTextureProvider final : public filament::gltfio::TextureProvider {
  private:
   TextureQueue &_queue;
   const void *_owner = nullptr;
-  std::unordered_map<const uint8_t *, std::string> _names{};
+  std::unordered_map<const uint8_t *, std::pair<std::string, SharedBytes>>
+      _names{};
   std::string _pushMessage{};
   std::string _popMessage{};
   std::vector<Note> _notes{};

@@ -178,12 +178,16 @@ class OrblitDeviceProfile {
   /// How much texture data a frame hands the GPU at most, in kilobytes —
   /// [OrblitTextureLimits.uploadKilobytes] when an application does not say.
   ///
-  /// Measured on an M4 Pro's Metal: see OrblitTextures.h, whose tiers these
-  /// are the same numbers as.
+  /// The high tier's is measured, on an M4 Pro through Metal: eight
+  /// megabytes a frame kept the 99th-percentile frame under 5 ms of uploading
+  /// while four hundred 2048² textures arrived, where thirty-two made 31 ms
+  /// frames. Medium and low are a half and a quarter of it, not yet measured
+  /// on the phones and browsers they are for. The same numbers as
+  /// OrblitTextures.h, which says more.
   int get textureUploadKilobytes => switch (tier) {
-    OrblitDeviceTier.low => 4096,
-    OrblitDeviceTier.medium => 16384,
-    OrblitDeviceTier.high => 32768,
+    OrblitDeviceTier.low => 2048,
+    OrblitDeviceTier.medium => 4096,
+    OrblitDeviceTier.high => 8192,
   };
 
   /// The names to fetch for a cooked texture, best first, for a host that

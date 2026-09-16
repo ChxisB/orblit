@@ -1210,7 +1210,7 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
       // Named, so a texture that will not load is reported by its file.
       _modelTextures->nameBytes(
           one.shared ? one.shared->data() : static_cast<uint8_t *>(one.bytes),
-          one.path);
+          one.path, one.shared);
       if (one.shared) {
         // Shared, not copied: the store keeps its bytes and Filament holds a
         // reference to them until it has finished with them.
