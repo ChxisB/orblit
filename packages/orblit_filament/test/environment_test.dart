@@ -145,6 +145,37 @@ void main() {
       expect(turned.packed[1], 1.5);
     });
 
+    test('a picture names itself as both the light and the backdrop', () {
+      // One .hdr is both halves: the renderer filters the reflections and
+      // converts the backdrop out of the same decode.
+      const picture = OrblitEnvironment.fromImage('/env/kitchen.hdr');
+      expect(picture.radiance, '/env/kitchen.hdr');
+      expect(picture.skybox, '/env/kitchen.hdr');
+      expect(picture.isSet, isTrue);
+      expect(picture.intensity, 30000, reason: 'the default constructor\'s');
+      expect(picture.showSkybox, isTrue);
+      expect(picture.size, 0, reason: 'the device chooses');
+    });
+
+    test('the size a picture is filtered at crosses as the fourth float', () {
+      // The fourth float was unused before pictures; nought is still what a
+      // baked environment sends, and means the device's own choice.
+      expect(const OrblitEnvironment(radiance: '/a.ktx').packed[3], 0);
+      const small = OrblitEnvironment.fromImage('/a.exr', size: 128);
+      expect(small.packed, hasLength(OrblitEnvironment.stride));
+      expect(small.packed[3], 128);
+    });
+
+    test('turning or dimming a picture keeps its size', () {
+      // copyWith is what a volume uses to blend intensity and rotation, and
+      // a size lost there is the picture filtered again at another size.
+      const picture = OrblitEnvironment.fromImage('/a.hdr', size: 64);
+      final turned = picture.copyWith(rotation: 1, intensity: 5000);
+      expect(turned.size, 64);
+      expect(turned.radiance, '/a.hdr');
+      expect(picture.copyWith(size: 32).size, 32);
+    });
+
     test('the backdrop can be sampled without being drawn', () {
       const hidden = OrblitEnvironment(
         radiance: '/a.ktx',
