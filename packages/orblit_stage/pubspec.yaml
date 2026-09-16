@@ -18,6 +18,8 @@ dependencies:
     path: ../orblit_filament
   orblit_light:
     path: ../orblit_light
+  orblit_rig:
+    path: ../orblit_rig
   orblit_scene:
     path: ../orblit_scene
   orblit_weather:
