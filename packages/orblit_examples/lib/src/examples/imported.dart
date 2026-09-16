@@ -2,11 +2,11 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show NetworkAssetBundle;
 import 'package:orblit_filament/orblit_filament.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 
 import '../example.dart';
+import '../platform/fetch.dart';
 import '../platform/io.dart';
 import 'surface.dart' show linearOf;
 
@@ -188,15 +188,7 @@ class ImportedExample extends Example {
   }
 
   static Future<Uint8List?> _read(String file) async {
-    if (kIsWeb) {
-      try {
-        final data = await NetworkAssetBundle(Uri.base)
-            .load(Uri(path: 'samples/$file').toString());
-        return data.buffer.asUint8List();
-      } on Object {
-        return null;
-      }
-    }
+    if (kIsWeb) return fetchBytes(Uri(path: 'samples/$file').toString());
     final found = File('$directory/$file');
     if (!found.existsSync()) return null;
     return found.readAsBytes();

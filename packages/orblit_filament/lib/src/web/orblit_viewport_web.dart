@@ -22,6 +22,7 @@ import 'dart:typed_data';
 import 'package:web/web.dart' as web;
 
 import '../device_profile.dart';
+import '../models.dart' show OrblitAssetInfo;
 import 'orblit_module.dart';
 import 'orblit_scene_web.dart';
 
@@ -266,6 +267,10 @@ class OrblitWebViewport {
     // console, including the refusals above.
     if (!_sameNotes(was, _notes)) {
       for (final note in _notes.entries) {
+        // A description of a model is not a refusal, and a skinned
+        // character's is kilobytes of joint names; it reaches the host through
+        // OrblitView.onAssetInfo, not the console.
+        if (note.key.startsWith(OrblitAssetInfo.notePrefix)) continue;
         // The same mechanism every other host reads a refusal through, said
         // where a browser capture records it beside the frame.
         web.console.warn('[orblit] [${note.key}] ${note.value}'.toJS);
