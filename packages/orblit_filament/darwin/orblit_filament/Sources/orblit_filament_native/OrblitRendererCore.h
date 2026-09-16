@@ -71,6 +71,7 @@
 #include "OrblitSprites.h"
 #include "OrblitSurface.h"
 #include "OrblitResources.h"
+#include "OrblitTextures.h"
 #include "orblit_renderer.h"
 // Hook (screen effects): god rays and distortion live in plain C++, beside
 // this file, so the port to the renderer's C++ class carries them unchanged.
@@ -1281,6 +1282,8 @@ class Renderer {
   void bindFieldTo(MaterialInstance *instance);
   Texture *textureAtPath(const std::string &path, bool srgb);
   void pollTextures();
+  void pumpTextures();
+  void applyTextureLimits();
   TextureSampler samplerFor(int32_t flags);
   void write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video);
   void applyRasterState(Surfaced &surface, float threshold, float bias);
@@ -1478,16 +1481,33 @@ class Renderer {
   gltfio::AssetLoader *_assetLoader{};
   gltfio::ResourceLoader *_resourceLoader{};
   gltfio::MaterialProvider *_materialProvider{};
-  gltfio::TextureProvider *_stbTextures{};
 
-  /// A second decoder, for the images materials name directly.
+  /// Every texture on its way to the GPU — a material's, a sprite layer's,
+  /// a model's — decoded off this thread and uploaded under one budget a
+  /// frame. See OrblitTextures.h.
+  std::unique_ptr<orblit::TextureQueue> _textureQueue{};
+
+  /// The glTF loader's view of that queue, for PNG, JPEG and KTX 2.
   ///
-  /// Separate from the one the glTF loader uses because a provider is a
-  /// queue: popping from it takes ownership of whatever comes out, and
-  /// popping a texture the resource loader was waiting for would leave a
-  /// model with a missing map and no way to find out why.
-  gltfio::TextureProvider *_ownStbTextures{};
-  gltfio::TextureProvider *_ownKtxTextures{};
+  /// Materials push into the queue directly rather than through a second
+  /// provider: a provider is popped, popping takes whatever comes out, and
+  /// the resource loader pops everything its providers hold. Each side pops
+  /// only its own, by client.
+  std::unique_ptr<orblit::QueuedTextureProvider> _modelTextures{};
+
+  /// The asset whose resources the loader began last, which is the one it
+  /// would mark textures ready in — so destroying it has to stop that first.
+  gltfio::FilamentAsset *_loadingAsset{};
+
+  /// Problems with textures, by the texture's path, and what named each: a
+  /// model's path, or empty for a material's or a sprite layer's. Reported
+  /// only while whatever named it is still in the scene.
+  Notes _textureNotes{};
+  std::unordered_map<std::string, std::string> _textureNotedFor{};
+
+  /// The texture paths the last publish of materials and of sprites named.
+  std::set<std::string> _materialTexturePaths{};
+  std::set<std::string> _spriteTexturePaths{};
 
   /// The compiled surfaces, indexed by shading and blend mode. Built on
   /// first use: a scene of opaque lit objects should not compile the four
@@ -1547,13 +1567,6 @@ class Renderer {
   /// For each texture that could not be loaded, the resource generation it
   /// failed at — see Mesh::missingAt.
   std::unordered_map<std::string, uint64_t> _texturesMissingAt{};
-
-  /// Whether any of those are still decoding, so the queue is only polled
-  /// while there is something in it.
-  int _texturesPending{};
-
-  /// How many frames the decoders have been asked and given nothing back.
-  int _pollsWithoutProgress{};
 
   /// One white pixel, standing in for every map a material does not set.
   filament::Texture *_blankTexture{};
@@ -1691,7 +1704,6 @@ class Renderer {
   uint64_t _videoGeneration{};
 
   uint64_t _materialGeneration{};
-  gltfio::TextureProvider *_ktxTextures{};
 
   /// Whether any asset is still decoding its textures. An ivar block takes
   /// no initialiser, so this is zeroed by the runtime like the rest.
