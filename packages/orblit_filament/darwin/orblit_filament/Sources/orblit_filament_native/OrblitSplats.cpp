@@ -5,10 +5,22 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdio>
 #include <cstring>
 #include <fstream>
 #include <limits>
 #include <sstream>
+
+// A browser build without -pthread has std::thread and cannot start one — its
+// constructor throws — so that build sorts on a Web Worker instead.
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+#define ORBLIT_SPLAT_THREADS 0
+#else
+#define ORBLIT_SPLAT_THREADS 1
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+#endif
 
 namespace orblit {
 
@@ -178,19 +190,20 @@ uint8_t toHarmonicByte(float value, float scale) {
   return uint8_t(std::lround(unit * kSplatHarmonicSteps) + 128);
 }
 
-/// Reads the higher bands out of a PLY's vertices into the cloud.
+/// Quantises the bands above the flat colour into the cloud, from whatever
+/// file held them.
 ///
-/// `rest` is the property each kept coefficient lives in, channel-major as
-/// the file has them: coefficient k of channel c is rest[c * keep + k].
+/// `read(splat, coefficient, channel)` answers one coefficient as the number
+/// it stands for, in whatever order and layout that file keeps them in; what
+/// lands in the cloud is always one splat's coefficients together, with red,
+/// green and blue within each, which is how the shader reads them.
 ///
 /// Two passes, because what a byte is worth cannot be known until every
 /// coefficient has been seen. The first only counts magnitudes; the second
-/// writes the bytes, and reorders them on the way — out of the file's
-/// channel-major order into one splat's coefficients together, which is how
-/// the shader reads them.
-void readHarmonics(const uint8_t *vertices, uint64_t count, size_t stride,
-                   const std::vector<const Property *> &rest, uint32_t degree,
-                   SplatCloud &into) {
+/// writes the bytes.
+template <typename Read>
+void quantiseHarmonics(uint64_t count, uint32_t degree, SplatCloud &into,
+                       Read read) {
   const uint32_t keep = kSplatHarmonicCoefficients[degree];
   if (keep == 0 || count == 0) return;
 
@@ -211,11 +224,9 @@ void readHarmonics(const uint8_t *vertices, uint64_t count, size_t stride,
   constexpr float kPerUnit = 128.0f;
   std::vector<uint64_t> histogram(size_t(kBins) * 3, 0);
   for (uint64_t i = 0; i < count; i++) {
-    const uint8_t *v = vertices + size_t(i) * stride;
     for (uint32_t c = 0; c < 3; c++) {
       for (uint32_t k = 0; k < keep; k++) {
-        const Property &p = *rest[size_t(c) * keep + k];
-        const float value = readAs(v + p.offset, p);
+        const float value = read(i, k, c);
         if (!std::isfinite(value)) continue;
         int bin = int(std::abs(value) * kPerUnit);
         if (bin >= kBins) bin = kBins - 1;
@@ -243,13 +254,11 @@ void readHarmonics(const uint8_t *vertices, uint64_t count, size_t stride,
   into.harmonicDegree = degree;
   into.harmonics.assign(size_t(count) * splatHarmonicBytes(degree), 128);
   for (uint64_t i = 0; i < count; i++) {
-    const uint8_t *v = vertices + size_t(i) * stride;
     uint8_t *out = &into.harmonics[size_t(i) * splatHarmonicBytes(degree)];
     for (uint32_t k = 0; k < keep; k++) {
       const float scale = into.harmonicScale[bandOf(k)];
       for (uint32_t c = 0; c < 3; c++) {
-        const Property &p = *rest[size_t(c) * keep + k];
-        out[size_t(k) * 3 + c] = toHarmonicByte(readAs(v + p.offset, p), scale);
+        out[size_t(k) * 3 + c] = toHarmonicByte(read(i, k, c), scale);
       }
     }
   }
@@ -434,8 +443,410 @@ bool readSplatPly(const uint8_t *data, size_t length, uint32_t maxDegree,
                             (uint32_t(toByte(opacity)) << 24);
     put(into, i, position, scale, rotation, colour);
   }
-  readHarmonics(data + body, vertices, stride, rest, degree, into);
+  // f_rest is channel-major, as the header found it: coefficient k of channel
+  // c is rest[c * keep + k].
+  if (degree > 0) {
+    const uint8_t *first = data + body;
+    const uint32_t keep = kSplatHarmonicCoefficients[degree];
+    quantiseHarmonics(vertices, degree, into,
+                      [&](uint64_t i, uint32_t k, uint32_t c) {
+                        const Property &p = *rest[size_t(c) * keep + k];
+                        return readAs(first + size_t(i) * stride + p.offset, p);
+                      });
+  }
   finish(into);
+  return true;
+}
+
+namespace {
+
+// stb_image's own inflater. Filament links stb into libstb on every platform
+// this builds for and ships no header for it, exactly as OrblitPlatform.cpp
+// finds its image decoder; this is stb_image.h's public signature, unchanged.
+extern "C" int stbi_zlib_decode_noheader_buffer(char *obuffer, int olen,
+                                                const char *ibuffer, int ilen);
+
+/// The most a compressed file is allowed to unpack to.
+///
+/// The only thing that says how large a gzip file's contents are is that
+/// file, so a capped buffer is what stands between a page and a few lines of
+/// zeroes that claim to be sixteen gigabytes. Well past any real capture:
+/// a million splats at degree three is about seventy megabytes.
+constexpr size_t kMaxUnpacked = size_t(1536) * 1024 * 1024;
+
+/// Where the deflate stream inside a gzip wrapper begins, how long it is, and
+/// what the file says it unpacks to.
+///
+/// RFC 1952: a ten-byte header, then the optional extra field, name, comment
+/// and header checksum the flags say are there, then the stream, then a
+/// checksum and the length modulo 2^32.
+bool gzipStream(const uint8_t *data, size_t length, const uint8_t *&stream,
+                size_t &deflated, size_t &expanded, std::string &error) {
+  if (length < 18 || data[0] != 0x1f || data[1] != 0x8b) {
+    error = "not a gzip file";
+    return false;
+  }
+  if (data[2] != 8) {
+    error = "the gzip file is not deflate";
+    return false;
+  }
+  const uint8_t flags = data[3];
+  size_t at = 10;
+  if (flags & 0x04) {
+    if (at + 2 > length) {
+      error = "the gzip header stops in its extra field";
+      return false;
+    }
+    at += 2 + (size_t(data[at]) | (size_t(data[at + 1]) << 8));
+  }
+  // The name, then the comment: each a string ending in a nought.
+  for (const uint8_t bit : {uint8_t(0x08), uint8_t(0x10)}) {
+    if (!(flags & bit)) continue;
+    while (at < length && data[at] != 0) at++;
+    at++;
+  }
+  if (flags & 0x02) at += 2;
+  if (at + 8 >= length) {
+    error = "the gzip file has no deflate stream in it";
+    return false;
+  }
+  stream = data + at;
+  deflated = length - 8 - at;
+  expanded = size_t(data[length - 4]) | (size_t(data[length - 3]) << 8) |
+             (size_t(data[length - 2]) << 16) |
+             (size_t(data[length - 1]) << 24);
+  return true;
+}
+
+bool inflateGzip(const uint8_t *data, size_t length,
+                 std::vector<uint8_t> &into, std::string &error) {
+  const uint8_t *stream = nullptr;
+  size_t deflated = 0;
+  size_t expanded = 0;
+  if (length > kMaxUnpacked) {
+    error = "the file is larger than this reads";
+    return false;
+  }
+  if (!gzipStream(data, length, stream, deflated, expanded, error)) return false;
+  if (expanded == 0 || expanded > kMaxUnpacked) {
+    error = "the gzip file says it unpacks to " + std::to_string(expanded) +
+            " bytes, which this will not do";
+    return false;
+  }
+  into.assign(expanded, 0);
+  const int got = stbi_zlib_decode_noheader_buffer(
+      reinterpret_cast<char *>(into.data()), int(expanded),
+      reinterpret_cast<const char *>(stream), int(deflated));
+  if (got < 0 || size_t(got) != expanded) {
+    error = "the gzip file does not unpack to the length it states";
+    return false;
+  }
+  return true;
+}
+
+/// "NGSP", as the four bytes at the front of a `.spz` spell it here.
+constexpr uint32_t kSpzMagic = 0x5053474e;
+
+/// What a stored `.spz` colour is worth: the format's own scale, which its
+/// packer divides a degree-zero coefficient by before quantising it.
+constexpr float kSpzColourScale = 0.15f;
+
+/// Which spherical-harmonic coefficients change sign when y and z do.
+///
+/// Turning a capture from the right-up-back frame a `.spz` holds into the
+/// right-down-front one a `.ply` has is a half turn about x, and a band's
+/// coefficients have to turn with it: a basis function odd in y or in z
+/// alone changes sign, and its coefficient changes sign to match. The ones
+/// even in both — yz, xy is odd, and so on — do not. Worked out from the
+/// basis in splat.mat, term by term.
+constexpr bool kSpzFlipped[15] = {true,  true,  false, true,  false,
+                                  false, true,  false, true,  false,
+                                  true,  true,  false, true,  false};
+
+/// "OSPL", and the version of the layout after it.
+constexpr uint32_t kCookedMagic = 0x4c50534f;
+constexpr uint32_t kCookedVersion = 1;
+
+/// Magic, version, count and degree; the three band scales; the box; and a
+/// word kept for whatever a later version wants to say.
+constexpr size_t kCookedHeader = 4 * 4 + 3 * 4 + 6 * 4 + 4;
+
+uint32_t readWord(const uint8_t *at) {
+  uint32_t value;
+  std::memcpy(&value, at, 4);
+  return value;
+}
+
+}  // namespace
+
+bool readSplatSpz(const uint8_t *data, size_t length, uint32_t maxDegree,
+                  SplatCloud &into, std::string &error) {
+  std::vector<uint8_t> unpacked;
+  if (!inflateGzip(data, length, unpacked, error)) return false;
+  if (unpacked.size() < 16) {
+    error = "the .spz is too short to hold a header";
+    return false;
+  }
+
+  const uint32_t magic = readWord(unpacked.data());
+  const uint32_t version = readWord(unpacked.data() + 4);
+  const uint32_t points = readWord(unpacked.data() + 8);
+  const uint32_t fileDegree = unpacked[12];
+  const uint32_t fractionalBits = unpacked[13];
+  // unpacked[14] is a flag saying the capture was trained antialiased, which
+  // changes nothing this renderer does with it; unpacked[15] is kept back.
+  if (magic != kSpzMagic) {
+    error = "not a .spz file: it does not begin NGSP";
+    return false;
+  }
+  if (version >= 4) {
+    error = "this .spz is version " + std::to_string(version) +
+            ", which is zstd streams and a table of contents rather than one "
+            "gzip block; this reads versions 2 and 3";
+    return false;
+  }
+  if (version < 2) {
+    error = "this .spz is version " + std::to_string(version) +
+            "; this reads versions 2 and 3";
+    return false;
+  }
+  if (points == 0 || points > 50'000'000u) {
+    error = "the .spz says it holds " + std::to_string(points) + " splats";
+    return false;
+  }
+  if (fileDegree > kSplatMaxHarmonicDegree) {
+    error = "the .spz says its harmonics are degree " +
+            std::to_string(fileDegree);
+    return false;
+  }
+  if (fractionalBits == 0 || fractionalBits > 24) {
+    error = "the .spz says its positions have " +
+            std::to_string(fractionalBits) + " fractional bits";
+    return false;
+  }
+
+  const uint32_t stored = kSplatHarmonicCoefficients[fileDegree];
+  const size_t rotationBytes = version >= 3 ? 4 : 3;
+  const size_t perSplat = 9 + 1 + 3 + 3 + rotationBytes + size_t(stored) * 3;
+  if (unpacked.size() < 16 + size_t(points) * perSplat) {
+    error = "the .spz says it holds " + std::to_string(points) +
+            " splats, more than the file has room for";
+    return false;
+  }
+
+  // Each attribute in a block of its own, in the order the format writes
+  // them: positions, alphas, colours, scales, rotations, harmonics.
+  const uint8_t *positions = unpacked.data() + 16;
+  const uint8_t *alphas = positions + size_t(points) * 9;
+  const uint8_t *colours = alphas + size_t(points);
+  const uint8_t *scales = colours + size_t(points) * 3;
+  const uint8_t *rotations = scales + size_t(points) * 3;
+  const uint8_t *harmonics = rotations + size_t(points) * rotationBytes;
+
+  const uint32_t degree =
+      std::min(fileDegree, std::min(maxDegree, kSplatMaxHarmonicDegree));
+  begin(into, points);
+  into.droppedHigherBands = fileDegree > degree;
+
+  const float step = 1.0f / float(uint32_t(1) << fractionalBits);
+  for (uint32_t i = 0; i < points; i++) {
+    const uint8_t *p = positions + size_t(i) * 9;
+    float place[3];
+    for (int a = 0; a < 3; a++) {
+      // Three bytes, little-endian, signed: the top bit carried up.
+      uint32_t bits = uint32_t(p[a * 3]) | (uint32_t(p[a * 3 + 1]) << 8) |
+                      (uint32_t(p[a * 3 + 2]) << 16);
+      if (bits & 0x00800000u) bits |= 0xff000000u;
+      int32_t fixed;
+      std::memcpy(&fixed, &bits, sizeof fixed);
+      place[a] = float(fixed) * step;
+    }
+    // Right-up-back to right-down-front: a half turn about x.
+    place[1] = -place[1];
+    place[2] = -place[2];
+
+    const uint8_t *s = scales + size_t(i) * 3;
+    const float size[3] = {std::exp(float(s[0]) / 16.0f - 10.0f),
+                           std::exp(float(s[1]) / 16.0f - 10.0f),
+                           std::exp(float(s[2]) / 16.0f - 10.0f)};
+
+    // The file keeps a quaternion as (x, y, z, w); this wants (w, x, y, z).
+    float turn[4] = {0, 0, 0, 1};  // x, y, z, w, as read
+    if (version >= 3) {
+      // The smallest three: two bits saying which component was left out,
+      // then three of ten bits each — nine of magnitude and one of sign —
+      // from the last component to the first. The one left out is whichever
+      // was largest, and is worked out from the other three.
+      uint32_t packed = readWord(rotations + size_t(i) * 4);
+      const uint32_t largest = packed >> 30;
+      constexpr float kOverRootTwo = 0.70710678118654752f;
+      float sum = 0;
+      for (int a = 3; a >= 0; a--) {
+        if (uint32_t(a) == largest) continue;
+        const uint32_t magnitude = packed & 0x1ffu;
+        const bool negative = ((packed >> 9) & 1u) != 0;
+        packed >>= 10;
+        float value = kOverRootTwo * float(magnitude) / 511.0f;
+        if (negative) value = -value;
+        turn[a] = value;
+        sum += value * value;
+      }
+      turn[largest] = std::sqrt(std::max(0.0f, 1.0f - sum));
+    } else {
+      const uint8_t *r = rotations + size_t(i) * 3;
+      turn[0] = float(r[0]) / 127.5f - 1.0f;
+      turn[1] = float(r[1]) / 127.5f - 1.0f;
+      turn[2] = float(r[2]) / 127.5f - 1.0f;
+      turn[3] = std::sqrt(std::max(
+          0.0f, 1.0f - (turn[0] * turn[0] + turn[1] * turn[1] +
+                        turn[2] * turn[2])));
+    }
+    // (w, x, y, z), with the same half turn about x applied: conjugating a
+    // rotation by a half turn about x leaves w and x alone and takes the
+    // sign off y and z.
+    const float rotation[4] = {turn[3], turn[0], -turn[1], -turn[2]};
+
+    const uint8_t *c = colours + size_t(i) * 3;
+    // A stored colour is the degree-zero coefficient, scaled and quantised;
+    // the flat colour is what that coefficient makes.
+    const float red =
+        0.5f + kShC0 * ((float(c[0]) / 255.0f - 0.5f) / kSpzColourScale);
+    const float green =
+        0.5f + kShC0 * ((float(c[1]) / 255.0f - 0.5f) / kSpzColourScale);
+    const float blue =
+        0.5f + kShC0 * ((float(c[2]) / 255.0f - 0.5f) / kSpzColourScale);
+    const float opacity = float(alphas[i]) / 255.0f;
+    const uint32_t colour = uint32_t(toByte(red)) |
+                            (uint32_t(toByte(green)) << 8) |
+                            (uint32_t(toByte(blue)) << 16) |
+                            (uint32_t(toByte(opacity)) << 24);
+    put(into, i, place, size, rotation, colour);
+  }
+
+  if (degree > 0) {
+    quantiseHarmonics(points, degree, into,
+                      [&](uint64_t i, uint32_t k, uint32_t c) {
+                        const uint8_t byte =
+                            harmonics[size_t(i) * stored * 3 + size_t(k) * 3 + c];
+                        const float value = (float(byte) - 128.0f) / 128.0f;
+                        return kSpzFlipped[k] ? -value : value;
+                      });
+  }
+  finish(into);
+  return true;
+}
+
+std::vector<uint8_t> writeSplatCooked(const SplatCloud &cloud) {
+  const uint32_t degree = cloud.harmonics.empty() ? 0 : cloud.harmonicDegree;
+  const size_t harmonicBytes = size_t(cloud.count) * splatHarmonicBytes(degree);
+  std::vector<uint8_t> out(kCookedHeader + size_t(cloud.count) * 9 * 4 +
+                           size_t(cloud.count) * 4 + harmonicBytes);
+  uint8_t *at = out.data();
+  auto putWord = [&](uint32_t value) {
+    std::memcpy(at, &value, 4);
+    at += 4;
+  };
+  auto putFloats = [&](const float *values, size_t count) {
+    if (count > 0) std::memcpy(at, values, count * 4);
+    at += count * 4;
+  };
+
+  putWord(kCookedMagic);
+  putWord(kCookedVersion);
+  putWord(cloud.count);
+  putWord(degree);
+  putFloats(cloud.harmonicScale, 3);
+  putFloats(cloud.minimum, 3);
+  putFloats(cloud.maximum, 3);
+  putWord(0);
+  putFloats(cloud.positions.data(), cloud.positions.size());
+  putFloats(cloud.covariances.data(), cloud.covariances.size());
+  if (!cloud.colours.empty()) {
+    std::memcpy(at, cloud.colours.data(), cloud.colours.size() * 4);
+    at += cloud.colours.size() * 4;
+  }
+  if (harmonicBytes > 0) {
+    std::memcpy(at, cloud.harmonics.data(), harmonicBytes);
+  }
+  return out;
+}
+
+bool readSplatCooked(const uint8_t *data, size_t length, uint32_t maxDegree,
+                     SplatCloud &into, std::string &error) {
+  if (length < kCookedHeader) {
+    error = "the .osplat is too short to hold a header";
+    return false;
+  }
+  if (readWord(data) != kCookedMagic) {
+    error = "not an .osplat file: it does not begin OSPL";
+    return false;
+  }
+  const uint32_t version = readWord(data + 4);
+  if (version != kCookedVersion) {
+    error = "this .osplat is version " + std::to_string(version) +
+            "; this reads version " + std::to_string(kCookedVersion) +
+            ", so cook it again";
+    return false;
+  }
+  const uint32_t count = readWord(data + 8);
+  const uint32_t fileDegree = readWord(data + 12);
+  if (count > 50'000'000u) {
+    error = "the .osplat says it holds " + std::to_string(count) + " splats";
+    return false;
+  }
+  if (fileDegree > kSplatMaxHarmonicDegree) {
+    error = "the .osplat says its harmonics are degree " +
+            std::to_string(fileDegree);
+    return false;
+  }
+
+  const size_t bytesPerSplat = splatHarmonicBytes(fileDegree);
+  const size_t wanted = kCookedHeader + size_t(count) * 9 * 4 +
+                        size_t(count) * 4 + size_t(count) * bytesPerSplat;
+  if (length < wanted) {
+    error = "the .osplat says it holds " + std::to_string(count) +
+            " splats, more than the file has room for";
+    return false;
+  }
+
+  into.count = count;
+  into.harmonicDegree = fileDegree;
+  into.droppedHigherBands = false;
+  std::memcpy(into.harmonicScale, data + 16, 12);
+  std::memcpy(into.minimum, data + 28, 12);
+  std::memcpy(into.maximum, data + 40, 12);
+
+  const uint8_t *at = data + kCookedHeader;
+  into.positions.resize(size_t(count) * 3);
+  if (count > 0) std::memcpy(into.positions.data(), at, size_t(count) * 12);
+  at += size_t(count) * 12;
+  into.covariances.resize(size_t(count) * 6);
+  if (count > 0) std::memcpy(into.covariances.data(), at, size_t(count) * 24);
+  at += size_t(count) * 24;
+  into.colours.resize(count);
+  if (count > 0) std::memcpy(into.colours.data(), at, size_t(count) * 4);
+  at += size_t(count) * 4;
+  into.harmonics.resize(size_t(count) * bytesPerSplat);
+  if (!into.harmonics.empty()) {
+    std::memcpy(into.harmonics.data(), at, into.harmonics.size());
+  }
+
+  // Read at a lower degree than it was cooked at: a splat's coefficients are
+  // in band order, so the bands asked for are the bytes at the front of each
+  // splat's own, and the rest go.
+  const uint32_t degree =
+      std::min(fileDegree, std::min(maxDegree, kSplatMaxHarmonicDegree));
+  if (degree < fileDegree) {
+    const size_t keep = splatHarmonicBytes(degree);
+    for (uint32_t i = 0; i < count && keep > 0; i++) {
+      std::memmove(&into.harmonics[size_t(i) * keep],
+                   &into.harmonics[size_t(i) * bytesPerSplat], keep);
+    }
+    into.harmonics.resize(size_t(count) * keep);
+    for (uint32_t band = degree; band < 3; band++) into.harmonicScale[band] = 0;
+    into.harmonicDegree = degree;
+    into.droppedHigherBands = true;
+  }
   return true;
 }
 
@@ -450,9 +861,23 @@ bool loadSplatFile(const std::string &path, uint32_t maxDegree,
   std::string lower = path;
   std::transform(lower.begin(), lower.end(), lower.begin(),
                  [](unsigned char c) { return char(std::tolower(c)); });
-  const bool ply = lower.size() >= 4 && lower.compare(lower.size() - 4, 4, ".ply") == 0;
-  return ply ? readSplatPly(bytes->data(), bytes->size(), maxDegree, into, error)
-             : readSplatRecords(bytes->data(), bytes->size(), into, error);
+  const auto named = [&lower](const char *extension) {
+    const size_t length = std::strlen(extension);
+    return lower.size() >= length &&
+           lower.compare(lower.size() - length, length, extension) == 0;
+  };
+
+  if (named(".ply")) {
+    return readSplatPly(bytes->data(), bytes->size(), maxDegree, into, error);
+  }
+  if (named(".spz")) {
+    return readSplatSpz(bytes->data(), bytes->size(), maxDegree, into, error);
+  }
+  if (named(".osplat")) {
+    return readSplatCooked(bytes->data(), bytes->size(), maxDegree, into,
+                           error);
+  }
+  return readSplatRecords(bytes->data(), bytes->size(), into, error);
 }
 
 void packSplatTexels(const SplatCloud &cloud, std::vector<uint32_t> &texels) {
@@ -517,11 +942,89 @@ void packSplatHarmonicTexels(const SplatCloud &cloud,
   }
 }
 
-void sortSplatsBackToFront(const float *positions, uint32_t count,
-                           const float direction[3],
-                           std::vector<uint32_t> &order,
-                           std::vector<uint32_t> &scratch) {
-  order.resize(count);
+uint32_t keepMostVisibleSplats(SplatCloud &cloud, uint32_t limit) {
+  const uint32_t count = cloud.count;
+  if (limit == 0 || limit >= count) return count;
+
+  // What a splat adds to a picture, roughly: how opaque it is, times how much
+  // of the screen it can cover. The covariance's eigenvalues are its squared
+  // radii, so the sum of their pairwise products is the sum of its three
+  // cross-sections' areas squared, near enough — and that sum is the
+  // covariance's second invariant, the sum of its principal two-by-two
+  // minors, which needs no eigenvalues to work out. Its square root is an
+  // area.
+  std::vector<float> weight(count);
+  for (uint32_t i = 0; i < count; i++) {
+    const float *c = &cloud.covariances[size_t(i) * 6];
+    const float crossSections = c[0] * c[3] - c[1] * c[1] +
+                                c[3] * c[5] - c[4] * c[4] +
+                                c[0] * c[5] - c[2] * c[2];
+    const float alpha = float(cloud.colours[i] >> 24) / 255.0f;
+    const float value = alpha * std::sqrt(std::max(crossSections, 0.0f));
+    weight[i] = std::isfinite(value) ? value : 0.0f;
+  }
+
+  std::vector<uint32_t> kept(count);
+  for (uint32_t i = 0; i < count; i++) kept[i] = i;
+  // Ties go to the earlier splat, so the same cloud and limit always keep
+  // the same splats.
+  std::nth_element(kept.begin(), kept.begin() + limit, kept.end(),
+                   [&](uint32_t a, uint32_t b) {
+                     return weight[a] > weight[b] ||
+                            (weight[a] == weight[b] && a < b);
+                   });
+  kept.resize(limit);
+  // Back in the order they came. A trainer writes neighbours near each other,
+  // and that is worth keeping for whatever reads the textures in order.
+  std::sort(kept.begin(), kept.end());
+
+  const size_t harmonicBytes =
+      cloud.harmonics.empty() ? 0 : splatHarmonicBytes(cloud.harmonicDegree);
+  for (int a = 0; a < 3; a++) {
+    cloud.minimum[a] = std::numeric_limits<float>::max();
+    cloud.maximum[a] = std::numeric_limits<float>::lowest();
+  }
+  // In place, front to back: each splat kept moves to a slot at or before its
+  // own, and every slot it passes over has already been read.
+  for (uint32_t to = 0; to < limit; to++) {
+    const uint32_t from = kept[to];
+    if (from != to) {
+      std::memcpy(&cloud.positions[size_t(to) * 3],
+                  &cloud.positions[size_t(from) * 3], sizeof(float) * 3);
+      std::memcpy(&cloud.covariances[size_t(to) * 6],
+                  &cloud.covariances[size_t(from) * 6], sizeof(float) * 6);
+      cloud.colours[to] = cloud.colours[from];
+      if (harmonicBytes > 0) {
+        std::memcpy(&cloud.harmonics[size_t(to) * harmonicBytes],
+                    &cloud.harmonics[size_t(from) * harmonicBytes],
+                    harmonicBytes);
+      }
+    }
+    // Three standard deviations along an axis is three times the square root
+    // of the covariance's diagonal on it, exactly.
+    const float *p = &cloud.positions[size_t(to) * 3];
+    const float *c = &cloud.covariances[size_t(to) * 6];
+    const float reach[3] = {3.0f * std::sqrt(std::max(c[0], 0.0f)),
+                            3.0f * std::sqrt(std::max(c[3], 0.0f)),
+                            3.0f * std::sqrt(std::max(c[5], 0.0f))};
+    for (int a = 0; a < 3; a++) {
+      cloud.minimum[a] = std::min(cloud.minimum[a], p[a] - reach[a]);
+      cloud.maximum[a] = std::max(cloud.maximum[a], p[a] + reach[a]);
+    }
+  }
+
+  cloud.count = limit;
+  cloud.positions.resize(size_t(limit) * 3);
+  cloud.covariances.resize(size_t(limit) * 6);
+  cloud.colours.resize(limit);
+  if (harmonicBytes > 0) cloud.harmonics.resize(size_t(limit) * harmonicBytes);
+  return count;
+}
+
+void sortSplats(const float *positions, uint32_t count,
+                const SplatSortRequest &request, std::vector<uint32_t> &order,
+                std::vector<uint32_t> &scratch) {
+  order.clear();
   if (count == 0) return;
 
   // Keys and indices side by side, ping-ponged between two halves of one
@@ -532,27 +1035,79 @@ void sortSplatsBackToFront(const float *positions, uint32_t count,
   uint32_t *keysOut = ids + count;
   uint32_t *idsOut = keysOut + count;
 
-  // All four byte histograms in the one pass that makes the keys.
+  const float dx = request.direction[0];
+  const float dy = request.direction[1];
+  const float dz = request.direction[2];
+  const float *v = request.viewFromModel;
+  const float *c = request.clipFromModel;
+  const bool cull = request.cull;
+  const bool coarse = request.coarse;
+
+  // Every byte histogram a full key needs, in the one pass that makes the
+  // keys. A coarse key cannot be made until the range is known, so its two
+  // are counted in a second pass.
   uint32_t counts[4][256] = {};
-  const float dx = direction[0], dy = direction[1], dz = direction[2];
+  uint32_t kept = 0;
+  float nearest = std::numeric_limits<float>::max();
+  float farthest = std::numeric_limits<float>::lowest();
   for (uint32_t i = 0; i < count; i++) {
     const float *p = positions + size_t(i) * 3;
+    if (cull) {
+      // splat.mat's own test, from the same camera: in front of it — view
+      // space looks down -z — and within the guard of the screen.
+      const float ahead =
+          -(v[2] * p[0] + v[6] * p[1] + v[10] * p[2] + v[14]);
+      if (!(ahead > 0.0f)) continue;
+      const float guard =
+          kSplatCullGuard * (c[3] * p[0] + c[7] * p[1] + c[11] * p[2] + c[15]);
+      const float x = c[0] * p[0] + c[4] * p[1] + c[8] * p[2] + c[12];
+      const float y = c[1] * p[0] + c[5] * p[1] + c[9] * p[2] + c[13];
+      if (!(std::abs(x) <= guard && std::abs(y) <= guard)) continue;
+    }
     const float depth = p[0] * dx + p[1] * dy + p[2] * dz;
-    // Inverted, so that ascending is farthest first.
-    const uint32_t key = ~sortableBits(depth);
-    keys[i] = key;
-    ids[i] = i;
-    counts[0][key & 0xff]++;
-    counts[1][(key >> 8) & 0xff]++;
-    counts[2][(key >> 16) & 0xff]++;
-    counts[3][key >> 24]++;
+    ids[kept] = i;
+    if (coarse) {
+      // The depth itself for now, as bits, made a key once the range is in.
+      std::memcpy(&keys[kept], &depth, sizeof(float));
+      nearest = std::min(nearest, depth);
+      farthest = std::max(farthest, depth);
+    } else {
+      // Inverted, so that ascending is farthest first.
+      const uint32_t key = ~sortableBits(depth);
+      keys[kept] = key;
+      counts[0][key & 0xff]++;
+      counts[1][(key >> 8) & 0xff]++;
+      counts[2][(key >> 16) & 0xff]++;
+      counts[3][key >> 24]++;
+    }
+    kept++;
   }
 
-  for (int pass = 0; pass < 4; pass++) {
+  int passes = 4;
+  if (coarse) {
+    passes = 2;
+    const float span = farthest - nearest;
+    const float scale = span > 0.0f ? 65535.0f / span : 0.0f;
+    for (uint32_t k = 0; k < kept; k++) {
+      float depth;
+      std::memcpy(&depth, &keys[k], sizeof(float));
+      // A depth that is not a number goes nearest, where it is drawn last and
+      // hides least.
+      const float q = (depth - nearest) * scale;
+      const uint32_t level =
+          q >= 0.0f ? (q < 65535.0f ? uint32_t(q) : 65535u) : 0u;
+      const uint32_t key = 65535u - level;
+      keys[k] = key;
+      counts[0][key & 0xff]++;
+      counts[1][key >> 8]++;
+    }
+  }
+
+  for (int pass = 0; pass < passes; pass++) {
     const int shift = pass * 8;
-    uint32_t *histogram = counts[pass];
+    const uint32_t *histogram = counts[pass];
     // Every key agrees on this byte, so the pass would move nothing.
-    if (histogram[(keys[0] >> shift) & 0xff] == count) continue;
+    if (kept == 0 || histogram[(keys[0] >> shift) & 0xff] == kept) continue;
 
     uint32_t offsets[256];
     uint32_t total = 0;
@@ -560,7 +1115,7 @@ void sortSplatsBackToFront(const float *positions, uint32_t count,
       offsets[b] = total;
       total += histogram[b];
     }
-    for (uint32_t i = 0; i < count; i++) {
+    for (uint32_t i = 0; i < kept; i++) {
       const uint32_t at = offsets[(keys[i] >> shift) & 0xff]++;
       keysOut[at] = keys[i];
       idsOut[at] = ids[i];
@@ -569,76 +1124,160 @@ void sortSplatsBackToFront(const float *positions, uint32_t count,
     std::swap(ids, idsOut);
   }
 
-  std::memcpy(order.data(), ids, sizeof(uint32_t) * count);
+  order.assign(ids, ids + kept);
 }
 
-SplatSorter::SplatSorter(std::shared_ptr<const std::vector<float>> positions,
-                         uint32_t count)
-    : _positions(std::move(positions)), _count(count) {
-  _worker = std::thread([this] { run(); });
+namespace {
+
+double millisecondsSince(std::chrono::steady_clock::time_point from) {
+  return std::chrono::duration<double, std::milli>(
+             std::chrono::steady_clock::now() - from)
+      .count();
 }
 
-SplatSorter::~SplatSorter() {
-  {
-    std::lock_guard<std::mutex> guard(_lock);
-    _stopping = true;
-  }
-  _wake.notify_all();
-  if (_worker.joinable()) _worker.join();
-}
+/// Sorts on the thread that asks, and has the answer ready before it
+/// returns.
+class InlineSplatSorter final : public SplatSorter {
+ public:
+  InlineSplatSorter(std::shared_ptr<const std::vector<float>> positions,
+                    uint32_t count)
+      : _positions(std::move(positions)), _count(count) {}
 
-void SplatSorter::request(const float direction[3]) {
-  {
-    std::lock_guard<std::mutex> guard(_lock);
-    std::memcpy(_direction, direction, sizeof(_direction));
-    _pending = true;
-  }
-  _wake.notify_one();
-}
-
-bool SplatSorter::busy() {
-  std::lock_guard<std::mutex> guard(_lock);
-  return _pending || _working;
-}
-
-bool SplatSorter::take(std::vector<uint32_t> &order, double &milliseconds) {
-  std::lock_guard<std::mutex> guard(_lock);
-  if (!_ready) return false;
-  order.swap(_result);
-  milliseconds = _milliseconds;
-  _ready = false;
-  return true;
-}
-
-void SplatSorter::run() {
-  std::vector<uint32_t> order;
-  std::vector<uint32_t> scratch;
-  for (;;) {
-    float direction[3];
-    {
-      std::unique_lock<std::mutex> guard(_lock);
-      _wake.wait(guard, [this] { return _stopping || _pending; });
-      if (_stopping) return;
-      std::memcpy(direction, _direction, sizeof(direction));
-      _pending = false;
-      _working = true;
-    }
-
+  void request(const SplatSortRequest &request) override {
     const auto from = std::chrono::steady_clock::now();
-    sortSplatsBackToFront(_positions->data(), _count, direction, order,
-                          scratch);
-    const double took = std::chrono::duration<double, std::milli>(
-                            std::chrono::steady_clock::now() - from)
-                            .count();
+    sortSplats(_positions->data(), _count, request, _result, _scratch);
+    _milliseconds = millisecondsSince(from);
+    _ready = true;
+  }
 
+  bool busy() override { return false; }
+
+  bool take(std::vector<uint32_t> &order, double &milliseconds) override {
+    if (!_ready) return false;
+    order.swap(_result);
+    milliseconds = _milliseconds;
+    _ready = false;
+    return true;
+  }
+
+ private:
+  std::shared_ptr<const std::vector<float>> _positions;
+  uint32_t _count;
+  bool _ready = false;
+  double _milliseconds = 0;
+  std::vector<uint32_t> _result;
+  std::vector<uint32_t> _scratch;
+};
+
+#if ORBLIT_SPLAT_THREADS
+/// Sorts on a thread of its own.
+///
+/// Only the request and the answer cross between the threads, and both are
+/// behind one lock; the positions are never written, so the worker reads
+/// them without it.
+class ThreadSplatSorter final : public SplatSorter {
+ public:
+  ThreadSplatSorter(std::shared_ptr<const std::vector<float>> positions,
+                    uint32_t count)
+      : _positions(std::move(positions)), _count(count) {
+    _worker = std::thread([this] { run(); });
+  }
+
+  ~ThreadSplatSorter() override {
     {
       std::lock_guard<std::mutex> guard(_lock);
-      _result.swap(order);
-      _milliseconds = took;
-      _ready = true;
-      _working = false;
+      _stopping = true;
+    }
+    _wake.notify_all();
+    if (_worker.joinable()) _worker.join();
+  }
+
+  void request(const SplatSortRequest &request) override {
+    {
+      std::lock_guard<std::mutex> guard(_lock);
+      _request = request;
+      _pending = true;
+    }
+    _wake.notify_one();
+  }
+
+  bool busy() override {
+    std::lock_guard<std::mutex> guard(_lock);
+    return _pending || _working;
+  }
+
+  bool take(std::vector<uint32_t> &order, double &milliseconds) override {
+    std::lock_guard<std::mutex> guard(_lock);
+    if (!_ready) return false;
+    order.swap(_result);
+    milliseconds = _milliseconds;
+    _ready = false;
+    return true;
+  }
+
+ private:
+  void run() {
+    std::vector<uint32_t> order;
+    std::vector<uint32_t> scratch;
+    for (;;) {
+      SplatSortRequest request;
+      {
+        std::unique_lock<std::mutex> guard(_lock);
+        _wake.wait(guard, [this] { return _stopping || _pending; });
+        if (_stopping) return;
+        request = _request;
+        _pending = false;
+        _working = true;
+      }
+
+      const auto from = std::chrono::steady_clock::now();
+      sortSplats(_positions->data(), _count, request, order, scratch);
+      const double took = millisecondsSince(from);
+
+      {
+        std::lock_guard<std::mutex> guard(_lock);
+        _result.swap(order);
+        _milliseconds = took;
+        _ready = true;
+        _working = false;
+      }
     }
   }
+
+  std::shared_ptr<const std::vector<float>> _positions;
+  uint32_t _count;
+
+  std::mutex _lock;
+  std::condition_variable _wake;
+  bool _stopping = false;
+  bool _pending = false;
+  bool _working = false;
+  bool _ready = false;
+  SplatSortRequest _request;
+  std::vector<uint32_t> _result;
+  double _milliseconds = 0;
+
+  std::thread _worker;
+};
+#endif
+
+}  // namespace
+
+std::unique_ptr<SplatSorter> makeSplatSorter(
+    std::shared_ptr<const std::vector<float>> positions, uint32_t count) {
+  if (count <= kSplatInlineSortLimit) {
+    return std::make_unique<InlineSplatSorter>(std::move(positions), count);
+  }
+#if ORBLIT_SPLAT_THREADS
+  return std::make_unique<ThreadSplatSorter>(std::move(positions), count);
+#else
+  if (auto worker = makeWorkerSplatSorter(positions, count)) return worker;
+  std::fprintf(stderr,
+               "[orblit] splats: no sorting worker; sorting %u splats on the "
+               "page's own thread\n",
+               count);
+  return std::make_unique<InlineSplatSorter>(std::move(positions), count);
+#endif
 }
 
 }  // namespace orblit
