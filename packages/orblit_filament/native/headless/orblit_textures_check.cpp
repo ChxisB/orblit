@@ -881,100 +881,125 @@ void aTextureThatNeverArrivesShowsItsPlaceholder(const Supported &supported) {
 // ---- The measurement ----
 
 struct Arrival {
-  double worstMs = 0;
+  double pushCpuMs = 0;
+  double pushGpuMs = 0;
   double totalMs = 0;
   uint32_t frames = 0;
+  double worstMs = 0;
+  double worstCpuMs = 0;
   double p99Ms = 0;
+  double p50Ms = 0;
+  uint64_t bytes = 0;
+  size_t made = 0;
 };
 
-/// Pushes everything and pumps frame by frame, each frame's uploads waited
-/// for, until the queue is empty. What a frame costs is the pump and the
-/// backend's work for it.
-Arrival measureQueue(Engine &engine,
-                     const std::vector<std::vector<uint8_t>> &files,
-                     bool basis, uint64_t budget) {
+/// A frame at sixty a second: what is left of 16.6 ms after `took`, slept, so
+/// the decoders have the time between frames they would have in an app.
+void paceFrom(double took) {
+  const double left = 16.6 - took;
+  if (left > 0) {
+    std::this_thread::sleep_for(std::chrono::microseconds(int(left * 1000)));
+  }
+}
+
+void percentiles(std::vector<double> frames, Arrival &arrival) {
+  std::sort(frames.begin(), frames.end());
+  if (frames.empty()) return;
+  arrival.p99Ms = frames[frames.size() * 99 / 100];
+  arrival.p50Ms = frames[frames.size() / 2];
+}
+
+/// Pushes everything as a loader does, in one go, then pumps frame by frame
+/// with each frame's GPU work waited for, until the queue is empty. The push
+/// is reported on its own: it is the frame a model's resources begin in.
+Arrival measureQueue(Engine &engine, const std::vector<orblit::SharedBytes> &files,
+                     const std::vector<bool> &srgb, uint64_t budget) {
   orblit::TextureQueue queue(engine, 16384, 14);
   queue.setLimits(0, budget);
   static const int kClient = 0;
   std::vector<Texture *> made;
+  Arrival arrival;
   const double from = seconds();
-  for (const auto &file : files) {
+  for (size_t i = 0; i < files.size(); i++) {
     orblit::TextureQueue::Request request;
-    request.data = file.data();
-    request.size = file.size();
-    request.srgb = true;
+    request.shared = files[i];
+    request.srgb = srgb[i];
     request.client = &kClient;
     std::string why;
     if (Texture *texture = queue.push(request, why)) made.push_back(texture);
   }
-  engine.flushAndWait();
-  Arrival arrival;
   const double pushed = seconds();
-  arrival.worstMs = (pushed - from) * 1000;
+  engine.flushAndWait();
+  const double flushed = seconds();
+  arrival.pushCpuMs = (pushed - from) * 1000;
+  arrival.pushGpuMs = (flushed - pushed) * 1000;
+  arrival.made = made.size();
+
   std::vector<double> frames;
   while (queue.outstanding() > 0) {
     const double at = seconds();
     queue.pump();
+    const double pumped = seconds();
     engine.flushAndWait();
     const double took = (seconds() - at) * 1000;
     frames.push_back(took);
+    arrival.bytes += queue.frames().lastBytes;
     arrival.worstMs = std::max(arrival.worstMs, took);
-    // A frame at sixty a second, so decoding has the time it would have.
-    const double left = 16.6 - took;
-    if (left > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(int(left * 1000)));
-    }
+    arrival.worstCpuMs = std::max(arrival.worstCpuMs, (pumped - at) * 1000);
+    paceFrom(took);
   }
   arrival.totalMs = (seconds() - from) * 1000;
   arrival.frames = uint32_t(frames.size());
-  std::sort(frames.begin(), frames.end());
-  if (!frames.empty()) arrival.p99Ms = frames[frames.size() * 99 / 100];
-  printf("    pushing %zu took %.1f ms\n", files.size(),
-         (pushed - from) * 1000);
-  (void)basis;
+  percentiles(frames, arrival);
   orblit::TextureQueue::Popped popped;
   while (queue.pop(&kClient, popped)) {}
+  queue.shutdown();
   for (Texture *texture : made) engine.destroy(texture);
   engine.flushAndWait();
   return arrival;
 }
 
-/// gltfio's own Basis provider, as the renderer had it: every texture
-/// uploaded the frame it finishes transcoding.
-Arrival measureStockBasis(Engine &engine,
-                          const std::vector<std::vector<uint8_t>> &files) {
+/// gltfio's own providers, as the renderer had them: every texture uploaded
+/// in the frame its decoding is found finished.
+Arrival measureStock(Engine &engine, const std::vector<orblit::SharedBytes> &files,
+                     const std::vector<bool> &srgb, bool basis) {
   filament::gltfio::TextureProvider *provider =
-      filament::gltfio::createKtx2Provider(&engine);
+      basis ? filament::gltfio::createKtx2Provider(&engine)
+            : filament::gltfio::createStbProvider(&engine);
   std::vector<Texture *> made;
+  Arrival arrival;
   const double from = seconds();
-  for (const auto &file : files) {
+  for (size_t i = 0; i < files.size(); i++) {
+    using Flags = filament::gltfio::TextureProvider::TextureFlags;
     if (Texture *texture = provider->pushTexture(
-            file.data(), file.size(), "image/ktx2",
-            filament::gltfio::TextureProvider::TextureFlags::sRGB)) {
+            files[i]->data(), files[i]->size(),
+            basis ? "image/ktx2" : "image/png",
+            srgb[i] ? Flags::sRGB : Flags::NONE)) {
       made.push_back(texture);
     }
   }
+  const double pushed = seconds();
   engine.flushAndWait();
-  Arrival arrival;
-  arrival.worstMs = (seconds() - from) * 1000;
+  const double flushed = seconds();
+  arrival.pushCpuMs = (pushed - from) * 1000;
+  arrival.pushGpuMs = (flushed - pushed) * 1000;
+  arrival.made = made.size();
   std::vector<double> frames;
   while (provider->getPoppedCount() < provider->getPushedCount()) {
     const double at = seconds();
     provider->updateQueue();
     while (provider->popTexture() != nullptr) {}
+    const double pumped = seconds();
     engine.flushAndWait();
     const double took = (seconds() - at) * 1000;
     frames.push_back(took);
     arrival.worstMs = std::max(arrival.worstMs, took);
-    const double left = 16.6 - took;
-    if (left > 0) {
-      std::this_thread::sleep_for(std::chrono::microseconds(int(left * 1000)));
-    }
+    arrival.worstCpuMs = std::max(arrival.worstCpuMs, (pumped - at) * 1000);
+    paceFrom(took);
   }
   arrival.totalMs = (seconds() - from) * 1000;
   arrival.frames = uint32_t(frames.size());
-  std::sort(frames.begin(), frames.end());
-  if (!frames.empty()) arrival.p99Ms = frames[frames.size() * 99 / 100];
+  percentiles(frames, arrival);
   delete provider;
   for (Texture *texture : made) engine.destroy(texture);
   engine.flushAndWait();
@@ -982,68 +1007,111 @@ Arrival measureStockBasis(Engine &engine,
 }
 
 void report(const char *what, const Arrival &arrival) {
-  printf("  %-44s arrived in %7.0f ms over %4u frames; worst frame %6.1f ms, "
-         "99th percentile %5.1f ms\n",
-         what, arrival.totalMs, arrival.frames, arrival.worstMs,
-         arrival.p99Ms);
+  printf("  %-38s %3zu made; push %5.0f ms + GPU %4.0f ms; arrived in %6.0f ms "
+         "over %4u frames; frame worst %6.1f ms (of it on this thread %5.1f), "
+         "p99 %5.1f, median %4.1f\n",
+         what, arrival.made, arrival.pushCpuMs, arrival.pushGpuMs,
+         arrival.totalMs, arrival.frames, arrival.worstMs, arrival.worstCpuMs,
+         arrival.p99Ms, arrival.p50Ms);
 }
 
 int bench() {
   Engine *engine = Engine::create(Engine::Backend::METAL);
   if (engine == nullptr) return 1;
-  printf("textures bench: one frame is a pump and the GPU work it asked for, "
-         "waited for; frames paced at 60 Hz\n");
+  printf("textures bench: a frame is a pump and the GPU work it asked for, "
+         "waited for; frames paced at 60 Hz; the push is every texture "
+         "created at once, as a model's load does\n");
+
+  // Sixteen different files, each pushed count/16 times: decoding and
+  // uploading cost the same whether or not two textures share their bytes,
+  // and writing four hundred of them block by block would take minutes.
+  std::vector<orblit::SharedBytes> distinct;
+  for (uint32_t i = 0; i < 16; i++) {
+    distinct.push_back(std::make_shared<const std::vector<uint8_t>>(
+        noisyBc7File(2048, true, 100 + i)));
+  }
+
+  // What a megabyte costs, from a short sweep over 32 textures.
+  if (getenv("ORBLIT_BENCH_SWEEP") != nullptr) {
+    std::vector<orblit::SharedBytes> few;
+    for (uint32_t i = 0; i < 32; i++) few.push_back(distinct[i % 16]);
+    const std::vector<bool> srgb(few.size(), true);
+    for (uint64_t megabytes : {1, 2, 4, 8, 16, 32, 64}) {
+      const Arrival arrival =
+          measureQueue(*engine, few, srgb, megabytes << 20);
+      printf("  sweep: %2llu MB a frame: p99 %5.1f ms, median %4.1f ms, worst "
+             "%5.1f ms, %4u frames\n",
+             (unsigned long long)megabytes, arrival.p99Ms, arrival.p50Ms,
+             arrival.worstMs, arrival.frames);
+    }
+  }
 
   const uint32_t count =
       getenv("ORBLIT_BENCH_COUNT") ? uint32_t(atoi(getenv("ORBLIT_BENCH_COUNT")))
                                    : 400;
-  std::vector<std::vector<uint8_t>> bc7;
-  for (uint32_t i = 0; i < count; i++) {
-    bc7.push_back(noisyBc7File(2048, true, 100 + i));
+  std::vector<orblit::SharedBytes> bc7;
+  for (uint32_t i = 0; i < count; i++) bc7.push_back(distinct[i % 16]);
+  const std::vector<bool> bc7Srgb(bc7.size(), true);
+  printf("  %u 2048² BC7 textures with full mipmaps, zstd, %zu MB a file\n",
+         count, distinct[0]->size() >> 20);
+  if (const char *list = getenv("ORBLIT_BENCH_MB")) {
+    // Budgets given by hand, in megabytes, comma-separated.
+    for (const char *at = list; *at != '\0';) {
+      const uint64_t megabytes = strtoull(at, nullptr, 10);
+      char what[64];
+      snprintf(what, sizeof what, "BC7, %llu MB a frame",
+               (unsigned long long)megabytes);
+      report(what, measureQueue(*engine, bc7, bc7Srgb, megabytes << 20));
+      const char *comma = strchr(at, ',');
+      at = comma != nullptr ? comma + 1 : at + strlen(at);
+    }
+  } else {
+    for (int tier = 2; tier >= 0; tier--) {
+      const uint64_t budget = uint64_t(orblit::kTierUploadKilobytes[tier])
+                              << 10;
+      char what[64];
+      snprintf(what, sizeof what, "BC7, %s tier's %llu MB a frame",
+               tier == 2 ? "high" : tier == 1 ? "medium" : "low",
+               (unsigned long long)(budget >> 20));
+      report(what, measureQueue(*engine, bc7, bc7Srgb, budget));
+    }
+    report("BC7, no budget", measureQueue(*engine, bc7, bc7Srgb, 0));
   }
-  size_t bc7Bytes = 0;
-  for (const auto &file : bc7) bc7Bytes += file.size();
-  printf("  %u synthesized 2048² BC7 textures with full mipmaps, zstd: %zu MB "
-         "of files\n",
-         count, bc7Bytes >> 20);
-  report("BC7, the high tier's 32 MB a frame",
-         measureQueue(*engine, bc7, false, 32u << 20));
-  report("BC7, the medium tier's 16 MB a frame",
-         measureQueue(*engine, bc7, false, 16u << 20));
-  report("BC7, the low tier's 4 MB a frame",
-         measureQueue(*engine, bc7, false, 4u << 20));
-  report("BC7, no budget", measureQueue(*engine, bc7, false, 0));
-  bc7.clear();
 
   const char *bistro = getenv("ORBLIT_BISTRO");
   if (bistro != nullptr) {
-    std::vector<std::vector<uint8_t>> basis;
-    size_t basisBytes = 0;
+    std::vector<orblit::SharedBytes> basis;
+    std::vector<bool> basisSrgb;
     if (DIR *listing = opendir(bistro)) {
       while (dirent *entry = readdir(listing)) {
         const std::string name = entry->d_name;
         if (name.size() > 5 && name.substr(name.size() - 5) == ".ktx2") {
-          basis.push_back(readFile(std::string(bistro) + "/" + name));
-          basisBytes += basis.back().size();
+          auto bytes = std::make_shared<const std::vector<uint8_t>>(
+              readFile(std::string(bistro) + "/" + name));
+          orblit::ktx2::Header header;
+          orblit::ktx2::read(bytes->data(), bytes->size(), header);
+          basis.push_back(bytes);
+          // As the file says it is, so Basis's check of the transfer
+          // function passes for every one of them.
+          basisSrgb.push_back(header.transfer != orblit::ktx2::Transfer::linear);
         }
       }
       closedir(listing);
     }
-    printf("  %zu Basis textures from ORBLIT_BISTRO: %zu MB of files\n",
-           basis.size(), basisBytes >> 20);
+    printf("  %zu Basis textures from ORBLIT_BISTRO\n", basis.size());
     report("Basis, gltfio's own provider (before)",
-           measureStockBasis(*engine, basis));
-    report("Basis, the queue at 32 MB a frame",
-           measureQueue(*engine, basis, true, 32u << 20));
+           measureStock(*engine, basis, basisSrgb, true));
+    report("Basis, the queue at the high tier's 8 MB",
+           measureQueue(*engine, basis, basisSrgb,
+                        uint64_t(orblit::kTierUploadKilobytes[2]) << 10));
     report("Basis, the queue with no budget",
-           measureQueue(*engine, basis, true, 0));
+           measureQueue(*engine, basis, basisSrgb, 0));
   } else {
     printf("  ORBLIT_BISTRO is not set, so Basis was not measured\n");
   }
   Engine::destroy(&engine);
   return 0;
 }
-
 }  // namespace
 
 int main(int argc, char **argv) {

@@ -1252,8 +1252,9 @@ TextureQueue::Frames TextureQueue::frames() const {
 // ---- The provider ----
 
 void QueuedTextureProvider::nameBytes(const uint8_t *data,
-                                      const std::string &name) {
-  if (data != nullptr) _names[data] = name;
+                                      const std::string &name,
+                                      SharedBytes shared) {
+  if (data != nullptr) _names[data] = {name, std::move(shared)};
 }
 
 std::vector<QueuedTextureProvider::Note> QueuedTextureProvider::takeNotes() {
@@ -1273,7 +1274,15 @@ QueuedTextureProvider::Texture *QueuedTextureProvider::pushTexture(
   request.client = this;
   request.owner = _owner;
   const auto named = _names.find(data);
-  request.name = named != _names.end() ? named->second : std::string();
+  if (named != _names.end()) {
+    request.name = named->second.first;
+    // The same bytes, whole: kept rather than copied. A model of four hundred
+    // textures is otherwise hundreds of megabytes copied on this thread.
+    const SharedBytes &shared = named->second.second;
+    if (shared && shared->data() == data && shared->size() == byteCount) {
+      request.shared = shared;
+    }
+  }
 
   Texture *texture = _queue.push(request, _pushMessage);
   if (texture == nullptr) {
