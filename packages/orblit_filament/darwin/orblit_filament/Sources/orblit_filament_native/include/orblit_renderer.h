@@ -335,8 +335,14 @@ int orblit_renderer_apply_probes(orblit_renderer *renderer, uint32_t count,
 int orblit_renderer_apply_field(orblit_renderer *renderer, const float *params,
                                size_t count, const char *from);
 
-/* Cubemap paths as cmgen writes them, either may be NULL or empty, and
- * ORBLIT_STRIDE_ENVIRONMENT floats. */
+/* The scene's environment. `radiance` and `skybox` each name a KTX cubemap
+ * cmgen baked (tool/bake_environment.sh), or an equirectangular .hdr or .exr
+ * picture the renderer decodes and filters itself over the next few frames;
+ * either may be NULL or empty. ORBLIT_STRIDE_ENVIRONMENT floats: intensity in
+ * lux, rotation in radians, 1 to draw the backdrop, and the reflection size a
+ * picture is filtered at (0 for the device's own choice). A picture that
+ * cannot be used, or is still being filtered, is a note under "environment"
+ * or "skybox". */
 int orblit_renderer_set_environment(orblit_renderer *renderer,
                                    const char *radiance, const char *skybox,
                                    const float *params, size_t count);
