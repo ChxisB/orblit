@@ -516,6 +516,43 @@ void picturesLightLikeTheirBake(const std::string &picture, const std::string &w
          "the same bytes under another name filter nothing");
   expect(differ(runtimeLight, aliased).largest == 0, "and light the same frame");
 
+  // Bytes have been provided since (the name above), which is when any name's
+  // bytes may have changed. Named again, the picture still lights the first
+  // frame, from what it was, while a worker hashes it and finds it the same.
+  environment(renderer, ibl, sky, false);
+  capture(renderer, 2);
+  const uint64_t staleBefore = orblit::environmentPicturesFiltered();
+  environment(renderer, picture, picture, false);
+  orblit_renderer_request_capture(renderer);
+  for (int i = 0; i < 6; i++) orblit_renderer_draw(renderer, 1.0);
+  Frame staleFirst;
+  firstBytes = orblit_renderer_read_capture(renderer, nullptr, 0, nullptr, nullptr);
+  staleFirst.rgba.resize(firstBytes);
+  orblit_renderer_read_capture(renderer, staleFirst.rgba.data(), firstBytes, nullptr, nullptr);
+  waitForNotes(renderer);
+  const Frame staleAfter = capture(renderer);
+  std::printf(" named again after other bytes arrived: first frame %d levels from the lit "
+              "one, %d once checked, %llu filtered\n",
+              differ(runtimeLight, staleFirst).largest, differ(runtimeLight, staleAfter).largest,
+              static_cast<unsigned long long>(orblit::environmentPicturesFiltered() - staleBefore));
+  expect(differ(runtimeLight, staleFirst).largest == 0,
+         "after other bytes arrive, a filtered picture still lights the first frame");
+  expect(differ(runtimeLight, staleAfter).largest == 0 &&
+             orblit::environmentPicturesFiltered() == staleBefore,
+         "and checking it again filters nothing");
+
+  // The size feature level 1 filters at, against cmgen at that size.
+  const std::string mid = work + "/" + name + "-128";
+  expect(bake(picture, mid, 128, std::min<uint32_t>(skybox, 512)), "the bake script bakes at 128");
+  environment(renderer, mid + "/" + name + "_ibl.ktx", mid + "/" + name + "_skybox.ktx", false);
+  const Frame bakedMid = capture(renderer, 12);
+  const uint64_t midBefore = orblit::environmentPicturesFiltered();
+  environment(renderer, picture, picture, false, 128);
+  expect(waitForFilter(renderer, midBefore), "the picture filters at 128");
+  const Frame runtimeMid = capture(renderer);
+  reportSpheres("GPU filter at 128 against cmgen at 128, backdrop hidden:", bakedMid, runtimeMid);
+  expect(differ(bakedMid, runtimeMid).mean < 3.0, name + ": at 128 too, within three levels on average");
+
   // An EXR written from the decoded picture, in floats and in halves.
   pictures::Picture floats;
   floats.width = decoded.image.width;
