@@ -30,6 +30,48 @@ renderer.publish(view.scene);
 view.apply(diff);
 ```
 
+## Driving a model's skin with a rig
+
+An [`orblit_rig`](../orblit_rig) armature can move the skeleton of a model
+loaded from a file. Bones find joints by name, and the renderer is told where
+each joint is relative to whatever it hangs from:
+
+```dart
+final skin = info.skins.first;              // from OrblitView.onAssetInfo
+final armature = armatureOfSkin(skin);      // or one built by hand
+final binding = OrblitSkinBinding(armature, skin, index: 0);
+final pose = Pose(armature);
+
+// Every frame, after posing.
+pose.evaluate();
+final character = OrblitObject(
+  key: 7,
+  transform: placement,
+  colour: Vector3.all(1),
+  mesh: 'models/character.glb',
+  joints: binding.jointsFor(pose),
+);
+```
+
+- **`armatureOfSkin`** makes one bone per joint, with its head where the joint
+  rests and its tail at the middle of the joint's children. A joint at the end
+  of a chain carries on the way it came. Each bone's roll lays its X axis as
+  near its joint's X axis as the bone allows. No bone is left with no length.
+  An unnamed joint is called `joint 3`, and a second joint with a name already
+  taken gets `.001`; `boneNamesOfSkin` gives the names.
+- **An armature made by hand works too.** Only the names and the space have to
+  match: bones may point and twist however they like, because each joint keeps
+  its rest offset from its bone. The armature's space has to be the model's
+  own. `binding.bones` shows which joints found a bone.
+- **A joint no bone is named after** keeps its rest place relative to its
+  parent, and moves with it.
+- **Every joint is sent, every frame**, including those at rest. The renderer
+  leaves a hand-set joint where it was put until the object stops being posed,
+  so a joint left out would stay bent.
+- **The pose has to be evaluated first.** `jointsFor` does not evaluate it,
+  because a pose writes its inverse-kinematics solutions back into itself and
+  a second evaluation can give a different pose.
+
 ## Why it is its own package
 
 It is the one piece that has to know both halves, and neither half should have
