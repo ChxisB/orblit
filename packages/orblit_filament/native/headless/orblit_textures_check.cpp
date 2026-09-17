@@ -792,7 +792,7 @@ void theBestSiblingDraws(const Supported &supported) {
   const Colour c = draw("sib/c.ktx2", false);
   const Colour e = draw("sib/e.ktx2", false);
   printf("textures: siblings draw %s with all three, %s without ASTC, %s "
-         "where the ASTC name holds BC7, %s past an unsampleable sRGB ASTC, "
+         "where the BC name holds ETC2, %s past an unsampleable sRGB ASTC, "
          "%s past a linear ASTC used as colour\n",
          said(a).c_str(), said(b).c_str(), said(d).c_str(), said(c).c_str(),
          said(e).c_str());
