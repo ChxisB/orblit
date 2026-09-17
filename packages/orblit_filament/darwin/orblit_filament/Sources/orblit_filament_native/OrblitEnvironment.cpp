@@ -63,6 +63,7 @@
 #include <filament/Skybox.h>
 #include <filament/Texture.h>
 
+#include "OrblitDecode.h"
 #include "OrblitEnvironmentBake.h"
 #include "OrblitHdrImage.h"
 #include "OrblitPlatform.h"
@@ -89,10 +90,6 @@ constexpr size_t kKeptEnvironments = 4;
 /// Samples a texel for the GPU filter: SpecularFilter's own default, and the
 /// count cmgen starts its levels at.
 constexpr uint16_t kGpuSamples = 1024;
-
-/// Samples a texel for the CPU filter's first two levels, doubling after:
-/// cmgen's.
-constexpr uint32_t kCpuSamples = 1024;
 
 /// The sizes a picture is filtered at on this device, and which route.
 struct EnvironmentPlan {
@@ -267,6 +264,15 @@ struct EnvironmentWork {
   double decodeMilliseconds = 0;
   double harmonicsMilliseconds = 0;
   double prepareMilliseconds = 0;
+  /// Where the picture was prepared, for the log.
+  const char *preparedOn = "worker";
+
+  // In a browser, the drawing thread's: the decoder worker's job, or nought;
+  // whether the picture waits for one; and what handing it over and taking
+  // it back cost this thread.
+  int32_t job = 0;
+  bool forWorker = false;
+  double handoverMilliseconds = 0;
 
   // The drawing thread's half.
   int stage = 0;
@@ -278,92 +284,108 @@ struct EnvironmentWork {
 
 namespace {
 
-/// Everything a picture needs before the GPU sees it. Runs on a worker, and
-/// touches nothing but `work` and the resource store.
+/// What `work` asks of OrblitDecode.h's prepareEnvironmentPicture.
+EnvironmentPictureRequest pictureRequest(const EnvironmentWork &work) {
+  EnvironmentPictureRequest request;
+  request.name = lastPathComponent(work.path);
+  request.wantsLight = work.wantsLight;
+  request.wantsSky = work.wantsSky;
+  request.reflectionSize = work.plan.reflectionSize;
+  request.largestSkybox = work.plan.largestSkybox;
+  request.widestUpload = work.plan.widestUpload;
+  request.onCpu = work.plan.onCpu;
+  request.limits = work.plan.limits;
+  request.alreadyFiltered = work.alreadyFiltered;
+  return request;
+}
+
+/// What was prepared, into `work`, which is then finished.
+void finishWith(EnvironmentWork &work, EnvironmentPicture &&picture) {
+  work.note = std::move(picture.note);
+  work.hash = picture.hash;
+  work.cached = picture.cached;
+  work.harmonics = picture.harmonics;
+  work.skyboxSize = picture.skyboxSize;
+  work.uploadWidth = picture.uploadWidth;
+  work.uploadHeight = picture.uploadHeight;
+  work.upload = std::move(picture.upload);
+  work.levels = std::move(picture.levels);
+  work.skyFaces = std::move(picture.skyFaces);
+  work.readMilliseconds += picture.hashMilliseconds;
+  work.decodeMilliseconds = picture.decodeMilliseconds;
+  work.harmonicsMilliseconds = picture.harmonicsMilliseconds;
+  work.prepareMilliseconds = picture.prepareMilliseconds;
+  work.finished = true;
+}
+
+/// Everything a picture needs before the GPU sees it
+/// (prepareEnvironmentPicture). Runs on a worker, and touches nothing but
+/// `work` and the resource store.
 void prepare(EnvironmentWork &work) {
   const std::string name = lastPathComponent(work.path);
-  double started = now();
+  const double started = now();
   SharedBytes bytes = readResource(work.path);
   if (!bytes || bytes->empty()) {
     work.note = format("%s could not be read.", name.c_str());
     work.finished = true;
     return;
   }
-  work.hash = hashBytes(bytes->data(), bytes->size());
   work.readMilliseconds = (now() - started) * 1000;
-  if (std::find(work.alreadyFiltered.begin(), work.alreadyFiltered.end(),
-                work.hash) != work.alreadyFiltered.end()) {
-    work.cached = true;
-    work.finished = true;
-    return;
-  }
-
-  started = now();
-  HdrDecoded decoded = decodeHdrImage(bytes->data(), bytes->size(), work.plan.limits);
-  bytes.reset();
-  work.decodeMilliseconds = (now() - started) * 1000;
-  if (!decoded.note.empty()) {
-    work.note = name + ": " + decoded.note;
-    work.finished = true;
-    return;
-  }
-  HdrImage picture = std::move(decoded.image);
-  // cmgen's own test for an equirectangular picture, and the one
-  // EquirectangularToCubemap assumes.
-  if (picture.width != picture.height * 2) {
-    work.note = format("%s is %u by %u. An environment picture is "
-                       "equirectangular: exactly twice as wide as it is tall.",
-                       name.c_str(), picture.width, picture.height);
-    work.finished = true;
-    return;
-  }
-
-  const ForEach each = threadedForEach();
-  const uint32_t reflections = work.plan.reflectionSize;
-  work.skyboxSize = std::max<uint32_t>(
-      16, std::min(work.plan.largestSkybox, floorPowerOfTwo(picture.width / 4)));
-
-  started = now();
-  CpuCubemap cube;
-  if (work.wantsLight) {
-    cube = mirroredCubemap(cubemapFromEquirectangular(picture, reflections, each), each);
-    work.harmonics = irradianceHarmonics(cube, each);
-  }
-  work.harmonicsMilliseconds = (now() - started) * 1000;
-
-  started = now();
-  if (work.plan.onCpu) {
-    if (work.wantsLight) {
-      std::vector<CpuCubemap> mips;
-      makeSeamless(cube);
-      mips.push_back(std::move(cube));
-      while (mips.back().size > 1) mips.push_back(halvedCubemap(mips.back()));
-      for (const CpuCubemap &level : roughnessPrefilter(mips, kCpuSamples, each)) {
-        work.levels.push_back(halfFloatRgba(level));
-      }
-    }
-    if (work.wantsSky) {
-      work.skyFaces = halfFloatRgba(mirroredCubemap(
-          cubemapFromEquirectangular(picture, work.skyboxSize, each), each));
-    }
-  } else {
-    uint32_t widest = 0;
-    if (work.wantsLight) widest = std::max(widest, reflections * 8);
-    if (work.wantsSky) widest = std::max(widest, work.skyboxSize * 4);
-    widest = std::min(widest, work.plan.widestUpload);
-    while (picture.width > widest && picture.width >= 4) {
-      HdrImage half = halvedImage(picture);
-      if (half.empty()) break;
-      picture = std::move(half);
-    }
-    work.uploadWidth = picture.width;
-    work.uploadHeight = picture.height;
-    work.upload = halfFloatRgba(picture.rgb.get(),
-                                size_t(picture.width) * picture.height);
-  }
-  work.prepareMilliseconds = (now() - started) * 1000;
-  work.finished = true;
+  EnvironmentPicture picture;
+  prepareEnvironmentPicture(bytes->data(), bytes->size(), pictureRequest(work),
+                            threadedForEach(), picture,
+                            [&bytes] { bytes.reset(); });
+  finishWith(work, std::move(picture));
 }
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+/// Moves a picture waiting for a decoder worker on: hands it to one that is
+/// idle, takes back what one has finished, and prepares it on the page when
+/// no worker will — the same function the worker runs, so the light is the
+/// same. The drawing thread.
+void prepareWithWorkers(EnvironmentWork &work) {
+  namespace decoders = web::decoders;
+  if (work.finished.load() || !work.forWorker) return;
+  const double started = now();
+  if (work.job == 0) {
+    const int32_t capacity = decoders::capacity();
+    if (capacity == 0) return;
+    SharedBytes bytes = capacity > 0 ? readResource(work.path) : nullptr;
+    if (bytes && !bytes->empty()) {
+      const EnvironmentPictureRequest request = pictureRequest(work);
+      work.job = decoders::submit(web::DecodeJob::environment, bytes->data(),
+                                  bytes->size(),
+                                  web::environmentParameters(request),
+                                  request.name);
+    }
+    work.handoverMilliseconds += (now() - started) * 1000;
+    if (work.job != 0) return;
+  } else {
+    const decoders::State state = decoders::poll(work.job);
+    if (state == decoders::State::waiting || state == decoders::State::started) {
+      return;
+    }
+    web::DecodeAnswer answer;
+    EnvironmentPicture picture;
+    const bool answered = state == decoders::State::done &&
+                          decoders::take(work.job, answer) &&
+                          web::readEnvironmentAnswer(answer, picture);
+    if (!answered) decoders::cancel(work.job);
+    work.job = 0;
+    work.handoverMilliseconds += (now() - started) * 1000;
+    if (answered) {
+      work.forWorker = false;
+      work.preparedOn = "decoder worker";
+      finishWith(work, std::move(picture));
+      return;
+    }
+  }
+  // No worker will take it, or the one that did gave it back.
+  work.forWorker = false;
+  work.preparedOn = "page";
+  prepare(work);
+}
+#endif
 
 }  // namespace
 
@@ -442,10 +464,12 @@ void Renderer::requestEnvironmentImages(const std::string &radiance,
       }
       _environmentWork.push_back(work);
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-      // No threads in this browser build, so the page decodes it, once. A
-      // web worker of its own is where this moves; OrblitHdrImage and
-      // OrblitEnvironmentBake are written to be compiled into one unchanged.
-      prepare(*work);
+      // No threads in this browser build, so a decoder worker prepares it
+      // (native/web/orblit_decoder_workers.js), handed over now if one is
+      // idle and otherwise from pollEnvironment; the page prepares it only
+      // when no worker will.
+      work->forWorker = true;
+      prepareWithWorkers(*work);
 #else
       bool threaded = false;
       try {
@@ -517,6 +541,9 @@ void Renderer::installEnvironment(const EnvironmentLighting &lighting,
 /// most one stage of GPU work in a frame.
 void Renderer::pollEnvironment() {
   if (_environmentWork.empty() || _disposed || _engine == nullptr) return;
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  for (const auto &work : _environmentWork) prepareWithWorkers(*work);
+#endif
 
   const EnvironmentPlan current = planFor(*this, _environmentParams[3]);
   const auto filtersReady = [this](const EnvironmentWork &work) {
@@ -638,11 +665,11 @@ void Renderer::pollEnvironment() {
       }
       _engine->flushAndWait();
       log("[orblit] environment %s, filtered on the CPU at %u: read %.0f ms, "
-          "decoded %.0f ms, harmonics %.0f ms, filtered %.0f ms (worker); "
+          "decoded %.0f ms, harmonics %.0f ms, filtered %.0f ms (%s); "
           "uploaded %.1f ms (one frame)",
           name.c_str(), size, work->readMilliseconds, work->decodeMilliseconds,
           work->harmonicsMilliseconds, work->prepareMilliseconds,
-          (now() - started) * 1000);
+          work->preparedOn, (now() - started) * 1000);
     } else if (!filtersReady(*work)) {
       // A frame of its own the first time: building the filters compiles
       // their materials and renders the specular filter's sample kernel,
@@ -744,15 +771,22 @@ void Renderer::pollEnvironment() {
       _engine->flushAndWait();
       log("[orblit] environment %s, filtered on the GPU at %u (backdrop %u): "
           "read %.0f ms, decoded %.0f ms, harmonics %.0f ms, prepared %.0f ms "
-          "(worker); filters built %.1f ms, uploaded and converted %.1f ms, "
+          "(%s); filters built %.1f ms, uploaded and converted %.1f ms, "
           "filtered %.1f ms (a frame each)",
           name.c_str(), work->plan.reflectionSize, work->skyboxSize,
           work->readMilliseconds, work->decodeMilliseconds,
           work->harmonicsMilliseconds, work->prepareMilliseconds,
-          work->buildMilliseconds, work->convertMilliseconds,
+          work->preparedOn, work->buildMilliseconds, work->convertMilliseconds,
           (now() - started) * 1000);
     }
 
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    if (work->handoverMilliseconds > 0) {
+      log("[orblit] environment %s: handing it to a decoder worker and back "
+          "took the drawing thread %.1f ms",
+          name.c_str(), work->handoverMilliseconds);
+    }
+#endif
     picturesFiltered()++;
     _environmentCache.push_back(lighting);
     // Installed only for what is still wanted, but kept either way: it was
@@ -798,6 +832,11 @@ void Renderer::releaseEnvironmentCache() {
   if (_engine == nullptr) return;
   releaseEnvironment();
   for (const auto &work : _environmentWork) {
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+    // A picture still with a decoder worker: its answer is not wanted.
+    web::decoders::cancel(work->job);
+    work->job = 0;
+#endif
     if (work->source != nullptr) _engine->destroy(work->source);
     if (work->sky != nullptr) _engine->destroy(work->sky);
     work->source = work->sky = nullptr;

@@ -9,7 +9,11 @@
 // one budget per frame rather than one per kind of asset. PNG and JPEG are
 // decoded by stb, Basis is transcoded by Filament's own reader, and GPU-ready
 // KTX 2 (OrblitKtx2.h) is only decompressed; all three wait on worker threads
-// and then take their turn at the upload budget.
+// and then take their turn at the upload budget. A browser has no threads:
+// there the same decoding runs on Web Workers, in a decoder module of its own
+// (native/web/orblit_decoder_workers.js), Basis through Basis Universal's
+// transcoder exactly as Filament's reader drives it, and on the drawing
+// thread, a few milliseconds a frame, only when no worker will take it.
 //
 // What a texture shows before it has all arrived is decided here and nowhere
 // else. Filament samples a texture with more than one level through a view of
@@ -45,6 +49,14 @@
 namespace ktxreader {
 class Ktx2Reader;
 }
+
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+namespace orblit {
+namespace web {
+struct DecodeAnswer;
+}
+}  // namespace orblit
+#endif
 
 namespace orblit {
 
@@ -236,6 +248,16 @@ class TextureQueue {
   void decodeInline();
   void upload(Item &item, Unit &unit);
   void release(Item &item);
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
+  /// A browser's decoding: jobs handed to the decoder workers and their
+  /// answers taken back (native/web/orblit_decoder_workers.js). What they
+  /// will not take, decodeInline decodes.
+  void decodeOnWorkers();
+  void publishAnswer(Item &item, web::DecodeAnswer &answer);
+  void cancelJobs(const std::vector<std::shared_ptr<Item>> &items);
+  /// Items a worker is decoding. The engine's thread only.
+  std::vector<std::shared_ptr<Item>> _posted{};
+#endif
 
   filament::Engine &_engine;
   const uint32_t _deviceLargest;
@@ -271,6 +293,19 @@ class TextureQueue {
   /// finishes.
   double _batchFrom = 0;
   uint64_t _batchCount = 0;
+  /// Of the batch, what was decoded on the drawing thread, and what that
+  /// cost it. The engine's thread only.
+  uint64_t _inlineCount = 0;
+  double _pushSeconds = 0;
+  /// Of the batch, what decoder workers decoded, what that took them, and
+  /// what handing it over and back cost the drawing thread.
+  uint64_t _offThreadCount = 0;
+  double _offThreadSeconds = 0;
+  double _longestOffThread = 0;
+  double _handoverSeconds = 0;
+  double _longestHandover = 0;
+  double _inlineSeconds = 0;
+  double _longestInline = 0;
 
   struct Cooked {
     uint64_t generation;
