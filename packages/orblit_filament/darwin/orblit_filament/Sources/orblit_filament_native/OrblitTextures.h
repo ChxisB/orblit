@@ -293,6 +293,12 @@ class TextureQueue {
   /// finishes.
   double _batchFrom = 0;
   uint64_t _batchCount = 0;
+  /// When the last pump of the batch ran, and the longest time between two
+  /// of them: pump runs once at the start of every frame, so that is the
+  /// longest frame while the batch arrived, uploads and all. Nought until a
+  /// batch's first pump, so time spent idle before it is not counted.
+  double _lastPumpAt = 0;
+  double _longestFrame = 0;
   /// Of the batch, what was decoded on the drawing thread, and what that
   /// cost it. The engine's thread only.
   uint64_t _inlineCount = 0;
