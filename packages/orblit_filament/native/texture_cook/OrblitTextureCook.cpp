@@ -9,9 +9,9 @@
 //               sRGB codes, weighted by alpha, renormalised for normals, and
 //               with a cut-out's coverage held to level 0's.
 //   UASTC       every level encoded once, block by block.
-//   families    each UASTC block transcoded to ASTC, BC7/BC5/BC4 or
-//               ETC2/EAC, and every file written as KTX2 with each level
-//               compressed by zstd on its own.
+//   families    each UASTC block transcoded to ASTC, BC7 or BC4 (BC5 on
+//               request), ETC2 or EAC, and every file written as KTX2 with
+//               each level compressed by zstd on its own.
 //
 // Why encode once and transcode, rather than run a separate encoder per
 // family: UASTC was designed as the common ancestor of those formats, and
@@ -1056,6 +1056,14 @@ bool parseFamilies(const std::string &text, uint32_t &families) {
   return families != 0;
 }
 
+int revisionOf(Family family, Content content, bool twoChannelNormals) {
+  if (content == Content::kNormal && !twoChannelNormals &&
+      (family == kFamilyBc || family == kFamilyEtc2)) {
+    return 2;
+  }
+  return 1;
+}
+
 uint32_t alphaThreshold(float cutoff) {
   const double v = std::ceil(double(cutoff) * 255.0 - 1e-9);
   return uint32_t(std::min(255.0, std::max(0.0, v)));
@@ -1092,6 +1100,9 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
   }
   if (settings.cutout >= 0.0f && !(settings.cutout > 0.0f && settings.cutout < 1.0f)) {
     return refuse(cooked, "a cut-out threshold must be between 0 and 1");
+  }
+  if (settings.twoChannelNormals && settings.content != Content::kNormal) {
+    return refuse(cooked, "two-channel normals are for a normal map");
   }
   const uint32_t threads = settings.threads > 0
                                ? settings.threads
@@ -1138,6 +1149,7 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
 
   const bool lossless = settings.lossless;
   report.lossless = lossless;
+  report.twoChannelNormals = settings.twoChannelNormals;
   const bool mips = settings.mips < 0 ? !lossless : settings.mips > 0;
   if (lossless) {
     if (content != Content::kColour) {
@@ -1253,10 +1265,15 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
     std::snprintf(text, sizeof(text), " --cutout %.4f", double(plan.cutout));
     parameters += text;
   }
+  if (settings.twoChannelNormals) parameters += " --two-channel-normals";
   std::string directParameters = parameters + " --astc direct";
-  const std::string writer = "Orblit texture cook " + std::to_string(kCookVersion) +
-                             " (Basis Universal 2.1.0r, zstd " + ZSTD_versionString() + ")";
-  const auto keyValues = [&](const std::string &scParameters) {
+  // Each file names its own revision, not the cooker's version, so a file
+  // whose bytes a new cooker would not change keeps exactly the bytes it had.
+  const auto keyValues = [&](Family family, const std::string &scParameters) {
+    const std::string writer =
+        "Orblit texture cook " +
+        std::to_string(revisionOf(family, content, settings.twoChannelNormals)) +
+        " (Basis Universal 2.1.0r, zstd " + ZSTD_versionString() + ")";
     return std::vector<KeyValue>{{"KTXorientation", "rd"},
                                  {"KTXwriter", writer},
                                  {"KTXwriterScParams", scParameters}};
@@ -1297,16 +1314,19 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
 
     std::vector<std::pair<Family, Encoding>> jobs;
     if (families & kFamilyAstc) jobs.push_back({kFamilyAstc, Encoding::kAstc4x4});
+    // A normal map takes the colour formats — three channels, linear —
+    // unless two channels were asked for; see OrblitTextureCook.h.
+    const bool twoChannel = content == Content::kNormal && settings.twoChannelNormals;
     if (families & kFamilyBc) {
-      jobs.push_back({kFamilyBc, content == Content::kNormal          ? Encoding::kBc5
-                                 : content == Content::kSingleChannel ? Encoding::kBc4
-                                                                      : Encoding::kBc7});
+      jobs.push_back({kFamilyBc, content == Content::kSingleChannel ? Encoding::kBc4
+                                 : twoChannel                       ? Encoding::kBc5
+                                                                    : Encoding::kBc7});
     }
     if (families & kFamilyEtc2) {
-      jobs.push_back({kFamilyEtc2, content == Content::kNormal          ? Encoding::kEacRg11
-                                   : content == Content::kSingleChannel ? Encoding::kEacR11
-                                   : hasAlpha                           ? Encoding::kEtc2Rgba
-                                                                        : Encoding::kEtc2Rgb});
+      jobs.push_back({kFamilyEtc2, content == Content::kSingleChannel ? Encoding::kEacR11
+                                   : twoChannel                       ? Encoding::kEacRg11
+                                   : hasAlpha                         ? Encoding::kEtc2Rgba
+                                                                      : Encoding::kEtc2Rgb});
     }
     if (families & kFamilyBasis) jobs.push_back({kFamilyBasis, Encoding::kUastc});
 
@@ -1353,7 +1373,8 @@ Cooked cookUnguarded(const uint8_t *data, size_t size, const Settings &settings)
         std::make_move_iterator(compressed.begin() + std::ptrdiff_t(taken + file.levels.size())));
     taken += file.levels.size();
     writeKtx2(out.vkFormat, descriptorFor(format, fileSrgb, uastcChannel), report.width,
-              report.height, file.levels, levelBlobs, keyValues(file.scParameters), out.bytes);
+              report.height, file.levels, levelBlobs, keyValues(file.family, file.scParameters),
+              out.bytes);
     cooked.files.push_back(std::move(out));
   }
   report.compressSeconds = secondsSince(from);

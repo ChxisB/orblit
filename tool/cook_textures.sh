@@ -16,22 +16,35 @@
 # What each texture is decides how it is cooked, and a file does not say:
 #
 #   --gltf    the scene that uses the textures says. normalTexture means a
-#             normal map (BC5, EAC RG11, renormalised mips); the base colour
-#             of an alphaMode MASK material is a cut-out at its alphaCutoff
-#             (coverage kept per level); base colour, emissive, sheen and
-#             specular colour are sRGB; everything else is linear data.
+#             normal map (renormalised mips, all three channels kept: BC7 and
+#             ETC2 RGB8, because lit.mat and gltfio read .xyz); the base
+#             colour of an alphaMode MASK material is a cut-out at its
+#             alphaCutoff (coverage kept per level); base colour, emissive,
+#             sheen and specular colour are sRGB; everything else is linear
+#             data, cooked with the colour formats.
 #   without   the file name says, as these files are usually named: *Normal*
 #             is a normal map; *BaseColor*, *Albedo*, *Diffuse* and
 #             *Emissive* are sRGB colour; any other PNG or JPEG is linear.
 #             A Basis .ktx2 carries sRGB or linear in its own header. No
 #             cut-outs: nothing in a name says where the alpha test is.
 #
+# Two roles are never assigned. Single-channel (BC4, EAC R11) samples 0 for
+# green and blue, and glTF's occlusion reads red alone but its
+# metallicRoughness, which is usually the same file, reads green and blue: a
+# glTF cannot promise every use of an image reads red. Two-channel normals
+# (BC5, EAC RG11) need a material that rebuilds Z, and none does. Both are
+# orblit_texture_cook flags for whoever knows better.
+#
 # --lossless cooks every texture in the folder as pixel art: R8G8B8A8 in
 # x.ktx2, bit for bit, no mips and no siblings. For a folder of sprites.
 #
-# Resumable, and settings-aware: a texture is skipped when every file it
-# should make is newer than its source and was made with the same flags,
-# recorded in <folder>.cooked/.flags/. Each file is written under another
+# Resumable, file by file. A file is current when it is newer than its source,
+# its texture was cooked with the same flags (recorded in
+# <folder>.cooked/.flags/), and the revision in its own KTXwriter is the one
+# this cooker gives that family and content (orblit_texture_cook
+# --revisions). Only the families that are not current are cooked again: a
+# cooker that changes how normal maps are stored as BC re-cooks those files
+# and leaves every other one as it is. Each file is written under another
 # name and renamed into place, so an interrupted run leaves nothing half
 # written for the next one to skip.
 #
@@ -72,8 +85,11 @@ FOLDER="$(cd "$1" && pwd)"
 shift
 GLTF=""
 INTO=""
+targets="astc,bc,etc2,basis"
+# Passed to every cook.
 common=()
-# What changes the bytes, for the stamp: everything but the thread count.
+# What changes the bytes, for the stamp: not the thread count, and not the
+# targets, which are decided file by file.
 settings=()
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -81,7 +97,8 @@ while [ $# -gt 0 ]; do
     --into) [ $# -ge 2 ] || usage; INTO="$2"; shift 2 ;;
     --lossless) common+=("$1"); settings+=("$1"); shift ;;
     --threads) [ $# -ge 2 ] || usage; common+=("$1" "$2"); shift 2 ;;
-    --targets|--max-size) [ $# -ge 2 ] || usage; common+=("$1" "$2"); settings+=("$1" "$2"); shift 2 ;;
+    --targets) [ $# -ge 2 ] || usage; targets="$2"; shift 2 ;;
+    --max-size) [ $# -ge 2 ] || usage; common+=("$1" "$2"); settings+=("$1" "$2"); shift 2 ;;
     *) usage ;;
   esac
 done
@@ -93,7 +110,10 @@ if [ ! -x "$COOKER" ]; then
   "$COOK_DIR/build.sh" > /dev/null || { echo "could not build $COOKER"; exit 1; }
 fi
 
-VERSION="$("$COOKER" --version)" || { echo "$COOKER does not run"; exit 1; }
+"$COOKER" --revisions > /dev/null 2>&1 || {
+  echo "$COOKER does not run, or is older than this script: rebuild it"
+  exit 1
+}
 if [ -n "$INTO" ]; then
   mkdir -p "$INTO" || exit 1
   COOKED="$(cd "$INTO" && pwd)"
@@ -203,14 +223,44 @@ PYTHON
 total=$(grep -c . "$plan" || true)
 [ "$total" -gt 0 ] || { echo "no .png, .jpg or .ktx2 to cook in $FOLDER"; exit 1; }
 
-# Which siblings a cook writes, for deciding what is already there.
-targets="astc,bc,etc2,basis"
-for ((i = 0; i < ${#common[@]}; i++)); do
-  [ "${common[$i]}" = "--targets" ] && targets="${common[$((i + 1))]}"
+# The families asked for, by name.
+wanted=()
+IFS=',' read -r -a asked <<< "$targets"
+for target in "${asked[@]}"; do
+  case "$target" in
+    all) wanted+=(basis astc bc etc2) ;;
+    basis|astc|bc|etc2) wanted+=("$target") ;;
+    *) echo "--targets takes astc, bc, etc2 and basis"; exit 2 ;;
+  esac
 done
+
+# revision_of <family> <the cooker's --revisions line, as words>
+revision_of() {
+  local family="$1"
+  shift
+  while [ $# -ge 2 ]; do
+    [ "$1" = "$family" ] && { echo "$2"; return; }
+    shift 2
+  done
+}
+
+# The revision a cooked file says it is, from its KTXwriter, which sits in
+# the first few hundred bytes.
+revision_in() {
+  LC_ALL=C head -c 4096 "$1" | LC_ALL=C grep -a -o -m 1 'Orblit texture cook [0-9]*' |
+    awk '{print $4}'
+}
+
+suffix_of() {
+  case "$1" in
+    basis) echo ".ktx2" ;;
+    *) echo ".$1.ktx2" ;;
+  esac
+}
 
 echo "cooking $total textures from $FOLDER into $COOKED"
 cooked=0
+files=0
 skipped=0
 failed=0
 failures=()
@@ -220,42 +270,55 @@ while IFS=$'\t' read -r name flags; do
   [ -n "$name" ] || continue
   source="$FOLDER/$name"
   stem="${name%.*}"
-  # One flag set per texture, with the cooker's version, so a changed setting
-  # or a cooker that cooks differently cooks it again.
-  stamp="$VERSION $flags ${settings[*]:-}"
-
-  expected=()
-  case "$flags ${settings[*]:-}" in
-    *--lossless*) expected=("$COOKED/$stem.ktx2") ;;
-    *)
-      IFS=',' read -r -a wanted <<< "$targets"
-      for target in "${wanted[@]}"; do
-        case "$target" in
-          basis) expected+=("$COOKED/$stem.ktx2") ;;
-          all) expected+=("$COOKED/$stem.ktx2" "$COOKED/$stem.astc.ktx2" "$COOKED/$stem.bc.ktx2" "$COOKED/$stem.etc2.ktx2") ;;
-          *) expected+=("$COOKED/$stem.$target.ktx2") ;;
-        esac
-      done
+  stamp="$flags${settings[*]:+ ${settings[*]}}"
+  recorded="$(cat "$COOKED/.flags/$name" 2>/dev/null)"
+  # A stamp from before files carried their own revision began with the
+  # cooker's version and named the targets; the revision is now read from
+  # each file instead, and the targets are decided file by file.
+  case "$recorded" in
+    "orblit_texture_cook "*)
+      recorded="$(printf '%s\n' "$recorded" |
+        sed -e 's/^orblit_texture_cook [0-9]* //' -e 's/ *--targets [^ ]*//' -e 's/ *$//')"
       ;;
   esac
-  whole=1
-  for file in "${expected[@]}"; do
-    if [ ! -s "$file" ] || [ ! "$file" -nt "$source" ]; then whole=0; fi
-  done
-  if [ "$whole" -eq 1 ] && [ "$(cat "$COOKED/.flags/$name" 2>/dev/null)" = "$stamp" ]; then
-    skipped=$((skipped + 1))
-    continue
-  fi
 
-  # $flags is a word list the plan wrote; split it on purpose.
   # shellcheck disable=SC2086
-  if output=$("$COOKER" "$source" "$COOKED/$stem" $flags ${common[@]+"${common[@]}"} --quiet 2>&1); then
-    echo "$stamp" > "$COOKED/.flags/$name"
-    cooked=$((cooked + 1))
-  else
-    echo "  ! $output"
+  revisions="$("$COOKER" --revisions $flags ${settings[@]+"${settings[@]}"})" || {
+    echo "  ! $name: the cooker does not take its flags ($flags)"
     failures+=("$name")
     failed=$((failed + 1))
+    continue
+  }
+  families=("${wanted[@]}")
+  case " $flags ${settings[*]:-} " in
+    *" --lossless "*) families=(basis) ;;
+  esac
+  stale=()
+  for family in "${families[@]}"; do
+    file="$COOKED/$stem$(suffix_of "$family")"
+    # shellcheck disable=SC2086
+    expected="$(revision_of "$family" $revisions)"
+    if [ "$recorded" != "$stamp" ] || [ ! -s "$file" ] || [ ! "$file" -nt "$source" ] ||
+       [ "$(revision_in "$file")" != "$expected" ]; then
+      stale+=("$family")
+    fi
+  done
+  if [ ${#stale[@]} -eq 0 ]; then
+    skipped=$((skipped + 1))
+  else
+    only="$(IFS=,; echo "${stale[*]}")"
+    # $flags is a word list the plan wrote; split it on purpose.
+    # shellcheck disable=SC2086
+    if output=$("$COOKER" "$source" "$COOKED/$stem" $flags --targets "$only" \
+                  ${common[@]+"${common[@]}"} --quiet 2>&1); then
+      echo "$stamp" > "$COOKED/.flags/$name"
+      cooked=$((cooked + 1))
+      files=$((files + ${#stale[@]}))
+    else
+      echo "  ! $output"
+      failures+=("$name")
+      failed=$((failed + 1))
+    fi
   fi
 
   done_so_far=$((cooked + skipped + failed))
@@ -265,7 +328,7 @@ while IFS=$'\t' read -r name flags; do
 done < "$plan"
 
 size=$(du -s -k "$COOKED" | cut -f1)
-echo "cooked $cooked, already there $skipped, failed $failed, in $(( $(date +%s) - started )) s;" \
-     "$COOKED is $((size / 1024)) MB"
+echo "cooked $cooked ($files files), already there $skipped, failed $failed," \
+     "in $(( $(date +%s) - started )) s; $COOKED is $((size / 1024)) MB"
 for name in ${failures[@]+"${failures[@]}"}; do echo "  failed: $name"; done
 [ "$failed" -eq 0 ]
