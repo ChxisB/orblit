@@ -271,7 +271,9 @@ while IFS=$'\t' read -r name flags; do
   source="$FOLDER/$name"
   stem="${name%.*}"
   stamp="$flags${settings[*]:+ ${settings[*]}}"
-  recorded="$(cat "$COOKED/.flags/$name" 2>/dev/null)"
+  # No stamp at all is never current, even for a texture whose flags are
+  # empty.
+  recorded="$(cat "$COOKED/.flags/$name" 2>/dev/null)" || recorded="(none)"
   # A stamp from before files carried their own revision began with the
   # cooker's version and named the targets; the revision is now read from
   # each file instead, and the targets are decided file by file.
