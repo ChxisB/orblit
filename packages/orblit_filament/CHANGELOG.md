@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.29.0
+
+- **Textures arrive without stalling a frame.** Every texture — a material's,
+  a sprite's, a model's — is decoded off the drawing thread and uploaded under
+  a byte budget each frame, smallest level first, so one on its way shows a
+  blurrier copy of itself, or transparent black, and never whatever memory it
+  was given. The Bistro's 405 Basis textures used to hold the drawing thread
+  for 2.1 s in a single frame; through the queue its worst frame is 20 ms.
+  Four hundred GPU-ready 2048² textures arrive in 5.9 s at the high tier's
+  budget with no frame over 4.9 ms.
+- **GPU-ready KTX 2.** ASTC, BC1–7 and ETC2/EAC files go to the GPU as they
+  are — levels unsqueezed with zstd on a worker, nothing transcoded. Every
+  truncation of the test files and thousands of mutations are refused with a
+  reason, clean under the address and undefined-behaviour sanitisers.
+- **A cooked texture is chosen for the device.** Naming `x.ktx2` loads
+  `x.astc.ktx2`, `x.bc.ktx2` or `x.etc2.ktx2` when there is one the device
+  really samples — checked against the format inside the file, not its name —
+  and `x.ktx2` otherwise. `OrblitDeviceProfile.textureCandidates` gives the
+  same order to hosts that provide bytes themselves. Filament's Metal backend
+  samples no sRGB ASTC, so Apple devices take BC or ETC2 for colour.
+- **`OrblitPipeline.textures`** (`OrblitTextureLimits`): the largest texture
+  side and the kilobytes uploaded a frame, both defaulting from the device's
+  tier — 2, 4 and 8 MB a frame. A low tier leaves a texture's largest levels
+  out altogether, Basis files included, and halves an oversized PNG or JPEG
+  as it decodes: the cooked Bistro needs 1195 MB at full size and 299 MB at
+  the low tier's 1024. The pipeline block is now 30 floats.
+- **Environments from pictures.** `OrblitEnvironment.fromImage` lights a scene
+  from an equirectangular `.hdr` or `.exr`, prefiltered while it runs: decoded
+  off the drawing thread, its harmonics worked out exactly as `cmgen` does, and
+  its reflections filtered on the GPU. Against a `cmgen` bake of the same
+  picture the frame differs by a third of a level on average, and matte
+  surfaces by at most one at the 99th percentile. Cached by content, so naming
+  it again filters nothing. Devices without half-float render targets filter a
+  smaller one on the CPU. `tool/bake_environment.sh` bakes with `cmgen` at the
+  sizes the renderer would choose.
+- **In a browser, decoding runs on Web Workers**, in a small decoder module
+  carried inside `orblit_renderer.js`: pictures, Basis and GPU-ready textures
+  and environment pictures. No page task over 50 ms while twelve 2048²
+  textures or a 2K `.hdr` load, from 118–206 ms before; the page decodes a job
+  itself when no worker will take it.
+- **An offline texture cooker**, `native/texture_cook`: PNG, JPEG or Basis in,
+  the cooked set out with full mip chains filtered in linear light, normal
+  maps renormalised, cut-out coverage kept level by level, and a lossless
+  option that leaves pixel art identical to the byte. The same input cooks to
+  the same bytes on every run, thread count and machine checked.
+  `tool/cook_textures.sh` cooks a folder with it, taking each texture's role
+  from a glTF scene.
+- Environment and skybox problems now reach hosts as notes; they were being
+  dropped.
+
 ## 0.28.0
 
 - **A model file's own clips play.** `OrblitObject.animation` names one of the
