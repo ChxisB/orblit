@@ -93,7 +93,14 @@ class TexturesExample extends Example {
       // The renderer reads the disk and chooses a cooked sibling itself.
       for (final file in files) {
         final path = '$directory/$file';
-        if (File(path).existsSync()) _named[file] = path;
+        // A cooked set need not keep its `x.ktx2`: a folder cooked for one
+        // family has only the siblings, and the renderer finds those itself.
+        final exists =
+            File(path).existsSync() ||
+            device
+                .textureCandidates(file)
+                .any((candidate) => File('$directory/$candidate').existsSync());
+        if (exists) _named[file] = path;
       }
       final picturePath = picture;
       if (picturePath != null && File(picturePath).existsSync()) {
