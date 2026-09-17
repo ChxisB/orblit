@@ -2,14 +2,18 @@
 
 ## 0.29.0
 
-- **Textures arrive without stalling a frame.** Every texture — a material's,
-  a sprite's, a model's — is decoded off the drawing thread and uploaded under
-  a byte budget each frame, smallest level first, so one on its way shows a
-  blurrier copy of itself, or transparent black, and never whatever memory it
-  was given. The Bistro's 405 Basis textures used to hold the drawing thread
-  for 2.1 s in a single frame; through the queue its worst frame is 20 ms.
-  Four hundred GPU-ready 2048² textures arrive in 5.9 s at the high tier's
-  budget with no frame over 4.9 ms.
+- **Textures arrive without freezing the app.** Every texture — a material's,
+  a sprite's, a model's — is decoded off the drawing thread on every core but
+  two and uploaded under a budget each frame, smallest level first, so one on
+  its way shows a blurrier copy of itself, or transparent black, and never
+  whatever memory it was given. A model is drawn once each of its textures has
+  memory, which is made under the same budget rather than all in one frame.
+  The Bistro exterior used to freeze for 1.1 to 4.4 s while its 405 Basis
+  textures arrived; now its longest frame meanwhile is 94 to 183 ms, and
+  cooked it arrives in 0.8 to 1.0 s with a longest frame of 78 to 92 ms — the
+  model's first draw, not its textures (`orblit_load_bench`, M4 Pro). Loading
+  Basis files is slower than it was on a busy machine: 3.8 to 7.8 s in the
+  gallery against 3.3 to 3.7 s. Cook them.
 - **GPU-ready KTX 2.** ASTC, BC1–7 and ETC2/EAC files go to the GPU as they
   are — levels unsqueezed with zstd on a worker, nothing transcoded. Every
   truncation of the test files and thousands of mutations are refused with a
@@ -21,8 +25,9 @@
   same order to hosts that provide bytes themselves. Filament's Metal backend
   samples no sRGB ASTC, so Apple devices take BC or ETC2 for colour.
 - **`OrblitPipeline.textures`** (`OrblitTextureLimits`): the largest texture
-  side and the kilobytes uploaded a frame, both defaulting from the device's
-  tier — 2, 4 and 8 MB a frame. A low tier leaves a texture's largest levels
+  side and the kilobytes uploaded a frame. Left unset, the budget starts at the
+  device tier's 4, 16 or 32 MB and follows what frames cost while textures
+  arrive, within bounds the tier sets. A low tier leaves a texture's largest levels
   out altogether, Basis files included, and halves an oversized PNG or JPEG
   as it decodes: the cooked Bistro needs 1195 MB at full size and 299 MB at
   the low tier's 1024. The pipeline block is now 30 floats.
