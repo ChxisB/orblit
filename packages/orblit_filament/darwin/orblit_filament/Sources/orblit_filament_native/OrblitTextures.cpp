@@ -433,7 +433,7 @@ TextureQueue::TextureQueue(filament::Engine &engine, uint32_t deviceLargest,
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   (void)workerThreads;
-  _inline = true;
+  _noDecoderThreads = true;
 #else
   // Every core but two, the drawing thread's and the backend's, and the
   // decoders below both in priority. Decoding is what a Basis load waits on:
@@ -1099,14 +1099,14 @@ void TextureQueue::enqueue(const std::shared_ptr<Item> &item) {
     _items.push_back(item);
     _waiting.push_back(item);
   }
-  if (!_inline) {
+  if (!_noDecoderThreads) {
     startWorkers();
     _wake.notify_one();
   }
 }
 
 void TextureQueue::startWorkers() {
-  if (!_workers.empty() || _inline) return;
+  if (!_workers.empty() || _noDecoderThreads) return;
   try {
     for (uint32_t i = 0; i < _workerCount; i++) {
       _workers.emplace_back([this] { work(); });
@@ -1115,7 +1115,7 @@ void TextureQueue::startWorkers() {
     // A thread that will not start is not a reason to stop loading
     // textures: whatever did start keeps working, and with none the drawing
     // thread decodes a little each frame, as a browser does.
-    if (_workers.empty()) _inline = true;
+    if (_workers.empty()) _noDecoderThreads = true;
   }
 }
 
@@ -1350,9 +1350,9 @@ void TextureQueue::pump() {
     _lastPumpAt = at;
   }
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
-  if (_inline) decodeOnWorkers();
+  if (_noDecoderThreads) decodeOnWorkers();
 #endif
-  if (_inline) decodeInline();
+  if (_noDecoderThreads) decodeInline();
 
   // Whatever placeholders push wrote since the last pump count against this
   // frame: they went to the GPU in it.
@@ -1689,7 +1689,7 @@ size_t TextureQueue::decodedCount(const void *client) const {
 void TextureQueue::waitForDecoding(const void *client) {
   // Nothing to wait for without workers: what is decoded inline is decoded
   // a little each frame, and blocking here would decode all of it at once.
-  if (_inline) return;
+  if (_noDecoderThreads) return;
   std::unique_lock<std::mutex> hold(_lock);
   _idle.wait(hold, [&] {
     for (const std::shared_ptr<Item> &item : _items) {
