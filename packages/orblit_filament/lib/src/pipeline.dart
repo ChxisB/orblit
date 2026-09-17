@@ -316,9 +316,14 @@ class OrblitTextureLimits {
   /// Uploading is work the frame waits for, so four hundred textures arriving
   /// at once would otherwise be four hundred textures' worth of stall in one
   /// frame. Spread under this, they arrive over several frames instead, the
-  /// smallest levels of each first. A frame always uploads at least one level,
-  /// however large, or a level larger than this would never go. Null is the
-  /// device's own.
+  /// smallest levels of each first. The first write into a texture counts
+  /// every level of it, because that is when the GPU finds its memory. A
+  /// frame always uploads at least one level, however large, or a level
+  /// larger than this would never go.
+  ///
+  /// Null is the device's own, and is measured rather than held: it starts at
+  /// [OrblitDeviceProfile.textureUploadKilobytes] and follows what frames
+  /// cost while textures arrive. A number is held exactly.
   int? uploadKilobytes;
 }
 

@@ -179,6 +179,15 @@ clang++ -std=c++17 -O2 -Wall -Wextra -Wno-deprecated-declarations \
 clang++ "$OUT/orblit_textures_check.o" "${objects[@]}" "${archives[@]}" \
   "${FRAMEWORKS[@]}" -o "$OUT/orblit_textures_check"
 
+# What loading a real model does to the frames around it, through the C ABI
+# alone, so the same file builds against an older renderer to compare with.
+# Not run by `test`: it needs a model (ORBLIT_BISTRO). See
+# orblit_load_bench.cpp.
+clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC/include" \
+  -c orblit_load_bench.cpp -o "$OUT/orblit_load_bench.o"
+clang++ "$OUT/orblit_load_bench.o" "${objects[@]}" "${archives[@]}" \
+  "${FRAMEWORKS[@]}" -o "$OUT/orblit_load_bench"
+
 # The cook step for splat captures: a .ply or .spz in, the .osplat a launch
 # reads without parsing out. See orblit_splat_cook.cpp.
 clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
@@ -189,6 +198,7 @@ echo "built $OUT/orblit_renderer_test, $OUT/orblit_headless," \
      "$OUT/orblit_models_check, $OUT/orblit_splats_check," \
      "$OUT/orblit_environment_check, $OUT/orblit_environment_decode_check," \
      "$OUT/orblit_ktx2_check, $OUT/orblit_textures_check," \
+     "$OUT/orblit_load_bench," \
      "$OUT/orblit_splat_cook," \
      "$OUT/orblit_import and $OUT/orblit_import_check," \
      "$OUT/orblit_texture_cook and $OUT/orblit_texture_cook_check"

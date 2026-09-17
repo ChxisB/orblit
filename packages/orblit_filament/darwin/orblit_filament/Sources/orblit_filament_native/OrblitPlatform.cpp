@@ -124,6 +124,28 @@ bool readFile(const std::string &path, std::vector<uint8_t> &out) {
   return whole;
 }
 
+bool readFileStart(const std::string &path, size_t most,
+                   std::vector<uint8_t> &out, uint64_t *fileSize) {
+  out.clear();
+  *fileSize = 0;
+  std::FILE *file = std::fopen(path.c_str(), "rb");
+  if (file == nullptr) return false;
+  bool good = std::fseek(file, 0, SEEK_END) == 0;
+  const long size = good ? std::ftell(file) : -1;
+  good = good && size > 0 && std::fseek(file, 0, SEEK_SET) == 0;
+  if (good) {
+    out.resize(std::min(size_t(size), most));
+    good = std::fread(out.data(), 1, out.size(), file) == out.size();
+  }
+  std::fclose(file);
+  if (!good) {
+    out.clear();
+    return false;
+  }
+  *fileSize = uint64_t(size);
+  return true;
+}
+
 bool readWholeFile(const std::string &path, void **bytes, size_t *size) {
   *bytes = nullptr;
   *size = 0;
