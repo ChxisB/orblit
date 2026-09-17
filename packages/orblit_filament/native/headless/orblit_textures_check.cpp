@@ -26,6 +26,7 @@
 #include "orblit_renderer.h"
 
 #include <dirent.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <chrono>
@@ -172,6 +173,9 @@ struct Supported {
   /// so on Apple the two differ.
   bool astc = false;
   bool astcSrgb = false;
+  /// ASTC as a cooked set's family: sampled in both colour spaces. Not on
+  /// Apple, so there an ASTC sibling is never opened.
+  bool astcFamily = false;
   bool bc7 = false;
   bool bc1 = false;
   bool etc2 = false;
@@ -192,6 +196,7 @@ Supported theQueueCountsWhatItDoes() {
     };
     supported.astc = has(157);
     supported.astcSrgb = has(158);
+    supported.astcFamily = supported.astc && supported.astcSrgb;
     supported.bc7 = has(146) && has(145);
     supported.bc1 = queue.sampledAs(*orblit::ktx2::formatOf(132), 1, true) !=
                     nullptr;
@@ -216,10 +221,13 @@ Supported theQueueCountsWhatItDoes() {
       uint32_t expectedPumps;
       const char *what;
     };
-    // Levels of 16 MB, 4 MB, 1 MB and 1.33 MB of everything smaller.
+    // Levels of 16 MB, 4 MB, 1 MB and 1.33 MB of everything smaller. The
+    // first write — the smallest level, here — is charged all 22.4 MB of the
+    // texture, what the GPU has to find for it, so it has a frame of its own
+    // under any budget smaller than that.
     const Budget budgets[] = {
-        {4u << 20, 3, "4 MB"},
-        {1u << 20, 4, "1 MB"},
+        {4u << 20, 4, "4 MB"},
+        {1u << 20, 5, "1 MB"},
         {1, 13, "one byte"},
         {0, 1, "no budget"},
     };
@@ -259,7 +267,9 @@ Supported theQueueCountsWhatItDoes() {
     printf("textures: 4096² BC7 under a 1024 limit: %u level(s), %llu KB "
            "uploaded\n",
            smaller.uploads, (unsigned long long)(smaller.bytes / 1024));
-    expect(smaller.uploads == 11 && smaller.bytes < (2u << 20),
+    // Charged once for the 1.4 MB the GPU finds for it, and once for the
+    // 1.4 MB of levels written into it.
+    expect(smaller.uploads == 11 && smaller.bytes < (3u << 20),
            "and only its eleven smaller levels go up");
     destroyPopped(*engine, queue, client, nullptr);
 
@@ -386,17 +396,18 @@ Supported theQueueCountsWhatItDoes() {
     provide("cooked/a.bc.ktx2", file(fixtures::bc7(false)));
     std::string chosen;
     queue.readCooked("cooked/a.ktx2", &chosen, kLinear);
-    const std::string best = supported.astc  ? "cooked/a.astc.ktx2"
-                             : supported.bc7 ? "cooked/a.bc.ktx2"
-                                             : "cooked/a.ktx2";
+    const std::string best = supported.astcFamily ? "cooked/a.astc.ktx2"
+                             : supported.bc7      ? "cooked/a.bc.ktx2"
+                                                  : "cooked/a.ktx2";
     expect(chosen == best, "the best sibling is chosen: " + chosen);
 
-    // The name says ASTC and the file holds BC7: what it holds decides.
+    // The name says BC and the file holds ETC2: what it holds decides.
     provide("cooked/b.ktx2", file(fixtures::rgba8(false)));
-    provide("cooked/b.astc.ktx2", file(fixtures::bc7(false)));
+    provide("cooked/b.bc.ktx2", file(fixtures::etc2Rgba(false)));
     queue.readCooked("cooked/b.ktx2", &chosen, kLinear);
-    expect(chosen == (supported.astc && supported.bc7 ? "cooked/b.astc.ktx2"
-                                                      : "cooked/b.ktx2"),
+    expect(chosen == (supported.etc2 && !supported.astcFamily
+                          ? "cooked/b.bc.ktx2"
+                          : chosen),
            "a sibling is judged by its format, not its name: " + chosen);
 
     // sRGB ASTC, which Filament's Metal backend does not sample, and a
@@ -425,9 +436,13 @@ Supported theQueueCountsWhatItDoes() {
              "over: " + chosen);
     }
     queue.readCooked("cooked/e.ktx2", &chosen, kLinear);
-    if (supported.astc) {
+    if (supported.astcFamily) {
       expect(chosen == "cooked/e.astc.ktx2",
              "and taken where the colour space does not matter: " + chosen);
+    } else if (supported.bc7) {
+      expect(chosen == "cooked/e.bc.ktx2",
+             "and ASTC in one colour space only is not a family, even for "
+             "a map read as numbers: " + chosen);
     }
 
     // Remembered, until something is provided.
@@ -441,6 +456,65 @@ Supported theQueueCountsWhatItDoes() {
            "moved: " + chosen);
     queue.readCooked("cooked/png.png", &chosen, kLinear);
     expect(chosen == "cooked/png.png", "anything else is read as it is");
+
+    // Siblings passed over for the same reason are said once, counted.
+    queue.takePassedOver();
+    for (int i = 0; i < 3; i++) {
+      const std::string set = "cooked/many" + std::to_string(i) + ".ktx2";
+      provide(set, file(fixtures::rgba8(true)));
+      provide(orblit::ktx2::siblingName(set, orblit::ktx2::Family::bc),
+              std::vector<uint8_t>(100, 9));
+      queue.readCooked(set, &chosen, kSrgb);
+    }
+    const std::vector<std::string> said = queue.takePassedOver();
+    printf("textures: three broken siblings said as: %s\n",
+           said.empty() ? "(nothing)" : said[0].c_str());
+    expect(said.size() == 1 && said[0].find("3 cooked siblings") == 0,
+           "three siblings passed over for one reason are one line");
+
+    // On disk a sibling is chosen by its header alone, and one whose header
+    // is sound but whose levels are cut short still falls through.
+    char folder[] = "/tmp/orblit_textures_check.XXXXXX";
+    const char *made = nullptr;
+    if (const char *tmp = getenv("TMPDIR")) {
+      static std::string templ;
+      templ = std::string(tmp) + "/orblit_textures_check.XXXXXX";
+      static std::vector<char> buffer;
+      buffer.assign(templ.begin(), templ.end());
+      buffer.push_back(0);
+      made = mkdtemp(buffer.data());
+    } else {
+      made = mkdtemp(folder);
+    }
+    if (made != nullptr && supported.bc7) {
+      const std::string dir = made;
+      const auto save = [&](const std::string &name,
+                            const std::vector<uint8_t> &bytes) {
+        FILE *out = fopen((dir + "/" + name).c_str(), "wb");
+        if (out == nullptr) return;
+        fwrite(bytes.data(), 1, bytes.size(), out);
+        fclose(out);
+      };
+      std::vector<uint8_t> whole = file(fixtures::bc7(true));
+      std::vector<uint8_t> cut = whole;
+      cut.resize(cut.size() - 8);
+      save("whole.ktx2", file(fixtures::rgba8(true)));
+      save("whole.bc.ktx2", whole);
+      save("cut.ktx2", file(fixtures::rgba8(true)));
+      save("cut.bc.ktx2", cut);
+      queue.readCooked(dir + "/whole.ktx2", &chosen, kSrgb);
+      expect(chosen == dir + "/whole.bc.ktx2",
+             "a sibling on disk is chosen: " + chosen);
+      queue.readCooked(dir + "/cut.ktx2", &chosen, kSrgb);
+      expect(chosen == dir + "/cut.ktx2",
+             "and one cut short on disk falls through: " + chosen);
+      queue.takePassedOver();
+      for (const char *name :
+           {"whole.ktx2", "whole.bc.ktx2", "cut.ktx2", "cut.bc.ktx2"}) {
+        remove((dir + "/" + name).c_str());
+      }
+      rmdir(made);
+    }
   }
 
   Engine::destroy(&engine);
@@ -696,8 +770,8 @@ void theBestSiblingDraws(const Supported &supported) {
   provide("sib/b.bc.ktx2", solid(fixtures::bc7(false), red));
   provide("sib/b.etc2.ktx2", solid(fixtures::etc2(false), yellow));
   provide("sib/d.ktx2", solid(fixtures::rgba8(false), blue));
-  provide("sib/d.astc.ktx2", solid(fixtures::bc7(false), magenta));
-  provide("sib/d.bc.ktx2", solid(fixtures::bc7(false), red));
+  // Called BC, holding ETC2.
+  provide("sib/d.bc.ktx2", solid(fixtures::etc2Rgba(false), magenta));
   // Read as colour, where it has no sRGB ASTC: one sibling it cannot sample
   // at all, and one it could only sample in the wrong colour space.
   provide("sib/c.ktx2", solid(fixtures::rgba8(true), blue));
@@ -718,17 +792,25 @@ void theBestSiblingDraws(const Supported &supported) {
   const Colour c = draw("sib/c.ktx2", false);
   const Colour e = draw("sib/e.ktx2", false);
   printf("textures: siblings draw %s with all three, %s without ASTC, %s "
-         "where the ASTC name holds BC7, %s past an unsampleable sRGB ASTC, "
+         "where the BC name holds ETC2, %s past an unsampleable sRGB ASTC, "
          "%s past a linear ASTC used as colour\n",
          said(a).c_str(), said(b).c_str(), said(d).c_str(), said(c).c_str(),
          said(e).c_str());
   const Rgba g = asLinear(green);
   const Rgba r = asLinear(red);
-  const Rgba m = asLinear(magenta);
-  if (supported.astc && supported.bc7) {
+  if (supported.astcFamily && supported.bc7) {
     expect(near(a, g.r, g.g, g.b), "ASTC is chosen first");
+  } else if (supported.bc7) {
+    expect(near(a, r.r, r.g, r.b),
+           "ASTC in one colour space only is passed over for BC");
+  }
+  if (supported.bc7) {
     expect(near(b, r.r, r.g, r.b), "BC next");
-    expect(near(d, m.r, m.g, m.b),
+  }
+  if (supported.etc2 && !supported.astcFamily) {
+    const int dr = linearReadAsSrgb(fixtures::etc2Drawn(magenta.r));
+    const int dg = linearReadAsSrgb(fixtures::etc2Drawn(magenta.g));
+    expect(near(d, dr, dg, dr),
            "a sibling is judged by what it holds, not what it is called");
   }
   if (!supported.astcSrgb && supported.bc7) {
@@ -830,7 +912,10 @@ void aTextureOnItsWayShowsItsOwnSmallerLevels(const Supported &supported) {
     int level = -1;
     for (int l = 0; l < 11; l++) {
       const Rgba expected = levelColour(uint32_t(l));
-      if (near(colour, expected.r, expected.g, expected.b)) level = l;
+      // Within five: the one-texel levels land a few levels off the colour
+      // written, being sampled where a texel's four corners are the same
+      // texel under every filter.
+      if (near(colour, expected.r, expected.g, expected.b, 5)) level = l;
     }
     const bool black = near(colour, 0, 0, 0);
     if (level < 0 && !black) garbage = true;
@@ -879,15 +964,46 @@ void aTextureThatNeverArrivesShowsItsPlaceholder(const Supported &supported) {
     uint32_t levels;
     bool sampled;
   };
+  // Written with a placeholder: ASTC, whose zeros are the error colour, and
+  // the uncompressed formats. Left as the GPU made them, on Metal: the rest,
+  // whose zeros already decode as transparent black — so these are drawn
+  // straight after other textures' memory has been freed, to be sure what
+  // is read is zeros and not something left behind.
   const Case cases[] = {
       // Linear, because Filament's Metal backend has no sRGB ASTC.
       {"ASTC with mipmaps", fixtures::astc4x4(false), 7, supported.astc},
       {"ASTC of one level", fixtures::astc4x4(false), 1, supported.astc},
+      {"RGBA8 with mipmaps", fixtures::rgba8(true), 7, true},
+      {"RGBA8 of one level", fixtures::rgba8(true), 1, true},
       {"BC7 with mipmaps", fixtures::bc7(true), 7, supported.bc7},
+      {"BC7 of one level", fixtures::bc7(true), 1, supported.bc7},
+      {"BC1 of one level", fixtures::bc1(true), 1, supported.bc1},
+      {"BC3 of one level", fixtures::bc3(true), 1, supported.bc7},
+      {"BC4 of one level", fixtures::bc4(), 1, supported.bc7},
+      {"BC5 with mipmaps", fixtures::bc5(), 7, supported.bc7},
+      {"ETC2 RGB8 of one level", fixtures::etc2(true), 1, supported.etc2},
       {"ETC2 RGBA8 of one level", fixtures::etc2Rgba(true), 1,
        supported.etc2},
-      {"RGBA8 with mipmaps", fixtures::rgba8(true), 7, true},
+      {"EAC R11 of one level", fixtures::eacR11(), 1, supported.etc2},
+      {"EAC RG11 with mipmaps", fixtures::eacRg11(), 7, supported.etc2},
   };
+  {
+    // Bright textures of every one of these formats, drawn and let go.
+    orblit_renderer *churn = start();
+    int turn = 0;
+    for (const Case &c : cases) {
+      if (!c.sampled) continue;
+      const std::string path =
+          std::string("bright/") + c.what + std::to_string(turn) + ".ktx2";
+      provide(path, fixtures::write(fixtures::solid(
+                        c.kind, 64, 64, c.levels, true, [](uint32_t) {
+                          return Rgba{241, 181, 61, 255};
+                        })));
+      sprite(churn, path, c.kind.vkFormat == 157, turn++);
+      settled(churn);
+    }
+    orblit_renderer_destroy(churn);
+  }
   int revision = 0;
   for (const Case &c : cases) {
     if (!c.sampled) continue;
@@ -935,6 +1051,171 @@ void aTextureThatNeverArrivesShowsItsPlaceholder(const Supported &supported) {
            "a texture that was missing is loaded once its bytes arrive");
   }
   orblit_renderer_destroy(renderer);
+}
+
+/// A quad of `count` overlapping unlit primitives, each with a texture of its
+/// own, `model/quad.gltf` naming `model/t<i>.ktx2` beside it.
+void provideQuad(int count, const std::vector<uint8_t> &texture) {
+  std::vector<uint8_t> bin(88, 0);
+  const float positions[12] = {-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0};
+  const float uvs[8] = {0, 0, 1, 0, 1, 1, 0, 1};
+  const uint8_t indices[6] = {0, 1, 2, 0, 2, 3};
+  memcpy(bin.data(), positions, sizeof positions);
+  memcpy(bin.data() + 48, uvs, sizeof uvs);
+  memcpy(bin.data() + 80, indices, sizeof indices);
+  // In the file, as a data URI: gltfio reads a separate buffer file from disk
+  // only, where the textures it names are provided by name.
+  static const char kBase64[] =
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  std::string encoded;
+  for (size_t i = 0; i < bin.size(); i += 3) {
+    const uint32_t chunk = uint32_t(bin[i]) << 16 |
+                           uint32_t(i + 1 < bin.size() ? bin[i + 1] : 0) << 8 |
+                           uint32_t(i + 2 < bin.size() ? bin[i + 2] : 0);
+    encoded += kBase64[(chunk >> 18) & 63];
+    encoded += kBase64[(chunk >> 12) & 63];
+    encoded += i + 1 < bin.size() ? kBase64[(chunk >> 6) & 63] : '=';
+    encoded += i + 2 < bin.size() ? kBase64[chunk & 63] : '=';
+  }
+
+  std::string images, textures, materials, primitives;
+  for (int i = 0; i < count; i++) {
+    const std::string n = std::to_string(i);
+    const std::string comma = i > 0 ? "," : "";
+    images += comma + "{\"uri\":\"t" + n + ".ktx2\"}";
+    textures += comma + "{\"source\":" + n + "}";
+    materials += comma +
+                 "{\"doubleSided\":true,\"pbrMetallicRoughness\":"
+                 "{\"baseColorTexture\":{\"index\":" + n +
+                 "}},\"extensions\":{\"KHR_materials_unlit\":{}}}";
+    primitives += comma +
+                  "{\"attributes\":{\"POSITION\":0,\"TEXCOORD_0\":1},"
+                  "\"indices\":2,\"material\":" + n + "}";
+    provide("model/t" + n + ".ktx2", texture);
+  }
+  const std::string gltf =
+      "{\"asset\":{\"version\":\"2.0\"},"
+      "\"extensionsUsed\":[\"KHR_materials_unlit\"],"
+      "\"buffers\":[{\"uri\":\"data:application/octet-stream;base64," +
+      encoded + "\",\"byteLength\":88}],"
+      "\"bufferViews\":[{\"buffer\":0,\"byteOffset\":0,\"byteLength\":48},"
+      "{\"buffer\":0,\"byteOffset\":48,\"byteLength\":32},"
+      "{\"buffer\":0,\"byteOffset\":80,\"byteLength\":6}],"
+      "\"accessors\":[{\"bufferView\":0,\"componentType\":5126,\"count\":4,"
+      "\"type\":\"VEC3\",\"min\":[-1,-1,0],\"max\":[1,1,0]},"
+      "{\"bufferView\":1,\"componentType\":5126,\"count\":4,\"type\":\"VEC2\"},"
+      "{\"bufferView\":2,\"componentType\":5121,\"count\":6,"
+      "\"type\":\"SCALAR\"}],"
+      "\"images\":[" + images + "],\"textures\":[" + textures +
+      "],\"materials\":[" + materials + "],"
+      "\"meshes\":[{\"primitives\":[" + primitives + "]}],"
+      "\"nodes\":[{\"mesh\":0}],\"scenes\":[{\"nodes\":[0]}],\"scene\":0}";
+  provide("model/quad.gltf", std::vector<uint8_t>(gltf.begin(), gltf.end()));
+}
+
+/// A model is not drawn until something has been written into every one of
+/// its textures: drawn before, the frame that first draws it would make the
+/// GPU find the memory for all of them at once.
+void aModelWaitsForItsTexturesMemory(const Supported &supported) {
+  if (!supported.bc7) return;
+  orblit_renderer *renderer = start();
+  if (renderer == nullptr) return;
+  // A grey sky, so a model drawn with nothing in its textures — black — is
+  // told apart from no model at all.
+  const float grey[3] = {0.5f, 0.5f, 0.5f};
+  orblit_renderer_set_sky_colour(renderer, grey, 0.0f, 0);
+  // A kilobyte a frame: one texture's memory a frame, each being 5.5 KB.
+  limits(renderer, 0, 1);
+  provideQuad(4, fixtures::write(fixtures::solid(
+                     fixtures::bc7(true), 64, 64, 7, true,
+                     [](uint32_t) { return Rgba{41, 201, 41, 255}; })));
+  settled(renderer);
+  const Colour empty = capture(renderer, 6);
+
+  const int64_t key = 1;
+  const float identity[16] = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
+  const float colour[3] = {1, 1, 1};
+  const int32_t mesh = 0;
+  const int32_t flags = 7;
+  const int32_t material = -1;
+  const int32_t morphs = 0;
+  const float weight = 0;
+  const char *paths[1] = {"model/quad.gltf"};
+  // Decoded before the first frame after the publish, so what is watched is
+  // the memory being made rather than the decoder.
+  orblit_renderer_apply_objects(renderer, 1, &key, identity, 16, colour, 3,
+                               &mesh, &flags, &material, &morphs, &weight, 0,
+                               paths, 1);
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  const Colour first = capture(renderer, 6);
+  const Colour later = settled(renderer);
+  printf("textures: a model of four textures at a kilobyte a frame: the sky "
+         "%s, the first frame after it is named %s, later %s\n",
+         said(empty).c_str(), said(first).c_str(), said(later).c_str());
+  expect(near(first, empty.r, empty.g, empty.b, 3),
+         "a model whose textures have no memory yet is not drawn");
+  expect(later.read() && later.g > later.r + 60,
+         "and is drawn, textured, once they have");
+  orblit_renderer_destroy(renderer);
+}
+
+/// The budget follows what frames cost: told that a megabyte costs a
+/// millisecond over a ten-millisecond scene, it settles near the ten
+/// megabytes that fit a frame's slack; told a megabyte costs a hundredth of
+/// one, it climbs, doubling at each probe, towards the most it is allowed.
+void theBudgetFollowsWhatFramesCost() {
+  Engine *engine = Engine::create(Engine::Backend::METAL);
+  if (engine == nullptr) return;
+  static const int kClient = 0;
+  const auto file = std::make_shared<const std::vector<uint8_t>>(
+      noisyBc7File(1024, true, 3));
+  struct Case {
+    double millisecondsPerMegabyte;
+    double lowest, highest;
+    const char *what;
+  };
+  const Case cases[] = {
+      {1.0, 5.0, 20.0, "a millisecond a megabyte"},
+      {0.01, 64.0, 256.0, "a hundredth of one"},
+  };
+  for (const Case &c : cases) {
+    orblit::TextureQueue queue(*engine, 16384, 8);
+    queue.adaptUploads(uint64_t(8) << 20, uint64_t(1) << 20,
+                       uint64_t(256) << 20);
+    std::vector<Texture *> made;
+    for (int i = 0; i < 400; i++) {
+      orblit::TextureQueue::Request request;
+      request.shared = file;
+      request.srgb = true;
+      request.client = &kClient;
+      std::string why;
+      if (Texture *texture = queue.push(request, why)) made.push_back(texture);
+    }
+    queue.waitForDecoding(&kClient);
+    double settledAt = 0;
+    int frames = 0;
+    while (queue.outstanding() > 0 && frames < 2000) {
+      queue.pump();
+      engine->flushAndWait();
+      const double megabytes =
+          double(queue.frames().lastBytes) / double(1 << 20);
+      queue.frameTook((10.0 + c.millisecondsPerMegabyte * megabytes) / 1000.0);
+      if (++frames <= 64) {
+        settledAt = double(queue.bytesPerFrame()) / double(1 << 20);
+      }
+    }
+    printf("textures: told %s, the budget was %.1f MB after %d frames\n",
+           c.what, settledAt, std::min(frames, 64));
+    expect(settledAt >= c.lowest && settledAt <= c.highest,
+           std::string("told ") + c.what + ", the budget settles where it "
+           "fits: " + std::to_string(settledAt) + " MB");
+    orblit::TextureQueue::Popped popped;
+    while (queue.pop(&kClient, popped)) {}
+    queue.shutdown();
+    for (Texture *texture : made) engine->destroy(texture);
+    engine->flushAndWait();
+  }
+  Engine::destroy(&engine);
 }
 
 // ---- The measurement ----
@@ -1194,6 +1475,8 @@ int main(int argc, char **argv) {
   aLimitDrawsASmallerLevel(supported);
   generatedLevelsAreFilled();
   aTextureOnItsWayShowsItsOwnSmallerLevels(supported);
+  aModelWaitsForItsTexturesMemory(supported);
+  theBudgetFollowsWhatFramesCost();
   aTextureThatNeverArrivesShowsItsPlaceholder(supported);
 
   if (failures > 0) {
