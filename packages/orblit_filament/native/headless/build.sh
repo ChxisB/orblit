@@ -14,6 +14,10 @@
 #
 #   build.sh            builds both into ./build
 #   build.sh test       and runs the ABI's test
+#
+# The offline tools come first and need none of that: the FBX/OBJ importer
+# and the texture cooker (../texture_cook/build.sh, which has its own
+# determinism and sanitizer runs).
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -85,6 +89,14 @@ clang++ -std=c++17 -O2 -Wall -Wextra -I "$SRC" \
   -c orblit_ktx2_check.cpp -o "$OUT/orblit_ktx2_check.o"
 clang++ "$OUT/orblit_ktx2_check.o" "$OUT/OrblitKtx2.o" \
   "$SDK/lib/arm64/libzstd.a" -o "$OUT/orblit_ktx2_check"
+# The offline texture cooker and its check, next, for the same reason: Basis
+# Universal's encoder, zstd and stb_image, and nothing of the renderer's. Its
+# own script builds them — it fetches those sources, pinned, the first time
+# (see ../texture_cook/fetch.sh), and keeps their objects between builds — into
+# this same directory, so build/orblit_texture_cook sits beside
+# build/orblit_import. Absolute, because that script works from its own
+# directory.
+ORBLIT_BUILD_DIR="$(cd "$OUT" && pwd)" ../texture_cook/build.sh
 
 if [ ! -f "$GENERATED/lit_opaque_material.h" ]; then
   echo "native/headless/build.sh: no compiled materials at $GENERATED" >&2
@@ -178,7 +190,8 @@ echo "built $OUT/orblit_renderer_test, $OUT/orblit_headless," \
      "$OUT/orblit_environment_check, $OUT/orblit_environment_decode_check," \
      "$OUT/orblit_ktx2_check, $OUT/orblit_textures_check," \
      "$OUT/orblit_splat_cook," \
-     "$OUT/orblit_import and $OUT/orblit_import_check"
+     "$OUT/orblit_import and $OUT/orblit_import_check," \
+     "$OUT/orblit_texture_cook and $OUT/orblit_texture_cook_check"
 
 if [ "${1:-}" = "test" ]; then
   # Real FBX and OBJ files are read from ORBLIT_IMPORT_SAMPLES when it is
@@ -188,6 +201,9 @@ if [ "${1:-}" = "test" ]; then
   "$OUT/orblit_environment_decode_check"
   # Real Basis files from ORBLIT_KTX2_SAMPLES when it is set.
   "$OUT/orblit_ktx2_check"
+  # Real textures from ORBLIT_TEXTURE_SAMPLES when it is set; the fixtures it
+  # draws for itself always.
+  "$OUT/orblit_texture_cook_check"
   "$OUT/orblit_splats_check"
   "$OUT/orblit_textures_check"
   "$OUT/orblit_renderer_test"
