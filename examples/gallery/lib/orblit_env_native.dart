@@ -101,4 +101,8 @@ const Map<String, String> _defined = {
   'ORBLIT_VARIANT': String.fromEnvironment('ORBLIT_VARIANT'),
   'ORBLIT_DAYLIGHT': String.fromEnvironment('ORBLIT_DAYLIGHT'),
   'ORBLIT_SAMPLES': String.fromEnvironment('ORBLIT_SAMPLES'),
+  'ORBLIT_TEXTURES': String.fromEnvironment('ORBLIT_TEXTURES'),
+  'ORBLIT_TEXTURE_FILES': String.fromEnvironment('ORBLIT_TEXTURE_FILES'),
+  'ORBLIT_PICTURE': String.fromEnvironment('ORBLIT_PICTURE'),
+  'ORBLIT_TEXTURE_SIZE': String.fromEnvironment('ORBLIT_TEXTURE_SIZE'),
 };

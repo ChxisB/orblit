@@ -821,6 +821,27 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       if (_orblitEnv['ORBLIT_DAYLIGHT'] == '0') example.daylight = false;
     }
 
+    // Set here rather than left to the example's own reading of
+    // `Platform.environment`, which is empty on the iOS simulator and has
+    // nothing in it on Android.
+    if (example is TexturesExample) {
+      final directory = _orblitEnv['ORBLIT_TEXTURES'];
+      if (directory != null && directory.isNotEmpty) {
+        example.directory = directory;
+      }
+      final files = _orblitEnv['ORBLIT_TEXTURE_FILES'];
+      if (files != null && files.isNotEmpty) {
+        example.files = [
+          for (final file in files.split(','))
+            if (file.trim().isNotEmpty) file.trim(),
+        ];
+      }
+      final picture = _orblitEnv['ORBLIT_PICTURE'];
+      if (picture != null && picture.isNotEmpty) example.picture = picture;
+      example.largestTexture =
+          _number('ORBLIT_TEXTURE_SIZE')?.round() ?? example.largestTexture;
+    }
+
     if (example is SplatsExample) {
       final capture = _orblitEnv['ORBLIT_SPLAT'];
       if (capture != null && capture.isNotEmpty) example.path = capture;
