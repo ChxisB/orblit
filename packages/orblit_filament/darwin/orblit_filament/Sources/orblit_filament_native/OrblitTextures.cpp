@@ -1100,6 +1100,11 @@ void TextureQueue::release(Item &item) {
 }
 
 void TextureQueue::pump() {
+  if (_batchCount > 0) {
+    const double at = now();
+    if (_lastPumpAt > 0) _longestFrame = std::max(_longestFrame, at - _lastPumpAt);
+    _lastPumpAt = at;
+  }
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   if (_inline) decodeOnWorkers();
 #endif
@@ -1186,9 +1191,12 @@ void TextureQueue::pump() {
   // first time it happens rather than after somebody has reproduced it.
   if (finished && left == 0 && _batchCount > 0) {
     log("[orblit] %llu texture(s) arrived in %.0f ms; at most %llu KB and %u "
-        "upload(s) in one frame",
+        "upload(s) in one frame; the longest frame meanwhile %.1f ms",
         (unsigned long long)_batchCount, (now() - _batchFrom) * 1000.0,
-        (unsigned long long)(frames.mostBytes / 1024), frames.mostUploads);
+        (unsigned long long)(frames.mostBytes / 1024), frames.mostUploads,
+        _longestFrame * 1000.0);
+    _lastPumpAt = 0;
+    _longestFrame = 0;
     if (_inlineCount > 0) {
       log("[orblit] %llu of them decoded on the drawing thread: %.0f ms in "
           "all, %.0f ms the longest; pushing them took %.0f ms",
