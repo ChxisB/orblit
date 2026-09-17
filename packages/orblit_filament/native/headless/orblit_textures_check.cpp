@@ -486,9 +486,10 @@ void limits(orblit_renderer *renderer, float side, float kilobytes) {
   orblit_renderer_set_pipeline(renderer, params, 30);
 }
 
-/// One sprite covering the view, of the image at `path`.
+/// One sprite of the image at `path`, `size` world units square and centred:
+/// the default covers the view.
 void sprite(orblit_renderer *renderer, const std::string &path, bool linear,
-            int32_t revision) {
+            int32_t revision, float size = 40) {
   const int32_t key = 1;
   const int32_t flags = 1 | (linear ? 4 : 0);
   const int32_t order = 0;
@@ -496,8 +497,8 @@ void sprite(orblit_renderer *renderer, const std::string &path, bool linear,
   params[0] = params[5] = params[10] = params[15] = 1.0f;
   params[16] = params[17] = params[18] = params[19] = 1.0f;
   const char *paths[1] = {path.c_str()};
-  const float record[16] = {0, 0, 5, 0, 40, 40, 0.5f, 0.5f,
-                            0, 0, 1, 1, 1,  1,  1,    1};
+  const float record[16] = {0, 0, 5, 0, size, size, 0.5f, 0.5f,
+                            0, 0, 1, 1, 1,    1,    1,    1};
   const int32_t changed = key;
   const int32_t count = 1;
   orblit_renderer_apply_sprites(renderer, 1, &key, &flags, &order, &revision,
@@ -763,6 +764,46 @@ void aLimitDrawsASmallerLevel(const Supported &supported) {
          "with no limit the largest level draws");
   expect(near(small, level2.r, level2.g, level2.b),
          "under a 16 limit the 16² level is the largest there is");
+  orblit_renderer_destroy(renderer);
+}
+
+/// A texture whose smaller levels generateMipmaps makes has them, and draws
+/// its colour when drawn small enough to sample them.
+///
+/// Uncompressed and made by the backend rather than by the file, so it runs
+/// on any backend: `ORBLIT_BACKEND=opengl orblit_textures_check mipmaps`. In
+/// a browser a placeholder in the smallest level left OpenGL's
+/// GL_TEXTURE_BASE_LEVEL and GL_TEXTURE_MAX_LEVEL on the texture,
+/// glGenerateMipmap filled nothing, and a picture drawn small came out black.
+/// macOS's own OpenGL driver fills the levels regardless, so here this passes
+/// with or without the fix; it is kept because a driver that follows the
+/// specification to the letter would fail it without the fix.
+void generatedLevelsAreFilled() {
+  orblit_renderer *renderer = start();
+  if (renderer == nullptr) return;
+  const fixtures::Rgba colour{201, 61, 121, 255};
+  // A level count of nought asks for the levels to be made; the one level
+  // in the index is the largest. Large and squeezed so that it takes some
+  // tens of milliseconds to unsqueeze: the fault needs a frame to draw the
+  // placeholder before the level arrives, and a small picture arrives before
+  // the first frame is drawn.
+  std::vector<uint8_t> file = fixtures::write(fixtures::solid(
+      fixtures::rgba8(true), 4096, 4096, 1, true,
+      [&](uint32_t) { return colour; }));
+  fixtures::put32(file, 40, 0);
+  provide("generated/picture.ktx2", file);
+  // Two units square in a 48-pixel view some five to ten units tall: ten to
+  // twenty pixels across, so what is sampled is the fourth level or so.
+  // Drawn across the whole view it would be the largest, which the file
+  // itself filled, and the fault would not show.
+  sprite(renderer, "generated/picture.ktx2", false, 0, 2.0f);
+  const Colour drawn = settled(renderer);
+  printf("textures: a 4096² picture whose levels the backend makes, drawn "
+         "a few texels to a pixel: %s (expected %d/%d/%d)\n",
+         said(drawn).c_str(), colour.r, colour.g, colour.b);
+  expect(near(drawn, colour.r, colour.g, colour.b),
+         "a picture whose smaller levels are generated draws its colour "
+         "small, not the black of levels nobody filled");
   orblit_renderer_destroy(renderer);
 }
 
@@ -1134,11 +1175,24 @@ int bench() {
 
 int main(int argc, char **argv) {
   if (argc > 1 && strcmp(argv[1], "bench") == 0) return bench();
+  // Only what needs no compressed format, so it can be run on a backend
+  // that has none — OpenGL on a Mac, say — where the rest would fail for
+  // want of formats rather than for anything wrong.
+  if (argc > 1 && strcmp(argv[1], "mipmaps") == 0) {
+    generatedLevelsAreFilled();
+    if (failures > 0) {
+      fprintf(stderr, "orblit_textures_check mipmaps: %d failed\n", failures);
+      return 1;
+    }
+    printf("orblit_textures_check mipmaps: passed\n");
+    return 0;
+  }
 
   const Supported supported = theQueueCountsWhatItDoes();
   formatsDrawTheirColours(supported);
   theBestSiblingDraws(supported);
   aLimitDrawsASmallerLevel(supported);
+  generatedLevelsAreFilled();
   aTextureOnItsWayShowsItsOwnSmallerLevels(supported);
   aTextureThatNeverArrivesShowsItsPlaceholder(supported);
 

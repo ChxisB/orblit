@@ -222,27 +222,37 @@ constexpr uint64_t kAnswerBytesPerFrame = uint64_t(16) << 20;
 /// Whether a texture whose smaller levels generateMipmaps makes is given a
 /// placeholder in its smallest level while it waits.
 ///
-/// Not in a browser, because there the placeholder is what breaks it. A
+/// Not on Filament's OpenGL backend — in a browser, on desktop OpenGL or on
+/// OpenGL ES — because there the placeholder is what breaks it. A
 /// placeholder in the smallest level makes Filament sample the texture
-/// through a view of that one level, and Filament's OpenGL backend keeps a
-/// view as GL_TEXTURE_BASE_LEVEL and GL_TEXTURE_MAX_LEVEL on the one GL
-/// texture the view shares, set whenever the view is bound to draw.
+/// through a view of that one level, and the OpenGL backend keeps a view as
+/// GL_TEXTURE_BASE_LEVEL and GL_TEXTURE_MAX_LEVEL on the one GL texture the
+/// view shares, set whenever the view is bound to draw.
 /// OpenGLDriver::generateMipmaps binds the texture without putting them back,
 /// so glGenerateMipmap, which fills the levels above the base level up to the
 /// maximum, fills none: every level but the largest keeps the placeholder's
 /// nothing, and a picture drawn at any distance is black. Seen in Chrome:
 /// of twelve pictures named at once, only the one whose level arrived before
-/// its view was ever drawn had its mipmaps. WebGL gives every texture's
-/// storage zeros when it is made, which for the uncompressed formats this
-/// applies to is the same transparent black the placeholder writes, so a
-/// browser loses nothing by going without. Native OpenGL and OpenGL ES make
-/// no such promise and keep the placeholder, and so keep the fault, until
-/// the backend resets the levels before it generates.
-#if defined(__EMSCRIPTEN__)
-constexpr bool kPlaceholderBeforeGeneratedLevels = false;
-#else
-constexpr bool kPlaceholderBeforeGeneratedLevels = true;
-#endif
+/// its view was ever drawn had its mipmaps.
+///
+/// A backend question rather than a platform one, because the code that
+/// causes it is the backend's own, in Filament 1.76.0 as in the fork. Whether
+/// it shows is up to the driver: macOS's OpenGL fills every level whatever
+/// the base and maximum say (`orblit_textures_check mipmaps` draws correctly
+/// there with the placeholder and without), and a browser does exactly what
+/// the specification says. Android's OpenGL ES drivers are many and were not
+/// tried, so every OpenGL backend goes without. WebGL gives every texture's
+/// storage zeros when it is
+/// made, which for the uncompressed formats this applies to is the same
+/// transparent black the placeholder writes. Native drivers promise nothing,
+/// but the ones that clear new storage for security are most of them, and a
+/// picture that may show last frame's memory for the frames before it
+/// arrives is still better than one that is black for good. Metal, Vulkan
+/// and WebGPU keep the placeholder until the OpenGL backend resets the
+/// levels before it generates.
+bool placeholderBeforeGeneratedLevels(filament::Engine &engine) {
+  return engine.getBackend() != filament::backend::Backend::OPENGL;
+}
 
 /// Frees a level's bytes: ours are malloc's, a picture straight from stb is
 /// stb's.
@@ -595,7 +605,7 @@ Texture *TextureQueue::pushKtx2(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  if (!generate || kPlaceholderBeforeGeneratedLevels) {
+  if (!generate || placeholderBeforeGeneratedLevels(_engine)) {
     writePlaceholder(texture, *format, levels - 1);
   }
 
@@ -773,7 +783,7 @@ Texture *TextureQueue::pushPicture(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  if (kPlaceholderBeforeGeneratedLevels) {
+  if (placeholderBeforeGeneratedLevels(_engine)) {
     writePlaceholder(texture, *ktx2::formatOf(request.srgb ? 43 : 37),
                      levels - 1);
   }
