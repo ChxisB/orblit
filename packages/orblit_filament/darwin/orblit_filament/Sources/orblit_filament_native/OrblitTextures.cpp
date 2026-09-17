@@ -9,6 +9,11 @@
 
 #include <ktxreader/Ktx2Reader.h>
 
+#if defined(__APPLE__)
+#include <pthread.h>
+#include <sys/qos.h>
+#endif
+
 #include "OrblitDecode.h"
 #include "OrblitPlatform.h"
 
@@ -430,10 +435,13 @@ TextureQueue::TextureQueue(filament::Engine &engine, uint32_t deviceLargest,
   (void)workerThreads;
   _inline = true;
 #else
-  // Half the machine, at most six. Decoding competes with Filament's own job
-  // system for the same cores, and a frame that has to wait for a core is a
-  // late frame — the thing this queue exists to prevent.
-  _workerCount = std::clamp<uint32_t>((workerThreads + 1) / 2, 1, 6);
+  // Every core but two, the drawing thread's and the backend's, and the
+  // decoders below both in priority. Decoding is what a Basis load waits on:
+  // the Bistro's 405 transcodes arrived in 6.1 to 7.7 s on two threads, 3.2
+  // to 3.8 on four and 2.1 to 2.5 on ten, on an M4 Pro, and the longest frame
+  // meanwhile was no worse on ten than on two (orblit_load_bench).
+  _workerCount = std::clamp<uint32_t>(workerThreads > 2 ? workerThreads - 2 : 1,
+                                      1, 12);
 #endif
 }
 
@@ -1112,6 +1120,10 @@ void TextureQueue::startWorkers() {
 }
 
 void TextureQueue::work() {
+#if defined(__APPLE__)
+  // Below the thread that draws, which a host runs at user-interactive.
+  pthread_set_qos_class_self_np(QOS_CLASS_USER_INITIATED, 0);
+#endif
   for (;;) {
     std::shared_ptr<Item> item;
     {
