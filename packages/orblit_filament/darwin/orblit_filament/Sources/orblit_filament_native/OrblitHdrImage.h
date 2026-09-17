@@ -9,9 +9,10 @@
 //
 // A pure function of bytes and nothing else: no Filament types, no renderer,
 // no file system, no threads. That is what lets the same two files run on a
-// native worker thread today, on a browser's page thread for now, and later
-// inside a small WebAssembly worker of their own, unchanged. OrblitTinyExr.cpp
-// is the other half (EXR); this file is everything else.
+// native worker thread and, in a browser, inside a small WebAssembly module
+// of their own on a Web Worker (native/web/orblit_decoder_module.cpp),
+// unchanged. OrblitTinyExr.cpp is the other half (EXR); this file is
+// everything else.
 //
 // Files come from anywhere a scene names, so every size is checked against
 // the limits before anything is allocated: a header that claims a picture

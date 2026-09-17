@@ -63,7 +63,8 @@ class OrblitEnvironment {
   /// it and one frame of 20 to 55 to filter it. Once per picture: naming the
   /// same picture again, or the same bytes under another name, lights the
   /// scene on the next frame with nothing filtered. In a browser the decode
-  /// runs on the page for now.
+  /// and the harmonics run on a Web Worker, and on the page only where no
+  /// worker will.
   ///
   /// A picture that cannot be used — missing, damaged, too large for the
   /// device, not twice as wide as it is tall — is reported in the scene
