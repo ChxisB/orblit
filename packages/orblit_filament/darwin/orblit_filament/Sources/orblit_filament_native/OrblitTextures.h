@@ -345,7 +345,7 @@ class TextureQueue {
   std::map<const void *, Counts> _counts{};
   std::vector<std::thread> _workers{};
   uint32_t _workerCount = 1;
-  bool _inline = false;
+  bool _noDecoderThreads = false;
   bool _stopping = false;
   uint64_t _order = 0;
 
