@@ -2,8 +2,16 @@
 //
 //   orblit_texture_cook <in.png|in.jpg|in.ktx2> <out-dir/ | out-stem>
 //       [--targets astc,bc,etc2,basis]  which files to write (default: all)
-//       [--normal]                      a tangent-space normal map
-//       [--single-channel]              one linear channel, taken from red
+//       [--normal]                      a tangent-space normal map, kept as
+//                                       three channels: BC7, ETC2 RGB8
+//       [--two-channel-normals]         with --normal: BC5 and EAC RG11, X
+//                                       and Y alone, blue sampling as 0.
+//                                       Only for a material that rebuilds Z;
+//                                       lit.mat and gltfio's read .xyz
+//       [--single-channel]              one linear channel, taken from red:
+//                                       BC4 and EAC R11, green and blue
+//                                       sampling as 0. Only for a texture
+//                                       every material reads red alone from
 //       [--srgb | --linear]             override what the file says, or the
 //                                       default of sRGB for a PNG or JPEG
 //       [--cutout T]                    alpha-tested at T: keep its coverage
@@ -21,7 +29,10 @@
 //       [--threads N]                   default: one per hardware thread
 //       [--quiet]
 //   orblit_texture_cook --version
-//
+//   orblit_texture_cook --revisions [flags]
+//       each family's output revision for these flags, as "basis 1 astc 1
+//       bc 2 etc2 2": what a resumable cook compares with the revision in a
+//       file's KTXwriter to decide whether that file needs cooking again
 // An output ending in / or naming a directory gets the input's name without
 // its extension: `Textures/Wall.ktx2 cooked/` writes cooked/Wall.ktx2,
 // cooked/Wall.astc.ktx2 and the rest. Anything else is the stem itself.
@@ -146,9 +157,12 @@ int usage() {
   std::fprintf(stderr,
                "usage: orblit_texture_cook <in.png|in.jpg|in.ktx2> <out-dir/|out-stem>\n"
                "  [--targets astc,bc,etc2,basis] [--normal] [--single-channel]\n"
+               "  [--two-channel-normals: BC5/EAC RG11, only for a material that rebuilds Z]\n"
                "  [--srgb|--linear] [--cutout T] [--lossless] [--mips|--no-mips]\n"
                "  [--max-size N] [--wrap] [--astc direct|transcoded] [--uastc L] [--zstd L]\n"
-               "  [--threads N] [--quiet]\n");
+               "  [--threads N] [--quiet]\n"
+               "       orblit_texture_cook --version\n"
+               "       orblit_texture_cook --revisions [flags]\n");
   return 2;
 }
 
@@ -159,31 +173,22 @@ bool number(const char *text, long low, long high, long &value) {
   return errno == 0 && end != text && *end == '\0' && value >= low && value <= high;
 }
 
-}  // namespace
-
-int main(int argc, char **argv) {
-  if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
-    // What a cook script stamps its outputs with: a new version means the
-    // same input and settings cook to different bytes.
-    std::printf("orblit_texture_cook %d\n", kCookVersion);
-    return 0;
-  }
-  if (argc < 3) return usage();
-  const std::string in = argv[1];
-  const std::string out = argv[2];
-  Settings settings;
-  bool quiet = false;
-  for (int i = 3; i < argc; i++) {
+/// Reads the flags from argv[first] on; false, having said why, on one it
+/// does not know.
+bool parseFlags(int argc, char **argv, int first, Settings &settings, bool &quiet) {
+  for (int i = first; i < argc; i++) {
     const std::string name = argv[i];
     const bool hasValue = i + 1 < argc;
     long value = 0;
     if (name == "--targets" && hasValue) {
       if (!parseFamilies(argv[++i], settings.families)) {
         std::fprintf(stderr, "orblit_texture_cook: --targets takes astc, bc, etc2 and basis\n");
-        return 2;
+        return false;
       }
     } else if (name == "--normal") {
       settings.content = Content::kNormal;
+    } else if (name == "--two-channel-normals") {
+      settings.twoChannelNormals = true;
     } else if (name == "--single-channel") {
       settings.content = Content::kSingleChannel;
     } else if (name == "--srgb") {
@@ -195,7 +200,7 @@ int main(int argc, char **argv) {
       const double threshold = std::strtod(argv[++i], &end);
       if (end == argv[i] || *end != '\0' || !(threshold > 0.0 && threshold < 1.0)) {
         std::fprintf(stderr, "orblit_texture_cook: --cutout takes a threshold between 0 and 1\n");
-        return 2;
+        return false;
       }
       settings.cutout = float(threshold);
     } else if (name == "--lossless") {
@@ -219,7 +224,7 @@ int main(int argc, char **argv) {
         settings.astc = AstcRoute::kAuto;
       } else {
         std::fprintf(stderr, "orblit_texture_cook: --astc takes direct, transcoded or auto\n");
-        return 2;
+        return false;
       }
     } else if (name == "--uastc" && hasValue && number(argv[i + 1], 0, 4, value)) {
       settings.uastcLevel = int(value);
@@ -234,9 +239,39 @@ int main(int argc, char **argv) {
       quiet = true;
     } else {
       std::fprintf(stderr, "orblit_texture_cook: %s?\n", name.c_str());
-      return usage();
+      usage();
+      return false;
     }
   }
+
+  return true;
+}
+
+}  // namespace
+
+int main(int argc, char **argv) {
+  if (argc == 2 && std::strcmp(argv[1], "--version") == 0) {
+    // The highest output revision; see revisionOf for a file's own.
+    std::printf("orblit_texture_cook %d\n", kCookVersion);
+    return 0;
+  }
+  if (argc >= 2 && std::strcmp(argv[1], "--revisions") == 0) {
+    Settings settings;
+    bool quiet = false;
+    if (!parseFlags(argc, argv, 2, settings, quiet)) return 2;
+    std::printf("basis %d astc %d bc %d etc2 %d\n",
+                revisionOf(kFamilyBasis, settings.content, settings.twoChannelNormals),
+                revisionOf(kFamilyAstc, settings.content, settings.twoChannelNormals),
+                revisionOf(kFamilyBc, settings.content, settings.twoChannelNormals),
+                revisionOf(kFamilyEtc2, settings.content, settings.twoChannelNormals));
+    return 0;
+  }
+  if (argc < 3) return usage();
+  const std::string in = argv[1];
+  const std::string out = argv[2];
+  Settings settings;
+  bool quiet = false;
+  if (!parseFlags(argc, argv, 3, settings, quiet)) return 2;
 
   std::vector<uint8_t> bytes;
   if (!readFile(in, bytes)) {

@@ -7,9 +7,26 @@
 //                or, for a lossless cook, plain R8G8B8A8 — and a lossless
 //                texture has no siblings.
 //   x.astc.ktx2  ASTC 4x4.
-//   x.bc.ktx2    BC7 for colour, BC5 for a normal map, BC4 for one channel.
-//   x.etc2.ktx2  ETC2 RGBA8, or RGB8 when opaque; EAC RG11 for a normal
-//                map, EAC R11 for one channel.
+//   x.bc.ktx2    BC7, for colour and for a normal map alike; BC4 for one
+//                channel, and BC5 for a normal map only when asked for.
+//   x.etc2.ktx2  ETC2 RGBA8, or RGB8 when opaque, for colour and normal maps
+//                alike; EAC R11 for one channel, and EAC RG11 for a normal
+//                map only when asked for.
+//
+// A normal map keeps all three channels unless the cook is told otherwise,
+// because nothing that draws with these files rebuilds Z: lit.mat samples
+// the map's .xyz, and so do gltfio's materials. BC5 and EAC RG11 hold X and
+// Y and sample 0 for blue, which bends every normal into the surface. They
+// are behind Settings::twoChannelNormals for a material that rebuilds Z,
+// which Phase 5's material system may add. BC4 and EAC R11 likewise sample 0
+// for green and blue, so a single-channel cook is only for a texture every
+// material reads red alone from.
+//
+// What each backend can sample, which decides the sibling a device takes:
+// Filament's Metal backend has no sRGB ASTC (MetalEnums.mm maps only the
+// linear RGBA_ASTC_* formats), so an Apple device never takes x.astc.ktx2
+// for colour, and falls through to BC on a Mac and ETC2 on iOS. Metal also
+// has no BC1 without alpha; nothing here writes BC1.
 //
 // Each is a standard KTX 2.0 file: its vkFormat set (0, as the specification
 // requires, for UASTC), zstd applied to each level separately, a Basic Data
@@ -71,10 +88,13 @@ enum Family : uint32_t {
 enum class Content {
   /// Colour, with or without alpha: BC7, ETC2 RGB(A)8.
   kColour,
-  /// A tangent-space normal in RGB: renormalised per level, BC5 and EAC RG11
-  /// (which keep X and Y; the shader rebuilds Z).
+  /// A tangent-space normal in RGB: linear, renormalised per level, and kept
+  /// as three channels — BC7 and ETC2 RGB8 — unless twoChannelNormals.
   kNormal,
-  /// One linear channel, taken from red: BC4 and EAC R11.
+  /// One linear channel, taken from red: BC4 and EAC R11, which sample 0 for
+  /// green and blue. Only for a texture every material reads red alone from:
+  /// glTF's occlusion does, its metallicRoughness reads green and blue.
+  /// tool/cook_textures.sh never asks for it.
   kSingleChannel,
 };
 
@@ -149,6 +169,9 @@ struct Settings {
   uint32_t maxSize = 0;
   Edge edge = Edge::kClamp;
   AstcRoute astc = AstcRoute::kAuto;
+  /// A normal map as BC5 and EAC RG11, X and Y alone. Only for a material
+  /// that rebuilds Z from them; nothing in Orblit does yet.
+  bool twoChannelNormals = false;
   int zstdLevel = kDefaultZstdLevel;
   int uastcLevel = kDefaultUastcLevel;
   /// 0: one per hardware thread.
@@ -195,6 +218,7 @@ struct Report {
   bool lossless = false;
   /// Whether the ASTC file was encoded directly (see AstcRoute).
   bool directAstc = false;
+  bool twoChannelNormals = false;
   float cutout = -1.0f;
   uint32_t width = 0;
   uint32_t height = 0;
@@ -248,10 +272,20 @@ uint32_t alphaThreshold(float cutoff);
 /// The fraction of an image's texels whose alpha passes a test at `cutoff`.
 double coverageOf(const Image &image, float cutoff);
 
-/// Version of the cooker's output, written into every file's KTXwriter. Bump
-/// it whenever the same input and settings would cook to different bytes, so
-/// Phase 6's cache knows its entries are stale.
-constexpr int kCookVersion = 1;
+/// Which revision of the cooker's output a file of this family and content
+/// is, written into its KTXwriter. A file's revision changes only when the
+/// same input and settings would cook that file to different bytes, so a
+/// resumable cook (tool/cook_textures.sh, Phase 6's cache) re-cooks what
+/// changed and nothing else.
+///
+///   1  the first cooker
+///   2  a normal map's BC and ETC2 files keep three channels, BC7 and ETC2
+///      RGB8, where they were BC5 and EAC RG11
+int revisionOf(Family family, Content content, bool twoChannelNormals);
+
+/// The cooker's version: the highest revision any file it writes can have.
+/// Bump it with revisionOf.
+constexpr int kCookVersion = 2;
 
 }  // namespace texturecook
 }  // namespace orblit

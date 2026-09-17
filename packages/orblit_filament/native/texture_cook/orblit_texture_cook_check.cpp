@@ -12,8 +12,9 @@
 //
 // Fixtures are drawn here, in memory, every run, so the answer is known
 // exactly: pixel art with transparent holes at an odd size, a colour ramp
-// with fine detail, a cut-out of leaves, a normal map of bumps, a single
-// channel of noise, a JPEG, and a Basis .ktx2 cooked from one of them.
+// with fine detail, a cut-out of leaves, a normal map of bumps (which must
+// keep its blue: see checkRoundTrip), a single channel of noise, a JPEG, and
+// a Basis .ktx2 cooked from one of them.
 //
 //   orblit_texture_cook_check                 all checks, and 200 mutated
 //                                             inputs
@@ -430,7 +431,8 @@ double psnr(const Image &a, const Image &b, uint32_t mask) {
 uint32_t channelsCompared(Content content, uint32_t vkFormat, bool alpha) {
   switch (content) {
     case Content::kNormal:
-      // BC5 and EAC RG11 hold X and Y; the shader rebuilds Z.
+      // BC5 and EAC RG11 — only ever cooked when asked for — hold X and Y
+      // alone. Every other normal-map file is held to all three.
       return (vkFormat == 141 || vkFormat == 155) ? 0x3 : 0x7;
     case Content::kSingleChannel:
       return 0x1;
@@ -667,6 +669,11 @@ void checkRoundTrip(const std::string &name, const Cooked &cooked, double floor)
     expect(k.keyValues.count("KTXwriter") == 1 &&
                k.keyValues["KTXorientation"] == std::string("rd", 3),
            what + " names its writer and orientation");
+    // Each file carries its own revision, which a resumable cook compares.
+    const int revision = revisionOf(Family(file.family), r.content, r.twoChannelNormals);
+    const std::string writerStart = "Orblit texture cook " + std::to_string(revision) + " (";
+    expect(k.keyValues["KTXwriter"].compare(0, writerStart.size(), writerStart) == 0,
+           what + "'s KTXwriter names revision " + std::to_string(revision));
     expect((k.transfer == 2) == (r.srgb && k.vkFormat != 139 && k.vkFormat != 141 &&
                                  k.vkFormat != 153 && k.vkFormat != 155),
            what + " says sRGB exactly when it is colour in sRGB");
@@ -685,17 +692,21 @@ void checkRoundTrip(const std::string &name, const Cooked &cooked, double floor)
         expect(v == 157 || v == 158, what + " is ASTC 4x4");
         break;
       case kFamilyBc:
-        expect(r.content == Content::kNormal          ? v == 141
+        expect(r.content == Content::kNormal          ? v == (r.twoChannelNormals ? 141u : 145u)
                : r.content == Content::kSingleChannel ? v == 139
                                                       : (v == 145 || v == 146),
-               what + " is BC5 for normals, BC4 for one channel, BC7 for colour");
+               what + " is BC7 for colour and normals (BC5 only when asked), BC4 for one "
+                      "channel");
         break;
       case kFamilyEtc2:
-        expect(r.content == Content::kNormal          ? v == 155
-               : r.content == Content::kSingleChannel ? v == 153
-               : hasAlpha                             ? (v == 151 || v == 152)
-                                                      : (v == 147 || v == 148),
-               what + " is EAC RG11, EAC R11, or ETC2 RGBA8/RGB8 as the texels need");
+        expect(r.content == Content::kNormal && r.twoChannelNormals ? v == 155
+               : r.content == Content::kNormal && hasAlpha          ? v == 151
+               : r.content == Content::kNormal                      ? v == 147
+               : r.content == Content::kSingleChannel               ? v == 153
+               : hasAlpha                                           ? (v == 151 || v == 152)
+                                                                    : (v == 147 || v == 148),
+               what + " is ETC2 RGB8/RGBA8 for colour and normals (EAC RG11 only when "
+                      "asked), EAC R11 for one channel");
         break;
     }
 
@@ -708,6 +719,19 @@ void checkRoundTrip(const std::string &name, const Cooked &cooked, double floor)
       const Image &source = cooked.levels[i];
       expect(decoded.width == source.width && decoded.height == source.height,
              what + " level " + std::to_string(i) + " is the size of its source level");
+      if (r.content == Content::kNormal && !r.twoChannelNormals) {
+        // Z, as the renderer samples it. lit.mat and gltfio's materials read
+        // .xyz and rebuild nothing, so a file whose blue decodes to 0 — BC5,
+        // EAC RG11 — tilts every normal flat into the surface. A tangent-
+        // space normal points out of the surface: blue is at least half.
+        uint64_t blue = 0;
+        for (size_t t = 2; t < decoded.rgba.size(); t += 4) blue += decoded.rgba[t];
+        const double mean = double(blue) / double(decoded.rgba.size() / 4);
+        char text[160];
+        std::snprintf(text, sizeof(text), "%s level %u keeps Z: mean blue %.1f (want 128 or more)",
+                      what.c_str(), i, mean);
+        expect(mean >= 128.0, text);
+      }
       const double p = psnr(decoded, source, channelsCompared(r.content, v, hasAlpha));
       if (r.lossless) {
         expect(decoded.rgba == source.rgba, what + " level " + std::to_string(i) + " is lossless");
@@ -934,6 +958,42 @@ void checkRefusals(const std::vector<Fixture> &list) {
   s = plain;
   s.families = 0;
   refused(png, s, "no families");
+
+  s = plain;
+  s.twoChannelNormals = true;
+  refused(png, s, "two-channel normals on a colour texture");
+
+  // Two-channel normals only when asked, and then BC5 and EAC RG11, with the
+  // blue check off: that is what asking for them means.
+  for (const Fixture &fixture : list) {
+    if (fixture.name != "normal.png") continue;
+    s = plain;
+    s.content = Content::kNormal;
+    s.twoChannelNormals = true;
+    const Cooked two = cook(fixture.bytes.data(), fixture.bytes.size(), s);
+    expect(two.files.size() == 4 && two.report.twoChannelNormals,
+           "a normal map asked for two channels cooks: " + two.note);
+    checkRoundTrip("normal.png (two-channel)", two, 30.0);
+    bool bc5 = false, rg11 = false;
+    for (const File &file : two.files) {
+      bc5 = bc5 || file.vkFormat == 141;
+      rg11 = rg11 || file.vkFormat == 155;
+    }
+    expect(bc5 && rg11, "two-channel normals are BC5 and EAC RG11");
+    // And the blue check is what stops a two-channel file passing as the
+    // default: the same BC5 file, held to three channels, fails it.
+    for (const File &file : two.files) {
+      if (file.vkFormat != 141) continue;
+      Ktx2File k;
+      std::string why;
+      Image top;
+      if (readKtx2(file.bytes, k, why) && decodeLevel(k, 0, top)) {
+        uint64_t blue = 0;
+        for (size_t t = 2; t < top.rgba.size(); t += 4) blue += top.rgba[t];
+        expect(blue == 0, "a BC5 normal map's blue decodes to 0, which the Z check refuses");
+      }
+    }
+  }
 
   // Basis .ktx2 marked sRGB, cooked as a normal map without saying linear.
   for (const Fixture &fixture : list) {
@@ -1171,6 +1231,7 @@ int measure(int argc, char **argv) {
   for (int i = 3; i < argc; i++) {
     const std::string name = argv[i];
     if (name == "--normal") settings.content = Content::kNormal;
+    else if (name == "--two-channel-normals") settings.twoChannelNormals = true;
     else if (name == "--single-channel") settings.content = Content::kSingleChannel;
     else if (name == "--linear") settings.transfer = Transfer::kLinear;
     else if (name == "--cutout" && i + 1 < argc) settings.cutout = float(std::atof(argv[++i]));
