@@ -89,19 +89,20 @@ constexpr int32_t kHighTierMegabytes = 8192;
 /// texture is loaded at before any smaller one is asked for.
 constexpr uint32_t kTierTextureSides[3] = {1024, 2048, 4096};
 
-/// OrblitDeviceProfile.textureUploadKilobytes, by tier: how much texture data
-/// a frame hands the GPU at most, beyond the one level every frame gets.
+/// OrblitDeviceProfile.textureUploadKilobytes, by tier: where a frame's
+/// upload budget starts when the application does not set one. From there it
+/// is measured: see TextureQueue::adaptUploads.
+constexpr uint32_t kTierUploadKilobytes[3] = {4096, 16384, 32768};
+
+/// The least and the most an adapting budget may come to, by tier.
 ///
-/// Measured on an M4 Pro through Filament's Metal backend, four hundred 2048²
-/// BC7 textures with their mipmaps arriving at once, each frame's uploads
-/// waited for (orblit_textures_check bench), on a machine busy with other
-/// builds: 32 MB a frame made 26 to 31 ms frames; 16 MB, a 99th percentile of
-/// 4.4 ms on one run and 19.9 ms on the next; 8 MB, 4.8 and 2.9 ms, arriving
-/// in 5.8 s; 2 MB, 2.5 to 3.5 ms and 14.4 s. The high tier takes 8 MB, the
-/// most that held on every run. Phones and browsers are not measured: medium
-/// and low take a half and a quarter of it, and are the first numbers to move
-/// once they are.
-constexpr uint32_t kTierUploadKilobytes[3] = {2048, 4096, 8192};
+/// The least keeps a load moving whatever a frame measures, so a machine
+/// busy with something else still finishes loading. The most bounds what one
+/// frame asks the backend to stage: on Metal each upload is copied into a
+/// staging buffer first, and a quarter of a gigabyte of those at once is
+/// memory a phone does not have to spare.
+constexpr uint32_t kTierUploadLeastKilobytes[3] = {1024, 2048, 4096};
+constexpr uint32_t kTierUploadMostKilobytes[3] = {32768, 131072, 262144};
 
 /// The tier of a device from what its renderer measured. An answer below
 /// nought is one the device would not give, read as Dart reads it.
@@ -127,8 +128,32 @@ class TextureQueue {
   /// for either is no limit. Textures already made keep the size they were
   /// made at.
   void setLimits(uint32_t maxSide, uint64_t bytesPerFrame);
+  void setMaxSide(uint32_t maxSide) { _maxSide = maxSide; }
   uint32_t maxSide() const { return _maxSide; }
   uint64_t bytesPerFrame() const { return _bytesPerFrame; }
+
+  /// Lets the upload budget follow what frames measure, from `start` and
+  /// between `least` and `most` bytes, rather than holding it where
+  /// setLimits put it. Calling it again with the same numbers keeps what has
+  /// been learned; setLimits with a budget stops it.
+  ///
+  /// While textures arrive, one frame in eight uploads nothing, and what that
+  /// frame costs is the scene's own cost with everything else the machine is
+  /// doing — decoding included. The frames that do upload are compared with
+  /// it: their extra time over the megabytes they sent is what a megabyte
+  /// costs now. The budget is then what fits in a frame's slack — the larger
+  /// of what is left of a sixtieth of a second and the scene's own cost, so a
+  /// frame spends at most about as long on textures as on drawing — never
+  /// more than doubling or halving in one step. A frame far over that halves
+  /// it at once.
+  void adaptUploads(uint64_t start, uint64_t least, uint64_t most);
+
+  /// What the frame the last pump began took, whole, in seconds. Once a
+  /// frame, on the engine's thread, after it has drawn.
+  void frameTook(double seconds);
+
+  /// Whether to say what the budget measured, for ORBLIT_LOAD_TRACE.
+  void setTrace(bool trace) { _trace = trace; }
 
   /// Whether the device samples a format, asked once for every format when
   /// the queue was made. Any thread.
@@ -199,6 +224,20 @@ class TextureQueue {
   /// How many textures are still on their way.
   size_t outstanding() const;
 
+  /// How many of `owner`'s textures nothing has been written into yet.
+  ///
+  /// A model is hidden until this is nought. A texture's memory is found the
+  /// first time it is written or drawn, whichever comes first, and a model of
+  /// four hundred textures drawn before any is written makes the GPU find all
+  /// of their memory in its first frame — measured at a quarter of a second
+  /// to more than one for the Bistro. Hidden, their placeholders are written
+  /// a few a frame under the budget instead, and the model appears once the
+  /// last is.
+  size_t unprimed(const void *owner) const;
+
+  /// What pushing has cost the engine's thread since the queue was made.
+  double pushSeconds() const { return _pushSecondsEver; }
+
   /// What the last pump uploaded, and the most any has since the queue was
   /// made.
   struct Frames {
@@ -222,6 +261,11 @@ class TextureQueue {
   SharedBytes readCooked(const std::string &path, std::string *chosen,
                          int transfer = -1);
 
+  /// Why siblings were passed over since last asked, one line for each
+  /// reason with how many and one of them — so a model of four hundred
+  /// textures says it once, not four hundred times.
+  std::vector<std::string> takePassedOver();
+
  private:
   struct Item;
   struct Unit;
@@ -239,8 +283,13 @@ class TextureQueue {
   filament::Texture *pushPicture(const Request &request, const uint8_t *data,
                                  size_t size, std::string &why);
   void enqueue(const std::shared_ptr<Item> &item);
-  void writePlaceholder(filament::Texture *texture,
-                        const ktx2::Format &format, uint32_t level);
+  bool writePlaceholder(filament::Texture *texture,
+                        const ktx2::Format &format, uint32_t level, bool whole);
+  void placeAtPush(const Request &request, Item &item,
+                   filament::Texture *texture);
+  bool startsAsPlaceholder(const ktx2::Format &format) const;
+  static uint64_t storageOf(const filament::Texture &texture,
+                            const ktx2::Format &format);
   void startWorkers();
   void work();
   void decode(Item &item);
@@ -263,6 +312,25 @@ class TextureQueue {
   const uint32_t _deviceLargest;
   uint32_t _maxSide = 0;
   uint64_t _bytesPerFrame = 0;
+
+  /// The adapting budget; see adaptUploads. The engine's thread only.
+  struct Adapting {
+    bool on = false;
+    uint64_t start = 0;
+    uint64_t least = 0;
+    uint64_t most = 0;
+    /// How many pumps a batch has had, which picks the probe frames.
+    uint64_t pumps = 0;
+    bool probing = false;
+    bool lastProbed = false;
+    /// What the frames that uploaded nothing cost, smoothed.
+    double probeMs = 0;
+    /// The frames that uploaded since the last probe: their time and bytes.
+    double uploadMs = 0;
+    double uploadMegabytes = 0;
+    uint32_t uploadFrames = 0;
+  } _adapting{};
+  bool _trace = false;
   std::vector<uint32_t> _supported{};
   bool _familyUsable[4] = {};
 
@@ -303,6 +371,7 @@ class TextureQueue {
   /// cost it. The engine's thread only.
   uint64_t _inlineCount = 0;
   double _pushSeconds = 0;
+  double _pushSecondsEver = 0;
   /// Of the batch, what decoder workers decoded, what that took them, and
   /// what handing it over and back cost the drawing thread.
   uint64_t _offThreadCount = 0;
@@ -313,10 +382,17 @@ class TextureQueue {
   double _inlineSeconds = 0;
   double _longestInline = 0;
 
+  void passOver(const std::string &name, const std::string &why);
+
   struct Cooked {
     uint64_t generation;
     std::string name;
   };
+  struct PassedOver {
+    size_t count = 0;
+    std::string example{};
+  };
+  std::map<std::string, PassedOver> _passedOver{};
   std::mutex _cookedLock;
   std::unordered_map<std::string, Cooked> _cooked{};
 };

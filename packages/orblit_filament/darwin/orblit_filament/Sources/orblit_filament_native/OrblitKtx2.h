@@ -117,6 +117,19 @@ bool isKtx2(const uint8_t *data, size_t size);
 /// into gigabytes. Empty on success; otherwise why not, as a sentence.
 std::string read(const uint8_t *data, size_t size, Header &out);
 
+/// The same, from only the start of a file of `fileSize` bytes: enough to
+/// choose a file by its header without reading the rest. The header, level
+/// index and descriptor have to be inside the `available` bytes given —
+/// kHeadBytes is always enough for a file this renderer would load — and
+/// everything else is checked against `fileSize`.
+std::string read(const uint8_t *data, size_t available, Header &out,
+                 uint64_t fileSize);
+
+/// How much of a file to read to choose it by its header: the header, a
+/// level index of the most levels any texture has, and a descriptor with
+/// room to spare.
+constexpr size_t kHeadBytes = 4096;
+
 /// Bytes one level holds decompressed, every face of it. Nought for Basis.
 uint64_t levelBytes(const Header &header, uint32_t level);
 
