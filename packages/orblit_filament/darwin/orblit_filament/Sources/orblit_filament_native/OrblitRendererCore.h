@@ -137,6 +137,14 @@ struct Mesh {
   /// bytes have been provided since — see orblit::resourceGeneration.
   uint64_t missingAt = 0;
 
+  /// Whether objects made of it are drawn yet. False from the load until
+  /// something has been written into every texture it names, so the frame
+  /// that first draws it does not also make the GPU find the memory for all
+  /// of them; see TextureQueue::unprimed. When the load began, for the line
+  /// that says how long that took.
+  bool shown = true;
+  double loadedAt = 0;
+
   /// Every node's own transform as the file left it, in the order each copy
   /// lists its entities — which is the same order for every copy, because
   /// each is made by walking the same tree. What an object that stops
@@ -1453,6 +1461,13 @@ class Renderer {
   /// one; see rebuildBatchGroup.
   uint32_t _chunkSize{kInstancesPerDraw};
   bool _exactChunkBox{};
+
+  /// ORBLIT_LOAD_TRACE: say what a slow frame spent its time on, and what a
+  /// model's load spent the publish on. Diagnostic only, off unless set;
+  /// native/headless/orblit_load_bench reads these lines.
+  bool _loadTrace{};
+  /// How long the last frame waited for the backend to run what it asked.
+  double _lastFlushSeconds{};
   bool _objectChunkBox{};
   bool _rootTransformChunks{};
 
@@ -1498,6 +1513,10 @@ class Renderer {
   /// The asset whose resources the loader began last, which is the one it
   /// would mark textures ready in — so destroying it has to stop that first.
   gltfio::FilamentAsset *_loadingAsset{};
+
+  /// Whether any mesh is hidden while its textures' memory is made.
+  bool _meshesWaiting{};
+  void showPrimedMeshes();
 
   /// Problems with textures, by the texture's path, and what named each: a
   /// model's path, or empty for a material's or a sprite layer's. Reported

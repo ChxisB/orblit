@@ -110,6 +110,12 @@ bool shadowComparisonAvailable();
 /// what lets the caller report "not a glTF file" rather than "missing".
 bool readFile(const std::string &path, std::vector<uint8_t> &out);
 
+/// Reads at most `most` bytes from the start of a file, and says how large
+/// the whole file is. False if it cannot be opened, is empty, or cannot be
+/// read. For choosing a file by its header without reading all of it.
+bool readFileStart(const std::string &path, size_t most,
+                   std::vector<uint8_t> &out, uint64_t *fileSize);
+
 /// Reads a file whole into memory from malloc, for a Filament buffer
 /// descriptor whose callback frees it. False, with nothing allocated, when
 /// the file is missing, empty, or comes back short.

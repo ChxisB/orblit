@@ -225,6 +225,7 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
   const char *boxMode = getenv("ORBLIT_BATCH_BOX");
   _exactChunkBox = boxMode != nullptr && strcmp(boxMode, "exact") == 0;
   _objectChunkBox = boxMode != nullptr && strcmp(boxMode, "object") == 0;
+  _loadTrace = getenv("ORBLIT_LOAD_TRACE") != nullptr;
   const char *rootMode = getenv("ORBLIT_BATCH_ROOT");
   _rootTransformChunks = rootMode != nullptr && strcmp(rootMode, "transform") == 0;
 
@@ -960,7 +961,7 @@ void Renderer::applyTextureLimits() {
   uint32_t side = std::min(
       orblit::kTierTextureSides[size_t(tier)],
       largest > 0 ? uint32_t(largest) : orblit::kTierTextureSides[0]);
-  uint64_t kilobytes = orblit::kTierUploadKilobytes[size_t(tier)];
+  uint64_t kilobytes = 0;
   const size_t sideAt = orblit::pipeline::kTextureSide;
   const size_t uploadAt = orblit::pipeline::kTextureUploadKilobytes;
   if (_pipelineCount > uploadAt) {
@@ -971,7 +972,19 @@ void Renderer::applyTextureLimits() {
       kilobytes = uint64_t(_pipelineParams[uploadAt]);
     }
   }
-  _textureQueue->setLimits(side, kilobytes * 1024);
+  _textureQueue->setTrace(_loadTrace);
+  if (kilobytes > 0) {
+    // The application's own, held where it put it.
+    _textureQueue->setLimits(side, kilobytes * 1024);
+    return;
+  }
+  // The device's: measured frame by frame, from where its tier starts and
+  // between the least and most its tier allows.
+  _textureQueue->setMaxSide(side);
+  const size_t t = size_t(tier);
+  _textureQueue->adaptUploads(uint64_t(orblit::kTierUploadKilobytes[t]) << 10,
+                              uint64_t(orblit::kTierUploadLeastKilobytes[t]) << 10,
+                              uint64_t(orblit::kTierUploadMostKilobytes[t]) << 10);
 }
 
 void Renderer::measureCapabilities(Engine::FeatureLevel supported) {
@@ -1140,6 +1153,10 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
   // a directory — and still returned true, so the geometry appeared with no
   // colour on it and nothing anywhere said why. Two hours of that is what
   // this loop is for.
+  // For ORBLIT_LOAD_TRACE: when reading the files began, and handing them
+  // over.
+  double readingFrom = orblit::now();
+  double handingFrom = readingFrom;
   {
     const char *const *uris = entry.asset->getResourceUris();
     const size_t count = entry.asset->getResourceUriCount();
@@ -1180,6 +1197,7 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
       // A KTX 2 texture is read from its cooked set: the glTF names `x.ktx2`,
       // and what is handed over under that URI is whichever sibling this
       // device samples best.
+      readingFrom = orblit::now();
       Wanted *slots = wanted.data();
       orblit::TextureQueue *queue = _textureQueue.get();
       orblit::parallelFor(wanted.size(), [slots, queue](size_t i) {
@@ -1196,6 +1214,11 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
       });
     }
 
+    handingFrom = orblit::now();
+    for (const std::string &line : _textureQueue->takePassedOver()) {
+      orblit::log("[orblit] %s: %s", orblit::lastPathComponent(native).c_str(),
+                  line.c_str());
+    }
     // Handed over one at a time, because Filament is not being called from
     // several threads at once and this is not where the time was.
     for (const Wanted &one : wanted) {
@@ -1246,11 +1269,28 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
 
   // Every texture the load pushes belongs to this asset, so it can be
   // forgotten if the asset goes before they have all arrived.
+  const double beginningFrom = orblit::now();
+  const double pushedBefore = _textureQueue->pushSeconds();
   _modelTextures->setOwner(entry.asset);
   const bool began = _resourceLoader->asyncBeginLoad(entry.asset);
+  if (_loadTrace) {
+    orblit::log("[orblit] trace: %s's publish: reading %.0f ms, handing over "
+                "%.0f ms, beginning the load %.0f ms of which pushing "
+                "textures %.0f ms",
+                orblit::lastPathComponent(native).c_str(),
+                (handingFrom - readingFrom) * 1000.0,
+                (beginningFrom - handingFrom) * 1000.0,
+                (orblit::now() - beginningFrom) * 1000.0,
+                (_textureQueue->pushSeconds() - pushedBefore) * 1000.0);
+  }
   _modelTextures->setOwner(nullptr);
   _modelTextures->forgetNames();
-  if (began) _loadingAsset = entry.asset;
+  if (began) {
+    _loadingAsset = entry.asset;
+    entry.loadedAt = orblit::now();
+    entry.shown = _textureQueue->unprimed(entry.asset) == 0;
+    if (!entry.shown) _meshesWaiting = true;
+  }
   if (!began) {
     orblit::log("[orblit] mesh resources failed: %s", native.c_str());
     _assetNotes[native] = "Its geometry or textures could not be loaded.";
@@ -1430,6 +1470,8 @@ void Renderer::morph(const Drawn &drawn, const float *weights, size_t count) {
 
 /// Applies them to a whole object, which for a mesh is every part of it.
 void Renderer::applyFlags(int32_t flags, const Drawn &drawn) {
+  // Hidden while its textures' memory is made; shown by showPrimedMeshes.
+  if (drawn.mesh != nullptr && !drawn.mesh->shown) flags &= ~kVisible;
   if (drawn.instance != nullptr) {
     const utils::Entity *entities = drawn.instance->getEntities();
     const size_t count = drawn.instance->getEntityCount();
@@ -2345,8 +2387,12 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
   // A cooked set is chosen from here: `x.ktx2` is the best sibling this
   // device samples, or itself.
   std::string chosen;
-  if (const orblit::SharedBytes data =
-          _textureQueue->readCooked(path, &chosen, srgb ? 1 : 0)) {
+  const orblit::SharedBytes cooked =
+      _textureQueue->readCooked(path, &chosen, srgb ? 1 : 0);
+  for (const std::string &line : _textureQueue->takePassedOver()) {
+    orblit::log("[orblit] %s", line.c_str());
+  }
+  if (const orblit::SharedBytes data = cooked) {
     orblit::TextureQueue::Request request;
     request.shared = data;
     request.srgb = srgb;
@@ -2410,7 +2456,33 @@ void Renderer::pollTextures() {
 /// budget. Before the resource loader looks, so a model's textures that
 /// finish this frame are popped this frame.
 void Renderer::pumpTextures() {
-  if (_textureQueue) _textureQueue->pump();
+  if (!_textureQueue) return;
+  _textureQueue->pump();
+  if (_meshesWaiting) showPrimedMeshes();
+}
+
+/// Draws the models whose every texture now has something written into it.
+void Renderer::showPrimedMeshes() {
+  _meshesWaiting = false;
+  for (auto &entry : _meshes) {
+    Mesh &mesh = entry.second;
+    if (mesh.shown || mesh.asset == nullptr) continue;
+    if (_textureQueue->unprimed(mesh.asset) > 0) {
+      _meshesWaiting = true;
+      continue;
+    }
+    mesh.shown = true;
+    orblit::log("[orblit] %s: drawn once its textures had memory, %.0f ms "
+                "into the load",
+                orblit::lastPathComponent(entry.first).c_str(),
+                (orblit::now() - mesh.loadedAt) * 1000.0);
+    for (auto &pair : _drawn) {
+      Drawn &drawn = pair.second;
+      if (drawn.mesh == &mesh && drawn.flags != -1) {
+        applyFlags(drawn.flags, drawn);
+      }
+    }
+  }
 }
 
 /// Builds the sampler a material's wrap and filter settings describe.
@@ -6786,9 +6858,12 @@ std::vector<PassTiming> Renderer::passTimings() {
 void Renderer::renderAtTime(double time) {
   if (_disposed) return;
 
+  const double frameFrom = orblit::now();
+  const uint64_t frameNumber = _frameCount;
   // Texture levels that have been decoded go up first, within this frame's
   // budget, so anything that finishes arriving is popped below this frame.
   pumpTextures();
+  const double pumped = orblit::now();
 
   // Textures still arriving. Filament decodes them off this thread and hands
   // them over here, so this has to be called until it says it is done —
@@ -6806,6 +6881,8 @@ void Renderer::renderAtTime(double time) {
     }
   }
 
+  const double loaded = orblit::now();
+
   try {
     drawAtTime(time);
   } catch (const std::exception &error) {
@@ -6814,6 +6891,23 @@ void Renderer::renderAtTime(double time) {
   } catch (...) {
     orblit::log("[orblit] render failed for an unknown reason.");
     _disposed = true;
+  }
+
+  if (_textureQueue) _textureQueue->frameTook(orblit::now() - frameFrom);
+  if (_loadTrace && _textureQueue) {
+    const double drawn = orblit::now();
+    const double total = drawn - frameFrom;
+    if (total > 0.025 || getenv("ORBLIT_LOAD_TRACE_ALL")) {
+      const orblit::TextureQueue::Frames frames = _textureQueue->frames();
+      orblit::log("[orblit] trace: frame %llu took %.1f ms: textures %.1f ms "
+                  "(%u uploads, %llu KB), resource loader %.1f ms, draw %.1f "
+                  "ms of which the backend %.1f ms",
+                  (unsigned long long)frameNumber, total * 1000.0,
+                  (pumped - frameFrom) * 1000.0, frames.lastUploads,
+                  (unsigned long long)(frames.lastBytes / 1024),
+                  (loaded - pumped) * 1000.0, (drawn - loaded) * 1000.0,
+                  _lastFlushSeconds * 1000.0);
+    }
   }
 }
 
@@ -6915,7 +7009,9 @@ void Renderer::drawAtTime(double time) {
 
   // Flutter may sample the moment this returns, so the frame has to be on the
   // surface before it is advertised as presented.
+  const double flushFrom = orblit::now();
   _engine->flushAndWait();
+  _lastFlushSeconds = orblit::now() - flushFrom;
 
   // A frame read back arrives through Filament's callback queue, which is
   // only drained when somebody asks. Asking here makes it ready with the

@@ -131,6 +131,43 @@ inline Kind rgba8(bool srgb) {
             to[3] = c.a;
           }};
 }
+/// BC3: an alpha block of the alpha, then a BC1 block of the colour.
+inline Kind bc3(bool srgb) {
+  return {srgb ? 138u : 137u, 4, 4, 16, 1, 130, [](uint8_t *to, Rgba c) {
+            to[0] = to[1] = c.a;
+            memset(to + 2, 0, 6);
+            bc1Block(to + 8, c);
+          }};
+}
+/// BC4 and BC5: both end values the channel, every index nought.
+inline Kind bc4() {
+  return {139u, 4, 4, 8, 1, 131, [](uint8_t *to, Rgba c) {
+            to[0] = to[1] = c.r;
+            memset(to + 2, 0, 6);
+          }};
+}
+inline Kind bc5() {
+  return {141u, 4, 4, 16, 1, 132, [](uint8_t *to, Rgba c) {
+            to[0] = to[1] = c.r;
+            memset(to + 2, 0, 6);
+            to[8] = to[9] = c.g;
+            memset(to + 10, 0, 6);
+          }};
+}
+/// EAC R11 and RG11: the base value, a multiplier of nought.
+inline Kind eacR11() {
+  return {153u, 4, 4, 8, 1, 161, [](uint8_t *to, Rgba c) {
+            memset(to, 0, 8);
+            to[0] = c.r;
+          }};
+}
+inline Kind eacRg11() {
+  return {155u, 4, 4, 16, 1, 161, [](uint8_t *to, Rgba c) {
+            memset(to, 0, 16);
+            to[0] = c.r;
+            to[8] = c.g;
+          }};
+}
 /// Three channels, which Metal has no texture format for.
 inline Kind rgb8() {
   return {23u, 1, 1, 3, 1, 1, [](uint8_t *to, Rgba c) {

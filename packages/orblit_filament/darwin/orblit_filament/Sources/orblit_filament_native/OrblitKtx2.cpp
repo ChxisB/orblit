@@ -236,6 +236,17 @@ uint64_t levelBytes(const Header &header, uint32_t level) {
 }
 
 std::string read(const uint8_t *data, size_t size, Header &out) {
+  return read(data, size, out, size);
+}
+
+std::string read(const uint8_t *data, size_t available, Header &out,
+                 uint64_t fileSize) {
+  // Everything below reads only the header, the level index and the
+  // descriptor out of `data`; where the levels, key/value data and
+  // supercompression data lie is checked against the whole file's size.
+  const size_t size = available;
+  const size_t whole =
+      fileSize > uint64_t(SIZE_MAX) ? SIZE_MAX : size_t(fileSize);
   out = Header{};
   if (data == nullptr || size < kHeaderBytes) {
     return say("It is too short to be a KTX 2 file: %zu bytes, where the "
@@ -325,17 +336,17 @@ std::string read(const uint8_t *data, size_t size, Header &out) {
     level.offset = u64(entry);
     level.length = u64(entry + 8);
     level.uncompressedLength = u64(entry + 16);
-    if (level.length == 0 || !inside(level.offset, level.length, size)) {
+    if (level.length == 0 || !inside(level.offset, level.length, whole)) {
       return say("Level %" PRIu32 " lies outside the file, which is %zu "
                  "bytes: it is truncated or its index is wrong.",
-                 i, size);
+                 i, whole);
     }
   }
 
-  if (kvdLength != 0 && !inside(kvdOffset, kvdLength, size)) {
+  if (kvdLength != 0 && !inside(kvdOffset, kvdLength, whole)) {
     return "Its key/value data lies outside the file.";
   }
-  if (sgdLength != 0 && !inside(sgdOffset, sgdLength, size)) {
+  if (sgdLength != 0 && !inside(sgdOffset, sgdLength, whole)) {
     return "Its supercompression data lies outside the file.";
   }
 
@@ -344,8 +355,12 @@ std::string read(const uint8_t *data, size_t size, Header &out) {
   // alpha is premultiplied. A file without one is out of spec but still
   // readable when its vkFormat says everything the descriptor would.
   if (dfdLength != 0) {
-    if (!inside(dfdOffset, dfdLength, size)) {
+    if (!inside(dfdOffset, dfdLength, whole)) {
       return "Its data format descriptor lies outside the file.";
+    }
+    if (!inside(dfdOffset, dfdLength, size)) {
+      return "Its data format descriptor lies past the part of it that was "
+             "read.";
     }
     const uint8_t *dfd = data + dfdOffset;
     if (dfdLength >= 4 + 24) {

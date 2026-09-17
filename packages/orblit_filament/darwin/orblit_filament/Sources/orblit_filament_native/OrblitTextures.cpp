@@ -364,6 +364,18 @@ struct TextureQueue::Item {
 
   // The engine's thread only.
   bool complete = false;
+  /// Every level of the texture, in bytes: what the GPU has to find the
+  /// first time anything is written into it.
+  uint64_t storage = 0;
+  /// Whether anything has been written into it yet — its placeholder or a
+  /// level.
+  bool written = false;
+  /// The placeholder it is given before its levels arrive, and into which
+  /// level: written when it is made for a texture sampled at once, and for a
+  /// model's — hidden until every texture of it has been written — by pump,
+  /// under the budget. Null for a texture that has none.
+  const ktx2::Format *placeholder = nullptr;
+  uint32_t placeholderLevel = 0;
 };
 
 TextureQueue::TextureQueue(filament::Engine &engine, uint32_t deviceLargest,
@@ -384,12 +396,35 @@ TextureQueue::TextureQueue(filament::Engine &engine, uint32_t deviceLargest,
     }
     return false;
   };
-  _familyUsable[size_t(ktx2::Family::astc)] = any({157, 158});
+  const auto both = [this](uint32_t linear, uint32_t srgb) {
+    const ktx2::Format *a = ktx2::formatOf(linear);
+    const ktx2::Format *b = ktx2::formatOf(srgb);
+    return a != nullptr && b != nullptr && supports(*a) && supports(*b);
+  };
+  // A family only when its colour formats are sampled in both colour spaces,
+  // as ORBLIT_CAPABILITY_COMPRESSED_FORMATS and so OrblitDeviceProfile's
+  // textureCandidates count it: a cooked set is chosen by family, and a
+  // family that can hold a normal map but not the albedo beside it is only
+  // half of one. It is also what keeps the siblings a device will not use
+  // from being opened. Filament's Metal backend samples ASTC only as linear,
+  // so on Apple the ASTC siblings are passed over without being read.
+  _familyUsable[size_t(ktx2::Family::astc)] = both(157, 158);
   _familyUsable[size_t(ktx2::Family::bc)] =
-      any({145, 146, 141, 139});
-  _familyUsable[size_t(ktx2::Family::etc2)] = any({151, 152, 147, 155, 153});
+      both(145, 146) || any({141, 139});
+  _familyUsable[size_t(ktx2::Family::etc2)] = both(151, 152);
 
-  for (InternalFormat target : kBasisTargets) _basis->requestFormat(target);
+  for (InternalFormat target : kBasisTargets) {
+    // Not ASTC where the device has it only in one colour space: Basis would
+    // make its linear maps ASTC and its colour maps something else, and ASTC
+    // is the one family whose never-written storage does not read as
+    // transparent black (see startsAsPlaceholder).
+    const ktx2::Format *format = formatOfInternal(target);
+    if (format != nullptr && format->family == ktx2::Family::astc &&
+        !_familyUsable[size_t(ktx2::Family::astc)]) {
+      continue;
+    }
+    _basis->requestFormat(target);
+  }
 
 #if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_PTHREADS__)
   (void)workerThreads;
@@ -407,6 +442,94 @@ TextureQueue::~TextureQueue() { shutdown(); }
 void TextureQueue::setLimits(uint32_t maxSide, uint64_t bytesPerFrame) {
   _maxSide = maxSide;
   _bytesPerFrame = bytesPerFrame;
+  _adapting.on = false;
+}
+
+void TextureQueue::adaptUploads(uint64_t start, uint64_t least,
+                                uint64_t most) {
+  if (_adapting.on && _adapting.start == start && _adapting.least == least &&
+      _adapting.most == most) {
+    return;
+  }
+  _adapting = Adapting{};
+  _adapting.on = true;
+  _adapting.start = start;
+  _adapting.least = least;
+  _adapting.most = most;
+  _bytesPerFrame = std::clamp(start, least, most);
+}
+
+void TextureQueue::frameTook(double seconds) {
+  Adapting &a = _adapting;
+  if (!a.on) return;
+  const bool probed = a.lastProbed;
+  a.lastProbed = false;
+  const double ms = seconds * 1000.0;
+  const uint64_t bytes = _frames.lastBytes;
+
+  constexpr double kFrameMs = 1000.0 / 60.0;
+  if (!probed) {
+    if (bytes > 0) {
+      a.uploadMs += ms;
+      a.uploadMegabytes += double(bytes) / double(1 << 20);
+      a.uploadFrames++;
+      // A frame far over what the last probe allows halves the budget at
+      // once rather than waiting for the next probe to say so.
+      if (a.probeMs > 0) {
+        const double slack =
+            std::max({a.probeMs, kFrameMs - a.probeMs, 4.0});
+        if (ms > a.probeMs + 4 * slack) {
+          _bytesPerFrame = std::max(a.least, _bytesPerFrame / 2);
+        }
+      }
+    }
+    return;
+  }
+
+  // The scene's own cost, for the frames since the last probe: the two
+  // probes either side of them, so a scene that changed meanwhile — a model
+  // appearing — is not blamed on the textures. A probe four times the last is
+  // a stall from somewhere else and is not believed.
+  const double previous = a.probeMs;
+  if (previous > 0 && ms > previous * 4) {
+    a.uploadMs = 0;
+    a.uploadMegabytes = 0;
+    a.uploadFrames = 0;
+    return;
+  }
+  a.probeMs = ms;
+  const double scene = previous > 0 ? (previous + ms) / 2 : ms;
+  // What a frame may spend on textures: what is left of a sixtieth of a
+  // second, or as long as the scene takes, whichever is more.
+  const double slack = std::max({scene, kFrameMs - scene, 4.0});
+  const uint64_t budget = _bytesPerFrame;
+  if (previous <= 0 || a.uploadFrames == 0 || a.uploadMegabytes <= 0) {
+    a.uploadMs = 0;
+    a.uploadMegabytes = 0;
+    a.uploadFrames = 0;
+    return;
+  }
+
+  const double extraMs =
+      std::max(0.0, a.uploadMs / a.uploadFrames - scene);
+  const double megabytes = a.uploadMegabytes / a.uploadFrames;
+  // Megabytes that cost nothing measurable are allowed twice as many.
+  const double fits = extraMs > 0.01
+                          ? slack / (extraMs / megabytes) * double(1 << 20)
+                          : double(budget) * 2;
+  const double next =
+      std::clamp(fits, double(budget) / 2, double(budget) * 2);
+  _bytesPerFrame =
+      std::clamp(uint64_t(next), a.least, a.most);
+  if (_trace) {
+    log("[orblit] trace: upload budget %.1f MB: a frame without uploads "
+        "%.1f ms, with %.1f MB %.1f ms",
+        double(_bytesPerFrame) / double(1 << 20), scene, megabytes,
+        a.uploadMs / a.uploadFrames);
+  }
+  a.uploadMs = 0;
+  a.uploadMegabytes = 0;
+  a.uploadFrames = 0;
 }
 
 bool TextureQueue::supports(const ktx2::Format &format) const {
@@ -474,32 +597,77 @@ SharedBytes TextureQueue::readCooked(const std::string &path,
     // for. One it can is still checked by what the file actually holds.
     if (!_familyUsable[size_t(family)]) continue;
     const std::string name = ktx2::siblingName(path, family);
-    SharedBytes bytes = readResource(name);
-    if (!bytes || bytes->empty()) continue;
+
+    // Chosen by its header, read on its own: a sibling passed over costs a
+    // few kilobytes rather than every level of a texture. Bytes provided by
+    // name are already in memory and are looked at where they are.
     ktx2::Header header;
-    const std::string why = ktx2::read(bytes->data(), bytes->size(), header);
-    if (!why.empty()) {
-      log("[orblit] %s passed over: %s", name.c_str(), why.c_str());
-      continue;
+    std::string why;
+    SharedBytes provided = findResource(name);
+    if (provided) {
+      if (provided->empty()) continue;
+      why = ktx2::read(provided->data(), provided->size(), header);
+    } else {
+      std::vector<uint8_t> start;
+      uint64_t size = 0;
+      if (!readFileStart(name, ktx2::kHeadBytes, start, &size)) continue;
+      why = ktx2::read(start.data(), start.size(), header, size);
     }
-    if (header.basis || header.format == nullptr) {
-      log("[orblit] %s passed over: it is Basis, which belongs in %s",
-          name.c_str(), lastPathComponent(path).c_str());
-      continue;
+    if (why.empty() && (header.basis || header.format == nullptr)) {
+      why = "it is Basis, which belongs in " + lastPathComponent(path);
     }
-    if (sampledAs(*header.format, transfer, true) == nullptr) {
+    if (why.empty() && sampledAs(*header.format, transfer, true) == nullptr) {
       const ktx2::Format *wanted =
           transfer < 0 ? header.format
                        : ktx2::withTransfer(*header.format, transfer == 1);
-      log("[orblit] %s passed over: this device does not sample %s",
-          name.c_str(), (wanted != nullptr ? wanted : header.format)->name);
+      why = std::string("this device does not sample ") +
+            (wanted != nullptr ? wanted : header.format)->name;
+    }
+    if (!why.empty()) {
+      passOver(name, why);
       continue;
+    }
+    SharedBytes bytes = provided ? provided : readResource(name);
+    if (!bytes || bytes->empty()) continue;
+    if (!provided) {
+      // Read whole, so checked whole: a file that has changed or been cut
+      // short since its start was read falls through as it would have.
+      why = ktx2::read(bytes->data(), bytes->size(), header);
+      if (!why.empty()) {
+        passOver(name, why);
+        continue;
+      }
     }
     remember(name);
     return bytes;
   }
   remember(path);
   return readResource(path);
+}
+
+void TextureQueue::passOver(const std::string &name, const std::string &why) {
+  std::lock_guard<std::mutex> hold(_cookedLock);
+  PassedOver &passed = _passedOver[why];
+  if (passed.count++ == 0) passed.example = name;
+}
+
+std::vector<std::string> TextureQueue::takePassedOver() {
+  std::map<std::string, PassedOver> taken;
+  {
+    std::lock_guard<std::mutex> hold(_cookedLock);
+    taken.swap(_passedOver);
+  }
+  std::vector<std::string> lines;
+  for (const auto &entry : taken) {
+    lines.push_back(
+        entry.second.count == 1
+            ? format("%s passed over: %s", entry.second.example.c_str(),
+                     entry.first.c_str())
+            : format("%zu cooked siblings passed over, %s among them: %s",
+                     entry.second.count, entry.second.example.c_str(),
+                     entry.first.c_str()));
+  }
+  return lines;
 }
 
 Texture *TextureQueue::push(const Request &request, std::string &why) {
@@ -532,6 +700,7 @@ Texture *TextureQueue::push(const Request &request, std::string &why) {
     _counts[request.client].pushed++;
   }
   _pushSeconds += now() - started;
+  _pushSecondsEver += now() - started;
   return texture;
 }
 
@@ -605,11 +774,13 @@ Texture *TextureQueue::pushKtx2(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  if (!generate || placeholderBeforeGeneratedLevels(_engine)) {
-    writePlaceholder(texture, *format, levels - 1);
-  }
-
   auto item = std::make_shared<Item>();
+  item->storage = storageOf(*texture, *format);
+  if (!generate || placeholderBeforeGeneratedLevels(_engine)) {
+    item->placeholder = format;
+    item->placeholderLevel = levels - 1;
+  }
+  placeAtPush(request, *item, texture);
   item->kind = Item::Kind::ktx2;
   item->client = request.client;
   item->owner = request.owner;
@@ -682,9 +853,11 @@ Texture *TextureQueue::pushBasis(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  writePlaceholder(texture, *ktx2::formatOf(target.vkFormat), target.levels - 1);
-
   auto item = std::make_shared<Item>();
+  item->storage = storageOf(*texture, *ktx2::formatOf(target.vkFormat));
+  item->placeholder = ktx2::formatOf(target.vkFormat);
+  item->placeholderLevel = target.levels - 1;
+  placeAtPush(request, *item, texture);
   item->kind = Item::Kind::basis;
   item->client = request.client;
   item->owner = request.owner;
@@ -722,11 +895,13 @@ Texture *TextureQueue::pushBasis(const Request &request, const uint8_t *data,
     return nullptr;
   }
   Texture *texture = async->getTexture();
-  if (const ktx2::Format *format = formatOfInternal(texture->getFormat())) {
-    writePlaceholder(texture, *format, uint32_t(texture->getLevels()) - 1);
-  }
-
   auto item = std::make_shared<Item>();
+  if (const ktx2::Format *format = formatOfInternal(texture->getFormat())) {
+    item->storage = storageOf(*texture, *format);
+    item->placeholder = format;
+    item->placeholderLevel = uint32_t(texture->getLevels()) - 1;
+  }
+  placeAtPush(request, *item, texture);
   item->kind = Item::Kind::basis;
   item->client = request.client;
   item->owner = request.owner;
@@ -783,12 +958,14 @@ Texture *TextureQueue::pushPicture(const Request &request, const uint8_t *data,
     why = "Filament would not make a texture of it.";
     return nullptr;
   }
-  if (placeholderBeforeGeneratedLevels(_engine)) {
-    writePlaceholder(texture, *ktx2::formatOf(request.srgb ? 43 : 37),
-                     levels - 1);
-  }
-
+  const ktx2::Format &pixels = *ktx2::formatOf(request.srgb ? 43 : 37);
   auto item = std::make_shared<Item>();
+  item->storage = storageOf(*texture, pixels);
+  if (placeholderBeforeGeneratedLevels(_engine)) {
+    item->placeholder = &pixels;
+    item->placeholderLevel = levels - 1;
+  }
+  placeAtPush(request, *item, texture);
   item->kind = Item::Kind::picture;
   item->client = request.client;
   item->owner = request.owner;
@@ -804,15 +981,70 @@ Texture *TextureQueue::pushPicture(const Request &request, const uint8_t *data,
   return texture;
 }
 
-void TextureQueue::writePlaceholder(Texture *texture,
+bool TextureQueue::startsAsPlaceholder(const ktx2::Format &format) const {
+  // Measured, per format, on Apple silicon through Filament's Metal backend:
+  // a texture of these that nothing has been written into samples as the
+  // placeholder does, even straight after other textures' memory has been
+  // freed (orblit_textures_check, "never-written storage"). Metal gives a
+  // texture zeros, and zeros in these formats decode to black with no
+  // alpha — within two levels of it for ETC2 without alpha, whose smallest
+  // modifier is two. Not ASTC, where zeros are a reserved block that decodes
+  // as the error colour, and not the uncompressed formats, which sample as
+  // magenta until written. Other backends are not measured, so they keep the
+  // placeholder.
+  if (_engine.getBackend() != filament::backend::Backend::METAL) return false;
+  const uint32_t vk = format.vkFormat;
+  return (vk >= 131 && vk <= 134) ||  // BC1
+         (vk >= 137 && vk <= 142) ||  // BC3, BC4, BC5
+         vk == 145 || vk == 146 ||    // BC7
+         (vk >= 147 && vk <= 156);    // ETC2 and EAC
+}
+
+uint64_t TextureQueue::storageOf(const Texture &texture,
+                                 const ktx2::Format &format) {
+  uint64_t bytes = 0;
+  for (size_t level = 0; level < texture.getLevels(); level++) {
+    bytes += uint64_t((texture.getWidth(level) + format.blockWidth - 1) /
+                      format.blockWidth) *
+             ((texture.getHeight(level) + format.blockHeight - 1) /
+              format.blockHeight) *
+             format.bytesPerBlock;
+  }
+  return bytes;
+}
+
+void TextureQueue::placeAtPush(const Request &request, Item &item,
+                               Texture *texture) {
+  item.texture = texture;
+  // A model's textures are hidden with the model until pump has written into
+  // every one of them (see unprimed), so their placeholders wait for it: a
+  // write makes the GPU find memory for the whole texture, and four hundred of
+  // them at once is a frame of a second.
+  if (request.owner != nullptr || item.placeholder == nullptr) return;
+  // Sampled from the next frame. Where the storage already reads as the
+  // placeholder nothing need be written, and the GPU finds the memory when it
+  // is first drawn or written.
+  if (startsAsPlaceholder(*item.placeholder)) return;
+  item.written = writePlaceholder(texture, *item.placeholder,
+                                  item.placeholderLevel, true);
+  if (item.written) _placeholderBytes += item.storage;
+}
+
+bool TextureQueue::writePlaceholder(Texture *texture,
                                     const ktx2::Format &format,
-                                    uint32_t level) {
+                                    uint32_t level, bool whole) {
   const GpuFormat *gpu = gpuFormatOf(format.vkFormat);
-  if (gpu == nullptr) return;
-  const size_t across =
-      (texture->getWidth(level) + format.blockWidth - 1) / format.blockWidth;
-  const size_t down =
-      (texture->getHeight(level) + format.blockHeight - 1) / format.blockHeight;
+  if (gpu == nullptr) return false;
+  const uint32_t levelWidth = uint32_t(texture->getWidth(level));
+  const uint32_t levelHeight = uint32_t(texture->getHeight(level));
+  // One block is enough where the rest of the storage already reads as the
+  // placeholder: what it is written for is making the memory.
+  const uint32_t width =
+      whole ? levelWidth : std::min<uint32_t>(levelWidth, format.blockWidth);
+  const uint32_t height =
+      whole ? levelHeight : std::min<uint32_t>(levelHeight, format.blockHeight);
+  const size_t across = (width + format.blockWidth - 1) / format.blockWidth;
+  const size_t down = (height + format.blockHeight - 1) / format.blockHeight;
   const size_t bytes = across * down * format.bytesPerBlock;
 
   std::shared_ptr<std::vector<uint8_t>> &kept =
@@ -834,17 +1066,17 @@ void TextureQueue::writePlaceholder(Texture *texture,
     delete static_cast<std::shared_ptr<std::vector<uint8_t>> *>(user);
   };
   if (gpu->compressed) {
-    texture->setImage(_engine, level,
+    texture->setImage(_engine, level, 0, 0, width, height,
                       Texture::PixelBufferDescriptor(
                           kept->data(), bytes, gpu->compressedType,
                           uint32_t(bytes), letGo, holder));
   } else {
-    texture->setImage(_engine, level,
+    texture->setImage(_engine, level, 0, 0, width, height,
                       Texture::PixelBufferDescriptor(
                           kept->data(), bytes, gpu->pixelFormat,
                           gpu->pixelType, letGo, holder));
   }
-  _placeholderBytes += bytes;
+  return true;
 }
 
 void TextureQueue::enqueue(const std::shared_ptr<Item> &item) {
@@ -1128,28 +1360,63 @@ void TextureQueue::pump() {
 
   const uint64_t budget =
       _bytesPerFrame == 0 ? UINT64_MAX : _bytesPerFrame;
+  // One frame in eight uploads nothing while the budget adapts, so what the
+  // scene costs without it can be measured beside what it costs with it.
+  // The one frame of the eight that breaks "at least one upload a frame".
+  const bool probing = _adapting.on && (++_adapting.pumps % 8) == 0;
+  _adapting.lastProbed = probing;
   uint32_t uploads = 0;
   bool finished = false;
 
   for (const std::shared_ptr<Item> &item : live) {
     if (item->complete) continue;
-    for (;;) {
-      Unit unit;
-      {
-        std::lock_guard<std::mutex> hold(_lock);
-        if (item->abandoned || item->ready.empty()) break;
-        Unit &next = item->ready.front();
-        // At least one upload a frame, whatever its size: a level larger
-        // than the budget would otherwise never go.
-        if (uploads > 0 && next.budget > budget - std::min(spent, budget)) {
-          break;
+    if (!probing) {
+      // A model's texture not yet written, with no level of its own ready to
+      // write: its placeholder, charged what the GPU finds for all of it.
+      if (!item->written && item->owner != nullptr &&
+          item->placeholder != nullptr) {
+        bool levelReady = false;
+        {
+          std::lock_guard<std::mutex> hold(_lock);
+          levelReady = !item->ready.empty() || item->abandoned;
         }
-        unit = std::move(next);
-        item->ready.pop_front();
+        if (!levelReady) {
+          if (uploads > 0 && item->storage > budget - std::min(spent, budget)) {
+            continue;
+          }
+          const bool whole = !startsAsPlaceholder(*item->placeholder);
+          writePlaceholder(item->texture, *item->placeholder,
+                           item->placeholderLevel, whole);
+          item->written = true;
+          spent += item->storage;
+          uploads++;
+        }
       }
-      upload(*item, unit);
-      spent += unit.budget;
-      uploads++;
+
+      for (;;) {
+        Unit unit;
+        uint64_t cost = 0;
+        {
+          std::lock_guard<std::mutex> hold(_lock);
+          if (item->abandoned || item->ready.empty()) break;
+          Unit &next = item->ready.front();
+          // The first write into a texture costs what the GPU has to find for
+          // all of it, whichever level it is: that is when a texture's memory
+          // is really made.
+          cost = item->written ? next.budget : std::max(next.budget, item->storage);
+          // At least one upload a frame, whatever its size: a level larger
+          // than the budget would otherwise never go.
+          if (uploads > 0 && cost > budget - std::min(spent, budget)) {
+            break;
+          }
+          unit = std::move(next);
+          item->ready.pop_front();
+        }
+        upload(*item, unit);
+        item->written = true;
+        spent += cost;
+        uploads++;
+      }
     }
 
     std::lock_guard<std::mutex> hold(_lock);
@@ -1506,6 +1773,18 @@ void TextureQueue::shutdown() {
 size_t TextureQueue::outstanding() const {
   std::lock_guard<std::mutex> hold(_lock);
   return _items.size();
+}
+
+size_t TextureQueue::unprimed(const void *owner) const {
+  std::lock_guard<std::mutex> hold(_lock);
+  size_t count = 0;
+  for (const std::shared_ptr<Item> &item : _items) {
+    if (item->owner == owner && !item->abandoned && !item->written &&
+        item->placeholder != nullptr) {
+      count++;
+    }
+  }
+  return count;
 }
 
 TextureQueue::Frames TextureQueue::frames() const {
