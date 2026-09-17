@@ -249,6 +249,52 @@ class Atlas {
   }
 }
 
+/// Several [Atlas] pages a packer split one job across, with one lookup that
+/// does not care which page a name landed on.
+///
+/// The smallest type that could hold more than one page: a list a caller
+/// already has, plus the one thing a list does not give for free — finding
+/// which page, if any, has a name. Nothing about [Atlas] or [Region] changes,
+/// so a caller that only ever had one page keeps using it exactly as before.
+class AtlasSet {
+  const AtlasSet(this.pages);
+
+  /// Every page, in the order a packer produced them.
+  final List<Atlas> pages;
+
+  /// The region named [name], from whichever page has it, or null when none
+  /// does.
+  Region? find(String name) {
+    for (final page in pages) {
+      final region = page[name];
+      if (region != null) return region;
+    }
+    return null;
+  }
+
+  /// The page and region named [name], or null when none does.
+  ///
+  /// What drawing a sprite actually needs and [find] alone cannot give it: a
+  /// region names a rectangle, but a rectangle means nothing without the page
+  /// it is a rectangle of.
+  ({Atlas atlas, Region region})? locate(String name) {
+    for (final page in pages) {
+      final region = page[name];
+      if (region != null) return (atlas: page, region: region);
+    }
+    return null;
+  }
+
+  /// How many regions there are, across every page.
+  int get length {
+    var total = 0;
+    for (final page in pages) {
+      total += page.length;
+    }
+    return total;
+  }
+}
+
 int _int(Object? value) => value is num ? value.round() : 0;
 
 /// Compares names so that `run_2` comes before `run_10`.

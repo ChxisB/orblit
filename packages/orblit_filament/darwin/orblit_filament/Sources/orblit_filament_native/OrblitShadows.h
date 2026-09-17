@@ -43,9 +43,14 @@ constexpr size_t kVsmLightBleed = 24;
 constexpr size_t kVsmSamples = 25;
 constexpr size_t kContactDistance = 26;
 constexpr size_t kContactSteps = 27;
+// Not shadows, but in the same block for the same reason every dial here
+// is: a device's settings, sent with the scene, through every plugin
+// unchanged. See OrblitTextures.h; nought is the device's own default.
+constexpr size_t kTextureSide = 28;
+constexpr size_t kTextureUploadKilobytes = 29;
 /// How many floats a current host sends. Kept equal to
 /// `OrblitPipeline.stride` by native_contract_test.
-constexpr size_t kPipelineStride = 28;
+constexpr size_t kPipelineStride = 30;
 
 // Bits of kShadowFlags.
 constexpr int kStable = 1;

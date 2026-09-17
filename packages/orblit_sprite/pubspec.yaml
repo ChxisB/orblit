@@ -1,7 +1,7 @@
 name: orblit_sprite
 description: >-
   Two dimensions: atlases, sprite animation, parallax layers and tile maps.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

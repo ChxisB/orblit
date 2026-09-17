@@ -25,6 +25,7 @@
 
 #include "OrblitBackend.h"
 #include "OrblitDecals.h"
+#include "OrblitHdrImage.h"
 #include "OrblitImport.h"
 
 // M_PI is POSIX rather than C++, and MSVC only defines it when asked to.
@@ -224,6 +225,7 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
   const char *boxMode = getenv("ORBLIT_BATCH_BOX");
   _exactChunkBox = boxMode != nullptr && strcmp(boxMode, "exact") == 0;
   _objectChunkBox = boxMode != nullptr && strcmp(boxMode, "object") == 0;
+  _loadTrace = getenv("ORBLIT_LOAD_TRACE") != nullptr;
   const char *rootMode = getenv("ORBLIT_BATCH_ROOT");
   _rootTransformChunks = rootMode != nullptr && strcmp(rootMode, "transform") == 0;
 
@@ -926,13 +928,63 @@ void Renderer::startAssetLoader() {
   resourceConfig.normalizeSkinningWeights = true;
   _resourceLoader = new gltfio::ResourceLoader(resourceConfig);
 
-  _stbTextures = gltfio::createStbProvider(_engine);
-  _ktxTextures = gltfio::createKtx2Provider(_engine);
-  _ownStbTextures = gltfio::createStbProvider(_engine);
-  _ownKtxTextures = gltfio::createKtx2Provider(_engine);
-  _resourceLoader->addTextureProvider("image/png", _stbTextures);
-  _resourceLoader->addTextureProvider("image/jpeg", _stbTextures);
-  _resourceLoader->addTextureProvider("image/ktx2", _ktxTextures);
+  // After the capabilities, which say how large a texture may be and which
+  // formats the device samples; see measureCapabilities.
+  _textureQueue = std::make_unique<orblit::TextureQueue>(
+      *_engine,
+      uint32_t(std::max(0, _capabilities[ORBLIT_CAPABILITY_MAX_TEXTURE_SIZE])),
+      uint32_t(std::max(1, _capabilities[ORBLIT_CAPABILITY_WORKER_THREADS])));
+  applyTextureLimits();
+  _modelTextures =
+      std::make_unique<orblit::QueuedTextureProvider>(*_textureQueue);
+  _resourceLoader->addTextureProvider("image/png", _modelTextures.get());
+  _resourceLoader->addTextureProvider("image/jpeg", _modelTextures.get());
+  _resourceLoader->addTextureProvider("image/ktx2", _modelTextures.get());
+}
+
+/// The largest texture and the upload budget, from the pipeline block when
+/// the host sent them and from the device when it did not.
+///
+/// The device's own are OrblitDeviceProfile's, worked out from the same
+/// measurements, so an application that never mentions textures still loads
+/// them at the size its tier should — the point of measuring the device at
+/// all.
+void Renderer::applyTextureLimits() {
+  if (!_textureQueue) return;
+  const orblit::DeviceTier tier = orblit::deviceTier(
+      _capabilities[ORBLIT_CAPABILITY_FEATURE_LEVEL],
+      _capabilities[ORBLIT_CAPABILITY_MAX_TEXTURE_SIZE],
+      _capabilities[ORBLIT_CAPABILITY_WORKER_THREADS],
+      _capabilities[ORBLIT_CAPABILITY_SYSTEM_MEMORY_MEGABYTES]);
+  const int32_t largest = _capabilities[ORBLIT_CAPABILITY_MAX_TEXTURE_SIZE];
+
+  uint32_t side = std::min(
+      orblit::kTierTextureSides[size_t(tier)],
+      largest > 0 ? uint32_t(largest) : orblit::kTierTextureSides[0]);
+  uint64_t kilobytes = 0;
+  const size_t sideAt = orblit::pipeline::kTextureSide;
+  const size_t uploadAt = orblit::pipeline::kTextureUploadKilobytes;
+  if (_pipelineCount > uploadAt) {
+    if (_pipelineParams[sideAt] >= 1.0f) {
+      side = uint32_t(_pipelineParams[sideAt]);
+    }
+    if (_pipelineParams[uploadAt] >= 1.0f) {
+      kilobytes = uint64_t(_pipelineParams[uploadAt]);
+    }
+  }
+  _textureQueue->setTrace(_loadTrace);
+  if (kilobytes > 0) {
+    // The application's own, held where it put it.
+    _textureQueue->setLimits(side, kilobytes * 1024);
+    return;
+  }
+  // The device's: measured frame by frame, from where its tier starts and
+  // between the least and most its tier allows.
+  _textureQueue->setMaxSide(side);
+  const size_t t = size_t(tier);
+  _textureQueue->adaptUploads(uint64_t(orblit::kTierUploadKilobytes[t]) << 10,
+                              uint64_t(orblit::kTierUploadLeastKilobytes[t]) << 10,
+                              uint64_t(orblit::kTierUploadMostKilobytes[t]) << 10);
 }
 
 void Renderer::measureCapabilities(Engine::FeatureLevel supported) {
@@ -1101,6 +1153,10 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
   // a directory — and still returned true, so the geometry appeared with no
   // colour on it and nothing anywhere said why. Two hours of that is what
   // this loop is for.
+  // For ORBLIT_LOAD_TRACE: when reading the files began, and handing them
+  // over.
+  double readingFrom = orblit::now();
+  double handingFrom = readingFrom;
   {
     const char *const *uris = entry.asset->getResourceUris();
     const size_t count = entry.asset->getResourceUriCount();
@@ -1137,11 +1193,32 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
     if (!wanted.empty()) {
       // The body captures the pointer, not the vector: capturing the vector
       // copies it, and a copy is not where the bytes are wanted.
+      //
+      // A KTX 2 texture is read from its cooked set: the glTF names `x.ktx2`,
+      // and what is handed over under that URI is whichever sibling this
+      // device samples best.
+      readingFrom = orblit::now();
       Wanted *slots = wanted.data();
-      orblit::parallelFor(wanted.size(),
-                         [slots](size_t i) { readWholeFile(slots[i]); });
+      orblit::TextureQueue *queue = _textureQueue.get();
+      orblit::parallelFor(wanted.size(), [slots, queue](size_t i) {
+        Wanted &one = slots[i];
+        if (orblit::ktx2::namesCookedSet(one.path)) {
+          orblit::SharedBytes cooked = queue->readCooked(one.path, nullptr);
+          if (cooked && !cooked->empty()) {
+            one.size = cooked->size();
+            one.shared = std::move(cooked);
+          }
+          return;
+        }
+        readWholeFile(one);
+      });
     }
 
+    handingFrom = orblit::now();
+    for (const std::string &line : _textureQueue->takePassedOver()) {
+      orblit::log("[orblit] %s: %s", orblit::lastPathComponent(native).c_str(),
+                  line.c_str());
+    }
     // Handed over one at a time, because Filament is not being called from
     // several threads at once and this is not where the time was.
     for (const Wanted &one : wanted) {
@@ -1154,6 +1231,10 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
         }
         continue;
       }
+      // Named, so a texture that will not load is reported by its file.
+      _modelTextures->nameBytes(
+          one.shared ? one.shared->data() : static_cast<uint8_t *>(one.bytes),
+          one.path, one.shared);
       if (one.shared) {
         // Shared, not copied: the store keeps its bytes and Filament holds a
         // reference to them until it has finished with them.
@@ -1186,7 +1267,31 @@ Mesh *Renderer::meshAtPath(const std::string &path) {
     }
   }
 
-  if (!_resourceLoader->asyncBeginLoad(entry.asset)) {
+  // Every texture the load pushes belongs to this asset, so it can be
+  // forgotten if the asset goes before they have all arrived.
+  const double beginningFrom = orblit::now();
+  const double pushedBefore = _textureQueue->pushSeconds();
+  _modelTextures->setOwner(entry.asset);
+  const bool began = _resourceLoader->asyncBeginLoad(entry.asset);
+  if (_loadTrace) {
+    orblit::log("[orblit] trace: %s's publish: reading %.0f ms, handing over "
+                "%.0f ms, beginning the load %.0f ms of which pushing "
+                "textures %.0f ms",
+                orblit::lastPathComponent(native).c_str(),
+                (handingFrom - readingFrom) * 1000.0,
+                (beginningFrom - handingFrom) * 1000.0,
+                (orblit::now() - beginningFrom) * 1000.0,
+                (_textureQueue->pushSeconds() - pushedBefore) * 1000.0);
+  }
+  _modelTextures->setOwner(nullptr);
+  _modelTextures->forgetNames();
+  if (began) {
+    _loadingAsset = entry.asset;
+    entry.loadedAt = orblit::now();
+    entry.shown = _textureQueue->unprimed(entry.asset) == 0;
+    if (!entry.shown) _meshesWaiting = true;
+  }
+  if (!began) {
     orblit::log("[orblit] mesh resources failed: %s", native.c_str());
     _assetNotes[native] = "Its geometry or textures could not be loaded.";
   } else {
@@ -1365,6 +1470,8 @@ void Renderer::morph(const Drawn &drawn, const float *weights, size_t count) {
 
 /// Applies them to a whole object, which for a mesh is every part of it.
 void Renderer::applyFlags(int32_t flags, const Drawn &drawn) {
+  // Hidden while its textures' memory is made; shown by showPrimedMeshes.
+  if (drawn.mesh != nullptr && !drawn.mesh->shown) flags &= ~kVisible;
   if (drawn.instance != nullptr) {
     const utils::Entity *entities = drawn.instance->getEntities();
     const size_t count = drawn.instance->getEntityCount();
@@ -1867,6 +1974,8 @@ void Renderer::applySprites(const int32_t *keys, const int32_t *flags,
                             uint32_t changedCount, const float *records,
                             size_t recordFloats, uint32_t count) {
   if (_disposed) return;
+  _spriteTexturePaths.clear();
+  _spriteTexturePaths.insert(paths.begin(), paths.end());
   if (_sprites == nullptr) {
     if (count == 0) return;
     // Images through the renderer's own cache, so one shared with a material
@@ -2275,24 +2384,31 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
   // bytes are provided, the one thing that can change the answer.
   const uint64_t generation = orblit::resourceGeneration();
   Texture *texture = nullptr;
-  if (const orblit::SharedBytes data = orblit::readResource(path)) {
-    const std::string extension = orblit::lowercasePathExtension(path);
-    const char *mime = "image/png";
-    gltfio::TextureProvider *provider = _ownStbTextures;
-    if (extension == "jpg" || extension == "jpeg") {
-      mime = "image/jpeg";
-    } else if (extension == "ktx2") {
-      mime = "image/ktx2";
-      provider = _ownKtxTextures;
-    }
-    texture = provider->pushTexture(
-        data->data(), data->size(), mime,
-        srgb ? gltfio::TextureProvider::TextureFlags::sRGB
-             : gltfio::TextureProvider::TextureFlags::NONE);
-    if (texture != nullptr) {
-      // The texture is usable now and its pixels arrive later, so an object
-      // made of it appears white for a frame or two rather than not at all.
-      _texturesPending++;
+  // A cooked set is chosen from here: `x.ktx2` is the best sibling this
+  // device samples, or itself.
+  std::string chosen;
+  const orblit::SharedBytes cooked =
+      _textureQueue->readCooked(path, &chosen, srgb ? 1 : 0);
+  for (const std::string &line : _textureQueue->takePassedOver()) {
+    orblit::log("[orblit] %s", line.c_str());
+  }
+  if (const orblit::SharedBytes data = cooked) {
+    orblit::TextureQueue::Request request;
+    request.shared = data;
+    request.srgb = srgb;
+    request.name = chosen;
+    request.client = this;
+    std::string why;
+    // Usable now, holding transparent black until its levels arrive; see
+    // OrblitTextures.h for what a texture shows while they do.
+    texture = _textureQueue->push(request, why);
+    if (texture == nullptr) {
+      _textureNotes[path] = "This texture could not be loaded: " + why;
+      _textureNotedFor[path].clear();
+      orblit::log("[orblit] texture %s refused: %s", chosen.c_str(),
+                  why.c_str());
+    } else {
+      _textureNotes.erase(path);
     }
   }
   _ownTextures[identity] = texture;
@@ -2300,32 +2416,72 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
   return texture;
 }
 
-/// Gives the decoders a chance to hand over anything they have finished.
+/// Takes what has finished arriving off the queue, and what went wrong.
 ///
-/// Called once a frame while something is outstanding, and not at all when
-/// nothing is — which is every frame after the first few.
+/// The levels themselves were uploaded by pumpTextures; this is only what the
+/// renderer hears about it — which for a texture that arrived whole is
+/// nothing, and for one that did not is a note.
 void Renderer::pollTextures() {
-  if (_texturesPending == 0) return;
+  if (!_textureQueue) return;
+  orblit::TextureQueue::Popped popped;
+  while (_textureQueue->pop(this, popped)) {
+    if (popped.failure.empty()) continue;
+    // Named by the file actually read, which for a cooked set is the
+    // sibling; noted against the path the scene asked for.
+    std::string asked = popped.name;
+    for (const auto &entry : _ownTextures) {
+      if (entry.second == popped.texture) {
+        asked = entry.first.substr(0, entry.first.size() - 2);
+        break;
+      }
+    }
+    _textureNotes[asked] = "This texture arrived only in part: " +
+                           popped.failure + " It draws at the levels that did.";
+    _textureNotedFor[asked].clear();
+  }
+  for (const auto &note : _modelTextures->takeNotes()) {
+    std::string model;
+    for (const auto &mesh : _meshes) {
+      if (mesh.second.asset == note.owner) model = mesh.first;
+    }
+    // An image inside the model has no file of its own to be about.
+    const std::string about =
+        note.texture.empty() ? model + " (an embedded image)" : note.texture;
+    _textureNotes[about] = "This texture could not be loaded: " + note.sentence;
+    _textureNotedFor[about] = model;
+  }
+}
 
-  _ownStbTextures->updateQueue();
-  _ownKtxTextures->updateQueue();
+/// Uploads the texture levels that have been decoded, under this frame's
+/// budget. Before the resource loader looks, so a model's textures that
+/// finish this frame are popped this frame.
+void Renderer::pumpTextures() {
+  if (!_textureQueue) return;
+  _textureQueue->pump();
+  if (_meshesWaiting) showPrimedMeshes();
+}
 
-  int popped = 0;
-  while (_ownStbTextures->popTexture() != nullptr) popped++;
-  while (_ownKtxTextures->popTexture() != nullptr) popped++;
-  _texturesPending -= popped;
-  if (_texturesPending < 0) _texturesPending = 0;
-
-  // An image that never finishes would otherwise have this polling both
-  // decoders for the life of the application. A decode takes a handful of
-  // frames; six hundred is ten seconds of them, and past that the answer is
-  // that it is not coming.
-  _pollsWithoutProgress = popped > 0 ? 0 : _pollsWithoutProgress + 1;
-  if (_pollsWithoutProgress > 600) {
-    orblit::log("[orblit] %d texture(s) never finished decoding; giving up polling",
-          _texturesPending);
-    _texturesPending = 0;
-    _pollsWithoutProgress = 0;
+/// Draws the models whose every texture now has something written into it.
+void Renderer::showPrimedMeshes() {
+  _meshesWaiting = false;
+  for (auto &entry : _meshes) {
+    Mesh &mesh = entry.second;
+    if (mesh.shown || mesh.asset == nullptr) continue;
+    if (_textureQueue->unprimed(mesh.asset) > 0) {
+      _meshesWaiting = true;
+      continue;
+    }
+    mesh.shown = true;
+    orblit::log("[orblit] %s: drawn once its textures had memory, %.0f ms "
+                "into the load",
+                orblit::lastPathComponent(entry.first).c_str(),
+                (orblit::now() - mesh.loadedAt) * 1000.0);
+    for (auto &pair : _drawn) {
+      Drawn &drawn = pair.second;
+      if (drawn.mesh == &mesh && drawn.flags != -1) {
+        applyFlags(drawn.flags, drawn);
+      }
+    }
   }
 }
 
@@ -2626,8 +2782,11 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
 
   const std::string wantedRadiance(radiance);
   const std::string wantedSkybox(skybox);
+  // The fourth number is the size a picture is filtered at, so a change to it
+  // is a change to what is built, not a number moving on what is there.
   const bool sameFiles = wantedRadiance == _environmentRadiancePath &&
-                         wantedSkybox == _environmentSkyboxPath;
+                         wantedSkybox == _environmentSkyboxPath &&
+                         params[3] == _environmentParams[3];
 
   // The numbers can move without the files changing — an environment being
   // turned, or brought up and down — and rebuilding a cubemap for that would
@@ -2637,7 +2796,10 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
     return;
   }
 
-  const bool onlyNumbersMoved = sameFiles && _environmentRadiance != nullptr;
+  // A picture still being filtered counts as there: when it arrives it is
+  // built from the numbers as they are by then.
+  const bool onlyNumbersMoved =
+      sameFiles && (_environmentRadiance != nullptr || !_environmentWork.empty());
   memcpy(_environmentParams, params, sizeof(_environmentParams));
 
   if (onlyNumbersMoved) {
@@ -2653,8 +2815,18 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
   releaseEnvironment();
   _environmentRadiancePath = wantedRadiance;
   _environmentSkyboxPath = wantedSkybox;
+  // What was said about the last files is not about these.
+  _assetNotes.erase("environment");
+  _assetNotes.erase("skybox");
 
-  if (!wantedRadiance.empty()) {
+  // An .hdr or .exr is a picture to filter here (OrblitEnvironment.cpp);
+  // anything else is a cubemap cmgen baked, read as it always was.
+  const bool radianceIsPicture =
+      orblit::hdrFormatOfName(wantedRadiance) != orblit::HdrFormat::unknown;
+  const bool skyboxIsPicture =
+      orblit::hdrFormatOfName(wantedSkybox) != orblit::HdrFormat::unknown;
+
+  if (!wantedRadiance.empty() && !radianceIsPicture) {
     float3 harmonics[9];
     bool hasHarmonics = false;
     _environmentRadiance = cubemapAtPath(radiance, harmonics, &hasHarmonics, "environment");
@@ -2680,7 +2852,7 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
     }
   }
 
-  if (!wantedSkybox.empty()) {
+  if (!wantedSkybox.empty() && !skyboxIsPicture) {
     float3 unused[9];
     bool ignored = false;
     _environmentSkyTexture = cubemapAtPath(skybox, unused, &ignored, "skybox");
@@ -2697,6 +2869,21 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
 
   }
 
+  if (radianceIsPicture || skyboxIsPicture) {
+    // Lit at once if these pictures were filtered before; otherwise started,
+    // and lit a few frames from now by pollEnvironment.
+    requestEnvironmentImages(radianceIsPicture ? wantedRadiance : std::string(),
+                             skyboxIsPicture ? wantedSkybox : std::string(),
+                             _environmentParams[3]);
+  }
+
+  showEnvironment();
+}
+
+/// Puts whatever environment is built in charge of the scene's light and
+/// backdrop, or the flat ambient and procedural sky back where there is none.
+/// After the files change, and again when a picture finishes filtering.
+void Renderer::showEnvironment() {
   if (_environmentLight != nullptr) {
     // The flat ambient steps aside rather than being blended with: a scene
     // lit by a photograph of a room and by an even wash is lit twice.
@@ -2704,7 +2891,9 @@ void Renderer::setEnvironmentRadiance(const std::string &radiance, const std::st
       _engine->destroy(_ambient);
       _ambient = nullptr;
     }
-    _scene->setIndirectLight(_environmentLight);
+    // A probe the camera is standing in stays in charge; chooseProbe hands
+    // the scene back to this light when the camera leaves it.
+    if (_activeProbe == 0) _scene->setIndirectLight(_environmentLight);
   } else {
     // Nothing loaded, so the sky the day cycle has been writing goes back.
     setAmbientColour(_ambientColour, _ambientIntensity);
@@ -2764,14 +2953,18 @@ void Renderer::releaseEnvironment() {
     _environmentSkybox = nullptr;
   }
   _showingEnvironmentSkybox = false;
+  // A texture filtered from a picture belongs to the cache, which keeps it
+  // for the next scene that names the same picture.
   if (_environmentRadiance != nullptr) {
-    _engine->destroy(_environmentRadiance);
+    if (!_environmentRadianceCached) _engine->destroy(_environmentRadiance);
     _environmentRadiance = nullptr;
   }
   if (_environmentSkyTexture != nullptr) {
-    _engine->destroy(_environmentSkyTexture);
+    if (!_environmentSkyCached) _engine->destroy(_environmentSkyTexture);
     _environmentSkyTexture = nullptr;
   }
+  _environmentRadianceCached = false;
+  _environmentSkyCached = false;
   _environmentRadiancePath.clear();
   _environmentSkyboxPath.clear();
   _environmentHasHarmonics = false;
@@ -3802,6 +3995,7 @@ void Renderer::setPipeline(const float *params, size_t count) {
       orblit::shadowSettingsDiffer(_pipelineParams, _pipelineCount, params, count);
   std::memcpy(_pipelineParams, params, sizeof(float) * count);
   _pipelineCount = count;
+  applyTextureLimits();
 
   // On or off, which kind, and the dials of the soft and variance kinds. The
   // note is left exactly as startWithWidth set it: whether a variance shadow
@@ -3960,6 +4154,8 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
   _materialsSpent.clear();
 
   const uint64_t generation = ++_materialGeneration;
+  _materialTexturePaths.clear();
+  _materialTexturePaths.insert(texturePaths.begin(), texturePaths.end());
   _materialOrder.clear();
   // Rebuilt by the writes below, so an instance that has gone does not
   // outlive its entry here.
@@ -5011,6 +5207,16 @@ void Renderer::sweepUnnamedMeshes() {
     // included — which is why nothing may still be holding one, and why this
     // runs only after the object sweep has recycled them all.
     if (it->second.asset != nullptr) {
+      // Its textures may still be on their way, and nothing may upload into
+      // one after the asset has destroyed it. And the loader marks textures
+      // ready in the asset it began last, so if that is this one it is told
+      // to stop first.
+      _textureQueue->forget(it->second.asset);
+      if (_loadingAsset == it->second.asset) {
+        _resourceLoader->asyncCancelLoad();
+        _loadingAsset = nullptr;
+        _loadingResources = false;
+      }
       _assetLoader->destroyAsset(it->second.asset);
     }
     // The note about why it would not load goes with it. Keeping it would
@@ -5570,8 +5776,9 @@ void Renderer::capture(Probe &probe, uint8_t layers) {
 
   // Built once and kept: the filter compiles its own materials and holds a
   // kernel texture, so one per renderer rather than one per capture.
-  if (_prefilter == nullptr) {
-    _prefilter = new IBLPrefilterContext(*_engine);
+  // The context may already exist, made by an environment picture's filter.
+  if (_prefilter == nullptr) _prefilter = new IBLPrefilterContext(*_engine);
+  if (_specularFilter == nullptr) {
     _specularFilter = new IBLPrefilterContext::SpecularFilter(*_prefilter);
   }
   if (probe.filtered != nullptr) {
@@ -6651,6 +6858,13 @@ std::vector<PassTiming> Renderer::passTimings() {
 void Renderer::renderAtTime(double time) {
   if (_disposed) return;
 
+  const double frameFrom = orblit::now();
+  const uint64_t frameNumber = _frameCount;
+  // Texture levels that have been decoded go up first, within this frame's
+  // budget, so anything that finishes arriving is popped below this frame.
+  pumpTextures();
+  const double pumped = orblit::now();
+
   // Textures still arriving. Filament decodes them off this thread and hands
   // them over here, so this has to be called until it says it is done —
   // stopping early leaves an asset permanently half-textured.
@@ -6667,6 +6881,8 @@ void Renderer::renderAtTime(double time) {
     }
   }
 
+  const double loaded = orblit::now();
+
   try {
     drawAtTime(time);
   } catch (const std::exception &error) {
@@ -6675,6 +6891,23 @@ void Renderer::renderAtTime(double time) {
   } catch (...) {
     orblit::log("[orblit] render failed for an unknown reason.");
     _disposed = true;
+  }
+
+  if (_textureQueue) _textureQueue->frameTook(orblit::now() - frameFrom);
+  if (_loadTrace && _textureQueue) {
+    const double drawn = orblit::now();
+    const double total = drawn - frameFrom;
+    if (total > 0.025 || getenv("ORBLIT_LOAD_TRACE_ALL")) {
+      const orblit::TextureQueue::Frames frames = _textureQueue->frames();
+      orblit::log("[orblit] trace: frame %llu took %.1f ms: textures %.1f ms "
+                  "(%u uploads, %llu KB), resource loader %.1f ms, draw %.1f "
+                  "ms of which the backend %.1f ms",
+                  (unsigned long long)frameNumber, total * 1000.0,
+                  (pumped - frameFrom) * 1000.0, frames.lastUploads,
+                  (unsigned long long)(frames.lastBytes / 1024),
+                  (loaded - pumped) * 1000.0, (drawn - loaded) * 1000.0,
+                  _lastFlushSeconds * 1000.0);
+    }
   }
 }
 
@@ -6742,6 +6975,9 @@ void Renderer::drawAtTime(double time) {
   updateMistAtTime(time);
   updateRainAtTime(time);
   pollTextures();
+  // Before the frame begins: a stage of it renders standalone views of its
+  // own, which Filament takes outside beginFrame and endFrame.
+  pollEnvironment();
   pumpVideos();
 
   if (!_renderer->beginFrame(target)) return;
@@ -6773,7 +7009,9 @@ void Renderer::drawAtTime(double time) {
 
   // Flutter may sample the moment this returns, so the frame has to be on the
   // surface before it is advertised as presented.
+  const double flushFrom = orblit::now();
   _engine->flushAndWait();
+  _lastFlushSeconds = orblit::now() - flushFrom;
 
   // A frame read back arrives through Filament's callback queue, which is
   // only drained when somebody asks. Asking here makes it ready with the
@@ -6937,6 +7175,10 @@ void Renderer::dispose() {
   // back, and the teardown below would reach for what was never made.
   if (_engine == nullptr) return;
 
+  // Before anything that owns a texture goes: the decoders stop, and nothing
+  // uploads into a texture after this.
+  if (_textureQueue) _textureQueue->shutdown();
+
   // Filament asserts on anything still alive when the engine goes down, so the
   // teardown mirrors construction in reverse.
   removeEverything();
@@ -7020,6 +7262,8 @@ void Renderer::dispose() {
     _engine->destroy(_captureView);
     _captureView = nullptr;
   }
+  // Before the context the filters were made from.
+  releaseEnvironmentCache();
   delete _specularFilter;
   _specularFilter = nullptr;
   delete _prefilter;
@@ -7034,8 +7278,8 @@ void Renderer::dispose() {
   _materialProvider->destroyMaterials();
   delete _materialProvider;
   _materialProvider = nullptr;
-  delete _stbTextures;
-  delete _ktxTextures;
+  // After the loader, which asks its providers to finish when it goes.
+  _modelTextures.reset();
 
   // Materials before their textures, and both before the engine goes: an
   // instance still pointing at a destroyed texture is a use-after-free the
@@ -7054,8 +7298,7 @@ void Renderer::dispose() {
     if (entry.second != nullptr) _engine->destroy(entry.second);
   }
   _ownTextures.clear();
-  delete _ownStbTextures;
-  delete _ownKtxTextures;
+  _textureQueue.reset();
   for (auto &entry : _movies) close(entry.second);
   _movies.clear();
   _movieOrder.clear();
@@ -7175,6 +7418,10 @@ Notes Renderer::notes() {
   for (const auto &pair : _drawn) {
     if (!pair.second.path.empty()) asked.insert(pair.second.path);
   }
+  // The environment's are kept under these two names rather than its paths,
+  // and are about the scene for as long as it names an environment.
+  if (!_environmentRadiancePath.empty()) asked.insert("environment");
+  if (!_environmentSkyboxPath.empty()) asked.insert("skybox");
 
   Notes all;
   for (const auto &entry : _assetNotes) {
@@ -7190,6 +7437,19 @@ Notes Renderer::notes() {
   for (const auto &entry : _decalNotes) all[entry.first] = entry.second;
   for (const auto &entry : _splatNotes) all[entry.first] = entry.second;
   for (const auto &entry : _spriteNotes) all[entry.first] = entry.second;
+  // A texture's problem, while what named it is still named: its model among
+  // the objects, or its path among the materials' or the sprite layers'.
+  // After the sprites', whose note for an image that did not load only says
+  // that it did not; this says why.
+  for (const auto &entry : _textureNotes) {
+    const auto by = _textureNotedFor.find(entry.first);
+    const std::string model = by != _textureNotedFor.end() ? by->second : "";
+    const bool named = model.empty()
+                           ? _materialTexturePaths.count(entry.first) != 0 ||
+                                 _spriteTexturePaths.count(entry.first) != 0
+                           : asked.count(model) != 0;
+    if (named) all[entry.first] = entry.second;
+  }
   for (const auto &entry : _videoNotes) all[entry.first] = entry.second;
   for (const auto &entry : _surfaceNotes) all[entry.first] = entry.second;
   // Not problems, and not about the scene as a whole: what each model built
