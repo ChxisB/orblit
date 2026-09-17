@@ -122,5 +122,94 @@ void main() {
       );
       expect(tiny.textureSizeBudget, 512);
     });
+
+    test('upload more texture a frame the higher the tier', () {
+      final low = OrblitDeviceProfile.fromCapabilities(browser);
+      final medium = OrblitDeviceProfile.fromCapabilities(phone);
+      final high = OrblitDeviceProfile.fromCapabilities(desktop);
+      expect(
+        low.textureUploadKilobytes,
+        lessThan(medium.textureUploadKilobytes),
+      );
+      expect(
+        medium.textureUploadKilobytes,
+        lessThan(high.textureUploadKilobytes),
+      );
+    });
+  });
+
+  group('the files to fetch for a cooked texture', () {
+    test('are the siblings of the families the device has, best first, and '
+        'the universal file last', () {
+      const everything = OrblitDeviceProfile(
+        textureFamilies: {
+          OrblitTextureFamily.astc,
+          OrblitTextureFamily.bc7,
+          OrblitTextureFamily.bc4and5,
+          OrblitTextureFamily.etc2,
+        },
+      );
+      expect(everything.textureCandidates('textures/wood.ktx2'), [
+        'textures/wood.astc.ktx2',
+        'textures/wood.bc.ktx2',
+        'textures/wood.etc2.ktx2',
+        'textures/wood.ktx2',
+      ]);
+    });
+
+    test('leave out a family the device cannot sample', () {
+      expect(
+        OrblitDeviceProfile.fromCapabilities(
+          desktop,
+        ).textureCandidates('a/b.ktx2'),
+        ['a/b.bc.ktx2', 'a/b.ktx2'],
+      );
+      expect(
+        OrblitDeviceProfile.fromCapabilities(phone).textureCandidates('b.ktx2'),
+        ['b.astc.ktx2', 'b.etc2.ktx2', 'b.ktx2'],
+      );
+      expect(
+        OrblitDeviceProfile.fromCapabilities(const [
+          3,
+          1,
+          4096,
+          256,
+          0,
+          0,
+          1,
+          0,
+        ]).textureCandidates('b.ktx2'),
+        ['b.ktx2'],
+        reason: 'a browser with no compressed formats gets Basis',
+      );
+    });
+
+    test('are only BC when BC7 or BC5 is there, which is what a BC sibling '
+        'holds', () {
+      const s3tcOnly = OrblitDeviceProfile(
+        textureFamilies: {OrblitTextureFamily.bc1to3},
+      );
+      expect(s3tcOnly.textureCandidates('b.ktx2'), ['b.ktx2']);
+    });
+
+    test('keep the extension as it was written', () {
+      const astc = OrblitDeviceProfile(
+        textureFamilies: {OrblitTextureFamily.astc},
+      );
+      expect(astc.textureCandidates('B.KTX2'), ['B.astc.KTX2', 'B.KTX2']);
+    });
+
+    test('are just the name for anything but a cooked set', () {
+      final profile = OrblitDeviceProfile.fromCapabilities(phone);
+      for (final path in [
+        'wood.png',
+        'wood.astc.ktx2',
+        'wood.BC.ktx2',
+        'wood.etc2.ktx2',
+        'environment.ktx',
+      ]) {
+        expect(profile.textureCandidates(path), [path]);
+      }
+    });
   });
 }

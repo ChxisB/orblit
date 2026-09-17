@@ -47,3 +47,41 @@ Third-party software linked into builds of this engine:
   orblit_filament_native/third_party/ufbx/, which is redistribution; the MIT
   licence asks for its notice to travel with copies, and the licence file as
   ufbx ships it is at LICENSES/ufbx.txt.
+
+  tinyexr, by Syoyo Fujita and contributors — BSD 3-Clause License, and the
+  OpenEXR notice (Industrial Light & Magic, BSD-style) for the OpenEXR code
+  it contains.
+  https://github.com/syoyo/tinyexr
+
+  miniz, by Rich Geldreich, RAD Game Tools and Valve Software — MIT License.
+  https://github.com/richgel999/miniz
+
+  The renderer compiles tinyexr, with miniz as its deflate, to read OpenEXR
+  environments at run time. Both are vendored under
+  packages/orblit_filament/darwin/orblit_filament/Sources/
+  orblit_filament_native/third_party/ (tinyexr unmodified; miniz with one
+  declaration moved so it compiles as C++), which is redistribution; their
+  notices are at LICENSES/tinyexr.txt and LICENSES/miniz.txt.
+
+Third-party software in the offline texture cooker only:
+
+  packages/orblit_filament/native/texture_cook builds orblit_texture_cook, a
+  build-machine tool. None of the following is linked into the renderer or
+  into an application built with Orblit, and none of their source is
+  committed here: native/texture_cook/fetch.sh fetches it, pinned by commit
+  and checked against sources.sha256, when the tool is built. The notices
+  are copied under LICENSES/ for anyone who distributes the tool itself.
+  The textures it writes contain no code from any of them.
+
+  Basis Universal 2.1.0r, by Binomial LLC — Apache License 2.0.
+  https://github.com/BinomialLLC/basis_universal
+  The licence is at LICENSES/Apache-2.0.txt and its NOTICE, which section
+  4(d) asks a redistribution to carry, at LICENSES/basis_universal-NOTICE.txt.
+
+  Zstandard, by Facebook, Inc. (the copy Basis Universal carries) — BSD
+  licence, at LICENSES/zstd.txt.
+  https://github.com/facebook/zstd
+
+  stb_image and stb_image_write, by Sean Barrett — MIT License, or public
+  domain (the Unlicense), at the user's choice; at LICENSES/stb.txt.
+  https://github.com/nothings/stb

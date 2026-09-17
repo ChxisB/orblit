@@ -88,6 +88,17 @@ add_library(${PLUGIN_NAME} SHARED
   # OrblitUfbx.cpp for why a .cpp includes a .c).
   "${ORBLIT_CORE_DIR}/OrblitImport.cpp"
   "${ORBLIT_CORE_DIR}/OrblitUfbx.cpp"
+  # Environments from .hdr and .exr pictures: decoding, cmgen's arithmetic,
+  # the run-time filter, and tinyexr with miniz compiled as C++ through one
+  # file (see OrblitTinyExr.cpp).
+  "${ORBLIT_CORE_DIR}/OrblitHdrImage.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTinyExr.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitEnvironmentBake.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitEnvironment.cpp"
+  # Textures: the GPU-ready KTX 2 reader, and the queue that decodes and
+  # uploads every texture under a budget a frame.
+  "${ORBLIT_CORE_DIR}/OrblitKtx2.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTextures.cpp"
 )
 
 # Not apply_standard_settings(): that helper pins C++14 and turns on -Werror,

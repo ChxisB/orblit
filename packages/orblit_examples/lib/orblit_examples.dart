@@ -56,6 +56,7 @@ export 'src/examples/imported.dart' show ImportedExample, ImportedSample;
 export 'src/examples/scene_files.dart' show SceneFilesExample;
 export 'src/examples/splats.dart' show SplatsExample;
 export 'src/examples/sprites.dart' show SpritesExample;
+export 'src/examples/textures.dart' show TexturesExample;
 export 'src/examples/post.dart' show PostExample;
 export 'src/examples/video.dart' show VideoExample;
 export 'src/examples/voxels.dart' show VoxelExample;
@@ -82,6 +83,7 @@ import 'src/examples/shadows.dart';
 import 'src/examples/many.dart';
 import 'src/examples/overdraw.dart';
 import 'src/examples/materials.dart';
+import 'src/examples/textures.dart';
 import 'src/examples/imported.dart';
 import 'src/examples/meshes.dart';
 import 'src/examples/motion_blur.dart';
@@ -134,6 +136,7 @@ List<Example> engineExamples() => [
   MeshesExample(),
   ImportedExample(),
   MaterialsExample(),
+  TexturesExample(),
   BlendExample(),
   PipelineExample(),
   PostExample(),

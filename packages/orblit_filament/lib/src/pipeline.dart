@@ -293,6 +293,40 @@ class OrblitLighting {
   double clusterFar;
 }
 
+/// How large textures are loaded, and how fast they reach the GPU.
+///
+/// Both default to the device's own — [OrblitDeviceProfile.textureSizeBudget]
+/// and [OrblitDeviceProfile.textureUploadKilobytes] — which the renderer
+/// works out from the same measurements the profile is made of, so an
+/// application that never mentions textures still loads them at the size its
+/// tier should. Set either to say otherwise.
+class OrblitTextureLimits {
+  OrblitTextureLimits({this.maxSize, this.uploadKilobytes});
+
+  /// The widest or tallest a texture is loaded at, in texels.
+  ///
+  /// A texture with mipmaps larger than this leaves out its largest levels
+  /// until it fits, and never uploads them; a picture without any is halved
+  /// as it is decoded. Textures already loaded keep the size they were loaded
+  /// at. Null is the device's own.
+  int? maxSize;
+
+  /// How much texture data a frame may hand the GPU, in kilobytes.
+  ///
+  /// Uploading is work the frame waits for, so four hundred textures arriving
+  /// at once would otherwise be four hundred textures' worth of stall in one
+  /// frame. Spread under this, they arrive over several frames instead, the
+  /// smallest levels of each first. The first write into a texture counts
+  /// every level of it, because that is when the GPU finds its memory. A
+  /// frame always uploads at least one level, however large, or a level
+  /// larger than this would never go.
+  ///
+  /// Null is the device's own, and is measured rather than held: it starts at
+  /// [OrblitDeviceProfile.textureUploadKilobytes] and follows what frames
+  /// cost while textures arrive. A number is held exactly.
+  int? uploadKilobytes;
+}
+
 /// The screen a frame is being drawn for.
 ///
 /// Only what the display itself settles, which is less than a quality preset
@@ -366,9 +400,11 @@ class OrblitPipeline {
     this.precise = false,
     this.culling = true,
     this.refraction = true,
+    OrblitTextureLimits? textures,
   }) : shadows = shadows ?? OrblitShadows(),
        lighting = lighting ?? OrblitLighting(),
-       resolution = resolution ?? OrblitResolution();
+       resolution = resolution ?? OrblitResolution(),
+       textures = textures ?? OrblitTextureLimits();
 
   /// The pipeline at one of the four named settings.
   factory OrblitPipeline.at(OrblitDetail detail) {
@@ -452,6 +488,7 @@ class OrblitPipeline {
   final OrblitShadows shadows;
   final OrblitResolution resolution;
   final OrblitLighting lighting;
+  final OrblitTextureLimits textures;
 
   /// How many samples an edge is worked out from, before any of the image
   /// work happens. One is none.
@@ -482,7 +519,7 @@ class OrblitPipeline {
   /// `native_contract_test` compares this number against the one there — a
   /// block a float short reads a nought where a dial should be, and for the
   /// contact distance that is a shadow traced nowhere.
-  static const int stride = 28;
+  static const int stride = 30;
 
   /// Every number, in the order the renderer reads them.
   Float32List get packed {
@@ -529,6 +566,9 @@ class OrblitPipeline {
     out[25] = variance.samples.toDouble();
     out[26] = shadows.contactDistance;
     out[27] = shadows.contactSteps.toDouble();
+    // Nought is the device's own, which the renderer works out itself.
+    out[28] = (textures.maxSize ?? 0).clamp(0, 1 << 16).toDouble();
+    out[29] = (textures.uploadKilobytes ?? 0).clamp(0, 1 << 24).toDouble();
     return out;
   }
 }

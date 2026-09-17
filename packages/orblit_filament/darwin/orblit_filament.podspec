@@ -22,7 +22,13 @@ without a trip through the CPU.
   # ufbx.c is not a source of its own here — the pattern above does not match
   # .c, which is right, because OrblitUfbx.cpp compiles it by #include — but
   # it has to stay on disk for that include to find it.
-  s.preserve_paths   = "#{src}/orblit_filament_native/third_party/ufbx/ufbx.c"
+  # The same for miniz.c, which OrblitTinyExr.cpp includes, and for tinyexr's
+  # two .hh headers, which the pattern does not match either.
+  s.preserve_paths   = [
+    "#{src}/orblit_filament_native/third_party/ufbx/ufbx.c",
+    "#{src}/orblit_filament_native/third_party/miniz/miniz.c",
+    "#{src}/orblit_filament_native/third_party/tinyexr/*.hh",
+  ]
   # The compiled material is an implementation detail and defines a symbol, so
   # it stays out of the umbrella header the module exposes.
   s.public_header_files = "#{src}/orblit_filament_native/include/*.h"

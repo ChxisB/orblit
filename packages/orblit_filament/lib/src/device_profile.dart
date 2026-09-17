@@ -175,6 +175,57 @@ class OrblitDeviceProfile {
     OrblitDeviceTier.high => 4096,
   });
 
+  /// Where a frame's texture upload budget starts, in kilobytes —
+  /// [OrblitTextureLimits.uploadKilobytes] when an application does not say.
+  ///
+  /// Only where it starts. While textures arrive the renderer measures what
+  /// a frame costs without uploading and with, and moves the budget to what
+  /// fits a frame's slack — the larger of what is left of a sixtieth of a
+  /// second and the scene's own cost — between bounds the tier sets. The
+  /// same numbers as OrblitTextures.h, which says more.
+  int get textureUploadKilobytes => switch (tier) {
+    OrblitDeviceTier.low => 4096,
+    OrblitDeviceTier.medium => 16384,
+    OrblitDeviceTier.high => 32768,
+  };
+
+  /// The names to fetch for a cooked texture, best first, for a host that
+  /// hands the renderer bytes rather than a file system.
+  ///
+  /// A cooked texture `x.ktx2` may have GPU-ready siblings beside it —
+  /// `x.astc.ktx2`, `x.bc.ktx2` and `x.etc2.ktx2` — and the renderer, asked
+  /// for `x.ktx2`, loads the first of them it finds holding a format this
+  /// device samples, then `x.ktx2` itself. On disk it looks for them; a
+  /// browser or a network cache has to provide them first, and this is which
+  /// ones are worth fetching: the siblings of the families this device has,
+  /// in the renderer's order, and the universal file last. The renderer still
+  /// checks each file's actual format, so a candidate is only a candidate.
+  ///
+  /// Anything that is not a cooked set — a PNG, or a name that is already one
+  /// sibling — is the only candidate for itself.
+  List<String> textureCandidates(String path) {
+    final lower = path.toLowerCase();
+    if (!lower.endsWith('.ktx2')) return [path];
+    final stem = path.substring(0, path.length - 5);
+    final lowerStem = lower.substring(0, lower.length - 5);
+    if (lowerStem.endsWith('.astc') ||
+        lowerStem.endsWith('.bc') ||
+        lowerStem.endsWith('.etc2')) {
+      return [path];
+    }
+    final extension = path.substring(path.length - 5);
+    return [
+      if (supports(OrblitTextureFamily.astc)) '$stem.astc$extension',
+      // BC7 for colour, BC5 for normals and BC4 for one channel, which is
+      // what a cooked BC sibling holds.
+      if (supports(OrblitTextureFamily.bc7) ||
+          supports(OrblitTextureFamily.bc4and5))
+        '$stem.bc$extension',
+      if (supports(OrblitTextureFamily.etc2)) '$stem.etc2$extension',
+      path,
+    ];
+  }
+
   /// How many Gaussian splats to draw at most.
   int get splatBudget => switch (tier) {
     OrblitDeviceTier.low => 250000,

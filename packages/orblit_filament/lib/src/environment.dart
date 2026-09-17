@@ -10,24 +10,38 @@ import 'package:vector_math/vector_math_64.dart';
 /// shadow is filled by the sky rather than by a number somebody guessed.
 ///
 /// It is the single largest difference between a render that looks computed
-/// and one that looks photographed, and it costs nothing per frame: the
-/// lighting is baked into a cubemap once and sampled thereafter.
+/// and one that looks photographed, and once it is built it costs nothing per
+/// frame: the lighting is a cubemap, sampled.
 ///
-/// **Baked, not decoded here.** What this names is what Filament's own
-/// `cmgen` writes out of an equirectangular HDR:
+/// **Two ways to build it, with the same result.**
+///
+/// *Baked*, ahead of time, by `tool/bake_environment.sh`, which runs
+/// Filament's own `cmgen`:
 ///
 /// ```
-/// cmgen --format=ktx --size=256 --deploy=out kitchen.hdr
+/// tool/bake_environment.sh kitchen.hdr out
 /// ```
 ///
-/// which produces `out/kitchen/kitchen_ibl.ktx` — a prefiltered radiance
-/// cubemap with the spherical harmonics for the diffuse part written into its
-/// metadata — and `out/kitchen/kitchen_skybox.ktx`, the backdrop.
+/// writes `out/kitchen_ibl.ktx` — a prefiltered radiance cubemap with the
+/// spherical harmonics for the diffuse part in its metadata — and
+/// `out/kitchen_skybox.ktx`, the backdrop. Name them with the default
+/// constructor.
 ///
-/// Baking is not a limitation to be lifted later. Prefiltering a cubemap is
-/// minutes of work per environment, it produces the same answer every time,
-/// and doing it while somebody waits for a scene to open would be minutes
-/// they spend watching a progress bar for a result that was already known.
+/// *Filtered at run time*, from the picture itself, with
+/// [OrblitEnvironment.fromImage]: an equirectangular `.hdr` or `.exr` is
+/// decoded off the drawing thread, its harmonics worked out exactly as
+/// `cmgen` works them out, and its reflections filtered on the GPU a frame at
+/// a time. The scene is lit a few frames after the picture is named, and
+/// while it is being filtered the scene notes say so.
+///
+/// Bake what ships. The result is fixed before anybody runs it, a launch
+/// reads two small files and filters nothing, and every device gets the same
+/// light. Name the picture for what is not known in advance — an editor
+/// trying environments on, a user's own HDR, anything fetched — and while
+/// iterating, where a bake step between every try is the slow part. The two
+/// are measured against each other in pixels by `native/headless`'s
+/// environment check: matte surfaces agree to within a level, and
+/// reflections to a mean of under one level.
 class OrblitEnvironment {
   const OrblitEnvironment({
     this.radiance,
@@ -35,22 +49,54 @@ class OrblitEnvironment {
     this.intensity = 30000,
     this.rotation = 0,
     this.showSkybox = true,
+    this.size = 0,
   });
+
+  /// The light and the backdrop of an equirectangular `.hdr` or `.exr`
+  /// picture, filtered at run time — no bake.
+  ///
+  /// [image] is a path, or the name bytes were provided under
+  /// (`OrblitResources`), and is named as both [radiance] and [skybox]. What
+  /// it costs, measured on an M4 Pro with a 2K picture: a decode and the
+  /// harmonics on a worker thread (about 70 ms for an `.hdr`, 150 ms for a
+  /// ZIP-compressed `.exr`), then one frame of a few milliseconds to upload
+  /// it and one frame of 20 to 55 to filter it. Once per picture: naming the
+  /// same picture again, or the same bytes under another name, lights the
+  /// scene on the next frame with nothing filtered. In a browser the decode
+  /// and the harmonics run on a Web Worker, and on the page only where no
+  /// worker will.
+  ///
+  /// A picture that cannot be used — missing, damaged, too large for the
+  /// device, not twice as wide as it is tall — is reported in the scene
+  /// notes, under `environment` and `skybox`, and the scene is lit by its
+  /// flat ambient meanwhile. A device that cannot filter on the GPU filters a
+  /// smaller environment on the CPU instead; one that cannot hold a
+  /// floating-point cubemap at all says to bake.
+  const OrblitEnvironment.fromImage(
+    String image, {
+    this.intensity = 30000,
+    this.rotation = 0,
+    this.showSkybox = true,
+    this.size = 0,
+  }) : radiance = image,
+       skybox = image;
 
   /// Nothing: the scene is lit by its lights and its flat ambient alone.
   static const OrblitEnvironment none = OrblitEnvironment();
 
-  /// An absolute path to the prefiltered radiance cubemap — `*_ibl.ktx`.
+  /// Where the light comes from: the prefiltered radiance cubemap `cmgen`
+  /// baked (`*_ibl.ktx`), or an `.hdr` or `.exr` picture to filter here.
   ///
-  /// Both halves of the lighting come out of this one file. The mip chain is
-  /// the reflection, rough surfaces reading the blurrier levels; the
-  /// spherical harmonics in its metadata are the diffuse. A file with no
-  /// harmonics in it still lights reflections and leaves matte surfaces dark,
-  /// which is what an unbaked cubemap looks like and is reported rather than
-  /// guessed at.
+  /// Both halves of the lighting come out of it. The mip chain is the
+  /// reflection, rough surfaces reading the blurrier levels; the spherical
+  /// harmonics are the diffuse — read from a baked cubemap's metadata, or
+  /// worked out from a picture. A cubemap with no harmonics in it still
+  /// lights reflections and leaves matte surfaces dark, which is what an
+  /// unbaked cubemap looks like and is reported rather than guessed at.
   final String? radiance;
 
-  /// An absolute path to the backdrop cubemap — `*_skybox.ktx`.
+  /// The backdrop: a cubemap `cmgen` baked (`*_skybox.ktx`), or an `.hdr` or
+  /// `.exr` picture, drawn sharper than the reflections.
   ///
   /// Separate from [radiance] because they are different pictures at
   /// different sizes: the backdrop is what the camera sees and wants to be
@@ -81,6 +127,24 @@ class OrblitEnvironment {
   /// over something else later.
   final bool showSkybox;
 
+  /// The side of the reflection cubemap a picture is filtered at, in texels,
+  /// or nought for the device's own choice. Ignored for baked cubemaps, which
+  /// are the size they were baked at.
+  ///
+  /// The device's choice, from `OrblitDeviceProfile`: 256 — `cmgen`'s default,
+  /// and so a default bake's — at Filament feature level 2 and above; 128 at
+  /// feature level 1 (OpenGL ES 3.0, WebGL 2), where filtering costs four
+  /// times less; and 64 where the GPU cannot render half floats and the CPU
+  /// filters instead. The backdrop is four times this, held to 1024 (512
+  /// under 3 GB of memory, 256 on the CPU) and to a quarter of the picture's
+  /// width.
+  ///
+  /// A size given here is rounded down to a power of two and held to 16–1024
+  /// (16–128 on the CPU). Give the same size to `tool/bake_environment.sh
+  /// --size` and a bake and a run-time environment agree. Changing it filters
+  /// the picture again.
+  final int size;
+
   /// Whether there is anything here at all.
   bool get isSet =>
       (radiance != null && radiance!.isNotEmpty) ||
@@ -92,19 +156,26 @@ class OrblitEnvironment {
     double? intensity,
     double? rotation,
     bool? showSkybox,
+    int? size,
   }) => OrblitEnvironment(
     radiance: radiance ?? this.radiance,
     skybox: skybox ?? this.skybox,
     intensity: intensity ?? this.intensity,
     rotation: rotation ?? this.rotation,
     showSkybox: showSkybox ?? this.showSkybox,
+    size: size ?? this.size,
   );
 
   /// How many floats [packed] holds.
   static const int stride = 4;
 
-  Float32List get packed =>
-      Float32List.fromList([intensity, rotation, showSkybox ? 1 : 0, 0]);
+  /// Intensity, rotation, whether the backdrop shows, and [size].
+  Float32List get packed => Float32List.fromList([
+    intensity,
+    rotation,
+    showSkybox ? 1 : 0,
+    size.toDouble(),
+  ]);
 }
 
 /// A reflection captured from a point in the world.

@@ -53,6 +53,13 @@ packages/orblit_filament/windows/third_party/
 # Fetched by tool/fetch_bistro.sh: a CC BY 4.0 test scene, not ours to ship.
 assets/bistro/
 assets/samples/
+# Written by tool/cook_textures.sh beside whatever folder it cooks: output,
+# rebuilt from its sources whenever they change.
+*.cooked/
+
+# Fetched by packages/orblit_filament/native/texture_cook/fetch.sh: Basis
+# Universal and stb, pinned by commit and checked against sources.sha256.
+packages/orblit_filament/native/texture_cook/third_party/
 
 # Built by packages/orblit_filament/native/web/build.sh: object files, and the
 # Emscripten module it links, served straight out of host/ alongside the

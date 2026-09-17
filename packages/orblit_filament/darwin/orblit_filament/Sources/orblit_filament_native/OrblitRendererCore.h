@@ -71,6 +71,7 @@
 #include "OrblitSprites.h"
 #include "OrblitSurface.h"
 #include "OrblitResources.h"
+#include "OrblitTextures.h"
 #include "orblit_renderer.h"
 // Hook (screen effects): god rays and distortion live in plain C++, beside
 // this file, so the port to the renderer's C++ class carries them unchanged.
@@ -135,6 +136,14 @@ struct Mesh {
   /// The resource generation a load of this failed at. Tried again once
   /// bytes have been provided since — see orblit::resourceGeneration.
   uint64_t missingAt = 0;
+
+  /// Whether objects made of it are drawn yet. False from the load until
+  /// something has been written into every texture it names, so the frame
+  /// that first draws it does not also make the GPU find the memory for all
+  /// of them; see TextureQueue::unprimed. When the load began, for the line
+  /// that says how long that took.
+  bool shown = true;
+  double loadedAt = 0;
 
   /// Every node's own transform as the file left it, in the order each copy
   /// lists its entities — which is the same order for every copy, because
@@ -732,6 +741,40 @@ constexpr uint32_t kDecalPictureLevels = 10;
 constexpr int kShadowCatcherSurface = 15;
 constexpr int kSurfaceCount = 16;
 
+/// An environment filtered at run time out of an .hdr or .exr picture, ready
+/// to light a scene: see OrblitEnvironment.cpp.
+///
+/// Kept after the scene stops naming it, a few at a time, under a hash of
+/// the picture's bytes and the sizes it was filtered at — so naming the same
+/// picture again, or the same picture under another name, filters nothing.
+struct EnvironmentLighting {
+  uint64_t hash = 0;
+  /// The sizes and route the key is made of; see EnvironmentPlan.
+  uint32_t reflectionSize = 0;
+  uint32_t largestSkybox = 0;
+  bool onCpu = false;
+
+  /// The blurred chain rough surfaces sample, or null when only the backdrop
+  /// was asked for.
+  filament::Texture *reflections = nullptr;
+  /// The backdrop, sharper than the reflections, or null.
+  filament::Texture *sky = nullptr;
+  /// Three bands, for a matte surface, as cmgen computes them.
+  float3 harmonics[9]{};
+  /// When a scene last used it, in publishes, for choosing what to let go.
+  uint64_t lastUsed = 0;
+};
+
+/// A picture being turned into an EnvironmentLighting: decoded and
+/// summarised on a worker, then uploaded and filtered here over a couple of
+/// frames. Defined in OrblitEnvironment.cpp.
+struct EnvironmentWork;
+
+/// How many pictures every renderer in this process has filtered into an
+/// environment, on either route. A picture found in a renderer's cache is not
+/// counted, which is how a check tells a cache hit from a second filter.
+uint64_t environmentPicturesFiltered();
+
 /// One light as the renderer holds it between frames.
 ///
 /// The whole parameter block is kept rather than the fields that matter,
@@ -1247,6 +1290,8 @@ class Renderer {
   void bindFieldTo(MaterialInstance *instance);
   Texture *textureAtPath(const std::string &path, bool srgb);
   void pollTextures();
+  void pumpTextures();
+  void applyTextureLimits();
   TextureSampler samplerFor(int32_t flags);
   void write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video);
   void applyRasterState(Surfaced &surface, float threshold, float bias);
@@ -1255,6 +1300,15 @@ class Renderer {
   Texture *cubemapAtPath(const std::string &path, float3 *harmonics, bool *hasThose, const std::string &note);
   void rebuildEnvironmentLight();
   void releaseEnvironment();
+  // Environments from .hdr and .exr pictures (OrblitEnvironment.cpp).
+  void requestEnvironmentImages(const std::string &radiance,
+                                const std::string &skybox,
+                                float requestedSize);
+  void pollEnvironment();
+  void installEnvironment(const EnvironmentLighting &lighting, bool light,
+                          bool sky);
+  void showEnvironment();
+  void releaseEnvironmentCache();
   void prepareTargets();
   void rebindTargets();
   void buildSmaaTables();
@@ -1407,6 +1461,13 @@ class Renderer {
   /// one; see rebuildBatchGroup.
   uint32_t _chunkSize{kInstancesPerDraw};
   bool _exactChunkBox{};
+
+  /// ORBLIT_LOAD_TRACE: say what a slow frame spent its time on, and what a
+  /// model's load spent the publish on. Diagnostic only, off unless set;
+  /// native/headless/orblit_load_bench reads these lines.
+  bool _loadTrace{};
+  /// How long the last frame waited for the backend to run what it asked.
+  double _lastFlushSeconds{};
   bool _objectChunkBox{};
   bool _rootTransformChunks{};
 
@@ -1435,16 +1496,37 @@ class Renderer {
   gltfio::AssetLoader *_assetLoader{};
   gltfio::ResourceLoader *_resourceLoader{};
   gltfio::MaterialProvider *_materialProvider{};
-  gltfio::TextureProvider *_stbTextures{};
 
-  /// A second decoder, for the images materials name directly.
+  /// Every texture on its way to the GPU — a material's, a sprite layer's,
+  /// a model's — decoded off this thread and uploaded under one budget a
+  /// frame. See OrblitTextures.h.
+  std::unique_ptr<orblit::TextureQueue> _textureQueue{};
+
+  /// The glTF loader's view of that queue, for PNG, JPEG and KTX 2.
   ///
-  /// Separate from the one the glTF loader uses because a provider is a
-  /// queue: popping from it takes ownership of whatever comes out, and
-  /// popping a texture the resource loader was waiting for would leave a
-  /// model with a missing map and no way to find out why.
-  gltfio::TextureProvider *_ownStbTextures{};
-  gltfio::TextureProvider *_ownKtxTextures{};
+  /// Materials push into the queue directly rather than through a second
+  /// provider: a provider is popped, popping takes whatever comes out, and
+  /// the resource loader pops everything its providers hold. Each side pops
+  /// only its own, by client.
+  std::unique_ptr<orblit::QueuedTextureProvider> _modelTextures{};
+
+  /// The asset whose resources the loader began last, which is the one it
+  /// would mark textures ready in — so destroying it has to stop that first.
+  gltfio::FilamentAsset *_loadingAsset{};
+
+  /// Whether any mesh is hidden while its textures' memory is made.
+  bool _meshesWaiting{};
+  void showPrimedMeshes();
+
+  /// Problems with textures, by the texture's path, and what named each: a
+  /// model's path, or empty for a material's or a sprite layer's. Reported
+  /// only while whatever named it is still in the scene.
+  Notes _textureNotes{};
+  std::unordered_map<std::string, std::string> _textureNotedFor{};
+
+  /// The texture paths the last publish of materials and of sprites named.
+  std::set<std::string> _materialTexturePaths{};
+  std::set<std::string> _spriteTexturePaths{};
 
   /// The compiled surfaces, indexed by shading and blend mode. Built on
   /// first use: a scene of opaque lit objects should not compile the four
@@ -1504,13 +1586,6 @@ class Renderer {
   /// For each texture that could not be loaded, the resource generation it
   /// failed at — see Mesh::missingAt.
   std::unordered_map<std::string, uint64_t> _texturesMissingAt{};
-
-  /// Whether any of those are still decoding, so the queue is only polled
-  /// while there is something in it.
-  int _texturesPending{};
-
-  /// How many frames the decoders have been asked and given nothing back.
-  int _pollsWithoutProgress{};
 
   /// One white pixel, standing in for every map a material does not set.
   filament::Texture *_blankTexture{};
@@ -1581,6 +1656,40 @@ class Renderer {
   float3 _environmentHarmonics[9]{};
   bool _environmentHasHarmonics{};
 
+  /// Whether the radiance and backdrop textures above belong to
+  /// _environmentCache rather than to the environment, so releasing the
+  /// environment leaves them for the next scene that names the same picture.
+  bool _environmentRadianceCached{};
+  bool _environmentSkyCached{};
+
+  /// Pictures filtered at run time, most recently used last. See
+  /// EnvironmentLighting.
+  std::vector<EnvironmentLighting> _environmentCache{};
+
+  /// Pictures being decoded or filtered for the environment the scene names.
+  std::vector<std::shared_ptr<EnvironmentWork>> _environmentWork{};
+
+  /// What each picture name was found to be, keyed by name and sizes: its
+  /// hash, or why it could not be used. Good until bytes are provided under
+  /// any name, which is when a name's bytes can have changed.
+  struct EnvironmentName {
+    uint64_t hash = 0;
+    std::string note;
+    uint64_t generation = 0;
+  };
+  std::map<std::string, EnvironmentName> _environmentNames{};
+
+  /// Counts publishes that set an environment, for EnvironmentLighting's
+  /// lastUsed.
+  uint64_t _environmentPublishes{};
+
+  /// The filters an environment picture goes through: an equirectangular
+  /// picture into a cube, and a cube into the blurred chain. Built on first
+  /// use, beside the probes' own filter and sharing its context.
+  IBLPrefilterContext::EquirectangularToCubemap *_equirectangularFilter{};
+  IBLPrefilterContext::SpecularFilter *_environmentFilter{};
+  uint8_t _environmentFilterLevels{};
+
   /// The last flat ambient asked for, kept so it can be put back when an
   /// environment is cleared. The day cycle writes this on every frame and
   /// would otherwise have to be waited for.
@@ -1614,7 +1723,6 @@ class Renderer {
   uint64_t _videoGeneration{};
 
   uint64_t _materialGeneration{};
-  gltfio::TextureProvider *_ktxTextures{};
 
   /// Whether any asset is still decoding its textures. An ivar block takes
   /// no initialiser, so this is zeroed by the runtime like the rest.

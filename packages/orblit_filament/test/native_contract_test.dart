@@ -112,6 +112,35 @@ void main() {
     });
   });
 
+  group('what the environment\'s four floats mean', () {
+    // The stride check above cannot see a float change meaning. The fourth
+    // was unused until pictures, and a renderer that went on ignoring it
+    // would filter every picture at the device's size whatever a scene asked.
+    final core = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitRendererCore.cpp',
+    );
+    final environment = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitEnvironment.cpp',
+    );
+
+    test('the fourth is the size a picture is filtered at, on both sides', () {
+      expect(
+        const OrblitEnvironment.fromImage('/a.hdr', size: 128).packed[3],
+        128,
+      );
+      expect(
+        core,
+        contains('params[3] == _environmentParams[3]'),
+        reason: 'a new size is a new environment, not a number moving',
+      );
+      expect(
+        environment,
+        contains('planFor(*this, _environmentParams[3])'),
+        reason: 'the plan a picture is filtered to reads it',
+      );
+    });
+  });
+
   group('what a device can do', () {
     final abi = _read(
       'darwin/orblit_filament/Sources/orblit_filament_native/include/orblit_renderer.h',
@@ -143,6 +172,111 @@ void main() {
             'Dart reads each answer by its position, so a question added or '
             'moved on one side reads another question\'s answer on the other',
       );
+    });
+
+    group('and the texture defaults the renderer takes from it', () {
+      final textures = _read(
+        'darwin/orblit_filament/Sources/orblit_filament_native/OrblitTextures.h',
+      );
+      int named(String name) {
+        final found = RegExp(
+          r'constexpr int32_t ' + name + r'\s*=\s*(\d+)',
+        ).firstMatch(textures);
+        // Not expect: this runs while the tests are being declared.
+        if (found == null) fail('the renderer no longer declares $name');
+        return int.parse(found.group(1)!);
+      }
+
+      List<int> byTier(String name) {
+        final found = RegExp(
+          r'constexpr uint32_t ' + name + r'\[3\]\s*=\s*\{([^}]*)\}',
+        ).firstMatch(textures);
+        if (found == null) fail('the renderer no longer declares $name');
+        return [
+          for (final part in found.group(1)!.split(',')) int.parse(part.trim()),
+        ];
+      }
+
+      final lowLevel = named('kLowTierBelowFeatureLevel');
+      final lowSize = named('kLowTierBelowTextureSize');
+      final lowThreads = named('kLowTierAtMostThreads');
+      final lowMemory = named('kLowTierBelowMegabytes');
+      final highSize = named('kHighTierTextureSize');
+      final highThreads = named('kHighTierThreads');
+      final highMemory = named('kHighTierMegabytes');
+
+      // A device exactly on each of the renderer's lines, and one either side,
+      // in OrblitCapability's order.
+      List<int> device(int level, int size, int threads, int memory) => [
+        1,
+        level,
+        size,
+        256,
+        0,
+        0,
+        threads,
+        memory,
+      ];
+      final cases = <String, (List<int>, OrblitDeviceTier)>{
+        'the least a high device has': (
+          device(lowLevel, highSize, highThreads, highMemory),
+          OrblitDeviceTier.high,
+        ),
+        'a texture size short of high': (
+          device(lowLevel, highSize - 1, highThreads, highMemory),
+          OrblitDeviceTier.medium,
+        ),
+        'a thread short of high': (
+          device(lowLevel, highSize, highThreads - 1, highMemory),
+          OrblitDeviceTier.medium,
+        ),
+        'a megabyte short of high': (
+          device(lowLevel, highSize, highThreads, highMemory - 1),
+          OrblitDeviceTier.medium,
+        ),
+        'the least a medium device has': (
+          device(lowLevel, lowSize, lowThreads + 1, lowMemory),
+          OrblitDeviceTier.medium,
+        ),
+        'a feature level short of medium': (
+          device(lowLevel - 1, highSize, highThreads, highMemory),
+          OrblitDeviceTier.low,
+        ),
+        'a texture size short of medium': (
+          device(lowLevel, lowSize - 1, highThreads, highMemory),
+          OrblitDeviceTier.low,
+        ),
+        'a thread short of medium': (
+          device(lowLevel, highSize, lowThreads, highMemory),
+          OrblitDeviceTier.low,
+        ),
+        'a megabyte short of medium': (
+          device(lowLevel, highSize, highThreads, lowMemory - 1),
+          OrblitDeviceTier.low,
+        ),
+      };
+
+      cases.forEach((what, expected) {
+        final (answers, tier) = expected;
+        test('puts $what in the same tier on both sides', () {
+          expect(OrblitDeviceProfile.fromCapabilities(answers).tier, tier);
+        });
+      });
+
+      test('are the profile\'s own texture sizes and upload budgets', () {
+        final sides = byTier('kTierTextureSides');
+        final uploads = byTier('kTierUploadKilobytes');
+        for (final (answers, tier) in cases.values) {
+          final profile = OrblitDeviceProfile.fromCapabilities(answers);
+          expect(
+            profile.textureSizeBudget,
+            sides[tier.index] < profile.maxTextureSize
+                ? sides[tier.index]
+                : profile.maxTextureSize,
+          );
+          expect(profile.textureUploadKilobytes, uploads[tier.index]);
+        }
+      });
     });
 
     test('spells the texture families with the same bits', () {

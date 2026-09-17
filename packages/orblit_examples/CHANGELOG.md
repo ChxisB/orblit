@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.28.0
+
+- **A Textures example.** Pictures, Basis files and cooked sets named at once
+  and lit by a picture through `OrblitEnvironment.fromImage`. In a browser the
+  cooked file is fetched by `OrblitDeviceProfile.textureCandidates`, so the
+  device's own format is the one downloaded. `ORBLIT_TEXTURES`,
+  `ORBLIT_TEXTURE_FILES`, `ORBLIT_PICTURE` and `ORBLIT_TEXTURE_SIZE` choose from
+  a shell or a URL.
+
 ## 0.27.0
 
 - **An Imported models example.** Khronos's glTF samples, a Mixamo FBX and an
