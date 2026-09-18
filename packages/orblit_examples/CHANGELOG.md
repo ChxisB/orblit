@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.31.0
+
+- **The Runner is a game you can play.** Three lanes down a country road:
+  jump the hurdles, slide under the barriers, and go round the containers
+  and the trains of them. Coins lie in lines and arcs, and a streak of them
+  is worth more each time. It speeds up the longer it runs. Clipping
+  something from the side is a stumble, and two within four seconds is a
+  crash. It keeps a score, a best and a card at the end of every run.
+- **Played from the keyboard or by swiping.** ←/→ or A/D change lane, ↑, W
+  or Space jump, ↓ or S slide, Esc or P pause, and Space or Enter start and
+  start again.
+- **Its settings are Autopilot, Can't crash, Top speed (20–40 m/s) and Start
+  again**, in place of the old Pace, Seen ahead and Weaving. The
+  autopilot has only the player's three moves, and a test runs it for a
+  minute at a time to show that every row the game lays has a way through.
+- **Every model is made in code.** `RunnerArt` builds them — the runner,
+  trees, houses, hazards, coins, clouds, and the road and grass textures —
+  as binary glTF and PNG and hands them over with `OrblitResources.provide`,
+  so the example needs no download.
+
 ## 0.30.0
 
 - **Examples are grouped under headings.** Every `Example` names the
