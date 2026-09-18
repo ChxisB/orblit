@@ -138,10 +138,12 @@ struct Mesh {
   uint64_t missingAt = 0;
 
   /// Whether objects made of it are drawn yet. False from the load until
-  /// something has been written into every texture it names, so the frame
-  /// that first draws it does not also make the GPU find the memory for all
-  /// of them; see TextureQueue::unprimed. When the load began, for the line
-  /// that says how long that took.
+  /// every texture it names is safe to sample — its own levels for the
+  /// uncompressed formats, its placeholder for the ones whose storage reads
+  /// as that anyway — so the frame that first draws it neither samples blank
+  /// memory nor makes the GPU find all of it at once; see
+  /// TextureQueue::unprimed. When the load began, for the line that says how
+  /// long that took.
   bool shown = true;
   double loadedAt = 0;
 

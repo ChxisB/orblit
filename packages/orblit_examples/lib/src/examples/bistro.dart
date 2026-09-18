@@ -173,14 +173,54 @@ class BistroExteriorExample extends BistroExample {
   /// The moon, in lux. A real full moon is about a quarter of one.
   double moon = 4;
 
-  /// Walk the street rather than orbit it.
+  /// Walk the street, or stand still by the Vespa.
   ///
   /// An orbit is the right camera for looking at an object and the wrong one
   /// for a place. A street is meant to be walked down: the lamps pass
   /// overhead one at a time, the shopfronts come alongside, and the light on
   /// a wall changes because you moved rather than because the wall did. None
   /// of that is visible from a fixed point spinning around the middle.
+  ///
+  /// Off, it is a still of the Vespa rather than the orbit it used to hand
+  /// back: see [_still].
   bool walking = true;
+
+  /// Where the Vespa is: the middle of it, a little low.
+  ///
+  /// Read out of the model rather than found by eye. It stands at about
+  /// forty-five degrees to the street with its headlight towards −x and −z,
+  /// on pavement 0.37 m up.
+  static final _vespa = Vector3(-7.4, 1.25, 0.5);
+
+  /// The camera when not walking: a still of the Vespa, and how far away it
+  /// is focused.
+  ///
+  /// Still, not an orbit — nothing turns unless somebody asks it to, and a
+  /// camera that holds still is also what lets the temporal anti-aliasing
+  /// settle into a clean picture. Framed the way a scooter is photographed:
+  /// from the front three-quarters, low, which makes it stand up against the
+  /// street rather than sit in it, and on a long lens a few metres off, so
+  /// the shopfronts behind stay large and fall out of focus instead of
+  /// shrinking into a wide shot.
+  ///
+  /// The numbers were chosen by looking, a few degrees at a time: straight
+  /// down the headlight's line, it is all shield and no scooter; side on, it
+  /// is a diagram. Just over forty degrees off its nose shows the shield, the
+  /// curve of the body and both wheels at once.
+  (Vector3, Vector3, double) _still() {
+    const bearing = -168 * math.pi / 180; // which side of it the camera is on
+    const distance = 6.0;
+    const height = 1.05; // about knee height: 0.7 m above the pavement
+    const lead = 0.5;
+
+    final away = Vector3(math.cos(bearing), 0, math.sin(bearing));
+    final eye = _vespa + away * distance
+      ..y = height;
+    // Aimed half a metre to the side it faces, which puts it right of centre
+    // with the room in front of it rather than behind.
+    final look = _vespa + Vector3(-away.z, 0, away.x) * lead;
+    return (eye, look, (_vespa - eye).length);
+  }
 
   /// Where the walk goes.
   ///
@@ -219,13 +259,24 @@ class BistroExteriorExample extends BistroExample {
     Vector3(11.5, 1.7, 15.5),
   ];
 
+  /// Walking pace, in metres a second.
+  static const double _pace = 1.3;
+
+  /// How long setting off and pulling up each take, in seconds.
+  static const double _gather = 2.0;
+
+  /// Half the stretch of path the heading is taken across, in metres.
+  static const double _reach = 2.5;
+
   (Vector3, Vector3) _walk(double seconds) {
-    const pace = 1.3; // metres a second
-    const turnTime = 3.2; // long enough to read as a turn, not a spin
+    // Long enough to read as a turn, not a spin. It was 3.2 s, and once the
+    // rest of the walk was smoothed that made the half-turn at each end the
+    // fastest the camera ever swung, at eighty-five degrees a second.
+    const turnTime = 4.5;
 
     final total = _length;
-    final walkTime = total / pace;
-    final cycle = (walkTime + turnTime) * 2;
+    final legTime = total / _pace + _gather;
+    final cycle = (legTime + turnTime) * 2;
     final t = seconds % cycle;
 
     // How far along, and how far through a turn. The yaw is built up as one
@@ -235,39 +286,47 @@ class BistroExteriorExample extends BistroExample {
     // and the turn at the end of it started from the other.
     final double distance;
     var extraTurn = 0.0;
-    if (t < walkTime) {
-      distance = t * pace;
-    } else if (t < walkTime + turnTime) {
+    if (t < legTime) {
+      distance = _along(t, legTime);
+    } else if (t < legTime + turnTime) {
       distance = total;
-      extraTurn = _ease((t - walkTime) / turnTime);
-    } else if (t < walkTime * 2 + turnTime) {
-      distance = total - (t - walkTime - turnTime) * pace;
+      extraTurn = _ease((t - legTime) / turnTime);
+    } else if (t < legTime * 2 + turnTime) {
+      distance = total - _along(t - legTime - turnTime, legTime);
       extraTurn = 1;
     } else {
       distance = 0;
-      extraTurn = 1 + _ease((t - walkTime * 2 - turnTime) / turnTime);
+      extraTurn = 1 + _ease((t - legTime * 2 - turnTime) / turnTime);
     }
 
-    final (at, tangent) = _onPath(distance);
+    final eye = _at(distance);
 
-    // The way the body faces. On the return leg the tangent still points the
-    // way the path was drawn, so it is the half-turns that carry the
-    // direction — one of them says "walking back", two says "round again".
-    final yaw = math.atan2(tangent.z, tangent.x) + math.pi * extraTurn;
+    // The way the body faces: along the line from where the walk was a couple
+    // of metres back to where it will be a couple of metres on.
+    //
+    // This used to be the direction of the path underfoot, read off whichever
+    // quarter-metre piece of it the walk was on. That changes in a step at
+    // every piece, and eight metres out, where the camera looks, a step of a
+    // few degrees is a jump of half a metre, five times a second through
+    // every bend. The line across five metres of path is the path's
+    // direction averaged over them, so it turns smoothly and starts into a
+    // bend a little before reaching it, as somebody walking does.
+    //
+    // On the return leg this still points the way the path was drawn, so it
+    // is the half-turns that carry the direction — one of them says "walking
+    // back", two says "round again".
+    final heading = _at(distance + _reach) - _at(distance - _reach);
+    final yaw = math.atan2(heading.z, heading.x) + math.pi * extraTurn;
 
     // Looking about, on top of that. Two slow waves so it never settles into
     // an obvious rhythm, and gentle enough not to fight the turn.
     final sweep =
-        math.sin(seconds * 0.19) * 0.42 + math.sin(seconds * 0.081) * 0.2;
+        math.sin(seconds * 0.19) * 0.32 + math.sin(seconds * 0.081) * 0.14;
 
-    // The bob. Two steps a second at a walking pace, and a couple of
-    // centimetres — enough to feel, not enough to notice. It fades out
-    // through a turn rather than stopping dead, because somebody turning on
-    // the spot is not taking strides but does not freeze either.
-    final striding =
-        1 - (extraTurn % 1 == 0 ? 0.0 : math.sin(extraTurn % 1 * math.pi));
-    final bob = math.sin(seconds * math.pi * 2 * 1.8) * 0.022 * striding;
-    final eye = Vector3(at.x, at.y + bob, at.z);
+    // No bob. There was one, a couple of centimetres at two steps a second,
+    // and it was the only part of this that moved faster than a slow wave:
+    // on screen it read as the picture shaking rather than as walking. This
+    // is a camera carried steady down the street, not a head.
 
     final look = yaw + sweep;
     // A little up: the interesting part of this street is above eye level —
@@ -277,6 +336,26 @@ class BistroExteriorExample extends BistroExample {
       eye,
       eye + Vector3(math.cos(look) * 8, rise * 8, math.sin(look) * 8),
     );
+  }
+
+  /// How far along the path a leg is, `t` seconds after setting off.
+  ///
+  /// The walk used to go from standing to full pace in one frame and stop the
+  /// same way, which is a jolt however smooth the path is. Now each end of a
+  /// leg eases over [_gather] seconds, the speed following a smoothstep, so
+  /// not even the acceleration jumps. The distance an eased start covers is
+  /// the smoothstep's integral, x³ − x⁴/2 — half of what full pace would
+  /// cover in the same time, which is why a leg takes [_gather] seconds longer
+  /// than the path at full pace.
+  static double _along(double t, double legTime) {
+    double eased(double t) {
+      final x = (t / _gather).clamp(0.0, 1.0);
+      return _pace * _gather * (x * x * x - x * x * x * x / 2);
+    }
+
+    if (t < _gather) return eased(t);
+    if (t > legTime - _gather) return _length - eased(legTime - t);
+    return _pace * (t - _gather / 2);
   }
 
   /// Smoothstep: starts and stops at zero speed.
@@ -313,42 +392,60 @@ class BistroExteriorExample extends BistroExample {
         0.5;
   }
 
-  /// The curve's length, measured once by walking it.
-  static final double _length = () {
-    var total = 0.0;
-    var previous = _spline(0);
-    for (var i = 1; i <= _samples; i++) {
-      final next = _spline(i / _samples);
-      total += (next - previous).length;
-      previous = next;
-    }
-    return total;
-  }();
-
-  static const int _samples = 240;
-
-  /// Where the curve is `distance` metres along it, and which way it points.
+  /// The curve set out as stations an even distance apart along it, about
+  /// five centimetres, and that distance.
   ///
   /// Walked at constant speed rather than at constant parameter: a spline's
   /// parameter is not its arc length, so stepping it evenly speeds up through
-  /// the straights and dawdles round the bends.
-  static (Vector3, Vector3) _onPath(double distance) {
-    var travelled = 0.0;
-    var previous = _spline(0);
-    for (var i = 1; i <= _samples; i++) {
-      final u = i / _samples;
-      final next = _spline(u);
-      final step = (next - previous).length;
-      if (travelled + step >= distance) {
-        final f = step > 0 ? (distance - travelled) / step : 0.0;
-        final at = previous + (next - previous) * f;
-        return (at, (next - previous).normalized());
-      }
-      travelled += step;
-      previous = next;
+  /// the straights and dawdles round the bends. So the curve is measured once,
+  /// finely enough that the chord between two samples is the curve, and
+  /// staked out; where the walk is then comes from the two stations either
+  /// side of it rather than from searching the curve every frame.
+  static final (List<Vector3>, double) _measured = () {
+    const fine = 4000;
+    final points = [for (var i = 0; i <= fine; i++) _spline(i / fine)];
+    final run = <double>[0];
+    for (var i = 1; i <= fine; i++) {
+      run.add(run.last + (points[i] - points[i - 1]).length);
     }
-    final end = _spline(1);
-    return (end, (end - _spline(1 - 1 / _samples)).normalized());
+    final count = (run.last / 0.05).ceil();
+    final spacing = run.last / count;
+    final stations = <Vector3>[];
+    var j = 0;
+    for (var k = 0; k <= count; k++) {
+      final want = k * spacing;
+      while (j < fine - 1 && run[j + 1] < want) {
+        j++;
+      }
+      final span = run[j + 1] - run[j];
+      final f = span > 0 ? ((want - run[j]) / span).clamp(0.0, 1.0) : 0.0;
+      stations.add(points[j] + (points[j + 1] - points[j]) * f);
+    }
+    return (stations, spacing);
+  }();
+
+  /// The curve's length.
+  static double get _length => (_measured.$1.length - 1) * _measured.$2;
+
+  /// Where the walk is `distance` metres along the path.
+  ///
+  /// Off either end the path carries straight on, so a heading taken near an
+  /// end has somewhere to look.
+  static Vector3 _at(double distance) {
+    final (stations, spacing) = _measured;
+    final last = stations.length - 1;
+    if (distance <= 0) {
+      final start = stations[0];
+      return start + (stations[1] - start).normalized() * distance;
+    }
+    if (distance >= _length) {
+      final end = stations[last];
+      return end +
+          (end - stations[last - 1]).normalized() * (distance - _length);
+    }
+    final along = distance / spacing;
+    final i = along.floor().clamp(0, last - 1);
+    return stations[i] + (stations[i + 1] - stations[i]) * (along - i);
   }
 
   @override
@@ -421,18 +518,32 @@ class BistroExteriorExample extends BistroExample {
       // day is white, which is exactly why these are stated as a real camera's
       // three numbers rather than as a brightness.
       camera: () {
-        final (eye, look) = walking
-            ? _walk(seconds)
-            : (camera.position, camera.target);
+        if (walking) {
+          final (eye, look) = _walk(seconds);
+          return OrblitCamera(
+            position: eye,
+            target: look,
+            // Wider on foot. Fifty degrees is a portrait lens and a street
+            // seen through one feels like a corridor; somebody actually
+            // standing in this square sees most of it at once.
+            fieldOfView: 65,
+            aperture: night ? 2.0 : 16,
+            shutterSpeed: night ? 1 / 30 : 1 / 125,
+            sensitivity: night ? iso : 100,
+          );
+        }
+        final (eye, look, _) = _still();
         return OrblitCamera(
           position: eye,
           target: look,
-          // Wider on foot. Fifty degrees is a portrait lens and a street seen
-          // through one feels like a corridor; somebody actually standing in
-          // this square sees most of it at once.
-          fieldOfView: walking ? 65 : camera.fieldOfView,
-          aperture: night ? 2.0 : 16,
-          shutterSpeed: night ? 1 / 30 : 1 / 125,
+          // The long lens the still is framed for.
+          fieldOfView: 34,
+          // Wide open by day as well, for a background out of focus. f/2.8
+          // at a four-thousandth lets in what f/16 at a hundred-and-twenty-
+          // fifth does, so the exposure is the same and only the depth of
+          // field changes.
+          aperture: night ? 2.0 : 2.8,
+          shutterSpeed: night ? 1 / 30 : 1 / 4000,
           sensitivity: night ? iso : 100,
         );
       }(),
@@ -525,6 +636,18 @@ class BistroExteriorExample extends BistroExample {
         // anyway, since the thing above a pavement is usually the building
         // across from it.
         reflections: OrblitReflections(enabled: true, maxDistance: 6),
+        // For the still only: the Vespa sharp and the street behind it soft.
+        // The blur is the lens's own, from the aperture the still is shot
+        // at, made a little stronger than life. The caps are what stop the
+        // far end of the street dissolving; at the default of one pixel they
+        // stopped the blur from showing at all.
+        depthOfField: OrblitDepthOfField(
+          enabled: !walking,
+          focusDistance: walking ? 10 : _still().$3,
+          blurScale: 3,
+          maxForeground: 12,
+          maxBackground: 16,
+        ),
         // ACES rather than the plain filmic curve. More contrast and more
         // saturation, and the transform most films are graded through — which
         // matters most at night, where the difference between a lamp and the
@@ -546,7 +669,7 @@ class BistroExteriorExample extends BistroExample {
         Toggle(
           label: 'Walk',
           value: walking,
-          note: walking ? 'On foot, looking around' : 'Drag to orbit instead',
+          note: walking ? 'On foot, looking around' : 'Still, by the Vespa',
           onChanged: (value) {
             walking = value;
             changed();

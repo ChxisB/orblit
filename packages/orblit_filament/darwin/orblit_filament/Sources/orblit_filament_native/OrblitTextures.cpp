@@ -1791,10 +1791,17 @@ size_t TextureQueue::unprimed(const void *owner) const {
   std::lock_guard<std::mutex> hold(_lock);
   size_t count = 0;
   for (const std::shared_ptr<Item> &item : _items) {
-    if (item->owner == owner && !item->abandoned && !item->written &&
-        item->placeholder != nullptr) {
-      count++;
-    }
+    // Anything still here is still on its way: pump erases an item as it
+    // completes it. Nothing weaker will do. A written placeholder means the
+    // memory has been made, not that the texture can be sampled — it fills
+    // one level, and whether the rest reads as the placeholder or as the
+    // error colour is a property of the format, the backend and the driver
+    // that this cannot see from here. Uploading under a budget stretches the
+    // gap between the memory and the levels from nothing to seconds, so a
+    // model let through on "has memory" is a model drawn from whatever that
+    // memory happens to hold.
+    if (item->owner != owner || item->abandoned) continue;
+    count++;
   }
   return count;
 }

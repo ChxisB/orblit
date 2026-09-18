@@ -253,12 +253,21 @@ class OrblitResolution {
   /// Whether the renderer is allowed to move [scale] between [minScale] and
   /// [maxScale] to hold its frame rate.
   ///
-  /// The honest answer to a machine that cannot quite keep up. A frame that
-  /// arrives on time slightly soft is better than one that arrives late
-  /// sharp, and the alternative — asking the player to find a settings menu —
-  /// is worse than both.
+  /// Asked for, and not yet granted. The renderer currently pins the scale at
+  /// [maxScale] and renders every frame at that one size, because a scale that
+  /// moves between frames leaves most of the buffer undrawn — measured on
+  /// Metal as seven frames in nine with the scene squeezed into a corner and
+  /// the rest of the buffer showing whatever was in that memory. Filament will
+  /// only vary the scale where the time to render a frame can be measured
+  /// accurately, and Orblit does not yet tell it what frame rate to aim at.
+  ///
+  /// So this is a request the renderer is free to refuse, not a switch. To
+  /// trade sharpness for headroom today, say so outright with a [scale] below
+  /// one, which is honoured exactly.
   bool adaptive;
 
+  /// The ends of the range [adaptive] would move between. Until it can,
+  /// [maxScale] is the size every frame is drawn at and [minScale] is unused.
   double minScale;
   double maxScale;
 

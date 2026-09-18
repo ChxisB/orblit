@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.29.0
+
+- **Bistro walks smoothly.** The path is measured at constant pace and the
+  heading averaged over five metres, so corners turn as one curve rather than
+  in steps; the walk eases in and out at each end, turns round over 4.5 s, and
+  no longer bobs.
+- **With Walk off, Bistro holds a still of the Vespa** — a low front
+  three-quarter view on a longer lens with a shallow depth of field — in place
+  of the orbit camera.
+
 ## 0.28.0
 
 - **A Textures example.** Pictures, Basis files and cooked sets named at once
