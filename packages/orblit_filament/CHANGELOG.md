@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.29.1
+
+- **No more white, magenta or smeared frames when the render scale moves.**
+  Filament varies the scale only where it can time a frame, and Orblit gives
+  it no frame rate to aim at, so a range drew the scene into a corner of the
+  buffer and left the rest as whatever that memory held. The scale is now
+  pinned at `OrblitResolution.maxScale`; `dynamic` is accepted and not yet
+  acted on. A fixed scale below one is honoured again rather than read as
+  full size.
+- **A model is drawn once its textures can be sampled**, not once their memory
+  has been made, which under the upload budget was seconds earlier.
+- **A photographed sky survives the sun's disk coming back.** Showing the disk
+  rebuilt the flat sky and took whatever backdrop the scene held with it, the
+  photograph included, so the sky was never drawn again and kept earlier
+  frames. Frames are now cleared, so a missing backdrop is black, not stale.
+
 ## 0.29.0
 
 - **Textures arrive without freezing the app.** Every texture — a material's,
