@@ -24,6 +24,9 @@ class FieldExample extends Example {
   String get name => 'Irradiance field';
 
   @override
+  ExampleSection get section => ExampleSection.lighting;
+
+  @override
   String get blurb =>
       'Probes standing in the room, holding the light that reaches them, so '
       'indirect light survives the camera looking away.';

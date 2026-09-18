@@ -31,6 +31,9 @@ class RunnerExample extends Example {
   String get name => 'Runner';
 
   @override
+  ExampleSection get section => ExampleSection.showcases;
+
+  @override
   String get blurb =>
       'A track that never ends, and never allocates a piece of one.';
 

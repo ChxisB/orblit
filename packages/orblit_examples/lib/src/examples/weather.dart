@@ -21,6 +21,9 @@ class WeatherExample extends Example {
   String get name => 'Weather';
 
   @override
+  ExampleSection get section => ExampleSection.atmosphere;
+
+  @override
   String get blurb =>
       'Haze, banks of cloud and falling weather, carried by one wind.';
 

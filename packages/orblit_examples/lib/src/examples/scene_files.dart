@@ -33,6 +33,9 @@ class SceneFilesExample extends Example {
   String get name => 'Scene files';
 
   @override
+  ExampleSection get section => ExampleSection.basics;
+
+  @override
   String get blurb =>
       'A .oscene document parsed and drawn, in 2D and in 3D, with an edit '
       'applied as a diff rather than a rebuild.';

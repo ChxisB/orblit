@@ -36,6 +36,9 @@ class PipelineExample extends Example {
   String get name => 'Pipeline';
 
   @override
+  ExampleSection get section => ExampleSection.performance;
+
+  @override
   String get blurb =>
       'Shadows, cascades, multisampling and render scale — the four named '
       'settings, and every dial behind them.';

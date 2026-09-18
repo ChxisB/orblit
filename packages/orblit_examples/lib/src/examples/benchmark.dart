@@ -29,6 +29,9 @@ class BenchmarkExample extends Example {
   String get name => 'Benchmark';
 
   @override
+  ExampleSection get section => ExampleSection.performance;
+
+  @override
   String get blurb =>
       'Turn the load up and watch what a frame costs. Nothing here is staged.';
 

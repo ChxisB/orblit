@@ -23,6 +23,9 @@ class ProbesExample extends Example {
   String get name => 'Reflection probes';
 
   @override
+  ExampleSection get section => ExampleSection.lighting;
+
+  @override
   String get blurb =>
       'A chrome box reflecting the room it is in, from a cubemap the scene '
       'captured of itself.';

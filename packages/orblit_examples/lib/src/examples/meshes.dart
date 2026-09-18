@@ -21,6 +21,9 @@ class MeshesExample extends Example {
   String get name => 'Meshes';
 
   @override
+  ExampleSection get section => ExampleSection.content;
+
+  @override
   String get blurb =>
       'A glTF file, loaded once and instanced, with failures reported back.';
 

@@ -37,6 +37,9 @@ class DecalsExample extends Example {
   String get name => 'Decals';
 
   @override
+  ExampleSection get section => ExampleSection.materials;
+
+  @override
   String get blurb =>
       'Posters, scorches, a puddle and road paint projected onto a floor and '
       'a wall, lit and shadowed with the surface under them.';

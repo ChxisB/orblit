@@ -19,6 +19,13 @@ abstract class Example {
   /// One line on what it shows.
   String get blurb;
 
+  /// Which part of the engine it is about, for the heading it is listed under.
+  ///
+  /// Asked of every example rather than defaulted, so that a new one cannot
+  /// arrive in the list under no heading at all, or under a wrong one nobody
+  /// chose.
+  ExampleSection get section;
+
   /// Where the camera starts, so an example opens framed on its subject.
   ViewPoint get viewpoint => const ViewPoint();
 
@@ -79,6 +86,51 @@ abstract class Example {
   /// Null for the examples that are only about what the renderer does. Call
   /// [changed] when something in it has moved.
   Widget? overlay(BuildContext context, VoidCallback changed) => null;
+}
+
+/// The headings a list of examples is grouped under, in the order to show
+/// them.
+///
+/// Thirty-odd examples in one column read as a list of names: which of them is
+/// about light and which is about cost is only in the blurbs, and only for
+/// somebody who reads every one. A heading says it once for all of them.
+///
+/// The order is the order somebody should meet them in, as the examples were
+/// before there were headings: something drawn, then what lights it, what it
+/// is made of, what the air does to it, and the big scenes last.
+enum ExampleSection {
+  basics('Getting started'),
+  lighting('Lighting & shadows'),
+  materials('Materials & textures'),
+  atmosphere('Sky & atmosphere'),
+  effects('Effects'),
+  content('Models & media'),
+  scripting('Scripting'),
+  performance('Performance'),
+  showcases('Showcases');
+
+  const ExampleSection(this.label);
+
+  /// What the heading says.
+  final String label;
+}
+
+/// [examples] under the heading each belongs to.
+///
+/// Headings come in [ExampleSection] order and each keeps its examples in the
+/// order they were given; a heading with none under it is left out, so a host
+/// with no scripting runtime shows no Scripting heading.
+List<(ExampleSection, List<Example>)> examplesBySection(
+  Iterable<Example> examples,
+) {
+  final grouped = [
+    for (final section in ExampleSection.values)
+      (section, examples.where((one) => one.section == section).toList()),
+  ];
+  return [
+    for (final group in grouped)
+      if (group.$2.isNotEmpty) group,
+  ];
 }
 
 /// Where an example starts looking from.

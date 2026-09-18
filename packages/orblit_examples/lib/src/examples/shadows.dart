@@ -51,6 +51,9 @@ class ShadowsExample extends Example {
   String get name => 'Shadows';
 
   @override
+  ExampleSection get section => ExampleSection.lighting;
+
+  @override
   String get blurb =>
       'Filament\'s own shadows: sun, spot and point, with every setting — '
       'map size, cascades and splits, bias, distance, contact shadows, and '

@@ -26,6 +26,9 @@ class PanelShadowExample extends Example {
   String get name => 'Panel shadows';
 
   @override
+  ExampleSection get section => ExampleSection.lighting;
+
+  @override
   String get blurb =>
       'The soft shadow a rectangular light casts, and how its edge changes '
       'with the size of the panel.';

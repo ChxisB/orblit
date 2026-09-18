@@ -36,6 +36,9 @@ class BlendExample extends Example {
   String get name => 'Blending';
 
   @override
+  ExampleSection get section => ExampleSection.materials;
+
+  @override
   String get blurb =>
       'Two surfaces on one mesh: linear, masked, and masked by height.';
 

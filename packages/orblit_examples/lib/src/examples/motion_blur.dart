@@ -33,6 +33,9 @@ class MotionBlurExample extends Example {
   String get name => 'Motion blur';
 
   @override
+  ExampleSection get section => ExampleSection.effects;
+
+  @override
   String get blurb =>
       'A spinning fan and a sliding block smeared by their own motion while '
       'the wall behind them stays sharp, at a shutter you choose.';

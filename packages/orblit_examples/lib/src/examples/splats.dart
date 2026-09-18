@@ -37,6 +37,9 @@ class SplatsExample extends Example {
   String get name => 'Gaussian splats';
 
   @override
+  ExampleSection get section => ExampleSection.content;
+
+  @override
   String get blurb =>
       'A cloud of 3D Gaussians, drawn as ellipses, sorted back to front off '
       'the render thread and held to what the device can carry.';

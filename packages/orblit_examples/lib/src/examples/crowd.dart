@@ -33,6 +33,9 @@ class CrowdExample extends Example {
   String get name => 'A hundred thousand';
 
   @override
+  ExampleSection get section => ExampleSection.performance;
+
+  @override
   String get blurb =>
       'One buffer of transforms, sent once, drawn in a handful of calls.';
 

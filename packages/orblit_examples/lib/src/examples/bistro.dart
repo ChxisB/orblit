@@ -153,6 +153,9 @@ class BistroExteriorExample extends BistroExample {
   String get name => 'Bistro exterior';
 
   @override
+  ExampleSection get section => ExampleSection.showcases;
+
+  @override
   String get blurb =>
       'Somebody else\'s street, lit by this engine. A hundred lights at night.';
 
@@ -761,6 +764,9 @@ class BistroInteriorExample extends BistroExample {
 
   @override
   String get name => 'Bistro interior';
+
+  @override
+  ExampleSection get section => ExampleSection.showcases;
 
   @override
   String get blurb =>

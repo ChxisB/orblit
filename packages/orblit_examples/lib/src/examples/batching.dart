@@ -39,6 +39,9 @@ class BatchingExample extends Example {
   String get name => 'Batching';
 
   @override
+  ExampleSection get section => ExampleSection.performance;
+
+  @override
   String get blurb =>
       'Thousands of identical crates, merged into instanced draws without the '
       'scene saying so.';

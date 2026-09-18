@@ -70,6 +70,9 @@ class OverdrawExample extends Example {
   String get name => 'Overdraw';
 
   @override
+  ExampleSection get section => ExampleSection.performance;
+
+  @override
   String get blurb =>
       'Slabs that pass through each other, so that every pixel is covered as '
       'many times as they overlap.';

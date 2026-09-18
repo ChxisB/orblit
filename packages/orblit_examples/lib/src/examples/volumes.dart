@@ -32,6 +32,9 @@ class EnvironmentVolumesExample extends Example {
   String get name => 'Environment volumes';
 
   @override
+  ExampleSection get section => ExampleSection.atmosphere;
+
+  @override
   String get blurb =>
       'A sunny courtyard and a dim, dusty hall, and the look blending between '
       'them as the camera walks through the door.';

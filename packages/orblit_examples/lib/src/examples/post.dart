@@ -24,6 +24,9 @@ class PostExample extends Example {
   String get name => 'Post-processing';
 
   @override
+  ExampleSection get section => ExampleSection.effects;
+
+  @override
   String get blurb =>
       'Bloom, depth of field, occlusion, grading and anti-aliasing, over a '
       'scene bright enough to show each of them.';

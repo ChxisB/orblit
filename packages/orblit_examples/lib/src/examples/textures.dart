@@ -43,6 +43,9 @@ class TexturesExample extends Example {
   String get name => 'Textures';
 
   @override
+  ExampleSection get section => ExampleSection.materials;
+
+  @override
   String get blurb =>
       'A wall of textures named at once — pictures, Basis and cooked sets '
       'chosen by the device — lit by a picture filtered at run time.';

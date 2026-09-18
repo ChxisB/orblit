@@ -23,6 +23,9 @@ class BounceExample extends Example {
   String get name => 'Bounced light';
 
   @override
+  ExampleSection get section => ExampleSection.lighting;
+
+  @override
   String get blurb =>
       'One bounce, taken from the picture already drawn: coloured walls '
       'tinting a white box between them.';

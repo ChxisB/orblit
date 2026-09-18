@@ -23,10 +23,12 @@ export 'src/example.dart'
         Choice,
         Downloadable,
         Example,
+        ExampleSection,
         GalleryCamera,
         Setting,
         Toggle,
-        ViewPoint;
+        ViewPoint,
+        examplesBySection;
 export 'src/examples/batching.dart' show BatchingExample;
 export 'src/examples/benchmark.dart' show BenchmarkExample;
 export 'src/examples/blend.dart' show BlendExample;
@@ -109,42 +111,43 @@ import 'src/examples/volumes.dart';
 ///
 /// The order is the order somebody should meet them in — a surface, then what
 /// lights it, then what the air does to it — rather than alphabetical, which
-/// would open on a benchmark.
+/// would open on a benchmark. It follows [ExampleSection], so a host that
+/// lists them under headings and one that lists them flat read the same.
 List<Example> engineExamples() => [
   SurfaceExample(),
+  SceneFilesExample(),
+  CamerasExample(),
   LightsExample(),
   PanelShadowExample(),
-  DecalsExample(),
   ShadowsExample(),
   ProbesExample(),
   BounceExample(),
-  MotionBlurExample(),
   FieldExample(),
-  DayAndNightExample(),
-  GodRaysExample(),
-  WeatherExample(),
-  DistortionExample(),
-  EnvironmentVolumesExample(),
-  ManyExample(),
-  BatchingExample(),
-  OverdrawExample(),
-  CrowdExample(),
-  SceneFilesExample(),
-  SplatsExample(),
-  SpritesExample(),
-  CamerasExample(),
-  MeshesExample(),
-  ImportedExample(),
   MaterialsExample(),
   TexturesExample(),
   BlendExample(),
-  PipelineExample(),
+  DecalsExample(),
+  DayAndNightExample(),
+  GodRaysExample(),
+  WeatherExample(),
+  EnvironmentVolumesExample(),
   PostExample(),
+  MotionBlurExample(),
+  DistortionExample(),
   OutlineExample(),
+  MeshesExample(),
+  ImportedExample(),
+  SplatsExample(),
+  SpritesExample(),
   VideoExample(),
+  ManyExample(),
+  BatchingExample(),
+  CrowdExample(),
+  OverdrawExample(),
+  PipelineExample(),
+  BenchmarkExample(),
   VoxelExample(),
   RunnerExample(),
   BistroExteriorExample(),
   BistroInteriorExample(),
-  BenchmarkExample(),
 ];

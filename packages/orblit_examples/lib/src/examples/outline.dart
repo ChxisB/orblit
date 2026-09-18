@@ -24,6 +24,9 @@ class OutlineExample extends Example {
   String get name => 'Outline';
 
   @override
+  ExampleSection get section => ExampleSection.effects;
+
+  @override
   String get blurb =>
       'A selection outline that follows the silhouette, and still finds an '
       'object hidden behind a wall.';

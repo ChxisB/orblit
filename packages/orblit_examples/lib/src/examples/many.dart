@@ -24,6 +24,9 @@ class ManyExample extends Example {
   String get name => 'A thousand objects';
 
   @override
+  ExampleSection get section => ExampleSection.performance;
+
+  @override
   String get blurb =>
       'A whole scene sent every frame, and only what moved paid for.';
 

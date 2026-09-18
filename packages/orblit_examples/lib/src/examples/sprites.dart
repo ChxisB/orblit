@@ -29,6 +29,9 @@ class SpritesExample extends Example {
   String get name => 'Sprites';
 
   @override
+  ExampleSection get section => ExampleSection.content;
+
+  @override
   String get blurb =>
       'Pixel art in layers: one draw a layer, drawn in order, and a backdrop '
       'that scrolls without resending a tile.';

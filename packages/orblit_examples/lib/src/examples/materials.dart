@@ -33,6 +33,9 @@ class MaterialsExample extends Example {
   String get name => 'Materials';
 
   @override
+  ExampleSection get section => ExampleSection.materials;
+
+  @override
   String get blurb =>
       'Metalness and roughness across a grid, five ways of blending, and '
       'textures written at startup so there is nothing to download.';

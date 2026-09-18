@@ -22,6 +22,9 @@ class DistortionExample extends Example {
   String get name => 'Distortion';
 
   @override
+  ExampleSection get section => ExampleSection.effects;
+
+  @override
   String get blurb =>
       'A shockwave across a chequered floor, heat rising off a vent, and a '
       'lens warping the lot.';

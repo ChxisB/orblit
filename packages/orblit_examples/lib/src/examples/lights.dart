@@ -20,6 +20,9 @@ class LightsExample extends Example {
   String get name => 'Lights';
 
   @override
+  ExampleSection get section => ExampleSection.lighting;
+
+  @override
   String get blurb =>
       'Sun, point and spot, in lux and lumens, with the shadows each casts.';
 

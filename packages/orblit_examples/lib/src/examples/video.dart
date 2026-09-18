@@ -29,6 +29,9 @@ class VideoExample extends Example {
   String get name => 'Video';
 
   @override
+  ExampleSection get section => ExampleSection.content;
+
+  @override
   String get blurb =>
       'A film on four screens from one decoder, tinted, faded and played '
       'backwards — set ORBLIT_VIDEO or paste a path.';

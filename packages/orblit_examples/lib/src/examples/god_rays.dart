@@ -26,6 +26,9 @@ class GodRaysExample extends Example {
   String get name => 'God rays';
 
   @override
+  ExampleSection get section => ExampleSection.atmosphere;
+
+  @override
   String get blurb =>
       'A low sun behind a colonnade, and the shafts of light the air between '
       'the pillars catches.';

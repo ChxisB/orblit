@@ -38,6 +38,9 @@ class VoxelExample extends Example {
   String get name => 'Blocks';
 
   @override
+  ExampleSection get section => ExampleSection.showcases;
+
+  @override
   String get blurb =>
       'A landscape of sixty thousand cubes, generated and sent once.';
 

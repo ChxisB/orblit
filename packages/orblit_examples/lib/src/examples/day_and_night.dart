@@ -21,6 +21,9 @@ class DayAndNightExample extends Example {
   String get name => 'Day and night';
 
   @override
+  ExampleSection get section => ExampleSection.atmosphere;
+
+  @override
   String get blurb =>
       'A sun and a moon crossing the sky, with the camera metered for both.';
 

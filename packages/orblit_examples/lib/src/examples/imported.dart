@@ -90,6 +90,9 @@ class ImportedExample extends Example {
   String get name => 'Imported models';
 
   @override
+  ExampleSection get section => ExampleSection.content;
+
+  @override
   String get blurb =>
       'Clips, material variants and lights out of glTF files, named by the '
       'files themselves.';

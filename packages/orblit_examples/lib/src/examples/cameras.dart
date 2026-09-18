@@ -36,6 +36,9 @@ class CamerasExample extends Example {
   String get name => 'Virtual cameras';
 
   @override
+  ExampleSection get section => ExampleSection.basics;
+
+  @override
   String get blurb =>
       'Third person, first person and flat, blended between, framing drawn.';
 

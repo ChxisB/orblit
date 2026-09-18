@@ -18,6 +18,9 @@ class SurfaceExample extends Example {
   String get name => 'A scene as a widget';
 
   @override
+  ExampleSection get section => ExampleSection.basics;
+
+  @override
   String get blurb =>
       'A lit surface composited by Flutter, laid out like any other widget.';
 
