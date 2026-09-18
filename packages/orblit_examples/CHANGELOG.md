@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.30.0
+
+- **Examples are grouped under headings.** Every `Example` names the
+  `ExampleSection` it belongs to: Getting started, Lighting & shadows,
+  Materials & textures, Sky & atmosphere, Effects, Models & media, Scripting,
+  Performance or Showcases. `examplesBySection` groups a list under them in
+  that order and leaves out any heading with nothing under it. **`section` is
+  abstract, so this is a breaking change for anything outside the package that
+  extends `Example`.**
+- `engineExamples()` follows the sections, so a host that lists them flat
+  reads the same as one that lists them under headings.
+
 ## 0.29.0
 
 - **Bistro walks smoothly.** The path is measured at constant pace and the
