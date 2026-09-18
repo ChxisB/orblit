@@ -2461,7 +2461,7 @@ void Renderer::pumpTextures() {
   if (_meshesWaiting) showPrimedMeshes();
 }
 
-/// Draws the models whose every texture now has something written into it.
+/// Draws the models whose every texture is now safe to sample.
 void Renderer::showPrimedMeshes() {
   _meshesWaiting = false;
   for (auto &entry : _meshes) {
@@ -2472,8 +2472,8 @@ void Renderer::showPrimedMeshes() {
       continue;
     }
     mesh.shown = true;
-    orblit::log("[orblit] %s: drawn once its textures had memory, %.0f ms "
-                "into the load",
+    orblit::log("[orblit] %s: drawn once its textures were safe to sample, "
+                "%.0f ms into the load",
                 orblit::lastPathComponent(entry.first).c_str(),
                 (orblit::now() - mesh.loadedAt) * 1000.0);
     for (auto &pair : _drawn) {
@@ -4011,13 +4011,57 @@ void Renderer::setPipeline(const float *params, size_t count) {
   msaa.sampleCount = static_cast<uint8_t>(params[14] < 1 ? 1 : params[14]);
   _view->setMultiSampleAntiAliasingOptions(msaa);
 
+  // Render scale. The host sends a low and a high end, and asks with
+  // params[10] for the renderer to move between them under load. It does not
+  // get to: a scale that moves between frames leaves most of the buffer
+  // undrawn on this backend, so the range is collapsed to a single value here
+  // and the view renders at one fixed size.
+  //
+  // Filament says why, in Options.h: dynamic resolution "is only supported on
+  // platforms where the time to render a frame can be measured accurately. On
+  // platforms where this is not supported, Dynamic Resolution can't be enabled
+  // unless minScale == maxScale". Orblit calls neither setFrameRateOptions nor
+  // setDisplayInfo, so Filament has no target frame time to aim at, and asking
+  // it to move the scale anyway is a configuration its own header rules out.
+  //
+  // What that looked like before this: Bistro asked for 0.6 to 1.0, and seven
+  // frames in nine came back with the scene drawn into a 0.82-by-0.82 corner
+  // of a full-size buffer, one of them with almost nothing drawn at all. The
+  // rest of the buffer is never written, and Filament's default ClearOptions
+  // discard the swapchain rather than clearing it, so unwritten means
+  // undefined — which on Metal samples as white or magenta (see the note on
+  // the uncompressed formats in OrblitTextures.cpp). Temporal anti-aliasing
+  // then blends each frame into the next and smears that forward, which is the
+  // streaking that looks like the model being painted over itself.
+  //
+  // Pinning is not a workaround for a fault nobody found: a fixed scale is
+  // clean and a moving one is not, measured both ways twice. Nine frames each
+  // across a night-to-day switch, which is the load spike that moves the
+  // scale: fixed 0.6 -> 0 corrupt, fixed 1.0 -> 0, fixed 0.6 again -> 0, and
+  // 0.6-to-1.0 -> 7.
+  //
+  // The high end is the one to keep. A host's maxScale is the quality it
+  // actually wants; dropping below it was only ever a concession to load, and
+  // a concession this renderer cannot make safely is not one to make quietly
+  // at the cost of every frame's sharpness. A host that would rather trade
+  // sharpness for headroom can still say so outright, with a fixed scale below
+  // one, and that path is measured clean too.
+  const float low = std::min(params[11], params[12]);
+  const float high = std::max(params[11], params[12]);
+  const float scale = params[10] != 0.0f ? high : low;
+
   DynamicResolutionOptions resolution;
-  resolution.enabled = true;
+  // Not "what the host asked for". Filament ignores minScale and maxScale
+  // unless this is on, so any scale that is not full size needs it on as well
+  // — off means full size, not "use the scale I sent". That covers a scale
+  // above one too, which is supersampling rather than a saving.
+  resolution.enabled = scale != 1.0f;
   resolution.homogeneousScaling = true;
-  resolution.minScale = filament::math::float2{params[11], params[11]};
-  resolution.maxScale = filament::math::float2{params[12], params[12]};
+  resolution.minScale = filament::math::float2{scale, scale};
+  resolution.maxScale = filament::math::float2{scale, scale};
   resolution.sharpness = params[13];
   resolution.quality = View::QualityLevel::HIGH;
+
   _view->setDynamicResolutionOptions(resolution);
 
   const int flags = static_cast<int>(params[15]);
