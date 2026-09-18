@@ -2,7 +2,7 @@ name: orblit_examples
 description: >-
   One technique at a time: a scene that shows it, the controls that change it,
   and the lines that do it. Shown by the gallery app and by the editor.
-version: 0.28.0
+version: 0.29.0
 publish_to: none
 
 environment:
