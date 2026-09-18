@@ -70,7 +70,7 @@ docker run --rm -v "$PWD:/work" -v "<project>/.cache:/cache:ro" \
   orblit-linux:trixie bash -c '
     apt-get update && apt-get install -y libsdl3-dev
     cd /work/packages/orblit_filament/native/host
-    ORBLIT_FILAMENT_SDK=/cache/filament-1.76.0/arm-linux/filament ./build.sh
+    ORBLIT_FILAMENT_SDK=/cache/filament-1.77.0/arm-linux/filament ./build.sh
     Xvfb :99 -screen 0 1280x800x24 & sleep 2
     DISPLAY=:99 ./build/orblit_host'
 ```

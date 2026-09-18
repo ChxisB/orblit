@@ -6,7 +6,7 @@
 # deliberately mirrors wherever the platforms want the same thing done.
 #
 #   1. third_party/filament
-#        Filament 1.76.0's unpacked Windows release: headers once, static
+#        Filament 1.77.0's unpacked Windows release: headers once, static
 #        libraries under lib/x86_64/<runtime>, and the host tools under bin/.
 #        Google publishes x86_64 only, so there is no architecture to choose
 #        the way the Linux script must.
@@ -54,7 +54,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-FILAMENT_VERSION="v1.76.0"
+FILAMENT_VERSION="v1.77.0"
 
 # packages/orblit_filament/windows -> packages/orblit_filament -> packages ->
 # worktree root -> .worktrees -> the project root .cache/ sits beside. The
@@ -86,7 +86,7 @@ esac
 # itself: `ln -s` under Git for Windows copies, or fails, depending on
 # settings and privileges, and a half-copied 700 MB SDK is a worse failure
 # than simply fetching it. So a Windows host always fetches into third_party.
-FILAMENT_WINDOWS_DIR="${ORBLIT_FILAMENT_WINDOWS_DIR:-$project_root/.cache/filament-1.76.0/windows/filament}"
+FILAMENT_WINDOWS_DIR="${ORBLIT_FILAMENT_WINDOWS_DIR:-$project_root/.cache/filament-1.77.0/windows/filament}"
 
 mkdir -p "$SDK_DIR"
 if [ -d "$FILAMENT/include" ]; then
@@ -133,7 +133,7 @@ case "$HOST" in
     # The same fetch-a-release-for-its-matc-alone that ../android/setup.sh
     # does on this host, and for the same reason: there is no darwin
     # checkout here to borrow one from.
-    MATC_DIR="${ORBLIT_FILAMENT_MATC_DIR:-$project_root/.cache/filament-1.76.0/linux}"
+    MATC_DIR="${ORBLIT_FILAMENT_MATC_DIR:-$project_root/.cache/filament-1.77.0/linux}"
     if [ ! -x "$MATC_DIR/filament/bin/matc" ]; then
       echo "orblit_filament/windows: fetching Filament $FILAMENT_VERSION (linux, for its matc)"
       mkdir -p "$SDK_DIR/linux-matc"

@@ -32,7 +32,7 @@
 #
 #   docker run --rm -v "$PWD:/work" -v "<project>/.cache:/cache:ro" \
 #     -v orblit-pub-cache:/root/.pub-cache \
-#     -e ORBLIT_FILAMENT_LINUX_DIR=/cache/filament-1.76.0/arm-linux/filament \
+#     -e ORBLIT_FILAMENT_LINUX_DIR=/cache/filament-1.77.0/arm-linux/filament \
 #     orblit-linux:trixie \
 #     bash -c 'cd /work/examples/gallery && flutter pub get && flutter build linux --debug'
 #

@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-FILAMENT_VERSION="v1.76.0"
+FILAMENT_VERSION="v1.77.0"
 SDK_DIR="third_party/filament-mac"
 IOS_SDK_DIR="third_party/filament-ios"
 FILAMENT="$SDK_DIR/filament"
@@ -19,18 +19,25 @@ IOS_FILAMENT="$IOS_SDK_DIR/filament"
 # tools — matc compiles the materials and only runs here — as well as the
 # macOS libraries. The iOS one has only libraries, and ships them as
 # xcframeworks rather than as plain archives.
+#
+# The directory is the same whatever the version, so it records the one it
+# holds. Without that, bumping FILAMENT_VERSION found the old SDK present,
+# kept it, and every stamp below then filed it under the new version's name.
 fetch() {
   local into="$1" flavour="$2"
-  if [ -d "$into/filament/lib" ]; then
+  if [ -d "$into/filament/lib" ] &&
+     [ "$(cat "$into/.version" 2>/dev/null || true)" = "$FILAMENT_VERSION" ]; then
     echo "orblit_filament: Filament $FILAMENT_VERSION ($flavour) already present"
     return
   fi
   echo "orblit_filament: fetching Filament $FILAMENT_VERSION ($flavour)"
   mkdir -p "$into"
+  rm -rf "${into:?}/filament" "$into/.version"
   curl -fsSL -o "$into/filament.tgz" \
     "https://github.com/google/filament/releases/download/$FILAMENT_VERSION/filament-$FILAMENT_VERSION-$flavour.tgz"
   tar xzf "$into/filament.tgz" -C "$into"
   rm -f "$into/filament.tgz"
+  echo "$FILAMENT_VERSION" > "$into/.version"
 }
 
 # A Filament built here, rather than the release Google publishes.

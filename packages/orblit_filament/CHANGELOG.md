@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.30.0
+
+- **Built on Filament 1.77.0**, up from 1.76.0, on every platform. Its
+  materials are format 77, so a `.filamat` compiled with an older `matc` no
+  longer loads — recompile with 1.77.0's. Filament's own changes are the
+  `iridescence`, `iridescenceIor` and `iridescenceThickness` lit material
+  properties, which Orblit's materials do not use yet, and a Vulkan
+  `readPixels` fix for devices without host-cached staging memory.
+- **Changing the Filament version now changes the SDK on macOS and iOS.**
+  `darwin/setup.sh` took any SDK it found as current, so a bump kept the old
+  one and filed it, its framework and its materials under the new version.
+  The SDK directory now records the version it holds.
+
 ## 0.29.1
 
 - **No more white, magenta or smeared frames when the render scale moves.**

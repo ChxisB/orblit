@@ -6,7 +6,7 @@
 # wherever the three platforms want the same thing done.
 #
 #   1. third_party/filament
-#        Filament 1.76.0's unpacked Linux release for this machine's
+#        Filament 1.77.0's unpacked Linux release for this machine's
 #        architecture: headers once, static libraries under lib/<arch>.
 #        Google publishes two, and which one is wanted is decided by
 #        `uname -m` rather than by a flag -- "linux" is x86_64 and
@@ -52,7 +52,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-FILAMENT_VERSION="v1.76.0"
+FILAMENT_VERSION="v1.77.0"
 
 # packages/orblit_filament/linux -> packages/orblit_filament -> packages ->
 # worktree root -> .worktrees -> the project root .cache/ sits beside. The
@@ -84,7 +84,7 @@ esac
 # Unpacked once into the project's cache and symlinked from every worktree,
 # where that cache exists (true on the development machine); fetched into
 # third_party/ otherwise, which is what a container or a CI runner gets.
-FILAMENT_LINUX_DIR="${ORBLIT_FILAMENT_LINUX_DIR:-$project_root/.cache/filament-1.76.0/$FLAVOUR/filament}"
+FILAMENT_LINUX_DIR="${ORBLIT_FILAMENT_LINUX_DIR:-$project_root/.cache/filament-1.77.0/$FLAVOUR/filament}"
 
 mkdir -p "$SDK_DIR"
 if [ -d "$FILAMENT_LINUX_DIR/include" ]; then

@@ -6,7 +6,7 @@
 # platforms want the same thing done.
 #
 #   1. third_party/filament
-#        A symlink to Filament 1.76.0's unpacked Android release: headers once,
+#        A symlink to Filament 1.77.0's unpacked Android release: headers once,
 #        static libraries for all four ABIs. Nothing is copied.
 #
 #   2. ../darwin/orblit_filament/Sources/orblit_filament_native/generated/android-release/*.h
@@ -28,7 +28,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-FILAMENT_VERSION="v1.76.0"
+FILAMENT_VERSION="v1.77.0"
 
 # packages/orblit_filament/android -> packages/orblit_filament -> packages ->
 # worktree root -> .worktrees -> the project root .cache/ sits beside.
@@ -39,7 +39,7 @@ project_root="$(cd "$worktree_root/../.." && pwd)"
 # Overridable for a checkout laid out differently (CI included), but the
 # default matches where this was proven on the dev machine: unpacked once,
 # reused by every worktree rather than fetched per checkout.
-FILAMENT_ANDROID_DIR="${ORBLIT_FILAMENT_ANDROID_DIR:-$project_root/.cache/filament-1.76.0/android-native/filament}"
+FILAMENT_ANDROID_DIR="${ORBLIT_FILAMENT_ANDROID_DIR:-$project_root/.cache/filament-1.77.0/android-native/filament}"
 
 SDK_DIR="third_party"
 FILAMENT="$SDK_DIR/filament"
@@ -70,7 +70,7 @@ case "$(uname -s)" in
       "platform's materials are compiled with the same binary)"
     ;;
   Linux)
-    MATC_DIR="${ORBLIT_FILAMENT_MATC_DIR:-$project_root/.cache/filament-1.76.0/linux}"
+    MATC_DIR="${ORBLIT_FILAMENT_MATC_DIR:-$project_root/.cache/filament-1.77.0/linux}"
     if [ ! -x "$MATC_DIR/filament/bin/matc" ]; then
       echo "orblit_filament/android: fetching Filament $FILAMENT_VERSION (linux, for its matc)"
       mkdir -p "$SDK_DIR/linux-matc"
