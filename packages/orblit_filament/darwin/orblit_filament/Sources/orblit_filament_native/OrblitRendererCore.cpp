@@ -272,6 +272,21 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
                       orblit::shadowComparisonAvailable();
 
   _renderer = _engine->createRenderer();
+
+  // Every frame starts from nothing. Filament's default is to discard rather
+  // than clear, which is free only while something draws every pixel — and
+  // the buffer a view draws into is pooled, so a pixel nothing covers is
+  // whatever an earlier frame left there. With the camera moving that is the
+  // scene printed over and over across the sky, which is what a lost backdrop
+  // looked like in Bistro. Cleared, the same fault is a black sky: still
+  // wrong, but plainly so. Transparent rather than black for a view that
+  // lets Flutter show through; an opaque one resolves it to black anyway.
+  filament::Renderer::ClearOptions clear;
+  clear.clearColor = {0.0, 0.0, 0.0, 0.0};
+  clear.clear = true;
+  clear.discard = true;
+  _renderer->setClearOptions(clear);
+
   _scene = _engine->createScene();
   _view = _engine->createView();
 
@@ -6459,8 +6474,15 @@ void Renderer::setSkyColour(const float *colour, float ambient, bool showBody) {
   // that forces a new one. A colour is a setter, and a day cycle changing the
   // sky on every frame should cost one.
   if (!_skyBuilt || showBody != _skyShowsBody) {
+    // Taken out of the scene only if it is the one the scene is showing. This
+    // runs after the environment, so the scene's backdrop is often the
+    // photographed sky, and clearing it unconditionally took that away with
+    // nothing put back: the flat sky is not installed over an environment
+    // below, and the dome stands aside for one. Bistro going from night to day
+    // was that — the photograph back, the sun's disk back on, and a sky that
+    // no longer drew at all, so every frame of the walk stayed printed on it.
     if (_skybox) {
-      _scene->setSkybox(nullptr);
+      if (_scene->getSkybox() == _skybox) _scene->setSkybox(nullptr);
       _engine->destroy(_skybox);
     }
     _skybox = Skybox::Builder()
