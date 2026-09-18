@@ -611,6 +611,40 @@ void picturesLightLikeTheirBake(const std::string &picture, const std::string &w
   unsetenv("ORBLIT_ENVIRONMENT_FILTER");
 }
 
+/// The photographed backdrop, still drawn after the sun's disk comes back.
+/// A host sends the environment before the sky's colour, and a change in
+/// whether the disk shows rebuilds the flat sky; that rebuild once took
+/// whatever backdrop the scene held out of it, the photograph included, and
+/// put nothing back. Frames are cleared, so what that loses is black here
+/// rather than an earlier frame left in a pooled buffer.
+void backdropOutlivesTheSunsDisk(const std::string &work) {
+  std::printf("the backdrop outlives the sun's disk\n");
+  orblit_renderer *renderer = start();  // the flat sky built without its disk
+  expect(renderer != nullptr, "a renderer starts");
+  if (renderer == nullptr) return;
+
+  const std::string baked = work + "/synthetic_sky/synthetic_sky";
+  expect(environment(renderer, baked + "_ibl.ktx", baked + "_skybox.ktx", true),
+         "the bake is named with its backdrop");
+  const Frame before = capture(renderer, 20);
+  const float black[3] = {0, 0, 0};
+  orblit_renderer_set_sky_colour(renderer, black, 0.0f, 1);
+  const Frame after = capture(renderer);
+  dump(before, "disk-hidden");
+  dump(after, "disk-shown");
+
+  Frame nothing;
+  nothing.rgba.assign(before.rgba.size(), 0);
+  const Difference drawn = differ(before, nothing);
+  const Difference kept = differ(before, after);
+  report("backdrop against black", drawn);
+  report("disk shown against hidden", kept);
+  expect(drawn.mean > 20, "the backdrop is drawn to begin with");
+  expect(kept.over8 < 0.001, "the backdrop is still drawn once the disk shows");
+
+  orblit_renderer_destroy(renderer);
+}
+
 void damagedPicturesAreNoted(const std::string &work, const std::string &realExr) {
   orblit_renderer *renderer = start();
   if (renderer == nullptr) return;
@@ -686,6 +720,7 @@ int main() {
   expect(pictures::writeFile(sky, pictures::radianceFile(pictures::sky(2048))),
          "the check writes its sky");
   picturesLightLikeTheirBake(sky, work);
+  backdropOutlivesTheSunsDisk(work);
 
   std::string realExr;
   const std::string samples = env("ORBLIT_ENVIRONMENTS");
