@@ -4,7 +4,7 @@ Filament rendering for Orblit, composited by Flutter. Renders into IOSurface-
 backed pixel buffers the texture registry adopts without a readback.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

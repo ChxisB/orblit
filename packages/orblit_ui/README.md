@@ -5,7 +5,7 @@ CSS on each, built into real Flutter widgets. One document, whether it was
 laid out by hand in the editor or described by a script.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

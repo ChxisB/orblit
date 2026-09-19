@@ -4,7 +4,7 @@ What moves things that decide for themselves — steering behaviours that say
 where to go, and behaviour trees that say what to want.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

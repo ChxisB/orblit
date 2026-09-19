@@ -5,7 +5,7 @@ file the engine has to have been linked into: it is handed a table of what it
 may call, and answers start, step and stop.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

@@ -4,7 +4,7 @@ Cameras as shots rather than as objects. A camera describes what it wants to
 frame; the engine works out where to be and blends between them.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

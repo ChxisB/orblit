@@ -4,7 +4,7 @@ Turns annotated Dart classes into component registration and a manifest other
 front ends can read without compiling the package that declared them.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

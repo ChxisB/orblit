@@ -5,7 +5,7 @@ playhead; sampling it at any moment gives the whole world's worth of values,
 so scrubbing, replaying and stepping backwards all come out the same.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 

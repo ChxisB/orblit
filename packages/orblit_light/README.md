@@ -4,7 +4,7 @@ Lights described the way an artist states them — watts, metres and degrees —
 and converted to the photometric units a renderer works in.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
-engine. The documentation is at [orblit-site.vercel.app](https://orblit-site.vercel.app).
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 
 ## Using it
 
