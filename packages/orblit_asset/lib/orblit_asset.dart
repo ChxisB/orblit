@@ -41,7 +41,7 @@ export 'src/asset_source.dart'
 export 'src/content_hash.dart' show ContentHash;
 export 'src/content_store.dart' show ContentStore, MemoryContentStore;
 export 'src/cook_cache.dart'
-    show CookCache, CookOutput, CookedAsset, MemoryCookCache;
+    show CookCache, CookFailure, CookOutput, CookedAsset, MemoryCookCache;
 export 'src/cook_cache_directory.dart' show DirectoryCookCache;
 export 'src/cook_key.dart' show CookKey;
 export 'src/cook_project.dart'

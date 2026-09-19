@@ -91,6 +91,30 @@ class CookProject {
     return report;
   }
 
+  /// Where each of [ids] stands, without cooking any of them. Left out, it
+  /// answers for every asset in the project.
+  ///
+  /// This is what the editor puts beside the files in its browser. It asks
+  /// through the project rather than building its own [Cook] so that the mark
+  /// beside an asset is decided by the same assets folder, the same cache and
+  /// the same importers the build will use. An editor that assembled its own
+  /// would say "cooked" about a build that has everything still to do the
+  /// first time the two were pointed at different caches.
+  ///
+  /// This reads and hashes every asset and everything under it, so an editor
+  /// with a large project should run it off the interface thread — it is
+  /// plain Dart with no plugin in it, so `Isolate.run` is enough.
+  Future<Map<AssetId, CookState>> statesOf([Iterable<AssetId>? ids]) async {
+    final cook = Cook(
+      source: DirectoryAssetSource(assetsPath),
+      cache: DirectoryCookCache(cachePath, limitBytes: limitBytes),
+      importers: importers,
+      target: target,
+      concurrency: concurrency,
+    );
+    return cook.stateOfAll(ids ?? await assets());
+  }
+
   /// Every asset under [assetsPath], as ids, in a fixed order.
   ///
   /// Sorted, because a cook whose order depends on how the file system chose

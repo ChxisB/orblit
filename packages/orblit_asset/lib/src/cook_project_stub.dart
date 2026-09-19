@@ -5,6 +5,7 @@
 // everywhere, and says what to do instead the moment anyone builds one.
 import 'dart:convert';
 
+import 'asset_id.dart';
 import 'asset_manifest.dart';
 import 'content_hash.dart';
 import 'cook.dart';
@@ -51,6 +52,9 @@ class CookProject {
       throw UnsupportedError('Cooking needs a file system.');
 
   Future<List<Object>> assets() =>
+      throw UnsupportedError('Cooking needs a file system.');
+
+  Future<Map<AssetId, CookState>> statesOf([Iterable<AssetId>? ids]) =>
       throw UnsupportedError('Cooking needs a file system.');
 
   Future<AssetManifest> write(CookReport report, CookCache cache) =>

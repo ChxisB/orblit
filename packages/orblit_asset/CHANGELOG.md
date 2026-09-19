@@ -13,6 +13,19 @@
   worked the answer out its own way would drift from the build the first time
   an importer changed how it resolves a setting, and a stale mark on a fresh
   asset is worse than no mark at all.
+- `CookProject.statesOf` asks the same question for a whole project, or for a
+  few assets of it, through the project's own assets folder, cache and
+  importers — so the mark an editor shows is decided by what the build will
+  actually do.
+- **Cooks remember what would not cook.** A cook that fails files the reason in
+  the cache against the key it failed under, and `CookCache.lookUpFailure`
+  reads it back, so an editor can mark a broken asset without running the
+  importer that breaks on it. Recording is not refusing: no cook consults one
+  before working, because importers fail for reasons that are not in the key —
+  a tool that was not installed, a full disk, a killed process — and a cache
+  that treated those as settled would turn a bad afternoon into a project that
+  never builds again. Cooking a key clears its failure, and so does changing
+  the asset, since that is different work.
 
 ## 0.4.0
 

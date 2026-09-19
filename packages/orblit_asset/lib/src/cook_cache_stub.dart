@@ -40,4 +40,12 @@ class DirectoryCookCache implements CookCache {
   @override
   Future<Uint8List?> read(ContentHash hash) =>
       throw UnsupportedError('DirectoryCookCache needs a file system.');
+
+  @override
+  Future<CookFailure?> lookUpFailure(CookKey key) =>
+      throw UnsupportedError('DirectoryCookCache needs a file system.');
+
+  @override
+  Future<void> recordFailure(CookKey key, String reason) =>
+      throw UnsupportedError('DirectoryCookCache needs a file system.');
 }

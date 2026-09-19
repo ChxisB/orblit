@@ -41,9 +41,14 @@ enum CookState {
   /// would run the importer.
   stale,
 
-  /// It cannot be cooked as things stand — an unreadable file, a dependency
-  /// that is not there, settings that make no sense. A build would report
-  /// this asset and carry on with the rest.
+  /// It cannot be cooked as things stand. Either working out what to do with
+  /// it failed here and now — an unreadable file, a dependency that is not
+  /// there, settings that make no sense — or a cook tried this exact work
+  /// before and the importer could not do it. A build would report this asset
+  /// and carry on with the rest.
+  ///
+  /// It is still worth trying: importers fail for reasons that are not in the
+  /// key, so a cook always runs one rather than believing this.
   failed,
 
   /// Nothing claims it. A README and an `.import.json` both land here, and
@@ -191,12 +196,14 @@ class Cook {
   /// one unreadable texture should not end a build of a thousand assets.
   Future<CookResult> cookOne(AssetId id) async {
     Importer? importer;
+    CookKey? key;
     try {
       final plan = await _plan(id, onImporter: (found) => importer = found);
       if (plan == null) {
         return CookResult(id: id, status: CookStatus.skipped);
       }
 
+      key = plan.key;
       final hit = await cache.lookUp(plan.key);
       if (hit != null) {
         return CookResult(
@@ -229,13 +236,35 @@ class Cook {
         notes: result.notes,
       );
     } catch (error, trace) {
+      // Remembered against the key, so that an editor can mark the asset
+      // without running the importer that broke on it. Only once there is a
+      // key: a failure before that is one anybody asking can reproduce for
+      // free, because working the key out is what failed.
+      if (key != null) {
+        await _remember(key, error);
+      }
       return CookResult(
         id: id,
         status: CookStatus.failed,
         importer: importer,
+        key: key,
         error: error,
         trace: trace,
       );
+    }
+  }
+
+  /// Files a failure, and does not let filing it become the failure.
+  ///
+  /// A cache that cannot write is a slow build, never a broken one — that is
+  /// the rule everywhere else here, and a note about a failure is the last
+  /// thing that should be allowed to replace the failure it is about.
+  Future<void> _remember(CookKey key, Object error) async {
+    try {
+      await cache.recordFailure(key, '$error');
+    } catch (_) {
+      // Nothing to do and nothing worth saying: the caller is already being
+      // told what actually went wrong.
     }
   }
 
@@ -261,9 +290,13 @@ class Cook {
     try {
       final plan = await _plan(id);
       if (plan == null) return CookState.ignored;
-      return await cache.lookUp(plan.key) != null
-          ? CookState.cooked
-          : CookState.stale;
+      if (await cache.lookUp(plan.key) != null) return CookState.cooked;
+
+      // Only once the cache has been asked for the cooked bytes, because a
+      // key that has since cooked is cooked whatever was once recorded
+      // against it.
+      if (await cache.lookUpFailure(plan.key) != null) return CookState.failed;
+      return CookState.stale;
     } catch (_) {
       // Everything that can go wrong before an importer runs is something a
       // build would fail on, and saying so now is the whole point: the editor

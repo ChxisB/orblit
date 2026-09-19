@@ -390,6 +390,128 @@ void main() {
     );
   });
 
+  group('what the editor shows beside each asset', () {
+    test('a project that has never been cooked is all stale', () async {
+      writeAsset('a.png', 'a');
+      writeAsset('b.png', 'b');
+      expect(await projectFor(CookTargets.macos).statesOf(), {
+        id('a.png'): CookState.stale,
+        id('b.png'): CookState.stale,
+      });
+    });
+
+    test('after a cook they are cooked', () async {
+      writeAsset('a.png', 'a');
+      writeAsset('b.png', 'b');
+      await projectFor(CookTargets.macos).run();
+      expect(await projectFor(CookTargets.macos).statesOf(), {
+        id('a.png'): CookState.cooked,
+        id('b.png'): CookState.cooked,
+      });
+    });
+
+    test('changing one asset makes only that one stale', () async {
+      writeAsset('a.png', 'a');
+      writeAsset('b.png', 'b');
+      await projectFor(CookTargets.macos).run();
+      writeAsset('a.png', 'changed');
+
+      expect(await projectFor(CookTargets.macos).statesOf(), {
+        id('a.png'): CookState.stale,
+        id('b.png'): CookState.cooked,
+      });
+    });
+
+    test('cooked for one target says nothing about another', () async {
+      writeAsset('a.png', 'a');
+      await projectFor(CookTargets.macos).run();
+      expect(await projectFor(CookTargets.ios).statesOf(), {
+        id('a.png'): CookState.stale,
+      });
+    });
+
+    test('an asset no importer claims is ignored, not stale', () async {
+      writeAsset('a.png', 'a');
+      writeAsset('notes.md', 'read me');
+      expect(await projectFor(CookTargets.macos).statesOf(), {
+        id('a.png'): CookState.stale,
+        id('notes.md'): CookState.ignored,
+      });
+    });
+
+    test('an asset a cook could not cook is failed', () async {
+      writeAsset('a.png', 'a');
+      CookProject broken() => projectFor(
+        CookTargets.macos,
+        importers: ImporterRegistry([const _BrokenImporter()]),
+      );
+
+      expect(await broken().statesOf(), {
+        id('a.png'): CookState.stale,
+      }, reason: 'nothing has tried yet, and nobody can know without trying');
+
+      await broken().run();
+      expect(await broken().statesOf(), {
+        id('a.png'): CookState.failed,
+      }, reason: 'the cook remembered, so the editor can say so without one');
+    });
+
+    test('fixing the asset clears the failure', () async {
+      writeAsset('a.png', 'a');
+      await projectFor(
+        CookTargets.macos,
+        importers: ImporterRegistry([const _BrokenImporter()]),
+      ).run();
+      writeAsset('a.png', 'fixed');
+
+      expect(
+        await projectFor(
+          CookTargets.macos,
+          importers: ImporterRegistry([const _BrokenImporter()]),
+        ).statesOf(),
+        {id('a.png'): CookState.stale},
+        reason: 'a different asset is different work, not the failed work',
+      );
+    });
+
+    test('a failure is remembered against one target, not all', () async {
+      writeAsset('a.png', 'a');
+      await projectFor(
+        CookTargets.macos,
+        importers: ImporterRegistry([const _BrokenImporter()]),
+      ).run();
+
+      expect(
+        await projectFor(
+          CookTargets.ios,
+          importers: ImporterRegistry([const _BrokenImporter()]),
+        ).statesOf(),
+        {id('a.png'): CookState.stale},
+      );
+    });
+
+    test('it can be asked about a few rather than all of them', () async {
+      writeAsset('a.png', 'a');
+      writeAsset('deep/b.png', 'b');
+      expect(await projectFor(CookTargets.macos).statesOf([id('deep/b.png')]), {
+        id('deep/b.png'): CookState.stale,
+      }, reason: 'a browser showing one folder should not hash the project');
+    });
+
+    test('asking does not cook anything', () async {
+      writeAsset('a.png', 'a');
+      await projectFor(CookTargets.macos).statesOf();
+      expect(
+        Directory(at('out')).existsSync(),
+        isFalse,
+        reason: 'no bundle, because no importer ran',
+      );
+      expect(await projectFor(CookTargets.macos).statesOf(), {
+        id('a.png'): CookState.stale,
+      });
+    });
+  });
+
   group('the machine this is running on', () {
     test('has a target, and it is the platform we are on', () {
       expect(currentCookTarget.name, Platform.operatingSystem);

@@ -557,6 +557,61 @@ void main() {
         expect(await cook.stateOf(id('a.txt')), CookState.failed);
       });
 
+      test('an asset a cook could not cook is failed afterwards', () async {
+        final broken = RecordingImporter(
+          transform: (request) => throw ImportFailure(request.id, 'no good'),
+        );
+        expect(
+          await cookFor(with_: broken).stateOf(id('a.txt')),
+          CookState.stale,
+          reason: 'nothing has tried yet, and nobody can know without trying',
+        );
+
+        await cookFor(with_: broken).cookOne(id('a.txt'));
+        expect(
+          await cookFor(with_: broken).stateOf(id('a.txt')),
+          CookState.failed,
+        );
+      });
+
+      test('a remembered failure does not stop a cook trying again', () async {
+        var attempts = 0;
+        final flaky = RecordingImporter(
+          transform: (request) {
+            attempts++;
+            if (attempts == 1) throw ImportFailure(request.id, 'not installed');
+            return request.bytes;
+          },
+        );
+        expect(
+          (await cookFor(with_: flaky).cookOne(id('a.txt'))).status,
+          CookStatus.failed,
+        );
+        final again = await cookFor(with_: flaky).cookOne(id('a.txt'));
+        expect(
+          again.status,
+          CookStatus.cooked,
+          reason: 'importers fail for reasons that are not in the key',
+        );
+        expect(
+          await cookFor(with_: flaky).stateOf(id('a.txt')),
+          CookState.cooked,
+        );
+      });
+
+      test('changing the asset clears the failure', () async {
+        final broken = RecordingImporter(
+          transform: (request) => throw ImportFailure(request.id, 'no good'),
+        );
+        await cookFor(with_: broken).cookOne(id('a.txt'));
+        source = MemoryAssetSource({id('a.txt'): utf8.encode('fixed')});
+        expect(
+          await cookFor(with_: broken).stateOf(id('a.txt')),
+          CookState.stale,
+          reason: 'a different asset is different work, not the failed work',
+        );
+      });
+
       test('says the same thing the cook goes on to do', () async {
         final cook = cookFor();
         expect(await cook.stateOf(id('a.txt')), CookState.stale);

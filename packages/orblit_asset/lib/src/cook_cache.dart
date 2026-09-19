@@ -89,6 +89,28 @@ class CookedAsset {
 /// evicted, an index it could not read, a store on a disk that has gone away.
 /// A hit, by contrast, has to be right, so an entry is only reported when
 /// every one of its outputs is still there to be read.
+/// Why cooking a key did not work, remembered so that something can say so
+/// without cooking again.
+///
+/// A cache of failures is only ever for *reporting*. A cook never reads one to
+/// decide whether to try: importers fail for reasons that are not in the key —
+/// a tool that was not installed, a disk that was full, a process the machine
+/// killed — and a cache that remembered those as settled would turn a bad
+/// afternoon into a project that never builds again.
+class CookFailure {
+  const CookFailure({required this.reason, required this.at});
+
+  /// What went wrong, as it was reported. A person reads this, so it is the
+  /// importer's own words rather than a code.
+  final String reason;
+
+  /// When it was recorded, in UTC.
+  final DateTime at;
+
+  @override
+  String toString() => 'CookFailure($reason, at $at)';
+}
+
 abstract class CookCache {
   /// What [key] cooked to last time, or null when this cache cannot say.
   Future<CookedAsset?> lookUp(CookKey key);
@@ -103,6 +125,22 @@ abstract class CookCache {
 
   /// The bytes of one output, or null when they are no longer there.
   Future<Uint8List?> read(ContentHash hash);
+
+  /// What cooking [key] failed with last time, or null when nothing is
+  /// remembered about it.
+  ///
+  /// This is here so that an editor can mark a broken asset without running
+  /// the importer that breaks on it. Like every other answer from a cache,
+  /// null is always allowed: a cache that has forgotten a failure says the
+  /// asset is merely uncooked, which is the truth minus one detail.
+  Future<CookFailure?> lookUpFailure(CookKey key);
+
+  /// Remembers that cooking [key] did not work.
+  ///
+  /// Recording is not refusing. [lookUp] is unaffected and no cook consults
+  /// this before working — see [CookFailure] for why remembering a failure as
+  /// settled would be wrong.
+  Future<void> recordFailure(CookKey key, String reason);
 }
 
 /// A cook cache held in memory, for tests and for a single short-lived run.
@@ -113,6 +151,7 @@ abstract class CookCache {
 class MemoryCookCache implements CookCache {
   final ContentStore _content = MemoryContentStore();
   final Map<ContentHash, CookedAsset> _entries = {};
+  final Map<ContentHash, CookFailure> _failures = {};
 
   @override
   Future<CookedAsset?> lookUp(CookKey key) async {
@@ -133,9 +172,23 @@ class MemoryCookCache implements CookCache {
         CookOutput(name: entry.key, hash: hash, bytes: entry.value.length),
       );
     }
+    // A key that cooks is a key that no longer failed: the tool that was
+    // missing has been installed, or the disk has been cleared.
+    _failures.remove(key.hash);
     return _entries[key.hash] = CookedAsset(stored);
   }
 
   @override
   Future<Uint8List?> read(ContentHash hash) => _content.get(hash);
+
+  @override
+  Future<CookFailure?> lookUpFailure(CookKey key) async => _failures[key.hash];
+
+  @override
+  Future<void> recordFailure(CookKey key, String reason) async {
+    _failures[key.hash] = CookFailure(
+      reason: reason,
+      at: DateTime.now().toUtc(),
+    );
+  }
 }

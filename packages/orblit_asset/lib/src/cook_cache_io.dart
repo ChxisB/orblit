@@ -15,7 +15,8 @@ import 'directory_io.dart';
 ///
 /// Laid out as an index of what was cooked and a content store of the bytes:
 ///
-///     index.json          key -> outputs, and when each was last wanted
+///     index.json          key -> outputs, and when each was last wanted;
+///                         and the keys that would not cook, with why
 ///     index.lock          held while the index is read and written
 ///     content/<shard>/…   the bytes, filed by hash
 ///
@@ -71,7 +72,22 @@ class DirectoryCookCache implements CookCache {
   /// Bumped when the index's shape changes. An index this cannot read is
   /// treated as an empty one, so an older build meeting a newer cache misses
   /// and recooks rather than misreading.
+  ///
+  /// Remembered failures did not bump it, although they added a key. An older
+  /// build ignores a key it does not know, and the worst it can do is drop the
+  /// failures when it writes the index back — which costs a mark in an editor
+  /// and nothing else. Bumping would have thrown away every machine's cooked
+  /// bytes to add a note beside the broken ones.
   static const int formatVersion = 1;
+
+  /// How many remembered failures to keep, newest first.
+  ///
+  /// A bound rather than a limit in bytes, because these are a line of text
+  /// each and the thing worth stopping is a build loop that fails on ten
+  /// thousand assets a night writing an index nobody can read. What falls off
+  /// the end is only a mark in a browser, and the asset beneath it still reads
+  /// as needing a cook.
+  static const int _keptFailures = 4096;
 
   /// How stale a last-used time is allowed to get before a hit rewrites it.
   ///
@@ -107,7 +123,7 @@ class DirectoryCookCache implements CookCache {
   @override
   Future<CookedAsset?> lookUp(CookKey key) => _guarded(() async {
     final index = await _readIndex();
-    final entry = index[key.hash.hex];
+    final entry = index.entries[key.hash.hex];
     if (entry == null) return null;
 
     for (final output in entry.asset.outputs) {
@@ -115,7 +131,7 @@ class DirectoryCookCache implements CookCache {
         // The bytes have been evicted, or removed by something that is not
         // this cache. The entry is a promise the cache can no longer keep, so
         // it goes, and the caller cooks.
-        index.remove(key.hash.hex);
+        index.entries.remove(key.hash.hex);
         await _writeIndex(index);
         return null;
       }
@@ -123,7 +139,7 @@ class DirectoryCookCache implements CookCache {
 
     final now = _clock();
     if (now.difference(entry.usedAt) > _usedAtResolution) {
-      index[key.hash.hex] = _Entry(entry.asset, now);
+      index.entries[key.hash.hex] = _Entry(entry.asset, now);
       await _writeIndex(index);
     }
     return entry.asset;
@@ -146,8 +162,11 @@ class DirectoryCookCache implements CookCache {
 
     await _guarded(() async {
       final index = await _readIndex();
-      index[key.hash.hex] = _Entry(asset, _clock());
-      await _evict(index, keeping: key.hash.hex);
+      index.entries[key.hash.hex] = _Entry(asset, _clock());
+      // A key that cooks is a key that no longer failed: the tool that was
+      // missing has been installed, or the disk has been cleared.
+      index.failures.remove(key.hash.hex);
+      await _evict(index.entries, keeping: key.hash.hex);
       await _writeIndex(index);
     });
     return asset;
@@ -155,6 +174,31 @@ class DirectoryCookCache implements CookCache {
 
   @override
   Future<Uint8List?> read(ContentHash hash) => _content.get(hash);
+
+  @override
+  Future<CookFailure?> lookUpFailure(CookKey key) =>
+      _guarded(() async => (await _readIndex()).failures[key.hash.hex]);
+
+  @override
+  Future<void> recordFailure(CookKey key, String reason) => _guarded(() async {
+    final index = await _readIndex();
+    index.failures[key.hash.hex] = CookFailure(
+      reason: reason,
+      at: _clock().toUtc(),
+    );
+
+    if (index.failures.length > _keptFailures) {
+      final oldest = index.failures.entries.toList()
+        ..sort((a, b) => a.value.at.compareTo(b.value.at));
+      for (final candidate in oldest) {
+        if (index.failures.length <= _keptFailures) break;
+        if (candidate.key == key.hash.hex) continue;
+        index.failures.remove(candidate.key);
+      }
+    }
+
+    await _writeIndex(index);
+  });
 
   /// Drops entries, oldest first, until what is held is within [limitBytes].
   ///
@@ -242,31 +286,50 @@ class DirectoryCookCache implements CookCache {
   /// the same thing — this cache cannot say what was cooked — and the answer
   /// to that is to cook again. Refusing to start over an index nobody can read
   /// would make a corrupt cache a broken build rather than a slow one.
-  Future<Map<String, _Entry>> _readIndex() async {
+  Future<_Index> _readIndex() async {
     final String text;
     try {
       text = await File(_indexPath).readAsString();
     } on FileSystemException {
-      return {};
+      return _Index.empty();
     }
 
     final Object? parsed;
     try {
       parsed = jsonDecode(text);
     } on FormatException {
-      return {};
+      return _Index.empty();
     }
-    if (parsed is! Map<String, Object?>) return {};
-    if (parsed['formatVersion'] != formatVersion) return {};
+    if (parsed is! Map<String, Object?>) return _Index.empty();
+    if (parsed['formatVersion'] != formatVersion) return _Index.empty();
     final entries = parsed['entries'];
-    if (entries is! Map<String, Object?>) return {};
+    if (entries is! Map<String, Object?>) return _Index.empty();
 
-    final index = <String, _Entry>{};
+    final index = _Index.empty();
     for (final entry in entries.entries) {
       final read = _Entry.tryRead(entry.value);
-      if (read != null) index[entry.key] = read;
+      if (read != null) index.entries[entry.key] = read;
+    }
+
+    // Absent for an index written before failures were recorded, and for one
+    // written by a build that does not know about them. Neither is a problem:
+    // no failures remembered is the state every cache starts in.
+    final failures = parsed['failures'];
+    if (failures is Map<String, Object?>) {
+      for (final failure in failures.entries) {
+        final read = _readFailure(failure.value);
+        if (read != null) index.failures[failure.key] = read;
+      }
     }
     return index;
+  }
+
+  static CookFailure? _readFailure(Object? value) {
+    if (value is! Map<String, Object?>) return null;
+    final reason = value['reason'];
+    final at = DateTime.tryParse(value['at'] as String? ?? '');
+    if (reason is! String || at == null) return null;
+    return CookFailure(reason: reason, at: at);
   }
 
   /// Writes the index where a reader sees all of it or none of it.
@@ -282,11 +345,19 @@ class DirectoryCookCache implements CookCache {
   /// file mid-write and fail on the rename. That should not be reachable
   /// while the lock is held, and naming it this way means a hole in the lock
   /// costs a stale index rather than a crashed build.
-  Future<void> _writeIndex(Map<String, _Entry> index) async {
-    final keys = index.keys.toList()..sort();
+  Future<void> _writeIndex(_Index index) async {
+    final keys = index.entries.keys.toList()..sort();
+    final failed = index.failures.keys.toList()..sort();
     final json = {
       'formatVersion': formatVersion,
-      'entries': {for (final key in keys) key: index[key]!.toJson()},
+      'entries': {for (final key in keys) key: index.entries[key]!.toJson()},
+      'failures': {
+        for (final key in failed)
+          key: {
+            'reason': index.failures[key]!.reason,
+            'at': index.failures[key]!.at.toUtc().toIso8601String(),
+          },
+      },
     };
     final incoming = File(
       '$_indexPath.$pid.${_writes++}.'
@@ -307,6 +378,20 @@ class DirectoryCookCache implements CookCache {
       rethrow;
     }
   }
+}
+
+/// What `index.json` holds: the keys that cooked, and the keys that would not.
+///
+/// One file and one lock for both, because they are written together — a key
+/// that cooks drops its old failure in the same turn — and because a second
+/// file would be a second thing to leave half-written.
+class _Index {
+  _Index(this.entries, this.failures);
+
+  _Index.empty() : this({}, {});
+
+  final Map<String, _Entry> entries;
+  final Map<String, CookFailure> failures;
 }
 
 /// One line of the index: what a key cooked to, and when it was last wanted.

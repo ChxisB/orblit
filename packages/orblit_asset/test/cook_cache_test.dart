@@ -139,6 +139,56 @@ void behavesLikeACookCache(CookCache Function() make) {
     expect(await cache.lookUp(_key()), isNotNull);
     expect((await cache.lookUp(_key()))!.outputs, isEmpty);
   });
+
+  group('remembering what would not cook', () {
+    test('a key nothing failed on has nothing against it', () async {
+      expect(await make().lookUpFailure(_key()), isNull);
+    });
+
+    test('what was recorded comes back, with why', () async {
+      final cache = make();
+      await cache.recordFailure(_key(), 'not a png at all');
+
+      final found = await cache.lookUpFailure(_key());
+      expect(found, isNotNull);
+      expect(found!.reason, 'not a png at all');
+    });
+
+    test('it is remembered against that key and no other', () async {
+      final cache = make();
+      await cache.recordFailure(_key(target: {'os': 'macos'}), 'no good');
+      expect(
+        await cache.lookUpFailure(_key(target: {'os': 'ios'})),
+        isNull,
+        reason: 'a different target is different work',
+      );
+      expect(await cache.lookUpFailure(_key(source: 'other.png')), isNull);
+    });
+
+    test('recording one does not make it a hit', () async {
+      final cache = make();
+      await cache.recordFailure(_key(), 'no good');
+      expect(
+        await cache.lookUp(_key()),
+        isNull,
+        reason: 'nothing was cooked, so there is nothing to hand back',
+      );
+    });
+
+    test('cooking it clears the failure', () async {
+      final cache = make();
+      await cache.recordFailure(_key(), 'the encoder was not installed');
+      await cache.store(_key(), {'out': utf8.encode('cooked')});
+      expect(await cache.lookUpFailure(_key()), isNull);
+    });
+
+    test('recording twice keeps the newer reason', () async {
+      final cache = make();
+      await cache.recordFailure(_key(), 'first');
+      await cache.recordFailure(_key(), 'second');
+      expect((await cache.lookUpFailure(_key()))!.reason, 'second');
+    });
+  });
 }
 
 void main() {
