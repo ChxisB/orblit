@@ -7,7 +7,7 @@ import 'dart:typed_data';
 
 import 'package:test/test.dart';
 
-import '../bin/src/png_codec.dart';
+import 'package:orblit_sprite/orblit_sprite.dart';
 
 Uint8List _pattern(int w, int h, {int alphaAt = 255}) {
   final out = Uint8List(w * h * 4);

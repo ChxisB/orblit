@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- The PNG codec moves out of `bin/src/` and into the package. It was already
+  written and tested; it was simply somewhere only `atlas_cook` could reach,
+  and the asset pipeline's atlas importer needs the same decode to feed the
+  same packer. `decodePng` and `encodePng` are now part of the API.
+
 ## 0.2.0
 
 - **An atlas packer.** `packAtlas` packs sprites with MaxRects — trying five

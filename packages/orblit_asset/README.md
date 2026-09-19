@@ -1,8 +1,13 @@
 # orblit_asset
 
 What an asset is called and where its bytes are: project-relative asset ids,
-content hashes, the sources assets are read from and a store that files bytes
-by their hash.
+content hashes, the sources assets are read from, a store that files bytes by
+their hash, and the cache that keeps what cooking them produced.
+
+A cook cache is keyed on the whole recipe — the source bytes, the files it
+read, which importer ran and which version of it, the settings it resolved and
+the device the result is for. That is what makes a rebuild with nothing changed
+cook nothing, and an edit to one texture recook one texture.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
@@ -18,8 +23,9 @@ dependencies:
 ```
 
 Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner. The
-two directory-backed classes need `dart:io`: the package still compiles for the
-web, and constructing one of them there throws.
+directory-backed classes need `dart:io`: the package still compiles for the
+web, and constructing one of them there throws. `MemoryCookCache` works
+everywhere.
 
 ## Status
 
