@@ -441,6 +441,191 @@ void main() {
       );
     });
 
+    group('stateOf', () {
+      test('an asset nothing claims is ignored', () async {
+        expect(await cookFor().stateOf(id('README.md')), CookState.ignored);
+      });
+
+      test('an asset that has never been cooked is stale', () async {
+        expect(await cookFor().stateOf(id('a.txt')), CookState.stale);
+      });
+
+      test('asking does not cook it', () async {
+        await cookFor().stateOf(id('a.txt'));
+        expect(
+          importer.imported,
+          isEmpty,
+          reason: 'the whole point is that an editor can ask a thousand times',
+        );
+        expect(
+          await cache.lookUp(
+            CookKey(
+              importer: importer.name,
+              importerVersion: importer.version,
+              source: ContentHash.of(utf8.encode('alpha')),
+              dependencies: const {},
+              settings: const {'mode': 'normal'},
+              target: CookTarget.any.recipe,
+            ),
+          ),
+          isNull,
+        );
+      });
+
+      test('one that has just been cooked is cooked', () async {
+        await cookFor().cookOne(id('a.txt'));
+        expect(await cookFor().stateOf(id('a.txt')), CookState.cooked);
+      });
+
+      test('changing the source makes it stale again', () async {
+        await cookFor().cookOne(id('a.txt'));
+        source = MemoryAssetSource({id('a.txt'): utf8.encode('changed')});
+        expect(await cookFor().stateOf(id('a.txt')), CookState.stale);
+      });
+
+      test('changing something it depends on makes it stale', () async {
+        final discovers = {
+          id('a.txt'): {id('b.txt')},
+        };
+        source = MemoryAssetSource({
+          id('a.txt'): utf8.encode('alpha'),
+          id('b.txt'): utf8.encode('beta'),
+        });
+        await cookFor(
+          with_: RecordingImporter(discovers: discovers),
+        ).cookOne(id('a.txt'));
+
+        source = MemoryAssetSource({
+          id('a.txt'): utf8.encode('alpha'),
+          id('b.txt'): utf8.encode('changed'),
+        });
+        expect(
+          await cookFor(
+            with_: RecordingImporter(discovers: discovers),
+          ).stateOf(id('a.txt')),
+          CookState.stale,
+        );
+      });
+
+      test('changing its settings makes it stale', () async {
+        await cookFor().cookOne(id('a.txt'));
+        source = MemoryAssetSource({
+          id('a.txt'): utf8.encode('alpha'),
+          id('a.txt.import.json'): utf8.encode(
+            '{"settings": {"mode": "special"}}',
+          ),
+        });
+        expect(await cookFor().stateOf(id('a.txt')), CookState.stale);
+      });
+
+      test('cooked for one target is still stale for another', () async {
+        await cookFor(
+          target: const CookTarget(name: 'macos'),
+        ).cookOne(id('a.txt'));
+        expect(
+          await cookFor(
+            target: const CookTarget(name: 'web'),
+          ).stateOf(id('a.txt')),
+          CookState.stale,
+        );
+      });
+
+      test('an asset that is not there is failed', () async {
+        expect(await cookFor().stateOf(id('gone.txt')), CookState.failed);
+      });
+
+      test('a dependency that is not there is failed', () async {
+        expect(
+          await cookFor(
+            with_: RecordingImporter(
+              discovers: {
+                id('a.txt'): {id('missing.txt')},
+              },
+            ),
+          ).stateOf(id('a.txt')),
+          CookState.failed,
+        );
+      });
+
+      test('an importer that cannot read the asset is failed', () async {
+        final cook = Cook(
+          source: source,
+          cache: cache,
+          importers: ImporterRegistry([_UnreadableImporter()]),
+          target: CookTarget.any,
+        );
+        expect(await cook.stateOf(id('a.txt')), CookState.failed);
+      });
+
+      test('says the same thing the cook goes on to do', () async {
+        final cook = cookFor();
+        expect(await cook.stateOf(id('a.txt')), CookState.stale);
+        expect(
+          (await cookFor().cookOne(id('a.txt'))).status,
+          CookStatus.cooked,
+        );
+        expect(await cookFor().stateOf(id('a.txt')), CookState.cooked);
+        expect(
+          (await cookFor().cookOne(id('a.txt'))).status,
+          CookStatus.cached,
+        );
+      });
+    });
+
+    group('stateOfAll', () {
+      test('answers for every one it is given', () async {
+        await cookFor().cookOne(id('a.txt'));
+        expect(
+          await cookFor().stateOfAll([
+            id('a.txt'),
+            id('b.txt'),
+            id('README.md'),
+            id('gone.txt'),
+          ]),
+          {
+            id('a.txt'): CookState.cooked,
+            id('b.txt'): CookState.stale,
+            id('README.md'): CookState.ignored,
+            id('gone.txt'): CookState.failed,
+          },
+        );
+      });
+
+      test('reads a shared dependency once for the whole answer', () async {
+        final reads = <AssetId, int>{};
+        final bytes = {
+          id('a.txt'): utf8.encode('alpha'),
+          id('b.txt'): utf8.encode('beta'),
+          id('shared.txt'): utf8.encode('shared'),
+        };
+        final counting = CallbackAssetSource((id) async {
+          reads[id] = (reads[id] ?? 0) + 1;
+          final found = bytes[id];
+          return found == null ? null : Uint8List.fromList(found);
+        });
+
+        await Cook(
+          source: counting,
+          cache: cache,
+          importers: ImporterRegistry([
+            RecordingImporter(
+              discovers: {
+                id('a.txt'): {id('shared.txt')},
+                id('b.txt'): {id('shared.txt')},
+              },
+            ),
+          ]),
+          target: CookTarget.any,
+        ).stateOfAll([id('a.txt'), id('b.txt')]);
+
+        expect(reads[id('shared.txt')], 1);
+      });
+
+      test('an empty list is an empty answer', () async {
+        expect(await cookFor().stateOfAll([]), isEmpty);
+      });
+    });
+
     group('cookAll', () {
       test(
         'reports in the order it was given, whatever order they finish in',
@@ -594,4 +779,28 @@ class _GatedImporter extends Importer {
     onFinish();
     return ImportResult(outputs: {'out': request.bytes});
   }
+}
+
+/// An importer that claims an asset and then cannot make sense of it, the way
+/// a real one meets a `.png` that is not a PNG.
+class _UnreadableImporter extends Importer {
+  @override
+  String get name => 'unreadable';
+  @override
+  int get version => 1;
+  @override
+  Set<String> get extensions => const {'txt'};
+  @override
+  Map<String, Object?> resolveSettings(ImportSettings settings) => const {};
+
+  @override
+  Future<Set<AssetId>> dependenciesOf(
+    AssetId id,
+    Uint8List bytes,
+    Map<String, Object?> settings,
+  ) async => throw ImportFailure(id, 'not a txt at all');
+
+  @override
+  Future<ImportResult> import(ImportRequest request) async =>
+      throw ImportFailure(request.id, 'not a txt at all');
 }

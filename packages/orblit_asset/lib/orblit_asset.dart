@@ -57,6 +57,7 @@ export 'src/cook.dart'
         Cook,
         CookReport,
         CookResult,
+        CookState,
         CookStatus,
         CookTargetProperties,
         TextureFamily;

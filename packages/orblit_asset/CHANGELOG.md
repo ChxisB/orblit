@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+- **Asking where an asset stands without cooking it.** `Cook.stateOf` answers
+  `cooked`, `stale`, `failed` or `ignored` for one asset, and `stateOfAll` for
+  many at once, sharing the dependency hashes so a texture forty models depend
+  on is read once. This is for the editor, which wants a mark beside every
+  asset in a list and cannot run a build to get one.
+- It reaches that answer down the same path a cook does — resolve the settings,
+  pick the importer, hash the source and everything under it, build the key —
+  and stops at the cache lookup instead of running the importer. An editor that
+  worked the answer out its own way would drift from the build the first time
+  an importer changed how it resolves a setting, and a stale mark on a fresh
+  asset is worse than no mark at all.
+
 ## 0.4.0
 
 - **Cooking a whole project, from a command.** `dart run orblit_asset:cook

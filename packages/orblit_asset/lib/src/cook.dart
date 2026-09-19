@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'asset_id.dart';
 import 'asset_source.dart';
@@ -22,6 +23,32 @@ enum CookStatus {
 
   /// Something threw. [CookResult.error] says what.
   failed,
+}
+
+/// Where an asset stands with the cook, worked out without cooking it.
+///
+/// This is [CookStatus] asked in advance rather than reported afterwards, and
+/// it is a separate name on purpose: `cooked` here means "already in the
+/// cache and up to date", where [CookStatus.cooked] means "an importer just
+/// ran". Answering the first with the second would read as a cook having
+/// happened when none did.
+enum CookState {
+  /// The cache holds outputs for exactly this source, these dependencies,
+  /// these settings and this target. A build would do nothing.
+  cooked,
+
+  /// Never cooked, or cooked from something that has since changed. A build
+  /// would run the importer.
+  stale,
+
+  /// It cannot be cooked as things stand — an unreadable file, a dependency
+  /// that is not there, settings that make no sense. A build would report
+  /// this asset and carry on with the rest.
+  failed,
+
+  /// Nothing claims it. A README and an `.import.json` both land here, and
+  /// neither is a problem.
+  ignored,
 }
 
 /// What happened to one asset.
@@ -165,57 +192,40 @@ class Cook {
   Future<CookResult> cookOne(AssetId id) async {
     Importer? importer;
     try {
-      final settings = await this.settings.forAsset(id);
-      importer = importers.forAsset(id, settings);
-      if (importer == null) {
+      final plan = await _plan(id, onImporter: (found) => importer = found);
+      if (plan == null) {
         return CookResult(id: id, status: CookStatus.skipped);
       }
 
-      final resolved = importer.resolveSettings(settings);
-      final bytes = await source.read(id);
-      final dependencies = await importer.dependenciesOf(id, bytes, resolved);
-
-      final key = CookKey(
-        importer: importer.name,
-        importerVersion: importer.version,
-        source: ContentHash.of(bytes),
-        dependencies: {
-          for (final dependency in dependencies)
-            dependency: await _hashOf(dependency),
-        },
-        settings: resolved,
-        target: target.recipe,
-      );
-
-      final hit = await cache.lookUp(key);
+      final hit = await cache.lookUp(plan.key);
       if (hit != null) {
         return CookResult(
           id: id,
           status: CookStatus.cached,
-          importer: importer,
-          key: key,
+          importer: plan.importer,
+          key: plan.key,
           asset: hit,
-          dependencies: dependencies,
+          dependencies: plan.dependencies,
         );
       }
 
-      final result = await importer.import(
+      final result = await plan.importer.import(
         ImportRequest(
           id: id,
-          bytes: bytes,
-          settings: resolved,
+          bytes: plan.bytes,
+          settings: plan.settings,
           target: target,
           source: source,
         ),
       );
-      final stored = await cache.store(key, result.outputs);
+      final stored = await cache.store(plan.key, result.outputs);
       return CookResult(
         id: id,
         status: CookStatus.cooked,
-        importer: importer,
-        key: key,
+        importer: plan.importer,
+        key: plan.key,
         asset: stored,
-        dependencies: dependencies,
+        dependencies: plan.dependencies,
         notes: result.notes,
       );
     } catch (error, trace) {
@@ -227,6 +237,107 @@ class Cook {
         trace: trace,
       );
     }
+  }
+
+  /// Where [id] stands, without cooking it.
+  ///
+  /// This exists for the editor, which wants a mark beside every asset in a
+  /// list and cannot run a build to get one. It does everything a cook does
+  /// up to the cache lookup — resolve the settings, pick the importer, hash
+  /// the source and everything it depends on, build the key — and then stops
+  /// instead of running the importer.
+  ///
+  /// Going through the same steps is the point. An editor that worked the
+  /// answer out its own way would drift from the build the first time an
+  /// importer changed how it resolves a setting, and a stale mark on a fresh
+  /// asset is worse than no mark at all.
+  ///
+  /// Cheap in the way hashing is cheap: it reads every byte of the asset and
+  /// of everything under it, but runs no encoder. One [Cook] remembers the
+  /// dependency hashes it has taken, so asking about a folder of models that
+  /// share textures costs far less than asking about them one [Cook] at a
+  /// time.
+  Future<CookState> stateOf(AssetId id) async {
+    try {
+      final plan = await _plan(id);
+      if (plan == null) return CookState.ignored;
+      return await cache.lookUp(plan.key) != null
+          ? CookState.cooked
+          : CookState.stale;
+    } catch (_) {
+      // Everything that can go wrong before an importer runs is something a
+      // build would fail on, and saying so now is the whole point: the editor
+      // shows it while the person is looking at the asset, rather than the
+      // build finding it an hour later.
+      return CookState.failed;
+    }
+  }
+
+  /// [stateOf] for many, [concurrency] at a time, keyed by id.
+  ///
+  /// Worth preferring over a loop: the shared hash cache means a texture that
+  /// forty models depend on is read once for the whole answer.
+  Future<Map<AssetId, CookState>> stateOfAll(Iterable<AssetId> ids) async {
+    final pending = ids.toList();
+    final states = <AssetId, CookState>{};
+    var next = 0;
+
+    Future<void> worker() async {
+      while (true) {
+        final index = next++;
+        if (index >= pending.length) return;
+        final id = pending[index];
+        states[id] = await stateOf(id);
+      }
+    }
+
+    await Future.wait([
+      for (var i = 0; i < concurrency && i < pending.length; i++) worker(),
+    ]);
+    return states;
+  }
+
+  /// What cooking [id] would involve, short of doing it: the importer that
+  /// claims it, the bytes, the resolved settings, what it depends on, and the
+  /// key all of that adds up to. Null when nothing claims it.
+  ///
+  /// The order here is the whole contract of this class — settings before the
+  /// importer is chosen, dependencies before the key is built, the key before
+  /// anything expensive — and it lives in one place so that [cookOne] and
+  /// [stateOf] cannot come to disagree about it.
+  ///
+  /// [onImporter] fires as soon as the importer is known, so a caller whose
+  /// plan then throws can still say which importer was trying.
+  Future<_Plan?> _plan(
+    AssetId id, {
+    void Function(Importer)? onImporter,
+  }) async {
+    final settings = await this.settings.forAsset(id);
+    final importer = importers.forAsset(id, settings);
+    if (importer == null) return null;
+    onImporter?.call(importer);
+
+    final resolved = importer.resolveSettings(settings);
+    final bytes = await source.read(id);
+    final dependencies = await importer.dependenciesOf(id, bytes, resolved);
+
+    return _Plan(
+      importer: importer,
+      bytes: bytes,
+      settings: resolved,
+      dependencies: dependencies,
+      key: CookKey(
+        importer: importer.name,
+        importerVersion: importer.version,
+        source: ContentHash.of(bytes),
+        dependencies: {
+          for (final dependency in dependencies)
+            dependency: await _hashOf(dependency),
+        },
+        settings: resolved,
+        target: target.recipe,
+      ),
+    );
   }
 
   /// Cooks all of them, [concurrency] at a time, reporting each as it lands.
@@ -260,6 +371,23 @@ class Cook {
 
   Future<ContentHash> _hashOf(AssetId id) =>
       _hashes[id] ??= source.read(id).then(ContentHash.of);
+}
+
+/// Everything worked out about an asset before an importer runs.
+class _Plan {
+  const _Plan({
+    required this.importer,
+    required this.bytes,
+    required this.settings,
+    required this.dependencies,
+    required this.key,
+  });
+
+  final Importer importer;
+  final Uint8List bytes;
+  final Map<String, Object?> settings;
+  final Set<AssetId> dependencies;
+  final CookKey key;
 }
 
 /// A [CookTarget] property every texture importer reads: which compressed
