@@ -29,6 +29,12 @@ Pre-alpha. Nothing here is stable.
 
 ## Licence
 
-MIT, © 2026 Chris Beckett. Builds link Filament, which carries its own
-Apache 2.0 licence, and a prebuilt Filament.xcframework is committed here — so a full
-copy of that licence travels with it. See [LICENSE](LICENSE).
+FSL-1.1-MIT, © 2026 Chris Beckett — the Functional Source License, with an MIT
+future. Fork it, change it, send changes back, and ship games made with it,
+commercial ones included. What it rules out is offering Orblit, or a renamed
+copy of it, as a competing product. Each release becomes plain MIT two years
+after it's published.
+
+Builds link Filament, which carries its own Apache 2.0 licence, and a prebuilt
+Filament.xcframework is committed here — so a full copy of that licence travels
+with it. See [LICENSE](LICENSE).
