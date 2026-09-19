@@ -7,6 +7,7 @@ import 'content_hash.dart';
 import 'cook.dart';
 import 'cook_cache.dart';
 import 'cook_cache_io.dart';
+import 'cook_targets.dart';
 import 'directory_io.dart';
 import 'import_settings.dart';
 import 'importer.dart';
@@ -194,3 +195,136 @@ class CookProject {
 /// which is the claim CI checks.
 ContentHash bundleHash(AssetManifest manifest) =>
     ContentHash.of(utf8.encode(manifest.encode()));
+
+/// Thrown when a cook run as part of a build could not cook everything.
+///
+/// A build hook that returned quietly after failing to cook a texture would
+/// produce an app that builds, installs, launches and then cannot draw one of
+/// its own assets. Failing the build is the cheaper of the two.
+class CookFailed implements Exception {
+  CookFailed(this.report);
+
+  final CookReport report;
+
+  /// Only the results that failed, which is what somebody reading a build log
+  /// needs; the rest of the report is there for anyone who wants it.
+  Iterable<CookResult> get failures => report.withStatus(CookStatus.failed);
+
+  @override
+  String toString() {
+    final lines = [
+      for (final failure in failures) '  ${failure.id}: ${failure.error}',
+    ];
+    return 'Cooking assets failed for ${lines.length} of '
+        '${report.results.length}:\n${lines.join('\n')}';
+  }
+}
+
+/// Cooks a project's assets as part of a build, for the platform being built.
+///
+/// This is the build-hook half of the cook. A game's `hook/build.dart` calls
+/// it with what the hook already knows, and gets a bundle cooked for the
+/// platform the build is for:
+///
+/// ```dart
+/// import 'package:code_assets/code_assets.dart';
+/// import 'package:hooks/hooks.dart';
+/// import 'package:orblit_asset/orblit_asset.dart';
+///
+/// void main(List<String> args) async {
+///   await build(args, (input, output) async {
+///     await cookDuringBuild(
+///       packageRoot: input.packageRoot.toFilePath(),
+///       targetOs: input.config.code.targetOS.name,
+///       dependencies: output.addDependencies,
+///     );
+///   });
+/// }
+/// ```
+///
+/// The hook types are not named here on purpose, so that depending on
+/// `orblit_asset` does not drag `hooks` and `code_assets` into a project that
+/// only wants to read assets. Everything crossing the boundary is a string, a
+/// `Uri` or a function — which also means the same call works from a plain
+/// script, which is how most projects will run it.
+///
+/// **What this does not do.** It does not hand the build a data asset. Data
+/// assets only work on Flutter's master channel, so a bundle cooked here is
+/// written into the package and shipped as an ordinary Flutter asset, which
+/// means the project's `pubspec.yaml` has to list [out] under `flutter:
+/// assets:`. When data assets reach stable this is where they go in, and the
+/// `pubspec.yaml` entry is what goes away.
+///
+/// [targetOs] is the name of the platform being built for, as the hook spells
+/// it — `ios`, `macos`, `android`, `windows`, `linux`. A null one means the
+/// web, because a web build's hook is not told a target at all; that is the
+/// one platform where the absence is the answer.
+///
+/// [dependencies] is given every file this cook read: the assets themselves,
+/// their settings files, and whatever those assets pointed at. A hook that
+/// reports them is re-run when one changes and skipped when none did, which is
+/// the difference between a cook that costs nothing on an untouched build and
+/// one that costs a texture encode every time.
+Future<CookReport> cookDuringBuild({
+  required String packageRoot,
+  required String? targetOs,
+  String assets = 'assets',
+  String out = 'assets/cooked',
+  String? cachePath,
+  ImporterRegistry? importers,
+  int concurrency = 4,
+  void Function(Iterable<Uri> files)? dependencies,
+  void Function(String line)? log,
+}) async {
+  final target = CookTargets.find(targetOs ?? 'web');
+  if (target == null) {
+    throw ArgumentError.value(
+      targetOs,
+      'targetOs',
+      'is not a platform Orblit cooks for. Orblit cooks for '
+          '${CookTargets.names.join(', ')}',
+    );
+  }
+
+  final assetsPath = _under(packageRoot, assets);
+  final project = CookProject(
+    assetsPath: assetsPath,
+    outPath: _under(packageRoot, out),
+    target: target,
+    cachePath: cachePath,
+    importers: importers,
+    concurrency: concurrency,
+  );
+
+  final report = await project.run();
+  log?.call('orblit: cooked ${target.name}: ${report.summary}');
+
+  if (dependencies != null) {
+    // Both the assets and their settings files, because changing how a texture
+    // is cooked has to rebuild it just as surely as changing the texture. The
+    // settings file is reported whether or not it exists: a hook watching a
+    // path that does not exist yet is how it notices one being added.
+    final watched = <Uri>{};
+    for (final result in report.results) {
+      watched.add(_fileUnder(assetsPath, '${result.id}'));
+      watched.add(_fileUnder(assetsPath, '${result.id}.import.json'));
+    }
+    for (final id in report.dependencies) {
+      watched.add(_fileUnder(assetsPath, '$id'));
+    }
+    dependencies(watched);
+  }
+
+  if (!report.ok) throw CookFailed(report);
+  return report;
+}
+
+/// A path inside a package, where the inner part is written with `/` whatever
+/// the platform is — as a pubspec writes it.
+String _under(String root, String relative) => relative
+    .split('/')
+    .where((part) => part.isNotEmpty)
+    .fold(root, (path, part) => beside(path, part));
+
+Uri _fileUnder(String root, String relative) =>
+    Uri.file(_under(root, relative));

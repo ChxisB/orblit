@@ -282,6 +282,114 @@ void main() {
     });
   });
 
+  group('cooking during a build', () {
+    setUp(() {
+      writeAsset('a.png', 'a');
+      writeAsset('a.png.import.json', '{}');
+    });
+
+    Future<CookReport> cookIn(
+      String? targetOs, {
+      void Function(Iterable<Uri>)? dependencies,
+      ImporterRegistry? importers,
+    }) => cookDuringBuild(
+      packageRoot: work.path,
+      targetOs: targetOs,
+      cachePath: at('cache'),
+      out: 'out/cooked',
+      importers: importers ?? ImporterRegistry([const FamilyImporter()]),
+      dependencies: dependencies,
+    );
+
+    test(
+      'cooks for the platform the build names, as the hook spells it',
+      () async {
+        await cookIn('ios');
+        expect(
+          File(
+            at(
+              'out/cooked/ios/a.png.astc.ktx2'.replaceAll(
+                '/',
+                Platform.pathSeparator,
+              ),
+            ),
+          ).existsSync(),
+          isTrue,
+        );
+      },
+    );
+
+    test('a build with no platform is a web build, which is the one that has '
+        'none', () async {
+      await cookIn(null);
+      expect(
+        Directory(
+          at('out/cooked/web'.replaceAll('/', Platform.pathSeparator)),
+        ).existsSync(),
+        isTrue,
+      );
+    });
+
+    test('refuses a platform Orblit does not cook for', () {
+      expect(
+        () => cookIn('fuchsia'),
+        throwsA(
+          isA<ArgumentError>()
+              .having((e) => e.name, 'name', 'targetOs')
+              .having((e) => '${e.message}', 'message', contains('android')),
+        ),
+      );
+    });
+
+    test('tells the build every file it read, so an edit re-runs it', () async {
+      Iterable<Uri>? watched;
+      await cookIn('macos', dependencies: (files) => watched = files);
+      final paths = watched!.map((uri) => uri.toFilePath()).toSet();
+      expect(paths, contains(at('assets${Platform.pathSeparator}a.png')));
+      expect(
+        paths,
+        contains(at('assets${Platform.pathSeparator}a.png.import.json')),
+        reason: 'changing how an asset is cooked has to recook it too',
+      );
+    });
+
+    test('watches a settings file that does not exist yet, which is how one '
+        'being added is noticed', () async {
+      writeAsset('b.png', 'b');
+      Iterable<Uri>? watched;
+      await cookIn('macos', dependencies: (files) => watched = files);
+      expect(
+        watched!.map((uri) => uri.toFilePath()),
+        contains(at('assets${Platform.pathSeparator}b.png.import.json')),
+      );
+      expect(
+        File(
+          at('assets${Platform.pathSeparator}b.png.import.json'),
+        ).existsSync(),
+        isFalse,
+      );
+    });
+
+    test(
+      'fails the build rather than shipping an app missing an asset',
+      () async {
+        await expectLater(
+          cookIn(
+            'macos',
+            importers: ImporterRegistry([const _BrokenImporter()]),
+          ),
+          throwsA(
+            isA<CookFailed>().having(
+              (e) => e.failures.map((f) => '${f.id}'),
+              'failures',
+              contains('a.png'),
+            ),
+          ),
+        );
+      },
+    );
+  });
+
   group('the command', () {
     Future<ProcessResult> cook(List<String> arguments) => Process.run(
       Platform.resolvedExecutable,

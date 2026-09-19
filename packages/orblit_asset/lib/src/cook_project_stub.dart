@@ -55,3 +55,29 @@ class CookProject {
 /// A hash of a whole bundle, for asking "did this build change anything".
 ContentHash bundleHash(AssetManifest manifest) =>
     ContentHash.of(utf8.encode(manifest.encode()));
+
+/// Thrown when a cook run as part of a build could not cook everything.
+class CookFailed implements Exception {
+  CookFailed(this.report);
+
+  final CookReport report;
+
+  Iterable<CookResult> get failures => report.withStatus(CookStatus.failed);
+}
+
+/// Cooking during a build, which happens on a build machine and not in a
+/// browser.
+Future<CookReport> cookDuringBuild({
+  required String packageRoot,
+  required String? targetOs,
+  String assets = 'assets',
+  String out = 'assets/cooked',
+  String? cachePath,
+  ImporterRegistry? importers,
+  int concurrency = 4,
+  void Function(Iterable<Uri> files)? dependencies,
+  void Function(String line)? log,
+}) => throw UnsupportedError(
+  'Assets are cooked by the build that produces a web app, not by the web '
+  'app. Run `dart run orblit_asset:cook --target web` and serve the bundle.',
+);

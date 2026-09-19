@@ -20,6 +20,13 @@
   says "this is the same set of assets as last time" in one comparison. Two
   clean cooks of an unchanged project produce the same hash; changing one asset
   changes it.
+- `cookDuringBuild` is the same cook for a build hook to call, taking the
+  platform as the hook spells it and handing back every file it read so the
+  hook re-runs on an edit and is skipped otherwise. It names no hook types, so
+  depending on `orblit_asset` does not pull `hooks` and `code_assets` into a
+  project that only reads assets. It does not produce a data asset: those are
+  master-channel only, so a cooked bundle ships as an ordinary Flutter asset
+  and the project lists it under `flutter: assets:` until that changes.
 - The command's exit code is what a build reads: 0 when everything cooked, 1
   when an asset failed, and 2 when the arguments were wrong. Failures are
   repeated at the end rather than only where they happened, because the one
