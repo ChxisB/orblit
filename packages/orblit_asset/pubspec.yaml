@@ -1,9 +1,9 @@
 name: orblit_asset
 description: >-
   What an asset is called and where its bytes are: project-relative asset ids,
-  content hashes, the sources assets are read from and a store that files
-  bytes by their hash.
-version: 0.1.0
+  content hashes, the sources assets are read from, a store that files bytes by
+  their hash, and the cache that keeps what cooking them produced.
+version: 0.2.0
 publish_to: none
 
 environment:
