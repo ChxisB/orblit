@@ -44,5 +44,23 @@ export 'src/cook_cache.dart'
     show CookCache, CookOutput, CookedAsset, MemoryCookCache;
 export 'src/cook_cache_directory.dart' show DirectoryCookCache;
 export 'src/cook_key.dart' show CookKey;
+export 'src/cook.dart'
+    show
+        Cook,
+        CookReport,
+        CookResult,
+        CookStatus,
+        CookTargetProperties,
+        TextureFamily;
 export 'src/directory.dart' show DirectoryAssetSource, DirectoryContentStore;
 export 'src/import_settings.dart' show ImportSettings, ImportSettingsReader;
+export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
+export 'src/importers/native_importers.dart';
+export 'src/importer.dart'
+    show
+        CookTarget,
+        ImportFailure,
+        ImportRequest,
+        ImportResult,
+        Importer,
+        ImporterRegistry;
