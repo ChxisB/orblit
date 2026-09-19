@@ -62,6 +62,7 @@ export 'src/cook.dart'
         TextureFamily;
 export 'src/directory.dart' show DirectoryAssetSource, DirectoryContentStore;
 export 'src/import_settings.dart' show ImportSettings, ImportSettingsReader;
+export 'src/importers/atlas_importer.dart' show AtlasImporter;
 export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';
 export 'src/runtime_import.dart' show RuntimeImport;

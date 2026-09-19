@@ -11,6 +11,8 @@ environment:
 
 dependencies:
   crypto: ^3.0.7
+  orblit_sprite:
+    path: ../orblit_sprite
 
 dev_dependencies:
   lints: ^5.0.0

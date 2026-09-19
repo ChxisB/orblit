@@ -27,6 +27,22 @@
   project that only reads assets. It does not produce a data asset: those are
   master-channel only, so a cooked bundle ships as an ordinary Flutter asset
   and the project lists it under `flutter: assets:` until that changes.
+- **Packing sprites into atlases, as part of the cook.** `AtlasImporter`
+  claims a small document — `ui.atlas.json` — naming the sprites it wants
+  packed, and runs `orblit_sprite`'s packer over them. An atlas is not a file
+  somebody has but one they want made, so the document is the asset and the
+  sprites are its dependencies: adding a sprite edits the document, editing a
+  sprite changes a dependency, and either repacks while nothing else moves.
+- Sprites are listed rather than globbed. A glob would make the cook's answer
+  depend on what happened to be in a folder, which is the one thing a
+  content-addressed cache cannot key on, and it would pick up the stray `.png`
+  somebody left there mid-export.
+- Pages come out as PNG and a descriptor per page, not as compressed textures.
+  Packing and encoding are separate jobs, and the pages want cooking per target
+  like any other picture — doing it here would mean doing it twice.
+- A sprite too large for a page fails the atlas rather than being noted. An
+  atlas that packed nine of ten sprites gives a game that draws nothing where
+  the tenth was, and the first anyone hears of it is at run time.
 - **Importing a file a user hands the app.** `RuntimeImport` is the same cook
   with the parts a project supplies replaced by the parts a running app has:
   the device's cache, the device's own target, and one file somebody chose

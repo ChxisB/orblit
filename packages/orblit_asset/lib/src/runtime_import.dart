@@ -6,6 +6,7 @@ import 'cook.dart';
 import 'cook_cache.dart';
 import 'import_settings.dart';
 import 'importer.dart';
+import 'importers/atlas_importer.dart';
 import 'importers/gltf_importer.dart';
 import 'importers/native_importers.dart';
 
@@ -60,6 +61,7 @@ class RuntimeImport {
   static ImporterRegistry defaultImporters() => ImporterRegistry([
     const GltfImporter(),
     const SceneImporter(),
+    const AtlasImporter(),
     ...nativeImporters,
   ]);
 

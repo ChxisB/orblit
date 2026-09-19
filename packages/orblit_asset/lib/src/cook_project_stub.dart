@@ -40,6 +40,10 @@ class CookProject {
   final int? limitBytes;
   final int concurrency;
 
+  /// Every importer that works on this machine, which in a browser is the
+  /// ones that need nothing but Dart.
+  static ImporterRegistry defaultImporters() => ImporterRegistry();
+
   String get bundlePath =>
       throw UnsupportedError('Cooking needs a file system.');
 

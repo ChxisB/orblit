@@ -11,6 +11,7 @@ import 'cook_targets.dart';
 import 'directory_io.dart';
 import 'import_settings.dart';
 import 'importer.dart';
+import 'importers/atlas_importer.dart';
 import 'importers/gltf_importer.dart';
 import 'importers/native_importers_io.dart';
 
@@ -62,6 +63,7 @@ class CookProject {
   static ImporterRegistry defaultImporters() => ImporterRegistry([
     const GltfImporter(),
     const SceneImporter(),
+    const AtlasImporter(),
     ...nativeImporters,
   ]);
 

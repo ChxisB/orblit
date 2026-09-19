@@ -2,8 +2,6 @@ import 'dart:io';
 
 import 'package:orblit_sprite/orblit_sprite.dart';
 
-import 'src/png_codec.dart';
-
 /// A folder of PNGs in, atlas pages and their descriptors out.
 ///
 /// Usage:
