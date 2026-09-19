@@ -9,6 +9,7 @@ import 'asset_manifest.dart';
 import 'content_hash.dart';
 import 'cook.dart';
 import 'cook_cache.dart';
+import 'cook_targets.dart';
 import 'importer.dart';
 
 /// Cooking a whole project, which needs a file system and is not available on
@@ -81,3 +82,7 @@ Future<CookReport> cookDuringBuild({
   'Assets are cooked by the build that produces a web app, not by the web '
   'app. Run `dart run orblit_asset:cook --target web` and serve the bundle.',
 );
+
+/// What the machine this is running on wants assets cooked as, which in a
+/// browser is always the web.
+CookTarget get currentCookTarget => CookTargets.web;

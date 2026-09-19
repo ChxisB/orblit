@@ -45,7 +45,12 @@ export 'src/cook_cache.dart'
 export 'src/cook_cache_directory.dart' show DirectoryCookCache;
 export 'src/cook_key.dart' show CookKey;
 export 'src/cook_project.dart'
-    show CookFailed, CookProject, bundleHash, cookDuringBuild;
+    show
+        CookFailed,
+        CookProject,
+        bundleHash,
+        cookDuringBuild,
+        currentCookTarget;
 export 'src/cook_targets.dart' show CookTargets;
 export 'src/cook.dart'
     show
@@ -59,6 +64,7 @@ export 'src/directory.dart' show DirectoryAssetSource, DirectoryContentStore;
 export 'src/import_settings.dart' show ImportSettings, ImportSettingsReader;
 export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';
+export 'src/runtime_import.dart' show RuntimeImport;
 export 'src/importer.dart'
     show
         CookTarget,

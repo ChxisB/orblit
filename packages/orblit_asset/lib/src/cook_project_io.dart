@@ -328,3 +328,25 @@ String _under(String root, String relative) => relative
 
 Uri _fileUnder(String root, String relative) =>
     Uri.file(_under(root, relative));
+
+/// What the machine this is running on wants assets cooked as.
+///
+/// A runtime import is cooking for the device doing the importing, so unlike
+/// an offline cook there is no choice to make — asking the caller to pick
+/// would only give them a way to get it wrong.
+///
+/// A platform Orblit has no target for throws rather than falling back to
+/// something plausible. A wrong guess here does not fail; it produces textures
+/// the device cannot decode, and that turns up as a blank model rather than as
+/// this line.
+CookTarget get currentCookTarget {
+  final os = Platform.operatingSystem;
+  final target = CookTargets.find(os);
+  if (target == null) {
+    throw UnsupportedError(
+      'Orblit does not cook assets for $os. It cooks for '
+      '${CookTargets.names.join(', ')}.',
+    );
+  }
+  return target;
+}

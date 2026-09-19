@@ -390,6 +390,17 @@ void main() {
     );
   });
 
+  group('the machine this is running on', () {
+    test('has a target, and it is the platform we are on', () {
+      expect(currentCookTarget.name, Platform.operatingSystem);
+      expect(CookTargets.names, contains(currentCookTarget.name));
+    });
+
+    test('that target can decode the textures cooked for it', () {
+      expect(currentCookTarget.textureFamilies, isNotEmpty);
+    });
+  });
+
   group('the command', () {
     Future<ProcessResult> cook(List<String> arguments) => Process.run(
       Platform.resolvedExecutable,

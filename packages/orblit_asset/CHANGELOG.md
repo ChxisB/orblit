@@ -27,6 +27,26 @@
   project that only reads assets. It does not produce a data asset: those are
   master-channel only, so a cooked bundle ships as an ordinary Flutter asset
   and the project lists it under `flutter: assets:` until that changes.
+- **Importing a file a user hands the app.** `RuntimeImport` is the same cook
+  with the parts a project supplies replaced by the parts a running app has:
+  the device's cache, the device's own target, and one file somebody chose
+  instead of a folder full of them. Because the key covers the file's bytes,
+  importing the same file twice is free, and so is importing one the build
+  machine already cooked.
+- `RuntimeImport.nameFor` turns whatever a file picker hands back — a
+  container path, a Windows path, a URL with a query on it — into an asset id,
+  keeping the part the user would recognise and dropping the machine's
+  directory layout, which is the thing an id exists not to carry.
+- A `.gltf` a user picked on its own is a fragment, since it names its buffers
+  and images in other files. `alongside` is where those go, so the same
+  importer that works in a build works on a folder somebody dropped in.
+- Importers that drive a command-line tool are still registered at runtime,
+  because a desktop app is a running app and has them. A phone gets a failure
+  naming the tool it could not find rather than a file that imported to
+  nothing.
+- `currentCookTarget` is what the machine this is running on wants, since a
+  runtime import has no target to choose and offering the choice would only be
+  a way to get it wrong.
 - The command's exit code is what a build reads: 0 when everything cooked, 1
   when an asset failed, and 2 when the arguments were wrong. Failures are
   repeated at the end rather than only where they happened, because the one
