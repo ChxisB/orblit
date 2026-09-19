@@ -27,6 +27,24 @@ checkout carries what it needs to build and run and nothing else.
 
 Pre-alpha. Nothing here is stable.
 
+## With an AI assistant
+
+The documentation at [orblitengine.com](https://orblitengine.com) is also
+served as Markdown for language models, starting from
+[`llms.txt`](https://orblitengine.com/llms.txt). For Claude Code, this
+repository is a plugin marketplace holding one skill,
+[`skills/orblit`](skills/orblit), which carries the engine's model and its
+traps, and has the assistant check names against the source before it writes
+them. In Claude Code:
+
+```text
+/plugin marketplace add ChxisB/orblit
+/plugin install orblit@orblit
+```
+
+[Working with AI assistants](https://orblitengine.com/start/working-with-ai/)
+has the rest.
+
 ## Licence
 
 FSL-1.1-MIT, © 2026 Chris Beckett — the Functional Source License, with an MIT

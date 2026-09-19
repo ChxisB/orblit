@@ -1,0 +1,27 @@
+{
+  "name": "orblit",
+  "owner": {
+    "name": "Chris Beckett"
+  },
+  "description": "Plugins for building with Orblit, the 3D and 2D engine for Flutter.",
+  "plugins": [
+    {
+      "name": "orblit",
+      "source": "./skills/orblit",
+      "description": "Helps build games and scenes with Orblit: the stated-scene model, keys, photometric lighting, sampled time, populations, scene notes, platform set-up, and how to check the pre-alpha API against the source before writing code.",
+      "homepage": "https://orblitengine.com",
+      "repository": "https://github.com/ChxisB/orblit",
+      "license": "FSL-1.1-MIT",
+      "keywords": [
+        "orblit",
+        "flutter",
+        "dart",
+        "game-engine",
+        "3d",
+        "2d",
+        "filament"
+      ],
+      "category": "development"
+    }
+  ]
+}
