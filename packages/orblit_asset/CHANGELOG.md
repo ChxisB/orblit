@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0
+
+- **Cooking a whole project, from a command.** `dart run orblit_asset:cook
+  --target ios` walks a project's assets, cooks each one for that target and
+  writes a bundle: the files, and a manifest saying what each asset now is.
+  Repeat `--target` and it writes one bundle per target, side by side, so an
+  app build ships only the formats its own target can read — an iOS build
+  carries ASTC and no BC, and a desktop build the reverse.
+- `CookTargets` names the six platforms Orblit builds for and what each one
+  wants: which texture families it can decode, how large a texture it will
+  take, and whether it has half-float textures. They are ordinary `CookTarget`
+  values, so a project that needs a seventh writes one rather than waiting for
+  this to grow.
+- `CookProject` is the same run without the command around it, for a build hook
+  to call. It empties a bundle before writing it, so an asset deleted yesterday
+  stops shipping today rather than lingering because nothing overwrote it.
+- `bundleHash` is one hash over a whole bundle's manifest, which is how a build
+  says "this is the same set of assets as last time" in one comparison. Two
+  clean cooks of an unchanged project produce the same hash; changing one asset
+  changes it.
+- The command's exit code is what a build reads: 0 when everything cooked, 1
+  when an asset failed, and 2 when the arguments were wrong. Failures are
+  repeated at the end rather than only where they happened, because the one
+  line that matters should not be a thousand lines up.
+
 ## 0.3.0
 
 - **Importers, and the cook that drives them.** `Importer` is the contract: a

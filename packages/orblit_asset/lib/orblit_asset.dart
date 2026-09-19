@@ -44,6 +44,8 @@ export 'src/cook_cache.dart'
     show CookCache, CookOutput, CookedAsset, MemoryCookCache;
 export 'src/cook_cache_directory.dart' show DirectoryCookCache;
 export 'src/cook_key.dart' show CookKey;
+export 'src/cook_project.dart' show CookProject, bundleHash;
+export 'src/cook_targets.dart' show CookTargets;
 export 'src/cook.dart'
     show
         Cook,
