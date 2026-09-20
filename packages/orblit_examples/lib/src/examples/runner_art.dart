@@ -533,8 +533,11 @@ class RunnerArt {
     // The chest, a box with its corners taken off by a slightly smaller box
     // turned through an eighth -- cheaper than rounding it, and at this size
     // the eye reads the result as a bevel.
-    model.box(place(0, 0.04, 0, sx: 0.52, sy: 0.62, sz: 0.40), _shell,
-        roughness: 0.42);
+    model.box(
+      place(0, 0.04, 0, sx: 0.52, sy: 0.62, sz: 0.40),
+      _shell,
+      roughness: 0.42,
+    );
     model.box(
       place(0, 0.04, 0, sx: 0.50, sy: 0.58, sz: 0.46, yaw: math.pi / 8),
       _shell,
@@ -545,8 +548,11 @@ class RunnerArt {
     // one thing on the runner that is meant to be looked at, so it is the
     // brightest thing on it and sits at the height a camera behind will hold
     // in the middle of the frame.
-    model.box(place(0, 0.08, -0.19, sx: 0.34, sy: 0.40, sz: 0.06), _steel,
-        roughness: 0.3);
+    model.box(
+      place(0, 0.08, -0.19, sx: 0.34, sy: 0.40, sz: 0.06),
+      _steel,
+      roughness: 0.3,
+    );
     model.ball(
       place(0, 0.10, -0.23, sx: 0.09, sy: 0.09, sz: 0.05),
       _ember,
@@ -583,15 +589,21 @@ class RunnerArt {
       segments: 12,
       roughness: 0.4,
     );
-    model.box(place(0, -0.44, 0, sx: 0.38, sy: 0.16, sz: 0.32), _shell,
-        roughness: 0.45);
+    model.box(
+      place(0, -0.44, 0, sx: 0.38, sy: 0.16, sz: 0.32),
+      _shell,
+      roughness: 0.45,
+    );
 
     // The back, which is the side of this that anybody playing ever sees:
     // the camera is behind the runner for the whole game. A pack with a vent
     // down each side of it, lit, so that what follows the runner down the
     // road is two orange lights rather than the back of a box.
-    model.box(place(0, 0.06, 0.20, sx: 0.36, sy: 0.46, sz: 0.14), _trim,
-        roughness: 0.4);
+    model.box(
+      place(0, 0.06, 0.20, sx: 0.36, sy: 0.46, sz: 0.14),
+      _trim,
+      roughness: 0.4,
+    );
     for (final side in const [-1.0, 1.0]) {
       model.box(
         place(side * 0.11, 0.06, 0.27, sx: 0.09, sy: 0.34, sz: 0.04),
@@ -599,8 +611,11 @@ class RunnerArt {
         roughness: 0.25,
       );
     }
-    model.box(place(0, 0.26, 0.27, sx: 0.30, sy: 0.05, sz: 0.04), _steel,
-        roughness: 0.3);
+    model.box(
+      place(0, 0.26, 0.27, sx: 0.30, sy: 0.05, sz: 0.04),
+      _steel,
+      roughness: 0.3,
+    );
 
     // The neck and the head. The head is turned an eighth the other way from
     // the chest, which is enough to stop the two boxes reading as one.
@@ -618,12 +633,21 @@ class RunnerArt {
 
     // The visor: a dark glass band round the front of the head with the
     // light behind it showing at the sides, and an orange brow over it.
-    model.box(place(0, 0.58, -0.19, sx: 0.30, sy: 0.15, sz: 0.06), 0xFF13161C,
-        roughness: 0.12);
-    model.box(place(0, 0.58, -0.205, sx: 0.22, sy: 0.07, sz: 0.04), _glow,
-        roughness: 0.1);
-    model.box(place(0, 0.70, -0.17, sx: 0.34, sy: 0.05, sz: 0.08), _ember,
-        roughness: 0.3);
+    model.box(
+      place(0, 0.58, -0.19, sx: 0.30, sy: 0.15, sz: 0.06),
+      0xFF13161C,
+      roughness: 0.12,
+    );
+    model.box(
+      place(0, 0.58, -0.205, sx: 0.22, sy: 0.07, sz: 0.04),
+      _glow,
+      roughness: 0.1,
+    );
+    model.box(
+      place(0, 0.70, -0.17, sx: 0.34, sy: 0.05, sz: 0.08),
+      _ember,
+      roughness: 0.3,
+    );
 
     // The plates over the ears, and the one aerial, which is what the back
     // of it has instead of a face.
@@ -639,8 +663,11 @@ class RunnerArt {
       );
     }
     // A light on the back of the head as well, at the height the eye goes to.
-    model.box(place(0, 0.60, 0.19, sx: 0.16, sy: 0.07, sz: 0.04), _glow,
-        roughness: 0.15);
+    model.box(
+      place(0, 0.60, 0.19, sx: 0.16, sy: 0.07, sz: 0.04),
+      _glow,
+      roughness: 0.15,
+    );
 
     model.tube(
       place(0.10, 0.82, 0.06, sx: 0.022, sy: 0.16, sz: 0.022, roll: -0.22),
@@ -687,10 +714,16 @@ class RunnerArt {
   /// A boot, pointing -z, centred on its own origin for the same reason.
   static Uint8List _foot() {
     final model = RunnerModel();
-    model.box(place(0, 0.02, -0.03, sx: 0.17, sy: 0.13, sz: 0.28), _shell,
-        roughness: 0.5);
-    model.box(place(0, -0.06, -0.04, sx: 0.19, sy: 0.05, sz: 0.30), _ember,
-        roughness: 0.35);
+    model.box(
+      place(0, 0.02, -0.03, sx: 0.17, sy: 0.13, sz: 0.28),
+      _shell,
+      roughness: 0.5,
+    );
+    model.box(
+      place(0, -0.06, -0.04, sx: 0.19, sy: 0.05, sz: 0.30),
+      _ember,
+      roughness: 0.35,
+    );
     // The ankle, which is what shows from behind when the boot is thrown
     // forward on a slide.
     model.ball(

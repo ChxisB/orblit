@@ -388,8 +388,13 @@ class SplatsExample extends Example {
     final limbs = <(Vector3, Vector3, double)>[];
     final bunches = <(Vector3, double)>[];
 
-    void grow(Vector3 from, Vector3 way, double length, double radius,
-        int depth) {
+    void grow(
+      Vector3 from,
+      Vector3 way,
+      double length,
+      double radius,
+      int depth,
+    ) {
       final to = from + way * length;
       limbs.add((from, to, radius));
       if (depth == 0) {
@@ -425,8 +430,13 @@ class SplatsExample extends Example {
     // Four rounds of splitting off a trunk half again as long as the first
     // branch: a clear stem with a crown over it, rather than the low bundle
     // that fewer, longer, floppier limbs come out as.
-    grow(Vector3(0.05, floor, 0.1), Vector3(-0.03, 1, -0.02)..normalize(),
-        1.5, 0.17, 4);
+    grow(
+      Vector3(0.05, floor, 0.1),
+      Vector3(-0.03, 1, -0.02)..normalize(),
+      1.5,
+      0.17,
+      4,
+    );
 
     // ---- how the splats are shared out --------------------------------
     //
@@ -468,12 +478,16 @@ class SplatsExample extends Example {
       }
 
       final dry = random.nextDouble();
-      final base = Vector3(0.105, 0.215, 0.055) * (1 - dry) +
+      final base =
+          Vector3(0.105, 0.215, 0.055) * (1 - dry) +
           Vector3(0.300, 0.280, 0.090) * dry;
 
       if (blade) {
-        final way = Vector3(random.nextDouble() - 0.5, 0, random.nextDouble() - 0.5)
-          ..normalize();
+        final way = Vector3(
+          random.nextDouble() - 0.5,
+          0,
+          random.nextDouble() - 0.5,
+        )..normalize();
         final tall = 0.045 + random.nextDouble() * 0.055;
         put(
           p + Vector3(0, tall * 0.5, 0),
@@ -557,7 +571,8 @@ class SplatsExample extends Example {
       final n = (way * 0.55 + unit())..normalize();
 
       final autumn = random.nextDouble();
-      final green = Vector3(0.075, 0.215, 0.045) +
+      final green =
+          Vector3(0.075, 0.215, 0.045) +
           Vector3(0.130, 0.185, 0.050) * random.nextDouble();
       final rust = Vector3(0.330, 0.160, 0.040);
       final base = autumn > 0.94 ? rust : green;
@@ -642,7 +657,8 @@ class SplatsExample extends Example {
         0.014 + random.nextDouble() * 0.012,
         0.012 + random.nextDouble() * 0.010,
         0.004,
-        petals[random.nextInt(petals.length)] * (0.55 + 0.45 * random.nextDouble()),
+        petals[random.nextInt(petals.length)] *
+            (0.55 + 0.45 * random.nextDouble()),
         0.88 + random.nextDouble() * 0.12,
       );
     }
