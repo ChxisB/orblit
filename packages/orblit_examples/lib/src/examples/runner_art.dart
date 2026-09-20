@@ -26,7 +26,7 @@ class RunnerArt {
   /// A resource name stands for bytes that never change — a renderer that
   /// has loaded a name does not load it again — so art that changed under the
   /// same name would not be seen until the application restarted.
-  static const version = 1;
+  static const version = 2;
 
   /// The name the scene uses for [file].
   static String name(String file) => 'orblit:resource/runner/v$version/$file';
@@ -49,7 +49,7 @@ class RunnerArt {
   static final bar = name('bar.glb');
   static final container = name('container.glb');
   static final body = name('body.glb');
-  static final wing = name('wing.glb');
+  static final hand = name('hand.glb');
   static final foot = name('foot.glb');
   static final cloud = name('cloud.glb');
 
@@ -104,7 +104,7 @@ class RunnerArt {
       bar: _bar(),
       container: _container(),
       body: _body(),
-      wing: _wing(),
+      hand: _hand(),
       foot: _foot(),
       cloud: _cloud(),
     });
@@ -493,98 +493,212 @@ class RunnerArt {
   }
 
   // ---- the runner ----
+  //
+  // A robot, in four floating pieces: a body, two hands and two boots, with
+  // nothing joining them. There is no skeleton here and no skinning, so an
+  // arm that bent would need bones and a rig; a hand that simply travels
+  // where an arm would have carried it needs a matrix, and reads as a run
+  // all the same. It is also why the parts can be five draws of five meshes
+  // rather than one of a rigged one.
+  //
+  // Slate and steel with a hot orange down one side of it, which is the
+  // engine's own colouring, against a world that is otherwise all greens and
+  // blues.
 
-  /// The runner's body: a round thing with a face on the -z side, its
-  /// middle at the origin, a little over a metre across.
+  /// Slate, for everything that is a panel of the machine.
+  ///
+  /// Light enough to be a colour rather than a hole: this is a bright world
+  /// of greens and whites, seen from behind and often against black asphalt,
+  /// and a darker machine than this read as a silhouette on it.
+  static const _shell = 0xFF5C6A82;
+
+  /// The lighter steel of the joints and the plating over them.
+  static const _steel = 0xFFB4BECE;
+
+  /// The darker trim, which keeps the shapes apart where two panels meet.
+  static const _trim = 0xFF2E3546;
+
+  /// The hot orange of the chest, the visor's surround and the soles.
+  static const _ember = 0xFFE5893F;
+
+  /// What is behind the visor, which the glass only half hides.
+  static const _glow = 0xFF7FE4FF;
+
+  /// The runner's body: a machine facing -z, its middle at the origin,
+  /// standing about a metre and a quarter from its hips to the top of its
+  /// head.
   static Uint8List _body() {
     final model = RunnerModel();
-    model.ball(
-      place(0, 0, 0, sx: 0.56, sy: 0.58, sz: 0.56),
-      0xFFB8A6F4,
-      segments: 22,
-      rings: 16,
-      roughness: 0.55,
+
+    // The chest, a box with its corners taken off by a slightly smaller box
+    // turned through an eighth -- cheaper than rounding it, and at this size
+    // the eye reads the result as a bevel.
+    model.box(place(0, 0.04, 0, sx: 0.52, sy: 0.62, sz: 0.40), _shell,
+        roughness: 0.42);
+    model.box(
+      place(0, 0.04, 0, sx: 0.50, sy: 0.58, sz: 0.46, yaw: math.pi / 8),
+      _shell,
+      roughness: 0.42,
     );
-    // The paler belly, most of it inside the body, so that what shows is a
-    // patch on the front rather than a second ball.
+
+    // The plate across the front, and the lamp set into it. The lamp is the
+    // one thing on the runner that is meant to be looked at, so it is the
+    // brightest thing on it and sits at the height a camera behind will hold
+    // in the middle of the frame.
+    model.box(place(0, 0.08, -0.19, sx: 0.34, sy: 0.40, sz: 0.06), _steel,
+        roughness: 0.3);
     model.ball(
-      place(0, -0.1, -0.2, sx: 0.43, sy: 0.42, sz: 0.4),
-      0xFFE0D8FF,
-      segments: 18,
-      rings: 12,
-      roughness: 0.6,
+      place(0, 0.10, -0.23, sx: 0.09, sy: 0.09, sz: 0.05),
+      _ember,
+      segments: 14,
+      rings: 10,
+      roughness: 0.18,
     );
+
+    // The shoulders, which no arm hangs from: they are what the hands swing
+    // around, and the eye supplies the rest.
     for (final side in const [-1.0, 1.0]) {
       model.ball(
-        place(side * 0.17, 0.13, -0.5, sx: 0.075, sy: 0.1, sz: 0.06),
-        0xFF18151F,
+        place(side * 0.29, 0.26, 0, sx: 0.14, sy: 0.13, sz: 0.14),
+        _steel,
+        segments: 14,
+        rings: 10,
+        roughness: 0.35,
+      );
+      model.ball(
+        place(side * 0.34, 0.26, 0, sx: 0.06, sy: 0.07, sz: 0.07),
+        _ember,
         segments: 10,
         rings: 8,
-        roughness: 0.2,
-      );
-      model.ball(
-        place(side * 0.15, 0.17, -0.55, sx: 0.025, sy: 0.03, sz: 0.02),
-        0xFFFFFFFF,
-        segments: 6,
-        rings: 4,
-      );
-      model.ball(
-        place(side * 0.31, -0.02, -0.44, sx: 0.08, sy: 0.05, sz: 0.04),
-        0xFFF59CBB,
-        segments: 8,
-        rings: 6,
+        roughness: 0.25,
       );
     }
-    // The beak, and the tuft on top, which is what the back of it has
-    // instead of a face.
+
+    // The waist and the hips, narrower than the chest, so that the shape
+    // tapers to where the boots are rather than stopping flat.
+    model.tube(
+      place(0, -0.30, 0, sx: 0.17, sy: 0.12, sz: 0.15),
+      _steel,
+      top: 1.35,
+      segments: 12,
+      roughness: 0.4,
+    );
+    model.box(place(0, -0.44, 0, sx: 0.38, sy: 0.16, sz: 0.32), _shell,
+        roughness: 0.45);
+
+    // The back, which is the side of this that anybody playing ever sees:
+    // the camera is behind the runner for the whole game. A pack with a vent
+    // down each side of it, lit, so that what follows the runner down the
+    // road is two orange lights rather than the back of a box.
+    model.box(place(0, 0.06, 0.20, sx: 0.36, sy: 0.46, sz: 0.14), _trim,
+        roughness: 0.4);
+    for (final side in const [-1.0, 1.0]) {
+      model.box(
+        place(side * 0.11, 0.06, 0.27, sx: 0.09, sy: 0.34, sz: 0.04),
+        _ember,
+        roughness: 0.25,
+      );
+    }
+    model.box(place(0, 0.26, 0.27, sx: 0.30, sy: 0.05, sz: 0.04), _steel,
+        roughness: 0.3);
+
+    // The neck and the head. The head is turned an eighth the other way from
+    // the chest, which is enough to stop the two boxes reading as one.
+    model.tube(
+      place(0, 0.36, 0, sx: 0.10, sy: 0.06, sz: 0.10),
+      _steel,
+      segments: 10,
+      roughness: 0.35,
+    );
+    model.box(
+      place(0, 0.58, 0, sx: 0.40, sy: 0.34, sz: 0.38, yaw: -math.pi / 16),
+      _shell,
+      roughness: 0.4,
+    );
+
+    // The visor: a dark glass band round the front of the head with the
+    // light behind it showing at the sides, and an orange brow over it.
+    model.box(place(0, 0.58, -0.19, sx: 0.30, sy: 0.15, sz: 0.06), 0xFF13161C,
+        roughness: 0.12);
+    model.box(place(0, 0.58, -0.205, sx: 0.22, sy: 0.07, sz: 0.04), _glow,
+        roughness: 0.1);
+    model.box(place(0, 0.70, -0.17, sx: 0.34, sy: 0.05, sz: 0.08), _ember,
+        roughness: 0.3);
+
+    // The plates over the ears, and the one aerial, which is what the back
+    // of it has instead of a face.
+    for (final side in const [-1.0, 1.0]) {
+      model.tube(
+        Matrix4.identity()
+          ..translateByDouble(side * 0.21, 0.57, 0.01, 1)
+          ..rotateZ(side * math.pi / 2)
+          ..scaleByDouble(0.09, 0.04, 0.09, 1),
+        _steel,
+        segments: 10,
+        roughness: 0.3,
+      );
+    }
+    // A light on the back of the head as well, at the height the eye goes to.
+    model.box(place(0, 0.60, 0.19, sx: 0.16, sy: 0.07, sz: 0.04), _glow,
+        roughness: 0.15);
+
+    model.tube(
+      place(0.10, 0.82, 0.06, sx: 0.022, sy: 0.16, sz: 0.022, roll: -0.22),
+      _steel,
+      top: 0.5,
+      segments: 6,
+    );
+    model.ball(
+      place(0.06, 0.96, 0.09, sx: 0.045, sy: 0.045, sz: 0.045),
+      _ember,
+      segments: 10,
+      rings: 8,
+      roughness: 0.2,
+    );
+
+    return model.toGlb();
+  }
+
+  /// A hand, centred on its own origin so that the game can put it wherever
+  /// the swing of an arm would have taken it.
+  static Uint8List _hand() {
+    final model = RunnerModel();
+    model.ball(
+      place(0, 0, -0.01, sx: 0.115, sy: 0.115, sz: 0.13),
+      _steel,
+      segments: 14,
+      rings: 10,
+      roughness: 0.45,
+    );
+    // A steel cuff at the back of it, towards the shoulder, which gives the
+    // hand a front and a back and so a direction of travel.
     model.tube(
       Matrix4.identity()
-        ..translateByDouble(0, 0.03, -0.53, 1)
-        ..rotateX(-math.pi / 2)
-        ..scaleByDouble(0.06, 0.1, 0.05, 1),
-      0xFFF2A33C,
-      top: 0,
-      segments: 8,
-    );
-    model.tube(
-      place(0.02, 0.5, 0.02, sx: 0.09, sy: 0.22, sz: 0.09, roll: -0.25),
-      0xFF9C87EA,
-      top: 0,
-      segments: 8,
-      flat: true,
-    );
-    model.tube(
-      place(-0.07, 0.5, 0.05, sx: 0.07, sy: 0.16, sz: 0.07, roll: 0.4),
-      0xFF9C87EA,
-      top: 0,
-      segments: 8,
-      flat: true,
+        ..translateByDouble(0, 0, 0.09, 1)
+        ..rotateX(math.pi / 2)
+        ..scaleByDouble(0.085, 0.04, 0.085, 1),
+      _ember,
+      segments: 10,
+      roughness: 0.3,
     );
     return model.toGlb();
   }
 
-  /// A wing, reaching out along +x from where it joins the body at the
-  /// origin. The other one is this turned half round, not mirrored.
-  static Uint8List _wing() {
-    final model = RunnerModel();
-    model.ball(
-      place(0.22, 0, 0.02, sx: 0.26, sy: 0.07, sz: 0.19, roll: 0.25),
-      0xFF9C87EA,
-      segments: 12,
-      rings: 8,
-      roughness: 0.6,
-    );
-    return model.toGlb();
-  }
-
+  /// A boot, pointing -z, centred on its own origin for the same reason.
   static Uint8List _foot() {
     final model = RunnerModel();
+    model.box(place(0, 0.02, -0.03, sx: 0.17, sy: 0.13, sz: 0.28), _shell,
+        roughness: 0.5);
+    model.box(place(0, -0.06, -0.04, sx: 0.19, sy: 0.05, sz: 0.30), _ember,
+        roughness: 0.35);
+    // The ankle, which is what shows from behind when the boot is thrown
+    // forward on a slide.
     model.ball(
-      place(0, 0, -0.04, sx: 0.13, sy: 0.08, sz: 0.2),
-      0xFF3A2F5B,
+      place(0, 0.09, 0.06, sx: 0.09, sy: 0.08, sz: 0.09),
+      _steel,
       segments: 12,
       rings: 8,
-      roughness: 0.7,
+      roughness: 0.35,
     );
     return model.toGlb();
   }

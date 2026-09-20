@@ -7,9 +7,10 @@
 //
 // `Platform.environment` is the exception, and is not empty: the gallery
 // carries its `ORBLIT_*` switches in the query string on the web (see
-// examples/gallery/lib/orblit_env_web.dart), so the four examples that read
+// examples/gallery/lib/orblit_env_web.dart), so the five examples that read
 // the environment directly — ORBLIT_DETAIL, ORBLIT_VIDEO, ORBLIT_MESH,
-// ORBLIT_BISTRO — keep working from a URL exactly as they do from a shell.
+// ORBLIT_BISTRO, ORBLIT_AUTOPILOT — keep working from a URL exactly as they
+// do from a shell.
 library;
 
 import 'dart:typed_data';

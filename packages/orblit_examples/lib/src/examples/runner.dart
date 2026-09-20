@@ -7,6 +7,7 @@ import 'package:orblit_filament/orblit_filament.dart';
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 
 import '../example.dart';
+import '../platform/io.dart';
 import 'runner_art.dart';
 import 'surface.dart' show linearOf;
 
@@ -68,7 +69,12 @@ class RunnerExample extends Example {
   RunnerPhase _phase = RunnerPhase.ready;
 
   /// Whether the game plays itself.
-  bool autopilot = false;
+  ///
+  /// Off by default, because somebody who opens this wants to play it. On
+  /// from the environment, because something that is recording the gallery
+  /// has no hands: ORBLIT_AUTOPILOT=1 starts a run and keeps it going, and
+  /// the panel's own switch still works over the top of it.
+  bool autopilot = Platform.environment['ORBLIT_AUTOPILOT'] == '1';
 
   /// Whether hitting something only slows you down.
   bool invincible = false;
@@ -786,7 +792,13 @@ class RunnerExample extends Example {
     for (final hazard in _hazards) {
       if (hazard.struck || hazard.far < _along - 0.5) continue;
       if (hazard.near - _along > look) continue;
-      worth[hazard.lane] -= hazard.kind == _Kind.container ? 100 : 1;
+      // A container is a wall: nothing gets past one, and a lane with one in
+      // it is worth nothing at any price. A hurdle and a bar are not walls.
+      // They are cleared, over and under, at no cost but the timing, so they
+      // count for very little here -- enough to prefer an empty lane when
+      // there is nothing else to choose between them, and not nearly enough
+      // to give up a lane of coins for.
+      worth[hazard.lane] -= hazard.kind == _Kind.container ? 100 : 0.12;
     }
     for (final coin in _road) {
       final ahead = coin.along - _along;
@@ -802,7 +814,26 @@ class RunnerExample extends Example {
       if (worth[lane] > worth[wanted]) wanted = lane;
     }
     final settled = (_x - _lanes[_lane]).abs() < 0.3;
-    if (wanted != _lane && settled) {
+
+    // Whatever is being cleared in this lane goes on being cleared. Leaving
+    // halfway through looks like running away from a hurdle rather than over
+    // it, and it lands the runner in whatever the next lane was holding.
+    final clearing =
+        !_grounded ||
+        _isSliding ||
+        _hazards.any(
+          (hazard) =>
+              !hazard.struck &&
+              hazard.kind != _Kind.container &&
+              hazard.lane == _lane &&
+              hazard.near - _along > 0 &&
+              hazard.near - _along < speed * 1.4 + 2,
+        );
+    // Unless it is a container that is being left, which is the one thing
+    // worth breaking off a jump for, because it cannot be jumped.
+    final fleeing = worth[_lane] < -50;
+
+    if (wanted != _lane && settled && (fleeing || !clearing)) {
       final next = _lane + (wanted > _lane ? 1 : -1);
       if (!_walled(next, speed)) steer(next - _lane);
     }
@@ -1120,25 +1151,37 @@ class RunnerExample extends Example {
       ),
     );
 
-    // Wings: a lazy beat when running, a flurry in the air, swept back
-    // flat when sliding.
-    final flap = _isSliding
-        ? -0.2
-        : !_grounded || crashed
-        ? 0.5 + 0.6 * math.sin(_clock * 30)
-        : ready
-        ? 0.25 + 0.2 * math.sin(_clock * 4)
-        : 0.3 + 0.25 * math.sin(stride * 2);
+    // Hands: swinging opposite the boot on the same side, which is what a
+    // run looks like; thrown up in the air, out in front on a slide, and
+    // loose at the sides in a crash. They hang off `frame`, so they lean
+    // with the body into a lane change.
     for (final side in const [1.0, -1.0]) {
-      final wing = frame.clone()
-        ..translateByDouble(side * 0.5 * sx, 0.05 * sy, 0.05, 1);
-      if (side < 0) wing.rotateY(math.pi);
-      wing.rotateZ(flap);
+      final phase = stride + (side > 0 ? math.pi : 0);
+      var lift = 0.0, reach = 0.0;
+      if (crashed) {
+        lift = 0.1;
+        reach = 0.12;
+      } else if (!_grounded) {
+        lift = 0.34;
+        reach = -0.14;
+      } else if (_isSliding) {
+        lift = -0.16;
+        reach = -0.34;
+      } else if (ready) {
+        // Not standing to attention: a slow idle, so that the runner looks
+        // like it is waiting rather than switched off.
+        reach = math.sin(_clock * 2.2) * 0.05;
+        lift = 0.02;
+      } else {
+        reach = math.sin(phase) * 0.30;
+        lift = math.max(0, math.cos(phase)) * 0.07;
+      }
       objects.add(
         OrblitObject(
           key: side > 0 ? 2 : 3,
-          mesh: RunnerArt.wing,
-          transform: wing,
+          mesh: RunnerArt.hand,
+          transform: frame.clone()
+            ..translateByDouble(side * 0.44 * sx, 0.08 * sy + lift, reach, 1),
           colour: _white,
         ),
       );
