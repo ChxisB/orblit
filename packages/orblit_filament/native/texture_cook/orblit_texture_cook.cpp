@@ -27,6 +27,20 @@
 //       [--uastc L]                     UASTC effort, 0-4 (default 2)
 //       [--zstd L]                      zstd level, 1-22 (default 19)
 //       [--threads N]                   default: one per hardware thread
+//       [--decode FILE]                 decode only: write FILE as width and
+//                                       height, two little-endian uint32s,
+//                                       then width*height*4 bytes of RGBA8,
+//                                       rows top first. Nothing is cooked.
+//                                       For a caller that has to look at a
+//                                       texture's texels and has no JPEG or
+//                                       Basis decoder of its own — the asset
+//                                       cook packing a model's maps onto an
+//                                       atlas is the one that wanted it. A
+//                                       raw dump rather than a PNG because
+//                                       the reader is a program, and adding
+//                                       an encoder here to have it removed
+//                                       again at the other end is two pieces
+//                                       of work for no bytes saved.
 //       [--quiet]
 //   orblit_texture_cook --version
 //   orblit_texture_cook --revisions [flags]
@@ -57,6 +71,7 @@
 
 #include "OrblitTextureCook.h"
 
+#include <algorithm>
 #include <cerrno>
 #include <cstdio>
 #include <cstdlib>
@@ -160,7 +175,7 @@ int usage() {
                "  [--two-channel-normals: BC5/EAC RG11, only for a material that rebuilds Z]\n"
                "  [--srgb|--linear] [--cutout T] [--lossless] [--mips|--no-mips]\n"
                "  [--max-size N] [--wrap] [--astc direct|transcoded] [--uastc L] [--zstd L]\n"
-               "  [--threads N] [--quiet]\n"
+               "  [--threads N] [--decode FILE] [--quiet]\n"
                "       orblit_texture_cook --version\n"
                "       orblit_texture_cook --revisions [flags]\n");
   return 2;
@@ -175,7 +190,8 @@ bool number(const char *text, long low, long high, long &value) {
 
 /// Reads the flags from argv[first] on; false, having said why, on one it
 /// does not know.
-bool parseFlags(int argc, char **argv, int first, Settings &settings, bool &quiet) {
+bool parseFlags(int argc, char **argv, int first, Settings &settings, bool &quiet,
+                std::string *decodeTo = nullptr) {
   for (int i = first; i < argc; i++) {
     const std::string name = argv[i];
     const bool hasValue = i + 1 < argc;
@@ -235,6 +251,8 @@ bool parseFlags(int argc, char **argv, int first, Settings &settings, bool &quie
     } else if (name == "--threads" && hasValue && number(argv[i + 1], 1, 1024, value)) {
       settings.threads = uint32_t(value);
       i++;
+    } else if (name == "--decode" && hasValue && decodeTo != nullptr) {
+      *decodeTo = argv[++i];
     } else if (name == "--quiet") {
       quiet = true;
     } else {
@@ -271,13 +289,44 @@ int main(int argc, char **argv) {
   const std::string out = argv[2];
   Settings settings;
   bool quiet = false;
-  if (!parseFlags(argc, argv, 3, settings, quiet)) return 2;
+  std::string decodeTo;
+  if (!parseFlags(argc, argv, 3, settings, quiet, &decodeTo)) return 2;
 
   std::vector<uint8_t> bytes;
   if (!readFile(in, bytes)) {
     std::fprintf(stderr, "orblit_texture_cook: cannot read %s\n", in.c_str());
     return 1;
   }
+  if (!decodeTo.empty()) {
+    Image image;
+    Source source;
+    std::string why;
+    if (!decode(bytes.data(), bytes.size(), image, source, why)) {
+      std::fprintf(stderr, "orblit_texture_cook: %s: %s\n", in.c_str(), why.c_str());
+      return 1;
+    }
+    std::vector<uint8_t> dump(8 + image.rgba.size());
+    // Little-endian by hand rather than by memcpy of a uint32, because the
+    // reader is on another machine as often as not and a dump whose byte
+    // order depends on who wrote it is not a format.
+    const uint32_t header[2] = {image.width, image.height};
+    for (int h = 0; h < 2; h++) {
+      for (int b = 0; b < 4; b++) {
+        dump[size_t(h) * 4 + size_t(b)] = uint8_t((header[h] >> (8 * b)) & 0xFFu);
+      }
+    }
+    std::copy(image.rgba.begin(), image.rgba.end(), dump.begin() + 8);
+    if (!writeAtomically(decodeTo, dump, why)) {
+      std::fprintf(stderr, "orblit_texture_cook: %s\n", why.c_str());
+      return 1;
+    }
+    if (!quiet) {
+      std::printf("%s -> %s: %s %ux%u, RGBA8\n", in.c_str(), decodeTo.c_str(),
+                  source.container.c_str(), image.width, image.height);
+    }
+    return 0;
+  }
+
   const std::string stem = stemFor(in, out);
   if (sameFile(in, stem + ".ktx2")) {
     std::fprintf(stderr,
