@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked assets and assets fetched over a network; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -351,6 +351,35 @@ A population example is in [references/scene-api.md](references/scene-api.md).
 - `onAssetInfo` hands back an `OrblitAssetInfo` per model: its clips
   (`clipNamed`), joints (`jointNamed`), variants, materials, lights and bounds.
 
+## Materials, scene files and assets
+
+Two packages hold everything a project keeps on disk, and neither has Flutter,
+a filesystem or a renderer in it.
+
+`orblit_scene` has the scene document (`.oscene`), the material document
+(`.omat`) and the glTF, GLB and OBJ writers and readers:
+
+```dart
+final library = MaterialLibrary(materials: {...});
+final view = OrblitDocumentView(document, materials: library, look: 'winter');
+
+final written = document.writeAs(SceneFormat.glb, materials: library);
+final read = readSceneFrom(written.first.bytes);
+```
+
+A scene Orblit wrote comes back as itself — the same ids, order, parents and
+components, including ones this build has never heard of. A glTF from anywhere
+else is interpreted instead and says so. Neither `writeAs` nor `readSceneFrom`
+throws over one thing it could not carry: both return a list of problems, and
+code that does not show them makes a lossy export look successful.
+
+`orblit_asset` cooks assets for a device and fetches them over a network. The
+policy is checked before any connection is made, a 404 is distinguished from
+an unreachable server, and `fetchInStages` draws a texture's own coarse mip
+levels while the rest of it is still arriving.
+
+Full API, parameter lists and the traps: [references/assets.md](references/assets.md).
+
 ## Scene notes, not silence
 
 The renderer reports what it couldn't do through `onSceneNotes`, a
@@ -424,6 +453,8 @@ Load these when the task needs them:
 - [references/game-loop.md](references/game-loop.md): a complete small game.
 - [references/platforms.md](references/platforms.md): per-platform setup and
   what has actually been seen to work.
+- [references/assets.md](references/assets.md): materials and looks, scene
+  files and their export and import, splats, cooked and networked assets.
 - [references/packages.md](references/packages.md): the other packages.
 
 ## Licence

@@ -259,11 +259,27 @@ https://orblitengine.com/examples/a-menu-over-the-game/ and
 
 Scene files as documents, for games built in the editor.
 `SceneDocument.decode(text)` returns a `SceneLoad` with `document` and
-`problems`. `OrblitDocumentView(document, projectRoot: ...)` stages it; draw
-`OrblitView(scene: view.scene)` and change it with
+`problems`. `OrblitDocumentView(document, projectRoot: ..., materials: ...,
+look: ...)` stages it; draw `OrblitView(scene: view.scene)` and change it with
 `view.apply(SceneDiff.between(before, after))`. A `TransformComponent` built
 with only `position` resets rotation and scale, so carry them over. Guide:
 `/guides/scene-files/`.
+
+`orblit_scene` also holds the material document (`.omat`, `MaterialLibrary`,
+`MaterialComponent` and its looks) and the scene writers and readers —
+`document.writeAs(SceneFormat.glb)` and `readSceneFrom(bytes)` for glTF, GLB
+and OBJ. Both report what they could not carry rather than throwing. Details
+and the traps: [assets.md](assets.md).
+
+## orblit_asset
+
+Assets as bytes, wherever they come from. Cooking source files for a device
+(`GltfImporter`, `AtlasImporter`, `RuntimeImport`, a content-hashed cache),
+and fetching them over a network (`AssetOrigin`, `FetchPolicy`,
+`AssetFetcher`, `NetworkAssetSource`, `HttpTransport`, and `MapTransport` for
+tests). `fetchInStages` gives a stand-in, then a texture's own coarse mip
+levels while the rest arrives, then the whole file. Details:
+[assets.md](assets.md).
 
 ## orblit_sequence
 

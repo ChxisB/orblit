@@ -8,7 +8,7 @@
     {
       "name": "orblit",
       "source": "./skills/orblit",
-      "description": "Helps build games and scenes with Orblit: the stated-scene model, keys, photometric lighting, sampled time, populations, scene notes, platform set-up, and how to check the pre-alpha API against the source before writing code.",
+      "description": "Helps build games and scenes with Orblit: the stated-scene model, keys, photometric lighting, sampled time, populations, scene notes, material files and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets, platform set-up, and how to check the pre-alpha API against the source before writing code.",
       "homepage": "https://orblitengine.com",
       "repository": "https://github.com/ChxisB/orblit",
       "license": "FSL-1.1-MIT",
@@ -19,7 +19,10 @@
         "game-engine",
         "3d",
         "2d",
-        "filament"
+        "filament",
+        "gaussian-splats",
+        "gltf",
+        "materials"
       ],
       "category": "development"
     }
