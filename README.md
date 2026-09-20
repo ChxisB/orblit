@@ -1,18 +1,111 @@
-# Orblit Engine
+<p align="center">
+  <a href="https://orblitengine.com">
+    <img alt="Orblit" width="220px" src="https://raw.githubusercontent.com/ChxisB/orblit/main/brand/orblit-logo-full.png">
+  </a>
+</p>
 
-A Dart-first 3D game engine. Game logic and UI in Flutter, an entity-component
-core in C++, and Google's [Filament](https://github.com/google/filament) doing
-the rendering.
+<h1 align="center">Orblit</h1>
+
+<p align="center"><b>A 3D game engine you write in Dart</b></p>
+
+<p align="center">Game logic and interface in Flutter. An archetype entity-component core in C++. Google&rsquo;s Filament doing the rendering. The viewport is a widget, so the menu over it is an ordinary <code>Column</code>.</p>
+
+<p align="center">
+  <a title="CI" href="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml?query=event%3Apush+branch%3Amain"><img src="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml/badge.svg?branch=main&event=push"/></a>
+  <a title="Licence" href="LICENSE"><img src="https://img.shields.io/badge/licence-FSL--1.1--MIT-blue"/></a>
+  <img alt="Pre-alpha" src="https://img.shields.io/badge/status-pre--alpha-orange"/>
+  <a title="Discord" href="https://discord.gg/5DH7HuDUtJ"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white"/></a>
+</p>
+
+<p align="center"><a href="https://orblitengine.com">Website</a> · <a href="https://orblitengine.com/docs/">Docs</a> · <a href="https://orblitengine.com/docs/start/installing/">Install</a> · <a href="https://orblitengine.com/docs/gallery/basics/">Gallery</a> · <a href="https://github.com/ChxisB/orblit-examples">Examples</a> · <a href="#showcases">Showcases</a> · <a href="https://discord.gg/5DH7HuDUtJ">Discord</a></p>
+
+<p align="center">
+  <img alt="The Amazon Lumberyard Bistro at night, a hundred point lights standing where the artist put the lamps, drawn by Orblit" width="600px" src="https://orblitengine.com/showcase/hero-bistro.jpg">
+</p>
+
+<p align="center">
+  <img alt="A hundred thousand instanced objects animating at once" width="600px" src="https://orblitengine.com/showcase/a-hundred-thousand.jpg">
+</p>
+
+<p align="center">
+  <img alt="A robot running and jumping hurdles in the runner example, played by its own autopilot" width="600px" src="https://orblitengine.com/showcase/runner.jpg">
+</p>
+
+## At a glance
+
+- **Rendering.** Filament's physically based materials and a tone mapper that behaves like a camera. Image-based lighting from HDR or EXR, directional, point and spot lights, cascaded shadows, and irradiance fields for bounced light sampled through a volume. A post stack with bloom, volumetric light, motion blur, occlusion, decals and selection outlines. Gaussian splats, instancing and populations.
+- **Simulation.** An archetype entity-component store written in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as views over the store's own memory rather than as copies, so reading a column is not a translation step and writing to one writes to the store.
+- **The scene is a widget.** `OrblitView` sits in the same widget tree as everything else, takes part in the same layout, and is composited by the same compositor. On Apple platforms the renderer draws into an IOSurface-backed buffer Flutter adopts as it is — no readback, no copy through the CPU. A panel can overlap the viewport, and the inventory screen has a widget test.
+- **Games.** Steering behaviours and behaviour trees, armatures with poses and bone constraints, camera shots that describe what to frame and blend between, collision, sampled time so the simulation does not care what the frame rate is, multiplayer that replicates component columns, and TypeScript scripting on QuickJS as a peer of Dart over the same core.
+- **2D.** Sprites in layers, atlas packing, parallax and tile maps, in the same scene as the 3D.
+- **Tooling.** A desktop editor, a gallery app that shows every technique one at a time beside the lines that do it, a build-time asset pipeline that cooks KTX2 texture sets per device, and a Claude Code skill so an assistant writes real API instead of guessing.
+- **Formats.** glTF, with FBX and OBJ converted on the way in. An `.oscene` scene document with migrations and diffs, KTX2 compressed textures, HDR and EXR environments, and `.ply`, `.spz` and `.osplat` splat captures.
+- **Platforms.** macOS, iOS, Android and the web draw today. Linux draws, though not yet on a real GPU. Windows builds on every change and nothing has drawn on it yet — [platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about the difference on purpose.
+
+## Showcases
+
+Every one of these is a page in the gallery app, running on a real machine. The
+[showcases page](https://orblitengine.com/docs/gallery/showcases/) carries the
+lines that do it, lifted from each example's own source.
+
+| Showcase | What it is |
+| --- | --- |
+| **Blocks** | A landscape of sixty thousand cubes you can walk around and dig into, generated and sent once. |
+| **Runner** | A runner you can play — dodge, jump, slide and pick up coins — with an autopilot that plays it well enough to prove the game is fair. |
+| **Bistro exterior** | Somebody else's street, lit by this engine. A hundred lights at night. |
+| **Bistro interior** | The room, and the one place the absence of bounced light shows. |
+
+To open the gallery on one:
+
+```sh
+ORBLIT_EXAMPLE='runner' flutter run -d macos
+```
+
+[Running the examples](https://orblitengine.com/docs/examples/running-them/)
+covers getting there from a clean checkout.
+
+## Getting started
+
+The packages are not on pub.dev yet, so they resolve from git:
+
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Vectors and matrices. Orblit takes and returns these types rather than
+  # defining its own, so it is a direct dependency of yours too.
+  vector_math: ^2.1.4
+
+  orblit_filament:
+    git:
+      url: https://github.com/ChxisB/orblit.git
+      path: packages/orblit_filament
+```
+
+The renderer's native side needs one setup step per platform, which downloads
+Google's Filament SDK and compiles the materials.
+[Installing](https://orblitengine.com/docs/start/installing/) has what each
+machine needs and which machine can build for what;
+[your first scene](https://orblitengine.com/docs/start/your-first-scene/) is the
+shortest path to a frame.
 
 ```sh
 ./tool/check.sh    # analyze and test everything that needs no window
 ```
 
+## What is in here
+
 | Package | What it is |
 | --- | --- |
 | `orblit_core` | Archetype entity-component store in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as views, not copies. |
 | `orblit_codegen` | Turns annotated component classes into registration and a manifest other front ends read without compiling this package. |
-| `orblit_filament` | Filament rendering composited by Flutter's texture registry. macOS so far. |
+| `orblit_filament` | Filament rendering composited by Flutter's texture registry. |
+
+Those are the three the rest is built on. The other eighteen — geometry,
+rigging, agents, cameras, lighting, sprites, scene files, UI, weather and the
+rest — are listed in the
+[package reference](https://orblitengine.com/docs/reference/packages/).
 
 ## The rest of Orblit
 
@@ -44,6 +137,12 @@ them. In Claude Code:
 
 [Working with AI assistants](https://orblitengine.com/docs/start/working-with-ai/)
 has the rest.
+
+## Come and break it
+
+It is early enough that what you try first is likely to be the thing nobody has
+tried yet. Both of those are useful. The
+[Discord](https://discord.gg/5DH7HuDUtJ) is where that conversation happens.
 
 ## Licence
 
