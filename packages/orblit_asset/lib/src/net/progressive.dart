@@ -17,6 +17,9 @@ class AssetStage {
   /// Which asset these bytes are: the stand-in, or the one that was asked
   /// for. Worth knowing, because the two are rarely the same size and a
   /// renderer swapping one for the other has to say so.
+  ///
+  /// A stage that is not the last and names the asset that was asked for is
+  /// that asset's coarse mip levels — the same picture, smaller.
   final AssetId id;
 
   /// Whether anything better is still coming.
@@ -43,15 +46,19 @@ extension ProgressiveFetch on AssetFetcher {
   /// this safe to start for everything on screen and drop when the scene
   /// changes.
   ///
-  /// The other half of progressive loading — handing over low mip levels
-  /// before the full-size picture — needs textures cooked with a mip chain.
-  /// Every texture this project cooks today holds one level, so there is no
-  /// smaller version of it to send first, whatever the transport does.
+  /// A third stage arrives on its own for a mipped texture: the coarse mip
+  /// levels, built out of the front of the file while the rest of it is still
+  /// arriving. It costs no extra request and no extra byte — those bytes were
+  /// on their way regardless — and it is the same asset rather than a
+  /// substitute for it, so it supersedes the stand-in and is never followed
+  /// by one. [roughSize] is the longest side worth waiting for; a texture
+  /// with no mip chain simply never produces the stage.
   Stream<AssetStage> fetchInStages(
     AssetId id, {
     AssetId? standIn,
     FetchUrgency urgency = FetchUrgency.onScreen,
     Duration standInAfter = const Duration(milliseconds: 100),
+    int roughSize = 256,
     void Function(FetchProgress)? onProgress,
   }) {
     final out = StreamController<AssetStage>();
@@ -73,7 +80,22 @@ extension ProgressiveFetch on AssetFetcher {
     }
 
     out.onListen = () {
-      wanted = fetch(id, urgency: urgency, onProgress: onProgress);
+      wanted = fetch(
+        id,
+        urgency: urgency,
+        onProgress: onProgress,
+        roughSize: roughSize,
+        onRough: (bytes) {
+          if (arrived || out.isClosed) return;
+          // The asset's own coarse levels beat any stand-in, so the stand-in
+          // is called off rather than drawn over the top of them.
+          shown = true;
+          waiting?.cancel();
+          waiting = null;
+          rough?.cancel();
+          out.add(AssetStage(bytes: bytes, id: id, isFinal: false));
+        },
+      );
 
       if (standIn != null) {
         waiting = Timer(standInAfter, () {

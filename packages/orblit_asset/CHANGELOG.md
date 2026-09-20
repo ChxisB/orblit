@@ -47,9 +47,16 @@
   offline is the ordinary reason to be there.
 - `fetchInStages` hands over a stand-in while the real asset loads, and skips
   it when the real one arrives first — so a warm cache shows no stand-in
-  rather than flashing one for a frame. The other half of progressive
-  loading, low mip levels before the full-size picture, needs textures cooked
-  with a mip chain; every texture cooked today holds a single level.
+  rather than flashing one for a frame.
+- **A texture draws its own small levels before the rest of it arrives.**
+  KTX2 stores a mip chain smallest-first, so the front of the file is already
+  a complete set of small levels: `Ktx2Chain` reads the level index out of the
+  bytes as they stream past and rewrites that prefix into a whole, valid KTX2
+  file. It costs no extra request and not one extra byte — the picture is
+  built out of bytes that were arriving anyway. On the 1254×1254 logo (eleven
+  levels, 782 KB) a 627-wide stand-in is ready after 27.6% of the file, a
+  313-wide one after 7.9% and a 156-wide one after 2.4%. A file with no mip
+  chain, or one that is not a texture at all, simply arrives as before.
 - `HttpTransport` is the default way out, and `AssetTransport` is the seam:
   a test answers without a network, an app can pass a client already carrying
   authentication or a pinned certificate, and a platform with something better

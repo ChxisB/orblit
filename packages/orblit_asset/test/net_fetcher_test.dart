@@ -6,6 +6,8 @@ import 'dart:typed_data';
 import 'package:orblit_asset/orblit_asset.dart';
 import 'package:test/test.dart';
 
+import 'net_ktx2_fixture.dart';
+
 void main() {
   final origin = AssetOrigin.parse('https://cdn.example.com/game/');
   AssetId id(String path) => AssetId.parse(path);
@@ -617,6 +619,148 @@ void main() {
         lessThanOrEqualTo(128),
         reason: 'the header is enough; the rest is never pulled',
       );
+    });
+  });
+
+  group('the coarse levels first', () {
+    test('hands them over before the rest of the file has arrived', () async {
+      final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+      final chain = Ktx2Chain.read(whole)!;
+      final transport = MapTransport({
+        url('t/wall.ktx2'): TransportPage(whole, cut: 1024),
+      });
+      final fetcher = fetcherFor(transport);
+
+      Uint8List? rough;
+      var roughAt = -1;
+      var received = 0;
+      final job = fetcher.fetch(
+        id('t/wall.ktx2'),
+        roughSize: 64,
+        onProgress: (progress) => received = progress.received,
+        onRough: (bytes) {
+          rough = bytes;
+          roughAt = received;
+        },
+      );
+      final all = await job.bytes;
+
+      expect(rough, isNotNull, reason: 'a mipped texture has coarse levels');
+      // Handed over part way, not at the end: the point of the exercise.
+      expect(roughAt, lessThan(all.length));
+      expect(rough!.length, lessThan(whole.length));
+
+      final smaller = Ktx2Chain.read(rough!)!;
+      expect(smaller.width, 64);
+      expect(smaller.levels, hasLength(10 - chain.levelAtLeast(64)!));
+      expect(all, whole);
+    });
+
+    test('costs no extra request', () async {
+      final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+      final transport = MapTransport({
+        url('t/wall.ktx2'): TransportPage(whole, cut: 1024),
+      });
+      final fetcher = fetcherFor(transport);
+
+      await fetcher.fetch(id('t/wall.ktx2'), onRough: (_) {}).bytes;
+      expect(transport.sent, hasLength(1));
+    });
+
+    test('nothing for a texture that arrived in one piece', () async {
+      // A stand-in for something already here is a wasted upload and a
+      // visible flash.
+      final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+      final transport = MapTransport({
+        url('t/wall.ktx2'): TransportPage(whole),
+      });
+      final fetcher = fetcherFor(transport);
+
+      var offered = false;
+      await fetcher
+          .fetch(id('t/wall.ktx2'), onRough: (_) => offered = true)
+          .bytes;
+      expect(offered, isFalse);
+    });
+
+    test('nothing for something that is not a mipped texture', () async {
+      final transport = MapTransport({
+        url('models/robot.glb'): TransportPage(
+          List<int>.filled(40000, 7),
+          cut: 1024,
+        ),
+      });
+      final fetcher = fetcherFor(transport);
+
+      var offered = false;
+      await fetcher
+          .fetch(id('models/robot.glb'), onRough: (_) => offered = true)
+          .bytes;
+      expect(offered, isFalse);
+    });
+
+    test('once, however many chunks follow', () async {
+      final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+      final transport = MapTransport({
+        url('t/wall.ktx2'): TransportPage(whole, cut: 256),
+      });
+      final fetcher = fetcherFor(transport);
+
+      var offers = 0;
+      await fetcher
+          .fetch(id('t/wall.ktx2'), roughSize: 32, onRough: (_) => offers++)
+          .bytes;
+      expect(offers, 1);
+    });
+
+    test('every caller sharing the download gets them', () async {
+      final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+      final transport = MapTransport({
+        url('t/wall.ktx2'): TransportPage(whole, cut: 512),
+      });
+      final fetcher = fetcherFor(transport);
+
+      final offered = <int>[];
+      final first = fetcher.fetch(
+        id('t/wall.ktx2'),
+        roughSize: 64,
+        onRough: (bytes) => offered.add(bytes.length),
+      );
+      final second = fetcher.fetch(
+        id('t/wall.ktx2'),
+        roughSize: 64,
+        onRough: (bytes) => offered.add(bytes.length),
+      );
+      await Future.wait([first.bytes, second.bytes]);
+
+      expect(offered, hasLength(2));
+      expect(offered.first, offered.last);
+      expect(transport.sent, hasLength(1));
+    });
+
+    test('the smallest anybody asked for is the one that is built', () async {
+      // It arrives first, and it is still better than nothing for whoever
+      // wanted a sharper one.
+      final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+      final transport = MapTransport({
+        url('t/wall.ktx2'): TransportPage(whole, cut: 512),
+      });
+      final fetcher = fetcherFor(transport);
+
+      Uint8List? built;
+      final sharp = fetcher.fetch(
+        id('t/wall.ktx2'),
+        roughSize: 256,
+        onRough: (bytes) => built = bytes,
+      );
+      final blurry = fetcher.fetch(
+        id('t/wall.ktx2'),
+        roughSize: 32,
+        onRough: (_) {},
+      );
+      await Future.wait([sharp.bytes, blurry.bytes]);
+
+      expect(Ktx2Chain.read(built!)!.width, 32);
     });
   });
 

@@ -88,6 +88,7 @@ export 'src/net/fetcher.dart'
         FetchProgress,
         FetchUrgency;
 export 'src/net/http_transport.dart' show HttpTransport;
+export 'src/net/ktx2_chain.dart' show Ktx2Chain, Ktx2Level;
 export 'src/net/network_asset_source.dart' show NetworkAssetSource;
 export 'src/net/picture_size.dart' show PictureSize, pictureSizeOf;
 export 'src/net/policy.dart' show AssetOrigin, FetchPolicy, FetchRefused;

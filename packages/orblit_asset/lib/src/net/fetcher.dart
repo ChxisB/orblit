@@ -6,6 +6,7 @@ import '../asset_id.dart';
 import '../asset_manifest.dart';
 import '../content_hash.dart';
 import '../content_store.dart';
+import 'ktx2_chain.dart';
 import 'picture_size.dart';
 import 'policy.dart';
 import 'records.dart';
@@ -90,13 +91,22 @@ class FetchFailed implements Exception {
 /// itself stops only when the last interested caller has gone, because
 /// cancelling a fetch somebody else is still waiting for is not a saving.
 class FetchJob {
-  FetchJob._(this._download, this._completer, this.onProgress);
+  FetchJob._(this._download, this._completer, this.onProgress, this.onRough);
 
   final _Download _download;
   final Completer<Uint8List> _completer;
 
   /// Called as bytes arrive, for this caller only.
   final void Function(FetchProgress)? onProgress;
+
+  /// Called once, part way through, with a smaller version of the asset.
+  ///
+  /// Only for a texture with a mip chain, and only when the download is long
+  /// enough for it to matter. The bytes are a whole KTX2 file in their own
+  /// right, holding the coarse levels and nothing else, so whatever would
+  /// have drawn the finished texture can draw this instead and be replaced
+  /// when [bytes] completes.
+  final void Function(Uint8List)? onRough;
 
   /// Where the asset is being fetched from.
   Uri get url => _download.url;
@@ -223,11 +233,15 @@ class AssetFetcher {
     AssetId id, {
     FetchUrgency urgency = FetchUrgency.soon,
     void Function(FetchProgress)? onProgress,
+    void Function(Uint8List)? onRough,
+    int roughSize = 256,
   }) => fetchUrl(
     origin.urlOf(id),
     id: id,
     urgency: urgency,
     onProgress: onProgress,
+    onRough: onRough,
+    roughSize: roughSize,
   );
 
   /// Fetches a URL directly, for a file named from inside another one.
@@ -241,6 +255,8 @@ class AssetFetcher {
     AssetId? id,
     FetchUrgency urgency = FetchUrgency.soon,
     void Function(FetchProgress)? onProgress,
+    void Function(Uint8List)? onRough,
+    int roughSize = 256,
   }) {
     if (_closed) {
       throw StateError('This fetcher is closed.');
@@ -255,8 +271,14 @@ class AssetFetcher {
     // The caller is recorded before the download is queued, because the queue
     // skips whatever nobody is waiting for — and until this job is on the
     // list, that is every download, including this one.
-    final job = FetchJob._(download, Completer<Uint8List>(), onProgress);
+    final job = FetchJob._(
+      download,
+      Completer<Uint8List>(),
+      onProgress,
+      onRough,
+    );
     download._jobs.add(job);
+    if (onRough != null) download._wantsRough(roughSize);
 
     // Something already queued that is suddenly on screen jumps the queue
     // rather than waiting its turn behind work nobody is looking at.
@@ -354,6 +376,21 @@ class _Download {
   var _over = false;
   StreamSubscription<List<int>>? _reading;
   Completer<Uint8List>? _body;
+
+  /// The longest side a mid-download stand-in should have, or null if nobody
+  /// asked for one.
+  ///
+  /// The smallest anybody asked for wins, because a stand-in is worth having
+  /// early and this is the level that arrives first — and it is still better
+  /// than the nothing the caller who wanted a sharper one would otherwise be
+  /// looking at.
+  int? _rough;
+  var _roughSent = false;
+
+  void _wantsRough(int size) {
+    final want = _rough;
+    if (want == null || size < want) _rough = size;
+  }
 
   void _wantedBy(FetchUrgency urgency) {
     final sooner = urgency.index < _urgency.index;
@@ -589,6 +626,58 @@ class _Download {
     );
   }
 
+  /// Hands every caller a smaller version of the texture, part way through.
+  ///
+  /// KTX2 stores its mip levels smallest first, so the beginning of the file
+  /// is a complete set of small ones: the first eight per cent of a
+  /// 1254-pixel texture is every level down to 313 pixels. Those bytes are
+  /// arriving anyway on the way to the rest, so this costs no extra request,
+  /// no extra byte and nothing at all for a file that turns out not to be a
+  /// mipped texture — it is the same download, read twice.
+  ///
+  /// Once only, and never when the whole thing has already arrived: a stand-in
+  /// for a texture that is already here is a wasted upload and a visible
+  /// flash.
+  void _offerRough(BytesBuilder partial, int? total) {
+    final size = _rough;
+    if (size == null || _roughSent) return;
+    if (total != null && partial.length >= total) return;
+
+    // toBytes leaves the builder alone, so this is a look rather than a read,
+    // and it is taken at most once per call: the header and the prefix can
+    // both be ready in the same chunk.
+    Uint8List? seen;
+    var chain = _chain;
+    if (chain == null) {
+      if (_chainRead || partial.length < 1024) return;
+      _chainRead = true;
+      seen = partial.toBytes();
+      chain = _chain = Ktx2Chain.read(seen);
+      if (chain == null) return;
+      final level = chain.levelAtLeast(size);
+      if (level == null) {
+        _chain = null;
+        return;
+      }
+      _roughLevel = level;
+      _roughEnd = chain.bytesFor(level);
+    }
+
+    final end = _roughEnd;
+    if (end == null || partial.length < end) return;
+    _roughSent = true;
+    final small = chain.prefix(seen ?? partial.toBytes(), _roughLevel!);
+    if (small == null) return;
+    for (final job in [..._jobs]) {
+      job.onRough?.call(small);
+    }
+  }
+
+  Ktx2Chain? _chain;
+  var _chainRead = false;
+  int? _roughLevel;
+  int? _roughEnd;
+
   /// Reads a reply's body into [partial], stopping early where it can.
   ///
   /// Two limits are enforced while the bytes are still arriving rather than
@@ -647,6 +736,7 @@ class _Download {
           }
         }
 
+        _offerRough(partial, total);
         _tell(partial.length, total);
       },
       onError: (Object error, StackTrace stack) => stop(error, stack),

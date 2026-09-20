@@ -4,6 +4,8 @@ import 'dart:convert';
 import 'package:orblit_asset/orblit_asset.dart';
 import 'package:test/test.dart';
 
+import 'net_ktx2_fixture.dart';
+
 void main() {
   final origin = AssetOrigin.parse('https://cdn.example.com/game/');
   AssetId id(String path) => AssetId.parse(path);
@@ -192,6 +194,61 @@ void main() {
 
     expect(seen, isNotEmpty);
     expect(seen.last, body('the sharp one').length);
+  });
+
+  test('draws the texture\'s own coarse levels, then the sharp one', () async {
+    final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+    final transport = MapTransport({
+      url('wall.ktx2'): TransportPage(whole, cut: 512),
+    });
+    final fetcher = fetcherFor(transport);
+
+    final stages = await fetcher
+        .fetchInStages(id('wall.ktx2'), roughSize: 64)
+        .toList();
+
+    expect(stages, hasLength(2));
+    expect(stages.first.isFinal, isFalse);
+    // The same asset, smaller — not a substitute for it.
+    expect(stages.first.id, id('wall.ktx2'));
+    expect(Ktx2Chain.read(stages.first.bytes)!.width, 64);
+    expect(stages.last.isFinal, isTrue);
+    expect(stages.last.bytes, whole);
+    expect(transport.sent, hasLength(1));
+  });
+
+  test('the coarse levels call off the stand-in', () async {
+    // Once the real texture's own small levels are on screen, a different
+    // picture standing in for it is a step backwards.
+    final whole = mippedKtx2(width: 512, height: 512, levels: 10);
+    final transport = MapTransport({
+      url('wall.ktx2'): TransportPage(whole, cut: 512),
+      url('wall_low.ktx2'): TransportPage(body('the blurry one')),
+    });
+    final fetcher = fetcherFor(transport);
+
+    final stages = await fetcher
+        .fetchInStages(
+          id('wall.ktx2'),
+          standIn: id('wall_low.ktx2'),
+          roughSize: 64,
+          standInAfter: Duration.zero,
+        )
+        .toList();
+
+    expect(stages.map((stage) => stage.id), everyElement(id('wall.ktx2')));
+    expect(stages.where((stage) => !stage.isFinal), hasLength(1));
+  });
+
+  test('a texture with no mip chain just arrives', () async {
+    final transport = MapTransport({
+      url('wall.ktx2'): TransportPage(List<int>.filled(40000, 3), cut: 512),
+    });
+    final fetcher = fetcherFor(transport);
+
+    final stages = await fetcher.fetchInStages(id('wall.ktx2')).toList();
+    expect(stages, hasLength(1));
+    expect(stages.single.isFinal, isTrue);
   });
 }
 
