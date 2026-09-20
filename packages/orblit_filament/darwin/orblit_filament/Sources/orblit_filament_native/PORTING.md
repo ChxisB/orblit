@@ -1,8 +1,8 @@
 # Porting the renderer off Apple platforms
 
-The renderer is plain C++ now. `orblit::Renderer` in `OrblitRendererCore.h` and
-`OrblitRendererCore.cpp` is everything it does, with no Objective-C and no
-Apple header. The Objective-C class in `OrblitRenderer.mm` is a thin wrapper:
+The renderer is plain C++ now. `orblit::Renderer` is declared in
+`OrblitRendererCore.h` and defined across the `OrblitRenderer*.cpp` files, one
+a topic, with no Objective-C and no Apple header. The Objective-C class in `OrblitRenderer.mm` is a thin wrapper:
 the Swift plugin calls it through `include/OrblitRenderer.h`, which has not
 changed, and it forwards every call. Any other host calls the C ABI in
 `include/orblit_renderer.h`.
@@ -11,9 +11,9 @@ changed, and it forwards every call. Any other host calls the C ABI in
 
 | Was | Is |
 |---|---|
-| The structs and constants at the top of `OrblitRenderer.mm` | The top of `OrblitRendererCore.h`, in the same order, in `namespace orblit` |
+| The structs and constants at the top of `OrblitRenderer.mm` | `OrblitRendererTypes.h`, in the same order, in `namespace orblit`; every file gets them through `OrblitRendererCore.h` |
 | The ivar block of `@implementation OrblitRenderer` | The private members at the end of `class Renderer`, same names, same comments |
-| Each `- (T)foo:(A)a bar:(B)b` method | `T Renderer::foo(A a, B b)` in `OrblitRendererCore.cpp`, in the same order, comments kept |
+| Each `- (T)foo:(A)a bar:(B)b` method | `T Renderer::foo(A a, B b)` in the file for its topic, in the same order within it, comments kept |
 | `[self foo:x bar:y]` | `foo(x, y)` |
 | `NSLog(@"…%@…", s)` | `orblit::log("…%s…", s.c_str())` (`OrblitPlatform.h`) |
 | `NSString *`, `NSArray<NSString *> *` | `std::string`, `std::vector<std::string>` |
@@ -27,25 +27,40 @@ changed, and it forwards every call. Any other host calls the C ABI in
 | `builder.backend(Engine::Backend::METAL)` | `orblit::backendCandidates` (`OrblitBackend.cpp`) |
 | `initWithWidth:` / `copyPresentedBuffer` / `notes` / `passTimings` | `Renderer::initWithWidth` / `copyPresentedBuffer` / `notes` / `passTimings`, which the wrapper turns back into Foundation types |
 
+## The renderer's own files
+
+One class, fourteen files. Each opens with a comment naming what it holds, so
+`head -3 OrblitRenderer*.cpp` is the index. Two names do not say it:
+`OrblitRendererCore.cpp` is the renderer's own lifecycle, and
+`OrblitRendererGraph.cpp` is the render targets. All of them include
+`OrblitRendererInternal.h` — the headers they share, and the two helpers more
+than one of them needs.
+
+The compiled materials are the exception to that. They live in the anonymous
+namespace of `OrblitMaterialPackages.cpp` and reach the rest through the
+lookups in `OrblitMaterialPackages.h`, so the multi-megabyte arrays are in one
+translation unit and out of the library's symbol table.
+
 ## Porting a change made to the old `OrblitRenderer.mm`
 
-By hand, a hunk goes into the function of the same name in
-`OrblitRendererCore.cpp`, at the same place — the comments around it are the
-same, so search for them. `[self …]` becomes a call and Foundation types
-become the ones in the table above. A new ivar becomes a member in
-`OrblitRendererCore.h`; a new `#include` goes at the top of the header, except
-a compiled material's `…_material.h`, which goes in the anonymous namespace at
-the top of `OrblitRendererCore.cpp` so its arrays stay private to the renderer;
-the platform build supplies the selected `generated/<set>/` directory as an
-include path; a new
-method in `include/OrblitRenderer.h` becomes a public member of
-`orblit::Renderer` plus a one-line forwarder in `OrblitRenderer.mm`.
+By hand, a hunk goes into the function of the same name, at the same place —
+the comments around it are the same, so `grep -rn` for them. `[self …]`
+becomes a call and Foundation types become the ones in the table above. A new
+ivar becomes a member in `OrblitRendererCore.h` and a new struct goes in
+`OrblitRendererTypes.h`; a new `#include` goes at the top of
+`OrblitRendererInternal.h` if more than one file needs it, otherwise at the
+top of the one that does, except a compiled material's `…_material.h`, which
+goes in `OrblitMaterialPackages.cpp` as above; the platform build supplies
+the selected `generated/<set>/` directory as an include path; a new method
+in `include/OrblitRenderer.h` becomes a public member of `orblit::Renderer`
+plus a one-line forwarder in `OrblitRenderer.mm`.
 
-Mechanically, for a branch cut before the move:
-`packages/orblit_filament/native/port_from_mm/port.sh` regenerates the core
-from the branch's own `OrblitRenderer.mm` by the same conversion that made it.
-God rays, distortion and motion blur came across that way. The script's
-header says what it cannot do by itself.
+The scripts that did the original conversion — and regenerated the core for a
+branch cut before the move, which is how god rays, distortion and motion blur
+came across — lived in `packages/orblit_filament/native/port_from_mm`. They
+are gone: every such branch has landed, and rerunning them now would throw
+away everything written to the C++ since. `git log` has them if one is ever
+needed again.
 
 ## What is still Apple's, and why
 

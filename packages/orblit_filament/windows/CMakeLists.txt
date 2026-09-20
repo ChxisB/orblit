@@ -86,15 +86,42 @@ if(NOT EXISTS "${ORBLIT_CORE_DIR}/generated/lit_opaque_material.h")
   message(FATAL_ERROR "No compiled materials at ${ORBLIT_CORE_DIR}/generated.")
 endif()
 
+# The half of the scene decoder that is not this embedder's: what a scene
+# holds and how it is applied, which is the same here and in ../linux.
+set(ORBLIT_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common")
+get_filename_component(ORBLIT_COMMON_DIR "${ORBLIT_COMMON_DIR}" ABSOLUTE)
+
 add_library(${PLUGIN_NAME} SHARED
   # This directory's own: the Windows plugin, one viewport per texture, and
-  # the decoder that turns a `setScene` message into C ABI calls.
+  # this embedder's half of the `setScene` decoder.
   "orblit_filament_plugin.cpp"
   "orblit_viewport.cpp"
   "orblit_scene.cpp"
 
+  # Its other half, shared with the sibling plugin.
+  "${ORBLIT_COMMON_DIR}/orblit_scene_common.cc"
+
   # The portable core and its C ABI.
   "${ORBLIT_CORE_DIR}/OrblitRendererCore.cpp"
+
+  # The rest of orblit::Renderer, one file a topic, then the helpers they
+  # share and the one unit that holds the compiled materials.
+  "${ORBLIT_CORE_DIR}/OrblitRendererFrame.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererWeather.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererMeshes.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererPopulations.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererSurfaces.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererEnvironment.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererGraph.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererEffects.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererObjects.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererBatching.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererLights.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererProbes.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererCamera.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererInternal.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitMaterialPackages.cpp"
+
   "${ORBLIT_CORE_DIR}/OrblitRendererC.cpp"
   "${ORBLIT_CORE_DIR}/OrblitBackend.cpp"
   "${ORBLIT_CORE_DIR}/OrblitPlatform.cpp"
@@ -112,6 +139,9 @@ add_library(${PLUGIN_NAME} SHARED
   # FBX and OBJ to GLB, and ufbx compiled as C++ through one file (see
   # OrblitUfbx.cpp for why a .cpp includes a .c).
   "${ORBLIT_CORE_DIR}/OrblitImport.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitImportMeshes.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitImportMaterials.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitImportScene.cpp"
   "${ORBLIT_CORE_DIR}/OrblitUfbx.cpp"
   # Environments from .hdr and .exr pictures: decoding, cmgen's arithmetic,
   # the run-time filter, and tinyexr with miniz compiled as C++ through one
@@ -124,6 +154,8 @@ add_library(${PLUGIN_NAME} SHARED
   # uploads every texture under a budget a frame.
   "${ORBLIT_CORE_DIR}/OrblitKtx2.cpp"
   "${ORBLIT_CORE_DIR}/OrblitTextures.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTexturesPush.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTexturesDecode.cpp"
 )
 
 # Not apply_standard_settings(), for the reason ../linux/CMakeLists.txt gives
@@ -146,7 +178,7 @@ add_library(${PLUGIN_NAME} SHARED
 #   - Designated initializers (`{ .engine = ..., .gltfPath = ... }`) are a
 #     C++20 feature that GCC and Clang have always accepted as an extension in
 #     C++17, so they are already in Filament's own headers (DriverEnums.h,
-#     Box.h) and in OrblitRendererCore.cpp. MSVC does not: it says
+#     Box.h) and in the renderer's own sources. MSVC does not: it says
 #     "error C7555: use of designated initializers requires at least
 #     '/std:c++20'" and stops. That is what makes this the smallest possible
 #     fix -- raising the standard here changes no shared source at all, where
@@ -184,9 +216,12 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE
   # portably, this define and that /FI can go.
   __builtin_memcpy=std::memcpy)
 
-# /EHsc because exceptions are on (see above); /bigobj because
-# OrblitRendererCore.cpp instantiates enough of Filament's templates to pass
-# the object format's default section limit; /w because this target is held
+# /EHsc because exceptions are on (see above); /bigobj because the renderer
+# instantiates enough of Filament's templates to pass the object format's
+# default section limit -- it was one 7,675-line file when that was found, and
+# the split into OrblitRenderer*.cpp may well have brought every unit back
+# under the limit, but no Mac can tell and the flag costs nothing; /w because
+# this target is held
 # to Filament's warning policy rather than the application's, exactly as the
 # GTK plugin holds the core apart from its own -Wall -Wextra.
 #
@@ -206,6 +241,7 @@ target_include_directories(${PLUGIN_NAME} PRIVATE
   "${FILAMENT_DIR}/include"
   "${ORBLIT_CORE_DIR}"
   "${ORBLIT_CORE_DIR}/include"
+  "${ORBLIT_COMMON_DIR}"
   # The compiled materials. The core includes them by bare name so that the
   # include path chooses which set is linked — see the darwin and android
   # builds, which point this at generated/<set>. This plugin's setup.sh

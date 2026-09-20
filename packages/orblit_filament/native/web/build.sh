@@ -76,7 +76,7 @@ fi
 # them. This is the union of every -I flag Filament's own wasm build used
 # (out/cmake-wasm-release/compile_commands.json, after `./build.sh -p wasm
 # release` there), so anything Filament's public headers themselves reach
-# for is covered, not only what OrblitRendererCore.cpp names directly.
+# for is covered, not only what the renderer's sources name directly.
 INCLUDES=(
   -I "$FIL_SRC/filament/include"
   -I "$FIL_SRC/filament/backend/include"

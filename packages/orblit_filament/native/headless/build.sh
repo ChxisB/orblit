@@ -46,12 +46,13 @@ mkdir -p "$OUT"
 # Filament, no compiled materials, no renderer core — the importer and ufbx
 # alone, so they build and run even while the renderer does not. Held to
 # -Wextra as well; ufbx's own warnings are quieted inside OrblitUfbx.cpp. The
-# loop below links these same two objects into the renderer rather than
+# loop below links these same objects into the renderer rather than
 # compiling thirty thousand lines of ufbx a second time.
 import_objects=()
-for name in OrblitImport OrblitUfbx; do
+for source in "$SRC"/OrblitImport*.cpp "$SRC/OrblitUfbx.cpp"; do
+  name=$(basename "$source" .cpp)
   clang++ -std=c++17 -O2 -DORBLIT_PLATFORM_PORTABLE -Wall -Wextra \
-    -I "$SRC" -I "$SRC/include" -c "$SRC/$name.cpp" -o "$OUT/$name.o"
+    -I "$SRC" -I "$SRC/include" -c "$source" -o "$OUT/$name.o"
   import_objects+=("$OUT/$name.o")
 done
 for program in orblit_import orblit_import_check; do

@@ -246,7 +246,8 @@ why it is not where the plain source headers are.
 ## What compiled unchanged, and what did not
 
 Every plain C++ file `native/headless/build.sh` compiles — the core
-(`OrblitRendererCore.cpp`, 258 KB, ~5,800 lines), the C ABI
+(`OrblitRendererCore.cpp`, 258 KB, ~5,800 lines -- it was one file then,
+and is fourteen now: see PORTING.md), the C ABI
 (`OrblitRendererC.cpp`), `OrblitPlatform.cpp`, `OrblitBackend.cpp`,
 `OrblitDecals.cpp`, `OrblitMotionBlur.cpp`, `OrblitOutline.cpp`,
 `OrblitShadows.cpp`, `OrblitSplatSet.cpp`, `OrblitSplats.cpp`,

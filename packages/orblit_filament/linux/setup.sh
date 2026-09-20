@@ -16,14 +16,14 @@
 #   2. ../darwin/orblit_filament/Sources/orblit_filament_native/generated/*.h
 #        The renderer's materials, compiled for the `opengl` and `vulkan`
 #        backends, and the SMAA/LTC lookup tables the renderer also expects
-#        there. Written into the *same* generated/ directory darwin's and
-#        android's setup.sh write theirs into, and that is deliberate, not a
-#        shortcut: OrblitRendererCore.cpp is one file compiled for every
-#        platform, its `#include "generated/foo.h"` lines are unconditional,
-#        and C++'s quote-include rule always resolves a relative include
-#        against the *including file's own directory* first -- before any -I
-#        flag a platform's build could add. So there is exactly one directory
-#        any platform's materials can live in for that file to find them.
+#        there. Written into the *same* flat generated/ directory windows's
+#        setup.sh writes into, because the sources include these headers by
+#        bare name -- `#include "lit_opaque_material.h"` -- and every build
+#        puts one directory of them on the include path. CMakeLists.txt here
+#        names generated/ itself, so that flat directory is the only place
+#        this platform's materials can live. (darwin and android instead
+#        select a generated/<set>/ subdirectory: same rule, another
+#        directory.)
 #
 #        This is safe because each setup.sh stamps what it built the
 #        materials with (SDK version, matc flags, and which platform asked)

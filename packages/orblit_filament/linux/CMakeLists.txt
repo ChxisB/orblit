@@ -61,15 +61,42 @@ if(NOT EXISTS "${ORBLIT_CORE_DIR}/generated/lit_opaque_material.h")
   message(FATAL_ERROR "No compiled materials at ${ORBLIT_CORE_DIR}/generated.")
 endif()
 
+# The half of the scene decoder that is not this embedder's: what a scene
+# holds and how it is applied, which is the same here and in ../windows.
+set(ORBLIT_COMMON_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../common")
+get_filename_component(ORBLIT_COMMON_DIR "${ORBLIT_COMMON_DIR}" ABSOLUTE)
+
 add_library(${PLUGIN_NAME} SHARED
   # This directory's own: the GTK plugin, one viewport per texture, and the
-  # decoder that turns a `setScene` message into C ABI calls.
+  # embedder's half of the `setScene` decoder.
   "orblit_filament_plugin.cc"
   "orblit_viewport.cc"
   "orblit_scene.cc"
 
+  # Its other half, shared with the sibling plugin.
+  "${ORBLIT_COMMON_DIR}/orblit_scene_common.cc"
+
   # The portable core and its C ABI.
   "${ORBLIT_CORE_DIR}/OrblitRendererCore.cpp"
+
+  # The rest of orblit::Renderer, one file a topic, then the helpers they
+  # share and the one unit that holds the compiled materials.
+  "${ORBLIT_CORE_DIR}/OrblitRendererFrame.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererWeather.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererMeshes.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererPopulations.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererSurfaces.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererEnvironment.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererGraph.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererEffects.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererObjects.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererBatching.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererLights.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererProbes.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererCamera.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitRendererInternal.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitMaterialPackages.cpp"
+
   "${ORBLIT_CORE_DIR}/OrblitRendererC.cpp"
   "${ORBLIT_CORE_DIR}/OrblitBackend.cpp"
   "${ORBLIT_CORE_DIR}/OrblitPlatform.cpp"
@@ -87,6 +114,9 @@ add_library(${PLUGIN_NAME} SHARED
   # FBX and OBJ to GLB, and ufbx compiled as C++ through one file (see
   # OrblitUfbx.cpp for why a .cpp includes a .c).
   "${ORBLIT_CORE_DIR}/OrblitImport.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitImportMeshes.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitImportMaterials.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitImportScene.cpp"
   "${ORBLIT_CORE_DIR}/OrblitUfbx.cpp"
   # Environments from .hdr and .exr pictures: decoding, cmgen's arithmetic,
   # the run-time filter, and tinyexr with miniz compiled as C++ through one
@@ -99,6 +129,8 @@ add_library(${PLUGIN_NAME} SHARED
   # uploads every texture under a budget a frame.
   "${ORBLIT_CORE_DIR}/OrblitKtx2.cpp"
   "${ORBLIT_CORE_DIR}/OrblitTextures.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTexturesPush.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTexturesDecode.cpp"
 )
 
 # Not apply_standard_settings(): that helper pins C++14 and turns on -Werror,
@@ -136,6 +168,7 @@ target_include_directories(${PLUGIN_NAME} PRIVATE
   "${FILAMENT_DIR}/include"
   "${ORBLIT_CORE_DIR}"
   "${ORBLIT_CORE_DIR}/include"
+  "${ORBLIT_COMMON_DIR}"
   # The compiled materials. The core includes them by bare name so that the
   # include path chooses which set is linked — see the darwin and android
   # builds, which point this at generated/<set>. This plugin's setup.sh
