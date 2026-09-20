@@ -1,5 +1,6 @@
 // The half of the conditional export in directory.dart for platforms with a
 // file system.
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -8,6 +9,7 @@ import 'asset_id.dart';
 import 'asset_source.dart';
 import 'content_hash.dart';
 import 'content_store.dart';
+import 'net/records.dart';
 
 /// Assets read from a directory on disk, an id's slashes being its folders.
 ///
@@ -207,6 +209,62 @@ class DirectoryContentStore implements ContentStore {
       await File(_pathOf(hash)).delete();
     } on PathNotFoundException {
       // Already not there, which is what was asked for.
+    }
+  }
+}
+
+/// The fetch records kept in one JSON file under a directory.
+///
+/// One file rather than one per URL, because the whole set is wanted at once
+/// — at startup, to know what may be revalidated rather than downloaded — and
+/// a thousand tiny files cost a thousand opens to answer a question that fits
+/// in a few kilobytes. Writes are coalesced by [BufferedFetchRecords]; what
+/// is added here is only that the file lands atomically, by the same write
+/// and rename [DirectoryContentStore] uses, so that a process killed midway
+/// leaves the old set rather than half a new one.
+class DirectoryFetchRecords extends BufferedFetchRecords {
+  DirectoryFetchRecords(this.rootPath, {super.settle});
+
+  /// The directory the file lives in. It need not exist until something is
+  /// written.
+  final String rootPath;
+
+  static const String _name = 'records.json';
+  static final Random _random = Random();
+
+  String get _path => [rootPath, _name].join(Platform.pathSeparator);
+
+  @override
+  Future<String?> readText() async {
+    try {
+      return await File(_path).readAsString();
+    } on FileSystemException {
+      // No file yet, or one that cannot be read. Either way nothing is known
+      // about any URL, which is what no text says.
+      return null;
+    }
+  }
+
+  @override
+  Future<void> writeText(String text) async {
+    final separator = Platform.pathSeparator;
+    final incoming = await Directory(
+      '$rootPath$separator.incoming',
+    ).create(recursive: true);
+    final name =
+        '$_name.$pid.${_random.nextInt(1 << 32).toRadixString(16)}.tmp';
+    final temporary = File('${incoming.path}$separator$name');
+
+    try {
+      await temporary.writeAsString(text, flush: true);
+      await temporary.rename(_path);
+    } on FileSystemException {
+      try {
+        await temporary.delete();
+      } on FileSystemException {
+        // Never created, or already renamed away.
+      }
+      rethrow;
     }
   }
 }
