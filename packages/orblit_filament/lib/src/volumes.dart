@@ -463,7 +463,19 @@ class OrblitEnvironmentSettings {
   OrblitScene applyTo(OrblitScene scene) {
     final base = OrblitEnvironmentSettings.of(scene);
 
-    var fog = scene.fog;
+    return scene.copyWith(
+      fog: _fog(scene.fog, base),
+      camera: _camera(scene.camera),
+      sky: _sky(scene.sky, base),
+      environment: _environment(scene.environment, base),
+      post: _post(scene.post, base),
+      volumes: const [],
+    );
+  }
+
+  /// The fog these settings ask for, or [fog] itself where they ask
+  /// for nothing it does not already say.
+  OrblitFog _fog(OrblitFog fog, OrblitEnvironmentSettings base) {
     if (fogDensity != base.fogDensity ||
         fogColour != base.fogColour ||
         fogHeight != base.fogHeight ||
@@ -485,7 +497,11 @@ class OrblitEnvironmentSettings {
       );
     }
 
-    var camera = scene.camera;
+    return fog;
+  }
+
+  /// [camera] with the exposure these settings compensate by.
+  OrblitCamera _camera(OrblitCamera camera) {
     if (exposureCompensation != 0) {
       // More stops is more light, and a longer shutter lets in more: one stop
       // up is the shutter open twice as long.
@@ -495,7 +511,11 @@ class OrblitEnvironmentSettings {
       );
     }
 
-    var sky = scene.sky;
+    return camera;
+  }
+
+  /// The sky these settings ask for, or [sky] itself.
+  OrblitSky _sky(OrblitSky sky, OrblitEnvironmentSettings base) {
     if (ambient != base.ambient || skyColour != base.skyColour) {
       sky = OrblitSky(
         colour: skyColour.clone(),
@@ -515,7 +535,12 @@ class OrblitEnvironmentSettings {
       );
     }
 
-    var environment = scene.environment;
+    return sky;
+  }
+
+  /// The environment these settings ask for, or
+  /// [environment] itself.
+  OrblitEnvironment _environment(OrblitEnvironment environment, OrblitEnvironmentSettings base) {
     if (environmentIntensity != base.environmentIntensity ||
         environmentRotation != base.environmentRotation) {
       environment = environment.copyWith(
@@ -524,7 +549,11 @@ class OrblitEnvironmentSettings {
       );
     }
 
-    var post = scene.post;
+    return environment;
+  }
+
+  /// The post-processing these settings ask for, or [post] itself.
+  OrblitPostProcess _post(OrblitPostProcess post, OrblitEnvironmentSettings base) {
     final bloomMoved = bloomStrength != base.bloomStrength;
     final gradingMoved =
         saturation != base.saturation ||
@@ -573,14 +602,7 @@ class OrblitEnvironmentSettings {
       );
     }
 
-    return scene.copyWith(
-      fog: fog,
-      camera: camera,
-      sky: sky,
-      environment: environment,
-      post: post,
-      volumes: const [],
-    );
+    return post;
   }
 
   /// Towards [to] in log space, where the eye judges light.
