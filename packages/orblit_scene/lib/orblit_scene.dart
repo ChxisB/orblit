@@ -47,6 +47,10 @@ export 'src/document.dart'
         SceneSettings,
         sceneExtension;
 export 'src/entity.dart' show SceneEntity;
+export 'src/export/export.dart' show SceneExport, SceneFormat, SceneWritten;
+export 'src/export/gltf.dart' show GltfScene, sceneToGltf;
+export 'src/export/graft.dart' show GraftFailure, Grafted, graft, regraft;
+export 'src/export/obj.dart' show ObjScene, sceneToObj;
 export 'src/material.dart'
     show
         MaterialDocument,

@@ -17,6 +17,7 @@ mkdir -p "$OUT"
 echo "orblit: writing exports to $OUT"
 
 (cd packages/orblit_mesh && dart run tool/dump_glb.dart "$OUT/mesh")
+(cd packages/orblit_scene && dart run tool/dump_scene.dart "$OUT/scene")
 
 if ! [ -d node_modules/gltf-validator ]; then
   echo "orblit: fetching the Khronos validator"

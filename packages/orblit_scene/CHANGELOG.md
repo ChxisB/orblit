@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.3.0
+
+- **A scene can be written out.** `SceneDocument.writeAs` exports glTF, GLB or
+  OBJ, returning the files and a list of what would not fit rather than
+  throwing on the first thing it cannot carry. An export that silently drops
+  half a scene is worse than one that says so.
+- glTF and GLB carry the hierarchy, transforms, meshes, materials, lights and
+  cameras. Orblit's own components ride along in `extras` under an `orblit`
+  key, verbatim, so nothing an exporter has no word for is lost on the way
+  out.
+- Materials are resolved through `MaterialLibrary` before they are written, so
+  an exported material carries the values an `.omat` states rather than the
+  mesh's colour, and reaches for an extension where glTF has one:
+  `KHR_materials_unlit`, `_clearcoat`, `_sheen`, `_specular`, `_anisotropy`,
+  `_emissive_strength` and `KHR_texture_transform`. Named looks become
+  `KHR_materials_variants`.
+- Lights are converted rather than copied. A sun is stated in lux and a lamp
+  in candela, both from watts through the same photometry the engine lights
+  with, which is the conversion Blender's own exporter makes — so a scene
+  round-trips at the brightness it was authored at instead of arriving a
+  factor of 4π out.
+- An imported model is grafted into the export whole, its indices rebased.
+  Placed twice, it is copied once and placed twice: the second placement costs
+  a node rather than a second copy of the mesh. A skinned or animated model is
+  copied per placement, because a skin names its joints by node and an
+  animation names the nodes it moves, and sharing those would make the two
+  copies bend as one.
+- A surface wearing a normal map exports tangents, so it lights the way it was
+  meant to in a loader that does not generate its own.
+- OBJ flattens to world space with a group per entity and a material library
+  beside it, and reports what the format has no word for — lights, cameras,
+  imported models, the hierarchy itself.
+- `tool/dump_scene.dart` writes a scene of each kind, and `tool/check_gltf.sh`
+  hands them to the Khronos glTF-Validator in CI alongside the mesh exports.
+
 ## 0.2.0
 
 - Material files. `MaterialDocument` reads an `.omat`: a shading model, a
