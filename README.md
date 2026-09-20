@@ -4,8 +4,6 @@
   </a>
 </p>
 
-<h1 align="center">Orblit</h1>
-
 <p align="center"><b>A 3D game engine you write in Dart</b></p>
 
 <p align="center">Game logic and interface in Flutter. An archetype entity-component core in C++. Google&rsquo;s Filament doing the rendering. The viewport is a widget, so the menu over it is an ordinary <code>Column</code>.</p>
