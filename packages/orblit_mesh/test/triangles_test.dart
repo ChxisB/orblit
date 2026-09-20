@@ -211,5 +211,18 @@ void main() {
       expect(glb.length, greaterThan(20));
       expect(ByteData.sublistView(glb).getUint32(0, Endian.little), 0x46546C67);
     });
+
+    test('an empty mesh writes an empty scene, not an empty accessor', () {
+      // A buffer view of nought bytes and an accessor counting nought
+      // elements are both errors in the format, so the mesh nobody has drawn
+      // in yet has to be a node on its own rather than a mesh made of
+      // nothing. Nine validator errors, before it was.
+      final header = headerOf(Mesh().toGlb());
+
+      expect(header.containsKey('accessors'), isFalse);
+      expect(header.containsKey('bufferViews'), isFalse);
+      expect(header.containsKey('buffers'), isFalse);
+      expect((header['nodes']! as List).single, isNot(contains('mesh')));
+    });
   });
 }

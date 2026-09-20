@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1
+
+- A rewritten document with no geometry in it — a scene of lights and cameras
+  is one — no longer names a buffer of nought bytes or writes an empty `BIN`
+  chunk. Both are errors in the format, and the file came back out invalid.
+
 ## 0.6.0
 
 - **Model texture atlases.** `atlas: true` on a `.gltf` or `.glb` packs the
