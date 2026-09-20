@@ -1,6 +1,6 @@
 # Platforms: setup and what has been seen to work
 
-From the docs at https://orblitengine.com/start/installing/ and the pages under
+From the docs at https://orblitengine.com/docs/start/installing/ and the pages under
 `/start/setup/`, as of September 2026. "Draws" means somebody has looked at a
 frame, or a check has measured one, on that platform. Say plainly to a user
 when their platform is one that hasn't.
@@ -136,7 +136,7 @@ the Mac setup.
    and load the script in `web/index.html` before `flutter_bootstrap.js`.
 
 Repeat steps 3 to 6 whenever the app's engine commit changes. The exact
-commands are at https://orblitengine.com/start/setup/web/.
+commands are at https://orblitengine.com/docs/start/setup/web/.
 
 - **State:** Chrome only (headless with SwiftShader, and in real time for
   textures). Safari and Firefox haven't been run. WebGL 2 at feature level 1,

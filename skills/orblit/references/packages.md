@@ -105,7 +105,7 @@ OrblitCamera shot(double delta, double width, double height) {
 `lookRotation(direction, null)` turns a heading into a `Quaternion` for a
 target's `rotation`. `damp(current, target, seconds, dt)` smooths one number
 the same way at any frame rate. Worked example:
-https://orblitengine.com/examples/a-camera-that-follows/ and the guide at
+https://orblitengine.com/docs/examples/a-camera-that-follows/ and the guide at
 `/guides/cameras/`.
 
 ## orblit_agent
@@ -123,7 +123,7 @@ Behaviour trees: build a `Node` from `Selector([...])`, `Sequence([...])`,
 `Invert`, `Repeat`, `Cooldown`, `Deadline` and `Parallel`. Give each agent a
 `Brain(tree)` and call `brain.tick(now, blackboard: {...})`; inside a leaf, `tick.blackboard` and
 `tick.seconds`. One tree can be shared by many brains. Worked example:
-https://orblitengine.com/examples/something-that-chases-you/ and
+https://orblitengine.com/docs/examples/something-that-chases-you/ and
 `/guides/agents/`.
 
 ## orblit_collide
@@ -252,7 +252,7 @@ handler in `props: {'onPressed': 'resume'}` and `onEvent` receives
 `'resume'`, so a description can come from a file. Lay it over the
 `OrblitView` in a `Stack`. For a simple menu, plain Flutter widgets are just
 as good. Worked example:
-https://orblitengine.com/examples/a-menu-over-the-game/ and
+https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 `/guides/interfaces/`.
 
 ## orblit_scene and orblit_stage
@@ -292,10 +292,10 @@ between samples. Marks (events on an interval) come only from advancing a
 
 All compiled in CI against the engine:
 
-- https://orblitengine.com/examples/a-model-on-screen/
-- https://orblitengine.com/examples/a-thousand-things/
-- https://orblitengine.com/examples/a-camera-that-follows/
-- https://orblitengine.com/examples/something-that-chases-you/
-- https://orblitengine.com/examples/a-menu-over-the-game/
+- https://orblitengine.com/docs/examples/a-model-on-screen/
+- https://orblitengine.com/docs/examples/a-thousand-things/
+- https://orblitengine.com/docs/examples/a-camera-that-follows/
+- https://orblitengine.com/docs/examples/something-that-chases-you/
+- https://orblitengine.com/docs/examples/a-menu-over-the-game/
 
 Append `.md` for Markdown; if that 404s, use the page as is.

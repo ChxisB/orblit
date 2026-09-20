@@ -32,11 +32,11 @@ seen in this session, confirm it in one of these, in this order:
 3. **The docs site.** https://orblitengine.com/llms.txt is an index written for
    models, https://orblitengine.com/llms-full.txt is every page in one long
    file, and any page is also Markdown with `.md` on the end, such as
-   https://orblitengine.com/guides/lighting.md. The gallery is at
-   `https://orblitengine.com/gallery/<section>/`, where `<section>` is one of
+   https://orblitengine.com/docs/guides/lighting.md. The gallery is at
+   `https://orblitengine.com/docs/gallery/<section>/`, where `<section>` is one of
    `basics`, `lighting`, `materials`, `atmosphere`, `effects`, `content`,
    `scripting`, `performance` or `showcases`. If an `.md` or `llms` URL
-   returns 404, fetch the HTML page (`https://orblitengine.com/guides/lighting/`)
+   returns 404, fetch the HTML page (`https://orblitengine.com/docs/guides/lighting/`)
    or go back to the source. Where the docs and the source disagree, the
    source wins.
 

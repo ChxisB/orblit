@@ -42,7 +42,7 @@ them. In Claude Code:
 /plugin install orblit@orblit
 ```
 
-[Working with AI assistants](https://orblitengine.com/start/working-with-ai/)
+[Working with AI assistants](https://orblitengine.com/docs/start/working-with-ai/)
 has the rest.
 
 ## Licence
