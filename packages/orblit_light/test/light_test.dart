@@ -278,6 +278,37 @@ void _tintTests() {
       expect(Tint.black.linear.x, 0.0);
     });
 
+    test('comes back from linear the colour it went out as', () {
+      // What reading a scene needs: glTF carries base colour as linear
+      // factors, and a colour that survives the trip out and back is the
+      // difference between a scene reopening as it was saved and one that
+      // shifts a little every time somebody opens it.
+      for (final tint in const [
+        Tint.hex(0xFF8A3D),
+        Tint(0.5, 0.5, 0.5),
+        Tint(0.02, 0, 0.004),
+        Tint.white,
+        Tint.black,
+      ]) {
+        final back = Tint.fromLinear(tint.linear);
+        expect(back.red, closeTo(tint.red, 1e-9));
+        expect(back.green, closeTo(tint.green, 1e-9));
+        expect(back.blue, closeTo(tint.blue, 1e-9));
+      }
+    });
+
+    test('a linear value that is not a colour is brought back to one', () {
+      // An HDR factor or a NaN in somebody else's file is a colour that
+      // cannot be shown, not a reason to refuse the scene it came in.
+      final odd = Tint.fromLinear(Vector3(4, -1, double.nan));
+      // Not exactly one: the curve's own arithmetic lands a bit short of it,
+      // and a special case to tidy that up would be a branch on every
+      // channel for the sake of a difference no display has.
+      expect(odd.red, closeTo(1.0, 1e-9));
+      expect(odd.green, 0.0);
+      expect(odd.blue, 0.0);
+    });
+
     test('mixes as an eye reads it, not as light adds up', () {
       // Halfway from black to white is mid-grey to look at, which is a fifth
       // of the light. Interpolating linear values would put it at a half,

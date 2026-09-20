@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0
+
+- `Tint.fromLinear` turns linear values back into a colour, the inverse of
+  `linear`. Reading a glTF needs it: the format carries base colour as linear
+  factors, and a colour has to survive the trip out and back without shifting
+  a little each time a scene is opened. Values outside the range, and NaN,
+  come back as a colour that can be shown rather than as a refusal.
+
 ## 0.2.0
 
 - **An area light converts to a real one.** `toRenderer()` gave back a point
