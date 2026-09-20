@@ -45,6 +45,21 @@ namespace {
 // `klit_opaqueMaterial` into their symbol table, and two copies of the
 // renderer in one binary — as there briefly were while it moved — would not
 // link at all.
+// What setup.sh chose to build. A combination left out of a set is still a
+// header and still a symbol — it points at the package standing in for it —
+// so this is the only thing that says which packages are really distinct.
+// __has_include because a set generated before the manifest existed holds
+// every combination, which is what the fallback says.
+#if defined(__has_include)
+#if __has_include("material_set.h")
+#include "material_set.h"
+#endif
+#endif
+#ifndef ORBLIT_HAS_SLIM_SURFACE
+#define ORBLIT_HAS_SLIM_SURFACE 1
+#define ORBLIT_MATERIAL_TIERS "full slim"
+#endif
+
 #include "lit_opaque_material.h"
 #include "sharpen_material.h"
 #include "smaa_edges_material.h"
@@ -261,6 +276,15 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
         "rectangular area lights are not shadowed and the irradiance "
         "field does not light this scene.",
         int(supported));
+#if !ORBLIT_HAS_SLIM_SURFACE
+    _surfaceNotes["tier"] = orblit::format(
+        "...except that this build's materials were generated with "
+        "ORBLIT_TIERS=\"%s\", which leaves the slim surface out. Every lit "
+        "package in it is the sixteen sampler one, which this device cannot "
+        "build, so lit objects will not draw. Regenerate the materials with "
+        "the slim tier, or run this build only where feature level 3 is.",
+        ORBLIT_MATERIAL_TIERS);
+#endif
   }
 
   // Asked once, beside the feature level and for the same reason: it is a
