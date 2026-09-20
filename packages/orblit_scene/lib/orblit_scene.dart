@@ -47,5 +47,15 @@ export 'src/document.dart'
         SceneSettings,
         sceneExtension;
 export 'src/entity.dart' show SceneEntity;
+export 'src/material.dart'
+    show
+        MaterialDocument,
+        MaterialField,
+        MaterialFields,
+        MaterialKind,
+        MaterialLibrary,
+        MaterialLoad,
+        ResolvedMaterial,
+        materialExtension;
 export 'src/migration.dart' show SceneMigration, SceneMigrations;
 export 'src/values.dart' show Values;

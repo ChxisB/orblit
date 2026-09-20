@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0
+
+- `materialFrom` turns a resolved `.omat` into an `OrblitMaterial`, with a
+  contract test that fails if a parameter is added to the table and not
+  applied here.
+- `OrblitDocumentView` takes a `MaterialLibrary` and an optional look.
+  Materials are now keyed by what decided them rather than by entity, so a
+  hundred crates wearing one material are one material and one batch.
+- Naming an image rather than an `.omat` still means "a plain surface wearing
+  this picture", as it did before materials had files.
+
 ## 0.2.0
 
 - **`OrblitSkinBinding`** drives a model file's skin from an `orblit_rig`

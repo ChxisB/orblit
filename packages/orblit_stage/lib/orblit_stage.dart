@@ -18,5 +18,6 @@
 library;
 
 export 'src/document_view.dart' show OrblitDocumentView;
+export 'src/material_view.dart' show materialFrom;
 export 'src/skin_binding.dart'
     show OrblitSkinBinding, armatureOfSkin, boneNamesOfSkin;

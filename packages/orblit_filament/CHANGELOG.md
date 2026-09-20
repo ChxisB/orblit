@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.32.0
+
+- **A project can build only the material combinations it uses.**
+  `ORBLIT_BLENDS` and `ORBLIT_TIERS` name which of the five blend modes and
+  two quality tiers a generated set holds; everything is built when neither
+  is set, so nothing changes for a build that says nothing. The saving is not
+  small — the ten lit packages are thirty-two of a set's thirty-eight
+  megabytes, and dropping the three blend modes a project with no transparency
+  never draws halves the set and takes 2.3 MB off the binary. A combination
+  left out is not missing: it is written as a header naming the package that
+  stands in for it, so the renderer's sixteen-entry surface table stays whole
+  and something faded in a build without `fade` draws opaque. Each set now
+  records what it holds in `material_set.h`, and a build that dropped the slim
+  tier and then ran below feature level 3 says so in its surface notes instead
+  of drawing nothing. The generated-header include directories are unchanged;
+  the selection joins the runtime, the flags and the compiler in the stamp, so
+  changing it regenerates.
+
+## 0.31.0
+
+- **A surface's shaders are compiled before anything is drawn with them.**
+  Filament builds a variant the first time a frame needs it, so the first
+  object to wear a new surface, and the first frame to run a new effect, paid
+  for its compile mid-frame — a stall of tens of milliseconds, always on the
+  frame a viewer was most likely watching. Each surface is now compiled once,
+  on the low priority queue, at the moment the scene first asks for it, and
+  each effect when the render graph is set; the work happens off the frame
+  and the draw that follows finds its shaders ready. A surface is warmed
+  once, not once per material, and the compile skips the variants this
+  renderer cannot reach — it draws its shadows with PCF, never variance, and
+  has no stereo path — so it builds what is used and no more.
+
 ## 0.30.0
 
 - **Built on Filament 1.77.0**, up from 1.76.0, on every platform. Its

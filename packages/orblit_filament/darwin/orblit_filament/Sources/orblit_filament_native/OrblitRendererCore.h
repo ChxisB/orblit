@@ -1285,6 +1285,7 @@ class Renderer {
   void rangePopulations();
   int surfaceIndexFor(int32_t flags);
   Material *surfaceAt(int index);
+  void warmUp(Material *material);
   Texture *blankTexture();
   void setDefaultsOn(MaterialInstance *instance);
   float fieldStrength();
@@ -1534,6 +1535,18 @@ class Renderer {
   /// first use: a scene of opaque lit objects should not compile the four
   /// blending variants it never draws.
   filament::Material *_surfaces[kSurfaceCount]{};
+
+  /// Which of them have already been handed to the shader compiler ahead of
+  /// the frame that draws them, one bit each — kSurfaceCount is sixteen, so
+  /// the whole record is one word. Asked once per surface because a warm-up
+  /// is free the second time only in the sense that it does nothing, and a
+  /// scene is published every time anything in it changes.
+  uint32_t _surfacesWarmed{};
+
+  /// The same, for the screen effects a render graph names. Kept as the set
+  /// of effect numbers rather than bits because effects are sparse and the
+  /// numbering is a public contract that will keep growing.
+  std::set<int> _effectsWarmed{};
 
   /// Whether this engine cannot manage the standard lit surface's feature
   /// level, decided once in startWithWidth from what the device answered and

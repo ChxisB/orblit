@@ -246,26 +246,105 @@ if [ ! -x "$MATC" ]; then
 fi
 
 MATC_STAMP="$GENERATED/.matc"
-# ...and *which* matc built them, by size and modification time — the same
-# trick SDK_ID uses above, for the same reason. Two matc binaries can carry
-# the same version number and still emit different variant tables, and with
-# only the version in the stamp, switching between them left every material
-# exactly as it was and nothing said so.
-MATC_WANT="set=$MATERIAL_SET sdk=$SDK_ID flags=$MATC_FLAGS matc $(stat -f '%z %m' "$MATC")"
+
+# The three axes a surface multiplies along.
+#
+# Blend mode, because blending is fixed function state baked into the material
+# and not something an instance can override. Quality tier, because lit_slim is
+# a different shader from lit — nine samplers rather than sixteen, hand written
+# for the devices below Filament's third feature level — and not a variant of
+# it. And surface or sprite: a sprite is one package whatever it does, because
+# its additive mode is a uniform over premultiplied alpha rather than a second
+# blend, so it never multiplies at all. Everything else about a material is a
+# uniform.
+#
+# The shadow catcher is deliberately not a surface here: its blending is fixed
+# by what it is.
+BLENDS="opaque transparent fade masked add"
+TIERS="full slim"
+VARIANTS="lit lit_slim unlit video"
+
+# Which of those combinations this project actually builds.
+#
+# All of them by default. A project that names fewer gets a smaller binary and
+# a faster build, and the saving is not small: the ten lit packages are thirty
+# two of the forty five megabytes a set generates, and every one of them is a
+# C array the compiler has to chew through on every clean build.
+#
+# Nothing is ever missing, though, because orblit::Renderer's surface table has
+# sixteen entries and a hole in it would not link. A combination left out is
+# written as a header that points at the one standing in for it: same symbol,
+# same length, one package in the binary instead of two. So a project that
+# drops `fade` and then draws something faded draws it opaque — a visible
+# result rather than a missing symbol or a blank window, and a result it asked
+# for.
+#
+# ORBLIT_BLENDS, a subset of the list above. `opaque` is always built and is
+# what the others stand in for.
+ORBLIT_BLENDS="${ORBLIT_BLENDS:-$BLENDS}"
+BUILD_BLENDS="opaque"
+for blend in ${ORBLIT_BLENDS//,/ }; do
+  case " $BLENDS " in
+    *" $blend "*) ;;
+    *)
+      echo "orblit_filament: ORBLIT_BLENDS names '$blend', which is not one of"
+      echo "  $BLENDS."
+      exit 1
+      ;;
+  esac
+  case " $BUILD_BLENDS " in
+    *" $blend "*) ;;
+    *) BUILD_BLENDS="$BUILD_BLENDS $blend" ;;
+  esac
+done
+
+# ORBLIT_TIERS, from "full slim". `full` is always built.
+#
+# Dropping `slim` is the one choice here a build cannot check for you. It says
+# this project will never run below Filament's third feature level, and on a
+# device that does, the renderer builds the sixteen sampler surface where it
+# meant to build the nine sampler one and Filament refuses it. That is why the
+# set records what it holds in material_set.h and why the renderer says so in
+# its surface notes rather than leaving a developer with a dark scene.
+ORBLIT_TIERS="${ORBLIT_TIERS:-$TIERS}"
+BUILD_TIERS="full"
+for tier in ${ORBLIT_TIERS//,/ }; do
+  case " $TIERS " in
+    *" $tier "*) ;;
+    *)
+      echo "orblit_filament: ORBLIT_TIERS names '$tier', which is not one of"
+      echo "  $TIERS."
+      exit 1
+      ;;
+  esac
+  case " $BUILD_TIERS " in
+    *" $tier "*) ;;
+    *) BUILD_TIERS="$BUILD_TIERS $tier" ;;
+  esac
+done
+case " $BUILD_TIERS " in
+  *" slim "*) HAS_SLIM=1 ;;
+  *) HAS_SLIM=0 ;;
+esac
+
+# The stamp: which runtime a set was generated for, which flags made it, which
+# combinations it holds, and *which* matc built them — that last by size and
+# modification time, the same trick SDK_ID uses above and for the same reason.
+# Two matc binaries can carry the same version number and still emit different
+# variant tables, and with only the version in the stamp, switching between
+# them left every material exactly as it was and nothing said so.
+#
+# The selection belongs here for the same reason: which combinations were built
+# is as much a property of a set as which compiler built them. Naming a blend a
+# set was generated without rebuilds it, and dropping one replaces it with its
+# stand-in.
+MATC_WANT="set=$MATERIAL_SET sdk=$SDK_ID flags=$MATC_FLAGS"
+MATC_WANT="$MATC_WANT blends=$BUILD_BLENDS tiers=$BUILD_TIERS"
+MATC_WANT="$MATC_WANT matc $(stat -f '%z %m' "$MATC")"
 STALE=""
 if [ "$(cat "$MATC_STAMP" 2>/dev/null || true)" != "$MATC_WANT" ]; then
   STALE=1
 fi
-# Surfaces are compiled once per blend mode, because blending is fixed
-# function state baked into the material and not something an instance can
-# override. Everything else about a material is a uniform, so this is the only
-# axis that multiplies.
-BLENDS="opaque transparent fade masked add"
-# Compiled once each; everything else is a uniform. The shadow catcher is
-# deliberately not here: its blending is fixed by what it is. lit_slim is the
-# nine-sampler surface orblit::Renderer chooses instead of lit below Filament's
-# third feature level — its own five packages, not a variant of lit's.
-VARIANTS="lit lit_slim unlit video"
 
 # compile <source .mat> <generated name> [blend]
 compile() {
@@ -287,17 +366,64 @@ compile() {
   # them in the renderer.
   # shellcheck disable=SC2086 — the flags are ours and are meant to split.
   "$MATC" $MATC_FLAGS -o "/tmp/orblit_$name.filamat" "$input"
-  (cd /tmp && xxd -i "orblit_$name.filamat") \
-    | sed "s/orblit_${name}_filamat/k${name}Material/g" > "$header"
+  # #pragma once because a stand-in header includes the one it points at, and
+  # the renderer includes both. Every compiler this builds for takes it.
+  {
+    echo "#pragma once"
+    (cd /tmp && xxd -i "orblit_$name.filamat") \
+      | sed "s/orblit_${name}_filamat/k${name}Material/g"
+  } > "$header"
   rm -f "/tmp/orblit_$name.filamat" "/tmp/orblit_src_$name.mat"
+}
+
+# standIn <generated name> <name it points at> <why>
+#
+# A package this project chose not to build, written as the name of the one
+# that stands in for it. Two defines rather than four megabytes, and the
+# renderer's symbol table is whole without knowing anything happened.
+standIn() {
+  local name="$1" target="$2" why="$3"
+  local header="$GENERATED/${name}_material.h"
+  echo "orblit_filament: $name -> $target"
+  cat > "$header" <<EOF
+#pragma once
+// Not built: $why
+//
+// $name is this set's name for the package $target holds. Anything that
+// asks for it is drawn with that one instead.
+#include "${target}_material.h"
+#define k${name}Material k${target}Material
+#define k${name}Material_len k${target}Material_len
+EOF
+}
+
+wanted() {
+  case " $2 " in *" $1 "*) return 0 ;; esac
+  return 1
 }
 
 for mat in materials/*.mat; do
   name="$(basename "$mat" .mat)"
   case " $VARIANTS " in
     *" $name "*)
+      # The slim tier's five packages, when it was not asked for, are the
+      # standard tier's — which is only correct because dropping it is a
+      # promise never to run below feature level 3. material_set.h records
+      # the promise so the renderer can say it was broken.
+      if [ "$name" = lit_slim ] && [ "$HAS_SLIM" = 0 ]; then
+        for blend in $BLENDS; do
+          standIn "${name}_${blend}" "lit_${blend}" \
+            "ORBLIT_TIERS is \"$BUILD_TIERS\"."
+        done
+        continue
+      fi
       for blend in $BLENDS; do
-        compile "$mat" "${name}_${blend}" "$blend"
+        if wanted "$blend" "$BUILD_BLENDS"; then
+          compile "$mat" "${name}_${blend}" "$blend"
+        else
+          standIn "${name}_${blend}" "${name}_opaque" \
+            "ORBLIT_BLENDS is \"$BUILD_BLENDS\"."
+        fi
       done
       ;;
     *)
@@ -305,6 +431,25 @@ for mat in materials/*.mat; do
       ;;
   esac
 done
+
+# What this set actually holds, for anything that compiles against it.
+#
+# Written every run, not only a stale one, because it is cheap and because a
+# set whose manifest disagreed with its headers would be worse than no
+# manifest at all.
+cat > "$GENERATED/material_set.h" <<EOF
+#pragma once
+// Written by darwin/setup.sh. Do not edit.
+//
+// Which of the surface combinations this generated set was built with. A
+// combination left out is still here as a header and a symbol — it points at
+// the package standing in for it — so this is the only place that says what
+// is real.
+#define ORBLIT_MATERIAL_SET "$MATERIAL_SET"
+#define ORBLIT_MATERIAL_BLENDS "$BUILD_BLENDS"
+#define ORBLIT_MATERIAL_TIERS "$BUILD_TIERS"
+#define ORBLIT_HAS_SLIM_SURFACE $HAS_SLIM
+EOF
 
 echo "$MATC_WANT" > "$MATC_STAMP"
 

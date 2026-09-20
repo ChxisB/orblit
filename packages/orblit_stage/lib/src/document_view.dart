@@ -8,6 +8,8 @@ import 'package:vector_math/vector_math_64.dart';
 
 import 'package:orblit_filament/orblit_filament.dart';
 
+import 'material_view.dart';
+
 /// A scene document, kept as something the renderer can draw.
 ///
 /// The document says what a scene *is*; this says what to do with it. Keeping
@@ -22,7 +24,13 @@ import 'package:orblit_filament/orblit_filament.dart';
 /// call, which is the right way round: a frame happens sixty times a second
 /// and an edit does not.
 class OrblitDocumentView {
-  OrblitDocumentView(this._document, {this.projectRoot}) {
+  OrblitDocumentView(
+    this._document, {
+    this.projectRoot,
+    MaterialLibrary? materials,
+    String? look,
+  }) : _library = materials ?? MaterialLibrary(),
+       _look = look {
     _rebuildAll();
   }
 
@@ -33,6 +41,31 @@ class OrblitDocumentView {
   /// it looks on disk, and a path rewritten to somewhere on this machine would
   /// miss it.
   final String? projectRoot;
+
+  /// The project's materials, already read, with their parents and groups
+  /// still to be spent. Resolving happens in here and is cached by the
+  /// library, so a scene of four hundred objects wearing eleven materials
+  /// walks eleven chains.
+  MaterialLibrary _library;
+
+  /// The look the scene is being shown in, or null for what each object wears
+  /// by default.
+  ///
+  /// Not a scene setting, because it is not a fact about the scene: the same
+  /// document shown in "summer" and in "winter" is the same document. It is
+  /// how a viewer is asking to see it, which is why it is stated here and can
+  /// be changed without editing anything.
+  String? _look;
+
+  /// The materials in use, by what decided them: the material's own path and
+  /// the look it was resolved under.
+  ///
+  /// Keyed that way rather than by entity so that a hundred crates wearing one
+  /// material are one material. The renderer builds a compiled instance per
+  /// key it is handed, so keying by entity would be a hundred instances of the
+  /// same thing and a hundred draws that cannot be batched.
+  final Map<String, String> _materialOf = {};
+  final Map<String, Set<String>> _materialUsers = {};
 
   SceneDocument _document;
 
@@ -200,6 +233,8 @@ class OrblitDocumentView {
     _splats.clear();
     _sprites.clear();
     _materials.clear();
+    _materialOf.clear();
+    _materialUsers.clear();
     for (final entity in _document.entities) {
       _build(entity);
     }
@@ -212,7 +247,103 @@ class OrblitDocumentView {
     _lights.remove(id);
     _splats.remove(id);
     _sprites.remove(id);
-    _materials.remove(id);
+    _dropMaterialUse(id);
+  }
+
+  /// Lets go of whatever material [id] was wearing, and of the material itself
+  /// once nothing wears it.
+  ///
+  /// Kept alive by use rather than by entity because a material is shared: the
+  /// crate that was deleted does not take the other ninety-nine crates'
+  /// material with it.
+  void _dropMaterialUse(String id) {
+    final signature = _materialOf.remove(id);
+    if (signature == null) return;
+    final users = _materialUsers[signature];
+    if (users == null) return;
+    users.remove(id);
+    if (users.isNotEmpty) return;
+    _materialUsers.remove(signature);
+    _materials.remove(signature);
+  }
+
+  /// The material key [entity] wears, building the material the first time
+  /// anything wears it.
+  ///
+  /// Returns null when the entity names no material, which leaves the object
+  /// with whatever its mesh brought.
+  int? _wear(SceneEntity entity) {
+    _dropMaterialUse(entity.id);
+
+    final component = entity[SceneComponents.material];
+    if (component is! MaterialComponent) return null;
+    final asset = component.under(_look);
+    if (asset == null || asset.isEmpty) return null;
+
+    // Two ways of naming a material, and the file extension tells them apart.
+    // An `.omat` is a material; anything else is an image, and naming one is
+    // shorthand for "a plain surface wearing this picture" — the way this
+    // component was read before materials had files of their own, and still
+    // the quickest way to put a texture on a box.
+    final signature = asset.endsWith(materialExtension)
+        ? asset
+        : 'image:$asset';
+    _materialOf[entity.id] = signature;
+    _materialUsers.putIfAbsent(signature, () => <String>{}).add(entity.id);
+
+    final built = _materials[signature];
+    if (built != null) return built.key;
+
+    final key = _keyFor(signature, 'material');
+    final OrblitMaterial material;
+    if (asset.endsWith(materialExtension)) {
+      material = materialFrom(
+        _library.resolve(asset),
+        key: key,
+        locate: _resolve,
+      );
+    } else {
+      final found = _resolve(asset);
+      if (found == null) return null;
+      material = OrblitMaterial(key: key, baseColourMap: OrblitTexture(found));
+    }
+    _materials[signature] = material;
+    return key;
+  }
+
+  /// Shows the scene in a named look, or in none.
+  ///
+  /// Rebuilds rather than diffing, because a look is a scene-wide swap: the
+  /// cheapest correct answer to "which of these four hundred objects has
+  /// something different to wear" is to ask all four hundred once.
+  set look(String? look) {
+    if (look == _look) return;
+    _look = look;
+    _rebuildAll();
+  }
+
+  String? get look => _look;
+
+  /// Every look anything in this scene has something of its own for.
+  ///
+  /// What a viewer offers, gathered from the objects rather than declared once
+  /// at the top — the same place `KHR_materials_variants` keeps the mappings,
+  /// so a scene that came in through glTF and one authored here list the same
+  /// names.
+  Set<String> get looks => {
+    for (final entity in _document.entities)
+      if (entity[SceneComponents.material] case final MaterialComponent worn)
+        ...worn.lookNames,
+  };
+
+  /// Replaces the materials this scene draws with.
+  ///
+  /// For a project whose material files have changed on disk: the library
+  /// caches what it resolved, so handing in a new one is how a scene is told
+  /// to look again.
+  set materials(MaterialLibrary library) {
+    _library = library;
+    _rebuildAll();
   }
 
   /// A key for one role of one entity, the same one every time.
@@ -284,23 +415,14 @@ class OrblitDocumentView {
     final shown = _shown(entity);
 
     if (entity[SceneComponents.mesh] case final MeshComponent mesh) {
-      final material = entity[SceneComponents.material];
-      final texture = material is MaterialComponent ? material.asset : null;
-      final resolved = _resolve(texture);
-      if (resolved != null) {
-        final key = _keyFor(entity.id, 'material');
-        _materials[entity.id] = OrblitMaterial(
-          key: key,
-          baseColourMap: OrblitTexture(resolved),
-        );
-      }
+      final worn = _wear(entity);
 
       _objects[entity.id] = OrblitObject(
         key: _keyFor(entity.id, 'object'),
         transform: world,
         colour: mesh.colour.linear,
         mesh: _resolve(mesh.asset),
-        material: resolved == null ? null : _keyFor(entity.id, 'material'),
+        material: worn,
         castShadows: mesh.castShadows,
         receiveShadows: mesh.receiveShadows,
         visible: shown,
