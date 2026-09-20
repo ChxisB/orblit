@@ -2168,6 +2168,39 @@ Material *Renderer::surfaceAt(int index) {
   return _surfaces[index];
 }
 
+/// Hands a compiled material to the shader compiler before anything draws
+/// with it.
+///
+/// Filament builds a material's GPU programs lazily and one variant at a
+/// time, on the draw that first needs each — which puts a shader compile in
+/// the middle of a frame, and a shader compile is milliseconds. A scene that
+/// introduces eight materials pays that eight times over its first second,
+/// which is exactly the second somebody is looking at it.
+///
+/// Asking at publish time spends the same work where no frame is being timed.
+/// It is not free and it is not instant: the backend compiles on its own
+/// thread and the callers flush afterwards so the commands actually leave.
+///
+/// Variance shadow maps and instanced stereo are left out because this
+/// renderer configures neither, so their programs could only be compiled to
+/// be unreachable. Everything else the renderer can turn on — the sun,
+/// punctual lights, shadow receivers, skins, fog, screen-space reflections —
+/// is included, because a variant left out here is a stall put back.
+void Renderer::warmUp(Material *material) {
+  if (material == nullptr) return;
+  constexpr filament::UserVariantFilterMask kReachable =
+      static_cast<filament::UserVariantFilterMask>(
+          filament::UserVariantFilterBit::ALL) &
+      ~static_cast<filament::UserVariantFilterMask>(
+          filament::UserVariantFilterBit::VSM) &
+      ~static_cast<filament::UserVariantFilterMask>(
+          filament::UserVariantFilterBit::STE);
+  // LOW, not HIGH: HIGH is "this draw is waiting on it", and on a platform
+  // without parallel compilation it is compiled synchronously. Nothing is
+  // waiting on these yet, and the whole point is to not block.
+  material->compile(filament::backend::CompilerPriorityQueue::LOW, kReachable);
+}
+
 /// A single white pixel, for every sampler a material leaves empty.
 ///
 /// Filament requires every sampler in a material to be bound whether the
@@ -3054,6 +3087,21 @@ void Renderer::setRenderGraph(const float *passes, uint32_t count, const float *
     for (int p = 0; p < 4; p++) pass.plane[p] = row[8 + p];
     for (int r = 0; r < 4; r++) pass.reads[r] = static_cast<int>(row[4 + r]);
     pass.effect = static_cast<int>(row[12]);
+  }
+
+  // Every effect this graph names, compiled now rather than on the frame that
+  // first draws it. A graph is set when the view is configured and changes
+  // rarely, so this is the one moment where the whole list is known and no
+  // frame is being timed.
+  {
+    bool warmed = false;
+    for (const GraphPass &pass : _passes) {
+      if (pass.kind != kPassEffect) continue;
+      if (!_effectsWarmed.insert(pass.effect).second) continue;
+      warmUp(materialForEffect(pass.effect));
+      warmed = true;
+    }
+    if (warmed) _engine->flush();
   }
 
   // Motion blur hook: whether this graph blurs, and whether any of its blurs
@@ -4212,6 +4260,7 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
   }
   _materialsSpent.clear();
 
+  bool warmed = false;
   const uint64_t generation = ++_materialGeneration;
   _materialTexturePaths.clear();
   _materialTexturePaths.insert(texturePaths.begin(), texturePaths.end());
@@ -4271,6 +4320,17 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
 
     _materialOrder.push_back(surface.instance);
     _materialRebuilt.push_back(rebuild);
+
+    // The first scene to be made of a surface is the one that pays for it.
+    // Done here rather than in surfaceAt because that is also called from
+    // inside a frame, where issuing sixteen variants' worth of compiles is
+    // the stall this is meant to prevent.
+    const uint32_t bit = 1u << wanted;
+    if ((_surfacesWarmed & bit) == 0) {
+      _surfacesWarmed |= bit;
+      warmUp(_surfaces[wanted]);
+      warmed = true;
+    }
   }
 
   // A material nothing is made of any more. Its instance goes; the textures
@@ -4286,6 +4346,11 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
     }
     it = _materials.erase(it);
   }
+
+  // Filament queues the compile commands rather than sending them, so without
+  // this the backend would not see them until whatever flushes next — which
+  // is the first frame, the one they exist to keep clear.
+  if (warmed) _engine->flush();
 }
 
 /// Puts one object onto a material, or back onto the ones it came with.

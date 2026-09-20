@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.31.0
+
+- **A surface's shaders are compiled before anything is drawn with them.**
+  Filament builds a variant the first time a frame needs it, so the first
+  object to wear a new surface, and the first frame to run a new effect, paid
+  for its compile mid-frame — a stall of tens of milliseconds, always on the
+  frame a viewer was most likely watching. Each surface is now compiled once,
+  on the low priority queue, at the moment the scene first asks for it, and
+  each effect when the render graph is set; the work happens off the frame
+  and the draw that follows finds its shaders ready. A surface is warmed
+  once, not once per material, and the compile skips the variants this
+  renderer cannot reach — it draws its shadows with PCF, never variance, and
+  has no stereo path — so it builds what is used and no more.
+
 ## 0.30.0
 
 - **Built on Filament 1.77.0**, up from 1.76.0, on every platform. Its
