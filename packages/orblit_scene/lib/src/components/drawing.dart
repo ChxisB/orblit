@@ -115,25 +115,47 @@ class MeshComponent extends SceneComponent {
 
 /// A material this entity wears, overriding whatever its geometry brought.
 ///
-/// One field today, and its own component rather than a key on the mesh for
-/// two reasons: a material can be worn by things that are not meshes — a
-/// sprite, a tilemap — and the material system is a phase of its own, which
-/// will give this groups, variants and per-instance values. Growing a
-/// component is an ordinary change; promoting a field into one is a migration.
+/// Its own component rather than a key on the mesh, because a material can be
+/// worn by things that are not meshes — a sprite, a tilemap — and because
+/// what it carries grows: groups and inheritance live in the material file,
+/// looks live here.
 class MaterialComponent extends SceneComponent {
-  const MaterialComponent({this.asset});
+  const MaterialComponent({this.asset, this.looks = const {}});
 
-  static MaterialComponent fromJson(Map<String, Object?> json) =>
-      MaterialComponent(asset: Values.text(json, 'asset'));
+  static MaterialComponent fromJson(Map<String, Object?> json) {
+    final looks = <String, String>{};
+    for (final entry in Values.object(json['looks']).entries) {
+      final path = entry.value;
+      if (path is String && path.isNotEmpty) looks[entry.key] = path;
+    }
+    return MaterialComponent(asset: Values.text(json, 'asset'), looks: looks);
+  }
 
   /// The material, relative to the project.
   final String? asset;
+
+  /// What this entity wears instead under each named look, by look name.
+  ///
+  /// The same shape `KHR_materials_variants` uses, and for the same reason it
+  /// chose it: the names live once, for the whole scene, and each object says
+  /// only which material it swaps to under each. An object with nothing to say
+  /// about a look keeps [asset] — so a "winter" look is authored by naming the
+  /// dozen things that change, not by restating the four hundred that do not.
+  final Map<String, String> looks;
+
+  /// The material to wear under [look], falling back to [asset] when this
+  /// entity has nothing different to wear.
+  String? under(String? look) => look == null ? asset : (looks[look] ?? asset);
+
+  /// Every look this entity has something of its own for.
+  Iterable<String> get lookNames => looks.keys;
 
   @override
   String get type => SceneComponents.material;
 
   @override
-  Map<String, Object?> toJson() => Values.pruned({'asset': asset});
+  Map<String, Object?> toJson() =>
+      Values.pruned({'asset': asset, 'looks': looks.isEmpty ? null : looks});
 }
 
 /// A Gaussian splat capture this entity draws.
