@@ -78,9 +78,20 @@ export 'src/importer.dart'
         ImporterRegistry;
 export 'src/net/cache_storage.dart'
     show CacheStorageContentStore, CacheStorageFetchRecords;
+export 'src/net/fetcher.dart'
+    show
+        AssetFetcher,
+        FetchCancelled,
+        FetchCorrupt,
+        FetchFailed,
+        FetchJob,
+        FetchProgress,
+        FetchUrgency;
 export 'src/net/http_transport.dart' show HttpTransport;
+export 'src/net/network_asset_source.dart' show NetworkAssetSource;
 export 'src/net/picture_size.dart' show PictureSize, pictureSizeOf;
 export 'src/net/policy.dart' show AssetOrigin, FetchPolicy, FetchRefused;
+export 'src/net/progressive.dart' show AssetStage, ProgressiveFetch;
 export 'src/net/records.dart'
     show
         BufferedFetchRecords,
