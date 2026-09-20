@@ -26,16 +26,15 @@ void main() {
     'darwin/orblit_filament/Sources/orblit_filament/OrblitFilamentPlugin.swift',
   );
   // The renderer, and the plain C++ beside it that it calls into: a number
-  // that lives in either is the renderer's. The renderer's own constants are
-  // in its C++ core's header now that the Objective-C class only forwards to
-  // it — the same lines, moved, so this reads them there.
-  final native =
-      _read(
-        'darwin/orblit_filament/Sources/orblit_filament_native/OrblitRendererCore.h',
-      ) +
-      _read(
-        'darwin/orblit_filament/Sources/orblit_filament_native/OrblitDecals.h',
-      );
+  // that lives in any of them is the renderer's. Its constants sit beside the
+  // records they measure, in the types header, now that the Objective-C class
+  // only forwards to the C++ core — the same lines, moved, so this reads them
+  // there as well as in the core and the decals beside it.
+  final native = [
+    'OrblitRendererTypes.h',
+    'OrblitRendererCore.h',
+    'OrblitDecals.h',
+  ].map((header) => _read('darwin/orblit_filament/Sources/orblit_filament_native/$header')).join('\n');
 
   group('the strides the three sides share', () {
     // Dart's number, what Swift calls it, and what the renderer calls it —
@@ -116,9 +115,7 @@ void main() {
     // The stride check above cannot see a float change meaning. The fourth
     // was unused until pictures, and a renderer that went on ignoring it
     // would filter every picture at the device's size whatever a scene asked.
-    final core = _read(
-      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitRendererCore.cpp',
-    );
+    final renderer = _renderer();
     final environment = _read(
       'darwin/orblit_filament/Sources/orblit_filament_native/OrblitEnvironment.cpp',
     );
@@ -129,7 +126,7 @@ void main() {
         128,
       );
       expect(
-        core,
+        renderer,
         contains('params[3] == _environmentParams[3]'),
         reason: 'a new size is a new environment, not a number moving',
       );
@@ -577,6 +574,26 @@ int _nativeValue(String source, String name) {
   ).firstMatch(source);
   expect(found, isNotNull, reason: 'the renderer no longer declares $name');
   return int.parse(found!.group(1)!);
+}
+
+/// Every source `orblit::Renderer` is defined across, joined. The class was
+/// one .cpp until it was fourteen, so a test looking for a line the renderer
+/// has to contain looks in all of them rather than naming one and going green
+/// when that line moves next door.
+String _renderer() {
+  const within = 'darwin/orblit_filament/Sources/orblit_filament_native';
+  final wanted = RegExp(r'OrblitRenderer\w*\.cpp$');
+  for (final root in ['.', 'packages/orblit_filament']) {
+    final directory = Directory('$root/$within');
+    if (!directory.existsSync()) continue;
+    final sources = [
+      for (final found in directory.listSync())
+        if (found is File && wanted.hasMatch(found.path))
+          found.readAsStringSync(),
+    ];
+    if (sources.isNotEmpty) return sources.join('\n');
+  }
+  fail('cannot find $within from ${Directory.current.path}');
 }
 
 /// The native source, wherever the test was run from.

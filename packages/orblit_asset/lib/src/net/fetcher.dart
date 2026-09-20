@@ -471,36 +471,14 @@ class _Download {
 
   Future<void> _run() async {
     _started = true;
-    final policy = _fetcher.origin.policy;
     final known = await _fetcher.records.get(url);
-
-    // Already held and still current? A hash the manifest names is a promise
-    // about the bytes, not about the URL, so a cached copy that matches it
-    // needs no server at all — not even a round trip to ask.
-    final wanted = _wanted;
-    if (wanted != null) {
-      final held = await _fetcher.store.get(wanted);
-      if (held != null) {
-        await _fetcher.records.put(
-          url,
-          FetchRecord(
-            hash: wanted,
-            bytes: held.length,
-            etag: known?.etag,
-            fetched: DateTime.now(),
-          ),
-        );
-        _finish(held);
-        return;
-      }
-    }
+    if (await _fromStore(known)) return;
 
     // Starts as what was on disk and is cleared if it turns out to be no use,
     // so that a later attempt does not offer the server a tag we have already
     // learned we cannot honour.
     var held = known;
-    var partial = BytesBuilder(copy: false);
-    String? tag = known?.etag;
+    final resume = _Resume(known?.etag);
     Object? last;
     StackTrace? where;
 
@@ -512,80 +490,36 @@ class _Download {
       }
 
       try {
-        final resuming = partial.length > 0;
         final reply = await _fetcher.transport.send(
           FetchRequest(
             url,
             // Only on a first, whole request: asking a server both to resume
             // and to tell us whether the file changed is asking two questions
             // whose answers contradict each other.
-            ifNoneMatch: resuming ? null : held?.etag,
-            from: resuming ? partial.length : null,
+            ifNoneMatch: resume.resuming ? null : held?.etag,
+            from: resume.resuming ? resume.bytes.length : null,
           ),
         );
         if (_over) return;
 
         if (reply.isNotModified) {
-          final cached = held == null
-              ? null
-              : await _fetcher.store.get(held.hash);
-          if (cached != null) {
-            await _fetcher.records.put(url, held!.confirmedAt(DateTime.now()));
-            _finish(cached);
-            return;
-          }
+          if (await _confirmed(held)) return;
           // The server says the copy we named is current and we no longer
           // have it — the system emptied the cache, most likely. Forget the
           // record, here and in memory, so that the attempt that follows asks
           // for the whole thing instead of being told 304 all over again.
           await _fetcher.records.remove(url);
           held = null;
-          tag = null;
           last = reply.status;
-          partial = BytesBuilder(copy: false);
+          resume.tag = null;
+          resume.restart();
           continue;
         }
 
+        // A reply carrying bytes is the last one either way: _keep finishes
+        // the download, throws, or returns having been cancelled.
         if (reply.status == 200 || reply.status == 206) {
-          // A server that ignored the range, or one whose copy changed under
-          // us, answers 200 to a resumed request. Either way what is held is
-          // the start of a different file.
-          if (resuming && reply.status != 206) {
-            partial = BytesBuilder(copy: false);
-          }
-          if (reply.etag != null && tag != null && reply.etag != tag) {
-            partial = BytesBuilder(copy: false);
-          }
-          tag = reply.etag ?? tag;
-
-          final total = reply.length;
-          if (total != null && total > policy.maxBytes) {
-            throw FetchRefused(
-              '$url',
-              'it is $total bytes and the policy allows ${policy.maxBytes}',
-            );
-          }
-
-          final bytes = await _read(reply, partial, total, policy);
-          if (_over) return;
-
-          final hash = ContentHash.of(bytes);
-          final promised = _wanted;
-          if (promised != null && hash != promised) {
-            throw FetchCorrupt(url, wanted: promised, got: hash);
-          }
-
-          await _fetcher.store.put(bytes);
-          await _fetcher.records.put(
-            url,
-            FetchRecord(
-              hash: hash,
-              bytes: bytes.length,
-              etag: tag,
-              fetched: DateTime.now(),
-            ),
-          );
-          _finish(bytes);
+          await _keep(reply, resume);
           return;
         }
 
@@ -610,9 +544,99 @@ class _Download {
     }
 
     if (_over) return;
+    await _exhausted(held, last, where);
+  }
 
-    // Out of attempts. An old copy is better than a blank screen, and being
-    // offline is the ordinary reason to be here.
+  /// True if the download is over before it began: the manifest names a hash
+  /// and the store already holds bytes that match it.
+  ///
+  /// A hash the manifest names is a promise about the bytes, not about the
+  /// URL, so a copy that matches it needs no server at all — not even a round
+  /// trip to ask.
+  Future<bool> _fromStore(FetchRecord? known) async {
+    final wanted = _wanted;
+    if (wanted == null) return false;
+    final bytes = await _fetcher.store.get(wanted);
+    if (bytes == null) return false;
+
+    await _fetcher.records.put(
+      url,
+      FetchRecord(
+        hash: wanted,
+        bytes: bytes.length,
+        etag: known?.etag,
+        fetched: DateTime.now(),
+      ),
+    );
+    _finish(bytes);
+    return true;
+  }
+
+  /// True if a 304 can be honoured: the record the server confirmed still
+  /// names bytes that are held.
+  Future<bool> _confirmed(FetchRecord? held) async {
+    if (held == null) return false;
+    final cached = await _fetcher.store.get(held.hash);
+    if (cached == null) return false;
+
+    await _fetcher.records.put(url, held.confirmedAt(DateTime.now()));
+    _finish(cached);
+    return true;
+  }
+
+  /// Reads a reply that carries bytes, checks them against whatever the
+  /// manifest promised, and stores them.
+  Future<void> _keep(FetchReply reply, _Resume resume) async {
+    final policy = _fetcher.origin.policy;
+
+    // A server that ignored the range, or one whose copy changed under us,
+    // answers 200 to a resumed request. Either way what is held is the start
+    // of a different file.
+    if (resume.resuming && reply.status != 206) {
+      resume.restart();
+    }
+    if (reply.etag != null && resume.tag != null && reply.etag != resume.tag) {
+      resume.restart();
+    }
+    resume.tag = reply.etag ?? resume.tag;
+
+    final total = reply.length;
+    if (total != null && total > policy.maxBytes) {
+      throw FetchRefused(
+        '$url',
+        'it is $total bytes and the policy allows ${policy.maxBytes}',
+      );
+    }
+
+    final bytes = await _read(reply, resume.bytes, total, policy);
+    if (_over) return;
+
+    final hash = ContentHash.of(bytes);
+    final promised = _wanted;
+    if (promised != null && hash != promised) {
+      throw FetchCorrupt(url, wanted: promised, got: hash);
+    }
+
+    await _fetcher.store.put(bytes);
+    await _fetcher.records.put(
+      url,
+      FetchRecord(
+        hash: hash,
+        bytes: bytes.length,
+        etag: resume.tag,
+        fetched: DateTime.now(),
+      ),
+    );
+    _finish(bytes);
+  }
+
+  /// Out of attempts. An old copy is better than a blank screen, and being
+  /// offline is the ordinary reason to be here.
+  Future<void> _exhausted(
+    FetchRecord? held,
+    Object? last,
+    StackTrace? where,
+  ) async {
     if (held != null) {
       final cached = await _fetcher.store.get(held.hash);
       if (cached != null) {
@@ -749,4 +773,22 @@ class _Download {
     );
     return done.future;
   }
+}
+
+/// What an interrupted attempt left behind: the bytes read so far, and which
+/// copy of the file they came from.
+class _Resume {
+  _Resume(this.tag);
+
+  BytesBuilder bytes = BytesBuilder(copy: false);
+
+  /// The entity tag [bytes] were read from, so the next attempt can ask the
+  /// server whether it still serves that same copy.
+  String? tag;
+
+  bool get resuming => bytes.length > 0;
+
+  /// Forgets what was read. Whatever comes next is a whole file, not a
+  /// continuation of this one.
+  void restart() => bytes = BytesBuilder(copy: false);
 }

@@ -9,8 +9,8 @@
 
 /// The Objective-C face of the renderer, and nothing more.
 ///
-/// Everything the renderer does is orblit::Renderer, in plain C++ in
-/// OrblitRendererCore.cpp — which is also what every other platform reaches,
+/// Everything the renderer does is orblit::Renderer, in plain C++ in the
+/// OrblitRenderer*.cpp files — which is also what every other platform reaches,
 /// through the C ABI in include/orblit_renderer.h. This class exists because
 /// the Swift plugin speaks Objective-C: it owns one orblit::Renderer, gives it
 /// the Apple surface (IOSurface-backed CVPixelBuffers, OrblitSurfaceApple.mm),

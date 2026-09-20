@@ -58,6 +58,25 @@ add_library(orblit_filament_native SHARED
     # OrblitTexture.m -- those are Apple's Objective-C++ wrapper and are never
     # built here; see PORTING.md's "What is still Apple's, and why".
     "${ORBLIT_CORE_DIR}/OrblitRendererCore.cpp"
+
+    # The rest of orblit::Renderer, one file a topic, then the helpers they
+    # share and the one unit that holds the compiled materials.
+    "${ORBLIT_CORE_DIR}/OrblitRendererFrame.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererWeather.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererMeshes.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererPopulations.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererSurfaces.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererEnvironment.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererGraph.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererEffects.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererObjects.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererBatching.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererLights.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererProbes.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererCamera.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitRendererInternal.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitMaterialPackages.cpp"
+
     "${ORBLIT_CORE_DIR}/OrblitRendererC.cpp"
     "${ORBLIT_CORE_DIR}/OrblitBackend.cpp"
     "${ORBLIT_CORE_DIR}/OrblitPlatform.cpp"
@@ -75,6 +94,9 @@ add_library(orblit_filament_native SHARED
     # FBX and OBJ to GLB, and ufbx compiled as C++ through one file (see
     # OrblitUfbx.cpp for why a .cpp includes a .c).
     "${ORBLIT_CORE_DIR}/OrblitImport.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitImportMeshes.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitImportMaterials.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitImportScene.cpp"
     "${ORBLIT_CORE_DIR}/OrblitUfbx.cpp"
     # Environments from .hdr and .exr pictures: decoding, cmgen's arithmetic,
     # the run-time filter, and tinyexr with miniz compiled as C++ through one
@@ -87,6 +109,8 @@ add_library(orblit_filament_native SHARED
     # uploads every texture under a budget a frame.
     "${ORBLIT_CORE_DIR}/OrblitKtx2.cpp"
     "${ORBLIT_CORE_DIR}/OrblitTextures.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitTexturesPush.cpp"
+    "${ORBLIT_CORE_DIR}/OrblitTexturesDecode.cpp"
 )
 
 target_include_directories(orblit_filament_native PRIVATE

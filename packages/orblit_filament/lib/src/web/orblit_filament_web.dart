@@ -78,97 +78,29 @@ class OrblitFilamentWeb {
   }
 
   Future<Object?> _handle(MethodCall call) async {
+    // Every call but `create` names its viewport the same way, so both are
+    // read once here rather than again in each arm.
+    final args = call.arguments as Map?;
+    final id = (args?['textureId'] as num?)?.toInt();
+
     switch (call.method) {
       case 'create':
-        final args = call.arguments as Map?;
-        final width = (args?['width'] as num?)?.round();
-        final height = (args?['height'] as num?)?.round();
-        if (width == null || height == null) {
-          throw PlatformException(
-            code: 'bad-args',
-            message: 'create needs width and height',
-          );
-        }
-        if (!orblitRendererScriptLoaded) {
-          throw PlatformException(
-            code: 'no-renderer',
-            message:
-                'orblit_renderer.js is not loaded. Add '
-                '<script src="orblit_renderer.js"></script> to web/index.html '
-                'and copy orblit_renderer.js and orblit_renderer.wasm into the '
-                "app's web/ directory — see "
-                'packages/orblit_filament/native/web/README.md.',
-          );
-        }
-        // The renderer itself cannot start yet: its canvas does not exist
-        // until the widget carrying this id builds its HtmlElementView, and
-        // is not laid out until a frame after that. See OrblitWebViewport.
-        final id = _nextId++;
-        _viewports[id] = OrblitWebViewport(id, resources: _resources)
-          ..resize(width, height);
-        return id;
-
+        return _create(args);
       case 'resize':
-        final args = call.arguments as Map?;
-        final id = (args?['textureId'] as num?)?.toInt();
-        final width = (args?['width'] as num?)?.round();
-        final height = (args?['height'] as num?)?.round();
-        if (id == null || width == null || height == null) {
-          throw PlatformException(
-            code: 'bad-args',
-            message: 'resize needs textureId, width, height',
-          );
-        }
-        _viewports[id]?.resize(width, height);
+        _resize(args, id);
         return null;
-
       case 'setScene':
-        final args = call.arguments as Map?;
-        final id = (args?['textureId'] as num?)?.toInt();
-        if (args == null || id == null) {
-          throw PlatformException(
-            code: 'bad-args',
-            message: 'setScene needs a textureId',
-          );
-        }
-        final scene = OrblitSceneWeb.from(args);
-        if (scene == null) {
-          throw PlatformException(
-            code: 'bad-scene',
-            message:
-                'setScene needs keys, float32 transforms (16 each), colours '
-                '(3 each), flags, lights (16 floats each), fog (10 floats) '
-                'and a camera.',
-          );
-        }
-        final viewport = _viewports[id];
-        if (viewport == null) return null;
-        return viewport.applyScene(scene);
-
+        return _setScene(args, id);
+      // A viewport that has gone is not an error for the two calls that only
+      // ask it questions: the widget carrying it can be disposed between a
+      // frame asking and this answering.
       case 'stats':
-        final args = call.arguments as Map?;
-        final id = (args?['textureId'] as num?)?.toInt();
-        final viewport = id == null ? null : _viewports[id];
-        if (viewport == null) return null;
-        return viewport.stats();
-
+        return id == null ? null : _viewports[id]?.stats();
       case 'capabilities':
-        final args = call.arguments as Map?;
-        final id = (args?['textureId'] as num?)?.toInt();
         return id == null ? null : _viewports[id]?.capabilities();
-
       case 'dispose':
-        final args = call.arguments as Map?;
-        final id = (args?['textureId'] as num?)?.toInt();
-        if (id == null) {
-          throw PlatformException(
-            code: 'bad-args',
-            message: 'dispose needs textureId',
-          );
-        }
-        _viewports.remove(id)?.dispose();
+        _dispose(id);
         return null;
-
       default:
         throw PlatformException(
           code: 'not-implemented',
@@ -176,6 +108,79 @@ class OrblitFilamentWeb {
               'orblit_filament has no web implementation of ${call.method}',
         );
     }
+  }
+
+  /// The id of a new viewport, sized but not yet started.
+  int _create(Map? args) {
+    final width = (args?['width'] as num?)?.round();
+    final height = (args?['height'] as num?)?.round();
+    if (width == null || height == null) {
+      throw PlatformException(
+        code: 'bad-args',
+        message: 'create needs width and height',
+      );
+    }
+    if (!orblitRendererScriptLoaded) {
+      throw PlatformException(
+        code: 'no-renderer',
+        message:
+            'orblit_renderer.js is not loaded. Add '
+            '<script src="orblit_renderer.js"></script> to web/index.html '
+            'and copy orblit_renderer.js and orblit_renderer.wasm into the '
+            "app's web/ directory — see "
+            'packages/orblit_filament/native/web/README.md.',
+      );
+    }
+
+    // The renderer itself cannot start yet: its canvas does not exist until
+    // the widget carrying this id builds its HtmlElementView, and is not laid
+    // out until a frame after that. See OrblitWebViewport.
+    final id = _nextId++;
+    _viewports[id] = OrblitWebViewport(id, resources: _resources)
+      ..resize(width, height);
+    return id;
+  }
+
+  void _resize(Map? args, int? id) {
+    final width = (args?['width'] as num?)?.round();
+    final height = (args?['height'] as num?)?.round();
+    if (id == null || width == null || height == null) {
+      throw PlatformException(
+        code: 'bad-args',
+        message: 'resize needs textureId, width, height',
+      );
+    }
+    _viewports[id]?.resize(width, height);
+  }
+
+  Object? _setScene(Map? args, int? id) {
+    if (args == null || id == null) {
+      throw PlatformException(
+        code: 'bad-args',
+        message: 'setScene needs a textureId',
+      );
+    }
+    final scene = OrblitSceneWeb.from(args);
+    if (scene == null) {
+      throw PlatformException(
+        code: 'bad-scene',
+        message:
+            'setScene needs keys, float32 transforms (16 each), colours '
+            '(3 each), flags, lights (16 floats each), fog (10 floats) '
+            'and a camera.',
+      );
+    }
+    return _viewports[id]?.applyScene(scene);
+  }
+
+  void _dispose(int? id) {
+    if (id == null) {
+      throw PlatformException(
+        code: 'bad-args',
+        message: 'dispose needs textureId',
+      );
+    }
+    _viewports.remove(id)?.dispose();
   }
 
   /// `provide` and `release`: bytes by name, for every viewport there is and

@@ -1,124 +1,14 @@
-/// Runs one worked example, full window, so a frame of it can be looked at.
+/// Runs one worked example, full window, so a frame of it can be looked
+/// at.
 ///
-/// The examples are shown inside the editor, which opens on a project list —
-/// so nothing draws there until somebody clicks, and neither a frame smoke nor
-/// a person trying to reproduce a rendering fault can get at them. This opens
-/// straight into a scene.
+/// The examples are shown inside the editor too, which opens on a project
+/// list — so nothing draws there until somebody clicks, and neither a
+/// frame smoke nor a person trying to reproduce a rendering fault can get
+/// at them. This opens straight into a scene.
 ///
-/// Driven by the environment, so a sweep of camera angles is a shell loop
-/// rather than a person dragging:
-///
-///   ORBLIT_EXAMPLE=Blocks   which one, by name (default: the first)
-///   ORBLIT_MENU=0           no example chooser and no rotate button,
-///                          whatever the screen size
-///   ORBLIT_YAW / ORBLIT_PITCH / ORBLIT_DISTANCE   where to look from
-///   ORBLIT_SECONDS          hold the clock still, for a scene that animates
-///   ORBLIT_WALK=0           give the camera back, for an example that drives it
-///   ORBLIT_RANGE            how far a population is drawn from; 0 draws it all
-///   ORBLIT_TREES=0          leave the trees out
-///   ORBLIT_MESH             a path to a .glb or .gltf, shown on its own
-///   ORBLIT_MORPH            comma-separated shape weights for that model
-///   ORBLIT_SHARPEN          run the sharpen effect, 0 to 1, over the frame
-///   ORBLIT_EFFECT           an effect by name, shown on its own over the frame
-///   ORBLIT_SMAA=1           the whole three-pass SMAA chain
-///   ORBLIT_LIGHT            which light the Lights example shows
-///   ORBLIT_LUMENS           how bright it is
-///   ORBLIT_PANEL_W / _H     the panel's size in metres
-///   ORBLIT_CIRCLING=0       stop it going round, so two renders compare
-///   ORBLIT_BOUNCE_OFF=1     turn the Bounced light example's effect off
-///   ORBLIT_BOUNCE           with ORBLIT_EFFECT=bounce, how much light bounces
-///   ORBLIT_BOUNCE_RADIUS    how far it looks, in metres
-///   ORBLIT_BOUNCE_THICKNESS how solid the depth buffer's surfaces are
-///   ORBLIT_BOUNCE_SLICES    how many directions each pixel fans along
-///   ORBLIT_VOLUME_AT        where the Environment volumes walk stands, 0 in
-///                          the courtyard to 1 at the back of the hall; stops
-///                          the walk, and prints what the volumes resolved to
-///   ORBLIT_VOLUMES_OFF=1    the same place with the volumes left out
-///   ORBLIT_VOLUME_BLEND     how far outside the hall its look reaches, metres
-///   ORBLIT_DECALS_OFF=1     paint none of the Decals example's decals
-///   ORBLIT_DECAL_ONLY       paint only that one of them, counting from 0
-///   ORBLIT_DECAL_FADE_OFF=1 turn their angle fade off
-///   ORBLIT_DECAL_MASK_OFF=1 let the paint splash reach the crate's layer
-///   ORBLIT_OUTLINE=0        the Outline example with nothing outlined
-///   ORBLIT_OUTLINE_OTHERS=0 outline only the active object
-///   ORBLIT_OUTLINE_WIDTH    how wide the outline is, in pixels
-///   ORBLIT_OUTLINE_HIDDEN   shown, faint, dashed or hidden: the part a wall hides
-///   ORBLIT_AA               off, fxaa or temporal, under the Outline example
-///   ORBLIT_SPLAT            a .ply or .splat capture for the Gaussian splats
-///                          example to show instead of its generated ring
-///   ORBLIT_MODEL            which Imported models sample: Fox, Shoe, Lamp...
-///   ORBLIT_CLIP             which of its clips plays, from 0
-///   ORBLIT_VARIANT          which of its material variants it wears, from 0
-///   ORBLIT_DAYLIGHT         0 to take the sun down, so a file's lights show
-///   ORBLIT_SAMPLES          where tool/fetch_import_samples.sh put them
-///   ORBLIT_SPLAT_COUNT      how many splats the generated ring has
-///   ORBLIT_SPLAT_SORT=0     draw them unsorted, to measure what the sort does
-///   ORBLIT_SPLAT_PILLAR=0   take the solid pillar out of the ring
-///   ORBLIT_SPLAT_HARMONICS  how many bands of a capture's view-dependent
-///                          colour to read: 0, 1, 2 or 3
-///   ORBLIT_SPLAT_LIMIT      the most splats to draw, whatever the device says
-///   ORBLIT_SPLAT_COARSE=1   sort on sixteen bits of depth rather than 32
-///   ORBLIT_SPLAT_DEVICE=0   ignore the device's own splat budget, degree and
-///                          sort, and draw what is asked for instead
-///   ORBLIT_BATCHING=0/1     batching off or on, for any example, over the
-///                          default (on), so the same frame can be drawn both
-///                          ways and compared
-///   ORBLIT_PREPASS=0/1      the depth prepass off or on, for any example, so
-///                          the same frame can be timed both ways
-///   ORBLIT_CRATES           how many crates the Batching example draws
-///   ORBLIT_PALETTE          its colours: One, Six or Every one
-///   ORBLIT_BATCH_MATERIAL=1 its crates made of one shared material
-///   ORBLIT_BATCH_MESH       a .glb for its crates, instead of the cube (which
-///                          only batches alongside ORBLIT_BATCH_MATERIAL=1)
-///   ORBLIT_MOVING=0         hold its turning crate still
-///   ORBLIT_SLABS            how many slabs the Overdraw example crosses
-///   ORBLIT_SHADOWS=0        no shadow pass, for any example
-///   ORBLIT_POST=0           no post-processing, for any example
-///   ORBLIT_CULLING=0        draw everything in the scene whether the renderer
-///                          thinks it is on screen or not, for any example.
-///                          The one switch that tells a bounding box in the
-///                          wrong place from a thing that was never drawn:
-///                          what the frustum test wrongly throws away is
-///                          exactly what comes back when it is turned off.
-///   ORBLIT_WEATHER          which of the Weather example's conditions: Clear,
-///                          Fair, Storm, Misty, Rain or Snow
-///   ORBLIT_MIST             how much of its air is drawn as banks of cloud,
-///                          and ORBLIT_DENSITY how much as even haze. Separate
-///                          because every condition raises the two together,
-///                          and haze thick enough to go with a real bank of
-///                          mist is haze thick enough to hide whether the
-///                          bank was drawn at all.
-///   ORBLIT_RAIN             how hard it is coming down
-///   ORBLIT_PANEL_SHADOW=0   the Panel shadows example's panel casts nothing
-///   ORBLIT_PANEL            its panel's edge in metres
-///   ORBLIT_PANEL_HEIGHT     how high it hangs
-///   ORBLIT_SHADOW_LIGHT     which light the Shadows example casts with: Sun,
-///                          Spot or Point
-///   ORBLIT_SHADOW_KIND      its edge: Sharp, Soft, Area or Variance
-///   ORBLIT_SHADOW_MAP       the map's size in pixels
-///   ORBLIT_SHADOW_CASCADES  how many cascades a sun's map is split into
-///   ORBLIT_SHADOW_SPLIT     place the splits by hand, the first at this
-///                          fraction of the shadow distance
-///   ORBLIT_SHADOW_CONTACT=1 screen-space contact shadows
-///   ORBLIT_SHADOW_CONTACT_DISTANCE  how far each pixel marches, in metres
-///   ORBLIT_SHADOW_SIZE      the light's size in metres, for the Area edge
-///   ORBLIT_VSM_BLUR         the Variance edge's blur, in texels
-///   ORBLIT_GODRAYS          how strong the god rays are; over any example
-///                          but God rays itself, turns them on
-///   ORBLIT_SUN_BEARING      the God rays sun's bearing in degrees, 180
-///                          behind the camera
-///   ORBLIT_SUN_ALTITUDE     and its height above the horizon
-///   ORBLIT_COVER            the God rays sky's cloud cover, 0 to 1
-///   ORBLIT_GODRAY_SAMPLES / _DECAY / _DENSITY   the rest of its settings
-///   ORBLIT_SHOCKWAVE=0      leave the Distortion example's wave out
-///   ORBLIT_HAZE=0           and its heat haze
-///   ORBLIT_LENS             its lens warp, negative for pincushion
-///   ORBLIT_CHROMATIC        its chromatic split
-///   ORBLIT_WAVE             its wave's strength
-///   ORBLIT_MOTION=0         turn the Motion blur example's blur off
-///   ORBLIT_MOTION_OBJECTS=0 blur by the camera's motion only
-///   ORBLIT_PAN=1            pan the Motion blur example's camera
-///   ORBLIT_SHUTTER          its shutter, in seconds
+/// Which example, where the camera stands, and every setting each example
+/// exposes are read from the environment, so a sweep is a shell loop
+/// rather than a person dragging. README.md names them all.
 library;
 
 import 'package:flutter/material.dart';
@@ -636,240 +526,25 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     // is right for playing and useless for looking at a particular corner of
     // it. This hands the camera back.
     final example = _example;
-    if (example is VoxelExample) {
-      if (_orblitEnv['ORBLIT_WALK'] == '0') example.walking = false;
-      final far = _number('ORBLIT_RANGE');
-      if (far != null) example.range = far;
-      if (_orblitEnv['ORBLIT_TREES'] == '0') example.trees = false;
-    }
-    if (example is WeatherExample) {
-      final condition = _orblitEnv['ORBLIT_WEATHER'];
-      if (condition != null && condition.isNotEmpty) {
-        if (WeatherExample.conditions.contains(condition)) {
-          example.apply(condition);
-        } else {
-          // debugPrint rather than stderr: this app also builds for the
-          // web, where dart:io does not exist.
-          debugPrint(
-            'no condition called "$condition" — there is '
-            '${WeatherExample.conditions.join(', ')}',
-          );
-        }
-      }
-      example.structure = _number('ORBLIT_MIST') ?? example.structure;
-      example.density = _number('ORBLIT_DENSITY') ?? example.density;
-      example.rain = _number('ORBLIT_RAIN') ?? example.rain;
-    }
-    if (example is ProbesExample) {
-      example.intensity = _number('ORBLIT_PROBE') ?? example.intensity;
-      example.roughness = _number('ORBLIT_ROUGHNESS') ?? example.roughness;
-      if (_orblitEnv['ORBLIT_PROBE_OFF'] == '1') example.on = false;
-    }
-    if (example is LightsExample) {
-      final kind = _orblitEnv['ORBLIT_LIGHT'];
-      if (kind != null) example.kind = kind;
-      final lumens = _number('ORBLIT_LUMENS');
-      if (lumens != null) example.intensity = lumens;
-      example.panelWidth = _number('ORBLIT_PANEL_W') ?? example.panelWidth;
-      example.panelHeight = _number('ORBLIT_PANEL_H') ?? example.panelHeight;
-      // Still, so two renders of the same angle are the same picture.
-      if (_orblitEnv['ORBLIT_CIRCLING'] == '0') {
-        example.orbiting = false;
-      }
-    }
-    if (example is PanelShadowExample) {
-      if (_orblitEnv['ORBLIT_PANEL_SHADOW'] == '0') {
-        example.shadows = false;
-      }
-      example.panel = _number('ORBLIT_PANEL') ?? example.panel;
-      example.height = _number('ORBLIT_PANEL_HEIGHT') ?? example.height;
-    }
-    if (example is ShadowsExample) {
-      final light = _orblitEnv['ORBLIT_SHADOW_LIGHT'];
-      if (light != null) {
-        example.light = ShadowLight.values.firstWhere(
-          (one) => one.label == light,
-          orElse: () => example.light,
-        );
-      }
-      final shadows = example.shadows;
-      final kind = _orblitEnv['ORBLIT_SHADOW_KIND'];
-      if (kind != null) {
-        shadows.kind = OrblitShadowKind.values.firstWhere(
-          (one) => one.label == kind,
-          orElse: () => shadows.kind,
-        );
-      }
-      shadows.mapSize = _number('ORBLIT_SHADOW_MAP')?.round() ?? shadows.mapSize;
-      shadows.cascades =
-          _number('ORBLIT_SHADOW_CASCADES')?.round() ?? shadows.cascades;
-      final split = _number('ORBLIT_SHADOW_SPLIT');
-      if (split != null) {
-        example.handSplits = true;
-        example.firstSplit = split;
-      }
-      if (_orblitEnv['ORBLIT_SHADOW_CONTACT'] == '1') {
-        shadows.contact = true;
-      }
-      shadows.contactDistance =
-          _number('ORBLIT_SHADOW_CONTACT_DISTANCE') ?? shadows.contactDistance;
-      example.lightSize = _number('ORBLIT_SHADOW_SIZE') ?? example.lightSize;
-      shadows.variance.blur = _number('ORBLIT_VSM_BLUR') ?? shadows.variance.blur;
-    }
-    if (example is FieldExample) {
-      example.intensity = _number('ORBLIT_FIELD') ?? example.intensity;
-      example.retention = _number('ORBLIT_RETENTION') ?? example.retention;
-      if (_orblitEnv['ORBLIT_FIELD_OFF'] == '1') example.on = false;
-    }
-    if (example is BatchingExample) {
-      example.count = _number('ORBLIT_CRATES') ?? example.count;
-      example.palette = _orblitEnv['ORBLIT_PALETTE'] ?? example.palette;
-      if (_orblitEnv['ORBLIT_BATCH_MATERIAL'] == '1') {
-        example.material = true;
-      }
-      final mesh = _orblitEnv['ORBLIT_BATCH_MESH'];
-      if (mesh != null && mesh.isNotEmpty) example.mesh = mesh;
-      if (_orblitEnv['ORBLIT_MOVING'] == '0') example.moving = false;
-    }
-    if (example is OverdrawExample) {
-      example.slabs = _number('ORBLIT_SLABS') ?? example.slabs;
-    }
-    if (example is GodRaysExample) {
-      example.strength = _number('ORBLIT_GODRAYS') ?? example.strength;
-      example.bearing = _number('ORBLIT_SUN_BEARING') ?? example.bearing;
-      example.altitude = _number('ORBLIT_SUN_ALTITUDE') ?? example.altitude;
-      example.cover = _number('ORBLIT_COVER') ?? example.cover;
-      example.samples = _number('ORBLIT_GODRAY_SAMPLES') ?? example.samples;
-      example.decay = _number('ORBLIT_GODRAY_DECAY') ?? example.decay;
-      example.density = _number('ORBLIT_GODRAY_DENSITY') ?? example.density;
-    }
-    if (example is DistortionExample) {
-      if (_orblitEnv['ORBLIT_SHOCKWAVE'] == '0') {
-        example.shockwave = false;
-      }
-      if (_orblitEnv['ORBLIT_HAZE'] == '0') example.haze = false;
-      example.lens = _number('ORBLIT_LENS') ?? example.lens;
-      example.chromatic = _number('ORBLIT_CHROMATIC') ?? example.chromatic;
-      example.strength = _number('ORBLIT_WAVE') ?? example.strength;
-    }
-    if (example is BounceExample) {
-      example.strength = _number('ORBLIT_BOUNCE') ?? example.strength;
-      example.reach = _number('ORBLIT_BOUNCE_RADIUS') ?? example.reach;
-      if (_orblitEnv['ORBLIT_BOUNCE_OFF'] == '1') example.on = false;
-    }
-    if (example is DecalsExample) {
-      final environment = _orblitEnv;
-      if (environment['ORBLIT_DECALS_OFF'] == '1') example.on = false;
-      if (environment['ORBLIT_DECAL_FADE_OFF'] == '1') example.angleFade = false;
-      if (environment['ORBLIT_DECAL_MASK_OFF'] == '1') {
-        example.spareTheCrate = false;
-      }
-      example.only = _number('ORBLIT_DECAL_ONLY')?.round();
-    }
-
-    if (example is EnvironmentVolumesExample) {
-      final at = _number('ORBLIT_VOLUME_AT');
-      if (at != null) {
-        example.walking = false;
-        example.along = at;
-      }
-      example.blend = _number('ORBLIT_VOLUME_BLEND') ?? example.blend;
-      if (_orblitEnv['ORBLIT_VOLUMES_OFF'] == '1') {
-        example.volumes = false;
-      }
-      // The numbers the frame was drawn with, beside the frame. A blend is
-      // checked for a step by reading these along a sweep, not by eye.
-      if (at != null) {
-        final scene = example.scene(_look.toRenderCamera(), 0);
-        final seen = scene.resolved();
-        String three(Vector3 v) =>
-            [v.x, v.y, v.z].map((c) => c.toStringAsFixed(4)).join(',');
-        warn(
-          '[volumes] at=$at z=${scene.camera.position.z.toStringAsFixed(3)} '
-          'fogDensity=${seen.fog.density.toStringAsFixed(5)} '
-          'fogColour=${three(seen.fog.colour)} '
-          'ambient=${seen.sky.ambient.toStringAsFixed(1)} '
-          'skyColour=${three(seen.sky.colour)} '
-          'shutter=${seen.camera.shutterSpeed.toStringAsFixed(6)}',
-        );
-      }
-    }
-
-    if (example is OutlineExample) {
-      if (_orblitEnv['ORBLIT_OUTLINE'] == '0') example.on = false;
-      if (_orblitEnv['ORBLIT_OUTLINE_OTHERS'] == '0') {
-        example.others = false;
-      }
-      example.width = _number('ORBLIT_OUTLINE_WIDTH') ?? example.width;
-      final hidden = _orblitEnv['ORBLIT_OUTLINE_HIDDEN'];
-      if (hidden != null && hidden.isNotEmpty) {
-        example.occluded = OrblitOccluded.values.byName(hidden);
-      }
-      final aa = _orblitEnv['ORBLIT_AA'];
-      if (aa != null && aa.isNotEmpty) {
-        example.antiAliasing = AntiAliasing.values.byName(aa);
-      }
-    }
-
-    if (example is ImportedExample) {
-      final samples = _orblitEnv['ORBLIT_SAMPLES'];
-      if (samples != null && samples.isNotEmpty) example.directory = samples;
-      final model = _orblitEnv['ORBLIT_MODEL'];
-      if (model != null && model.isNotEmpty) example.model = model;
-      example.clip = _number('ORBLIT_CLIP')?.round();
-      example.variant = _number('ORBLIT_VARIANT')?.round();
-      if (_orblitEnv['ORBLIT_DAYLIGHT'] == '0') example.daylight = false;
-    }
-
-    // Set here rather than left to the example's own reading of
-    // `Platform.environment`, which is empty on the iOS simulator and has
-    // nothing in it on Android.
-    if (example is TexturesExample) {
-      final directory = _orblitEnv['ORBLIT_TEXTURES'];
-      if (directory != null && directory.isNotEmpty) {
-        example.directory = directory;
-      }
-      final files = _orblitEnv['ORBLIT_TEXTURE_FILES'];
-      if (files != null && files.isNotEmpty) {
-        example.files = [
-          for (final file in files.split(','))
-            if (file.trim().isNotEmpty) file.trim(),
-        ];
-      }
-      final picture = _orblitEnv['ORBLIT_PICTURE'];
-      if (picture != null && picture.isNotEmpty) example.picture = picture;
-      example.largestTexture =
-          _number('ORBLIT_TEXTURE_SIZE')?.round() ?? example.largestTexture;
-    }
-
-    if (example is SplatsExample) {
-      final capture = _orblitEnv['ORBLIT_SPLAT'];
-      if (capture != null && capture.isNotEmpty) example.path = capture;
-      example.count = _number('ORBLIT_SPLAT_COUNT')?.round() ?? example.count;
-      if (_orblitEnv['ORBLIT_SPLAT_SORT'] == '0') {
-        example.sorted = false;
-      }
-      if (_orblitEnv['ORBLIT_SPLAT_PILLAR'] == '0') {
-        example.pillar = false;
-      }
-      example.harmonics =
-          _number('ORBLIT_SPLAT_HARMONICS')?.round() ?? example.harmonics;
-      final limit = _number('ORBLIT_SPLAT_LIMIT')?.round();
-      if (limit != null && limit > 0) example.limit = limit;
-      if (_orblitEnv['ORBLIT_SPLAT_COARSE'] == '1') example.coarseOrder = true;
-      if (_orblitEnv['ORBLIT_SPLAT_DEVICE'] == '0') {
-        example.deviceLimits = false;
-      }
-    }
-
-    if (example is MotionBlurExample) {
-      if (_orblitEnv['ORBLIT_MOTION'] == '0') example.on = false;
-      if (_orblitEnv['ORBLIT_MOTION_OBJECTS'] == '0') {
-        example.objects = false;
-      }
-      if (_orblitEnv['ORBLIT_PAN'] == '1') example.panning = true;
-      example.shutter = _number('ORBLIT_SHUTTER') ?? example.shutter;
-    }
+    if (example is VoxelExample) _voxels(example);
+    if (example is WeatherExample) _weather(example);
+    if (example is ProbesExample) _probes(example);
+    if (example is LightsExample) _lights(example);
+    if (example is PanelShadowExample) _panelShadow(example);
+    if (example is ShadowsExample) _shadows(example);
+    if (example is FieldExample) _field(example);
+    if (example is BatchingExample) _batching(example);
+    if (example is OverdrawExample) _overdraw(example);
+    if (example is GodRaysExample) _godRays(example);
+    if (example is DistortionExample) _distortion(example);
+    if (example is BounceExample) _bounce(example);
+    if (example is DecalsExample) _decals(example);
+    if (example is EnvironmentVolumesExample) _volumes(example);
+    if (example is OutlineExample) _outline(example);
+    if (example is ImportedExample) _imported(example);
+    if (example is TexturesExample) _textures(example);
+    if (example is SplatsExample) _splats(example);
+    if (example is MotionBlurExample) _motionBlur(example);
 
     _look.yaw = _number('ORBLIT_YAW') ?? _look.yaw;
     _look.pitch = _number('ORBLIT_PITCH') ?? _look.pitch;
@@ -887,6 +562,253 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
         setState(() => _seconds = elapsed.inMicroseconds / 1e6);
       })..start();
     }
+  }
+
+  void _voxels(VoxelExample example) {
+    if (_orblitEnv['ORBLIT_WALK'] == '0') example.walking = false;
+    final far = _number('ORBLIT_RANGE');
+    if (far != null) example.range = far;
+    if (_orblitEnv['ORBLIT_TREES'] == '0') example.trees = false;
+  }
+
+  void _weather(WeatherExample example) {
+    final condition = _orblitEnv['ORBLIT_WEATHER'];
+    if (condition != null && condition.isNotEmpty) {
+      if (WeatherExample.conditions.contains(condition)) {
+        example.apply(condition);
+      } else {
+        // debugPrint rather than stderr: this app also builds for the
+        // web, where dart:io does not exist.
+        debugPrint(
+          'no condition called "$condition" — there is '
+          '${WeatherExample.conditions.join(', ')}',
+        );
+      }
+    }
+    example.structure = _number('ORBLIT_MIST') ?? example.structure;
+    example.density = _number('ORBLIT_DENSITY') ?? example.density;
+    example.rain = _number('ORBLIT_RAIN') ?? example.rain;
+  }
+
+  void _probes(ProbesExample example) {
+    example.intensity = _number('ORBLIT_PROBE') ?? example.intensity;
+    example.roughness = _number('ORBLIT_ROUGHNESS') ?? example.roughness;
+    if (_orblitEnv['ORBLIT_PROBE_OFF'] == '1') example.on = false;
+  }
+
+  void _lights(LightsExample example) {
+    final kind = _orblitEnv['ORBLIT_LIGHT'];
+    if (kind != null) example.kind = kind;
+    final lumens = _number('ORBLIT_LUMENS');
+    if (lumens != null) example.intensity = lumens;
+    example.panelWidth = _number('ORBLIT_PANEL_W') ?? example.panelWidth;
+    example.panelHeight = _number('ORBLIT_PANEL_H') ?? example.panelHeight;
+    // Still, so two renders of the same angle are the same picture.
+    if (_orblitEnv['ORBLIT_CIRCLING'] == '0') {
+      example.orbiting = false;
+    }
+  }
+
+  void _panelShadow(PanelShadowExample example) {
+    if (_orblitEnv['ORBLIT_PANEL_SHADOW'] == '0') {
+      example.shadows = false;
+    }
+    example.panel = _number('ORBLIT_PANEL') ?? example.panel;
+    example.height = _number('ORBLIT_PANEL_HEIGHT') ?? example.height;
+  }
+
+  void _shadows(ShadowsExample example) {
+    final light = _orblitEnv['ORBLIT_SHADOW_LIGHT'];
+    if (light != null) {
+      example.light = ShadowLight.values.firstWhere(
+        (one) => one.label == light,
+        orElse: () => example.light,
+      );
+    }
+    final shadows = example.shadows;
+    final kind = _orblitEnv['ORBLIT_SHADOW_KIND'];
+    if (kind != null) {
+      shadows.kind = OrblitShadowKind.values.firstWhere(
+        (one) => one.label == kind,
+        orElse: () => shadows.kind,
+      );
+    }
+    shadows.mapSize = _number('ORBLIT_SHADOW_MAP')?.round() ?? shadows.mapSize;
+    shadows.cascades =
+        _number('ORBLIT_SHADOW_CASCADES')?.round() ?? shadows.cascades;
+    final split = _number('ORBLIT_SHADOW_SPLIT');
+    if (split != null) {
+      example.handSplits = true;
+      example.firstSplit = split;
+    }
+    if (_orblitEnv['ORBLIT_SHADOW_CONTACT'] == '1') {
+      shadows.contact = true;
+    }
+    shadows.contactDistance =
+        _number('ORBLIT_SHADOW_CONTACT_DISTANCE') ?? shadows.contactDistance;
+    example.lightSize = _number('ORBLIT_SHADOW_SIZE') ?? example.lightSize;
+    shadows.variance.blur = _number('ORBLIT_VSM_BLUR') ?? shadows.variance.blur;
+  }
+
+  void _field(FieldExample example) {
+    example.intensity = _number('ORBLIT_FIELD') ?? example.intensity;
+    example.retention = _number('ORBLIT_RETENTION') ?? example.retention;
+    if (_orblitEnv['ORBLIT_FIELD_OFF'] == '1') example.on = false;
+  }
+
+  void _batching(BatchingExample example) {
+    example.count = _number('ORBLIT_CRATES') ?? example.count;
+    example.palette = _orblitEnv['ORBLIT_PALETTE'] ?? example.palette;
+    if (_orblitEnv['ORBLIT_BATCH_MATERIAL'] == '1') {
+      example.material = true;
+    }
+    final mesh = _orblitEnv['ORBLIT_BATCH_MESH'];
+    if (mesh != null && mesh.isNotEmpty) example.mesh = mesh;
+    if (_orblitEnv['ORBLIT_MOVING'] == '0') example.moving = false;
+  }
+
+  void _overdraw(OverdrawExample example) {
+    example.slabs = _number('ORBLIT_SLABS') ?? example.slabs;
+  }
+
+  void _godRays(GodRaysExample example) {
+    example.strength = _number('ORBLIT_GODRAYS') ?? example.strength;
+    example.bearing = _number('ORBLIT_SUN_BEARING') ?? example.bearing;
+    example.altitude = _number('ORBLIT_SUN_ALTITUDE') ?? example.altitude;
+    example.cover = _number('ORBLIT_COVER') ?? example.cover;
+    example.samples = _number('ORBLIT_GODRAY_SAMPLES') ?? example.samples;
+    example.decay = _number('ORBLIT_GODRAY_DECAY') ?? example.decay;
+    example.density = _number('ORBLIT_GODRAY_DENSITY') ?? example.density;
+  }
+
+  void _distortion(DistortionExample example) {
+    if (_orblitEnv['ORBLIT_SHOCKWAVE'] == '0') {
+      example.shockwave = false;
+    }
+    if (_orblitEnv['ORBLIT_HAZE'] == '0') example.haze = false;
+    example.lens = _number('ORBLIT_LENS') ?? example.lens;
+    example.chromatic = _number('ORBLIT_CHROMATIC') ?? example.chromatic;
+    example.strength = _number('ORBLIT_WAVE') ?? example.strength;
+  }
+
+  void _bounce(BounceExample example) {
+    example.strength = _number('ORBLIT_BOUNCE') ?? example.strength;
+    example.reach = _number('ORBLIT_BOUNCE_RADIUS') ?? example.reach;
+    if (_orblitEnv['ORBLIT_BOUNCE_OFF'] == '1') example.on = false;
+  }
+
+  void _decals(DecalsExample example) {
+    final environment = _orblitEnv;
+    if (environment['ORBLIT_DECALS_OFF'] == '1') example.on = false;
+    if (environment['ORBLIT_DECAL_FADE_OFF'] == '1') example.angleFade = false;
+    if (environment['ORBLIT_DECAL_MASK_OFF'] == '1') {
+      example.spareTheCrate = false;
+    }
+    example.only = _number('ORBLIT_DECAL_ONLY')?.round();
+  }
+
+  void _volumes(EnvironmentVolumesExample example) {
+    final at = _number('ORBLIT_VOLUME_AT');
+    if (at != null) {
+      example.walking = false;
+      example.along = at;
+    }
+    example.blend = _number('ORBLIT_VOLUME_BLEND') ?? example.blend;
+    if (_orblitEnv['ORBLIT_VOLUMES_OFF'] == '1') {
+      example.volumes = false;
+    }
+    // The numbers the frame was drawn with, beside the frame. A blend is
+    // checked for a step by reading these along a sweep, not by eye.
+    if (at != null) {
+      final scene = example.scene(_look.toRenderCamera(), 0);
+      final seen = scene.resolved();
+      String three(Vector3 v) =>
+          [v.x, v.y, v.z].map((c) => c.toStringAsFixed(4)).join(',');
+      warn(
+        '[volumes] at=$at z=${scene.camera.position.z.toStringAsFixed(3)} '
+        'fogDensity=${seen.fog.density.toStringAsFixed(5)} '
+        'fogColour=${three(seen.fog.colour)} '
+        'ambient=${seen.sky.ambient.toStringAsFixed(1)} '
+        'skyColour=${three(seen.sky.colour)} '
+        'shutter=${seen.camera.shutterSpeed.toStringAsFixed(6)}',
+      );
+    }
+  }
+
+  void _outline(OutlineExample example) {
+    if (_orblitEnv['ORBLIT_OUTLINE'] == '0') example.on = false;
+    if (_orblitEnv['ORBLIT_OUTLINE_OTHERS'] == '0') {
+      example.others = false;
+    }
+    example.width = _number('ORBLIT_OUTLINE_WIDTH') ?? example.width;
+    final hidden = _orblitEnv['ORBLIT_OUTLINE_HIDDEN'];
+    if (hidden != null && hidden.isNotEmpty) {
+      example.occluded = OrblitOccluded.values.byName(hidden);
+    }
+    final aa = _orblitEnv['ORBLIT_AA'];
+    if (aa != null && aa.isNotEmpty) {
+      example.antiAliasing = AntiAliasing.values.byName(aa);
+    }
+  }
+
+  void _imported(ImportedExample example) {
+    final samples = _orblitEnv['ORBLIT_SAMPLES'];
+    if (samples != null && samples.isNotEmpty) example.directory = samples;
+    final model = _orblitEnv['ORBLIT_MODEL'];
+    if (model != null && model.isNotEmpty) example.model = model;
+    example.clip = _number('ORBLIT_CLIP')?.round();
+    example.variant = _number('ORBLIT_VARIANT')?.round();
+    if (_orblitEnv['ORBLIT_DAYLIGHT'] == '0') example.daylight = false;
+  }
+
+  /// Set here rather than left to the example's own reading of
+  /// `Platform.environment`, which is empty on the iOS simulator and has
+  /// nothing in it on Android.
+  void _textures(TexturesExample example) {
+    final directory = _orblitEnv['ORBLIT_TEXTURES'];
+    if (directory != null && directory.isNotEmpty) {
+      example.directory = directory;
+    }
+    final files = _orblitEnv['ORBLIT_TEXTURE_FILES'];
+    if (files != null && files.isNotEmpty) {
+      example.files = [
+        for (final file in files.split(','))
+          if (file.trim().isNotEmpty) file.trim(),
+      ];
+    }
+    final picture = _orblitEnv['ORBLIT_PICTURE'];
+    if (picture != null && picture.isNotEmpty) example.picture = picture;
+    example.largestTexture =
+        _number('ORBLIT_TEXTURE_SIZE')?.round() ?? example.largestTexture;
+  }
+
+  void _splats(SplatsExample example) {
+    final capture = _orblitEnv['ORBLIT_SPLAT'];
+    if (capture != null && capture.isNotEmpty) example.path = capture;
+    example.count = _number('ORBLIT_SPLAT_COUNT')?.round() ?? example.count;
+    if (_orblitEnv['ORBLIT_SPLAT_SORT'] == '0') {
+      example.sorted = false;
+    }
+    if (_orblitEnv['ORBLIT_SPLAT_PILLAR'] == '0') {
+      example.pillar = false;
+    }
+    example.harmonics =
+        _number('ORBLIT_SPLAT_HARMONICS')?.round() ?? example.harmonics;
+    final limit = _number('ORBLIT_SPLAT_LIMIT')?.round();
+    if (limit != null && limit > 0) example.limit = limit;
+    if (_orblitEnv['ORBLIT_SPLAT_COARSE'] == '1') example.coarseOrder = true;
+    if (_orblitEnv['ORBLIT_SPLAT_DEVICE'] == '0') {
+      example.deviceLimits = false;
+    }
+  }
+
+  void _motionBlur(MotionBlurExample example) {
+    if (_orblitEnv['ORBLIT_MOTION'] == '0') example.on = false;
+    if (_orblitEnv['ORBLIT_MOTION_OBJECTS'] == '0') {
+      example.objects = false;
+    }
+    if (_orblitEnv['ORBLIT_PAN'] == '1') example.panning = true;
+    example.shutter = _number('ORBLIT_SHUTTER') ?? example.shutter;
   }
 
   @override

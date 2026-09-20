@@ -1,9 +1,9 @@
 // Models out of files: what one holds, and what its own animation does to it.
 //
 // The renderer part of glTF import beyond geometry — clips, skins, material
-// variants, the lights and cameras a file carries — kept out of
-// OrblitRendererCore.cpp, which is long enough, and in one place because each
-// of these is a question about the same loaded file.
+// variants, the lights and cameras a file carries — kept out of the
+// renderer's own files, and in one place because each of these is a question
+// about the same loaded file.
 #include <algorithm>
 #include <cmath>
 #include <cstdio>

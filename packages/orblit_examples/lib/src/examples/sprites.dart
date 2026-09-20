@@ -75,7 +75,13 @@ class SpritesExample extends Example {
 
   @override
   OrblitScene scene(OrblitCamera camera, double seconds) {
-    _painting ??= _paint();
+    // Painted once, in the background, because a scene is built synchronously
+    // and the sheet has to reach the renderer over a channel. An error here
+    // has nowhere to be thrown to, so it is caught and said rather than left
+    // to surface later as an unhandled future in whatever runs next.
+    _painting ??= _paint().catchError((Object error) {
+      note = 'The sprite sheet could not be handed to the renderer: $error';
+    });
     final atlas = _atlas;
 
     if (_crowd.length != count) _crowd = _Coin.crowd(count);

@@ -10,7 +10,8 @@
 // rectangular area lights lose their shadow, and the irradiance field does
 // not light the scene at all. orblit::Renderer chooses this material instead
 // of the standard one, once, from what the engine answers for its feature
-// level — see startWithWidth and surfaceAt in OrblitRendererCore.cpp.
+// level — see startWithWidth (OrblitRendererCore.cpp) and surfaceAt
+// (OrblitRendererSurfaces.cpp).
 //
 // Where the twelve samplers went:
 //   base colour, normal, metallic/roughness, occlusion, emissive  -- kept, 5
@@ -296,8 +297,8 @@ fragment {
     // Identical to the standard surface except where the data comes from:
     // decalTexel reads lightData's tail instead of a decalData sampler of
     // its own, at the row kSlimDecalRow (OrblitRendererCore.h) starts —
-    // buildDecalData and applyDecals in OrblitRendererCore.cpp write the same
-    // bytes there as they write into decalData on the standard surface.
+    // buildDecalData and applyDecals (OrblitRendererLights.cpp) write the
+    // same bytes there as they write into decalData on the standard surface.
     #define kDecalTexels 7
     #define kDecalDataRow 80.0
 

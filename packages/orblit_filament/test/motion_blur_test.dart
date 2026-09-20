@@ -80,7 +80,7 @@ void main() {
       // before it keeps its number — and checked, because an index that
       // drifts runs a different shader rather than failing.
       final native = _read(
-        'darwin/orblit_filament/Sources/orblit_filament_native/OrblitRendererCore.h',
+        'darwin/orblit_filament/Sources/orblit_filament_native/OrblitRendererTypes.h',
       );
       final found = RegExp(
         r'constexpr int kEffectMotionBlur\s*=\s*(\d+);',

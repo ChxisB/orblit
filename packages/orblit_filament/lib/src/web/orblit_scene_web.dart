@@ -37,24 +37,6 @@ const int _splatStride = 18;
 const int _passStride = 13;
 const int _targetStride = 6;
 
-/// TEMPORARY, for the diagnostics in [OrblitSceneWeb._apply].
-bool _loggedShapes = false;
-bool _loggedOutcomes = false;
-
-/// TEMPORARY: `?ORBLIT_WEB_SKIP=pipeline,graph` leaves those scene calls out.
-///
-/// For bisecting what a frame's shading actually depends on. The plain-JS host
-/// in native/web/host/ makes five of these twenty-two calls and lights its
-/// scene correctly; this is how to find out which of the other seventeen a
-/// Flutter scene is being darkened by, without a rebuild per guess.
-final Set<String> _skips = (Uri.base.queryParameters['ORBLIT_WEB_SKIP'] ?? '')
-    .split(',')
-    .map((one) => one.trim())
-    .where((one) => one.isNotEmpty)
-    .toSet();
-
-bool _skipped(String name) => _skips.contains(name);
-
 /// A scene as it arrives over the channel, applied to one renderer.
 ///
 /// [from] returns null for a message missing what every scene must carry —
@@ -145,122 +127,93 @@ class OrblitSceneWeb {
   }
 
   void _apply(OrblitModule module, int renderer, OrblitHeap heap) {
-    // TEMPORARY: what actually arrived, once. Several of the ABI's arrays
-    // carry no length of their own — `kinds` and `flags` on apply_lights, for
-    // instance — so a short one is read as whatever follows it in the heap
-    // and is never refused. That failure looks exactly like "the lighting is
-    // broken" while every call returns ORBLIT_OK.
-    if (!_loggedShapes) {
-      _loggedShapes = true;
-      String shape(String key) {
-        final value = _args[key];
-        final length = value is List ? value.length : -1;
-        return '$key=${value.runtimeType}[$length]';
-      }
+    final to = _Renderer(module, renderer, heap);
 
-      web.console.warn(
-        ('[orblit] decoded: ${shape('objectKeys')} ${shape('transforms')} '
-                '${shape('lightKeys')} ${shape('lightKinds')} '
-                '${shape('lightFlags')} ${shape('lightParams')} '
-                '${shape('skyColour')} ambient=${_args['ambient']} '
-                'aperture=${_args['aperture']} '
-                'shutter=${_args['shutterSpeed']} iso=${_args['sensitivity']} '
-                'lightParams=${_floats('lightParams').take(8).toList()} '
-                // The likeliest cause of geometry that draws in the right
-                // place in the wrong colour: a base colour of nought shades
-                // black however well lit it is.
-                'colours=${_floats('colours').toList()} '
-                'objectFlags=${_ints('objectFlags').toList()} '
-                'meshes=${_ints('meshes').toList()} '
-                'objectMaterials=${(_args['objectMaterials'] as List?)?.toList()} '
-                'skyColour=${_floats('skyColour').toList()}')
-            .toJS,
-      );
-    }
+    _environment(to);
+    _graph(to);
+    _batching(to);
+    _godRays(to);
+    _videos(to);
+    _materials(to);
+    _objects(to);
+    _poses(to);
+    _populations(to);
+    _splats(to);
+    _sprites(to);
+    _lights(to);
+    _decals(to);
+    _probes(to);
+    _field(to);
+    _atmosphere(to);
+    _camera(to);
+    _outline(to);
+  }
 
-    // Every orblit_result that is not ORBLIT_OK, said out loud.
-    //
-    // The ABI answers a refusal with a code rather than throwing, and a scene
-    // call that applies nothing — a short array, or a null pointer with a
-    // non-zero count — is otherwise indistinguishable from one that worked:
-    // the frame still draws, only without whatever was refused. That is
-    // exactly the shape of a bug that looks like "the lighting is broken".
-    final outcomes = <String>[];
-    int call(String name, List<Object?> args) {
-      final result = orblitCall(module, name, args);
-      outcomes.add('${name.replaceFirst('orblit_renderer_', '')}=$result');
-      if (result != 0) {
-        // console, not debugPrint: this has to be audible in a release build,
-        // which is what `flutter build web` produces and what a headless
-        // capture runs. debugPrint goes through Flutter's own printing, which
-        // a release build is free to say nothing through — and a diagnostic
-        // that is silent in the build you actually ship is worse than none,
-        // because its silence reads as "nothing was refused".
-        web.console.warn('[orblit] $name refused the scene: $result'.toJS);
-      }
-      return result;
-    }
-
-    // 1. Environment.
+  void _environment(_Renderer to) {
     final environmentParams = _floats('environmentParams');
-    if (!_skipped('environment')) {
-      call('orblit_renderer_set_environment', [
-        renderer,
-        heap.string(_string('environmentRadiance')),
-        heap.string(_string('environmentSkybox')),
-        heap.floats(environmentParams),
-        environmentParams.length,
-      ]);
-    }
+    to.call('orblit_renderer_set_environment', [
+      to.renderer,
+      to.heap.string(_string('environmentRadiance')),
+      to.heap.string(_string('environmentSkybox')),
+      to.heap.floats(environmentParams),
+      environmentParams.length,
+    ]);
+  }
 
-    // 2. The render graph.
+  void _graph(_Renderer to) {
     final passes = _floats('graphPasses');
     final targets = _floats('graphTargets');
     final targetNames = _strings('graphTargetNames');
-    if (!_skipped('graph')) {
-      call('orblit_renderer_set_render_graph', [
-        renderer,
-        passes.length ~/ _passStride,
-        heap.floats(passes),
-        passes.length,
-        targets.length ~/ _targetStride,
-        heap.floats(targets),
-        targets.length,
-        heap.strings(targetNames),
-        targetNames.length,
-      ]);
-    }
+    to.call('orblit_renderer_set_render_graph', [
+      to.renderer,
+      passes.length ~/ _passStride,
+      to.heap.floats(passes),
+      passes.length,
+      targets.length ~/ _targetStride,
+      to.heap.floats(targets),
+      targets.length,
+      to.heap.strings(targetNames),
+      targetNames.length,
+    ]);
+  }
 
-    // 3. Batching, then 4. god rays.
-    call('orblit_renderer_set_batching', [renderer, _flag('batching') ? 1 : 0]);
+  void _batching(_Renderer to) {
+    to.call('orblit_renderer_set_batching', [
+      to.renderer,
+      _flag('batching') ? 1 : 0,
+    ]);
+  }
 
+  void _godRays(_Renderer to) {
     final godRays = _floats('godRayParams');
     final distortions = _floats('distortionParams');
-    call('orblit_renderer_set_god_rays', [
-      renderer,
-      heap.floats(godRays),
+    to.call('orblit_renderer_set_god_rays', [
+      to.renderer,
+      to.heap.floats(godRays),
       godRays.length,
-      heap.floats(distortions),
+      to.heap.floats(distortions),
       distortions.length,
     ]);
+  }
 
-    // 5. Videos.
+  void _videos(_Renderer to) {
     final videoKeys = _keys('videoKeys');
     final videoParams = _floats('videoParams');
-    call('orblit_renderer_apply_videos', [
-      renderer,
+    to.call('orblit_renderer_apply_videos', [
+      to.renderer,
       videoKeys.isNotEmpty
           ? videoKeys.length
           : videoParams.length ~/ _videoStride,
-      heap.int64s(videoKeys),
-      heap.ints(_ints('videoFlags')),
-      heap.floats(videoParams),
+      to.heap.int64s(videoKeys),
+      to.heap.ints(_ints('videoFlags')),
+      to.heap.floats(videoParams),
       videoParams.length,
-      heap.strings(_strings('videoPaths')),
+      to.heap.strings(_strings('videoPaths')),
       _strings('videoPaths').length,
     ]);
+  }
 
-    // 6. Materials, before the objects that index them.
+  void _materials(_Renderer to) {
     final materialKeys = _keys('materialKeys');
     final materialParams = _floats('materialParams');
     final materialCount = materialKeys.isNotEmpty
@@ -273,26 +226,27 @@ class OrblitSceneWeb {
     final materialVideos =
         _args['materialVideos'] as Int32List? ??
         Int32List.fromList(List<int>.filled(materialCount, -1));
-    call('orblit_renderer_apply_materials', [
-      renderer,
+    to.call('orblit_renderer_apply_materials', [
+      to.renderer,
       materialCount,
-      heap.int64s(materialKeys),
-      heap.ints(_ints('materialFlags')),
-      heap.floats(materialParams),
+      to.heap.int64s(materialKeys),
+      to.heap.ints(_ints('materialFlags')),
+      to.heap.floats(materialParams),
       materialParams.length,
-      heap.ints(materialMaps),
+      to.heap.ints(materialMaps),
       // The total number of map indices, not the number of materials: the ABI
       // spells this the same way it spells `param_floats` just above — how
       // many elements the array holds end to end, which it checks against
       // count * ORBLIT_STRIDE_MATERIAL_MAPS before reading any of them.
       materialMaps.length,
-      heap.strings(texturePaths),
-      heap.ints(_ints('textureSrgb')),
+      to.heap.strings(texturePaths),
+      to.heap.ints(_ints('textureSrgb')),
       texturePaths.length,
-      heap.ints(materialVideos),
+      to.heap.ints(materialVideos),
     ]);
+  }
 
-    // 7. The objects themselves.
+  void _objects(_Renderer to) {
     final transforms = _floats('transforms');
     final objectColours = colours;
     final morphWeights = _floats('objectMorphWeights');
@@ -302,50 +256,54 @@ class OrblitSceneWeb {
         Int32List.fromList(List<int>.filled(count, -1));
     final morphCounts =
         _args['objectMorphCounts'] as Int32List? ?? Int32List(count);
-    call('orblit_renderer_apply_objects', [
-      renderer,
+    to.call('orblit_renderer_apply_objects', [
+      to.renderer,
       count,
-      heap.int64s(objectKeys),
-      heap.floats(transforms),
+      to.heap.int64s(objectKeys),
+      to.heap.floats(transforms),
       transforms.length,
-      heap.floats(objectColours),
+      to.heap.floats(objectColours),
       objectColours.length,
-      heap.ints(meshes),
-      heap.ints(objectFlags),
-      heap.ints(objectMaterials),
-      heap.ints(morphCounts),
-      heap.floats(morphWeights),
+      to.heap.ints(meshes),
+      to.heap.ints(objectFlags),
+      to.heap.ints(objectMaterials),
+      to.heap.ints(morphCounts),
+      to.heap.floats(morphWeights),
       morphWeights.length,
-      heap.strings(meshPaths),
+      to.heap.strings(meshPaths),
       meshPaths.length,
     ]);
+  }
 
-    // 7b. Poses. They address the objects just applied by key, so they come
-    // straight after them — and every time, even with none, so an object
-    // that stops being posed goes back to rest. Absent from the message when
-    // nothing is posed, which reads as none.
+  /// Poses address the objects just applied by key, so they come straight
+  /// after them — and every time, even with none, so an object that stops
+  /// being posed goes back to rest. Absent from the message when nothing
+  /// is posed, which reads as none.
+  void _poses(_Renderer to) {
     final poseKeys = _keys('poseKeys');
     final poseInts = _ints('poseInts');
     final poseFloats = _floats('poseFloats');
     final poseJoints = _ints('poseJoints');
     final poseJointTransforms = _floats('poseJointTransforms');
-    call('orblit_renderer_apply_poses', [
-      renderer,
+    to.call('orblit_renderer_apply_poses', [
+      to.renderer,
       poseKeys.length,
-      heap.int64s(poseKeys),
-      heap.ints(poseInts),
+      to.heap.int64s(poseKeys),
+      to.heap.ints(poseInts),
       poseInts.length,
-      heap.floats(poseFloats),
+      to.heap.floats(poseFloats),
       poseFloats.length,
-      heap.ints(_ints('poseJointCounts')),
-      heap.ints(poseJoints),
+      to.heap.ints(_ints('poseJointCounts')),
+      to.heap.ints(poseJoints),
       poseJoints.length,
-      heap.floats(poseJointTransforms),
+      to.heap.floats(poseJointTransforms),
       poseJointTransforms.length,
       _number('at', 0),
     ]);
+  }
 
-    // 8. Populations. Absent altogether when a scene has none.
+  /// Absent from the message altogether when a scene has none.
+  void _populations(_Renderer to) {
     final populationKeys = _ints('populationKeys');
     if (populationKeys.isNotEmpty) {
       final bounds = _floats('populationBounds');
@@ -353,225 +311,249 @@ class OrblitSceneWeb {
       final changed = _ints('populationChanged');
       final populationTransforms = _floats('populationTransforms');
       final populationColours = _floats('populationColours');
-      call('orblit_renderer_apply_populations', [
-        renderer,
+      to.call('orblit_renderer_apply_populations', [
+        to.renderer,
         populationKeys.length,
-        heap.ints(populationKeys),
-        heap.ints(_ints('populationCounts')),
-        heap.ints(_ints('populationMeshes')),
-        heap.ints(_ints('populationFlags')),
-        heap.ints(_ints('populationRevisions')),
-        heap.floats(_floats('populationRanges')),
-        heap.floats(bounds),
+        to.heap.ints(populationKeys),
+        to.heap.ints(_ints('populationCounts')),
+        to.heap.ints(_ints('populationMeshes')),
+        to.heap.ints(_ints('populationFlags')),
+        to.heap.ints(_ints('populationRevisions')),
+        to.heap.floats(_floats('populationRanges')),
+        to.heap.floats(bounds),
         bounds.length,
-        heap.strings(populationPaths),
+        to.heap.strings(populationPaths),
         populationPaths.length,
-        heap.ints(changed),
+        to.heap.ints(changed),
         changed.length,
-        heap.floats(populationTransforms),
+        to.heap.floats(populationTransforms),
         populationTransforms.length,
-        heap.floats(populationColours),
+        to.heap.floats(populationColours),
         populationColours.length,
       ]);
     }
+  }
 
-    // 9. Splats.
+  void _splats(_Renderer to) {
     final splatKeys = _ints('splatKeys');
     final splatParams = _floats('splatParams');
     final splatPaths = _strings('splatPaths');
     final splatChanged = _ints('splatChanged');
     final splatData = _bytes('splatData');
-    call('orblit_renderer_apply_splats', [
-      renderer,
+    to.call('orblit_renderer_apply_splats', [
+      to.renderer,
       splatKeys.isNotEmpty
           ? splatKeys.length
           : splatParams.length ~/ _splatStride,
-      heap.ints(splatKeys),
-      heap.ints(_ints('splatFlags')),
-      heap.ints(_ints('splatRevisions')),
-      heap.floats(splatParams),
+      to.heap.ints(splatKeys),
+      to.heap.ints(_ints('splatFlags')),
+      to.heap.ints(_ints('splatRevisions')),
+      to.heap.floats(splatParams),
       splatParams.length,
-      heap.strings(splatPaths),
+      to.heap.strings(splatPaths),
       splatPaths.length,
-      heap.ints(splatChanged),
-      heap.ints(_ints('splatChangedCounts')),
+      to.heap.ints(splatChanged),
+      to.heap.ints(_ints('splatChangedCounts')),
       splatChanged.length,
-      heap.uint8s(splatData),
+      to.heap.uint8s(splatData),
       splatData.length,
     ]);
+  }
 
-    // 9b. Sprites.
+  void _sprites(_Renderer to) {
     final spriteKeys = _ints('spriteKeys');
     final spriteParams = _floats('spriteParams');
     final spritePaths = _strings('spritePaths');
     final spriteChanged = _ints('spriteChanged');
     final spriteData = _floats('spriteData');
-    call('orblit_renderer_apply_sprites', [
-      renderer,
+    to.call('orblit_renderer_apply_sprites', [
+      to.renderer,
       spriteKeys.length,
-      heap.ints(spriteKeys),
-      heap.ints(_ints('spriteFlags')),
-      heap.ints(_ints('spriteOrders')),
-      heap.ints(_ints('spriteRevisions')),
-      heap.floats(spriteParams),
+      to.heap.ints(spriteKeys),
+      to.heap.ints(_ints('spriteFlags')),
+      to.heap.ints(_ints('spriteOrders')),
+      to.heap.ints(_ints('spriteRevisions')),
+      to.heap.floats(spriteParams),
       spriteParams.length,
-      heap.strings(spritePaths),
+      to.heap.strings(spritePaths),
       spritePaths.length,
-      heap.ints(spriteChanged),
-      heap.ints(_ints('spriteChangedCounts')),
+      to.heap.ints(spriteChanged),
+      to.heap.ints(_ints('spriteChangedCounts')),
       spriteChanged.length,
-      heap.floats(spriteData),
+      to.heap.floats(spriteData),
       spriteData.length,
     ]);
+  }
 
-    // 10. Lights.
+  void _lights(_Renderer to) {
     final lightKeys = _keys('lightKeys');
     final lightParams = _floats('lightParams');
-    call('orblit_renderer_apply_lights', [
-      renderer,
+    to.call('orblit_renderer_apply_lights', [
+      to.renderer,
       lightKeys.isNotEmpty
           ? lightKeys.length
           : lightParams.length ~/ _lightStride,
-      heap.int64s(lightKeys),
-      heap.ints(_ints('lightKinds')),
-      heap.ints(_ints('lightFlags')),
-      heap.floats(lightParams),
+      to.heap.int64s(lightKeys),
+      to.heap.ints(_ints('lightKinds')),
+      to.heap.ints(_ints('lightFlags')),
+      to.heap.floats(lightParams),
       lightParams.length,
     ]);
+  }
 
-    // 11. Decals.
+  void _decals(_Renderer to) {
     final decalParams = _floats('decalParams');
     final decalPaths = _strings('decalPaths');
-    call('orblit_renderer_apply_decals', [
-      renderer,
+    to.call('orblit_renderer_apply_decals', [
+      to.renderer,
       decalParams.length ~/ _decalStride,
-      heap.floats(decalParams),
+      to.heap.floats(decalParams),
       decalParams.length,
-      heap.ints(_ints('decalImages')),
-      heap.strings(decalPaths),
+      to.heap.ints(_ints('decalImages')),
+      to.heap.strings(decalPaths),
       decalPaths.length,
     ]);
+  }
 
-    // 12. Probes.
+  void _probes(_Renderer to) {
     final probeKeys = _keys('probeKeys');
     final probeParams = _floats('probeParams');
-    call('orblit_renderer_apply_probes', [
-      renderer,
+    to.call('orblit_renderer_apply_probes', [
+      to.renderer,
       probeKeys.isNotEmpty
           ? probeKeys.length
           : probeParams.length ~/ _probeStride,
-      heap.int64s(probeKeys),
-      heap.floats(probeParams),
+      to.heap.int64s(probeKeys),
+      to.heap.floats(probeParams),
       probeParams.length,
     ]);
+  }
 
-    // 13. The irradiance field, only when there is one.
+  /// The irradiance field, only when there is one.
+  void _field(_Renderer to) {
     final fieldParams = _floats('fieldParams');
-    if (fieldParams.isNotEmpty && !_skipped('field')) {
-      call('orblit_renderer_apply_field', [
-        renderer,
-        heap.floats(fieldParams),
+    if (fieldParams.isNotEmpty) {
+      to.call('orblit_renderer_apply_field', [
+        to.renderer,
+        to.heap.floats(fieldParams),
         fieldParams.length,
-        heap.string(_string('fieldFrom')),
+        to.heap.string(_string('fieldFrom')),
       ]);
     }
+  }
 
-    // 14-19. The atmosphere and the frame's composition.
-    call('orblit_renderer_set_sky_colour', [
-      renderer,
-      heap.floats(_floats('skyColour')),
+  /// The atmosphere, and the frame's composition over it.
+  void _atmosphere(_Renderer to) {
+    to.call('orblit_renderer_set_sky_colour', [
+      to.renderer,
+      to.heap.floats(_floats('skyColour')),
       _number('ambient', 0),
       _flag('showBody') ? 1 : 0,
     ]);
 
     final fogParams = _floats('fogParams');
-    call('orblit_renderer_set_fog', [
-      renderer,
+    to.call('orblit_renderer_set_fog', [
+      to.renderer,
       _flag('fogEnabled') ? 1 : 0,
-      heap.floats(fogParams),
+      to.heap.floats(fogParams),
       fogParams.length,
     ]);
 
     final postParams = _floats('postParams');
-    if (postParams.isNotEmpty && !_skipped('post')) {
-      call('orblit_renderer_set_post_process', [
-        renderer,
-        heap.floats(postParams),
+    if (postParams.isNotEmpty) {
+      to.call('orblit_renderer_set_post_process', [
+        to.renderer,
+        to.heap.floats(postParams),
         postParams.length,
       ]);
     }
 
     final pipelineParams = _floats('pipelineParams');
-    if (pipelineParams.isNotEmpty && !_skipped('pipeline')) {
-      call('orblit_renderer_set_pipeline', [
-        renderer,
-        heap.floats(pipelineParams),
+    if (pipelineParams.isNotEmpty) {
+      to.call('orblit_renderer_set_pipeline', [
+        to.renderer,
+        to.heap.floats(pipelineParams),
         pipelineParams.length,
       ]);
     }
 
     final precipitationParams = _floats('precipitationParams');
-    call('orblit_renderer_set_precipitation', [
-      renderer,
+    to.call('orblit_renderer_set_precipitation', [
+      to.renderer,
       _flag('precipitationEnabled') ? 1 : 0,
-      heap.floats(precipitationParams),
+      to.heap.floats(precipitationParams),
       precipitationParams.length,
     ]);
 
     final skyParams = _floats('skyParams');
-    if (!_skipped('sky')) {
-      call('orblit_renderer_set_sky', [
-        renderer,
-        _flag('skyEnabled') ? 1 : 0,
-        heap.floats(skyParams),
-        skyParams.length,
-      ]);
-    }
+    to.call('orblit_renderer_set_sky', [
+      to.renderer,
+      _flag('skyEnabled') ? 1 : 0,
+      to.heap.floats(skyParams),
+      skyParams.length,
+    ]);
+  }
 
-    // 20-21. Where the camera is, and what the film is.
-    call('orblit_renderer_set_camera', [
-      renderer,
-      heap.floats(cameraPosition),
-      heap.floats(cameraTarget),
+  /// Where the camera is, and what the film is.
+  void _camera(_Renderer to) {
+    to.call('orblit_renderer_set_camera', [
+      to.renderer,
+      to.heap.floats(cameraPosition),
+      to.heap.floats(cameraTarget),
       _number('fieldOfView', 45),
       _flag('orthographic') ? 1 : 0,
       _number('viewHeight', 1),
       _number('at', 0),
     ]);
 
-    call('orblit_renderer_set_exposure', [
-      renderer,
+    to.call('orblit_renderer_set_exposure', [
+      to.renderer,
       _number('aperture', 16),
       _number('shutterSpeed', 1.0 / 125.0),
       _number('sensitivity', 100),
     ]);
+  }
 
-    // 22. What is outlined.
+  void _outline(_Renderer to) {
     final outlineKeys = _keys('outlineKeys');
     final outlineParams = _floats('outlineParams');
-    call('orblit_renderer_set_outline', [
-      renderer,
-      heap.int64s(outlineKeys),
+    to.call('orblit_renderer_set_outline', [
+      to.renderer,
+      to.heap.int64s(outlineKeys),
       outlineKeys.length,
-      heap.floats(outlineParams),
+      to.heap.floats(outlineParams),
       outlineParams.length,
     ]);
+  }
+}
 
-    // TEMPORARY: every call's orblit_result, once. A scene is twenty-two calls
-    // and only some of them show on screen, so "which one refused" is the
-    // first question worth asking of a frame that draws the right shapes in
-    // the wrong colours.
-    if (!_loggedOutcomes) {
-      _loggedOutcomes = true;
-      web.console.warn(
-        ('[orblit] calls: ${outcomes.join(' ')} | materials='
-                '${_keys('materialKeys').length} maps=${_ints('materialMaps').length} '
-                'objectMaterials=${(_args['objectMaterials'] as List?)?.length} '
-                'passes=${_floats('graphPasses').length ~/ _passStride} '
-                'post=${_floats('postParams').length} '
-                'pipeline=${_floats('pipelineParams').length}')
-            .toJS,
-      );
+/// One renderer, and what it takes to reach it: the module the scene calls
+/// live in, and the heap their arrays are written to.
+class _Renderer {
+  _Renderer(this.module, this.renderer, this.heap);
+
+  final OrblitModule module;
+  final int renderer;
+  final OrblitHeap heap;
+
+  /// Makes one scene call, and says any orblit_result that is not ORBLIT_OK
+  /// out loud.
+  ///
+  /// The ABI answers a refusal with a code rather than throwing, and a scene
+  /// call that applies nothing — a short array, or a null pointer with a
+  /// non-zero count — is otherwise indistinguishable from one that worked:
+  /// the frame still draws, only without whatever was refused. That is
+  /// exactly the shape of a bug that looks like "the lighting is broken".
+  void call(String name, List<Object?> args) {
+    final result = orblitCall(module, name, args);
+    if (result != 0) {
+      // console, not debugPrint: this has to be audible in a release build,
+      // which is what `flutter build web` produces and what a headless
+      // capture runs. debugPrint goes through Flutter's own printing, which
+      // a release build is free to say nothing through — and a diagnostic
+      // that is silent in the build you actually ship is worse than none,
+      // because its silence reads as "nothing was refused".
+      web.console.warn('[orblit] $name refused the scene: $result'.toJS);
     }
   }
 }

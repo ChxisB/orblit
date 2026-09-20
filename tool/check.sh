@@ -49,6 +49,9 @@ for found in packages/*/; do
   echo "  note  $name is checked by nothing"
 done
 
+echo "== sources =="
+./tool/check_sources.sh || failures=$((failures+1))
+
 echo "== native =="
 if ./tool/check_native.sh > /tmp/orblit_native.log 2>&1; then
   echo "  ok    core C++ checks"
