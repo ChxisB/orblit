@@ -1,5 +1,67 @@
 # Changelog
 
+## 0.7.0
+
+- **Assets over the network.** `AssetFetcher` fetches an asset from an origin
+  and hands back its bytes, with the four things that separate a download from
+  a loader: several callers asking for one thing share one request, a queue
+  that takes what is on screen before what is not, downloads that resume where
+  a dropped connection left them, and bytes checked against the manifest's
+  hash before anything decodes them.
+- `NetworkAssetSource` is an ordinary `AssetSource`, so it layers under a
+  directory the way every other source does. A 404 becomes an `AssetNotFound`
+  and the layer below is tried; a 500 does not, because falling through on a
+  server having a moment quietly serves a stale layer whenever a CDN hiccups.
+- **Nothing is ever written to a temporary file.** Bytes go from the socket to
+  memory to the content store, keyed by hash. That is partly because the web
+  has no files to write, and partly because a half-written temporary that
+  outlives the process is the oldest way to serve a truncated asset and swear
+  it is fine.
+- **HTTPS by default, and an origin that is a boundary rather than a prefix.**
+  `AssetOrigin` refuses plain HTTP unless asked, refuses `file:` and anything
+  without a host, and allows only its own host plus whatever is listed. A
+  glTF naming `../../etc/passwd` beside itself is refused for resolving
+  outside the origin's path, and a host list matches exactly, so
+  `cdn.example.com.evil.net` is not `cdn.example.com`.
+- **Size and dimensions are checked before decoding, and while the bytes are
+  still arriving.** A declared length over the limit never starts; a body that
+  outgrows it stops at the byte that passes it; and a picture is read from its
+  header — PNG, JPEG, WebP in all three flavours and KTX2 — as soon as the
+  first chunk lands. A sixteen-gigapixel PNG is a small download and an
+  enormous decode, so before the rest of it is even sent is the only useful
+  place to catch it. Every mip level, array slice and cube face counts toward
+  the pixel limit, because a limit that ignores the mip chain lets a third
+  more through than it says.
+- **Caches that survive a launch.** `DirectoryFetchRecords` keeps what each
+  URL last was in one JSON file, written by the same write-and-rename
+  `DirectoryContentStore` uses; `CacheStorageContentStore` and
+  `CacheStorageFetchRecords` do the same in the browser's Cache Storage.
+  Writes are coalesced: five hundred assets loading is one write, not five
+  hundred, and a set nothing changed is not written at all.
+- A cached copy the manifest vouches for is served with **no request at all**,
+  not even a round trip to ask — the hash is a promise about the bytes, not
+  about the URL. Where there is no such promise, the stored ETag goes out as
+  `If-None-Match` and a 304 costs headers rather than a file.
+- **Offline is a first-class answer.** When the attempts run out and a copy is
+  held, that copy is served; an old asset beats a blank screen, and being
+  offline is the ordinary reason to be there.
+- `fetchInStages` hands over a stand-in while the real asset loads, and skips
+  it when the real one arrives first — so a warm cache shows no stand-in
+  rather than flashing one for a frame.
+- **A texture draws its own small levels before the rest of it arrives.**
+  KTX2 stores a mip chain smallest-first, so the front of the file is already
+  a complete set of small levels: `Ktx2Chain` reads the level index out of the
+  bytes as they stream past and rewrites that prefix into a whole, valid KTX2
+  file. It costs no extra request and not one extra byte — the picture is
+  built out of bytes that were arriving anyway. On the 1254×1254 logo (eleven
+  levels, 782 KB) a 627-wide stand-in is ready after 27.6% of the file, a
+  313-wide one after 7.9% and a 156-wide one after 2.4%. A file with no mip
+  chain, or one that is not a texture at all, simply arrives as before.
+- `HttpTransport` is the default way out, and `AssetTransport` is the seam:
+  a test answers without a network, an app can pass a client already carrying
+  authentication or a pinned certificate, and a platform with something better
+  underneath can use it.
+
 ## 0.6.1
 
 - A rewritten document with no geometry in it — a scene of lights and cameras

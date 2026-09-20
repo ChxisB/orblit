@@ -61,7 +61,8 @@ export 'src/cook.dart'
         CookStatus,
         CookTargetProperties,
         TextureFamily;
-export 'src/directory.dart' show DirectoryAssetSource, DirectoryContentStore;
+export 'src/directory.dart'
+    show DirectoryAssetSource, DirectoryContentStore, DirectoryFetchRecords;
 export 'src/import_settings.dart' show ImportSettings, ImportSettingsReader;
 export 'src/importers/atlas_importer.dart' show AtlasImporter;
 export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
@@ -75,3 +76,36 @@ export 'src/importer.dart'
         ImportResult,
         Importer,
         ImporterRegistry;
+export 'src/net/cache_storage.dart'
+    show CacheStorageContentStore, CacheStorageFetchRecords;
+export 'src/net/fetcher.dart'
+    show
+        AssetFetcher,
+        FetchCancelled,
+        FetchCorrupt,
+        FetchFailed,
+        FetchJob,
+        FetchProgress,
+        FetchUrgency;
+export 'src/net/http_transport.dart' show HttpTransport;
+export 'src/net/ktx2_chain.dart' show Ktx2Chain, Ktx2Level;
+export 'src/net/network_asset_source.dart' show NetworkAssetSource;
+export 'src/net/picture_size.dart' show PictureSize, pictureSizeOf;
+export 'src/net/policy.dart' show AssetOrigin, FetchPolicy, FetchRefused;
+export 'src/net/progressive.dart' show AssetStage, ProgressiveFetch;
+export 'src/net/records.dart'
+    show
+        BufferedFetchRecords,
+        FetchRecord,
+        FetchRecords,
+        FetchRecordsCodec,
+        MemoryFetchRecords;
+export 'src/net/transport.dart'
+    show
+        AssetTransport,
+        Fault,
+        FetchReply,
+        FetchRequest,
+        MapTransport,
+        SocketFailure,
+        TransportPage;

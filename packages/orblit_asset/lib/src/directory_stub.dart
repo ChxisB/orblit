@@ -10,6 +10,7 @@ import 'asset_id.dart';
 import 'asset_source.dart';
 import 'content_hash.dart';
 import 'content_store.dart';
+import 'net/records.dart';
 
 /// Assets read from a directory, which needs `dart:io` and is not available
 /// on this platform.
@@ -57,4 +58,25 @@ class DirectoryContentStore implements ContentStore {
   @override
   Future<void> remove(ContentHash hash) =>
       throw UnsupportedError('DirectoryContentStore needs a file system.');
+}
+
+/// Fetch records in a file, which needs `dart:io` and is not available on
+/// this platform. The web keeps them in Cache Storage instead; see
+/// `CacheStorageFetchRecords`.
+class DirectoryFetchRecords extends BufferedFetchRecords {
+  DirectoryFetchRecords(this.rootPath, {super.settle}) {
+    throw UnsupportedError(
+      'DirectoryFetchRecords needs a file system, and this platform has none.',
+    );
+  }
+
+  final String rootPath;
+
+  @override
+  Future<String?> readText() =>
+      throw UnsupportedError('DirectoryFetchRecords needs a file system.');
+
+  @override
+  Future<void> writeText(String text) =>
+      throw UnsupportedError('DirectoryFetchRecords needs a file system.');
 }
