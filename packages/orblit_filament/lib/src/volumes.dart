@@ -540,7 +540,10 @@ class OrblitEnvironmentSettings {
 
   /// The environment these settings ask for, or
   /// [environment] itself.
-  OrblitEnvironment _environment(OrblitEnvironment environment, OrblitEnvironmentSettings base) {
+  OrblitEnvironment _environment(
+    OrblitEnvironment environment,
+    OrblitEnvironmentSettings base,
+  ) {
     if (environmentIntensity != base.environmentIntensity ||
         environmentRotation != base.environmentRotation) {
       environment = environment.copyWith(
@@ -553,7 +556,10 @@ class OrblitEnvironmentSettings {
   }
 
   /// The post-processing these settings ask for, or [post] itself.
-  OrblitPostProcess _post(OrblitPostProcess post, OrblitEnvironmentSettings base) {
+  OrblitPostProcess _post(
+    OrblitPostProcess post,
+    OrblitEnvironmentSettings base,
+  ) {
     final bloomMoved = bloomStrength != base.bloomStrength;
     final gradingMoved =
         saturation != base.saturation ||

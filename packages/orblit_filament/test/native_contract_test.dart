@@ -30,11 +30,14 @@ void main() {
   // records they measure, in the types header, now that the Objective-C class
   // only forwards to the C++ core — the same lines, moved, so this reads them
   // there as well as in the core and the decals beside it.
-  final native = [
-    'OrblitRendererTypes.h',
-    'OrblitRendererCore.h',
-    'OrblitDecals.h',
-  ].map((header) => _read('darwin/orblit_filament/Sources/orblit_filament_native/$header')).join('\n');
+  final native =
+      ['OrblitRendererTypes.h', 'OrblitRendererCore.h', 'OrblitDecals.h']
+          .map(
+            (header) => _read(
+              'darwin/orblit_filament/Sources/orblit_filament_native/$header',
+            ),
+          )
+          .join('\n');
 
   group('the strides the three sides share', () {
     // Dart's number, what Swift calls it, and what the renderer calls it —
