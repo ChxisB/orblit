@@ -75,3 +75,15 @@ export 'src/importer.dart'
         ImportResult,
         Importer,
         ImporterRegistry;
+export 'src/net/http_transport.dart' show HttpTransport;
+export 'src/net/picture_size.dart' show PictureSize, pictureSizeOf;
+export 'src/net/policy.dart' show AssetOrigin, FetchPolicy, FetchRefused;
+export 'src/net/transport.dart'
+    show
+        AssetTransport,
+        Fault,
+        FetchReply,
+        FetchRequest,
+        MapTransport,
+        SocketFailure,
+        TransportPage;
