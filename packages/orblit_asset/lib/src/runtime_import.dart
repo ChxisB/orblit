@@ -59,7 +59,7 @@ class RuntimeImport {
   /// fewer importers than the build machine would mean a file that works when
   /// shipped and fails when dropped in, which is the confusing way round.
   static ImporterRegistry defaultImporters() => ImporterRegistry([
-    const GltfImporter(),
+    GltfImporter(),
     const SceneImporter(),
     const AtlasImporter(),
     ...nativeImporters,

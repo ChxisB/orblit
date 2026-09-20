@@ -61,7 +61,7 @@ class CookProject {
   /// extension and nothing else wants those extensions, and because a project
   /// adding its own importer usually wants it ahead of the native ones.
   static ImporterRegistry defaultImporters() => ImporterRegistry([
-    const GltfImporter(),
+    GltfImporter(),
     const SceneImporter(),
     const AtlasImporter(),
     ...nativeImporters,
