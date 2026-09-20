@@ -9,6 +9,7 @@ analyzer:
     - windows/**
     - macos/**
     - linux/**
-
-# Additional information about this file can be found at
-# https://dart.dev/guides/language/analysis-options
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
