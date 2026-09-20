@@ -30,7 +30,7 @@ Future<Set<AssetId>> depsOf(Importer importer, AssetId of, Uint8List bytes) =>
     importer.dependenciesOf(of, bytes, const {});
 
 void main() {
-  const gltfImporter = GltfImporter();
+  final gltfImporter = GltfImporter();
 
   group('GltfImporter', () {
     test('claims both container formats', () {

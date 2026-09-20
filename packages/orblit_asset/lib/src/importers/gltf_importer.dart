@@ -4,6 +4,7 @@ import 'dart:typed_data';
 import '../asset_id.dart';
 import '../import_settings.dart';
 import '../importer.dart';
+import 'model_atlas_importer.dart';
 
 /// Reads a `.gltf` or `.glb` and files it for loading, having first found
 /// every file it points at.
@@ -14,25 +15,79 @@ import '../importer.dart';
 /// same importer handles both, because which one an artist exported is not a
 /// decision the rest of the pipeline should have to care about.
 ///
-/// The bytes are passed through rather than rewritten. Filament's loader reads
-/// glTF directly and well; re-encoding it here would be work that changes
-/// nothing, and a chance to lose something the loader understands. What the
-/// cook adds is the dependency list and a stable key, which is what makes a
-/// scene's rebuild correct.
+/// By default the bytes are passed through rather than rewritten. Filament's
+/// loader reads glTF directly and well; re-encoding it here would be work that
+/// changes nothing, and a chance to lose something the loader understands.
+/// What the cook adds is the dependency list and a stable key, which is what
+/// makes a scene's rebuild correct.
+///
+/// `"atlas": true` in a model's settings asks for more than that: its textures
+/// are packed onto shared pages, its texture coordinates moved onto them, and
+/// the materials and primitives that come to be identical joined — which turns
+/// a kitbashed set of a hundred small draws into a handful. That is a build
+/// machine's work and it needs `orblit_texture_cook`, so it is a setting
+/// rather than the default: a cook with the setting off still runs anywhere.
+///
+/// It is a setting on this importer and not an importer of its own because
+/// [Importer.handles] cannot see settings — the decision is made from the file
+/// name, and two models with the same extension have to be able to disagree.
 class GltfImporter extends Importer {
-  const GltfImporter();
+  GltfImporter({ModelAtlasCook? atlas}) : atlas = atlas ?? ModelAtlasCook();
+
+  /// The packer, held here so a test can point it at its own tool.
+  final ModelAtlasCook atlas;
 
   @override
   String get name => 'gltf';
 
+  /// 2 since models can be packed. A pass-through cook produces the same
+  /// bytes it always did, but the key has to change anyway: the settings a
+  /// cached entry was made under did not include `atlas`, and an entry that
+  /// predates a setting cannot be trusted to have ignored it.
   @override
-  int get version => 1;
+  int get version => 2;
 
   @override
   Set<String> get extensions => const {'gltf', 'glb'};
 
   @override
-  Map<String, Object?> resolveSettings(ImportSettings settings) => const {};
+  Map<String, Object?> resolveSettings(ImportSettings settings) {
+    final values = settings.values;
+    if (values['atlas'] != true) return const {'atlas': false};
+    return {
+      'atlas': true,
+      // 2048 rather than the target's largest: a page is only worth making
+      // bigger if the cells filling it are big, and a 16384 page of 256-texel
+      // props is one texture upload nothing benefits from.
+      'maxPageSize': _int(values, 'maxPageSize', 2048, min: 64, max: 16384),
+      'padding': _int(values, 'padding', 4, min: 0, max: 64),
+      'extrude': _int(values, 'extrude', 2, min: 0, max: 64),
+      'maxCellSize': _int(values, 'maxCellSize', 0, min: 0, max: 16384),
+      'minMaterials': _int(values, 'minMaterials', 2, min: 1, max: 4096),
+      'mergePrimitives': values['mergePrimitives'] != false,
+      'maxMergedVertices':
+          _int(values, 'maxMergedVertices', 65536, min: 3, max: 1 << 24),
+    };
+  }
+
+  static int _int(
+    Map<String, Object?> values,
+    String key,
+    int fallback, {
+    required int min,
+    required int max,
+  }) {
+    final value = values[key];
+    if (value == null) return fallback;
+    if (value is! int || value < min || value > max) {
+      throw ArgumentError.value(
+        value,
+        key,
+        'must be a whole number between $min and $max',
+      );
+    }
+    return value;
+  }
 
   @override
   Future<Set<AssetId>> dependenciesOf(
@@ -46,8 +101,12 @@ class GltfImporter extends Importer {
   }
 
   @override
-  Future<ImportResult> import(ImportRequest request) async =>
-      ImportResult(outputs: {request.id.extension: request.bytes});
+  Future<ImportResult> import(ImportRequest request) async {
+    if (request.settings['atlas'] != true) {
+      return ImportResult(outputs: {request.id.extension: request.bytes});
+    }
+    return atlas.run(request, request.settings);
+  }
 
   /// Every file a glTF document refers to, as ids relative to the document.
   ///

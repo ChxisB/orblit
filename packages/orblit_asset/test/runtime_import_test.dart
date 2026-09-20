@@ -172,7 +172,7 @@ void main() {
       gltf = RuntimeImport(
         cache: cache,
         target: CookTargets.macos,
-        importers: ImporterRegistry([const GltfImporter()]),
+        importers: ImporterRegistry([GltfImporter()]),
       );
     });
 
