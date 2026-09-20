@@ -68,8 +68,11 @@ class GltfDocument {
         throw ImportFailure(id, 'is not readable as glTF JSON', cause: error);
       }
       if (parsed is! Map<String, Object?>) {
-        throw ImportFailure(id, 'is not a glTF document: its JSON is not an '
-            'object');
+        throw ImportFailure(
+          id,
+          'is not a glTF document: its JSON is not an '
+          'object',
+        );
       }
       json = parsed;
     }
@@ -110,8 +113,11 @@ class GltfDocument {
     final appendedAt = _appendedAt[index];
     if (appendedAt != null) {
       final length = view['byteLength'] as int;
-      return Uint8List.sublistView(_appended.toBytes(), appendedAt,
-          appendedAt + length);
+      return Uint8List.sublistView(
+        _appended.toBytes(),
+        appendedAt,
+        appendedAt + length,
+      );
     }
     final buffer = _buffers[(view['buffer'] as int?) ?? 0];
     final offset = (view['byteOffset'] as int?) ?? 0;
@@ -188,8 +194,9 @@ class GltfDocument {
         final was = (view['buffer'] as int?) ?? 0;
         final wasAt = (view['byteOffset'] as int?) ?? 0;
         view['buffer'] = 0;
-        view['byteOffset'] =
-            appendedAt != null ? appendBase + appendedAt : bases[was] + wasAt;
+        view['byteOffset'] = appendedAt != null
+            ? appendBase + appendedAt
+            : bases[was] + wasAt;
       }
     }
     json['buffers'] = [
@@ -250,18 +257,27 @@ class GltfDocument {
     Uint8List bytes,
   ) {
     if (bytes.length < 20) {
-      throw ImportFailure(id, 'is too short to be a GLB (${bytes.length} '
-          'bytes)');
+      throw ImportFailure(
+        id,
+        'is too short to be a GLB (${bytes.length} '
+        'bytes)',
+      );
     }
     final data = ByteData.sublistView(bytes);
     if (data.getUint32(4, Endian.little) != 2) {
-      throw ImportFailure(id, 'is a GLB of version '
-          '${data.getUint32(4, Endian.little)}, and only version 2 exists');
+      throw ImportFailure(
+        id,
+        'is a GLB of version '
+        '${data.getUint32(4, Endian.little)}, and only version 2 exists',
+      );
     }
     final total = data.getUint32(8, Endian.little);
     if (total > bytes.length) {
-      throw ImportFailure(id, 'says it is $total bytes and is only '
-          '${bytes.length}. It is truncated.');
+      throw ImportFailure(
+        id,
+        'says it is $total bytes and is only '
+        '${bytes.length}. It is truncated.',
+      );
     }
 
     Map<String, Object?>? json;
@@ -319,8 +335,11 @@ class GltfDocument {
     if (uri == null) {
       // No URI means the GLB's own BIN chunk, and only buffer 0 may do that.
       if (index != 0) {
-        throw ImportFailure(id, 'buffer $index has no URI, and only the first '
-            'buffer of a GLB may leave it out');
+        throw ImportFailure(
+          id,
+          'buffer $index has no URI, and only the first '
+          'buffer of a GLB may leave it out',
+        );
       }
       return binary;
     }
@@ -331,8 +350,11 @@ class GltfDocument {
 
     final at = uri.contains(':') ? null : id.resolve(_decode(uri));
     if (at == null) {
-      throw ImportFailure(id, 'buffer $index is at "$uri", which is not a '
-          'name inside the project');
+      throw ImportFailure(
+        id,
+        'buffer $index is at "$uri", which is not a '
+        'name inside the project',
+      );
     }
     return source.read(at);
   }
@@ -347,14 +369,20 @@ class GltfDocument {
     if (!head.endsWith(';base64')) {
       // Percent-encoded data URIs are legal and vanishingly rare; refusing one
       // by name beats guessing at it.
-      throw ImportFailure(id, 'has a data URI that is not base64, which this '
-          'cook does not read');
+      throw ImportFailure(
+        id,
+        'has a data URI that is not base64, which this '
+        'cook does not read',
+      );
     }
     try {
       return base64Decode(body);
     } on FormatException catch (error) {
-      throw ImportFailure(id, 'has a data URI that is not valid base64',
-          cause: error);
+      throw ImportFailure(
+        id,
+        'has a data URI that is not valid base64',
+        cause: error,
+      );
     }
   }
 

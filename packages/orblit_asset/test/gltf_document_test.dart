@@ -31,31 +31,40 @@ void main() {
         empty,
       );
 
-      expect(
-        Float32List.sublistView(document.viewBytes(0)),
-        [1, 2, 3, 4, 5, 6],
-      );
+      expect(Float32List.sublistView(document.viewBytes(0)), [
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+      ]);
     });
 
     test('reads a .gltf, its data URIs and the files beside it', () async {
       final beside = Uint8List.fromList([9, 9, 9, 9]);
       final document = await GltfDocument.read(
         AssetId.parse('models/thing.gltf'),
-        Uint8List.fromList(utf8.encode(jsonEncode({
-          'asset': {'version': '2.0'},
-          'buffers': [
-            {'uri': 'geometry.bin', 'byteLength': 4},
-            {
-              'uri': 'data:application/octet-stream;base64,'
-                  '${base64Encode(const [1, 2, 3, 4])}',
-              'byteLength': 4,
-            },
-          ],
-          'bufferViews': [
-            {'buffer': 0, 'byteOffset': 0, 'byteLength': 4},
-            {'buffer': 1, 'byteOffset': 0, 'byteLength': 4},
-          ],
-        }))),
+        Uint8List.fromList(
+          utf8.encode(
+            jsonEncode({
+              'asset': {'version': '2.0'},
+              'buffers': [
+                {'uri': 'geometry.bin', 'byteLength': 4},
+                {
+                  'uri':
+                      'data:application/octet-stream;base64,'
+                      '${base64Encode(const [1, 2, 3, 4])}',
+                  'byteLength': 4,
+                },
+              ],
+              'bufferViews': [
+                {'buffer': 0, 'byteOffset': 0, 'byteLength': 4},
+                {'buffer': 1, 'byteOffset': 0, 'byteLength': 4},
+              ],
+            }),
+          ),
+        ),
         MemoryAssetSource({AssetId.parse('models/geometry.bin'): beside}),
       );
 
@@ -69,17 +78,21 @@ void main() {
       // offset rather than merely being untidy.
       final document = await GltfDocument.read(
         AssetId.parse('models/thing.gltf'),
-        Uint8List.fromList(utf8.encode(jsonEncode({
-          'asset': {'version': '2.0'},
-          'buffers': [
-            {'uri': 'a.bin', 'byteLength': 3},
-            {'uri': 'b.bin', 'byteLength': 3},
-          ],
-          'bufferViews': [
-            {'buffer': 0, 'byteOffset': 0, 'byteLength': 3},
-            {'buffer': 1, 'byteOffset': 0, 'byteLength': 3},
-          ],
-        }))),
+        Uint8List.fromList(
+          utf8.encode(
+            jsonEncode({
+              'asset': {'version': '2.0'},
+              'buffers': [
+                {'uri': 'a.bin', 'byteLength': 3},
+                {'uri': 'b.bin', 'byteLength': 3},
+              ],
+              'bufferViews': [
+                {'buffer': 0, 'byteOffset': 0, 'byteLength': 3},
+                {'buffer': 1, 'byteOffset': 0, 'byteLength': 3},
+              ],
+            }),
+          ),
+        ),
         MemoryAssetSource({
           AssetId.parse('models/a.bin'): Uint8List.fromList([1, 2, 3]),
           AssetId.parse('models/b.bin'): Uint8List.fromList([4, 5, 6]),
@@ -94,9 +107,13 @@ void main() {
       expect(again.viewBytes(added), [7, 7]);
       for (final view in again.list('bufferViews')) {
         expect(view['byteOffset'] as int, isA<int>());
-        expect((view['byteOffset'] as int) % 4, 0,
-            reason: 'a view that starts off a four-byte boundary cannot hold '
-                'a float accessor');
+        expect(
+          (view['byteOffset'] as int) % 4,
+          0,
+          reason:
+              'a view that starts off a four-byte boundary cannot hold '
+              'a float accessor',
+        );
       }
     });
 
@@ -115,7 +132,10 @@ void main() {
           },
           'extras': {'anything': 42},
           'nodes': [
-            {'name': 'root', 'extras': {'mine': true}},
+            {
+              'name': 'root',
+              'extras': {'mine': true},
+            },
           ],
         }, Uint8List(0)),
         empty,
@@ -129,33 +149,43 @@ void main() {
       expect((again.json['asset'] as Map)['generator'], 'somebody else');
     });
 
-    test('says which file is wrong rather than reading past the end',
-        () async {
-      final bytes = glb({'asset': {'version': '2.0'}}, Uint8List(0));
+    test('says which file is wrong rather than reading past the end', () async {
+      final bytes = glb({
+        'asset': {'version': '2.0'},
+      }, Uint8List(0));
       final truncated = Uint8List.sublistView(bytes, 0, bytes.length - 4);
       expect(
         () => GltfDocument.read(id, truncated, empty),
-        throwsA(isA<ImportFailure>()
-            .having((e) => e.reason, 'reason', contains('truncated'))),
+        throwsA(
+          isA<ImportFailure>().having(
+            (e) => e.reason,
+            'reason',
+            contains('truncated'),
+          ),
+        ),
       );
     });
 
     test('refuses a GLB that is not version 2', () {
-      final bytes = glb({'asset': {'version': '2.0'}}, Uint8List(0));
+      final bytes = glb({
+        'asset': {'version': '2.0'},
+      }, Uint8List(0));
       ByteData.sublistView(bytes).setUint32(4, 1, Endian.little);
       expect(
         () => GltfDocument.read(id, bytes, empty),
-        throwsA(isA<ImportFailure>()
-            .having((e) => e.reason, 'reason', contains('version 1'))),
+        throwsA(
+          isA<ImportFailure>().having(
+            (e) => e.reason,
+            'reason',
+            contains('version 1'),
+          ),
+        ),
       );
     });
   });
 
   group('accessors', () {
-    Future<GltfDocument> of(
-      Map<String, Object?> json,
-      Uint8List binary,
-    ) =>
+    Future<GltfDocument> of(Map<String, Object?> json, Uint8List binary) =>
         GltfDocument.read(id, glb(json, binary), empty);
 
     test('reads texture coordinates however they are stored', () async {
@@ -176,12 +206,7 @@ void main() {
           {'buffer': 0, 'byteOffset': 16, 'byteLength': 8},
         ],
         'accessors': [
-          {
-            'bufferView': 0,
-            'componentType': 5126,
-            'count': 2,
-            'type': 'VEC2',
-          },
+          {'bufferView': 0, 'componentType': 5126, 'count': 2, 'type': 'VEC2'},
           {
             'bufferView': 1,
             'componentType': 5123,
@@ -246,20 +271,30 @@ void main() {
       // Tightly packed on the way out, because it is about to be joined to
       // another accessor's bytes and two strides cannot be concatenated.
       expect(document.accessorBytes(1).length, 16);
-      expect(Float32List.sublistView(document.accessorBytes(1)),
-          [0.25, 0.75, 0.5, 0.125]);
+      expect(Float32List.sublistView(document.accessorBytes(1)), [
+        0.25,
+        0.75,
+        0.5,
+        0.125,
+      ]);
     });
 
-    test('narrows new indices to the smallest width that holds them',
-        () async {
-      final document = await of({'asset': {'version': '2.0'}}, Uint8List(0));
-      expect(document.accessor(document.addIndices([0, 1, 2]))['componentType'],
-          5121);
-      expect(document.accessor(document.addIndices([0, 300]))['componentType'],
-          5123);
+    test('narrows new indices to the smallest width that holds them', () async {
+      final document = await of({
+        'asset': {'version': '2.0'},
+      }, Uint8List(0));
       expect(
-          document.accessor(document.addIndices([0, 70000]))['componentType'],
-          5125);
+        document.accessor(document.addIndices([0, 1, 2]))['componentType'],
+        5121,
+      );
+      expect(
+        document.accessor(document.addIndices([0, 300]))['componentType'],
+        5123,
+      );
+      expect(
+        document.accessor(document.addIndices([0, 70000]))['componentType'],
+        5125,
+      );
     });
 
     test('refuses a sparse accessor instead of reading its base', () async {
@@ -274,9 +309,16 @@ void main() {
           },
         ],
       }, Uint8List(0));
-      expect(() => document.readVec2(0),
-          throwsA(isA<FormatException>()
-              .having((e) => e.message, 'message', contains('sparse'))));
+      expect(
+        () => document.readVec2(0),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('sparse'),
+          ),
+        ),
+      );
     });
   });
 }

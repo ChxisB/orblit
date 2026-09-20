@@ -75,9 +75,9 @@ int mergeMaterials(GltfDocument document) {
 /// exporters in two orders compare equal.
 /// What a material draws like, as a string two materials can be compared by.
 Object? _identity(Map<String, Object?> material) => _canonical({
-      for (final entry in material.entries)
-        if (entry.key != 'name') entry.key: entry.value,
-    });
+  for (final entry in material.entries)
+    if (entry.key != 'name') entry.key: entry.value,
+});
 
 Object? _canonical(Object? value) {
   if (value is Map) {
@@ -211,8 +211,10 @@ String? _groupKey(GltfDocument document, Map<String, Object?> primitive) {
     } on FormatException {
       return null; // Sparse, or not there. Either way, left alone.
     }
-    parts.add('$name:${accessor['type']}:${accessor['componentType']}:'
-        '${accessor['normalized'] == true}');
+    parts.add(
+      '$name:${accessor['type']}:${accessor['componentType']}:'
+      '${accessor['normalized'] == true}',
+    );
   }
   final indices = primitive['indices'];
   if (indices != null && indices is! int) return null;
@@ -237,8 +239,8 @@ Map<String, Object?> _join(
   List<Map<String, Object?>> group,
 ) {
   final first = group.first;
-  final names =
-      (first['attributes'] as Map<String, Object?>).keys.toList()..sort();
+  final names = (first['attributes'] as Map<String, Object?>).keys.toList()
+    ..sort();
 
   final attributes = <String, Object?>{};
   for (final name in names) {
@@ -266,8 +268,7 @@ Map<String, Object?> _join(
         }
       }
     }
-    final template =
-        (first['attributes'] as Map<String, Object?>)[name] as int;
+    final template = (first['attributes'] as Map<String, Object?>)[name] as int;
     attributes[name] = document.addLike(
       template,
       bytes.takeBytes(),

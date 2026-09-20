@@ -85,10 +85,8 @@ class ModelAtlasResult {
 
 /// Decodes one of a document's images to RGBA8, or returns null when it
 /// cannot — a format this build has no decoder for, say.
-typedef ImageDecoder = Future<Rgba?> Function(
-  int image,
-  Map<String, Object?> definition,
-);
+typedef ImageDecoder =
+    Future<Rgba?> Function(int image, Map<String, Object?> definition);
 
 /// Packs a model's material textures onto shared pages, remaps its texture
 /// coordinates onto them, merges the materials that become identical and then
@@ -133,9 +131,11 @@ Future<ModelAtlasResult> atlasModel(
 
   if (candidates.length < options.minMaterials) {
     if (candidates.isNotEmpty) {
-      notes.add('left unpacked: only ${candidates.length} of '
-          '${materials.length} materials could be packed, and '
-          '${options.minMaterials} is the point at which it pays');
+      notes.add(
+        'left unpacked: only ${candidates.length} of '
+        '${materials.length} materials could be packed, and '
+        '${options.minMaterials} is the point at which it pays',
+      );
     }
     return ModelAtlasResult(const [], notes);
   }
@@ -155,8 +155,10 @@ Future<ModelAtlasResult> atlasModel(
     for (final entry in candidate.images.entries) {
       final pixels = await pixelsOf(entry.value);
       if (pixels == null) {
-        notes.add('${candidate.label}: left unpacked, because its '
-            '${entry.key.name} image could not be decoded here');
+        notes.add(
+          '${candidate.label}: left unpacked, because its '
+          '${entry.key.name} image could not be decoded here',
+        );
         all = false;
         break;
       }
@@ -239,9 +241,7 @@ Future<ModelAtlasResult> atlasModel(
   // material given a role it never had gets the value that makes that role do
   // nothing, so it draws as it did — and it is that uniformity which lets the
   // materials collapse into one afterwards, which is the whole point.
-  final usedRoles = <TextureRole>{
-    for (final one in ready) ...one.images.keys,
-  };
+  final usedRoles = <TextureRole>{for (final one in ready) ...one.images.keys};
   final order = TextureRole.values.where(usedRoles.contains).toList();
 
   final pages = <AtlasPage>[];
@@ -251,8 +251,13 @@ Future<ModelAtlasResult> atlasModel(
       final canvas = blankPage(role, page.width, page.height);
       page.regions.forEach((name, region) {
         final candidate = byMaterial[int.parse(name)]!;
-        blit(canvas, _cell(candidate, role), region.x, region.y,
-            extrude: extrude);
+        blit(
+          canvas,
+          _cell(candidate, role),
+          region.x,
+          region.y,
+          extrude: extrude,
+        );
       });
       pages.add(AtlasPage(p, role, canvas));
     }
@@ -281,8 +286,12 @@ Rgba _cell(_Candidate candidate, TextureRole role) {
     if (factor != null) multiplyInto(blank, factor, srgb: role.srgb);
     return blank;
   }
-  final sized = resample(source, width, height,
-      normal: role == TextureRole.normal);
+  final sized = resample(
+    source,
+    width,
+    height,
+    normal: role == TextureRole.normal,
+  );
   // A copy, because the same decoded image can be two materials' map and
   // folding one material's tint into it would tint the other as well.
   final cell = Rgba(width, height, Uint8List.fromList(sized.pixels));
@@ -312,8 +321,14 @@ Map<int, List<Map<String, Object?>>> _primitivesByMaterial(
 
 /// A material that can be packed, and everything needed to pack it.
 class _Candidate {
-  _Candidate(this.material, this.definition, this.texCoord, this.images,
-      this.factors, this.primitives);
+  _Candidate(
+    this.material,
+    this.definition,
+    this.texCoord,
+    this.images,
+    this.factors,
+    this.primitives,
+  );
 
   final int material;
   final Map<String, Object?> definition;
@@ -365,26 +380,31 @@ _Candidate? _consider(
 
   final extensions = material['extensions'];
   if (extensions is Map<String, Object?>) {
-    final unknown =
-        extensions.keys.where((key) => !_packableExtensions.contains(key));
+    final unknown = extensions.keys.where(
+      (key) => !_packableExtensions.contains(key),
+    );
     if (unknown.isNotEmpty) {
-      notes.add('$name: left unpacked, because it uses '
-          '${unknown.join(', ')} and this pack does not know where those keep '
-          'their textures');
+      notes.add(
+        '$name: left unpacked, because it uses '
+        '${unknown.join(', ')} and this pack does not know where those keep '
+        'their textures',
+      );
       return null;
     }
   }
 
-  final slots = textureSlotsOf(document)
-      .where((slot) => identical(slot.owner, material))
-      .toList();
+  final slots = textureSlotsOf(
+    document,
+  ).where((slot) => identical(slot.owner, material)).toList();
   if (slots.isEmpty) return null;
 
   final texCoords = slots.map((slot) => slot.texCoord).toSet();
   if (texCoords.length > 1) {
-    notes.add('$name: left unpacked, because its maps read different UV sets '
-        '(${texCoords.join(', ')}) and one atlas rectangle can only serve '
-        'one');
+    notes.add(
+      '$name: left unpacked, because its maps read different UV sets '
+      '(${texCoords.join(', ')}) and one atlas rectangle can only serve '
+      'one',
+    );
     return null;
   }
   final texCoord = texCoords.single;
@@ -392,27 +412,35 @@ _Candidate? _consider(
   final images = <TextureRole, int>{};
   for (final slot in slots) {
     if (roles.conflicted.contains(slot.texture)) {
-      notes.add('$name: left unpacked, because texture ${slot.texture} is '
-          'used in two roles, one of them ${slot.role.name}, so there is no '
-          'colour space and no cook that is right for it');
+      notes.add(
+        '$name: left unpacked, because texture ${slot.texture} is '
+        'used in two roles, one of them ${slot.role.name}, so there is no '
+        'colour space and no cook that is right for it',
+      );
       return null;
     }
     if (slot.info['extensions'] is Map &&
         (slot.info['extensions'] as Map).containsKey('KHR_texture_transform')) {
-      notes.add('$name: left unpacked, because its ${slot.key} carries a '
-          'KHR_texture_transform, which would be applied to the atlas '
-          'rectangle rather than to the map');
+      notes.add(
+        '$name: left unpacked, because its ${slot.key} carries a '
+        'KHR_texture_transform, which would be applied to the atlas '
+        'rectangle rather than to the map',
+      );
       return null;
     }
     if (slot.texture < 0 || slot.texture >= textures.length) {
-      notes.add('$name: left unpacked, because its ${slot.key} names texture '
-          '${slot.texture}, which the document does not have');
+      notes.add(
+        '$name: left unpacked, because its ${slot.key} names texture '
+        '${slot.texture}, which the document does not have',
+      );
       return null;
     }
     final image = _imageOf(textures[slot.texture]);
     if (image == null) {
-      notes.add('$name: left unpacked, because its ${slot.key} names a '
-          'texture with no readable image');
+      notes.add(
+        '$name: left unpacked, because its ${slot.key} names a '
+        'texture with no readable image',
+      );
       return null;
     }
     images[slot.role] = image;
@@ -430,8 +458,10 @@ _Candidate? _consider(
     if (attributes is! Map<String, Object?>) return null;
     final accessor = attributes['TEXCOORD_$texCoord'];
     if (accessor is! int) {
-      notes.add('$name: left unpacked, because a primitive that uses it has '
-          'no TEXCOORD_$texCoord to remap');
+      notes.add(
+        '$name: left unpacked, because a primitive that uses it has '
+        'no TEXCOORD_$texCoord to remap',
+      );
       return null;
     }
     final Float32List uv;
@@ -443,15 +473,23 @@ _Candidate? _consider(
     }
     for (final value in uv) {
       if (value < -0.001 || value > 1.001) {
-        notes.add('$name: left unpacked, because its UVs run outside 0 to 1, '
-            'which means the map is tiled across the surface');
+        notes.add(
+          '$name: left unpacked, because its UVs run outside 0 to 1, '
+          'which means the map is tiled across the surface',
+        );
         return null;
       }
     }
   }
 
   return _Candidate(
-      index, material, texCoord, images, _factorsOf(material), primitives);
+    index,
+    material,
+    texCoord,
+    images,
+    _factorsOf(material),
+    primitives,
+  );
 }
 
 /// The factors worth folding into the cells, with the ones that cannot be
@@ -484,7 +522,10 @@ Map<TextureRole, List<double>> _factorsOf(Map<String, Object?> material) {
 }
 
 List<double>? _numbers(Object? value) => value is List
-    ? [for (final one in value) if (one is num) one.toDouble()]
+    ? [
+        for (final one in value)
+          if (one is num) one.toDouble(),
+      ]
     : null;
 
 int? _imageOf(Map<String, Object?> texture) {
@@ -552,27 +593,43 @@ void _rewrite(
     final at = placed[candidate.material]!;
     final page = pages[at.page];
     final material = candidate.definition;
-    final pbr = material.putIfAbsent(
-        'pbrMetallicRoughness', () => <String, Object?>{}) as Map<String, Object?>;
+    final pbr =
+        material.putIfAbsent('pbrMetallicRoughness', () => <String, Object?>{})
+            as Map<String, Object?>;
 
     for (final role in roles) {
       final index = texture['${at.page}.${role.name}']!;
       switch (role) {
         case TextureRole.baseColour:
-          pbr['baseColorTexture'] =
-              _slotFor(pbr['baseColorTexture'], index, candidate.texCoord);
+          pbr['baseColorTexture'] = _slotFor(
+            pbr['baseColorTexture'],
+            index,
+            candidate.texCoord,
+          );
         case TextureRole.metallicRoughness:
           pbr['metallicRoughnessTexture'] = _slotFor(
-              pbr['metallicRoughnessTexture'], index, candidate.texCoord);
+            pbr['metallicRoughnessTexture'],
+            index,
+            candidate.texCoord,
+          );
         case TextureRole.normal:
-          material['normalTexture'] =
-              _slotFor(material['normalTexture'], index, candidate.texCoord);
+          material['normalTexture'] = _slotFor(
+            material['normalTexture'],
+            index,
+            candidate.texCoord,
+          );
         case TextureRole.occlusion:
           material['occlusionTexture'] = _slotFor(
-              material['occlusionTexture'], index, candidate.texCoord);
+            material['occlusionTexture'],
+            index,
+            candidate.texCoord,
+          );
         case TextureRole.emissive:
-          material['emissiveTexture'] =
-              _slotFor(material['emissiveTexture'], index, candidate.texCoord);
+          material['emissiveTexture'] = _slotFor(
+            material['emissiveTexture'],
+            index,
+            candidate.texCoord,
+          );
       }
     }
 
@@ -584,7 +641,9 @@ void _rewrite(
       pbr.remove('baseColorFactor');
     }
     if (candidate.factors.containsKey(TextureRole.metallicRoughness)) {
-      pbr..remove('metallicFactor')..remove('roughnessFactor');
+      pbr
+        ..remove('metallicFactor')
+        ..remove('roughnessFactor');
     }
     if (candidate.factors.containsKey(TextureRole.emissive)) {
       material['emissiveFactor'] = <double>[1, 1, 1];
@@ -620,21 +679,29 @@ void _rewrite(
     }
   }
 
-  notes.add('packed ${packed.length} materials onto ${pages.length} '
-      '${pages.length == 1 ? 'page' : 'pages'} of '
-      '${roles.map((role) => role.suffix).join(', ')}');
+  notes.add(
+    'packed ${packed.length} materials onto ${pages.length} '
+    '${pages.length == 1 ? 'page' : 'pages'} of '
+    '${roles.map((role) => role.suffix).join(', ')}',
+  );
 
   final materials = mergeMaterials(document);
   if (materials > 0) {
-    notes.add('$materials materials became copies of another and were '
-        'pointed at it');
+    notes.add(
+      '$materials materials became copies of another and were '
+      'pointed at it',
+    );
   }
   if (options.mergePrimitives) {
-    final primitives =
-        mergePrimitives(document, maxVertices: options.maxMergedVertices);
+    final primitives = mergePrimitives(
+      document,
+      maxVertices: options.maxMergedVertices,
+    );
     if (primitives > 0) {
-      notes.add('$primitives primitives were joined into the ones they now '
-          'share a material with, which is $primitives fewer draws');
+      notes.add(
+        '$primitives primitives were joined into the ones they now '
+        'share a material with, which is $primitives fewer draws',
+      );
     }
   }
 }

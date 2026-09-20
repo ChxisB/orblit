@@ -75,11 +75,7 @@ class QuadModel {
 
   int _view(List<int> bytes) {
     final views = json.putIfAbsent('bufferViews', () => <Object?>[]) as List;
-    views.add({
-      'buffer': 0,
-      'byteOffset': _at,
-      'byteLength': bytes.length,
-    });
+    views.add({'buffer': 0, 'byteOffset': _at, 'byteLength': bytes.length});
     _bin.add(bytes);
     _at += bytes.length;
     final pad = (4 - _at % 4) % 4;
@@ -119,7 +115,8 @@ class QuadModel {
       x, 1, 0,
     ]);
     final coords = Float32List.fromList(
-        uv ?? const [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0]);
+      uv ?? const [0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0],
+    );
     final indices = Uint16List.fromList([0, 1, 2, 0, 2, 3]);
 
     final position = _accessor({
@@ -166,11 +163,11 @@ class QuadModel {
 
 /// Decodes the PNGs a [QuadModel] stored in its buffer.
 ImageDecoder decoderOver(GltfDocument document) => (index, definition) async {
-      final view = definition['bufferView'] as int?;
-      if (view == null) return null;
-      final png = decodePng(document.viewBytes(view));
-      return Rgba(png.width, png.height, png.pixels);
-    };
+  final view = definition['bufferView'] as int?;
+  if (view == null) return null;
+  final png = decodePng(document.viewBytes(view));
+  return Rgba(png.width, png.height, png.pixels);
+};
 
 /// The texel at [x], [y].
 List<int> texelAt(Rgba image, int x, int y) {

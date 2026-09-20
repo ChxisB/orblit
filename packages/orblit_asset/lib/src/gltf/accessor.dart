@@ -13,24 +13,24 @@ class ComponentType {
 
   /// How wide one component of `type` is.
   static int sizeOf(int type) => switch (type) {
-        byte || unsignedByte => 1,
-        short || unsignedShort => 2,
-        unsignedInt || float => 4,
-        _ => throw FormatException('$type is not a glTF component type'),
-      };
+    byte || unsignedByte => 1,
+    short || unsignedShort => 2,
+    unsignedInt || float => 4,
+    _ => throw FormatException('$type is not a glTF component type'),
+  };
 }
 
 /// How many components a glTF accessor type holds.
 int componentsOf(String type) => switch (type) {
-      'SCALAR' => 1,
-      'VEC2' => 2,
-      'VEC3' => 3,
-      'VEC4' => 4,
-      'MAT2' => 4,
-      'MAT3' => 9,
-      'MAT4' => 16,
-      _ => throw FormatException('"$type" is not a glTF accessor type'),
-    };
+  'SCALAR' => 1,
+  'VEC2' => 2,
+  'VEC3' => 3,
+  'VEC4' => 4,
+  'MAT2' => 4,
+  'MAT3' => 9,
+  'MAT4' => 16,
+  _ => throw FormatException('"$type" is not a glTF accessor type'),
+};
 
 /// Reading and writing the accessors a rewrite touches.
 ///
@@ -53,8 +53,10 @@ extension GltfAccessors on GltfDocument {
       // A sparse accessor stores overrides in a second pair of views. Nothing
       // in this rewrite reads one, and silently reading only the base would
       // move the wrong vertices.
-      throw FormatException('accessor $index is sparse, which this cook does '
-          'not rewrite');
+      throw FormatException(
+        'accessor $index is sparse, which this cook does '
+        'not rewrite',
+      );
     }
     return found;
   }
@@ -109,7 +111,8 @@ extension GltfAccessors on GltfDocument {
     // difference between a cook you wait for and one you notice.
     if (stride == size && base + count * size <= bytes.length) {
       return Uint8List.fromList(
-          Uint8List.sublistView(bytes, base, base + count * size));
+        Uint8List.sublistView(bytes, base, base + count * size),
+      );
     }
     final out = Uint8List(count * size);
     for (var i = 0; i < count; i++) {
@@ -166,8 +169,10 @@ extension GltfAccessors on GltfDocument {
   Uint32List readIndices(int index) {
     final it = accessor(index);
     if (it['type'] != 'SCALAR') {
-      throw FormatException('index accessor $index is ${it['type']}, not '
-          'SCALAR');
+      throw FormatException(
+        'index accessor $index is ${it['type']}, not '
+        'SCALAR',
+      );
     }
     final count = it['count'] as int? ?? 0;
     final type = it['componentType'] as int;
@@ -245,18 +250,15 @@ extension GltfAccessors on GltfDocument {
       if (value > highest) highest = value;
     }
     final (int type, Uint8List bytes) = switch (highest) {
-      < 256 => (
-          ComponentType.unsignedByte,
-          Uint8List.fromList(values),
-        ),
+      < 256 => (ComponentType.unsignedByte, Uint8List.fromList(values)),
       < 65536 => (
-          ComponentType.unsignedShort,
-          Uint8List.sublistView(Uint16List.fromList(values)),
-        ),
+        ComponentType.unsignedShort,
+        Uint8List.sublistView(Uint16List.fromList(values)),
+      ),
       _ => (
-          ComponentType.unsignedInt,
-          Uint8List.sublistView(Uint32List.fromList(values)),
-        ),
+        ComponentType.unsignedInt,
+        Uint8List.sublistView(Uint32List.fromList(values)),
+      ),
     };
     final view = addView(bytes, target: 34963); // ELEMENT_ARRAY_BUFFER
     return add('accessors', <String, Object?>{
@@ -305,23 +307,23 @@ extension GltfAccessors on GltfDocument {
     int at,
     int type,
     bool normalized,
-  ) =>
-      switch (type) {
-        ComponentType.float => data.getFloat32(at, Endian.little),
-        ComponentType.unsignedByte => normalized
-            ? data.getUint8(at) / 255.0
-            : data.getUint8(at).toDouble(),
-        ComponentType.byte => normalized
-            ? (data.getInt8(at) / 127.0).clamp(-1.0, 1.0)
-            : data.getInt8(at).toDouble(),
-        ComponentType.unsignedShort => normalized
-            ? data.getUint16(at, Endian.little) / 65535.0
-            : data.getUint16(at, Endian.little).toDouble(),
-        ComponentType.short => normalized
-            ? (data.getInt16(at, Endian.little) / 32767.0).clamp(-1.0, 1.0)
-            : data.getInt16(at, Endian.little).toDouble(),
-        ComponentType.unsignedInt =>
-          data.getUint32(at, Endian.little).toDouble(),
-        _ => throw FormatException('$type is not a glTF component type'),
-      };
+  ) => switch (type) {
+    ComponentType.float => data.getFloat32(at, Endian.little),
+    ComponentType.unsignedByte =>
+      normalized ? data.getUint8(at) / 255.0 : data.getUint8(at).toDouble(),
+    ComponentType.byte =>
+      normalized
+          ? (data.getInt8(at) / 127.0).clamp(-1.0, 1.0)
+          : data.getInt8(at).toDouble(),
+    ComponentType.unsignedShort =>
+      normalized
+          ? data.getUint16(at, Endian.little) / 65535.0
+          : data.getUint16(at, Endian.little).toDouble(),
+    ComponentType.short =>
+      normalized
+          ? (data.getInt16(at, Endian.little) / 32767.0).clamp(-1.0, 1.0)
+          : data.getInt16(at, Endian.little).toDouble(),
+    ComponentType.unsignedInt => data.getUint32(at, Endian.little).toDouble(),
+    _ => throw FormatException('$type is not a glTF component type'),
+  };
 }

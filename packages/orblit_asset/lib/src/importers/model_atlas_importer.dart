@@ -28,11 +28,12 @@ import 'native_tool.dart';
 /// the first one its device can sample.
 class ModelAtlasCook {
   ModelAtlasCook({NativeTool? tool})
-      : tool = tool ??
-            NativeTool(
-              'orblit_texture_cook',
-              environmentVariable: 'ORBLIT_TEXTURE_COOK',
-            );
+    : tool =
+          tool ??
+          NativeTool(
+            'orblit_texture_cook',
+            environmentVariable: 'ORBLIT_TEXTURE_COOK',
+          );
 
   final NativeTool tool;
 
@@ -41,8 +42,11 @@ class ModelAtlasCook {
     Map<String, Object?> settings,
   ) async {
     final notes = <String>[];
-    final document =
-        await GltfDocument.read(request.id, request.bytes, request.source);
+    final document = await GltfDocument.read(
+      request.id,
+      request.bytes,
+      request.source,
+    );
 
     final families = request.target.textureFamilies;
     // Always basis, whatever the target asked for. A model names its textures
@@ -52,14 +56,17 @@ class ModelAtlasCook {
     // the material path already does.
     final targets = <String>{
       TextureFamily.basis,
-      ...(families.isEmpty ? TextureFamily.all : families)
-          .where((family) => family != TextureFamily.raw),
+      ...(families.isEmpty ? TextureFamily.all : families).where(
+        (family) => family != TextureFamily.raw,
+      ),
     }.toList();
     final budget = request.target.maxTextureSize ?? 8192;
     final maxPageSize = (settings['maxPageSize'] as int).clamp(64, budget);
     if (maxPageSize != settings['maxPageSize']) {
-      notes.add('pages held to ${maxPageSize}px, which is what this target '
-          'samples');
+      notes.add(
+        'pages held to ${maxPageSize}px, which is what this target '
+        'samples',
+      );
     }
 
     return withTemporaryDirectory('model_atlas', (work) async {
@@ -110,15 +117,17 @@ class ModelAtlasCook {
       // wrong in ways that read as a lighting bug, which is why the role is
       // carried this far rather than guessed at from the file name.
       for (final page in result.pages) {
-        outputs.addAll(await _cook(
-          request,
-          work,
-          '${page.stem}.png',
-          encodePng(page.image.width, page.image.height, page.image.pixels),
-          page.role,
-          targets,
-          budget,
-        ));
+        outputs.addAll(
+          await _cook(
+            request,
+            work,
+            '${page.stem}.png',
+            encodePng(page.image.width, page.image.height, page.image.pixels),
+            page.role,
+            targets,
+            budget,
+          ),
+        );
       }
 
       // Before cooking anything else, throw away what the atlas swallowed.
@@ -130,8 +139,17 @@ class ModelAtlasCook {
       // Then everything the packed materials did not take. A model half cooked
       // is a model that draws its other half untextured, and the source PNG
       // the URI still names is not beside the cooked file.
-      outputs.addAll(await _cookTheRest(
-          request, work, document, bytesOf, targets, budget, notes));
+      outputs.addAll(
+        await _cookTheRest(
+          request,
+          work,
+          document,
+          bytesOf,
+          targets,
+          budget,
+          notes,
+        ),
+      );
 
       outputs['glb'] = document.toGlb();
       return ImportResult(outputs: outputs, notes: notes);
@@ -196,10 +214,13 @@ class ModelAtlasCook {
     final input = File(inside(work, 'decode.${_extensionOf(definition)}'));
     await input.writeAsBytes(source, flush: true);
     final out = File(inside(work, 'decode.raw'));
-    await tool.run(
-      [input.path, inside(work, ''), '--decode', out.path, '--quiet'],
-      on: request.id,
-    );
+    await tool.run([
+      input.path,
+      inside(work, ''),
+      '--decode',
+      out.path,
+      '--quiet',
+    ], on: request.id);
     if (!out.existsSync()) return null;
 
     final raw = await out.readAsBytes();
@@ -246,8 +267,10 @@ class ModelAtlasCook {
 
       final bytes = await bytesOf(images[source]);
       if (bytes == null) {
-        notes.add('image $source could not be read, so the material using it '
-            'will draw untextured');
+        notes.add(
+          'image $source could not be read, so the material using it '
+          'will draw untextured',
+        );
         continue;
       }
       final role = roles[t] ?? TextureRole.baseColour;
@@ -255,8 +278,17 @@ class ModelAtlasCook {
       while (!names.add(stem)) {
         stem = '${stem}_';
       }
-      outputs.addAll(await _cook(request, work, '$stem.${_extensionOf(images[source])}',
-          bytes, role, targets, budget));
+      outputs.addAll(
+        await _cook(
+          request,
+          work,
+          '$stem.${_extensionOf(images[source])}',
+          bytes,
+          role,
+          targets,
+          budget,
+        ),
+      );
 
       images[source]
         ..remove('bufferView')
@@ -308,8 +340,8 @@ class ModelAtlasCook {
     final written = <String, List<int>>{};
     await for (final file in out.list()) {
       if (file is! File) continue;
-      written[file.path.split(Platform.pathSeparator).last] =
-          await file.readAsBytes();
+      written[file.path.split(Platform.pathSeparator).last] = await file
+          .readAsBytes();
     }
     await input.delete();
     return written;
@@ -412,8 +444,10 @@ class ModelAtlasCook {
     if (uri is String && uri.isNotEmpty && !uri.startsWith('data:')) {
       final name = _percentDecoded(uri).split('/').last;
       final dot = name.lastIndexOf('.');
-      final stem = (dot > 0 ? name.substring(0, dot) : name)
-          .replaceAll(RegExp(r'[^A-Za-z0-9_.-]'), '_');
+      final stem = (dot > 0 ? name.substring(0, dot) : name).replaceAll(
+        RegExp(r'[^A-Za-z0-9_.-]'),
+        '_',
+      );
       if (stem.isNotEmpty) return stem;
     }
     final name = image['name'];

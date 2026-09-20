@@ -25,22 +25,22 @@ enum TextureRole {
   /// missing emissive map means white times an emissive factor of nought, not
   /// black times nothing — and flat for a normal.
   List<int> get blank => switch (this) {
-        baseColour => const [255, 255, 255, 255],
-        metallicRoughness => const [255, 255, 255, 255],
-        normal => const [128, 128, 255, 255],
-        occlusion => const [255, 255, 255, 255],
-        emissive => const [255, 255, 255, 255],
-      };
+    baseColour => const [255, 255, 255, 255],
+    metallicRoughness => const [255, 255, 255, 255],
+    normal => const [128, 128, 255, 255],
+    occlusion => const [255, 255, 255, 255],
+    emissive => const [255, 255, 255, 255],
+  };
 
   /// The suffix its page gets, so `atlas0.basecolour.ktx2` says what it holds
   /// without anyone opening it.
   String get suffix => switch (this) {
-        baseColour => 'basecolour',
-        metallicRoughness => 'metallicroughness',
-        normal => 'normal',
-        occlusion => 'occlusion',
-        emissive => 'emissive',
-      };
+    baseColour => 'basecolour',
+    metallicRoughness => 'metallicroughness',
+    normal => 'normal',
+    occlusion => 'occlusion',
+    emissive => 'emissive',
+  };
 }
 
 /// One texture slot on one material.
@@ -74,12 +74,16 @@ List<TextureSlot> textureSlotsOf(GltfDocument document) {
     final pbr = material['pbrMetallicRoughness'];
     if (pbr is Map<String, Object?>) {
       _slot(slots, TextureRole.baseColour, material, pbr, 'baseColorTexture');
-      _slot(slots, TextureRole.metallicRoughness, material, pbr,
-          'metallicRoughnessTexture');
+      _slot(
+        slots,
+        TextureRole.metallicRoughness,
+        material,
+        pbr,
+        'metallicRoughnessTexture',
+      );
     }
     _slot(slots, TextureRole.normal, material, material, 'normalTexture');
-    _slot(slots, TextureRole.occlusion, material, material,
-        'occlusionTexture');
+    _slot(slots, TextureRole.occlusion, material, material, 'occlusionTexture');
     _slot(slots, TextureRole.emissive, material, material, 'emissiveTexture');
   }
   return slots;

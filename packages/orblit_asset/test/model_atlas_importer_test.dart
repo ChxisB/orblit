@@ -16,16 +16,21 @@ QuadModel twoMaterials() {
   final model = QuadModel();
   final a = model.texture(red);
   final b = model.texture(blue);
-  model.quad(model.material({
-    'pbrMetallicRoughness': {
-      'baseColorTexture': {'index': a},
-    },
-  }));
-  model.quad(model.material({
-    'pbrMetallicRoughness': {
-      'baseColorTexture': {'index': b},
-    },
-  }), x: 2);
+  model.quad(
+    model.material({
+      'pbrMetallicRoughness': {
+        'baseColorTexture': {'index': a},
+      },
+    }),
+  );
+  model.quad(
+    model.material({
+      'pbrMetallicRoughness': {
+        'baseColorTexture': {'index': b},
+      },
+    }),
+    x: 2,
+  );
   return model;
 }
 
@@ -33,29 +38,34 @@ ImportRequest requestFor(
   Uint8List bytes,
   Map<String, Object?> settings, {
   CookTarget target = CookTargets.macos,
-}) =>
-    ImportRequest(
-      id: AssetId.parse('models/thing.glb'),
-      bytes: bytes,
-      settings: settings,
-      target: target,
-      source: MemoryAssetSource(const {}),
-    );
+}) => ImportRequest(
+  id: AssetId.parse('models/thing.glb'),
+  bytes: bytes,
+  settings: settings,
+  target: target,
+  source: MemoryAssetSource(const {}),
+);
 
 void main() {
   final importer = GltfImporter();
 
   group('GltfImporter settings', () {
     test('is off unless the asset asks for it', () {
-      expect(importer.resolveSettings(const ImportSettings()),
-          {'atlas': false});
-      expect(importer.resolveSettings(const ImportSettings(values: {'atlas': false})),
-          {'atlas': false});
+      expect(importer.resolveSettings(const ImportSettings()), {
+        'atlas': false,
+      });
+      expect(
+        importer.resolveSettings(
+          const ImportSettings(values: {'atlas': false}),
+        ),
+        {'atlas': false},
+      );
     });
 
     test('fills in every key once it is on', () {
-      final settings =
-          importer.resolveSettings(const ImportSettings(values: {'atlas': true}));
+      final settings = importer.resolveSettings(
+        const ImportSettings(values: {'atlas': true}),
+      );
       expect(settings['atlas'], isTrue);
       expect(settings['maxPageSize'], 2048);
       expect(settings['padding'], 4);
@@ -76,8 +86,9 @@ void main() {
         {'extrude': 'lots'},
       ]) {
         expect(
-          () => importer
-              .resolveSettings(ImportSettings(values: {'atlas': true, ...wrong})),
+          () => importer.resolveSettings(
+            ImportSettings(values: {'atlas': true, ...wrong}),
+          ),
           throwsA(isA<ArgumentError>()),
           reason: '$wrong',
         );
@@ -94,53 +105,65 @@ void main() {
   group('GltfImporter', () {
     test('hands the bytes straight back when atlasing is off', () async {
       final bytes = twoMaterials().toGlb();
-      final result =
-          await importer.import(requestFor(bytes, const {'atlas': false}));
+      final result = await importer.import(
+        requestFor(bytes, const {'atlas': false}),
+      );
       expect(result.outputs.keys, ['glb']);
       expect(result.outputs['glb'], same(bytes));
     });
 
-    test('hands the bytes back unchanged when there is nothing to pack',
-        () async {
-      // One material: packing it would cost a recook and save nothing.
-      final model = QuadModel();
-      final only = model.texture(red);
-      model.quad(model.material({
-        'pbrMetallicRoughness': {
-          'baseColorTexture': {'index': only},
-        },
-      }));
-      final bytes = model.toGlb();
+    test(
+      'hands the bytes back unchanged when there is nothing to pack',
+      () async {
+        // One material: packing it would cost a recook and save nothing.
+        final model = QuadModel();
+        final only = model.texture(red);
+        model.quad(
+          model.material({
+            'pbrMetallicRoughness': {
+              'baseColorTexture': {'index': only},
+            },
+          }),
+        );
+        final bytes = model.toGlb();
 
-      final result = await importer.import(requestFor(bytes, const {
-        'atlas': true,
-        'maxPageSize': 512,
-        'padding': 4,
-        'extrude': 2,
-        'maxCellSize': 0,
-        'minMaterials': 2,
-        'mergePrimitives': true,
-        'maxMergedVertices': 65536,
-      }));
-      expect(result.outputs['glb'], same(bytes),
-          reason: 'a model that comes back byte for byte is a cache hit next '
-              'time, not a needless miss');
-      expect(result.notes.join(' '), contains('1 of'));
-    });
+        final result = await importer.import(
+          requestFor(bytes, const {
+            'atlas': true,
+            'maxPageSize': 512,
+            'padding': 4,
+            'extrude': 2,
+            'maxCellSize': 0,
+            'minMaterials': 2,
+            'mergePrimitives': true,
+            'maxMergedVertices': 65536,
+          }),
+        );
+        expect(
+          result.outputs['glb'],
+          same(bytes),
+          reason:
+              'a model that comes back byte for byte is a cache hit next '
+              'time, not a needless miss',
+        );
+        expect(result.notes.join(' '), contains('1 of'));
+      },
+    );
   });
 
   group('ModelAtlasCook', () {
     test('cooks the pages and rewrites the model to name them', () async {
-      final tool = native.NativeTool('orblit_texture_cook',
-          environmentVariable: 'ORBLIT_TEXTURE_COOK');
+      final tool = native.NativeTool(
+        'orblit_texture_cook',
+        environmentVariable: 'ORBLIT_TEXTURE_COOK',
+      );
       if (tool.locate() == null) {
         markTestSkipped('orblit_texture_cook is not built');
         return;
       }
 
-      final result = await GltfImporter().import(requestFor(
-        twoMaterials().toGlb(),
-        const {
+      final result = await GltfImporter().import(
+        requestFor(twoMaterials().toGlb(), const {
           'atlas': true,
           'maxPageSize': 512,
           'padding': 4,
@@ -149,8 +172,8 @@ void main() {
           'minMaterials': 2,
           'mergePrimitives': true,
           'maxMergedVertices': 65536,
-        },
-      ));
+        }),
+      );
 
       // The GLB, the page in the portable format, and a sibling per family the
       // target can read.
@@ -169,8 +192,11 @@ void main() {
       final images = document.list('images');
       expect(images, isNotEmpty);
       for (final image in images) {
-        expect(image['bufferView'], isNull,
-            reason: 'a source PNG left embedded is one the GPU cannot read');
+        expect(
+          image['bufferView'],
+          isNull,
+          reason: 'a source PNG left embedded is one the GPU cannot read',
+        );
         expect(result.outputs.keys, contains(image['uri']));
       }
       // The two source PNGs are gone: nothing points at them, so nothing

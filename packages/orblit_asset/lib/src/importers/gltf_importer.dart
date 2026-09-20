@@ -65,8 +65,13 @@ class GltfImporter extends Importer {
       'maxCellSize': _int(values, 'maxCellSize', 0, min: 0, max: 16384),
       'minMaterials': _int(values, 'minMaterials', 2, min: 1, max: 4096),
       'mergePrimitives': values['mergePrimitives'] != false,
-      'maxMergedVertices':
-          _int(values, 'maxMergedVertices', 65536, min: 3, max: 1 << 24),
+      'maxMergedVertices': _int(
+        values,
+        'maxMergedVertices',
+        65536,
+        min: 3,
+        max: 1 << 24,
+      ),
     };
   }
 

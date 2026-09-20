@@ -18,7 +18,9 @@ final Float32List _toLinear = () {
   final table = Float32List(256);
   for (var i = 0; i < 256; i++) {
     final c = i / 255.0;
-    table[i] = c <= 0.04045 ? c / 12.92 : math.pow((c + 0.055) / 1.055, 2.4) as double;
+    table[i] = c <= 0.04045
+        ? c / 12.92
+        : math.pow((c + 0.055) / 1.055, 2.4) as double;
   }
   return table;
 }();
@@ -28,8 +30,8 @@ int _toSrgb(double linear) {
   final c = linear <= 0.0
       ? 0.0
       : linear <= 0.0031308
-          ? linear * 12.92
-          : 1.055 * (math.pow(linear, 1 / 2.4) as double) - 0.055;
+      ? linear * 12.92
+      : 1.055 * (math.pow(linear, 1 / 2.4) as double) - 0.055;
   return (c * 255.0 + 0.5).clamp(0.0, 255.0).toInt();
 }
 
@@ -37,8 +39,10 @@ int _toSrgb(double linear) {
 /// top, which is both what the packer wants and where glTF's UV origin is.
 class Rgba {
   Rgba(this.width, this.height, this.pixels)
-      : assert(pixels.length == width * height * 4,
-            'an RGBA8 image is width x height x 4 bytes');
+    : assert(
+        pixels.length == width * height * 4,
+        'an RGBA8 image is width x height x 4 bytes',
+      );
 
   /// An image of one colour.
   factory Rgba.filled(int width, int height, List<int> rgba) {
@@ -73,11 +77,14 @@ Rgba resample(Rgba source, int width, int height, {bool normal = false}) {
   final yScale = source.height / height;
   for (var y = 0; y < height; y++) {
     final y0 = (y * yScale).floor();
-    final y1 = math.max(y0 + 1, ((y + 1) * yScale).ceil()).clamp(0, source.height);
+    final y1 = math
+        .max(y0 + 1, ((y + 1) * yScale).ceil())
+        .clamp(0, source.height);
     for (var x = 0; x < width; x++) {
       final x0 = (x * xScale).floor();
-      final x1 =
-          math.max(x0 + 1, ((x + 1) * xScale).ceil()).clamp(0, source.width);
+      final x1 = math
+          .max(x0 + 1, ((x + 1) * xScale).ceil())
+          .clamp(0, source.width);
 
       var r = 0.0, g = 0.0, b = 0.0, a = 0.0;
       var n = 0;
@@ -153,8 +160,7 @@ void multiplyInto(Rgba image, List<double> factor, {required bool srgb}) {
       if (srgb && c < 3) {
         pixels[i + c] = _toSrgb(_toLinear[pixels[i + c]] * factor[c]);
       } else {
-        pixels[i + c] =
-            (pixels[i + c] * factor[c]).round().clamp(0, 255);
+        pixels[i + c] = (pixels[i + c] * factor[c]).round().clamp(0, 255);
       }
     }
   }
@@ -190,8 +196,13 @@ void blit(Rgba page, Rgba source, int x, int y, {int extrude = 0}) {
       final px = x + column;
       final clamped = x + column.clamp(0, source.width - 1);
       _copyTexel(page, clamped, y, px, y - e);
-      _copyTexel(page, clamped, y + source.height - 1, px,
-          y + source.height - 1 + e);
+      _copyTexel(
+        page,
+        clamped,
+        y + source.height - 1,
+        px,
+        y + source.height - 1 + e,
+      );
     }
   }
 }

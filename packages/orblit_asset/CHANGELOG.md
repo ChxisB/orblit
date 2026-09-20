@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.6.0
+
+- **Model texture atlases.** `atlas: true` on a `.gltf` or `.glb` packs the
+  model's small textures onto shared pages, remaps its UVs, merges the
+  materials that then say the same thing and merges the static primitives that
+  then share one. Packing alone saves nothing — Filament batches by material,
+  so without the merges it is the same draw calls sampling one image.
+- The layout is solved once per **material**, against that material's largest
+  map, then replayed into one page per role. That is what lets base colour,
+  normal and metallic-roughness land on the same rectangle of different pages,
+  so one UV remap serves all of them. Roles never share a page: a colour page
+  is sRGB and a normal page is linear, and they are cooked with different
+  flags.
+- A material can be handed a map slot it never had, because every role's blank
+  is the value glTF samples when that slot is absent. That is the precondition
+  for merging: a material with no normal map draws identically after being
+  given one.
+- Colour, metallic-roughness and emissive factors are folded into the texels
+  and reset to identity, which is what turns materials differing only by tint
+  into a single material. Colour factors fold in linear light.
+- Nothing is all-or-nothing. A material whose maps tile across the surface,
+  whose slot carries a `KHR_texture_transform`, whose texture is used as two
+  different things, or which carries a material extension this does not
+  understand, is left exactly as it was and said so in the import notes, while
+  the rest of the model is packed around it.
+- Pages are named through `KHR_texture_basisu`, which is where the spec puts a
+  KTX2, and the portable file is always written whatever families the target
+  asked for, because a model fetches its textures by the URI it was given.
+- Atlasing is a setting on `GltfImporter` rather than an importer of its own:
+  `Importer.handles` is given a path and not the settings, so a second importer
+  could never know which models had asked. `GltfImporter.version` is 2, so
+  bundles cooked before the setting existed are not served for it.
+- **A glTF reader and writer**, in `lib/src/gltf/`. `GltfDocument` parses the
+  JSON to a `Map` and edits only the keys a rewrite owns, so extensions,
+  `extras`, variants, skins and animation survive because they were never
+  looked at. It resolves buffers from a GLB chunk, a data URI or a file beside
+  the document, and writes back one self-contained GLB. Accessors read
+  interleaved views at their stride and the normalized integer forms
+  `KHR_mesh_quantization` uses, not only floats.
+
 ## 0.5.0
 
 - **Asking where an asset stands without cooking it.** `Cook.stateOf` answers
