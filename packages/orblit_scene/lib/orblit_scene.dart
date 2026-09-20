@@ -51,6 +51,8 @@ export 'src/export/export.dart' show SceneExport, SceneFormat, SceneWritten;
 export 'src/export/gltf.dart' show GltfScene, sceneToGltf;
 export 'src/export/graft.dart' show GraftFailure, Grafted, graft, regraft;
 export 'src/export/obj.dart' show ObjScene, sceneToObj;
+export 'src/import/gltf.dart' show SceneImported, gltfToScene;
+export 'src/import/import.dart' show readSceneFrom;
 export 'src/material.dart'
     show
         MaterialDocument,

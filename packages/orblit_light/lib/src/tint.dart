@@ -38,6 +38,17 @@ class Tint {
   final double green;
   final double blue;
 
+  /// A colour arriving in the space light behaves in, brought back to the
+  /// space it is written in.
+  ///
+  /// The inverse of [linear], and here rather than at the one call site that
+  /// needs it for the reason the whole class exists: a file format that states
+  /// colour linearly — glTF does — has to be converted on the way in as well
+  /// as on the way out, and a second implementation of the transfer function
+  /// is a second chance to get the dark end wrong.
+  factory Tint.fromLinear(Vector3 colour) =>
+      Tint(_srgb(colour.x), _srgb(colour.y), _srgb(colour.z));
+
   /// The same colour in the space light actually behaves in.
   Vector3 get linear => Vector3(_linear(red), _linear(green), _linear(blue));
 
@@ -64,6 +75,14 @@ class Tint {
   static double _linear(double channel) => channel <= 0.04045
       ? channel / 12.92
       : math.pow((channel + 0.055) / 1.055, 2.4).toDouble();
+
+  /// [_linear] the other way round, breaking at the same point it does.
+  static double _srgb(double channel) {
+    final value = channel.isFinite ? channel.clamp(0.0, 1.0) : 0.0;
+    return value <= 0.0031308
+        ? value * 12.92
+        : 1.055 * math.pow(value, 1 / 2.4).toDouble() - 0.055;
+  }
 
   @override
   bool operator ==(Object other) =>

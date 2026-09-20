@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0
+
+- **A scene can be read back in.** `readSceneFrom` takes the bytes of a `.glb`
+  or a `.gltf` and gives back a `SceneDocument`. A scene this package wrote
+  comes back as itself — the same ids, the same order, the same parents, the
+  same components, down to `encode()` matching — because the exporter already
+  writes a full record of the scene into `extras.orblit`, so reading one is a
+  read rather than a re-derivation. That is the half of the round trip that
+  could not be proved before.
+- A glTF from anywhere else is interpreted instead: nodes become entities, a
+  matrix or a TRS becomes a transform, punctual lights come back at the power
+  they left at, a camera keeps its field of view, and triangles become
+  geometry somebody can still edit. What could not be carried across is
+  listed in `SceneImported.problems` rather than dropped quietly.
+- A model grafted into an export — the copy of `models/tree.glb` sitting under
+  the node that draws it — stays geometry on the way back in. Only nodes
+  carrying `extras.orblit` become entities, because turning the rest into
+  entities would double the outliner on every round trip.
+- Buffers are read at their `byteStride`, so an interleaved file from another
+  tool comes in with the positions it actually has rather than ones that are
+  subtly wrong.
+- `SceneFormatException` is thrown only when there is nothing to read at all —
+  bytes that are neither a GLB nor JSON, or JSON that is not a document. A
+  scene with one unreadable node is still a scene worth opening.
+
 ## 0.3.0
 
 - **A scene can be written out.** `SceneDocument.writeAs` exports glTF, GLB or
