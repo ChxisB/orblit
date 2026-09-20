@@ -129,7 +129,17 @@ class ImportedExample extends Example {
     _fadingFrom = null;
   }
 
-  String _model = samples.first.name;
+  /// The Fox, unless the environment names another — the same override the
+  /// sample directory has, and for a neighbouring reason: something driving
+  /// the gallery from outside has no settings panel to click, and the first
+  /// sample in the list is the smallest file rather than the best picture.
+  String _model =
+      samples
+          .firstWhere(
+            (s) => s.name == Platform.environment['ORBLIT_MODEL'],
+            orElse: () => samples.first,
+          )
+          .name;
 
   /// Which of the file's clips plays, or null for the first it has.
   int? clip;
