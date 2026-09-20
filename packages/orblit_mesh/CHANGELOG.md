@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.4.0
+
+- **One place writes glTF.** `GltfBuffer` accumulates a document's bytes and
+  hands back the buffer views and accessors over them; `glbBytes` and
+  `glbChunks` write and read the `.glb` container; `gltfText` writes the open
+  form. `toGlb` is built on them, and so is everything that exports a scene.
+
+  The rule the format cares about most is alignment, and it is the rule that
+  is easiest to restate slightly wrong in a second exporter. Enforcing it in
+  one place is the point; the shorter `toGlb` is a side effect.
+- A mesh with nothing in it now exports an empty scene rather than a mesh made
+  of nothing. A buffer view of nought bytes and an accessor counting nought
+  elements are both errors in the format — nine of them, as the reference
+  validator counted it.
+- Accessors written for positions carry their own bounds, worked out from the
+  positions rather than taken from the caller, and index buffer views now say
+  they hold indices. `toGlb` still writes thirty-two bit indices always;
+  `GltfBuffer.addIndices`, which is given its numbers rather than choosing a
+  width in advance, narrows to the smallest that holds them.
+- A model name with an accent in it survives export. The JSON chunk was
+  measured in characters and written in UTF-8, so every name outside ASCII
+  wrote a chunk length short of the text it described.
+- `tool/dump_glb.dart` writes one file per shape, which `tool/check_gltf.sh`
+  hands to the Khronos glTF-Validator in CI. Warnings fail it as well as
+  errors.
+
 ## 0.3.0
 
 - Meshes are indexed with thirty-two bits rather than sixteen. `Triangles.indices`

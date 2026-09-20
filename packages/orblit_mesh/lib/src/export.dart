@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:vector_math/vector_math_64.dart';
 
+import 'gltf.dart';
 import 'mesh.dart';
 import 'triangles.dart';
 
@@ -396,18 +397,8 @@ Uint8List _bytes(String text) => Uint8List.fromList(utf8.encode(text));
 /// renderer loaded: it knows a path and nothing else, and without this every
 /// imported model is picked and outlined as a two-metre cube whatever it
 /// actually is.
-({Vector3 min, Vector3 max})? boundsOfGlb(Uint8List glb) {
-  if (glb.length < 20) return null;
-  final data = ByteData.sublistView(glb);
-  if (data.getUint32(0, Endian.little) != 0x46546C67) return null;
-
-  final jsonLength = data.getUint32(12, Endian.little);
-  if (20 + jsonLength > glb.length) return null;
-
-  return _boundsOfDocument(
-    _document(utf8.decode(glb.sublist(20, 20 + jsonLength))),
-  );
-}
+({Vector3 min, Vector3 max})? boundsOfGlb(Uint8List glb) =>
+    _boundsOfDocument(glbChunks(glb)?.json);
 
 /// The same, for a `.gltf` — the one that keeps its JSON in the open.
 ///

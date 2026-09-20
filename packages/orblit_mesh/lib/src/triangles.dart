@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:vector_math/vector_math_64.dart';
 
+import 'gltf.dart';
 import 'mesh.dart';
 import 'uv.dart';
 
@@ -341,6 +342,25 @@ extension MeshGlb on Mesh {
   }) {
     final tris = triangulate();
 
+    // Nothing to draw. An empty scene is a file every loader opens; a file
+    // whose accessors count nought elements and whose buffer views are nought
+    // bytes long is one the validator rejects, so the mesh nobody has drawn
+    // in yet leaves as the former.
+    if (tris.indices.isEmpty || tris.vertexCount == 0) {
+      return glbBytes({
+        'asset': {'version': '2.0', 'generator': 'Orblit'},
+        'scene': 0,
+        'scenes': [
+          {
+            'nodes': [0],
+          },
+        ],
+        'nodes': [
+          {'name': name},
+        ],
+      }, Uint8List(0));
+    }
+
     // One primitive a material, which is what a glTF loader turns into one
     // draw call each. A face pointing at a material nobody listed falls back
     // to the file's default rather than to nothing: a wrong colour is
@@ -361,47 +381,42 @@ extension MeshGlb on Mesh {
     ];
     final slotOf = {for (var i = 0; i < listed.length; i++) listed[i]: i};
 
-    // glTF wants the buffer's parts aligned to four bytes, and the index
-    // buffer's own component size. Laid out indices first so the alignment
-    // works out without padding between the float arrays — and with
-    // four-byte indices the padding below is always nothing, which is left
-    // in rather than removed because it is the alignment rule that is load
-    // bearing, not the fact that this particular buffer satisfies it.
-    final indexBytes = tris.indices.buffer.asUint8List(
-      tris.indices.offsetInBytes,
-      tris.indices.lengthInBytes,
+    // Indices first. A buffer view starts on a four-byte boundary, and
+    // four-byte indices always end on one, so laying them down before the
+    // float attributes means nothing is ever padded between the two — which
+    // the builder would do correctly anyway, and which is free not to need.
+    final buffer = GltfBuffer();
+    final indices = buffer.addView(
+      tris.indices,
+      target: GltfTarget.elementArrayBuffer,
     );
-    final indexPadding = (4 - indexBytes.length % 4) % 4;
 
-    final builder = BytesBuilder()
-      ..add(indexBytes)
-      ..add(Uint8List(indexPadding))
-      ..add(
-        tris.positions.buffer.asUint8List(
-          tris.positions.offsetInBytes,
-          tris.positions.lengthInBytes,
+    // One accessor a group, all over that one view: the indices are already
+    // sorted so each material's are a contiguous run, and a byte offset is
+    // cheaper than a second copy of them.
+    final runs = [
+      for (final group in used)
+        buffer.addAccessor(
+          view: indices,
+          byteOffset: group.start * 4,
+          componentType: GltfComponent.unsignedInt,
+          count: group.count,
+          type: 'SCALAR',
         ),
-      )
-      ..add(
-        tris.normals.buffer.asUint8List(
-          tris.normals.offsetInBytes,
-          tris.normals.lengthInBytes,
-        ),
-      )
-      ..add(
-        tris.uvs.buffer.asUint8List(
-          tris.uvs.offsetInBytes,
-          tris.uvs.lengthInBytes,
-        ),
-      );
-    final binary = builder.toBytes();
+    ];
+    final position = buffer.addPositions(tris.positions);
+    final normal = buffer.addFloats(
+      tris.normals,
+      'VEC3',
+      target: GltfTarget.arrayBuffer,
+    );
+    final uv = buffer.addFloats(
+      tris.uvs,
+      'VEC2',
+      target: GltfTarget.arrayBuffer,
+    );
 
-    final indexEnd = indexBytes.length + indexPadding;
-    final positionEnd = indexEnd + tris.positions.lengthInBytes;
-    final normalEnd = positionEnd + tris.normals.lengthInBytes;
-
-    final box = bounds;
-    final json = _json({
+    return glbBytes({
       'asset': {'version': '2.0', 'generator': 'Orblit'},
       'scene': 0,
       'scenes': [
@@ -418,15 +433,12 @@ extension MeshGlb on Mesh {
           'primitives': [
             for (var i = 0; i < used.length; i++)
               {
-                // The attribute accessors come after every index accessor,
-                // so where they are depends on how many materials the mesh
-                // ended up with.
                 'attributes': {
-                  'POSITION': used.length,
-                  'NORMAL': used.length + 1,
-                  'TEXCOORD_0': used.length + 2,
+                  'POSITION': position,
+                  'NORMAL': normal,
+                  'TEXCOORD_0': uv,
                 },
-                'indices': i,
+                'indices': runs[i],
                 'mode': 4,
                 if (slotOf.containsKey(used[i].material))
                   'material': slotOf[used[i].material],
@@ -436,120 +448,10 @@ extension MeshGlb on Mesh {
       ],
       if (listed.isNotEmpty)
         'materials': [for (final at in listed) materials[at].toGltf()],
-      'accessors': [
-        // One accessor a group, all over the same buffer view: the indices
-        // are already sorted so each material's are a contiguous run, and a
-        // byte offset is cheaper than a second copy of them.
-        for (final group in used)
-          {
-            'bufferView': 0,
-            'byteOffset': group.start * 4,
-            'componentType': 5125, // unsigned int
-            'count': group.count,
-            'type': 'SCALAR',
-          },
-        {
-          'bufferView': 1,
-          'componentType': 5126, // float
-          'count': tris.vertexCount,
-          'type': 'VEC3',
-          // Required on POSITION, and the loader uses it to size the
-          // bounding box rather than walking every vertex again.
-          'min': [box.min.x, box.min.y, box.min.z],
-          'max': [box.max.x, box.max.y, box.max.z],
-        },
-        {
-          'bufferView': 2,
-          'componentType': 5126,
-          'count': tris.vertexCount,
-          'type': 'VEC3',
-        },
-        {
-          'bufferView': 3,
-          'componentType': 5126,
-          'count': tris.vertexCount,
-          'type': 'VEC2',
-        },
-      ],
-      'bufferViews': [
-        {'buffer': 0, 'byteOffset': 0, 'byteLength': indexBytes.length},
-        {
-          'buffer': 0,
-          'byteOffset': indexEnd,
-          'byteLength': tris.positions.lengthInBytes,
-        },
-        {
-          'buffer': 0,
-          'byteOffset': positionEnd,
-          'byteLength': tris.normals.lengthInBytes,
-        },
-        {
-          'buffer': 0,
-          'byteOffset': normalEnd,
-          'byteLength': tris.uvs.lengthInBytes,
-        },
-      ],
-      'buffers': [
-        {'byteLength': binary.length},
-      ],
-    });
-
-    final jsonPadding = (4 - json.length % 4) % 4;
-    final jsonChunk = BytesBuilder()
-      ..add(json)
-      // Padded with spaces rather than zeros, which the specification asks for
-      // so the chunk is still valid JSON if anybody looks at it.
-      ..add(Uint8List(jsonPadding)..fillRange(0, jsonPadding, 0x20));
-    final jsonBytes = jsonChunk.toBytes();
-
-    final total = 12 + 8 + jsonBytes.length + 8 + binary.length;
-    final out = ByteData(total);
-    var at = 0;
-
-    void word(int value) {
-      out.setUint32(at, value, Endian.little);
-      at += 4;
-    }
-
-    word(0x46546C67); // 'glTF'
-    word(2);
-    word(total);
-
-    word(jsonBytes.length);
-    word(0x4E4F534A); // 'JSON'
-    for (final byte in jsonBytes) {
-      out.setUint8(at++, byte);
-    }
-
-    word(binary.length);
-    word(0x004E4942); // 'BIN'
-    for (final byte in binary) {
-      out.setUint8(at++, byte);
-    }
-
-    return out.buffer.asUint8List();
-  }
-
-  static Uint8List _json(Map<String, Object?> value) =>
-      Uint8List.fromList(_encode(value).codeUnits);
-
-  static String _encode(Object? value) {
-    if (value is Map) {
-      return '{${value.entries.map((e) => '"${e.key}":${_encode(e.value)}').join(',')}}';
-    }
-    if (value is List) {
-      return '[${value.map(_encode).join(',')}]';
-    }
-    if (value is String) return '"$value"';
-    if (value is double) {
-      // Whole numbers as integers: glTF is fussy about which fields are
-      // integers, and a count written as 12.0 is a file some loaders refuse.
-      return value == value.roundToDouble() && value.abs() < 1e15
-          ? '${value.round()}'
-          : '$value';
-    }
-    if (value is num || value is bool) return '$value';
-    return 'null';
+      'accessors': buffer.accessors,
+      'bufferViews': buffer.views,
+      'buffers': buffer.buffers,
+    }, buffer.bytes);
   }
 }
 

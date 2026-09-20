@@ -45,6 +45,24 @@ jobs:
       - name: Analyze and test
         run: ./tool/check.sh
 
+  # What the engine exports, read by the reference validator rather than by
+  # us. Its own tests assert what somebody thought to assert; this one knows
+  # the whole specification, and a file only Orblit can open is not an export.
+  gltf:
+    name: glTF exports
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: 3.13.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Export and validate
+        run: ./tool/check_gltf.sh
+
   # The packages that resolve against Flutter. None of them draw, so this runs
   # on Linux: the renderer's tests check the buffers and bindings it builds,
   # not the picture.

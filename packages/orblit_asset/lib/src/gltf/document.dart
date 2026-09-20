@@ -199,9 +199,17 @@ class GltfDocument {
             : bases[was] + wasAt;
       }
     }
-    json['buffers'] = [
-      {'byteLength': total},
-    ];
+    // A buffer of nought length is an error in the format, and so is a view
+    // or an accessor over one. A document with no geometry at all — a scene
+    // of lights and cameras is one — therefore names no buffer rather than
+    // naming an empty one.
+    if (total == 0) {
+      json.remove('buffers');
+    } else {
+      json['buffers'] = [
+        {'byteLength': total},
+      ];
+    }
 
     final binary = Uint8List(_aligned(total));
     for (var i = 0; i < _buffers.length; i++) {
@@ -217,7 +225,8 @@ class GltfDocument {
     final jsonBytes = Uint8List(jsonLength)..fillRange(0, jsonLength, 0x20);
     jsonBytes.setRange(0, text.length, text);
 
-    final length = 12 + 8 + jsonLength + 8 + binary.length;
+    final length =
+        12 + 8 + jsonLength + (binary.isEmpty ? 0 : 8 + binary.length);
     final out = Uint8List(length);
     final data = ByteData.sublistView(out);
     data.setUint32(0, _glbMagic, Endian.little);
@@ -226,10 +235,12 @@ class GltfDocument {
     data.setUint32(12, jsonLength, Endian.little);
     data.setUint32(16, _jsonChunk, Endian.little);
     out.setRange(20, 20 + jsonLength, jsonBytes);
-    final binAt = 20 + jsonLength;
-    data.setUint32(binAt, binary.length, Endian.little);
-    data.setUint32(binAt + 4, _binChunk, Endian.little);
-    out.setRange(binAt + 8, binAt + 8 + binary.length, binary);
+    if (binary.isNotEmpty) {
+      final binAt = 20 + jsonLength;
+      data.setUint32(binAt, binary.length, Endian.little);
+      data.setUint32(binAt + 4, _binChunk, Endian.little);
+      out.setRange(binAt + 8, binAt + 8 + binary.length, binary);
+    }
     return out;
   }
 

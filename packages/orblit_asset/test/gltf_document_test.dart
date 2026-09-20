@@ -41,6 +41,40 @@ void main() {
       ]);
     });
 
+    test('a document with no geometry names no buffer', () async {
+      // A buffer of nought bytes is an error in the format, and a scene of
+      // lights and cameras really has nothing to put in one. Writing the
+      // empty buffer anyway made a file the validator refused.
+      final document = await GltfDocument.read(
+        AssetId.parse('models/lights.gltf'),
+        Uint8List.fromList(
+          utf8.encode(
+            jsonEncode({
+              'asset': {'version': '2.0'},
+              'nodes': [
+                {'name': 'sun'},
+              ],
+            }),
+          ),
+        ),
+        empty,
+      );
+
+      final out = document.toGlb();
+      final data = ByteData.sublistView(out);
+      final jsonLength = data.getUint32(12, Endian.little);
+
+      expect(
+        out.length,
+        20 + jsonLength,
+        reason: 'no binary chunk at all, not an empty one',
+      );
+      final written =
+          jsonDecode(utf8.decode(out.sublist(20, 20 + jsonLength)).trimRight())
+              as Map<String, Object?>;
+      expect(written.containsKey('buffers'), isFalse);
+    });
+
     test('reads a .gltf, its data URIs and the files beside it', () async {
       final beside = Uint8List.fromList([9, 9, 9, 9]);
       final document = await GltfDocument.read(

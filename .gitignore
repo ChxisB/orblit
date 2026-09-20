@@ -68,3 +68,7 @@ packages/orblit_filament/native/web/build/
 packages/orblit_filament/native/web/host/orblit_renderer.js
 packages/orblit_filament/native/web/host/orblit_renderer.wasm
 packages/orblit_filament/native/web/captures/
+
+# Fetched by tool/check_gltf.sh: the Khronos glTF-Validator, which is the
+# reference implementation and not ours to vendor.
+node_modules/

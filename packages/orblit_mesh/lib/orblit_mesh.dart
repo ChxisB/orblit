@@ -38,6 +38,8 @@ export 'src/drawn.dart'
         signedAreaOf,
         turnBetween;
 export 'src/edits.dart' show MeshEdits, MeshHandles, MeshShell;
+export 'src/gltf.dart'
+    show GltfBuffer, GltfComponent, GltfTarget, glbBytes, glbChunks, gltfText;
 export 'src/export.dart'
     show MeshExport, MeshFormat, Written, boundsOfGlb, boundsOfGltf;
 export 'src/mesh.dart' show Face, Mesh;
