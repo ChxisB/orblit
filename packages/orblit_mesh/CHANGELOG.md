@@ -25,6 +25,23 @@
 - `tool/dump_glb.dart` writes one file per shape, which `tool/check_gltf.sh`
   hands to the Khronos glTF-Validator in CI. Warnings fail it as well as
   errors.
+- `GltfBuffer.addBytes` takes bytes with nothing pointing at them yet and says
+  where they start, which is what grafting one document into another needs: a
+  document being copied in arrives with its own buffer views, and what they
+  want is somewhere to point rather than a view of their own.
+- `GltfBuffer.addIndexView` writes the narrowed view without an accessor over
+  it, and says how wide it came out. A mesh drawn in more than one material is
+  one buffer of faces with an accessor into each material's stretch of it, so
+  the view and the accessors are no longer made in the same breath. The width
+  is returned rather than worked out again from the component type, because
+  working it out again is a second copy of the narrowing rule and a second
+  place to be wrong.
+- `tangentsOf` builds a tangent frame from positions, normals and texture
+  coordinates, so a mesh wearing a normal map can export TANGENT rather than
+  leave every loader to guess. Loaders do guess, and they disagree, which is
+  why the validator calls a missing one a portability warning. Triangles with
+  no area in texture space are skipped, and a vertex whose frame still
+  collapses falls back to an axis the normal is not parallel to.
 
 ## 0.3.0
 

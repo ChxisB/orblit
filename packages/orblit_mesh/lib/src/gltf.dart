@@ -63,9 +63,7 @@ class GltfBuffer {
   /// everything written here, so aligning the view satisfies the rule for
   /// every accessor over it and leaves nothing to check per accessor.
   int addView(TypedData data, {int? target}) {
-    _pad();
-    final at = _bytes.length;
-    _bytes.add(Uint8List.sublistView(data));
+    final at = addBytes(data);
     views.add({
       'buffer': 0,
       'byteOffset': at,
@@ -73,6 +71,19 @@ class GltfBuffer {
       if (target != null) 'target': target,
     });
     return views.length - 1;
+  }
+
+  /// Bytes with nothing pointing at them yet, returning where they start.
+  ///
+  /// For grafting one document into another: a document being copied in
+  /// brings its own buffer views, and what they need is somewhere to point
+  /// rather than a view of their own. Aligned like any other, so the views
+  /// that arrive with it keep whatever alignment they had.
+  int addBytes(TypedData data) {
+    _pad();
+    final at = _bytes.length;
+    _bytes.add(Uint8List.sublistView(data));
+    return at;
   }
 
   /// An accessor over [view], returning its index.
@@ -163,6 +174,23 @@ class GltfBuffer {
   /// width from the numbers in hand, at the moment of writing, in one place —
   /// there is nothing left to be wrong about.
   int addIndices(List<int> indices) {
+    final narrowed = addIndexView(indices);
+    return addAccessor(
+      view: narrowed.view,
+      componentType: narrowed.componentType,
+      count: indices.length,
+      type: 'SCALAR',
+    );
+  }
+
+  /// The same view, without an accessor over it, and how to read it.
+  ///
+  /// For a mesh drawn in more than one material: the faces are one buffer and
+  /// each material's run is an accessor into a stretch of it, so the caller
+  /// needs the view and the width the narrowing chose. The width is returned
+  /// rather than worked out again from the component type, because working it
+  /// out again is a second copy of this rule and a second place to be wrong.
+  ({int view, int componentType, int width}) addIndexView(List<int> indices) {
     var largest = 0;
     for (final one in indices) {
       if (one > largest) largest = one;
@@ -170,23 +198,25 @@ class GltfBuffer {
 
     final TypedData data;
     final int componentType;
+    final int width;
     if (largest < 256) {
       data = Uint8List.fromList(indices);
       componentType = GltfComponent.unsignedByte;
+      width = 1;
     } else if (largest < 65536) {
       data = Uint16List.fromList(indices);
       componentType = GltfComponent.unsignedShort;
+      width = 2;
     } else {
       data = Uint32List.fromList(indices);
       componentType = GltfComponent.unsignedInt;
+      width = 4;
     }
 
-    final view = addView(data, target: GltfTarget.elementArrayBuffer);
-    return addAccessor(
-      view: view,
+    return (
+      view: addView(data, target: GltfTarget.elementArrayBuffer),
       componentType: componentType,
-      count: indices.length,
-      type: 'SCALAR',
+      width: width,
     );
   }
 
