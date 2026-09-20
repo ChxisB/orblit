@@ -10,7 +10,7 @@
 
 <p align="center">
   <a title="CI" href="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml?query=event%3Apush+branch%3Amain"><img src="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml/badge.svg?branch=main&event=push"/></a>
-  <a title="Licence" href="LICENSE"><img src="https://img.shields.io/badge/licence-FSL--1.1--MIT-blue"/></a>
+  <a title="Licence" href="LICENSE"><img src="https://img.shields.io/badge/licence-MPL--2.0-blue"/></a>
   <img alt="Pre-alpha" src="https://img.shields.io/badge/status-pre--alpha-orange"/>
   <a title="Discord" href="https://discord.gg/5DH7HuDUtJ"><img src="https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white"/></a>
 </p>
@@ -140,16 +140,18 @@ has the rest.
 
 It is early enough that what you try first is likely to be the thing nobody has
 tried yet. Both of those are useful. The
-[Discord](https://discord.gg/5DH7HuDUtJ) is where that conversation happens.
+[Discord](https://discord.gg/5DH7HuDUtJ) is where that conversation happens, and
+[CONTRIBUTING](CONTRIBUTING.md) has what to run before a pull request.
 
 ## Licence
 
-FSL-1.1-MIT, © 2026 Chris Beckett — the Functional Source License, with an MIT
-future. Fork it, change it, send changes back, and ship games made with it,
-commercial ones included. What it rules out is offering Orblit, or a renamed
-copy of it, as a competing product. Each release becomes plain MIT two years
-after it's published.
+MPL-2.0, © 2026 Chris Beckett — the Mozilla Public License, and open source.
+Fork it, change it, and ship games made with it, commercial ones included:
+your game is your own and the licence does not reach into it. What it asks is
+that changes to Orblit's own files ship under the same licence, with source
+available to whoever you hand the result to, so engine work stays in the
+open.
 
 Builds link Filament, which carries its own Apache 2.0 licence, and a prebuilt
 Filament.xcframework is committed here — so a full copy of that licence travels
-with it. See [LICENSE](LICENSE).
+with it. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

@@ -459,7 +459,8 @@ Load these when the task needs them:
 
 ## Licence
 
-Orblit is under FSL-1.1-MIT, a source-available licence (not an open-source
-one, and not plain MIT). Games made with it, commercial ones included, are
-fine. For anything beyond that, point the user at `LICENSE` in the repository
-rather than interpreting it.
+Orblit is under MPL-2.0, the Mozilla Public License — open source, and a
+file-level copyleft (not plain MIT). Games made with it, commercial ones
+included, are fine and stay the author's own. Changes to Orblit's own files
+stay under the same licence. For anything beyond that, point the user at
+`LICENSE` in the repository rather than interpreting it.

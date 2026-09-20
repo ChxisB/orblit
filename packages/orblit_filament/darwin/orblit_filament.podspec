@@ -8,7 +8,7 @@ them to Flutter's texture registry, so a 3D scene composites with widgets
 without a trip through the CPU.
                        DESC
   s.homepage         = 'https://github.com/ChxisB/orblit'
-  s.license          = { :type => 'FSL-1.1-MIT' }
+  s.license          = { :type => 'MPL-2.0' }
   s.author           = { 'Chris Beckett' => '49186278+ChxisB@users.noreply.github.com' }
   s.source           = { :path => '.' }
   # The sources sit in the layout Swift Package Manager wants — one directory
