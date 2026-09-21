@@ -64,7 +64,7 @@ class SplatsExample extends Example {
   @override
   String get blurb =>
       'A cloud of 3D Gaussians, drawn as ellipses, sorted back to front off '
-      'the render thread and held to what the device can carry.';
+      'the render thread, and kept within what the device can carry.';
 
   @override
   ViewPoint get viewpoint =>

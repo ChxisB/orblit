@@ -40,7 +40,8 @@ class CamerasExample extends Example {
 
   @override
   String get blurb =>
-      'Third person, first person and flat, blended between, framing drawn.';
+      'Third person, first person and flat, blending between them, with the '
+      'framing drawn on top.';
 
   @override
   ViewPoint get viewpoint => const ViewPoint(distance: 22, pitch: 0.4);

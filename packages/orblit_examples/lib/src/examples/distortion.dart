@@ -27,7 +27,7 @@ class DistortionExample extends Example {
   @override
   String get blurb =>
       'A shockwave across a chequered floor, heat rising off a vent, and a '
-      'lens warping the lot.';
+      'lens warping all of it.';
 
   @override
   ViewPoint get viewpoint =>

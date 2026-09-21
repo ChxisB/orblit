@@ -28,8 +28,8 @@ class OutlineExample extends Example {
 
   @override
   String get blurb =>
-      'A selection outline that follows the silhouette, and still finds an '
-      'object hidden behind a wall.';
+      'A selection outline that follows the shape, and still finds an object '
+      'hidden behind a wall.';
 
   @override
   ViewPoint get viewpoint =>

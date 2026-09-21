@@ -1,6 +1,6 @@
 # orblit_noise
 
-Value and gradient noise, tiling and deterministic — the same field every run,
+Value and gradient noise, tiling and deterministic: the same field every run,
 on every machine.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
@@ -21,7 +21,7 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

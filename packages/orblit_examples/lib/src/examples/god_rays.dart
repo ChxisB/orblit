@@ -30,8 +30,8 @@ class GodRaysExample extends Example {
 
   @override
   String get blurb =>
-      'A low sun behind a colonnade, and the shafts of light the air between '
-      'the pillars catches.';
+      'A low sun behind a row of pillars, and the shafts of light the air '
+      'between them catches.';
 
   @override
   ViewPoint get viewpoint =>

@@ -28,7 +28,7 @@ class ManyExample extends Example {
 
   @override
   String get blurb =>
-      'A whole scene sent every frame, and only what moved paid for.';
+      'A whole scene sent every frame. You only pay for what moved.';
 
   @override
   ViewPoint get viewpoint =>

@@ -1,7 +1,7 @@
 # orblit_camera
 
-Cameras as shots rather than as objects. A camera describes what it wants to
-frame; the engine works out where to be and blends between them.
+Cameras as shots rather than objects. A camera says what it wants to frame,
+and the engine works out where to put it and how to blend between shots.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
@@ -21,7 +21,7 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

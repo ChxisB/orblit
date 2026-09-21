@@ -44,7 +44,7 @@ class BatchingExample extends Example {
   @override
   String get blurb =>
       'Thousands of identical crates, merged into instanced draws without the '
-      'scene saying so.';
+      'scene asking for it.';
 
   @override
   ViewPoint get viewpoint =>

@@ -20,7 +20,7 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

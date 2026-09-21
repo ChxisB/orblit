@@ -37,8 +37,8 @@ class MotionBlurExample extends Example {
 
   @override
   String get blurb =>
-      'A spinning fan and a sliding block smeared by their own motion while '
-      'the wall behind them stays sharp, at a shutter you choose.';
+      'A spinning fan and a sliding block, blurred by their own motion while '
+      'the wall behind them stays sharp. You pick the shutter.';
 
   @override
   ViewPoint get viewpoint =>

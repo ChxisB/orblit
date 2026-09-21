@@ -47,8 +47,8 @@ class TexturesExample extends Example {
 
   @override
   String get blurb =>
-      'A wall of textures named at once — pictures, Basis and cooked sets '
-      'chosen by the device — lit by a picture filtered at run time.';
+      'A wall of textures named at once: pictures, Basis, and cooked sets '
+      'chosen by the device. Lit by a picture filtered at run time.';
 
   @override
   ViewPoint get viewpoint =>

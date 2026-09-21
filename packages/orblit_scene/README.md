@@ -1,8 +1,8 @@
 # orblit_scene
 
-A scene as a document: entities with stable ids, a parent and a place in the
-order; components that say what each entity is; an ordered list of migrations
-from every older format; and diffs between two documents that can be applied
+A scene as a document. Entities with stable ids, a parent and a place in the
+order. Components that say what each entity is. An ordered list of migrations
+from every older format. And diffs between two documents, which can be applied
 and inverted.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
@@ -18,17 +18,17 @@ dependencies:
       path: packages/orblit_scene
 ```
 
-Needs Dart alone — no Flutter, and nothing in it draws anything. That is the
-point of it being its own package: the editor, the runtime, an importer and a
-command-line cook step all have to agree on what a scene *is*, and three of
-those four have no widget toolkit in them.
+Needs Dart alone. No Flutter, and nothing in it draws anything. That is why
+it is its own package: the editor, the runtime, an importer and a command-line
+cook step all have to agree on what a scene *is*, and three of those four have
+no widget toolkit in them.
 
 ## What an entity is
 
 There is no `kind` field. An entity is an id, a name, where it sits in the
-tree, and the set of components it has — so the question "is this a light" is
-answered by asking whether it has a light component. A lamp can be a mesh and a
-light at once, which the shape this replaced could not say at all.
+tree, and the set of components it has. So "is this a light" is answered by
+asking whether it has a light component. A lamp can be a mesh and a light at
+once, which the shape this replaced could not say at all.
 
 ```dart
 final lamp = SceneEntity(
@@ -55,21 +55,22 @@ for (final problem in load.problems) {
 await file.writeAsString(load.document.encode());
 ```
 
-A file that is not a scene is refused, and so is one written by a newer Orblit.
-Everything else is read as far as it can be: one broken object is reported and
-left out rather than costing somebody the other ninety-nine.
+A file that is not a scene is refused, and so is one written by a newer
+Orblit. Everything else is read as far as it can be. One broken object is
+reported and left out, rather than costing somebody the other ninety-nine.
 
-Saving the same document twice gives identical bytes — fixed key order, fixed
-component order — because a scene file lives in somebody's repository and a
-format that reorders itself turns every commit into a diff nobody can review.
+Saving the same document twice gives identical bytes, with a fixed key order
+and a fixed component order. A scene file lives in somebody's repository, and a
+format that reorders itself turns every commit into a diff nobody can
+review.
 
 ## Migrations
 
-An ordered list, oldest first, each working on decoded JSON rather than on
+An ordered list, oldest first, each one working on decoded JSON rather than on
 types this version still has. A version-one file runs every step in turn and
-arrives where a version-three file does after running the last one. Each step
-can leave a note, which comes back in `SceneLoad.problems`: a migration that
-silently changes what a scene looks like is worse than one that refuses.
+ends up where a version-three file does after running the last one. Each step
+can leave a note, which comes back in `SceneLoad.problems`. A migration that
+quietly changes what a scene looks like is worse than one that refuses.
 
 | Version | What changed |
 |---|---|
@@ -87,16 +88,16 @@ diff.applyTo(before);        // == after
 undo.applyTo(diff.applyTo(before));  // == before
 ```
 
-Operations are addressed by id, never by position — an undo stack full of "the
+Operations are addressed by id, never by position. An undo stack full of "the
 fourth object" corrupts a scene the moment somebody deletes the third. They
 serialise, so an editor can keep them on an undo stack, and they are what lets
 a renderer bring a scene with four thousand things in it up to date by touching
-the one that moved.
+only the one that moved.
 
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

@@ -41,8 +41,8 @@ class DecalsExample extends Example {
 
   @override
   String get blurb =>
-      'Posters, scorches, a puddle and road paint projected onto a floor and '
-      'a wall, lit and shadowed with the surface under them.';
+      'Posters, scorches, a puddle and road paint projected onto a floor and a '
+      'wall. They are lit and shadowed with the surface under them.';
 
   @override
   ViewPoint get viewpoint =>

@@ -1,7 +1,7 @@
 # orblit_effect
 
-Change stated as a function of time — move, turn, grow, fade — sequenced and
-composed.
+Change stated as a function of time: move, turn, grow and fade, sequenced and
+combined.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
@@ -21,7 +21,7 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

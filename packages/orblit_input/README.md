@@ -16,8 +16,8 @@ dependencies:
       path: packages/orblit_input
 ```
 
-Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner —
-on a platform with no backend it reports no pads rather than failing.
+Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner. On
+a platform with no backend it reports no pads rather than failing.
 
 ```dart
 final pads = Pads.open();
@@ -39,8 +39,8 @@ for (final event in frame.events) {
 
 ## What it does
 
-- **State and events, from one poll.** `PadState` answers "is it down now" and
-  "did it go down since the last frame"; `PadFrame.events` carries what a
+- **State and events, from one poll.** `PadState` answers "is it down now"
+  and "did it go down since the last frame". `PadFrame.events` carries what a
   snapshot cannot express.
 - **Dead zones and curves**, radial rather than per-axis, with the rescaling
   that keeps the output continuous where the zone ends.
@@ -49,41 +49,41 @@ for (final event in frame.events) {
 - **Hot-plug.** A pad that vanishes reads as neutral rather than as whatever
   it was holding, and takes its slot back when it returns.
 
-Linux, through evdev, so far. The platform's own gamepad interface behind the
-same front door is what the other platforms will be.
+Linux only so far, through evdev. The other platforms will each put their own
+gamepad interface behind the same front door.
 
 Not here: rumble, motion sensors, touchpads, and pointer lock.
 
 ## Checking it
 
 The parsing, the mapping, the shaping and the hot-plug run under
-`tool/check.sh` on any machine, against recorded byte streams — which is where
+`tool/check.sh` on any machine, against recorded byte streams. That is where
 the bugs are: a read that lands mid-record, a capability word whose top bit is
 set, the kernel admitting it dropped events.
 
-The read path itself needs a gamepad, and there was none, so Linux is asked to
-invent one. `/dev/uinput` takes the same description a driver would give and
-creates a real event device; the backend then finds it, classifies it from
+The read path itself needs a gamepad, and there was none, so Linux is asked
+to invent one. `/dev/uinput` takes the same description a driver would give
+and creates a real event device. The backend then finds it, classifies it from
 sysfs, asks the driver for its axis ranges and reads it, exactly as it would
-hardware.
+real hardware.
 
 ```sh
 ./tool/check_input_linux.sh
 ```
 
-The recipe, including the two things about containers that are not obvious —
-a `/dev` that no node ever appears in, and why this needs `--privileged` — is
-in that script's header.
+The recipe is in that script's header, including the two things about
+containers that are not obvious: a `/dev` that no node ever appears in, and why
+this needs `--privileged`.
 
-What it does not prove is any real driver's behaviour. The records come
+What it does not prove is how any real driver behaves. The records come
 through the kernel, but the pad they describe is one this repository made up,
-so a pad whose driver reports something unusual is still unexercised — and no
-physical controller, and no Steam Deck, has run this.
+so a pad whose driver reports something unusual is still untested. No physical
+controller, and no Steam Deck, has run this.
 
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

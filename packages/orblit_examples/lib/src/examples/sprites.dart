@@ -33,7 +33,7 @@ class SpritesExample extends Example {
 
   @override
   String get blurb =>
-      'Pixel art in layers: one draw a layer, drawn in order, and a backdrop '
+      'Pixel art in layers: one draw per layer, drawn in order, and a backdrop '
       'that scrolls without resending a tile.';
 
   /// How many coins there are.

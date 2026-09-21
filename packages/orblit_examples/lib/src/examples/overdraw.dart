@@ -74,8 +74,8 @@ class OverdrawExample extends Example {
 
   @override
   String get blurb =>
-      'Slabs that pass through each other, so that every pixel is covered as '
-      'many times as they overlap.';
+      'Slabs passing through each other, so every pixel is drawn once for each '
+      'one that covers it.';
 
   @override
   ViewPoint get viewpoint =>

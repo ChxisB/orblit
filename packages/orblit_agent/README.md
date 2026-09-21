@@ -1,6 +1,6 @@
 # orblit_agent
 
-What moves things that decide for themselves — steering behaviours that say
+What moves things that decide for themselves: steering behaviours that say
 where to go, and behaviour trees that say what to want.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
@@ -21,7 +21,7 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

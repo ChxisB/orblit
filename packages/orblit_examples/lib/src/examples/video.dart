@@ -34,7 +34,7 @@ class VideoExample extends Example {
   @override
   String get blurb =>
       'A film on four screens from one decoder, tinted, faded and played '
-      'backwards — set ORBLIT_VIDEO or paste a path.';
+      'backwards. Set ORBLIT_VIDEO or paste a path.';
 
   @override
   ViewPoint get viewpoint =>

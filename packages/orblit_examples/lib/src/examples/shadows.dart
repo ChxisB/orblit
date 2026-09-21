@@ -55,9 +55,9 @@ class ShadowsExample extends Example {
 
   @override
   String get blurb =>
-      'Filament\'s own shadows: sun, spot and point, with every setting — '
-      'map size, cascades and splits, bias, distance, contact shadows, and '
-      'the four kinds of edge.';
+      'Filament\'s own shadows: sun, spot and point, with every setting. Map '
+      'size, cascades and splits, bias, distance, contact shadows, and the '
+      'four kinds of edge.';
 
   @override
   ViewPoint get viewpoint =>

@@ -6,7 +6,7 @@
 
 <p align="center"><b>A 3D game engine you write in Dart</b></p>
 
-<p align="center">Game logic and interface in Flutter. An archetype entity-component core in C++. Google&rsquo;s Filament doing the rendering. The viewport is a widget, so the menu over it is an ordinary <code>Column</code>.</p>
+<p align="center">Game logic and interface in Flutter. An archetype entity-component core in C++. Google&rsquo;s Filament does the rendering. The viewport is a widget, so the menu over it is an ordinary <code>Column</code>.</p>
 
 <p align="center">
   <a title="CI" href="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml?query=event%3Apush+branch%3Amain"><img src="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml/badge.svg?branch=main&event=push"/></a>
@@ -31,14 +31,14 @@
 
 ## At a glance
 
-- **Rendering.** Filament's physically based materials and a tone mapper that behaves like a camera. Image-based lighting from HDR or EXR, directional, point and spot lights, cascaded shadows, and irradiance fields for bounced light sampled through a volume. A post stack with bloom, volumetric light, motion blur, occlusion, decals and selection outlines. Gaussian splats, instancing and populations.
-- **Simulation.** An archetype entity-component store written in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as views over the store's own memory rather than as copies, so reading a column is not a translation step and writing to one writes to the store.
-- **The scene is a widget.** `OrblitView` sits in the same widget tree as everything else, takes part in the same layout, and is composited by the same compositor. On Apple platforms the renderer draws into an IOSurface-backed buffer Flutter adopts as it is — no readback, no copy through the CPU. A panel can overlap the viewport, and the inventory screen has a widget test.
-- **Games.** Steering behaviours and behaviour trees, armatures with poses and bone constraints, camera shots that describe what to frame and blend between, collision, sampled time so the simulation does not care what the frame rate is, multiplayer that replicates component columns, and TypeScript scripting on QuickJS as a peer of Dart over the same core.
+- **Rendering.** Filament's physically based materials, and a tone mapper that behaves like a camera. Image-based lighting from HDR or EXR. Directional, point and spot lights, cascaded shadows, and irradiance fields for bounced light sampled through a volume. A post stack with bloom, volumetric light, motion blur, occlusion, decals and selection outlines. Gaussian splats, instancing and populations.
+- **Simulation.** An archetype entity-component store written in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as a view over the store's own memory rather than a copy, so reading a column costs nothing to translate, and writing to one writes to the store.
+- **The scene is a widget.** `OrblitView` sits in the same widget tree as everything else, takes part in the same layout, and is drawn by the same compositor. On Apple platforms the renderer draws into an IOSurface-backed buffer that Flutter takes as it is: no readback, no copy through the CPU. A panel can overlap the viewport, and the inventory screen has a widget test.
+- **Games.** Steering behaviours and behaviour trees. Armatures with poses and bone constraints. Camera shots that say what to frame, and blend between them. Collision. Sampled time, so the frame rate does not change the simulation. Multiplayer that replicates component columns. And TypeScript scripting on QuickJS, as a peer of Dart over the same core.
 - **2D.** Sprites in layers, atlas packing, parallax and tile maps, in the same scene as the 3D.
-- **Tooling.** A desktop editor, a gallery app that shows every technique one at a time beside the lines that do it, a build-time asset pipeline that cooks KTX2 texture sets per device, and a Claude Code skill so an assistant writes real API instead of guessing.
-- **Formats.** glTF, with FBX and OBJ converted on the way in. An `.oscene` scene document with migrations and diffs, KTX2 compressed textures, HDR and EXR environments, and `.ply`, `.spz` and `.osplat` splat captures.
-- **Platforms.** macOS, iOS, Android and the web draw today. Linux draws, though not yet on a real GPU. Windows builds on every change and nothing has drawn on it yet — [platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about the difference on purpose.
+- **Tooling.** A desktop editor. A gallery app that shows every technique one at a time, beside the lines that do it. A build-time asset pipeline that cooks KTX2 texture sets per device. And a Claude Code skill, so an assistant writes real API instead of guessing.
+- **Formats.** glTF, with FBX and OBJ converted on the way in. An `.oscene` scene document with migrations and diffs. KTX2 compressed textures, HDR and EXR environments, and `.ply`, `.spz` and `.osplat` splat captures.
+- **Platforms.** macOS, iOS, Android and the web draw today. Linux draws, though not yet on a real GPU. Windows builds on every change, and nothing has drawn on it yet. [Platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about that difference on purpose.
 
 ## Showcases
 
@@ -49,9 +49,9 @@ lines that do it, lifted from each example's own source.
 | Showcase | What it is |
 | --- | --- |
 | **Blocks** | A landscape of sixty thousand cubes you can walk around and dig into, generated and sent once. |
-| **Runner** | A runner you can play — dodge, jump, slide and pick up coins — with an autopilot that plays it well enough to prove the game is fair. |
+| **Runner** | A runner you can play: dodge, jump, slide and pick up coins. An autopilot plays it well enough to show the game is fair. |
 | **Bistro exterior** | Somebody else's street, lit by this engine. A hundred lights at night. |
-| **Bistro interior** | The room, and the one place the absence of bounced light shows. |
+| **Bistro interior** | The room, and the one place where missing bounced light shows. |
 
 To open the gallery on one:
 
@@ -81,11 +81,11 @@ dependencies:
       path: packages/orblit_filament
 ```
 
-The renderer's native side needs one setup step per platform, which downloads
+The renderer's native side needs one setup step per platform. It downloads
 Google's Filament SDK and compiles the materials.
 [Installing](https://orblitengine.com/docs/start/installing/) has what each
-machine needs and which machine can build for what;
-[your first scene](https://orblitengine.com/docs/start/your-first-scene/) is the
+machine needs, and which machine can build for what.
+[Your first scene](https://orblitengine.com/docs/start/your-first-scene/) is the
 shortest path to a frame.
 
 ```sh
@@ -97,12 +97,12 @@ shortest path to a frame.
 | Package | What it is |
 | --- | --- |
 | `orblit_core` | Archetype entity-component store in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as views, not copies. |
-| `orblit_codegen` | Turns annotated component classes into registration and a manifest other front ends read without compiling this package. |
+| `orblit_codegen` | Turns annotated component classes into registration code, and a manifest other front ends can read without compiling this package. |
 | `orblit_filament` | Filament rendering composited by Flutter's texture registry. |
 
-Those are the three the rest is built on. The other eighteen — geometry,
-rigging, agents, cameras, lighting, sprites, scene files, UI, weather and the
-rest — are listed in the
+Those are the three the rest is built on. The other eighteen cover geometry,
+rigging, agents, cameras, lighting, sprites, scene files, UI and weather. They
+are all listed in the
 [package reference](https://orblitengine.com/docs/reference/packages/).
 
 ## The rest of Orblit
@@ -114,7 +114,7 @@ rest — are listed in the
 | [`orblit-examples`](https://github.com/ChxisB/orblit-examples) | Worked examples of what the engine does, and how. |
 
 Design notes live outside these repositories, as Claude artifacts, so a
-checkout carries what it needs to build and run and nothing else.
+checkout carries what it needs to build and run, and nothing else.
 
 Pre-alpha. Nothing here is stable.
 
@@ -124,9 +124,9 @@ The documentation at [orblitengine.com](https://orblitengine.com) is also
 served as Markdown for language models, starting from
 [`llms.txt`](https://orblitengine.com/llms.txt). For Claude Code, this
 repository is a plugin marketplace holding one skill,
-[`skills/orblit`](skills/orblit), which carries the engine's model and its
-traps, and has the assistant check names against the source before it writes
-them. In Claude Code:
+[`skills/orblit`](skills/orblit). It carries the engine's model and its traps,
+and makes the assistant check names against the source before it writes them.
+In Claude Code:
 
 ```text
 /plugin marketplace add ChxisB/orblit
@@ -138,20 +138,20 @@ has the rest.
 
 ## Come and break it
 
-It is early enough that what you try first is likely to be the thing nobody has
-tried yet. Both of those are useful. The
+It is early enough that the first thing you try is probably something nobody
+has tried yet. Either way, we learn something. The
 [Discord](https://discord.gg/5DH7HuDUtJ) is where that conversation happens, and
 [CONTRIBUTING](CONTRIBUTING.md) has what to run before a pull request.
 
 ## Licence
 
-MPL-2.0, © 2026 Chris Beckett — the Mozilla Public License, and open source.
-Fork it, change it, and ship games made with it, commercial ones included:
-your game is your own and the licence does not reach into it. What it asks is
-that changes to Orblit's own files ship under the same licence, with source
-available to whoever you hand the result to, so engine work stays in the
-open.
+MPL-2.0, © 2026 Chris Beckett. That is the Mozilla Public License, and it is
+open source. Fork it, change it, and ship games made with it, including
+commercial ones: your game is your own, and the licence does not reach into it.
+What it asks is that changes to Orblit's own files ship under the same licence,
+with source available to whoever you hand the result to, so engine work stays
+in the open.
 
 Builds link Filament, which carries its own Apache 2.0 licence, and a prebuilt
-Filament.xcframework is committed here — so a full copy of that licence travels
+Filament.xcframework is committed here, so a full copy of that licence travels
 with it. See [LICENSE](LICENSE) and [NOTICE](NOTICE).

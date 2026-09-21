@@ -28,8 +28,8 @@ class FieldExample extends Example {
 
   @override
   String get blurb =>
-      'Probes standing in the room, holding the light that reaches them, so '
-      'indirect light survives the camera looking away.';
+      'Probes standing in the room hold the light that reaches them, so '
+      'indirect light stays put when the camera looks away.';
 
   @override
   ViewPoint get viewpoint =>

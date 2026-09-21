@@ -770,7 +770,7 @@ class BistroInteriorExample extends BistroExample {
 
   @override
   String get blurb =>
-      'The room, and the one place the absence of bounced light shows.';
+      'The room, and the one place where missing bounced light shows.';
 
   @override
   String get asset => wine ? 'BistroInterior_Wine' : 'BistroInterior';

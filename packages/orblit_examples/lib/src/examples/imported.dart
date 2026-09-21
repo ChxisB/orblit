@@ -94,8 +94,8 @@ class ImportedExample extends Example {
 
   @override
   String get blurb =>
-      'Clips, material variants and lights out of glTF files, named by the '
-      'files themselves.';
+      'Clips, material variants and lights read from glTF files, under the '
+      'names the files give them.';
 
   @override
   ViewPoint get viewpoint =>

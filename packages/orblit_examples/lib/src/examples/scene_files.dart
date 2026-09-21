@@ -37,7 +37,7 @@ class SceneFilesExample extends Example {
 
   @override
   String get blurb =>
-      'A .oscene document parsed and drawn, in 2D and in 3D, with an edit '
+      'A .oscene document read and drawn, in 2D and in 3D, with an edit '
       'applied as a diff rather than a rebuild.';
 
   @override

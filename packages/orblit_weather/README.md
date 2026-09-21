@@ -1,7 +1,7 @@
 # orblit_weather
 
 What the air is doing, and what is above it. Conditions, transitions, the
-shapes cloud takes, the day's own cycle, and the exposure any of it needs.
+shapes cloud takes, the cycle of the day, and the exposure any of it needs.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
@@ -21,7 +21,7 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

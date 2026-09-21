@@ -40,7 +40,7 @@ class PipelineExample extends Example {
 
   @override
   String get blurb =>
-      'Shadows, cascades, multisampling and render scale — the four named '
+      'Shadows, cascades, multisampling and render scale: the four named '
       'settings, and every dial behind them.';
 
   @override

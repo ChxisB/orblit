@@ -1,6 +1,6 @@
 # orblit_stage
 
-A scene document, staged for a renderer: entities and components become
+A scene document, staged for a renderer. Entities and components become
 objects, lights, clouds and sprite layers, and a diff moves only what it
 touched.
 
@@ -58,9 +58,9 @@ final character = OrblitObject(
   of a chain carries on the way it came. Each bone's roll lays its X axis as
   near its joint's X axis as the bone allows. No bone is left with no length.
   An unnamed joint is called `joint 3`, and a second joint with a name already
-  taken gets `.001`; `boneNamesOfSkin` gives the names.
+  taken gets `.001`. `boneNamesOfSkin` gives the names.
 - **An armature made by hand works too.** Only the names and the space have to
-  match: bones may point and twist however they like, because each joint keeps
+  match. Bones may point and twist however they like, because each joint keeps
   its rest offset from its bone. The armature's space has to be the model's
   own. `binding.bones` shows which joints found a bone.
 - **A joint no bone is named after** keeps its rest place relative to its
@@ -69,7 +69,7 @@ final character = OrblitObject(
   leaves a hand-set joint where it was put until the object stops being posed,
   so a joint left out would stay bent.
 - **The pose has to be evaluated first.** `jointsFor` does not evaluate it,
-  because a pose writes its inverse-kinematics solutions back into itself and
+  because a pose writes its inverse-kinematics solutions back into itself, and
   a second evaluation can give a different pose.
 
 ## Why it is its own package
@@ -77,38 +77,38 @@ final character = OrblitObject(
 It is the one piece that has to know both halves, and neither half should have
 to know the other.
 
-[`orblit_scene`](../orblit_scene) has no renderer in it, on purpose: a runtime,
-an importer and a command-line cook step all read scenes and none of them draw.
-[`orblit_filament`](../orblit_filament) has no artist units in it, on purpose:
-it takes light in the units a renderer works in, and an app using it directly
-should not have to carry a scene format, a set of migrations and a weather
-model to do so.
+[`orblit_scene`](../orblit_scene) has no renderer in it, on purpose. A
+runtime, an importer and a command-line cook step all read scenes, and none of
+them draw. [`orblit_filament`](../orblit_filament) has no artist units in it,
+also on purpose. It takes light in the units a renderer works in, and an app
+using it directly should not have to carry a scene format, a set of migrations
+and a weather model just to do that.
 
 ## What it does
 
 - **Transforms** are resolved against the whole tree, so a child is placed by
-  its parent as well as by itself. Rotation composes Z, then Y, then X — the
-  order the editor has always used, and therefore the only order that draws a
-  saved scene the way it was saved.
+  its parent as well as by itself. Rotation composes Z, then Y, then X. That is
+  the order the editor has always used, and therefore the only order that draws
+  a saved scene the way it was saved.
 - **Visibility inherits.** Hiding a group hides what is in it. A hidden light
   is left out of the scene rather than sent dark, because Filament shades one
   directional light and a budget of punctual ones, and a light nobody can see
   should not be the one that fills the budget.
 - **Keys are stable**, one per entity and per role, handed out once and never
-  reused — so the renderer keeps what it has built across an edit. A lamp that
+  reused, so the renderer keeps what it has built across an edit. A lamp that
   is both a mesh and a light gets two, since the two lists may or may not share
-  a namespace and this costs nothing and does not care.
-- **The air** comes from whichever entity carries the weather: the sky is
-  greyed and its ambient scattered by the cloud, fog is built from the mist,
-  and rain or snow becomes precipitation blowing the way the wind does.
-- **A diff rebuilds only what it touched**, meaning the entities its operations
-  name and everything under them — because where an entity is in the world and
-  whether it is shown are both inherited.
+  a namespace, and doing it this way costs nothing either way.
+- **The air** comes from whichever entity carries the weather. The cloud greys
+  the sky and scatters its ambient light, fog is built from the mist, and rain
+  or snow becomes precipitation blowing the way the wind does.
+- **A diff rebuilds only what it touched**, meaning the entities its
+  operations name and everything under them, because where an entity is in the
+  world and whether it is shown are both inherited.
 
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
-feature — see [VERSIONING.md](../../VERSIONING.md).
+feature. See [VERSIONING.md](../../VERSIONING.md).
 
 ## Licence
 

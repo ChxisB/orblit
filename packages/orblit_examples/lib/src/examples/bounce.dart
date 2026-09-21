@@ -27,8 +27,8 @@ class BounceExample extends Example {
 
   @override
   String get blurb =>
-      'One bounce, taken from the picture already drawn: coloured walls '
-      'tinting a white box between them.';
+      'One bounce of light, taken from the picture already drawn. Coloured '
+      'walls tint a white box between them.';
 
   @override
   ViewPoint get viewpoint =>
