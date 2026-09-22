@@ -31,7 +31,9 @@ the fullest reference.
 
 Other repositories: `orblit-net` (multiplayer: replication, ownership,
 interpolation), `orblit-script` (TypeScript scripting on QuickJS),
-`orblit-editor` (the editor app) and `orblit-examples` (the gallery app).
+`orblit-editor` (the editor app), `orblit-examples` (the gallery app) and
+`orblit-physics` (rigid bodies, and simulating a scene document's bodies; see
+[physics.md](physics.md)).
 Keyboard and touch input come from Flutter itself (`Focus`,
 `GestureDetector`); there is no Orblit keyboard package.
 
@@ -49,7 +51,8 @@ importing everything together and analysing:
 | `Blend` | `orblit_agent` and `orblit_camera` | Prefix one: `import '...orblit_camera.dart' as cam;` |
 | `Wait` | `orblit_agent` and `orblit_effect` | Prefix or `hide` |
 | `Sequence` | `orblit_agent` and `orblit_sequence` | Prefix or `hide` |
-| `Shape` | `orblit_collide` and `orblit_mesh` | Prefix or `hide` |
+| `Shape` | `orblit_collide`, `orblit_mesh` and `orblit_physics` | Prefix or `hide` |
+| `Layers` | `orblit_collide` and `orblit_physics` | Prefix or `hide` |
 
 The behaviour-tree time limit is `Deadline`, not `Timeout`.
 

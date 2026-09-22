@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked assets and assets fetched over a network; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked assets and assets fetched over a network; rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -380,6 +380,27 @@ levels while the rest of it is still arriving.
 
 Full API, parameter lists and the traps: [references/assets.md](references/assets.md).
 
+## Physics
+
+Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as two git
+dependencies: `orblit_physics` (the solver, native platforms only, not the
+web) and `orblit_physics_scene` (`ScenePhysics`, which simulates a scene
+document). An entity gets a body from a `body` component (`BodyComponent` in
+`orblit_scene`), and each `advance` answers with a `SceneDiff` for the view:
+
+```dart
+final scene = ScenePhysics(document);
+final moved = scene.advance(seconds); // already in scene.document
+if (!moved.isEmpty) setState(() => view.apply(moved));
+```
+
+Edits go to both `scene.apply` and `view.apply`, and are teleports. Never hand
+`advance`'s own diff back to `scene.apply`. Read collisions from
+`scene.events`, not `scene.physics.events`, which holds only the last step.
+`Shape.box` takes half sizes where the component's `size` is edge to edge.
+
+Install, API and the traps: [references/physics.md](references/physics.md).
+
 ## Scene notes, not silence
 
 The renderer reports what it couldn't do through `onSceneNotes`, a
@@ -442,7 +463,8 @@ CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),
 `orblit_weather`, `orblit_input`, `orblit_asset`, `orblit_core`. What each
 does and the entry points worth knowing are in
 [references/packages.md](references/packages.md). Add each the same way as
-`orblit_filament`, with its own `path`.
+`orblit_filament`, with its own `path`. Physics is the exception: it is in
+its own repository, as the section above says.
 
 ## Reference files
 
@@ -455,6 +477,8 @@ Load these when the task needs them:
   what has actually been seen to work.
 - [references/assets.md](references/assets.md): materials and looks, scene
   files and their export and import, splats, cooked and networked assets.
+- [references/physics.md](references/physics.md): the physics world, bodies
+  in scene documents, and simulating a document.
 - [references/packages.md](references/packages.md): the other packages.
 
 ## Licence
