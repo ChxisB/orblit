@@ -13,6 +13,8 @@
   job — and a body is not a mesh's boundary: one is for picking, the other for
   falling.
 - `Values.bits` reads a layer mask, kept to thirty-two bits.
+- `BodyComponent.copyWith`, because a component is replaced rather than
+  edited: an inspector changing one field of a body makes a new body.
 - A new component type needs no format change: a file with a body in it opened
   by 0.4.0 keeps the body as a component it has not heard of and writes it
   back untouched, so the format stays at 4.

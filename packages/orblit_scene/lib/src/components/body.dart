@@ -100,6 +100,43 @@ class BodyComponent extends SceneComponent {
   /// All thirty-two layers.
   static const int everyLayer = 0xFFFFFFFF;
 
+  /// The same body with some of it changed.
+  ///
+  /// A component is replaced rather than edited, so this is how one field of
+  /// a body changes: an inspector's mass slider makes a new body a frame. The
+  /// vectors are copied, so the two never share a size.
+  BodyComponent copyWith({
+    BodyShape? shape,
+    Vector3? size,
+    double? radius,
+    double? height,
+    Vector3? centre,
+    BodyMotion? motion,
+    double? mass,
+    double? friction,
+    double? restitution,
+    double? linearDamping,
+    double? angularDamping,
+    int? layers,
+    int? cares,
+    bool? startsAsleep,
+  }) => BodyComponent(
+    shape: shape ?? this.shape,
+    size: (size ?? this.size).clone(),
+    radius: radius ?? this.radius,
+    height: height ?? this.height,
+    centre: (centre ?? this.centre).clone(),
+    motion: motion ?? this.motion,
+    mass: mass ?? this.mass,
+    friction: friction ?? this.friction,
+    restitution: restitution ?? this.restitution,
+    linearDamping: linearDamping ?? this.linearDamping,
+    angularDamping: angularDamping ?? this.angularDamping,
+    layers: layers ?? this.layers,
+    cares: cares ?? this.cares,
+    startsAsleep: startsAsleep ?? this.startsAsleep,
+  );
+
   final BodyShape shape;
 
   /// How big a box is, edge to edge — not from the middle — because a one

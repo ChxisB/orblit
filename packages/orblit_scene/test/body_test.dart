@@ -82,6 +82,38 @@ void main() {
     });
   });
 
+  group('changing a body', () {
+    test('changes what it was asked to and keeps the rest', () {
+      final before = BodyComponent(
+        shape: BodyShape.capsule,
+        size: Vector3(1, 2, 3),
+        radius: 0.25,
+        mass: 70,
+        layers: 4,
+        startsAsleep: true,
+      );
+      final after = before.copyWith(mass: 80, motion: BodyMotion.driven);
+
+      expect(after.mass, 80);
+      expect(after.motion, BodyMotion.driven);
+      expect(after.toJson(), {
+        ...before.toJson(),
+        'mass': 80.0,
+        'motion': 'driven',
+      });
+    });
+
+    test('does not share its vectors with the body it came from', () {
+      final before = BodyComponent(size: Vector3(1, 2, 3));
+      final after = before.copyWith();
+      after.size.x = 9;
+      after.centre.y = 9;
+
+      expect(before.size, Vector3(1, 2, 3));
+      expect(before.centre, Vector3.zero());
+    });
+  });
+
   group('a body in a scene', () {
     test('keeps the size of a shape it is not using', () {
       final box = BodyComponent(size: Vector3(2, 1, 4));
