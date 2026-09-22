@@ -37,6 +37,15 @@ abstract final class Values {
     return value is bool ? value : fallback;
   }
 
+  /// A whole number that is a set of bits — a layer mask — or [fallback].
+  ///
+  /// Kept to thirty-two bits, because that is how many layers there are, and a
+  /// mask written as `-1` by hand means all of them rather than an error.
+  static int bits(Map<String, Object?> json, String key, int fallback) {
+    final value = json[key];
+    return value is num ? value.toInt() & 0xFFFFFFFF : fallback;
+  }
+
   static String? text(Map<String, Object?> json, String key) {
     final value = json[key];
     return value is String ? value : null;

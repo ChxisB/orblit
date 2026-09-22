@@ -57,6 +57,13 @@ SceneDocument randomDocument(Random random, {required int size}) {
         depth: random.nextInt(4).toDouble(),
       );
     }
+    if (random.nextBool()) {
+      components[SceneComponents.body] = BodyComponent(
+        shape: BodyShape.values[random.nextInt(BodyShape.values.length)],
+        motion: BodyMotion.values[random.nextInt(BodyMotion.values.length)],
+        mass: random.nextInt(4) + 1,
+      );
+    }
     if (random.nextInt(5) == 0) {
       components['unheardof'] = UnknownComponent('unheardof', {
         'value': random.nextInt(9),

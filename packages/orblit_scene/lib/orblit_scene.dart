@@ -13,6 +13,7 @@ library;
 
 export 'src/component.dart'
     show ComponentReader, SceneComponent, SceneComponents, UnknownComponent;
+export 'src/components/body.dart' show BodyComponent, BodyMotion, BodyShape;
 export 'src/components/data.dart' show DataComponent, PrefabComponent;
 export 'src/components/drawing.dart'
     show MaterialComponent, MeshComponent, SplatsComponent;

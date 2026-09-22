@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.0
+
+- **A body.** `BodyComponent` says what the physics does with an entity: a
+  `BodyShape` (a box, a ball, a capsule or endless ground), a `BodyMotion`
+  (fixed, driven or free), its mass, grip, bounce and damping, which layers it
+  is in and which it cares about, and whether it starts asleep. Sizes are in
+  the entity's own units, so a body scales with its entity, and a box's size is
+  edge to edge and a capsule's height tip to tip, because a one metre crate
+  should say one. It is written after what an entity draws and before what it
+  lights. Nothing here simulates anything — that is `orblit_physics_scene`'s
+  job — and a body is not a mesh's boundary: one is for picking, the other for
+  falling.
+- `Values.bits` reads a layer mask, kept to thirty-two bits.
+- A new component type needs no format change: a file with a body in it opened
+  by 0.4.0 keeps the body as a component it has not heard of and writes it
+  back untouched, so the format stays at 4.
+
 ## 0.4.0
 
 - **A scene can be read back in.** `readSceneFrom` takes the bytes of a `.glb`

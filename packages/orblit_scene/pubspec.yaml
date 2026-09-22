@@ -3,7 +3,7 @@ description: >-
   A scene as a document: entities with stable ids, a parent and an order,
   components that describe what each one is, migrations from every older
   format, and diffs between two documents that can be applied and inverted.
-version: 0.4.0
+version: 0.5.0
 publish_to: none
 
 environment:
