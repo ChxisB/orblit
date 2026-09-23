@@ -2,7 +2,7 @@ name: orblit_examples
 description: >-
   One technique at a time: a scene that shows it, the controls that change it,
   and the lines that do it. Shown by the gallery app and by the editor.
-version: 0.31.0
+version: 0.32.0
 publish_to: none
 
 environment:
@@ -16,6 +16,10 @@ dependencies:
     path: ../orblit_filament
   orblit_camera:
     path: ../orblit_camera
+  # For a model file's clips played on the Dart side rather than the
+  # renderer's.
+  orblit_motion:
+    path: ../orblit_motion
   # For reading a scene as a document, and for staging one to be drawn.
   orblit_scene:
     path: ../orblit_scene

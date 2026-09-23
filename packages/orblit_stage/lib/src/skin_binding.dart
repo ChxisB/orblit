@@ -1,23 +1,24 @@
 import 'dart:math' as math;
 
 import 'package:orblit_filament/orblit_filament.dart';
+import 'package:orblit_motion/orblit_motion.dart' show BoneLocal;
 import 'package:orblit_rig/orblit_rig.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 /// The name each of a skin's joints goes by as a bone, in the skin's order.
 ///
-/// Usually its own. A file is free to leave a joint unnamed or to name two
-/// joints alike, and an armature is not: bones are found by name, so two
-/// answering to one would be a rig where posing one moves the other. An
-/// unnamed joint is called `joint` and its position in the skin, which is the
-/// number an [OrblitJointPose] reaches it by. A name already taken gets
-/// `.001`, `.002` and so on, which is what Blender does to a duplicated bone
-/// and so what an artist will recognise. The first joint with a name keeps it,
-/// whatever comes after, so a renamed joint never takes a name from another.
+/// Usually its own, made unique by [BoneNaming.unique]: a name already taken
+/// gets `.001`. The renderer calls a joint the file left unnamed after the
+/// mesh, light or camera it carries, or else `<unknown>`, so two of those are
+/// `<unknown>` and `<unknown>.001`. A joint with no name at all, in a skin
+/// described by hand, is called `joint` and its position in the skin, which
+/// is the number an [OrblitJointPose] reaches it by.
 ///
 /// Public because an armature made by hand has to use these names to reach a
-/// joint the file named twice.
-List<String> boneNamesOfSkin(OrblitSkinInfo skin) => _namesOf(skin.joints);
+/// joint the file named twice. A clip imported from the same file names its
+/// bones the same way.
+List<String> boneNamesOfSkin(OrblitSkinInfo skin) =>
+    BoneNaming.unique(skin.joints);
 
 /// An armature for a model's skin, with one deforming bone per joint.
 ///
@@ -142,6 +143,7 @@ class OrblitSkinBinding {
     : bones = List.unmodifiable([
         for (final name in shape.names) armature.contains(name) ? name : null,
       ]),
+      _names = shape.names,
       _parents = shape.parents,
       _order = shape.order,
       _rest = shape.rest,
@@ -192,6 +194,10 @@ class OrblitSkinBinding {
   /// watching an arm fail to move.
   final List<String?> bones;
 
+  /// Each joint's name as a bone, which is how a clip reaches it whether or
+  /// not the armature has a bone by that name.
+  final List<String> _names;
+
   final List<int> _parents;
   final List<int> _order;
   final List<Matrix4> _rest;
@@ -217,6 +223,152 @@ class OrblitSkinBinding {
   /// and this is the whole way there from the model's root.
   final List<Matrix4> _nodeFromParent;
 
+  /// The rest of it worked out only for a binding a clip drives, which most
+  /// are not yet.
+  late final List<Matrix4> _parentFromNode = [
+    for (final step in _nodeFromParent) Matrix4.inverted(step),
+  ];
+
+  /// Each joint's rest local in parts, for a clip that keys only some.
+  late final List<({Vector3 position, Quaternion rotation, Vector3 scale})>
+  _restParts = [for (final local in _local) _partsOf(local)];
+
+  /// Where each bone sits in its joint's frame, the other way round from
+  /// [_offsets].
+  late final List<Matrix4?> _boneFromJoint = [
+    for (final offset in _offsets)
+      offset == null ? null : Matrix4.inverted(offset),
+  ];
+
+  late final Map<String, int> _jointOfBone = {
+    for (var joint = 0; joint < bones.length; joint++)
+      if (bones[joint] case final String bone) bone: joint,
+  };
+
+  /// Each joint's transform relative to whatever it hangs from, where
+  /// [locals] puts it.
+  ///
+  /// [locals] is a clip's bones at one moment, by name, the way a sampled
+  /// clip frame keeps them for the model it plays on. A clip keys a joint
+  /// the way the file does, relative to the node above it, so these are the
+  /// clip's own numbers. Whatever the clip leaves out, a part or a whole
+  /// joint, is the rest's: a clip that only turns an arm keeps the arm's
+  /// length.
+  List<Matrix4> localsFrom(Map<String, BoneLocal> locals) => [
+    for (var joint = 0; joint < _names.length; joint++)
+      _localFrom(joint, locals[_names[joint]]),
+  ];
+
+  /// [locals] straight to the renderer, with no rig in between.
+  ///
+  /// For a model that only plays clips. One whose rig has something to add,
+  /// a foot put on the ground or a head turned toward a sound, goes through
+  /// [poseFrom] instead. Every joint is returned, for the reason
+  /// [jointsFor] gives.
+  List<OrblitJointPose> jointsFrom(Map<String, BoneLocal> locals) {
+    final transforms = localsFrom(locals);
+    return [
+      for (var joint = 0; joint < transforms.length; joint++)
+        OrblitJointPose(
+          skin: index,
+          joint: joint,
+          transform: transforms[joint],
+        ),
+    ];
+  }
+
+  /// Sets [pose] so that, once evaluated, its bones carry the joints to where
+  /// [locals] puts them.
+  ///
+  /// How a clip reaches a rig: this, then [Pose.evaluate], then [jointsFor].
+  /// Evaluating is where the rig has its say, so a constraint or a limb
+  /// reaching for a target starts from the clip's pose rather than from
+  /// rest, the way an animator's rig works on the keys underneath it. With
+  /// nothing in the rig to say anything, the joints come out as [jointsFrom]
+  /// gives them.
+  ///
+  /// With one exception: a joint stretched further along one of its own axes
+  /// than another. A bone's axes are its own, not its joint's, so that
+  /// stretch is a shear to the bone, and a pose has no shear to give it. The
+  /// joint, and every joint that hangs from it, still ends up where the clip
+  /// puts it, turned as near as a bone can carry it. A model whose clips
+  /// squash and stretch that way plays them through [jointsFrom].
+  ///
+  /// Every bone that drives a joint is written, including one the clip does
+  /// not key, which goes back to rest: a bone left as the last clip had it
+  /// would hold that clip's pose under this one. A bone that drives no joint,
+  /// a control or a target, is left as it is, for whoever moves it.
+  void poseFrom(Map<String, BoneLocal> locals, Pose pose) {
+    _checkArmatureOf(pose);
+    final transforms = localsFrom(locals);
+
+    // Each joint in the model's frame, the way the renderer would compose
+    // it. A joint hanging from no joint starts from the model's root.
+    final joints = List<Matrix4?>.filled(transforms.length, null);
+    for (final joint in _order) {
+      final parent = _parents[joint];
+      final step = _parentFromNode[joint].multiplied(transforms[joint]);
+      joints[joint] = parent >= 0 ? joints[parent]!.multiplied(step) : step;
+    }
+
+    // Then each bone, parents first, where it has to be to carry its joint,
+    // and the pose that puts it there from wherever its parent ended up.
+    final worlds = <String, Matrix4>{};
+    for (final name in armature.evaluationOrder) {
+      final parent = armature[name]!.parent;
+      final above = parent == null ? null : worlds[parent];
+      final rest = armature.restLocalOf(name);
+      final base = above == null ? rest : above.multiplied(rest);
+      final transform = pose[name];
+
+      final joint = _jointOfBone[name];
+      if (joint == null) {
+        worlds[name] = base.multiplied(transform.matrix);
+        continue;
+      }
+      final world = joints[joint]!.multiplied(_boneFromJoint[joint]!);
+      final undo = _inverseOf(base);
+      // Under a bone scaled to nothing, where a bone is makes no difference
+      // to anything drawn, and there is no frame to measure it in.
+      if (undo == null) {
+        transform.reset();
+      } else {
+        _setParts(undo.multiplied(world), transform);
+      }
+      // Where the pose will put the bone, which is not always where the
+      // clip wanted it. Its children are measured from here, so they make
+      // up the difference rather than inherit it.
+      worlds[name] = base.multiplied(transform.matrix);
+    }
+  }
+
+  void _checkArmatureOf(Pose pose) {
+    if (!identical(pose.armature, armature)) {
+      throw ArgumentError.value(
+        pose,
+        'pose',
+        'A pose of a different armature. The offsets were measured against '
+            'the armature this binding was made with, and the bones of another '
+            'one would carry the joints from somewhere they never rested.',
+      );
+    }
+  }
+
+  Matrix4 _localFrom(int joint, BoneLocal? local) {
+    if (local == null ||
+        (local.position == null &&
+            local.rotation == null &&
+            local.scale == null)) {
+      return _local[joint].clone();
+    }
+    final rest = _restParts[joint];
+    return Matrix4.compose(
+      local.position ?? rest.position,
+      local.rotation ?? rest.rotation,
+      local.scale ?? rest.scale,
+    );
+  }
+
   /// Every joint of the skin, placed as [pose] has its bones.
   ///
   /// [pose] has to be a pose of [armature], and it has to have been evaluated
@@ -234,15 +386,7 @@ class OrblitSkinBinding {
   /// much as working them out. A joint no bone drives comes back exactly as
   /// the file has it, which, relative to its parent, keeps it where it rests.
   List<OrblitJointPose> jointsFor(Pose pose) {
-    if (!identical(pose.armature, armature)) {
-      throw ArgumentError.value(
-        pose,
-        'pose',
-        'A pose of a different armature. The offsets were measured against '
-            'the armature this binding was made with, and the bones of another '
-            'one would carry the joints from somewhere they never rested.',
-      );
-    }
+    _checkArmatureOf(pose);
 
     final count = _order.length;
     final world = List<Matrix4?>.filled(count, null);
@@ -266,7 +410,10 @@ class OrblitSkinBinding {
       if (bones[joint] == null) return _local[joint].clone();
       final parent = _parents[joint];
       if (parent < 0) return _nodeFromParent[joint].multiplied(world[joint]!);
-      final intoParent = undone[parent] ??= Matrix4.inverted(world[parent]!);
+      final intoParent = undone[parent] ??= _inverseOf(world[parent]!);
+      // A parent scaled to nothing, the usual way a clip hides a part, takes
+      // everything under it along, and has no frame to place a joint in.
+      if (intoParent == null) return _local[joint].clone();
       return _nodeFromParent[joint]
           .multiplied(intoParent)
           .multiplied(world[joint]!);
@@ -351,7 +498,13 @@ class _SkinShape {
       place(joint);
     }
 
-    return _SkinShape._(_namesOf(skin.joints), parents, rest, local, order);
+    return _SkinShape._(
+      BoneNaming.unique(skin.joints),
+      parents,
+      rest,
+      local,
+      order,
+    );
   }
 
   final List<String> names;
@@ -385,30 +538,6 @@ class _SkinShape {
   }
 }
 
-List<String> _namesOf(List<String> joints) {
-  final taken = <String>{};
-  final names = List<String?>.filled(joints.length, null);
-
-  // Every name the file gives is claimed before anything is renamed, so a
-  // renamed joint cannot take the name of one that comes after it.
-  for (var joint = 0; joint < joints.length; joint++) {
-    final name = joints[joint];
-    if (name.isNotEmpty && taken.add(name)) names[joint] = name;
-  }
-
-  for (var joint = 0; joint < joints.length; joint++) {
-    if (names[joint] != null) continue;
-    final base = joints[joint].isEmpty ? 'joint $joint' : joints[joint];
-    var name = base;
-    for (var copy = 1; !taken.add(name); copy++) {
-      name = '$base.${copy.toString().padLeft(3, '0')}';
-    }
-    names[joint] = name;
-  }
-
-  return [for (final name in names) name!];
-}
-
 /// The roll that lays a bone's X axis nearest its joint's.
 ///
 /// Measured against the bone as the armature will build it with no roll,
@@ -429,6 +558,38 @@ double _rollFor(Vector3 head, Vector3 tail, Matrix4 rest) {
   if (jointZ != null) return math.atan2(jointZ.dot(x), jointZ.dot(z));
 
   return 0;
+}
+
+/// [matrix] undone, or null for one that squashes something flat.
+Matrix4? _inverseOf(Matrix4 matrix) {
+  final inverse = Matrix4.zero();
+  final determinant = inverse.copyInverse(matrix);
+  return determinant == 0 || !determinant.isFinite ? null : inverse;
+}
+
+({Vector3 position, Quaternion rotation, Vector3 scale}) _partsOf(
+  Matrix4 matrix,
+) {
+  final transform = PoseTransform();
+  _setParts(matrix, transform);
+  return (
+    position: transform.location,
+    rotation: transform.rotation,
+    scale: transform.scale,
+  );
+}
+
+/// [matrix] written into [transform] as a move, a turn and a scale.
+///
+/// A scale of nothing on some axis leaves no way to tell which way that axis
+/// was turned, and the turn comes out as not-a-number. It is taken as no
+/// turn at all, which is what anything scaled flat looks like anyway.
+void _setParts(Matrix4 matrix, PoseTransform transform) {
+  matrix.decompose(transform.location, transform.rotation, transform.scale);
+  final turn = transform.rotation;
+  final finite =
+      turn.x.isFinite && turn.y.isFinite && turn.z.isFinite && turn.w.isFinite;
+  if (!finite) turn.setValues(0, 0, 0, 1);
 }
 
 Vector3 _axisOf(Matrix4 matrix, int column) {

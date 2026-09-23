@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.32.0
+
+- **Imported models can play a file's clips through Orblit.** A new *Played
+  by* setting chooses between the renderer, as before, and Orblit: the
+  file's animations imported as clips with `clipsFromGltf`, played by a
+  `ClipPlayer`, and set on the model's skins joint by joint with
+  `OrblitSkinBinding.jointsFrom`. The Fox is the first model to be cut over
+  this way. A change of clip cuts rather than fades for now; fading between
+  Orblit's clips comes with the blend layer. Anything the import could not
+  carry, such as morph target weights, is said under the setting.
+
 ## 0.31.0
 
 - **The Runner is a game you can play.** Three lanes down a country road:

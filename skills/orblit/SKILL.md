@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked assets and assets fetched over a network; rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked assets and assets fetched over a network; animation clips with orblit_motion (.oclip files played on scene entities and a model's bones, root motion, clips imported from glTF); rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -431,7 +431,8 @@ sentence saying what went wrong.
 - **Name clashes.** `orblit_collide` exports `Sphere` and `Ray`, as does
   `vector_math` (`hide Ray, Sphere` on one). Flutter's `Colors` clashes with
   `vector_math`'s, hence `hide Colors`. `orblit_agent`'s `Align` and
-  `orblit_sequence`'s `Key` and `Easing` clash with Flutter, and `Blend`,
+  the `Key` and `Easing` of `orblit_sequence` and `orblit_motion` clash with
+  Flutter, and `Blend`,
   `Wait`, `Sequence` and `Shape` each exist in two Orblit packages. The full
   table is in [references/packages.md](references/packages.md). The
   behaviour-tree time limit is `Deadline`, not `Timeout`.
@@ -456,6 +457,7 @@ sentence saying what went wrong.
 (cameras as shots, blends, damping), `orblit_agent` (steering and behaviour
 trees), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
 (change as a function of time), `orblit_sequence` (cutscenes),
+`orblit_motion` (animation clips, on entities and bones alike),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
 CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_filament/orblit_filament.dart';
+import 'package:orblit_motion/orblit_motion.dart' show BoneLocal;
 import 'package:orblit_rig/orblit_rig.dart';
 import 'package:orblit_stage/orblit_stage.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -435,6 +436,191 @@ void main() {
             contains('Pose.evaluate'),
           ),
         ),
+      );
+    });
+  });
+
+  group('a clip on a skin', () {
+    final hipsAt = Vector3(0.1, 0.3, -0.2);
+    final hipsTurn = Quaternion.axisAngle(Vector3(0, 1, 0), 0.9);
+    final spineTurn = Quaternion.axisAngle(
+      Vector3(1, 0, 0.4).normalized(),
+      -0.7,
+    );
+    final neckScale = Vector3(1.5, 0.5, 1);
+
+    /// A frame of a clip that moves the hips, turns the spine, grows the
+    /// neck, by [neck] when it is given, and leaves the tail alone.
+    Map<String, BoneLocal> frame({Vector3? neck}) => {
+      'hips': BoneLocal(position: hipsAt, rotation: hipsTurn),
+      'spine': BoneLocal(rotation: spineTurn),
+      'neck': BoneLocal(scale: neck ?? Vector3.all(1.3)),
+    };
+
+    OrblitSkinBinding bindingOf(Armature armature) =>
+        OrblitSkinBinding(armature, Figure.skin, index: 1);
+
+    void expectRest(PoseTransform transform, String bone) {
+      expectVector(transform.location, Vector3.zero(), reason: bone);
+      expect(transform.rotation.w.abs(), closeTo(1, 1e-6), reason: bone);
+      expectVector(transform.scale, Vector3.all(1), reason: bone);
+    }
+
+    test('keys what it keys, and the rest is where the file has it', () {
+      final joints = bindingOf(
+        armatureOfSkin(Figure.skin),
+      ).jointsFrom(frame(neck: neckScale));
+
+      expect(joints, hasLength(4));
+      expect({for (final joint in joints) joint.skin}, {1});
+      expectMatrix(
+        joints[Figure.hips].transform,
+        Matrix4.compose(hipsAt, hipsTurn, Vector3.all(1)),
+        reason: 'hips',
+      );
+      // A turn alone keeps the spine where it hangs from the hips.
+      expectMatrix(
+        joints[Figure.spine].transform,
+        Matrix4.compose(Vector3(0, 0.3, 0.02), spineTurn, Vector3.all(1)),
+        reason: 'spine',
+      );
+      expectMatrix(
+        joints[Figure.neck].transform,
+        Matrix4.compose(
+          Vector3(0, 0.12, 0.03),
+          Quaternion.axisAngle(Vector3(0.3, 0, 1).normalized(), 1.1),
+          neckScale,
+        ),
+        reason: 'neck',
+      );
+      expectMatrix(joints[Figure.tail].transform, Figure.tailLocal);
+    });
+
+    test('through a rig, puts every joint where the clip alone would', () {
+      for (final armature in [armatureOfSkin(Figure.skin), handMade()]) {
+        final binding = bindingOf(armature);
+        final pose = Pose(armature);
+        binding.poseFrom(frame(), pose);
+        pose.evaluate();
+
+        final through = Figure.worldsOf(binding.jointsFor(pose));
+        final alone = Figure.worldsFrom(binding.localsFrom(frame()));
+        for (var joint = 0; joint < 4; joint++) {
+          expectMatrix(
+            through[joint],
+            alone[joint],
+            reason: Figure.skin.joints[joint],
+          );
+        }
+        // Far enough that the test cannot pass by nothing having moved.
+        expect(
+          (through[Figure.neck].getTranslation() - Figure.headOf(Figure.neck))
+              .length,
+          greaterThan(0.1),
+        );
+      }
+    });
+
+    test('through a rig, a stretch along one axis still puts every joint '
+        'where the clip does', () {
+      final stretched = frame()
+        ..['spine'] = BoneLocal(rotation: spineTurn, scale: neckScale);
+
+      for (final armature in [armatureOfSkin(Figure.skin), handMade()]) {
+        final binding = bindingOf(armature);
+        final pose = Pose(armature);
+        binding.poseFrom(stretched, pose);
+        pose.evaluate();
+
+        final through = Figure.worldsOf(binding.jointsFor(pose));
+        final alone = Figure.worldsFrom(binding.localsFrom(stretched));
+        for (var joint = 0; joint < 4; joint++) {
+          expectVector(
+            through[joint].getTranslation(),
+            alone[joint].getTranslation(),
+            reason: Figure.skin.joints[joint],
+          );
+        }
+      }
+    });
+
+    test('with nothing keyed, leaves every bone at rest', () {
+      for (final armature in [armatureOfSkin(Figure.skin), handMade()]) {
+        final pose = Pose(armature);
+        pose['spine'].rotation = spineTurn;
+        bindingOf(armature).poseFrom({}, pose);
+
+        for (final bone in armature.bones) {
+          expectRest(pose[bone.name], bone.name);
+        }
+      }
+    });
+
+    test('puts back a bone it does not key, and leaves a bone that drives no '
+        'joint to whoever moves it', () {
+      final armature = handMade()
+        ..add(
+          Bone(
+            name: 'look',
+            head: Figure.headOf(Figure.neck) + Vector3(0, 0, 0.5),
+            tail: Figure.headOf(Figure.neck) + Vector3(0, 0, 0.6),
+            parent: 'spine',
+            deform: false,
+          ),
+        );
+      final pose = Pose(armature);
+      pose['tail'].rotation = Quaternion.axisAngle(Vector3(1, 0, 0), 0.5);
+      pose['look'].location = Vector3(0, 0.2, 0);
+
+      bindingOf(armature).poseFrom(frame(), pose);
+
+      expectRest(pose['tail'], 'tail');
+      expectVector(pose['look'].location, Vector3(0, 0.2, 0));
+      expect(pose['hips'].isRest, isFalse);
+    });
+
+    test('a joint scaled to nothing takes what hangs from it with it', () {
+      final shrunk = frame()..['spine'] = BoneLocal(scale: Vector3.zero());
+
+      final alone = Figure.worldsOf(
+        bindingOf(armatureOfSkin(Figure.skin)).jointsFrom(shrunk),
+      );
+      expectVector(
+        alone[Figure.neck].getTranslation(),
+        alone[Figure.spine].getTranslation(),
+      );
+
+      for (final armature in [armatureOfSkin(Figure.skin), handMade()]) {
+        final binding = bindingOf(armature);
+        final pose = Pose(armature);
+        binding.poseFrom(shrunk, pose);
+        pose.evaluate();
+        final joints = binding.jointsFor(pose);
+
+        for (final joint in joints) {
+          expect(
+            joint.transform.storage.every((value) => value.isFinite),
+            isTrue,
+            reason: Figure.skin.joints[joint.joint],
+          );
+        }
+        final through = Figure.worldsOf(joints);
+        expectVector(
+          through[Figure.neck].getTranslation(),
+          through[Figure.spine].getTranslation(),
+        );
+        expectVector(
+          through[Figure.hips].getTranslation(),
+          alone[Figure.hips].getTranslation(),
+        );
+      }
+    });
+
+    test('refuses a pose of some other armature', () {
+      final armature = armatureOfSkin(Figure.skin);
+      expect(
+        () => bindingOf(armature).poseFrom(frame(), Pose(armature.copy())),
+        throwsArgumentError,
       );
     });
   });

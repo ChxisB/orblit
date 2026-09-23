@@ -15,6 +15,7 @@ the fullest reference.
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
+| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
@@ -47,7 +48,7 @@ importing everything together and analysing:
 | `Sphere`, `Ray` | `orblit_collide` and `vector_math` | `import 'package:vector_math/vector_math_64.dart' hide Ray, Sphere;` |
 | `Colors` | Flutter and `vector_math` | `hide Colors` on `vector_math` |
 | `Align` | `orblit_agent` and Flutter | `hide Align` on one, or a prefix |
-| `Key`, `Easing` | `orblit_sequence` and Flutter | `hide Key, Easing` on one, or a prefix |
+| `Key`, `Easing` | `orblit_sequence`, `orblit_motion` and Flutter | `hide Key, Easing` on one, or a prefix |
 | `Blend` | `orblit_agent` and `orblit_camera` | Prefix one: `import '...orblit_camera.dart' as cam;` |
 | `Wait` | `orblit_agent` and `orblit_effect` | Prefix or `hide` |
 | `Sequence` | `orblit_agent` and `orblit_sequence` | Prefix or `hide` |
@@ -290,6 +291,61 @@ A `Sequence` is tracks of clips over a playhead; `sampleAt(seconds)` gives a
 `SequenceFrame` of every value at that moment, with nothing remembered
 between samples. Marks (events on an interval) come only from advancing a
 `Director`, so scrubbing never fires them.
+
+## orblit_motion
+
+Clips you own, as `.oclip` files the editor's timeline also writes. A
+`ClipDocument` (`name`, `duration`, `whenDone`, `rate`, `channels`, `marks`,
+`rootMotion`) holds `ClipChannel`s, each naming a `target` entity id (empty
+for whatever plays the clip), a `bone` or null, and a `property`
+(`transform.position` or `light.power` on an entity; `position`, `rotation`
+or `scale` on a bone), with a `ChannelKind` and `Key(at, value, hold: ...)`s.
+It re-exports `Key`, `Hold`, `Easing`, `Mark` and `WhenDone` from
+`orblit_sequence`. `clip.encode()` writes the file and
+`ClipDocument.decode(text)` gives a `ClipLoad` (`clip`, `problems`).
+
+`clip.sampleAt(seconds)` is a `ClipFrame`, with no state. `ClipPlayer(clip)`
+starts **paused**: call `play()`, then `advance(dt)` once a frame for a
+`ClipStep` with the `frame`, the `marks` passed (every lap included) and the
+root motion `moved`. `seek` fires no marks and moves nothing.
+
+```dart
+import 'package:orblit_motion/orblit_motion.dart';
+import 'package:orblit_scene/orblit_scene.dart';
+import 'package:orblit_stage/orblit_stage.dart';
+
+class LampAnimator {
+  LampAnimator(this.view, ClipDocument clip, String lamp)
+    : player = ClipPlayer(clip)..play(),
+      scope = ClipScope.inScene(view.document, lamp);
+
+  final OrblitDocumentView view;
+  final ClipPlayer player;
+  final ClipScope scope;
+
+  void tick(double seconds) {
+    final step = player.advance(seconds);
+    final ops = sceneOpsFor(step.frame, view.document, scope);
+    if (ops.isNotEmpty) view.apply(SceneDiff(ops));
+  }
+}
+```
+
+`ClipScope.inScene` maps a prefab's ids onto the placed instance's, so one
+clip plays on every copy. For a model's skeleton, hand the frame's bones to
+the skin binding and leave the object's `animation` null:
+`OrblitSkinBinding(armatureOfSkin(skin), skin, index: i).jointsFrom(frame.bones[''] ?? const {})`
+into `OrblitObject.joints`, one binding per skin, built once. `poseFrom`
+writes into an `orblit_rig` `Pose` instead, for a rig to adjust.
+
+Root motion: `clip.copyWith(rootMotion: RootMotion(bone: 'hips', turns: true))`,
+then each frame `position += heading.asRotationMatrix().transformed(moved.position)`
+and `heading = (heading * moved.rotation)..normalize()`. Never
+`Quaternion.rotated`, which turns the other way. `clipsFromGltf(bytes)` gives
+`ClipsImported` (`clips`, `problems`), naming bones the way the binding does.
+A scene file's `motion` component (`MotionComponent`: `clips`, `autoplay`) is
+data only; nothing plays it. Changing clip cuts, with no fade yet. Guide:
+`/guides/animation/`.
 
 ## More worked examples
 

@@ -100,8 +100,9 @@ shortest path to a frame.
 | `orblit_codegen` | Turns annotated component classes into registration code, and a manifest other front ends can read without compiling this package. |
 | `orblit_filament` | Filament rendering composited by Flutter's texture registry. |
 
-Those are the three the rest is built on. The other eighteen cover geometry,
-rigging, agents, cameras, lighting, sprites, scene files, UI and weather. They
+Those are the three the rest is built on. The other nineteen cover geometry,
+rigging, animation, agents, cameras, lighting, sprites, scene files, UI and
+weather. They
 are all listed in the
 [package reference](https://orblitengine.com/docs/reference/packages/).
 

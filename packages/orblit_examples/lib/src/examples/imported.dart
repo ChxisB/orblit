@@ -3,6 +3,9 @@ import 'dart:typed_data';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:orblit_filament/orblit_filament.dart';
+import 'package:orblit_motion/orblit_motion.dart';
+import 'package:orblit_stage/orblit_stage.dart'
+    show OrblitSkinBinding, armatureOfSkin;
 import 'package:vector_math/vector_math_64.dart' hide Colors;
 
 import '../example.dart';
@@ -127,6 +130,7 @@ class ImportedExample extends Example {
     clip = null;
     variant = null;
     _fadingFrom = null;
+    _player = null;
   }
 
   /// The Fox, unless the environment names another — the same override the
@@ -162,6 +166,29 @@ class ImportedExample extends Example {
   /// How long a change of clip takes to blend, in seconds.
   static const _fade = 0.4;
 
+  /// Whether the file's clips are played by Orblit rather than by the
+  /// renderer: imported from the file, sampled here, and handed over as
+  /// joints. The two are alternatives, never layers, because both would be
+  /// writing the same joints.
+  bool ourClips = false;
+
+  /// Each glTF file's bytes, kept for importing its clips from.
+  final Map<String, Uint8List> _files = {};
+
+  /// Each file's clips as Orblit reads them, or null for a file it could not.
+  final Map<String, ClipsImported?> _imported = {};
+
+  /// What plays Orblit's copy of the chosen clip, and when it last moved on.
+  ClipPlayer? _player;
+  double _advanced = 0;
+
+  /// What carries a frame to the file's skins, and which file they are for.
+  List<OrblitSkinBinding> _bindings = const [];
+  String? _bound;
+
+  static bool _isGltf(ImportedSample sample) =>
+      sample.file.endsWith('.glb') || sample.file.endsWith('.gltf');
+
   ImportedSample get _sample =>
       samples.firstWhere((s) => s.name == _model, orElse: () => samples.first);
 
@@ -192,6 +219,7 @@ class ImportedExample extends Example {
           OrblitResources.nameFor('samples/$file'),
           bytes,
         );
+        if (file == sample.file && _isGltf(sample)) _files[resource] = bytes;
       }
       return true;
     }
@@ -231,6 +259,67 @@ class ImportedExample extends Example {
       ..scaleByDouble(scale, scale, scale, 1);
   }
 
+  /// The file's clips as Orblit reads them, imported the first time they are
+  /// asked for. Null until the file has been read, and for a file that is
+  /// not glTF or could not be read as it.
+  ClipsImported? _importedFrom(String resource) {
+    if (_imported.containsKey(resource)) return _imported[resource];
+    final bytes = _files[resource];
+    if (bytes == null) return null;
+    try {
+      return _imported[resource] = clipsFromGltf(bytes);
+    } on ClipFormatException catch (error) {
+      note = 'Orblit could not read the clips: ${error.message}';
+      return _imported[resource] = null;
+    }
+  }
+
+  /// What the import left behind, said after the rest, or nothing.
+  String _problemsOf(String resource) {
+    final problems = _imported[resource]?.problems ?? const <String>[];
+    return problems.isEmpty ? '' : ' Left out: ${problems.join(' ')}';
+  }
+
+  /// Every joint of the file's skins where Orblit's copy of clip [chosen]
+  /// has them at [seconds], or null when Orblit has nothing to play and the
+  /// renderer should.
+  List<OrblitJointPose>? _ourJoints(
+    OrblitAssetInfo info,
+    int chosen,
+    double seconds,
+  ) {
+    final clips = _importedFrom(_resource)?.clips ?? const <ClipDocument>[];
+    if (chosen >= clips.length || info.skins.isEmpty) return null;
+
+    if (_bound != _resource) {
+      _bindings = [
+        for (var i = 0; i < info.skins.length; i++)
+          OrblitSkinBinding(
+            armatureOfSkin(info.skins[i]),
+            info.skins[i],
+            index: i,
+          ),
+      ];
+      _bound = _resource;
+    }
+
+    // A new clip starts from its beginning, cut rather than faded: fading
+    // one of Orblit's clips into another is the blend layer's, still to
+    // come. Looped, as the renderer loops a file's clip.
+    var player = _player;
+    if (player == null || !identical(player.clip, clips[chosen])) {
+      player = _player = ClipPlayer(clips[chosen], whenDone: WhenDone.loop);
+      _advanced = seconds;
+    }
+    player.speed = speed;
+    playing ? player.play() : player.pause();
+    final frame = player.advance(seconds - _advanced).frame;
+    _advanced = seconds;
+
+    final bones = frame.bones[''] ?? const {};
+    return [for (final binding in _bindings) ...binding.jointsFrom(bones)];
+  }
+
   @override
   OrblitScene scene(OrblitCamera camera, double seconds) {
     _now = seconds;
@@ -240,23 +329,27 @@ class ImportedExample extends Example {
     final placement = _standing(info);
 
     OrblitAnimation? animation;
+    List<OrblitJointPose>? joints;
     final clips = info?.clips.length ?? 0;
     if (ready && clips > 0) {
       final playingClip = (clip ?? 0).clamp(0, clips - 1);
-      final time = playing ? seconds * speed : 0.0;
-      final rate = playing ? speed : 0.0;
-      final from = _fadingFrom;
-      final fade = ((seconds - _fadeStarted) / _fade).clamp(0.0, 1.0);
-      if (fade >= 1) _fadingFrom = null;
-      animation = OrblitAnimation(
-        clip: playingClip,
-        seconds: time,
-        speed: rate,
-        from: from != null && fade < 1
-            ? OrblitAnimation(clip: from, seconds: time, speed: rate)
-            : null,
-        fade: fade,
-      );
+      joints = ourClips ? _ourJoints(info!, playingClip, seconds) : null;
+      if (joints == null) {
+        final time = playing ? seconds * speed : 0.0;
+        final rate = playing ? speed : 0.0;
+        final from = _fadingFrom;
+        final fade = ((seconds - _fadeStarted) / _fade).clamp(0.0, 1.0);
+        if (fade >= 1) _fadingFrom = null;
+        animation = OrblitAnimation(
+          clip: playingClip,
+          seconds: time,
+          speed: rate,
+          from: from != null && fade < 1
+              ? OrblitAnimation(clip: from, seconds: time, speed: rate)
+              : null,
+          fade: fade,
+        );
+      }
     }
 
     return OrblitScene(
@@ -268,6 +361,7 @@ class ImportedExample extends Example {
             colour: linearOf(const Color(0xFFD9634F)),
             mesh: _resource,
             animation: animation,
+            joints: joints,
             variant: variant,
           ),
         OrblitObject(
@@ -361,6 +455,28 @@ class ImportedExample extends Example {
                 },
         ),
         Choice(
+          label: 'Played by',
+          options: const ['The renderer', 'Orblit'],
+          selected: ourClips ? 'Orblit' : 'The renderer',
+          onSelect: clipNames.isEmpty || !_isGltf(_sample)
+              ? null
+              : (value) {
+                  ourClips = value == 'Orblit';
+                  _player = null;
+                  changed();
+                },
+        ),
+        if (ourClips && _isGltf(_sample))
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Text(
+              'Imported as clips, sampled in Dart and set on the skin '
+              'joint by joint. A change of clip cuts rather than fades.'
+              '${_problemsOf(_resource)}',
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+          ),
+        Choice(
           label: 'Look',
           options: ['As made', ...variants],
           selected: variant == null || variant! >= variants.length
@@ -443,6 +559,17 @@ OrblitObject(
     from: OrblitAnimation(clip: info.clipNamed('Walk')!, seconds: seconds),
     fade: 0.5,
   ),
+)
+
+// Or the same clips played by Orblit: imported from the file, sampled in
+// Dart, and set on the skin joint by joint. Never both on one model.
+final walk = clipsFromGltf(bytes).clips[1];
+final player = ClipPlayer(walk, whenDone: WhenDone.loop)..play();
+final skin = info.skins.first;
+final binding = OrblitSkinBinding(armatureOfSkin(skin), skin, index: 0);
+OrblitObject(
+  ...,
+  joints: binding.jointsFrom(player.advance(elapsed).frame.bones[''] ?? {}),
 )
 
 // A look the file comes in, by its name.
