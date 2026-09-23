@@ -22,6 +22,7 @@ PACKAGES=(
   packages/orblit_input
   packages/orblit_light
   packages/orblit_mesh
+  packages/orblit_motion
   packages/orblit_native
   packages/orblit_noise
   packages/orblit_rig

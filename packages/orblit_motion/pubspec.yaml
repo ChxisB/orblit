@@ -1,0 +1,25 @@
+name: orblit_motion
+description: >-
+  Animation clips. A clip is channels of keys, each addressed by a path and a
+  property, played on a scene's entities and a model's bones alike.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_mesh:
+    path: ../orblit_mesh
+  orblit_rig:
+    path: ../orblit_rig
+  orblit_scene:
+    path: ../orblit_scene
+  orblit_sequence:
+    path: ../orblit_sequence
+
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

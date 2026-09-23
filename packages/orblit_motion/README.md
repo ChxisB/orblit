@@ -1,0 +1,32 @@
+# orblit_motion
+
+Clips: animation as an asset. A clip is channels of keys moving an entity's
+properties or a model's bones, named by path so one clip plays on every copy
+of a prefab. Clips are written in the editor or imported from glTF, played
+with marks and root motion, and saved as `.oclip` files that diff one key at a
+time.
+
+Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
+
+## Using it
+
+```yaml
+dependencies:
+  orblit_motion:
+    git:
+      url: https://github.com/ChxisB/orblit.git
+      path: packages/orblit_motion
+```
+
+Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
+
+## Status
+
+Pre-alpha. Nothing here is API-stable, and the version is bumped for every
+feature. See [VERSIONING.md](../../VERSIONING.md).
+
+## Licence
+
+MPL-2.0, © 2026 Chris Beckett. See [LICENSE](LICENSE), and the repository root
+for the third-party notices that apply to builds linking the renderer.
