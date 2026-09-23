@@ -259,6 +259,77 @@ void main() {
         'models/tree.glb',
       );
     });
+
+    test('an open instance comes back open, its parts where they were', () {
+      final scene = SceneDocument(
+        entities: [
+          entity('lamp1', {
+            SceneComponents.prefab: const PrefabComponent(
+              asset: 'props/lamp.oprefab',
+              state: PrefabState.open,
+            ),
+          }),
+          entity('lamp1/bulb', {
+            SceneComponents.transform: TransformComponent(
+              position: Vector3(0, 2, 0),
+            ),
+          }, parent: 'lamp1'),
+        ],
+      );
+
+      final read = readSceneFrom(scene.writeAs(SceneFormat.glb).first.bytes);
+      expect(read.document.entities.map((one) => one.id), [
+        'lamp1',
+        'lamp1/bulb',
+      ]);
+      expect(read.document['lamp1/bulb']!.parent, 'lamp1');
+      final link = read.document['lamp1']!['prefab']! as PrefabComponent;
+      expect(link.asset, 'props/lamp.oprefab');
+      expect(link.state, PrefabState.open);
+    });
+
+    test('one written before instances were links comes back as the copy '
+        'it was', () {
+      // Every part carried the link then, and the scene said no version,
+      // because the exporter did not write one down yet.
+      Map<String, Object?> part(String id, {List<int>? children}) => {
+        'name': id,
+        if (children != null) 'children': children,
+        'extras': {
+          'orblit': {
+            'id': id,
+            'components': {
+              'prefab': {'asset': 'props/lamp.oprefab'},
+            },
+          },
+        },
+      };
+      final read = readSceneFrom(
+        document({
+          'scenes': [
+            {
+              'nodes': [0],
+              'extras': {
+                'orblit': {'settings': <String, Object?>{}},
+              },
+            },
+          ],
+          'nodes': [
+            part('lamp', children: [1]),
+            part('bulb'),
+          ],
+        }),
+      );
+
+      expect(read.document.entities.map((one) => one.id), ['lamp', 'bulb']);
+      for (final one in read.document.entities) {
+        expect(
+          (one['prefab']! as PrefabComponent).state,
+          PrefabState.stamped,
+          reason: one.id,
+        );
+      }
+    });
   });
 
   group('a glTF from somewhere else', () {

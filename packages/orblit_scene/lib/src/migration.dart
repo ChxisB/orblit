@@ -5,6 +5,7 @@ import 'package:orblit_weather/orblit_weather.dart'
     show WeatherCondition, WeatherState;
 
 import 'component.dart';
+import 'components/data.dart';
 import 'components/staging.dart';
 import 'document.dart';
 import 'values.dart';
@@ -48,6 +49,7 @@ abstract final class SceneMigrations {
     _PowerInWatts(),
     _FogOnTheScene(),
     _ObjectsWithKinds(),
+    _PrefabsAsCopies(),
   ];
 
   /// A file at [version], brought up to [SceneDocument.formatVersion].
@@ -86,11 +88,12 @@ abstract final class SceneMigrations {
     required int version,
     List<String>? notes,
   }) {
-    if (version >= 4) return object;
+    if (version >= SceneDocument.formatVersion) return object;
     final migrated = run(
       {
         'formatVersion': version,
-        'objects': [object],
+        // Version four is where the list took the name it has now.
+        version >= 4 ? 'entities' : 'objects': [object],
       },
       version,
       notes ?? <String>[],
@@ -461,5 +464,56 @@ class _ObjectsWithKinds extends SceneMigration {
       'visible': Values.flag(json, 'visible', fallback: true) ? null : false,
       'components': components,
     });
+  }
+}
+
+/// Version four stamped a copy of a prefab into the scene.
+///
+/// Every part of an instance was written out in full under an id of its own,
+/// each carrying the prefab's path, and the only link back was that path —
+/// so a change to the prefab reached an instance only by being pushed over
+/// it, and took the instance's own changes with it. Version five keeps a link
+/// and a diff instead.
+///
+/// Turning a copy into that needs the prefab, to see which of the copy's
+/// parts are the prefab's and what they changed about it, and a migration
+/// cannot open files. So this only marks the copies as copies, and opening a
+/// document's instances relinks them once the prefab can be read. Until then
+/// each part is an ordinary entity that draws exactly as it did, and a file
+/// saved in between says the same thing it said before.
+class _PrefabsAsCopies extends SceneMigration {
+  const _PrefabsAsCopies();
+
+  @override
+  int get from => 4;
+
+  @override
+  Map<String, Object?> apply(Map<String, Object?> json, List<String> notes) {
+    final entities = json['entities'];
+    if (entities is! List) return json;
+    return {
+      ...json,
+      'entities': [for (final entry in entities) _marked(entry)],
+    };
+  }
+
+  /// [entry] with its link marked, in new maps: what comes in may be
+  /// somebody's clipboard, and is not this migration's to change.
+  static Object? _marked(Object? entry) {
+    if (entry is! Map<String, Object?>) return entry;
+    final components = entry['components'];
+    if (components is! Map) return entry;
+    final prefab = components[SceneComponents.prefab];
+    if (prefab is! Map) return entry;
+    return {
+      ...entry,
+      'components': <String, Object?>{
+        ...components.cast<String, Object?>(),
+        SceneComponents.prefab: <String, Object?>{
+          ...prefab.cast<String, Object?>(),
+          'state': PrefabState.stamped.name,
+        },
+      },
+    };
   }
 }

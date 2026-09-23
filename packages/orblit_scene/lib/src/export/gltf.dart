@@ -136,9 +136,14 @@ class _Writer {
 
     // The settings are not a node and have nowhere in the format to go, so
     // they ride on the scene's extras — which is where a re-import looks for
-    // them, and which every other loader ignores exactly as it should.
+    // them, and which every other loader ignores exactly as it should. The
+    // version rides with them, so a re-import knows what the components on
+    // each node meant when they were written.
     ((json['scenes']! as List).first as Map<String, Object?>)['extras'] = {
-      'orblit': {'settings': scene.settings.toJson()},
+      'orblit': {
+        'formatVersion': SceneDocument.formatVersion,
+        'settings': scene.settings.toJson(),
+      },
     };
 
     final binary = buffer.bytes;

@@ -4,6 +4,7 @@ import 'package:orblit_light/orblit_light.dart' show Tint;
 
 import 'entity.dart';
 import 'migration.dart';
+import 'path.dart';
 import 'values.dart';
 
 /// The extension a scene file carries.
@@ -133,8 +134,10 @@ class SceneDocument {
   ///
   /// Two was a light's power changing units. Three moved the air out of the
   /// scene and into an object. Four replaced an object's kind with the set of
-  /// components it has.
-  static const int formatVersion = 4;
+  /// components it has. Five made a prefab instance a link and a diff rather
+  /// than a copy, which an older reader would open as a lone entity with
+  /// everything under it missing.
+  static const int formatVersion = 5;
 
   static const JsonEncoder _encoder = JsonEncoder.withIndent('  ');
 
@@ -303,7 +306,7 @@ class SceneDocument {
       entities.add(entity);
     }
 
-    final tree = _rooted(entities, seen, problems);
+    final tree = rooted(entities, problems, folded: true);
 
     return SceneLoad(
       document: SceneDocument(
@@ -314,58 +317,85 @@ class SceneDocument {
       problems: problems,
     );
   }
+}
 
-  /// Makes the parent links into a tree.
-  ///
-  /// Two things can be wrong with them, and both come from files people hand
-  /// edit or merge. A parent that is not in the file would leave its child
-  /// unreachable, so the child becomes a root instead of disappearing. And a
-  /// loop would hang the outliner while it drew — which is the worst possible
-  /// place to find one — so it is cut.
-  static List<SceneEntity> _rooted(
-    List<SceneEntity> entities,
-    Set<String> present,
-    List<String> problems,
-  ) {
-    final parents = {for (final entity in entities) entity.id: entity.parent};
-    final orphaned = <String>{};
+/// Makes the parent links into a tree.
+///
+/// Two things can be wrong with them, and both come from files people hand
+/// edit or merge. A parent that is not in the file would leave its child
+/// unreachable, so the child becomes a root instead of disappearing. And a
+/// loop would hang the outliner while it drew — which is the worst possible
+/// place to find one — so it is cut.
+///
+/// A parent inside an instance is an [EntityPath], and an instance that is
+/// not open has no parts to find: a link into one is left alone as long as
+/// the instance is there, because opening it is what will make it true. In a
+/// [folded] document that is every instance; after opening, it is the
+/// [closed] ones, whose prefab could not be read. Anywhere else, a link to a
+/// part that is not there falls back to the nearest thing it was inside that
+/// is — a sign hung on a lamp that its prefab no longer has stays on the
+/// street it was on.
+///
+/// Not exported: what calls it is the reading of a scene, a prefab, and the
+/// opening of instances, and each of those says what it repaired.
+List<SceneEntity> rooted(
+  List<SceneEntity> entities,
+  List<String> problems, {
+  bool folded = false,
+  Set<String> closed = const {},
+}) {
+  final present = {for (final entity in entities) entity.id};
+  final parents = {for (final entity in entities) entity.id: entity.parent};
+  final moved = <String>{};
 
-    for (final entity in entities) {
-      final parent = entity.parent;
-      if (parent == null) continue;
-      if (!present.contains(parent)) {
-        problems.add(
-          '"${entity.name}" belonged to something that is not in this file, '
-          'and is now at the top level.',
-        );
-        orphaned.add(entity.id);
-        parents[entity.id] = null;
-      }
+  for (final entity in entities) {
+    final parent = entity.parent;
+    if (parent == null || present.contains(parent)) continue;
+
+    final fallback = EntityPath.enclosing(parent).where(present.contains);
+    if (fallback.isNotEmpty && (folded || closed.contains(fallback.first))) {
+      continue;
     }
-
-    for (final entity in entities) {
-      final walked = <String>{entity.id};
-      var current = parents[entity.id];
-      while (current != null) {
-        if (!walked.add(current)) {
-          problems.add(
-            '"${entity.name}" was inside itself, and is now at the top level.',
-          );
-          orphaned.add(entity.id);
-          parents[entity.id] = null;
-          break;
-        }
-        current = parents[current];
-      }
+    if (fallback.isNotEmpty) {
+      problems.add(
+        '"${entity.name}" was on something inside "${fallback.first}" that '
+        'is no longer there, and is now on "${fallback.first}" itself.',
+      );
+      parents[entity.id] = fallback.first;
+    } else {
+      problems.add(
+        '"${entity.name}" belonged to something that is not in this file, '
+        'and is now at the top level.',
+      );
+      parents[entity.id] = null;
     }
-
-    if (orphaned.isEmpty) return entities;
-    return [
-      for (final entity in entities)
-        if (orphaned.contains(entity.id))
-          entity.copyWith(clearParent: true)
-        else
-          entity,
-    ];
+    moved.add(entity.id);
   }
+
+  for (final entity in entities) {
+    final walked = <String>{entity.id};
+    var current = parents[entity.id];
+    while (current != null) {
+      if (!walked.add(current)) {
+        problems.add(
+          '"${entity.name}" was inside itself, and is now at the top level.',
+        );
+        moved.add(entity.id);
+        parents[entity.id] = null;
+        break;
+      }
+      current = parents[current];
+    }
+  }
+
+  if (moved.isEmpty) return entities;
+  return [
+    for (final entity in entities)
+      if (!moved.contains(entity.id))
+        entity
+      else if (parents[entity.id] case final parent?)
+        entity.copyWith(parent: parent)
+      else
+        entity.copyWith(clearParent: true),
+  ];
 }

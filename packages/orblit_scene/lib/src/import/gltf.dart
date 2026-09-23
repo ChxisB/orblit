@@ -11,6 +11,7 @@ import '../components/staging.dart';
 import '../components/transform.dart';
 import '../document.dart';
 import '../entity.dart';
+import '../migration.dart';
 
 /// A scene read out of a glTF document.
 ///
@@ -169,12 +170,26 @@ class _Reader {
     return id;
   }
 
+  /// The scene format the components on each node were written in.
+  ///
+  /// A document from before the exporter wrote one down was written at
+  /// version four, the one the exporter arrived at.
+  late final int _version = () {
+    final scene = _scene();
+    final stated = scene == null ? null : _orblit(scene)?['formatVersion'];
+    return stated is int ? stated : 4;
+  }();
+
   SceneEntity _restore(int at, String id) {
     final node = nodes[at];
     final ours = _orblit(node)!;
 
     final components = <String, SceneComponent>{};
-    final raw = ours['components'];
+    final raw = SceneMigrations.entity(
+      {'id': id, 'components': ours['components']},
+      version: _version,
+      notes: problems,
+    )?['components'];
     if (raw is Map<String, Object?>) {
       for (final entry in raw.entries) {
         final value = entry.value;

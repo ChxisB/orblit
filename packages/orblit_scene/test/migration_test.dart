@@ -402,11 +402,65 @@ void main() {
         'name': 'Crate',
         'components': {'mesh': const MeshComponent().toJson()},
       };
-      expect(SceneMigrations.entity(already, version: 4), same(already));
+      expect(
+        SceneMigrations.entity(already, version: SceneDocument.formatVersion),
+        same(already),
+      );
+    });
+
+    test('a version-four one is marked as the copy it was', () {
+      final entity = SceneMigrations.entity({
+        'id': 'post',
+        'name': 'Post',
+        'components': {
+          'prefab': {'asset': 'props/lamp.oprefab'},
+        },
+      }, version: 4);
+
+      final link =
+          SceneEntity.fromJson(entity!)![SceneComponents.prefab]!
+              as PrefabComponent;
+      expect(link.state, PrefabState.stamped);
     });
 
     test('something with nothing usable in it comes back null', () {
       expect(SceneMigrations.entity({'kind': 'mesh'}, version: 3), isNull);
+    });
+  });
+
+  group('version four, where an instance was a copy of its prefab', () {
+    test('every part of a copy is marked, so it can be relinked', () {
+      final load = SceneDocument.decode(
+        oldScene(4, {
+          'entities': [
+            {
+              'id': 'o1',
+              'name': 'Lamp',
+              'components': {
+                'prefab': {'asset': 'props/lamp.oprefab'},
+              },
+            },
+            {
+              'id': 'o2',
+              'name': 'Bulb',
+              'parent': 'o1',
+              'components': {
+                'prefab': {'asset': 'props/lamp.oprefab'},
+              },
+            },
+            {'id': 'o3', 'name': 'Crate'},
+          ],
+        }),
+      );
+
+      PrefabState? stateOf(String id) =>
+          (load.document[id]![SceneComponents.prefab] as PrefabComponent?)
+              ?.state;
+      expect(stateOf('o1'), PrefabState.stamped);
+      expect(stateOf('o2'), PrefabState.stamped);
+      expect(stateOf('o3'), isNull);
+      // Nothing is lost by it: a copy is a copy until its prefab is read.
+      expect(load.document.childrenOf('o1').single.id, 'o2');
     });
   });
 
@@ -431,7 +485,8 @@ void main() {
       expect(load.document['sun']!.has(SceneComponents.transform), isTrue);
     });
 
-    test('a converted scene saves as version four and reloads unchanged', () {
+    test('a converted scene saves at the current version and reloads '
+        'unchanged', () {
       final load = SceneDocument.decode(
         oldScene(3, {
           'objects': [
@@ -445,7 +500,10 @@ void main() {
       );
 
       final saved = load.document.encode();
-      expect(jsonDecode(saved), containsPair('formatVersion', 4));
+      expect(
+        jsonDecode(saved),
+        containsPair('formatVersion', SceneDocument.formatVersion),
+      );
 
       final again = SceneDocument.decode(saved);
       expect(again.problems, isEmpty);

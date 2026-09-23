@@ -14,7 +14,8 @@ library;
 export 'src/component.dart'
     show ComponentReader, SceneComponent, SceneComponents, UnknownComponent;
 export 'src/components/body.dart' show BodyComponent, BodyMotion, BodyShape;
-export 'src/components/data.dart' show DataComponent, PrefabComponent;
+export 'src/components/data.dart'
+    show DataComponent, PrefabComponent, PrefabState;
 export 'src/components/drawing.dart'
     show MaterialComponent, MeshComponent, SplatsComponent;
 export 'src/components/flat.dart'
@@ -54,6 +55,18 @@ export 'src/export/graft.dart' show GraftFailure, Grafted, graft, regraft;
 export 'src/export/obj.dart' show ObjScene, sceneToObj;
 export 'src/import/gltf.dart' show SceneImported, gltfToScene;
 export 'src/import/import.dart' show readSceneFrom;
+export 'src/instances.dart'
+    show
+        PrefabEdit,
+        PrefabException,
+        PrefabSource,
+        applyInstance,
+        expandInstances,
+        foldInstances,
+        makePrefab,
+        refreshInstances,
+        revertInstance,
+        unpackInstance;
 export 'src/material.dart'
     show
         MaterialDocument,
@@ -65,4 +78,6 @@ export 'src/material.dart'
         ResolvedMaterial,
         materialExtension;
 export 'src/migration.dart' show SceneMigration, SceneMigrations;
+export 'src/path.dart' show EntityPath;
+export 'src/prefab.dart' show PrefabDocument, PrefabLoad, prefabExtension;
 export 'src/values.dart' show Values;

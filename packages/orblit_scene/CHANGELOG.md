@@ -1,5 +1,47 @@
 # Changelog
 
+## 0.6.0
+
+- **An instance is a link, not a copy.** A prefab placed in a scene is saved
+  as one entity carrying a `PrefabComponent`: the asset it is an instance of,
+  and `overrides`, a `SceneDiff` of what is different about this one. Change
+  the prefab and every instance changes; change one instance and only it does.
+  The file holds the difference, never the expansion, so a street of a
+  hundred lamps is a hundred short entries rather than a hundred lamps.
+- **The id is the path.** Opening an instance puts its parts in the document
+  under ids made of the id each has in every document it is inside, joined by
+  `/`: `street1/lamp3/bulb` is the bulb of the lamp `lamp3` in the street
+  prefab placed as `street1`. The root of an instance keeps the instance's own
+  id. One id per document crossed and nothing for the entities in between, so
+  moving something inside a prefab never changes the path anything else uses
+  to name it. `EntityPath` holds the rules, and `/` is reserved in ids.
+- `expandInstances` opens a document's instances and `foldInstances` closes
+  them again for saving, working out each one's overrides from what its parts
+  now are. A `PrefabSource` hands them prefabs by path, so reading files is
+  the caller's business. A prefab inside a prefab opens too, and one that
+  contains itself is left closed and said so.
+- An instance whose prefab cannot be read stays exactly as it was saved, link
+  and overrides both, and anything hung off one of its parts keeps pointing
+  there. An override of a part the prefab no longer has is let go, with a
+  note.
+- Something that is not the prefab's, hung off a part of an instance — a flag
+  on a lamp's bulb — belongs to the scene and stays in it, parented by path.
+- `PrefabDocument` is the `.oprefab` file, written with the same entity
+  encoding as a scene. `makePrefab` turns a subtree into one and the subtree
+  into its first instance; `applyInstance` writes an instance's overrides into
+  its prefab, and every other instance keeps its own and picks up the rest;
+  `revertInstance` drops an instance's overrides and keeps where it stands;
+  `unpackInstance` turns one back into plain entities; `refreshInstances`
+  reopens every instance of a prefab that has changed. Each returns what was
+  renamed, so a selection can follow.
+- **The format is at 5.** A version-four scene's prefab instances were
+  stamped copies, every part carrying the link. They are read as
+  `PrefabState.stamped` and relinked the first time their prefab can be read,
+  with whatever had been changed about each kept as its overrides.
+- A glTF export states the format version on the scene's extras, and a
+  re-import reads each node's components at the version they were written in.
+  One from before this states none and is read as the version four it was.
+
 ## 0.5.0
 
 - **A body.** `BodyComponent` says what the physics does with an entity: a

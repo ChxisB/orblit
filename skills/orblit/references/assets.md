@@ -101,6 +101,39 @@ Setting `look` rebuilds rather than diffs — it is a scene-wide swap.
 heard of survives both as an `UnknownComponent`, which is what lets two editor
 versions share a project.
 
+### Prefab instances
+
+An instance is saved as a link and a diff, never as a copy. The entity carries
+`PrefabComponent(asset: 'props/lamp.oprefab', overrides: diff)`, where the
+diff addresses the prefab's own ids. Open instances before drawing or editing,
+and fold them before saving:
+
+```dart
+PrefabDocument? prefabAt(String asset) {
+  final file = File('$projectRoot/$asset');
+  if (!file.existsSync()) return null; // the instance stays folded
+  return PrefabDocument.decode(file.readAsStringSync()).prefab;
+}
+
+final load = expandInstances(SceneDocument.decode(text).document, prefabAt);
+final view = OrblitDocumentView(load.document);
+// …edit…
+final saved = foldInstances(view.document, prefabAt).encode();
+```
+
+- **The id is the path.** An open instance's parts are entities with ids like
+  `street1/lamp3/bulb`: one id per document crossed, joined by `/`
+  (`EntityPath`). The instance root keeps its own id. `/` is reserved in ids.
+- A parent, a selection or an animation track names a part by its path, like
+  any other id. Something hung off a part that is not the prefab's own stays in
+  the scene and keeps its path parent.
+- `makePrefab`, `applyInstance`, `revertInstance`, `unpackInstance` and
+  `refreshInstances` are the editor's operations. Each returns what was renamed
+  or opened, so a selection can follow.
+- A prefab that cannot be read leaves its instance folded, exactly as saved.
+  A version-four scene's stamped copies are relinked on expand, with their
+  edits kept as overrides.
+
 ### Writing a scene out
 
 ```dart
