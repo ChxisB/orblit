@@ -25,6 +25,7 @@ export 'src/components/flat.dart'
         ParallaxLayer,
         SpriteComponent,
         TilemapComponent;
+export 'src/components/motion.dart' show MotionComponent;
 export 'src/components/staging.dart'
     show CameraComponent, LightComponent, WeatherComponent;
 export 'src/components/transform.dart' show TransformComponent;

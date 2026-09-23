@@ -74,9 +74,15 @@ class _Reader {
 
   final List<String> problems = [];
 
+  /// The document's bytes, read into [problems] so a bad accessor is noted
+  /// alongside everything else.
+  late final GltfAccessors _numbers = GltfAccessors(
+    json,
+    binary,
+    problems: problems,
+  );
+
   late final List<Map<String, Object?>> nodes = _maps(json['nodes']);
-  late final List<Map<String, Object?>> accessors = _maps(json['accessors']);
-  late final List<Map<String, Object?>> views = _maps(json['bufferViews']);
   late final List<Map<String, Object?>> materials = _maps(json['materials']);
   late final List<Map<String, Object?>> cameras = _maps(json['cameras']);
   late final List<Map<String, Object?>> meshes = _maps(json['meshes']);
@@ -273,7 +279,7 @@ class _Reader {
       }
       return TransformComponent(
         position: m.getTranslation(),
-        rotation: _euler(rotation),
+        rotation: TransformComponent.anglesOf(rotation),
         scale: scale,
       );
     }
@@ -292,7 +298,7 @@ class _Reader {
           ? Vector3(translation[0], translation[1], translation[2])
           : null,
       rotation: quaternion.length == 4
-          ? _euler(
+          ? TransformComponent.anglesOf(
               Quaternion(
                 quaternion[0],
                 quaternion[1],
@@ -415,7 +421,7 @@ class _Reader {
       final indices = _index(primitive['indices']);
       final order = indices == null
           ? [for (var i = 0; i < corners.length; i++) i]
-          : _indices(indices);
+          : _numbers.indices(indices);
       for (var i = 0; i + 2 < order.length; i += 3) {
         faces.add(
           Face([first + order[i], first + order[i + 1], first + order[i + 2]]),
@@ -447,95 +453,11 @@ class _Reader {
   // --- Accessors -----------------------------------------------------------
 
   List<Vector3> _vectors(int? accessor) {
-    final numbers = _floats(accessor, 3);
+    final numbers = _numbers.floats(accessor, 3);
     return [
       for (var i = 0; i + 2 < numbers.length; i += 3)
         Vector3(numbers[i], numbers[i + 1], numbers[i + 2]),
     ];
-  }
-
-  List<double> _floats(int? at, int components) {
-    if (at == null || at >= accessors.length) return const [];
-    final accessor = accessors[at];
-    if (_index(accessor['componentType']) != GltfComponent.float) {
-      problems.add('Accessor $at is not floating point; it was not read.');
-      return const [];
-    }
-
-    final out = <double>[];
-    _walk(accessor, components, 4, (data, offset) {
-      for (var c = 0; c < components; c++) {
-        out.add(data.getFloat32(offset + c * 4, Endian.little));
-      }
-    });
-    return out;
-  }
-
-  List<int> _indices(int at) {
-    if (at >= accessors.length) return const [];
-    final accessor = accessors[at];
-    final size = switch (_index(accessor['componentType'])) {
-      GltfComponent.unsignedByte => 1,
-      GltfComponent.unsignedShort => 2,
-      GltfComponent.unsignedInt => 4,
-      _ => 0,
-    };
-    if (size == 0) {
-      problems.add('Accessor $at is not an index type; it was not read.');
-      return const [];
-    }
-
-    final out = <int>[];
-    _walk(accessor, 1, size, (data, offset) {
-      out.add(switch (size) {
-        1 => data.getUint8(offset),
-        2 => data.getUint16(offset, Endian.little),
-        _ => data.getUint32(offset, Endian.little),
-      });
-    });
-    return out;
-  }
-
-  /// Steps through an accessor's elements, minding the view's stride.
-  ///
-  /// The stride is not a detail that can be skipped: interleaved attributes
-  /// are what an optimising exporter writes, and reading one as though it were
-  /// tightly packed gives geometry that is *wrong* rather than geometry that
-  /// is missing — which is far harder to notice.
-  void _walk(
-    Map<String, Object?> accessor,
-    int components,
-    int size,
-    void Function(ByteData data, int offset) each,
-  ) {
-    final bytes = binary;
-    final at = _index(accessor['bufferView']);
-    final count = _index(accessor['count']) ?? 0;
-    if (count == 0) return;
-    if (bytes == null) {
-      problems.add('The document has geometry but no buffer was supplied.');
-      return;
-    }
-    if (at == null || at >= views.length) return;
-
-    final view = views[at];
-    final base = _index(view['byteOffset']) ?? 0;
-    final start = base + (_index(accessor['byteOffset']) ?? 0);
-    final stride = _index(view['byteStride']) ?? (size * components);
-    final end = math.min(
-      bytes.length,
-      base + (_index(view['byteLength']) ?? 0),
-    );
-
-    final data = ByteData.sublistView(bytes);
-    for (var i = 0; i < count; i++) {
-      final offset = start + i * stride;
-      if (offset < 0 || offset + size * components > end) {
-        problems.add('An accessor reaches past the end of its buffer view.');
-        return;
-      }
-      each(data, offset);
-    }
   }
 
   // --- Reading JSON that may be anything at all ----------------------------
@@ -572,26 +494,4 @@ class _Reader {
     for (final item in _list(raw))
       if (item is num) item.toDouble(),
   ];
-}
-
-/// A rotation matrix back to the three angles a scene states.
-///
-/// The exporter composes Z, then Y, then X; this takes that composition apart
-/// again. At the pole — where a quarter turn about Y leaves the other two
-/// indistinguishable — the roll is folded into the yaw, because at that point
-/// the file itself no longer says which of the two it was.
-Vector3 _euler(Matrix3 m) {
-  final sinY = -m.entry(2, 0);
-  if (sinY.abs() >= 0.9999999) {
-    return Vector3(
-      0,
-      sinY.isNegative ? -90 : 90,
-      degrees(math.atan2(-m.entry(0, 1), m.entry(1, 1))),
-    );
-  }
-  return Vector3(
-    degrees(math.atan2(m.entry(2, 1), m.entry(2, 2))),
-    degrees(math.asin(sinY.clamp(-1.0, 1.0))),
-    degrees(math.atan2(m.entry(1, 0), m.entry(0, 0))),
-  );
 }

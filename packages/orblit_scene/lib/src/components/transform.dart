@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:vector_math/vector_math_64.dart';
 
 import '../component.dart';
@@ -30,6 +32,37 @@ class TransformComponent extends SceneComponent {
   final Vector3 position;
   final Vector3 rotation;
   final Vector3 scale;
+
+  /// The rotation [degrees] stands for, composed Z, then Y, then X.
+  ///
+  /// That order is the scene's, and every reader of a transform has to use
+  /// it: Euler angles do not commute, so another order turns anything rotated
+  /// about more than one axis by an amount that looks plausible and is wrong.
+  static Matrix3 rotationOf(Vector3 degrees) =>
+      Matrix3.rotationZ(radians(degrees.z))
+        ..multiply(Matrix3.rotationY(radians(degrees.y)))
+        ..multiply(Matrix3.rotationX(radians(degrees.x)));
+
+  /// The three angles that [rotationOf] turns back into [rotation].
+  ///
+  /// At the pole, where a quarter turn about Y leaves the other two
+  /// indistinguishable, the roll is folded into the yaw, because at that
+  /// point the rotation itself no longer says which of the two it was.
+  static Vector3 anglesOf(Matrix3 rotation) {
+    final sinY = -rotation.entry(2, 0);
+    if (sinY.abs() >= 0.9999999) {
+      return Vector3(
+        0,
+        sinY.isNegative ? -90 : 90,
+        degrees(math.atan2(-rotation.entry(0, 1), rotation.entry(1, 1))),
+      );
+    }
+    return Vector3(
+      degrees(math.atan2(rotation.entry(2, 1), rotation.entry(2, 2))),
+      degrees(math.asin(sinY.clamp(-1.0, 1.0))),
+      degrees(math.atan2(rotation.entry(1, 0), rotation.entry(0, 0))),
+    );
+  }
 
   @override
   String get type => SceneComponents.transform;

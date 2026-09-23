@@ -2,6 +2,7 @@ import 'components/body.dart';
 import 'components/data.dart';
 import 'components/drawing.dart';
 import 'components/flat.dart';
+import 'components/motion.dart';
 import 'components/staging.dart';
 import 'components/transform.dart';
 
@@ -65,6 +66,7 @@ abstract final class SceneComponents {
   static const String mesh = 'mesh';
   static const String material = 'material';
   static const String body = 'body';
+  static const String motion = 'motion';
   static const String light = 'light';
   static const String camera = 'camera';
   static const String splats = 'splats';
@@ -80,8 +82,8 @@ abstract final class SceneComponents {
   /// the same bytes and a diff of a scene file is a diff of what changed.
   ///
   /// Roughly outside-in: where a thing is, then what it draws and what it is
-  /// simulated as, then what it lights or watches with, then the flat layers,
-  /// then what it carries.
+  /// simulated and animated as, then what it lights or watches with, then the
+  /// flat layers, then what it carries.
   /// Anything not on this list is written after it, in the order it was read,
   /// which keeps an unknown component's position stable too.
   static const List<String> order = [
@@ -89,6 +91,7 @@ abstract final class SceneComponents {
     mesh,
     material,
     body,
+    motion,
     light,
     camera,
     splats,
@@ -106,6 +109,7 @@ abstract final class SceneComponents {
     mesh: MeshComponent.fromJson,
     material: MaterialComponent.fromJson,
     body: BodyComponent.fromJson,
+    motion: MotionComponent.fromJson,
     light: LightComponent.fromJson,
     camera: CameraComponent.fromJson,
     splats: SplatsComponent.fromJson,

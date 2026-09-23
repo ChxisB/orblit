@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:orblit_mesh/orblit_mesh.dart';
@@ -29,55 +28,11 @@ SceneImported readSceneFrom(
   String name = 'Scene',
   Map<String, Uint8List> files = const {},
 }) {
-  final chunks = glbChunks(bytes);
-  if (chunks != null) {
-    return gltfToScene(chunks.json, binary: chunks.binary, name: name);
-  }
-
-  final Object? decoded;
+  final ({Map<String, Object?> json, Uint8List? binary}) parts;
   try {
-    decoded = jsonDecode(utf8.decode(bytes));
+    parts = gltfParts(bytes, files: files);
   } on FormatException catch (error) {
-    throw SceneFormatException(
-      'This is neither a GLB nor glTF JSON: ${error.message}',
-    );
+    throw SceneFormatException(error.message);
   }
-  if (decoded is! Map<String, Object?>) {
-    throw const SceneFormatException('A glTF document must be a JSON object.');
-  }
-
-  return gltfToScene(decoded, binary: _buffer(decoded, files), name: name);
-}
-
-/// The bytes the document's first buffer names, wherever they are.
-///
-/// Only the first, because that is the only one anything here writes and the
-/// only one an accessor in a document we produced ever points into. A document
-/// with several is read as far as its first, and the accessors that reach past
-/// it say so themselves.
-Uint8List? _buffer(Map<String, Object?> json, Map<String, Uint8List> files) {
-  final buffers = json['buffers'];
-  if (buffers is! List || buffers.isEmpty) return null;
-  final first = buffers.first;
-  if (first is! Map<String, Object?>) return null;
-
-  final uri = first['uri'];
-  if (uri is! String || uri.isEmpty) return null;
-
-  if (uri.startsWith('data:')) {
-    final comma = uri.indexOf(',');
-    // Only base64 is worth reading: a percent-encoded binary buffer is legal
-    // and is also several times the size, so nothing writes one.
-    if (comma < 0 || !uri.substring(0, comma).endsWith(';base64')) return null;
-    try {
-      return base64Decode(uri.substring(comma + 1));
-    } on FormatException {
-      return null;
-    }
-  }
-
-  // Named twice, because a URI is escaped and a filename is not: a buffer
-  // written beside a scene called `old town.gltf` arrives as `old%20town.bin`
-  // and is on disk under the name with the space in it.
-  return files[uri] ?? files[Uri.decodeComponent(uri)];
+  return gltfToScene(parts.json, binary: parts.binary, name: name);
 }

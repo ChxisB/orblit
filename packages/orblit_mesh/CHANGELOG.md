@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- **One place reads glTF, too.** `GltfAccessors` reads a document's
+  accessors, minding each view's stride, and reads whole-number accessors as
+  well as floating-point ones, scaling a `normalized` one as the format says,
+  which is how a model stores a rotation in fewer bytes. `gltfParts` takes the
+  bytes of a `.glb` or a `.gltf` and gives back its JSON and its buffer,
+  wherever that buffer is. The scene importer and the clip importer both read
+  through them.
+
 ## 0.4.0
 
 - **One place writes glTF.** `GltfBuffer` accumulates a document's bytes and

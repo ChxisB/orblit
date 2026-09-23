@@ -476,6 +476,15 @@ void main() {
   });
 
   group('naming', () {
+    test("makes a file's joint names fit to be bone names", () {
+      expect(BoneNaming.unique(['hip', '', 'hip', 'hip.001']), [
+        'hip',
+        'joint 1',
+        'hip.002',
+        'hip.001',
+      ], reason: 'a name the file gives is never taken by a renamed joint');
+    });
+
     test('a prefix says what a bone is for', () {
       expect(BoneNaming.roleOf('DEF-upper_arm.L'), BoneRole.deform);
       expect(BoneNaming.roleOf('ORG-spine'), BoneRole.original);

@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0
+
+- `MotionComponent` says which clips an entity plays: `.oclip` files by
+  their project path, and which one, if any, starts on its own. Written after
+  `body`. What a clip is and how it plays is `orblit_motion`'s.
+- The glTF importer reads its accessors through `orblit_mesh`'s
+  `GltfAccessors` and `gltfParts`, the same reader the clip importer uses,
+  instead of a private copy. It now also reads geometry stored as whole
+  numbers.
+- `TransformComponent.rotationOf` and `anglesOf` turn a transform's degrees
+  into a rotation and back, composed Z, then Y, then X. One place for the
+  scene's order, for anything that writes a rotation into a transform.
+
 ## 0.6.0
 
 - **An instance is a link, not a copy.** A prefab placed in a scene is saved

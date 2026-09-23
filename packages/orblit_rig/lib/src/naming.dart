@@ -48,6 +48,43 @@ enum Side {
 abstract final class BoneNaming {
   static final RegExp _numeric = RegExp(r'\.\d{3}$');
 
+  /// [names], made fit to be bone names: none empty and no two alike.
+  ///
+  /// A skeleton read from a file is free to leave a joint unnamed or to name
+  /// two alike, and an armature is not: bones are found by name, so two
+  /// answering to one would be a rig where posing one moves the other. An
+  /// unnamed joint is called `joint` and its position in the list. A name
+  /// already taken gets `.001`, `.002` and so on, which is what an artist's
+  /// tools do to a duplicated bone and so what they will recognise. The first
+  /// with a name keeps it, whatever comes after, so a renamed joint never
+  /// takes a name from another.
+  ///
+  /// One function for everything that names joints, so an imported clip and
+  /// the model it plays on agree about which bone is which.
+  static List<String> unique(List<String> names) {
+    final taken = <String>{};
+    final out = List<String?>.filled(names.length, null);
+
+    // Every name given is claimed before anything is renamed, so a renamed
+    // joint cannot take the name of one that comes after it.
+    for (var at = 0; at < names.length; at++) {
+      final name = names[at];
+      if (name.isNotEmpty && taken.add(name)) out[at] = name;
+    }
+
+    for (var at = 0; at < names.length; at++) {
+      if (out[at] != null) continue;
+      final base = names[at].isEmpty ? 'joint $at' : names[at];
+      var name = base;
+      for (var copy = 1; !taken.add(name); copy++) {
+        name = '$base.${copy.toString().padLeft(3, '0')}';
+      }
+      out[at] = name;
+    }
+
+    return [for (final name in out) name!];
+  }
+
   /// What a bone is for, from its prefix.
   static BoneRole roleOf(String name) {
     for (final role in BoneRole.values) {
