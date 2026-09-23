@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.32.1
+
+- A box `OrblitEnvironmentVolume` given a `rotation` is turned the way that
+  rotation turns a model. It was turned the opposite way, which only showed
+  for a turn that isn't a quarter or a half.
+
 ## 0.32.0
 
 - **A project can build only the material combinations it uses.**

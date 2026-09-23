@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- **Two-bone IK bends the joint towards its pole.** It bent it away: the
+  solver turned the limb with `Quaternion.rotated`, which turns by the inverse
+  of the rotation it is given. A generated limb puts its pole on the side the
+  elbow or knee already bends, so an arm under IK was bending backwards.
+- A `BoneWidget`'s `roll` turns its shape the same way a bone's `roll` turns
+  the bone. It turned it the other way.
+
 ## 0.2.0
 
 - `BoneNaming.unique` makes a file's joint names fit to be bone names: an

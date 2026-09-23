@@ -105,6 +105,22 @@ void main() {
       expect(box.influenceAt(Vector3(0, 0, 8)), 1);
       expect(box.influenceAt(Vector3(8, 0, 0)), 0);
     });
+
+    test('a box turned partway turns the way a model would', () {
+      // A quarter turn lands a box on itself whichever way it goes; an eighth
+      // does not. Turning is right-handed, as a model's transform is, so +x
+      // swings towards -z.
+      final box = OrblitEnvironmentVolume.box(
+        key: 1,
+        centre: Vector3.zero(),
+        halfExtents: Vector3(10, 1, 1),
+        rotation: Quaternion.axisAngle(Vector3(0, 1, 0), math.pi / 4),
+        blendDistance: 0,
+        overrides: const OrblitEnvironmentOverrides(),
+      );
+      expect(box.influenceAt(Vector3(5, 0, -5)), 1);
+      expect(box.influenceAt(Vector3(5, 0, 5)), 0);
+    });
   });
 
   group('resolving the look', () {

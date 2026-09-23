@@ -317,8 +317,10 @@ void main() {
       final back = jointWithPole(Vector3(2, 0, -5));
 
       // Mirrored about the line to the target: the difference between a knee
-      // and a backwards knee.
-      expect(front.z.sign, isNot(back.z.sign));
+      // and a backwards knee. The joint goes the pole's way; a pole is placed
+      // where the knee should point.
+      expect(front.z, greaterThan(0));
+      expect(back.z, lessThan(0));
       expect(front.z.abs(), closeTo(back.z.abs(), 1e-5));
     });
 

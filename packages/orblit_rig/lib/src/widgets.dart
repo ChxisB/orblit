@@ -62,16 +62,18 @@ class BoneWidget {
   /// the only reason to be looking.
   List<List<Vector3>> outline(double boneLength) {
     final scale = boneLength * size;
+    // As a matrix: `Quaternion.rotated` would turn it the other way to a bone
+    // with the same roll.
     final twist = roll == 0
         ? null
-        : Quaternion.axisAngle(Vector3(0, 1, 0), roll);
+        : Quaternion.axisAngle(Vector3(0, 1, 0), roll).asRotationMatrix();
     final shift = offset * boneLength;
 
     return [
       for (final line in _shapeOutline(shape))
         [
           for (final point in line)
-            (twist?.rotated(point) ?? point) * scale + shift,
+            (twist?.transformed(point) ?? point) * scale + shift,
         ],
     ];
   }

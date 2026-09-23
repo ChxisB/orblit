@@ -210,10 +210,12 @@ class OrblitEnvironmentVolume {
       case OrblitVolumeShape.sphere:
         return math.max(0, offset.length - radius);
       case OrblitVolumeShape.box:
-        // Into the box's own frame, where it is axis-aligned. The conjugate
-        // is the inverse for a unit quaternion, and this one was normalised
-        // when it was made.
-        final local = rotation.conjugated().rotated(offset);
+        // Into the box's own frame, where it is axis-aligned: the turn undone.
+        // A rotation's transpose is its inverse, and this one's quaternion was
+        // normalised when it was made. Not `Quaternion.rotated`, which turns
+        // by the inverse already.
+        final undo = rotation.asRotationMatrix()..transpose();
+        final local = undo.transformed(offset);
         final dx = math.max(0.0, local.x.abs() - halfExtents.x);
         final dy = math.max(0.0, local.y.abs() - halfExtents.y);
         final dz = math.max(0.0, local.z.abs() - halfExtents.z);

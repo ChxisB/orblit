@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:orblit_rig/orblit_rig.dart';
 import 'package:test/test.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -75,6 +77,27 @@ void main() {
       // Offset is in bone lengths, so a bone of two moves the ring by two.
       for (final point in moved.first) {
         expect(point.y, closeTo(2, 1e-9));
+      }
+    });
+
+    test('a roll turns the shape the way a bone roll turns the bone', () {
+      // A bone straight up +Y is the space a widget is drawn in, so whatever
+      // its rest matrix does to a point of the plain shape, the rolled shape
+      // should already have done.
+      final bone = Bone(
+        name: 'b',
+        head: Vector3.zero(),
+        tail: Vector3(0, 1, 0),
+        roll: math.pi / 2,
+      );
+      final plain = const BoneWidget(shape: WidgetShape.square).outline(1);
+      final rolled = const BoneWidget(
+        shape: WidgetShape.square,
+        roll: math.pi / 2,
+      ).outline(1);
+      for (var i = 0; i < plain.first.length; i++) {
+        final expected = bone.restMatrix.transform3(plain.first[i].clone());
+        expect((rolled.first[i] - expected).length, closeTo(0, 1e-9));
       }
     });
 

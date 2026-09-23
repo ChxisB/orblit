@@ -111,10 +111,12 @@ IkSolution solveTwoBoneIk({
   }
   bendAxis.normalize();
 
+  // Through the matrix: `Quaternion.rotated` turns by the inverse, which
+  // would bend the joint away from the pole.
   final upperDirection = Quaternion.axisAngle(
     bendAxis,
     rootAngle,
-  ).rotated(direction).normalized();
+  ).asRotationMatrix().transformed(direction).normalized();
 
   final joint = root + upperDirection * upperLength;
 
