@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:orblit_sequence/orblit_sequence.dart';
 import 'package:test/test.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -67,6 +69,53 @@ void main() {
         reason: 'halfway between +0.1 and -0.1 about Y is no turn at all',
       );
       expect(middle.w.abs(), closeTo(1, 1e-6));
+    });
+
+    group('a rotation turns at an even rate', () {
+      // Partway round a tipped axis, and a wide turn: blending the four
+      // numbers and making a rotation again would lag at a quarter and run
+      // ahead at three quarters.
+      final axis = Vector3(1, 2, 3)..normalize();
+      Quaternion turnedBy(double angle) =>
+          Quaternion.axisAngle(axis, 0.2 + angle);
+      const wide = 2 * math.pi / 3;
+
+      /// The angle between two rotations, whichever way round each is written.
+      double apart(Quaternion a, Quaternion b) {
+        final dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+        return 2 * math.acos(dot.abs().clamp(0.0, 1.0));
+      }
+
+      test('between two keys', () {
+        final channel = Channel<Quaternion>([
+          Key(0, turnedBy(0), hold: Hold.linear),
+          Key(1, turnedBy(wide)),
+        ], quaternionMixer);
+        for (final part in [0.25, 0.5, 0.75]) {
+          expect(
+            apart(channel.at(part), turnedBy(part * wide)),
+            lessThan(1e-6),
+            reason: 'at $part of the way',
+          );
+        }
+      });
+
+      test('past either key, for a shape that overshoots', () {
+        for (final part in [-0.1, 1.1]) {
+          final turn = quaternionMixer.lerp(turnedBy(0), turnedBy(wide), part);
+          expect(
+            apart(turn, turnedBy(part * wide)),
+            lessThan(1e-6),
+            reason: 'at $part of the way',
+          );
+        }
+      });
+
+      test('between two keys that barely differ', () {
+        final turn = quaternionMixer.lerp(turnedBy(0), turnedBy(1e-9), 0.5);
+        expect(turn.length, closeTo(1, 1e-12));
+        expect(apart(turn, turnedBy(0.5e-9)), lessThan(1e-6));
+      });
     });
 
     test('a binary search finds the right span in a long channel', () {

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:vector_math/vector_math_64.dart';
 
 import 'easing.dart';
@@ -276,16 +278,39 @@ class QuaternionMixer extends Mixer<Quaternion>
   static Quaternion _alike(Quaternion like, Quaternion q) =>
       _dot(like, q) < 0 ? Quaternion(-q.x, -q.y, -q.z, -q.w) : q;
 
+  /// Round the arc from [a] to [b] at an even rate: what glTF specifies for a
+  /// turn between two keys, and how the renderer plays a file's own clips.
+  /// Blending the four numbers and making a rotation again is cheaper, but a
+  /// wide turn lags a quarter of the way through and runs ahead at three
+  /// quarters, so one clip would pose a model differently in each.
+  ///
+  /// A [t] outside 0 to 1 carries on round the same arc, for a shape that
+  /// overshoots.
   @override
   Quaternion lerp(Quaternion a, Quaternion b, double t) {
     // The short way round. Without the sign check a turn of a hundred and
     // eighty-one degrees goes the other hundred and seventy-nine.
-    final flipped = _alike(a, b);
+    final to = _alike(a, b);
+    final cosine = _dot(a, to).clamp(-1.0, 1.0);
+    final double wa;
+    final double wb;
+    if (cosine > 0.9995) {
+      // Too short an arc to divide by its sine, and short enough that the
+      // four numbers blended are the arc to well under a thousandth of a
+      // degree.
+      wa = 1 - t;
+      wb = t;
+    } else {
+      final angle = math.acos(cosine);
+      final sine = math.sin(angle);
+      wa = math.sin((1 - t) * angle) / sine;
+      wb = math.sin(t * angle) / sine;
+    }
     final out = Quaternion(
-      a.x + (flipped.x - a.x) * t,
-      a.y + (flipped.y - a.y) * t,
-      a.z + (flipped.z - a.z) * t,
-      a.w + (flipped.w - a.w) * t,
+      a.x * wa + to.x * wb,
+      a.y * wa + to.y * wb,
+      a.z * wa + to.z * wb,
+      a.w * wa + to.w * wb,
     );
     out.normalize();
     return out;

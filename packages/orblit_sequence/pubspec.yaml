@@ -3,7 +3,7 @@ description: >-
   Cutscenes as a function of time. A sequence is tracks of clips over a
   playhead; sampling it at any moment gives the whole world's worth of values,
   so scrubbing, replaying and stepping backwards all come out the same.
-version: 0.2.0
+version: 0.2.1
 publish_to: none
 
 environment:

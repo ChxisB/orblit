@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1
+
+- **A rotation turns at an even rate between two keys.** `QuaternionMixer`
+  blended the four numbers and made a rotation again, which lags a quarter of
+  the way through a wide turn and runs ahead at three quarters. It now goes
+  round the arc at a constant speed, as glTF specifies and as the renderer
+  plays a file's own clips, so a clip poses a model the same either way. A
+  shape that overshoots carries on round the same arc. Only turns more than a
+  few degrees apart change. Keys a frame apart were already within a fraction
+  of a degree.
+
 ## 0.2.0
 
 - **Curves.** `Hold.curve` carries a value along a cubic that leaves a key,
