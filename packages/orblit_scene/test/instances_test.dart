@@ -705,5 +705,43 @@ void main() {
       final saved = foldInstances(result.document, both);
       expect(saved.entities.map((e) => e.id), ['f1', 'n1']);
     });
+
+    test('unpacking against a prefab that has lost its root still unpacks', () {
+      final document = twoLamps();
+      final broken = PrefabDocument(
+        name: 'Lamp',
+        root: 'gone',
+        document: lamp().document,
+      );
+      var next = 0;
+      final result = unpackInstance(
+        document,
+        'lamp1',
+        source: library({lampAsset: broken}),
+        fresh: () => 'n${++next}',
+      );
+      expect(result.document['lamp1']!.has(SceneComponents.prefab), isFalse);
+      expect(result.document['n2']!.parent, 'n1');
+      expect(
+        () => applyInstance(
+          document,
+          'lamp1',
+          source: library({lampAsset: broken}),
+        ),
+        throwsA(isA<PrefabException>()),
+      );
+    });
+
+    test('a part moved out of its instance folds back under its root', () {
+      final document = twoLamps();
+      final moved = document.withEntity(
+        'lamp1/bulb',
+        document['lamp1/bulb']!.copyWith(parent: 'lamp2/bulb'),
+      );
+      final saved = foldInstances(moved, source);
+      expect(saved.contains('lamp1/bulb'), isFalse);
+      final back = opened(saved, source);
+      expect(back['lamp1/bulb']!.parent, 'lamp1');
+    });
   });
 }

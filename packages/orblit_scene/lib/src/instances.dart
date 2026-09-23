@@ -87,6 +87,11 @@ SceneLoad expandInstances(
 /// stands keeps it — [expandInstances] recognises an instance already open and
 /// leaves its parts alone.
 ///
+/// A part stays inside the instance it belongs to. One whose parent has been
+/// set to something outside it cannot be said as a change to the instance,
+/// and is folded back under the instance's root: moving parts out is for
+/// [unpackInstance] to do first.
+///
 /// [only] limits it to those instances, by id.
 SceneDocument foldInstances(
   SceneDocument document,
@@ -189,7 +194,7 @@ PrefabEdit applyInstance(
     );
   }
   final asset = link.asset!;
-  final was = source(asset);
+  final was = _usable(source, asset);
   if (was == null) {
     throw PrefabException('The prefab "$asset" could not be read.');
   }
@@ -301,7 +306,7 @@ SceneLoad refreshInstances(
   // Parts of the prefab's root, when that root is an instance of another
   // prefab, sit under a segment no entity has: the root's id in the prefab.
   // They become this entity's parts, and it becomes that instance.
-  final base = source(link.asset!);
+  final base = _usable(source, link.asset!);
   final inner = base == null ? null : _linkOf(base.rootEntity);
   final innerHead = inner == null ? null : base!.root;
 
@@ -338,6 +343,17 @@ SceneLoad refreshInstances(
     ),
     renamed: renamed,
   );
+}
+
+/// The prefab at [asset], unless there is none or it has lost its root.
+///
+/// A source is the caller's and may hand back anything, so everything here
+/// that reaches into a prefab's root asks through this first.
+PrefabDocument? _usable(PrefabSource source, String asset) {
+  final prefab = source(asset);
+  return prefab != null && prefab.document.contains(prefab.root)
+      ? prefab
+      : null;
 }
 
 PrefabComponent? _linkOf(SceneEntity entity) {
@@ -618,8 +634,8 @@ class _Opener {
       return null;
     }
     try {
-      final prefab = source(asset);
-      if (prefab == null || !prefab.document.contains(prefab.root)) {
+      final prefab = _usable(source, asset);
+      if (prefab == null) {
         problems.add(
           'The prefab "$asset" could not be read, so its instances are links '
           'with nothing in them until it can.',

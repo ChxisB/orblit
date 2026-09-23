@@ -34,6 +34,11 @@
   `unpackInstance` turns one back into plain entities; `refreshInstances`
   reopens every instance of a prefab that has changed. Each returns what was
   renamed, so a selection can follow.
+- A prefab whose root is not in it any more is treated as one that cannot be
+  read: an instance of it stays a link, and unpacking one still unpacks. A
+  part given a parent outside its own instance cannot be said as a change to
+  that instance, and folds back under the instance's root; moving parts out
+  is what unpacking is for.
 - **The format is at 5.** A version-four scene's prefab instances were
   stamped copies, every part carrying the link. They are read as
   `PrefabState.stamped` and relinked the first time their prefab can be read,
