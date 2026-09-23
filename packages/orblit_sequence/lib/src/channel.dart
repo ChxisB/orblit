@@ -19,11 +19,31 @@ enum Hold {
   /// Eased with the *shape* the key names, so one span can snap and the next
   /// can settle.
   shaped,
+
+  /// Along a curve that leaves this key, and arrives at the next, at the
+  /// slopes they name.
+  ///
+  /// A key that names no slope has one worked out from its neighbours: the
+  /// line from the key before it to the key after, so a curve through four
+  /// keys flows through the middle two instead of stopping at each. The
+  /// first and last keys, and any key that is a peak or a trough, are left at
+  /// rest, so the curve never overshoots a value somebody chose.
+  ///
+  /// What an imported cubic spline is, and what a curve editor's handles set.
+  /// A value that cannot curve, a flag, travels as [linear] does.
+  curve,
 }
 
 /// One value at one moment.
 class Key<T> {
-  const Key(this.at, this.value, {this.hold = Hold.smooth, this.shape});
+  const Key(
+    this.at,
+    this.value, {
+    this.hold = Hold.smooth,
+    this.shape,
+    this.slopeIn,
+    this.slopeOut,
+  });
 
   /// Seconds from the start of the sequence.
   final double at;
@@ -37,6 +57,17 @@ class Key<T> {
 
   /// Which easing [Hold.shaped] uses. Ignored otherwise.
   final Easing? shape;
+
+  /// How fast the value is changing as it arrives here, in units a second,
+  /// when the span before this key is a [Hold.curve]. Null works one out.
+  final T? slopeIn;
+
+  /// How fast it is changing as it leaves, when [hold] is [Hold.curve]. Null
+  /// works one out.
+  ///
+  /// Separate from [slopeIn] so a key can be a corner: a ball's height
+  /// arrives at the floor falling and leaves it rising.
+  final T? slopeOut;
 }
 
 /// How two values of one kind are mixed.
@@ -54,8 +85,66 @@ abstract class Mixer<T> {
   T mix(List<T> values, List<double> weights);
 }
 
-class DoubleMixer extends Mixer<double> {
+/// A mixer for values that can travel along a curve: ones that can be added
+/// and scaled, which is every kind here but a flag.
+abstract interface class CurveMixer<T> implements Mixer<T> {
+  /// A value that is not changing.
+  T get still;
+
+  /// The slope a curve through [at] should have there, given the keys either
+  /// side of it and the [seconds] between them.
+  T through(T before, T at, T after, double seconds);
+
+  /// The value [t] of the way from [a] to [b] over [seconds], leaving [a] at
+  /// the slope [leave] and arriving at [b] at the slope [arrive].
+  T curve(T a, T leave, T b, T arrive, double seconds, double t);
+}
+
+/// The four weights of a cubic Hermite curve at [t]: for the start value, the
+/// start slope, the end value and the end slope.
+({double a, double leave, double b, double arrive}) _hermite(double t) {
+  final t2 = t * t;
+  final t3 = t2 * t;
+  return (
+    a: 2 * t3 - 3 * t2 + 1,
+    leave: t3 - 2 * t2 + t,
+    b: -2 * t3 + 3 * t2,
+    arrive: t3 - t2,
+  );
+}
+
+/// A peak or a trough is left flat. Anything else takes the line from its
+/// neighbours, which is the slope that passes through without a kink.
+double _clamped(double before, double at, double after, double seconds) {
+  if ((at - before) * (after - at) <= 0) return 0;
+  return seconds <= 0 ? 0 : (after - before) / seconds;
+}
+
+class DoubleMixer extends Mixer<double> implements CurveMixer<double> {
   const DoubleMixer();
+
+  @override
+  double get still => 0;
+
+  @override
+  double through(double before, double at, double after, double seconds) =>
+      _clamped(before, at, after, seconds);
+
+  @override
+  double curve(
+    double a,
+    double leave,
+    double b,
+    double arrive,
+    double seconds,
+    double t,
+  ) {
+    final w = _hermite(t);
+    return w.a * a +
+        w.leave * leave * seconds +
+        w.b * b +
+        w.arrive * arrive * seconds;
+  }
 
   @override
   double lerp(double a, double b, double t) => a + (b - a) * t;
@@ -72,8 +161,37 @@ class DoubleMixer extends Mixer<double> {
   }
 }
 
-class Vector3Mixer extends Mixer<Vector3> {
+class Vector3Mixer extends Mixer<Vector3> implements CurveMixer<Vector3> {
   const Vector3Mixer();
+
+  @override
+  Vector3 get still => Vector3.zero();
+
+  /// Worked out one axis at a time, so a key that is the top of a jump is
+  /// flat in height without also stopping the run forwards.
+  @override
+  Vector3 through(Vector3 before, Vector3 at, Vector3 after, double seconds) =>
+      Vector3(
+        _clamped(before.x, at.x, after.x, seconds),
+        _clamped(before.y, at.y, after.y, seconds),
+        _clamped(before.z, at.z, after.z, seconds),
+      );
+
+  @override
+  Vector3 curve(
+    Vector3 a,
+    Vector3 leave,
+    Vector3 b,
+    Vector3 arrive,
+    double seconds,
+    double t,
+  ) {
+    final w = _hermite(t);
+    return a.scaled(w.a)
+      ..addScaled(leave, w.leave * seconds)
+      ..addScaled(b, w.b)
+      ..addScaled(arrive, w.arrive * seconds);
+  }
 
   @override
   Vector3 lerp(Vector3 a, Vector3 b, double t) => a + (b - a) * t;
@@ -90,16 +208,79 @@ class Vector3Mixer extends Mixer<Vector3> {
   }
 }
 
-class QuaternionMixer extends Mixer<Quaternion> {
+class QuaternionMixer extends Mixer<Quaternion>
+    implements CurveMixer<Quaternion> {
   const QuaternionMixer();
+
+  @override
+  Quaternion get still => Quaternion(0, 0, 0, 0);
+
+  /// The line from the key before to the key after, both written the same
+  /// way round as [at]. A quaternion and its negative are one rotation, and a
+  /// slope taken between two written opposite ways points nowhere useful.
+  ///
+  /// Not flattened at peaks, because a rotation has no peak: it is the four
+  /// numbers together that mean something, not any one of them.
+  @override
+  Quaternion through(
+    Quaternion before,
+    Quaternion at,
+    Quaternion after,
+    double seconds,
+  ) {
+    if (seconds <= 0) return still;
+    final from = _alike(at, before);
+    final to = _alike(at, after);
+    return Quaternion(
+      (to.x - from.x) / seconds,
+      (to.y - from.y) / seconds,
+      (to.z - from.z) / seconds,
+      (to.w - from.w) / seconds,
+    );
+  }
+
+  /// Four numbers along four curves, then made a rotation again. What glTF
+  /// specifies for a cubic spline on a rotation, which matters because that
+  /// is where most curved rotations come from.
+  @override
+  Quaternion curve(
+    Quaternion a,
+    Quaternion leave,
+    Quaternion b,
+    Quaternion arrive,
+    double seconds,
+    double t,
+  ) {
+    // The short way round, as [lerp] does, and the slope turned with it.
+    final flip = _dot(a, b) < 0 ? -1.0 : 1.0;
+    final w = _hermite(t);
+    final m0 = w.leave * seconds;
+    final m1 = w.arrive * seconds * flip;
+    final bw = w.b * flip;
+    final out = Quaternion(
+      w.a * a.x + m0 * leave.x + bw * b.x + m1 * arrive.x,
+      w.a * a.y + m0 * leave.y + bw * b.y + m1 * arrive.y,
+      w.a * a.z + m0 * leave.z + bw * b.z + m1 * arrive.z,
+      w.a * a.w + m0 * leave.w + bw * b.w + m1 * arrive.w,
+    );
+    if (out.length2 == 0) return a.clone();
+    out.normalize();
+    return out;
+  }
+
+  static double _dot(Quaternion a, Quaternion b) =>
+      a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
+
+  /// [q], negated if that is what it takes to be written the same way round
+  /// as [like].
+  static Quaternion _alike(Quaternion like, Quaternion q) =>
+      _dot(like, q) < 0 ? Quaternion(-q.x, -q.y, -q.z, -q.w) : q;
 
   @override
   Quaternion lerp(Quaternion a, Quaternion b, double t) {
     // The short way round. Without the sign check a turn of a hundred and
     // eighty-one degrees goes the other hundred and seventy-nine.
-    final flipped = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w < 0
-        ? Quaternion(-b.x, -b.y, -b.z, -b.w)
-        : b;
+    final flipped = _alike(a, b);
     final out = Quaternion(
       a.x + (flipped.x - a.x) * t,
       a.y + (flipped.y - a.y) * t,
@@ -199,12 +380,49 @@ class Channel<T> {
     if (span <= 0) return to.value;
 
     final part = (at - from.at) / span;
+    final curves = mixer;
+    if (from.hold == Hold.curve && curves is CurveMixer<T>) {
+      return curves.curve(
+        from.value,
+        from.slopeOut ?? _slopeAt(low, curves),
+        to.value,
+        to.slopeIn ?? _slopeAt(high, curves),
+        span,
+        part,
+      );
+    }
     final shaped = switch (from.hold) {
-      Hold.linear => part,
+      Hold.linear || Hold.curve => part,
       Hold.smooth => ease(Easing.inOut, part),
       Hold.shaped => ease(from.shape ?? Easing.inOut, part),
       Hold.step => 0.0,
     };
     return mixer.lerp(from.value, to.value, shaped);
+  }
+
+  /// The slope worked out for the key at [index], for a key that names none.
+  ///
+  /// Public because a curve editor draws it: a handle nobody has dragged
+  /// still has a direction, and it should be the one the curve really takes.
+  T slopeAt(int index) {
+    final curves = mixer;
+    if (curves is! CurveMixer<T>) {
+      throw StateError('a ${T.toString()} channel has no slopes');
+    }
+    return _slopeAt(index, curves);
+  }
+
+  T _slopeAt(int index, CurveMixer<T> curves) {
+    // The ends start and finish at rest: a curve run past its last key is a
+    // value nobody chose, and so is a slope that assumes one.
+    if (index <= 0 || index >= keys.length - 1) return curves.still;
+    final before = keys[index - 1];
+    final after = keys[index + 1];
+    return curves.through(
+      before.value,
+      keys[index].value,
+      after.value,
+      after.at - before.at,
+    );
   }
 }

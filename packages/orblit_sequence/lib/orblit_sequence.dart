@@ -15,6 +15,7 @@ export 'src/channel.dart'
     show
         BoolMixer,
         Channel,
+        CurveMixer,
         DoubleMixer,
         Hold,
         Key,
