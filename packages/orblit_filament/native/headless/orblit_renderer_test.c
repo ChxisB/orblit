@@ -734,6 +734,12 @@ int main(void) {
          "a material is thirty-seven floats");
   expect(orblit_renderer_stride(ORBLIT_STRIDE_PASS) == 13,
          "a graph pass is thirteen floats");
+  expect(orblit_renderer_stride(ORBLIT_STRIDE_TERRAIN_INTS) == 12 &&
+             orblit_renderer_stride(ORBLIT_STRIDE_TERRAIN_REGION_INTS) == 3,
+         "a terrain is twelve whole numbers, and a region three");
+  expect(orblit_renderer_stride(ORBLIT_STRIDE_TERRAIN) == 4 &&
+             orblit_renderer_stride(ORBLIT_STRIDE_TERRAIN_SET) == 1,
+         "a terrain is four floats, and a set one");
 
   /* Bytes by name need no renderer, and refuse what they should. */
   {
@@ -858,6 +864,73 @@ int main(void) {
     }
     expect(orblit_renderer_rendered_frames(renderer) > frames,
            "rendered frame count survives surface replacement");
+  }
+
+  /* Terrain is read whole or not at all, and a terrain that is taken draws.
+   *
+   * One region of sixteen texels a side and no texture sets, so the maps are
+   * the only bytes: flat, uncovered and uncoloured, which is the smallest
+   * terrain the renderer will hold. Drawn for a few frames so the clipmap and
+   * its material are exercised, then taken away again so nothing after this
+   * has ground under it. */
+  {
+    enum { kSide = 16, kMaps = kSide * kSide * 12 };
+    static uint8_t maps[kMaps];
+    int32_t ints[1 + 12 + 3] = {
+        1,                                  /* one terrain */
+        7, 3, kSide, 16, 2, 0, 0, 0, 1, 0, 0, 1, /* key 7, both shadows,
+                                            region and mesh 16, two levels,
+                                            no sets, pictures of 1, one region */
+        0, 0, 1};                           /* at the origin, its maps here */
+    const float floats[4] = {1.0f, 0.87f, 1.0f, 0.1f};
+
+    expect(orblit_renderer_apply_terrain(renderer, NULL, 0, NULL, 0, NULL, 0) ==
+               ORBLIT_OK,
+           "no terrain at all is taken");
+    expect(orblit_renderer_apply_terrain(renderer, ints, 1, NULL, 0, NULL, 0) ==
+               ORBLIT_ERROR_LENGTH,
+           "a count with no terrain after it is refused");
+    expect(orblit_renderer_apply_terrain(renderer, ints, 16, floats, 4, maps,
+                                        kMaps - 1) == ORBLIT_ERROR_LENGTH,
+           "a region a byte short is refused");
+    ints[3] = 24;
+    expect(orblit_renderer_apply_terrain(renderer, ints, 16, floats, 4, maps,
+                                        kMaps) == ORBLIT_ERROR_RANGE,
+           "a region size that is not a power of two is refused");
+    ints[3] = kSide;
+    ints[15] = 0;
+    expect(orblit_renderer_apply_terrain(renderer, ints, 16, floats, 4, maps,
+                                        kMaps) == ORBLIT_ERROR_LENGTH,
+           "maps nobody said were coming are refused");
+    ints[15] = 1;
+    {
+      int32_t twice[1 + 2 * 12] = {2, 7, 3, kSide, 16, 2, 0, 0, 0, 1, 0, 0, 0,
+                                   7, 3, kSide, 16, 2, 0, 0, 0, 1, 0, 0, 0};
+      const float settings[8] = {1.0f, 0.87f, 1.0f, 0.1f,
+                                 1.0f, 0.87f, 1.0f, 0.1f};
+      expect(orblit_renderer_apply_terrain(renderer, twice, 25, settings, 8,
+                                          NULL, 0) == ORBLIT_ERROR_RANGE,
+             "two terrains under one key are refused");
+      twice[13] = 8;
+      expect(orblit_renderer_apply_terrain(renderer, twice, 25, settings, 8,
+                                          NULL, 0) == ORBLIT_OK,
+             "and taken under two");
+    }
+
+    expect(orblit_renderer_apply_terrain(renderer, ints, 16, floats, 4, maps,
+                                        kMaps) == ORBLIT_OK,
+           "a whole terrain is taken");
+    for (int frame = 0; frame < 3; frame++) {
+      expect(orblit_renderer_draw(renderer, 2.5 + frame / 60.0) == ORBLIT_OK,
+             "a terrain draws");
+    }
+    ints[15] = 0;
+    expect(orblit_renderer_apply_terrain(renderer, ints, 16, floats, 4, NULL,
+                                        0) == ORBLIT_OK,
+           "a terrain it holds needs only its settings");
+    expect(orblit_renderer_apply_terrain(renderer, NULL, 0, NULL, 0, NULL, 0) ==
+               ORBLIT_OK,
+           "and is taken away by a message without it");
   }
 
   /* Batching is on for a renderer nobody has told anything.

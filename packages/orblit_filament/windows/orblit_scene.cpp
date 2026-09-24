@@ -267,6 +267,9 @@ std::unique_ptr<Scene> Scene::From(const flutter::EncodableValue* args) {
   scene->sprite_changed_ = ReadInts(map, "spriteChanged");
   scene->sprite_changed_counts_ = ReadInts(map, "spriteChangedCounts");
   scene->sprite_data_ = ReadFloats(map, "spriteData");
+  scene->terrain_ints_ = ReadInts(map, "terrainInts");
+  scene->terrain_floats_ = ReadFloats(map, "terrainFloats");
+  scene->terrain_data_ = ReadBytes(map, "terrainData");
   scene->pose_keys_ = ReadLongs(map, "poseKeys");
   scene->pose_ints_ = ReadInts(map, "poseInts");
   scene->pose_floats_ = ReadFloats(map, "poseFloats");

@@ -22,6 +22,7 @@
 #include "OrblitShadows.h"
 #include "OrblitSplats.h"
 #include "OrblitSprites.h"
+#include "OrblitTerrain.h"
 #include "ScreenEffects.h"
 
 struct orblit_renderer {
@@ -156,6 +157,14 @@ uint32_t orblit_renderer_stride(orblit_stride which) {
       return uint32_t(orblit::kPoseInts);
     case ORBLIT_STRIDE_POSE:
       return uint32_t(orblit::kPoseFloats);
+    case ORBLIT_STRIDE_TERRAIN_INTS:
+      return uint32_t(orblit::kTerrainInts);
+    case ORBLIT_STRIDE_TERRAIN_REGION_INTS:
+      return uint32_t(orblit::kTerrainRegionInts);
+    case ORBLIT_STRIDE_TERRAIN:
+      return uint32_t(orblit::kTerrainParams);
+    case ORBLIT_STRIDE_TERRAIN_SET:
+      return uint32_t(orblit::kTerrainSetParams);
   }
   return 0;
 }
@@ -692,6 +701,31 @@ int orblit_renderer_apply_sprites(orblit_renderer *renderer, uint32_t count,
     core.applySprites(keys, flags, orders, revisions, params, named, changed,
                       changed_counts, changed_count, records, record_floats,
                       count);
+  });
+}
+
+int orblit_renderer_apply_terrain(orblit_renderer *renderer,
+                                  const int32_t *ints, size_t int_count,
+                                  const float *floats, size_t float_count,
+                                  const uint8_t *data, size_t data_length) {
+  if (renderer == nullptr) return ORBLIT_ERROR_NULL;
+  if ((int_count > 0 && ints == nullptr) ||
+      (float_count > 0 && floats == nullptr) ||
+      (data_length > 0 && data == nullptr)) {
+    return ORBLIT_ERROR_NULL;
+  }
+  std::vector<orblit::TerrainRequest> requests;
+  switch (orblit::parseTerrain(ints, int_count, floats, float_count, data,
+                               data_length, requests)) {
+    case orblit::TerrainParse::ok:
+      break;
+    case orblit::TerrainParse::length:
+      return ORBLIT_ERROR_LENGTH;
+    case orblit::TerrainParse::range:
+      return ORBLIT_ERROR_RANGE;
+  }
+  return guarded(renderer, [&](orblit::Renderer &core) {
+    core.applyTerrain(requests);
   });
 }
 

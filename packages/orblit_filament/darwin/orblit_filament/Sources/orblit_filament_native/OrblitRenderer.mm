@@ -256,6 +256,36 @@ std::string OrblitString(NSString *string) {
                       changedCount, records, recordFloats, count);
 }
 
++ (BOOL)terrainReads:(const int32_t *)ints
+            intCount:(size_t)intCount
+              floats:(const float *)floats
+          floatCount:(size_t)floatCount
+                data:(const uint8_t *)data
+          dataLength:(size_t)dataLength {
+  std::vector<orblit::TerrainRequest> requests;
+  return orblit::parseTerrain(ints, intCount, floats, floatCount, data,
+                              dataLength, requests) == orblit::TerrainParse::ok;
+}
+
+- (BOOL)hasTerrain {
+  return _core->hasTerrain();
+}
+
+- (BOOL)applyTerrain:(const int32_t *)ints
+            intCount:(size_t)intCount
+              floats:(const float *)floats
+          floatCount:(size_t)floatCount
+                data:(const uint8_t *)data
+          dataLength:(size_t)dataLength {
+  std::vector<orblit::TerrainRequest> requests;
+  if (orblit::parseTerrain(ints, intCount, floats, floatCount, data,
+                           dataLength, requests) != orblit::TerrainParse::ok) {
+    return NO;
+  }
+  _core->applyTerrain(requests);
+  return YES;
+}
+
 - (BOOL)hasSplats {
   return _core->hasSplats();
 }

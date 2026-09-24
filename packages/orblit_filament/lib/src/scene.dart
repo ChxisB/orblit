@@ -19,6 +19,7 @@ import 'models.dart';
 import 'population.dart';
 import 'splats.dart';
 import 'sprites.dart';
+import 'terrain.dart';
 
 part 'scene_objects.dart';
 part 'scene_sky.dart';
@@ -35,6 +36,7 @@ class OrblitScene {
     List<OrblitPopulation>? populations,
     List<OrblitSplats>? splats,
     List<OrblitSprites>? sprites,
+    List<OrblitTerrain>? terrain,
     List<OrblitMaterial>? materials,
     List<OrblitVideo>? videos,
     OrblitPostProcess? post,
@@ -67,6 +69,7 @@ class OrblitScene {
        populations = populations ?? const [],
        splats = splats ?? const [],
        sprites = sprites ?? const [],
+       terrain = terrain ?? const [],
        sky = sky ?? OrblitSky(),
        fog = fog ?? OrblitFog.none,
        precipitation = precipitation ?? OrblitPrecipitation.none;
@@ -81,6 +84,7 @@ class OrblitScene {
   /// dozen fields by hand and quietly dropping the one that was added last.
   OrblitScene copyWith({
     List<OrblitSprites>? sprites,
+    List<OrblitTerrain>? terrain,
     List<OrblitObject>? objects,
     List<OrblitPopulation>? populations,
     List<OrblitSplats>? splats,
@@ -119,6 +123,7 @@ class OrblitScene {
     populations: populations ?? this.populations,
     splats: splats ?? this.splats,
     sprites: sprites ?? this.sprites,
+    terrain: terrain ?? this.terrain,
     lights: lights ?? this.lights,
     materials: materials ?? this.materials,
     videos: videos ?? this.videos,
@@ -158,6 +163,14 @@ class OrblitScene {
   /// A scene of nothing else, seen through an orthographic camera, is a 2D
   /// game drawn by the same renderer as a 3D one.
   final List<OrblitSprites> sprites;
+
+  /// Ground: heights over regions of the world, and what covers them.
+  ///
+  /// Apart from [objects] because it is not a mesh. It is one grid drawn a
+  /// few times round the camera and raised by its heights on the GPU, so its
+  /// cost is the same however much ground there is, and changing the ground
+  /// is sending the regions that changed.
+  final List<OrblitTerrain> terrain;
 
   /// Every light in the scene. A scene with none is lit by its sky alone,
   /// which is dim and even and perfectly legitimate.
@@ -362,6 +375,7 @@ class OrblitScene {
     Map<int, int>? sentRevisions,
     Map<int, int>? sentSplatRevisions,
     Map<int, int>? sentSpriteRevisions,
+    Map<int, OrblitTerrainHeld>? sentTerrain,
     double? at,
   }) {
     // Volumes are resolved here, where the scene is packed, so that every
@@ -373,6 +387,7 @@ class OrblitScene {
         sentRevisions: sentRevisions,
         sentSplatRevisions: sentSplatRevisions,
         sentSpriteRevisions: sentSpriteRevisions,
+        sentTerrain: sentTerrain,
         at: at,
       );
     }
@@ -424,6 +439,7 @@ class OrblitScene {
       ...?_populationMessage(sentRevisions),
       ...?_splatMessage(sentSplatRevisions),
       ...?_spriteMessage(sentSpriteRevisions),
+      ...?_terrainMessage(sentTerrain),
       // What models' own files do to them: clips, variants, joints. Measured
       // from `at` above, so the renderer can sample a clip at the moment each
       // frame is drawn rather than the moment this arrived.

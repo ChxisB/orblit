@@ -242,6 +242,9 @@ std::unique_ptr<Scene> Scene::From(FlValue* args) {
   scene->sprite_changed_ = ReadInts(args, "spriteChanged");
   scene->sprite_changed_counts_ = ReadInts(args, "spriteChangedCounts");
   scene->sprite_data_ = ReadFloats(args, "spriteData");
+  scene->terrain_ints_ = ReadInts(args, "terrainInts");
+  scene->terrain_floats_ = ReadFloats(args, "terrainFloats");
+  scene->terrain_data_ = ReadBytes(args, "terrainData");
   scene->pose_keys_ = ReadLongs(args, "poseKeys");
   scene->pose_ints_ = ReadInts(args, "poseInts");
   scene->pose_floats_ = ReadFloats(args, "poseFloats");

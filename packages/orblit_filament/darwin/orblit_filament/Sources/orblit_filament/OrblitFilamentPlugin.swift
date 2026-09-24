@@ -458,6 +458,7 @@ private final class Viewport {
 
     scene.splats.apply(to: renderer)
     scene.sprites.apply(to: renderer)
+    scene.terrain.apply(to: renderer)
 
     let lightCount = scene.lightCount
     let lightKeys = lightCount == 0 ? [Int64(0)] : scene.lightKeys
@@ -672,6 +673,9 @@ private struct Scene {
 
   /// Sprite layers, decoded and checked in OrblitSpriteMessage.swift.
   let sprites: SpriteMessage
+
+  /// Terrains, decoded and checked in OrblitTerrainMessage.swift.
+  let terrain: TerrainMessage
 
   /// Clips, variants and hand-set joints of models out of files, decoded and
   /// checked in OrblitPoseMessage.swift.
@@ -1051,6 +1055,8 @@ private struct Scene {
     self.splats = splats
     guard let sprites = SpriteMessage(arguments: arguments) else { return nil }
     self.sprites = sprites
+    guard let terrain = TerrainMessage(arguments: arguments) else { return nil }
+    self.terrain = terrain
     guard let poses = PoseMessage(arguments: arguments) else { return nil }
     self.poses = poses
   }

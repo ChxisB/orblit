@@ -7,6 +7,7 @@ import 'device_profile.dart';
 import 'graph.dart';
 import 'models.dart';
 import 'scene.dart';
+import 'terrain.dart' show OrblitTerrainHeld;
 import 'web_view_type.dart';
 
 /// A Filament-rendered surface, laid out and composited like any other widget.
@@ -177,6 +178,9 @@ class _OrblitViewState extends State<OrblitView> {
   /// The same, for sprite layers.
   final Map<int, int> _sentSpriteRevisions = {};
 
+  /// The same, for terrains: their pictures and each region's maps.
+  final Map<int, OrblitTerrainHeld> _sentTerrain = {};
+
   Duration _stamp = Duration.zero;
 
   /// This frame's moment, in seconds, on Flutter's own clock.
@@ -213,6 +217,7 @@ class _OrblitViewState extends State<OrblitView> {
           sentRevisions: _sentRevisions,
           sentSplatRevisions: _sentSplatRevisions,
           sentSpriteRevisions: _sentSpriteRevisions,
+          sentTerrain: _sentTerrain,
           // The frame's own timestamp, which is the clock everything in the
           // frame was worked out on — including wherever the camera decided
           // to be.
@@ -239,6 +244,12 @@ class _OrblitViewState extends State<OrblitView> {
         ..clear()
         ..addAll({
           for (final layer in scene.sprites) layer.key: layer.revision,
+        });
+      _sentTerrain
+        ..clear()
+        ..addAll({
+          for (final ground in scene.terrain)
+            ground.key: OrblitTerrainHeld.of(ground),
         });
       if (notes != null && notes.isNotEmpty) {
         // Descriptions of models ride home with the problems; see

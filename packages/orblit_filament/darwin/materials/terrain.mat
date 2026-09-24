@@ -1,0 +1,456 @@
+// Ground: one grid, drawn at every distance at once.
+//
+// The mesh is a flat square of cells, and the same square is drawn several
+// times over, each copy twice the size of the one inside it with a hole cut
+// where the smaller one lies. So there is detail where the camera is and less
+// of it further out, and the whole of it is a handful of draws however far
+// the ground goes. OrblitTerrain.cpp places the squares each frame and picks
+// which hole each one has; everything else is here.
+//
+// The ground itself is in textures, a layer a region: heights, what covers
+// each texel, and a colour laid over it. The grid carries no heights of its
+// own. Each vertex looks up the texel it stands on and rises by that much, so
+// moving the camera moves the grid and the ground stays where it is.
+material {
+    name : orblitTerrain,
+    shadingModel : lit,
+
+    // A normal worked out per pixel from the heights, and one from a texture
+    // on top of it, is detail that crawls once it is smaller than a pixel.
+    // Widening the highlight by how much the normal varies turns that detail
+    // into roughness, which is what it is at that distance.
+    specularAntiAliasing : true,
+    specularAntiAliasingVariance : 0.15,
+    specularAntiAliasingThreshold : 0.2,
+
+    parameters : [
+        // A layer a region. Heights in world units; what covers each texel,
+        // in the thirty-two bits `Cover` names; and a colour over the ground
+        // with a roughness shift in its alpha. Read a texel at a time and
+        // never filtered, so a region's edge is exactly where it is.
+        { type : sampler2dArray, name : heights, format : float, precision : high },
+        { type : sampler2dArray, name : cover, format : uint, precision : high },
+        { type : sampler2dArray, name : colours, format : float },
+
+        // Which layer each region is in: one texel a region, counted from
+        // `regionOrigin`, holding its layer plus one. Nought is no region,
+        // and there is no ground there.
+        { type : sampler2d, name : regions, format : uint, precision : high },
+
+        // The pictures of every set, a layer a set. Albedo with a height in
+        // its alpha, which is what two sets are blended by where they meet,
+        // and a normal with a roughness in its alpha.
+        { type : sampler2dArray, name : albedo, format : float },
+        { type : sampler2dArray, name : normals, format : float },
+
+        // Where the camera is, in world coordinates, handed in. Everything
+        // Filament gives a shader is measured from the camera, and the ground
+        // is looked up by where things are in the world. See `cameraAt` in
+        // instanced.mat for why it is handed in rather than worked out.
+        { type : float3, name : cameraAt, precision : high },
+
+        { type : int2, name : regionOrigin },
+        { type : int2, name : regionSpan },
+        // A region's side is a power of two, so which region a texel is in is
+        // a shift and where in it is a mask. Both work on negative texels.
+        { type : int, name : regionShift },
+        // World units between texels.
+        { type : float, name : spacing },
+        // Cells a side of the smallest square's half. Where a square starts
+        // to fold into the next one out depends on it.
+        { type : int, name : meshSize },
+
+        // Automatic cover: `steep` on slopes, `flat` on level ground, and how
+        // quickly one gives way to the other with slope and with height.
+        { type : int, name : autoSteep },
+        { type : int, name : autoFlat },
+        { type : float, name : autoSlope },
+        { type : float, name : autoHeightFalloff },
+
+        // How hard the edge between two sets is. Nought mixes them evenly;
+        // one lets the taller of the two show and nothing of the other.
+        { type : float, name : blendSharpness },
+
+        // One bit a set: projected from three sides rather than from above,
+        // for cliffs, where a picture laid from above is stretched to lines.
+        { type : uint, name : triplanar },
+        // Each set's size in world units: how far one copy of its picture
+        // reaches. Four sets to an entry.
+        { type : float4[8], name : tileSizes }
+    ]
+}
+
+vertex {
+    // The layer a region's maps are in, or -1 where there is no region.
+    int layerOf(highp ivec2 texel) {
+        highp ivec2 cell = (texel >> materialParams.regionShift) -
+                           materialParams.regionOrigin;
+        if (any(lessThan(cell, ivec2(0))) ||
+            any(greaterThanEqual(cell, materialParams.regionSpan))) {
+            return -1;
+        }
+        return int(texelFetch(materialParams_regions, cell, 0).r) - 1;
+    }
+
+    // The height at a texel, if there is ground there: a region, and no hole.
+    bool standOn(highp ivec2 texel, inout highp float height) {
+        int layer = layerOf(texel);
+        if (layer < 0) return false;
+        int mask = (1 << materialParams.regionShift) - 1;
+        highp ivec3 at = ivec3(texel & mask, layer);
+        if ((texelFetch(materialParams_cover, at, 0).r & 4u) != 0u) {
+            return false;
+        }
+        height = texelFetch(materialParams_heights, at, 0).r;
+        return true;
+    }
+
+    void materialVertex(inout MaterialVertexInputs material) {
+        // How wide this square's cells are. The square is drawn at its own
+        // scale, so the transform says.
+        highp float unit = getWorldFromModelMatrix()[0].x;
+        highp vec3 world = material.worldPosition.xyz + materialParams.cameraAt;
+
+        // Which vertex of its square this is, counted from the world's
+        // origin rather than the square's, so a vertex keeps its number when
+        // the square moves under it. And the texel it stands on.
+        highp ivec2 grid = ivec2(round(world.xz / unit));
+        int stride = int(round(unit / materialParams.spacing));
+        highp ivec2 texel = grid * stride;
+
+        highp float height = 0.0;
+        if (!standOn(texel, height)) {
+            // Not a number, which no triangle survives: every one that
+            // touches this vertex is dropped, and a hole is exactly the
+            // triangles round the texels marked as one.
+            material.worldPosition = vec4(uintBitsToFloat(0x7fc00000u));
+            return;
+        }
+
+        // Towards its outer edge a square folds into the next one out. The
+        // next square has a vertex at every other one of these, so these
+        // odd ones, which it does not have, are drawn down onto the line
+        // between their even neighbours — the edge the bigger square draws.
+        // By the edge they are on it, and the two squares meet without a
+        // crack; further in they are where the ground is.
+        //
+        // The fold starts two cells past the inner edge's furthest reach and
+        // ends two cells before the outer edge's nearest, measured from the
+        // camera. The camera is up to two cells off the square's middle, and
+        // the fold must be nothing at the inner edge and all of it at the
+        // outer, wherever in those two cells it is.
+        bvec2 odd = notEqual(grid & 1, ivec2(0));
+        if (any(odd)) {
+            highp float across = max(abs(material.worldPosition.x),
+                                     abs(material.worldPosition.z)) / unit;
+            float inner = float(materialParams.meshSize / 2);
+            float fold = clamp((across - (inner + 2.0)) / (inner - 4.0), 0.0, 1.0);
+            if (fold > 0.0) {
+                // Both odd lies on the bigger square's diagonal, which runs
+                // the same way as every diagonal here: towards +x and +z.
+                highp ivec2 reach = ivec2(odd) * stride;
+                highp float before = height;
+                highp float after = height;
+                if (standOn(texel - reach, before) &&
+                    standOn(texel + reach, after)) {
+                    height = mix(height, (before + after) * 0.5, fold);
+                }
+            }
+        }
+
+        // Moved by the difference rather than set outright. Filament renders
+        // camera-relative: worldPosition is measured from the camera, not
+        // from the world's origin. The grid is at nought, so rising by the
+        // height is the same whichever origin it is measured from — setting
+        // it to the height would put the ground a camera-height away.
+        material.worldPosition.y += height;
+    }
+}
+
+fragment {
+    // What one set looks like at a point, or what several mixed do.
+    struct Ground {
+        highp vec3 albedo;
+        highp float height;
+        // The picture's normal as a tilt in world space, to add to the
+        // normal the heights give.
+        highp vec3 tilt;
+        highp float roughness;
+    };
+
+    int layerOf(highp ivec2 texel) {
+        highp ivec2 cell = (texel >> materialParams.regionShift) -
+                           materialParams.regionOrigin;
+        if (any(lessThan(cell, ivec2(0))) ||
+            any(greaterThanEqual(cell, materialParams.regionSpan))) {
+            return -1;
+        }
+        return int(texelFetch(materialParams_regions, cell, 0).r) - 1;
+    }
+
+    highp ivec3 within(highp ivec2 texel, int layer) {
+        int mask = (1 << materialParams.regionShift) - 1;
+        return ivec3(texel & mask, layer);
+    }
+
+    float tileSizeOf(int set) {
+        return materialParams.tileSizes[set >> 2][set & 3];
+    }
+
+    Ground sampleSet(int set, highp vec3 world, highp vec3 dx, highp vec3 dy,
+                     highp vec3 normal, float angle, float scale) {
+        // Five bits name thirty two sets and a terrain may have fewer. A set
+        // past the last is drawn as the last: GLSL clamps an array layer,
+        // Metal promises nothing for one out of range.
+        set = min(set, textureSize(materialParams_albedo, 0).z - 1);
+        highp float k = scale / tileSizeOf(set);
+        float c = cos(angle);
+        float s = sin(angle);
+        float layer = float(set);
+
+        // The picture is turned anticlockwise seen from above, so a point is
+        // turned the other way to find where it falls in the unturned one.
+        mat2 back = mat2(c, s, -s, c);
+        highp vec2 uv = back * world.xz * k;
+        vec2 gx = back * dx.xz * k;
+        vec2 gy = back * dy.xz * k;
+        vec4 colour = textureGrad(materialParams_albedo, vec3(uv, layer), gx, gy);
+        vec4 bump = textureGrad(materialParams_normals, vec3(uv, layer), gx, gy);
+
+        // Red along the picture's width and green towards its top, which is
+        // how most tools draw a normal map. Laid from above, the width runs
+        // along +x and the top towards -z, both turned with the picture.
+        vec2 lean = bump.xy * 2.0 - 1.0;
+        vec2 tilt = lean.x * vec2(c, -s) - lean.y * vec2(s, c);
+
+        Ground result;
+        result.albedo = colour.rgb;
+        result.height = colour.a;
+        result.tilt = vec3(tilt.x, 0.0, tilt.y);
+        result.roughness = bump.a;
+
+        if ((materialParams.triplanar & (1u << uint(set))) == 0u) return result;
+
+        // From three sides, each by how squarely the ground faces it. Only
+        // the view from above turns with the cover; a cliff's pictures stand
+        // upright.
+        vec3 facing = pow(abs(normal), vec3(4.0));
+        facing /= facing.x + facing.y + facing.z;
+        if (facing.y > 0.999) return result;
+
+        highp vec2 frontUv = vec2(world.x, -world.y) * k;
+        vec4 frontColour = textureGrad(materialParams_albedo, vec3(frontUv, layer),
+                                       vec2(dx.x, -dx.y) * k, vec2(dy.x, -dy.y) * k);
+        vec4 frontBump = textureGrad(materialParams_normals, vec3(frontUv, layer),
+                                     vec2(dx.x, -dx.y) * k, vec2(dy.x, -dy.y) * k);
+        highp vec2 sideUv = vec2(world.z, -world.y) * k;
+        vec4 sideColour = textureGrad(materialParams_albedo, vec3(sideUv, layer),
+                                      vec2(dx.z, -dx.y) * k, vec2(dy.z, -dy.y) * k);
+        vec4 sideBump = textureGrad(materialParams_normals, vec3(sideUv, layer),
+                                    vec2(dx.z, -dx.y) * k, vec2(dy.z, -dy.y) * k);
+        vec2 frontLean = frontBump.xy * 2.0 - 1.0;
+        vec2 sideLean = sideBump.xy * 2.0 - 1.0;
+
+        result.albedo = result.albedo * facing.y + frontColour.rgb * facing.z +
+                        sideColour.rgb * facing.x;
+        result.height = result.height * facing.y + frontColour.a * facing.z +
+                        sideColour.a * facing.x;
+        result.tilt = result.tilt * facing.y +
+                      vec3(frontLean.x, frontLean.y, 0.0) * facing.z +
+                      vec3(0.0, sideLean.y, sideLean.x) * facing.x;
+        result.roughness = result.roughness * facing.y + frontBump.a * facing.z +
+                           sideBump.a * facing.x;
+        return result;
+    }
+
+    // Two sets where they meet, by how much of each there is and how tall
+    // each is. The taller one shows through the shorter where the mix is
+    // close: stones through sand, grass between paving. Sharpness is how
+    // close the mix has to be.
+    Ground mixByHeight(Ground a, Ground b, float t) {
+        float lift = 1.001 - materialParams.blendSharpness;
+        float wa = a.height + (1.0 - t);
+        float wb = b.height + t;
+        float top = max(wa, wb) - lift;
+        float ba = max(wa - top, 0.0);
+        float bb = max(wb - top, 0.0);
+        float sum = ba + bb;
+        ba /= sum;
+        bb /= sum;
+        Ground result;
+        result.albedo = a.albedo * ba + b.albedo * bb;
+        result.height = a.height * ba + b.height * bb;
+        result.tilt = a.tilt * ba + b.tilt * bb;
+        result.roughness = a.roughness * ba + b.roughness * bb;
+        return result;
+    }
+
+    // What one texel's cover word draws, at this point.
+    Ground cover(uint word, highp vec3 world, highp vec3 dx, highp vec3 dy,
+                 highp vec3 normal) {
+        int base;
+        int overlay;
+        float t;
+        if ((word & 1u) != 0u) {
+            // Chosen by the ground's own shape: the flat set where it is
+            // level and low, the steep set as it tilts and climbs.
+            base = materialParams.autoSteep;
+            overlay = materialParams.autoFlat;
+            t = clamp(materialParams.autoSlope * 2.0 * (normal.y - 1.0) + 1.0 -
+                          materialParams.autoHeightFalloff * 0.01 * world.y,
+                      0.0, 1.0);
+        } else {
+            base = int(word >> 27u);
+            overlay = int((word >> 22u) & 31u);
+            t = float((word >> 14u) & 255u) / 255.0;
+        }
+        float angle = float((word >> 10u) & 15u) * (6.28318531 / 16.0);
+        // Codes nought to four are nought to eighty percent bigger; five to
+        // seven are sixty, forty and twenty percent smaller.
+        uint code = (word >> 7u) & 7u;
+        float percent = code < 5u ? float(code) * 20.0 : float(code) * 20.0 - 160.0;
+        float scale = 1.0 - percent / 100.0;
+
+        // All of one or the other is one set's pictures, not two; and it is
+        // most of the ground.
+        if (t <= 0.0) return sampleSet(base, world, dx, dy, normal, angle, scale);
+        if (t >= 1.0) return sampleSet(overlay, world, dx, dy, normal, angle, scale);
+        return mixByHeight(sampleSet(base, world, dx, dy, normal, angle, scale),
+                           sampleSet(overlay, world, dx, dy, normal, angle, scale),
+                           t);
+    }
+
+    void material(inout MaterialInputs material) {
+        highp vec3 world = getWorldPosition() + materialParams.cameraAt;
+        // Taken here, before anything branches: a derivative is only
+        // defined where every pixel round it takes the same path.
+        highp vec3 dx = dFdx(world);
+        highp vec3 dy = dFdy(world);
+
+        highp vec2 p = world.xz / materialParams.spacing;
+        highp vec2 cell = floor(p);
+        highp vec2 f = p - cell;
+        highp ivec2 origin = ivec2(cell);
+
+        // Almost always the four-by-four texels round this cell are in one
+        // region, and its layer is looked up once rather than sixteen times.
+        int shift = materialParams.regionShift;
+        bool inside = all(equal((origin - 1) >> shift, (origin + 2) >> shift));
+        int sole = inside ? layerOf(origin) : -1;
+
+        // The heights round the cell, less the block's own corners: what the
+        // slope at each of the cell's four corners is measured from.
+        highp float heights[16];
+        bool found[16];
+        for (int z = 0; z < 4; z++) {
+            for (int x = 0; x < 4; x++) {
+                int at = x + z * 4;
+                heights[at] = 0.0;
+                found[at] = false;
+                if ((x == 0 || x == 3) && (z == 0 || z == 3)) continue;
+                highp ivec2 texel = origin + ivec2(x - 1, z - 1);
+                int layer = inside ? sole : layerOf(texel);
+                if (layer < 0) continue;
+                heights[at] = texelFetch(materialParams_heights,
+                                         within(texel, layer), 0).r;
+                found[at] = true;
+            }
+        }
+
+        // The slope at each corner, from its neighbours either side, mixed
+        // by how near each corner is. A neighbour that is not there is taken
+        // as level with the corner, and a corner that is not there has no
+        // say. The same sum `Terrain.normalAt` makes, so a thing placed by
+        // that normal lies the way the ground is lit.
+        vec4 share = vec4((1.0 - f.x) * (1.0 - f.y), f.x * (1.0 - f.y),
+                          (1.0 - f.x) * f.y, f.x * f.y);
+        highp vec2 slope = vec2(0.0);
+        float total = 0.0;
+        for (int corner = 0; corner < 4; corner++) {
+            int at = (1 + (corner & 1)) + (1 + (corner >> 1)) * 4;
+            if (!found[at] || share[corner] <= 0.0) continue;
+            highp float centre = heights[at];
+            highp float east = found[at + 1] ? heights[at + 1] : centre;
+            highp float west = found[at - 1] ? heights[at - 1] : centre;
+            highp float south = found[at + 4] ? heights[at + 4] : centre;
+            highp float north = found[at - 4] ? heights[at - 4] : centre;
+            slope += share[corner] * vec2(east - west, south - north);
+            total += share[corner];
+        }
+        highp vec3 normal = vec3(0.0, 1.0, 0.0);
+        if (total > 0.0) {
+            slope /= total * 2.0 * materialParams.spacing;
+            normal = normalize(vec3(-slope.x, 1.0, -slope.y));
+        }
+
+        // The cover and colour at the four corners.
+        uint words[4];
+        vec4 colour = vec4(0.0);
+        float present = 0.0;
+        for (int corner = 0; corner < 4; corner++) {
+            highp ivec2 texel = origin + ivec2(corner & 1, corner >> 1);
+            int layer = inside ? sole : layerOf(texel);
+            words[corner] = 0u;
+            if (layer < 0) {
+                share[corner] = 0.0;
+                continue;
+            }
+            highp ivec3 at = within(texel, layer);
+            words[corner] = texelFetch(materialParams_cover, at, 0).r;
+            colour += share[corner] * texelFetch(materialParams_colours, at, 0);
+            present += share[corner];
+        }
+        if (present > 0.0) {
+            colour /= present;
+            share /= present;
+        } else {
+            colour = vec4(1.0, 1.0, 1.0, 128.0 / 255.0);
+            share = vec4(1.0, 0.0, 0.0, 0.0);
+        }
+
+        Ground ground;
+        if (words[0] == words[1] && words[0] == words[2] && words[0] == words[3]) {
+            // One cover under the whole cell, which is what a painted field
+            // or untouched automatic ground is: one texel's worth of work.
+            ground = cover(words[0], world, dx, dy, normal);
+        } else {
+            // Each corner's cover, mixed by nearness and height the way two
+            // sets are, so the taller of neighbouring covers reaches further
+            // into the cell. Scaled by nearness as well, so a corner's say
+            // fades to nothing as the point leaves its cell.
+            Ground corners[4];
+            vec4 reach = vec4(-1.0);
+            for (int corner = 0; corner < 4; corner++) {
+                if (share[corner] <= 0.0) continue;
+                corners[corner] = cover(words[corner], world, dx, dy, normal);
+                reach[corner] = corners[corner].height + share[corner];
+            }
+            float top = max(max(reach.x, reach.y), max(reach.z, reach.w)) -
+                        (1.001 - materialParams.blendSharpness);
+            vec4 weight = max(reach - top, 0.0) * share;
+            weight /= weight.x + weight.y + weight.z + weight.w;
+            ground.albedo = vec3(0.0);
+            ground.height = 0.0;
+            ground.tilt = vec3(0.0);
+            ground.roughness = 0.0;
+            for (int corner = 0; corner < 4; corner++) {
+                if (weight[corner] <= 0.0) continue;
+                ground.albedo += corners[corner].albedo * weight[corner];
+                ground.tilt += corners[corner].tilt * weight[corner];
+                ground.roughness += corners[corner].roughness * weight[corner];
+            }
+        }
+
+        // The picture's tilt added to the heights' normal, then brought into
+        // the frame Filament shades in, which the mesh gives as facing up.
+        highp vec3 shaded = normalize(normal + ground.tilt);
+        material.normal = transpose(getWorldTangentFrame()) * shaded;
+        prepareMaterial(material);
+
+        material.baseColor = vec4(ground.albedo * colour.rgb, 1.0);
+        // The colour map's alpha shifts roughness by -1 to +1, with a half
+        // changing nothing.
+        material.roughness = clamp(ground.roughness + colour.a * 2.0 - 1.0, 0.0, 1.0);
+        material.metallic = 0.0;
+    }
+}

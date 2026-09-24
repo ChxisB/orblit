@@ -107,6 +107,8 @@ class Renderer {
                     const int32_t *changed, const int32_t *changedCounts,
                     uint32_t changedCount, const float *records,
                     size_t recordFloats, uint32_t count);
+  bool hasTerrain();
+  void applyTerrain(const std::vector<orblit::TerrainRequest> &requests);
   void setSkyEnabled(bool enabled, const float *params);
   void setPrecipitationEnabled(bool enabled, const float *params);
   Notes notes();
@@ -853,6 +855,10 @@ class Renderer {
   Notes _splatNotes{};
   std::unique_ptr<orblit::SpriteScene> _sprites{};
   Notes _spriteNotes{};
+  /// Ground, drawn from heights on the GPU. OrblitTerrain holds all of it;
+  /// this places its grids round the camera each frame.
+  std::unique_ptr<orblit::TerrainScene> _terrain{};
+  Notes _terrainNotes{};
   VertexBuffer *_vertexBuffer{};
   IndexBuffer *_indexBuffer{};
 

@@ -182,6 +182,12 @@ class SceneData {
   Ints sprite_changed_counts_;
   Floats sprite_data_;
 
+  // Terrains: three arrays read in step, which the ABI measures whole. Absent
+  // altogether when there is none, which reads as none.
+  Ints terrain_ints_;
+  Floats terrain_floats_;
+  Bytes terrain_data_;
+
   // Poses: after the objects, which they address by key. Absent altogether
   // when nothing is posed, which reads as none.
   Longs pose_keys_;

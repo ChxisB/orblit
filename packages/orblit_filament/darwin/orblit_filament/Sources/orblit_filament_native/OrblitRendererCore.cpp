@@ -391,6 +391,7 @@ void Renderer::dispose() {
   // threads joined, while the engine they belong to is still there.
   _splats.reset();
   _sprites.reset();
+  _terrain.reset();
 
   // The graph's own views, cameras and targets, before the scene they point
   // at goes. _disposed is already set, so releaseGraph has to be able to run
@@ -659,6 +660,7 @@ Notes Renderer::notes() {
   for (const auto &entry : _decalNotes) all[entry.first] = entry.second;
   for (const auto &entry : _splatNotes) all[entry.first] = entry.second;
   for (const auto &entry : _spriteNotes) all[entry.first] = entry.second;
+  for (const auto &entry : _terrainNotes) all[entry.first] = entry.second;
   // A texture's problem, while what named it is still named: its model among
   // the objects, or its path among the materials' or the sprite layers'.
   // After the sprites', whose note for an image that did not load only says

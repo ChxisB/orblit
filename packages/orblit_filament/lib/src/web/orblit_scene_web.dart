@@ -140,6 +140,7 @@ class OrblitSceneWeb {
     _populations(to);
     _splats(to);
     _sprites(to);
+    _terrain(to);
     _lights(to);
     _decals(to);
     _probes(to);
@@ -382,6 +383,21 @@ class OrblitSceneWeb {
       spriteChanged.length,
       to.heap.floats(spriteData),
       spriteData.length,
+    ]);
+  }
+
+  void _terrain(_Renderer to) {
+    final terrainInts = _ints('terrainInts');
+    final terrainFloats = _floats('terrainFloats');
+    final terrainData = _bytes('terrainData');
+    to.call('orblit_renderer_apply_terrain', [
+      to.renderer,
+      to.heap.ints(terrainInts),
+      terrainInts.length,
+      to.heap.floats(terrainFloats),
+      terrainFloats.length,
+      to.heap.uint8s(terrainData),
+      terrainData.length,
     ]);
   }
 

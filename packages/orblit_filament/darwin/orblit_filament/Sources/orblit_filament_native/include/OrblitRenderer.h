@@ -371,6 +371,29 @@ NS_ASSUME_NONNULL_BEGIN
         recordFloats:(size_t)recordFloats
                count:(uint32_t)count;
 
+/// Whether a terrain message reads: its three arrays used up exactly, and
+/// every number in them within its limits. Asked when a scene is decoded, so
+/// one that does not read is refused there. See orblit_renderer_apply_terrain
+/// for the layout.
++ (BOOL)terrainReads:(const int32_t *)ints
+            intCount:(size_t)intCount
+              floats:(const float *)floats
+          floatCount:(size_t)floatCount
+                data:(const uint8_t *)data
+          dataLength:(size_t)dataLength;
+
+/// Whether any terrain is held, so a scene with none skips the call.
+@property(nonatomic, readonly) BOOL hasTerrain;
+
+/// States the scene's terrains, the whole list every time. NO, with nothing
+/// applied, for a message that does not read.
+- (BOOL)applyTerrain:(const int32_t *)ints
+            intCount:(size_t)intCount
+              floats:(const float *)floats
+          floatCount:(size_t)floatCount
+                data:(const uint8_t *)data
+          dataLength:(size_t)dataLength;
+
 /// Sets the sky: its gradient, the body in it, its cloud, and its lightning.
 ///
 /// `params` is thirty-one floats, in the order `OrblitSky` packs them: the

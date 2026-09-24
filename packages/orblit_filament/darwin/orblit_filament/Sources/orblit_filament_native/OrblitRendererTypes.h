@@ -63,6 +63,7 @@
 #include "OrblitSplatSet.h"
 #include "OrblitSprites.h"
 #include "OrblitSurface.h"
+#include "OrblitTerrain.h"
 #include "OrblitResources.h"
 #include "OrblitTextures.h"
 #include "orblit_renderer.h"

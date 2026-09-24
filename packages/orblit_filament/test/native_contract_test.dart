@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_filament/orblit_filament.dart';
+import 'package:vector_math/vector_math_64.dart';
 
 /// The numbers three languages have to agree on, checked rather than trusted.
 ///
@@ -354,6 +355,104 @@ void main() {
         bit('kSpriteLinearImage'),
       );
       expect(layer(blend: OrblitSpriteBlend.add).flags, bit('kSpriteAdditive'));
+    });
+  });
+
+  // Terrain is checked on the Swift side by the renderer's own reader, so the
+  // plugin has no widths of its own to drift. What every platform does have
+  // is the three keys it reads the arrays by, and a key spelt differently is
+  // a terrain that is never drawn, with nothing refused to say why.
+  group('the numbers terrain shares', () {
+    final header = _read(
+      'darwin/orblit_filament/Sources/orblit_filament_native/OrblitTerrain.h',
+    );
+
+    int limit(String name) {
+      final found = RegExp(
+        r'constexpr int32_t ' + name + r'\s*=\s*(\d+);',
+      ).firstMatch(header);
+      expect(found, isNotNull, reason: 'OrblitTerrain.h no longer says $name');
+      return int.parse(found!.group(1)!);
+    }
+
+    test('its rows are as wide on both sides', () {
+      expect(_nativeValue(header, 'kTerrainInts'), OrblitTerrain.headerInts);
+      expect(
+        _nativeValue(header, 'kTerrainRegionInts'),
+        OrblitTerrain.regionInts,
+      );
+      expect(_nativeValue(header, 'kTerrainParams'), OrblitTerrain.stride);
+      expect(
+        _nativeValue(header, 'kTerrainSetParams'),
+        OrblitTerrainSet.stride,
+      );
+    });
+
+    test('Dart refuses what the renderer would', () {
+      // A number Dart lets through and the renderer refuses stops the whole
+      // scene; one Dart refuses and the renderer takes is a terrain nobody
+      // can make.
+      expect(limit('kTerrainMaxRegions'), OrblitTerrain.maxRegions);
+      expect(limit('kTerrainMaxSets'), OrblitTerrain.maxSets);
+      expect(limit('kTerrainMaxSpan'), OrblitTerrain.maxSpan);
+      expect(limit('kTerrainMinRegionSize'), OrblitTerrain.minRegionSize);
+      expect(limit('kTerrainMaxRegionSize'), OrblitTerrain.maxRegionSize);
+      expect(limit('kTerrainMinMeshSize'), OrblitTerrain.minMeshSize);
+      expect(limit('kTerrainMaxMeshSize'), OrblitTerrain.maxMeshSize);
+      expect(limit('kTerrainMaxLevels'), OrblitTerrain.maxLevels);
+      expect(limit('kTerrainMaxTextureSize'), OrblitTerrain.maxTextureSize);
+    });
+
+    test('the flags mean the same bits on both sides', () {
+      int bit(String name) {
+        final found = RegExp(
+          r'constexpr int32_t ' + name + r'\s*=\s*1 << (\d+);',
+        ).firstMatch(header);
+        expect(
+          found,
+          isNotNull,
+          reason: 'OrblitTerrain.h no longer says $name',
+        );
+        return 1 << int.parse(found!.group(1)!);
+      }
+
+      OrblitTerrain ground({bool cast = false, bool receive = false}) =>
+          OrblitTerrain(key: 1, castShadows: cast, receiveShadows: receive);
+
+      expect(ground().flags, 0);
+      expect(ground(cast: true).flags, bit('kTerrainCastsShadows'));
+      expect(ground(receive: true).flags, bit('kTerrainReceivesShadows'));
+    });
+
+    test('every platform reads the arrays by the keys Dart sends', () {
+      final message = OrblitScene(
+        objects: const [],
+        terrain: [OrblitTerrain(key: 1)],
+        camera: OrblitCamera(
+          position: Vector3(0, 1, 1),
+          target: Vector3.zero(),
+        ),
+      ).toMessage(1);
+      final keys = message.keys.where((key) => key.startsWith('terrain'));
+      expect(keys, hasLength(3));
+
+      for (final reader in [
+        'darwin/orblit_filament/Sources/orblit_filament/'
+            'OrblitTerrainMessage.swift',
+        'linux/orblit_scene.cc',
+        'windows/orblit_scene.cpp',
+        'android/src/main/kotlin/dev/orblit/filament/OrblitScene.kt',
+        'lib/src/web/orblit_scene_web.dart',
+      ]) {
+        final source = _read(reader);
+        for (final key in keys) {
+          expect(
+            source,
+            anyOf(contains('"$key"'), contains("'$key'")),
+            reason: '$reader does not read $key',
+          );
+        }
+      }
     });
   });
 

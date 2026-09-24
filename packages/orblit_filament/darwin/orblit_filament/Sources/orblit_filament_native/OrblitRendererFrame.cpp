@@ -189,6 +189,8 @@ void Renderer::drawAtTime(double time) {
   // against the last frame's.
   if (_motionBlur) _motionBlur->frameBegan(*_camera);
   rangePopulations();
+  // Each terrain's grids snap round the camera this frame sees from.
+  if (_terrain != nullptr) _terrain->update(_camera->getPosition());
   // After the camera is placed, because the order depends on which way it
   // faces and what it can see. The sort itself is off this thread for any
   // cloud large enough to need it; this only asks for one and uploads

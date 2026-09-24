@@ -142,6 +142,12 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
     val spriteChangedCounts: IntArray = args.ints("spriteChangedCounts")
     val spriteData: FloatArray = args.floats("spriteData")
 
+    // Terrains: OrblitTerrainMessage.swift's field names. Three arrays read in
+    // step, measured whole by orblit_renderer_apply_terrain.
+    val terrainInts: IntArray = args.ints("terrainInts")
+    val terrainFloats: FloatArray = args.floats("terrainFloats")
+    val terrainData: ByteArray = args.bytes("terrainData")
+
     // Poses: OrblitPoseMessage.swift's own field names, unchanged. Absent
     // altogether when nothing is posed, which decodes to none.
     val poseKeys: LongArray = args.longs("poseKeys")
@@ -242,6 +248,8 @@ internal class OrblitScene private constructor(private val args: Map<String, Any
             spriteChangedCounts,
             spriteData,
         )
+
+        OrblitNative.nativeApplyTerrain(handle, terrainInts, terrainFloats, terrainData)
 
         OrblitNative.nativeApplyLights(handle, lightKeys, lightKinds, lightFlags, lightParams)
 

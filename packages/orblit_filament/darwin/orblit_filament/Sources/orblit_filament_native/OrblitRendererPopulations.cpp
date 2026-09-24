@@ -433,6 +433,23 @@ void Renderer::applySprites(const int32_t *keys, const int32_t *flags,
   for (const auto &note : notes) _spriteNotes[note.first] = note.second;
 }
 
+bool Renderer::hasTerrain() {
+  return _terrain != nullptr && !_terrain->empty();
+}
+
+void Renderer::applyTerrain(
+    const std::vector<orblit::TerrainRequest> &requests) {
+  if (_disposed) return;
+  if (_terrain == nullptr) {
+    if (requests.empty()) return;
+    _terrain = std::make_unique<orblit::TerrainScene>(*_engine, *_scene);
+  }
+  std::vector<std::pair<std::string, std::string>> notes;
+  _terrain->apply(requests, notes);
+  _terrainNotes.clear();
+  for (const auto &note : notes) _terrainNotes[note.first] = note.second;
+}
+
 void Renderer::applyPopulations(const int32_t *keys, const int32_t *counts, const int32_t *meshes, const int32_t *flags, const int32_t *revisions, const float *ranges, const float *bounds, const std::vector<std::string> &paths, const int32_t *changed, uint32_t changedCount, const float *transforms, const float *colours, uint32_t count) {
   if (_disposed) return;
 

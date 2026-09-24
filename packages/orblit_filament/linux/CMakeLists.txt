@@ -108,6 +108,7 @@ add_library(${PLUGIN_NAME} SHARED
   "${ORBLIT_CORE_DIR}/OrblitSplats.cpp"
   "${ORBLIT_CORE_DIR}/OrblitSplatSet.cpp"
   "${ORBLIT_CORE_DIR}/OrblitSprites.cpp"
+  "${ORBLIT_CORE_DIR}/OrblitTerrain.cpp"
   "${ORBLIT_CORE_DIR}/OrblitMotionBlur.cpp"
   "${ORBLIT_CORE_DIR}/ScreenEffects.cpp"
   "${ORBLIT_CORE_DIR}/OrblitModels.cpp"

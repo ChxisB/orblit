@@ -88,6 +88,11 @@ void SceneData::ApplyTo(orblit_renderer* renderer) const {
       sprite_changed_.ptr(), sprite_changed_counts_.ptr(),
       sprite_changed_.count32(), sprite_data_.ptr(), sprite_data_.count());
 
+  orblit_renderer_apply_terrain(renderer, terrain_ints_.ptr(),
+                               terrain_ints_.count(), terrain_floats_.ptr(),
+                               terrain_floats_.count(), terrain_data_.ptr(),
+                               terrain_data_.count());
+
   orblit_renderer_apply_lights(renderer, light_keys_.count32(),
                               light_keys_.ptr(), light_kinds_.ptr(),
                               light_flags_.ptr(), light_params_.ptr(),

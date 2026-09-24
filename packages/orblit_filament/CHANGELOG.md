@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.33.0
+
+- **Terrain.** `OrblitScene.terrain` takes `OrblitTerrain`s: ground kept in
+  square regions of heights, cover and colour, drawn as a clipmap — the same
+  grid a few times over, each twice the size of the one inside it, centred on
+  the camera — so ground reaching to the horizon is a handful of draws. The
+  grid is displaced in the vertex shader by the heights, measured from the
+  camera because the renderer draws relative to it, and folds into the next
+  size out without a crack. A texel can be a hole.
+- Up to 32 texture sets, each an albedo whose alpha is height and a normal
+  map whose alpha is roughness, all the same size. Two sets meet along the
+  taller of the two rather than fading, as sharply as `blendSharpness` says.
+  A set can be laid from three sides so a cliff is not a smear, and ground
+  marked automatic chooses its sets by slope and altitude.
+- Only what changed crosses to the renderer. A region travels when its
+  `revision` moves and the pictures when `picturesRevision`, the number of
+  sets or their size does, so a terrain that stands still costs its settings
+  a frame. Everything the renderer would refuse is refused by the
+  constructors, with the reason.
+- Every platform hands it to the renderer: Apple, Android, Linux, Windows
+  and the web. Only macOS has drawn it so far.
+
 ## 0.32.1
 
 - A box `OrblitEnvironmentVolume` given a `rotation` is turned the way that

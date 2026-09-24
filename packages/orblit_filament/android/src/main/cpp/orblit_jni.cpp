@@ -565,6 +565,18 @@ Java_dev_orblit_filament_OrblitNative_nativeApplySprites(JNIEnv *env, jclass, jl
 }
 
 JNIEXPORT jint JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeApplyTerrain(JNIEnv *env, jclass, jlong handleValue,
+        jintArray ints, jfloatArray floats, jbyteArray data) {
+  auto *handle = fromHandle(handleValue);
+  if (handle == nullptr) return ORBLIT_ERROR_NULL;
+  Ints i(env, ints);
+  Floats fl(env, floats);
+  Bytes by(env, data);
+  return orblit_renderer_apply_terrain(handle->renderer, i.ptr(), i.count(), fl.ptr(),
+      fl.count(), by.ptr(), by.count());
+}
+
+JNIEXPORT jint JNICALL
 Java_dev_orblit_filament_OrblitNative_nativeSetSky(JNIEnv *env, jclass, jlong handleValue,
         jboolean enabled, jfloatArray params) {
   auto *handle = fromHandle(handleValue);

@@ -368,6 +368,81 @@ extension _Message on OrblitScene {
     };
   }
 
+  /// What the renderer needs to know about the terrains: three arrays read in
+  /// step, laid out as orblit_renderer_apply_terrain says.
+  ///
+  /// A region's maps and a terrain's pictures are left out when [sent] says
+  /// the renderer already holds them. A region 256 texels across is three
+  /// quarters of a megabyte, and a brush stroke changes one or two.
+  Map<String, Object>? _terrainMessage(Map<int, OrblitTerrainHeld>? sent) {
+    if (terrain.isEmpty) return null;
+
+    // The renderer refuses a key named twice, and with it the whole scene, so
+    // the first terrain with a key is the one drawn.
+    final keys = <int>{};
+    final drawn = [
+      for (final ground in terrain)
+        if (keys.add(ground.key)) ground,
+    ];
+    assert(drawn.length == terrain.length, 'terrain keys are unique');
+
+    var intCount = 1;
+    var floatCount = 0;
+    var dataLength = 0;
+    final pictures = <bool>[];
+    final arrived = <List<bool>>[];
+    for (final ground in drawn) {
+      final held = sent?[ground.key];
+      final send = held == null || !held.holdsPictures(ground);
+      final maps = [
+        for (final region in ground.regions)
+          held == null || !held.holdsRegion(ground, region),
+      ];
+      pictures.add(send);
+      arrived.add(maps);
+      intCount +=
+          OrblitTerrain.headerInts +
+          ground.regions.length * OrblitTerrain.regionInts;
+      floatCount +=
+          OrblitTerrain.stride + ground.sets.length * OrblitTerrainSet.stride;
+      if (send) dataLength += ground.picturesLength;
+      dataLength += maps.where((map) => map).length * ground.regionLength;
+    }
+
+    final ints = Int32List(intCount)..[0] = drawn.length;
+    final floats = Float32List(floatCount);
+    final data = Uint8List(dataLength);
+    var intAt = 1;
+    var floatAt = 0;
+    var dataAt = 0;
+    for (var t = 0; t < drawn.length; t++) {
+      final ground = drawn[t];
+      ground.writeInts(
+        ints,
+        intAt,
+        picturesArrive: pictures[t],
+        arrived: arrived[t],
+      );
+      intAt +=
+          OrblitTerrain.headerInts +
+          ground.regions.length * OrblitTerrain.regionInts;
+      ground.writeFloats(floats, floatAt);
+      floatAt +=
+          OrblitTerrain.stride + ground.sets.length * OrblitTerrainSet.stride;
+      if (pictures[t]) {
+        ground.writePictures(data, dataAt);
+        dataAt += ground.picturesLength;
+      }
+      for (var r = 0; r < ground.regions.length; r++) {
+        if (!arrived[t][r]) continue;
+        OrblitTerrain.writeRegion(data, dataAt, ground.regions[r]);
+        dataAt += ground.regionLength;
+      }
+    }
+
+    return {'terrainInts': ints, 'terrainFloats': floats, 'terrainData': data};
+  }
+
   /// What the renderer needs to know about the populations.
   ///
   /// The transforms and colours are left out for any population whose

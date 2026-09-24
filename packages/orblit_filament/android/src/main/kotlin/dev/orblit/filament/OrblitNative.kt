@@ -196,6 +196,13 @@ internal object OrblitNative {
         records: FloatArray,
     ): Int
 
+    external fun nativeApplyTerrain(
+        handle: Long,
+        ints: IntArray,
+        floats: FloatArray,
+        data: ByteArray,
+    ): Int
+
     external fun nativeSetSky(handle: Long, enabled: Boolean, params: FloatArray): Int
 
     external fun nativeSetPrecipitation(handle: Long, enabled: Boolean, params: FloatArray): Int

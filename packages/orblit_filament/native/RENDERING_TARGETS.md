@@ -269,9 +269,17 @@ no longer reported as a runtime pass.
 4. Measure shader startup and hitching, then add warmup/caching compatible
    with the target API. Keep startup results separate from warm-frame
    results. The historical Dawn cold-start cost makes this a release gate.
-5. Run representative batching, shadows, transparency, weather, splats and
-   post-processing scenes. Record frame-time tails and memory under sustained
-   load. Tune resolution, quality and optional passes from those results.
+5. Run representative batching, shadows, transparency, weather, splats,
+   terrain and post-processing scenes. Record frame-time tails and memory
+   under sustained load. Tune resolution, quality and optional passes from
+   those results.
+6. Terrain has only drawn on the M4 Pro through Metal. Three of its
+   assumptions still need a device. First, that a hole's vertex, written
+   as NaN, is culled rather than drawn on Mali and Adreno GLES and Vulkan.
+   Second, that its cover map's 32-bit integer reads and bit operations
+   behave the same in WebGL 2 as in Metal. Third, that the twelve height
+   fetches behind each pixel's normal fit a phone's frame. The WebGPU
+   material set has never compiled terrain.
 
 Use 16.67 ms as the total frame interval at 60 Hz, 11.11 ms at 90 Hz,
 8.33 ms at 120 Hz and 6.94 ms at 144 Hz, reserving time for simulation and

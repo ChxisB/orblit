@@ -129,7 +129,13 @@ typedef enum orblit_stride {
   ORBLIT_STRIDE_SPRITE,
   /* A pose's whole numbers and its floats: see orblit_renderer_apply_poses. */
   ORBLIT_STRIDE_POSE_INTS,
-  ORBLIT_STRIDE_POSE
+  ORBLIT_STRIDE_POSE,
+  /* A terrain's whole numbers, a region's, a terrain's floats and a set's:
+   * see orblit_renderer_apply_terrain. */
+  ORBLIT_STRIDE_TERRAIN_INTS,
+  ORBLIT_STRIDE_TERRAIN_REGION_INTS,
+  ORBLIT_STRIDE_TERRAIN,
+  ORBLIT_STRIDE_TERRAIN_SET
 } orblit_stride;
 
 /* How wide one row of `which` is, in floats (bytes for a splat record), or
@@ -408,6 +414,39 @@ int orblit_renderer_apply_sprites(orblit_renderer *renderer, uint32_t count,
                                  const int32_t *changed_counts,
                                  uint32_t changed_count, const float *records,
                                  size_t record_floats);
+
+/* Every terrain in the scene, in three arrays read in step. A terrain not
+ * named has gone. Empty arrays are no terrain at all.
+ *
+ * `ints` starts with the terrain count. Each terrain is then
+ * ORBLIT_STRIDE_TERRAIN_INTS whole numbers — key, flags (1 casts shadows, 2
+ * receives them), region size (a power of two, 16 to 2048), mesh size (even,
+ * 16 to 256), levels (1 to 12), the automatic cover's steep and flat sets,
+ * the set count (up to 32), the pictures' size, 1 if the pictures are in this
+ * message, the triplanar sets as a bit a set, and the region count (up to
+ * 256) — followed by ORBLIT_STRIDE_TERRAIN_REGION_INTS a region: x and z in
+ * regions, and 1 if its maps are in this message.
+ *
+ * `floats`, a terrain at a time: ORBLIT_STRIDE_TERRAIN floats — spacing,
+ * blend sharpness, and the automatic cover's slope and height falloff — then
+ * ORBLIT_STRIDE_TERRAIN_SET a set, the size one copy of its picture covers.
+ *
+ * `data`, a terrain at a time: its pictures when they came, set-count layers
+ * of sRGB albedo with a height in alpha then as many of a normal with a
+ * roughness in alpha, RGBA bytes, the pictures' size squared each; then the
+ * maps of each region that came, in the order named — region size squared
+ * float heights, as many 32-bit cover words, then as many RGBA colours, all
+ * little-endian. A region kept from an earlier message is named with 0 and
+ * its maps left out.
+ *
+ * Refused whole: ORBLIT_ERROR_LENGTH when the three arrays are not used up
+ * exactly, ORBLIT_ERROR_RANGE when a number is outside its limits or a key or
+ * region is named twice. What was accepted but could not be drawn — a region
+ * too far from the rest, or one named but never sent — is in the notes. */
+int orblit_renderer_apply_terrain(orblit_renderer *renderer,
+                                  const int32_t *ints, size_t int_count,
+                                  const float *floats, size_t float_count,
+                                  const uint8_t *data, size_t data_length);
 
 int orblit_renderer_set_sky(orblit_renderer *renderer, int enabled,
                            const float *params, size_t count);
