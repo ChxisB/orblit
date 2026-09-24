@@ -12,12 +12,14 @@
 /// the units a renderer works in, and an app using it directly should not have
 /// to carry a scene format, a set of migrations and a weather model to do so.
 ///
-/// It also binds an `orblit_rig` armature to a model's skin, for the same
-/// reason: a rig knows nothing about renderers, and the renderer knows nothing
-/// about rigs.
+/// It also binds an `orblit_rig` armature to a model's skin, and turns an
+/// `orblit_terrain` terrain into the one the renderer draws, for the same
+/// reason: a rig and a terrain know nothing about renderers, and the renderer
+/// knows nothing about either.
 library;
 
 export 'src/document_view.dart' show OrblitDocumentView;
 export 'src/material_view.dart' show materialFrom;
 export 'src/skin_binding.dart'
     show OrblitSkinBinding, armatureOfSkin, boneNamesOfSkin;
+export 'src/terrain_view.dart' show terrainFrom;

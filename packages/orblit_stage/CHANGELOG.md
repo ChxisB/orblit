@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- `terrainFrom` turns an `orblit_terrain` `Terrain` into the `OrblitTerrain`
+  the renderer draws. The regions' maps are shared rather than copied, and a
+  region is sent again only when an edit has moved its revision. A set names
+  its images by path; the caller decodes them and hands the pixels over.
+
 ## 0.4.0
 
 - **Clips drive skins.** `OrblitSkinBinding.jointsFrom` takes an

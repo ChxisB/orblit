@@ -1,9 +1,9 @@
 name: orblit_stage
 description: >-
   A scene document, staged for a renderer: entities and components become
-  objects, lights, clouds and sprite layers, and a diff moves only what it
-  touched.
-version: 0.4.0
+  objects, lights, clouds and sprite layers, ground kept as data becomes
+  terrain, and a diff moves only what it touched.
+version: 0.5.0
 publish_to: none
 
 environment:
@@ -24,6 +24,8 @@ dependencies:
     path: ../orblit_rig
   orblit_scene:
     path: ../orblit_scene
+  orblit_terrain:
+    path: ../orblit_terrain
   orblit_weather:
     path: ../orblit_weather
 
