@@ -16,10 +16,11 @@ the fullest reference.
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf` |
+| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `heightAt`, `normalAt` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer | `OrblitDocumentView` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain | `OrblitDocumentView`, `terrainFrom` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK | `Armature`, `Pose`, `solveTwoBoneIk` |
@@ -346,6 +347,71 @@ and `heading = (heading * moved.rotation)..normalize()`. Never
 A scene file's `motion` component (`MotionComponent`: `clips`, `autoplay`) is
 data only; nothing plays it. Changing clip cuts, with no fade yet. Guide:
 `/guides/animation/`.
+
+## orblit_terrain
+
+Ground as data, in plain Dart. `Terrain({regionSize = 256, spacing = 1, sets, autoCover, blendSharpness = 0.87})`
+is a grid of heights, one every `spacing` metres, in square regions of
+`regionSize` texels (a power of two), made only where there is ground.
+`addRegion(RegionKey(x, z))` makes one, `fillHeights(key, (x, z) => height)`
+fills one from world positions, `regionAt(key)` finds one and `putRegion`
+adds a decoded one. Texel `(i, j)` of region `(x, z)` is at
+`((x * regionSize + i) * spacing, (z * regionSize + j) * spacing)`.
+
+A `TerrainRegion` holds three maps: `heights` (`Float32List`), `cover`
+(`Uint32List`) and `colour` (`Uint8List`, RGBA), written through
+`setHeight`, `setCover` and `setColour(i, j, value)`. Each setter moves the
+region's `revision`. Writing the lists directly does not, so call `touch()`
+after that.
+
+- `Cover.of({base, overlay, blend, angle, scale, hole, navigation, automatic})`
+  is one 32-bit word: two sets (0 to 31), how much of the overlay shows (0 to
+  1), a turn in sixteenths, a scale step (`Cover.scales`: 0, 20, 40, 60, 80,
+  −60, −40, −20 percent), a hole, a navigation mark the renderer ignores, and
+  `automatic`, which ignores the sets named and chooses by slope and height.
+  `withHole`, `withAngle` and the like change one part. A new region is all
+  `Cover.auto`.
+- `GroundColour.of({red, green, blue, roughness})` tints what the sets draw
+  and nudges roughness (−1 to 1). `GroundColour.none` changes nothing.
+- `TerrainSet({name, albedo, normal, tileSize = 4, triplanar = false})` names
+  its pictures by path. The albedo's alpha is a height, and the taller of two
+  blending sets shows through (`blendSharpness`, 0 a fade, 1 a hard edge).
+  The normal map's alpha is roughness. `tileSize` is metres per copy.
+  `triplanar` stops cliffs stretching, at three reads instead of one.
+- `AutoCover({steep = 0, flat = 1, slope = 1, heightFalloff = 0.1})`: at
+  `slope` 1, ground tilted 60° is all `steep`, and at 2, 41°.
+  `heightFalloff` is per hundred metres.
+
+`heightAt(x, z)` and `normalAt(x, z)` split each square of four texels into
+the same two triangles as the mesh, so what they say is what is drawn. Both
+are null off the regions and on a triangle touching a hole.
+
+Files: `terrain.encode()` is the `.oterrain` text and `region.encode()` a
+region's `.oregion` bytes, named `region.key.fileName` (`x0_z-1.oregion`).
+`Terrain.decode(text)` gives a `TerrainLoad` (`terrain`, `regions` to fetch,
+`problems`), and `TerrainRegion.decode(bytes)` a `RegionLoad` (`region`,
+`problems`). No paths, so it works in a browser.
+
+Drawing: `terrainFrom(terrain, key: 1, pixels: (path) => rgba[path], picturesRevision: 0, meshSize: 64, levels: 6)`
+in `orblit_stage` gives the `OrblitTerrain` for `OrblitScene(terrain: [...])`.
+`pixels` returns decoded RGBA rows, square and every picture the same size.
+A missing one draws plain. The renderer takes regions of 16 to 2048 texels,
+256 regions all within 128 regions of each other, 32 sets, pictures up to
+4096 across, a grid of 16 to 256 squares and up to 12 levels. Beyond those it
+throws `ArgumentError` saying why.
+
+Traps:
+
+- **Pictures that change in place.** They cross again only when the sets or
+  their size change. Move `picturesRevision` when only the pixels do.
+- **A const list of sets.** `Terrain` copies the list it is given, so
+  `terrain.sets[0] = ...` works even if the list was `const`. A `sets` list
+  kept elsewhere is not the terrain's.
+- **Settings cost nothing.** `autoCover`, `blendSharpness`, `meshSize` and
+  `levels` travel every frame, and no region is resent for them.
+
+Guide: `/guides/terrain/`. The gallery's Terrain example drives a box over
+hills with `heightAt` and `normalAt`.
 
 ## More worked examples
 

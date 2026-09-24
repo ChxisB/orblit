@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web for it; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked assets and assets fetched over a network; animation clips with orblit_motion (.oclip files played on scene entities and a model's bones, root motion, clips imported from glTF); rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API before writing code. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, heightAt, terrainFrom); rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -401,6 +401,36 @@ Edits go to both `scene.apply` and `view.apply`, and are teleports. Never hand
 
 Install, API and the traps: [references/physics.md](references/physics.md).
 
+## Terrain
+
+Ground is data in `orblit_terrain` (plain Dart): a `Terrain` of square
+`TerrainRegion`s, each a map of heights, cover words and colours, made only
+where there is ground. `orblit_filament` draws it as an `OrblitTerrain`, and
+`terrainFrom` in `orblit_stage` builds one from a `Terrain`:
+
+```dart
+final terrain = Terrain(regionSize: 64, spacing: 2, sets: const [
+  TerrainSet(name: 'rock', albedo: 'rock.png', normal: 'rock_n.png',
+      tileSize: 12, triplanar: true),
+  TerrainSet(name: 'grass', albedo: 'grass.png', normal: 'grass_n.png'),
+]);
+terrain.fillHeights(const RegionKey(0, 0), (x, z) => math.sin(x / 20) * 4);
+
+OrblitScene(objects: things, camera: camera, terrain: [
+  terrainFrom(terrain, key: 1, pixels: (path) => decodedRgba[path]),
+]);
+
+final y = terrain.heightAt(x, z); // null off the ground or over a hole
+final up = terrain.normalAt(x, z);
+```
+
+Build it every frame. It is cheap, because a region crosses only when its
+`revision` moves, which every edit does. `heightAt` interpolates exactly as
+the mesh does, so a thing placed with it sits on the drawn surface, and it
+needs no physics. The editor has no terrain tools yet, and only macOS has
+been seen to draw it. API and the traps:
+[references/packages.md](references/packages.md#orblit_terrain).
+
 ## Scene notes, not silence
 
 The renderer reports what it couldn't do through `onSceneNotes`, a
@@ -458,6 +488,7 @@ sentence saying what went wrong.
 trees), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
 (change as a function of time), `orblit_sequence` (cutscenes),
 `orblit_motion` (animation clips, on entities and bones alike),
+`orblit_terrain` (ground as regions of heights, and standing on it),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
 CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),
@@ -481,7 +512,8 @@ Load these when the task needs them:
   files and their export and import, splats, cooked and networked assets.
 - [references/physics.md](references/physics.md): the physics world, bodies
   in scene documents, and simulating a document.
-- [references/packages.md](references/packages.md): the other packages.
+- [references/packages.md](references/packages.md): the other packages,
+  terrain among them.
 
 ## Licence
 

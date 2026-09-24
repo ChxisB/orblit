@@ -37,7 +37,7 @@ Everything else is optional:
 | `sky` | `OrblitSky()` |
 | `fog` | `OrblitFog.none` |
 | `precipitation` | `OrblitPrecipitation.none` |
-| `populations`, `splats`, `sprites`, `materials`, `videos` | none |
+| `populations`, `splats`, `sprites`, `terrain`, `materials`, `videos` | none |
 | `post` | `OrblitPostProcess()` |
 | `pipeline` | `OrblitPipeline()` |
 | `graph` | `OrblitRenderGraph.standard()` |
@@ -274,6 +274,24 @@ OrblitScene spriteScene(int revision) {
 
 `orblit_sprite` turns atlases and animations into the `u0`, `v0`, `u1`, `v1`
 numbers; see [packages.md](packages.md).
+
+## Terrain (`terrain.dart`)
+
+`OrblitTerrain({required key, regions = const [], regionSize = 256, spacing = 1, sets = const [], picturesRevision = 0, blendSharpness = 0.87, autoSteep = 0, autoFlat = 1, autoSlope = 1, autoHeightFalloff = 0.1, meshSize = 64, levels = 6, castShadows = true, receiveShadows = true})`.
+Build it with `terrainFrom(terrain, key: ..., pixels: ...)` from
+`orblit_stage` rather than by hand: it fills every field from an
+`orblit_terrain` `Terrain` (see [packages.md](packages.md#orblit_terrain)).
+
+- `OrblitTerrainRegion({required x, required z, required heights, required cover, required colour, revision = 0})`
+  is one region's maps, shared, not copied. It crosses to the renderer only
+  when its `revision` differs from the last frame's.
+- `const OrblitTerrainSet({albedo, normal, tileSize = 4, triplanar = false})`
+  holds decoded RGBA rows. A null picture draws plain.
+- The grid is `meshSize` squares across at `levels` sizes, each twice the
+  last, centred on the camera and raised by the GPU. Moving the camera sends
+  no ground.
+- Out of range (regions under 16 or over 2048 texels, more than 256 regions,
+  pictures of different sizes) throws `ArgumentError` from the constructor.
 
 ## `OrblitResources` (`resources.dart`)
 
