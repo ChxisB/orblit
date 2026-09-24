@@ -16,7 +16,7 @@ the fullest reference.
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf` |
-| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `heightAt`, `normalAt` |
+| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
@@ -391,6 +391,27 @@ region's `.oregion` bytes, named `region.key.fileName` (`x0_z-1.oregion`).
 `Terrain.decode(text)` gives a `TerrainLoad` (`terrain`, `regions` to fetch,
 `problems`), and `TerrainRegion.decode(bytes)` a `RegionLoad` (`region`,
 `problems`). No paths, so it works in a browser.
+
+Brushes: `TerrainStroke(terrain, {required tool, brush = const Brush(), invert = false, set = 0, colour = GroundColour.none, roughness = 0, height, seed = 0})`
+is one press. `moveTo(x, z)` lays a dab every `brush.spacing * brush.size`
+metres along the way, writes the maps, touches the regions and returns a
+`TerrainPatch`. `BrushTool` is `raise`, `lower`, `smooth`, `flatten` (to
+`height`, or where the stroke began), `slope` (a ramp from the start to the
+farthest point reached), `cover` (lays set `set`), `colour`, `roughness`
+(−1 to 1) and `hole`. `invert` runs raise, lower, cover, colour, roughness
+and hole backwards. `Brush({size = 16, strength = 0.5, falloff = 0.5, jitter = 0, spacing = 0.25})`
+is shared by every tool. Strength is per pass, not per dab. A patch keeps
+the 32-texel tiles it touched, before and after, for the one map its tool
+writes: `followedBy` folds a stroke's patches into one, and `apply` and
+`revert` write it back. `TerrainRecorder` makes one for any other edit.
+Ground with no region is left alone. `terrain.raycast(origin, direction, maxDistance: ...)`
+is where a ray first meets the drawn surface, for putting a brush under a
+pointer.
+
+In a scene: `TerrainComponent({file, castShadows = true, receiveShadows = true})`
+in `orblit_scene` (`SceneComponents.terrain`, JSON key `terrain`) names the
+`.oterrain` by project path. The ground sits where its texels say, whatever
+the entity's transform. `OrblitDocumentView` does not draw it yet.
 
 Drawing: `terrainFrom(terrain, key: 1, pixels: (path) => rgba[path], picturesRevision: 0, meshSize: 64, levels: 6)`
 in `orblit_stage` gives the `OrblitTerrain` for `OrblitScene(terrain: [...])`.

@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, heightAt, terrainFrom); rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -422,13 +422,24 @@ OrblitScene(objects: things, camera: camera, terrain: [
 
 final y = terrain.heightAt(x, z); // null off the ground or over a hole
 final up = terrain.normalAt(x, z);
+
+// A brush: one press is one stroke, and its patches fold into one undo step.
+final stroke = TerrainStroke(terrain, tool: BrushTool.raise,
+    brush: const Brush(size: 12, strength: 0.8));
+var patch = stroke.moveTo(10, 10);
+patch = patch.followedBy(stroke.moveTo(30, 10));
+patch.revert(terrain); // undo
 ```
 
 Build it every frame. It is cheap, because a region crosses only when its
 `revision` moves, which every edit does. `heightAt` interpolates exactly as
 the mesh does, so a thing placed with it sits on the drawn surface, and it
-needs no physics. The editor has no terrain tools yet, and only macOS has
-been seen to draw it. API and the traps:
+needs no physics. A scene file names a terrain with a `terrain` component
+(`TerrainComponent(file: 'terrain/hills/hills.oterrain')`), which the editor
+draws and shapes (Add › Terrain, then the Terrain mode) but
+`OrblitDocumentView` does not load yet: load the files and call
+`terrainFrom` yourself. Only macOS has been seen to draw it. API and the
+traps:
 [references/packages.md](references/packages.md#orblit_terrain).
 
 ## Scene notes, not silence
