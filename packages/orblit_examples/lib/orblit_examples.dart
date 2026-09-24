@@ -61,6 +61,7 @@ export 'src/examples/sprites.dart' show SpritesExample;
 export 'src/examples/textures.dart' show TexturesExample;
 export 'src/examples/post.dart' show PostExample;
 export 'src/examples/video.dart' show VideoExample;
+export 'src/examples/terrain.dart' show TerrainExample;
 export 'src/examples/voxels.dart' show VoxelExample;
 export 'src/examples/weather.dart' show WeatherExample;
 export 'src/examples/volumes.dart' show EnvironmentVolumesExample;
@@ -99,6 +100,7 @@ import 'src/examples/splats.dart';
 import 'src/examples/sprites.dart';
 import 'src/examples/surface.dart';
 import 'src/examples/video.dart';
+import 'src/examples/terrain.dart';
 import 'src/examples/voxels.dart';
 import 'src/examples/weather.dart';
 import 'src/examples/volumes.dart';
@@ -146,6 +148,7 @@ List<Example> engineExamples() => [
   OverdrawExample(),
   PipelineExample(),
   BenchmarkExample(),
+  TerrainExample(),
   VoxelExample(),
   RunnerExample(),
   BistroExteriorExample(),

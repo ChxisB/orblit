@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.33.0
+
+- **Terrain, under Showcases.** Half a kilometre of hills made in code as
+  sixteen regions of `orblit_terrain` heights, drawn by the
+  renderer's clipmap and handed over each frame by `terrainFrom`. Nothing
+  says where the rock goes: all of it is automatic cover, chosen by slope
+  and height from two sets whose pictures are painted in code too. The
+  settings are Relief and World, which make the ground again, and
+  Steepness, Altitude, Sharpness, Rings and Triplanar, which change only
+  settings and send no region twice.
+- **A rover drives round it with no physics.** A box placed each frame by
+  `heightAt` and tilted by `normalAt`, the same heights read the way the
+  renderer reads them. A test holds it to the ground over a minute of
+  driving.
+
 ## 0.32.0
 
 - **Imported models can play a file's clips through Orblit.** A new *Played

@@ -2,7 +2,7 @@ name: orblit_examples
 description: >-
   One technique at a time: a scene that shows it, the controls that change it,
   and the lines that do it. Shown by the gallery app and by the editor.
-version: 0.32.0
+version: 0.33.0
 publish_to: none
 
 environment:
@@ -33,6 +33,9 @@ dependencies:
   # For cutting a sprite sheet into frames.
   orblit_sprite:
     path: ../orblit_sprite
+  # For ground kept as regions of heights, and standing on it.
+  orblit_terrain:
+    path: ../orblit_terrain
 
   # For choosing a film to play. A file the person picked is the only kind an
   # example can be sure of: typing a path is a guess, and a guess that fails
