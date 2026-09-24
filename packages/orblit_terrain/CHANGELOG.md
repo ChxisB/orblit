@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.0
+
+- **Brushes.** A `TerrainStroke` is one press of a brush: `moveTo` carries it
+  along, laying a dab every `Brush.spacing`, and writes straight into the
+  regions' maps and touches them, so a renderer resends only the regions the
+  brush is in. `BrushTool` raises, lowers, smooths, flattens, slopes, paints
+  cover, colour and roughness, and punches holes; `invert` runs each
+  backwards. One `Brush` for every tool: size, strength, falloff, jitter and
+  spacing. Strength is per pass, not per dab, so closer spacing makes a
+  smoother stroke rather than a stronger one. Ground with no region under it
+  is left alone.
+- **Undo.** Each `moveTo` hands back a `TerrainPatch`: the tiles it touched,
+  32 texels across, before and after, for the one map its tool writes.
+  `followedBy` folds a stroke's patches into one, and `apply` and `revert`
+  write it back. A small brush costs kilobytes, not a copy of the region.
+  `TerrainRecorder` is how any other edit makes one.
+- **Picking.** `Terrain.raycast` finds where a ray first meets the ground
+  (through holes and off the edge, it meets nothing), for putting a brush
+  under the pointer.
+
 ## 0.1.0
 
 - First cut of `orblit_terrain`. Pre-alpha: everything is subject to change.

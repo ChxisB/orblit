@@ -11,8 +11,10 @@
 /// what is seen. They need no physics.
 library;
 
+export 'src/brush.dart' show Brush, BrushTool;
 export 'src/cover.dart' show Cover;
 export 'src/ground_colour.dart' show GroundColour;
+export 'src/patch.dart' show TerrainLayer, TerrainPatch, TerrainRecorder;
 export 'src/region.dart'
     show
         RegionFormatException,
@@ -22,6 +24,7 @@ export 'src/region.dart'
         RegionParts,
         TerrainRegion,
         regionExtension;
+export 'src/stroke.dart' show TerrainStroke;
 export 'src/terrain.dart'
     show
         AutoCover,

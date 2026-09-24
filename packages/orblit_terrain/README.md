@@ -2,9 +2,9 @@
 
 Ground as data. Heights, cover and colour kept in square regions that exist
 only where there is ground; the `.oterrain` and `.oregion` files they are
-saved in; and the height and slope of the ground at any point, read the way
+saved in; the height and slope of the ground at any point, read the way
 the renderer draws it, so a character stands on what is seen without asking
-physics.
+physics; and the brushes that shape it, each stroke one step to undo.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).

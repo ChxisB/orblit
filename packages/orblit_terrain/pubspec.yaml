@@ -1,8 +1,9 @@
 name: orblit_terrain
 description: >-
   Ground as data: sparse regions of height, cover and colour, the files they
-  are kept in, and the height and slope of the ground at any point.
-version: 0.1.0
+  are kept in, the height and slope of the ground at any point, and the
+  brushes that shape it.
+version: 0.2.0
 publish_to: none
 
 environment:

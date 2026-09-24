@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:vector_math/vector_math_64.dart';
 
@@ -362,6 +363,104 @@ class Terrain {
   Cover? coverAt(double x, double z) {
     if (!x.isFinite || !z.isFinite) return null;
     return texelCover((x / spacing).round(), (z / spacing).round());
+  }
+
+  /// Where a ray from [origin] along [direction] first meets the ground, or
+  /// null if it meets none within [maxDistance]: through a hole, off the
+  /// edge, into the sky.
+  ///
+  /// Meets the surface [heightAt] describes, which is the one drawn, so a
+  /// brush lands where the pointer is. Stepped half a texel at a time
+  /// through the box the regions fill and then narrowed by halves, so a
+  /// ridge thinner than half a texel can be missed at a glancing angle.
+  Vector3? raycast(
+    Vector3 origin,
+    Vector3 direction, {
+    double maxDistance = double.infinity,
+  }) {
+    if (_regions.isEmpty || direction.length2 == 0) return null;
+    final along = direction.normalized();
+
+    var lowX = double.infinity;
+    var lowZ = double.infinity;
+    var lowY = double.infinity;
+    var highX = double.negativeInfinity;
+    var highZ = double.negativeInfinity;
+    var highY = double.negativeInfinity;
+    final across = regionSize * spacing;
+    for (final region in _regions.values) {
+      lowX = math.min(lowX, region.key.x * across);
+      lowZ = math.min(lowZ, region.key.z * across);
+      highX = math.max(highX, (region.key.x + 1) * across);
+      highZ = math.max(highZ, (region.key.z + 1) * across);
+      lowY = math.min(lowY, region.minHeight);
+      highY = math.max(highY, region.maxHeight);
+    }
+    // Padded, so flat ground is a box with some depth to step through
+    // rather than a plane the first step lands exactly on.
+    final (near, far) = _slabs(
+      origin,
+      along,
+      Vector3(lowX, lowY - spacing, lowZ),
+      Vector3(highX, highY + spacing, highZ),
+    );
+    final start = math.max(near, 0.0);
+    final end = math.min(far, maxDistance);
+    if (start > end) return null;
+
+    double? gapAt(double t) {
+      final point = origin + along * t;
+      final ground = heightAt(point.x, point.z);
+      return ground == null ? null : point.y - ground;
+    }
+
+    final step = spacing * 0.5;
+    double? above;
+    for (var t = start; ; t = math.min(t + step, end)) {
+      final gap = gapAt(t);
+      if (gap != null && gap <= 0) {
+        var low = above ?? t;
+        var high = t;
+        for (var halving = 0; halving < 24 && above != null; halving++) {
+          final middle = (low + high) / 2;
+          final between = gapAt(middle);
+          if (between != null && between <= 0) {
+            high = middle;
+          } else {
+            low = middle;
+          }
+        }
+        final hit = origin + along * high;
+        return hit..y = heightAt(hit.x, hit.z) ?? hit.y;
+      }
+      above = gap == null ? null : t;
+      if (t >= end) return null;
+    }
+  }
+
+  /// How far along a ray it enters and leaves the box from [low] to [high].
+  static (double, double) _slabs(
+    Vector3 origin,
+    Vector3 along,
+    Vector3 low,
+    Vector3 high,
+  ) {
+    var near = double.negativeInfinity;
+    var far = double.infinity;
+    for (var axis = 0; axis < 3; axis++) {
+      final from = origin[axis];
+      final pace = along[axis];
+      if (pace.abs() < 1e-12) {
+        if (from < low[axis] || from > high[axis]) return (1, 0);
+        continue;
+      }
+      var enter = (low[axis] - from) / pace;
+      var leave = (high[axis] - from) / pace;
+      if (enter > leave) (enter, leave) = (leave, enter);
+      near = math.max(near, enter);
+      far = math.min(far, leave);
+    }
+    return (near, far);
   }
 
   Map<String, Object?> toJson() {
