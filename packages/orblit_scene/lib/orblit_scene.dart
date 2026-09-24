@@ -28,6 +28,7 @@ export 'src/components/flat.dart'
 export 'src/components/motion.dart' show MotionComponent;
 export 'src/components/staging.dart'
     show CameraComponent, LightComponent, WeatherComponent;
+export 'src/components/terrain.dart' show TerrainComponent;
 export 'src/components/transform.dart' show TransformComponent;
 export 'src/diff.dart'
     show

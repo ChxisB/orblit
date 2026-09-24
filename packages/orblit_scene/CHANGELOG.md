@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0
+
+- `TerrainComponent` puts ground in a scene: an `.oterrain` file by its
+  project path, and whether it casts and receives shadows. The file is the
+  terrain; the scene only says it is here. Laid where its own texels say,
+  whatever the entity's transform. Written after `splats`. What a terrain is
+  and how it is edited is `orblit_terrain`'s.
+
 ## 0.7.0
 
 - `MotionComponent` says which clips an entity plays: `.oclip` files by

@@ -4,6 +4,7 @@ import 'components/drawing.dart';
 import 'components/flat.dart';
 import 'components/motion.dart';
 import 'components/staging.dart';
+import 'components/terrain.dart';
 import 'components/transform.dart';
 
 /// One fact about an entity.
@@ -70,6 +71,7 @@ abstract final class SceneComponents {
   static const String light = 'light';
   static const String camera = 'camera';
   static const String splats = 'splats';
+  static const String terrain = 'terrain';
   static const String sprite = 'sprite';
   static const String tilemap = 'tilemap';
   static const String parallax = 'parallax';
@@ -95,6 +97,7 @@ abstract final class SceneComponents {
     light,
     camera,
     splats,
+    terrain,
     sprite,
     tilemap,
     parallax,
@@ -113,6 +116,7 @@ abstract final class SceneComponents {
     light: LightComponent.fromJson,
     camera: CameraComponent.fromJson,
     splats: SplatsComponent.fromJson,
+    terrain: TerrainComponent.fromJson,
     sprite: SpriteComponent.fromJson,
     tilemap: TilemapComponent.fromJson,
     parallax: ParallaxComponent.fromJson,
