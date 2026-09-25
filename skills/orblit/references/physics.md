@@ -2,7 +2,7 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as two packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.2.0 and `orblit_physics_scene` 0.1.0. A git dependency
+`orblit_physics` 0.3.0 and `orblit_physics_scene` 0.1.1. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -60,6 +60,65 @@ physics.dispose();
 - `PhysicsMotion.fixed` never moves, `driven` goes where it is sent and is
   never pushed back, `free` falls and is pushed.
 - `PhysicsSettings` fields left null take the engine's defaults.
+
+## Characters
+
+Anything that walks, whether a player or anyone else, is a character, not a
+free body. It is swept through the world rather than solved. It slides along
+walls, climbs steps, stands on slopes and slides down steeper ones, and rides
+whatever it stands on.
+
+```dart
+const player = 7;
+physics.addCharacter(player, at: [0, 0.91, 0]); // centre: 0.9 above the feet, plus the skin
+
+// Every step, before physics.step:
+final footing = physics.footingOf(player)!;
+final up = footing.grounded && jumpPressed ? 5.0 : footing.velocity[1] - 9.81 / 60;
+physics.drive(player, velocity: [walkX, up, walkZ]);
+physics.step(1 / 60);
+```
+
+- `addCharacter(id, {shape = Shape.capsule(0.3, 0.6), at, rotation,
+  stepHeight = 0.3, steepest = pi / 4, skin = 0.01, strength = 500,
+  friction = 0.5, layers})`. `steepest` is in radians. `strength` is the
+  most force, in newtons, it pushes a free body with. It keeps `skin` metres
+  from everything.
+- `drive(id, velocity:)` is a **request**, in metres a second, relative to
+  what the character stands on, **with gravity in it**. The world decides how
+  much of it the character gets. `spin` is ignored: which way it faces is the
+  game's to keep.
+- `footingOf(id)` and `footingsOf(ids)` give `PhysicsFooting?`, which is null
+  for anything that is not a character. Its fields:
+  - `ground`: the body underneath, or 0 for none.
+  - `normal`: which way that surface faces.
+  - `velocity`: what survived of the request, relative to the ground.
+  - `carried`: how fast the ground moved it.
+  - `turning`: how fast the ground turned it about up, in radians a second.
+  - `grounded`.
+
+  Play the walk animation from `velocity`, not from `velocity` plus
+  `carried`, so a character on a lift walks nowhere.
+- It pushes free bodies and is pushed only by driven ones. A rolling crate
+  stops against it; a closing door shoves it aside.
+- `place` teleports it and forgets what it stood on.
+
+**Root motion drives a character.** A clip's `RootStep` is where the
+animation wants to go, and the character decides where it actually gets. Advance
+the clip by the same tick as the world. Turn the step into world space,
+divide it by the tick, and ask for that:
+
+```dart
+final step = clipPlayer.advance(tick);
+final walk = heading.asRotationMatrix().transformed(step.moved.position) / tick;
+heading = (heading * step.moved.rotation)..normalize();
+physics.drive(player, velocity: [walk.x, up, walk.z]);
+physics.step(tick);
+```
+
+Do not add the step to a position as well; the character's transform is the
+position now. A clip whose `RootMotion` `rises` carries its own up and down,
+so ask for `walk.y` in place of the fall while it plays.
 
 ## The body component
 
@@ -123,6 +182,25 @@ scene.dispose();
 - **A body falling asleep reports `touchEnded`** for what it rests on. Do not
   read `touchEnded` alone as "left the floor"; check `physics.asleep(id)`.
 - **A plane cannot be cast.** Asking gives null.
+- **A character does not fall on its own.** Leave gravity out of `drive` and
+  it hangs in the air.
+- **Build each request from the footing, not from the last request.** Read
+  `footingOf` before `drive`. Its `velocity` has already lost whatever the
+  floor or a wall stopped, so a character standing still does not pile up a
+  fall it is not taking and then drop through the next hole at full speed.
+- **A character on the way up is never grounded,** so `grounded &&
+  jumpPressed` launches it once. It does not keep adding the launch every step
+  while the key is held.
+- **Drive a character before every step.** Left alone, it keeps what survived
+  of its last request and gains no more gravity, so it floats.
+- **`ScenePhysics` makes no characters.** `BodyComponent` has no character
+  motion. Add one straight to `scene.physics` with a negative id, and move its
+  entity yourself from `transformOf`. `advance` takes several steps or none,
+  which a character driven once a frame cannot follow. Keep your own clock
+  instead, and on each tick drive, then call `scene.advance(scene.step)`,
+  which takes exactly one step.
+- **A plane cannot be a character.** `addCharacter` takes it, but it never
+  has a footing.
 - **Name clashes.** `Shape` and `Layers` are exported by both
   `orblit_physics` and `orblit_collide`. Prefix one import.
 - **Not deterministic across machines.** The same inputs at the same step on

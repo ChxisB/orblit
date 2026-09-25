@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics with orblit_physics and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics and walking characters with orblit_physics, and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -399,6 +399,14 @@ Edits go to both `scene.apply` and `view.apply`, and are teleports. Never hand
 `scene.events`, not `scene.physics.events`, which holds only the last step.
 `Shape.box` takes half sizes where the component's `size` is edge to edge.
 
+Anything that walks is a character, not a free body:
+`physics.addCharacter(id, at: ...)`, then before every step
+`drive(id, velocity: ...)` with the velocity it wants, **gravity included**,
+built from `footingOf(id)!.velocity`. The world decides what it gets. It
+slides along walls, climbs steps, rides platforms and pushes crates, and
+crates cannot push it. Root motion goes in the same way: the clip's step,
+turned to world space and divided by the tick, is the velocity to ask for.
+
 Install, API and the traps: [references/physics.md](references/physics.md).
 
 ## Terrain
@@ -521,8 +529,9 @@ Load these when the task needs them:
   what has actually been seen to work.
 - [references/assets.md](references/assets.md): materials and looks, scene
   files and their export and import, splats, cooked and networked assets.
-- [references/physics.md](references/physics.md): the physics world, bodies
-  in scene documents, and simulating a document.
+- [references/physics.md](references/physics.md): the physics world,
+  characters and root motion on them, bodies in scene documents, and
+  simulating a document.
 - [references/packages.md](references/packages.md): the other packages,
   terrain among them.
 

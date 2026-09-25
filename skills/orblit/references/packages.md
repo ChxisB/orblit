@@ -342,7 +342,9 @@ writes into an `orblit_rig` `Pose` instead, for a rig to adjust.
 Root motion: `clip.copyWith(rootMotion: RootMotion(bone: 'hips', turns: true))`,
 then each frame `position += heading.asRotationMatrix().transformed(moved.position)`
 and `heading = (heading * moved.rotation)..normalize()`. Never
-`Quaternion.rotated`, which turns the other way. `clipsFromGltf(bytes)` gives
+`Quaternion.rotated`, which turns the other way. On a physics character,
+divide the turned step by the tick and `drive` with it instead of adding it
+to a position ([physics.md](physics.md)). `clipsFromGltf(bytes)` gives
 `ClipsImported` (`clips`, `problems`), naming bones the way the binding does.
 A scene file's `motion` component (`MotionComponent`: `clips`, `autoplay`) is
 data only; nothing plays it. Changing clip cuts, with no fade yet. Guide:
