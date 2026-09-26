@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics and walking characters with orblit_physics, and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics, walking characters and terrain collision with orblit_physics, and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -382,10 +382,11 @@ Full API, parameter lists and the traps: [references/assets.md](references/asset
 
 ## Physics
 
-Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as two git
-dependencies: `orblit_physics` (the solver, native platforms only, not the
-web) and `orblit_physics_scene` (`ScenePhysics`, which simulates a scene
-document). An entity gets a body from a `body` component (`BodyComponent` in
+Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as three
+git dependencies: `orblit_physics` (the solver, native platforms only, not the
+web), `orblit_physics_scene` (`ScenePhysics`, which simulates a scene
+document) and `orblit_physics_terrain` (`TerrainPhysics`, which lays a terrain
+as ground). An entity gets a body from a `body` component (`BodyComponent` in
 `orblit_scene`), and each `advance` answers with a `SceneDiff` for the view:
 
 ```dart
@@ -406,6 +407,11 @@ built from `footingOf(id)!.velocity`. The world decides what it gets. It
 slides along walls, climbs steps, rides platforms and pushes crates, and
 crates cannot push it. Root motion goes in the same way: the clip's step,
 turned to world space and divided by the tick, is the velocity to ask for.
+
+Ground is `physics.layGround(id, heights: ..., columns: ..., rows: ...)`, and
+a terrain is laid for you, the regions near the camera, by
+`TerrainPhysics(physics, terrain).sync(x: ..., z: ..., radius: ...)` every
+frame. Pass `refresh: false` while a brush stroke is still being drawn.
 
 Install, API and the traps: [references/physics.md](references/physics.md).
 
@@ -442,7 +448,9 @@ patch.revert(terrain); // undo
 Build it every frame. It is cheap, because a region crosses only when its
 `revision` moves, which every edit does. `heightAt` interpolates exactly as
 the mesh does, so a thing placed with it sits on the drawn surface, and it
-needs no physics. A scene file names a terrain with a `terrain` component
+needs no physics. For things that fall and roll on it, `TerrainPhysics` in
+`orblit_physics_terrain` lays it in a physics world, triangle for triangle the
+same ground. A scene file names a terrain with a `terrain` component
 (`TerrainComponent(file: 'terrain/hills/hills.oterrain')`), which the editor
 draws and shapes (Add › Terrain, then the Terrain mode) but
 `OrblitDocumentView` does not load yet: load the files and call
@@ -530,8 +538,8 @@ Load these when the task needs them:
 - [references/assets.md](references/assets.md): materials and looks, scene
   files and their export and import, splats, cooked and networked assets.
 - [references/physics.md](references/physics.md): the physics world,
-  characters and root motion on them, bodies in scene documents, and
-  simulating a document.
+  characters and root motion on them, ground and terrain, bodies in scene
+  documents, and simulating a document.
 - [references/packages.md](references/packages.md): the other packages,
   terrain among them.
 

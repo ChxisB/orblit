@@ -34,8 +34,8 @@ the fullest reference.
 Other repositories: `orblit-net` (multiplayer: replication, ownership,
 interpolation), `orblit-script` (TypeScript scripting on QuickJS),
 `orblit-editor` (the editor app), `orblit-examples` (the gallery app) and
-`orblit-physics` (rigid bodies, and simulating a scene document's bodies; see
-[physics.md](physics.md)).
+`orblit-physics` (rigid bodies, simulating a scene document's bodies, and
+laying a terrain as ground; see [physics.md](physics.md)).
 Keyboard and touch input come from Flutter itself (`Focus`,
 `GestureDetector`); there is no Orblit keyboard package.
 
@@ -386,7 +386,10 @@ after that.
 
 `heightAt(x, z)` and `normalAt(x, z)` split each square of four texels into
 the same two triangles as the mesh, so what they say is what is drawn. Both
-are null off the regions and on a triangle touching a hole.
+are null off the regions and on a triangle touching a hole. For collision,
+`TerrainPhysics` in `orblit_physics_terrain` lays the same triangles in a
+physics world ([physics.md](physics.md#ground)); `orblit_terrain` itself
+knows nothing of physics.
 
 Files: `terrain.encode()` is the `.oterrain` text and `region.encode()` a
 region's `.oregion` bytes, named `region.key.fileName` (`x0_z-1.oregion`).

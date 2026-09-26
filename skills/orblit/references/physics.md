@@ -1,8 +1,9 @@
 # Physics
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
-as two packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.3.0 and `orblit_physics_scene` 0.1.1. A git dependency
+as three packages under `packages/<name>`. Names below were checked against
+`orblit_physics` 0.4.0, `orblit_physics_scene` 0.1.1 and
+`orblit_physics_terrain` 0.1.0. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -16,6 +17,10 @@ dependencies:
     git:
       url: https://github.com/ChxisB/orblit-physics.git
       path: packages/orblit_physics_scene
+  orblit_physics_terrain:
+    git:
+      url: https://github.com/ChxisB/orblit-physics.git
+      path: packages/orblit_physics_terrain
 ```
 
 - **`orblit_physics`** is the solver: C++ behind a build hook, driven from
@@ -25,6 +30,9 @@ dependencies:
   every entity in a scene document that has a `body` component and answers
   each step with a `SceneDiff`. It does not re-export `orblit_physics`, so
   import both when you need `Shape` or `PhysicsEventKind`.
+- **`orblit_physics_terrain`** exports one class, `TerrainPhysics`. It lays
+  an `orblit_terrain` `Terrain` as ground, the regions near a point, and lays
+  a region again when it is edited.
 
 Guide: https://orblitengine.com/docs/guides/physics/
 
@@ -120,6 +128,52 @@ Do not add the step to a position as well; the character's transform is the
 position now. A clip whose `RootMotion` `rises` carries its own up and down,
 so ask for `walk.y` in place of the fall while it plays.
 
+## Ground
+
+```dart
+physics.layGround(
+  hill,                       // any non-zero id, like any body
+  heights: heights,           // columns * rows, row after row; nan is a hole
+  columns: 65,
+  rows: 65,
+  spacing: 0.5,
+  at: [-16, 0, -16],          // where sample (0, 0) is
+);
+```
+
+- Sample (c, r) is `heights[r * columns + c]` at `at + (c * spacing, h, r *
+  spacing)`. Each square is two triangles split from (c, r) to (c + 1, r + 1),
+  the same split `Terrain.heightAt` and the terrain mesh use.
+- Everything under the surface is solid: a sunk body is pushed up and out,
+  never down through, even when the ground is raised under a sleeper.
+- `layGround` again with the same id **replaces** it and wakes whatever is
+  over the old ground or the new. Returns false, changing nothing, for a zero
+  id, a spacing that is not positive, too few heights, or fewer than 2×2
+  samples (4×4 with a margin).
+- `margin: true`: the outer ring of samples is the neighbouring pieces',
+  never stood on, so pieces laid side by side are one ground. `at` is then
+  the margin's corner.
+- Casts stop on ground, and characters walk on it, climb it and slide down
+  what is too steep.
+
+A terrain:
+
+```dart
+final ground = TerrainPhysics(physics, terrain); // friction, restitution, layers
+ground.sync(x: camera.x, z: camera.z, radius: 64); // every frame
+ground.sync(x: camera.x, z: camera.z, radius: 64, refresh: false); // mid-stroke
+ground.regionOf(hit.body); // RegionKey?, for an event or cast that hit it
+ground.clear();            // takes it all up
+```
+
+- `sync` lays regions within `radius`, takes up regions a region's width
+  beyond it or gone from the terrain, and relays a region whose `revision`,
+  or a neighbour's, has moved. It returns how many it laid.
+- Holes and missing regions are holes, exactly as `heightAt` says null.
+- Bodies are `TerrainPhysics.idOf(key)`, far below zero (from −2^62), clear
+  of `ScenePhysics`'s positive ids and of small negative ids for your own
+  bodies. Pass `numbering:` to choose others.
+
 ## The body component
 
 `BodyComponent` in `orblit_scene` (`SceneComponents.body`, JSON key `body`).
@@ -181,7 +235,16 @@ scene.dispose();
   keeps its number while it has a body.
 - **A body falling asleep reports `touchEnded`** for what it rests on. Do not
   read `touchEnded` alone as "left the floor"; check `physics.asleep(id)`.
-- **A plane cannot be cast.** Asking gives null.
+- **A plane cannot be cast.** Asking gives null. Nor can ground; both can be
+  cast against.
+- **Removing ground wakes nothing.** A body asleep on it stays in the air
+  until something wakes it (`wake(id)`), which is what keeps a crate in place
+  while its region streams out and back.
+- **`sync` with `refresh: false` during a stroke, then once without.** Left
+  true, every frame of a brush stroke relays the regions under it. A colour
+  or cover paint moves the revision too, so it relays as well.
+- **`orblit_terrain` never depends on physics.** Collision is the bridge's
+  job; `heightAt` is still how to place a thing on the ground without it.
 - **A character does not fall on its own.** Leave gravity out of `drive` and
   it hangs in the air.
 - **Build each request from the footing, not from the last request.** Read
