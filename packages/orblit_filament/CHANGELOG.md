@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.34.0
+
+- **Every population draw is given an instance buffer of its own.** They
+  shared one, and Filament remembers a single place per buffer to read a
+  draw's copies from — wherever the last renderable written with it starts.
+  So every draw read the last one's slots: a full draw of sixty-four after a
+  short one read past its end, into another renderable's slots or slots
+  nobody had written that frame, and most of its members were not drawn.
+  Which ones depended on the order the scene held its draws in, so a large
+  population came up with gaps that filled in once the camera had moved far
+  enough for the range pass to reshuffle the draws. A buffer of identities is
+  small, and it goes with its draw.
+
 ## 0.33.0
 
 - **Terrain.** `OrblitScene.terrain` takes `OrblitTerrain`s: ground kept in

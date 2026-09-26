@@ -2,7 +2,7 @@ name: orblit_filament
 description: >-
   Filament rendering for Orblit, composited by Flutter. Renders into
   IOSurface-backed pixel buffers the texture registry adopts without a readback.
-version: 0.33.0
+version: 0.34.0
 publish_to: none
 
 environment:

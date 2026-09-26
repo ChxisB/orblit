@@ -413,11 +413,6 @@ void Renderer::dispose() {
   }
   _meshes.clear();
 
-  if (_identityInstances != nullptr) {
-    _engine->destroy(_identityInstances);
-    _identityInstances = nullptr;
-  }
-
   for (auto &pair : _effectMaterials) {
     if (pair.second != nullptr) _engine->destroy(pair.second);
   }

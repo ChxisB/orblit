@@ -207,7 +207,6 @@ class Renderer {
   void dropPrepass(Drawn &drawn);
   filament::MaterialInstance *depthOnlyInstance();
   void clearPopulation(Grown &grown);
-  filament::InstanceBuffer *identityInstances();
   void growPopulation(Grown &grown, uint32_t count, const float *bounds, int32_t flags);
   void sortPopulation(Grown &grown, const float *transforms);
   void fillPopulation(Grown &grown, const float *transforms, const float *colours);
@@ -683,10 +682,6 @@ class Renderer {
   /// Loaded glTF files, by path. Kept for the life of the renderer: a scene
   /// arrives on every drag, and the parse is the expensive part.
   std::map<std::string, Mesh> _meshes{};
-
-  /// Sixty-four identity transforms, lent to every population draw. Built
-  /// once, because every draw wants the same nothing.
-  filament::InstanceBuffer *_identityInstances{};
 
   /// One material per effect, built on first use and shared by every pass
   /// that runs it. Indexed by the effect's own number.

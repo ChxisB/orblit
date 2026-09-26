@@ -28,36 +28,25 @@ void Renderer::clearPopulation(Grown &grown) {
   // window between the two took the app down whenever one was cleared: on a
   // change of size, on leaving the example, on the sweep that drops a
   // population the scene has stopped mentioning.
+  //
+  // A draw's instance buffer is held by its renderable the same way, so it
+  // goes after the renderables too.
   for (auto entity : grown.entities) {
     _scene->remove(entity);
     _engine->destroy(entity);
     utils::EntityManager::get().destroy(entity);
   }
+  for (auto *instances : grown.instances) _engine->destroy(instances);
   for (auto *material : grown.materials) _engine->destroy(material);
   if (grown.book != nullptr) _engine->destroy(grown.book);
   grown.book = nullptr;
+  grown.instances.clear();
   grown.materials.clear();
   grown.entities.clear();
   grown.count = 0;
   grown.revision = INT32_MIN;
 }
 
-/// The instance buffer every population draw is given.
-///
-/// It holds identities and is never written to again. See the note where it
-/// is bound for why a buffer that carries nothing is not optional.
-filament::InstanceBuffer *Renderer::identityInstances() {
-  if (_identityInstances == nullptr) {
-    filament::math::mat4f nothing[kInstancesPerDraw];
-    _identityInstances = filament::InstanceBuffer::Builder(kInstancesPerDraw)
-                             .localTransforms(nothing)
-                             .build(*_engine);
-  }
-  return _identityInstances;
-}
-
-/// Builds the renderables one population needs, in chunks of what Filament
-/// will draw at once.
 void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds, int32_t flags) {
   clearPopulation(grown);
   if (count == 0) return;
@@ -90,6 +79,9 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
   const TextureSampler nearest(TextureSampler::MinFilter::NEAREST,
                                TextureSampler::MagFilter::NEAREST);
 
+  // Identities, copied into each draw's own buffer; mat4f starts as one.
+  mat4f identities[kInstancesPerDraw];
+
   for (uint32_t at = 0; at < count; at += kInstancesPerDraw) {
     const uint32_t chunk = std::min(kInstancesPerDraw, count - at);
 
@@ -103,6 +95,10 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
     // continuous surface — so the population says which it is.
     material->setParameter("fadeMode", int32_t((flags >> 2) & 3));
 
+    InstanceBuffer *instances = InstanceBuffer::Builder(chunk)
+                                    .localTransforms(identities)
+                                    .build(*_engine);
+
     utils::Entity entity = utils::EntityManager::get().create();
     RenderableManager::Builder(1)
         // Every member is culled by this one box, so it has to cover all of
@@ -112,7 +108,7 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
         .material(0, material)
         .geometry(0, RenderableManager::PrimitiveType::TRIANGLES, _vertexBuffer,
                   _indexBuffer, 0, 36)
-        // Sixty-four identities, shared by every draw in every population.
+        // A buffer of identities, one for each draw.
         //
         // A member's real transform comes out of the book, so this buffer
         // carries nothing — and it still has to be here. Filament indexes a
@@ -125,7 +121,18 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
         // and since what was drawn before depends on the order draws are
         // submitted in, the cube moves when the camera turns. Which is what
         // "blocks floating in random places when rotating" was.
-        .instances(chunk, identityInstances())
+        //
+        // And it has to be the draw's own. Each frame Filament writes every
+        // renderable's copies into slots of their own, but a buffer remembers
+        // only where the last renderable it was written for starts, and every
+        // renderable holding that buffer reads from there. One buffer shared by
+        // every draw had them all reading the last one's slots: a draw of
+        // sixty-four after a short one read past its end into another
+        // renderable's slots, or into slots nobody wrote that frame, and most
+        // of its members were not drawn. Which of them depended on the order
+        // the scene held its draws in, so a meadow came up half there and
+        // filled in when the camera had moved far enough to reshuffle them.
+        .instances(chunk, instances)
         .receiveShadows((flags & 2) != 0)
         .castShadows((flags & 1) != 0)
         .build(*_engine, entity);
@@ -133,6 +140,7 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
     _scene->addEntity(entity);
 
     grown.entities.push_back(entity);
+    grown.instances.push_back(instances);
     grown.materials.push_back(material);
   }
 

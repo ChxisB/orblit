@@ -235,6 +235,11 @@ struct Grown {
   std::vector<utils::Entity> entities;
   std::vector<filament::MaterialInstance *> materials;
 
+  /// Each draw's buffer of identity transforms. One a draw rather than one
+  /// for all: Filament remembers a single place per buffer to read a draw's
+  /// copies from, so draws sharing one read each other's.
+  std::vector<filament::InstanceBuffer *> instances;
+
   /// Which member goes in which slot of the book.
   ///
   /// Sorted so that members near each other in the world are near each other
