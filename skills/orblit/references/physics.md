@@ -2,8 +2,8 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.4.0, `orblit_physics_scene` 0.1.1 and
-`orblit_physics_terrain` 0.1.0. A git dependency
+`orblit_physics` 0.5.0, `orblit_physics_scene` 0.2.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.9.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -58,8 +58,9 @@ physics.dispose();
 - Reading: `transformOf`, `velocityOf` (six floats), `alive`, `asleep`,
   `count`, and `readInto(ids, Float32List out, stride:)` for many at once.
 - `events` is `List<PhysicsEvent>` for **the last step only**: `kind`
-  (`touchBegan`, `touchEnded`, `slept`, `woke`), `a`, `b` (smaller id first),
-  `at`, `normal`, `force` (N·s).
+  (`touchBegan`, `touchEnded`, `slept`, `woke`, `broke`), `a`, `b` (smaller
+  id first), `at`, `normal`, `force` (N·s). For `broke`, `a` is the joint's
+  id, `b` is 0, and `force` is what broke it.
 - `cast(from:, direction:, distance:, shape:, rotation:, layers:, ignore:)`
   returns `PhysicsHit?` with `body`, `at`, `normal`, `distance` and `started`
   (the cast began inside the body). No shape casts a point, which is a ray.
@@ -174,6 +175,39 @@ ground.clear();            // takes it all up
   of `ScenePhysics`'s positive ids and of small negative ids for your own
   bodies. Pass `numbering:` to choose others.
 
+## Joints
+
+```dart
+physics.join(
+  1,                                   // a joint id: counted apart from bodies
+  const Joint.hinge(limit: JointLimit(0, 1.6), speed: 1, strength: 50),
+  a: 0,                                // the world
+  b: door,
+  at: [0.5, 1, 0],                     // the joint's point in the world
+  rotation: [0, 0, 0.7071, 0.7071],    // its frame, xyzw: x is the hinge axis
+  breakingTorque: 400,
+);
+final state = physics.jointStateOf(1); // JointState?: offset, angles, force, torque
+physics.unjoin(1);
+```
+
+- `join(id, joint, {required a, b = 0, required at, rotation, to,
+  breakingForce, breakingTorque, collide = false})` returns whether it was
+  made. Either `a` or `b` may be 0, the world, **not both**. False for a zero
+  or taken id, an end that is not a body, or an end joined to itself.
+- Kinds: `Joint.fixed()`, `Joint.point()`, `Joint.hinge(limit:, speed:,
+  strength:)` (turns about the frame's x), `Joint.slider(limit:, speed:,
+  strength:)` (along x), `Joint.distance(limit:)` (keeps `at` on `a` and `to`
+  on `b` apart; no limit is a rod, `JointLimit(0, 2)` a rope),
+  `Joint.cone(swing:, twist:)` (x swings within `swing`), and
+  `Joint.sixAxis(alongX:, ..., aboutZ:)`, each free unless limited.
+- **The physics package takes radians**, metres and newtons. `JointLimit(low,
+  high)`; `JointLimit.locked()` holds it at nought. A motor with `strength`
+  0 is no motor; `speed` 0 with some strength is friction.
+- It holds how the bodies stood when it was made, so every limit is measured
+  from there. `PhysicsJointKind` is the enum; `Joint` is what you pass.
+- Joined free bodies sleep and wake together.
+
 ## The body component
 
 `BodyComponent` in `orblit_scene` (`SceneComponents.body`, JSON key `body`).
@@ -188,6 +222,27 @@ Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `plane`),
   sideways scale for its radius and the upright one for its height.
 - `plane` is endless ground facing the entity's up, through `centre`. It
   never moves, whatever `motion` says.
+
+## The joint component
+
+`JointComponent` in `orblit_scene` (`SceneComponents.joint`, JSON key
+`joint`): `kind` (`JointKind.fixed`, `point`, `hinge`, `slider`, `distance`,
+`cone`, `sixAxis`), `limits` (`Map<JointAxis, JointRange>`, keyed `alongX` to
+`aboutZ`), `swing`, `speed`, `strength`, `breakingForce`, `breakingTorque`,
+`collide`. Change one limit with `limit(axis, JointRange(low, high))` or
+`free(axis)`; `JointRange.at(v)` is locked. `axes` says which limits the kind
+reads.
+
+- **It names no ids.** The joint holds the nearest body at or above its
+  entity to the nearest body above that, or to the world:
+  `JointComponent.endsOf(id, parentOf:, hasBody:)` says which. A forearm hangs
+  from the arm because it is under it. So put the joint on its own child
+  entity where the hinge or elbow is, and turn that entity so its x is the
+  axis.
+- **Degrees in the document**, as a transform's rotation is; the bridge
+  converts. `speed` is degrees or metres a second.
+- A chain tied at both ends, or two siblings joined to each other, cannot be
+  said this way. Make those with `scene.physics.join` and a negative id.
 
 ## A document, simulated
 
@@ -206,7 +261,12 @@ view.apply(diff);
 
 // By entity id:
 scene.physics.push(scene.bodyOf('crate')!, impulse: [40, 0, 0]);
+final hinge = scene.physics.jointStateOf(scene.jointOf('hinge')!);
 for (final event in scene.events) {
+  if (event.kind == PhysicsEventKind.broke) {
+    print('${scene.entityOfJoint(event.a)} broke'); // also in scene.broken
+    continue;
+  }
   print('${scene.entityOf(event.a)} ${event.kind.name} ${scene.entityOf(event.b)}');
 }
 
@@ -271,6 +331,24 @@ scene.dispose();
   multiplayer, wrong for lockstep.
 - **No continuous collision.** Small fast things tunnel. Use a smaller `step`,
   or `cast` along the path first.
-- **No joints.**
-- **The editor** draws bodies (an inspector section and a wireframe) but does
-  not simulate them.
+- **A joint's axes are its first body's.** Every measure is `b` as `a` sees
+  it, so with the world as `a` a door's angle is the door's, and with the
+  world as `b` it reads the other way round. `ScenePhysics` puts the world, or
+  the body above, first.
+- **Swing and twist mean nothing near a half turn.** Within a quarter turn
+  they are the angles they look like. Limit a joint before it bends that far.
+- **`remove` drops a body's joints silently.** No `broke` event, because
+  nothing broke; what they held is woken and falls. Laying ground again keeps
+  joints on it.
+- **`broke` names the joint, not a body.** `event.a` is the joint id, which
+  may equal a body id. Map it with `scene.entityOfJoint`, not `entityOf`.
+- **Radians in `orblit_physics`, degrees in a document.** `JointLimit(0, 90)`
+  on a hinge is ninety radians, not a quarter turn. `jointStateOf` answers in
+  radians even for a joint the document made.
+- **An edit remakes a joint as things stand then.** A door edited half open
+  reads nought half open, and its limits move with it.
+- **A broken scene joint stays broken** until its own entity is edited.
+  Moving the body, or a parent, does not mend it.
+- **Joined bodies do not collide with each other** unless `collide` is true.
+- **The editor** draws bodies and joints (inspector sections and wireframes)
+  but does not simulate them.

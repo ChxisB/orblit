@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0
+
+- `JointComponent` holds a body to the body it hangs from: fixed, point,
+  hinge, slider, distance, cone or six-axis, with limits per axis in metres
+  and degrees, a motor, a breaking force and torque, and whether the two
+  still collide. Which two bodies is where the entity sits rather than ids it
+  names: the nearest body at or above it, held to the nearest body above
+  that, or to the world. `JointComponent.endsOf` is that rule, for anything
+  with a tree to ask. The entity's own origin and axes are the joint's.
+  Written after `body`. What a joint does is `orblit_physics`'s.
+
 ## 0.8.0
 
 - `TerrainComponent` puts ground in a scene: an `.oterrain` file by its

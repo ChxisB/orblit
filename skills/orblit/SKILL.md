@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips and blends with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF; .oblend graphs of states that mix clips along a line or across a plane and fade between them, with a place that saves and replicates); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics, walking characters and terrain collision with orblit_physics, and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips and blends with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF; .oblend graphs of states that mix clips along a line or across a plane and fade between them, with a place that saves and replicates); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics and joints, walking characters and terrain collision with orblit_physics, and bodies and joints in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -409,6 +409,13 @@ slides along walls, climbs steps, rides platforms and pushes crates, and
 crates cannot push it. Root motion goes in the same way: the clip's step,
 turned to world space and divided by the tick, is the velocity to ask for.
 
+Joints are `physics.join(id, const Joint.hinge(...), a: holder, b: body, at:
+..., rotation: ...)`, in **radians**, with 0 for the world at either end. In a
+document a `joint` component (`JointComponent`) names no ids: it holds the
+nearest body at or above its entity to the nearest body above that, or the
+world, at the entity's own place and axes, in **degrees**. So a hinge is a
+child entity of the door, placed and turned where the hinge is.
+
 Ground is `physics.layGround(id, heights: ..., columns: ..., rows: ...)`, and
 a terrain is laid for you, the regions near the camera, by
 `TerrainPhysics(physics, terrain).sync(x: ..., z: ..., radius: ...)` every
@@ -540,8 +547,8 @@ Load these when the task needs them:
 - [references/assets.md](references/assets.md): materials and looks, scene
   files and their export and import, splats, cooked and networked assets.
 - [references/physics.md](references/physics.md): the physics world,
-  characters and root motion on them, ground and terrain, bodies in scene
-  documents, and simulating a document.
+  characters and root motion on them, ground and terrain, joints, bodies and
+  joints in scene documents, and simulating a document.
 - [references/packages.md](references/packages.md): the other packages,
   terrain among them.
 

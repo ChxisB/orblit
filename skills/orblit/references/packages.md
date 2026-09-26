@@ -34,8 +34,9 @@ the fullest reference.
 Other repositories: `orblit-net` (multiplayer: replication, ownership,
 interpolation), `orblit-script` (TypeScript scripting on QuickJS),
 `orblit-editor` (the editor app), `orblit-examples` (the gallery app) and
-`orblit-physics` (rigid bodies, simulating a scene document's bodies, and
-laying a terrain as ground; see [physics.md](physics.md)).
+`orblit-physics` (rigid bodies and joints, simulating a scene document's
+bodies and joints, and laying a terrain as ground; see
+[physics.md](physics.md)).
 Keyboard and touch input come from Flutter itself (`Focus`,
 `GestureDetector`); there is no Orblit keyboard package.
 

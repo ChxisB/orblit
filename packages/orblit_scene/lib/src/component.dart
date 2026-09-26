@@ -2,6 +2,7 @@ import 'components/body.dart';
 import 'components/data.dart';
 import 'components/drawing.dart';
 import 'components/flat.dart';
+import 'components/joint.dart';
 import 'components/motion.dart';
 import 'components/staging.dart';
 import 'components/terrain.dart';
@@ -67,6 +68,7 @@ abstract final class SceneComponents {
   static const String mesh = 'mesh';
   static const String material = 'material';
   static const String body = 'body';
+  static const String joint = 'joint';
   static const String motion = 'motion';
   static const String light = 'light';
   static const String camera = 'camera';
@@ -93,6 +95,7 @@ abstract final class SceneComponents {
     mesh,
     material,
     body,
+    joint,
     motion,
     light,
     camera,
@@ -112,6 +115,7 @@ abstract final class SceneComponents {
     mesh: MeshComponent.fromJson,
     material: MaterialComponent.fromJson,
     body: BodyComponent.fromJson,
+    joint: JointComponent.fromJson,
     motion: MotionComponent.fromJson,
     light: LightComponent.fromJson,
     camera: CameraComponent.fromJson,
