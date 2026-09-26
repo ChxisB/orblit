@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.34.0
+
+- **The Terrain showcase grows grass, stones and trees.** Four
+  `orblit_terrain` scatter layers kept with the terrain — tufts on the grass
+  set, stones on the rock, and trees as a trunk and a crown on one seed so
+  that they stand together, kept off steep and high ground — placed by a
+  `ScatterPlacer` and drawn by `scatterFrom` as a population a region and
+  layer: about a hundred and ten thousand blocks. Nothing is placed again
+  unless the ground or its cover rule changes, so Steepness and Altitude
+  move the grass up and down the slopes and the other settings send
+  nothing. A Scatter toggle hides it.
+
 ## 0.33.0
 
 - **Terrain, under Showcases.** Half a kilometre of hills made in code as

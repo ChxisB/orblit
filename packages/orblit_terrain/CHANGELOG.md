@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0
+
+- **Scatter.** A `ScatterLayer` is a rule for one kind of thing over the
+  ground — grass, stones, trees — kept in `Terrain.scatter` and written to the
+  `.oterrain` file a layer to a line. It says how many per square metre, which
+  sets it grows on, the slopes and heights it keeps to, its size and how much
+  that varies, how far it leans with the ground, how far it is sunk, its
+  colour, and whether it is a block or a model.
+- **Placing.** A `ScatterPlacer` works out where each one stands, region by
+  region, as `ScatterGroup`s: a transform and a colour for each, in the flat
+  buffers a renderer draws many copies from. The pattern is laid over the
+  world, not over each region, from an integer hash of the layer's seed and
+  the square, so the same ground scatters the same on every machine, the web
+  included, whatever size its regions are. Nothing stands over a hole or off
+  the edge, and a layer grows as thick as its sets cover the ground, so
+  painting scree over grass takes the grass away.
+- **Following edits.** `update` places a region again when its revision
+  moves, or when a neighbour changes along their shared edge, and a layer
+  again everywhere when its rules change; otherwise it does nothing. A group
+  placed again has a new revision and keeps its id, so a renderer resends
+  that one group.
+- A terrain with nothing scattered writes its file exactly as before.
+
 ## 0.2.0
 
 - **Brushes.** A `TerrainStroke` is one press of a brush: `moveTo` carries it

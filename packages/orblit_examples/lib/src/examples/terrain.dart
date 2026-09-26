@@ -23,6 +23,12 @@ import 'surface.dart' show linearOf;
 /// the renderer chooses between the two sets by how steep and how high the
 /// ground is, so the sliders that change that choice change only settings.
 ///
+/// Nothing says where the grass, the stones and the trees go either. They are
+/// rules kept with the terrain — how thick, on which set, on what slope — and
+/// a placer works out where each one stands, a region at a time, again only
+/// where the ground changes. Each is a block, so a layer in a region is one
+/// population: tens of thousands of tufts are a draw or two.
+///
 /// The box that drives round it stands on the ground by asking the terrain
 /// where the ground is: the same heights, read the same way the renderer reads
 /// them, with no physics involved.
@@ -40,7 +46,8 @@ class TerrainExample extends Example {
 
   @override
   String get blurb =>
-      'Hills from sixteen regions of heights, textured by slope and height.';
+      'Hills from sixteen regions of heights, textured by slope and height, '
+      'with grass, stones and trees scattered by rule.';
 
   @override
   ViewPoint get viewpoint =>
@@ -67,12 +74,88 @@ class TerrainExample extends Example {
   /// Whether the box drives round.
   bool rover = true;
 
+  /// Whether the grass, stones and trees are drawn.
+  bool scatter = true;
+
   int _seed = 1;
 
   /// The ground, as data: what is drawn, and what the rover stands on.
   Terrain get terrain => _terrain;
   late Terrain _terrain;
   final Map<String, Uint8List> _pictures = {};
+
+  /// Where the scatter stands, kept between frames so that only a region
+  /// whose ground changed is placed again, and what it last drew.
+  final ScatterPlacer placer = ScatterPlacer();
+  List<OrblitPopulation> _scattered = const [];
+  int _scatteredRevision = -1;
+
+  /// Grass on the grass set, stones on the rock, and trees — a trunk and a
+  /// crown, two layers on one seed so that they stand together — on the
+  /// gentler, lower grass.
+  static const List<ScatterLayer> _scatter = [
+    ScatterLayer(
+      name: 'grass',
+      seed: 1,
+      density: 0.5,
+      sets: [1],
+      maxSlope: 35,
+      size: (0.4, 0.3, 0.4),
+      minScale: 0.5,
+      maxScale: 1.4,
+      lean: 0.7,
+      lift: -0.08,
+      colour: 0x5E8C3A,
+      colourVariation: 0.25,
+      range: 70,
+    ),
+    ScatterLayer(
+      name: 'stones',
+      seed: 2,
+      density: 0.03,
+      sets: [0],
+      size: (1.2, 0.7, 0.9),
+      minScale: 0.4,
+      maxScale: 1.6,
+      lean: 1,
+      lift: -0.25,
+      colour: 0x8A8580,
+      colourVariation: 0.2,
+      range: 160,
+      castShadows: true,
+    ),
+    ScatterLayer(
+      name: 'trunks',
+      seed: 3,
+      density: 0.004,
+      sets: [1],
+      maxSlope: 22,
+      maxHeight: 30,
+      size: (0.45, 4, 0.45),
+      minScale: 0.7,
+      maxScale: 1.3,
+      lift: -0.3,
+      colour: 0x5A3E28,
+      castShadows: true,
+    ),
+    ScatterLayer(
+      name: 'crowns',
+      seed: 3,
+      density: 0.004,
+      sets: [1],
+      maxSlope: 22,
+      maxHeight: 30,
+      size: (2.6, 3.4, 2.6),
+      minScale: 0.7,
+      maxScale: 1.3,
+      // The trunk's top, less its sinking and a little more, so the crown
+      // sits over the trunk rather than on it.
+      lift: 3.2,
+      colour: 0x2F5A2A,
+      colourVariation: 0.15,
+      castShadows: true,
+    ),
+  ];
 
   /// Texels a region is across, the regions each way from the middle, and
   /// metres between texels.
@@ -107,6 +190,7 @@ class TerrainExample extends Example {
           tileSize: 4,
         ),
       ],
+      scatter: _scatter,
     );
 
     final swell = FractalNoise(GradientNoise(seed: _seed), octaves: 5);
@@ -257,6 +341,14 @@ class TerrainExample extends Example {
       );
     }
 
+    // Only where something changed: a region's ground, or the cover rule the
+    // sliders above move, which takes the grass up or down the slopes.
+    placer.update(_terrain);
+    if (placer.revision != _scatteredRevision) {
+      _scattered = scatterFrom(placer, key: 100).populations;
+      _scatteredRevision = placer.revision;
+    }
+
     return OrblitScene(
       camera: camera,
       // Built every frame, and cheap to: the regions' maps are handed over as
@@ -270,6 +362,7 @@ class TerrainExample extends Example {
         ),
       ],
       objects: [if (rover) _rover(seconds)],
+      populations: [if (scatter) ..._scattered],
       lights: [
         OrblitLight(
           key: 1,
@@ -410,6 +503,15 @@ class TerrainExample extends Example {
           },
         ),
         Toggle(
+          label: 'Scatter',
+          value: scatter,
+          note: '${placer.count} grass, stones and trees, placed by rule',
+          onChanged: (value) {
+            scatter = value;
+            changed();
+          },
+        ),
+        Toggle(
           label: 'Rover',
           value: rover,
           note: 'Placed by heightAt and normalAt, with no physics',
@@ -449,12 +551,27 @@ for (final key in keys) {
 // New ground is automatic: rock where it is steep or high, grass elsewhere.
 terrain.autoCover = const AutoCover(steep: 0, flat: 1, slope: 1.2);
 
+// What grows on it, by rule. A trunk and a crown share a seed, so they stand
+// together.
+terrain.scatter.addAll(const [
+  ScatterLayer(name: 'grass', seed: 1, density: 0.5, sets: [1],
+      size: (0.4, 0.3, 0.4), lean: 0.7, colour: 0x5E8C3A, range: 70),
+  ScatterLayer(name: 'stones', seed: 2, density: 0.03, sets: [0],
+      size: (1.2, 0.7, 0.9), lean: 1, lift: -0.25, colour: 0x8A8580),
+  ScatterLayer(name: 'trunks', seed: 3, density: 0.004, sets: [1],
+      maxSlope: 22, size: (0.45, 4, 0.45), colour: 0x5A3E28),
+  ScatterLayer(name: 'crowns', seed: 3, density: 0.004, sets: [1],
+      maxSlope: 22, size: (2.6, 3.4, 2.6), lift: 3.2, colour: 0x2F5A2A),
+]);
+
 // Every frame. The maps are shared, and only a region whose revision moved
-// crosses to the renderer.
+// crosses to the renderer; the placer places again only where it moved.
+placer.update(terrain);
 OrblitScene(
   terrain: [
     terrainFrom(terrain, key: 1, pixels: (path) => decoded[path]),
   ],
+  populations: scatterFrom(placer, key: 100).populations,
   ...
 )
 

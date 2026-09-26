@@ -16,11 +16,11 @@ the fullest reference.
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF; blends as `.oblend` files, graphs of states that mix clips and fade between them | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `BlendDocument`, `BlendPlayer`, `BlendPlace` |
-| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast` |
+| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain | `OrblitDocumentView`, `terrainFrom` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter | `OrblitDocumentView`, `terrainFrom`, `scatterFrom` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK | `Armature`, `Pose`, `solveTwoBoneIk` |
@@ -532,6 +532,44 @@ A missing one draws plain. The renderer takes regions of 16 to 2048 texels,
 4096 across, a grid of 16 to 256 squares and up to 12 levels. Beyond those it
 throws `ArgumentError` saying why.
 
+Scatter: `terrain.scatter` is a list of `ScatterLayer`s, rules for grass,
+stones and trees, saved in the `.oterrain` a layer to a line.
+`ScatterLayer({required name, seed = 0, density = 1, sets = const [], minSlope = 0, maxSlope = 90, minHeight, maxHeight, size = (1, 1, 1), minScale = 1, maxScale = 1, lean = 0, turn = true, lift = 0, colour = 0xFFFFFF, colourVariation = 0, groundTint = 0, range = 0, castShadows = false, mesh, material})`:
+
+- `density` is per square metre (up to `ScatterLayer.maxDensity`, 100),
+  thinned to the share of the ground its `sets` hold (empty is any set;
+  automatic cover counts as its flat and steep sets). Nothing stands over a
+  hole, off the regions, or outside the slope (degrees) and height (metres).
+- With no `mesh` it is a block: the cube stretched to `size` metres, standing
+  on its bottom face. With a `mesh` (project path) `size` scales the model,
+  which stands on its origin, and `material` names an `.omat`.
+- `lean` 0 stands upright, 1 lies square to the ground. `lift` raises (or,
+  negative, sinks) the base in metres at full size. `turn` spins each about
+  its up. `colour` is sRGB `0xRRGGBB`, varied by `colourVariation` (0.2 is
+  80% to 120%) and tinted by the ground's colour map by `groundTint`.
+- Layers with the same `seed` and `density` land on the same spots with the
+  same turn and scale: that is how a trunk and a crown are two layers. Give
+  every other layer its own seed.
+
+`ScatterPlacer()` does the placing: call `placer.update(terrain)` every frame.
+It places a region again only when its `revision` moves or a neighbour
+changes along their shared edge, and a layer everywhere only when its rules
+change; otherwise it costs a few comparisons a region. `placer.groups` are
+`ScatterGroup`s (`key`, `layer` index into `placer.layers`, stable `id`,
+`transforms` 16 floats each, `colours` 3 floats each linear, `minimum`,
+`maximum`, `revision`). `placer.revision` moves when anything does. The
+pattern is laid over the world from an integer hash, so the same ground
+scatters the same on every platform, web included, whatever the region
+size.
+
+Drawing it: `scatterFrom(placer, key: 100, objectKey: ..., mesh: (path) => absolute, material: (omat) => materialKey)`
+in `orblit_stage` returns `(populations: ..., objects: ...)`. A block layer
+is one `OrblitPopulation` per region, keyed `key + group.id`, sharing the
+group's buffers. A model layer is one `OrblitObject` each (populations draw
+only the cube), keyed `objectKey + group.id * 1048576 + index`. Pass
+`models: false` to leave model layers out, for a view that cannot resolve
+their files. Rebuild when `placer.revision` moves, not every frame.
+
 Traps:
 
 - **Pictures that change in place.** They cross again only when the sets or
@@ -540,10 +578,24 @@ Traps:
   `terrain.sets[0] = ...` works even if the list was `const`. A `sets` list
   kept elsewhere is not the terrain's.
 - **Settings cost nothing.** `autoCover`, `blendSharpness`, `meshSize` and
-  `levels` travel every frame, and no region is resent for them.
+  `levels` travel every frame, and no region is resent for them. Except to
+  the scatter: an `autoCover` change places every layer again, since it
+  moves what counts as grass.
+- **Placing is not free.** A region is placed again whole, about a tenth of
+  a second for 250,000 candidates, so a brush on a dense grass layer costs
+  that per region per step. Keep grass `density` near 1 or below, and give it
+  a `range`.
+- **Model layers are objects.** Thousands, not hundreds of thousands, and
+  each only batched with the others when the layer names a `material`. An
+  object has no `range`, so a model layer's is ignored.
+- **Two layers, one seed.** Layers sharing a seed and density stand in each
+  other. That is right for a trunk and a crown and wrong for anything else.
+- **Slope at the outer edge.** `normalAt` reads one side at the terrain's
+  last texel, so slope rules there see gentler ground.
 
 Guide: `/guides/terrain/`. The gallery's Terrain example drives a box over
-hills with `heightAt` and `normalAt`.
+hills with `heightAt` and `normalAt`, and scatters grass, stones and trees
+over them.
 
 ## More worked examples
 

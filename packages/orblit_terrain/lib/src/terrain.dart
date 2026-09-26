@@ -6,6 +6,7 @@ import 'package:vector_math/vector_math_64.dart';
 import 'cover.dart';
 import 'ground_colour.dart';
 import 'region.dart';
+import 'scatter_layer.dart';
 
 /// What a terrain's settings file name ends in.
 const String terrainExtension = '.oterrain';
@@ -145,7 +146,9 @@ class Terrain {
     List<TerrainSet>? sets,
     this.autoCover = const AutoCover(),
     this.blendSharpness = 0.87,
-  }) : sets = [...?sets] {
+    List<ScatterLayer>? scatter,
+  }) : sets = [...?sets],
+       scatter = [...?scatter] {
     if (!TerrainRegion.validSize(regionSize)) {
       throw ArgumentError.value(
         regionSize,
@@ -186,6 +189,11 @@ class Terrain {
 
   /// How ground marked [Cover.automatic] chooses its sets.
   AutoCover autoCover;
+
+  /// What is scattered over the ground: grass, stones, trees, a layer each.
+  /// The terrain's own copy of the list it was made with. Where each one
+  /// stands is a [ScatterPlacer]'s to work out, from these and the ground.
+  final List<ScatterLayer> scatter;
 
   /// How sharply one set gives way to another where they blend: 0 is a
   /// smooth fade, 1 a hard edge along the taller of the two.
@@ -474,20 +482,25 @@ class Terrain {
       'blendSharpness': blendSharpness,
       'autoCover': autoCover.toJson(),
       'sets': [for (final set in sets) set.toJson()],
+      if (scatter.isNotEmpty)
+        'scatter': [for (final layer in scatter) layer.toJson()],
       'regions': [
         for (final key in keys) [key.x, key.z],
       ],
     };
   }
 
-  /// The settings file's text, with a key to a line and a set to a line, so
-  /// the diff of two versions is the settings that changed. The regions are
-  /// listed and not included: each is its own file.
+  /// The settings file's text, with a key to a line and a set or a scatter
+  /// layer to a line, so the diff of two versions is the settings that
+  /// changed. The regions are listed and not included: each is its own file.
   String encode() {
     final lines = <String>[];
     for (final MapEntry(:key, :value) in toJson().entries) {
-      final text = key == 'sets' && value is List && value.isNotEmpty
-          ? '[\n${value.map((set) => '    ${jsonEncode(set)}').join(',\n')}\n  ]'
+      final text =
+          (key == 'sets' || key == 'scatter') &&
+              value is List &&
+              value.isNotEmpty
+          ? '[\n${value.map((item) => '    ${jsonEncode(item)}').join(',\n')}\n  ]'
           : jsonEncode(value);
       lines.add('  ${jsonEncode(key)}: $text');
     }
@@ -556,6 +569,13 @@ class Terrain {
       sets.add(set);
     }
 
+    final scatter = <ScatterLayer>[];
+    final rawScatter = json['scatter'];
+    for (final raw in rawScatter is List ? rawScatter : const <Object?>[]) {
+      final layer = ScatterLayer.fromJson(raw, problems);
+      if (layer != null) scatter.add(layer);
+    }
+
     final keys = <RegionKey>{};
     final rawRegions = json['regions'];
     for (final raw in rawRegions is List ? rawRegions : const <Object?>[]) {
@@ -578,6 +598,7 @@ class Terrain {
           0.0,
           1.0,
         ),
+        scatter: scatter,
       ),
       regions: keys.toList(),
       problems: problems,

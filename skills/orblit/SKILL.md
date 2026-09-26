@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips and blends with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF; .oblend graphs of states that mix clips along a line or across a plane and fade between them, with a place that saves and replicates); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics and joints, walking characters and terrain collision with orblit_physics, and bodies and joints in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips and blend graphs with orblit_motion (.oclip, .oblend, root motion); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, joints, walking characters and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -451,6 +451,16 @@ final stroke = TerrainStroke(terrain, tool: BrushTool.raise,
 var patch = stroke.moveTo(10, 10);
 patch = patch.followedBy(stroke.moveTo(30, 10));
 patch.revert(terrain); // undo
+
+// Grass, stones and trees, by rule: saved with the terrain, placed again
+// only where the ground changes, drawn as a population a region.
+terrain.scatter.add(const ScatterLayer(name: 'grass', seed: 1, density: 0.5,
+    sets: [1], maxSlope: 35, size: (0.4, 0.3, 0.4), colour: 0x5E8C3A,
+    range: 70));
+final placer = ScatterPlacer();
+placer.update(terrain); // every frame; cheap when nothing moved
+final scattered = scatterFrom(placer, key: 100); // when placer.revision moves
+OrblitScene(camera: camera, populations: scattered.populations);
 ```
 
 Build it every frame. It is cheap, because a region crosses only when its
@@ -462,8 +472,9 @@ same ground. A scene file names a terrain with a `terrain` component
 (`TerrainComponent(file: 'terrain/hills/hills.oterrain')`), which the editor
 draws and shapes (Add › Terrain, then the Terrain mode) but
 `OrblitDocumentView` does not load yet: load the files and call
-`terrainFrom` yourself. Only macOS has been seen to draw it. API and the
-traps:
+`terrainFrom` yourself. Only macOS has been seen to draw it. A scatter layer
+with no `mesh` is a block (the cube stretched to its `size`); one with a
+`mesh` is an object each, so keep those to thousands. API and the traps:
 [references/packages.md](references/packages.md#orblit_terrain).
 
 ## Scene notes, not silence
@@ -524,7 +535,8 @@ trees), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
 (change as a function of time), `orblit_sequence` (cutscenes),
 `orblit_motion` (animation clips, on entities and bones alike, and blends
 that mix and fade them),
-`orblit_terrain` (ground as regions of heights, and standing on it),
+`orblit_terrain` (ground as regions of heights, standing on it, and what is
+scattered over it),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
 CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),

@@ -9,6 +9,10 @@
 /// [Terrain.heightAt] and [Terrain.normalAt] read the same heights the
 /// renderer draws, the same way, so what stands on the ground stands on
 /// what is seen. They need no physics.
+///
+/// A [ScatterLayer] is a rule for grass, stones or trees over the ground,
+/// kept in [Terrain.scatter]; a [ScatterPlacer] works out where each one
+/// stands and places a region again when its ground changes.
 library;
 
 export 'src/brush.dart' show Brush, BrushTool;
@@ -24,6 +28,8 @@ export 'src/region.dart'
         RegionParts,
         TerrainRegion,
         regionExtension;
+export 'src/scatter.dart' show ScatterGroup, ScatterPlacer;
+export 'src/scatter_layer.dart' show ScatterLayer;
 export 'src/stroke.dart' show TerrainStroke;
 export 'src/terrain.dart'
     show

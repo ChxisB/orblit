@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+- `scatterFrom` turns what an `orblit_terrain` `ScatterPlacer` put down into
+  what the renderer draws. A block layer is a population a region, its
+  buffers shared rather than copied and its revision the group's, so only a
+  region placed again is sent again. A model layer is an object each, in the
+  material the layer names so that they are drawn together; a population is
+  drawn from the cube alone, so a model cannot be one yet. `models: false`
+  leaves model layers out, for a view with no way to resolve their files.
+
 ## 0.5.0
 
 - `terrainFrom` turns an `orblit_terrain` `Terrain` into the `OrblitTerrain`

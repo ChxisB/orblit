@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_examples/src/examples/terrain.dart';
 import 'package:orblit_filament/orblit_filament.dart';
@@ -52,6 +54,61 @@ void main() {
     expect(drawn.levels, 3);
     expect(drawn.sets.first.triplanar, isFalse);
     expect(drawn.picturesRevision, 0);
+  });
+
+  test('scatters grass, stones and trees, and places them once', () {
+    final example = TerrainExample();
+    final first = example.scene(camera, 0).populations;
+    final placer = example.placer;
+    expect(placer.layers.map((l) => l.name), [
+      'grass',
+      'stones',
+      'trunks',
+      'crowns',
+    ]);
+    int counted(String name) {
+      final layer = placer.layers.indexWhere((l) => l.name == name);
+      return placer.groups
+          .where((g) => g.layer == layer)
+          .fold(0, (total, g) => total + g.count);
+    }
+
+    expect(counted('grass'), greaterThan(10000));
+    expect(counted('stones'), greaterThan(100));
+    expect(counted('trunks'), greaterThan(50));
+    // One seed: every trunk has its crown.
+    expect(counted('crowns'), counted('trunks'));
+    expect(first.map((p) => p.key).toSet(), hasLength(first.length));
+
+    // Nothing moved, so nothing is placed or sent again.
+    final revisions = [for (final p in first) p.revision];
+    final again = example.scene(camera, 1).populations;
+    expect([for (final p in again) p.revision], revisions);
+
+    // A cover rule moves the grass off the steeper slopes.
+    final grass = counted('grass');
+    example.steepness = 3;
+    example.scene(camera, 2);
+    expect(counted('grass'), lessThan(grass));
+
+    expect((example..scatter = false).scene(camera, 3).populations, isEmpty);
+  });
+
+  test('its trees stand on gentle, low ground', () {
+    final example = TerrainExample()..scene(camera, 0);
+    final terrain = example.terrain;
+    final placer = example.placer;
+    final trunks = placer.layers.indexWhere((l) => l.name == 'trunks');
+    for (final group in placer.groups.where((g) => g.layer == trunks)) {
+      for (var i = 0; i < group.count; i++) {
+        final x = group.transforms[i * 16 + 12];
+        final z = group.transforms[i * 16 + 14];
+        final ground = terrain.heightAt(x, z)!;
+        expect(ground, lessThanOrEqualTo(30));
+        final up = terrain.normalAt(x, z)!;
+        expect(up.y, greaterThanOrEqualTo(math.cos(22 * math.pi / 180) - 1e-6));
+      }
+    }
   });
 
   test('the rover stands on the ground and leans with it', () {
