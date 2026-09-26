@@ -161,7 +161,7 @@ void main() {
     });
 
     test('hidden is written and visible is not', () {
-      final shown = SceneEntity(id: 'a', name: 'a');
+      final shown = const SceneEntity(id: 'a', name: 'a');
       final hidden = shown.copyWith(visible: false);
 
       expect(shown.toJson().containsKey('visible'), isFalse);
@@ -202,12 +202,12 @@ void main() {
     });
 
     test('an entity is what it has, so a lamp can be both at once', () {
-      final lamp = SceneEntity(
+      final lamp = const SceneEntity(
         id: 'lamp',
         name: 'Lamp',
         components: {
-          'mesh': const MeshComponent(asset: 'lamp.glb'),
-          'light': const LightComponent(power: 40),
+          'mesh': MeshComponent(asset: 'lamp.glb'),
+          'light': LightComponent(power: 40),
         },
       );
 

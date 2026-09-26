@@ -893,7 +893,7 @@ void _guideTests() {
     test(
       'an aim with nothing to compose says so rather than drawing a dot',
       () {
-        expect(HardLookAt().guides, isNull);
+        expect(const HardLookAt().guides, isNull);
         expect(StaticAim(Quaternion.identity()).guides, isNull);
         expect(PovAim().guides, isNull);
       },

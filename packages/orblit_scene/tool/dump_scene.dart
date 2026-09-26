@@ -135,8 +135,8 @@ void main(List<String> args) {
           SceneComponents.mesh: const MeshComponent(asset: 'models/ring.glb'),
         }),
         _entity('c', 'Beside it', {
-          SceneComponents.mesh: MeshComponent(
-            shape: const Shape(kind: ShapeKind.cube),
+          SceneComponents.mesh: const MeshComponent(
+            shape: Shape(kind: ShapeKind.cube),
           ),
         }),
       ],

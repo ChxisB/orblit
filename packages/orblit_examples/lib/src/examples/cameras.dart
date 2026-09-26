@@ -145,7 +145,7 @@ class CamerasExample extends Example {
     follow: _subject,
     lookAt: _subject,
     body: OrbitBody(radius: 11, elevation: 26, damping: 0.5),
-    aim: HardLookAt(),
+    aim: const HardLookAt(),
     lens: const Lens(fieldOfView: 48),
   );
 

@@ -63,7 +63,7 @@ void main() {
     });
 
     test('a change leaves the other fields alone', () {
-      final full = Cover(0xFFFFFFFF);
+      final full = const Cover(0xFFFFFFFF);
       expect(full.withBase(0).word, 0x07FFFFFF);
       expect(full.withOverlay(0).word, 0xF83FFFFF);
       expect(full.withBlend(0).word, 0xFFC03FFF);

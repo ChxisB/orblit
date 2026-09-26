@@ -171,9 +171,9 @@ void main() {
 
   group('the file', () {
     test('survives a round trip', () {
-      final document = UiDocument(
+      final document = const UiDocument(
         name: 'Main menu',
-        canvas: const UiCanvas(width: 1280, height: 720, fit: CanvasFit.width),
+        canvas: UiCanvas(width: 1280, height: 720, fit: CanvasFit.width),
         root: tree,
       );
 

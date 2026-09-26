@@ -113,9 +113,9 @@ class FieldExample extends Example {
     ),
     // The scene has to be drawn into a target for the probes to read it, and
     // then put on the screen. That is the whole reason `copy` exists.
-    graph: OrblitRenderGraph(
-      targets: const [OrblitTarget(name: 'frame')],
-      passes: const [
+    graph: const OrblitRenderGraph(
+      targets: [OrblitTarget(name: 'frame')],
+      passes: [
         OrblitPass(name: 'world', into: 'frame'),
         OrblitPass(
           name: 'present',

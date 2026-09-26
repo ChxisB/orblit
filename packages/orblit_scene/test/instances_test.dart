@@ -181,7 +181,7 @@ void main() {
     });
 
     test('an instance on its root is a link and its overrides', () {
-      final link = PrefabComponent(
+      final link = const PrefabComponent(
         asset: lampAsset,
         overrides: SceneDiff([SetVisible('bulb', from: true, to: false)]),
       );
@@ -384,7 +384,9 @@ void main() {
 
   group('a prefab that cannot be read', () {
     test('leaves the link as it was, overrides and all', () {
-      final overrides = SceneDiff([SetVisible('bulb', from: true, to: false)]);
+      final overrides = const SceneDiff([
+        SetVisible('bulb', from: true, to: false),
+      ]);
       final document = scene([
         stub('lamp1', lampAsset, overrides: overrides),
         thing('flag', parent: 'lamp1/bulb'),
@@ -405,7 +407,9 @@ void main() {
           stub(
             'lamp1',
             lampAsset,
-            overrides: SceneDiff([SetVisible('gone', from: true, to: false)]),
+            overrides: const SceneDiff([
+              SetVisible('gone', from: true, to: false),
+            ]),
           ),
         ]),
         library({lampAsset: lamp()}),

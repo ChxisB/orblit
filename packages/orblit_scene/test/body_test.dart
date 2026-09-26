@@ -144,7 +144,7 @@ void main() {
           id: 'lamp',
           name: 'Lamp',
           components: {
-            SceneComponents.light: LightComponent(),
+            SceneComponents.light: const LightComponent(),
             SceneComponents.body: BodyComponent(),
             SceneComponents.mesh: const MeshComponent(),
           },

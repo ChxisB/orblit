@@ -266,7 +266,7 @@ class Shape {
       ShapeKind.cube => _cube(),
       // A plane with all three sides at one unit, which is what a sprite is:
       // somewhere to put a picture.
-      ShapeKind.sprite => Shape(
+      ShapeKind.sprite => const Shape(
         kind: ShapeKind.plane,
         width: 1,
         depth: 1,

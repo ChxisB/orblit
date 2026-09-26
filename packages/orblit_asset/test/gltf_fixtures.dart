@@ -70,8 +70,10 @@ class QuadModel {
   List<Object?> get _images => json['images'] as List<Object?>;
   List<Object?> get _textures => json['textures'] as List<Object?>;
   List<Object?> get materials => json['materials'] as List<Object?>;
-  List<Object?> get primitives =>
-      (json['meshes'] as List).first['primitives'] as List<Object?>;
+  List<Object?> get primitives {
+    final mesh = (json['meshes'] as List).first as Map<String, Object?>;
+    return mesh['primitives'] as List<Object?>;
+  }
 
   int _view(List<int> bytes) {
     final views = json.putIfAbsent('bufferViews', () => <Object?>[]) as List;

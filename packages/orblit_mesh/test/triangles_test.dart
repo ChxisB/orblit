@@ -8,7 +8,7 @@ import 'package:vector_math/vector_math_64.dart';
 void main() {
   group('triangulating', () {
     test('a quad becomes two triangles', () {
-      final tris = Shape(
+      final tris = const Shape(
         kind: ShapeKind.plane,
         widthCuts: 0,
         heightCuts: 0,
@@ -19,7 +19,7 @@ void main() {
     });
 
     test('a box keeps its corners apart, so it looks like a box', () {
-      final tris = Shape(kind: ShapeKind.cube).build().triangulate();
+      final tris = const Shape(kind: ShapeKind.cube).build().triangulate();
 
       // Eight corners, twenty-four vertices: each corner needs three normals,
       // and sharing them is what makes a box look like a deflated ball.
@@ -59,7 +59,7 @@ void main() {
     });
 
     test('a smooth side shades round rather than faceted', () {
-      final tris = Shape(
+      final tris = const Shape(
         kind: ShapeKind.cylinder,
         sides: 16,
       ).build().triangulate();
@@ -92,7 +92,7 @@ void main() {
     });
 
     test('a flat shape does not', () {
-      final tris = Shape(kind: ShapeKind.cube).build().triangulate();
+      final tris = const Shape(kind: ShapeKind.cube).build().triangulate();
 
       // Six faces, six directions, and no averaging between them.
       final directions = <String>{};
@@ -124,7 +124,7 @@ void main() {
     }
 
     test('starts with the magic word and says it is version two', () {
-      final glb = Shape(kind: ShapeKind.cube).build().toGlb();
+      final glb = const Shape(kind: ShapeKind.cube).build().toGlb();
       final view = ByteData.sublistView(glb);
 
       expect(view.getUint32(0, Endian.little), 0x46546C67);
@@ -143,7 +143,9 @@ void main() {
     });
 
     test('describes one mesh with the three attributes a renderer wants', () {
-      final header = headerOf(Shape(kind: ShapeKind.cube).build().toGlb());
+      final header = headerOf(
+        const Shape(kind: ShapeKind.cube).build().toGlb(),
+      );
       final primitive =
           ((header['meshes']! as List).first
                   as Map<String, Object?>)['primitives']
@@ -158,7 +160,7 @@ void main() {
     });
 
     test('the accessors count what is actually in the buffer', () {
-      final mesh = Shape(kind: ShapeKind.cube).build();
+      final mesh = const Shape(kind: ShapeKind.cube).build();
       final tris = mesh.triangulate();
       final header = headerOf(mesh.toGlb());
 
@@ -187,7 +189,7 @@ void main() {
     });
 
     test('positions carry the bounds, which the format requires', () {
-      final mesh = Shape(kind: ShapeKind.cube, width: 4).build();
+      final mesh = const Shape(kind: ShapeKind.cube, width: 4).build();
       final header = headerOf(mesh.toGlb());
       final positions = (header['accessors']! as List)[1] as Map;
 
@@ -197,7 +199,7 @@ void main() {
 
     test('counts are written as integers, not as 12.0', () {
       // A count written with a decimal point is a file some loaders refuse.
-      final glb = Shape(kind: ShapeKind.cube).build().toGlb();
+      final glb = const Shape(kind: ShapeKind.cube).build().toGlb();
       final view = ByteData.sublistView(glb);
       final jsonLength = view.getUint32(12, Endian.little);
       final text = utf8.decode(glb.sublist(20, 20 + jsonLength));

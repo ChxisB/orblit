@@ -160,15 +160,15 @@ void main() {
     test('the same agent wanders the same way twice', () {
       // Deterministic in the seed and the clock, which is what makes a
       // wandering crowd reproducible in a replay and in a test.
-      final one = Wander(seed: 7, at: 3.25).force(agentAt(0));
-      final two = Wander(seed: 7, at: 3.25).force(agentAt(0));
+      final one = const Wander(seed: 7, at: 3.25).force(agentAt(0));
+      final two = const Wander(seed: 7, at: 3.25).force(agentAt(0));
       expect(one.x, two.x);
       expect(one.z, two.z);
     });
 
     test('two agents side by side do not wander in step', () {
-      final one = Wander(seed: 1, at: 2).force(agentAt(0));
-      final two = Wander(seed: 2, at: 2).force(agentAt(0));
+      final one = const Wander(seed: 1, at: 2).force(agentAt(0));
+      final two = const Wander(seed: 2, at: 2).force(agentAt(0));
       expect((one - two).length, greaterThan(0.01));
     });
 
@@ -177,7 +177,7 @@ void main() {
       // vibrates on the spot. Consecutive samples have to be close.
       final self = agentAt(0);
       var worst = 0.0;
-      var previous = Wander(seed: 5, at: 0).force(self).normalized();
+      var previous = const Wander(seed: 5, at: 0).force(self).normalized();
 
       for (var i = 1; i < 200; i++) {
         final now = Wander(seed: 5, at: i / 60).force(self).normalized();

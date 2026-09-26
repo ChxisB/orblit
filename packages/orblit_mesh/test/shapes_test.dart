@@ -121,18 +121,18 @@ void main() {
 
   group('the box', () {
     test('is six faces over eight corners', () {
-      final mesh = Shape(kind: ShapeKind.cube).build();
+      final mesh = const Shape(kind: ShapeKind.cube).build();
       expect(mesh.faces, hasLength(6));
       expect(mesh.positions, hasLength(8));
       expect(mesh.faces.every((f) => f.isQuad), isTrue);
     });
 
     test('faces outwards on every side', () {
-      expect(facesOutwards(Shape(kind: ShapeKind.cube).build()), isTrue);
+      expect(facesOutwards(const Shape(kind: ShapeKind.cube).build()), isTrue);
     });
 
     test('is the size it was given', () {
-      final box = Shape(
+      final box = const Shape(
         kind: ShapeKind.cube,
         width: 4,
         height: 2,
@@ -147,7 +147,7 @@ void main() {
 
   group('the plane', () {
     test('is a grid, so there are edges to pull on later', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.plane,
         widthCuts: 2,
         heightCuts: 3,
@@ -159,14 +159,14 @@ void main() {
     });
 
     test('every face points up', () {
-      final mesh = Shape(kind: ShapeKind.plane, widthCuts: 2).build();
+      final mesh = const Shape(kind: ShapeKind.plane, widthCuts: 2).build();
       for (final face in mesh.faces) {
         expect(mesh.normalOf(face).y, closeTo(1, 1e-9));
       }
     });
 
     test('with no cuts it is one quad', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.plane,
         widthCuts: 0,
         heightCuts: 0,
@@ -175,7 +175,11 @@ void main() {
     });
 
     test('a sprite is a plane one unit square', () {
-      final mesh = Shape(kind: ShapeKind.sprite, width: 9, depth: 9).build();
+      final mesh = const Shape(
+        kind: ShapeKind.sprite,
+        width: 9,
+        depth: 9,
+      ).build();
       final box = mesh.bounds;
 
       expect(mesh.faces, hasLength(1));
@@ -185,7 +189,7 @@ void main() {
 
   group('the prism', () {
     test('is a box with a roof', () {
-      final mesh = Shape(kind: ShapeKind.prism).build();
+      final mesh = const Shape(kind: ShapeKind.prism).build();
 
       // A bottom, two slopes and two gables.
       expect(mesh.faces, hasLength(5));
@@ -196,14 +200,14 @@ void main() {
 
   group('the pipe', () {
     test('has an outside, an inside and two rims', () {
-      final mesh = Shape(kind: ShapeKind.pipe, sides: 8).build();
+      final mesh = const Shape(kind: ShapeKind.pipe, sides: 8).build();
 
       // Eight outside, eight inside, eight top and eight bottom.
       expect(mesh.faces, hasLength(32));
     });
 
     test('the inside faces inwards', () {
-      final mesh = Shape(kind: ShapeKind.pipe, sides: 12).build();
+      final mesh = const Shape(kind: ShapeKind.pipe, sides: 12).build();
 
       // A pipe whose bore faces outwards is a pipe you cannot see through.
       var inward = 0;
@@ -219,14 +223,22 @@ void main() {
     });
 
     test('a wall thicker than the pipe does not turn it inside out', () {
-      final mesh = Shape(kind: ShapeKind.pipe, sides: 8, thickness: 99).build();
+      final mesh = const Shape(
+        kind: ShapeKind.pipe,
+        sides: 8,
+        thickness: 99,
+      ).build();
       expect(mesh.positions.every((at) => at.x.isFinite), isTrue);
       expect(mesh.faces, isNotEmpty);
     });
 
     test('height cuts add rings of faces', () {
-      final plain = Shape(kind: ShapeKind.pipe, sides: 8).build();
-      final cut = Shape(kind: ShapeKind.pipe, sides: 8, heightCuts: 2).build();
+      final plain = const Shape(kind: ShapeKind.pipe, sides: 8).build();
+      final cut = const Shape(
+        kind: ShapeKind.pipe,
+        sides: 8,
+        heightCuts: 2,
+      ).build();
 
       expect(cut.faces.length, greaterThan(plain.faces.length));
     });
@@ -234,7 +246,11 @@ void main() {
 
   group('the torus', () {
     test('is a closed ring with no border', () {
-      final mesh = Shape(kind: ShapeKind.torus, rings: 12, columns: 8).build();
+      final mesh = const Shape(
+        kind: ShapeKind.torus,
+        rings: 12,
+        columns: 8,
+      ).build();
 
       expect(mesh.faces, hasLength(12 * 8));
       // Closed all the way round, so nothing is on the border.
@@ -242,7 +258,7 @@ void main() {
     });
 
     test('part of a circumference is open at both ends', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.torus,
         rings: 12,
         columns: 8,
@@ -255,7 +271,7 @@ void main() {
 
   group('the door', () {
     test('is two uprights and a lintel with a gap between', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.door,
         width: 3,
         height: 4,
@@ -274,12 +290,12 @@ void main() {
 
   group('the cylinder', () {
     test('has a side per segment, and two ends', () {
-      final mesh = Shape(kind: ShapeKind.cylinder, sides: 12).build();
+      final mesh = const Shape(kind: ShapeKind.cylinder, sides: 12).build();
       expect(mesh.faces, hasLength(12 + 2));
     });
 
     test('height cuts divide the sides without changing the shape', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.cylinder,
         sides: 8,
         heightCuts: 3,
@@ -291,7 +307,7 @@ void main() {
     });
 
     test('without ends it is a tube', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.cylinder,
         sides: 12,
         capped: false,
@@ -303,13 +319,13 @@ void main() {
 
     test('faces outwards', () {
       expect(
-        facesOutwards(Shape(kind: ShapeKind.cylinder, sides: 16).build()),
+        facesOutwards(const Shape(kind: ShapeKind.cylinder, sides: 16).build()),
         isTrue,
       );
     });
 
     test('its sides are smooth and its ends are not', () {
-      final mesh = Shape(kind: ShapeKind.cylinder, sides: 8).build();
+      final mesh = const Shape(kind: ShapeKind.cylinder, sides: 8).build();
       final smooth = mesh.faces.where((f) => f.smooth).length;
 
       // A cylinder that shades flat looks like a nut, and ends that shade
@@ -321,26 +337,30 @@ void main() {
   group('the cone', () {
     test('faces outwards, cap included', () {
       expect(
-        facesOutwards(Shape(kind: ShapeKind.cone, sides: 12).build()),
+        facesOutwards(const Shape(kind: ShapeKind.cone, sides: 12).build()),
         isTrue,
       );
     });
 
     test('is a fan of triangles around one tip', () {
-      final mesh = Shape(kind: ShapeKind.cone, sides: 9).build();
+      final mesh = const Shape(kind: ShapeKind.cone, sides: 9).build();
       expect(mesh.faces.where((f) => f.isTriangle), hasLength(9));
       expect(mesh.positions, hasLength(10));
     });
 
     test('without a cap it is open underneath', () {
-      final mesh = Shape(kind: ShapeKind.cone, sides: 9, capped: false).build();
+      final mesh = const Shape(
+        kind: ShapeKind.cone,
+        sides: 9,
+        capped: false,
+      ).build();
       expect(mesh.faces, hasLength(9));
     });
   });
 
   group('the sphere', () {
     test('is an icosphere, so its faces are all about the same size', () {
-      final mesh = Shape(kind: ShapeKind.sphere, subdivisions: 1).build();
+      final mesh = const Shape(kind: ShapeKind.sphere, subdivisions: 1).build();
 
       // The twenty faces of an icosahedron over its twelve corners. Latitude
       // and longitude would crowd every face into the poles, where a texture
@@ -363,13 +383,15 @@ void main() {
 
     test('faces outwards', () {
       expect(
-        facesOutwards(Shape(kind: ShapeKind.sphere, subdivisions: 2).build()),
+        facesOutwards(
+          const Shape(kind: ShapeKind.sphere, subdivisions: 2).build(),
+        ),
         isTrue,
       );
     });
 
     test('every point is on the surface', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.sphere,
         width: 2,
         height: 2,
@@ -385,13 +407,13 @@ void main() {
 
   group('the stairs', () {
     test('has a step per flight', () {
-      final mesh = Shape(kind: ShapeKind.stairs, steps: 5).build();
+      final mesh = const Shape(kind: ShapeKind.stairs, steps: 5).build();
       // Six faces a step, since each is a box until somebody welds them.
       expect(mesh.faces, hasLength(5 * 6));
     });
 
     test('by height it works out how many steps fit', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.stairs,
         byCount: false,
         stepHeight: 0.25,
@@ -403,7 +425,7 @@ void main() {
     });
 
     test('a step height of nothing does not make an infinity of steps', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.stairs,
         byCount: false,
         stepHeight: 0,
@@ -412,7 +434,7 @@ void main() {
     });
 
     test('climbs by the height it was given', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.stairs,
         steps: 4,
         height: 2,
@@ -425,7 +447,7 @@ void main() {
 
   group('the file it is written as', () {
     test('survives a round trip', () {
-      final was = Shape(kind: ShapeKind.cube, width: 3).build();
+      final was = const Shape(kind: ShapeKind.cube, width: 3).build();
       final now = Mesh.fromJson(was.toJson())!;
 
       expect(now.faces, hasLength(was.faces.length));

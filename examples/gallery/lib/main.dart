@@ -310,12 +310,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       // the far end.
       return _sceneWith(
         path,
-        OrblitRenderGraph(
-          targets: const [
+        const OrblitRenderGraph(
+          targets: [
             OrblitTarget(name: 'frame'),
             OrblitTarget(name: 'edges'),
           ],
-          passes: const [
+          passes: [
             OrblitPass(name: 'world', into: 'frame'),
             OrblitPass(
               name: 'edges',
@@ -340,12 +340,12 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
       // quietly outputs nothing looks exactly like one that works.
       return _sceneWith(
         path,
-        OrblitRenderGraph(
-          targets: const [
+        const OrblitRenderGraph(
+          targets: [
             OrblitTarget(name: 'frame'),
             OrblitTarget(name: 'edges'),
           ],
-          passes: const [
+          passes: [
             OrblitPass(name: 'world', into: 'frame'),
             OrblitPass(
               name: 'edges',
@@ -367,13 +367,13 @@ class _StageState extends State<_Stage> with SingleTickerProviderStateMixin {
     if (smaa == '1') {
       return _sceneWith(
         path,
-        OrblitRenderGraph(
-          targets: const [
+        const OrblitRenderGraph(
+          targets: [
             OrblitTarget(name: 'frame'),
             OrblitTarget(name: 'edges'),
             OrblitTarget(name: 'weights'),
           ],
-          passes: const [
+          passes: [
             OrblitPass(name: 'world', into: 'frame'),
             OrblitPass(
               name: 'edges',

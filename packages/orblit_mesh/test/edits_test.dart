@@ -3,7 +3,7 @@ import 'package:test/test.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 void main() {
-  Mesh cube() => Shape(kind: ShapeKind.cube).build();
+  Mesh cube() => const Shape(kind: ShapeKind.cube).build();
 
   /// The face pointing up, which is the one worth extruding in a test.
   Face topOf(Mesh mesh) =>
@@ -158,7 +158,7 @@ void main() {
     });
 
     test('a triangle becomes three quads', () {
-      final mesh = Shape(kind: ShapeKind.cone, sides: 3).build();
+      final mesh = const Shape(kind: ShapeKind.cone, sides: 3).build();
       final side = mesh.faces.first;
 
       expect(mesh.subdivide([side]), hasLength(3));
@@ -178,7 +178,7 @@ void main() {
 
   group('welding', () {
     test('joins points in the same place', () {
-      final mesh = Shape(kind: ShapeKind.stairs, steps: 3).build();
+      final mesh = const Shape(kind: ShapeKind.stairs, steps: 3).build();
       final was = mesh.positions.length;
 
       final went = mesh.weld();
@@ -208,7 +208,8 @@ void main() {
     });
 
     test('every face still names a point that exists', () {
-      final mesh = Shape(kind: ShapeKind.stairs, steps: 6).build()..weld();
+      final mesh = const Shape(kind: ShapeKind.stairs, steps: 6).build()
+        ..weld();
 
       for (final face in mesh.faces) {
         for (final index in face.vertices) {
@@ -268,7 +269,7 @@ void main() {
     });
 
     test('a plane is all border', () {
-      final mesh = Shape(
+      final mesh = const Shape(
         kind: ShapeKind.plane,
         widthCuts: 0,
         heightCuts: 0,

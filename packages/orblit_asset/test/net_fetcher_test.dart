@@ -270,7 +270,7 @@ void main() {
       final transport = MapTransport({
         url('flaky.bin'): TransportPage(
           body('got there'),
-          faults: [Fault.thrown(), Fault.thrown()],
+          faults: [const Fault.thrown(), const Fault.thrown()],
         ),
       });
       final fetcher = fetcherFor(transport, attempts: 3);
@@ -283,11 +283,11 @@ void main() {
       final transport = MapTransport({
         url('busy.bin'): TransportPage(
           body('eventually'),
-          faults: [Fault.status(503)],
+          faults: [const Fault.status(503)],
         ),
         url('shut.bin'): TransportPage(
           body('never seen'),
-          faults: [Fault.status(403)],
+          faults: [const Fault.status(403)],
         ),
       });
       final fetcher = fetcherFor(transport, attempts: 3);
@@ -308,7 +308,7 @@ void main() {
       final transport = MapTransport({
         url('down.bin'): TransportPage(
           body('unreachable'),
-          faults: [Fault.status(500), Fault.status(500)],
+          faults: [const Fault.status(500), const Fault.status(500)],
         ),
       });
       final fetcher = fetcherFor(transport, attempts: 2);
@@ -327,7 +327,7 @@ void main() {
       final transport = MapTransport({
         url('slowly.bin'): TransportPage(
           body('at last'),
-          faults: [Fault.thrown(), Fault.thrown()],
+          faults: [const Fault.thrown(), const Fault.thrown()],
         ),
       });
       final fetcher = AssetFetcher(
@@ -501,7 +501,11 @@ void main() {
       final gone = MapTransport({
         url('cached.bin'): TransportPage(
           body('unreachable'),
-          faults: [Fault.thrown(), Fault.thrown(), Fault.thrown()],
+          faults: [
+            const Fault.thrown(),
+            const Fault.thrown(),
+            const Fault.thrown(),
+          ],
         ),
       });
       final offline = fetcherFor(
@@ -519,7 +523,7 @@ void main() {
       final transport = MapTransport({
         url('cold.bin'): TransportPage(
           body('unreachable'),
-          faults: [Fault.thrown(), Fault.thrown()],
+          faults: [const Fault.thrown(), const Fault.thrown()],
         ),
       });
       final fetcher = fetcherFor(transport, attempts: 2);
@@ -787,7 +791,7 @@ void main() {
       final transport = MapTransport({
         url('wobbly.bin'): TransportPage(
           body('never seen'),
-          faults: [Fault.status(500), Fault.status(500)],
+          faults: [const Fault.status(500), const Fault.status(500)],
         ),
       });
       final network = NetworkAssetSource(fetcherFor(transport, attempts: 2));

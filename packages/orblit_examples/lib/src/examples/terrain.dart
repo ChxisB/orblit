@@ -223,11 +223,11 @@ class TerrainExample extends Example {
     // Rock: slabs split by cracks, and tall, so it shows through the grass
     // where the two meet rather than fading into it. Ridged noise peaks in
     // thin lines, so turned over, the lines are the cracks.
-    final slabs = FractalNoise(
+    final slabs = const FractalNoise(
       RidgedNoise(TilingNoise(GradientNoise(seed: 3), period: 3)),
       octaves: 2,
     );
-    final grain = FractalNoise(
+    final grain = const FractalNoise(
       TilingNoise(GradientNoise(seed: 5), period: 12),
       octaves: 2,
     );
@@ -246,11 +246,11 @@ class TerrainExample extends Example {
 
     // Grass: low, so rock wins wherever there is any, and blotched, so a
     // hillside of it is not one flat green.
-    final tufts = FractalNoise(
+    final tufts = const FractalNoise(
       TilingNoise(GradientNoise(seed: 9), period: 32),
       octaves: 3,
     );
-    final patches = TilingNoise(GradientNoise(seed: 11), period: 4);
+    final patches = const TilingNoise(GradientNoise(seed: 11), period: 4);
     _paint(
       'grass',
       height: (u, v) => 0.1 + 0.35 * tufts.unit(u * 32, v * 32),

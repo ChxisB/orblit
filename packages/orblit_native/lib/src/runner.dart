@@ -184,7 +184,7 @@ class ScriptRunner {
   BuildResult add(File source) {
     final tools = toolchain;
     if (tools == null) {
-      return BuildResult(
+      return const BuildResult(
         library: null,
         output:
             'No C++ compiler found. Install the Xcode command line tools, '

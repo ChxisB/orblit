@@ -156,14 +156,14 @@ class CookKey {
           );
         }
         out.write(jsonEncode(value));
-      case List<Object?> items:
+      case final List<Object?> items:
         out.write('[');
         for (var i = 0; i < items.length; i++) {
           if (i > 0) out.write(',');
           _write(items[i], out, '$where[$i]');
         }
         out.write(']');
-      case Map<Object?, Object?> map:
+      case final Map<Object?, Object?> map:
         final keys = <String>[];
         for (final key in map.keys) {
           if (key is! String) {

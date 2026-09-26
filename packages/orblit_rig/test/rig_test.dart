@@ -392,7 +392,7 @@ void main() {
         math.pi / 2,
       );
       pose
-        ..constrain('target', CopyRotation('source'))
+        ..constrain('target', const CopyRotation('source'))
         ..evaluate();
 
       // Turned like the source, but still where it was.
@@ -412,7 +412,7 @@ void main() {
         math.pi / 2,
       );
       pose
-        ..constrain('target', CopyRotation('source', influence: 0.5))
+        ..constrain('target', const CopyRotation('source', influence: 0.5))
         ..evaluate();
 
       // Half of a quarter turn: the tail should be up and across, not fully
@@ -430,7 +430,7 @@ void main() {
       ]);
 
       final pose = Pose(armature)
-        ..constrain('eye', DampedTrack(target: 'focus'))
+        ..constrain('eye', const DampedTrack(target: 'focus'))
         ..evaluate();
 
       // The bone's own Y now points at the focus.
@@ -447,7 +447,7 @@ void main() {
       // Asked for a half turn, allowed a quarter.
       pose['finger'].rotation = Quaternion.axisAngle(Vector3(0, 0, 1), math.pi);
       pose
-        ..constrain('finger', LimitRotation(maximumAngle: math.pi / 2))
+        ..constrain('finger', const LimitRotation(maximumAngle: math.pi / 2))
         ..evaluate();
 
       final tail = pose.tailOf('finger');
@@ -468,7 +468,7 @@ void main() {
         math.pi / 2,
       );
       pose
-        ..constrain('upper', CopyRotation('source'))
+        ..constrain('upper', const CopyRotation('source'))
         ..evaluate();
 
       // Constraining the upper arm swung the forearm too, which is what makes
@@ -549,8 +549,8 @@ void main() {
       ]);
 
       final pose = Pose(armature)
-        ..constrain('a', CopyRotation('b'))
-        ..constrain('b', CopyRotation('a'));
+        ..constrain('a', const CopyRotation('b'))
+        ..constrain('b', const CopyRotation('a'));
 
       // No order satisfies both, and saying so is better than evaluating one
       // of them against last frame's answer.
@@ -571,7 +571,7 @@ void main() {
         math.pi / 2,
       );
       pose
-        ..constrain('reader', CopyRotation('source'))
+        ..constrain('reader', const CopyRotation('source'))
         ..evaluate();
 
       expectVector(pose.tailOf('reader'), Vector3(-1, 0, 0), tolerance: 1e-5);

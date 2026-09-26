@@ -304,8 +304,8 @@ void main() {
       final scene = SceneDocument(
         entities: [
           entity('e', {
-            SceneComponents.mesh: MeshComponent(
-              shape: const Shape(kind: ShapeKind.cube),
+            SceneComponents.mesh: const MeshComponent(
+              shape: Shape(kind: ShapeKind.cube),
             ),
             SceneComponents.material: const MaterialComponent(
               asset: 'summer.omat',
@@ -421,9 +421,9 @@ void main() {
           rotation: Vector3(10, 20, 30),
           scale: Vector3(1, 2, 1),
         ),
-        SceneComponents.mesh: MeshComponent(
-          shape: const Shape(kind: ShapeKind.stairs),
-          colour: const Tint.hex(0x123456),
+        SceneComponents.mesh: const MeshComponent(
+          shape: Shape(kind: ShapeKind.stairs),
+          colour: Tint.hex(0x123456),
           sway: 0.4,
           castShadows: false,
         ),
@@ -481,8 +481,8 @@ void main() {
       final written = SceneDocument(
         entities: [
           entity('e', {
-            SceneComponents.mesh: MeshComponent(
-              shape: const Shape(kind: ShapeKind.cube),
+            SceneComponents.mesh: const MeshComponent(
+              shape: Shape(kind: ShapeKind.cube),
             ),
           }),
         ],
@@ -506,8 +506,8 @@ void main() {
       final written = SceneDocument(
         entities: [
           entity('e', {
-            SceneComponents.mesh: MeshComponent(
-              shape: const Shape(kind: ShapeKind.cube),
+            SceneComponents.mesh: const MeshComponent(
+              shape: Shape(kind: ShapeKind.cube),
             ),
           }),
         ],
@@ -524,8 +524,8 @@ void main() {
           SceneComponents.transform: TransformComponent(
             position: Vector3(10, 0, 0),
           ),
-          SceneComponents.mesh: MeshComponent(
-            shape: const Shape(kind: ShapeKind.cube),
+          SceneComponents.mesh: const MeshComponent(
+            shape: Shape(kind: ShapeKind.cube),
           ),
         }, name: 'First one'),
         entity(
@@ -534,8 +534,8 @@ void main() {
             SceneComponents.transform: TransformComponent(
               position: Vector3(0, 5, 0),
             ),
-            SceneComponents.mesh: MeshComponent(
-              shape: const Shape(kind: ShapeKind.cube),
+            SceneComponents.mesh: const MeshComponent(
+              shape: Shape(kind: ShapeKind.cube),
             ),
           },
           parent: 'a',
