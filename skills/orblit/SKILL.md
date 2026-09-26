@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics, walking characters and terrain collision with orblit_physics, and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers writing or fixing Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project and setting up macOS, iOS, Android, Linux, Windows or the web; materials and looks, scene documents and their glTF, GLB and OBJ export and import, Gaussian splats, cooked and networked assets; animation clips and blends with orblit_motion (.oclip files on entities and bones, root motion, clips from glTF; .oblend graphs of states that mix clips along a line or across a plane and fade between them, with a place that saves and replicates); terrain with orblit_terrain (heights, texture sets, brushes, heightAt, terrainFrom); rigid-body physics, walking characters and terrain collision with orblit_physics, and bodies in scene documents; and questions about Orblit's API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -279,8 +279,9 @@ asked for a moment rather than advanced: an effect is `effect.at(seconds)`, a
 sprite animation `animation.at(seconds)`, a cutscene
 `sequence.sampleAt(seconds)`, and a model's clip is
 `OrblitAnimation(clip: index, seconds: whereInTheClip)`. That makes scrubbing,
-replays and late joiners give the same answer. Physics and behaviour trees do
-step, because they have history.
+replays and late joiners give the same answer. Physics, behaviour trees and
+blends do step, because they have history. A blend keeps all of its history in
+a `BlendPlace`, a plain value that can be saved, sent or built by hand.
 
 For the parts that step, work out `dt` from the clock and guard it the way the
 gallery's runner does:
@@ -514,7 +515,8 @@ sentence saying what went wrong.
 (cameras as shots, blends, damping), `orblit_agent` (steering and behaviour
 trees), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
 (change as a function of time), `orblit_sequence` (cutscenes),
-`orblit_motion` (animation clips, on entities and bones alike),
+`orblit_motion` (animation clips, on entities and bones alike, and blends
+that mix and fade them),
 `orblit_terrain` (ground as regions of heights, and standing on it),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or

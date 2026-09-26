@@ -15,7 +15,7 @@ the fullest reference.
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
-| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf` |
+| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF; blends as `.oblend` files, graphs of states that mix clips and fade between them | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `BlendDocument`, `BlendPlayer`, `BlendPlace` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
@@ -347,8 +347,113 @@ divide the turned step by the tick and `drive` with it instead of adding it
 to a position ([physics.md](physics.md)). `clipsFromGltf(bytes)` gives
 `ClipsImported` (`clips`, `problems`), naming bones the way the binding does.
 A scene file's `motion` component (`MotionComponent`: `clips`, `autoplay`) is
-data only; nothing plays it. Changing clip cuts, with no fade yet. Guide:
-`/guides/animation/`.
+data only; nothing plays it. A `ClipPlayer` on its own cuts from clip to clip;
+a blend fades.
+
+### Blends
+
+A `BlendDocument` (`.oblend`, `encode()` and `BlendDocument.decode(text)` for
+a `BlendLoad`) is a graph of `BlendState`s, each playing a `BlendSource`: a
+`BlendClip(name)`, a `BlendLine(input, [LinePoint(at, source)])` mixing the
+two points either side of an input, or a `BlendPlane(xInput, yInput,
+[PlanePoint(x, y, source)])` over two. A point's source can itself be a line
+or a plane. `BlendChange`s (`from`, or null for anywhere; `to`; `when`;
+`fade` seconds; `shape`; `inStep`) move between states, and a
+`BlendCondition` is `above`, `below`, `on` (not nought), `through(laps)` of
+the state being left, or `all`, `any` and `not` of others. Clips are named,
+not held: the blend is shared, and each character hands over its own clips
+by those names.
+
+```dart
+import 'package:orblit_motion/orblit_motion.dart';
+
+final moves = BlendDocument(
+  name: 'Moves',
+  inputs: const {'speed': 0},
+  states: [
+    BlendState('idle', plays: const BlendClip('idle')),
+    BlendState(
+      'move',
+      plays: BlendLine('speed', const [
+        LinePoint(1.4, BlendClip('walk')),
+        LinePoint(4, BlendClip('run')),
+      ]),
+    ),
+    BlendState('jump', plays: const BlendClip('jump'), whenDone: WhenDone.hold),
+  ],
+  changes: const [
+    // First, so it wins over the rest: the list is the precedence.
+    BlendChange(to: 'jump', when: BlendCondition.on('jump'), fade: 0.1),
+    BlendChange(
+      from: 'jump',
+      to: 'idle',
+      when: BlendCondition.through(1),
+      fade: 0.2,
+    ),
+    BlendChange(
+      from: 'idle',
+      to: 'move',
+      when: BlendCondition.above('speed', 0.1),
+      fade: 0.2,
+      inStep: true,
+    ),
+    BlendChange(
+      from: 'move',
+      to: 'idle',
+      when: BlendCondition.below('speed', 0.1),
+      fade: 0.3,
+    ),
+  ],
+);
+
+BlendStep tick(BlendPlayer player, double speed, bool jumped, double dt) {
+  player.inputs['speed'] = speed;
+  player.inputs['jump'] = jumped ? 1 : 0;
+  return player.advance(dt);
+}
+```
+
+`BlendPlayer(blend, clips: {...})` holds the `inputs` and the `place`.
+`advance(dt)` gives a `BlendStep` with the `frame` (applied exactly as a
+clip's, through `sceneOpsFor` or a skin binding), the `marks`, the root
+motion `moved`, the new `place` and the `change` taken, if any. `sample()`
+poses without moving; `enter(state, fade: ...)` forces a state.
+
+The `BlendPlace` is everything a blend remembers: the state, the `lap` (how
+many times through it, so 2.5 is halfway through the third), and what is
+fading out (`from`, `faded`, `fade`, `shape`), nested up to
+`BlendPlace.deepest` (4) with the oldest dropped. Saving is
+`place.toJson()` and `BlendPlace.fromJson(json, blend)`; set
+`player.place` to restore. For `orblit-net`, which moves component columns,
+register `world.registerComponent('BlendPlace', kind: ComponentKind.float64, arity: BlendPlace.width)`
+and write `place.toNumbers(blend)` (a `Float64List`) into it;
+`BlendPlace.fromNumbers(blend, numbers)` reads it back. The numbers name states by their index, so both ends need
+the same blend, and inputs travel separately. A test needs no clips and no
+frames: build a place by hand and ask `blend.changeFor(place, inputs)`,
+`blend.weightsAt(place, inputs)` or `blend.advance(place, inputs, 0, clips: {})`.
+
+Traps:
+
+- One change per step, the first in the list whose condition holds. An
+  interruption from anywhere must come before the ordinary changes, or an
+  earlier one takes the step. A change from anywhere never re-enters the
+  state already playing; name a change from a state to itself to restart it.
+- `through(n)` counts laps of the state being left. A state played once,
+  a jump or a landing, wants `whenDone: WhenDone.hold` as well as its change
+  on `through(1)`; a looping clip starts again while it fades out.
+- Marks come only from the loudest clip of the state being entered or
+  played, never from what is fading out, so a walk mixed with a run takes
+  one footstep, not two.
+- A plane's two inputs want comparable units: a plane across metres a
+  second on one side and radians on the other shares badly.
+- A clip the player was not handed is left out without a word, and the rest
+  share its say. Check `blend.clipNames` against the clips.
+- There is no rest pose. A value only one side of a fade keys is held at
+  full, then snaps when the fade ends: key the same parts in clips that fade
+  into each other.
+- A state's `speed` is never negative. A walk backwards is its own clip.
+
+Guide: `/guides/animation/`.
 
 ## orblit_terrain
 
