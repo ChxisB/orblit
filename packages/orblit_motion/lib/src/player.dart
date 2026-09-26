@@ -142,7 +142,7 @@ class ClipPlayer {
           final one = forward
               ? clip.rootStep(0, duration)
               : clip.rootStep(duration, 0);
-          moved = moved.then(_repeated(one, laps));
+          moved = moved.then(repeated(one, laps));
         }
         ends = 0;
       }
@@ -155,15 +155,4 @@ class ClipPlayer {
   ClipFrame sample() => clip.sampleAt(_at, inPlace: true);
 
   static const int _maxEnds = 256;
-
-  /// [step] taken [times] times over, in as few compositions as it can.
-  static RootStep _repeated(RootStep step, int times) {
-    var out = RootStep();
-    var power = step;
-    for (var left = times; left > 0; left >>= 1) {
-      if (left.isOdd) out = out.then(power);
-      power = power.then(power);
-    }
-    return out;
-  }
 }

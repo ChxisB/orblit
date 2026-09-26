@@ -6,6 +6,13 @@ of a prefab. Clips are written in the editor or imported from glTF, played
 with marks and root motion, and saved as `.oclip` files that diff one key at a
 time.
 
+Blends decide which clips play. A blend is a graph of states, each playing a
+clip or a mix of clips along one input or over two, and changes between them
+that fade when a condition on the inputs holds. Where a blend has got to is a
+place, a plain value: saved, a character comes back mid-stride; sent as
+numbers, it stands the same on another machine; built by hand, a test can ask
+what happens next without playing up to it.
+
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 

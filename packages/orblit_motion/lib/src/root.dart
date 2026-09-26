@@ -162,6 +162,17 @@ class RootTrack {
       Quaternion.fromRotation(TransformComponent.rotationOf(degrees));
 }
 
+/// [step] taken [times] times over, in as few compositions as it can.
+RootStep repeated(RootStep step, int times) {
+  var out = RootStep();
+  var power = step;
+  for (var left = times; left > 0; left >>= 1) {
+    if (left.isOdd) out = out.then(power);
+    power = power.then(power);
+  }
+  return out;
+}
+
 /// [vector] turned by [rotation].
 ///
 /// Not `Quaternion.rotated`, which turns by the inverse of the rotation it

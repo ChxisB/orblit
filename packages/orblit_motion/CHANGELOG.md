@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.2.0
+
+- **Blends.** A `BlendDocument` is a `.oblend` file: a graph of states and
+  the changes between them. A state plays one clip, or clips mixed by the
+  blend's inputs — along one input with a `BlendLine`, or over two with a
+  `BlendPlane` — and the mixes nest, so a point on a line can be a plane of
+  directions. Clips are named rather than held, so one blend serves every
+  character with the same moves.
+- **Changes.** A `BlendChange` goes from one state, or from anywhere, to
+  another when its `BlendCondition` holds: an input above or below a number,
+  an input on, the state having played through, or any of those put together.
+  Each fades over its own time with its own easing, and can keep the new
+  state in step with the old. Conditions are data, so a blend is written to a
+  file, shown in an editor and checked without playing it.
+- **Places.** Where a blend has got to is a `BlendPlace`: which state, how
+  many times through it, and what it is fading in over, which may itself be
+  fading. It is a value, written as JSON for a save file that restores a
+  character mid-stride and as 21 numbers for a component column that
+  replicates one, and a test can build one by hand and ask what happens next
+  without playing a frame to get there.
+- **Playing.** `BlendDocument.advance` plays on from a place and hands back
+  the new place, the mixed pose, the marks passed and the root motion taken;
+  `changeFor`, `weightsAt` and `sampleAt` answer the same questions without
+  moving. `BlendPlayer` holds a place, the inputs and the clips for one
+  character. Marks come from the clip with the most say in the state being
+  played, and root motion from every clip, mixed as the pose is.
+- **Mixing.** `ClipFrame.mix` blends frames by weight: numbers and vectors by
+  average, rotations the short way round, and flags by whichever frame has
+  the most say. A value only some frames have is shared among those.
+
 ## 0.1.0
 
 - First cut of `orblit_motion`. Pre-alpha: everything is subject to change.
