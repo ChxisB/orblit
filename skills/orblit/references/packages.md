@@ -355,14 +355,15 @@ a blend fades.
 A `BlendDocument` (`.oblend`, `encode()` and `BlendDocument.decode(text)` for
 a `BlendLoad`) is a graph of `BlendState`s, each playing a `BlendSource`: a
 `BlendClip(name)`, a `BlendLine(input, [LinePoint(at, source)])` mixing the
-two points either side of an input, or a `BlendPlane(xInput, yInput,
-[PlanePoint(x, y, source)])` over two. A point's source can itself be a line
-or a plane. `BlendChange`s (`from`, or null for anywhere; `to`; `when`;
-`fade` seconds; `shape`; `inStep`) move between states, and a
-`BlendCondition` is `above`, `below`, `on` (not nought), `through(laps)` of
-the state being left, or `all`, `any` and `not` of others. Clips are named,
-not held: the blend is shared, and each character hands over its own clips
-by those names.
+two points either side of the input's value, or a
+`BlendPlane(x, y, [PlanePoint(x, y, source)])` across two inputs. A point's
+source can itself be a line or a plane. `BlendChange`s move between states:
+`from` (null for anywhere), `to`, `when`, `fade` in seconds, `shape`, and
+`inStep`, which starts the state entered as far through its lap as the one
+left was, so a walk turning into a strafe keeps its feet. A `BlendCondition`
+is `above`, `below`, `on` (not nought), `through(laps)` of the state being
+left, or `all`, `any` and `not` of others. Clips are named, not held: the
+blend is shared, and each character hands over its own clips by those names.
 
 ```dart
 import 'package:orblit_motion/orblit_motion.dart';
@@ -395,7 +396,6 @@ final moves = BlendDocument(
       to: 'move',
       when: BlendCondition.above('speed', 0.1),
       fade: 0.2,
-      inStep: true,
     ),
     BlendChange(
       from: 'move',
