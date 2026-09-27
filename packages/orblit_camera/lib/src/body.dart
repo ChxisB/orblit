@@ -348,8 +348,9 @@ class ScreenFollowBody implements CameraBody {
     // Behind the camera there is nothing to frame, only something to recover
     // from: go straight to where it should be rather than reading a
     // projection that has folded over.
-    if (!seen.inFront)
+    if (!seen.inFront) {
       return _within(centred + _offsetFor(right, up, lens, aspect, 0, 0));
+    }
 
     final idealX = (screenX - 0.5) * 2;
     final idealY = (0.5 - screenY) * 2;
