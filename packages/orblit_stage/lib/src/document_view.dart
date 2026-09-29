@@ -93,13 +93,21 @@ class OrblitDocumentView {
   OrblitFog _fog = OrblitFog.none;
   OrblitPrecipitation _precipitation = OrblitPrecipitation.none;
 
+  /// A camera to look through instead of the scene's own, or null for the
+  /// scene's own.
+  ///
+  /// What a cutscene sets while it runs. Held apart from the document so
+  /// that giving the view back is setting this to null, with nothing in the
+  /// scene to put back.
+  OrblitCamera? through;
+
   /// The document as the renderer takes it.
   ///
   /// Assembled in document order every time rather than cached, because the
   /// lists are the cheap part — the objects in them are what cost something to
   /// build, and those are what is kept.
   OrblitScene get scene => OrblitScene(
-    camera: _camera,
+    camera: through ?? _camera,
     objects: [
       for (final entity in _document.entities)
         if (_objects[entity.id] case final object?) object,
@@ -475,18 +483,30 @@ class OrblitDocumentView {
   /// stable beats clever when somebody is midway through an edit.
   void _buildCamera() {
     for (final entity in _document.entities) {
-      final camera = entity[SceneComponents.camera];
-      if (camera is! CameraComponent || !entity.visible) continue;
-      final world = _worldOf(entity.id);
-      _camera = OrblitCamera(
-        position: world.getTranslation(),
-        // Down the local -Z axis, which is where a camera looks.
-        target: world.getTranslation() + _facing(world),
-        fieldOfView: camera.fieldOfView,
-      );
-      return;
+      if (!entity.visible) continue;
+      if (cameraOf(entity.id) case final camera?) {
+        _camera = camera;
+        return;
+      }
     }
     _camera = _defaultCamera();
+  }
+
+  /// What the camera entity [id] sees, or null when [id] is not a camera.
+  ///
+  /// Shown or not: a cutscene names the camera it looks through, and a
+  /// camera kept hidden so that it is not the game's is still one to look
+  /// through.
+  OrblitCamera? cameraOf(String id) {
+    final camera = _document[id]?[SceneComponents.camera];
+    if (camera is! CameraComponent) return null;
+    final world = _worldOf(id);
+    return OrblitCamera(
+      position: world.getTranslation(),
+      // Down the local -Z axis, which is where a camera looks.
+      target: world.getTranslation() + _facing(world),
+      fieldOfView: camera.fieldOfView,
+    );
   }
 
   /// Where to stand when the scene names nowhere.

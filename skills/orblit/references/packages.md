@@ -15,12 +15,12 @@ the fullest reference.
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
-| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF; blends as `.oblend` files, graphs of states that mix clips and fade between them | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `BlendDocument`, `BlendPlayer`, `BlendPlace` |
+| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter | `OrblitDocumentView`, `terrainFrom`, `scatterFrom` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK | `Armature`, `Pose`, `solveTwoBoneIk` |
@@ -455,6 +455,71 @@ Traps:
 - A state's `speed` is never negative. A walk backwards is its own clip.
 
 Guide: `/guides/animation/`.
+
+### Cutscenes
+
+A `CutsceneDocument` (`.ocutscene`, `cutsceneExtension`) is the scene moving
+while it is watched through cameras that take turns. Its `motion` is a
+`ClipDocument` whose targets are the scene's own ids, played with
+`ClipScope.wholeScene`. It keys no bones and has no root motion. Its `shots`
+are `CutsceneShot(camera: 'eye', start: 0, duration: 3)`, naming the camera
+by its path, and two that overlap blend over the overlap. Its `sounds` are
+`CutsceneSound(sound: 'sounds/swell.ogg', start: 0, duration: 4)`.
+`encode()` writes the file and `CutsceneDocument.decode(text)` gives a
+`CutsceneLoad` (`cutscene`, `problems`). `cutscene.sequence` holds the shots,
+sounds and marks for a `Director`, and `shotsAt(seconds)` gives each
+`ShotAt` (`camera`, `weight`).
+
+`OrblitCutscenes(view, cutscenes)` in `orblit_stage` plays them on an
+`OrblitDocumentView`, one at a time:
+
+```dart
+import 'package:orblit_motion/orblit_motion.dart';
+import 'package:orblit_stage/orblit_stage.dart';
+
+class Cinematics {
+  Cinematics(OrblitDocumentView view, List<CutsceneDocument> cutscenes)
+    : cutscenes = OrblitCutscenes(view, cutscenes);
+
+  final OrblitCutscenes cutscenes;
+
+  bool get playing => cutscenes.playing != null;
+
+  /// The marks a clip or a blend passed this frame. One named after a
+  /// cutscene starts it.
+  void heard(List<Mark> marks) => cutscenes.startFrom(marks);
+
+  void tick(double seconds) {
+    final step = cutscenes.advance(seconds);
+    for (final sound in step.sounds) {
+      // Play sound.sound from sound.at seconds in, if it is not playing.
+    }
+    if (step.ended) {
+      // Hand the player their controls back.
+    }
+  }
+}
+```
+
+`start(name)` starts one by name. Each `advance(dt)` keys the scene and sets
+`view.through` to the shots' camera, blended where two overlap, and returns
+an `OrblitCutsceneStep` (`marks`, `sounds`, `ended`). At the end `through` is
+null again, so the view looks through the scene's own camera. `stop()` ends
+one as though it had reached its end. `WhenDone.hold`, the default, leaves
+the scene where the cutscene put it, and `WhenDone.release` puts back what it
+moved.
+
+Traps:
+
+- The scene's own camera is the first shown camera entity. Hide the
+  cutscene's cameras, or the first of them becomes the game's camera.
+  `view.cameraOf(id)` finds a camera shown or not.
+- Nothing is looked through before the first shot, in a gap between shots or
+  at the very end. There the view falls back to the scene's own camera.
+- Orblit plays no sound. The step says what should be playing and how far
+  in, and the game plays it.
+- A cutscene runs on the scene, not on a copy. Keep the game's own
+  animators off what it keys while it runs.
 
 ## orblit_terrain
 

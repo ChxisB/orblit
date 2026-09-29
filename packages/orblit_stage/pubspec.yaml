@@ -4,7 +4,7 @@ description: >-
   objects, lights, clouds and sprite layers, ground kept as data becomes
   terrain and what is scattered over it, and a diff moves only what it
   touched.
-version: 0.6.0
+version: 0.7.0
 publish_to: none
 
 environment:

@@ -4,6 +4,7 @@ import 'package:orblit_scene/orblit_scene.dart' show Values;
 import 'package:orblit_sequence/orblit_sequence.dart';
 import 'package:vector_math/vector_math_64.dart';
 
+import 'format.dart';
 import 'frame.dart';
 import 'kind.dart';
 import 'root.dart';
@@ -438,6 +439,14 @@ class ClipDocument {
   /// scene's.
   static const List<ClipMigration> migrations = [];
 
+  static const FileFormat _format = FileFormat(
+    marker: marker,
+    noun: 'clip',
+    version: formatVersion,
+    fail: ClipFormatException.new,
+    steps: migrations,
+  );
+
   final String name;
 
   /// How long it is, in seconds. Not always the last key: a clip can hold
@@ -547,7 +556,7 @@ class ClipDocument {
   /// own, and a two-second walk would be ten thousand lines that nobody
   /// could review. A key to a line makes the diff of two takes a diff of
   /// the keys that changed.
-  String encode() => '${_write(toJson(), '')}\n';
+  String encode() => fileText(toJson());
 
   /// A clip out of a file's text, with whatever could not be read.
   ///
@@ -555,29 +564,20 @@ class ClipDocument {
   /// read is dropped with a note, and a file that is not a clip, or is one
   /// from a newer Orblit, throws [ClipFormatException].
   static ClipLoad decode(String text) {
-    final Object? parsed;
-    try {
-      parsed = jsonDecode(text);
-    } on FormatException catch (error) {
-      throw ClipFormatException('This is not a clip file: ${error.message}');
-    }
-    if (parsed is! Map<String, Object?> || parsed['kind'] != marker) {
-      throw const ClipFormatException('This is not a clip file.');
-    }
     final problems = <String>[];
-    final version = parsed['formatVersion'];
-    if (version is int && version > formatVersion) {
-      throw const ClipFormatException(
-        'This clip was written by a newer Orblit.',
-      );
-    }
-    var json = parsed;
-    for (final step in migrations) {
-      if (version is int && step.from >= version) {
-        json = step.apply(json, problems);
-      }
-    }
+    final json = _format.open(text, problems);
+    return ClipLoad(clip: fromJson(json, problems), problems: problems);
+  }
 
+  /// A clip out of decoded JSON already at [formatVersion], adding to
+  /// [problems] whatever could not be read.
+  ///
+  /// The part of [decode] a cutscene shares, since a cutscene's keys and
+  /// marks are written the way a clip's are.
+  static ClipDocument fromJson(
+    Map<String, Object?> json,
+    List<String> problems,
+  ) {
     final channels = <ClipChannel<Object>>[];
     final rawChannels = json['channels'];
     for (final raw in rawChannels is List ? rawChannels : const []) {
@@ -616,36 +616,40 @@ class ClipDocument {
     final stated = Values.maybeNumber(json, 'duration');
     final rate = Values.maybeNumber(json, 'rate');
 
-    return ClipLoad(
-      clip: ClipDocument(
-        name: Values.text(json, 'name') ?? 'Clip',
-        // A length that is missing, or shorter than nothing, is the last
-        // thing the clip does. One shorter than its keys is kept: a loop
-        // cut before its last key is a thing people do on purpose.
-        duration: stated != null && stated >= 0 ? stated : last,
-        whenDone:
-            Values.named(WhenDone.values, json['whenDone']) ?? WhenDone.hold,
-        rate: rate != null && rate > 0 ? rate : 30,
-        channels: channels,
-        marks: marks,
-        rootMotion: RootMotion.fromJson(json['rootMotion']),
-      ),
-      problems: problems,
+    return ClipDocument(
+      name: Values.text(json, 'name') ?? 'Clip',
+      // A length that is missing, or shorter than nothing, is the last thing
+      // the clip does. One shorter than its keys is kept: a loop cut before
+      // its last key is a thing people do on purpose.
+      duration: stated != null && stated >= 0 ? stated : last,
+      whenDone:
+          Values.named(WhenDone.values, json['whenDone']) ?? WhenDone.hold,
+      rate: rate != null && rate > 0 ? rate : 30,
+      channels: channels,
+      marks: marks,
+      rootMotion: RootMotion.fromJson(json['rootMotion']),
     );
   }
 }
 
 /// One step between clip formats: decoded JSON at [from] in, at [to] out.
-abstract class ClipMigration {
+abstract class ClipMigration implements FormatStep {
   const ClipMigration();
 
+  @override
   int get from;
+
+  @override
   int get to => from + 1;
 
+  @override
   Map<String, Object?> apply(Map<String, Object?> json, List<String> notes);
 }
 
-/// Decoded JSON as text, one key or mark to a line.
+/// Decoded JSON as the text of a clip or a cutscene file: indented like a
+/// scene, with one key, mark, shot or sound to a line.
+String fileText(Map<String, Object?> json) => '${_write(json, '')}\n';
+
 String _write(Object? value, String indent, {bool flat = false}) {
   if (value is Map<String, Object?>) {
     if (value.isEmpty) return '{}';
@@ -673,4 +677,4 @@ String _write(Object? value, String indent, {bool flat = false}) {
 }
 
 /// The lists written an item to a line.
-const Set<String> _flatLists = {'keys', 'marks'};
+const Set<String> _flatLists = {'keys', 'marks', 'shots', 'sounds'};

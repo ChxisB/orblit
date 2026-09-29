@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.7.0
+
+- `OrblitCutscenes` plays `orblit_motion` cutscenes over a staged scene, one
+  at a time. One is started by name from game code, or by `startFrom` with
+  the marks a clip passed, when one of them names it. Each `advance` keys
+  the scene and has the view look through the shots, blending two cameras
+  where shots overlap. At the end the view looks through the scene's own
+  camera again. A cutscene that holds leaves the scene where it put it, and
+  one that releases puts back what it moved.
+- `blendCameras` averages cameras by weight: where they stand, which way
+  they look and their field of view. The rest of the lens is the heaviest
+  camera's.
+- `OrblitDocumentView.through` is a camera to look through in place of the
+  scene's own. `cameraOf` gives the view from a camera entity, shown or not.
+
 ## 0.6.0
 
 - `scatterFrom` turns what an `orblit_terrain` `ScatterPlacer` put down into

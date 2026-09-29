@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+- **Cutscenes.** A `CutsceneDocument` is a `.ocutscene` file. Its keys and
+  marks are a clip's, named by the scene's own ids, so a key on a part of a
+  placed prefab names it by its path. On top of them are `CutsceneShot`s,
+  which name the camera looked through and when, and `CutsceneSound`s. Two
+  shots that overlap blend from one camera to the other over the overlap,
+  with weights that add up to one. It is written one key, mark, shot or
+  sound to a line, and read leniently the way a clip is.
+- **Playing a cutscene.** `sequence` is its shots, sounds and marks for a
+  `Director`, which stops on the last frame by default. `shotsAt` answers
+  which cameras are looked through at a moment. The keys are sampled from
+  `motion`, because a clip holds its last keys and a sequence's tracks do
+  not. `Director`, `ShotAt` and `SoundAt` are exported from here.
+- `ClipScope.wholeScene` is where a cutscene's targets are: the scene's own
+  ids, as they are.
+- `ClipDocument.fromJson` reads a clip out of decoded JSON. A cutscene
+  shares it.
+
 ## 0.2.0
 
 - **Blends.** A `BlendDocument` is a `.oblend` file: a graph of states and

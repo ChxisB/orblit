@@ -16,8 +16,14 @@
 /// `orblit_terrain` terrain, and what is scattered over it, into what the
 /// renderer draws, for the same reason: a rig and a terrain know nothing about
 /// renderers, and the renderer knows nothing about either.
+///
+/// And it plays cutscenes over a staged scene with [OrblitCutscenes]: an
+/// `orblit_motion` cutscene knows which camera to look through, and this is
+/// where that becomes the view.
 library;
 
+export 'src/cutscenes.dart'
+    show OrblitCutsceneStep, OrblitCutscenes, blendCameras;
 export 'src/document_view.dart' show OrblitDocumentView;
 export 'src/material_view.dart' show materialFrom;
 export 'src/scatter_view.dart' show scatterFrom;

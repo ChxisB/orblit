@@ -13,6 +13,11 @@ place, a plain value: saved, a character comes back mid-stride; sent as
 numbers, it stands the same on another machine; built by hand, a test can ask
 what happens next without playing up to it.
 
+Cutscenes are clips the scene plays. A cutscene keys what is in the scene
+by its own ids, and says through which camera it is watched when. Two shots
+that overlap fade from one camera to the other. It is saved as an
+`.ocutscene` file, written the way a clip is.
+
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 

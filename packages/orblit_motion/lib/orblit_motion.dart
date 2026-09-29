@@ -16,10 +16,15 @@
 /// has got to is a [BlendPlace], a value that can be saved, sent and built
 /// by hand, so a character can be restored mid-stride and a test can ask
 /// what happens next without playing up to it.
+///
+/// A cutscene is the scene played as a whole: a [CutsceneDocument] of keys
+/// on the scene's own ids, shots that say which camera is looked through
+/// when, and sounds. It is a `.ocutscene` file written the way a clip is,
+/// and played by a [Director] over its sequence.
 library;
 
 export 'package:orblit_sequence/orblit_sequence.dart'
-    show Easing, Hold, Key, Mark, WhenDone;
+    show Director, Easing, Hold, Key, Mark, ShotAt, SoundAt, WhenDone;
 
 export 'src/blend.dart'
     show
@@ -42,6 +47,15 @@ export 'src/clip.dart'
         ClipMigration,
         RootMotion,
         clipExtension;
+export 'src/cutscene.dart'
+    show
+        CutsceneDocument,
+        CutsceneFormatException,
+        CutsceneLoad,
+        CutsceneMigration,
+        CutsceneShot,
+        CutsceneSound,
+        cutsceneExtension;
 export 'src/condition.dart' show BlendCondition;
 export 'src/frame.dart' show BoneLocal, ClipFrame;
 export 'src/import.dart' show ClipsImported, clipsFromGltf;

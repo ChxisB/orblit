@@ -30,6 +30,10 @@ class ClipScope {
     );
   }
 
+  /// Where a cutscene's targets are: the scene's own ids, since a cutscene
+  /// is played by the scene rather than by anything in it.
+  static const ClipScope wholeScene = ClipScope('');
+
   /// The entity playing the clip.
   final String owner;
 

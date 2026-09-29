@@ -30,6 +30,22 @@ renderer.publish(view.scene);
 view.apply(diff);
 ```
 
+## Playing a cutscene
+
+`OrblitCutscenes` plays [`orblit_motion`](../orblit_motion) cutscenes over a
+staged scene. Each step keys the scene and has the view look through the
+cutscene's cameras. At the end the view looks through the scene's own camera
+again.
+
+```dart
+final cutscenes = OrblitCutscenes(view, [intro])..start('Intro');
+
+// Every frame while one runs.
+final step = cutscenes.advance(seconds);
+renderer.publish(view.scene);
+if (step.ended) giveBackTheControls();
+```
+
 ## Driving a model's skin with a rig
 
 An [`orblit_rig`](../orblit_rig) armature can move the skeleton of a model

@@ -6,6 +6,7 @@ import 'package:orblit_sequence/orblit_sequence.dart';
 
 import 'clip.dart';
 import 'condition.dart';
+import 'format.dart';
 import 'frame.dart';
 import 'pass.dart';
 import 'place.dart';
@@ -227,6 +228,14 @@ class BlendDocument {
   /// Every step from an older blend file to this one, oldest first. None
   /// yet: this is the first format.
   static const List<BlendMigration> migrations = [];
+
+  static const FileFormat _format = FileFormat(
+    marker: marker,
+    noun: 'blend',
+    version: formatVersion,
+    fail: BlendFormatException.new,
+    steps: migrations,
+  );
 
   final String name;
 
@@ -524,28 +533,8 @@ class BlendDocument {
   /// that is not a blend, is one from a newer Orblit, or has no state that
   /// can be read throws [BlendFormatException].
   static BlendLoad decode(String text) {
-    final Object? parsed;
-    try {
-      parsed = jsonDecode(text);
-    } on FormatException catch (error) {
-      throw BlendFormatException('This is not a blend file: ${error.message}');
-    }
-    if (parsed is! Map<String, Object?> || parsed['kind'] != marker) {
-      throw const BlendFormatException('This is not a blend file.');
-    }
     final problems = <String>[];
-    final version = parsed['formatVersion'];
-    if (version is int && version > formatVersion) {
-      throw const BlendFormatException(
-        'This blend was written by a newer Orblit.',
-      );
-    }
-    var json = parsed;
-    for (final step in migrations) {
-      if (version is int && step.from >= version) {
-        json = step.apply(json, problems);
-      }
-    }
+    final json = _format.open(text, problems);
 
     final inputs = <String, double>{};
     for (final MapEntry(key: input, value: raw) in Values.object(
@@ -671,12 +660,16 @@ class BlendDocument {
 }
 
 /// One step between blend formats: decoded JSON at [from] in, at [to] out.
-abstract class BlendMigration {
+abstract class BlendMigration implements FormatStep {
   const BlendMigration();
 
+  @override
   int get from;
+
+  @override
   int get to => from + 1;
 
+  @override
   Map<String, Object?> apply(Map<String, Object?> json, List<String> notes);
 }
 
