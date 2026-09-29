@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0
+
+- **Retargeting.** `retargetClip` makes a clip built for one skeleton move
+  another. Each bone is turned so it stands in the world the way its driver
+  did, measured from where each rests. A shoulder that tips forward in the
+  source tips forward in the target, whichever way the two point their
+  bones. Positions grow by how much bigger one skeleton is than the other,
+  and root motion follows its bone. It returns the new clip and a list of
+  what it could not carry.
+- **Keys survive.** When a bone and its parent line up with the bones that
+  drive them, each rotation is worked out exactly at the source's own keys,
+  and easing, holds and cubic slopes come across as they were. When they do
+  not, because the target has fewer spine bones or a parent nothing drives,
+  the turn is worked out at every key of the bones involved and joined with
+  straight lines.
+- **Which bones.** `matchBones` pairs the bones of two skeletons by name. A
+  namespace such as `mixamorig:`, a `DEF-` prefix and the spelling of left
+  and right are ignored. A name that two bones share once cleaned is left
+  unmatched rather than guessed. `retargetClip` takes a `bones` map that adds
+  to that or overrides it.
+- **Rest poses.** A `RestSkeleton` is a skeleton standing still: its bones,
+  their parents, and where each sits in its parent. `restSkeletonsFromGltf`
+  reads one for every skin in a `.glb` or `.gltf`, with bones named as
+  `clipsFromGltf` names them.
+
 ## 0.3.0
 
 - **Cutscenes.** A `CutsceneDocument` is a `.ocutscene` file. Its keys and

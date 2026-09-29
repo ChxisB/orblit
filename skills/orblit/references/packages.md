@@ -15,7 +15,7 @@ the fullest reference.
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
-| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, and imported from glTF; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
+| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
@@ -350,6 +350,47 @@ to a position ([physics.md](physics.md)). `clipsFromGltf(bytes)` gives
 A scene file's `motion` component (`MotionComponent`: `clips`, `autoplay`) is
 data only; nothing plays it. A `ClipPlayer` on its own cuts from clip to clip;
 a blend fades.
+
+### Retargeting
+
+`retargetClip(clip, from: a, to: b)` makes a clip built for skeleton `a` move
+skeleton `b`, and gives a `ClipRetargeted` (`clip`, `problems`). Each skeleton
+is a `RestSkeleton`: `restSkeletonsFromGltf(bytes)` reads one per skin, with
+bones named as `clipsFromGltf` names them, or build one with
+`RestSkeleton(names:, parents:, local:, above:)`, parents before children.
+Bone channels hold absolute local values, so a clip means something only
+beside the skeleton it was made for.
+
+Each bone of `b` is turned to stand in the world as the bone driving it did,
+measured from where each rests. Keys, easing and cubic slopes come across as
+they were when a bone and its parent line up with their drivers. Where they
+do not, because `b` has fewer spine bones or a parent nothing drives, the
+turn is worked out at every key of the bones involved and joined with
+straight lines. Positions are the change from rest, made larger by the ratio
+of the skeletons' `reach`. Root motion follows its bone, and its `up` is
+turned into `b`'s frame. Entity channels, marks, length and rate are kept.
+
+`matchBones(a, b)` pairs bones by name and forgives a namespace such as
+`mixamorig:`, a `DEF-` prefix and `LeftHand` against `hand.L`. A name two
+bones share once cleaned is left out, not guessed. `bones: {'hand.L':
+'LeftHand'}` adds a pair or overrides one, target bone first, and throws
+`ArgumentError` for a name that is not in the skeleton it belongs to. Read
+`problems`: a channel for a bone `a` lacks, a bone of `a` that nothing in `b`
+takes, and root motion with no bone to carry it are each left out and named
+there.
+
+```dart
+import 'dart:typed_data';
+
+import 'package:orblit_motion/orblit_motion.dart';
+
+ClipRetargeted walkOnto(Uint8List animations, Uint8List model) =>
+    retargetClip(
+      clipsFromGltf(animations).clips.first,
+      from: restSkeletonsFromGltf(animations).first,
+      to: restSkeletonsFromGltf(model).first,
+    );
+```
 
 ### Blends
 

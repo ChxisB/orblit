@@ -18,6 +18,11 @@ by its own ids, and says through which camera it is watched when. Two shots
 that overlap fade from one camera to the other. It is saved as an
 `.ocutscene` file, written the way a clip is.
 
+A clip made for one skeleton can move another. Retargeting turns each bone so
+it stands in the world the way the bone driving it did, and scales positions
+by how much bigger the target is. Bones are paired by name, and a map fixes
+the ones that do not match.
+
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).
 

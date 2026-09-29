@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs and cutscenes with orblit_motion (.oclip, .oblend, .ocutscene, root motion); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, joints, walking characters and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, joints, walking characters and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -533,8 +533,8 @@ sentence saying what went wrong.
 (cameras as shots, blends, damping), `orblit_agent` (steering and behaviour
 trees), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
 (change as a function of time), `orblit_sequence` (cutscenes),
-`orblit_motion` (animation clips, on entities and bones alike, blends
-that mix and fade them, and cutscenes),
+`orblit_motion` (animation clips, on entities and bones alike, retargeted
+onto another skeleton, blends that mix and fade them, and cutscenes),
 `orblit_terrain` (ground as regions of heights, standing on it, and what is
 scattered over it),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),

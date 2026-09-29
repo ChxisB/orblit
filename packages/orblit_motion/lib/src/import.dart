@@ -7,6 +7,7 @@ import 'package:vector_math/vector_math_64.dart';
 
 import 'clip.dart';
 import 'kind.dart';
+import 'rest.dart';
 
 /// The clips a glTF file carried, and what of it could not be carried.
 class ClipsImported {
@@ -41,14 +42,35 @@ class ClipsImported {
 ClipsImported clipsFromGltf(
   Uint8List bytes, {
   Map<String, Uint8List> files = const {},
-}) {
+}) => _open(bytes, files).read();
+
+/// Every skin in a `.glb` or a `.gltf`, as a skeleton standing at rest.
+///
+/// The bones are named as [clipsFromGltf] names them, so a clip imported from
+/// one file is measured against the skeleton read from that file, and a
+/// model's skeleton names the same bones the clips made for it do. They come
+/// parents first, whatever order the file lists its joints in.
+///
+/// A joint is taken to hang directly from the nearest joint above it. A
+/// skeleton with an ordinary node between two joints has that node's
+/// transform left out, which is how a rig exported for a game engine is
+/// written anyway.
+///
+/// [files] supplies whatever the document names by URI. Throws
+/// [ClipFormatException] when the bytes are not glTF at all.
+List<RestSkeleton> restSkeletonsFromGltf(
+  Uint8List bytes, {
+  Map<String, Uint8List> files = const {},
+}) => _open(bytes, files).skeletons();
+
+_Importer _open(Uint8List bytes, Map<String, Uint8List> files) {
   final ({Map<String, Object?> json, Uint8List? binary}) parts;
   try {
     parts = gltfParts(bytes, files: files);
   } on FormatException catch (error) {
     throw ClipFormatException(error.message);
   }
-  return _Importer(parts.json, parts.binary).read();
+  return _Importer(parts.json, parts.binary);
 }
 
 class _Importer {
@@ -66,13 +88,106 @@ class _Importer {
     final out = <int, String>{};
     for (final skin in _maps(json['skins'])) {
       final joints = _ints(skin['joints']);
-      final names = BoneNaming.unique([for (final at in joints) _nameOf(at)]);
+      final names = _jointNames(joints);
       for (var i = 0; i < joints.length; i++) {
         out.putIfAbsent(joints[i], () => names[i]);
       }
     }
     return out;
   }();
+
+  List<String> _jointNames(List<int> joints) =>
+      BoneNaming.unique([for (final at in joints) _nameOf(at)]);
+
+  /// The node each node hangs from, by the children lists.
+  late final Map<int, int> _parentOf = {
+    for (var at = 0; at < nodes.length; at++)
+      for (final child in _ints(nodes[at]['children']))
+        if (child >= 0 && child < nodes.length) child: at,
+  };
+
+  List<RestSkeleton> skeletons() => [
+    for (final skin in _maps(json['skins']))
+      if (_ints(skin['joints']).isNotEmpty) _skeleton(_ints(skin['joints'])),
+  ];
+
+  RestSkeleton _skeleton(List<int> joints) {
+    final named = _jointNames(joints);
+    final slot = <int, int>{};
+    for (var i = 0; i < joints.length; i++) {
+      slot.putIfAbsent(joints[i], () => i);
+    }
+    int? jointAbove(int node) {
+      final seen = {node};
+      for (var up = _parentOf[node]; up != null; up = _parentOf[up]) {
+        if (!seen.add(up)) return null;
+        if (slot.containsKey(up)) return slot[up];
+      }
+      return null;
+    }
+
+    // A parent has one joint fewer above it than its child, so sorting by
+    // that puts parents first without disturbing the file's order otherwise.
+    final above = [for (final node in joints) jointAbove(node)];
+    int depth(int joint) {
+      var count = 0;
+      for (var up = above[joint]; up != null; up = above[up]) {
+        if (++count > joints.length) break;
+      }
+      return count;
+    }
+
+    final order = List<int>.generate(joints.length, (i) => i)
+      ..sort((a, b) {
+        final by = depth(a).compareTo(depth(b));
+        return by != 0 ? by : a.compareTo(b);
+      });
+    final place = {for (var at = 0; at < order.length; at++) order[at]: at};
+    final root = joints[order.first];
+    final hangsFrom = _parentOf[root];
+
+    return RestSkeleton(
+      names: [for (final joint in order) named[joint]],
+      parents: [
+        for (final joint in order)
+          above[joint] == null ? -1 : place[above[joint]]!,
+      ],
+      local: [for (final joint in order) _localOf(joints[joint])],
+      above: hangsFrom == null ? null : _worldOf(hangsFrom),
+    );
+  }
+
+  /// A node's transform in its parent.
+  Matrix4 _localOf(int at) {
+    final node = nodes[at];
+    final matrix = _floats(node['matrix'], 16);
+    if (matrix != null) return Matrix4.fromList(matrix);
+    final position = _floats(node['translation'], 3);
+    final turn = _floats(node['rotation'], 4);
+    final scale = _floats(node['scale'], 3);
+    final turned = turn == null
+        ? null
+        : Quaternion(turn[0], turn[1], turn[2], turn[3]);
+    return Matrix4.compose(
+      position == null ? Vector3.zero() : Vector3.array(position),
+      turned == null || turned.length2 < 1e-18
+          ? Quaternion.identity()
+          : (turned..normalize()),
+      scale == null ? Vector3.all(1) : Vector3.array(scale),
+    );
+  }
+
+  /// A node's transform in the world.
+  Matrix4 _worldOf(int at) {
+    var world = _localOf(at);
+    final seen = {at};
+    var up = _parentOf[at];
+    while (up != null && seen.add(up)) {
+      world = _localOf(up).multiplied(world);
+      up = _parentOf[up];
+    }
+    return world;
+  }
 
   ClipsImported read() {
     final animations = _maps(json['animations']);
@@ -334,3 +449,14 @@ List<int> _ints(Object? raw) => [
 ];
 
 int? _index(Object? raw) => raw is int && raw >= 0 ? raw : null;
+
+/// Exactly [count] finite numbers, or null.
+List<double>? _floats(Object? raw, int count) {
+  if (raw is! List || raw.length != count) return null;
+  final out = <double>[];
+  for (final one in raw) {
+    if (one is! num || !one.isFinite) return null;
+    out.add(one.toDouble());
+  }
+  return out;
+}

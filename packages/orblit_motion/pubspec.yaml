@@ -4,7 +4,8 @@ description: >-
   addressed by a path and a property, played on a scene's entities and a
   model's bones alike. A blend is a graph of states that mixes and fades
   between them. A cutscene keys the scene as a whole and cuts between cameras.
-version: 0.3.0
+  A clip made for one skeleton can be retargeted onto another's proportions.
+version: 0.4.0
 publish_to: none
 
 environment:

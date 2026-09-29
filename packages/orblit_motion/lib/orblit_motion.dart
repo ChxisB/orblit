@@ -21,6 +21,10 @@
 /// on the scene's own ids, shots that say which camera is looked through
 /// when, and sounds. It is a `.ocutscene` file written the way a clip is,
 /// and played by a [Director] over its sequence.
+///
+/// A clip made for one skeleton can move another. [retargetClip] turns each
+/// bone to stand in the world as the bone driving it did, given the
+/// [RestSkeleton] of each, and [matchBones] pairs them by name.
 library;
 
 export 'package:orblit_sequence/orblit_sequence.dart'
@@ -58,10 +62,13 @@ export 'src/cutscene.dart'
         cutsceneExtension;
 export 'src/condition.dart' show BlendCondition;
 export 'src/frame.dart' show BoneLocal, ClipFrame;
-export 'src/import.dart' show ClipsImported, clipsFromGltf;
+export 'src/import.dart'
+    show ClipsImported, clipsFromGltf, restSkeletonsFromGltf;
 export 'src/kind.dart' show ChannelKind;
 export 'src/place.dart' show BlendPlace;
 export 'src/player.dart' show ClipPlayer, ClipStep;
+export 'src/rest.dart' show RestSkeleton;
+export 'src/retarget.dart' show ClipRetargeted, matchBones, retargetClip;
 export 'src/root.dart' show RootStep;
 export 'src/scene.dart' show ClipScope, sceneOpsFor;
 export 'src/source.dart'
