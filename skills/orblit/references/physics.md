@@ -2,7 +2,7 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.7.0, `orblit_physics_scene` 0.4.0 and
+`orblit_physics` 0.8.0, `orblit_physics_scene` 0.5.0 and
 `orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.11.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
@@ -80,6 +80,18 @@ physics.dispose();
 - `PhysicsMotion.fixed` never moves, `driven` goes where it is sent and is
   never pushed back, `free` falls and is pushed.
 - `PhysicsSettings` fields left null take the engine's defaults.
+- `snapshot()` returns a `PhysicsSnapshot` of what a step reads from the one
+  before, and `restore(snapshot)` goes back to it, dropping commands queued
+  since. It is native memory, so `dispose()` it. It outlives its world,
+  restores into another world, and restores any number of times. The same
+  commands and step sizes after a restore give the same bits, on the same
+  build only.
+- `contacts` is a `List<PhysicsContact>` for the last step: `a`, `b` (smaller
+  id first), `at`, `normal` (out of `b` towards `a`), `depth` (m) and `impulse`
+  (N·s). A sleeping pair is not listed. `stats` is a `PhysicsStats`: counts of
+  bodies by kind, `asleep`, `triggers`, `characters`, `joints`, `zones`,
+  `rules`, `pairs`, `touching` and `points`, and `stepMicroseconds`. There is
+  no island count.
 
 ## Triggers, zones, belts and rules
 
@@ -389,6 +401,12 @@ for (final event in scene.events) {
   print('${scene.entityOf(event.a)} ${event.kind.name} ${scene.entityOf(event.b)}');
 }
 
+// Rollback. The diff is already in scene.document, and is for the view:
+final frame = scene.snapshot();
+scene.advance(1);
+view.apply(scene.restore(frame));
+frame.dispose();
+
 scene.dispose();
 ```
 
@@ -504,5 +522,16 @@ scene.dispose();
   shape's.
 - **A trigger cannot change motion.** `setMotion` ignores a trigger, a
   character and ground, with no error.
+- **Dispose snapshots.** They are native memory. `restore` with a disposed one
+  throws a `StateError` and changes nothing. A snapshot is not a file and does
+  not leave the process.
+- **A restore gives the view a diff.** `scene.restore` changes
+  `scene.document`, so pass its `SceneDiff` to `view.apply`, or the view shows
+  the frame before.
+- **A replay needs the same step.** `ScenePhysics` rolls its body and joint
+  numbers back, so an entity added after the snapshot gets the same number
+  again. A snapshot restored into a scene with another `step` does not replay.
+- **`contacts` and `stats` are the last step's.** A pair asleep is not in
+  `contacts`, and `stepMicroseconds` is not in a snapshot.
 - **The editor** draws bodies, triggers, zones and joints (inspector sections
-  and wireframes) but does not simulate them.
+  and wireframes) but does not simulate them. Nothing draws contacts yet.
