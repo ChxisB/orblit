@@ -7,6 +7,7 @@ import 'components/motion.dart';
 import 'components/staging.dart';
 import 'components/terrain.dart';
 import 'components/transform.dart';
+import 'components/zone.dart';
 
 /// One fact about an entity.
 ///
@@ -70,6 +71,7 @@ abstract final class SceneComponents {
   static const String body = 'body';
   static const String joint = 'joint';
   static const String motion = 'motion';
+  static const String zone = 'zone';
   static const String light = 'light';
   static const String camera = 'camera';
   static const String splats = 'splats';
@@ -97,6 +99,7 @@ abstract final class SceneComponents {
     body,
     joint,
     motion,
+    zone,
     light,
     camera,
     splats,
@@ -117,6 +120,7 @@ abstract final class SceneComponents {
     body: BodyComponent.fromJson,
     joint: JointComponent.fromJson,
     motion: MotionComponent.fromJson,
+    zone: ZoneComponent.fromJson,
     light: LightComponent.fromJson,
     camera: CameraComponent.fromJson,
     splats: SplatsComponent.fromJson,

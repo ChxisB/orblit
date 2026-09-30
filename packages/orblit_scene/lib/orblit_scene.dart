@@ -32,6 +32,7 @@ export 'src/components/staging.dart'
     show CameraComponent, LightComponent, WeatherComponent;
 export 'src/components/terrain.dart' show TerrainComponent;
 export 'src/components/transform.dart' show TransformComponent;
+export 'src/components/zone.dart' show ZoneComponent;
 export 'src/diff.dart'
     show
         AddEntity,

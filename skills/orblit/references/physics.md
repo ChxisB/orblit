@@ -2,8 +2,8 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.5.0, `orblit_physics_scene` 0.2.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.9.0 for the components. A git dependency
+`orblit_physics` 0.6.0, `orblit_physics_scene` 0.3.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.10.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -50,25 +50,72 @@ physics.dispose();
 ```
 
 - `add(id, {required shape, motion = free, at, rotation (xyzw), mass,
-  friction, restitution, linearDamping, angularDamping, layers, asleep})`.
-  `id` is any non-zero int; adding one already there is ignored.
+  friction, restitution, linearDamping, angularDamping, layers, asleep,
+  trigger, stay})`. `id` is any non-zero int; adding one already there is
+  ignored.
 - `remove(id)`, `place(id, at:, rotation:)` (teleport, forgets velocity),
   `drive(id, velocity:, spin:)` (how a driven body is moved), `push(id,
   impulse:, at:)` (N·s at a world point; off-centre spins it), `wake(id)`.
 - Reading: `transformOf`, `velocityOf` (six floats), `alive`, `asleep`,
   `count`, and `readInto(ids, Float32List out, stride:)` for many at once.
 - `events` is `List<PhysicsEvent>` for **the last step only**: `kind`
-  (`touchBegan`, `touchEnded`, `slept`, `woke`, `broke`), `a`, `b` (smaller
-  id first), `at`, `normal`, `force` (N·s). For `broke`, `a` is the joint's
-  id, `b` is 0, and `force` is what broke it.
-- `cast(from:, direction:, distance:, shape:, rotation:, layers:, ignore:)`
-  returns `PhysicsHit?` with `body`, `at`, `normal`, `distance` and `started`
-  (the cast began inside the body). No shape casts a point, which is a ray.
+  (`touchBegan`, `touchEnded`, `slept`, `woke`, `broke`, `entered`, `exited`,
+  `touchStay`, `inside`), `a`, `b` (smaller id first), `at`, `normal`, `force`
+  (N·s). For `broke`, `a` is the joint's id, `b` is 0, and `force` is what
+  broke it. For `entered`, `exited` and `inside`, `a` is the trigger and `b`
+  the body, **whatever their ids**.
+- `cast(from:, direction:, distance:, shape:, rotation:, layers:, ignore:,
+  triggers:)` returns `PhysicsHit?` with `body`, `at`, `normal`, `distance`
+  and `started` (the cast began inside the body). No shape casts a point,
+  which is a ray.
+- `castAll(...same, limit = 32)` is every hit, nearest first, and a full list
+  keeps the nearest. `castAny(...same)` is a `bool` and stops at the first
+  body it finds. `overlap(at:, shape:, rotation:, layers:, ignore:,
+  triggers:, limit = 32)` is body ids in no order, and with no `shape` it is
+  the bodies containing the point. Nothing is moved or woken.
+- Questions see solid bodies and never a trigger. `triggers: true` sees
+  triggers and nothing solid.
 - `Layers(is_: bits, cares: bits)`. Two bodies meet when *either* cares about
   the other.
 - `PhysicsMotion.fixed` never moves, `driven` goes where it is sent and is
   never pushed back, `free` falls and is pushed.
 - `PhysicsSettings` fields left null take the engine's defaults.
+
+## Triggers, zones, belts and rules
+
+```dart
+physics.add(pond, shape: const Shape.box(4, 1, 4), motion: PhysicsMotion.fixed,
+    trigger: true, stay: true);
+physics.setZone(pond, const PhysicsZone(gravity: [0, -1.5, 0], linearDamping: 4,
+    priority: 1));
+physics.setSurface(belt, velocity: const [2, 0, 0]);
+physics.setRule(lift, crate, const PhysicsRule(moveScaleA: 0));
+```
+
+- **A trigger is a place.** Fixed or driven only: the flag is ignored on a free
+  body. Nothing collides with it, and characters and solid questions do not
+  see it. It reports `entered` and `exited`, and `inside` every step when the
+  trigger or the body has `stay`. `exited` also fires when either is removed.
+  Triggers do not see triggers or fixed bodies.
+- **`stay` on a body also reports `touchStay`** for each solid contact that
+  goes on. It stops when the body sleeps, because a sleeping pair has its
+  touch ended. `inside` does not stop: a trigger reads positions.
+- **A zone changes gravity, `linearDamping` and `angularDamping`** for the
+  free bodies inside a trigger. A null field leaves the body's own. Each field
+  is decided on its own: highest `priority` wins, then the lower body id.
+  Characters are not moved by a zone. `setZone` is false for a body that is
+  not a trigger. `removeZone` leaves the trigger. Both wake what is inside.
+- **`setSurface(id, velocity:)` is a belt.** World metres a second, held until
+  set again, stored whole and projected on each surface it touches, so a
+  velocity into the body does nothing. It wakes what rests on it. A body
+  being carried never sleeps. It is per body, not per pair.
+- **`setRule(a, b, PhysicsRule(...))` changes one pair's contact:**
+  `friction` and `restitution` replace the pair's, and `moveScaleA` and
+  `moveScaleB` scale how much of the push each body takes (1 as is, 0
+  immovable to the other, 2 as if half the mass). It is **data, not a
+  callback**. False for a missing body, a body against itself or a negative
+  scale. It holds until `removeRule` or until either body goes, and it wakes
+  both. A rule that changes nothing asserts.
 
 ## Characters
 
@@ -214,7 +261,8 @@ physics.unjoin(1);
 Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `plane`),
 `size`, `radius`, `height`, `centre`, `motion` (`BodyMotion.fixed`, `driven`,
 `free`), `mass`, `friction`, `restitution`, `linearDamping`, `angularDamping`,
-`layers`, `cares` and `startsAsleep` (JSON `asleep`). Change one field with
+`layers`, `cares`, `startsAsleep` (JSON `asleep`), `trigger`, `stay` and
+`surface` (a `Vector3`, world metres a second). Change one field with
 `copyWith`.
 
 - Sizes are in the entity's own units, so the body scales with the entity. A
@@ -222,6 +270,16 @@ Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `plane`),
   sideways scale for its radius and the upright one for its height.
 - `plane` is endless ground facing the entity's up, through `centre`. It
   never moves, whatever `motion` says.
+
+## The zone component
+
+`ZoneComponent` in `orblit_scene` (`SceneComponents.zone`, JSON key `zone`):
+`gravity` (`Vector3?`), `linearDamping`, `angularDamping` (`double?`) and
+`priority` (`int`, 0). A null field is left out of the file and left to the
+body. It goes on an entity that has a body and **makes that body a trigger**,
+whatever `trigger` says. `ScenePhysics` calls `setZone` for it. Editing a zone
+rebuilds its body, so it is a teleport. `copyWith` cannot clear a field: build
+a new `ZoneComponent` to do that.
 
 ## The joint component
 
@@ -350,5 +408,21 @@ scene.dispose();
 - **A broken scene joint stays broken** until its own entity is edited.
   Moving the body, or a parent, does not mend it.
 - **Joined bodies do not collide with each other** unless `collide` is true.
-- **The editor** draws bodies and joints (inspector sections and wireframes)
-  but does not simulate them.
+- **Trigger events name the trigger first,** not the smaller id. Keying every
+  event on the smaller id misses them.
+- **A solid question never sees a trigger.** A ray through a pond hits what is
+  under it. Ask with `triggers: true` to find the zone. A trigger cannot be
+  found by a solid `overlap` either.
+- **`touchStay` stops when a body sleeps, and `inside` does not.** Do not read
+  a missing `touchStay` as "left".
+- **A zone needs a body on its entity** and is a trigger, so it is fixed or
+  driven. On a free body it does nothing. It never moves a character.
+- **A zone's null field is the body's own,** not zero. `copyWith` cannot set a
+  field back to null.
+- **A belt's velocity is in the world,** not the entity's frame, and only the
+  part along the touched surface counts.
+- **A rule is per pair and data.** There is no per-contact callback, and no
+  per-pair surface speed. A belt is per body.
+- **One-way platforms are not there.**
+- **The editor** draws bodies, triggers, zones and joints (inspector sections
+  and wireframes) but does not simulate them.

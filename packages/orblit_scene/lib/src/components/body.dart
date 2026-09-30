@@ -77,8 +77,12 @@ class BodyComponent extends SceneComponent {
     this.layers = 1,
     this.cares = everyLayer,
     this.startsAsleep = false,
+    this.trigger = false,
+    this.stay = false,
+    Vector3? surface,
   }) : size = size ?? Vector3.all(1),
-       centre = centre ?? Vector3.zero();
+       centre = centre ?? Vector3.zero(),
+       surface = surface ?? Vector3.zero();
 
   static BodyComponent fromJson(Map<String, Object?> json) => BodyComponent(
     shape: Values.named(BodyShape.values, json['shape']) ?? BodyShape.box,
@@ -95,6 +99,9 @@ class BodyComponent extends SceneComponent {
     layers: Values.bits(json, 'layers', 1),
     cares: Values.bits(json, 'cares', everyLayer),
     startsAsleep: Values.flag(json, 'asleep', fallback: false),
+    trigger: Values.flag(json, 'trigger', fallback: false),
+    stay: Values.flag(json, 'stay', fallback: false),
+    surface: Values.vector(json['surface']),
   );
 
   /// All thirty-two layers.
@@ -120,6 +127,9 @@ class BodyComponent extends SceneComponent {
     int? layers,
     int? cares,
     bool? startsAsleep,
+    bool? trigger,
+    bool? stay,
+    Vector3? surface,
   }) => BodyComponent(
     shape: shape ?? this.shape,
     size: (size ?? this.size).clone(),
@@ -135,6 +145,9 @@ class BodyComponent extends SceneComponent {
     layers: layers ?? this.layers,
     cares: cares ?? this.cares,
     startsAsleep: startsAsleep ?? this.startsAsleep,
+    trigger: trigger ?? this.trigger,
+    stay: stay ?? this.stay,
+    surface: (surface ?? this.surface).clone(),
   );
 
   final BodyShape shape;
@@ -184,6 +197,25 @@ class BodyComponent extends SceneComponent {
   /// starts asleep costs nothing until somebody knocks it.
   final bool startsAsleep;
 
+  /// Whether it is a place rather than a thing: nothing collides with it and it
+  /// pushes nothing, and it reports the bodies that come into it and leave it.
+  /// A pickup, a door's sensor, the region a [ZoneComponent] takes effect over.
+  /// Solid queries and characters do not see it.
+  ///
+  /// Only a fixed or driven body can be one. A free body has to be moved by the
+  /// solver, so the flag is ignored for it.
+  final bool trigger;
+
+  /// Whether it hears every step that a contact goes on, or that a body is
+  /// still inside it, and not only when one begins and ends. Most bodies do
+  /// not want a message a step, so it is asked for.
+  final bool stay;
+
+  /// How fast its surface moves, in world metres per second, while the body
+  /// stays where it is: a conveyor belt. What stands on it is carried along.
+  /// Only the part along the face it touches counts.
+  final Vector3 surface;
+
   @override
   String get type => SceneComponents.body;
 
@@ -203,5 +235,8 @@ class BodyComponent extends SceneComponent {
     'layers': layers,
     'cares': cares,
     'asleep': startsAsleep,
+    'trigger': trigger,
+    'stay': stay,
+    'surface': Values.vectorToJson(surface),
   };
 }

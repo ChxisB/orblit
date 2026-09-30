@@ -36,6 +36,9 @@ void main() {
       expect(body.layers, 1);
       expect(body.cares, BodyComponent.everyLayer);
       expect(body.startsAsleep, isFalse);
+      expect(body.trigger, isFalse);
+      expect(body.stay, isFalse);
+      expect(body.surface, Vector3.zero());
     });
 
     test('is the body it was written as', () {
@@ -54,6 +57,9 @@ void main() {
         layers: 4,
         cares: 3,
         startsAsleep: true,
+        trigger: true,
+        stay: true,
+        surface: Vector3(2, 0, -1),
       );
       final read = BodyComponent.fromJson(body.toJson());
 
@@ -62,6 +68,17 @@ void main() {
       expect(read.centre, Vector3(0, 0.9, 0));
       expect(read.motion, BodyMotion.driven);
       expect(read.startsAsleep, isTrue);
+      expect(read.trigger, isTrue);
+      expect(read.stay, isTrue);
+      expect(read.surface, Vector3(2, 0, -1));
+    });
+
+    test('a file from before triggers and belts reads as a plain body', () {
+      final body = BodyComponent.fromJson(const {'mass': 5, 'asleep': true});
+
+      expect(body.trigger, isFalse);
+      expect(body.stay, isFalse);
+      expect(body.surface, Vector3.zero());
     });
 
     test('a shape or a motion it does not know falls back', () {
@@ -108,9 +125,22 @@ void main() {
       final after = before.copyWith();
       after.size.x = 9;
       after.centre.y = 9;
+      after.surface.z = 9;
 
       expect(before.size, Vector3(1, 2, 3));
       expect(before.centre, Vector3.zero());
+      expect(before.surface, Vector3.zero());
+    });
+
+    test('turns a body into a trigger and a belt', () {
+      final belt = BodyComponent(
+        motion: BodyMotion.fixed,
+      ).copyWith(trigger: true, stay: true, surface: Vector3(0, 0, 3));
+
+      expect(belt.trigger, isTrue);
+      expect(belt.stay, isTrue);
+      expect(belt.surface, Vector3(0, 0, 3));
+      expect(belt.copyWith(mass: 2).surface, Vector3(0, 0, 3));
     });
   });
 
@@ -163,6 +193,21 @@ void main() {
 
       expect(diff.operations.single, isA<SetField>());
       expect((diff.operations.single as SetField).field, 'mass');
+      expect(diff.applyTo(a).encode(), b.encode());
+      expect(diff.inverse.applyTo(b).encode(), a.encode());
+    });
+
+    test('turning on a trigger and a belt is two operations that go back', () {
+      final a = documentOf([crate(BodyComponent())]);
+      final b = documentOf([
+        crate(BodyComponent(trigger: true, surface: Vector3(1, 0, 0))),
+      ]);
+      final diff = SceneDiff.between(a, b);
+
+      expect(
+        diff.operations.whereType<SetField>().map((op) => op.field),
+        unorderedEquals(['trigger', 'surface']),
+      );
       expect(diff.applyTo(a).encode(), b.encode());
       expect(diff.inverse.applyTo(b).encode(), a.encode());
     });

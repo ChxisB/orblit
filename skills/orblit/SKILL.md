@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, joints, walking characters and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, triggers, zones, belts, shape queries, joints, walking characters and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -416,6 +416,15 @@ nearest body at or above its entity to the nearest body above that, or the
 world, at the entity's own place and axes, in **degrees**. So a hinge is a
 child entity of the door, placed and turned where the hinge is.
 
+A body with `trigger` (fixed or driven only) is a place: nothing collides with
+it, and it reports `entered` and `exited`, plus `inside` every step with
+`stay`, naming the trigger first. A `zone` component (`ZoneComponent`) on an
+entity with a body makes it a trigger that changes gravity and drag for the
+free bodies inside. `castAll`, `castAny` and `overlap` join `cast`, and
+`triggers: true` asks about triggers instead of solids. `setSurface` makes a
+belt and `setRule` changes one pair's friction, bounce and mass scale. A rule
+is data, not a callback.
+
 Ground is `physics.layGround(id, heights: ..., columns: ..., rows: ...)`, and
 a terrain is laid for you, the regions near the camera, by
 `TerrainPhysics(physics, terrain).sync(x: ..., z: ..., radius: ...)` every
@@ -559,8 +568,9 @@ Load these when the task needs them:
 - [references/assets.md](references/assets.md): materials and looks, scene
   files and their export and import, splats, cooked and networked assets.
 - [references/physics.md](references/physics.md): the physics world,
-  characters and root motion on them, ground and terrain, joints, bodies and
-  joints in scene documents, and simulating a document.
+  questions asked of it, characters and root motion on them, ground and
+  terrain, triggers, zones, belts and contact rules, joints, bodies and joints
+  in scene documents, and simulating a document.
 - [references/packages.md](references/packages.md): the other packages,
   terrain among them.
 

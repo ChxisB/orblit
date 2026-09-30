@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.0
+
+- `BodyComponent` can be a trigger. Nothing collides with it and it pushes
+  nothing, and it reports the bodies that enter and leave it. `stay` asks it
+  to hear every step a contact or a body inside it goes on. `surface` is how
+  fast its face moves while the body stays put, for a conveyor belt. All
+  three are written every time, and a file from before them reads as a plain
+  body.
+- `ZoneComponent` changes how bodies move inside a region: a gravity, a
+  linear damping and an angular damping, each optional, with a `priority` for
+  where two overlap. It goes on an entity with a body and makes that body a
+  trigger. Written after `motion`. What a zone does is
+  `orblit_physics_scene`'s.
+
 ## 0.9.0
 
 - `JointComponent` holds a body to the body it hangs from: fixed, point,
