@@ -396,6 +396,7 @@ class SetSetting extends SceneOp {
   static const String hour = 'hour';
   static const String cycle = 'cycle';
   static const String hoursPerSecond = 'hoursPerSecond';
+  static const String layerNames = 'layerNames';
 
   final String field;
   final Object? from;
@@ -417,6 +418,8 @@ class SetSetting extends SceneOp {
         settings[sky] = to;
       case ambient:
         settings[ambient] = to;
+      case layerNames:
+        settings[layerNames] = to;
       case hour || cycle || hoursPerSecond:
         time[field] = to;
         settings['time'] = time;
@@ -549,7 +552,11 @@ class SceneDiff {
     }
     final was = a.settings.toJson();
     final now = b.settings.toJson();
-    for (final field in [SetSetting.sky, SetSetting.ambient]) {
+    for (final field in [
+      SetSetting.sky,
+      SetSetting.ambient,
+      SetSetting.layerNames,
+    ]) {
       if (!Values.same(was[field], now[field])) {
         run(SetSetting(field, from: was[field], to: now[field]));
       }

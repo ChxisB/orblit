@@ -39,6 +39,12 @@ void main() {
       expect(body.trigger, isFalse);
       expect(body.stay, isFalse);
       expect(body.surface, Vector3.zero());
+      expect(body.locks, isEmpty);
+      expect(body.gravityScale, 1);
+      expect(body.maxSpeed, 0);
+      expect(body.maxSpin, 0);
+      expect(body.centreOfMass, Vector3.zero());
+      expect(body.inertia, Vector3.zero());
     });
 
     test('is the body it was written as', () {
@@ -60,6 +66,12 @@ void main() {
         trigger: true,
         stay: true,
         surface: Vector3(2, 0, -1),
+        locks: {BodyLock.moveZ, BodyLock.turnX},
+        gravityScale: 0.5,
+        maxSpeed: 12,
+        maxSpin: 3,
+        centreOfMass: Vector3(0, -0.2, 0),
+        inertia: Vector3(2, 3, 4),
       );
       final read = BodyComponent.fromJson(body.toJson());
 
@@ -71,6 +83,12 @@ void main() {
       expect(read.trigger, isTrue);
       expect(read.stay, isTrue);
       expect(read.surface, Vector3(2, 0, -1));
+      expect(read.locks, {BodyLock.moveZ, BodyLock.turnX});
+      expect(read.gravityScale, 0.5);
+      expect(read.maxSpeed, 12);
+      expect(read.maxSpin, 3);
+      expect(read.centreOfMass, Vector3(0, -0.2, 0));
+      expect(read.inertia, Vector3(2, 3, 4));
     });
 
     test('a file from before triggers and belts reads as a plain body', () {
@@ -80,6 +98,29 @@ void main() {
       expect(body.stay, isFalse);
       expect(body.surface, Vector3.zero());
     });
+
+    test('a file from before body controls reads as a plain body', () {
+      final body = BodyComponent.fromJson(const {'mass': 5, 'trigger': true});
+
+      expect(body.locks, isEmpty);
+      expect(body.gravityScale, 1);
+      expect(body.maxSpeed, 0);
+      expect(body.maxSpin, 0);
+      expect(body.centreOfMass, Vector3.zero());
+      expect(body.inertia, Vector3.zero());
+    });
+
+    test(
+      'locks are written in one order, and a lock it does not know goes',
+      () {
+        final body = BodyComponent.fromJson(const {
+          'locks': ['turnZ', 'sideways', 'moveX', 'turnZ', 7],
+        });
+
+        expect(body.locks, {BodyLock.moveX, BodyLock.turnZ});
+        expect(body.toJson()['locks'], ['moveX', 'turnZ']);
+      },
+    );
 
     test('a shape or a motion it does not know falls back', () {
       final body = BodyComponent.fromJson(const {
@@ -141,6 +182,66 @@ void main() {
       expect(belt.stay, isTrue);
       expect(belt.surface, Vector3(0, 0, 3));
       expect(belt.copyWith(mass: 2).surface, Vector3(0, 0, 3));
+    });
+
+    test('does not share its centre of mass or inertia either', () {
+      final before = BodyComponent(
+        centreOfMass: Vector3(0, -0.2, 0),
+        inertia: Vector3(2, 3, 4),
+      );
+      final after = before.copyWith();
+      after.centreOfMass.y = 9;
+      after.inertia.x = 9;
+
+      expect(before.centreOfMass, Vector3(0, -0.2, 0));
+      expect(before.inertia, Vector3(2, 3, 4));
+    });
+
+    test('holds its locks where nobody can change them', () {
+      final body = BodyComponent(locks: {BodyLock.moveY});
+
+      expect(() => body.locks.add(BodyLock.turnX), throwsUnsupportedError);
+      expect(body.copyWith(locks: {BodyLock.turnZ}).locks, {BodyLock.turnZ});
+      expect(body.copyWith(mass: 3).locks, {BodyLock.moveY});
+    });
+  });
+
+  group('a body made of something', () {
+    test('takes the friction and restitution of the preset and no more', () {
+      final wood = BodyMaterial.presets.firstWhere((m) => m.name == 'Wood');
+      final body = BodyComponent(mass: 9, layers: 4).madeOf(wood);
+
+      expect(body.friction, wood.friction);
+      expect(body.restitution, wood.restitution);
+      expect(body.mass, 9);
+      expect(body.layers, 4);
+    });
+
+    test('is found again by its numbers', () {
+      for (final preset in BodyMaterial.presets) {
+        final body = BodyComponent().madeOf(preset);
+        expect(BodyMaterial.of(body), same(preset));
+      }
+    });
+
+    test('is nothing in particular once a number is its own', () {
+      final rubber = BodyMaterial.presets.last;
+      final body = BodyComponent().madeOf(rubber).copyWith(friction: 0.96);
+
+      expect(BodyMaterial.of(body), isNull);
+    });
+
+    test('is not made of anything just because it is new', () {
+      expect(BodyMaterial.of(BodyComponent()), isNull);
+    });
+
+    test('has presets that tell each other apart', () {
+      final numbers = {
+        for (final preset in BodyMaterial.presets)
+          (preset.friction, preset.restitution),
+      };
+
+      expect(numbers, hasLength(BodyMaterial.presets.length));
     });
   });
 
@@ -210,6 +311,37 @@ void main() {
       );
       expect(diff.applyTo(a).encode(), b.encode());
       expect(diff.inverse.applyTo(b).encode(), a.encode());
+    });
+
+    test('locking an axis is one operation, and it goes back', () {
+      final a = documentOf([crate(BodyComponent())]);
+      final b = documentOf([
+        crate(BodyComponent(locks: {BodyLock.moveZ, BodyLock.turnX})),
+      ]);
+      final diff = SceneDiff.between(a, b);
+
+      expect((diff.operations.single as SetField).field, 'locks');
+      expect(diff.applyTo(a).encode(), b.encode());
+      expect(diff.inverse.applyTo(b).encode(), a.encode());
+    });
+
+    test('a scene with locks and a weighted centre reads back the same', () {
+      final document = documentOf([
+        crate(
+          BodyComponent(
+            locks: {BodyLock.moveX},
+            gravityScale: 0.5,
+            maxSpeed: 4,
+            centreOfMass: Vector3(0, -0.3, 0),
+          ),
+        ),
+      ]);
+      final read = SceneDocument.decode(document.encode());
+
+      expect(read.problems, isEmpty);
+      expect(read.document.encode(), document.encode());
+      expect(bodyOf(read.document).locks, {BodyLock.moveX});
+      expect(bodyOf(read.document).centreOfMass, Vector3(0, -0.3, 0));
     });
   });
 }

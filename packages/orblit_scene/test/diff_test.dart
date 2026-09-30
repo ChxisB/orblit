@@ -138,6 +138,33 @@ void main() {
       expect(SceneDiff.between(a, b).operations, hasLength(4));
       expectRoundTrip(a, b);
     });
+
+    test('naming a layer is one setting, and it goes back', () {
+      final a = documentOf([]);
+      final b = documentOf(
+        [],
+        settings: const SceneSettings(layerNames: ['World', '', 'Player']),
+      );
+      final operation = SceneDiff.between(a, b).operations.single;
+
+      expect(operation, isA<SetSetting>());
+      expect((operation as SetSetting).field, SetSetting.layerNames);
+      expectRoundTrip(a, b);
+    });
+
+    test('renaming a layer that already had a name', () {
+      final a = documentOf(
+        [],
+        settings: const SceneSettings(layerNames: ['World']),
+      );
+      final b = documentOf(
+        [],
+        settings: const SceneSettings(layerNames: ['Ground']),
+      );
+
+      expect(SceneDiff.between(a, b).operations, hasLength(1));
+      expectRoundTrip(a, b);
+    });
   });
 
   group('the tree', () {

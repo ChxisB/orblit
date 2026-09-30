@@ -41,6 +41,49 @@ enum BodyMotion {
   free,
 }
 
+/// One of the six ways a free body can be held still, in the world's axes
+/// rather than the body's own: a body locked from moving along `z` stays in
+/// its plane however it is turned.
+enum BodyLock { moveX, moveY, moveZ, turnX, turnY, turnZ }
+
+/// A surface by what it is made of: how much it grips and how much it bounces.
+///
+/// A preset is a shortcut for setting two numbers, so a body does not store
+/// one. It is a preset while its friction and restitution are exactly its
+/// own, and it stops being one the moment either is dragged.
+final class BodyMaterial {
+  const BodyMaterial(
+    this.name, {
+    required this.friction,
+    required this.restitution,
+  });
+
+  final String name;
+  final double friction;
+  final double restitution;
+
+  /// The presets, slipperiest first.
+  static const List<BodyMaterial> presets = [
+    BodyMaterial('Ice', friction: 0.05, restitution: 0.05),
+    BodyMaterial('Metal', friction: 0.4, restitution: 0.15),
+    BodyMaterial('Wood', friction: 0.5, restitution: 0.2),
+    BodyMaterial('Stone', friction: 0.7, restitution: 0.1),
+    BodyMaterial('Sandbag', friction: 0.9, restitution: 0),
+    BodyMaterial('Rubber', friction: 0.95, restitution: 0.8),
+  ];
+
+  /// The preset [body] is made of, or null when its numbers are its own.
+  static BodyMaterial? of(BodyComponent body) {
+    for (final preset in presets) {
+      if (preset.friction == body.friction &&
+          preset.restitution == body.restitution) {
+        return preset;
+      }
+    }
+    return null;
+  }
+}
+
 /// Something the physics simulates.
 ///
 /// Not the same thing as the boundary a mesh carries. A boundary says where an
@@ -80,9 +123,18 @@ class BodyComponent extends SceneComponent {
     this.trigger = false,
     this.stay = false,
     Vector3? surface,
+    Set<BodyLock> locks = const {},
+    this.gravityScale = 1,
+    this.maxSpeed = 0,
+    this.maxSpin = 0,
+    Vector3? centreOfMass,
+    Vector3? inertia,
   }) : size = size ?? Vector3.all(1),
        centre = centre ?? Vector3.zero(),
-       surface = surface ?? Vector3.zero();
+       surface = surface ?? Vector3.zero(),
+       locks = Set.unmodifiable(locks),
+       centreOfMass = centreOfMass ?? Vector3.zero(),
+       inertia = inertia ?? Vector3.zero();
 
   static BodyComponent fromJson(Map<String, Object?> json) => BodyComponent(
     shape: Values.named(BodyShape.values, json['shape']) ?? BodyShape.box,
@@ -102,6 +154,15 @@ class BodyComponent extends SceneComponent {
     trigger: Values.flag(json, 'trigger', fallback: false),
     stay: Values.flag(json, 'stay', fallback: false),
     surface: Values.vector(json['surface']),
+    locks: {
+      for (final name in Values.texts(json['locks']))
+        if (Values.named(BodyLock.values, name) case final lock?) lock,
+    },
+    gravityScale: Values.number(json, 'gravityScale', 1),
+    maxSpeed: Values.number(json, 'maxSpeed', 0),
+    maxSpin: Values.number(json, 'maxSpin', 0),
+    centreOfMass: Values.vector(json['centreOfMass']),
+    inertia: Values.vector(json['inertia']),
   );
 
   /// All thirty-two layers.
@@ -130,6 +191,12 @@ class BodyComponent extends SceneComponent {
     bool? trigger,
     bool? stay,
     Vector3? surface,
+    Set<BodyLock>? locks,
+    double? gravityScale,
+    double? maxSpeed,
+    double? maxSpin,
+    Vector3? centreOfMass,
+    Vector3? inertia,
   }) => BodyComponent(
     shape: shape ?? this.shape,
     size: (size ?? this.size).clone(),
@@ -148,7 +215,18 @@ class BodyComponent extends SceneComponent {
     trigger: trigger ?? this.trigger,
     stay: stay ?? this.stay,
     surface: (surface ?? this.surface).clone(),
+    locks: locks ?? this.locks,
+    gravityScale: gravityScale ?? this.gravityScale,
+    maxSpeed: maxSpeed ?? this.maxSpeed,
+    maxSpin: maxSpin ?? this.maxSpin,
+    centreOfMass: (centreOfMass ?? this.centreOfMass).clone(),
+    inertia: (inertia ?? this.inertia).clone(),
   );
+
+  /// The same body made of [material]: its friction and its bounce, and
+  /// nothing else about it.
+  BodyComponent madeOf(BodyMaterial material) =>
+      copyWith(friction: material.friction, restitution: material.restitution);
 
   final BodyShape shape;
 
@@ -216,6 +294,32 @@ class BodyComponent extends SceneComponent {
   /// Only the part along the face it touches counts.
   final Vector3 surface;
 
+  /// The ways it may not move, in the world's axes. A locked move drops that
+  /// part of every velocity, push and contact, and a locked turn does the same
+  /// to spin. Only a free body is held: a fixed or driven one is placed, not
+  /// pushed.
+  final Set<BodyLock> locks;
+
+  /// How much of the world's gravity, and of a [ZoneComponent]'s, it feels.
+  /// One is ordinary, zero floats and a negative number rises.
+  final double gravityScale;
+
+  /// The fastest it may go in metres per second, and the fastest it may spin
+  /// in radians per second. Zero is no limit.
+  final double maxSpeed;
+  final double maxSpin;
+
+  /// Where its weight is, from the middle of its shape, in the entity's own
+  /// units so it scales with the entity. It turns about this point, and a push
+  /// through it does not spin it. Zero is the middle. Not [centre], which is
+  /// where the shape sits on the entity.
+  final Vector3 centreOfMass;
+
+  /// How hard it is to turn about each of its own axes through the centre of
+  /// mass, in kilogram square metres. All three above zero and it is used as
+  /// given. Otherwise the shape's is used.
+  final Vector3 inertia;
+
   @override
   String get type => SceneComponents.body;
 
@@ -238,5 +342,16 @@ class BodyComponent extends SceneComponent {
     'trigger': trigger,
     'stay': stay,
     'surface': Values.vectorToJson(surface),
+    // In the enum's order, so two bodies with the same locks write the same
+    // list whichever order the locks were added in.
+    'locks': [
+      for (final lock in BodyLock.values)
+        if (locks.contains(lock)) lock.name,
+    ],
+    'gravityScale': gravityScale,
+    'maxSpeed': maxSpeed,
+    'maxSpin': maxSpin,
+    'centreOfMass': Values.vectorToJson(centreOfMass),
+    'inertia': Values.vectorToJson(inertia),
   };
 }

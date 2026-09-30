@@ -232,5 +232,71 @@ void main() {
       );
       expect(load.document.settings.sky.red, closeTo(0x59 / 255, 0.001));
     });
+
+    test('a scene with no layer names does not write the key', () {
+      final document = SceneDocument(name: 'Scene');
+      final read = SceneDocument.decode(document.encode());
+
+      expect(jsonDecode(document.encode()), isNot(contains('layerNames')));
+      expect(read.document.settings.layerNames, isEmpty);
+    });
+
+    test('layer names are written and read back', () {
+      final document = SceneDocument(
+        name: 'Scene',
+        settings: const SceneSettings(layerNames: ['World', '', 'Player']),
+      );
+      final read = SceneDocument.decode(document.encode()).document.settings;
+
+      expect(read.layerNames, ['World', '', 'Player']);
+      expect(read.nameOf(0), 'World');
+      expect(read.nameOf(2), 'Player');
+    });
+
+    test('a layer with no name, or past the last, has none', () {
+      const settings = SceneSettings(layerNames: ['World', '', 'Player']);
+
+      expect(settings.nameOf(1), isNull);
+      expect(settings.nameOf(3), isNull);
+      expect(settings.nameOf(-1), isNull);
+      expect(settings.nameOf(SceneSettings.layerCount), isNull);
+    });
+
+    test('a name that is not text leaves its layer unnamed', () {
+      final load = SceneDocument.decode(
+        jsonEncode({
+          'formatVersion': 4,
+          'layerNames': ['World', 7, null, 'Player'],
+          'entities': <Object?>[],
+        }),
+      );
+
+      expect(load.document.settings.layerNames, ['World', '', '', 'Player']);
+    });
+
+    test('only thirty-two layers can be named', () {
+      final load = SceneDocument.decode(
+        jsonEncode({
+          'formatVersion': 4,
+          'layerNames': [for (var i = 0; i < 40; i++) 'Layer $i'],
+          'entities': <Object?>[],
+        }),
+      );
+
+      expect(load.document.settings.layerNames, hasLength(32));
+      expect(load.document.settings.nameOf(31), 'Layer 31');
+    });
+
+    test('layer names that are not a list are ignored', () {
+      final load = SceneDocument.decode(
+        jsonEncode({
+          'formatVersion': 4,
+          'layerNames': 'World',
+          'entities': <Object?>[],
+        }),
+      );
+
+      expect(load.document.settings.layerNames, isEmpty);
+    });
   });
 }

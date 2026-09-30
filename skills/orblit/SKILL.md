@@ -425,6 +425,13 @@ free bodies inside. `castAll`, `castAny` and `overlap` join `cast`, and
 belt and `setRule` changes one pair's friction, bounce and mass scale. A rule
 is data, not a callback.
 
+A body says how it moves with `locks`, `gravityScale`, `maxSpeed`, `maxSpin`,
+`centreOfMass` and `inertia` on its component, or with `physics.setControls(id,
+PhysicsControls(...))` in the world. `setMotion` switches a body between fixed,
+driven and free, and `setGravity` changes the world's. `PhysicsRule(ignore:
+true)`, or `scene.ignore(idA, idB)` for two entities, makes a pair pass through
+each other. Characters do not read that rule.
+
 Ground is `physics.layGround(id, heights: ..., columns: ..., rows: ...)`, and
 a terrain is laid for you, the regions near the camera, by
 `TerrainPhysics(physics, terrain).sync(x: ..., z: ..., radius: ...)` every

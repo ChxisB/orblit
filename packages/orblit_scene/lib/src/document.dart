@@ -48,7 +48,11 @@ class SceneSettings {
     this.timeOfDay = 10,
     this.dayCycle = false,
     this.hoursPerSecond = 0.5,
+    this.layerNames = const [],
   });
+
+  /// How many layers there are, one bit each in a body's `layers` and `cares`.
+  static const int layerCount = 32;
 
   static SceneSettings fromJson(Map<String, Object?> json) {
     final time = Values.object(json['time']);
@@ -65,8 +69,15 @@ class SceneSettings {
       timeOfDay: Values.number(time, 'hour', 10),
       dayCycle: Values.flag(time, 'cycle', fallback: false),
       hoursPerSecond: Values.number(time, 'hoursPerSecond', 0.5),
+      layerNames: _layerNamesOf(json['layerNames']),
     );
   }
+
+  /// The names a file gives its layers. Something that is not a name leaves
+  /// its layer unnamed rather than moving the names after it up one.
+  static List<String> _layerNamesOf(Object? raw) => raw is List
+      ? [for (final one in raw.take(layerCount)) one is String ? one : '']
+      : const [];
 
   /// The sky, and by the same setting the light it casts.
   final Tint sky;
@@ -84,18 +95,31 @@ class SceneSettings {
   final bool dayCycle;
   final double hoursPerSecond;
 
+  /// What each layer is called, from the first. Shorter than [layerCount] when
+  /// the last layers are not named, and an empty name is a layer with none.
+  final List<String> layerNames;
+
+  /// What layer [index] is called, or null when it has no name.
+  String? nameOf(int index) {
+    if (index < 0 || index >= layerNames.length) return null;
+    final name = layerNames[index];
+    return name.isEmpty ? null : name;
+  }
+
   SceneSettings copyWith({
     Tint? sky,
     double? ambient,
     double? timeOfDay,
     bool? dayCycle,
     double? hoursPerSecond,
+    List<String>? layerNames,
   }) => SceneSettings(
     sky: sky ?? this.sky,
     ambient: ambient ?? this.ambient,
     timeOfDay: timeOfDay ?? this.timeOfDay,
     dayCycle: dayCycle ?? this.dayCycle,
     hoursPerSecond: hoursPerSecond ?? this.hoursPerSecond,
+    layerNames: layerNames ?? this.layerNames,
   );
 
   Map<String, Object?> toJson() => {
@@ -106,6 +130,9 @@ class SceneSettings {
       'cycle': dayCycle,
       'hoursPerSecond': hoursPerSecond,
     },
+    // Only when a layer has a name, so a scene that names none is written as
+    // it always was and an older editor never meets the key.
+    if (layerNames.any((name) => name.isNotEmpty)) 'layerNames': layerNames,
   };
 }
 

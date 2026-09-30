@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.11.0
+
+- `BodyComponent` gains body controls. `locks` holds any of `BodyLock`'s six
+  ways a free body can move, in the world's axes. `gravityScale` scales the
+  gravity it feels. `maxSpeed` and `maxSpin` cap it, and zero is no cap.
+  `centreOfMass` moves its weight, measured from the shape's middle and in
+  the entity's own units. `inertia` gives the inertia it turns by, and zero
+  in a part means the shape's. All six are written every time, and a file
+  from before them reads as a plain body.
+- `BodyMaterial.presets` are Ice, Metal, Wood, Stone, Sandbag and Rubber.
+  `BodyComponent.madeOf` sets a body's friction and restitution from one, and
+  `BodyMaterial.of` names the preset a body still matches, or null once
+  either number is its own. A body stores the numbers, not the preset.
+- `SceneSettings.layerNames` names up to thirty-two collision layers, and
+  `nameOf` reads one. The key is written only when a layer has a name, so a
+  scene that names none stays byte for byte what it was. `SetSetting`
+  changes them as one setting that goes back.
+
 ## 0.10.0
 
 - `BodyComponent` can be a trigger. Nothing collides with it and it pushes

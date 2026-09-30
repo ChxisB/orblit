@@ -2,8 +2,8 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.6.0, `orblit_physics_scene` 0.3.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.10.0 for the components. A git dependency
+`orblit_physics` 0.7.0, `orblit_physics_scene` 0.4.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.11.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -116,6 +116,51 @@ physics.setRule(lift, crate, const PhysicsRule(moveScaleA: 0));
   callback**. False for a missing body, a body against itself or a negative
   scale. It holds until `removeRule` or until either body goes, and it wakes
   both. A rule that changes nothing asserts.
+- **`PhysicsRule(ignore: true)` makes a pair pass through each other.** No
+  contact and no touch event. A character does not read rules, so it still
+  stops at a body it is told to ignore. It replaces any other rule on the pair.
+
+## Body controls
+
+```dart
+physics.setControls(
+  crate,
+  const PhysicsControls(
+    locks: {PhysicsLock.moveZ, PhysicsLock.turnX, PhysicsLock.turnY},
+    gravityScale: 0.5,
+    maxSpeed: 12,
+  ),
+);
+physics.setMotion(crate, PhysicsMotion.driven); // lifted by a cutscene
+physics.setGravity([0, -3.7, 0]);
+```
+
+- **`setControls(id, PhysicsControls, {quiet = false})` sets all of it at
+  once.** To change one field, send the others again. False, and nothing
+  changed, for a missing body, ground, a number that is not finite, or a
+  negative cap or inertia. It wakes the body and what rests on it. Pass
+  `quiet: true` for a body just added, so one added asleep stays asleep.
+- **`locks`** holds any of `PhysicsLock.moveX` to `turnZ`, in the world's axes.
+  The solver holds them, so a body locked to a plane still rests on a floor
+  tilted across it, and a locked turn holds exactly.
+- **`gravityScale`** scales the gravity the body feels, a zone's included. Zero
+  floats and a negative number rises.
+- **`maxSpeed` and `maxSpin`** cap metres and radians a second. Zero is no cap.
+  A cap is applied once a step, after the contacts.
+- **`centre`** is where the weight is, in the body's own frame. A free body
+  turns about it, and its `velocityOf` is the velocity of that point. The
+  transform still reports the origin the body was placed by. `push` with no `at`
+  goes through it.
+- **`inertia`** is the inertia about each axis through the centre of mass. It is
+  used as given, and only when all three parts are above zero. Null, or a zero
+  part, uses the shape's, moved to the centre of mass.
+- A fixed or driven body keeps its controls for when it is made free.
+- **`setMotion(id, PhysicsMotion)`** makes a body fixed, driven or free. Fixed
+  stops it, driven keeps its velocity, and free gives it the mass it was made
+  with and its controls. Ignored for a trigger, a character, ground, a missing
+  body and a body already in that motion.
+- **`setGravity([x, y, z])`** wakes every body that can move. False for a number
+  that is not finite. Zones and `gravityScale` still apply on top.
 
 ## Characters
 
@@ -262,12 +307,26 @@ Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `plane`),
 `size`, `radius`, `height`, `centre`, `motion` (`BodyMotion.fixed`, `driven`,
 `free`), `mass`, `friction`, `restitution`, `linearDamping`, `angularDamping`,
 `layers`, `cares`, `startsAsleep` (JSON `asleep`), `trigger`, `stay` and
-`surface` (a `Vector3`, world metres a second). Change one field with
-`copyWith`.
+`surface` (a `Vector3`, world metres a second). Its controls are `locks` (a
+`Set<BodyLock>`, `moveX` to `turnZ`), `gravityScale` (1), `maxSpeed` and
+`maxSpin` (0 is no cap), `centreOfMass` and `inertia` (`Vector3`s, zero for the
+shape's own). Change one field with `copyWith`.
 
 - Sizes are in the entity's own units, so the body scales with the entity. A
   sphere takes the largest of the three scales. A capsule takes the larger
   sideways scale for its radius and the upright one for its height.
+- `centreOfMass` scales with the entity. `inertia` does not.
+- A negative cap or inertia in a file is read as none by the bridge, so the
+  locks still apply. The world itself refuses one.
+- **Materials are presets, not a field.** `BodyMaterial.presets` holds Ice,
+  Metal, Wood, Stone, Sandbag and Rubber, each a friction and a restitution.
+  `body.madeOf(material)` copies both onto a body. `BodyMaterial.of(body)` gives
+  the preset whose two numbers match exactly, or null. Nothing is stored in the
+  file, so a body with other numbers is custom.
+- **Layer names are a scene setting.** `SceneSettings.layerNames` holds up to 32
+  names, and `nameOf(layer)` answers `String?` for one that has none. Changing
+  it is one `SetSetting` with the field `SetSetting.layerNames`. The editor
+  shows `layers` and `cares` as a grid of toggles under those names.
 - `plane` is endless ground facing the entity's up, through `centre`. It
   never moves, whatever `motion` says.
 
@@ -319,6 +378,8 @@ view.apply(diff);
 
 // By entity id:
 scene.physics.push(scene.bodyOf('crate')!, impulse: [40, 0, 0]);
+scene.ignore('crate', 'ghost');         // pass through, either order
+scene.unignore('ghost', 'crate');
 final hinge = scene.physics.jointStateOf(scene.jointOf('hinge')!);
 for (final event in scene.events) {
   if (event.kind == PhysicsEventKind.broke) {
@@ -424,5 +485,24 @@ scene.dispose();
 - **A rule is per pair and data.** There is no per-contact callback, and no
   per-pair surface speed. A belt is per body.
 - **One-way platforms are not there.**
+- **`ignore` does not stop a character.** A character is swept, not solved, and
+  does not read rules. Keep it off a body with a layer instead.
+- **`scene.ignore` needs both bodies and takes entity ids.** It answers false
+  for a missing body or an entity against itself. The pair is kept when an edit
+  rebuilds a body, and forgotten when an entity loses its body or leaves the
+  document. It is not in the document, because an id inside a prefab instance is
+  a path that would not survive the file being read again.
+- **`setRule` wakes both bodies,** so `ignore` wakes a sleeper too.
+- **A cap is per step.** A body can pass `maxSpeed` inside a step. It never
+  leaves one above it.
+- **A lock is in the world's axes,** not the entity's. A body turned a quarter
+  about y and locked along x is locked along the world's x.
+- **`setControls` wakes the body** unless `quiet` is true. The bridge sends
+  controls quietly when it adds a body, so `startsAsleep` still holds.
+- **A given `inertia` is used as it is.** It is not moved to the centre of mass
+  and not scaled by the entity. One zero part hands all three back to the
+  shape's.
+- **A trigger cannot change motion.** `setMotion` ignores a trigger, a
+  character and ground, with no error.
 - **The editor** draws bodies, triggers, zones and joints (inspector sections
   and wireframes) but does not simulate them.
