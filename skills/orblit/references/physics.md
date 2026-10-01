@@ -2,7 +2,7 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.8.0, `orblit_physics_scene` 0.5.0 and
+`orblit_physics` 0.8.0, `orblit_physics_scene` 0.6.0 and
 `orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.11.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
@@ -392,6 +392,14 @@ view.apply(diff);
 scene.physics.push(scene.bodyOf('crate')!, impulse: [40, 0, 0]);
 scene.ignore('crate', 'ghost');         // pass through, either order
 scene.unignore('ghost', 'crate');
+
+// Smooth display: `ScenePhysics(document, smooth: true)` shows each body
+// blended between its last two steps, so every frame moves it.
+scene.physics.place(scene.bodyOf('crate')!, at: [0, 5, 0]);
+scene.resetSmoothing('crate');          // no streak to the new place
+scene.stopSmoothing('player');          // shown as the world has it...
+scene.startSmoothing('player');         // ...until this
+
 final hinge = scene.physics.jointStateOf(scene.jointOf('hinge')!);
 for (final event in scene.events) {
   if (event.kind == PhysicsEventKind.broke) {
@@ -426,6 +434,19 @@ scene.dispose();
 - **Edits are teleports.** `apply` rebuilds each body the diff touched, and
   every body under it, at rest. That includes moving, rescaling and changing
   the body.
+- **`smooth: true` shows a body a step behind.** The document has the blended
+  pose and `physics` has the truth, so casts, events and contacts are up to a
+  sixtieth of a second ahead of what is drawn. It is off by default. A call
+  that takes no step still returns a diff, and a body at rest adds nothing to
+  it.
+- **A move through `physics.place` needs `resetSmoothing(entity)`,** or the
+  body is drawn crossing the gap. An edit through `apply` needs nothing.
+  `resetSmoothing`, `stopSmoothing` and `startSmoothing` answer false for an
+  entity the document does not have. `stopSmoothing` covers the entity and
+  everything under it.
+- **A snapshot does not cross smoothing modes.** `restore` throws an
+  `ArgumentError` when the scene and the snapshot differ in `smooth`, and
+  changes nothing.
 - **Ids.** Numbers from 1 up are `ScenePhysics`'s. A body added straight to
   `scene.physics` needs a negative id; it is simulated but never written
   back. `bodyOf` and `entityOf` convert between entity and body; an entity
