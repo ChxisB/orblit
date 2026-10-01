@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, triggers, zones, belts, shape queries, joints, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders and convex hulls, triggers, zones, belts, shape queries, joints, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -446,6 +446,12 @@ the same bits, on one build and no further. `ScenePhysics` has the same two
 calls, and `scene.restore(snapshot)` returns the `SceneDiff` to give
 `view.apply`. `physics.contacts` and `physics.stats` say what the last step
 did. Nothing draws contacts yet.
+
+A body is a `box`, `sphere`, `capsule`, `cylinder` or `hull`. A hull is the
+convex solid round a list of points on `BodyComponent.hull`, and bodies cut
+from the same points at the same scale share one. In a world, lay it with
+`physics.layHull(id, points: ...)` and name it with `Shape.hull(id)`. Points
+that enclose no volume give a body that does nothing.
 
 Ground is `physics.layGround(id, heights: ..., columns: ..., rows: ...)`, and
 a terrain is laid for you, the regions near the camera, by

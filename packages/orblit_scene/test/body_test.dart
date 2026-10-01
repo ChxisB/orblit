@@ -124,12 +124,45 @@ void main() {
 
     test('a shape or a motion it does not know falls back', () {
       final body = BodyComponent.fromJson(const {
-        'shape': 'cylinder',
+        'shape': 'cone',
         'motion': 'kinematic',
       });
 
       expect(body.shape, BodyShape.box);
       expect(body.motion, BodyMotion.free);
+    });
+
+    test('is the cylinder and the hull it was written as', () {
+      final cylinder = BodyComponent.fromJson(const {
+        'shape': 'cylinder',
+        'radius': 0.4,
+        'height': 1.2,
+      });
+      final hull = BodyComponent(
+        shape: BodyShape.hull,
+        hull: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+      );
+
+      expect(cylinder.shape, BodyShape.cylinder);
+      expect(cylinder.radius, 0.4);
+      expect(cylinder.height, 1.2);
+      expect(BodyComponent.fromJson(hull.toJson()).hull, hull.hull);
+      expect(BodyComponent.fromJson(hull.toJson()).shape, BodyShape.hull);
+    });
+
+    test('a file from before hulls reads as having no corners', () {
+      final body = BodyComponent.fromJson(const {'mass': 5});
+
+      expect(body.hull, isEmpty);
+    });
+
+    test('corners that are not all numbers are none, not shifted', () {
+      final body = BodyComponent.fromJson(const {
+        'hull': [0, 0, 'one', 1, 1, 1],
+      });
+
+      expect(body.hull, isEmpty);
+      expect(BodyComponent.fromJson(const {'hull': 'cube'}).hull, isEmpty);
     });
 
     test('a layer mask is kept to thirty-two bits', () {
@@ -159,6 +192,25 @@ void main() {
         'mass': 80.0,
         'motion': 'driven',
       });
+    });
+
+    test('keeps its corners through a change and changes them on request', () {
+      final before = BodyComponent(
+        shape: BodyShape.hull,
+        hull: [0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1],
+      );
+
+      expect(before.copyWith(mass: 3).hull, before.hull);
+      expect(before.copyWith(hull: [1, 2, 3]).hull, [1, 2, 3]);
+    });
+
+    test('holds its corners where nobody can change them', () {
+      final corners = <double>[0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1];
+      final body = BodyComponent(shape: BodyShape.hull, hull: corners);
+      corners[0] = 9;
+
+      expect(body.hull[0], 0);
+      expect(() => body.hull.add(1), throwsUnsupportedError);
     });
 
     test('does not share its vectors with the body it came from', () {

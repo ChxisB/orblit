@@ -5,10 +5,11 @@ import '../values.dart';
 
 /// The shape a body is simulated as.
 ///
-/// Deliberately few, and each one exactly: a box, a ball, a capsule and the
-/// ground. A shape the solver cannot hold is not offered here as something it
-/// will approximate, because a body that behaves like a box while the file
-/// says cylinder is a bug somebody tunes around rather than reports.
+/// Deliberately few, and each one exactly: a box, a ball, a capsule, a
+/// cylinder, a convex hull and the ground. A shape the solver cannot hold is
+/// not offered here as something it will approximate, because a body that
+/// behaves like a box while the file says cone is a bug somebody tunes around
+/// rather than reports.
 enum BodyShape {
   /// A box [BodyComponent.size] across.
   box,
@@ -21,6 +22,17 @@ enum BodyShape {
   /// entity's own up. What a character or a limb is made of: it has no corner
   /// to catch on the seam between two floor tiles.
   capsule,
+
+  /// A cylinder with flat ends, [BodyComponent.height] tall from end to end and
+  /// [BodyComponent.radius] round, standing along the entity's own up. A
+  /// barrel, a wheel, a pillar.
+  cylinder,
+
+  /// The smallest convex solid round the points in [BodyComponent.hull]. A rock,
+  /// a wedge, a crate with its corners knocked off. Convex means no dents: a
+  /// bowl is a solid lump to the solver, so a body that must be hollow is
+  /// several.
+  hull,
 
   /// Endless ground. Everything below the entity's own up, through the point
   /// the body is centred on, is solid. It never moves, whatever [BodyMotion]
@@ -97,9 +109,11 @@ final class BodyMaterial {
 /// crate scaled to two is a crate with a body twice the size, and fitting a
 /// body to a mesh is copying the mesh's own dimensions rather than working
 /// out what they come to in the world. A ball takes the largest of its
-/// entity's three scales, and a capsule its larger sideways scale for the
-/// radius and its upright one for the height, because neither can be
-/// stretched into anything but a bigger version of itself.
+/// entity's three scales, and a capsule or a cylinder its larger sideways scale
+/// for the radius and its upright one for the height, because neither can be
+/// stretched into anything but a bigger version of itself. A hull can be
+/// stretched, and each of its points moves by the entity's scale along each
+/// axis.
 ///
 /// Every field is written every time, including the ones this shape does not
 /// use, for the reason [LightComponent] gives: a box switched to a ball and
@@ -110,6 +124,7 @@ class BodyComponent extends SceneComponent {
     Vector3? size,
     this.radius = 0.5,
     this.height = 2,
+    List<double> hull = const [],
     Vector3? centre,
     this.motion = BodyMotion.free,
     this.mass = 1,
@@ -130,6 +145,7 @@ class BodyComponent extends SceneComponent {
     Vector3? centreOfMass,
     Vector3? inertia,
   }) : size = size ?? Vector3.all(1),
+       hull = List.unmodifiable(hull),
        centre = centre ?? Vector3.zero(),
        surface = surface ?? Vector3.zero(),
        locks = Set.unmodifiable(locks),
@@ -141,6 +157,7 @@ class BodyComponent extends SceneComponent {
     size: Values.vector(json['size'], fallback: 1),
     radius: Values.number(json, 'radius', 0.5),
     height: Values.number(json, 'height', 2),
+    hull: Values.numbers(json['hull']),
     centre: Values.vector(json['centre']),
     motion: Values.named(BodyMotion.values, json['motion']) ?? BodyMotion.free,
     mass: Values.number(json, 'mass', 1),
@@ -178,6 +195,7 @@ class BodyComponent extends SceneComponent {
     Vector3? size,
     double? radius,
     double? height,
+    List<double>? hull,
     Vector3? centre,
     BodyMotion? motion,
     double? mass,
@@ -202,6 +220,7 @@ class BodyComponent extends SceneComponent {
     size: (size ?? this.size).clone(),
     radius: radius ?? this.radius,
     height: height ?? this.height,
+    hull: hull ?? this.hull,
     centre: (centre ?? this.centre).clone(),
     motion: motion ?? this.motion,
     mass: mass ?? this.mass,
@@ -234,13 +253,24 @@ class BodyComponent extends SceneComponent {
   /// metre crate should say one.
   final Vector3 size;
 
-  /// How round a ball or a capsule is, in metres.
+  /// How round a ball, a capsule or a cylinder is, in metres.
   final double radius;
 
   /// How tall a capsule is from tip to tip, hemispheres included, because that
   /// is how tall a character is. A capsule no taller than twice its radius is
-  /// all ends and no middle, and is simulated as the ball that makes it.
+  /// all ends and no middle, and is simulated as the ball that makes it. A
+  /// cylinder's is from one flat end to the other.
   final double height;
+
+  /// The corners of a [BodyShape.hull], three numbers each: `x0, y0, z0, x1,
+  /// ...`. In the entity's own units and measured from [centre], so a hull
+  /// scales with its entity as a box does.
+  ///
+  /// The body is the smallest convex solid round them, so a point inside it
+  /// changes nothing, and a hull cut from a mesh fills the mesh's dents. Fewer
+  /// than four points, or points that all lie in one plane, make a hull with
+  /// no inside, and no body is simulated for it. Every other shape ignores it.
+  final List<double> hull;
 
   /// Where the shape sits relative to the entity, for the times the entity's
   /// origin is not the middle of what it is — a character stands on its feet,
@@ -329,6 +359,7 @@ class BodyComponent extends SceneComponent {
     'size': Values.vectorToJson(size),
     'radius': radius,
     'height': height,
+    'hull': hull,
     'centre': Values.vectorToJson(centre),
     'motion': motion.name,
     'mass': mass,

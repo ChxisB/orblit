@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0
+
+- `BodyShape` gains `cylinder` and `hull`. A cylinder has flat ends and
+  stands along the entity's up, `height` tall from end to end and `radius`
+  round. A hull is the smallest convex solid round the points in
+  `BodyComponent.hull`, three numbers a corner, in the entity's own units
+  and measured from `centre`. A file from before them reads as no hull, and
+  a shape name it does not know still falls back to a box.
+- `Values.numbers` reads a list of numbers all or nothing, because a
+  skipped entry would move every point after it.
+
 ## 0.11.0
 
 - `BodyComponent` gains body controls. `locks` holds any of `BodyLock`'s six

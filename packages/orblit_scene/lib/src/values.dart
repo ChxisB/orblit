@@ -109,6 +109,21 @@ abstract final class Values {
   static Map<String, Object?> object(Object? raw) =>
       raw is Map<String, Object?> ? raw : const {};
 
+  /// Every number in a list, or nothing when it is not a list of numbers.
+  ///
+  /// All or nothing, unlike [texts]. These are points written three to a
+  /// corner, and a skipped entry would move every number after it into the
+  /// wrong place.
+  static List<double> numbers(Object? raw) {
+    if (raw is! List) return const [];
+    final read = <double>[];
+    for (final value in raw) {
+      if (value is! num) return const [];
+      read.add(value.toDouble());
+    }
+    return read;
+  }
+
   /// The strings out of a list, skipping anything that is not one.
   static List<String> texts(Object? raw) {
     if (raw is! List) return const [];

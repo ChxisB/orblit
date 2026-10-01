@@ -2,8 +2,8 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.8.0, `orblit_physics_scene` 0.6.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.11.0 for the components. A git dependency
+`orblit_physics` 0.9.0, `orblit_physics_scene` 0.7.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.12.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -92,6 +92,37 @@ physics.dispose();
   bodies by kind, `asleep`, `triggers`, `characters`, `joints`, `zones`,
   `rules`, `pairs`, `touching` and `points`, and `stepMicroseconds`. There is
   no island count.
+
+## Cylinders and hulls
+
+```dart
+physics.add(3, shape: const Shape.cylinder(0.4, 0.6), at: [2, 3, 0]);
+
+// A hull is cooked once from points, flat as x, y, z, x, y, z, ...
+physics.layHull(-1, points: corners);        // false when it cannot be cooked
+physics.add(4, shape: const Shape.hull(-1), at: [4, 3, 0]);
+physics.dropHull(-1);                        // false while a body still uses it
+```
+
+- `Shape.cylinder(radius, halfHeight)` is flat at both ends and stands along
+  the body's own y. It is `2 * halfHeight` tall. A capsule of the same two
+  numbers is taller by two radii and has no flat end to stand on.
+- `layHull(id, {required points})` keeps the convex solid round the points
+  under `id`, which is any non-zero int. It answers false, and lays nothing,
+  for an id already used, fewer than four points, more than 100,000, a number
+  that is not finite, a length that is not a multiple of three, or points
+  that enclose no volume.
+- A hull is never changed once laid. To change one, lay another under a new
+  id and make the bodies again. A hundred bodies share one hull.
+- Past 255 corners the solid is cooked down to the 255 that stand out
+  furthest, so it is a little smaller than the points and never larger.
+- A body is placed by the origin of the frame its points were given in, and
+  weighs and turns about the middle of the solid.
+- A body or a cast that names a hull nobody laid makes nothing and meets
+  nothing. Only a pair with a cylinder or a hull in it uses the general
+  routine. Spheres, boxes and capsules keep theirs.
+- On ground, a cylinder or a hull that has sunk into a cliff comes out along
+  the nearest face, which is not always the way it came in.
 
 ## Triggers, zones, belts and rules
 
@@ -315,8 +346,9 @@ physics.unjoin(1);
 ## The body component
 
 `BodyComponent` in `orblit_scene` (`SceneComponents.body`, JSON key `body`).
-Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `plane`),
-`size`, `radius`, `height`, `centre`, `motion` (`BodyMotion.fixed`, `driven`,
+Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `cylinder`,
+`hull`, `plane`), `size`, `radius`, `height`, `hull`, `centre`, `motion`
+(`BodyMotion.fixed`, `driven`,
 `free`), `mass`, `friction`, `restitution`, `linearDamping`, `angularDamping`,
 `layers`, `cares`, `startsAsleep` (JSON `asleep`), `trigger`, `stay` and
 `surface` (a `Vector3`, world metres a second). Its controls are `locks` (a
@@ -325,8 +357,18 @@ Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `plane`),
 shape's own). Change one field with `copyWith`.
 
 - Sizes are in the entity's own units, so the body scales with the entity. A
-  sphere takes the largest of the three scales. A capsule takes the larger
-  sideways scale for its radius and the upright one for its height.
+  sphere takes the largest of the three scales. A capsule or a cylinder takes
+  the larger sideways scale for its radius and the upright one for its height.
+- `hull` is flat x, y, z numbers in the entity's own units, measured from
+  `centre`, and each axis is stretched by that axis of the entity's scale.
+  Bodies with the same corners at the same scale share one hull, and the last
+  body to go takes it with it.
+- **A hull that cannot be cooked is a body that does nothing.** Fewer than
+  four points, points in one plane, a length that is not a multiple of three
+  or a list with something other than numbers in it all give the entity its
+  number but no body in the world, so it never moves. The file keeps it, and
+  fixing the points makes it a body at once. A cylinder with a radius or a
+  height of nought does the same.
 - `centreOfMass` scales with the entity. `inertia` does not.
 - A negative cap or inertia in a file is read as none by the bridge, so the
   locks still apply. The world itself refuses one.
@@ -422,7 +464,11 @@ scene.dispose();
 
 - **`Shape.box` takes half sizes; `BodyComponent.size` is edge to edge.**
   `Shape.capsule(radius, halfHeight)` is the straight part either side of the
-  middle; `BodyComponent.height` is tip to tip, ends included.
+  middle; `BodyComponent.height` is tip to tip, ends included. A cylinder's
+  height is end to end, so `Shape.cylinder(r, h)` is `BodyComponent.height`
+  `2 * h`.
+- **A hull laid straight into `physics` wants a negative id,** as a body does.
+  `ScenePhysics` numbers its own hulls from 1 and never reuses one.
 - **Rotations differ.** The world takes and returns quaternions as x, y, z, w.
   A scene transform's rotation is degrees, applied Z, then Y, then X.
 - **Read `scene.events`, not `scene.physics.events`.** One `advance` can take
