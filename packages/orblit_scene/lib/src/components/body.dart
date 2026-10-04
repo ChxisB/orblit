@@ -7,7 +7,7 @@ import 'body_part.dart';
 /// The shape a body is simulated as.
 ///
 /// Deliberately few, and each one exactly: a box, a ball, a capsule, a
-/// cylinder, a convex hull, a compound and the ground. A shape the solver cannot hold is
+/// cylinder, a convex hull, a compound, a triangle mesh and the ground. A shape the solver cannot hold is
 /// not offered here as something it will approximate, because a body that
 /// behaves like a box while the file says cone is a bug somebody tunes around
 /// rather than reports.
@@ -37,6 +37,9 @@ enum BodyShape {
 
   /// The convex pieces in [BodyComponent.parts], including their empty gaps.
   compound,
+
+  /// A fixed, two-sided surface from [BodyComponent.meshVertices] and indices.
+  mesh,
 
   /// Endless ground. Everything below the entity's own up, through the point
   /// the body is centred on, is solid. It never moves, whatever [BodyMotion]
@@ -130,6 +133,8 @@ class BodyComponent extends SceneComponent {
     this.height = 2,
     List<double> hull = const [],
     List<BodyPart> parts = const [],
+    List<double> meshVertices = const [],
+    List<int> meshIndices = const [],
     Vector3? shapeScale,
     Vector3? centre,
     this.motion = BodyMotion.free,
@@ -153,6 +158,8 @@ class BodyComponent extends SceneComponent {
   }) : size = size ?? Vector3.all(1),
        hull = List.unmodifiable(hull),
        parts = List.unmodifiable(parts),
+       meshVertices = List.unmodifiable(meshVertices),
+       meshIndices = List.unmodifiable(meshIndices),
        shapeScale = (shapeScale ?? Vector3.all(1)).clone(),
        centre = centre ?? Vector3.zero(),
        surface = surface ?? Vector3.zero(),
@@ -167,6 +174,13 @@ class BodyComponent extends SceneComponent {
     height: Values.number(json, 'height', 2),
     hull: Values.numbers(json['hull']),
     parts: BodyPart.listFromJson(json['parts']),
+    meshVertices: _meshPositions(json['meshVertices']),
+    meshIndices: json['meshIndices'] is List
+        ? [
+            for (final index in json['meshIndices'] as List)
+              index is int ? index : -1,
+          ]
+        : const [],
     shapeScale: Values.vector(json['shapeScale'], fallback: 1),
     centre: Values.vector(json['centre']),
     motion: Values.named(BodyMotion.values, json['motion']) ?? BodyMotion.free,
@@ -192,6 +206,12 @@ class BodyComponent extends SceneComponent {
     inertia: Values.vector(json['inertia']),
   );
 
+  // Keep position indices stable: a malformed coordinate makes the mesh inert.
+  static List<double> _meshPositions(Object? raw) =>
+      raw is List && raw.every((v) => v is num && v.isFinite)
+      ? [for (final value in raw) (value as num).toDouble()]
+      : const [];
+
   /// All thirty-two layers.
   static const int everyLayer = 0xFFFFFFFF;
 
@@ -207,6 +227,8 @@ class BodyComponent extends SceneComponent {
     double? height,
     List<double>? hull,
     List<BodyPart>? parts,
+    List<double>? meshVertices,
+    List<int>? meshIndices,
     Vector3? shapeScale,
     Vector3? centre,
     BodyMotion? motion,
@@ -234,6 +256,8 @@ class BodyComponent extends SceneComponent {
     height: height ?? this.height,
     hull: hull ?? this.hull,
     parts: parts ?? this.parts,
+    meshVertices: meshVertices ?? this.meshVertices,
+    meshIndices: meshIndices ?? this.meshIndices,
     shapeScale: shapeScale ?? this.shapeScale,
     centre: (centre ?? this.centre).clone(),
     motion: motion ?? this.motion,
@@ -263,8 +287,13 @@ class BodyComponent extends SceneComponent {
 
   final BodyShape shape;
 
-  /// Convex pieces of a compound. A plane or nested compound is inert.
+  /// Convex pieces of a compound. A plane, mesh or nested compound is inert.
   final List<BodyPart> parts;
+
+  /// Triangle positions measured from [centre], in the entity's own units.
+  /// A mesh is a sheet with two sides, not a solid volume or a moving body.
+  final List<double> meshVertices;
+  final List<int> meshIndices;
 
   /// Stretch of the collision geometry before the entity's own transform.
   /// Rounded shapes stretch exactly. Every component must be positive.
@@ -382,6 +411,8 @@ class BodyComponent extends SceneComponent {
     'height': height,
     'hull': hull,
     'parts': [for (final part in parts) part.toJson()],
+    'meshVertices': meshVertices,
+    'meshIndices': meshIndices,
     'shapeScale': Values.vectorToJson(shapeScale),
     'centre': Values.vectorToJson(centre),
     'motion': motion.name,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../asset_id.dart';
+import '../collision_mesh.dart';
 import '../import_settings.dart';
 import '../importer.dart';
 import 'model_atlas_importer.dart';
@@ -40,12 +41,13 @@ class GltfImporter extends Importer {
   @override
   String get name => 'gltf';
 
-  /// 2 since models can be packed. A pass-through cook produces the same
+  /// 3 since models can carry a static collision sidecar. Pass-through cooks
+  /// produce the same
   /// bytes it always did, but the key has to change anyway: the settings a
-  /// cached entry was made under did not include `atlas`, and an entry that
+  /// cached entry was made under did not include `collision`, and an entry that
   /// predates a setting cannot be trusted to have ignored it.
   @override
-  int get version => 2;
+  int get version => 3;
 
   @override
   Set<String> get extensions => const {'gltf', 'glb'};
@@ -53,9 +55,13 @@ class GltfImporter extends Importer {
   @override
   Map<String, Object?> resolveSettings(ImportSettings settings) {
     final values = settings.values;
-    if (values['atlas'] != true) return const {'atlas': false};
+    final collision = values['collision'] == true;
+    if (values['atlas'] != true) {
+      return {'atlas': false, 'collision': collision};
+    }
     return {
       'atlas': true,
+      'collision': collision,
       // 2048 rather than the target's largest: a page is only worth making
       // bigger if the cells filling it are big, and a 16384 page of 256-texel
       // props is one texture upload nothing benefits from.
@@ -107,10 +113,19 @@ class GltfImporter extends Importer {
 
   @override
   Future<ImportResult> import(ImportRequest request) async {
-    if (request.settings['atlas'] != true) {
-      return ImportResult(outputs: {request.id.extension: request.bytes});
-    }
-    return atlas.run(request, request.settings);
+    final model = request.settings['atlas'] == true
+        ? await atlas.run(request, request.settings)
+        : ImportResult(outputs: {request.id.extension: request.bytes});
+    if (request.settings['collision'] != true) return model;
+    final geometry = await CollisionMesh.fromGltf(
+      request.id,
+      request.bytes,
+      request.source,
+    );
+    return ImportResult(
+      outputs: {...model.outputs, 'collision.json': geometry.encode()},
+      notes: model.notes,
+    );
   }
 
   /// Every file a glTF document refers to, as ids relative to the document.

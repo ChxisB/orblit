@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.14.0
+
+- Store indexed static mesh colliders in body components, including JSON and copyWith.
+
+
 ## 0.13.0
 
 - Add compound bodies with locally placed convex parts and exact collision shape scaling. Preserve geometry through JSON and copyWith.

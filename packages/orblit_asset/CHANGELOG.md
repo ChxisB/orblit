@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+- Bake static collision triangles from glTF node transforms with `CollisionMesh`.
+- Cook a `collision.json` sidecar when model settings include `collision: true`.
+
+
 ## 0.7.0
 
 - **Assets over the network.** `AssetFetcher` fetches an asset from an origin

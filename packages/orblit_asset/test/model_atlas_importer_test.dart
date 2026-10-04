@@ -53,12 +53,13 @@ void main() {
     test('is off unless the asset asks for it', () {
       expect(importer.resolveSettings(const ImportSettings()), {
         'atlas': false,
+        'collision': false,
       });
       expect(
         importer.resolveSettings(
           const ImportSettings(values: {'atlas': false}),
         ),
-        {'atlas': false},
+        {'atlas': false, 'collision': false},
       );
     });
 

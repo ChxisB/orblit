@@ -2,7 +2,7 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.10.0, `orblit_physics_scene` 0.8.0 and
+`orblit_physics` 0.11.0, `orblit_physics_scene` 0.9.0 and
 `orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.13.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
@@ -613,7 +613,7 @@ scene.dispose();
 - `ShapePart(shape:, at: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1])`
   scales, turns, then translates a convex primitive or hull. Rotation is xyzw.
   Outer compound scale also stretches part placements and rotated geometry.
-- Keep 1 to 64 convex parts. No planes, height fields or nested compounds.
+- Keep 1 to 64 convex parts. No planes, height fields, meshes or nested compounds.
   Scales are finite and positive. Geometry scaling is exact, including curved
   shapes and transformed normals. Each part has uniform density; overlaps
   count their mass twice. The combined inertia includes rotations and offsets.
@@ -636,3 +636,33 @@ scene.dispose();
 - The editor offers Compound, Add part, Remove part, each part's geometry,
   centre, scale and turn, and Shape scale for the whole collider. Fit to mesh
   replaces the compound with one fitted box. The gizmo draws the same maps.
+
+
+## Static mesh collision
+
+- `Physics.layMesh(id, vertices: List<double>, indices: List<int>)` copies xyz
+  triples and triangle vertex indices. Invalid or existing ids, nonfinite
+  coordinates, out-of-range indices and all-degenerate geometry return false.
+- `Shape.mesh(id)` names the asset. Bodies must be `PhysicsMotion.fixed`.
+  Meshes cannot be moving query shapes or compound parts. Ray and convex casts,
+  overlaps, contacts and characters meet their two-sided surfaces.
+- A mesh is a sheet, not a solid volume. Openings stay empty and an object
+  wholly inside a closed mesh does not overlap until it touches a surface.
+  Use hulls or convex compounds for moving concave bodies.
+- Cooking welds exactly coincident coordinates, records neighbours and builds
+  a spatial tree. Shared coplanar edges have no rim impulse. Nonmanifold and
+  outer edges stay rims; separate assets do not share seam information.
+- Remove bodies before `dropMesh(id)`. Snapshots retain geometry independently.
+- `CollisionMesh.fromGltf(id, bytes, source)` in `orblit_asset` bakes active
+  scene transforms and instances, expands strips and fans and handles mirrored
+  winding. Skins, morph targets, sparse accessors and compressed geometry fail.
+  Model settings `collision: true` emit `collision.json`; `CollisionMesh.decode`
+  reads it. Runtime physics cooks the tree and seams once when laid.
+- A scene `BodyComponent(shape: BodyShape.mesh, meshVertices: ..., meshIndices:
+  ...)` forces fixed motion and applies entity scale and shapeScale before
+  placing geometry at centre. Invalid geometry remains editable and inert.
+  The bridge owns its mesh by body number. Use negative ids for meshes laid
+  directly in `scene.physics`.
+- In the editor, **Collide with this model** reads a glTF/GLB or authored mesh,
+  stores the fixed collider in the scene and draws its triangles. It supports
+  save, undo and removal. Repeat it after changing the source geometry.

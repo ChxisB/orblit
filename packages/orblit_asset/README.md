@@ -27,6 +27,20 @@ The directory-backed classes need `dart:io`. The package still compiles for
 the web, but constructing one of them there throws. `MemoryCookCache` works
 everywhere.
 
+## Static model collision
+
+`CollisionMesh.fromGltf(id, bytes, source)` reads the active glTF/GLB scene
+into immutable indexed triangles. Node transforms and repeated instances are
+baked into the model frame; strips and fans become triangles. Set model
+import settings to `collision: true` to cook a versioned `collision.json`
+sidecar alongside the model, and use `CollisionMesh.decode` to read it.
+
+These are fixed, two-sided surfaces for `orblit_physics.layMesh` or a scene
+`BodyComponent` with `BodyShape.mesh`. The physics world cooks its spatial
+tree and seams when the geometry is laid. Skins, morph targets, sparse
+accessors and compressed geometry are refused; export a static uncompressed
+glTF first.
+
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every

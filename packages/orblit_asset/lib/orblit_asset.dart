@@ -109,3 +109,5 @@ export 'src/net/transport.dart'
         MapTransport,
         SocketFailure,
         TransportPage;
+
+export 'src/collision_mesh.dart' show CollisionMesh;
