@@ -2,11 +2,12 @@ import 'package:vector_math/vector_math_64.dart';
 
 import '../component.dart';
 import '../values.dart';
+import 'body_part.dart';
 
 /// The shape a body is simulated as.
 ///
 /// Deliberately few, and each one exactly: a box, a ball, a capsule, a
-/// cylinder, a convex hull and the ground. A shape the solver cannot hold is
+/// cylinder, a convex hull, a compound and the ground. A shape the solver cannot hold is
 /// not offered here as something it will approximate, because a body that
 /// behaves like a box while the file says cone is a bug somebody tunes around
 /// rather than reports.
@@ -33,6 +34,9 @@ enum BodyShape {
   /// bowl is a solid lump to the solver, so a body that must be hollow is
   /// several.
   hull,
+
+  /// The convex pieces in [BodyComponent.parts], including their empty gaps.
+  compound,
 
   /// Endless ground. Everything below the entity's own up, through the point
   /// the body is centred on, is solid. It never moves, whatever [BodyMotion]
@@ -125,6 +129,8 @@ class BodyComponent extends SceneComponent {
     this.radius = 0.5,
     this.height = 2,
     List<double> hull = const [],
+    List<BodyPart> parts = const [],
+    Vector3? shapeScale,
     Vector3? centre,
     this.motion = BodyMotion.free,
     this.mass = 1,
@@ -146,6 +152,8 @@ class BodyComponent extends SceneComponent {
     Vector3? inertia,
   }) : size = size ?? Vector3.all(1),
        hull = List.unmodifiable(hull),
+       parts = List.unmodifiable(parts),
+       shapeScale = (shapeScale ?? Vector3.all(1)).clone(),
        centre = centre ?? Vector3.zero(),
        surface = surface ?? Vector3.zero(),
        locks = Set.unmodifiable(locks),
@@ -158,6 +166,8 @@ class BodyComponent extends SceneComponent {
     radius: Values.number(json, 'radius', 0.5),
     height: Values.number(json, 'height', 2),
     hull: Values.numbers(json['hull']),
+    parts: BodyPart.listFromJson(json['parts']),
+    shapeScale: Values.vector(json['shapeScale'], fallback: 1),
     centre: Values.vector(json['centre']),
     motion: Values.named(BodyMotion.values, json['motion']) ?? BodyMotion.free,
     mass: Values.number(json, 'mass', 1),
@@ -196,6 +206,8 @@ class BodyComponent extends SceneComponent {
     double? radius,
     double? height,
     List<double>? hull,
+    List<BodyPart>? parts,
+    Vector3? shapeScale,
     Vector3? centre,
     BodyMotion? motion,
     double? mass,
@@ -221,6 +233,8 @@ class BodyComponent extends SceneComponent {
     radius: radius ?? this.radius,
     height: height ?? this.height,
     hull: hull ?? this.hull,
+    parts: parts ?? this.parts,
+    shapeScale: shapeScale ?? this.shapeScale,
     centre: (centre ?? this.centre).clone(),
     motion: motion ?? this.motion,
     mass: mass ?? this.mass,
@@ -248,6 +262,13 @@ class BodyComponent extends SceneComponent {
       copyWith(friction: material.friction, restitution: material.restitution);
 
   final BodyShape shape;
+
+  /// Convex pieces of a compound. A plane or nested compound is inert.
+  final List<BodyPart> parts;
+
+  /// Stretch of the collision geometry before the entity's own transform.
+  /// Rounded shapes stretch exactly. Every component must be positive.
+  final Vector3 shapeScale;
 
   /// How big a box is, edge to edge — not from the middle — because a one
   /// metre crate should say one.
@@ -360,6 +381,8 @@ class BodyComponent extends SceneComponent {
     'radius': radius,
     'height': height,
     'hull': hull,
+    'parts': [for (final part in parts) part.toJson()],
+    'shapeScale': Values.vectorToJson(shapeScale),
     'centre': Values.vectorToJson(centre),
     'motion': motion.name,
     'mass': mass,

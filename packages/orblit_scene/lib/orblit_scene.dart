@@ -87,3 +87,5 @@ export 'src/migration.dart' show SceneMigration, SceneMigrations;
 export 'src/path.dart' show EntityPath;
 export 'src/prefab.dart' show PrefabDocument, PrefabLoad, prefabExtension;
 export 'src/values.dart' show Values;
+
+export 'src/components/body_part.dart' show BodyPart;

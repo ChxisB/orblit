@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.13.0
+
+- Add compound bodies with locally placed convex parts and exact collision shape scaling. Preserve geometry through JSON and copyWith.
+
+
 ## 0.12.0
 
 - `BodyShape` gains `cylinder` and `hull`. A cylinder has flat ends and

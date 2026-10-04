@@ -2,8 +2,8 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.9.0, `orblit_physics_scene` 0.7.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.12.0 for the components. A git dependency
+`orblit_physics` 0.10.0, `orblit_physics_scene` 0.8.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.13.0 for the components. A git dependency
 resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -347,7 +347,8 @@ physics.unjoin(1);
 
 `BodyComponent` in `orblit_scene` (`SceneComponents.body`, JSON key `body`).
 Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `cylinder`,
-`hull`, `plane`), `size`, `radius`, `height`, `hull`, `centre`, `motion`
+`hull`, `compound`, `plane`), `size`, `radius`, `height`, `hull`,
+`parts`, `shapeScale`, `centre`, `motion`
 (`BodyMotion.fixed`, `driven`,
 `free`), `mass`, `friction`, `restitution`, `linearDamping`, `angularDamping`,
 `layers`, `cares`, `startsAsleep` (JSON `asleep`), `trigger`, `stay` and
@@ -602,3 +603,36 @@ scene.dispose();
   `contacts`, and `stepMicroseconds` is not in a snapshot.
 - **The editor** draws bodies, triggers, zones and joints (inspector sections
   and wireframes) but does not simulate them. Nothing draws contacts yet.
+
+## Compound and scaled shapes
+
+- `Physics.layCompound(id, parts: List<ShapePart>, scale: [1, 1, 1])`
+  returns false for an invalid or already used id. `Shape.compound(id)` names
+  it for bodies, casts and overlaps. A single part gives a scaled or offset
+  shape. Compounds retain the empty gaps between parts.
+- `ShapePart(shape:, at: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1])`
+  scales, turns, then translates a convex primitive or hull. Rotation is xyzw.
+  Outer compound scale also stretches part placements and rotated geometry.
+- Keep 1 to 64 convex parts. No planes, height fields or nested compounds.
+  Scales are finite and positive. Geometry scaling is exact, including curved
+  shapes and transformed normals. Each part has uniform density; overlaps
+  count their mass twice. The combined inertia includes rotations and offsets.
+- `dropCompound(id)` refuses removal while a body uses it. A compound keeps
+  its hulls alive. Drop the compound before dropping its hulls. Snapshots
+  retain assets independently of the live world.
+- `BodyComponent(shape: BodyShape.compound, parts: [...])` uses `BodyPart`.
+  Part sizes and heights are full dimensions. A part has `shape`, `size`,
+  `radius`, `height`, `hull`, `centre`, `rotation` and `scale`. Centre is local
+  to the compound. Its file rotation is a quaternion, its editor turn degrees.
+- `BodyComponent.shapeScale` defaults to `Vector3.all(1)`. Setting it applies
+  exact geometry scaling before the entity transform. Compounds always scale
+  exactly. Ordinary rounded bodies with the default shapeScale retain their
+  existing entity sizing rules. Planes ignore shapeScale.
+- A body origin is placed by `centre`; its automatic centre of mass comes
+  from its parts. `centreOfMass` offsets that combined balance point.
+- Scene compounds own their assets by body number and release them on edits
+  and removal. Use negative ids for hulls and compounds added straight into
+  `scene.physics`, since positive ids belong to the document.
+- The editor offers Compound, Add part, Remove part, each part's geometry,
+  centre, scale and turn, and Shape scale for the whole collider. Fit to mesh
+  replaces the compound with one fitted box. The gizmo draws the same maps.
