@@ -193,7 +193,7 @@ final view = OrblitDocumentView(load.document, projectRoot: root);
 OrblitScene scene(OrblitCamera camera, double seconds) => view.scene;
 
 // An edit. Diffed against what was there, so only the entity that moved is
-// rebuilt -- the other twenty are the objects the renderer already has.
+// rebuilt. The other twenty are the objects the renderer already has.
 final next = document.withEntity(id, moved);
 view.apply(SceneDiff.between(document, next));
 ''';

@@ -311,7 +311,7 @@ class CrowdExample extends Example {
 // One mesh, one buffer of transforms, one submission.
 //
 // The buffer is written once and kept. `revision` is what tells the renderer
-// whether it has to be sent again — leave it alone and a hundred thousand
+// whether it has to be sent again. Leave it alone and a hundred thousand
 // members cost nothing per frame at all.
 final transforms = Float32List(count * 16);
 final colours = Float32List(count * 3);

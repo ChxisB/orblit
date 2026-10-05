@@ -176,7 +176,7 @@ class BlendExample extends Example {
 
   @override
   String get code => '''
-// One material, two surfaces. The mask decides between them — and what the
+// One material, two surfaces. The mask decides between them, and what the
 // mask is taken to mean is the mode.
 OrblitMaterial(
   key: 1,
@@ -190,9 +190,9 @@ OrblitMaterial(
   blendTiling: Vector2(5, 5), // grass at its own scale
 )
 
-// linear      — the amount, everywhere, ignoring the mask.
-// masked      — the mask scaled by the amount: a proportional fade.
-// maskedDepth — the mask read as a height, so the low ground fills first.
+// linear:      the amount, everywhere, ignoring the mask.
+// masked:      the mask scaled by the amount, a proportional fade.
+// maskedDepth: the mask read as a height, so the low ground fills first.
 ''';
 
   // ---- the surfaces, drawn rather than shipped ----

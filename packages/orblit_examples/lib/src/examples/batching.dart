@@ -234,9 +234,10 @@ OrblitScene(
   camera: camera,
 )
 
-// On the other side, objects with the same mesh, material, flags and — on
-// the default surface — colour are counted as they arrive. Groups of four
-// or more share one material instance, and Filament merges their draws into
-// instanced ones. A transform written to one crate moves that one only.
+// On the other side, objects with the same mesh, material and flags are
+// counted as they arrive, and on the default surface they need the same
+// colour too. Groups of four or more share one material instance, and
+// Filament merges their draws into instanced ones. A transform written to one
+// crate moves that one only.
 ''';
 }

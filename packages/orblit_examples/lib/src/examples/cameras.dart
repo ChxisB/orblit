@@ -418,7 +418,7 @@ class CamerasExample extends Example {
   @override
   String get code => '''
 // One real camera, and as many shots as the scene has situations. Cutting to
-// a different angle is raising a number — nothing outside the library moves a
+// a different angle is raising a number. Nothing outside the library moves a
 // transform, which is what stops two systems fighting over the camera.
 final subject = FixedTarget(Vector3.zero());
 

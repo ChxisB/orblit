@@ -342,8 +342,8 @@ class EnvironmentVolumesExample extends Example {
   @override
   String get code => '''
 // The hall's own box, and what is different about being in it. Anything
-// left out — here the environment, the contrast, the fog's height — is left
-// exactly as the scene has it.
+// left out is left exactly as the scene has it: here, the environment, the
+// contrast and the fog's height.
 OrblitEnvironmentVolume.box(
   key: 1,
   centre: Vector3(0, 2.5, -14),

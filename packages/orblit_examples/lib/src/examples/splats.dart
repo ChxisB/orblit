@@ -838,8 +838,8 @@ final data = OrblitSplats.pack(
 );
 OrblitSplats(key: 1, data: data, revision: revision)
 
-// Sorted back to front whenever the camera moves — on a thread of the
-// renderer's own, or a Web Worker in a browser — leaving out what the camera
+// Sorted back to front whenever the camera moves, on a thread of the
+// renderer's own or a Web Worker in a browser, leaving out what the camera
 // cannot see. Drawn after the solid scene, tested against its depth, never
 // writing any.
 ''';

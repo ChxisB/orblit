@@ -394,8 +394,8 @@ class VoxelExample extends Example {
   @override
   String get code => '''
 // The world is a grid of bytes, not a list of what to draw. The moment
-// somebody can dig, "what is at this point" is asked constantly — by the
-// body falling, by every step, by every ray under the crosshair — and a
+// somebody can dig, "what is at this point" is asked constantly, by the
+// body falling, by every step and by every ray under the crosshair. A
 // grid answers it in one lookup instead of sixty thousand.
 Uint8List blocks;  // side * side * tall, nought is air
 
@@ -409,7 +409,7 @@ if (!buriedOnAllSides) {
 // Moved one axis at a time, which is the whole reason it works: move in
 // one step and test afterwards and you are inside a wall with no way to
 // know which way to come back out. One at a time, a corner stops you
-// sideways and lets you keep walking forwards — which is what sliding
+// sideways and lets you keep walking forwards, which is what sliding
 // along a wall is.
 for (final step in [(dx, 0.0), (0.0, dz)]) { ... }
 

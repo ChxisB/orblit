@@ -205,13 +205,13 @@ OrblitScene(
     // Everything else selected, in the deeper one.
     keys: {besideIt.key},
     width: 3,
-    // What the wall hides is still outlined — fainter, and dashed, so it
+    // What the wall hides is still outlined, but fainter and dashed, so it
     // reads as behind rather than in front.
     occluded: OrblitOccluded.dashed,
   ),
 )
 
-// Colours are Flutter Colors — display colours — because the outline is
+// Colours are Flutter Colors, which are display colours. The outline is
 // drawn after tone mapping and lands on screen as exactly what was asked
 // for. OrblitOutline.none, the default, draws nothing and costs nothing.
 ''';

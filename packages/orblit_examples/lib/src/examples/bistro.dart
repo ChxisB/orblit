@@ -732,7 +732,7 @@ for (final fixture in fixtures)
   OrblitLight(
     kind: OrblitLightKind.point,
     position: fixture.at,
-    intensity: 2400,       // lumens — a street lamp
+    intensity: 2400,       // lumens, a street lamp
     falloffRadius: 14,     // metres
     castShadows: false,    // a hundred shadow casters is not a thing
   ),

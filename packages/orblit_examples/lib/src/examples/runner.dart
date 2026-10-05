@@ -668,7 +668,7 @@ class RunnerExample extends Example {
   @override
   String get code => '''
 // Every model is made in code, written out as a glb, and handed to the
-// renderer by name — the same path a downloaded file takes.
+// renderer by name, the same path a downloaded file takes.
 final art = RunnerArt.build();
 for (final file in art.files.entries) {
   await OrblitResources.provide(file.key, file.value);

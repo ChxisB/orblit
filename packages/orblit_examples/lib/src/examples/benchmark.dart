@@ -285,7 +285,7 @@ class BenchmarkExample extends Example {
 // The three loads, and why they are separate dials.
 //
 // A member of a population is a row in a buffer. Sixty-four share a draw, and
-// standing still costs nothing at all — the buffer is only sent when its
+// standing still costs nothing at all. The buffer is only sent when its
 // revision moves.
 OrblitPopulation(key: 1, transforms: transforms, colours: colours,
                 revision: revision, minimum: ..., maximum: ...)
@@ -298,7 +298,7 @@ OrblitObject(key: 2000 + i, transform: ..., colour: ...)
 // nothing to do with how much of anything is in the scene.
 OrblitSky(quality: SkyQuality.fair, clouds: OrblitClouds.cumulus(cover: 0.42))
 
-// What a frame cost, from Filament's own frame history — the median of the
+// What a frame cost, from Filament's own frame history: the median of the
 // last handful, because a mean is dragged about by the one frame in thirty
 // that hits a hitch.
 final ms = await OrblitView.gpuMilliseconds(viewport);

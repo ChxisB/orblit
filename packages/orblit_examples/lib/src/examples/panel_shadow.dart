@@ -184,8 +184,8 @@ class PanelShadowExample extends Example {
 // A rectangle of light, hung above the floor and pointed at it.
 //
 // `castShadows` is what this example is about. A rectangle is not one of
-// Filament's own lights — it is shaded in the surface material against a
-// fitted table — so its shadow is a depth map of its own, drawn once from
+// Filament's own lights. It is shaded in the surface material against a
+// fitted table, so its shadow is a depth map of its own, drawn once from
 // where the panel stands and compared against by every surface it reaches.
 OrblitLight(
   key: 1,

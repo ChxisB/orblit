@@ -187,7 +187,7 @@ class DistortionExample extends Example {
   @override
   String get code => '''
 // Distortions are part of the scene, like its lights. The renderer sums
-// them in one pass over the finished frame — and draws no pass at all
+// them in one pass over the finished frame, and draws no pass at all
 // when none of them is moving anything.
 OrblitScene(
   distortions: [

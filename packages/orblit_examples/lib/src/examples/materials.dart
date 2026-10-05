@@ -412,7 +412,7 @@ final brass = OrblitMaterial(
 );
 
 // Maps multiply into the numbers beside them, so a texture and a slider are
-// the same control. Tiling is applied by the shader — there is no automatic
+// the same control. Tiling is applied by the shader, so there is no automatic
 // repeat behind your back.
 final floor = OrblitMaterial(
   key: 8,

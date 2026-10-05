@@ -257,7 +257,7 @@ class PipelineExample extends Example {
   @override
   String get code => '''
 // One pipeline. The four named settings are settings of its dials, not
-// different pipelines — nothing appears or disappears between them.
+// different pipelines. Nothing appears or disappears between them.
 final pipeline = OrblitPipeline.at(OrblitDetail.high);
 
 // Or every dial by hand.
