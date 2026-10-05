@@ -4,6 +4,7 @@ import 'blend.dart';
 import 'clip.dart';
 import 'frame.dart';
 import 'place.dart';
+import 'snapshot.dart';
 
 /// A blend being played on one character.
 ///
@@ -17,6 +18,7 @@ class BlendPlayer {
     required this.clips,
     BlendPlace? place,
     Map<String, double> inputs = const {},
+    this.rest,
   }) : place = place ?? BlendPlace(blend.start),
        inputs = {...blend.inputs, ...inputs};
 
@@ -24,6 +26,9 @@ class BlendPlayer {
 
   /// The clips, by the names [blend] gives them.
   final Map<String, ClipDocument> clips;
+
+  /// Fills unauthored channels and returns removed channels to rest in fades.
+  final ClipFrame? rest;
 
   /// Where playing has got to.
   BlendPlace place;
@@ -36,13 +41,19 @@ class BlendPlayer {
 
   /// Plays on by [seconds] and hands back what happened on the way.
   BlendStep advance(double seconds) {
-    final step = blend.advance(place, inputs, seconds, clips: clips);
+    final step = blend.advance(
+      place,
+      inputs,
+      seconds,
+      clips: clips,
+      rest: rest,
+    );
     place = step.place;
     return step;
   }
 
   /// The pose where the blend now is, without moving.
-  ClipFrame sample() => blend.sampleAt(place, inputs, clips: clips);
+  ClipFrame sample() => blend.sampleAt(place, inputs, clips: clips, rest: rest);
 
   /// Goes into [state] whatever the changes say: a cut, or a fade over
   /// [fade] seconds. For gameplay that knows better than any condition, a
@@ -52,10 +63,35 @@ class BlendPlayer {
     double fade = 0,
     Easing shape = Easing.smooth,
     bool inStep = false,
+    bool fromPose = false,
   }) {
     if (blend.stateNamed(state) == null) {
       throw ArgumentError.value(state, 'state', 'Not a state of the blend.');
     }
-    place = place.enter(state, fade: fade, shape: shape, inStep: inStep);
+    place = place.enter(
+      blend.resolveState(state),
+      fade: blend.fadeBetween(
+        place,
+        state,
+        inputs,
+        fallback: fade,
+        clips: clips,
+      ),
+      shape: shape,
+      inStep: inStep,
+      frozen: fromPose ? PoseSnapshot(sample()) : null,
+    );
+  }
+
+  /// Follows the shortest directed route, taking one edge per step.
+  ///
+  /// A requested route overrides conditions and waits for each fade to finish.
+  /// Throws when the state is unknown or unreachable, leaving the place intact.
+  void travel(String state) {
+    final route = blend.routeTo(place.state, state);
+    if (route == null) {
+      throw ArgumentError.value(state, 'state', 'Unreachable state.');
+    }
+    place = place.withRoute(route);
   }
 }

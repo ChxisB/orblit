@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.5.0
+
+- `BoneMask` selects bones by name or a skeleton subtree. `ClipLayer` plays
+  a one-shot over a moving pose with fade in, fade out and influence.
+  Its `LayerPlace` clock saves to JSON. Layer marks fire once, and the
+  underlying graph keeps its root motion.
+- `restFrame` and `completeFrame` fill unauthored channels. `BlendPlayer`
+  accepts a rest frame so a removed channel fades back to rest.
+  `addFrame` adds translation and rotation relative to rest or an authored
+  reference. Bone scales use ratios, with a linear offset at a zero rest scale.
+- A state's `sync` names cyclic contact marks. Lines and planes align those
+  contacts even when the clips have different lengths and contact times.
+  Root motion and the dominant clip's marks follow the same mapped clock.
+- `BlendGraph` puts a graph inside a state. Playback expands it into named
+  leaves and keeps one explicit `BlendPlace`. `travel` follows the shortest
+  directed route and waits for fades, overriding edge conditions.
+- `BlendFade` supplies a fade per ordered clip pair. `fromPose` freezes the
+  outgoing pose, including an interrupted fade, while the incoming clip plays.
+- Blend format 2 reads format 1 without changing its defaults. Places still
+  save to JSON. Plain places retain their 21-number encoding; frozen poses
+  and routes append metadata and need a variable-length transport.
+
 ## 0.4.0
 
 - **Retargeting.** `retargetClip` makes a clip built for one skeleton move

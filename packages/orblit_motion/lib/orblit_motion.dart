@@ -34,6 +34,7 @@ export 'src/blend.dart'
     show
         BlendChange,
         BlendDocument,
+        BlendFade,
         BlendFormatException,
         BlendLoad,
         BlendMigration,
@@ -65,11 +66,29 @@ export 'src/frame.dart' show BoneLocal, ClipFrame;
 export 'src/import.dart'
     show ClipsImported, clipsFromGltf, restSkeletonsFromGltf;
 export 'src/kind.dart' show ChannelKind;
-export 'src/place.dart' show BlendPlace;
+export 'src/layer.dart'
+    show
+        BoneMask,
+        ClipLayer,
+        LayerPlace,
+        LayerStep,
+        addFrame,
+        completeFrame,
+        layerFrame,
+        restFrame;
+export 'src/place.dart' show BlendPlace, BlendRoute;
 export 'src/player.dart' show ClipPlayer, ClipStep;
 export 'src/rest.dart' show RestSkeleton;
 export 'src/retarget.dart' show ClipRetargeted, matchBones, retargetClip;
 export 'src/root.dart' show RootStep;
 export 'src/scene.dart' show ClipScope, sceneOpsFor;
+export 'src/snapshot.dart' show PoseSnapshot;
 export 'src/source.dart'
-    show BlendClip, BlendLine, BlendPlane, BlendSource, LinePoint, PlanePoint;
+    show
+        BlendClip,
+        BlendGraph,
+        BlendLine,
+        BlendPlane,
+        BlendSource,
+        LinePoint,
+        PlanePoint;

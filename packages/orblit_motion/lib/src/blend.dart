@@ -8,10 +8,14 @@ import 'clip.dart';
 import 'condition.dart';
 import 'format.dart';
 import 'frame.dart';
+import 'graph.dart';
+import 'layer.dart';
 import 'pass.dart';
 import 'place.dart';
 import 'root.dart';
 import 'source.dart';
+import 'snapshot.dart';
+import 'sync.dart';
 
 /// The extension a blend file carries.
 const String blendExtension = '.oblend';
@@ -37,7 +41,13 @@ class BlendLoad {
 
 /// One state of a blend: what plays while the blend is in it.
 class BlendState {
-  BlendState(this.name, {required this.plays, this.speed = 1, this.whenDone}) {
+  BlendState(
+    this.name, {
+    required this.plays,
+    this.speed = 1,
+    this.whenDone,
+    List<String> sync = const [],
+  }) : sync = List.unmodifiable(sync) {
     if (name.isEmpty) {
       throw ArgumentError.value(name, 'name', 'A state needs a name.');
     }
@@ -46,6 +56,16 @@ class BlendState {
         speed,
         'speed',
         'A state plays forwards, or not at all.',
+      );
+    }
+    if (sync.isNotEmpty &&
+        (sync.length < 2 ||
+            sync.toSet().length != sync.length ||
+            sync.any((name) => name.isEmpty))) {
+      throw ArgumentError.value(
+        sync,
+        'sync',
+        'At least two distinct marker names.',
       );
     }
   }
@@ -63,11 +83,20 @@ class BlendState {
   /// What its clips do at their ends, or null for each clip's own.
   final WhenDone? whenDone;
 
+  /// Cyclic contacts in order. Phase zero is the first named mark.
+  final List<String> sync;
+
+  double lapFor(ClipDocument clip, double lap) =>
+      (whenDone ?? clip.whenDone) == WhenDone.loop
+      ? syncedLap(clip, lap, sync)
+      : lap;
+
   Map<String, Object?> toJson() => Values.pruned({
     'name': name,
     ...plays.toJson(),
     'speed': speed == 1 ? null : speed,
     'whenDone': whenDone?.name,
+    'sync': sync.isEmpty ? null : sync,
   });
 }
 
@@ -87,6 +116,7 @@ class BlendChange {
     this.fade = 0,
     this.shape = Easing.smooth,
     this.inStep = false,
+    this.fromPose = false,
   });
 
   /// The state it leaves, or null for any.
@@ -108,6 +138,9 @@ class BlendChange {
   /// left is through its own, so a walk turning into a run keeps its feet.
   final bool inStep;
 
+  /// Freeze the outgoing pose while the incoming clip keeps playing.
+  final bool fromPose;
+
   Map<String, Object?> toJson() {
     final when = this.when.toJson();
     return Values.pruned({
@@ -117,8 +150,24 @@ class BlendChange {
       'fade': fade == 0 ? null : fade,
       'shape': shape == Easing.smooth ? null : shape.name,
       'inStep': inStep ? true : null,
+      'fromPose': fromPose ? true : null,
     });
   }
+}
+
+/// A fade duration for an ordered pair of dominant clips.
+final class BlendFade {
+  BlendFade(this.from, this.to, this.seconds) {
+    if (from.isEmpty || to.isEmpty || !seconds.isFinite || seconds < 0) {
+      throw ArgumentError('Two clip names and a finite fade at least zero.');
+    }
+  }
+
+  final String from;
+  final String to;
+  final double seconds;
+
+  Map<String, Object?> toJson() => {'from': from, 'to': to, 'seconds': seconds};
 }
 
 /// How much say one clip has at a place, and how far through it is.
@@ -194,20 +243,40 @@ class BlendDocument {
     required List<BlendState> states,
     List<BlendChange> changes = const [],
     String? start,
-  }) : inputs = Map<String, double>.unmodifiable(inputs),
-       states = List<BlendState>.unmodifiable(states),
-       changes = List<BlendChange>.unmodifiable(changes),
-       start = start ?? (states.isEmpty ? '' : states.first.name) {
+    List<BlendFade> fades = const [],
+  }) : inputs = Map<String, double>.unmodifiable({
+         ...graphInputs(states),
+         ...inputs,
+       }),
+       states = List<BlendState>.unmodifiable(expandedStates(states)),
+       changes = expandedChanges(states, changes),
+       entries = Map.unmodifiable(graphEntries(states)),
+       fades = List.unmodifiable([
+         for (final state in states)
+           if (state.plays case BlendGraph(:final graph)) ...graph.fades,
+         ...fades,
+       ]),
+       _writtenStates = List.unmodifiable(states),
+       _writtenChanges = List.unmodifiable(changes),
+       _writtenFades = List.unmodifiable(fades),
+       _writtenStart = start ?? (states.isEmpty ? '' : states.first.name),
+       start =
+           graphEntries(states)[start ??
+               (states.isEmpty ? '' : states.first.name)] ??
+           start ??
+           (states.isEmpty ? '' : states.first.name) {
     if (states.isEmpty) {
       throw ArgumentError.value(states, 'states', 'A blend needs a state.');
     }
-    if (_byName.length != states.length) {
+    if (_byName.length != this.states.length ||
+        states.map((state) => state.name).toSet().length != states.length ||
+        entries.keys.any(_byName.containsKey)) {
       throw ArgumentError.value(states, 'states', 'Two states have one name.');
     }
     if (stateNamed(this.start) == null) {
       throw ArgumentError.value(start, 'start', 'Not one of the states.');
     }
-    for (final change in changes) {
+    for (final change in this.changes) {
       final from = change.from;
       if (stateNamed(change.to) == null ||
           (from != null && stateNamed(from) == null)) {
@@ -223,11 +292,10 @@ class BlendDocument {
   static const String marker = 'orblit.blend';
 
   /// The shape of the file. Bumped with a migration whenever it changes.
-  static const int formatVersion = 1;
+  static const int formatVersion = 2;
 
-  /// Every step from an older blend file to this one, oldest first. None
-  /// yet: this is the first format.
-  static const List<BlendMigration> migrations = [];
+  /// Every step from an older blend file to this one, oldest first.
+  static const List<BlendMigration> migrations = [_BlendV2()];
 
   static const FileFormat _format = FileFormat(
     marker: marker,
@@ -243,8 +311,8 @@ class BlendDocument {
   /// input read but not here is nought until set.
   final Map<String, double> inputs;
 
-  /// In the order they were written, which is what [BlendPlace.toNumbers]
-  /// counts by.
+  /// Expanded leaf states in authored order. [BlendPlace.toNumbers] uses
+  /// these indices, including nested graph leaves.
   final List<BlendState> states;
 
   /// In order of precedence: when two could be taken, the first is.
@@ -253,17 +321,83 @@ class BlendDocument {
   /// The state a character starts in.
   final String start;
 
+  /// Parent graph names and the leaf each enters.
+  final Map<String, String> entries;
+  final List<BlendFade> fades;
+  final List<BlendState> _writtenStates;
+  final List<BlendChange> _writtenChanges;
+  final List<BlendFade> _writtenFades;
+  final String _writtenStart;
+
   late final Map<String, int> _byName = {
     for (var i = 0; i < states.length; i++) states[i].name: i,
   };
 
   BlendState? stateNamed(String name) {
-    final index = _byName[name];
+    final index = _byName[resolveState(name)];
     return index == null ? null : states[index];
   }
 
   /// Where [state] is in [states], or -1.
-  int indexOf(String state) => _byName[state] ?? -1;
+  int indexOf(String state) => _byName[resolveState(state)] ?? -1;
+
+  String resolveState(String state) => entries[state] ?? state;
+
+  /// The shortest directed route, excluding [from], or null if unreachable.
+  List<String>? routeTo(String from, String to) {
+    final start = resolveState(from);
+    final goal = resolveState(to);
+    if (stateNamed(start) == null || stateNamed(goal) == null) return null;
+    final routes = <String, List<String>>{start: []};
+    final queue = <String>[start];
+    for (var i = 0; i < queue.length; i++) {
+      final here = queue[i];
+      if (here == goal) return routes[here];
+      for (final change in changes) {
+        if (change.from != null && change.from != here) continue;
+        if (routes.containsKey(change.to)) continue;
+        routes[change.to] = [...routes[here]!, change.to];
+        queue.add(change.to);
+      }
+    }
+    return null;
+  }
+
+  /// Pair-specific fade, or [fallback] when no pair was authored.
+  double fadeBetween(
+    BlendPlace place,
+    String to,
+    Map<String, double> values, {
+    double fallback = 0,
+    Map<String, ClipDocument>? clips,
+  }) {
+    final read = _reader(values);
+    final fromClip = _dominant(
+      stateNamed(place.state)?.plays.weigh(read) ?? {},
+      clips,
+    );
+    final toClip = _dominant(stateNamed(to)?.plays.weigh(read) ?? {}, clips);
+    for (final fade in fades.reversed) {
+      if (fade.from == fromClip && fade.to == toClip) return fade.seconds;
+    }
+    return fallback;
+  }
+
+  static String? _dominant(
+    Map<String, double> weights,
+    Map<String, ClipDocument>? clips,
+  ) {
+    String? found;
+    var most = 0.0;
+    for (final MapEntry(:key, :value) in weights.entries) {
+      if (clips != null && !clips.containsKey(key)) continue;
+      if (value > most) {
+        found = key;
+        most = value;
+      }
+    }
+    return found;
+  }
 
   /// Every clip it names, once each, for whoever loads them.
   Iterable<String> get clipNames => {
@@ -355,30 +489,29 @@ class BlendDocument {
     BlendPlace place,
     Map<String, double> values, {
     required Map<String, ClipDocument> clips,
+    ClipFrame? rest,
   }) {
-    final read = _reader(values);
-    final frames = <ClipFrame>[];
-    final weights = <double>[];
-    var at = 0.0;
-    var loudest = 0.0;
-    for (final (layer, share) in place.shares) {
-      if (!(share > 0)) continue;
-      final state = stateNamed(layer.state);
-      if (state == null) continue;
-      for (final MapEntry(key: name, value: weight)
-          in state.plays.weigh(read).entries) {
-        final clip = clips[name];
-        if (clip == null) continue;
-        final time = timeAt(clip, state.whenDone ?? clip.whenDone, layer.lap);
-        frames.add(clip.sampleAt(time, inPlace: true));
-        weights.add(share * weight);
-        if (share * weight > loudest) {
-          loudest = share * weight;
-          at = time;
-        }
+    final sampled = _BlendFrames(
+      clips: clips,
+      read: _reader(values),
+      rest: rest,
+    );
+    var remaining = 1.0;
+    for (
+      BlendPlace? layer = place;
+      layer != null && remaining > 0;
+      layer = layer.from
+    ) {
+      if (stateNamed(layer.state) case final state?) {
+        sampled.addState(state, layer.lap, remaining * layer.weight);
+      }
+      remaining *= 1 - layer.weight;
+      if (layer.frozen case final frozen?) {
+        sampled.add(frozen.sample(), remaining);
+        break;
       }
     }
-    return ClipFrame.mix(frames, weights, at: at);
+    return sampled.frame();
   }
 
   /// Plays on from [place] by [seconds], with [values] for inputs.
@@ -400,6 +533,7 @@ class BlendDocument {
     Map<String, double> values,
     double seconds, {
     required Map<String, ClipDocument> clips,
+    ClipFrame? rest,
   }) {
     final read = _reader(values);
     final step = seconds.isFinite && seconds > 0 ? seconds : 0.0;
@@ -428,7 +562,7 @@ class BlendDocument {
     for (var i = moved.length - 1; i >= 0; i--) {
       final (:was, state: _, :lap) = moved[i];
       built = built == null
-          ? BlendPlace(was.state, lap: lap)
+          ? BlendPlace(was.state, lap: lap, journey: was.journey)
           : BlendPlace(
               was.state,
               lap: lap,
@@ -436,6 +570,8 @@ class BlendDocument {
               faded: faded[i],
               fade: was.fade,
               shape: was.shape,
+              frozen: was.frozen,
+              journey: was.journey,
             );
     }
     final now = built!;
@@ -458,8 +594,8 @@ class BlendDocument {
           final pass = passOver(
             clip,
             state.whenDone ?? clip.whenDone,
-            was.lap,
-            lap,
+            state.lapFor(clip, was.lap),
+            state.lapFor(clip, lap),
             marks: false,
           );
           steps.add(pass.moved);
@@ -471,33 +607,65 @@ class BlendDocument {
         }
       }
       if (i == 0 && loudest != null) {
+        final start = state.lapFor(loudest, was.lap);
+        if (was.lap == 0 && lap > 0 && start > 0) {
+          final time = timeAt(
+            loudest,
+            state.whenDone ?? loudest.whenDone,
+            start,
+          );
+          marks.addAll(loudest.marksBetween(time - 1e-9, time));
+        }
         marks.addAll(
           passOver(
             loudest,
             state.whenDone ?? loudest.whenDone,
-            was.lap,
-            lap,
+            state.lapFor(loudest, was.lap),
+            state.lapFor(loudest, lap),
           ).marks,
         );
       }
     }
 
-    final change = changeFor(now, values);
+    final change = now.route.isEmpty
+        ? changeFor(now, values)
+        : _routeChange(now);
     final next = change == null
         ? now
         : now.enter(
             change.to,
-            fade: change.fade,
+            fade: fadeBetween(
+              now,
+              change.to,
+              values,
+              fallback: change.fade,
+              clips: clips,
+            ),
             shape: change.shape,
             inStep: change.inStep,
+            frozen: change.fromPose
+                ? PoseSnapshot(sampleAt(now, values, clips: clips, rest: rest))
+                : null,
+            route: now.route.isEmpty ? const [] : now.route.skip(1).toList(),
           );
     return BlendStep(
       place: next,
-      frame: sampleAt(next, values, clips: clips),
+      frame: sampleAt(next, values, clips: clips, rest: rest),
       marks: marks,
       moved: _mixed(steps, says),
       change: change,
     );
+  }
+
+  BlendChange? _routeChange(BlendPlace place) {
+    if (place.from != null) return null;
+    for (final change in changes) {
+      if ((change.from == null || change.from == place.state) &&
+          change.to == place.route.first) {
+        return change;
+      }
+    }
+    return null;
   }
 
   /// [steps] mixed by [says], the way the clips that took them are.
@@ -517,9 +685,11 @@ class BlendDocument {
     'formatVersion': formatVersion,
     'name': name,
     'inputs': inputs,
-    'start': start,
-    'states': [for (final state in states) state.toJson()],
-    'changes': [for (final change in changes) change.toJson()],
+    'start': _writtenStart,
+    'states': [for (final state in _writtenStates) state.toJson()],
+    'changes': [for (final change in _writtenChanges) change.toJson()],
+    if (_writtenFades.isNotEmpty)
+      'fades': [for (final fade in _writtenFades) fade.toJson()],
   };
 
   /// The file's text: indented, with anything short enough on a line of its
@@ -535,7 +705,13 @@ class BlendDocument {
   static BlendLoad decode(String text) {
     final problems = <String>[];
     final json = _format.open(text, problems);
+    return _decode(json, problems);
+  }
 
+  static BlendLoad fromJson(Map<String, Object?> raw) =>
+      decode(jsonEncode(raw));
+
+  static BlendLoad _decode(Map<String, Object?> json, List<String> problems) {
     final inputs = <String, double>{};
     for (final MapEntry(key: input, value: raw) in Values.object(
       json['inputs'],
@@ -574,13 +750,16 @@ class BlendDocument {
         );
         speed = 1;
       }
-      states.add(
+      _appendState(
+        states,
         BlendState(
           name,
           plays: plays,
           speed: speed,
           whenDone: Values.named(WhenDone.values, raw['whenDone']),
+          sync: _readSync(raw['sync'], name, problems),
         ),
+        problems,
       );
     }
     if (states.isEmpty) {
@@ -588,7 +767,10 @@ class BlendDocument {
         'This blend has no state that could be read.',
       );
     }
-    bool known(String? state) => states.any((one) => one.name == state);
+    final leaves = expandedStates(states);
+    final entries = graphEntries(states);
+    bool known(String? state) =>
+        entries.containsKey(state) || leaves.any((one) => one.name == state);
 
     var start = Values.text(json, 'start') ?? states.first.name;
     if (!known(start)) {
@@ -636,6 +818,7 @@ class BlendDocument {
           fade: fade,
           shape: Values.named(Easing.values, raw['shape']) ?? Easing.smooth,
           inStep: Values.flag(raw, 'inStep', fallback: false),
+          fromPose: Values.flag(raw, 'fromPose', fallback: false),
         ),
       );
     }
@@ -646,9 +829,10 @@ class BlendDocument {
       states: states,
       changes: changes,
       start: start,
+      fades: _readFades(json['fades'], problems),
     );
     for (final input in blend.inputsRead) {
-      if (!inputs.containsKey(input)) {
+      if (!blend.inputs.containsKey(input)) {
         problems.add(
           'The blend reads "$input", which it does not declare, '
           'so it is nought until something sets it.',
@@ -657,6 +841,129 @@ class BlendDocument {
     }
     return BlendLoad(blend: blend, problems: problems);
   }
+
+  static List<String> _readSync(
+    Object? raw,
+    String state,
+    List<String> problems,
+  ) {
+    if (raw == null) return const [];
+    if (raw is List &&
+        raw.length >= 2 &&
+        raw.every((v) => v is String && v.isNotEmpty) &&
+        raw.toSet().length == raw.length) {
+      return raw.cast<String>();
+    }
+    problems.add(
+      'The state "$state" has invalid sync markers, so it uses ordinary laps.',
+    );
+    return const [];
+  }
+
+  static void _appendState(
+    List<BlendState> states,
+    BlendState state,
+    List<String> problems,
+  ) {
+    final candidate = [...states, state];
+    try {
+      final names = expandedStates(candidate).map((leaf) => leaf.name).toList();
+      if (names.toSet().length != names.length ||
+          graphEntries(candidate).keys.any(names.contains)) {
+        problems.add(
+          'The state "${state.name}" conflicts with another graph path, so it was left out.',
+        );
+        return;
+      }
+      states.add(state);
+    } on ArgumentError {
+      problems.add(
+        'The state "${state.name}" could not be expanded, so it was left out.',
+      );
+    }
+  }
+
+  static List<BlendFade> _readFades(Object? raw, List<String> problems) {
+    final out = <BlendFade>[];
+    for (final entry in raw is List ? raw : const []) {
+      if (entry is! Map<String, Object?>) {
+        problems.add('A clip-pair fade could not be read.');
+        continue;
+      }
+      final from = Values.text(entry, 'from');
+      final to = Values.text(entry, 'to');
+      final seconds = Values.maybeNumber(entry, 'seconds');
+      if (from == null ||
+          from.isEmpty ||
+          to == null ||
+          to.isEmpty ||
+          seconds == null ||
+          !seconds.isFinite ||
+          seconds < 0) {
+        problems.add(
+          'A clip-pair fade needs two names and a finite time at least zero.',
+        );
+        continue;
+      }
+      out.add(BlendFade(from, to, seconds));
+    }
+    return out;
+  }
+}
+
+final class _BlendFrames {
+  _BlendFrames({required this.clips, required this.read, this.rest});
+
+  final Map<String, ClipDocument> clips;
+  final double Function(String) read;
+  final ClipFrame? rest;
+  final List<ClipFrame> _frames = [];
+  final List<double> _weights = [];
+  double _at = 0;
+  double _loudest = 0;
+
+  void addState(BlendState state, double lap, double share) {
+    if (share <= 0) return;
+    for (final MapEntry(:key, :value) in state.plays.weigh(read).entries) {
+      final clip = clips[key];
+      if (clip == null) continue;
+      final time = timeAt(
+        clip,
+        state.whenDone ?? clip.whenDone,
+        state.lapFor(clip, lap),
+      );
+      add(clip.sampleAt(time, inPlace: true), share * value);
+    }
+  }
+
+  void add(ClipFrame frame, double weight) {
+    final rest = this.rest;
+    _frames.add(rest == null ? frame : completeFrame(frame, rest));
+    _weights.add(weight);
+    if (weight > _loudest) {
+      _loudest = weight;
+      _at = frame.at;
+    }
+  }
+
+  ClipFrame frame() {
+    final out = ClipFrame.mix(_frames, _weights, at: _at);
+    final rest = this.rest;
+    return rest == null ? out : completeFrame(out, rest);
+  }
+}
+
+final class _BlendV2 extends BlendMigration {
+  const _BlendV2();
+
+  @override
+  int get from => 1;
+
+  @override
+  Map<String, Object?> apply(Map<String, Object?> json, List<String> notes) => {
+    ...json,
+    'formatVersion': 2,
+  };
 }
 
 /// One step between blend formats: decoded JSON at [from] in, at [to] out.

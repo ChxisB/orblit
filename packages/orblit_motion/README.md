@@ -13,6 +13,22 @@ place, a plain value: saved, a character comes back mid-stride; sent as
 numbers, it stands the same on another machine; built by hand, a test can ask
 what happens next without playing up to it.
 
+`BlendGraph` nests a graph in a state. `travel` finds a route to a named leaf
+and follows each edge after the previous fade finishes. `BlendFade` chooses
+a fade for an ordered clip pair. `fromPose` fades from the visible pose,
+held still while the destination moves.
+
+`BoneMask.below` selects a skeleton subtree. `ClipLayer` plays a one-shot
+over the graph with a fade in and out, leaving the unselected bones moving.
+`addFrame` adds a pose's difference from rest or an authored reference.
+Give `BlendPlayer` a `restFrame` so missing channels return to rest in fades.
+Each state's `sync` can name cyclic foot contacts. Clips in a line or plane
+then reach those contacts together despite different contact times.
+
+Save the graph's `BlendPlace` and each shot's `LayerPlace`. Ordinary graph
+places still encode as 21 numbers. Frozen poses and requested routes append
+metadata, so those places need JSON or a variable-length numeric transport.
+
 Cutscenes are clips the scene plays. A cutscene keys what is in the scene
 by its own ids, and says through which camera it is watched when. Two shots
 that overlap fade from one camera to the other. It is saved as an

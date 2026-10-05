@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:orblit_scene/orblit_scene.dart' show Values;
 import 'package:orblit_sequence/orblit_sequence.dart';
 
 import 'blend.dart';
+import 'snapshot.dart';
 
 /// Where a blend is: which state, how far into it, and what it is fading in
 /// over.
@@ -29,6 +31,8 @@ class BlendPlace {
     this.faded = 0,
     this.fade = 0,
     this.shape = Easing.smooth,
+    this.frozen,
+    this.journey,
   });
 
   /// The most places one place holds, itself included.
@@ -36,8 +40,8 @@ class BlendPlace {
 
   static const int _each = 5;
 
-  /// How many numbers [toNumbers] writes, whatever the place: the arity of a
-  /// `float64` component that carries one.
+  /// Numbers in the fixed prefix. A place without routes or frozen poses
+  /// fits a `float64` column of this arity. Extended places append metadata.
   static const int width = 1 + _each * deepest;
 
   /// The state being played.
@@ -62,6 +66,14 @@ class BlendPlace {
   /// How the fade eases.
   final Easing shape;
 
+  /// The outgoing pose held still during this fade, when requested.
+  final PoseSnapshot? frozen;
+
+  /// Remaining leaf states on a requested route.
+  List<String> get route => journey?.states ?? const [];
+
+  final BlendRoute? journey;
+
   /// How much say [state] has over [from]: nought as the fade starts and one
   /// at its end, and one when there is nothing to fade from.
   double get weight => from == null || !(fade > 0)
@@ -84,6 +96,17 @@ class BlendPlace {
   /// How many places this one holds, itself included.
   int get depth => 1 + (from?.depth ?? 0);
 
+  BlendPlace withRoute(List<String> route) => BlendPlace(
+    state,
+    lap: lap,
+    from: from,
+    faded: faded,
+    fade: fade,
+    shape: shape,
+    frozen: frozen,
+    journey: route.isEmpty ? null : BlendRoute(route),
+  );
+
   /// Where playing goes on from after a change into [state].
   ///
   /// A [fade] of nothing is a cut, and leaves nothing behind. [inStep]
@@ -94,15 +117,22 @@ class BlendPlace {
     double fade = 0,
     Easing shape = Easing.smooth,
     bool inStep = false,
+    PoseSnapshot? frozen,
+    List<String> route = const [],
   }) {
     final into = inStep ? lap - lap.floorToDouble() : 0.0;
-    if (!(fade > 0) || !fade.isFinite) return BlendPlace(state, lap: into);
+    final planned = route.isEmpty ? null : BlendRoute(route);
+    if (!(fade > 0) || !fade.isFinite) {
+      return BlendPlace(state, lap: into, journey: planned);
+    }
     return BlendPlace(
       state,
       lap: into,
       from: _keeping(deepest - 1),
       fade: fade,
       shape: shape,
+      frozen: frozen,
+      journey: planned,
     );
   }
 
@@ -120,6 +150,8 @@ class BlendPlace {
       faded: faded,
       fade: fade,
       shape: shape,
+      frozen: frozen,
+      journey: journey,
     );
   }
 
@@ -128,11 +160,13 @@ class BlendPlace {
     return Values.pruned({
       'state': state,
       'lap': lap,
+      if (route.isNotEmpty) 'route': route,
       if (from != null) ...{
         'fade': fade,
         'faded': faded,
         'shape': shape == Easing.smooth ? null : shape.name,
         'from': from.toJson(),
+        if (frozen != null) 'frozen': frozen!.toJson(),
       },
     });
   }
@@ -153,23 +187,26 @@ class BlendPlace {
     final state = Values.text(raw, 'state');
     if (state == null || blend.stateNamed(state) == null) return null;
     final lap = _lap(Values.maybeNumber(raw, 'lap'));
+    final route = _readRoute(raw['route'], blend, state);
     final from = _read(raw['from'], blend, places - 1);
     final fade = Values.maybeNumber(raw, 'fade') ?? 0;
     if (from == null || !(fade > 0) || !fade.isFinite) {
-      return BlendPlace(state, lap: lap);
+      return BlendPlace(blend.resolveState(state), lap: lap, journey: route);
     }
     final faded = Values.maybeNumber(raw, 'faded') ?? 0;
     return BlendPlace(
-      state,
+      blend.resolveState(state),
       lap: lap,
       from: from,
       fade: fade,
       faded: faded.isFinite ? faded.clamp(0.0, fade) : 0,
       shape: Values.named(Easing.values, raw['shape']) ?? Easing.smooth,
+      frozen: PoseSnapshot.fromJson(raw['frozen']),
+      journey: route,
     );
   }
 
-  /// The place as [width] numbers, for a component column.
+  /// The place as numbers, starting with the legacy [width] number prefix.
   ///
   /// A state goes by its place in [blend]'s list rather than by name, so
   /// both ends need the same blend. For a save file, which may be read by a
@@ -178,8 +215,38 @@ class BlendPlace {
   /// The first number is how many places there are; then five for each,
   /// newest first: the state, the lap, the fade gone, the fade in all, and
   /// the easing.
+  /// Routes and frozen poses append a length and UTF-8 JSON bytes as numbers.
+  /// Use JSON or a variable-length transport for these extended places.
   Float64List toNumbers(BlendDocument blend) {
-    final out = Float64List(width);
+    final places = <BlendPlace>[];
+    for (
+      BlendPlace? at = this;
+      at != null && places.length < deepest;
+      at = at.from
+    ) {
+      places.add(at);
+    }
+    final extended = places.any(
+      (place) => place.frozen != null || place.route.isNotEmpty,
+    );
+    final extra = extended
+        ? utf8.encode(
+            jsonEncode([
+              for (final place in places)
+                {
+                  if (place.frozen != null) 'frozen': place.frozen!.toJson(),
+                  if (place.route.isNotEmpty) 'route': place.route,
+                },
+            ]),
+          )
+        : const <int>[];
+    final out = Float64List(width + (extended ? 1 + extra.length : 0));
+    if (extended) {
+      out[width] = extra.length.toDouble();
+      for (var i = 0; i < extra.length; i++) {
+        out[width + 1 + i] = extra[i].toDouble();
+      }
+    }
     var count = 0;
     for (BlendPlace? at = this; at != null && count < deepest; at = at.from) {
       final base = 1 + count * _each;
@@ -199,6 +266,8 @@ class BlendPlace {
   static BlendPlace? fromNumbers(BlendDocument blend, List<double> numbers) {
     if (numbers.length < width || !numbers[0].isFinite) return null;
     final count = numbers[0].round().clamp(0, deepest);
+    final extra = _readExtra(numbers, count);
+    if (extra == null) return null;
     BlendPlace? built;
     for (var i = count - 1; i >= 0; i--) {
       final base = 1 + i * _each;
@@ -215,9 +284,11 @@ class BlendPlace {
       }
       final state = blend.states[index.toInt()].name;
       final lap = _lap(numbers[base + 1]);
+      final metadata = extra.isEmpty ? const <String, Object?>{} : extra[i];
+      final route = _readRoute(metadata['route'], blend, state);
       final fade = numbers[base + 3];
       if (built == null || !(fade > 0) || !fade.isFinite) {
-        built = BlendPlace(state, lap: lap);
+        built = BlendPlace(state, lap: lap, journey: route);
         continue;
       }
       final faded = numbers[base + 2];
@@ -231,11 +302,69 @@ class BlendPlace {
         shape: shape.isFinite
             ? Easing.values[shape.round().clamp(0, Easing.values.length - 1)]
             : Easing.smooth,
+        frozen: PoseSnapshot.fromJson(metadata['frozen']),
+        journey: route,
       );
     }
     // Null when the newest state is one the blend has not got: no place at
     // all.
     return built;
+  }
+
+  static BlendRoute? _readRoute(
+    Object? raw,
+    BlendDocument blend,
+    String state,
+  ) {
+    if (raw is! List || raw.isEmpty) return null;
+    final out = <String>[];
+    var from = blend.resolveState(state);
+    for (final next in raw) {
+      if (next is! String || blend.stateNamed(next) == null) return null;
+      final to = blend.resolveState(next);
+      if (!blend.changes.any(
+        (change) =>
+            (change.from == null || change.from == from) && change.to == to,
+      )) {
+        return null;
+      }
+      out.add(to);
+      from = to;
+    }
+    return BlendRoute(out);
+  }
+
+  static List<Map<String, Object?>>? _readExtra(
+    List<double> numbers,
+    int count,
+  ) {
+    if (numbers.length == width) return const [];
+    final length = numbers[width];
+    if (!length.isFinite ||
+        length < 0 ||
+        length != length.roundToDouble() ||
+        length != numbers.length - width - 1) {
+      return null;
+    }
+    final bytes = numbers.skip(width + 1).toList();
+    if (bytes.any(
+      (v) => !v.isFinite || v < 0 || v > 255 || v != v.roundToDouble(),
+    )) {
+      return null;
+    }
+    try {
+      final raw = jsonDecode(
+        utf8.decode([for (final byte in bytes) byte.toInt()]),
+      );
+      if (raw is! List ||
+          raw.length != count ||
+          raw.any((v) => v is! Map<String, Object?>)) {
+        return null;
+      }
+      return raw.cast<Map<String, Object?>>();
+    } on FormatException {
+      return null;
+    }
   }
 
   static double _lap(double? raw) =>
@@ -249,10 +378,25 @@ class BlendPlace {
       other.faded == faded &&
       other.fade == fade &&
       other.shape == shape &&
+      other.frozen == frozen &&
+      _sameRoute(other.route, route) &&
       other.from == from;
 
   @override
-  int get hashCode => Object.hash(state, lap, faded, fade, shape, from);
+  int get hashCode => Object.hash(
+    state,
+    lap,
+    faded,
+    fade,
+    shape,
+    from,
+    frozen,
+    Object.hashAll(route),
+  );
+
+  static bool _sameRoute(List<String> a, List<String> b) =>
+      a.length == b.length &&
+      Iterable<int>.generate(a.length).every((i) => a[i] == b[i]);
 
   @override
   String toString() {
@@ -260,4 +404,11 @@ class BlendPlace {
     if (from == null) return 'BlendPlace($state at $lap)';
     return 'BlendPlace($state at $lap, $faded of $fade s over $from)';
   }
+}
+
+/// An immutable requested sequence of leaf states.
+final class BlendRoute {
+  BlendRoute(Iterable<String> states) : states = List.unmodifiable(states);
+
+  final List<String> states;
 }

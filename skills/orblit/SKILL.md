@@ -282,6 +282,13 @@ sprite animation `animation.at(seconds)`, a cutscene
 replays and late joiners give the same answer. Physics, behaviour trees and
 blends do step, because they have history. A blend keeps all of its history in
 a `BlendPlace`, a plain value that can be saved, sent or built by hand.
+Nested `BlendGraph`s expand into named leaves. A place also saves any route
+requested by `travel` and any frozen outgoing pose. Those extended places
+need JSON or a variable-length transport; plain places retain 21 numbers.
+`ClipLayer` adds a masked one-shot whose `LayerPlace` clock saves separately.
+Pass a rest frame when missing channels should fade to rest. State `sync`
+names cyclic contact marks for walk/run blends. See the package reference
+for the layer, additive and graph APIs.
 
 For the parts that step, work out `dt` from the clock and guard it the way the
 gallery's runner does:

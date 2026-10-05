@@ -1,5 +1,7 @@
 import 'package:orblit_scene/orblit_scene.dart' show Values;
 
+import 'blend.dart';
+
 /// What a state of a blend plays: one clip, or clips mixed by the blend's
 /// inputs.
 ///
@@ -54,11 +56,49 @@ sealed class BlendSource {
     if (raw['plane'] case final Map<String, Object?> plane) {
       return BlendPlane._read(plane, where, problems);
     }
+    if (raw['graph'] case final Map<String, Object?> graph) {
+      try {
+        final loaded = BlendDocument.fromJson(graph);
+        problems.addAll(loaded.problems);
+        return BlendGraph(loaded.blend);
+      } on BlendFormatException catch (error) {
+        problems.add('The graph in $where could not be read: ${error.message}');
+        return null;
+      }
+    }
     problems.add(
       '${_capital(where)} plays nothing: it names no clip, line or plane.',
     );
     return null;
   }
+}
+
+/// A graph inside a state. Its leaf states are addressed as `state/leaf`.
+///
+/// Nested graphs are expanded when their owner is constructed. Playback
+/// still has one explicit place, and entering the parent enters its start.
+final class BlendGraph extends BlendSource {
+  const BlendGraph(this.graph);
+
+  final BlendDocument graph;
+
+  @override
+  Iterable<String> get clips => graph.clipNames;
+
+  @override
+  Iterable<String> get inputs => graph.inputsRead;
+
+  @override
+  void _weigh(
+    double Function(String input) read,
+    double scale,
+    Map<String, double> out,
+  ) {
+    graph.stateNamed(graph.start)!.plays._weigh(read, scale, out);
+  }
+
+  @override
+  Map<String, Object?> toJson() => {'graph': graph.toJson()};
 }
 
 String _capital(String text) =>
@@ -113,6 +153,11 @@ class BlendLine extends BlendSource {
       throw ArgumentError.value(points, 'points', 'A line needs a point.');
     }
     for (final point in points) {
+      if (point.plays is BlendGraph) {
+        throw ArgumentError(
+          'A nested graph belongs in a state, not a line point.',
+        );
+      }
       if (!point.at.isFinite) {
         throw ArgumentError.value(point.at, 'at', 'A point is somewhere.');
       }
@@ -201,7 +246,13 @@ class BlendLine extends BlendSource {
         'the point at $at on the line in $where',
         problems,
       );
-      if (plays != null) points.add(LinePoint(at, plays));
+      if (plays is BlendGraph) {
+        problems.add(
+          'A nested graph in $where belongs in a state, so the point was left out.',
+        );
+      } else if (plays != null) {
+        points.add(LinePoint(at, plays));
+      }
     }
     if (points.isEmpty) {
       problems.add('The line in $where has no points.');
@@ -251,6 +302,11 @@ class BlendPlane extends BlendSource {
       throw ArgumentError.value(points, 'points', 'A plane needs a point.');
     }
     for (final point in points) {
+      if (point.plays is BlendGraph) {
+        throw ArgumentError(
+          'A nested graph belongs in a state, not a plane point.',
+        );
+      }
       if (!point.x.isFinite || !point.y.isFinite) {
         throw ArgumentError('A point on a plane is somewhere.');
       }
@@ -382,7 +438,13 @@ class BlendPlane extends BlendSource {
         'the point at ($atX, $atY) on the plane in $where',
         problems,
       );
-      if (plays != null) points.add(PlanePoint(atX, atY, plays));
+      if (plays is BlendGraph) {
+        problems.add(
+          'A nested graph in $where belongs in a state, so the point was left out.',
+        );
+      } else if (plays != null) {
+        points.add(PlanePoint(atX, atY, plays));
+      }
     }
     if (points.isEmpty) {
       problems.add('The plane in $where has no points.');

@@ -460,6 +460,18 @@ BlendStep tick(BlendPlayer player, double speed, bool jumped, double dt) {
 clip's, through `sceneOpsFor` or a skin binding), the `marks`, the root
 motion `moved`, the new `place` and the `change` taken, if any. `sample()`
 poses without moving; `enter(state, fade: ...)` forces a state.
+`travel(state)` follows a shortest directed route, overriding conditions and
+waiting for each fade. `BlendGraph(document)` nests a graph in a state.
+Child leaves are named `parent/child`; entering a parent enters its start.
+Nested inputs share names. Outer defaults and outer changes take precedence.
+Graphs belong directly in states, not in line or plane points.
+
+`BlendState(sync: ['left', 'right'])` maps a cyclic lap to named contacts in
+each clip. Each contact must occur once, in the declared cyclic order.
+Missing, repeated or misordered contacts fall back to ordinary laps.
+`BlendFade(fromClip, toClip, seconds)` in `BlendDocument(fades: [...])`
+overrides a transition's fade for the dominant ordered pair. `fromPose: true`
+on `BlendChange` or `player.enter` freezes the current visible pose.
 
 The `BlendPlace` is everything a blend remembers: the state, the `lap` (how
 many times through it, so 2.5 is halfway through the third), and what is
@@ -470,7 +482,10 @@ fading out (`from`, `faded`, `fade`, `shape`), nested up to
 register `world.registerComponent('BlendPlace', kind: ComponentKind.float64, arity: BlendPlace.width)`
 and write `place.toNumbers(blend)` (a `Float64List`) into it;
 `BlendPlace.fromNumbers(blend, numbers)` reads it back. The numbers name states by their index, so both ends need
-the same blend, and inputs travel separately. A test needs no clips and no
+the same blend, and inputs travel separately. That fixed column covers places
+without a frozen pose or route. Extended places append length-prefixed UTF-8
+JSON metadata as numbers; use JSON or a variable-length transport for them.
+A test needs no clips and no
 frames: build a place by hand and ask `blend.changeFor(place, inputs)`,
 `blend.weightsAt(place, inputs)` or `blend.advance(place, inputs, 0, clips: {})`.
 
@@ -490,12 +505,34 @@ Traps:
   second on one side and radians on the other shares badly.
 - A clip the player was not handed is left out without a word, and the rest
   share its say. Check `blend.clipNames` against the clips.
-- There is no rest pose. A value only one side of a fade keys is held at
-  full, then snaps when the fade ends: key the same parts in clips that fade
-  into each other.
+- Pass `rest: restFrame({'': skeleton})` to `BlendPlayer` so a channel that
+  disappears fades to rest. Without rest, sparse channels keep their old
+  behavior: only clips that author a channel share it.
 - A state's `speed` is never negative. A walk backwards is its own clip.
 
 Guide: `/guides/animation/`.
+
+### Layers and additive poses
+
+`BoneMask({'arm': 1}, target: '')` selects named bones. `BoneMask.below(rest,
+'spine')` includes a root and every descendant. Weights lie between 0 and 1;
+unnamed bones and other targets have no influence.
+
+`ClipLayer(clip, mask: mask, fadeIn: 0.1, fadeOut: 0.1, influence: 1)` is
+a reusable one-shot. Start it with `LayerPlace()`. Advance the clock with
+`layer.advance(place, dt)` and store `step.place`. It reports `marks` and
+`finished`. Compose it with `layer.sampleAt(baseFrame, place, rest: rest)`.
+The graph keeps advancing and provides all character root motion. Multiple
+layers compose in the order you apply them. Save each `LayerPlace.toJson()`
+beside the graph place and restore with `LayerPlace.fromJson(raw)`.
+
+`layerFrame(base, overlay, rest: rest, mask: mask, weight: 0.5)` overrides
+only channels the overlay authors. `addFrame` adds translation and local
+rotation relative to `reference`, which defaults to rest. Scales use a ratio;
+a zero reference scale uses an offset. `ClipLayer(additive: true)` does the
+same over its fade envelope. A mask affects bones only. Unmasked additive
+layers also add numeric, vector and quaternion entity properties; flags stay
+at the base value. `completeFrame(frame, rest)` fills all missing channels.
 
 ### Cutscenes
 
