@@ -58,6 +58,12 @@ enum BodyMotion {
 
   /// Falls, is pushed, and pushes back.
   free,
+
+  /// Walks. Swept through the world rather than solved, so it slides along
+  /// walls, climbs a step, stands on a slope and rides what it stands on. It
+  /// goes where it is driven and nowhere else, so it does not fall until
+  /// something asks it to. Its shape is the body's own, normally a capsule.
+  character,
 }
 
 /// One of the six ways a free body can be held still, in the world's axes
@@ -156,6 +162,11 @@ class BodyComponent extends SceneComponent {
     this.continuous = false,
     Vector3? centreOfMass,
     Vector3? inertia,
+    this.stepHeight = 0.3,
+    this.steepest = 0.7853981633974483,
+    this.skin = 0.01,
+    this.strength = 500,
+    this.crouchHeight = 0,
   }) : size = size ?? Vector3.all(1),
        hull = List.unmodifiable(hull),
        parts = List.unmodifiable(parts),
@@ -206,6 +217,11 @@ class BodyComponent extends SceneComponent {
     continuous: Values.flag(json, 'continuous', fallback: false),
     centreOfMass: Values.vector(json['centreOfMass']),
     inertia: Values.vector(json['inertia']),
+    stepHeight: Values.number(json, 'stepHeight', 0.3),
+    steepest: Values.number(json, 'steepest', 0.7853981633974483),
+    skin: Values.number(json, 'skin', 0.01),
+    strength: Values.number(json, 'strength', 500),
+    crouchHeight: Values.number(json, 'crouchHeight', 0),
   );
 
   // Keep position indices stable: a malformed coordinate makes the mesh inert.
@@ -252,6 +268,11 @@ class BodyComponent extends SceneComponent {
     bool? continuous,
     Vector3? centreOfMass,
     Vector3? inertia,
+    double? stepHeight,
+    double? steepest,
+    double? skin,
+    double? strength,
+    double? crouchHeight,
   }) => BodyComponent(
     shape: shape ?? this.shape,
     size: (size ?? this.size).clone(),
@@ -282,6 +303,11 @@ class BodyComponent extends SceneComponent {
     continuous: continuous ?? this.continuous,
     centreOfMass: (centreOfMass ?? this.centreOfMass).clone(),
     inertia: (inertia ?? this.inertia).clone(),
+    stepHeight: stepHeight ?? this.stepHeight,
+    steepest: steepest ?? this.steepest,
+    skin: skin ?? this.skin,
+    strength: strength ?? this.strength,
+    crouchHeight: crouchHeight ?? this.crouchHeight,
   );
 
   /// The same body made of [material]: its friction and its bounce, and
@@ -413,6 +439,26 @@ class BodyComponent extends SceneComponent {
   /// given. Otherwise the shape's is used.
   final Vector3 inertia;
 
+  /// The tallest step a [BodyMotion.character] walks up without being asked
+  /// to jump, in metres. Only a character reads this, and the four after it.
+  final double stepHeight;
+
+  /// The steepest slope a character stands on, in radians from flat. On a
+  /// steeper one it slides.
+  final double steepest;
+
+  /// How far a character keeps from everything it touches, in metres. What
+  /// stops it snagging on the seam between two floor tiles.
+  final double skin;
+
+  /// The most force in newtons a character pushes a free body with.
+  final double strength;
+
+  /// How tall a character's capsule is while it crouches, tip to tip like
+  /// [height]. Zero is a character that does not crouch. It keeps its feet
+  /// where they were, and stands again only where there is room.
+  final double crouchHeight;
+
   @override
   String get type => SceneComponents.body;
 
@@ -452,5 +498,10 @@ class BodyComponent extends SceneComponent {
     'continuous': continuous,
     'centreOfMass': Values.vectorToJson(centreOfMass),
     'inertia': Values.vectorToJson(inertia),
+    'stepHeight': stepHeight,
+    'steepest': steepest,
+    'skin': skin,
+    'strength': strength,
+    'crouchHeight': crouchHeight,
   };
 }

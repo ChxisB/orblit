@@ -422,6 +422,12 @@ built from `footingOf(id)!.velocity`. The world decides what it gets. It
 slides along walls, climbs steps, rides platforms and pushes crates, and
 crates cannot push it. Root motion goes in the same way: the clip's step,
 turned to world space and divided by the tick, is the velocity to ask for.
+`setStance(id, shape)` crouches it, and answers false when there is no room to
+stand.
+
+In a scene, a body with `BodyMotion.character` is one: `scene.walk(entity,
+RootMotionWalk(player))` asks for its root motion once per step, and
+`scene.crouch(entity, true)` crouches it with its feet where they were.
 
 Joints are `physics.join(id, const Joint.hinge(...), a: holder, b: body, at:
 ..., rotation: ...)`, in **radians**, with 0 for the world at either end. In a

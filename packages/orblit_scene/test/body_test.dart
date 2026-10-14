@@ -94,6 +94,39 @@ void main() {
       expect(read.inertia, Vector3(2, 3, 4));
     });
 
+    test('a character keeps its walking numbers through a file', () {
+      final body = BodyComponent(
+        shape: BodyShape.capsule,
+        motion: BodyMotion.character,
+        radius: 0.3,
+        height: 1.8,
+        stepHeight: 0.45,
+        steepest: 0.9,
+        skin: 0.02,
+        strength: 120,
+        crouchHeight: 1.0,
+      );
+      final read = BodyComponent.fromJson(body.toJson());
+
+      expect(read.motion, BodyMotion.character);
+      expect(read.stepHeight, 0.45);
+      expect(read.steepest, 0.9);
+      expect(read.skin, 0.02);
+      expect(read.strength, 120);
+      expect(read.crouchHeight, 1.0);
+      expect(read.copyWith(crouchHeight: 0.8).crouchHeight, 0.8);
+      expect(read.copyWith(crouchHeight: 0.8).stepHeight, 0.45);
+    });
+
+    test('a file from before characters reads as one that does not crouch', () {
+      final body = BodyComponent.fromJson(const {'motion': 'driven'});
+
+      expect(body.stepHeight, 0.3);
+      expect(body.skin, 0.01);
+      expect(body.strength, 500);
+      expect(body.crouchHeight, 0);
+    });
+
     test('a file from before triggers and belts reads as a plain body', () {
       final body = BodyComponent.fromJson(const {'mass': 5, 'asleep': true});
 
