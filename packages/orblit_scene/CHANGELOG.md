@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.0
+
+- Add `BodyComponent.continuous`, which casts a free body along its move
+  against fixed bodies and ground so that it stops at a thin wall. It is kept
+  through JSON and `copyWith`.
+
 ## 0.14.0
 
 - Store indexed static mesh colliders in body components, including JSON and copyWith.

@@ -43,6 +43,7 @@ void main() {
       expect(body.gravityScale, 1);
       expect(body.maxSpeed, 0);
       expect(body.maxSpin, 0);
+      expect(body.continuous, isFalse);
       expect(body.centreOfMass, Vector3.zero());
       expect(body.inertia, Vector3.zero());
     });
@@ -70,6 +71,7 @@ void main() {
         gravityScale: 0.5,
         maxSpeed: 12,
         maxSpin: 3,
+        continuous: true,
         centreOfMass: Vector3(0, -0.2, 0),
         inertia: Vector3(2, 3, 4),
       );
@@ -87,6 +89,7 @@ void main() {
       expect(read.gravityScale, 0.5);
       expect(read.maxSpeed, 12);
       expect(read.maxSpin, 3);
+      expect(read.continuous, isTrue);
       expect(read.centreOfMass, Vector3(0, -0.2, 0));
       expect(read.inertia, Vector3(2, 3, 4));
     });
@@ -106,6 +109,7 @@ void main() {
       expect(body.gravityScale, 1);
       expect(body.maxSpeed, 0);
       expect(body.maxSpin, 0);
+      expect(body.continuous, isFalse);
       expect(body.centreOfMass, Vector3.zero());
       expect(body.inertia, Vector3.zero());
     });

@@ -2,9 +2,9 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.11.0, `orblit_physics_scene` 0.9.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.13.0 for the components. A git dependency
-resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
+`orblit_physics` 0.12.0, `orblit_physics_scene` 0.10.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.15.0 for the components.
+A git dependency resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
 ```yaml
@@ -79,7 +79,11 @@ physics.dispose();
   the other.
 - `PhysicsMotion.fixed` never moves, `driven` goes where it is sent and is
   never pushed back, `free` falls and is pushed.
-- `PhysicsSettings` fields left null take the engine's defaults.
+- `PhysicsSettings` fields left null take the engine's defaults. They are
+  `gravity`, `subSteps` (6), `contactHertz` (50), `velocitySteps` (1, in each
+  sub-step), `positionSteps` (2, for joints), `slop` (0.02 m, and a quarter of
+  it is the depth a body settles at), `bounceThreshold`, `sleepSpeed`,
+  `sleepAfter` and `sleeping`. They are tuned for 60 steps a second. `stiffness` is gone.
 - `snapshot()` returns a `PhysicsSnapshot` of what a step reads from the one
   before, and `restore(snapshot)` goes back to it, dropping commands queued
   since. It is native memory, so `dispose()` it. It outlives its world,
@@ -342,6 +346,7 @@ physics.unjoin(1);
 - It holds how the bodies stood when it was made, so every limit is measured
   from there. `PhysicsJointKind` is the enum; `Joint` is what you pass.
 - Joined free bodies sleep and wake together.
+- Touching bodies sleep and wake as one island, so a stack sleeps whole.
 
 ## The body component
 
@@ -354,8 +359,8 @@ Its fields are `shape` (`BodyShape.box`, `sphere`, `capsule`, `cylinder`,
 `layers`, `cares`, `startsAsleep` (JSON `asleep`), `trigger`, `stay` and
 `surface` (a `Vector3`, world metres a second). Its controls are `locks` (a
 `Set<BodyLock>`, `moveX` to `turnZ`), `gravityScale` (1), `maxSpeed` and
-`maxSpin` (0 is no cap), `centreOfMass` and `inertia` (`Vector3`s, zero for the
-shape's own). Change one field with `copyWith`.
+`maxSpin` (0 is no cap), `continuous` (false), `centreOfMass` and `inertia`
+(`Vector3`s, zero for the shape's own). Change one field with `copyWith`.
 
 - Sizes are in the entity's own units, so the body scales with the entity. A
   sphere takes the largest of the three scales. A capsule or a cylinder takes
@@ -534,8 +539,15 @@ scene.dispose();
 - **Not deterministic across machines.** The same inputs at the same step on
   one machine replay exactly; two machines drift. Fine for state-synced
   multiplayer, wrong for lockstep.
-- **No continuous collision.** Small fast things tunnel. Use a smaller `step`,
-  or `cast` along the path first.
+- **A pair that closes more than 5 cm in a step gets a contact before it
+  touches,** about 3 m/s at 60 steps a second. That holds a fast body against
+  most things. A thin fixed wall can still be crossed, so set `continuous` on
+  a small fast body. It casts the body along its move against fixed bodies and
+  ground. Two free bodies are not cast.
+- **The defaults are tuned for 60 steps a second.** At 30, a wall of 25 by 20
+  boxes grows a mode and comes down to half its height. Walls of 10 by 10 hold.
+- **Gravity of 300 times or more** sinks a continuous ball through a 5 mm slab.
+  A soft contact sags by g over omega squared under a steady load, about 3 cm.
 - **A joint's axes are its first body's.** Every measure is `b` as `a` sees
   it, so with the world as `a` a door's angle is the door's, and with the
   world as `b` it reads the other way round. `ScenePhysics` puts the world, or
