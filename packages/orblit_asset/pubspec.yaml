@@ -2,8 +2,9 @@ name: orblit_asset
 description: >-
   What an asset is called and where its bytes are: project-relative asset ids,
   content hashes, the sources assets are read from, a store that files bytes by
-  their hash, and the cache that keeps what cooking them produced.
-version: 0.8.0
+  their hash, the cache that keeps what cooking them produced, and the pack
+  file that holds a cooked bundle as one file.
+version: 0.9.0
 publish_to: none
 
 environment:
