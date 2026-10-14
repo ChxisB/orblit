@@ -6,6 +6,7 @@ import 'package:orblit_asset/orblit_asset.dart';
 ///
 /// Usage:
 ///   `dart run orblit_asset:pack build <bundle> --target <name> -o <file>`
+///   `... --base <pack>` once for each pack shipped, to write a patch.
 ///   `dart run orblit_asset:pack list <file>`
 ///   `dart run orblit_asset:pack check <file>`
 ///
@@ -31,6 +32,9 @@ Future<void> main(List<String> arguments) async {
   } on FormatException catch (error) {
     stderr.writeln('pack: ${error.message}');
     exit(1);
+  } on PackMountRefused catch (error) {
+    stderr.writeln('pack: ${error.message}');
+    exit(1);
   } on FileSystemException catch (error) {
     stderr.writeln('pack: ${error.message}: ${error.path}');
     exit(1);
@@ -41,9 +45,11 @@ String get _usage =>
     '''
 Usage: dart run orblit_asset:pack <command>
 
-  build <bundle> --target <name> -o <file>
+  build <bundle> --target <name> -o <file> [--base <pack>]...
       Packs the cooked bundle in <bundle> for one target.
       The target is one of: ${CookTargets.names.join(", ")}
+      With --base, writes a patch against the packs already shipped. Name
+      them in the order they are mounted, the whole pack first.
   list <file>
       Prints what a pack holds.
   check <file>
@@ -65,6 +71,7 @@ Future<void> _build(List<String> arguments) async {
   String? bundle;
   String? out;
   CookTarget? target;
+  final bases = <String>[];
   for (var i = 0; i < arguments.length; i++) {
     switch (arguments[i]) {
       case '--target':
@@ -77,6 +84,8 @@ Future<void> _build(List<String> arguments) async {
         }
       case '-o' || '--out':
         out = _value(arguments, i++);
+      case '--base':
+        bases.add(_value(arguments, i++));
       default:
         if (bundle != null) _usageError('one bundle at a time');
         bundle = arguments[i];
@@ -87,16 +96,45 @@ Future<void> _build(List<String> arguments) async {
   }
   _checkTargetMatchesFolder(bundle, target);
 
-  final summary = await packBundle(
-    bundlePath: bundle,
-    outPath: out,
-    target: target,
-  );
+  final summary = await _packOver(bundle, out, target, bases);
+  final removed = summary.removed == 0 ? '' : ', ${summary.removed} removed';
   stdout.writeln(
     '${summary.assets} assets in ${summary.blobs} blobs, '
-    '${summary.bytes} bytes, ${summary.sharedBytes} saved by sharing\n'
+    '${summary.bytes} bytes, ${summary.sharedBytes} saved by sharing'
+    '$removed\n'
     '${summary.hash}  $out',
   );
+}
+
+/// Packs [bundle], opening each of [bases] and closing them when it is done.
+Future<PackSummary> _packOver(
+  String bundle,
+  String out,
+  CookTarget target,
+  List<String> bases,
+) async {
+  final sources = <FilePackBytes>[];
+  try {
+    final packs = <AssetPack>[];
+    for (final path in bases) {
+      if (!File(path).existsSync()) {
+        throw FileSystemException('There is no such file', path);
+      }
+      final source = FilePackBytes(path);
+      sources.add(source);
+      packs.add(await AssetPack.open(source));
+    }
+    return await packBundle(
+      bundlePath: bundle,
+      outPath: out,
+      target: target,
+      base: packs,
+    );
+  } finally {
+    for (final source in sources) {
+      await source.close();
+    }
+  }
 }
 
 String _value(List<String> arguments, int index) {

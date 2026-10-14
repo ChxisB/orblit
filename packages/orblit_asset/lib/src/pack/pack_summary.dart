@@ -8,6 +8,7 @@ final class PackSummary {
     required this.assets,
     required this.blobs,
     required this.sharedBytes,
+    required this.removed,
   });
 
   /// The pack's hash, which is the hash of its directory.
@@ -24,4 +25,7 @@ final class PackSummary {
 
   /// The bytes left out because two assets had the same content.
   final int sharedBytes;
+
+  /// How many ids the pack takes away from the one it was built against.
+  final int removed;
 }

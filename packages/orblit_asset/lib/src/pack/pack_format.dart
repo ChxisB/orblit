@@ -132,6 +132,7 @@ final class PackDirectory {
     required int directoryAt,
   }) {
     _checkAssets(assets, blobs);
+    _checkRemoved(base, removed, assets);
     _checkBlobs(blobs, directoryAt);
     return PackDirectory._(
       target: target,
@@ -237,6 +238,27 @@ void _checkAssets(
         'The asset "$key" names a blob, $value, that this pack does not '
         'have.',
       );
+    }
+  }
+}
+
+void _checkRemoved(
+  ContentHash? base,
+  List<AssetId> removed,
+  Map<AssetId, ContentHash> assets,
+) {
+  if (removed.isNotEmpty && base == null) {
+    throw const FormatException(
+      'This pack removes assets and has no base to remove them from.',
+    );
+  }
+  final seen = <AssetId>{};
+  for (final id in removed) {
+    if (!seen.add(id)) {
+      throw FormatException('The asset "$id" is removed twice.');
+    }
+    if (assets.containsKey(id)) {
+      throw FormatException('The asset "$id" is both removed and held.');
     }
   }
 }

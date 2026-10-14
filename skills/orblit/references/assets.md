@@ -242,6 +242,37 @@ final source = LayeredAssetSource([DirectoryAssetSource('assets'), pack]);
   newer format and blobs that overlap each throw, with the reason in the
   message. A pack is never half-read.
 
+### Patches and mods
+
+```
+dart run orblit_asset:pack build build/assets/android --target android \
+  --base game.opack --base patch-1.opack -o patch-2.opack
+```
+
+```dart
+final packs = MountedPacks(target: CookTargets.android)
+  ..start(game)      // a pack with no base
+  ..patch(patch1)    // built against game
+  ..patch(patch2)    // built against patch1
+  ..addMod(mod);     // no base, above the whole chain
+```
+
+- **A patch holds what changed.** Held when the hash differs from what the
+  chain serves, or the chain lacks the id. Dropped ids go in `removed`.
+  Compared by hash, so no base blob is read.
+- **`--base` goes once per pack, in mounting order**, the whole pack first.
+  The patch names the last one by hash.
+- **Three methods, not a flag.** `start` refuses a pack with a base. `patch`
+  refuses one with none, or one built against something else. `addMod`
+  refuses one with a base. A refusal is `PackMountRefused`.
+- **A mod is above the chain whatever the mount order.** A patch mounted
+  after a mod does not undo it. Later mods are above earlier ones.
+- **A mod cannot remove.** `removed` needs a base, so only a patch hides an
+  id. A pack above can add the id back.
+- **Nothing unmounts.** Switching a mod off takes a restart.
+- `chainHash` is what the next patch must name as its base. `manifest` is
+  the merged view, removals and mods spent.
+
 ---
 
 ## Network assets
