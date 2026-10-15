@@ -15,6 +15,10 @@
 // Not in include/, for the reason OrblitSurface.h is not: that directory is
 // the Swift module's public headers, which Swift reads as C.
 
+#if defined(__APPLE__)
+#include <CoreVideo/CVPixelBuffer.h>
+#endif
+
 #include <cstdarg>
 #include <cstddef>
 #include <cstdint>
@@ -228,5 +232,41 @@ class VideoDecoder : public ExternalImageSource {
 /// A decoder for this platform, or null where video is not supported yet —
 /// which the renderer reports in its notes rather than failing.
 std::unique_ptr<VideoDecoder> createVideoDecoder();
+
+// ---- Feeds ----
+
+/// A picture the application draws, shown as an external image.
+///
+/// The application makes a feed, is given a number for it, and writes
+/// pictures into it in the way its platform allows: a pixel buffer handed
+/// over on Apple, a surface on Android. A scene names the number where it
+/// would name a file, and the renderer reads the feed through
+/// [ExternalImageSource] like any other. The producer's end is the
+/// platform's own and is not declared here, because nothing in the renderer
+/// calls it.
+///
+/// A feed is for one view at a time. Where the platform cannot give one
+/// picture to two readers, the second to ask is told why in its notes.
+
+/// Makes a feed and returns its number, which is above 0.
+///
+/// `width` and `height` are what a producer is first asked to draw at. A
+/// producer that draws at another size is shown at that one. Returns 0 with
+/// the reason in `why` where feeds are not supported or could not be made.
+int64_t createFeed(int32_t width, int32_t height, std::string &why);
+
+/// Lets go of a feed. A screen still showing it keeps its last picture
+/// until the scene stops naming the feed. Does nothing for a number that is
+/// not one.
+void releaseFeed(int64_t id);
+
+/// The reading end of feed `id`, or null with the reason in `why`.
+std::unique_ptr<ExternalImageSource> openFeed(int64_t id, std::string &why);
+
+#if ORBLIT_PLATFORM_APPLE
+/// The producer's end on Apple. Keeps `buffer` as feed `id`'s newest
+/// picture, and says in `why` if it was not taken. Any thread.
+bool submitFeed(int64_t id, CVPixelBufferRef buffer, std::string &why);
+#endif
 
 }  // namespace orblit

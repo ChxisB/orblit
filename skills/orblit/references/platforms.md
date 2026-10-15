@@ -151,5 +151,9 @@ commands are at https://orblitengine.com/docs/start/setup/web/.
 | Gaussian splats | macOS, Chrome |
 | Models (clips, skins, variants, FBX, OBJ) | macOS, Chrome, iOS simulator, Android emulator |
 | Textures (cooked sets, queue, `fromImage`) | macOS, Chrome, iOS simulator, Android emulator |
+| Feeds (`OrblitFeedSource`, `OrblitFeed`) | macOS |
 
 None of these has been run on Linux, Windows, Safari or Firefox.
+
+Feeds have not run on iOS or Android either. Android's side is compiled and
+not run. Linux, Windows and the web refuse them.

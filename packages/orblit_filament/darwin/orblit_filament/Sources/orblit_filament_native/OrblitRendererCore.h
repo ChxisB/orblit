@@ -231,6 +231,9 @@ class Renderer {
   void write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video);
   void applyRasterState(Surfaced &surface, float threshold, float bias);
   void open(Movie &movie, const std::string &path);
+  void openFile(Movie &movie, const std::string &path);
+  void openFeedSource(Movie &movie, int64_t feed, const std::string &path);
+  void drive(Movie &movie, int32_t flags, const float *values);
   void close(Movie &movie);
   Texture *cubemapAtPath(const std::string &path, float3 *harmonics, bool *hasThose, const std::string &note);
   void rebuildEnvironmentLight();

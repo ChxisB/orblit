@@ -91,9 +91,21 @@ extension _Message on OrblitScene {
     final materialMaps = Int32List(materialCount * OrblitMaterial.mapCount);
     final materialVideos = Int32List(materialCount);
 
+    // A screen's key is a video's or a feed's, and the two travel as one
+    // list with the videos first, so an index is a place in that list.
     final videoAt = <int, int>{};
     for (var i = 0; i < videos.length; i++) {
       videoAt[videos[i].key] = i;
+    }
+    for (var i = 0; i < feeds.length; i++) {
+      final key = feeds[i].key;
+      if (videoAt.containsKey(key)) {
+        throw ArgumentError(
+          'Key $key is a video and a feed in the same scene, so a screen '
+          'could not say which it shows.',
+        );
+      }
+      videoAt[key] = videos.length + i;
     }
 
     // The same trick as mesh paths: an image is usually on several materials
@@ -133,14 +145,15 @@ extension _Message on OrblitScene {
     };
   }
 
-  /// The video tokens, one stride of floats each.
+  /// The video tokens, one stride of floats each. Videos first, then feeds,
+  /// which have no rate, volume or seek and send the neutral values.
   Map<String, Object> _videoMessage() {
-    final videoCount = videos.length;
+    final videoCount = videos.length + feeds.length;
     final videoKeys = makeKeyList(videoCount);
     final videoFlags = Int32List(videoCount);
     final videoParams = Float32List(videoCount * OrblitVideo.stride);
     final videoPaths = <String>[];
-    for (var i = 0; i < videoCount; i++) {
+    for (var i = 0; i < videos.length; i++) {
       final video = videos[i];
       videoKeys[i] = video.key;
       videoFlags[i] = video.flags;
@@ -152,6 +165,17 @@ extension _Message on OrblitScene {
       // target is a no-op rather than a jump to the start.
       videoParams[at + 2] = video.seekTo ?? -1;
       videoParams[at + 3] = video.seekToken.toDouble();
+    }
+    for (var i = 0; i < feeds.length; i++) {
+      final feed = feeds[i];
+      final place = videos.length + i;
+      videoKeys[place] = feed.key;
+      videoFlags[place] = feed.flags;
+      videoPaths.add(feed.path);
+      final at = place * OrblitVideo.stride;
+      videoParams[at] = 1;
+      videoParams[at + 1] = 1;
+      videoParams[at + 2] = -1;
     }
 
     return {

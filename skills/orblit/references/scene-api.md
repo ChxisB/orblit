@@ -37,7 +37,7 @@ Everything else is optional:
 | `sky` | `OrblitSky()` |
 | `fog` | `OrblitFog.none` |
 | `precipitation` | `OrblitPrecipitation.none` |
-| `populations`, `splats`, `sprites`, `terrain`, `materials`, `videos` | none |
+| `populations`, `splats`, `sprites`, `terrain`, `materials`, `videos`, `feeds` | none |
 | `post` | `OrblitPostProcess()` |
 | `pipeline` | `OrblitPipeline()` |
 | `graph` | `OrblitRenderGraph.standard()` |
@@ -292,6 +292,32 @@ Build it with `terrainFrom(terrain, key: ..., pixels: ...)` from
   no ground.
 - Out of range (regions under 16 or over 2048 texels, more than 256 regions,
   pictures of different sizes) throws `ArgumentError` from the constructor.
+
+## Feeds (`feed.dart`)
+
+A feed is a picture the application draws and a scene shows on a screen, with
+no copy through Dart. A video is a file the renderer decodes. A feed is what
+a camera, a decoder of your own or another view produces.
+
+- `Future<OrblitFeedSource> OrblitFeedSource.create({required width,
+  required height})` makes one. `source.id` is the number the producer
+  writes to. `release()` lets it go.
+- `const OrblitFeed({required key, required source, rotation = 0, mirror =
+  false})` goes in `scene.feeds`. `rotation` is clockwise quarter turns, 0 to
+  3. A mirror is applied first, then the turn.
+- A screen is an object whose material has `shading: OrblitShading.video` and
+  `video: <feed key>`. A feed and a video share one key space, and a key
+  named as both throws `ArgumentError` when the scene is published.
+- The producer is native. Apple: hand a `CVPixelBuffer` that is
+  IOSurface-backed and 32BGRA or biplanar 4:2:0 to
+  `OrblitFeeds.submit(buffer, to: id)`. Android (API 26 and up): draw into
+  the `Surface` from `OrblitFeeds.surface(id)`.
+- `create` throws `UnsupportedError` on Linux, Windows and the web, and a
+  `PlatformException` on Android below API 26.
+- One reader per feed on Android. Apple allows two `OrblitFeed` entries on
+  one source.
+- Only the video shading reads a feed. It is not yet a base colour map on a
+  lit material. A feed has no seek, rate, loop or volume.
 
 ## `OrblitResources` (`resources.dart`)
 

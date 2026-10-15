@@ -21,6 +21,9 @@
 #include <filament/Engine.h>
 #include <filament/Texture.h>
 
+#include <mutex>
+#include <unordered_map>
+
 /// What the end-of-file observer needs in order to loop a video.
 ///
 /// Its own object rather than the decoder, so the observer's block can hold
@@ -267,10 +270,165 @@ class AppleVideoDecoder final : public VideoDecoder {
   CVPixelBufferRef _showing = nullptr;
 };
 
+/// The newest picture a producer handed over, and which hand-over it was.
+///
+/// Held by the producer's end and by every reader, so that releasing a feed
+/// does not take the picture from a screen that is still showing it.
+class PixelBufferStore {
+ public:
+  struct Picture {
+    CVPixelBufferRef buffer;  // Retained, or null before the first picture.
+    uint64_t generation;
+  };
+
+  ~PixelBufferStore() {
+    if (_latest != nullptr) CVPixelBufferRelease(_latest);
+  }
+
+  /// Keeps `buffer` as the newest picture. Any thread.
+  void put(CVPixelBufferRef buffer) {
+    CVPixelBufferRetain(buffer);
+    CVPixelBufferRef replaced;
+    {
+      std::lock_guard<std::mutex> hold(_lock);
+      replaced = _latest;
+      _latest = buffer;
+      _generation++;
+    }
+    if (replaced != nullptr) CVPixelBufferRelease(replaced);
+  }
+
+  Picture latest() const {
+    std::lock_guard<std::mutex> hold(_lock);
+    if (_latest != nullptr) CVPixelBufferRetain(_latest);
+    return {_latest, _generation};
+  }
+
+ private:
+  mutable std::mutex _lock;
+  CVPixelBufferRef _latest = nullptr;
+  uint64_t _generation = 0;
+};
+
+/// Hands a feed's newest buffer to the texture, which is the same call a
+/// decoded video frame makes and costs the same: nothing is copied.
+class PixelBufferFeed final : public ExternalImageSource {
+ public:
+  explicit PixelBufferFeed(std::shared_ptr<PixelBufferStore> store)
+      : _store(std::move(store)) {}
+
+  ~PixelBufferFeed() override {
+    // After the texture that showed it, which the renderer destroys first.
+    if (_showing != nullptr) CVPixelBufferRelease(_showing);
+  }
+
+  bool pump(filament::Engine &engine, filament::Texture *texture) override {
+    if (_store == nullptr || texture == nullptr) return false;
+    const PixelBufferStore::Picture next = _store->latest();
+    if (next.buffer == nullptr) return false;
+    if (next.generation == _seen) {
+      CVPixelBufferRelease(next.buffer);
+      return false;
+    }
+    _seen = next.generation;
+    texture->setExternalImage(engine, next.buffer);
+    // The one just replaced, as in AppleVideoDecoder::pump.
+    if (_showing != nullptr) CVPixelBufferRelease(_showing);
+    _showing = next.buffer;
+    return true;
+  }
+
+  void stop() override { _store.reset(); }
+
+ private:
+  std::shared_ptr<PixelBufferStore> _store;
+  CVPixelBufferRef _showing = nullptr;
+  uint64_t _seen = 0;
+};
+
+/// Every feed in the process, by number. A producer on any thread looks its
+/// feed up here, so the table is locked and the stores are shared.
+class FeedTable {
+ public:
+  int64_t add(std::shared_ptr<PixelBufferStore> store) {
+    std::lock_guard<std::mutex> hold(_lock);
+    const int64_t id = _next++;
+    _stores[id] = std::move(store);
+    return id;
+  }
+
+  std::shared_ptr<PixelBufferStore> find(int64_t id) const {
+    std::lock_guard<std::mutex> hold(_lock);
+    const auto at = _stores.find(id);
+    return at == _stores.end() ? nullptr : at->second;
+  }
+
+  void remove(int64_t id) {
+    std::lock_guard<std::mutex> hold(_lock);
+    _stores.erase(id);
+  }
+
+ private:
+  mutable std::mutex _lock;
+  int64_t _next = 1;
+  std::unordered_map<int64_t, std::shared_ptr<PixelBufferStore>> _stores;
+};
+
+FeedTable &feeds() {
+  static FeedTable table;
+  return table;
+}
+
+/// Filament's Metal backend takes an IOSurface-backed buffer in one of the
+/// formats the decoder above asks for, and asserts on anything else.
+bool takenAsExternalImage(CVPixelBufferRef buffer) {
+  switch (CVPixelBufferGetPixelFormatType(buffer)) {
+    case kCVPixelFormatType_32BGRA:
+    case kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange:
+    case kCVPixelFormatType_420YpCbCr8BiPlanarFullRange:
+      return CVPixelBufferGetIOSurface(buffer) != nullptr;
+    default:
+      return false;
+  }
+}
+
 }  // namespace
 
 std::unique_ptr<VideoDecoder> createVideoDecoder() {
   return std::make_unique<AppleVideoDecoder>();
+}
+
+int64_t createFeed(int32_t, int32_t, std::string &) {
+  // The size is each buffer's own on Apple, so the one asked for here has
+  // nothing to configure.
+  return feeds().add(std::make_shared<PixelBufferStore>());
+}
+
+void releaseFeed(int64_t id) { feeds().remove(id); }
+
+std::unique_ptr<ExternalImageSource> openFeed(int64_t id, std::string &why) {
+  std::shared_ptr<PixelBufferStore> store = feeds().find(id);
+  if (store == nullptr) {
+    why = "Feed " + std::to_string(id) + " is not open.";
+    return nullptr;
+  }
+  return std::make_unique<PixelBufferFeed>(std::move(store));
+}
+
+bool submitFeed(int64_t id, CVPixelBufferRef buffer, std::string &why) {
+  if (buffer == nullptr || !takenAsExternalImage(buffer)) {
+    why =
+        "A feed takes an IOSurface-backed buffer in 32BGRA or biplanar 4:2:0 "
+        "format.";
+    return false;
+  }
+  const std::shared_ptr<PixelBufferStore> store = feeds().find(id);
+  if (store == nullptr) {
+    why = "Feed " + std::to_string(id) + " is not open.";
+    return false;
+  }
+  store->put(buffer);
+  return true;
 }
 
 }  // namespace orblit

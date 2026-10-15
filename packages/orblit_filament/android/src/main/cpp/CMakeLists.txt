@@ -53,6 +53,10 @@ add_library(orblit_filament_native SHARED
     # The JNI bridge: Android-only, lives beside this file.
     orblit_jni.cpp
 
+    # The platform's feeds, which OrblitPlatform.cpp leaves out on Android.
+    # Android-only for the same reason, so it lives here and not in the core.
+    orblit_feed_android.cpp
+
     # The portable core, its C ABI, and every helper it composes with. Not
     # OrblitRenderer.mm, OrblitSurfaceApple.mm, OrblitPlatformApple.mm or
     # OrblitTexture.m -- those are Apple's Objective-C++ wrapper and are never
@@ -120,6 +124,12 @@ target_include_directories(orblit_filament_native PRIVATE
     "${ORBLIT_CORE_DIR}/include"
     "${ORBLIT_GENERATED_DIR}"
     "${CMAKE_CURRENT_SOURCE_DIR}")
+
+# The feed file calls NDK functions that are API 26, and this library's floor
+# is 24. Weak symbols let it load there. The file guards each use at run time
+# and says so in the feed's note.
+set_source_files_properties(orblit_feed_android.cpp PROPERTIES
+    COMPILE_DEFINITIONS __ANDROID_UNAVAILABLE_SYMBOLS_ARE_WEAK__)
 
 # ORBLIT_PLATFORM_APPLE (OrblitPlatform.h) is already 0 here with no macro of
 # ours needed: it is defined from __APPLE__, which this build never sets.

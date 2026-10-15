@@ -139,6 +139,38 @@ void Renderer::refreshShadowOptions() {
   for (auto &entry : _lit) shadowOptionsFor(entry.second.entity);
 }
 
+/// Brings a playing file to the state the scene describes.
+///
+/// `flags` bit 0 is playing and bit 1 is looping. `values` is the movie's
+/// kVideoParams floats: rate, volume, seek target and seek token.
+void Renderer::drive(Movie &movie, int32_t flags, const float *values) {
+  movie.looping = (flags & 2) != 0;
+  movie.decoder->setLooping(movie.looping);
+
+  // The seek is reconciled by its token rather than by its target, so
+  // saying the same seek sixty times a second is one seek and not sixty.
+  const int32_t token = static_cast<int32_t>(values[3]);
+  if (token != movie.seekToken) {
+    movie.seekToken = token;
+    if (values[2] >= 0) movie.decoder->seek(values[2]);
+  }
+
+  if (values[1] != movie.volume) {
+    movie.volume = values[1];
+    movie.decoder->setVolume(values[1]);
+  }
+
+  if (flags != movie.flags || values[0] != movie.rate) {
+    movie.flags = flags;
+    movie.rate = values[0];
+    if ((flags & 1) != 0) {
+      movie.decoder->play(movie.rate);
+    } else {
+      movie.decoder->pause();
+    }
+  }
+}
+
 void Renderer::applyVideos(const int64_t *keys, const int32_t *flags,
                            const float *params,
                            const std::vector<std::string> &paths,
@@ -159,38 +191,14 @@ void Renderer::applyVideos(const int64_t *keys, const int32_t *flags,
     const std::string path = i < paths.size() ? paths[i] : std::string();
 
     // A different file is a different video, whatever the key says. Anything
-    // else — rate, volume, playing — is a change to this one.
-    if (movie.decoder == nullptr || movie.path != path) open(movie, path);
-    if (movie.decoder == nullptr) {
-      _movieOrder.push_back(&movie);
-      continue;
-    }
-
-    movie.looping = (flags[i] & 2) != 0;
-    movie.decoder->setLooping(movie.looping);
-
-    // The seek is reconciled by its token rather than by its target, so
-    // saying the same seek sixty times a second is one seek and not sixty.
-    const int32_t token = static_cast<int32_t>(values[3]);
-    if (token != movie.seekToken) {
-      movie.seekToken = token;
-      if (values[2] >= 0) movie.decoder->seek(values[2]);
-    }
-
-    if (values[1] != movie.volume) {
-      movie.volume = values[1];
-      movie.decoder->setVolume(values[1]);
-    }
-
-    const bool playing = (flags[i] & 1) != 0;
-    if (flags[i] != movie.flags || values[0] != movie.rate) {
-      movie.flags = flags[i];
-      movie.rate = values[0];
-      if (playing) {
-        movie.decoder->play(movie.rate);
-      } else {
-        movie.decoder->pause();
-      }
+    // else — rate, volume, playing — is a change to this one. A feed is the
+    // same: another number is another picture.
+    if (movie.source == nullptr || movie.path != path) open(movie, path);
+    if (movie.source != nullptr) {
+      movie.orientation = (flags[i] >> 2) & 7;
+      // A feed has nothing to play, pause or seek: its producer decides
+      // when a picture is ready.
+      if (movie.decoder != nullptr) drive(movie, flags[i], values);
     }
 
     _movieOrder.push_back(&movie);

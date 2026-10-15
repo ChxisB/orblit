@@ -442,6 +442,35 @@ TextureSampler Renderer::samplerFor(int32_t flags) {
   return sampler;
 }
 
+/// Where on the frame a point of the upright picture lies, as a matrix on
+/// (u, v, 1).
+///
+/// `orientation` is the number of clockwise quarter turns the frame needs to
+/// be upright, in its low two bits, and bit 2 says to mirror it left to right
+/// first. A producer that cannot orient its own pictures, such as a camera
+/// whose sensor is turned in the phone, says so here and the screen shows
+/// them the right way up. Done in the material rather than by the platform's
+/// own transform, so every backend turns a picture the same way.
+static mat3f orientationMatrix(int32_t orientation) {
+  // The turn undone: the frame's (x, y) for the upright picture's (u, v).
+  // Each row is the coefficients of u, v and 1.
+  static const float turns[4][2][3] = {
+      {{1, 0, 0}, {0, 1, 0}},
+      {{0, 1, 0}, {-1, 0, 1}},
+      {{-1, 0, 1}, {0, -1, 1}},
+      {{0, -1, 1}, {1, 0, 0}},
+  };
+  const float *across = turns[orientation & 3][0];
+  const float *down = turns[orientation & 3][1];
+  // Mirrored, the frame's x runs the other way, which is 1 minus it.
+  const bool mirror = (orientation & 4) != 0;
+  const float sign = mirror ? -1.0f : 1.0f;
+  const float shift = mirror ? 1.0f : 0.0f;
+  return mat3f(float3{sign * across[0], down[0], 0.0f},
+               float3{sign * across[1], down[1], 0.0f},
+               float3{shift + sign * across[2], down[2], 1.0f});
+}
+
 /// Writes everything about one material into its instance.
 void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video) {
   MaterialInstance *instance = surface.instance;
@@ -484,6 +513,9 @@ void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps
     }
     instance->setParameter("videoTexture", frame, screen);
     instance->setParameter("hasVideo", movie != nullptr && movie->texture != nullptr);
+    instance->setParameter(
+        "orientation",
+        orientationMatrix(movie != nullptr ? movie->orientation : 0));
     return;
   }
 
@@ -604,16 +636,56 @@ void Renderer::applyRasterState(Surfaced &surface, float threshold, float bias) 
 }
 
 
-/// Opens a file and starts a decoder for it.
+/// The number in a path that names a feed, "feed:<number>", or 0 for a path
+/// that is a file or a URL.
 ///
-/// The decoder is the platform's: AVFoundation on Apple, where the pixel
-/// format Filament's external images need is asked for, and nothing yet
-/// elsewhere, which the notes then say.
+/// A path that begins "feed:" and is not followed by a number is still not a
+/// file, so it comes back as -1 and is refused with a note rather than
+/// handed to a decoder as a name.
+static int64_t feedNumberIn(const std::string &path) {
+  static const std::string prefix = "feed:";
+  if (path.compare(0, prefix.size(), prefix) != 0) return 0;
+  const std::string digits = path.substr(prefix.size());
+  if (digits.empty() || digits.size() > 18 ||
+      digits.find_first_not_of("0123456789") != std::string::npos) {
+    return -1;
+  }
+  const int64_t number = std::stoll(digits);
+  return number > 0 ? number : -1;
+}
+
+/// Opens what a path names and gives the movie a texture to show it on.
+///
+/// A file is decoded; a feed is read. Either way the movie ends up with a
+/// source, and the texture is a handle onto the picture that source holds.
 void Renderer::open(Movie &movie, const std::string &path) {
   close(movie);
   movie.path = path;
   if (path.empty()) return;
 
+  const int64_t feed = feedNumberIn(path);
+  if (feed == 0) {
+    openFile(movie, path);
+  } else {
+    openFeedSource(movie, feed, path);
+  }
+  if (movie.source == nullptr) return;
+
+  // The external image is the source's own buffer, so the texture is a
+  // handle rather than storage: no width, no height, no format, and nothing
+  // uploaded when the picture changes.
+  movie.texture = Texture::Builder()
+                      .sampler(Texture::Sampler::SAMPLER_EXTERNAL)
+                      .format(Texture::InternalFormat::RGBA8)
+                      .build(*_engine);
+}
+
+/// Starts a decoder for a file.
+///
+/// The decoder is the platform's: AVFoundation on Apple, where the pixel
+/// format Filament's external images need is asked for, and nothing yet
+/// elsewhere, which the notes then say.
+void Renderer::openFile(Movie &movie, const std::string &path) {
   // The platform's decoder, or none where there is not one yet — which is
   // said rather than failed: a scene with a screen in it still draws, and
   // the screen is blank.
@@ -628,14 +700,21 @@ void Renderer::open(Movie &movie, const std::string &path) {
   if (!decoder->open(path)) return;
   movie.decoder = decoder.get();
   movie.source = std::move(decoder);
+}
 
-  // The external image is the decoder's own buffer, so the texture is a
-  // handle rather than storage: no width, no height, no format, and nothing
-  // uploaded when the picture changes.
-  movie.texture = Texture::Builder()
-                      .sampler(Texture::Sampler::SAMPLER_EXTERNAL)
-                      .format(Texture::InternalFormat::RGBA8)
-                      .build(*_engine);
+/// Reads a feed the application made. Its number is `feed`, and `path` is
+/// the name the scene gave it, which is what the note is filed under.
+void Renderer::openFeedSource(Movie &movie, int64_t feed,
+                              const std::string &path) {
+  if (feed < 0) {
+    _videoNotes[path] =
+        "A feed is named \"feed:\" and its number, and this is not one, so "
+        "this screen is blank.";
+    return;
+  }
+  std::string why;
+  movie.source = orblit::openFeed(feed, why);
+  if (movie.source == nullptr) _videoNotes[path] = why;
 }
 
 /// Stops a video and gives back everything it was holding.
@@ -652,6 +731,7 @@ void Renderer::close(Movie &movie) {
   movie.decoder = nullptr;
   movie.source.reset();
   movie.flags = -1;
+  movie.orientation = 0;
   movie.seekToken = -1;
 }
 }  // namespace orblit

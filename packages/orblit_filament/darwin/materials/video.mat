@@ -17,6 +17,7 @@ material {
     parameters : [
         { type : float4,          name : baseColor },
         { type : float4,          name : uvTransform },
+        { type : mat3,            name : orientation },
         { type : samplerExternal, name : videoTexture },
         { type : bool,            name : hasVideo }
     ],
@@ -28,6 +29,10 @@ fragment {
 
         vec2 uv = getUV0() * materialParams.uvTransform.xy
                 + materialParams.uvTransform.zw;
+        // From where on the upright picture to where on the frame, for a
+        // producer whose frames arrive turned or mirrored. The identity for
+        // a file, so a video is sampled exactly as it was.
+        uv = (materialParams.orientation * vec3(uv, 1.0)).xy;
 
         vec4 frame = vec4(1.0);
         if (materialParams.hasVideo) {

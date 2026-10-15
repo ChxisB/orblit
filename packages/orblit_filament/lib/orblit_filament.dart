@@ -69,6 +69,7 @@ export 'src/terrain.dart'
     show OrblitTerrain, OrblitTerrainRegion, OrblitTerrainSet;
 export 'src/screen.dart'
     show OrblitDistortion, OrblitDistortionKind, OrblitGodRays;
+export 'src/feed.dart' show OrblitFeed, OrblitFeedSource;
 export 'src/video.dart' show OrblitVideo;
 export 'src/volumes.dart'
     show

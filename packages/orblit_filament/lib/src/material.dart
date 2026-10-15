@@ -454,8 +454,8 @@ class OrblitMaterial {
   final OrblitWrap wrap;
   final OrblitFilter filter;
 
-  /// The key of the video this surface shows, for [OrblitShading.video].
-  /// Ignored by every other shading model.
+  /// The key of the video or feed this surface shows, for
+  /// [OrblitShading.video]. Ignored by every other shading model.
   final int? video;
 
   /// Whether [baseColourMap] is projected from the camera rather than wrapped

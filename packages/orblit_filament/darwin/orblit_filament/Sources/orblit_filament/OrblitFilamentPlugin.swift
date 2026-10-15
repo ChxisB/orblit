@@ -1254,6 +1254,34 @@ public class OrblitFilamentPlugin: NSObject, FlutterPlugin {
       // In orblit_capability's order, measured once when the renderer started.
       result(viewport.capabilities)
 
+    case "createFeed":
+      guard let args = call.arguments as? [String: Any],
+            let width = args["width"] as? Int,
+            let height = args["height"] as? Int else {
+        result(FlutterError(code: "bad-args",
+                            message: "createFeed needs width and height",
+                            details: nil))
+        return
+      }
+      do {
+        let feed = try OrblitRenderer.createFeed(
+          withWidth: Int32(width), height: Int32(height))
+        result(feed.int64Value)
+      } catch {
+        result(FlutterError(code: "no-feed",
+                            message: error.localizedDescription, details: nil))
+      }
+
+    case "releaseFeed":
+      guard let args = call.arguments as? [String: Any],
+            let feed = args["feed"] as? Int else {
+        result(FlutterError(code: "bad-args", message: "releaseFeed needs feed",
+                            details: nil))
+        return
+      }
+      OrblitRenderer.releaseFeed(Int64(feed))
+      result(nil)
+
     case "dispose":
       guard let args = call.arguments as? [String: Any],
             let textureId = args["textureId"] as? Int else {
