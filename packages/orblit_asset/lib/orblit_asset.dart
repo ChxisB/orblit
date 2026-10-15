@@ -50,7 +50,8 @@ export 'src/cook_project.dart'
         CookProject,
         bundleHash,
         cookDuringBuild,
-        currentCookTarget;
+        currentCookTarget,
+        packDuringBuild;
 export 'src/cook_targets.dart' show CookTargets;
 export 'src/cook.dart'
     show
@@ -77,10 +78,13 @@ export 'src/importer.dart'
         Importer,
         ImporterRegistry;
 export 'src/pack/asset_pack.dart' show AssetPack;
+export 'src/pack/bundled_pack.dart'
+    show bundledPackBytes, flutterAssetsDirectory;
 export 'src/pack/mounted_packs.dart' show MountedPacks, PackMountRefused;
 export 'src/pack/pack_bundle.dart' show packBundle;
 export 'src/pack/pack_bytes.dart' show MemoryPackBytes, PackBytes;
 export 'src/pack/pack_file.dart' show FilePackBytes;
+export 'src/pack/pack_name.dart' show packFileName;
 export 'src/pack/pack_summary.dart' show PackSummary;
 export 'src/net/cache_storage.dart'
     show CacheStorageContentStore, CacheStorageFetchRecords;

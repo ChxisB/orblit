@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.11.0
+
+- **`packDuringBuild`.** A build hook cooks the project and packs it in one
+  call, and returns the `PackSummary`. It takes what `cookDuringBuild` takes
+  and writes `<out>/game.<target>.opack` beside the cooked bundle.
+- **The target is in the file name.** `packFileName(target)` gives
+  `game.macos.opack`. A hook is skipped when nothing it watched has changed,
+  so a fixed name would hold whatever the last build for any platform wrote.
+  List each name in `pubspec.yaml` under `platforms:` and a build ships only
+  its own. A name the build does not list is never bundled, so a pack for
+  another platform does not add to the download.
+- **`bundledPackBytes(key)`.** Finds a bundled pack as a file beside the
+  executable and returns `FilePackBytes` over it, so the pack is read in
+  place. It answers null on Android, the web and under the Dart VM, where
+  there is no such file. `flutterAssetsDirectory` is the path arithmetic
+  under it, for macOS, iOS, Linux and Windows layouts.
+- **A hook no longer runs again on every build.** `cookDuringBuild` named a
+  `.import.json` file for each asset whether or not it existed. The hook
+  runner reads a file that is not there as changed, so the hook ran every
+  time and rewrote its output. It now names the files that exist, the assets
+  folder and each folder under it, so a new asset or a new settings file
+  still runs it once.
+
 ## 0.10.0
 
 - **Patches.** `packBundle(..., base: [game, patch1])` writes a pack that

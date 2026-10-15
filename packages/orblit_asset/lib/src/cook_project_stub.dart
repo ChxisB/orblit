@@ -12,6 +12,7 @@ import 'cook.dart';
 import 'cook_cache.dart';
 import 'cook_targets.dart';
 import 'importer.dart';
+import 'pack/pack_summary.dart';
 
 /// Cooking a whole project, which needs a file system and is not available on
 /// this platform.
@@ -89,6 +90,24 @@ Future<CookReport> cookDuringBuild({
 }) => throw UnsupportedError(
   'Assets are cooked by the build that produces a web app, not by the web '
   'app. Run `dart run orblit_asset:cook --target web` and serve the bundle.',
+);
+
+/// Packing during a build, which happens on a build machine and not in a
+/// browser.
+Future<PackSummary> packDuringBuild({
+  required String packageRoot,
+  required String? targetOs,
+  String assets = 'assets',
+  String out = 'assets/cooked',
+  String name = 'game',
+  String? cachePath,
+  ImporterRegistry? importers,
+  int concurrency = 4,
+  void Function(Iterable<Uri> files)? dependencies,
+  void Function(String line)? log,
+}) => throw UnsupportedError(
+  'Packs are written by the build that produces a web app, not by the web '
+  'app. Run `dart run orblit_asset:pack build` and serve the pack.',
 );
 
 /// What the machine this is running on wants assets cooked as, which in a

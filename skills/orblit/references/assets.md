@@ -273,6 +273,55 @@ final packs = MountedPacks(target: CookTargets.android)
 - `chainHash` is what the next patch must name as its base. `manifest` is
   the merged view, removals and mods spent.
 
+### Shipping one in an app
+
+```dart
+// hook/build.dart
+await packDuringBuild(
+  packageRoot: input.packageRoot.toFilePath(),
+  targetOs: input.config.code.targetOS.name,
+  dependencies: output.addDependencies,
+);
+```
+
+```yaml
+flutter:
+  assets:
+    - path: assets/cooked/game.macos.opack
+      platforms: [macos]
+    - path: assets/cooked/game.android.opack
+      platforms: [android]
+```
+
+```dart
+Future<PackBytes> bundledPack() async {
+  final key = 'assets/cooked/${packFileName(currentCookTarget)}';
+  final onDisk = bundledPackBytes(key);
+  if (onDisk != null) return onDisk;
+  final inApk = await OrblitAssetFiles.of(key);
+  if (inApk != null) {
+    return FilePackBytes(inApk.path, start: inApk.offset, bytes: inApk.length);
+  }
+  final data = await rootBundle.load(key);
+  return MemoryPackBytes(data.buffer.asUint8List());
+}
+```
+
+- **The target is in the file name.** `packFileName(target)` is
+  `game.macos.opack`. A hook is skipped when nothing it watched changed, so
+  one fixed name would ship the last platform's pack. Each `pubspec.yaml`
+  entry carries `platforms:`, so a build bundles its own and no other.
+- **`bundledPackBytes` is for desktop and iOS.** It finds the file beside
+  the executable and returns null on Android, the web and the Dart VM.
+- **Android reads the pack inside the APK.** `OrblitAssetFiles.of` in
+  `orblit_filament` gives a path, an offset and a length. The asset has to
+  be stored uncompressed: `androidResources { noCompress += "opack" }`. A
+  compressed one is copied to the cache and logged.
+- **`packDuringBuild` takes `cookDuringBuild`'s arguments.** It reports the
+  assets folder and the settings files that exist, so it runs again for a
+  new asset and not for an unchanged build.
+- **The web has no file.** The whole pack is fetched until range reads land.
+
 ---
 
 ## Network assets

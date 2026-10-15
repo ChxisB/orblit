@@ -14,6 +14,9 @@ import 'importer.dart';
 import 'importers/atlas_importer.dart';
 import 'importers/gltf_importer.dart';
 import 'importers/native_importers_io.dart';
+import 'pack/pack_bundle_io.dart';
+import 'pack/pack_name.dart';
+import 'pack/pack_summary.dart';
 
 /// Cooking a whole project for one target, and writing the result somewhere a
 /// build can pick it up.
@@ -287,10 +290,12 @@ class CookFailed implements Exception {
 /// one platform where the absence is the answer.
 ///
 /// [dependencies] is given every file this cook read: the assets themselves,
-/// their settings files, and whatever those assets pointed at. A hook that
-/// reports them is re-run when one changes and skipped when none did, which is
-/// the difference between a cook that costs nothing on an untouched build and
-/// one that costs a texture encode every time.
+/// their settings files, and whatever those assets pointed at. It is also
+/// given the folders the assets are in, which is how an asset or a settings
+/// file being added is noticed. A hook that reports them is re-run when one
+/// changes and skipped when none did, which is the difference between a cook
+/// that costs nothing on an untouched build and one that costs a texture
+/// encode every time.
 Future<CookReport> cookDuringBuild({
   required String packageRoot,
   required String? targetOs,
@@ -302,15 +307,7 @@ Future<CookReport> cookDuringBuild({
   void Function(Iterable<Uri> files)? dependencies,
   void Function(String line)? log,
 }) async {
-  final target = CookTargets.find(targetOs ?? 'web');
-  if (target == null) {
-    throw ArgumentError.value(
-      targetOs,
-      'targetOs',
-      'is not a platform Orblit cooks for. Orblit cooks for '
-          '${CookTargets.names.join(', ')}',
-    );
-  }
+  final target = _targetFor(targetOs);
 
   final assetsPath = _under(packageRoot, assets);
   final project = CookProject(
@@ -325,24 +322,122 @@ Future<CookReport> cookDuringBuild({
   final report = await project.run();
   log?.call('orblit: cooked ${target.name}: ${report.summary}');
 
-  if (dependencies != null) {
-    // Both the assets and their settings files, because changing how a texture
-    // is cooked has to rebuild it just as surely as changing the texture. The
-    // settings file is reported whether or not it exists: a hook watching a
-    // path that does not exist yet is how it notices one being added.
-    final watched = <Uri>{};
-    for (final result in report.results) {
-      watched.add(_fileUnder(assetsPath, '${result.id}'));
-      watched.add(_fileUnder(assetsPath, '${result.id}.import.json'));
-    }
-    for (final id in report.dependencies) {
-      watched.add(_fileUnder(assetsPath, '$id'));
-    }
-    dependencies(watched);
-  }
+  if (dependencies != null) dependencies(_watchedBy(report, assetsPath));
 
   if (!report.ok) throw CookFailed(report);
   return report;
+}
+
+/// Cooks a project's assets as part of a build and packs them as one file,
+/// `<out>/<name>.<target>.opack`, for the platform being built.
+///
+/// This is [cookDuringBuild] followed by `packBundle`, and takes everything
+/// [cookDuringBuild] does. The cooked folder is still written, beside the
+/// pack, as the thing the pack was made from.
+///
+/// The app lists the one file for its platform in `pubspec.yaml`, so a build
+/// ships its own target's pack and nothing else:
+///
+/// ```yaml
+/// flutter:
+///   assets:
+///     - path: assets/cooked/game.macos.opack
+///       platforms: [macos]
+///     - path: assets/cooked/game.ios.opack
+///       platforms: [ios]
+/// ```
+///
+/// Flutter skips an entry whose platform is not the one being built, so a
+/// file that was never written for another platform does not fail the build.
+/// `packFileName` gives the name the running app reads it back by.
+///
+/// The pack is not reported to [dependencies]. The hook runner treats a
+/// dependency that changed while the hook ran as stale and runs the hook
+/// again on every build, and the pack always changes while the hook runs.
+Future<PackSummary> packDuringBuild({
+  required String packageRoot,
+  required String? targetOs,
+  String assets = 'assets',
+  String out = 'assets/cooked',
+  String name = 'game',
+  String? cachePath,
+  ImporterRegistry? importers,
+  int concurrency = 4,
+  void Function(Iterable<Uri> files)? dependencies,
+  void Function(String line)? log,
+}) async {
+  final target = _targetFor(targetOs);
+  await cookDuringBuild(
+    packageRoot: packageRoot,
+    targetOs: targetOs,
+    assets: assets,
+    out: out,
+    cachePath: cachePath,
+    importers: importers,
+    concurrency: concurrency,
+    dependencies: dependencies,
+    log: log,
+  );
+  final summary = await packBundle(
+    bundlePath: _under(packageRoot, '$out/${target.name}'),
+    outPath: _under(packageRoot, '$out/${packFileName(target, name: name)}'),
+    target: target,
+  );
+  log?.call(
+    'orblit: packed ${target.name}: ${summary.assets} assets in '
+    '${summary.blobs} blobs, ${summary.bytes} bytes',
+  );
+  return summary;
+}
+
+/// The target a hook's `targetOs` names, where a null one is the web.
+CookTarget _targetFor(String? targetOs) {
+  final target = CookTargets.find(targetOs ?? 'web');
+  if (target == null) {
+    throw ArgumentError.value(
+      targetOs,
+      'targetOs',
+      'is not a platform Orblit cooks for. Orblit cooks for '
+          '${CookTargets.names.join(', ')}',
+    );
+  }
+  return target;
+}
+
+/// What a build hook is told a cook read, and what would change its answer.
+///
+/// Both the assets and their settings files, because changing how a texture
+/// is cooked has to rebuild it just as surely as changing the texture.
+///
+/// A settings file is reported only when it exists. The hook runner takes a
+/// path that does not exist for changed on every run, so reporting the
+/// settings file an asset might have would run the hook again on each build
+/// of nearly every project. A settings file being added, or an asset, is
+/// noticed through its folder instead, which the runner compares by the names
+/// it holds. Folders are reported one by one because it does not look
+/// inside them.
+Set<Uri> _watchedBy(CookReport report, String assetsPath) {
+  final watched = <Uri>{};
+  for (final result in report.results) {
+    watched.add(_fileUnder(assetsPath, '${result.id}'));
+    final settings = _fileUnder(assetsPath, '${result.id}.import.json');
+    if (File.fromUri(settings).existsSync()) watched.add(settings);
+  }
+  for (final id in report.dependencies) {
+    watched.add(_fileUnder(assetsPath, '$id'));
+  }
+  watched.add(Uri.directory(assetsPath));
+  final root = Directory(assetsPath);
+  final prefix = root.absolute.path.length;
+  for (final entry in root.listSync(recursive: true, followLinks: false)) {
+    if (entry is! Directory) continue;
+    final inside = entry.absolute.path.substring(prefix);
+    final hidden = inside
+        .split(Platform.pathSeparator)
+        .any((part) => part.startsWith('.'));
+    if (!hidden) watched.add(Uri.directory(entry.path));
+  }
+  return watched;
 }
 
 /// A path inside a package, where the inner part is written with `/` whatever

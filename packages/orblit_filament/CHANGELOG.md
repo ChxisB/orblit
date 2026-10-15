@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.35.0
+
+- **`OrblitAssetFiles.of(key)`.** On Android, where a bundled asset sits in
+  the APK, as a path, an offset and a length. A reader opens the path, seeks
+  to the offset and reads the length, so a game pack of hundreds of megabytes
+  is never held in memory the way `rootBundle.load` holds it. The asset has
+  to be stored uncompressed, which is `noCompress` in the app's Gradle file.
+  A compressed asset is copied to the cache folder once per process and the
+  range is the copy, with a warning in the log.
+- It answers null for a key the application does not have, and on every
+  platform but Android, where a bundled asset is a file a plain path finds.
+  `release(key)` lets go of the descriptor the plugin held open.
+- Only a path, an offset and a length cross the boundary. The plugin takes
+  no types from `orblit_asset`, so the two packages stay apart.
+
 ## 0.34.0
 
 - **Every population draw is given an instance buffer of its own.** They
