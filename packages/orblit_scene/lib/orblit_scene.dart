@@ -27,7 +27,7 @@ export 'src/components/flat.dart'
         SpriteComponent,
         TilemapComponent;
 export 'src/components/joint.dart'
-    show JointAxis, JointComponent, JointKind, JointRange;
+    show JointAxis, JointComponent, JointGive, JointKind, JointRange;
 export 'src/components/motion.dart' show MotionComponent;
 export 'src/components/staging.dart'
     show CameraComponent, LightComponent, WeatherComponent;

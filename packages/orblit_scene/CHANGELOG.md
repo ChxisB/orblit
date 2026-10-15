@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.17.0
+
+- Add `JointKind.gear`, `rack`, `pulley` and `path`, with `ratio`, `axisB`,
+  `over`, `path` and `follow` on `JointComponent`.
+- Add `JointGive` and `JointComponent.springs`, which give each way a spring
+  by frequency, damping ratio and an optional rest. `spring` and `unspring`
+  set and clear one.
+- Add `softHertz` and `softRatio`, which make the ends of a limit springs,
+  and `goal`, `goalHertz` and `goalRatio`, which make a motor hold a place.
+- All of it is kept through JSON and `copyWith`. A document without these
+  fields reads as it did.
+
 ## 0.16.0
 
 - Add `BodyMotion.character` with `stepHeight`, `steepest`, `skin`, `strength` and `crouchHeight` on `BodyComponent`, including JSON and copyWith.

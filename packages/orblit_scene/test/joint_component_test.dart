@@ -1,5 +1,6 @@
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:test/test.dart';
+import 'package:vector_math/vector_math_64.dart';
 
 void main() {
   group('a joint component', () {
@@ -81,6 +82,100 @@ void main() {
         () => joint.limits[JointAxis.alongX] = const JointRange(0, 1),
         throwsUnsupportedError,
       );
+    });
+  });
+
+  group('a joint that gives', () {
+    test('has no give when the file says nothing', () {
+      final joint = JointComponent.fromJson(const {});
+      expect(joint.springs, isEmpty);
+      expect(joint.softHertz, 0);
+      expect(joint.goalHertz, 0);
+      expect(joint.ratio, 1);
+      expect(joint.over, isEmpty);
+      expect(joint.path, isEmpty);
+      expect(joint.follow, isFalse);
+    });
+
+    test('survives the round trip through a scene file', () {
+      final machine = JointComponent(
+        kind: JointKind.path,
+        limits: const {JointAxis.alongX: JointRange(0, 4)},
+        springs: const {JointAxis.alongX: JointGive(2, ratio: 0.5, rest: 1.5)},
+        softHertz: 3,
+        softRatio: 0.7,
+        goal: 40,
+        goalHertz: 6,
+        goalRatio: 0.9,
+        ratio: -0.5,
+        axisB: Vector3(0, 0, 1),
+        over: [Vector3(0, 3, 0), Vector3(2, 3, 0)],
+        path: [Vector3(0, 0, 0), Vector3(1, -1, 0), Vector3(3, -1, 0)],
+        follow: true,
+      );
+      final back = JointComponent.fromJson(machine.toJson());
+      expect(back.toJson(), machine.toJson());
+      expect(
+        back.springs[JointAxis.alongX],
+        const JointGive(2, ratio: 0.5, rest: 1.5),
+      );
+      expect(back.path, hasLength(3));
+      expect(back.path[2].x, 3);
+      expect(back.over[1].y, 3);
+      expect(back.axisB.z, 1);
+      expect(back.follow, isTrue);
+    });
+
+    test('reads the new kinds by name', () {
+      for (final kind in ['gear', 'rack', 'pulley', 'path']) {
+        expect(JointComponent.fromJson({'kind': kind}).kind.name, kind);
+      }
+    });
+
+    test('says which ways each new kind reads', () {
+      expect(JointComponent(kind: JointKind.path).axes, [JointAxis.alongX]);
+      for (final kind in [JointKind.gear, JointKind.rack, JointKind.pulley]) {
+        expect(JointComponent(kind: kind).axes, isEmpty);
+      }
+    });
+
+    test('skips a spring with no frequency and keeps the rest', () {
+      final joint = JointComponent.fromJson(const {
+        'springs': {
+          'alongX': [0, 1, 0],
+          'aboutX': [4],
+          'aboutY': 'stiff',
+        },
+      });
+      expect(joint.springs.keys, [JointAxis.aboutX]);
+      expect(joint.springs[JointAxis.aboutX]!.ratio, 1);
+      expect(joint.springs[JointAxis.aboutX]!.rest, isNull);
+    });
+
+    test('drops a half-written point', () {
+      final joint = JointComponent.fromJson(const {
+        'path': [0, 0, 0, 1, 2],
+      });
+      expect(joint.path, hasLength(1));
+    });
+
+    test('copies and changes one spring at a time', () {
+      final joint = JointComponent()
+          .spring(JointAxis.aboutX, const JointGive(5))
+          .spring(JointAxis.alongY, const JointGive(1, rest: 2));
+      expect(joint.springs.keys, [JointAxis.aboutX, JointAxis.alongY]);
+      expect(joint.unspring(JointAxis.aboutX).springs.keys, [JointAxis.alongY]);
+      expect(
+        () => joint.springs[JointAxis.alongZ] = const JointGive(1),
+        throwsUnsupportedError,
+      );
+    });
+
+    test('does not share its points with the vector it was given', () {
+      final point = Vector3(1, 2, 3);
+      final joint = JointComponent(path: [point]);
+      point.x = 9;
+      expect(joint.path.single.x, 1);
     });
   });
 
