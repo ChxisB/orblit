@@ -23,9 +23,9 @@ abstract interface class RegionSource {
 ///
 /// The renderer draws at most 256 regions, so a world of more cannot be
 /// handed over whole. A streamer holds the ones within [loadRadius] of the
-/// focus and puts them in and out of the terrain as the focus moves, which
-/// is all a renderer, a [ScatterPlacer] and a physics body need to follow:
-/// they read the terrain's regions as they are.
+/// focus and puts them in and out of the terrain as the focus moves. A
+/// renderer and a [ScatterPlacer] read the terrain's regions as they are
+/// each frame, so they follow without being told.
 ///
 /// Regions that were in the terrain before the streamer, and regions that
 /// were edited after it loaded them, are the caller's. They are never
