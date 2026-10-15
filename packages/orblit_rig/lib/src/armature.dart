@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:vector_math/vector_math_64.dart';
 
 import 'bone.dart';
@@ -373,22 +371,55 @@ class Pose {
 
   void _evaluateOnce() {
     for (final name in evaluationOrder) {
-      final bone = armature[name]!;
-      final local = armature.restLocalOf(name).multiplied(this[name].matrix);
+      _evaluateBone(name);
+    }
+  }
 
-      final parentName = bone.parent;
-      final parent = parentName == null ? null : _world[parentName];
+  void _evaluateBone(String name) {
+    final bone = armature[name]!;
+    final local = armature.restLocalOf(name).multiplied(this[name].matrix);
 
-      var world = parent == null ? local : parent.multiplied(local);
+    final parentName = bone.parent;
+    final parent = parentName == null ? null : _world[parentName];
 
-      // Constraints run before children are evaluated, so a constrained bone
-      // carries everything below it. That ordering is what makes a rig a
-      // mechanism rather than a list of independent parts.
-      for (final constraint in _constraints[name] ?? const <BoneConstraint>[]) {
-        world = constraint.apply(world, this, name);
-      }
+    var world = parent == null ? local : parent.multiplied(local);
 
-      _world[name] = world;
+    // Constraints run before children are evaluated, so a constrained bone
+    // carries everything below it. That ordering is what makes a rig a
+    // mechanism rather than a list of independent parts.
+    for (final constraint in _constraints[name] ?? const <BoneConstraint>[]) {
+      world = constraint.apply(world, this, name);
+    }
+
+    _world[name] = world;
+  }
+
+  /// Works out where bones are again after their transforms were edited.
+  ///
+  /// [evaluate] solves every inverse-kinematics chain, and a chain at part
+  /// influence blends from whatever the pose holds, so a second [evaluate]
+  /// gives a different pose. This only reads the transforms and applies the
+  /// constraints, which gives the same answer however often it runs.
+  ///
+  /// With [from], only that bone and the bones below it are worked out. A
+  /// constraint elsewhere that reads one of them is not, until the next full
+  /// refresh.
+  void refresh({String? from}) {
+    if (from == null) {
+      _evaluateOnce();
+      return;
+    }
+    if (!armature.contains(from)) {
+      throw ArmatureError('No bone called "$from" in this armature.');
+    }
+    final below = <String>{from};
+    for (final name in evaluationOrder) {
+      final parent = armature[name]!.parent;
+      final isBelow =
+          name == from || (parent != null && below.contains(parent));
+      if (!isBelow) continue;
+      below.add(name);
+      _evaluateBone(name);
     }
   }
 
@@ -464,44 +495,22 @@ class Pose {
   }
 
   /// Stretches a bone along its own length, keeping its volume.
-  ///
-  /// The cross-section narrows as the inverse square root of the stretch,
-  /// which is what keeps a stretched forearm from also getting fatter — the
-  /// giveaway that a limb is being scaled rather than stretched.
   void _stretchAlongY(String name, double factor, double amount) {
     final blended = 1 + (factor - 1) * amount;
-    final cross = blended <= 0 ? 1.0 : 1 / math.sqrt(blended);
-    this[name].scale.setValues(cross, blended, cross);
+    this[name].scale.setFrom(stretchScale(blended));
   }
 
   /// Turns a bone so it points a given way, by writing its local rotation.
   void _aim(String name, Vector3 direction, double amount) {
-    if (direction.length2 < 1e-12) return;
-
-    final world = _world[name]!;
-    final column = world.getColumn(1);
-    final currentAxis = Vector3(column.x, column.y, column.z)..normalize();
-
-    final currentRotation = Quaternion.identity();
-    final scale = Vector3.zero();
-    final translation = Vector3.zero();
-    world.decompose(translation, currentRotation, scale);
-    currentRotation.normalize();
-
-    final correction = rotationBetween(currentAxis, direction.normalized());
-    final wanted = correction * currentRotation;
-
-    final baseRotation = Quaternion.identity();
-    _baseOf(name).decompose(Vector3.zero(), baseRotation, Vector3.zero());
-    baseRotation.normalize();
-
-    // Converted back to the bone's own space, because that is where a pose
-    // lives — writing a world rotation would be undone the moment the parent
-    // moved.
-    final local = baseRotation.conjugated() * wanted;
+    final local = aimedRotation(
+      world: _world[name]!,
+      base: _baseOf(name),
+      direction: direction,
+    );
+    if (local == null) return;
     this[name].rotation = amount >= 1
-        ? local.normalized()
-        : _blend(this[name].rotation, local.normalized(), amount);
+        ? local
+        : _blend(this[name].rotation, local, amount);
   }
 
   static Quaternion _blend(Quaternion a, Quaternion b, double t) {
