@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.0
+
+- **Reach with a limb.** `reachLimb` works out the two rotations that put
+  the tip of a three joint limb on a point, from the pose a clip gives.
+  They are local rotations a clip can key. The joint keeps bending the way
+  it did as the limb turns, a straight limb bends the way the rest pose
+  does, and a `pole` overrides both. Neither bone is stretched, and
+  `LimbReach.reachable` says when the point was out of reach.
+- `RestSkeleton.posedWorlds` answers each bone's world matrix for a pose,
+  which `posedOrigins` now reads.
+
 ## 0.9.0
 
 - **Change a blend and keep the rest.** `BlendDocument.copyWith` answers

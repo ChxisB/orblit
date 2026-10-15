@@ -397,6 +397,18 @@ Bone channels hold absolute local values, so a clip means something only
 beside the skeleton it was made for.
 `posedOrigins(pose)` answers where each joint stands for a
 `Map<String, BoneLocal>`, and a bone the map lacks stays at rest.
+`posedWorlds(pose)` answers the same as matrices, turn and scale included.
+
+`reachLimb(skeleton, pose, root:, mid:, tip:, target:, pole:)` works out the
+two rotations that put the tip of a three joint limb, such as a hip, a knee
+and an ankle, on `target` in the model's space. It answers a `LimbReach`
+(`root`, `mid`, `end`, `reachable`), where `root` and `mid` are local
+rotations a clip can key and `end` is where the tip lands. Neither bone is
+stretched, so a target past the reach leaves the limb straight and
+`reachable` false. Without a `pole` the joint keeps bending the way it does
+now, and a straight limb bends the way the rest pose does. It throws
+`ArgumentError` for a name that is not a bone or three bones that are not a
+chain.
 
 Each bone of `b` is turned to stand in the world as the bone driving it did,
 measured from where each rests. Keys, easing and cubic slopes come across as
