@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.15.0
+
+- **`TerrainImporter`.** Claims `.oterrain` and `.oregion` and is one of the
+  default importers, for a project cook and for `RuntimeImport`. Both files
+  are carried into the bundle as written, as `<id>.oterrain` and
+  `<id>.oregion`, after the checks a build would otherwise leave to the run.
+- **What it checks.** A region file is named for the place it holds. A
+  terrain depends on every region it lists and on every image, model and
+  material its sets and scatter layers name, so a missing one fails the
+  terrain's cook, and editing a region cooks the terrain again. A listed
+  region of another size than the terrain, or one holding another place, is
+  a failure that names the file. What loading left out becomes a note.
+- **`CookedTerrain.open(source, file)`.** Reads a cooked terrain back from
+  any `AssetSource`, a bundle or `MountedPacks`. It gives the `Terrain` with
+  no regions in it and a `RegionSource` for `TerrainStreamer`. A listed
+  region the source lacks is named in `problems` and never asked for.
+- New dependency on `orblit_terrain`.
+
 ## 0.14.0
 
 - **`MountedPacks.ownerOf(id)`.** The mounted pack that answers for an id,

@@ -3,7 +3,7 @@ description: >-
   Ground as data: sparse regions of height, cover and colour, the files they
   are kept in, the height and slope of the ground at any point, the brushes
   that shape it, and the grass, stones and trees scattered over it.
-version: 0.3.0
+version: 0.4.0
 publish_to: none
 
 environment:

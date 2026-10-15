@@ -9,6 +9,7 @@ import 'importer.dart';
 import 'importers/atlas_importer.dart';
 import 'importers/gltf_importer.dart';
 import 'importers/native_importers.dart';
+import 'importers/terrain_importer.dart';
 
 /// Importing a file somebody hands the app while it is running.
 ///
@@ -62,6 +63,7 @@ class RuntimeImport {
     GltfImporter(),
     const SceneImporter(),
     const AtlasImporter(),
+    const TerrainImporter(),
     ...nativeImporters,
   ]);
 

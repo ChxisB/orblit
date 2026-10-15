@@ -16,7 +16,7 @@ the fullest reference.
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
-| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer` |
+| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
@@ -712,6 +712,32 @@ group's buffers. A model layer is one `OrblitObject` each (populations draw
 only the cube), keyed `objectKey + group.id * 1048576 + index`. Pass
 `models: false` to leave model layers out, for a view that cannot resolve
 their files. Rebuild when `placer.revision` moves, not every frame.
+
+Streaming: the renderer draws 256 regions at most, so a larger world is
+held a part at a time. `TerrainStreamer({required terrain, required source, loadRadius = 512, keepRadius, maxResident = 256, concurrency = 2})`
+keeps the regions within `loadRadius` metres of a point in the terrain and
+lets go of those past `keepRadius` (the load radius plus one region, unless
+given). `source` is a `RegionSource`: `keys` lists the regions there are and
+`read(key)` gives a file's bytes. `await streamer.follow(x, z)` moves the
+focus, lets go, then reads what is wanted, nearest first. It may be called
+every frame without awaiting, and a call made while it runs moves the focus
+and returns the same run. `resident`, `loading` and `failures` say where it
+is, and `retryFailed()` makes the failed regions eligible again. Regions
+already in the terrain, and any edited after loading, are the caller's: they
+are never removed, and they count against `maxResident`. `heightAt` is null
+over a region that is not loaded yet, so a body there has no ground to stand
+on. Hold it or keep the focus ahead of it.
+
+Cooked: the cook carries `.oterrain` and `.oregion` files into the bundle as
+written, after checking them (`TerrainImporter` in `orblit_asset`, in the
+default importers). A terrain depends on every region it lists and every
+image, model and material it names, so a missing one fails its cook, and a
+region of another size than its terrain does too. In a pack the files are
+`world.oterrain.oterrain` and `x0_z0.oregion.oregion`.
+`await CookedTerrain.open(packs, AssetId.parse('terrain/world.oterrain'))`
+reads the terrain, with no regions in it, and a `RegionSource` over the pack.
+Give both to a `TerrainStreamer`. A region the pack lacks is named in
+`problems` and never asked for.
 
 Traps:
 
