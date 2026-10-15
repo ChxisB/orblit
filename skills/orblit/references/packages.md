@@ -16,7 +16,7 @@ the fullest reference.
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
-| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
+| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
@@ -434,8 +434,23 @@ bone this changes gets a key even when the source never moves it. A bone with
 more than one driven bone below it is left alone, and so is one pointing more
 than 134 degrees from its driver, which `problems` names.
 
-`LiveRetarget(from:, to:, bones:, humanoid:, fixRest:)` works the same turns
-out a frame at a time. `follow(frame)` takes a map of bone name to
+`unpaired: {'tail'}` leaves bones of `b` that nothing moves, even where a name
+would pair them. It throws `ArgumentError` for a bone `b` lacks and for one
+also named in `bones`. A `BoneMap` keeps `bones`, `unpaired`, `humanoid` and
+`fixRest` as one `.obonemap` file with `fromAsset` and `toAsset`, which are
+only labels. `encode()` sorts it so two maps diff as the pairs that changed.
+`BoneMap.decode(text)` answers a `BoneMapLoad` (`map`, `problems`) and throws
+`BoneMapFormatException` on a file that is not a bone map or is a newer one.
+`map.apply(clip, from: a, to: b)` is `retargetClip` with those arguments.
+`withPair(bone, source)`, `withUnpaired(bone)` and `withAuto(bone)` answer a
+new map with that one bone changed, and a bone is never in both sets.
+`map.stale(from: a, to: b)` names what the map says that either skeleton
+lacks, which makes `apply` throw, and `map.fitted(from: a, to: b)` drops it.
+`map.pairing(from: a, to: b)` answers `drivers`, target bone name to source
+bone name, and `problems`, which is what `apply` would carry.
+
+`LiveRetarget(from:, to:, bones:, unpaired:, humanoid:, fixRest:)` works the
+same turns out a frame at a time. `follow(frame)` takes a map of bone name to
 `BoneLocal` for the source, as `ClipFrame.bones['']` holds, and answers one
 for the target that `OrblitSkinBinding.poseFrom` takes. A baked clip and a
 live frame agree at its keys. `pointOf(bone, frame)` is where a source bone is

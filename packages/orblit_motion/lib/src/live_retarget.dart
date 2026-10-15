@@ -20,17 +20,20 @@ import 'retarget_plan.dart';
 final class LiveRetarget {
   /// Pairs the bones of [from] and [to] the way [retargetClip] does.
   ///
-  /// Throws [ArgumentError] when [bones] names a bone one skeleton lacks.
+  /// Throws [ArgumentError] when [bones] names a bone one skeleton lacks, or
+  /// [unpaired] names one [to] lacks or one [bones] pairs.
   LiveRetarget({
     required this.from,
     required this.to,
     Map<String, String> bones = const {},
+    Set<String> unpaired = const {},
     bool humanoid = false,
     bool fixRest = false,
   }) : _plan = planRetarget(
          from: from,
          to: to,
          bones: bones,
+         unpaired: unpaired,
          humanoid: humanoid,
          fixRest: fixRest,
        );

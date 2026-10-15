@@ -33,18 +33,28 @@ final class RetargetLink {
 /// Which bone of [from] drives each bone of [to], with [bones] naming them
 /// by hand over [matchBones] and, for [humanoid], over the parts of a person.
 ///
-/// Throws [ArgumentError] when [bones] names a bone one skeleton lacks.
+/// A bone of [to] in [unpaired] is left out of whatever [matchBones] and
+/// [humanoid] paired it with, so nothing drives it. A bone named in [bones]
+/// is paired by hand, and so cannot also be unpaired.
+///
+/// Throws [ArgumentError] when [bones] names a bone one skeleton lacks, or
+/// when [unpaired] names a bone [to] lacks or one that [bones] pairs.
 RetargetPlan planRetarget({
   required RestSkeleton from,
   required RestSkeleton to,
   Map<String, String> bones = const {},
+  Set<String> unpaired = const {},
   bool humanoid = false,
   bool fixRest = false,
 }) {
+  _checkUnpaired(to, bones, unpaired);
   final problems = <String>[];
   final named = {
-    ...matchBones(from, to),
-    if (humanoid) ..._byBody(from, to, problems),
+    for (final MapEntry(:key, :value) in {
+      ...matchBones(from, to),
+      if (humanoid) ..._byBody(from, to, problems),
+    }.entries)
+      if (!unpaired.contains(key)) key: value,
     ...bones,
   };
   final drivers = <int, int>{};
@@ -67,6 +77,29 @@ RetargetPlan planRetarget({
     fixRest: fixRest,
     problems: problems,
   );
+}
+
+void _checkUnpaired(
+  RestSkeleton to,
+  Map<String, String> bones,
+  Set<String> unpaired,
+) {
+  for (final name in unpaired) {
+    if (to.indexOf(name) == null) {
+      throw ArgumentError.value(
+        unpaired,
+        'unpaired',
+        '"$name" is not a bone of the target skeleton.',
+      );
+    }
+    if (bones.containsKey(name)) {
+      throw ArgumentError.value(
+        unpaired,
+        'unpaired',
+        '"$name" is paired by hand in bones, so it cannot be left unpaired.',
+      );
+    }
+  }
 }
 
 Map<String, String> _byBody(
