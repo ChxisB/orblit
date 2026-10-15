@@ -15,7 +15,7 @@ the fullest reference.
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
-| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
+| `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
@@ -378,6 +378,36 @@ bones share once cleaned is left out, not guessed. `bones: {'hand.L':
 `problems`: a channel for a bone `a` lacks, a bone of `a` that nothing in `b`
 takes, and root motion with no bone to carry it are each left out and named
 there.
+
+`humanoid: true` also pairs bones by the part of a person each is, which
+carries a clip between rigs that share no names. `humanoidOf(skeleton)` finds
+those parts (`HumanoidBone`, 22 slots) from how the bones hang and where they
+stand: two legs that reach the floor, a spine that reaches the head, two arms
+off its top. Names are read only to tell left from right, and where they say
+nothing the left is `up × forward`, +X for a glTF rig; pass `up` and
+`forward` for another. `matchHumanoid(a, b)` pairs two skeletons slot for
+slot, only the slots both have. Order is names, then the body, then `bones`.
+A skeleton that is not a person says why in `problems` and is not paired by
+body. A name for an end site that has none of `end`, `top`, `tip`, `nub` or
+`site` in it is read as a bone.
+
+`fixRest: true` first turns each driven bone to point the way its driver does
+at rest, so an A-pose target follows a T-pose source by where limbs point. A
+bone this changes gets a key even when the source never moves it. A bone with
+more than one driven bone below it is left alone, and so is one pointing more
+than 134 degrees from its driver, which `problems` names.
+
+`LiveRetarget(from:, to:, bones:, humanoid:, fixRest:)` works the same turns
+out a frame at a time. `follow(frame)` takes a map of bone name to
+`BoneLocal` for the source, as `ClipFrame.bones['']` holds, and answers one
+for the target that `OrblitSkinBinding.poseFrom` takes. A baked clip and a
+live frame agree at its keys. `pointOf(bone, frame)` is where a source bone is
+in the target's own size, assuming both stand with their origin at the floor,
+and `pinned(bone, source: () => frame)` is that as a `TwoBoneIk` `target`,
+null while `source` answers null.
+
+`reduceKeys(clip, angle:, distance:)` drops the keys a bake does not need.
+Only channels of straight lines and no cuts are thinned.
 
 ```dart
 import 'dart:typed_data';

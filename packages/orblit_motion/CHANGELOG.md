@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.6.0
+
+- **Retarget by body.** `retargetClip(humanoid: true)` pairs bones by the
+  part of a person each is, found from how the bones hang and where they
+  stand at rest, not by name. `humanoidOf` answers which bone fills each
+  `HumanoidBone` and why a slot was left empty. `matchHumanoid` pairs two
+  skeletons slot for slot. CesiumMan and RiggedFigure share no bone names
+  and now pair 19 of 19.
+- **Fix the rest pose.** `retargetClip(fixRest: true)` first turns each
+  driven bone to point the way its driver does at rest, so an A-pose target
+  follows a T-pose source by where its limbs point.
+- **Live retargeting.** `LiveRetarget` follows one source frame at a time
+  with the same plan as the baked clip, so the two agree at every key.
+  `pointOf` answers where a source bone is in the target's size, and
+  `pinned` hands that to an `orblit_rig` `TwoBoneIk` as its target.
+- **Thin a bake.** `reduceKeys` drops the keys a baked clip does not need,
+  within an angle and a distance. Eased and curved channels are untouched.
+- **Fix.** A position on a bone whose parent stands elsewhere in the
+  target than in the source came out shifted by the distance between the
+  two parents. A change in position is now carried by the turn between
+  them alone.
+
 ## 0.5.0
 
 - `BoneMask` selects bones by name or a skeleton subtree. `ClipLayer` plays

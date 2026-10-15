@@ -1,10 +1,10 @@
-import 'package:orblit_rig/orblit_rig.dart' show BoneNaming;
 import 'package:orblit_sequence/orblit_sequence.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 import 'clip.dart';
 import 'kind.dart';
 import 'rest.dart';
+import 'retarget_plan.dart';
 
 /// A clip made for another skeleton, and what of it could not be carried.
 class ClipRetargeted {
@@ -13,72 +13,6 @@ class ClipRetargeted {
   final ClipDocument clip;
 
   final List<String> problems;
-}
-
-/// Which bone of [from] moves each bone of [to], by name.
-///
-/// A bone with the same name in both is matched first. The rest are matched
-/// by what is left of the name once the things that vary between tools are
-/// taken off: a namespace such as `mixamorig:`, a `DEF-` or `ORG-` prefix,
-/// case, punctuation, and which side it is on, whether written `.L`, `_L` or
-/// `Left`. So `mixamorig:LeftHand` and `hand.L` are the same bone.
-///
-/// A name that two bones of one skeleton share once cleaned matches nothing,
-/// since guessing would drive a bone from the wrong side of the body. The
-/// bones this leaves out are the ones to name by hand, in the `bones` of
-/// [retargetClip], as target bone to source bone.
-Map<String, String> matchBones(RestSkeleton from, RestSkeleton to) {
-  final matched = <String, String>{
-    for (final name in to.names)
-      if (from.indexOf(name) != null) name: name,
-  };
-  final taken = matched.values.toSet();
-  final sources = _byKey([
-    for (final name in from.names)
-      if (!taken.contains(name)) name,
-  ]);
-  final targets = _byKey([
-    for (final name in to.names)
-      if (!matched.containsKey(name)) name,
-  ]);
-  for (final MapEntry(:key, :value) in targets.entries) {
-    final source = sources[key];
-    if (source != null) matched[value] = source;
-  }
-  return matched;
-}
-
-/// [names] by their cleaned name, without any that share one.
-Map<String, String> _byKey(List<String> names) {
-  final seen = <String, String>{};
-  final shared = <String>{};
-  for (final name in names) {
-    final key = _keyOf(name);
-    if (seen.containsKey(key)) shared.add(key);
-    seen[key] = name;
-  }
-  return {
-    for (final MapEntry(:key, :value) in seen.entries)
-      if (!shared.contains(key)) key: value,
-  };
-}
-
-final RegExp _namespace = RegExp(r'[:|]');
-final RegExp _sideWord = RegExp(
-  r'^(left|right)[_ -]?|[_ -]?(left|right)$|[_ -]([lr])$',
-);
-final RegExp _punctuation = RegExp(r'[^a-z0-9]');
-
-String _keyOf(String name) {
-  final bare = name.substring(name.lastIndexOf(_namespace) + 1);
-  var side = BoneNaming.sideOf(bare)?.suffix.substring(1);
-  var base = BoneNaming.baseOf(bare).toLowerCase();
-  final word = _sideWord.firstMatch(base);
-  if (word != null) {
-    side ??= (word[1] ?? word[2] ?? word[3])![0].toUpperCase();
-    base = base.replaceRange(word.start, word.end, '');
-  }
-  return '${base.replaceAll(_punctuation, '')}/${side ?? ''}';
 }
 
 /// [clip], made for the bones of [from], made to move the bones of [to].
@@ -90,6 +24,16 @@ String _keyOf(String name) {
 /// driven by [matchBones], and [bones] adds to that or overrides it, naming
 /// a bone of [to] and the bone of [from] that moves it. One bone can drive
 /// several.
+///
+/// With [humanoid] the bones are also paired by the part of a person each
+/// is, from how they hang and where they stand, which is what carries a clip
+/// between two rigs that share no names. What could not be paired is in
+/// [ClipRetargeted.problems].
+///
+/// With [fixRest] each bone is first turned to point the way its driver
+/// does at rest, so a target stood in an A-pose follows a source stood in a
+/// T-pose by where its limbs point and not by how far they move. A bone
+/// whose rest this changes gets a key even when the source never moves it.
 ///
 /// - **Rotations** are worked out exactly at every key when the bone and its
 ///   parent line up with the bones driving them, and easing, holds and cubic
@@ -116,71 +60,29 @@ ClipRetargeted retargetClip(
   required RestSkeleton to,
   Map<String, String> bones = const {},
   String target = '',
+  bool humanoid = false,
+  bool fixRest = false,
 }) {
-  final drivers = <int, int>{};
-  for (final MapEntry(key: mine, value: theirs) in {
-    ...matchBones(from, to),
-    ...bones,
-  }.entries) {
-    final into = to.indexOf(mine);
-    final source = from.indexOf(theirs);
-    if (into == null || source == null) {
-      throw ArgumentError.value(
-        bones,
-        'bones',
-        '"$mine" or "$theirs" is not a bone of the skeleton it is named in.',
-      );
-    }
-    drivers[into] = source;
-  }
-  return _Retarget(
-    clip: clip,
+  final plan = planRetarget(
     from: from,
     to: to,
-    drivers: drivers,
-    target: target,
-  ).run();
-}
-
-/// How one bone of the target is worked out from the source's bones.
-///
-/// The turn is `left * down⁻¹ * up * right`. [up] is the source bones from
-/// below the shared ancestor of the driver and the pivot down to the driver,
-/// outermost first, and [down] the same down to the pivot. The pivot is the
-/// source bone driving the nearest target ancestor that has one. Their poses
-/// above the shared ancestor cancel, so nothing there is looked at.
-final class _Link {
-  _Link({
-    required this.source,
-    required this.left,
-    required this.right,
-    required this.up,
-    required this.down,
-  });
-
-  final int source;
-  final Quaternion left;
-  final Quaternion right;
-  final List<int> up;
-  final List<int> down;
+    bones: bones,
+    humanoid: humanoid,
+    fixRest: fixRest,
+  );
+  return _Retarget(clip: clip, plan: plan, target: target).run();
 }
 
 final class _Retarget {
-  _Retarget({
-    required this.clip,
-    required this.from,
-    required this.to,
-    required this.drivers,
-    required this.target,
-  });
+  _Retarget({required this.clip, required this.plan, required this.target});
 
   final ClipDocument clip;
-  final RestSkeleton from;
-  final RestSkeleton to;
-
-  /// Target bone to the source bone that moves it.
-  final Map<int, int> drivers;
+  final RetargetPlan plan;
   final String target;
+
+  RestSkeleton get from => plan.from;
+  RestSkeleton get to => plan.to;
+  Map<int, int> get drivers => plan.drivers;
 
   /// Source bone, then property, then what the clip has there.
   late final Map<int, Map<String, ClipChannel<Object>>> _moves = () {
@@ -193,14 +95,6 @@ final class _Retarget {
     }
     return out;
   }();
-
-  late final double _size = from.reach > 1e-9 && to.reach > 1e-9
-      ? to.reach / from.reach
-      : 1;
-
-  late final List<Quaternion> _rest = [
-    for (var bone = 0; bone < from.length; bone++) from.rotationOf(bone),
-  ];
 
   ClipRetargeted run() {
     final carried = [
@@ -218,6 +112,7 @@ final class _Retarget {
         clearRootMotion: root == null,
       ),
       problems: [
+        ...plan.problems,
         ..._leftOut(),
         if (root == null && clip.rootMotion != null) ..._lostRoot(),
       ],
@@ -243,118 +138,57 @@ final class _Retarget {
   // Rotation.
 
   ClipChannel<Quaternion>? _rotation(int bone) {
-    final link = _link(bone);
+    final link = plan.linkOf(bone);
     final moving = [
-      for (final source in {...link.up, ...link.down})
+      for (final source in link.involved)
         if (_turn(source) != null) source,
     ];
-    if (moving.isEmpty) return null;
+    if (moving.isEmpty && !plan.restsElsewhere(bone)) return null;
     final alone = moving.length == 1 && moving.single == link.source;
     return ClipChannel<Quaternion>(
       target: target,
       bone: to.names[bone],
       property: 'rotation',
       kind: ChannelKind.rotation,
-      keys: alone && link.up.isNotEmpty ? _carried(link) : _baked(link, moving),
+      keys: alone && link.up.isNotEmpty
+          ? _carried(bone, link.source)
+          : _baked(bone, moving),
     );
   }
 
   /// The driver's own keys, turned: the one bone that moves is the last
   /// factor of `up`, so its key is multiplied by constants either side.
-  List<Key<Quaternion>> _carried(_Link link) {
-    Quaternion carry(Quaternion q) =>
-        _through(link, 0, stand: (link.source, q)) * link.right;
+  List<Key<Quaternion>> _carried(int bone, int source) {
+    Quaternion carry(Quaternion q) => plan.rotationOf(
+      bone,
+      (other) => other == source ? q : plan.restTurnOf(other),
+    );
     return _mapKeys<Quaternion>(
-      _turn(link.source)!.keys,
+      _turn(source)!.keys,
       (q) => carry(q)..normalize(),
       carry,
     );
   }
 
-  List<Key<Quaternion>> _baked(_Link link, List<int> moving) {
+  /// A key at each moment a moving bone has one, or a single key at the
+  /// start when none moves and the rest was fixed.
+  List<Key<Quaternion>> _baked(int bone, List<int> moving) {
     final times = <double>{
       for (final source in moving)
         for (final key in _turn(source)!.keys) key.at,
+      if (moving.isEmpty) 0,
     }.toList()..sort();
     return [
       for (final at in times)
         Key<Quaternion>(
           at,
-          (_through(link, at) * link.right)..normalize(),
+          plan.rotationOf(
+            bone,
+            (source) => _turn(source)?.valueAt(at) ?? plan.restTurnOf(source),
+          )..normalize(),
           hold: Hold.linear,
         ),
     ];
-  }
-
-  Quaternion _through(_Link link, double at, {(int, Quaternion)? stand}) =>
-      link.left *
-      _product(link.down, at, stand).inverted() *
-      _product(link.up, at, stand);
-
-  Quaternion _product(List<int> chain, double at, (int, Quaternion)? stand) {
-    var out = Quaternion.identity();
-    for (final source in chain) {
-      out =
-          out *
-          (stand != null && stand.$1 == source
-              ? stand.$2
-              : _turn(source)?.valueAt(at) ?? _rest[source]);
-    }
-    return out;
-  }
-
-  _Link _link(int bone) {
-    final source = drivers[bone]!;
-    final right =
-        from.worldRotationOf(source).inverted() * to.worldRotationOf(bone);
-    final pivot = _pivot(bone);
-    final up = _pathTo(source);
-    if (pivot == null) {
-      // Nothing above drives, so the parent stays where it rests.
-      return _Link(
-        source: source,
-        left:
-            to.parentWorldRotationOf(bone).inverted() *
-            from.parentWorldRotationOf(up.first),
-        right: right,
-        up: up,
-        down: const [],
-      );
-    }
-    final held = drivers[pivot]!;
-    final down = _pathTo(held);
-    while (up.isNotEmpty && down.isNotEmpty && up.first == down.first) {
-      up.removeAt(0);
-      down.removeAt(0);
-    }
-    final between =
-        to.worldRotationOf(pivot).inverted() * to.parentWorldRotationOf(bone);
-    final offset =
-        from.worldRotationOf(held).inverted() * to.worldRotationOf(pivot);
-    return _Link(
-      source: source,
-      left: between.inverted() * offset.inverted(),
-      right: right,
-      up: up,
-      down: down,
-    );
-  }
-
-  /// The nearest bone above [bone] that something drives.
-  int? _pivot(int bone) {
-    for (var up = to.parents[bone]; up >= 0; up = to.parents[up]) {
-      if (drivers.containsKey(up)) return up;
-    }
-    return null;
-  }
-
-  /// The source bones from a root down to [source].
-  List<int> _pathTo(int source) {
-    final path = <int>[];
-    for (var up = source; up >= 0; up = from.parents[up]) {
-      path.insert(0, up);
-    }
-    return path;
   }
 
   // Position and scale.
@@ -364,35 +198,29 @@ final class _Retarget {
     final channel = _vector(source, 'position');
     final rest = from.positionOf(source);
     if (channel == null || _staysAt(channel, rest)) return null;
-    // The two parents are in different frames, and the target's may be a
-    // different size: the change is carried through the world between them.
-    final across = to.parentWorldOf(bone)
-      ..invert()
-      ..multiply(from.parentWorldOf(source));
-    Vector3 carry(Vector3 v) => across.transform3(v.clone()..scale(_size));
-    final mine = to.positionOf(bone);
     return _vectorChannel(
       bone,
       'position',
-      _mapKeys<Vector3>(channel.keys, (v) => carry(v - rest)..add(mine), carry),
+      _mapKeys<Vector3>(
+        channel.keys,
+        (v) => plan.positionOf(bone, v),
+        (slope) => plan.changeOf(bone, slope),
+      ),
     );
   }
 
   ClipChannel<Vector3>? _scale(int bone) {
     final source = drivers[bone]!;
     final channel = _vector(source, 'scale');
-    final rest = from.scaleOf(source);
-    if (channel == null || _staysAt(channel, rest)) return null;
-    final mine = to.scaleOf(bone);
-    Vector3 carry(Vector3 v) => Vector3(
-      mine.x * _per(v.x, rest.x),
-      mine.y * _per(v.y, rest.y),
-      mine.z * _per(v.z, rest.z),
-    );
+    if (channel == null || _staysAt(channel, from.scaleOf(source))) return null;
     return _vectorChannel(
       bone,
       'scale',
-      _mapKeys<Vector3>(channel.keys, carry, carry),
+      _mapKeys<Vector3>(
+        channel.keys,
+        (v) => plan.scaleOf(bone, v),
+        (v) => plan.scaleOf(bone, v),
+      ),
     );
   }
 
@@ -422,7 +250,8 @@ final class _Retarget {
     if (source == null || carriers.isEmpty) return null;
     final bone = carriers.reduce((a, b) => a < b ? a : b);
     final turn =
-        to.parentWorldRotationOf(bone).inverted() *
+        (plan.parentStanceOf(bone) * to.parentWorldRotationOf(bone))
+            .inverted() *
         from.parentWorldRotationOf(source);
     return RootMotion(
       target: root.target,
@@ -495,8 +324,6 @@ bool _staysAt(ClipChannel<Vector3> channel, Vector3 rest) {
         still(key.slopeOut),
   );
 }
-
-double _per(double value, double rest) => rest.abs() < 1e-12 ? 1 : value / rest;
 
 /// The first few of [names], and how many more there are.
 String _some(List<String> names) {

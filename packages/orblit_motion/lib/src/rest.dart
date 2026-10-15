@@ -89,6 +89,9 @@ final class RestSkeleton {
 
   Vector3 scaleOf(int bone) => _parts[bone].scale.clone();
 
+  /// Where [bone] stands in the world, at rest.
+  Vector3 originOf(int bone) => _world[bone].getTranslation();
+
   /// How [bone] is turned in the world, at rest.
   Quaternion worldRotationOf(int bone) => _worldRotation[bone].clone();
 
