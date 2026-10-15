@@ -621,6 +621,9 @@ Load these when the task needs them:
   in scene documents, and simulating a document.
 - [references/packages.md](references/packages.md): the other packages,
   terrain among them.
+- [references/ragdoll.md](references/ragdoll.md): bodies and joints from a
+  rig's bones, limp and powered limbs, a hit that spreads, and a character
+  that falls and gets up.
 
 ## Licence
 
