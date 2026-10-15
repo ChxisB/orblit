@@ -206,7 +206,7 @@ void Renderer::applyVideos(const int64_t *keys, const int32_t *flags,
   }
 }
 
-/// Takes whatever frame each decoder has ready and puts it on the GPU.
+/// Takes whatever frame each source has ready and puts it on the GPU.
 ///
 /// Called once a frame. A video that has not advanced hands back nothing and
 /// costs a single comparison; the picture already on the texture stays.
@@ -214,10 +214,10 @@ void Renderer::pumpVideos() {
   if (_movies.empty()) return;
   for (auto &entry : _movies) {
     Movie &movie = entry.second;
-    if (movie.decoder == nullptr || movie.texture == nullptr) continue;
-    // The decoder puts its newest frame on the texture where it lies, and
+    if (movie.source == nullptr || movie.texture == nullptr) continue;
+    // The source puts its newest frame on the texture where it lies, and
     // keeps it until the next one replaces it.
-    movie.decoder->pump(*_engine, movie.texture);
+    movie.source->pump(*_engine, movie.texture);
   }
 }
 

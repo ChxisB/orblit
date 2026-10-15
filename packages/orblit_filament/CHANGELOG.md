@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.35.0
+
+- **A video's decoder is one kind of external image source.** The native
+  renderer used to hold a movie's decoder as a `VideoDecoder`. It now holds
+  an `ExternalImageSource`, which is the two things the renderer asks of
+  anything that fills a texture in place: hand it the newest frame once a
+  frame, saying whether there was one, and stop. `VideoDecoder` derives from
+  it and adds the transport. Nothing a scene can do has changed, and macOS video plays as
+  it did. The seam is there so a camera or a decoder somebody else owns can
+  be put behind it without a second path through the renderer.
+
 ## 0.34.0
 
 - **Every population draw is given an instance buffer of its own.** They

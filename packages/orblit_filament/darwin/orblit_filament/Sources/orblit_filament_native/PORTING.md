@@ -23,7 +23,7 @@ changed, and it forwards every call. Any other host calls the C ABI in
 | `dispatch_apply` | `orblit::parallelFor` (still dispatch on Apple) |
 | `NSLock` | `std::mutex` |
 | `OrblitReadDecalPicture` (ImageIO) | `orblit::readPicture`: ImageIO in `OrblitPlatformApple.mm`, stb_image and Filament's resampler in `OrblitPlatform.cpp` |
-| `AVPlayer` and friends in `Movie`, `open:`, `close:`, `pumpVideos` | `orblit::VideoDecoder`: AVFoundation in `OrblitPlatformApple.mm`; none elsewhere yet, which the notes say |
+| `AVPlayer` and friends in `Movie`, `open:`, `close:`, `pumpVideos` | `orblit::VideoDecoder`: AVFoundation in `OrblitPlatformApple.mm`; none elsewhere yet, which the notes say. It is an `orblit::ExternalImageSource`, which is all `pumpVideos` and `close` use of it |
 | `builder.backend(Engine::Backend::METAL)` | `orblit::backendCandidates` (`OrblitBackend.cpp`) |
 | `initWithWidth:` / `copyPresentedBuffer` / `notes` / `passTimings` | `Renderer::initWithWidth` / `copyPresentedBuffer` / `notes` / `passTimings`, which the wrapper turns back into Foundation types |
 
