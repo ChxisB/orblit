@@ -149,12 +149,19 @@ class AssetOrigin {
   /// fetch itself is guarded by [urlOf] and [beside], which say why.
   bool allows(Uri url) {
     try {
-      _check(url, url.toString());
+      requireAllowed(url);
       return true;
     } on FetchRefused {
       return false;
     }
   }
+
+  /// Throws [FetchRefused], saying why, unless this origin would fetch [url].
+  ///
+  /// Holds [url] to the scheme and host rules and not to the base's folder.
+  /// A pack is served from wherever the game keeps its downloads, which need
+  /// not sit under the folder the loose assets do.
+  void requireAllowed(Uri url) => _check(url, url.toString());
 
   Uri _under(Uri reference, String wrote, {Uri? from}) {
     final url = (from ?? base).resolveUri(reference);

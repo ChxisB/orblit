@@ -1,5 +1,40 @@
 # Changelog
 
+## 0.13.0
+
+- **`PackFolder`.** A folder of packs fetched after install. A pack is
+  `<hash>.opack` and a download in progress is `<hash>.part`, so a file only
+  gets a pack's name once it has been checked. `list()` opens what is there,
+  `download(offer, ...)` fetches one and `remove(hash)` deletes one. It needs
+  `dart:io`. On the web every method throws `UnsupportedError`.
+- **Downloads resume.** The part file is appended to, from the byte it
+  ends at, and kept when a reply ends short. A server that answers `200`
+  restarts the file. A server that resumes at another byte, or a part that
+  turns out to be the start of a different file, is dropped and fetched
+  whole. A `416` for a part that is already the whole pack finishes it.
+- **A pack is checked as a pack.** The download has to hash to the offer's
+  directory hash and every blob has to match the directory, or it throws
+  `FetchCorrupt` or `FormatException` and leaves no file with a pack's name.
+  A pack over `FetchPolicy.maxBytes` is refused from its declared length,
+  and from the bytes as they arrive when none is declared.
+- **Retries cost the missing bytes.** `attempts` (5) with doubling `backoff`
+  (1s) and noise. A 5xx, 408, 425, 429 and a dropped connection are tried
+  again. A 404, a refused host and a wrong pack are not. This is not
+  `AssetFetcher`, which keeps its bytes in memory and files them by hash.
+- **`PackOffer`.** The URL and the directory hash a server says the pack
+  has, which is what `pack build` prints and a patch names as its base.
+- **`PackListing`.** The packs that opened, the files that look like packs
+  and are not (`UnreadablePack`, with a reason) and the hashes of downloads
+  that began and did not finish. One bad file does not stop the rest.
+- **`PatchChain.of(shipped, found)`.** Puts packs found on disk in mounting
+  order by following each patch's `base` from the shipped pack, whatever
+  order they were listed in. `ordered` is the chain, `standalone` is what
+  has no base and so mounts as a mod, and `skipped` is a `SkippedPack` with
+  a reason for a patch whose base is missing, a fork, a pack for another
+  target or one older than the shipped pack.
+- **`AssetOrigin.requireAllowed(url)`.** Throws `FetchRefused` for a URL
+  the policy does not allow. `allows` answers the same question as a bool.
+
 ## 0.12.0
 
 - **`RangePackBytes`.** A `PackBytes` over an `AssetTransport` and a URL.

@@ -86,6 +86,27 @@ it does not. A pack on another origin also needs a
 `Access-Control-Expose-Headers: Content-Range` header, or the page cannot
 read how long the pack is.
 
+A patch the game fetches after install goes in a `PackFolder`. The download
+resumes from the bytes it holds, is checked as a pack, and is filed under
+its hash only when it is whole. At start-up `PatchChain` puts what is on disk
+in mounting order, whatever order the listing gave:
+
+```dart
+final folder = PackFolder(patchesPath);
+final pack = await folder.download(
+  PackOffer(Uri.parse('https://cdn.example.com/patch-2.opack'), patchHash),
+  transport: HttpTransport(),
+  origin: AssetOrigin(Uri.parse('https://cdn.example.com/')),
+);
+
+final chain = PatchChain.of(shipped, (await folder.list()).packs);
+chain.ordered.forEach(packs.patch);
+chain.standalone.forEach(packs.addMod);
+```
+
+A pack over `FetchPolicy.maxBytes` (256 MiB) is refused, so raise it in the
+origin's policy for a large patch.
+
 The guide is at
 [orblitengine.com](https://orblitengine.com/docs/guides/asset-packs/).
 
