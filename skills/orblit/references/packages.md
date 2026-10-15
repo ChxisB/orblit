@@ -395,6 +395,8 @@ bones named as `clipsFromGltf` names them, or build one with
 `RestSkeleton(names:, parents:, local:, above:)`, parents before children.
 Bone channels hold absolute local values, so a clip means something only
 beside the skeleton it was made for.
+`posedOrigins(pose)` answers where each joint stands for a
+`Map<String, BoneLocal>`, and a bone the map lacks stays at rest.
 
 Each bone of `b` is turned to stand in the world as the bone driving it did,
 measured from where each rests. Keys, easing and cubic slopes come across as
