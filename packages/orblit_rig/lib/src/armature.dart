@@ -453,7 +453,11 @@ class Pose {
         chain.root,
       ).multiplied(this[chain.root].matrix);
 
+      // The lower bone hangs from the root that has just turned, so its world
+      // is a pass old. Aimed from there it points at the end from a head it
+      // no longer has, and the end lands off the target.
       _stretchAlongY(chain.mid, 1, amount);
+      _world[chain.mid] = _baseOf(chain.mid).multiplied(this[chain.mid].matrix);
       _aim(chain.mid, solution.end - headOf(chain.mid), amount);
       _world[chain.mid] = _baseOf(chain.mid).multiplied(this[chain.mid].matrix);
     }

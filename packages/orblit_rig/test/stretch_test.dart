@@ -81,6 +81,48 @@ void main() {
     });
   });
 
+  group('a chain that has to bend', () {
+    test('lands its tail on a goal off the limb\'s own line', () {
+      // The upper bone turns to bend the limb, and the lower bone has to be
+      // aimed from where the turn put its head, not from where it began.
+      final rig = limb(goal: Vector3(1, 1, 0));
+      rig.pose
+        ..addIkChain(
+          const IkChain(
+            root: 'upper',
+            mid: 'lower',
+            target: 'goal',
+            pole: 'pole',
+          ),
+        )
+        ..evaluate();
+
+      expect(
+        rig.pose.tailOf('lower').distanceTo(Vector3(1, 1, 0)),
+        lessThan(1e-6),
+      );
+    });
+
+    test('keeps the lower bone joined to the upper', () {
+      final rig = limb(goal: Vector3(1, 1, 0));
+      rig.pose
+        ..addIkChain(
+          const IkChain(
+            root: 'upper',
+            mid: 'lower',
+            target: 'goal',
+            pole: 'pole',
+          ),
+        )
+        ..evaluate();
+
+      expect(
+        rig.pose.tailOf('upper').distanceTo(rig.pose.headOf('lower')),
+        lessThan(1e-6),
+      );
+    });
+  });
+
   group('a stretching chain', () {
     test('lands its tail on a target it could not otherwise reach', () {
       final rig = limb(goal: Vector3(0, 3, 0));
