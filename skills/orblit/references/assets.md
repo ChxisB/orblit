@@ -353,6 +353,39 @@ final pack = await AssetPack.open(
   that covers the file may come back as a `200`, which is accepted.
 - **No retries.** A failed request throws. Wrap the transport to retry.
 
+### Exporting from the editor
+
+Scene > Export (or the palette's Export) cooks the project for each target
+chosen and packs the result into `exports/` beside the project.
+
+- **A whole pack is `game.<target>.opack`.** That is the name an app ships
+  and `packFileName` returns. A new whole pack sets the one it replaces
+  aside as `game.<target>.<hash12>.opack`, so a patch built on it still
+  finds its base.
+- **A patch is `game.<target>.<hash12>.opack`.** It is built on a pack
+  picked from the folder, for that pack's target and no other. The name is
+  its own hash, so a patch never overwrites the one it stands on.
+- **A chain is found by hash.** Each patch names its base by directory hash
+  and the folder is searched for it. File names and dates do not matter. A
+  base that is missing is `ExportChainBroken` and names the hash.
+- **Nothing that changed is not written.** A whole pack identical to the
+  last one, and a patch that holds nothing and removes nothing, report
+  `unchanged`.
+- **A failed cook packs nothing for the target.** The assets and the
+  reasons are listed, and the last good pack is left as it was. The next
+  target still runs.
+- **Each target is its own isolate.** A result is shown as it lands.
+  `runExport` is the whole run, `exportTarget` is one target and never
+  throws.
+- **`PackSummary.added` and `replaced` split `assets`.** For a patch, `added`
+  is what the base did not serve and `replaced` is what it served with other
+  bytes. A pack with no base has every asset added. `MountedPacks.ownerOf(id)`
+  says which pack answers for an id.
+- **Contents reads directories only.** The list of what an export serves,
+  and which pack each asset comes from, reads no blob.
+- **Not run live** with a real texture encoder, or with the native tools of a
+  target other than the machine's own.
+
 ### Downloaded packs
 
 ```dart

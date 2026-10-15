@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.14.0
+
+- **`MountedPacks.ownerOf(id)`.** The mounted pack that answers for an id,
+  or null when none does. A mod above the chain owns what it covers and a
+  patch owns what it replaced. It reads the map a read already uses.
+- **`PackSummary.added` and `PackSummary.replaced`.** Split the assets a
+  patch holds into ids the base did not serve and ids it served with other
+  bytes. `added + replaced == assets`, and a pack with no base is all
+  added. `removed` is as before.
+- **`pack build` names the changes of a patch.** With `--base` it prints
+  `N new, N replaced, N removed` after the sizes.
+
 ## 0.13.0
 
 - **`PackFolder`.** A folder of packs fetched after install. A pack is

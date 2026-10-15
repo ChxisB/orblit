@@ -97,11 +97,14 @@ Future<void> _build(List<String> arguments) async {
   _checkTargetMatchesFolder(bundle, target);
 
   final summary = await _packOver(bundle, out, target, bases);
-  final removed = summary.removed == 0 ? '' : ', ${summary.removed} removed';
+  final changes = bases.isEmpty
+      ? ''
+      : ', ${summary.added} new, ${summary.replaced} replaced, '
+            '${summary.removed} removed';
   stdout.writeln(
     '${summary.assets} assets in ${summary.blobs} blobs, '
     '${summary.bytes} bytes, ${summary.sharedBytes} saved by sharing'
-    '$removed\n'
+    '$changes\n'
     '${summary.hash}  $out',
   );
 }
