@@ -2,7 +2,7 @@ name: orblit_camera
 description: >-
   Cameras as shots rather than as objects. A camera describes what it wants to
   frame; the engine works out where to be and blends between them.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

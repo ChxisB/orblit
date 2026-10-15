@@ -18,6 +18,7 @@ export 'src/aim.dart'
         StaticAim,
         project,
         rotationPlacing;
+export 'src/arm.dart' show ArmBody, ArmProbe;
 export 'src/blend.dart' show Blend, BlendStyle, BlendTable;
 export 'src/body.dart'
     show
