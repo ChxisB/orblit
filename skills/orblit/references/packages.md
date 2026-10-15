@@ -555,6 +555,16 @@ Missing, repeated or misordered contacts fall back to ordinary laps.
 overrides a transition's fade for the dominant ordered pair. `fromPose: true`
 on `BlendChange` or `player.enter` freezes the current visible pose.
 
+A `BlendDocument` never changes. `blend.copyWith(states: ..., changes: ...)`
+answers another one and throws `ArgumentError` when a change names a state
+that is gone. `writtenStates`, `writtenChanges`, `writtenFades` and
+`writtenStart` are the lists as a file writes them, with a nested graph as
+one state, which is what an editor changes. `states` and `changes` are the
+expanded ones a player reads. `BlendState.copyWith` and
+`BlendChange.copyWith` change one part of a state or a change.
+`clearWhenDone` hands each clip back its own ending, and `clearFrom` makes a
+change one from anywhere.
+
 The `BlendPlace` is everything a blend remembers: the state, the `lap` (how
 many times through it, so 2.5 is halfway through the third), and what is
 fading out (`from`, `faded`, `fade`, `shape`), nested up to

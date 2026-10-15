@@ -204,6 +204,123 @@ void main() {
     });
   });
 
+  group('a state or a change with something changed', () {
+    test('a state keeps what it is not given', () {
+      final state = BlendState(
+        'move',
+        plays: const BlendClip('walk'),
+        speed: 1.5,
+        whenDone: WhenDone.hold,
+        sync: const ['left', 'right'],
+      );
+      final same = state.copyWith();
+      expect(same.toJson(), state.toJson());
+      final renamed = state.copyWith(name: 'run', speed: 2);
+      expect(renamed.name, 'run');
+      expect(renamed.speed, 2);
+      expect(renamed.whenDone, WhenDone.hold);
+      expect(renamed.sync, ['left', 'right']);
+    });
+
+    test('a state can go back to each clip ending its own way', () {
+      final state = BlendState(
+        'a',
+        plays: const BlendClip('a'),
+        whenDone: WhenDone.hold,
+      );
+      expect(state.copyWith(clearWhenDone: true).whenDone, isNull);
+    });
+
+    test('a change keeps what it is not given', () {
+      final same = toMove.copyWith();
+      expect(same.toJson(), toMove.toJson());
+      final slower = toMove.copyWith(fade: 0.5, shape: Easing.linear);
+      expect(slower.from, 'idle');
+      expect(slower.inStep, isTrue);
+      expect(slower.fade, 0.5);
+      expect(slower.shape, Easing.linear);
+    });
+
+    test('a change can be made one from anywhere', () {
+      expect(toMove.copyWith(clearFrom: true).from, isNull);
+      expect(toJump.copyWith(from: 'idle').from, 'idle');
+    });
+  });
+
+  group('a blend with something changed', () {
+    test('keeps everything it is not given', () {
+      final blend = moves();
+      final same = blend.copyWith();
+      expect(same.encode(), blend.encode());
+      expect(same.start, blend.start);
+    });
+
+    test('takes new states, changes, a start and a name', () {
+      final edited = moves().copyWith(
+        name: 'Fewer',
+        states: [
+          BlendState('idle', plays: const BlendClip('idle')),
+          BlendState('jump', plays: const BlendClip('jump')),
+        ],
+        changes: const [toJump],
+        start: 'jump',
+      );
+      expect(edited.name, 'Fewer');
+      expect(edited.start, 'jump');
+      expect(edited.states.map((state) => state.name), ['idle', 'jump']);
+      expect(edited.changes, [toJump]);
+    });
+
+    test('refuses a change left pointing at a state that is gone', () {
+      expect(
+        () => moves().copyWith(
+          states: [BlendState('idle', plays: const BlendClip('idle'))],
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test('writes a nested graph once, not once for each of its leaves', () {
+      final inner = BlendDocument(
+        name: 'Inner',
+        inputs: const {'speed': 0},
+        states: [
+          BlendState('a', plays: const BlendClip('a')),
+          BlendState('b', plays: const BlendClip('b')),
+        ],
+        changes: const [
+          BlendChange(
+            from: 'a',
+            to: 'b',
+            when: BlendCondition.above('speed', 1),
+          ),
+        ],
+        fades: [BlendFade('a', 'b', 0.3)],
+      );
+      final outer = BlendDocument(
+        name: 'Outer',
+        states: [
+          BlendState('ground', plays: BlendGraph(inner)),
+          BlendState('air', plays: const BlendClip('air')),
+        ],
+        changes: const [BlendChange(from: 'ground', to: 'air')],
+      );
+      final edited = outer.copyWith(name: 'Renamed');
+      expect(edited.writtenStates.map((state) => state.name), [
+        'ground',
+        'air',
+      ]);
+      expect(edited.states.map((state) => state.name), [
+        'ground/a',
+        'ground/b',
+        'air',
+      ]);
+      expect(edited.fades, hasLength(1));
+      expect(edited.writtenFades, isEmpty);
+      expect(edited.encode(), outer.encode().replaceFirst('Outer', 'Renamed'));
+    });
+  });
+
   group('which change comes next', () {
     test('is none while nothing holds', () {
       expect(moves().changeFor(const BlendPlace('idle'), const {}), isNull);

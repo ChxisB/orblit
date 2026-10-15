@@ -86,6 +86,23 @@ class BlendState {
   /// Cyclic contacts in order. Phase zero is the first named mark.
   final List<String> sync;
 
+  /// This state with whatever is given in place of what it has. A
+  /// [clearWhenDone] leaves each clip to its own ending.
+  BlendState copyWith({
+    String? name,
+    BlendSource? plays,
+    double? speed,
+    WhenDone? whenDone,
+    bool clearWhenDone = false,
+    List<String>? sync,
+  }) => BlendState(
+    name ?? this.name,
+    plays: plays ?? this.plays,
+    speed: speed ?? this.speed,
+    whenDone: clearWhenDone ? null : whenDone ?? this.whenDone,
+    sync: sync ?? this.sync,
+  );
+
   double lapFor(ClipDocument clip, double lap) =>
       (whenDone ?? clip.whenDone) == WhenDone.loop
       ? syncedLap(clip, lap, sync)
@@ -140,6 +157,27 @@ class BlendChange {
 
   /// Freeze the outgoing pose while the incoming clip keeps playing.
   final bool fromPose;
+
+  /// This change with whatever is given in place of what it has. A
+  /// [clearFrom] makes it a change from anywhere.
+  BlendChange copyWith({
+    String? from,
+    bool clearFrom = false,
+    String? to,
+    BlendCondition? when,
+    double? fade,
+    Easing? shape,
+    bool? inStep,
+    bool? fromPose,
+  }) => BlendChange(
+    from: clearFrom ? null : from ?? this.from,
+    to: to ?? this.to,
+    when: when ?? this.when,
+    fade: fade ?? this.fade,
+    shape: shape ?? this.shape,
+    inStep: inStep ?? this.inStep,
+    fromPose: fromPose ?? this.fromPose,
+  );
 
   Map<String, Object?> toJson() {
     final when = this.when.toJson();
@@ -256,10 +294,10 @@ class BlendDocument {
            if (state.plays case BlendGraph(:final graph)) ...graph.fades,
          ...fades,
        ]),
-       _writtenStates = List.unmodifiable(states),
-       _writtenChanges = List.unmodifiable(changes),
-       _writtenFades = List.unmodifiable(fades),
-       _writtenStart = start ?? (states.isEmpty ? '' : states.first.name),
+       writtenStates = List.unmodifiable(states),
+       writtenChanges = List.unmodifiable(changes),
+       writtenFades = List.unmodifiable(fades),
+       writtenStart = start ?? (states.isEmpty ? '' : states.first.name),
        start =
            graphEntries(states)[start ??
                (states.isEmpty ? '' : states.first.name)] ??
@@ -324,10 +362,40 @@ class BlendDocument {
   /// Parent graph names and the leaf each enters.
   final Map<String, String> entries;
   final List<BlendFade> fades;
-  final List<BlendState> _writtenStates;
-  final List<BlendChange> _writtenChanges;
-  final List<BlendFade> _writtenFades;
-  final String _writtenStart;
+
+  /// The states as a file writes them: a nested graph is one state here and
+  /// its leaves are not listed. What an editor changes.
+  final List<BlendState> writtenStates;
+
+  /// The changes as a file writes them, without the ones a nested graph
+  /// brings.
+  final List<BlendChange> writtenChanges;
+
+  /// The fades as a file writes them, without the ones a nested graph brings.
+  final List<BlendFade> writtenFades;
+
+  /// The start as a file writes it: a state, or a nested graph that is
+  /// entered at its own start.
+  final String writtenStart;
+
+  /// This blend with whatever is given in place of what it has, as a file
+  /// writes it. Throws [ArgumentError] as the constructor does, so a change
+  /// left pointing at a state that is gone cannot get through.
+  BlendDocument copyWith({
+    String? name,
+    Map<String, double>? inputs,
+    List<BlendState>? states,
+    List<BlendChange>? changes,
+    String? start,
+    List<BlendFade>? fades,
+  }) => BlendDocument(
+    name: name ?? this.name,
+    inputs: inputs ?? this.inputs,
+    states: states ?? writtenStates,
+    changes: changes ?? writtenChanges,
+    start: start ?? writtenStart,
+    fades: fades ?? writtenFades,
+  );
 
   late final Map<String, int> _byName = {
     for (var i = 0; i < states.length; i++) states[i].name: i,
@@ -685,11 +753,11 @@ class BlendDocument {
     'formatVersion': formatVersion,
     'name': name,
     'inputs': inputs,
-    'start': _writtenStart,
-    'states': [for (final state in _writtenStates) state.toJson()],
-    'changes': [for (final change in _writtenChanges) change.toJson()],
-    if (_writtenFades.isNotEmpty)
-      'fades': [for (final fade in _writtenFades) fade.toJson()],
+    'start': writtenStart,
+    'states': [for (final state in writtenStates) state.toJson()],
+    'changes': [for (final change in writtenChanges) change.toJson()],
+    if (writtenFades.isNotEmpty)
+      'fades': [for (final fade in writtenFades) fade.toJson()],
   };
 
   /// The file's text: indented, with anything short enough on a line of its
