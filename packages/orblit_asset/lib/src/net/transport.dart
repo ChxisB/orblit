@@ -2,12 +2,21 @@ import 'dart:async';
 
 /// One request for an asset's bytes.
 ///
-/// Deliberately smaller than HTTP. Only three things vary between one asset
+/// Deliberately smaller than HTTP. Only four things vary between one asset
 /// fetch and another, and a transport that took arbitrary headers and methods
 /// would be a transport that could be asked to do something this package has
 /// no way to check.
 class FetchRequest {
-  const FetchRequest(this.url, {this.ifNoneMatch, this.from});
+  const FetchRequest(this.url, {this.ifNoneMatch, this.from, this.through})
+    : assert(
+        from == null || from >= 0,
+        'from is a byte offset and cannot be negative',
+      ),
+      assert(
+        through == null || (from != null && through >= from),
+        'through needs a from, and is the last byte wanted so it cannot '
+        'come before it',
+      );
 
   final Uri url;
 
@@ -18,14 +27,23 @@ class FetchRequest {
   /// a warm one on a connection where the bytes are the expensive part.
   final String? ifNoneMatch;
 
-  /// The byte to resume from, for a download that stopped partway.
+  /// The byte to resume from, for a download that stopped partway, or the
+  /// first byte of a part of a file.
   final int? from;
+
+  /// The last byte wanted, counted as HTTP counts it: this one is included.
+  ///
+  /// Null asks for everything from [from] on, which is what a resume wants.
+  /// A reader that takes a part of a large file, such as one asset out of a
+  /// pack, names both ends so that the server stops sending there.
+  final int? through;
 
   @override
   String toString() => [
     url,
     if (ifNoneMatch != null) 'if-none-match: $ifNoneMatch',
     if (from != null) 'from: $from',
+    if (through != null) 'through: $through',
   ].join(', ');
 }
 
@@ -138,13 +156,18 @@ class MapTransport implements AssetTransport {
 
     final from = request.from ?? 0;
     if (from > page.bytes.length) return FetchReply.empty(416);
-    final rest = page.bytes.sublist(from);
+    // A range that runs past the end is cut at the end, as a server does.
+    final end = request.through == null
+        ? page.bytes.length
+        : (request.through! + 1).clamp(from, page.bytes.length);
+    final rest = page.bytes.sublist(from, end);
     // Armed for one reply only: the resumed request that follows is answered
     // in full, which is the sequence resuming has to survive.
     final stop = page.stopAfter;
     page.stopAfter = null;
     return FetchReply(
-      status: from == 0 ? 200 : 206,
+      // A bounded request is always a range, even one that starts at nought.
+      status: from == 0 && request.through == null ? 200 : 206,
       body: stop != null
           ? _stopsShort(rest, stop)
           : page.cut <= 0
@@ -155,7 +178,7 @@ class MapTransport implements AssetTransport {
             ]),
       etag: page.etag,
       length: page.bytes.length,
-      from: from == 0 ? null : from,
+      from: from == 0 && request.through == null ? null : from,
     );
   }
 

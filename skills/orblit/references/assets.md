@@ -320,7 +320,38 @@ Future<PackBytes> bundledPack() async {
 - **`packDuringBuild` takes `cookDuringBuild`'s arguments.** It reports the
   assets folder and the settings files that exist, so it runs again for a
   new asset and not for an unchanged build.
-- **The web has no file.** The whole pack is fetched until range reads land.
+- **The web has no file.** Read it in parts, as the next section says.
+
+### On the web
+
+```dart
+final store = await CacheStorageContentStore.open();
+final pack = await AssetPack.open(
+  RangePackBytes(HttpTransport(), Uri.base.resolve('game.web.opack')),
+  cache: store,
+);
+```
+
+- **`RangePackBytes` asks for a range at a time.** The header, then the
+  directory, then one range for each asset read. The first answer says how
+  long the pack is, so `length()` is not a second request.
+- **The host has to answer `Range` with `206`.** A host that sends the whole
+  file is refused with `PackRangeFailed`, and the body is not read. Serve
+  `.opack` as `application/octet-stream` with no content encoding. A range
+  of an encoded reply counts the encoded bytes.
+- **Another origin has to expose `Content-Range`.** Send
+  `Access-Control-Expose-Headers: Content-Range` with the pack, or the page
+  cannot read the length and `PackRangeFailed` names the header.
+- **`cache:` is keyed by hash.** A blob is checked against the directory's
+  hash before it is kept. A rebuilt pack fetches the directory and only the
+  blobs whose hash changed. Without a store every read is a request.
+- **A pack replaced mid-session is refused.** An answer that gives a
+  different length than the first one throws `PackRangeFailed`. Open the
+  pack again.
+- **A small pack is cheaper whole.** Read `length()`, and when it is under
+  the app's threshold take `read(0, length)` into `MemoryPackBytes`. A range
+  that covers the file may come back as a `200`, which is accepted.
+- **No retries.** A failed request throws. Wrap the transport to retry.
 
 ---
 

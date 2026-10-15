@@ -102,6 +102,7 @@ export 'src/net/ktx2_chain.dart' show Ktx2Chain, Ktx2Level;
 export 'src/net/network_asset_source.dart' show NetworkAssetSource;
 export 'src/net/picture_size.dart' show PictureSize, pictureSizeOf;
 export 'src/net/policy.dart' show AssetOrigin, FetchPolicy, FetchRefused;
+export 'src/net/range_pack_bytes.dart' show PackRangeFailed, RangePackBytes;
 export 'src/net/progressive.dart' show AssetStage, ProgressiveFetch;
 export 'src/net/records.dart'
     show
