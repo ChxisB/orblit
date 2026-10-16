@@ -307,6 +307,7 @@ class OrblitMaterial {
     this.filter = OrblitFilter.smooth,
     this.video,
     this.screenMapped = false,
+    this.litScreen = false,
     this.blendMode = OrblitBlendMode.none,
     this.blendAmount = 0.0,
     this.blendSharpness = 8.0,
@@ -472,6 +473,19 @@ class OrblitMaterial {
   /// it twice.
   final bool screenMapped;
 
+  /// Whether a [OrblitShading.video] screen is shaded by the scene's lights.
+  ///
+  /// Off, the screen is its own light, as it always was. On, the picture is
+  /// the base colour of a lit surface, so a lamp falls on it and a window
+  /// reflects in it, and [metallic], [roughness], [reflectance], [emissive],
+  /// [emissiveIntensity] and [ambientOcclusion] apply. The picture is still the
+  /// producer's own buffer and nothing is copied.
+  ///
+  /// A lit screen is a package of its own and always opaque, so [blend] is
+  /// ignored. It carries none of a lit surface's maps, decals, area lights,
+  /// field or wind. Ignored by every other shading model.
+  final bool litScreen;
+
   /// Multiplied into [baseColour]. sRGB.
   final OrblitTexture? baseColourMap;
 
@@ -553,7 +567,8 @@ class OrblitMaterial {
       ((depthWrite ? 1 : 0) << 9) |
       (wrap.index << 10) |
       (filter.index << 12) |
-      (screenMapped ? 1 << 13 : 0);
+      (screenMapped ? 1 << 13 : 0) |
+      (litScreen ? 1 << 14 : 0);
 
   /// Writes this material's numbers into [out] at [at], in the fixed order
   /// the renderer reads them back.
@@ -630,6 +645,7 @@ class OrblitMaterial {
     double? depthBias,
     OrblitWrap? wrap,
     OrblitFilter? filter,
+    bool? litScreen,
   }) {
     return OrblitMaterial(
       key: key,
@@ -659,6 +675,7 @@ class OrblitMaterial {
       wrap: wrap ?? this.wrap,
       filter: filter ?? this.filter,
       video: video,
+      litScreen: litScreen ?? this.litScreen,
       baseColourMap: baseColourMap,
       normalMap: normalMap,
       metallicRoughnessMap: metallicRoughnessMap,

@@ -16,11 +16,14 @@ namespace orblit {
 /// The shadow catcher sits outside that grid rather than adding a fourth row
 /// to it. Its blending is not a choice — a surface that is only its own
 /// shadow is see-through by definition — so five variants of it would be four
-/// packages compiled to be unreachable.
+/// packages compiled to be unreachable. The lit screen sits outside it for
+/// the opposite reason: it is opaque only, because a lit screen is a panel and
+/// five blend modes of it would be four packages nobody asked for.
 int Renderer::surfaceIndexFor(int32_t flags) {
   const int shading = flags & 3;
   const int blend = (flags >> 2) & 15;
   if (shading == 3) return kShadowCatcherSurface;
+  if (shading == 2 && (flags & kLitScreenFlag) != 0) return kLitScreenSurface;
   if (shading < 0 || shading > 2 || blend < 0 || blend > 4) return 0;
   return shading * 5 + blend;
 }
@@ -471,6 +474,49 @@ static mat3f orientationMatrix(int32_t orientation) {
                float3{shift + sign * across[2], down[2], 1.0f});
 }
 
+/// Writes a screen: a tint, a transform, the frame, and for a lit one the lit
+/// parameters.
+void Renderer::writeScreen(Surfaced &surface, const float *params, int32_t video) {
+  MaterialInstance *instance = surface.instance;
+  instance->setParameter("baseColor",
+                         float4{params[0], params[1], params[2], params[3]});
+  instance->setParameter(
+      "uvTransform", float4{params[13], params[14], params[15], params[16]});
+  Movie *movie = (video >= 0 && video < static_cast<int32_t>(_movieOrder.size()))
+                     ? _movieOrder[video]
+                     : nullptr;
+  Texture *frame = movie != nullptr ? movie->texture : nullptr;
+  // An external image only ever clamps, and only ever filters linearly.
+  // Asking for anything else is not refused, it is ignored.
+  const TextureSampler screen(TextureSampler::MinFilter::LINEAR,
+                              TextureSampler::MagFilter::LINEAR,
+                              TextureSampler::WrapMode::CLAMP_TO_EDGE);
+  if (frame == nullptr) {
+    if (_blankExternal == nullptr) {
+      _blankExternal = Texture::Builder()
+                           .sampler(Texture::Sampler::SAMPLER_EXTERNAL)
+                           .format(Texture::InternalFormat::RGBA8)
+                           .build(*_engine);
+    }
+    frame = _blankExternal;
+  }
+  instance->setParameter("videoTexture", frame, screen);
+  instance->setParameter("hasVideo", movie != nullptr && movie->texture != nullptr);
+  instance->setParameter(
+      "orientation",
+      orientationMatrix(movie != nullptr ? movie->orientation : 0));
+  // Nothing sets defaults on a lit screen, so every lit parameter is written.
+  if ((surface.flags & kLitScreenFlag) != 0) {
+    instance->setParameter("metallic", params[4]);
+    instance->setParameter("roughness", params[5]);
+    instance->setParameter("reflectance", params[6]);
+    instance->setParameter("emissive",
+                           float3{params[7], params[8], params[9]});
+    instance->setParameter("emissiveIntensity", params[10]);
+    instance->setParameter("ambientOcclusion", params[11]);
+  }
+}
+
 /// Writes everything about one material into its instance.
 void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video) {
   MaterialInstance *instance = surface.instance;
@@ -487,35 +533,8 @@ void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps
     return;
   }
 
-  // A screen has its own short list: a tint, a transform, and the frame.
   if (shading == 2) {
-    instance->setParameter("baseColor",
-                           float4{params[0], params[1], params[2], params[3]});
-    instance->setParameter(
-        "uvTransform", float4{params[13], params[14], params[15], params[16]});
-    Movie *movie = (video >= 0 && video < static_cast<int32_t>(_movieOrder.size()))
-                       ? _movieOrder[video]
-                       : nullptr;
-    Texture *frame = movie != nullptr ? movie->texture : nullptr;
-    // An external image only ever clamps, and only ever filters linearly.
-    // Asking for anything else is not refused, it is ignored.
-    const TextureSampler screen(TextureSampler::MinFilter::LINEAR,
-                                TextureSampler::MagFilter::LINEAR,
-                                TextureSampler::WrapMode::CLAMP_TO_EDGE);
-    if (frame == nullptr) {
-      if (_blankExternal == nullptr) {
-        _blankExternal = Texture::Builder()
-                             .sampler(Texture::Sampler::SAMPLER_EXTERNAL)
-                             .format(Texture::InternalFormat::RGBA8)
-                             .build(*_engine);
-      }
-      frame = _blankExternal;
-    }
-    instance->setParameter("videoTexture", frame, screen);
-    instance->setParameter("hasVideo", movie != nullptr && movie->texture != nullptr);
-    instance->setParameter(
-        "orientation",
-        orientationMatrix(movie != nullptr ? movie->orientation : 0));
+    writeScreen(surface, params, video);
     return;
   }
 

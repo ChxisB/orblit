@@ -53,6 +53,21 @@ void main() {
     expect((opaque.flags >> 9) & 1, 1, reason: 'depth write is on by default');
   });
 
+  test('a lit screen is a video with bit 14 set, and only then', () {
+    const screen = OrblitMaterial(
+      key: 1,
+      shading: OrblitShading.video,
+      litScreen: true,
+    );
+    const plain = OrblitMaterial(key: 1, shading: OrblitShading.video);
+
+    expect(screen.flags & 3, OrblitShading.video.index);
+    expect((screen.flags >> 14) & 1, 1);
+    expect((plain.flags >> 14) & 1, 0);
+    expect(screen.copyWith(roughness: 0.2).litScreen, isTrue);
+    expect(screen.copyWith(litScreen: false).flags, plain.flags);
+  });
+
   group('wind', () {
     test('a surface says nothing about it and does not move', () {
       // The vertex stage is compiled into every lit surface, so the thing

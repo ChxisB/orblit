@@ -229,6 +229,7 @@ class Renderer {
   void applyTextureLimits();
   TextureSampler samplerFor(int32_t flags);
   void write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video);
+  void writeScreen(Surfaced &surface, const float *params, int32_t video);
   void applyRasterState(Surfaced &surface, float threshold, float bias);
   void open(Movie &movie, const std::string &path);
   void openFile(Movie &movie, const std::string &path);
@@ -472,7 +473,7 @@ class Renderer {
   filament::Material *_surfaces[kSurfaceCount]{};
 
   /// Which of them have already been handed to the shader compiler ahead of
-  /// the frame that draws them, one bit each — kSurfaceCount is sixteen, so
+  /// the frame that draws them, one bit each — kSurfaceCount is seventeen, so
   /// the whole record is one word. Asked once per surface because a warm-up
   /// is free the second time only in the sense that it does nothing, and a
   /// scene is published every time anything in it changes.

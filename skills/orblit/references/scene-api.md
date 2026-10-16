@@ -316,8 +316,11 @@ a camera, a decoder of your own or another view produces.
   `PlatformException` on Android below API 26.
 - One reader per feed on Android. Apple allows two `OrblitFeed` entries on
   one source.
-- Only the video shading reads a feed. It is not yet a base colour map on a
-  lit material. A feed has no seek, rate, loop or volume.
+- The video shading reads a feed and copies nothing. Add `litScreen: true`
+  to the material and the scene's lights shade it and it takes reflections,
+  with `metallic`, `roughness`, `reflectance`, `emissive`,
+  `emissiveIntensity` and `ambientOcclusion`. A lit screen is opaque only.
+  A feed has no seek, rate, loop or volume.
 
 ## `OrblitResources` (`resources.dart`)
 

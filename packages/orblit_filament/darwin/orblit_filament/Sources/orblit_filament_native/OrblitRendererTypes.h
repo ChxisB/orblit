@@ -747,9 +747,15 @@ constexpr uint32_t kDecalPictureLayers = 16;
 constexpr uint32_t kDecalPictureLevels = 10;
 
 /// How many compiled surfaces there are: three shading models in five blend
-/// modes, and the shadow catcher on the end.
+/// modes, then the shadow catcher and the lit screen, which are one package
+/// each.
 constexpr int kShadowCatcherSurface = 15;
-constexpr int kSurfaceCount = 16;
+constexpr int kLitScreenSurface = 16;
+constexpr int kSurfaceCount = 17;
+
+/// The material flag that makes a video shading lit; see
+/// OrblitMaterial.litScreen.
+constexpr int32_t kLitScreenFlag = 1 << 14;
 
 /// An environment filtered at run time out of an .hdr or .exr picture, ready
 /// to light a scene: see OrblitEnvironment.cpp.

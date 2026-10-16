@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.37.0
+
+- **A lit screen.** `OrblitMaterial(shading: OrblitShading.video, litScreen:
+  true)` shows a video or a feed on a surface that the scene's lights shade
+  and that takes reflections. The frame is the base colour. `metallic`,
+  `roughness`, `reflectance`, `emissive`, `emissiveIntensity` and
+  `ambientOcclusion` apply to it as they do to a lit material, and
+  `emissive` is how much the screen glows on its own. Nothing is copied: the
+  picture is still the buffer the producer wrote.
+- It is a package of its own, `lit_screen`, because an external sampler is a
+  different sampler type from a 2D one and cannot sit in a lit material's
+  slot. It is opaque only, 174 KB compiled, and has none of the lit
+  material's maps, decals, area lights, field or wind. A scene that uses no
+  lit screen never builds it.
+- `OrblitMaterial.flags` bit 14 is `litScreen`. A lit screen keeps shading
+  2, so everything that skips video screens skips it.
+
 ## 0.36.0
 
 - **Feeds: pictures the application draws, shown on a screen.**
