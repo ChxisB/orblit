@@ -26,9 +26,11 @@
 /// bone to stand in the world as the bone driving it did, given the
 /// [RestSkeleton] of each, and [matchBones] pairs them by name. [humanoidOf]
 /// finds the parts of a person from how the bones hang, so two rigs with
-/// nothing in common but their shape can be paired too. A [LiveRetarget]
-/// does the same turn a frame at a time from any source pose, and
-/// [reduceKeys] lightens a clip that had to be baked.
+/// nothing in common but their shape can be paired too. A [BoneMap] keeps
+/// that pairing, what was named by hand and what was left alone, as a
+/// `.obonemap` file. A [LiveRetarget] does the same turn a frame at a time
+/// from any source pose, and [reduceKeys] lightens a clip that had to be
+/// baked.
 library;
 
 export 'package:orblit_sequence/orblit_sequence.dart'
@@ -47,6 +49,8 @@ export 'src/blend.dart'
         ClipWeight,
         blendExtension;
 export 'src/blend_player.dart' show BlendPlayer;
+export 'src/bone_map.dart'
+    show BoneMap, BoneMapFormatException, BoneMapLoad, boneMapExtension;
 export 'src/bone_names.dart' show matchBones;
 export 'src/clip.dart'
     show

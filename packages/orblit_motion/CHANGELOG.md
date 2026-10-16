@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.8.0
+
+- **Keep a pairing as a file.** `BoneMap` holds the bones named by hand, the
+  bones left unpaired, and whether to pair by body and fix the rest pose.
+  It saves as an `.obonemap` file with a marker and a format version, reads
+  back with a note for each pair it could not use, and throws
+  `BoneMapFormatException` on a file that is not one. `BoneMap.apply` is
+  `retargetClip` with those arguments. `withPair`, `withUnpaired` and
+  `withAuto` change one bone and keep the two sets apart. `stale` names what
+  a map says that a pair of skeletons lacks, `fitted` takes those out, and
+  `pairing` answers which bone moves each one and what could not be paired.
+- **Leave a bone alone.** `planRetarget`, `retargetClip` and `LiveRetarget`
+  take `unpaired`, bones of the target that nothing moves even when a name
+  would pair them. It throws `ArgumentError` for a bone the target lacks
+  or one that is also paired by hand.
+
 ## 0.7.0
 
 - **Draw a posed skeleton.** `RestSkeleton.posedOrigins` answers where each

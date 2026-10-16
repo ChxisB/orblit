@@ -23,7 +23,9 @@ class ClipRetargeted {
 /// whatever way the two skeletons happen to point their bones. Bones are
 /// driven by [matchBones], and [bones] adds to that or overrides it, naming
 /// a bone of [to] and the bone of [from] that moves it. One bone can drive
-/// several.
+/// several. A bone of [to] in [unpaired] is left out of the automatic
+/// pairing, so nothing moves it. A bone cannot be both named in [bones] and
+/// unpaired.
 ///
 /// With [humanoid] the bones are also paired by the part of a person each
 /// is, from how they hang and where they stand, which is what carries a clip
@@ -53,12 +55,13 @@ class ClipRetargeted {
 /// length and rate are kept.
 ///
 /// Throws [ArgumentError] when [bones] names a bone one skeleton does not
-/// have.
+/// have, or [unpaired] names one [to] does not have or one [bones] pairs.
 ClipRetargeted retargetClip(
   ClipDocument clip, {
   required RestSkeleton from,
   required RestSkeleton to,
   Map<String, String> bones = const {},
+  Set<String> unpaired = const {},
   String target = '',
   bool humanoid = false,
   bool fixRest = false,
@@ -67,6 +70,7 @@ ClipRetargeted retargetClip(
     from: from,
     to: to,
     bones: bones,
+    unpaired: unpaired,
     humanoid: humanoid,
     fixRest: fixRest,
   );
