@@ -4,6 +4,9 @@
 #
 #   Fox                        three clips on one skin (CC BY 4.0 and CC0)
 #   CesiumMan                  a walk cycle (CC BY 4.0, Cesium)
+#   RiggedFigure               a second person with the same bones under
+#                              other names, the pair retargeting is checked
+#                              against (CC BY 4.0, Cesium)
 #   RiggedSimple               the smallest skin there is (CC BY 4.0)
 #   MaterialsVariantsShoe      KHR_materials_variants (CC BY 4.0, Shopify)
 #   LightsPunctualLamp         KHR_lights_punctual (CC BY 4.0)
@@ -34,8 +37,8 @@ cd "$(dirname "$0")/.."
 
 INTO="assets/samples"
 FROM="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models"
-MODELS=(Fox CesiumMan RiggedSimple MaterialsVariantsShoe LightsPunctualLamp
-        ClearCoatTest SheenChair AnisotropyBarnLamp)
+MODELS=(Fox CesiumMan RiggedFigure RiggedSimple MaterialsVariantsShoe
+        LightsPunctualLamp ClearCoatTest SheenChair AnisotropyBarnLamp)
 
 # get <url> <file under $INTO> — skips what is already there. Into a
 # temporary name and then moved, so an interrupted download is not left

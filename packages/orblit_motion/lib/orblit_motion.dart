@@ -24,7 +24,11 @@
 ///
 /// A clip made for one skeleton can move another. [retargetClip] turns each
 /// bone to stand in the world as the bone driving it did, given the
-/// [RestSkeleton] of each, and [matchBones] pairs them by name.
+/// [RestSkeleton] of each, and [matchBones] pairs them by name. [humanoidOf]
+/// finds the parts of a person from how the bones hang, so two rigs with
+/// nothing in common but their shape can be paired too. A [LiveRetarget]
+/// does the same turn a frame at a time from any source pose, and
+/// [reduceKeys] lightens a clip that had to be baked.
 library;
 
 export 'package:orblit_sequence/orblit_sequence.dart'
@@ -43,6 +47,7 @@ export 'src/blend.dart'
         ClipWeight,
         blendExtension;
 export 'src/blend_player.dart' show BlendPlayer;
+export 'src/bone_names.dart' show matchBones;
 export 'src/clip.dart'
     show
         ClipChannel,
@@ -63,6 +68,8 @@ export 'src/cutscene.dart'
         cutsceneExtension;
 export 'src/condition.dart' show BlendCondition;
 export 'src/frame.dart' show BoneLocal, ClipFrame;
+export 'src/humanoid.dart'
+    show HumanoidBone, HumanoidMap, humanoidOf, matchHumanoid;
 export 'src/import.dart'
     show ClipsImported, clipsFromGltf, restSkeletonsFromGltf;
 export 'src/kind.dart' show ChannelKind;
@@ -76,10 +83,12 @@ export 'src/layer.dart'
         completeFrame,
         layerFrame,
         restFrame;
+export 'src/live_retarget.dart' show LiveRetarget;
 export 'src/place.dart' show BlendPlace, BlendRoute;
 export 'src/player.dart' show ClipPlayer, ClipStep;
 export 'src/rest.dart' show RestSkeleton;
-export 'src/retarget.dart' show ClipRetargeted, matchBones, retargetClip;
+export 'src/reduce.dart' show reduceKeys;
+export 'src/retarget.dart' show ClipRetargeted, retargetClip;
 export 'src/root.dart' show RootStep;
 export 'src/scene.dart' show ClipScope, sceneOpsFor;
 export 'src/snapshot.dart' show PoseSnapshot;

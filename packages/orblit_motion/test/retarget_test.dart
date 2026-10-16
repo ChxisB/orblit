@@ -485,6 +485,47 @@ void main() {
       }
     });
 
+    test('moves a bone below the hips as much further, and no more', () {
+      final from = source();
+      final to = target();
+      final clip = ClipDocument(
+        name: 'Lunge',
+        duration: 1,
+        channels: [
+          moves('spine', 'position', [
+            (0, v(0, 0.2, 0)),
+            (0.5, v(0.1, 0.25, 0.3)),
+            (1, v(0, 0.2, 0)),
+          ]),
+        ],
+      );
+      final result = retargetClip(clip, from: from.skeleton, to: to.skeleton);
+      final size = to.reach / from.reach;
+      // Where the spine stands from its parent, seen from the parent's own
+      // rotation, so the two hips standing in different places and facing
+      // different ways must not show up in it.
+      Vector3 inParent(Rig rig, ClipDocument? clip, double time) {
+        final pose = rig.pose(clip, time);
+        final away = pose[1].getTranslation() - pose[0].getTranslation();
+        return turnOf(pose[0]).transposed().transform(away);
+      }
+
+      final fromRest = inParent(from, null, 0);
+      final toRest = inParent(to, null, 0);
+      // At a moment the source is at rest the target must be at its own rest.
+      expect(
+        (inParent(to, result.clip, 0) - toRest).length,
+        closeTo(0, 1e-9),
+      );
+      for (final time in [0.25, 0.5, 0.8]) {
+        final moved = inParent(from, clip, time) - fromRest;
+        final carried = inParent(to, result.clip, time) - toRest;
+        // The target's own frame is turned from the source's, so only the
+        // lengths are comparable.
+        expect(carried.length, closeTo(moved.length * size, 1e-9));
+      }
+    });
+
     test('leaves out a position that stays at rest', () {
       final clip = ClipDocument(
         name: 'Held',
