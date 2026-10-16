@@ -394,8 +394,8 @@ Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as git
 dependencies: `orblit_physics` (the solver, native platforms only, not the
 web), `orblit_physics_scene` (`ScenePhysics`, which simulates a scene
 document), `orblit_physics_terrain` (`TerrainPhysics`, which lays a terrain
-as ground) and `orblit_physics_vehicle` (cars, which the scene package
-brings in). An entity gets a body from a `body` component (`BodyComponent` in
+as ground), `orblit_physics_vehicle` (cars, which the scene package
+brings in) and `orblit_physics_soft` (cloth and rope, stepped beside the world). An entity gets a body from a `body` component (`BodyComponent` in
 `orblit_scene`), and each `advance` answers with a `SceneDiff` for the view:
 
 ```dart

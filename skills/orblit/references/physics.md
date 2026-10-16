@@ -3,8 +3,8 @@
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as packages under `packages/<name>`. Names below were checked against
 `orblit_physics` 0.13.0, `orblit_physics_scene` 0.13.0,
-`orblit_physics_terrain` 0.1.0 and `orblit_physics_vehicle` 0.4.0, and
-`orblit_scene` 0.19.0 for the components.
+`orblit_physics_terrain` 0.1.0, `orblit_physics_vehicle` 0.4.0 and
+`orblit_physics_soft` 0.1.0, and `orblit_scene` 0.19.0 for the components.
 A git dependency resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -38,6 +38,9 @@ dependencies:
   `SuspensionSpec`, `TyreSpec`, `EngineSpec`, `DriveSpec` and `VehicleInput`.
   `orblit_physics_scene` depends on it and re-exports `Vehicle`,
   `VehicleInput` and `WheelState`, so a scene game needs no second import.
+- **`orblit_physics_soft`** exports `SoftBody`, `SoftSpec`, `SoftSurface`,
+  `SoftContact`, `SoftAir`, `PhysicsSurface`, `PhysicsWind` and `bodyPoint`.
+  It depends on `orblit_physics` and nothing else. Native platforms only.
 
 Guide: https://orblitengine.com/docs/guides/physics/
 
@@ -553,6 +556,70 @@ frame.dispose();
 
 scene.dispose();
 ```
+
+## Cloth
+
+`SoftBody` is particles joined by distance links, stepped beside the world and
+not inside it. There is no scene component for one.
+
+```dart
+final flag = SoftBody.cloth(
+  columns: 20, rows: 12,
+  origin: Vector3(0, 3.4, 0),
+  across: Vector3(0.08, 0, 0),  // to the next particle along a row
+  down: Vector3(0, -0.08, 0),   // to the next row
+  surface: PhysicsSurface(physics),                    // optional
+  air: PhysicsWind(physics, {zoneId: Vector3(0, 0, 8)}), // optional
+  spec: SoftSpec(windDrag: 3),
+);
+for (var row = 0; row < 12; row++) flag.pin(row * 20);
+
+physics.step(dt);   // the world first
+flag.step(dt);      // then the cloth
+final at = flag.positionOf(row * 20 + column);
+```
+
+- Particle `row * columns + column`. `SoftBody.rope(points: [...])` is a chain.
+- `pin`, `release` and `place` hold a particle. `place` needs a pinned one.
+- `attach(i, bodyPoint(physics, id, local), limit: newtons)` holds a particle
+  to a point on a body. Over `limit`, averaged over a step, it lets go.
+  `pullOf(i)` reads the pull and `isAttached(i)` tells whether it holds. The
+  pull is one way: the cloth never pushes the body.
+- `PhysicsSurface` casts a sphere through the world. A floor must be a
+  box, since a world cannot cast a plane. Triggers are never met.
+- `PhysicsWind(physics, {triggerId: wind})` blows from trigger bodies, and
+  overlapping zones add. Any `SoftAir` works. It is asked once a step, at the
+  middle of the cloth. `SoftSpec.windDrag` 1 leaves a flag drooping at
+  7 m/s. 3 flies it.
+- `step` is cut to `SoftSpec.maxStep` (0.1 s) and runs in sub-steps of 1/480.
+  A cloth that has been still for a second stops stepping. `wake()` it when
+  a surface moves under it. A pin, `place` or a new wind wakes it already.
+- `bodyPoint` throws once its body is gone. `detach` first.
+- No self-collision, no volume, one contact plane per particle per step.
+
+Draw it with `OrblitParticleSheet` from `orblit_stage` (0.9.0):
+
+```dart
+final sheet = OrblitParticleSheet(columns: 20, rows: 12, spacing: 0.08);
+final name = OrblitResources.nameFor('flag/v1/flag.glb');
+await OrblitResources.provide(name, sheet.toGlb());
+// Every frame:
+OrblitObject(
+  key: 3, mesh: name, colour: Vector3.all(1),
+  transform: Matrix4.translation(corner),
+  joints: sheet.poses((i) => flag.positionOf(i) - corner),
+);
+```
+
+- A vertex and a joint per particle, so at most 256 (a skin holds 256).
+  Numbered as `SoftBody.cloth` numbers them.
+- `poses` takes positions relative to the object's transform. Pass world
+  positions with a transform that is not the identity and the cloth is drawn
+  displaced by that transform.
+- Provide the bytes once, under a name that changes if they do. Leave the
+  object out until `provide` has finished, or the renderer draws the cube.
+- The gallery's `ClothExample` is the working one. It lives in the gallery,
+  not `orblit_examples`, because physics does not run on the web.
 
 ## Traps
 
