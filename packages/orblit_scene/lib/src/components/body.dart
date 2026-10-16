@@ -153,6 +153,7 @@ class BodyComponent extends SceneComponent {
     this.gravityScale = 1,
     this.maxSpeed = 0,
     this.maxSpin = 0,
+    this.continuous = false,
     Vector3? centreOfMass,
     Vector3? inertia,
   }) : size = size ?? Vector3.all(1),
@@ -202,6 +203,7 @@ class BodyComponent extends SceneComponent {
     gravityScale: Values.number(json, 'gravityScale', 1),
     maxSpeed: Values.number(json, 'maxSpeed', 0),
     maxSpin: Values.number(json, 'maxSpin', 0),
+    continuous: Values.flag(json, 'continuous', fallback: false),
     centreOfMass: Values.vector(json['centreOfMass']),
     inertia: Values.vector(json['inertia']),
   );
@@ -247,6 +249,7 @@ class BodyComponent extends SceneComponent {
     double? gravityScale,
     double? maxSpeed,
     double? maxSpin,
+    bool? continuous,
     Vector3? centreOfMass,
     Vector3? inertia,
   }) => BodyComponent(
@@ -276,6 +279,7 @@ class BodyComponent extends SceneComponent {
     gravityScale: gravityScale ?? this.gravityScale,
     maxSpeed: maxSpeed ?? this.maxSpeed,
     maxSpin: maxSpin ?? this.maxSpin,
+    continuous: continuous ?? this.continuous,
     centreOfMass: (centreOfMass ?? this.centreOfMass).clone(),
     inertia: (inertia ?? this.inertia).clone(),
   );
@@ -389,6 +393,15 @@ class BodyComponent extends SceneComponent {
   final double maxSpeed;
   final double maxSpin;
 
+  /// Stops it at the first fixed body its move would take it through, instead
+  /// of finding it on the far side. The world already holds anything fast with
+  /// contacts it makes before the touch. This is for a small body at a walking
+  /// pace against a thin wall, and one that is knocked at a wall in the same
+  /// step. It costs one cast a step while the body moves, so it is off.
+  /// A driven body and a character are not cast, and nor is a sensor or
+  /// another free body.
+  final bool continuous;
+
   /// Where its weight is, from the middle of its shape, in the entity's own
   /// units so it scales with the entity. It turns about this point, and a push
   /// through it does not spin it. Zero is the middle. Not [centre], which is
@@ -436,6 +449,7 @@ class BodyComponent extends SceneComponent {
     'gravityScale': gravityScale,
     'maxSpeed': maxSpeed,
     'maxSpin': maxSpin,
+    'continuous': continuous,
     'centreOfMass': Values.vectorToJson(centreOfMass),
     'inertia': Values.vectorToJson(inertia),
   };

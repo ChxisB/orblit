@@ -440,7 +440,7 @@ belt and `setRule` changes one pair's friction, bounce and mass scale. A rule
 is data, not a callback.
 
 A body says how it moves with `locks`, `gravityScale`, `maxSpeed`, `maxSpin`,
-`centreOfMass` and `inertia` on its component, or with `physics.setControls(id,
+`continuous`, `centreOfMass` and `inertia` on its component, or with `physics.setControls(id,
 PhysicsControls(...))` in the world. `setMotion` switches a body between fixed,
 driven and free, and `setGravity` changes the world's. `PhysicsRule(ignore:
 true)`, or `scene.ignore(idA, idB)` for two entities, makes a pair pass through
