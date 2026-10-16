@@ -586,9 +586,14 @@ constexpr size_t kVideoParams = 4;
 /// decoder wrote and is handed to the GPU where it lies, which is the whole
 /// reason a screen in the scene costs about as much as a flat colour.
 struct Movie {
-  /// What decodes it, from the platform layer. Null while nothing is open,
-  /// and always null where the platform has no decoder yet.
-  std::unique_ptr<orblit::VideoDecoder> decoder;
+  /// What fills the texture each frame, from the platform layer. Null while
+  /// nothing is open, and always null where the platform has no decoder yet.
+  std::unique_ptr<orblit::ExternalImageSource> source;
+
+  /// The same object seen as a file being played, which is the only part of
+  /// it that takes play, pause and seek. Set and cleared with `source`,
+  /// and null whenever `source` is.
+  orblit::VideoDecoder *decoder = nullptr;
   filament::Texture *texture = nullptr;
 
   std::string path;

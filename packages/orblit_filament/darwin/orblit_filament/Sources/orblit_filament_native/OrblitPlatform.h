@@ -174,6 +174,33 @@ void parallelFor(size_t count, const std::function<void(size_t)> &body);
 std::vector<uint8_t> readPicture(const uint8_t *data, size_t size,
                                  uint32_t side);
 
+// ---- External images ----
+
+/// Whatever fills a Filament external texture: once a frame, it either hands
+/// the texture a newer picture or says there was none.
+///
+/// The picture is a buffer the platform owns and the GPU reads where it lies,
+/// so nothing crosses to CPU memory and nothing is uploaded. This is the
+/// whole of what the renderer asks of a source. A file being played is one
+/// kind, [VideoDecoder] below. A surface that an application fills is meant
+/// to be another.
+class ExternalImageSource {
+ public:
+  virtual ~ExternalImageSource() = default;
+
+  /// Hands the newest frame to `texture`, if a new one is ready, keeping it
+  /// until the next replaces it. False when there was nothing new.
+  ///
+  /// Called once a frame, on the thread that draws, outside the frame's
+  /// begin and end.
+  virtual bool pump(filament::Engine &engine, filament::Texture *texture) = 0;
+
+  /// Stops producing and lets go of whatever feeds it. The last frame handed
+  /// over is kept until the source is destroyed, because the texture showing
+  /// it is destroyed first.
+  virtual void stop() = 0;
+};
+
 // ---- Video ----
 
 /// One video being decoded onto a Filament external texture.
@@ -182,10 +209,8 @@ std::vector<uint8_t> readPicture(const uint8_t *data, size_t size,
 /// a file, play at a rate, pause, loop or not. It hands the newest decoded
 /// frame to the texture when asked, which is once a frame. AVFoundation on
 /// Apple; nothing yet anywhere else.
-class VideoDecoder {
+class VideoDecoder : public ExternalImageSource {
  public:
-  virtual ~VideoDecoder() = default;
-
   /// Opens a file, or a URL beginning with http. False if it cannot.
   virtual bool open(const std::string &path) = 0;
 
@@ -198,15 +223,6 @@ class VideoDecoder {
 
   /// Whether reaching the end starts it again from the beginning.
   virtual void setLooping(bool looping) = 0;
-
-  /// Hands the newest frame to `texture`, if a new one is ready, keeping it
-  /// until the next replaces it. False when there was nothing new.
-  virtual bool pump(filament::Engine &engine, filament::Texture *texture) = 0;
-
-  /// Stops decoding and lets go of the player. The last frame handed over is
-  /// kept until the decoder is destroyed, because the texture showing it is
-  /// destroyed first.
-  virtual void stop() = 0;
 };
 
 /// A decoder for this platform, or null where video is not supported yet —

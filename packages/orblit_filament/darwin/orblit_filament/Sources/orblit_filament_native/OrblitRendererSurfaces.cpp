@@ -617,17 +617,17 @@ void Renderer::open(Movie &movie, const std::string &path) {
   // The platform's decoder, or none where there is not one yet — which is
   // said rather than failed: a scene with a screen in it still draws, and
   // the screen is blank.
-  movie.decoder = orblit::createVideoDecoder();
-  if (movie.decoder == nullptr) {
+  std::unique_ptr<orblit::VideoDecoder> decoder =
+      orblit::createVideoDecoder();
+  if (decoder == nullptr) {
     _videoNotes[path] =
         "Video is not supported on this platform yet, so this screen is "
         "blank.";
     return;
   }
-  if (!movie.decoder->open(path)) {
-    movie.decoder.reset();
-    return;
-  }
+  if (!decoder->open(path)) return;
+  movie.decoder = decoder.get();
+  movie.source = std::move(decoder);
 
   // The external image is the decoder's own buffer, so the texture is a
   // handle rather than storage: no width, no height, no format, and nothing
@@ -644,12 +644,13 @@ void Renderer::close(Movie &movie) {
   // output — then the texture goes, and only then the last frame it showed,
   // which the decoder keeps until it is destroyed: releasing it while the
   // texture still pointed at it would pull the picture out from under a draw.
-  if (movie.decoder != nullptr) movie.decoder->stop();
+  if (movie.source != nullptr) movie.source->stop();
   if (movie.texture != nullptr) {
     _engine->destroy(movie.texture);
     movie.texture = nullptr;
   }
-  movie.decoder.reset();
+  movie.decoder = nullptr;
+  movie.source.reset();
   movie.flags = -1;
   movie.seekToken = -1;
 }
