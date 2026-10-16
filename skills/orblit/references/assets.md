@@ -353,6 +353,58 @@ final pack = await AssetPack.open(
   that covers the file may come back as a `200`, which is accepted.
 - **No retries.** A failed request throws. Wrap the transport to retry.
 
+### Downloaded packs
+
+```dart
+final folder = PackFolder(patchesPath);
+
+final pack = await folder.download(
+  PackOffer(patchUrl, patchHash),
+  transport: HttpTransport(),
+  origin: AssetOrigin(Uri.parse('https://cdn.example.com/')),
+  onProgress: (p) => print('${p.received} of ${p.total}'),
+);
+
+// At start-up, whatever the listing order:
+final listing = await folder.list();
+final chain = PatchChain.of(shipped, listing.packs);
+chain.ordered.forEach(packs.patch);
+chain.standalone.forEach(packs.addMod);
+```
+
+- **`PackOffer` is a URL and the directory hash.** That is what
+  `pack build` prints and what a patch names as its base. The folder files
+  the pack as `<hash>.opack`.
+- **A download resumes from the file.** Bytes go to `<hash>.part` and are
+  kept when a reply ends short, in this run or after a crash. A retry asks
+  for the missing bytes only.
+- **The pack is checked as a pack.** It has to hash to the offer and every
+  blob has to match the directory. A failure throws `FetchCorrupt` or
+  `FormatException` and leaves nothing a mount would take.
+- **A server that cannot resume is handled.** A `200` restarts the file. A
+  `206` from another byte, or a part that is the start of a different file,
+  drops the part and fetches whole.
+- **Retries cover a dropped connection and 5xx, 408, 425 and 429.** A 404, a
+  refused host, a wrong pack and a full disk throw at once. `attempts`
+  counts all tries, five by default.
+- **`FetchPolicy.maxBytes` is 256 MiB.** A larger pack is refused from its
+  declared length, or from the bytes as they arrive. Set it in the origin's
+  policy.
+- **`PatchChain.of(shipped, found)` orders by `base`.** `ordered` follows
+  each patch from the shipped pack's hash, `standalone` has no base, and
+  `skipped` says why for a missing base, a fork, another target or an older
+  pack.
+- **`list()` does not throw for one bad file.** `unreadable` has the path
+  and a reason. A file whose contents do not hash to its name is reported
+  and not opened. `unfinished` lists the downloads to resume.
+- **Remove before mounting.** `folder.remove(hash)` deletes the pack and
+  its part. A mounted pack holds its file open.
+- **A mods folder is not a `PackFolder`.** Open those files with
+  `FilePackBytes` and `AssetPack.open`, whatever they are called.
+- **Not `AssetFetcher`.** That keeps bytes in memory and files them by
+  hash, which is right for a texture and wrong for a pack. A web build
+  reads a patch with `RangePackBytes` and has no `PackFolder`.
+
 ---
 
 ## Network assets
