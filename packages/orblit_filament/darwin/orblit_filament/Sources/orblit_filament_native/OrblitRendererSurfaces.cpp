@@ -302,6 +302,7 @@ Texture *Renderer::textureAtPath(const std::string &path, bool srgb) {
   if (wanted.rfind(kTargetScheme, 0) == 0) {
     return targetTextureNamed(wanted.substr(strlen(kTargetScheme)));
   }
+  if (wanted.rfind(kFeedScheme, 0) == 0) return feedTextureAt(wanted);
 
   auto found = _ownTextures.find(identity);
   if (found != _ownTextures.end()) {
@@ -454,7 +455,7 @@ TextureSampler Renderer::samplerFor(int32_t flags) {
 /// whose sensor is turned in the phone, says so here and the screen shows
 /// them the right way up. Done in the material rather than by the platform's
 /// own transform, so every backend turns a picture the same way.
-static mat3f orientationMatrix(int32_t orientation) {
+mat3f orientationMatrix(int32_t orientation) {
   // The turn undone: the frame's (x, y) for the upright picture's (u, v).
   // Each row is the coefficients of u, v and 1.
   static const float turns[4][2][3] = {
@@ -474,6 +475,18 @@ static mat3f orientationMatrix(int32_t orientation) {
                float3{shift + sign * across[2], down[2], 1.0f});
 }
 
+/// An external texture with nothing behind it, for a sampler whose picture
+/// has not arrived. Filament wants every sampler bound.
+Texture *Renderer::blankExternal() {
+  if (_blankExternal == nullptr) {
+    _blankExternal = Texture::Builder()
+                         .sampler(Texture::Sampler::SAMPLER_EXTERNAL)
+                         .format(Texture::InternalFormat::RGBA8)
+                         .build(*_engine);
+  }
+  return _blankExternal;
+}
+
 /// Writes a screen: a tint, a transform, the frame, and for a lit one the lit
 /// parameters.
 void Renderer::writeScreen(Surfaced &surface, const float *params, int32_t video) {
@@ -491,16 +504,8 @@ void Renderer::writeScreen(Surfaced &surface, const float *params, int32_t video
   const TextureSampler screen(TextureSampler::MinFilter::LINEAR,
                               TextureSampler::MagFilter::LINEAR,
                               TextureSampler::WrapMode::CLAMP_TO_EDGE);
-  if (frame == nullptr) {
-    if (_blankExternal == nullptr) {
-      _blankExternal = Texture::Builder()
-                           .sampler(Texture::Sampler::SAMPLER_EXTERNAL)
-                           .format(Texture::InternalFormat::RGBA8)
-                           .build(*_engine);
-    }
-    frame = _blankExternal;
-  }
-  instance->setParameter("videoTexture", frame, screen);
+  instance->setParameter("videoTexture",
+                         frame != nullptr ? frame : blankExternal(), screen);
   instance->setParameter("hasVideo", movie != nullptr && movie->texture != nullptr);
   instance->setParameter(
       "orientation",
@@ -611,7 +616,8 @@ void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps
     bool fromPass = false;
     const int32_t index = maps[i];
     if (index >= 0 && index < static_cast<int32_t>(texturePaths.size())) {
-      fromPass = orblit::hasPrefix(texturePaths[index], kTargetScheme);
+      fromPass = orblit::hasPrefix(texturePaths[index], kTargetScheme) ||
+                 orblit::hasPrefix(texturePaths[index], kFeedScheme);
       texture = textureAtPath(texturePaths[index], textureSrgb[index] != 0);
     }
     const bool present = texture != nullptr;
@@ -620,7 +626,9 @@ void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps
                            present && fromPass ? drawn : sampler);
     instance->setParameter(kMapFlags[i], present);
 
-    if (fromPass) {
+    // A feed's copy keeps its texture for as long as the path is named, so it
+    // never needs the renewal a target does when its size follows the view.
+    if (fromPass && orblit::hasPrefix(texturePaths[index], kTargetScheme)) {
       const std::string path(texturePaths[index]);
       _targetBindings.push_back({instance, kMapNames[i],
                                  path.substr(strlen(kTargetScheme))});

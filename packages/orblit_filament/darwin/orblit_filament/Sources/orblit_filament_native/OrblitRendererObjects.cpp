@@ -324,6 +324,7 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
     }
     it = _materials.erase(it);
   }
+  sweepResolvedFeeds();
 
   // Filament queues the compile commands rather than sending them, so without
   // this the backend would not see them until whatever flushes next — which

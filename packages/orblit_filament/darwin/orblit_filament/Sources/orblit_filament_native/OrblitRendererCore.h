@@ -259,6 +259,13 @@ class Renderer {
   void buildLtcTables();
   filament::Material *materialForEffect(int effect);
   bool buildEffect(GraphPass &pass);
+  void dressPass(GraphPass &pass, Material *material);
+  void releasePass(GraphPass &pass);
+  Texture *feedTextureAt(const std::string &path);
+  void resolveFeeds();
+  void releaseResolvedFeed(ResolvedFeed &feed);
+  void sweepResolvedFeeds();
+  Texture *blankExternal();
   void applyPostTo(View *view);
   void runEffect(GraphPass &pass, GraphTarget *into);
   View *viewForPass(GraphPass &pass);
@@ -562,6 +569,11 @@ class Renderer {
   /// Every material sampler currently reading a pass, rebuilt on each
   /// publish and replayed whenever a target is rebuilt.
   std::vector<TargetBinding> _targetBindings{};
+
+  /// Every feed a material has asked to see as a texture, by path, and the
+  /// compiled material that copies them.
+  std::unordered_map<std::string, ResolvedFeed> _resolvedFeeds{};
+  Material *_resolveMaterial{};
 
   /// The place the scene is standing in, when a host has named one.
   ///

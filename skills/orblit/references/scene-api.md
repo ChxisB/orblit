@@ -321,6 +321,10 @@ a camera, a decoder of your own or another view produces.
   with `metallic`, `roughness`, `reflectance`, `emissive`,
   `emissiveIntensity` and `ambientOcclusion`. A lit screen is opaque only.
   A feed has no seek, rate, loop or volume.
+- To use a feed in any other slot, pass `OrblitTexture.ofFeed(feed, {width,
+  height})` as a map. It costs one GPU copy a frame. The copy is upright and
+  linear, single level, clamped, not tiled, and black on the web. Videos
+  cannot be used this way.
 
 ## `OrblitResources` (`resources.dart`)
 

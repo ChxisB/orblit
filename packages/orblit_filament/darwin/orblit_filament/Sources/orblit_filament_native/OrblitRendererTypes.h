@@ -900,6 +900,10 @@ constexpr int kEffectMotionBlur = 8;  // god rays are 6 and distortion 7, in Scr
 /// Where a material's texture says it comes from a pass rather than a file.
 static const char *const kTargetScheme = "orblit:target/";
 
+/// Where it says it comes from a feed instead, copied into a texture of its
+/// own once a frame: `orblit:feed/<key>/<width>x<height>`.
+static const char *const kFeedScheme = "orblit:feed/";
+
 /// How many punctual lights Filament shades in one view before it starts
 /// dropping the ones furthest from the camera. Worth saying out loud: a light
 /// that quietly stops working is a long afternoon.
@@ -1068,6 +1072,24 @@ struct GraphPass {
   /// What it cost last frame, in milliseconds, and how much it drew.
   double milliseconds = 0;
   int drawn = 0;
+};
+
+/// One feed copied into an ordinary texture.
+///
+/// Kept per path, so every material naming the same feed at the same size
+/// shares one copy. The texture is never rebuilt: its size is in the path, so
+/// another size is another entry. The triangle, view and camera that draw the
+/// copy are a pass's own and go with it.
+struct ResolvedFeed {
+  int64_t key = 0;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  filament::Texture *colour = nullptr;
+  filament::RenderTarget *target = nullptr;
+  GraphPass pass;
+  /// Whether anything has been drawn into the texture yet. A feed with no
+  /// picture is drawn once, black, and not again until it has one.
+  bool drawn = false;
 };
 
 /// The matrix that mirrors the world in a plane.

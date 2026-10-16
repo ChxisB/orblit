@@ -1,5 +1,7 @@
 #include "OrblitRendererInternal.h"
 
+#include <cstdio>
+
 // Effect passes: the material each runs, the triangle it draws, and what
 // it reads and writes.
 //
@@ -46,6 +48,12 @@ bool Renderer::buildEffect(GraphPass &pass) {
   Material *material = materialForEffect(pass.effect);
   if (material == nullptr) return false;
 
+  dressPass(pass, material);
+  return true;
+}
+
+/// Gives a pass the one triangle it draws, wearing `material`.
+void Renderer::dressPass(GraphPass &pass, Material *material) {
   const ScreenTriangle triangle = makeScreenTriangle(*_engine);
   pass.effectMaterial = material->createInstance();
   pass.effectEntity = utils::EntityManager::get().create();
@@ -61,7 +69,6 @@ bool Renderer::buildEffect(GraphPass &pass) {
   // over: they stay the pass's to give back, exactly like the scene above.
   pass.effectVertices = triangle.vertices;
   pass.effectIndices = triangle.indices;
-  return true;
 }
 
 /// Gives a view the display side of the scene's post-processing.
@@ -351,6 +358,45 @@ void Renderer::sweepRetiredTextures() {
   }
 }
 
+/// Gives back what a pass built on first use: its view and camera, and the
+/// triangle an effect pass draws.
+void Renderer::releasePass(GraphPass &pass) {
+  if (pass.view != nullptr) {
+    _engine->destroy(pass.view);
+    pass.view = nullptr;
+  }
+  if (!pass.cameraEntity.isNull()) {
+    _engine->destroyCameraComponent(pass.cameraEntity);
+    utils::EntityManager::get().destroy(pass.cameraEntity);
+    pass.cameraEntity = utils::Entity();
+    pass.camera = nullptr;
+  }
+  // The renderable before anything it was drawn with: Filament refuses to
+  // destroy a material instance or a buffer that something still points at.
+  if (!pass.effectEntity.isNull()) {
+    _engine->destroy(pass.effectEntity);
+    utils::EntityManager::get().destroy(pass.effectEntity);
+    pass.effectEntity = utils::Entity();
+  }
+  if (pass.effectMaterial != nullptr) {
+    _engine->destroy(pass.effectMaterial);
+    pass.effectMaterial = nullptr;
+  }
+  if (pass.effectVertices != nullptr) {
+    _engine->destroy(pass.effectVertices);
+    pass.effectVertices = nullptr;
+  }
+  if (pass.effectIndices != nullptr) {
+    _engine->destroy(pass.effectIndices);
+    pass.effectIndices = nullptr;
+  }
+  // Last, because it is what held the entity above.
+  if (pass.effectScene != nullptr) {
+    _engine->destroy(pass.effectScene);
+    pass.effectScene = nullptr;
+  }
+}
+
 /// Gives back everything the graph was holding.
 ///
 /// Per pass that is the view and camera it drew through, and the triangle an
@@ -372,42 +418,7 @@ void Renderer::releaseGraph() {
     return;
   }
 
-  for (GraphPass &pass : _passes) {
-    if (pass.view != nullptr) {
-      _engine->destroy(pass.view);
-      pass.view = nullptr;
-    }
-    if (!pass.cameraEntity.isNull()) {
-      _engine->destroyCameraComponent(pass.cameraEntity);
-      utils::EntityManager::get().destroy(pass.cameraEntity);
-      pass.cameraEntity = utils::Entity();
-      pass.camera = nullptr;
-    }
-    // The renderable before anything it was drawn with: Filament refuses to
-    // destroy a material instance or a buffer that something still points at.
-    if (!pass.effectEntity.isNull()) {
-      _engine->destroy(pass.effectEntity);
-      utils::EntityManager::get().destroy(pass.effectEntity);
-      pass.effectEntity = utils::Entity();
-    }
-    if (pass.effectMaterial != nullptr) {
-      _engine->destroy(pass.effectMaterial);
-      pass.effectMaterial = nullptr;
-    }
-    if (pass.effectVertices != nullptr) {
-      _engine->destroy(pass.effectVertices);
-      pass.effectVertices = nullptr;
-    }
-    if (pass.effectIndices != nullptr) {
-      _engine->destroy(pass.effectIndices);
-      pass.effectIndices = nullptr;
-    }
-    // Last, because it is what held the entity above.
-    if (pass.effectScene != nullptr) {
-      _engine->destroy(pass.effectScene);
-      pass.effectScene = nullptr;
-    }
-  }
+  for (GraphPass &pass : _passes) releasePass(pass);
   for (GraphTarget &target : _targets) releaseTarget(target);
 
   _passes.clear();
@@ -420,5 +431,111 @@ Texture *Renderer::targetTextureNamed(const std::string &name) {
     if (target.name == name) return target.colour;
   }
   return nullptr;
+}
+
+/// The texture a feed is copied into, made the first time a material names it.
+///
+/// The size is in the path because a feed has no size the renderer can ask
+/// for: its producer decides each picture's. A texture cannot be resized, so
+/// another size is another path and another texture. A path that does not
+/// parse, or names a side no device can hold, is a missing texture.
+Texture *Renderer::feedTextureAt(const std::string &path) {
+  const auto found = _resolvedFeeds.find(path);
+  if (found != _resolvedFeeds.end()) return found->second.colour;
+
+  constexpr unsigned kMostSide = 16384;
+  long long key = 0;
+  unsigned wide = 0;
+  unsigned tall = 0;
+  if (sscanf(path.c_str() + strlen(kFeedScheme), "%lld/%ux%u", &key, &wide,
+             &tall) != 3 ||
+      wide < 1 || tall < 1 || wide > kMostSide || tall > kMostSide) {
+    return nullptr;
+  }
+
+  ResolvedFeed &feed = _resolvedFeeds[path];
+  feed.key = key;
+  feed.width = wide;
+  feed.height = tall;
+  // Sixteen bits a channel for the same reason a graph target has them: the
+  // sRGB decode would band in eight.
+  feed.colour = Texture::Builder()
+                    .width(wide)
+                    .height(tall)
+                    .levels(1)
+                    .usage(Texture::Usage::COLOR_ATTACHMENT |
+                           Texture::Usage::SAMPLEABLE)
+                    .format(Texture::InternalFormat::RGBA16F)
+                    .build(*_engine);
+  feed.target = RenderTarget::Builder()
+                    .texture(RenderTarget::AttachmentPoint::COLOR, feed.colour)
+                    .build(*_engine);
+  if (_resolveMaterial == nullptr) {
+    _resolveMaterial = materialFrom(Package::resolveFeed);
+    warmUp(_resolveMaterial);
+  }
+  dressPass(feed.pass, _resolveMaterial);
+  return feed.colour;
+}
+
+/// Copies each feed that a material shows as a texture, once a frame.
+///
+/// Before any pass, so a mirror or a monitor that shows a surface wearing
+/// the copy shows this frame's picture. A feed whose movie has no picture yet
+/// is drawn once, black, and then left until it has one.
+void Renderer::resolveFeeds() {
+  const TextureSampler external(TextureSampler::MinFilter::LINEAR,
+                                TextureSampler::MagFilter::LINEAR,
+                                TextureSampler::WrapMode::CLAMP_TO_EDGE);
+  // A scene with no graph never reaches prepareTargets, the other place a
+  // retired copy is destroyed.
+  sweepRetiredTextures();
+  for (auto &entry : _resolvedFeeds) {
+    ResolvedFeed &feed = entry.second;
+    const auto movie = _movies.find(feed.key);
+    Texture *frame = movie != _movies.end() ? movie->second.texture : nullptr;
+    if (frame == nullptr && feed.drawn) continue;
+    feed.drawn = true;
+
+    MaterialInstance *instance = feed.pass.effectMaterial;
+    instance->setParameter("source", frame != nullptr ? frame : blankExternal(),
+                           external);
+    instance->setParameter("hasSource", frame != nullptr);
+    instance->setParameter(
+        "orientation",
+        orientationMatrix(frame != nullptr ? movie->second.orientation : 0));
+
+    View *view = viewForPass(feed.pass);
+    view->setScene(feed.pass.effectScene);
+    feed.pass.camera->setExposure(1.0f);
+    view->setRenderTarget(feed.target);
+    view->setViewport({0, 0, feed.width, feed.height});
+    _renderer->render(view);
+  }
+}
+
+/// Gives up a copy now and its texture later, for the reason a target's is:
+/// a material may still be sampling it until the next publish.
+void Renderer::releaseResolvedFeed(ResolvedFeed &feed) {
+  releasePass(feed.pass);
+  if (feed.target != nullptr) _engine->destroy(feed.target);
+  if (feed.colour != nullptr) {
+    _retiredTextures.push_back({feed.colour, _materialGeneration});
+  }
+  feed.target = nullptr;
+  feed.colour = nullptr;
+}
+
+/// Lets go of the copies no material or sprite layer names any more.
+void Renderer::sweepResolvedFeeds() {
+  for (auto it = _resolvedFeeds.begin(); it != _resolvedFeeds.end();) {
+    if (_materialTexturePaths.count(it->first) != 0 ||
+        _spriteTexturePaths.count(it->first) != 0) {
+      ++it;
+      continue;
+    }
+    releaseResolvedFeed(it->second);
+    it = _resolvedFeeds.erase(it);
+  }
 }
 }  // namespace orblit

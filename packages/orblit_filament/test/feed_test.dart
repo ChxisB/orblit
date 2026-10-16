@@ -175,4 +175,61 @@ void main() {
       expect(scene.copyWith(videos: const []).feeds, hasLength(1));
     });
   });
+
+  group('a feed as a texture', () {
+    test('is named by key and size, and is never sRGB', () async {
+      final source = await made();
+      final texture = OrblitTexture.ofFeed(OrblitFeed(key: 9, source: source));
+
+      expect(texture.path, 'orblit:feed/9/1280x720');
+      expect(texture.srgb, isFalse);
+    });
+
+    test('is the source upright, so a quarter turn swaps its sides', () async {
+      final source = await made();
+
+      expect(
+        OrblitTexture.ofFeed(
+          OrblitFeed(key: 9, source: source, rotation: 1),
+        ).path,
+        'orblit:feed/9/720x1280',
+      );
+      expect(
+        OrblitTexture.ofFeed(
+          OrblitFeed(key: 9, source: source, rotation: 2, mirror: true),
+        ).path,
+        'orblit:feed/9/1280x720',
+      );
+    });
+
+    test('may be copied smaller', () async {
+      final source = await made();
+      final feed = OrblitFeed(key: 9, source: source);
+
+      expect(
+        OrblitTexture.ofFeed(feed, width: 320, height: 180).path,
+        'orblit:feed/9/320x180',
+      );
+      expect(
+        OrblitTexture.ofFeed(feed, width: 320).path,
+        'orblit:feed/9/320x720',
+        reason: 'a side left out is the source\'s',
+      );
+      expect(() => OrblitTexture.ofFeed(feed, width: 0), throwsArgumentError);
+    });
+
+    test('travels as the path of a map', () async {
+      final source = await made();
+      final feed = OrblitFeed(key: 9, source: source);
+      final message = sceneWith(
+        feeds: [feed],
+        materials: [
+          OrblitMaterial(key: 1, baseColourMap: OrblitTexture.ofFeed(feed)),
+        ],
+      ).toMessage(0);
+
+      expect(message['texturePaths'], ['orblit:feed/9/1280x720']);
+      expect(message['textureSrgb'], Int32List.fromList([0]));
+    });
+  });
 }

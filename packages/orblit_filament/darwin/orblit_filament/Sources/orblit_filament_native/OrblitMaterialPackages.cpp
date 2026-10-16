@@ -59,6 +59,7 @@ namespace {
 #include "depth_material.h"
 #include "shadowcatcher_material.h"
 #include "lit_screen_material.h"
+#include "resolve_feed_material.h"
 #include "sky_material.h"
 #include "rain_material.h"
 
@@ -138,6 +139,10 @@ void materialPackage(Package which, const uint8_t **package, size_t *length) {
     case Package::irradiance:
       *package = kirradianceMaterial;
       *length = kirradianceMaterial_len;
+      return;
+    case Package::resolveFeed:
+      *package = kresolve_feedMaterial;
+      *length = kresolve_feedMaterial_len;
       return;
   }
 }

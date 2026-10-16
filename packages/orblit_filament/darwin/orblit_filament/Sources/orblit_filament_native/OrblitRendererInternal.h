@@ -89,4 +89,8 @@ void buildScreenRenderable(filament::Engine &engine, utils::Entity entity,
                            filament::MaterialInstance *material,
                            const ScreenTriangle &triangle);
 
+/// The matrix that turns an upright picture's (u, v, 1) into the frame's.
+/// See its definition for how a video's orientation is encoded.
+filament::math::mat3f orientationMatrix(int32_t orientation);
+
 }  // namespace orblit

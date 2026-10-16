@@ -1,0 +1,48 @@
+// A feed, copied into an ordinary texture.
+//
+// copy.mat puts a texture on the screen. This puts a feed into a texture. The
+// feed is an external image: a different sampler type from a 2D one, so it
+// cannot be bound where a lit material declares a sampler2d. Drawing it once
+// through this material into a render target is the one copy that turns it
+// into something every slot of every material can sample.
+//
+// Two things happen on the way. The turn and mirror the producer asked for are
+// applied here, as in video.mat, so the texture comes out upright. And the
+// frame is decoded from sRGB to linear, because the target is sampled in a
+// slot that expects linear light, the same as a PNG read as sRGB would be
+// after the hardware has decoded it.
+material {
+    name : orblitResolveFeed,
+    shadingModel : unlit,
+    vertexDomain : device,
+    depthWrite : false,
+    depthCulling : false,
+    requires : [ uv0 ],
+    parameters : [
+        { type : samplerExternal, name : source },
+        { type : mat3,            name : orientation },
+        { type : bool,            name : hasSource }
+    ],
+}
+
+fragment {
+    vec3 toLinear(vec3 c) {
+        vec3 low = c / 12.92;
+        vec3 high = pow((c + 0.055) / 1.055, vec3(2.4));
+        return mix(high, low, vec3(lessThanEqual(c, vec3(0.04045))));
+    }
+
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+
+        // Black until the producer has handed over a picture, so the texture
+        // is never whatever the driver left in it.
+        vec4 frame = vec4(0.0, 0.0, 0.0, 1.0);
+        if (materialParams.hasSource) {
+            vec2 uv = (materialParams.orientation * vec3(getUV0(), 1.0)).xy;
+            frame = texture(materialParams_source, uv);
+            frame.rgb = toLinear(frame.rgb);
+        }
+        material.baseColor = frame;
+    }
+}

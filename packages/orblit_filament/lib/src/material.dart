@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:vector_math/vector_math_64.dart';
 
+import 'feed.dart';
+
 /// How a surface answers light.
 ///
 /// Two answers rather than a catalogue. Every physically based renderer's
@@ -147,8 +149,39 @@ class OrblitTexture {
   /// What a target's path starts with.
   static const String targetScheme = 'orblit:target/';
 
-  /// Absolute path to the image, or `orblit:target/<name>` for what a pass
-  /// drew.
+  /// A feed, copied once a frame into a texture of its own.
+  ///
+  /// A screen with `shading: video` shows a feed without copying it, and
+  /// [OrblitMaterial.litScreen] lights one. This is for the other slots: the
+  /// texture can go in any map of any material. It costs one GPU copy a frame
+  /// at [width] by [height] and nothing crosses to the CPU.
+  ///
+  /// The size defaults to the one [OrblitFeedSource.create] was given, swapped
+  /// for a feed turned by a quarter, so the texture comes out upright. A
+  /// smaller size is a cheaper copy. Like a target, the copy has one level and
+  /// is sampled clamped and linear, and it is never sRGB: the copy has already
+  /// decoded the picture to linear light.
+  ///
+  /// A feed is shown by its key, so the feed has to be in the scene's
+  /// [OrblitScene.feeds]. A video has no declared size and is not offered.
+  /// The web has no feeds, so the slot shows the blank texture there.
+  factory OrblitTexture.ofFeed(OrblitFeed feed, {int? width, int? height}) {
+    final turned = feed.rotation.isOdd;
+    final wide = width ?? (turned ? feed.source.height : feed.source.width);
+    final tall = height ?? (turned ? feed.source.width : feed.source.height);
+    if (wide < 1 || tall < 1) {
+      throw ArgumentError(
+        'A feed copy needs a size of at least 1 by 1, not $wide by $tall.',
+      );
+    }
+    return OrblitTexture('$feedScheme${feed.key}/${wide}x$tall', srgb: false);
+  }
+
+  /// What a feed copy's path starts with.
+  static const String feedScheme = 'orblit:feed/';
+
+  /// Absolute path to the image, `orblit:target/<name>` for what a pass drew,
+  /// or `orblit:feed/<key>/<width>x<height>` for a copy of a feed.
   final String path;
 
   /// The pass target this samples, or null if it is an image on disk.

@@ -16,6 +16,16 @@
   lit screen never builds it.
 - `OrblitMaterial.flags` bit 14 is `litScreen`. A lit screen keeps shading
   2, so everything that skips video screens skips it.
+- **A feed in any texture slot.** `OrblitTexture.ofFeed(feed)` is a texture
+  that holds the feed's latest picture, so a feed can go in the base colour,
+  emissive or any other map of any material. It costs one GPU copy a frame
+  and no readback. `width` and `height` copy it smaller. The copy has no
+  mip levels, does not tile and is not offered for videos or on the web,
+  where it stays black.
+- The copy is drawn by `resolve_feed`, a package of its own for the same
+  sampler reason. It applies the feed's turn and mirror and decodes sRGB, so
+  the texture is upright and linear. A scene that uses no `ofFeed` never
+  builds it.
 
 ## 0.36.0
 
