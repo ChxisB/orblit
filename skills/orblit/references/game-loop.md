@@ -222,7 +222,8 @@ class _DodgeState extends State<Dodge> with SingleTickerProviderStateMixin {
   least `damp` on each coordinate of the camera position. Guard the aspect
   ratio against a zero-sized first layout.
 - **Enemies that chase**: `orblit_agent`'s steering behaviours for movement
-  and behaviour trees for decisions.
+  and behaviour trees for decisions. Round walls, plan the route with
+  `orblit_path`'s `NavGrid` or `NavMesh` and walk it with a `NavWalker`.
 - **Hits beyond boxes**: `orblit_collide` for shapes, raycasts and overlaps.
 - **Juice** (a flash, a shake, a pop): `orblit_effect`, sampled at the game
   clock.

@@ -593,8 +593,9 @@ sentence saying what went wrong.
 ## The packages
 
 `orblit_filament` draws. The rest are mostly plain Dart: `orblit_camera`
-(cameras as shots, blends, damping), `orblit_agent` (steering and behaviour
-trees), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
+(cameras as shots, blends, damping, an arm that stops at a wall),
+`orblit_agent` (steering and behaviour trees), `orblit_path` (splines,
+patrols and routes round walls), `orblit_collide` (shapes, raycasts, overlaps), `orblit_effect`
 (change as a function of time), `orblit_sequence` (cutscenes),
 `orblit_motion` (animation clips, on entities and bones alike, retargeted
 onto another skeleton, blends that mix and fade them, and cutscenes),

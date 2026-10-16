@@ -10,8 +10,9 @@ the fullest reference.
 | Package | What it is | Start with |
 | --- | --- | --- |
 | `orblit_filament` | The renderer, composited by Flutter | `OrblitView`, `OrblitScene` (see [scene-api.md](scene-api.md)) |
-| `orblit_camera` | Cameras as shots: say what to frame, and a brain works out where to be and blends between shots | `CameraBrain`, `VirtualCamera`, `FollowBody`, `HardLookAt`, `Lens`, `damp` |
+| `orblit_camera` | Cameras as shots: say what to frame, and a brain works out where to be and blends between shots. An arm holds a camera on the near side of a wall | `CameraBrain`, `VirtualCamera`, `FollowBody`, `ArmBody`, `HardLookAt`, `Lens`, `damp` |
 | `orblit_agent` | Steering behaviours (where to go) and behaviour trees (what to want) | `Steerable`, `Seek`, `Arrive`, `Separate`, `Blend`, `Brain`, `Selector`, `Sequence` |
+| `orblit_path` | Splines read by distance and ridden, rails, patrols, and routes round walls over a grid or a navmesh baked from a terrain or a mesh | `Spline`, `PathFollower`, `Rail`, `Patrol`, `NavGrid`, `NavMesh`, `bakeTerrain`, `bakeMesh`, `NavWalker` |
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
@@ -108,6 +109,14 @@ OrblitCamera shot(double delta, double width, double height) {
 }
 ```
 
+`ArmBody(inner: body, probe: ..., radius: 0.3, height: 1.5)` wraps a body
+and holds its camera on the near side of a wall. `probe` is an `ArmProbe`,
+`double? Function(Vector3 from, Vector3 to, double radius)`: how far a ball
+gets before it meets something, or null. Over `orblit_physics` that is
+`physics.cast(from: [...], direction: [...], distance: ..., shape:
+Shape.sphere(radius), ignore: playerBody)?.distance`. Pass the player's body
+to `ignore`, or the arm starts inside it and the camera sits on the player.
+
 `lookRotation(direction, null)` turns a heading into a `Quaternion` for a
 target's `rotation`. `damp(current, target, seconds, dt)` smooths one number
 the same way at any frame rate. Worked example:
@@ -131,6 +140,32 @@ Behaviour trees: build a `Node` from `Selector([...])`, `Sequence([...])`,
 `tick.seconds`. One tree can be shared by many brains. Worked example:
 https://orblitengine.com/docs/examples/something-that-chases-you/ and
 `/guides/agents/`.
+
+## orblit_path
+
+A `Spline` is cubic Bezier segments read by distance in metres:
+`Spline.through(points, closed: ...)`, `Spline.line(points)` and
+`Spline.bezier([PathKnot(position, handleIn:, handleOut:, tilt:)])`, with
+`length`, `positionAt(d)`, `frameAt(d)` (a `PathFrame` of `position`,
+`forward`, `up`, `right`) and `closest(point)`. `encode()` and
+`Spline.decode(text)` are the `.opath` file; a bad file throws
+`PathFormatException`. A `PathFollower(spline, speed:, end: PathEnd.loop)`
+rides one with `advance(seconds)`. A `Rail` slides along one towards a
+target with `track(target, seconds)`. A `Patrol([PatrolStop(at, wait:)])` is
+told `update(position, seconds)` and answers `target`.
+
+Routes: `NavGrid(width:, depth:, cell:)` with `blockRect`, `blockCircle` and
+`findPath(from, to)`, or `NavMesh.fromGrid(grid, radius:)` with the same
+`findPath` for a big map. `bakeTerrain(terrain, cell:, maxSlope:)` opens a
+cell where the cover's navigation bit is set; `bakeMesh(mesh)` and
+`carve(grid, mesh)` read triangles, where `mesh` is a record of `positions`,
+`indices`, `agentHeight`, `stepHeight` and `maxSlope`. A `NavWalker(body:
+steerable, planner: mesh.findPath)` walks a `Steerable` along a route with
+`goTo(goal)` and `update(seconds)`; `hasRoute` is false when there was none.
+
+A route is planned once, a navmesh is a snapshot, a cell has one floor, and
+agents do not avoid each other (use `Separate`). Guide:
+https://orblitengine.com/docs/guides/paths/.
 
 ## orblit_collide
 
