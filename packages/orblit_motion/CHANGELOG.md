@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.9.0
+
+- **Change a blend and keep the rest.** `BlendDocument.copyWith` answers
+  another blend with some of its parts replaced, validated as the
+  constructor is. `writtenStates`, `writtenChanges`, `writtenFades` and
+  `writtenStart` are the parts as a file writes them, so a blend with a
+  nested graph is not flattened by an edit. `BlendState.copyWith` and
+  `BlendChange.copyWith` do the same for one state or one change, with
+  `clearWhenDone` and `clearFrom` for the two parts where null means
+  something.
+
 ## 0.8.0
 
 - **Keep a pairing as a file.** `BoneMap` holds the bones named by hand, the
