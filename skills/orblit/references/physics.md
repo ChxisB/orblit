@@ -1,9 +1,10 @@
 # Physics
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
-as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.13.0, `orblit_physics_scene` 0.11.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.16.0 for the components.
+as packages under `packages/<name>`. Names below were checked against
+`orblit_physics` 0.13.0, `orblit_physics_scene` 0.13.0,
+`orblit_physics_terrain` 0.1.0 and `orblit_physics_vehicle` 0.4.0, and
+`orblit_scene` 0.19.0 for the components.
 A git dependency resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -33,6 +34,10 @@ dependencies:
 - **`orblit_physics_terrain`** exports one class, `TerrainPhysics`. It lays
   an `orblit_terrain` `Terrain` as ground, the regions near a point, and lays
   a region again when it is edited.
+- **`orblit_physics_vehicle`** exports `Vehicle`, `VehicleSpec`, `WheelSpec`,
+  `SuspensionSpec`, `TyreSpec`, `EngineSpec`, `DriveSpec` and `VehicleInput`.
+  `orblit_physics_scene` depends on it and re-exports `Vehicle`,
+  `VehicleInput` and `WheelState`, so a scene game needs no second import.
 
 Guide: https://orblitengine.com/docs/guides/physics/
 
@@ -465,6 +470,44 @@ are in degrees or metres.
   said this way. Make those with `scene.physics.join` and a negative id. A
   gear, rack or pulley ties the body to the body it hangs under, so a second
   wheel is a child of the first.
+
+## The vehicle and wheel components
+
+`VehicleComponent` and `WheelComponent` in `orblit_scene`
+(`SceneComponents.vehicle` and `SceneComponents.wheel`, JSON keys `vehicle`
+and `wheel`). The vehicle goes on the chassis entity, which has a free body.
+Each wheel is a **direct child** with a wheel component.
+
+`VehicleComponent`: `maxSteer` (degrees, 30), `antiRoll` (0), `torque` (flat
+`[rpm, Nm, ...]`), `idle`, `ratios`, `reverse`, `finalDrive`, `lock` (0 is an
+open differential) and `ground` (the layers the wheels cast against).
+`WheelComponent`: `radius`, `steers`, `drives`, `brake`, `handbrake`, `travel`,
+`hertz`, `damping` and `grip`. Both have `copyWith`. A car with no `drives`
+wheel has no engine and no gearbox.
+
+- **Place a wheel where it rests.** The entity's position is the wheel's
+  centre with the car standing still. The bridge works out where the spring
+  hangs from using the sag (`g / (2 pi hertz)^2`), which does not depend on the
+  car's mass. It then writes the position, the roll (about x, forward is
+  minus x) and the steer (about y) back to the entity every step.
+- **Front is minus z**, plus x is right, positive steer is left.
+- **No car, no error.** A body that is scaled, `driven`, `fixed` or has no
+  wheel child, or a spec the vehicle refuses (a gear ratio whose downshift
+  lands above the upshift), keeps its data and is just a body.
+  `scene.vehicleOf(id)` is null then.
+- **Drive it with `scene.pilot(id, VehicleInput(throttle:, brake:, steer:,
+  handbrake:, gear:))`**, any time, and `pilot(id, null)` to let go. The scene
+  has no input actions of its own: read your keys and call `pilot`. Gear is
+  null for automatic, `-1` for reverse. A gear the car lacks throws.
+- **The step is at most `1/30`.** `Vehicle.update` throws past it, so
+  `ScenePhysics(step: ...)` must be 1/30 or less.
+- **A snapshot does not hold the tyres.** After `restore` the bristles are
+  straight and the driver is the one you gave last. A car made again by an
+  edit does the same and keeps its driver, unless the edit removed the gear
+  the driver held.
+- **`antiRoll` wants two wheels to an axle**, at the same z to 0.1 mm.
+- **With `smooth` the chassis shows a step behind** and the wheels are
+  current.
 
 ## A document, simulated
 
