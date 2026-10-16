@@ -108,11 +108,14 @@ void main() {
       expect(read.document.encode(), document.encode());
     });
 
-    test('is written after the motion and before the light', () {
+    test('is written after the motion and before the vehicle', () {
       final order = SceneComponents.order;
 
       expect(order.indexOf(SceneComponents.zone), order.indexOf('motion') + 1);
-      expect(order.indexOf('light'), order.indexOf(SceneComponents.zone) + 1);
+      expect(
+        order.indexOf(SceneComponents.vehicle),
+        order.indexOf(SceneComponents.zone) + 1,
+      );
     });
 
     test('adding one is a change that goes back', () {

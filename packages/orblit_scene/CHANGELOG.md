@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0
+
+- Add `VehicleComponent` and `WheelComponent`. A vehicle is a body with an
+  engine, a gearbox and an anti-roll bar. Its wheels are the direct children
+  of the entity that carry a wheel, each with its radius, brake, spring and
+  grip. Both are kept through JSON and `copyWith`. A document without them
+  reads as it did.
+
 ## 0.18.0
 
 - Add the `litScreen` material field. It is kept through JSON and diffs like
