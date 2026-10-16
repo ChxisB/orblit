@@ -2,8 +2,8 @@
 
 Rigid bodies live in their own repository, `https://github.com/ChxisB/orblit-physics.git`,
 as three packages under `packages/<name>`. Names below were checked against
-`orblit_physics` 0.12.0, `orblit_physics_scene` 0.10.0 and
-`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.15.0 for the components.
+`orblit_physics` 0.13.0, `orblit_physics_scene` 0.11.0 and
+`orblit_physics_terrain` 0.1.0, and `orblit_scene` 0.16.0 for the components.
 A git dependency resolves to `${PUB_CACHE:-$HOME/.pub-cache}/git/orblit-physics-<commit>/`, and
 each package's `lib/<name>.dart` lists its exports.
 
@@ -244,11 +244,20 @@ physics.step(1 / 60);
   - `carried`: how fast the ground moved it.
   - `turning`: how fast the ground turned it about up, in radians a second.
   - `grounded`.
+  - `wall`, `ceiling`: what stopped the walk last step, beside the ground.
+    A ceiling is something over its head. Both are false unless what it
+    asked for met something, so it has to be asking to go into the wall.
 
   Play the walk animation from `velocity`, not from `velocity` plus
   `carried`, so a character on a lift walks nowhere.
-- It pushes free bodies and is pushed only by driven ones. A rolling crate
-  stops against it; a closing door shoves it aside.
+- It pushes free bodies and is pushed only by driven ones and by other
+  characters. A rolling crate stops against it; a closing door shoves it
+  aside. A character that walks into another, with any `strength`, moves it
+  out of the way at half the closing speed, and never through a wall.
+- `setStance(id, shape)` is a crouch or a stand. It takes a sphere, box,
+  capsule or cylinder, keeps the feet where they were, and answers false,
+  changing nothing, when the new shape does not fit. A character under a
+  beam stays crouched. False too for a hull and for what is not a character.
 - `place` teleports it and forgets what it stood on.
 
 **Root motion drives a character.** A clip's `RootStep` is where the
@@ -526,12 +535,20 @@ scene.dispose();
   while the key is held.
 - **Drive a character before every step.** Left alone, it keeps what survived
   of its last request and gains no more gravity, so it floats.
-- **`ScenePhysics` makes no characters.** `BodyComponent` has no character
-  motion. Add one straight to `scene.physics` with a negative id, and move its
-  entity yourself from `transformOf`. `advance` takes several steps or none,
-  which a character driven once a frame cannot follow. Keep your own clock
-  instead, and on each tick drive, then call `scene.advance(scene.step)`,
-  which takes exactly one step.
+- **A character in a scene is a body with `BodyMotion.character`.** Give it
+  `stepHeight`, `steepest`, `skin`, `strength` and `crouchHeight` (zero is no
+  crouch). Only a capsule, ball, box or cylinder is one. `scene.walk(entity,
+  walk)` gives it a `CharacterWalk` that `advance` asks once for every step
+  it takes, so a frame that owes three steps asks three times and nothing
+  needs its own clock. `RootMotionWalk(ClipPlayer(...)..play())` is the clip's
+  root motion with gravity in it. Its `heading` is which way the character
+  faces, for the game to write to the entity, since the world keeps no
+  facing.
+- **`scene.crouch(entity, true/false)`** answers whether the character now is
+  as asked. Standing needs room, and under a beam it says false and
+  `isCrouching` stays true. The entity's feet stay put through either.
+- **A character added straight to `scene.physics`** with a negative id still
+  works, and still has to be driven before each step.
 - **A plane cannot be a character.** `addCharacter` takes it, but it never
   has a footing.
 - **Name clashes.** `Shape` and `Layers` are exported by both

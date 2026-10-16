@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.16.0
+
+- Add `BodyMotion.character` with `stepHeight`, `steepest`, `skin`, `strength` and `crouchHeight` on `BodyComponent`, including JSON and copyWith.
+
 ## 0.15.0
 
 - Add `BodyComponent.continuous`, which casts a free body along its move
