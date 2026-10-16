@@ -35,6 +35,7 @@ Future<PackSummary> packBundle({
   final chain = _mount(target, base);
   final manifest = _changedFrom(bundle, chain);
   final removed = _droppedFrom(bundle, chain);
+  final added = _newTo(manifest, chain);
   final layout = _Layout.of(
     manifest,
     target.name,
@@ -53,6 +54,8 @@ Future<PackSummary> packBundle({
     hash: ContentHash.of(layout.directoryBytes),
     bytes: layout.directoryAt + layout.directoryBytes.length,
     assets: manifest.entries.length,
+    added: added,
+    replaced: manifest.entries.length - added,
     blobs: layout.firstUse.length,
     sharedBytes: layout.sharedBytes,
     removed: removed.length,
@@ -77,6 +80,14 @@ AssetManifest _changedFrom(AssetManifest bundle, MountedPacks? chain) {
         if (chain.manifest.entries[key]?.hash != value.hash) key: value,
     },
   );
+}
+
+/// How many of the [held] assets the chain has no answer for at all.
+int _newTo(AssetManifest held, MountedPacks? chain) {
+  if (chain == null) return held.entries.length;
+  return held.entries.keys
+      .where((id) => !chain.manifest.entries.containsKey(id))
+      .length;
 }
 
 /// What the chain serves that the bundle no longer has, in id order.

@@ -48,6 +48,12 @@ final class MountedPacks implements AssetSource {
   /// What every mounted asset is, with removals and mods spent.
   AssetManifest get manifest => _manifest;
 
+  /// The mounted pack that answers for [id], or null when none does.
+  ///
+  /// A mod above the chain is the owner of an id it covers, and a patch is
+  /// the owner of one it replaced.
+  AssetPack? ownerOf(AssetId id) => _owner[id];
+
   /// Mounts the pack the chain stands on. It has no base.
   void start(AssetPack pack) {
     _checkTarget(pack);

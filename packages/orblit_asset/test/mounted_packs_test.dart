@@ -129,6 +129,37 @@ void main() {
       expect(summary.removed, 1);
     });
 
+    test('counts what is new apart from what it replaces', () async {
+      final base = await build('game', game);
+      final folder = await bundle('next', {
+        'textures/wall.ktx2': 'wall v2',
+        'models/tree.glb': 'tree',
+        'models/rock.glb': 'rock',
+        'models/twin.glb': 'tree',
+      });
+      final summary = await packBundle(
+        bundlePath: folder,
+        outPath: at('next.opack'),
+        target: CookTargets.android,
+        base: [base],
+      );
+      expect(summary.assets, 3);
+      expect(summary.replaced, 1);
+      expect(summary.added, 2);
+      expect(summary.removed, 1);
+    });
+
+    test('of nothing is all added when it has no base', () async {
+      final folder = await bundle('whole', game);
+      final summary = await packBundle(
+        bundlePath: folder,
+        outPath: at('whole.opack'),
+        target: CookTargets.android,
+      );
+      expect(summary.added, 3);
+      expect(summary.replaced, 0);
+    });
+
     test('is the same file every time', () async {
       final base = await build('game', game);
       final folder = await bundle('next', {'textures/wall.ktx2': 'wall v2'});
@@ -367,6 +398,54 @@ void main() {
       expect(await packs.exists(AssetId.parse('scenes/town.oscene')), isFalse);
       packs.addMod(mod);
       expect(await text(packs, 'scenes/town.oscene'), 'my town');
+    });
+  });
+
+  group('ownership', () {
+    test('names the pack that answers for each id', () async {
+      final base = await build('game', game);
+      final patch = await build(
+        'one',
+        {'textures/wall.ktx2': 'wall v2', 'models/tree.glb': 'tree'},
+        base: [base],
+      );
+      final mod = await build('mod', {'models/tree.glb': 'oak'});
+      final packs = mounted()
+        ..start(base)
+        ..patch(patch)
+        ..addMod(mod);
+
+      expect(packs.ownerOf(AssetId.parse('textures/wall.ktx2')), same(patch));
+      expect(packs.ownerOf(AssetId.parse('models/tree.glb')), same(mod));
+    });
+
+    test('names the base for an id no patch touched', () async {
+      final base = await build('game', game);
+      final patch = await build(
+        'one',
+        {'textures/wall.ktx2': 'wall v2', 'models/tree.glb': 'tree'},
+        base: [base],
+      );
+      final packs = mounted()
+        ..start(base)
+        ..patch(patch);
+
+      expect(packs.ownerOf(AssetId.parse('models/tree.glb')), same(base));
+    });
+
+    test('is null for an id that is removed or never was', () async {
+      final base = await build('game', game);
+      final patch = await build(
+        'one',
+        {'textures/wall.ktx2': 'wall v1', 'models/tree.glb': 'tree'},
+        base: [base],
+      );
+      final packs = mounted()
+        ..start(base)
+        ..patch(patch);
+
+      expect(packs.ownerOf(AssetId.parse('scenes/town.oscene')), isNull);
+      expect(packs.ownerOf(AssetId.parse('models/ghost.glb')), isNull);
     });
   });
 

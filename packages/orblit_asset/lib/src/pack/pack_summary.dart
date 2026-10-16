@@ -6,6 +6,8 @@ final class PackSummary {
     required this.hash,
     required this.bytes,
     required this.assets,
+    required this.added,
+    required this.replaced,
     required this.blobs,
     required this.sharedBytes,
     required this.removed,
@@ -19,6 +21,14 @@ final class PackSummary {
 
   /// How many assets it holds.
   final int assets;
+
+  /// How many of [assets] the base did not serve. Every asset of a pack
+  /// with no base.
+  final int added;
+
+  /// How many of [assets] the base served with other bytes. Always 0 for a
+  /// pack with no base, and `added + replaced == assets`.
+  final int replaced;
 
   /// How many blobs it holds. Fewer than [assets] when some share bytes.
   final int blobs;
