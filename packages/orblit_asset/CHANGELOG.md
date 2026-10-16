@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.9.0
+
+- **Packs.** `packBundle` writes a cooked bundle as one `.opack` file, and
+  `AssetPack` reads one. A pack is an `AssetSource`, so it layers under a
+  directory the way every other source does. The file is a 32-byte header,
+  the blobs, and a JSON directory last.
+- **One copy of each blob.** Assets with the same bytes share one blob, and
+  each blob starts on a 16-byte boundary so a typed view of it is aligned.
+  The same bundle always packs to the same bytes.
+- **Opened from the end.** `AssetPack.open` reads the header and the
+  directory, never the blobs. A 2 GB pack opens as fast as a small one.
+  `PackBytes` is where the bytes come from: `MemoryPackBytes`, or
+  `FilePackBytes` on a platform with files, which also reads a pack that
+  sits inside another file.
+- **Refused whole.** A pack that is cut short, has the wrong marker, comes
+  from a newer format, or lays blobs over each other or over the directory
+  throws a `FormatException` that says which. `AssetPack.read` does not hash
+  what it reads. `findCorrupt` hashes every blob and names the assets that
+  changed.
+- **`dart run orblit_asset:pack`** with `build`, `list` and `check`. Exit 0
+  when it worked, 1 when a pack or bundle was bad, 2 for bad arguments.
+
 ## 0.8.0
 
 - Bake static collision triangles from glTF node transforms with `CollisionMesh`.

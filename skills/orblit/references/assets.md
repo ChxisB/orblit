@@ -1,4 +1,4 @@
-# Assets: materials, scene files, splats and the network
+# Assets: materials, scene files, splats, packs and the network
 
 Everything here is plain Dart in `orblit_scene` and `orblit_asset` — no
 Flutter, no filesystem, no renderer. That is deliberate: the editor, a
@@ -207,6 +207,40 @@ the cook key includes it, so turning it on re-cooks.
 
 `RuntimeImport` runs the same importers over files a user hands the app, with
 the results kept in the device's cache.
+
+---
+
+## Packs
+
+A cooked bundle is a folder. A pack is the same bundle as one `.opack` file,
+for a game that ships, downloads or mounts it as a unit.
+
+```
+dart run orblit_asset:pack build build/assets/android --target android -o game.opack
+dart run orblit_asset:pack list game.opack
+dart run orblit_asset:pack check game.opack
+```
+
+```dart
+final pack = await AssetPack.open(FilePackBytes('game.opack'));
+final source = LayeredAssetSource([DirectoryAssetSource('assets'), pack]);
+```
+
+- **`AssetPack` is an `AssetSource`.** It layers like any other. Open reads
+  the 32-byte header and the directory at the end. It never reads a blob.
+- **`FilePackBytes` takes a path**, not a `File`, so the web build still
+  compiles. `start` and `bytes` read a pack that sits inside another file.
+  `MemoryPackBytes` is for a pack that arrived as bytes. `close()` a
+  `FilePackBytes` when the pack is done with.
+- **`read` does not hash.** `findCorrupt()` hashes every blob and returns the
+  ids that changed. Run it after a download, not on every read.
+- **The target is stored.** A pack is for one cook target, because the
+  textures in it are. `pack.target` says which.
+- **Same bytes, one blob.** Two assets with identical bytes share a blob, and
+  repacking the same bundle gives the same file.
+- **Refusals are `FormatException`.** A cut-short file, a wrong marker, a
+  newer format and blobs that overlap each throw, with the reason in the
+  message. A pack is never half-read.
 
 ---
 

@@ -76,6 +76,11 @@ export 'src/importer.dart'
         ImportResult,
         Importer,
         ImporterRegistry;
+export 'src/pack/asset_pack.dart' show AssetPack;
+export 'src/pack/pack_bundle.dart' show packBundle;
+export 'src/pack/pack_bytes.dart' show MemoryPackBytes, PackBytes;
+export 'src/pack/pack_file.dart' show FilePackBytes;
+export 'src/pack/pack_summary.dart' show PackSummary;
 export 'src/net/cache_storage.dart'
     show CacheStorageContentStore, CacheStorageFetchRecords;
 export 'src/net/fetcher.dart'

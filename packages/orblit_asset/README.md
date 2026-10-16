@@ -2,7 +2,8 @@
 
 What an asset is called and where its bytes are: project-relative asset ids,
 content hashes, the sources assets are read from, a store that files bytes by
-their hash, and the cache that keeps the results of cooking them.
+their hash, the cache that keeps the results of cooking them, and the pack
+file that holds a cooked bundle as one file.
 
 A cook cache is keyed on the whole recipe: the source bytes, the files it
 read, which importer ran and which version of it, the settings it resolved,
@@ -26,6 +27,21 @@ Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
 The directory-backed classes need `dart:io`. The package still compiles for
 the web, but constructing one of them there throws. `MemoryCookCache` works
 everywhere.
+
+## Packs
+
+`dart run orblit_asset:pack build <bundle> --target <name> -o game.opack`
+writes a cooked bundle as one file. `AssetPack.open` reads it without
+reading the blobs, and a pack is an `AssetSource`.
+
+```dart
+final pack = await AssetPack.open(FilePackBytes('game.opack'));
+final bytes = await pack.read(AssetId.parse('models/robot.glb'));
+```
+
+`pack list` shows what a file holds. `pack check` hashes every blob and
+exits 1 when a byte has changed. The guide is at
+[orblitengine.com](https://orblitengine.com/docs/guides/asset-packs/).
 
 ## Static model collision
 
