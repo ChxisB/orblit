@@ -22,7 +22,35 @@ export 'src/constraints.dart'
 export 'src/face_rig_types.dart' show EyeRig, EyelidRig, JawRig, faceCollection;
 export 'src/generator.dart'
     show GeneratedRig, MetaRig, RigGenerator, RigProblem;
-export 'src/ik.dart' show IkSolution, rotationBetween, solveTwoBoneIk;
+export 'src/ik.dart'
+    show
+        IkSolution,
+        rotationBetween,
+        solveFabrik,
+        solveTwoBoneIk,
+        swingTwist,
+        twistAngle;
+export 'src/modifiers/bone_attachment.dart' show BoneAttachment;
+export 'src/modifiers/bone_edit.dart' show aimBone, placeBone, turnBone;
+export 'src/modifiers/chain_ik.dart' show ChainIk;
+export 'src/modifiers/constrain.dart' show Constrain;
+export 'src/modifiers/foot_placement.dart'
+    show FootLeg, FootPlacement, GroundHit, GroundProbe;
+export 'src/modifiers/joint_limit.dart' show ConeLimit, HingeLimit;
+export 'src/modifiers/look_at.dart' show LookAt;
+export 'src/modifiers/modifier.dart'
+    show Modifier, ModifierFrame, ModifierSlot, ModifierStack, ModelPoint;
+export 'src/modifiers/speed_limit.dart' show SpeedLimit;
+export 'src/modifiers/spline_ik.dart' show SplineIk, sampleCurve;
+export 'src/modifiers/spring_bones.dart'
+    show
+        CapsuleCollider,
+        PlaneCollider,
+        SphereCollider,
+        SpringBones,
+        SpringCollider;
+export 'src/modifiers/twist_spread.dart' show TwistSpread;
+export 'src/modifiers/two_bone_ik.dart' show TwoBoneIk;
 export 'src/naming.dart' show BoneNaming, BoneRole, Side;
 export 'src/rig_type.dart' show RigContext, RigType;
 export 'src/rig_types.dart' show CopyRig, FingerRig, LimbRig, SpineRig;

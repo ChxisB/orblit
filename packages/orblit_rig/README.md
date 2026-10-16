@@ -1,7 +1,7 @@
 # orblit_rig
 
-Armatures, poses and bone constraints. The skeleton layer a control rig is
-generated on top of.
+Armatures, poses, bone constraints and a modifier stack that adjusts a pose
+after playback. The skeleton layer a control rig is generated on top of.
 
 Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
 engine. The documentation is at [orblitengine.com](https://orblitengine.com).

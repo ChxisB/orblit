@@ -112,7 +112,7 @@ class CopyRotation extends BoneConstraint {
     var wanted = _rotationOf(target);
     if (invert) wanted = wanted.conjugated();
 
-    final blended = _slerp(current, wanted, influenceIn(pose));
+    final blended = slerpShortest(current, wanted, influenceIn(pose));
     return Matrix4.compose(world.getTranslation(), blended, _scaleOf(world));
   }
 }
@@ -154,7 +154,7 @@ class DampedTrack extends BoneConstraint {
 
     final rotation = _rotationOf(world);
     final wanted = correction * rotation;
-    final blended = _slerp(rotation, wanted, amount);
+    final blended = slerpShortest(rotation, wanted, amount);
 
     return Matrix4.compose(origin, blended, _scaleOf(world));
   }
@@ -201,9 +201,13 @@ class LimitRotation extends BoneConstraint {
     final angle = 2 * math.acos(local.w.abs().clamp(0.0, 1.0));
     if (angle <= maximumAngle) return world;
 
-    final limited = _slerp(Quaternion.identity(), local, maximumAngle / angle);
+    final limited = slerpShortest(
+      Quaternion.identity(),
+      local,
+      maximumAngle / angle,
+    );
     final wanted = (rest * limited).normalized();
-    final blended = _slerp(rotation, wanted, amount);
+    final blended = slerpShortest(rotation, wanted, amount);
 
     return Matrix4.compose(world.getTranslation(), blended, _scaleOf(world));
   }
@@ -246,7 +250,7 @@ class CopyTransform extends BoneConstraint {
 
     return Matrix4.compose(
       from + (to - from) * amount,
-      _slerp(fromRotation.normalized(), toRotation.normalized(), amount),
+      slerpShortest(fromRotation.normalized(), toRotation.normalized(), amount),
       fromScale + (toScale - fromScale) * amount,
     );
   }
@@ -318,7 +322,7 @@ class StretchTo extends BoneConstraint {
     }
     return Matrix4.compose(
       origin,
-      _slerp(rotation, aimed.normalized(), amount),
+      slerpShortest(rotation, aimed.normalized(), amount),
       scale + (stretched - scale) * amount,
     );
   }
@@ -338,39 +342,4 @@ Vector3 _scaleOf(Matrix4 matrix) {
   final translation = Vector3.zero();
   matrix.decompose(translation, rotation, scale);
   return scale;
-}
-
-/// Spherical interpolation that always takes the shorter arc.
-Quaternion _slerp(Quaternion a, Quaternion b, double t) {
-  if (t <= 0) return a.clone();
-  if (t >= 1) return b.clone();
-
-  var dot = a.x * b.x + a.y * b.y + a.z * b.z + a.w * b.w;
-  var target = b;
-  if (dot < 0) {
-    target = Quaternion(-b.x, -b.y, -b.z, -b.w);
-    dot = -dot;
-  }
-
-  if (dot > 0.9995) {
-    return Quaternion(
-      a.x + (target.x - a.x) * t,
-      a.y + (target.y - a.y) * t,
-      a.z + (target.z - a.z) * t,
-      a.w + (target.w - a.w) * t,
-    )..normalize();
-  }
-
-  final theta = math.acos(dot.clamp(-1.0, 1.0));
-  final sinTheta = math.sin(theta);
-  return Quaternion(
-    (a.x * math.sin((1 - t) * theta) + target.x * math.sin(t * theta)) /
-        sinTheta,
-    (a.y * math.sin((1 - t) * theta) + target.y * math.sin(t * theta)) /
-        sinTheta,
-    (a.z * math.sin((1 - t) * theta) + target.z * math.sin(t * theta)) /
-        sinTheta,
-    (a.w * math.sin((1 - t) * theta) + target.w * math.sin(t * theta)) /
-        sinTheta,
-  )..normalize();
 }

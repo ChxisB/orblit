@@ -23,7 +23,7 @@ the fullest reference.
 | `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
-| `orblit_rig` | Armatures, poses, bone constraints, IK | `Armature`, `Pose`, `solveTwoBoneIk` |
+| `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
@@ -598,6 +598,77 @@ Traps:
   in, and the game plays it.
 - A cutscene runs on the scene, not on a copy. Keep the game's own
   animators off what it keys while it runs.
+
+## orblit_rig modifiers
+
+`ModifierStack` adjusts a pose after the clip has written it and before the
+skin reads it. Pure Dart. The frame flow is these four lines, every frame:
+
+```dart
+binding.poseFrom(frame.bones[''] ?? const {}, pose);
+pose.evaluate();
+stack.apply(pose, frame: ModifierFrame(dt: dt));
+final joints = binding.jointsFor(pose);
+```
+
+Evaluate once, then `apply`. `apply` does not evaluate again, because a
+second `evaluate` re-solves every `IkChain` and moves a partly blended one.
+`Pose.refresh({from})` is the idempotent version, and the stack calls it.
+
+```dart
+final stack = ModifierStack()
+  ..add('feet', FootPlacement(legs: legs, probe: probe, pelvis: 'hips'))
+  ..add('look', LookAt(bone: 'head', target: (pose, frame) => aim, limit: 1.0, ease: 0.15))
+  ..add('hair', SpringBones(bones: ['hair.0', 'hair.1']), influence: 1);
+```
+
+- Order is the order added. Each step reads what the one before left. Put
+  feet first, aiming next, limits after what they limit, springs last.
+- A target is `Vector3? Function(Pose, ModifierFrame)` in the **model's**
+  space. Null leaves the bone alone. `frame.toModel(worldPoint)` converts.
+  `ModifierFrame(modelToWorld: ...)` is how a modifier knows where the model
+  stands, so give it the character's matrix.
+- `slot.influence` (0 to 1), `slot.enabled` and `influenceProperty` (a pose
+  property) blend the step. A modifier never blends itself. Zero or disabled
+  resets the modifier's memory.
+- `dt` is seconds. Springs, easing and `SpeedLimit` move nothing at `dt: 0`.
+  The first frame passes as animated. After a teleport call `stack.reset()`.
+
+| Step | Does |
+| --- | --- |
+| `TwoBoneIk(root, mid, target, pole, stretch)` | Reaches a limb for a point. Without a `pole` the joint keeps the clip's bend |
+| `ChainIk(root, tip, target, iterations)` | FABRIK over any number of bones |
+| `SplineIk(root, tip, points, detail)` | Lays a chain along a Catmull-Rom curve, bone lengths kept |
+| `LookAt(bone, target, axis, limit, ease)` | Faces a point, limit on the added turn, exponential ease |
+| `Constrain(bone, constraint)` | Runs a `BoneConstraint` as a step. Influence on the constraint itself is refused, use the slot |
+| `ConeLimit(bone, swing, twist)`, `HingeLimit(bone, min, max, axis)` | Keeps a joint inside a range |
+| `SpeedLimit(bones, turnSpeed, moveSpeed)` | Caps rad/s and units/s |
+| `TwistSpread(source, bones, shares)` | Shares a roll along forearm bones |
+| `BoneAttachment(bone, offset)` | Reads where a socket is as a `Matrix4`: `.model`, `.world`. Writes nothing |
+| `SpringBones(bones, stiffness, drag, gravity, margin, colliders)` | World-space swing for hair, tails, cloaks. List bones parents first |
+| `FootPlacement(legs, probe, pelvis, ...)` | Stands feet on what `probe(from, to)` finds, in world space |
+
+`GroundProbe` is `GroundHit? Function(Vector3 from, Vector3 to)`. With
+`orblit_physics` it is one cast, and the character's own body is ignored:
+
+```dart
+GroundHit? probe(Vector3 from, Vector3 to) {
+  final line = to - from;
+  final hit = physics.cast(
+    from: [from.x, from.y, from.z],
+    direction: [line.x, line.y, line.z],
+    distance: line.length,
+    ignore: body,
+  );
+  if (hit == null) return null;
+  return GroundHit(point: Vector3.array(hit.at), normal: Vector3.array(hit.normal));
+}
+```
+
+Traps: a chain that points straight up is an inverted pendulum, so gravity
+alone never moves it. `FootPlacement` snaps on its first frame and eases after.
+`SpringBones` colliders are in the model's space, or a bone's when `bone` is set.
+Nothing here is saved in a scene file or shown in the editor yet.
 
 ## orblit_terrain
 
