@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.0
+
+- `OrblitParticleSheet` draws a grid of particles that something else moves,
+  such as a cloth. It writes a glb with one vertex and one joint to a
+  particle, and `poses` sets each joint to its particle and turns it to
+  follow the cloth, so the sheet is lit as it folds. Up to 256 particles.
+
 ## 0.8.0
 
 - A staged material carries `litScreen` to the renderer.
