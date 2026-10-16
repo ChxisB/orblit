@@ -513,10 +513,7 @@ void main() {
       final fromRest = inParent(from, null, 0);
       final toRest = inParent(to, null, 0);
       // At a moment the source is at rest the target must be at its own rest.
-      expect(
-        (inParent(to, result.clip, 0) - toRest).length,
-        closeTo(0, 1e-9),
-      );
+      expect((inParent(to, result.clip, 0) - toRest).length, closeTo(0, 1e-9));
       for (final time in [0.25, 0.5, 0.8]) {
         final moved = inParent(from, clip, time) - fromRest;
         final carried = inParent(to, result.clip, time) - toRest;
