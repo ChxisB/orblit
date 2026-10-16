@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.4.0
+
+- **`TerrainStreamer`.** Keeps the regions of a `Terrain` that are within
+  `loadRadius` metres of a point and lets go of those past `keepRadius`, so a
+  world of more than the renderer's 256 regions is still one terrain.
+  `follow(x, z)` moves the focus, lets go, then reads what is wanted, nearest
+  first, `concurrency` at a time. Called again while it runs, it moves the
+  focus and returns the same run, so a frame loop may call it every frame.
+- **`RegionSource`.** What a streamer reads from: `keys` and `read(key)`.
+  Declared beside the streamer that calls it, so a folder, a pack or a server
+  implements it without this package knowing which.
+- **Whose regions they are.** A region put in before the streamer, or edited
+  after it loaded, is the caller's. It is never removed and it counts against
+  `maxResident`. A region that cannot be read, or is not the one its file
+  name says, or is another size, is named in `failures` and is not asked for
+  again until `retryFailed()`.
+
 ## 0.3.0
 
 - **Scatter.** A `ScatterLayer` is a rule for one kind of thing over the

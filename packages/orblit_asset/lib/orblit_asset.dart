@@ -40,6 +40,7 @@ export 'src/asset_source.dart'
         MemoryAssetSource;
 export 'src/content_hash.dart' show ContentHash;
 export 'src/content_store.dart' show ContentStore, MemoryContentStore;
+export 'src/cooked_terrain.dart' show CookedTerrain;
 export 'src/cook_cache.dart'
     show CookCache, CookFailure, CookOutput, CookedAsset, MemoryCookCache;
 export 'src/cook_cache_directory.dart' show DirectoryCookCache;
@@ -68,6 +69,7 @@ export 'src/import_settings.dart' show ImportSettings, ImportSettingsReader;
 export 'src/importers/atlas_importer.dart' show AtlasImporter;
 export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';
+export 'src/importers/terrain_importer.dart' show TerrainImporter;
 export 'src/runtime_import.dart' show RuntimeImport;
 export 'src/importer.dart'
     show

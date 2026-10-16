@@ -205,6 +205,12 @@ textures together, remaps the UVs, and merges the materials and static
 primitives that then match. It is a setting rather than a second importer, and
 the cook key includes it, so turning it on re-cooks.
 
+`TerrainImporter` carries `.oterrain` and `.oregion` files into the bundle as
+written, after checking each region against its name and its terrain's size
+and each image, model and material the terrain names against the project. Read
+a cooked terrain back with `CookedTerrain.open` and stream it with
+`TerrainStreamer` ([packages.md](packages.md#orblit_terrain)).
+
 `RuntimeImport` runs the same importers over files a user hands the app, with
 the results kept in the device's cache.
 

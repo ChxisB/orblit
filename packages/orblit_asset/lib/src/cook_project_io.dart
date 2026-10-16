@@ -14,6 +14,7 @@ import 'importer.dart';
 import 'importers/atlas_importer.dart';
 import 'importers/gltf_importer.dart';
 import 'importers/native_importers_io.dart';
+import 'importers/terrain_importer.dart';
 import 'pack/pack_bundle_io.dart';
 import 'pack/pack_name.dart';
 import 'pack/pack_summary.dart';
@@ -67,6 +68,7 @@ class CookProject {
     GltfImporter(),
     const SceneImporter(),
     const AtlasImporter(),
+    const TerrainImporter(),
     ...nativeImporters,
   ]);
 
