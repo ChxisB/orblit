@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.10.0
+
+- **Patches.** `packBundle(..., base: [game, patch1])` writes a pack that
+  holds only what changed since the packs already shipped. An asset is held
+  when its hash differs from what the chain serves or the chain lacks it.
+  Ids the bundle dropped go in `removed`. The patch names the last pack in
+  `base` by hash. Nothing in `base` is read for its bytes. On the command
+  line, `--base` is given once per pack, in mounting order.
+- **`MountedPacks`.** One `AssetSource` over a chain. `start` takes a pack
+  with no base, `patch` takes one built against the top of the chain, and
+  `addMod` takes one with no base and puts it above the chain. A pack for
+  another target, or in the wrong place, throws `PackMountRefused`.
+- **Mount order cannot undo a mod.** Mods always sit above the chain, later
+  above earlier, whatever order the app mounted them in. A patch downloaded
+  after a mod still lands beneath it.
+- **Resolved once.** Which pack answers for an id is worked out when a pack
+  is mounted, so a read is one map lookup. `manifest` is the merged view and
+  `chainHash` is what the next patch must name.
+- A pack that removes ids with no base, removes one twice, or both removes
+  and holds one is refused at open.
+
 ## 0.9.0
 
 - **Packs.** `packBundle` writes a cooked bundle as one `.opack` file, and

@@ -309,6 +309,32 @@ void main() {
       await expectLater(open(wrong), refusedWith('overlap'));
     });
 
+    test('refuses removals when there is no base', () async {
+      final wrong = withDirectory(good, (json) {
+        json['removed'] = ['models/gone.glb'];
+      });
+
+      await expectLater(open(wrong), refusedWith('no base'));
+    });
+
+    test('refuses an id that is both removed and held', () async {
+      final wrong = withDirectory(good, (json) {
+        json['base'] = ContentHash.of([1]).hex;
+        json['removed'] = ['models/m1.glb'];
+      });
+
+      await expectLater(open(wrong), refusedWith('both removed and held'));
+    });
+
+    test('refuses an id removed twice', () async {
+      final wrong = withDirectory(good, (json) {
+        json['base'] = ContentHash.of([1]).hex;
+        json['removed'] = ['models/gone.glb', 'models/gone.glb'];
+      });
+
+      await expectLater(open(wrong), refusedWith('removed twice'));
+    });
+
     test('refuses a blob inside the header', () async {
       final wrong = withDirectory(good, (json) {
         final blobs = json['blobs']! as Map<String, Object?>;

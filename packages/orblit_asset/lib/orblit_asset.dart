@@ -77,6 +77,7 @@ export 'src/importer.dart'
         Importer,
         ImporterRegistry;
 export 'src/pack/asset_pack.dart' show AssetPack;
+export 'src/pack/mounted_packs.dart' show MountedPacks, PackMountRefused;
 export 'src/pack/pack_bundle.dart' show packBundle;
 export 'src/pack/pack_bytes.dart' show MemoryPackBytes, PackBytes;
 export 'src/pack/pack_file.dart' show FilePackBytes;

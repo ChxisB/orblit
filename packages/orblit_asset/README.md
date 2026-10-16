@@ -40,7 +40,18 @@ final bytes = await pack.read(AssetId.parse('models/robot.glb'));
 ```
 
 `pack list` shows what a file holds. `pack check` hashes every blob and
-exits 1 when a byte has changed. The guide is at
+exits 1 when a byte has changed.
+
+`pack build ... --base game.opack` writes a patch that holds only what
+changed. `MountedPacks` mounts a game, its patches and any mods as one
+source:
+
+```dart
+final packs = MountedPacks(target: CookTargets.android)
+  ..start(game)
+  ..patch(patch)
+  ..addMod(mod);
+``` The guide is at
 [orblitengine.com](https://orblitengine.com/docs/guides/asset-packs/).
 
 ## Static model collision

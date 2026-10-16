@@ -7,6 +7,8 @@ import '../asset_id.dart';
 import '../asset_manifest.dart';
 import '../content_hash.dart';
 import '../importer.dart';
+import 'asset_pack.dart';
+import 'mounted_packs.dart';
 import 'pack_format.dart';
 import 'pack_summary.dart';
 
@@ -17,13 +19,28 @@ import 'pack_summary.dart';
 /// stale bundle is caught. Assets with the same bytes share one blob. The
 /// pack is written beside [outPath] and renamed into place, so a failure
 /// leaves no half of one behind.
+///
+/// With [base], the packs already shipped, in the order they were mounted,
+/// the result is a patch. It holds the assets whose hash differs from what
+/// the chain serves or that the chain lacks, and names the ids the bundle has
+/// dropped. Nothing in [base] is read for its bytes. The comparison is by
+/// hash. The patch's own base is the hash of the last pack in [base].
 Future<PackSummary> packBundle({
   required String bundlePath,
   required String outPath,
   required CookTarget target,
+  List<AssetPack> base = const [],
 }) async {
-  final manifest = await _readManifest(bundlePath);
-  final layout = _Layout.of(manifest, target.name);
+  final bundle = await _readManifest(bundlePath);
+  final chain = _mount(target, base);
+  final manifest = _changedFrom(bundle, chain);
+  final removed = _droppedFrom(bundle, chain);
+  final layout = _Layout.of(
+    manifest,
+    target.name,
+    base: chain?.chainHash,
+    removed: removed,
+  );
   final temporary = File('$outPath.partial');
   try {
     await _copyBlobs(bundlePath, temporary, layout);
@@ -38,7 +55,37 @@ Future<PackSummary> packBundle({
     assets: manifest.entries.length,
     blobs: layout.firstUse.length,
     sharedBytes: layout.sharedBytes,
+    removed: removed.length,
   );
+}
+
+MountedPacks? _mount(CookTarget target, List<AssetPack> base) {
+  if (base.isEmpty) return null;
+  final chain = MountedPacks(target: target)..start(base.first);
+  for (final pack in base.skip(1)) {
+    chain.patch(pack);
+  }
+  return chain;
+}
+
+/// The bundle's assets that the chain does not already serve, by hash.
+AssetManifest _changedFrom(AssetManifest bundle, MountedPacks? chain) {
+  if (chain == null) return bundle;
+  return AssetManifest(
+    entries: {
+      for (final MapEntry(:key, :value) in bundle.entries.entries)
+        if (chain.manifest.entries[key]?.hash != value.hash) key: value,
+    },
+  );
+}
+
+/// What the chain serves that the bundle no longer has, in id order.
+List<AssetId> _droppedFrom(AssetManifest bundle, MountedPacks? chain) {
+  if (chain == null) return const [];
+  return [
+    for (final id in chain.manifest.entries.keys)
+      if (!bundle.entries.containsKey(id)) id,
+  ]..sort((a, b) => a.toString().compareTo(b.toString()));
 }
 
 Future<AssetManifest> _readManifest(String bundlePath) async {
@@ -75,7 +122,12 @@ final class _Layout {
     required this.directoryBytes,
   });
 
-  factory _Layout.of(AssetManifest manifest, String target) {
+  factory _Layout.of(
+    AssetManifest manifest,
+    String target, {
+    required ContentHash? base,
+    required List<AssetId> removed,
+  }) {
     final ids = manifest.entries.keys.toList()
       ..sort((a, b) => a.toString().compareTo(b.toString()));
     final blobs = <ContentHash, PackBlob>{};
@@ -94,8 +146,8 @@ final class _Layout {
     }
     final directory = PackDirectory(
       target: target,
-      base: null,
-      removed: const [],
+      base: base,
+      removed: removed,
       assets: {
         for (final MapEntry(:key, :value) in manifest.entries.entries)
           key: value.hash,
