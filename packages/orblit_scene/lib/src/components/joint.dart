@@ -1,3 +1,5 @@
+import 'package:vector_math/vector_math_64.dart';
+
 import '../component.dart';
 import '../values.dart';
 
@@ -30,6 +32,28 @@ enum JointKind {
   /// Each of the six ways set on its own in [JointComponent.limits]: free
   /// where there is no limit, and locked where a limit's low is its high.
   sixAxis,
+
+  /// Ties how far the body turns to how far the body it hangs from does: it
+  /// turns [JointComponent.ratio] times as far, about [JointComponent.axisB].
+  /// Meshed gears turn opposite ways, so their ratio is negative. Both are
+  /// usually hinged to something already.
+  gear,
+
+  /// Ties how far the body it hangs from slides, along the joint's x axis, to
+  /// how far the body turns, about [JointComponent.axisB]: [JointComponent.ratio]
+  /// metres for each radian. The rack is the holder, and the pinion is the body.
+  rack,
+
+  /// A rope over two fixed points, [JointComponent.over]. The length from the
+  /// first point to the holder, plus [JointComponent.ratio] times the length
+  /// from the second point to the body, stays what it was. It is a rod, so
+  /// it pushes as well as pulls.
+  pulley,
+
+  /// Lets the body slide along the bent line [JointComponent.path], held on
+  /// it. Limited by [JointAxis.alongX], measured along the line from its first
+  /// point, and it takes a motor.
+  path,
 }
 
 /// One of the six ways a joint's body can move: along the joint's three axes
@@ -59,6 +83,36 @@ class JointRange {
   final double high;
 
   bool get locked => low == high;
+}
+
+/// A spring on one [JointAxis]: it pulls that way to [rest] as a spring of
+/// [hertz] cycles a second would, with damping [ratio]. [rest] is in metres
+/// along an axis and degrees about one, from where the joint was made. Null
+/// is where it was made, which for a distance joint is the length it was made
+/// at and not nought.
+///
+/// On a way the joint locks, a spring takes the lock's place, so the joint
+/// gives there. On a way it leaves free, the spring is the only thing that
+/// holds it.
+class JointGive {
+  const JointGive(this.hertz, {this.ratio = 1, this.rest});
+
+  final double hertz;
+
+  /// Nought rings for ever. One settles as quickly as it can without
+  /// overshooting. Above one is sluggish.
+  final double ratio;
+  final double? rest;
+
+  @override
+  bool operator ==(Object other) =>
+      other is JointGive &&
+      other.hertz == hertz &&
+      other.ratio == ratio &&
+      other.rest == rest;
+
+  @override
+  int get hashCode => Object.hash(hertz, ratio, rest);
 }
 
 /// A joint: holds the body this entity belongs to to the body it hangs from.
@@ -97,7 +151,22 @@ class JointComponent extends SceneComponent {
     this.breakingForce = 0,
     this.breakingTorque = 0,
     this.collide = false,
-  }) : limits = Map.unmodifiable(limits);
+    Map<JointAxis, JointGive> springs = const {},
+    this.softHertz = 0,
+    this.softRatio = 1,
+    this.goal = 0,
+    this.goalHertz = 0,
+    this.goalRatio = 1,
+    this.ratio = 1,
+    Vector3? axisB,
+    List<Vector3> over = const [],
+    List<Vector3> path = const [],
+    this.follow = false,
+  }) : limits = Map.unmodifiable(limits),
+       springs = Map.unmodifiable(springs),
+       axisB = axisB?.clone() ?? Vector3.zero(),
+       over = List.unmodifiable([for (final p in over) p.clone()]),
+       path = List.unmodifiable([for (final p in path) p.clone()]);
 
   static JointComponent fromJson(Map<String, Object?> json) => JointComponent(
     kind: Values.named(JointKind.values, json['kind']) ?? JointKind.hinge,
@@ -108,6 +177,17 @@ class JointComponent extends SceneComponent {
     breakingForce: Values.number(json, 'breakingForce', 0),
     breakingTorque: Values.number(json, 'breakingTorque', 0),
     collide: Values.flag(json, 'collide', fallback: false),
+    springs: _springsOf(json['springs']),
+    softHertz: Values.number(json, 'softHertz', 0),
+    softRatio: Values.number(json, 'softRatio', 1),
+    goal: Values.number(json, 'goal', 0),
+    goalHertz: Values.number(json, 'goalHertz', 0),
+    goalRatio: Values.number(json, 'goalRatio', 1),
+    ratio: Values.number(json, 'ratio', 1),
+    axisB: Values.vector(json['axisB']),
+    over: _pointsOf(json['over']),
+    path: _pointsOf(json['path']),
+    follow: Values.flag(json, 'follow', fallback: false),
   );
 
   /// The same joint with some of it changed. [limits], when given, replaces
@@ -121,6 +201,17 @@ class JointComponent extends SceneComponent {
     double? breakingForce,
     double? breakingTorque,
     bool? collide,
+    Map<JointAxis, JointGive>? springs,
+    double? softHertz,
+    double? softRatio,
+    double? goal,
+    double? goalHertz,
+    double? goalRatio,
+    double? ratio,
+    Vector3? axisB,
+    List<Vector3>? over,
+    List<Vector3>? path,
+    bool? follow,
   }) => JointComponent(
     kind: kind ?? this.kind,
     limits: limits ?? this.limits,
@@ -130,7 +221,26 @@ class JointComponent extends SceneComponent {
     breakingForce: breakingForce ?? this.breakingForce,
     breakingTorque: breakingTorque ?? this.breakingTorque,
     collide: collide ?? this.collide,
+    springs: springs ?? this.springs,
+    softHertz: softHertz ?? this.softHertz,
+    softRatio: softRatio ?? this.softRatio,
+    goal: goal ?? this.goal,
+    goalHertz: goalHertz ?? this.goalHertz,
+    goalRatio: goalRatio ?? this.goalRatio,
+    ratio: ratio ?? this.ratio,
+    axisB: axisB ?? this.axisB,
+    over: over ?? this.over,
+    path: path ?? this.path,
+    follow: follow ?? this.follow,
   );
+
+  /// The same joint with a spring on [axis].
+  JointComponent spring(JointAxis axis, JointGive give) =>
+      copyWith(springs: {...springs, axis: give});
+
+  /// The same joint with no spring on [axis].
+  JointComponent unspring(JointAxis axis) =>
+      copyWith(springs: {...springs}..remove(axis));
 
   /// The same joint with [axis] limited to [range].
   JointComponent limit(JointAxis axis, JointRange range) =>
@@ -167,11 +277,49 @@ class JointComponent extends SceneComponent {
   /// because two bodies joined nearly always overlap where they are joined.
   final bool collide;
 
+  /// The spring on each way that has one, with [JointGive.rest] in metres
+  /// and degrees. A kind reads only the ways [axes] names.
+  final Map<JointAxis, JointGive> springs;
+
+  /// How soft the ends of the limits are, as a spring of this many cycles a
+  /// second with this damping ratio. Nought is a wall. A lock stays hard.
+  final double softHertz;
+  final double softRatio;
+
+  /// A hinge's or a slider's motor holds [goal], in degrees or metres from
+  /// where the joint was made, as a spring of [goalHertz] would, and never
+  /// pushes harder than [strength]. Nought hertz is a motor of [speed].
+  final double goal;
+  final double goalHertz;
+  final double goalRatio;
+
+  /// What a gear, a rack or a pulley ties the two sides at.
+  final double ratio;
+
+  /// The axis the body turns about for a gear or a rack, in the joint's own
+  /// frame. Nought is the joint's x axis, the same as the holder's.
+  final Vector3 axisB;
+
+  /// A pulley's two fixed points, in the joint's own frame, where it stands
+  /// when the scene begins.
+  final List<Vector3> over;
+
+  /// A path's points in the joint's own frame, from where the body starts.
+  /// Close a loop by repeating the first point.
+  final List<Vector3> path;
+
+  /// Whether a path keeps the body's x axis along the line, free to roll
+  /// about it, and does not leave the body's turn as it was.
+  final bool follow;
+
   /// The limits this kind reads, which are all the solver will hear of.
   Iterable<JointAxis> get axes => switch (kind) {
     JointKind.fixed || JointKind.point => const [],
     JointKind.hinge || JointKind.cone => const [JointAxis.aboutX],
-    JointKind.slider || JointKind.distance => const [JointAxis.alongX],
+    JointKind.slider ||
+    JointKind.distance ||
+    JointKind.path => const [JointAxis.alongX],
+    JointKind.gear || JointKind.rack || JointKind.pulley => const [],
     JointKind.sixAxis => JointAxis.values,
   };
 
@@ -218,7 +366,53 @@ class JointComponent extends SceneComponent {
     'breakingForce': breakingForce,
     'breakingTorque': breakingTorque,
     'collide': collide,
+    'springs': {
+      for (final axis in JointAxis.values)
+        if (springs[axis] case final give?)
+          axis.name: [give.hertz, give.ratio, ?give.rest],
+    },
+    'softHertz': softHertz,
+    'softRatio': softRatio,
+    'goal': goal,
+    'goalHertz': goalHertz,
+    'goalRatio': goalRatio,
+    'ratio': ratio,
+    'axisB': Values.vectorToJson(axisB),
+    'over': [for (final p in over) ...Values.vectorToJson(p)],
+    'path': [for (final p in path) ...Values.vectorToJson(p)],
+    'follow': follow,
   };
+
+  /// Each spring a file gives as hertz, ratio and rest under an axis's name.
+  /// A spring with no frequency above nought is skipped, as it would be no
+  /// spring. A missing rest is kept missing.
+  static Map<JointAxis, JointGive> _springsOf(Object? raw) {
+    final json = Values.object(raw);
+    return {
+      for (final axis in JointAxis.values)
+        if (json[axis.name] case [final num hertz, ...final rest])
+          if (hertz > 0)
+            axis: JointGive(
+              hertz.toDouble(),
+              ratio: rest.isNotEmpty && rest[0] is num
+                  ? (rest[0] as num).toDouble()
+                  : 1,
+              rest: rest.length > 1 && rest[1] is num
+                  ? (rest[1] as num).toDouble()
+                  : null,
+            ),
+    };
+  }
+
+  /// Points written three numbers to a corner. A trailing one or two numbers
+  /// are not a point and are dropped.
+  static List<Vector3> _pointsOf(Object? raw) {
+    final flat = Values.numbers(raw);
+    return [
+      for (var i = 0; i + 2 < flat.length; i += 3)
+        Vector3(flat[i], flat[i + 1], flat[i + 2]),
+    ];
+  }
 
   /// Each limit a file gives as two numbers under an axis's name. Anything
   /// else there is skipped, so a hand-edit that gets one wrong loses that one

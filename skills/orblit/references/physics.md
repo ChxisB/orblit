@@ -339,21 +339,46 @@ final state = physics.jointStateOf(1); // JointState?: offset, angles, force, to
 physics.unjoin(1);
 ```
 
-- `join(id, joint, {required a, b = 0, required at, rotation, to,
-  breakingForce, breakingTorque, collide = false})` returns whether it was
-  made. Either `a` or `b` may be 0, the world, **not both**. False for a zero
-  or taken id, an end that is not a body, or an end joined to itself.
+- `join(id, joint, {required a, b = 0, required at, rotation, to, axisB,
+  over, path, breakingForce, breakingTorque, collide = false})` returns
+  whether it was made. Either `a` or `b` may be 0, the world, **not both**.
+  False for a zero or taken id, an end that is not a body, or an end joined
+  to itself.
 - Kinds: `Joint.fixed()`, `Joint.point()`, `Joint.hinge(limit:, speed:,
   strength:)` (turns about the frame's x), `Joint.slider(limit:, speed:,
   strength:)` (along x), `Joint.distance(limit:)` (keeps `at` on `a` and `to`
   on `b` apart; no limit is a rod, `JointLimit(0, 2)` a rope),
   `Joint.cone(swing:, twist:)` (x swings within `swing`), and
   `Joint.sixAxis(alongX:, ..., aboutZ:)`, each free unless limited.
+- Couplings and a path: `Joint.gear(ratio:)` (second turns `ratio` times as
+  far as the first, about its x or `axisB`), `Joint.rack(ratio:)` (first
+  slides `ratio` metres per radian the second turns), `Joint.pulley(ratio:)`
+  (a rod over two fixed points `over`, with `at` on the first body and `to`
+  on the second) and `Joint.path(limit:, speed:, strength:, goal:, follow:)`
+  (the second body slides on the bent line `path`, in world points when
+  made).
+- **Give.** Every kind takes `springs: JointSprings(alongX: JointSpring(hertz:,
+  ratio: 1, rest:))` and `softLimit: JointSoftness(hertz:, ratio:)`. A spring
+  replaces a lock on its way, and on a free way is the only thing holding it.
+  `goal: JointGoal(at, hertz:, ratio:)` on a hinge, slider or path makes the
+  motor hold a place, never harder than `strength`, and `speed` is then
+  unread.
 - **The physics package takes radians**, metres and newtons. `JointLimit(low,
   high)`; `JointLimit.locked()` holds it at nought. A motor with `strength`
   0 is no motor; `speed` 0 with some strength is friction.
 - It holds how the bodies stood when it was made, so every limit is measured
   from there. `PhysicsJointKind` is the enum; `Joint` is what you pass.
+- **Hertz is the frequency under the body's own load.** A box on a slider
+  spring sags by `g / (2πf)²`: 6 cm at 2 Hz.
+- **A coupling counts turns per sub-step,** so a gear holds over many
+  revolutions. `jointStateOf` angles are wrapped within ±π, so read a wheel
+  from its own hinge and expect it to wrap.
+- **A pulley is a rod.** It pushes as well as pulls. It is refused without
+  exactly two `over` points, and a path without two or more `path` points.
+- **A path keeps counting past its ends,** on the line gone on straight. A
+  limit at the line's length stops what runs off. Without one it runs off.
+- **A path is placed by the nearest point on the line,** so two stretches
+  closer together than a step's move can pass a body between them.
 - Joined free bodies sleep and wake together.
 - Touching bodies sleep and wake as one island, so a stack sleeps whole.
 
@@ -413,11 +438,20 @@ a new `ZoneComponent` to do that.
 
 `JointComponent` in `orblit_scene` (`SceneComponents.joint`, JSON key
 `joint`): `kind` (`JointKind.fixed`, `point`, `hinge`, `slider`, `distance`,
-`cone`, `sixAxis`), `limits` (`Map<JointAxis, JointRange>`, keyed `alongX` to
-`aboutZ`), `swing`, `speed`, `strength`, `breakingForce`, `breakingTorque`,
-`collide`. Change one limit with `limit(axis, JointRange(low, high))` or
-`free(axis)`; `JointRange.at(v)` is locked. `axes` says which limits the kind
-reads.
+`cone`, `sixAxis`, `gear`, `rack`, `pulley`, `path`), `limits`
+(`Map<JointAxis, JointRange>`, keyed `alongX` to `aboutZ`), `swing`, `speed`,
+`strength`, `breakingForce`, `breakingTorque`, `collide`. Change one limit
+with `limit(axis, JointRange(low, high))` or `free(axis)`; `JointRange.at(v)`
+is locked. `axes` says which limits the kind reads.
+
+Give and machines: `springs` (`Map<JointAxis, JointGive>`, set with
+`spring(axis, JointGive(hertz, ratio:, rest:))` and `unspring(axis)`; JSON
+`{"alongX": [hertz, ratio, rest]}` with the last two optional), `softHertz`
+and `softRatio`, `goal`, `goalHertz` and `goalRatio` (a motor holding a place
+when `goalHertz` is above 0), `ratio`, `axisB`, `over` (a pulley's two
+points), `path` (points, flat in JSON, three numbers each) and `follow`. All
+points and `axisB` are in the joint entity's own frame, and `rest` and `goal`
+are in degrees or metres.
 
 - **It names no ids.** The joint holds the nearest body at or above its
   entity to the nearest body above that, or to the world:
@@ -428,7 +462,9 @@ reads.
 - **Degrees in the document**, as a transform's rotation is; the bridge
   converts. `speed` is degrees or metres a second.
 - A chain tied at both ends, or two siblings joined to each other, cannot be
-  said this way. Make those with `scene.physics.join` and a negative id.
+  said this way. Make those with `scene.physics.join` and a negative id. A
+  gear, rack or pulley ties the body to the body it hangs under, so a second
+  wheel is a child of the first.
 
 ## A document, simulated
 
