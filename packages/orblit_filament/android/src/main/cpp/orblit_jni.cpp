@@ -29,6 +29,8 @@
 #include <string>
 #include <vector>
 
+#include "OrblitPlatform.h"
+#include "orblit_feed_android.h"
 #include "orblit_renderer.h"
 
 #define TAG "OrblitFilament"
@@ -746,6 +748,33 @@ Java_dev_orblit_filament_OrblitNative_nativeReleaseResource(JNIEnv *env, jclass,
   if (name == nullptr) return ORBLIT_ERROR_NULL;
   const std::string named = toStdString(env, name);
   return orblit_renderer_release_resource(named.c_str());
+}
+
+// ---- Feeds -------------------------------------------------------------
+//
+// Called straight through to orblit::createFeed and its siblings, which the
+// renderer core reaches by the same names: the library is one binary, so no
+// C ABI sits between them.
+
+JNIEXPORT jlong JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeCreateFeed(JNIEnv *env, jclass, jint width,
+        jint height, jobjectArray why) {
+  std::string reason;
+  const int64_t id = orblit::createFeed(width, height, reason);
+  if (id == 0 && why != nullptr && env->GetArrayLength(why) > 0) {
+    env->SetObjectArrayElement(why, 0, toJString(env, reason));
+  }
+  return jlong(id);
+}
+
+JNIEXPORT void JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeReleaseFeed(JNIEnv *, jclass, jlong id) {
+  orblit::releaseFeed(int64_t(id));
+}
+
+JNIEXPORT jobject JNICALL
+Java_dev_orblit_filament_OrblitNative_nativeFeedSurface(JNIEnv *env, jclass, jlong id) {
+  return orblit::feedSurface(env, int64_t(id));
 }
 
 }  // extern "C"

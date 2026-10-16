@@ -598,6 +598,10 @@ struct Movie {
 
   std::string path;
   int32_t flags = -1;
+
+  /// How the picture is turned and mirrored for display, in the encoding
+  /// `orientationMatrix` reads. Always 0 for a file, which is upright.
+  int32_t orientation = 0;
   float rate = 1.0f;
   float volume = 1.0f;
   int32_t seekToken = -1;

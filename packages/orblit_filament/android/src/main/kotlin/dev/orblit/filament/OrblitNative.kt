@@ -255,4 +255,17 @@ internal object OrblitNative {
 
     /** orblit_renderer_release_resource. */
     external fun nativeReleaseResource(name: String): Int
+
+    // ---- Feeds ----------------------------------------------------------
+
+    /**
+     * orblit::createFeed: the feed's number, or 0 with the reason in
+     * `why[0]`. [why] has one element.
+     */
+    external fun nativeCreateFeed(width: Int, height: Int, why: Array<String?>): Long
+
+    external fun nativeReleaseFeed(feed: Long)
+
+    /** A Surface that draws into [feed], or null where there is none. */
+    external fun nativeFeedSurface(feed: Long): Surface?
 }

@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.36.0
+
+- **Feeds: pictures the application draws, shown on a screen.**
+  `OrblitFeedSource.create` makes one and gives its number. `OrblitScene.feeds`
+  names it with an `OrblitFeed`, and a material with `shading: video` points
+  its `video` at the feed's key, in the same key space as an `OrblitVideo`.
+  The picture stays in the buffer the producer wrote and the GPU reads it
+  there.
+- On macOS and iOS the producer calls `OrblitFeeds.submit(pixelBuffer, to:)`
+  with an IOSurface-backed buffer in 32BGRA or biplanar 4:2:0. On Android it
+  draws into `OrblitFeeds.surface(id)`, from API 26. On Linux, Windows and
+  the web `create` throws `UnsupportedError`. Android has one reader per
+  feed.
+- `OrblitFeed.rotation` and `mirror` turn a picture upright. A phone's
+  camera frames arrive turned by how the phone is held, and a front camera
+  mirrors. The turn happens in `video.mat`, so every backend gets the same
+  answer and Vulkan's missing stream transform does not matter.
+- A feed is not a file: `OrblitVideo`'s transport (rate, seek, loop, volume)
+  does not apply to it.
+
 ## 0.35.0
 
 - **`OrblitAssetFiles.of(key)`.** On Android, where a bundled asset sits in

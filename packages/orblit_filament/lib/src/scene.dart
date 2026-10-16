@@ -8,6 +8,7 @@ import 'field.dart';
 import 'graph.dart';
 import 'key_list.dart';
 import 'pipeline.dart';
+import 'feed.dart';
 import 'video.dart';
 import 'post.dart';
 import 'screen.dart';
@@ -39,6 +40,7 @@ class OrblitScene {
     List<OrblitTerrain>? terrain,
     List<OrblitMaterial>? materials,
     List<OrblitVideo>? videos,
+    List<OrblitFeed>? feeds,
     OrblitPostProcess? post,
     OrblitPipeline? pipeline,
     OrblitRenderGraph? graph,
@@ -65,6 +67,7 @@ class OrblitScene {
        graph = graph ?? OrblitRenderGraph.standard(),
        materials = materials ?? const [],
        videos = videos ?? const [],
+       feeds = feeds ?? const [],
        post = post ?? OrblitPostProcess(),
        populations = populations ?? const [],
        splats = splats ?? const [],
@@ -91,6 +94,7 @@ class OrblitScene {
     List<OrblitLight>? lights,
     List<OrblitMaterial>? materials,
     List<OrblitVideo>? videos,
+    List<OrblitFeed>? feeds,
     OrblitCamera? camera,
     OrblitSky? sky,
     OrblitFog? fog,
@@ -127,6 +131,7 @@ class OrblitScene {
     lights: lights ?? this.lights,
     materials: materials ?? this.materials,
     videos: videos ?? this.videos,
+    feeds: feeds ?? this.feeds,
     camera: camera ?? this.camera,
     sky: sky ?? this.sky,
     fog: fog ?? this.fog,
@@ -192,6 +197,13 @@ class OrblitScene {
   /// film can be on four screens, and playing it four times would be four
   /// decoders doing identical work out of step with each other.
   final List<OrblitVideo> videos;
+
+  /// Every picture the application is drawing that the scene shows.
+  ///
+  /// Keyed with the videos, as screens point at one list of both: a screen's
+  /// [OrblitMaterial.video] is a video's key or a feed's, and a scene that
+  /// uses one key for each is refused.
+  final List<OrblitFeed> feeds;
 
   final OrblitCamera camera;
   final OrblitSky sky;

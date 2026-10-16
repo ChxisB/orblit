@@ -24,6 +24,7 @@ changed, and it forwards every call. Any other host calls the C ABI in
 | `NSLock` | `std::mutex` |
 | `OrblitReadDecalPicture` (ImageIO) | `orblit::readPicture`: ImageIO in `OrblitPlatformApple.mm`, stb_image and Filament's resampler in `OrblitPlatform.cpp` |
 | `AVPlayer` and friends in `Movie`, `open:`, `close:`, `pumpVideos` | `orblit::VideoDecoder`: AVFoundation in `OrblitPlatformApple.mm`; none elsewhere yet, which the notes say. It is an `orblit::ExternalImageSource`, which is all `pumpVideos` and `close` use of it |
+| A picture the application draws, with no file behind it | `orblit::createFeed`, `releaseFeed` and `openFeed` (`OrblitPlatform.h`). A feed is an `orblit::ExternalImageSource` named `feed:<id>`. Apple: a `CVPixelBuffer` handed to `OrblitFeeds.submit`, in `OrblitPlatformApple.mm`. Android: an `AImageReader` read as an acquired stream, in `android/src/main/cpp/orblit_feed_android.cpp`. Elsewhere none yet, which the notes say |
 | `builder.backend(Engine::Backend::METAL)` | `orblit::backendCandidates` (`OrblitBackend.cpp`) |
 | `initWithWidth:` / `copyPresentedBuffer` / `notes` / `passTimings` | `Renderer::initWithWidth` / `copyPresentedBuffer` / `notes` / `passTimings`, which the wrapper turns back into Foundation types |
 
@@ -75,6 +76,11 @@ needed again.
 - `OrblitTexture.m`, `OrblitFilamentPlugin.swift` — Flutter's Apple plugin.
 - Video — only AVFoundation is written. MediaCodec, GStreamer or Media
   Foundation are each their own piece of work.
+- Feeds — Apple and Android are written. Linux and Windows have no producer
+  end to offer yet, and `OrblitPlatform.cpp` answers for them with a note.
+  Android's file sits beside the JNI bridge and not in this folder, because
+  every core source here is listed in all three CMake files and that one is
+  only for Android.
 
 ## What was proven, and what was not
 
@@ -234,6 +240,8 @@ cause was found run-to-run on the unmodified commit itself.
   its OpenGL is 4.1, feature level 1, below the standard surface; a headless
   OpenGL swap chain there also needs a main-thread run loop.
 - Video, and `ORBLIT_SURFACE_WINDOW`, anywhere but Apple.
+- Feeds on any platform but macOS. Android's file compiles against the NDK
+  at API 24 and 26 and has not been built into the library or run.
 
 ## Materials and feature levels
 

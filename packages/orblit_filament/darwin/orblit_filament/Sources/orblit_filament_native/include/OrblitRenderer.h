@@ -487,6 +487,27 @@ NS_ASSUME_NONNULL_BEGIN
 /// Lets go of what was provided under `name`. NO when nothing was.
 + (BOOL)releaseResourceNamed:(NSString *)name;
 
+/// Makes a feed: a picture the application draws and a scene shows by its
+/// number. The number, or nil with the reason in `error`. Any thread.
+///
+/// `width` and `height` are not used on this platform, where each buffer
+/// has its own size.
++ (nullable NSNumber *)createFeedWithWidth:(int32_t)width
+                                    height:(int32_t)height
+                                     error:(NSError **)error;
+
+/// Lets go of a feed. A screen still showing it keeps its last picture until
+/// the scene stops naming the feed. Any thread.
++ (void)releaseFeed:(int64_t)feed;
+
+/// Makes `buffer` the newest picture of `feed`. The buffer has to be
+/// IOSurface-backed and 32BGRA or biplanar 4:2:0. It is retained, not
+/// copied, and the producer may reuse it once the next picture is in. Any
+/// thread.
++ (BOOL)submitPixelBuffer:(CVPixelBufferRef)buffer
+                   toFeed:(int64_t)feed
+                    error:(NSError **)error;
+
 /// What the device can do, in orblit_capability's order. Measured once when
 /// the renderer started; -1 for anything not known.
 @property(nonatomic, readonly) NSArray<NSNumber *> *capabilities;

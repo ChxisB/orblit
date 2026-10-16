@@ -213,6 +213,34 @@ class OrblitFilamentPlugin :
                     result.success(textureId?.let { viewports[it] }?.capabilities())
                 }
 
+                "createFeed" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val width = (args?.get("width") as? Number)?.toInt()
+                    val height = (args?.get("height") as? Number)?.toInt()
+                    if (width == null || height == null) {
+                        result.error("bad-args", "createFeed needs width and height", null)
+                        return
+                    }
+                    val why = arrayOfNulls<String>(1)
+                    val feed = OrblitNative.nativeCreateFeed(width, height, why)
+                    if (feed == 0L) {
+                        result.error("no-feed", why[0] ?: "The platform did not make a feed.", null)
+                        return
+                    }
+                    result.success(feed)
+                }
+
+                "releaseFeed" -> {
+                    val args = call.arguments as? Map<*, *>
+                    val feed = (args?.get("feed") as? Number)?.toLong()
+                    if (feed == null) {
+                        result.error("bad-args", "releaseFeed needs feed", null)
+                        return
+                    }
+                    OrblitNative.nativeReleaseFeed(feed)
+                    result.success(null)
+                }
+
                 "dispose" -> {
                     val args = call.arguments as? Map<*, *>
                     val textureId = (args?.get("textureId") as? Number)?.toLong()

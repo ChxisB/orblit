@@ -372,6 +372,24 @@ std::unique_ptr<VideoDecoder> createVideoDecoder() {
   return nullptr;
 }
 
+// Android's own are in android/src/main/cpp/orblit_feed_android.cpp, because
+// they are the platform's: a surface and an image reader, which only that
+// build has.
+#if !defined(__ANDROID__)
+int64_t createFeed(int32_t, int32_t, std::string &why) {
+  why = "Feeds are not supported on this platform yet.";
+  return 0;
+}
+
+void releaseFeed(int64_t) {}
+
+std::unique_ptr<ExternalImageSource> openFeed(int64_t, std::string &why) {
+  why = "Feeds are not supported on this platform yet, so this screen is "
+        "blank.";
+  return nullptr;
+}
+#endif  // !__ANDROID__
+
 #endif  // !ORBLIT_PLATFORM_APPLE
 
 uint32_t workerThreads() {

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "OrblitPlatform.h"
 #include "OrblitRendererCore.h"
 #include "OrblitResources.h"
 
@@ -37,6 +38,15 @@ std::vector<std::string> OrblitStrings(NSArray<NSString *> *strings) {
 std::string OrblitString(NSString *string) {
   const char *utf8 = string.UTF8String;
   return utf8 != nullptr ? std::string(utf8) : std::string();
+}
+
+/// Fills `error` with `reason`, in the one domain feeds use.
+void feedFailure(NSError **error, const std::string &reason) {
+  if (error == nullptr) return;
+  NSString *text = [NSString stringWithUTF8String:reason.c_str()];
+  *error = [NSError errorWithDomain:@"OrblitFeed"
+                               code:1
+                           userInfo:@{NSLocalizedDescriptionKey : text}];
 }
 
 }  // namespace
@@ -362,6 +372,31 @@ std::string OrblitString(NSString *string) {
 
 + (BOOL)releaseResourceNamed:(NSString *)name {
   return orblit::releaseResource(OrblitString(name)) ? YES : NO;
+}
+
++ (NSNumber *)createFeedWithWidth:(int32_t)width
+                           height:(int32_t)height
+                            error:(NSError **)error {
+  std::string why;
+  const int64_t feed = orblit::createFeed(width, height, why);
+  if (feed == 0) {
+    feedFailure(error, why);
+    return nil;
+  }
+  return @(feed);
+}
+
++ (void)releaseFeed:(int64_t)feed {
+  orblit::releaseFeed(feed);
+}
+
++ (BOOL)submitPixelBuffer:(CVPixelBufferRef)buffer
+                   toFeed:(int64_t)feed
+                    error:(NSError **)error {
+  std::string why;
+  if (orblit::submitFeed(feed, buffer, why)) return YES;
+  feedFailure(error, why);
+  return NO;
 }
 
 - (NSArray<NSNumber *> *)capabilities {
