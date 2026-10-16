@@ -87,6 +87,7 @@ export 'src/layer.dart'
         completeFrame,
         layerFrame,
         restFrame;
+export 'src/limb.dart' show LimbReach, reachLimb;
 export 'src/live_retarget.dart' show LiveRetarget;
 export 'src/place.dart' show BlendPlace, BlendRoute;
 export 'src/player.dart' show ClipPlayer, ClipStep;

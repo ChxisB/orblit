@@ -100,7 +100,16 @@ final class RestSkeleton {
   /// A bone [pose] does not name keeps its rest, and so does a part of a bone
   /// that the pose leaves null. A name the skeleton does not have is ignored.
   /// This is for drawing a skeleton, so it answers points and no turns.
-  List<Vector3> posedOrigins(Map<String, BoneLocal> pose) {
+  List<Vector3> posedOrigins(Map<String, BoneLocal> pose) => [
+    for (final matrix in posedWorlds(pose)) matrix.getTranslation(),
+  ];
+
+  /// Where every bone stands in the world, turn and scale included, when
+  /// [pose] puts some of them elsewhere in their parents.
+  ///
+  /// Read as [posedOrigins] is, so a limb can be worked out from the pose a
+  /// clip gives and not from the rest.
+  List<Matrix4> posedWorlds(Map<String, BoneLocal> pose) {
     final world = <Matrix4>[];
     for (var bone = 0; bone < length; bone++) {
       final parts = _parts[bone];
@@ -113,7 +122,7 @@ final class RestSkeleton {
       final parent = parents[bone];
       world.add((parent < 0 ? _above : world[parent]).multiplied(matrix));
     }
-    return [for (final matrix in world) matrix.getTranslation()];
+    return world;
   }
 
   /// How [bone] is turned in the world, at rest.
