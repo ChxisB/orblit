@@ -4,6 +4,7 @@ import '../asset_id.dart';
 import '../asset_manifest.dart';
 import '../asset_source.dart';
 import '../content_hash.dart';
+import '../content_store.dart';
 import 'pack_bytes.dart';
 import 'pack_format.dart';
 
@@ -16,13 +17,21 @@ import 'pack_format.dart';
 ///
 /// Blob bytes are not hashed on every read. They are checked when the pack is
 /// written and once after a download. [findCorrupt] checks them on demand.
+///
+/// A pack read over a network can be given a [ContentStore]. A blob is then
+/// filed under its hash the first time it is read and checked against that
+/// hash on the way in, and later reads, in this session or the next, come
+/// from the store. A rebuilt pack shares the hashes of what did not change,
+/// so a returning player fetches only the blobs that did.
 final class AssetPack implements AssetSource {
   AssetPack._({
     required PackBytes bytes,
     required PackDirectory directory,
     required this.hash,
+    required ContentStore? cache,
   }) : _bytes = bytes,
        _directory = directory,
+       _cache = cache,
        manifest = AssetManifest(
          entries: {
            for (final MapEntry(:key, :value) in directory.assets.entries)
@@ -32,7 +41,9 @@ final class AssetPack implements AssetSource {
 
   /// Opens a pack, throwing a [FormatException] that says what is wrong with
   /// it when it cannot be read whole.
-  static Future<AssetPack> open(PackBytes bytes) async {
+  ///
+  /// With a [cache], a blob read from [bytes] is kept there by its hash.
+  static Future<AssetPack> open(PackBytes bytes, {ContentStore? cache}) async {
     final total = await bytes.length();
     if (total < PackHeader.size) {
       throw FormatException(
@@ -65,11 +76,13 @@ final class AssetPack implements AssetSource {
         directoryAt: header.directoryAt,
       ),
       hash: ContentHash.of(directoryBytes),
+      cache: cache,
     );
   }
 
   final PackBytes _bytes;
   final PackDirectory _directory;
+  final ContentStore? _cache;
 
   /// The hash of the directory. It holds every blob's hash and place, so it
   /// stands for the whole pack, and a patch names its base by it.
@@ -89,9 +102,34 @@ final class AssetPack implements AssetSource {
 
   @override
   Future<Uint8List> read(AssetId id) async {
-    final blob = _directory.blobs[_directory.assets[id]];
-    if (blob == null) throw AssetNotFound(id);
-    return _bytes.read(blob.at, blob.bytes);
+    final hash = _directory.assets[id];
+    final blob = _directory.blobs[hash];
+    if (hash == null || blob == null) throw AssetNotFound(id);
+    final cache = _cache;
+    if (cache == null) return _bytes.read(blob.at, blob.bytes);
+    return _readThrough(cache, id, hash, blob);
+  }
+
+  Future<Uint8List> _readThrough(
+    ContentStore cache,
+    AssetId id,
+    ContentHash hash,
+    PackBlob blob,
+  ) async {
+    final held = await cache.get(hash);
+    if (held != null) return held;
+    final bytes = await _bytes.read(blob.at, blob.bytes);
+    // `put` hashes the bytes, so its answer is the check and the bytes are
+    // hashed once. Bytes that are not the blob's go in under their own hash,
+    // which is harmless in a store that is keyed by contents.
+    final stored = await cache.put(bytes);
+    if (stored != hash) {
+      throw FormatException(
+        'The bytes of $id do not match the hash in this pack. It wants '
+        '${hash.hex} and got ${stored.hex}.',
+      );
+    }
+    return bytes;
   }
 
   @override

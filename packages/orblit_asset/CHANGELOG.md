@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.12.0
+
+- **`RangePackBytes`.** A `PackBytes` over an `AssetTransport` and a URL.
+  It asks for the header, then the directory, then one range per blob read,
+  so a pack on a server is opened without being downloaded. The first
+  request also says how long the pack is, and is not asked for twice.
+- **`PackRangeFailed`.** Says what the server did when a part could not be
+  read: it ignored the range, answered another one, answered an error, or
+  the pack changed length part way through. A `200` is refused and its body
+  is not read. A pack on another origin has to send
+  `Access-Control-Expose-Headers: Content-Range`, and the error names it.
+- **`FetchRequest.through`.** The last byte wanted, counted as HTTP counts
+  it. `HttpTransport` sends `Range: bytes=<from>-<through>`, and
+  `MapTransport` answers `206` with the bytes between and cuts a range at
+  the end of the page. A request with no `through` is open-ended as before.
+- **`HttpTransport` reports the start the server sent.** `FetchReply.from`
+  for a `206` is read from the `content-range`, and is the request's `from`
+  only when the server sent none. A server that answers another range is
+  now visible to the caller. A `206` with no readable `content-range` has
+  no length, where it used to take the part's `content-length` for it.
+- **`AssetPack.open(bytes, cache:)`.** A blob read from the pack is filed in
+  the `ContentStore` under its hash and checked against it on the way in. A
+  later read, in this session or the next, comes from the store. A rebuilt
+  pack shares the hash of every blob that did not change, so a returning
+  player fetches the directory and the blobs that changed.
+
 ## 0.11.0
 
 - **`packDuringBuild`.** A build hook cooks the project and packs it in one

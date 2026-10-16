@@ -69,6 +69,23 @@ name in `pubspec.yaml` with a `platforms:` entry. `bundledPackBytes` finds it
 beside the executable on macOS, iOS, Linux and Windows. On Android,
 `OrblitAssetFiles` in `orblit_filament` says where it sits in the APK.
 
+On the web the pack stays on the server. `RangePackBytes` asks for the
+header and the directory and then a range per asset, and a store keeps each
+blob under its hash:
+
+```dart
+final store = await CacheStorageContentStore.open();
+final pack = await AssetPack.open(
+  RangePackBytes(HttpTransport(), Uri.base.resolve('game.web.opack')),
+  cache: store,
+);
+```
+
+The host has to answer `Range` with `206`. `PackRangeFailed` says so when
+it does not. A pack on another origin also needs a
+`Access-Control-Expose-Headers: Content-Range` header, or the page cannot
+read how long the pack is.
+
 The guide is at
 [orblitengine.com](https://orblitengine.com/docs/guides/asset-packs/).
 
