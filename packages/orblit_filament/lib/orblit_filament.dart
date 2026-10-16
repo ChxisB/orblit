@@ -62,6 +62,7 @@ export 'src/pipeline.dart'
         OrblitTextureLimits,
         OrblitVarianceShadows;
 export 'src/population.dart' show OrblitFade, OrblitPopulation;
+export 'src/asset_files.dart' show OrblitAssetFile, OrblitAssetFiles;
 export 'src/resources.dart' show OrblitResources;
 export 'src/splats.dart' show OrblitSplats;
 export 'src/sprites.dart' show OrblitSprite, OrblitSpriteBlend, OrblitSprites;

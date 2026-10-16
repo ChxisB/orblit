@@ -51,7 +51,25 @@ final packs = MountedPacks(target: CookTargets.android)
   ..start(game)
   ..patch(patch)
   ..addMod(mod);
-``` The guide is at
+```
+
+A build hook packs the project for the platform it builds, and the app
+opens the pack in place:
+
+```dart
+await packDuringBuild(
+  packageRoot: input.packageRoot.toFilePath(),
+  targetOs: input.config.code.targetOS.name,
+  dependencies: output.addDependencies,
+);
+```
+
+The file is `game.<target>.opack`, which `packFileName` spells. List each
+name in `pubspec.yaml` with a `platforms:` entry. `bundledPackBytes` finds it
+beside the executable on macOS, iOS, Linux and Windows. On Android,
+`OrblitAssetFiles` in `orblit_filament` says where it sits in the APK.
+
+The guide is at
 [orblitengine.com](https://orblitengine.com/docs/guides/asset-packs/).
 
 ## Static model collision

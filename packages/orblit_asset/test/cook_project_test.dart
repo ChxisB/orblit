@@ -353,20 +353,42 @@ void main() {
       );
     });
 
-    test('watches a settings file that does not exist yet, which is how one '
-        'being added is noticed', () async {
-      writeAsset('b.png', 'b');
+    test('watches the folder a missing settings file would go in, which is '
+        'how one being added is noticed', () async {
+      writeAsset('nested/b.png', 'b');
       Iterable<Uri>? watched;
       await cookIn('macos', dependencies: (files) => watched = files);
+      final paths = watched!.map((uri) => uri.toFilePath()).toSet();
       expect(
-        watched!.map((uri) => uri.toFilePath()),
-        contains(at('assets${Platform.pathSeparator}b.png.import.json')),
+        paths,
+        contains(
+          '${at('assets${Platform.pathSeparator}nested')}'
+          '${Platform.pathSeparator}',
+        ),
       );
       expect(
-        File(
-          at('assets${Platform.pathSeparator}b.png.import.json'),
-        ).existsSync(),
-        isFalse,
+        paths,
+        contains('${at('assets')}${Platform.pathSeparator}'),
+        reason: 'an asset added beside the others is a change too',
+      );
+    });
+
+    test('reports only paths that exist, since a build hook runs again on '
+        'every build for a path that does not', () async {
+      writeAsset('nested/b.png', 'b');
+      writeAsset('.hidden/c.png', 'c');
+      Iterable<Uri>? watched;
+      await cookIn('macos', dependencies: (files) => watched = files);
+      for (final uri in watched!) {
+        final exists = uri.path.endsWith('/')
+            ? Directory.fromUri(uri).existsSync()
+            : File.fromUri(uri).existsSync();
+        expect(exists, isTrue, reason: '${uri.toFilePath()} is reported');
+      }
+      expect(
+        watched!.map((uri) => uri.toFilePath()),
+        isNot(contains(contains('.hidden'))),
+        reason: 'a hidden folder is not read by the cook',
       );
     });
 
@@ -388,6 +410,104 @@ void main() {
         );
       },
     );
+  });
+
+  group('packing during a build', () {
+    setUp(() {
+      writeAsset('a.png', 'a');
+      writeAsset('b.png', 'b');
+    });
+
+    Future<PackSummary> packIn(
+      String? targetOs, {
+      void Function(Iterable<Uri>)? dependencies,
+      ImporterRegistry? importers,
+    }) => packDuringBuild(
+      packageRoot: work.path,
+      targetOs: targetOs,
+      cachePath: at('cache'),
+      out: 'out/cooked',
+      importers: importers ?? ImporterRegistry([const FamilyImporter()]),
+      dependencies: dependencies,
+    );
+
+    File packFor(String target) => File(
+      at(
+        'out${Platform.pathSeparator}cooked'
+        '${Platform.pathSeparator}game.$target.opack',
+      ),
+    );
+
+    test('writes one pack named for the platform, holding the cooked '
+        'assets', () async {
+      final summary = await packIn('ios');
+      final pack = await AssetPack.open(FilePackBytes(packFor('ios').path));
+      expect(pack.target, 'ios');
+      expect(summary.assets, 2);
+      expect(summary.bytes, packFor('ios').lengthSync());
+      expect(pack.manifest.entries.keys, [
+        id('a.png.astc.ktx2'),
+        id('b.png.astc.ktx2'),
+      ]);
+      final cooked = File(at('out/cooked/ios/a.png.astc.ktx2'));
+      expect(await pack.read(id('a.png.astc.ktx2')), cooked.readAsBytesSync());
+      expect(await pack.findCorrupt(), isEmpty);
+    });
+
+    test('a second platform writes its own file and leaves the first '
+        'alone', () async {
+      await packIn('ios');
+      final before = packFor('ios').readAsBytesSync();
+      await packIn('macos');
+      expect(packFor('macos').existsSync(), isTrue);
+      expect(packFor('ios').readAsBytesSync(), before);
+      final macos = await AssetPack.open(FilePackBytes(packFor('macos').path));
+      expect(macos.target, 'macos');
+    });
+
+    test('a build with no platform packs for the web', () async {
+      await packIn(null);
+      final pack = await AssetPack.open(FilePackBytes(packFor('web').path));
+      expect(pack.target, 'web');
+    });
+
+    test('packs the same bytes every time', () async {
+      await packIn('macos');
+      final first = packFor('macos').readAsBytesSync();
+      await packIn('macos');
+      expect(packFor('macos').readAsBytesSync(), first);
+    });
+
+    test('does not report the pack as a dependency, since a hook that '
+        'changed one is run again on every build', () async {
+      Iterable<Uri>? watched;
+      await packIn('macos', dependencies: (files) => watched = files);
+      final paths = watched!.map((uri) => uri.toFilePath()).toSet();
+      expect(paths, contains(at('assets${Platform.pathSeparator}a.png')));
+      expect(paths, isNot(contains(packFor('macos').path)));
+    });
+
+    test('writes no pack when the cook failed', () async {
+      await expectLater(
+        packIn('macos', importers: ImporterRegistry([const _BrokenImporter()])),
+        throwsA(isA<CookFailed>()),
+      );
+      expect(packFor('macos').existsSync(), isFalse);
+    });
+
+    test('refuses a platform Orblit does not cook for, before cooking '
+        'anything', () async {
+      await expectLater(packIn('fuchsia'), throwsArgumentError);
+      expect(Directory(at('out')).existsSync(), isFalse);
+    });
+
+    test('names the file the way the app that reads it does', () {
+      expect(packFileName(CookTargets.android), 'game.android.opack');
+      expect(
+        packFileName(CookTargets.windows, name: 'levels'),
+        'levels.windows.opack',
+      );
+    });
   });
 
   group('what the editor shows beside each asset', () {

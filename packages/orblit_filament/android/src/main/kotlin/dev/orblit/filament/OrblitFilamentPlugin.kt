@@ -2,6 +2,7 @@ package dev.orblit.filament
 
 import android.util.Log
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import java.io.FileNotFoundException
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
@@ -23,10 +24,14 @@ class OrblitFilamentPlugin :
     private lateinit var channel: MethodChannel
     private lateinit var resources: MethodChannel
     private var textureRegistry: TextureRegistry? = null
+    private var flutterAssets: FlutterPlugin.FlutterAssets? = null
+    private var assetFiles: AssetFiles? = null
     private val viewports = mutableMapOf<Long, OrblitViewport>()
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         textureRegistry = binding.textureRegistry
+        flutterAssets = binding.flutterAssets
+        assetFiles = AssetFiles(binding.applicationContext.assets, binding.applicationContext.cacheDir)
         channel = MethodChannel(binding.binaryMessenger, "orblit_filament")
         channel.setMethodCallHandler(this)
 
@@ -41,8 +46,50 @@ class OrblitFilamentPlugin :
         resources.setMethodCallHandler { call, result -> onResourceCall(call, result) }
     }
 
-    /** `provide` and `release`: see orblit_renderer_provide_resource. */
     private fun onResourceCall(call: MethodCall, result: Result) {
+        when (call.method) {
+            "assetFile", "releaseAssetFile" -> onAssetFileCall(call, result)
+            else -> onBytesCall(call, result)
+        }
+    }
+
+    /**
+     * `assetFile` and `releaseAssetFile`: where a bundled asset sits in the
+     * APK, as a path, an offset and a length. The key is the one Flutter's
+     * own asset loading takes, so a package's asset is `packages/<name>/...`.
+     */
+    private fun onAssetFileCall(call: MethodCall, result: Result) {
+        val key = (call.arguments as? Map<*, *>)?.get("key") as? String
+        val files = assetFiles
+        val assets = flutterAssets
+        if (key.isNullOrEmpty()) {
+            result.error("bad-args", "${call.method} needs a key", null)
+            return
+        }
+        if (files == null || assets == null) {
+            result.error("detached", "the plugin is not attached to an engine", null)
+            return
+        }
+        try {
+            val asset = assets.getAssetFilePathByName(key)
+            if (call.method == "releaseAssetFile") {
+                result.success(files.release(asset))
+                return
+            }
+            val range = files.range(asset)
+            result.success(
+                mapOf("path" to range.path, "offset" to range.offset, "length" to range.length),
+            )
+        } catch (e: FileNotFoundException) {
+            result.error("not-found", "there is no asset $key", null)
+        } catch (e: Throwable) {
+            Log.e("OrblitFilament", "resource ${call.method} failed", e)
+            result.error("orblit_failed", "${e.javaClass.simpleName}: ${e.message}", null)
+        }
+    }
+
+    /** `provide` and `release`: see orblit_renderer_provide_resource. */
+    private fun onBytesCall(call: MethodCall, result: Result) {
         val args = call.arguments as? Map<*, *>
         val name = args?.get("name") as? String
         if (name.isNullOrEmpty()) {
@@ -196,6 +243,9 @@ class OrblitFilamentPlugin :
         viewports.clear()
         channel.setMethodCallHandler(null)
         resources.setMethodCallHandler(null)
+        assetFiles?.close()
+        assetFiles = null
+        flutterAssets = null
         textureRegistry = null
     }
 }
