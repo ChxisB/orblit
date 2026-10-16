@@ -1,5 +1,7 @@
 import 'package:vector_math/vector_math_64.dart';
 
+import 'frame.dart';
+
 /// A skeleton standing still: which bones it has, how they hang from one
 /// another, and where each sits in its parent.
 ///
@@ -91,6 +93,28 @@ final class RestSkeleton {
 
   /// Where [bone] stands in the world, at rest.
   Vector3 originOf(int bone) => _world[bone].getTranslation();
+
+  /// Where every bone stands in the world when [pose] puts some of them
+  /// elsewhere in their parents, parents first like the bones themselves.
+  ///
+  /// A bone [pose] does not name keeps its rest, and so does a part of a bone
+  /// that the pose leaves null. A name the skeleton does not have is ignored.
+  /// This is for drawing a skeleton, so it answers points and no turns.
+  List<Vector3> posedOrigins(Map<String, BoneLocal> pose) {
+    final world = <Matrix4>[];
+    for (var bone = 0; bone < length; bone++) {
+      final parts = _parts[bone];
+      final local = pose[names[bone]];
+      final matrix = Matrix4.compose(
+        local?.position ?? parts.position,
+        local?.rotation ?? parts.rotation,
+        local?.scale ?? parts.scale,
+      );
+      final parent = parents[bone];
+      world.add((parent < 0 ? _above : world[parent]).multiplied(matrix));
+    }
+    return [for (final matrix in world) matrix.getTranslation()];
+  }
 
   /// How [bone] is turned in the world, at rest.
   Quaternion worldRotationOf(int bone) => _worldRotation[bone].clone();

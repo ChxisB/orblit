@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- **Draw a posed skeleton.** `RestSkeleton.posedOrigins` answers where each
+  bone stands in the world when a pose puts some of them elsewhere in their
+  parents. A bone the pose does not name keeps its rest.
+
 ## 0.6.0
 
 - **Retarget by body.** `retargetClip(humanoid: true)` pairs bones by the
