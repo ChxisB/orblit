@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.8.0
+
+- A staged material carries `litScreen` to the renderer.
+
 ## 0.7.0
 
 - `OrblitCutscenes` plays `orblit_motion` cutscenes over a staged scene, one

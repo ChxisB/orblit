@@ -229,6 +229,7 @@ class Renderer {
   void applyTextureLimits();
   TextureSampler samplerFor(int32_t flags);
   void write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video);
+  void writeScreen(Surfaced &surface, const float *params, int32_t video);
   void applyRasterState(Surfaced &surface, float threshold, float bias);
   void open(Movie &movie, const std::string &path);
   void openFile(Movie &movie, const std::string &path);
@@ -258,6 +259,13 @@ class Renderer {
   void buildLtcTables();
   filament::Material *materialForEffect(int effect);
   bool buildEffect(GraphPass &pass);
+  void dressPass(GraphPass &pass, Material *material);
+  void releasePass(GraphPass &pass);
+  Texture *feedTextureAt(const std::string &path);
+  void resolveFeeds();
+  void releaseResolvedFeed(ResolvedFeed &feed);
+  void sweepResolvedFeeds();
+  Texture *blankExternal();
   void applyPostTo(View *view);
   void runEffect(GraphPass &pass, GraphTarget *into);
   View *viewForPass(GraphPass &pass);
@@ -472,7 +480,7 @@ class Renderer {
   filament::Material *_surfaces[kSurfaceCount]{};
 
   /// Which of them have already been handed to the shader compiler ahead of
-  /// the frame that draws them, one bit each — kSurfaceCount is sixteen, so
+  /// the frame that draws them, one bit each — kSurfaceCount is seventeen, so
   /// the whole record is one word. Asked once per surface because a warm-up
   /// is free the second time only in the sense that it does nothing, and a
   /// scene is published every time anything in it changes.
@@ -561,6 +569,11 @@ class Renderer {
   /// Every material sampler currently reading a pass, rebuilt on each
   /// publish and replayed whenever a target is rebuilt.
   std::vector<TargetBinding> _targetBindings{};
+
+  /// Every feed a material has asked to see as a texture, by path, and the
+  /// compiled material that copies them.
+  std::unordered_map<std::string, ResolvedFeed> _resolvedFeeds{};
+  Material *_resolveMaterial{};
 
   /// The place the scene is standing in, when a host has named one.
   ///

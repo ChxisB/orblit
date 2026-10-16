@@ -747,9 +747,15 @@ constexpr uint32_t kDecalPictureLayers = 16;
 constexpr uint32_t kDecalPictureLevels = 10;
 
 /// How many compiled surfaces there are: three shading models in five blend
-/// modes, and the shadow catcher on the end.
+/// modes, then the shadow catcher and the lit screen, which are one package
+/// each.
 constexpr int kShadowCatcherSurface = 15;
-constexpr int kSurfaceCount = 16;
+constexpr int kLitScreenSurface = 16;
+constexpr int kSurfaceCount = 17;
+
+/// The material flag that makes a video shading lit; see
+/// OrblitMaterial.litScreen.
+constexpr int32_t kLitScreenFlag = 1 << 14;
 
 /// An environment filtered at run time out of an .hdr or .exr picture, ready
 /// to light a scene: see OrblitEnvironment.cpp.
@@ -893,6 +899,10 @@ constexpr int kEffectMotionBlur = 8;  // god rays are 6 and distortion 7, in Scr
 
 /// Where a material's texture says it comes from a pass rather than a file.
 static const char *const kTargetScheme = "orblit:target/";
+
+/// Where it says it comes from a feed instead, copied into a texture of its
+/// own once a frame: `orblit:feed/<key>/<width>x<height>`.
+static const char *const kFeedScheme = "orblit:feed/";
 
 /// How many punctual lights Filament shades in one view before it starts
 /// dropping the ones furthest from the camera. Worth saying out loud: a light
@@ -1062,6 +1072,24 @@ struct GraphPass {
   /// What it cost last frame, in milliseconds, and how much it drew.
   double milliseconds = 0;
   int drawn = 0;
+};
+
+/// One feed copied into an ordinary texture.
+///
+/// Kept per path, so every material naming the same feed at the same size
+/// shares one copy. The texture is never rebuilt: its size is in the path, so
+/// another size is another entry. The triangle, view and camera that draw the
+/// copy are a pass's own and go with it.
+struct ResolvedFeed {
+  int64_t key = 0;
+  uint32_t width = 0;
+  uint32_t height = 0;
+  filament::Texture *colour = nullptr;
+  filament::RenderTarget *target = nullptr;
+  GraphPass pass;
+  /// Whether anything has been drawn into the texture yet. A feed with no
+  /// picture is drawn once, black, and not again until it has one.
+  bool drawn = false;
 };
 
 /// The matrix that mirrors the world in a plane.

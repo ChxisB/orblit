@@ -301,7 +301,7 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
 
     // The first scene to be made of a surface is the one that pays for it.
     // Done here rather than in surfaceAt because that is also called from
-    // inside a frame, where issuing sixteen variants' worth of compiles is
+    // inside a frame, where issuing seventeen variants' worth of compiles is
     // the stall this is meant to prevent.
     const uint32_t bit = 1u << wanted;
     if ((_surfacesWarmed & bit) == 0) {
@@ -324,6 +324,7 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
     }
     it = _materials.erase(it);
   }
+  sweepResolvedFeeds();
 
   // Filament queues the compile commands rather than sending them, so without
   // this the backend would not see them until whatever flushes next — which

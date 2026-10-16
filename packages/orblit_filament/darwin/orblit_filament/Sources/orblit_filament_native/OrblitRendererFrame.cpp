@@ -53,6 +53,7 @@ void Renderer::drawOutline() {
 /// the frame this drew before there were passes at all, and is why a host
 /// that has never heard of a graph pays nothing for one.
 void Renderer::renderPasses() {
+  resolveFeeds();
   if (_passes.empty()) {
     _view->setVisibleLayers(0xFF, kAllLayers);
     _renderer->render(_view);

@@ -58,11 +58,14 @@ namespace {
 #include "instanced_material.h"
 #include "depth_material.h"
 #include "shadowcatcher_material.h"
+#include "lit_screen_material.h"
+#include "resolve_feed_material.h"
 #include "sky_material.h"
 #include "rain_material.h"
 
-// The lit, unlit, video and shadow-catcher grid, in the order
-// Renderer::surfaceIndexFor numbers it: shading first, then blend.
+// The lit, unlit and video grid, then the shadow catcher and the lit screen,
+// in the order Renderer::surfaceIndexFor numbers them: shading first, then
+// blend.
 const uint8_t *const kSurfacePackages[kSurfaceCount] = {
     klit_opaqueMaterial,        klit_transparentMaterial,
     klit_fadeMaterial,          klit_maskedMaterial,
@@ -72,6 +75,7 @@ const uint8_t *const kSurfacePackages[kSurfaceCount] = {
     kvideo_opaqueMaterial,      kvideo_transparentMaterial,
     kvideo_fadeMaterial,        kvideo_maskedMaterial,
     kvideo_addMaterial,         kshadowcatcherMaterial,
+    klit_screenMaterial,
 };
 const size_t kSurfaceSizes[kSurfaceCount] = {
     klit_opaqueMaterial_len,        klit_transparentMaterial_len,
@@ -82,6 +86,7 @@ const size_t kSurfaceSizes[kSurfaceCount] = {
     kvideo_opaqueMaterial_len,      kvideo_transparentMaterial_len,
     kvideo_fadeMaterial_len,        kvideo_maskedMaterial_len,
     kvideo_addMaterial_len,         kshadowcatcherMaterial_len,
+    klit_screenMaterial_len,
 };
 
 // The slim lit surface's own five, chosen instead of the standard grid's
@@ -134,6 +139,10 @@ void materialPackage(Package which, const uint8_t **package, size_t *length) {
     case Package::irradiance:
       *package = kirradianceMaterial;
       *length = kirradianceMaterial_len;
+      return;
+    case Package::resolveFeed:
+      *package = kresolve_feedMaterial;
+      *length = kresolve_feedMaterial_len;
       return;
   }
 }

@@ -106,6 +106,7 @@ OrblitMaterial materialFrom(
         Values.named(OrblitFilter.values, resolved.choice('filter')) ??
         fallback.filter,
     screenMapped: resolved.flag('screenMapped') ?? fallback.screenMapped,
+    litScreen: resolved.flag('litScreen') ?? fallback.litScreen,
     blendMode:
         Values.named(OrblitBlendMode.values, resolved.choice('blendMode')) ??
         fallback.blendMode,

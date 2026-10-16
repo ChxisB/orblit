@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:vector_math/vector_math_64.dart';
 
+import 'feed.dart';
+
 /// How a surface answers light.
 ///
 /// Two answers rather than a catalogue. Every physically based renderer's
@@ -147,8 +149,39 @@ class OrblitTexture {
   /// What a target's path starts with.
   static const String targetScheme = 'orblit:target/';
 
-  /// Absolute path to the image, or `orblit:target/<name>` for what a pass
-  /// drew.
+  /// A feed, copied once a frame into a texture of its own.
+  ///
+  /// A screen with `shading: video` shows a feed without copying it, and
+  /// [OrblitMaterial.litScreen] lights one. This is for the other slots: the
+  /// texture can go in any map of any material. It costs one GPU copy a frame
+  /// at [width] by [height] and nothing crosses to the CPU.
+  ///
+  /// The size defaults to the one [OrblitFeedSource.create] was given, swapped
+  /// for a feed turned by a quarter, so the texture comes out upright. A
+  /// smaller size is a cheaper copy. Like a target, the copy has one level and
+  /// is sampled clamped and linear, and it is never sRGB: the copy has already
+  /// decoded the picture to linear light.
+  ///
+  /// A feed is shown by its key, so the feed has to be in the scene's
+  /// [OrblitScene.feeds]. A video has no declared size and is not offered.
+  /// The web has no feeds, so the slot shows the blank texture there.
+  factory OrblitTexture.ofFeed(OrblitFeed feed, {int? width, int? height}) {
+    final turned = feed.rotation.isOdd;
+    final wide = width ?? (turned ? feed.source.height : feed.source.width);
+    final tall = height ?? (turned ? feed.source.width : feed.source.height);
+    if (wide < 1 || tall < 1) {
+      throw ArgumentError(
+        'A feed copy needs a size of at least 1 by 1, not $wide by $tall.',
+      );
+    }
+    return OrblitTexture('$feedScheme${feed.key}/${wide}x$tall', srgb: false);
+  }
+
+  /// What a feed copy's path starts with.
+  static const String feedScheme = 'orblit:feed/';
+
+  /// Absolute path to the image, `orblit:target/<name>` for what a pass drew,
+  /// or `orblit:feed/<key>/<width>x<height>` for a copy of a feed.
   final String path;
 
   /// The pass target this samples, or null if it is an image on disk.
@@ -307,6 +340,7 @@ class OrblitMaterial {
     this.filter = OrblitFilter.smooth,
     this.video,
     this.screenMapped = false,
+    this.litScreen = false,
     this.blendMode = OrblitBlendMode.none,
     this.blendAmount = 0.0,
     this.blendSharpness = 8.0,
@@ -472,6 +506,19 @@ class OrblitMaterial {
   /// it twice.
   final bool screenMapped;
 
+  /// Whether a [OrblitShading.video] screen is shaded by the scene's lights.
+  ///
+  /// Off, the screen is its own light, as it always was. On, the picture is
+  /// the base colour of a lit surface, so a lamp falls on it and a window
+  /// reflects in it, and [metallic], [roughness], [reflectance], [emissive],
+  /// [emissiveIntensity] and [ambientOcclusion] apply. The picture is still the
+  /// producer's own buffer and nothing is copied.
+  ///
+  /// A lit screen is a package of its own and always opaque, so [blend] is
+  /// ignored. It carries none of a lit surface's maps, decals, area lights,
+  /// field or wind. Ignored by every other shading model.
+  final bool litScreen;
+
   /// Multiplied into [baseColour]. sRGB.
   final OrblitTexture? baseColourMap;
 
@@ -553,7 +600,8 @@ class OrblitMaterial {
       ((depthWrite ? 1 : 0) << 9) |
       (wrap.index << 10) |
       (filter.index << 12) |
-      (screenMapped ? 1 << 13 : 0);
+      (screenMapped ? 1 << 13 : 0) |
+      (litScreen ? 1 << 14 : 0);
 
   /// Writes this material's numbers into [out] at [at], in the fixed order
   /// the renderer reads them back.
@@ -630,6 +678,7 @@ class OrblitMaterial {
     double? depthBias,
     OrblitWrap? wrap,
     OrblitFilter? filter,
+    bool? litScreen,
   }) {
     return OrblitMaterial(
       key: key,
@@ -659,6 +708,7 @@ class OrblitMaterial {
       wrap: wrap ?? this.wrap,
       filter: filter ?? this.filter,
       video: video,
+      litScreen: litScreen ?? this.litScreen,
       baseColourMap: baseColourMap,
       normalMap: normalMap,
       metallicRoughnessMap: metallicRoughnessMap,

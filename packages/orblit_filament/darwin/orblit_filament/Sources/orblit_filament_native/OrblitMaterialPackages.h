@@ -24,6 +24,7 @@ enum class Package {
   instanced,
   depth,
   irradiance,
+  resolveFeed,
 };
 
 /// The bytes one of those was compiled to.

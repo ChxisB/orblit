@@ -517,6 +517,19 @@ void Renderer::dispose() {
   }
   _ownTextures.clear();
   _textureQueue.reset();
+  // The copies of feeds, and every texture retired for a later publish that
+  // is not coming. After the instances that sampled them, before the movies
+  // they were drawn from.
+  for (auto &entry : _resolvedFeeds) releaseResolvedFeed(entry.second);
+  _resolvedFeeds.clear();
+  for (const RetiredTexture &retired : _retiredTextures) {
+    _engine->destroy(retired.texture);
+  }
+  _retiredTextures.clear();
+  if (_resolveMaterial != nullptr) {
+    _engine->destroy(_resolveMaterial);
+    _resolveMaterial = nullptr;
+  }
   for (auto &entry : _movies) close(entry.second);
   _movies.clear();
   _movieOrder.clear();

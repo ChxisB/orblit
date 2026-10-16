@@ -58,6 +58,7 @@ one): `shading` (lit/unlit/video/shadowCatcher), `blend`
 `sheenRoughness`, `emissive`, `emissiveIntensity`, `ambientOcclusion`,
 `normalScale`, `tiling`, `offset`, `wrap` (repeat/clamp/mirror), `filter`
 (smooth/sharp), `maskThreshold`, `depthWrite`, `depthBias`, `screenMapped`,
+`litScreen` (a video or feed screen that lights shade, opaque only),
 `blendMode`, `blendAmount`, `blendSharpness`, `blendTiling`.
 
 **Textures** live in their own `maps` object, never in `values`:

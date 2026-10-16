@@ -108,6 +108,7 @@ abstract final class MaterialFields {
     MaterialField('depthWrite', MaterialKind.flag),
     MaterialField('depthBias', MaterialKind.number),
     MaterialField('screenMapped', MaterialKind.flag),
+    MaterialField('litScreen', MaterialKind.flag),
 
     MaterialField(
       'blendMode',

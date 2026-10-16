@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.0
+
+- Add the `litScreen` material field. It is kept through JSON and diffs like
+  `screenMapped`.
+
 ## 0.17.0
 
 - Add `JointKind.gear`, `rack`, `pulley` and `path`, with `ratio`, `axisB`,
