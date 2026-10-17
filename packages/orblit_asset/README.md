@@ -81,6 +81,11 @@ final pack = await AssetPack.open(
 );
 ```
 
+Reads made together are sent as fewer requests. Pass `batching:` to change
+the gap, the size cap, the number in flight or the wait. Code that holds the
+`RangePackBytes` can `read` with `priority: RangePriority.later` for bytes
+nobody is waiting on yet. An `AssetPack` always reads with `now`.
+
 The host has to answer `Range` with `206`. `PackRangeFailed` says so when
 it does not. A pack on another origin also needs a
 `Access-Control-Expose-Headers: Content-Range` header, or the page cannot

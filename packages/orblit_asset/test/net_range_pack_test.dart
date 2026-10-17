@@ -311,6 +311,52 @@ void main() {
       expect(await ranged.length(), bytes.length);
     });
 
+    test('sends reads made together as fewer requests', () async {
+      final bytes = await pack(game());
+      final transport = serving(bytes);
+      final ranged = RangePackBytes(transport, url);
+      const at = PackHeader.size;
+
+      final parts = await Future.wait([
+        for (var i = 0; i < 40; i++) ranged.read(at + i * 20, 20),
+      ]);
+
+      // The first request is the header and the second is every blob.
+      expect(transport.sent, hasLength(2));
+      expect(transport.sent.last.from, at);
+      expect(transport.sent.last.through, at + 40 * 20 - 1);
+      for (var i = 0; i < 40; i++) {
+        expect(parts[i], bytes.sublist(at + i * 20, at + i * 20 + 20));
+      }
+    });
+
+    test('asks for an urgent read before one that can wait', () async {
+      final bytes = await pack(game());
+      final transport = serving(bytes);
+      final ranged = RangePackBytes(
+        transport,
+        url,
+        batching: const RangeBatching(
+          parallel: 1,
+          mergeGap: 0,
+          delay: Duration.zero,
+        ),
+      );
+      const at = PackHeader.size;
+
+      await Future.wait([
+        ranged.read(at, 10, priority: RangePriority.later),
+        ranged.read(at + 100, 10, priority: RangePriority.later),
+        ranged.read(at + 200, 10),
+      ]);
+
+      expect(transport.sent.skip(1).map((request) => request.from), [
+        at + 200,
+        at,
+        at + 100,
+      ]);
+    });
+
     test('refuses reading past the end', () async {
       final bytes = await pack(game());
       final ranged = RangePackBytes(serving(bytes), url);
@@ -381,6 +427,26 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('fails every read of a joined request on a replaced pack', () async {
+      final first = await pack(game());
+      final second = await pack(
+        game(texture: 'b')..['extra/new.bin'] = content('x'),
+      );
+      final pages = {url: TransportPage(first)};
+      final transport = MapTransport(pages);
+      final ranged = RangePackBytes(transport, url);
+      await ranged.length();
+      pages[url] = TransportPage(second);
+      const at = PackHeader.size;
+
+      final reads = [ranged.read(at, 20), ranged.read(at + 20, 20)];
+
+      for (final read in reads) {
+        await expectLater(read, throwsA(isA<PackRangeFailed>()));
+      }
+      expect(transport.sent, hasLength(2));
     });
 
     test('names the header a cross-origin host has to expose', () async {
