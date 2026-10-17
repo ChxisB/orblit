@@ -224,6 +224,10 @@ class _DodgeState extends State<Dodge> with SingleTickerProviderStateMixin {
 - **Enemies that chase**: `orblit_agent`'s steering behaviours for movement
   and behaviour trees for decisions. Round walls, plan the route with
   `orblit_path`'s `NavGrid` or `NavMesh` and walk it with a `NavWalker`.
+- **Controls a player can rebind**: `orblit_input`'s `ActionMap`. Name
+  `jump` and `move`, bind keys, pad and touch regions to them in contexts,
+  and ask by name each frame. `bindings.rebind` and `toJson` cover a settings
+  screen.
 - **Hits beyond boxes**: `orblit_collide` for shapes, raycasts and overlaps.
 - **Juice** (a flash, a shake, a pop): `orblit_effect`, sampled at the game
   clock.

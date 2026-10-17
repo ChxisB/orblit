@@ -23,6 +23,23 @@
 /// same way, and an engine that leaves them out has not finished the job.
 library;
 
+export 'src/actions/action_map.dart' show ActionMap;
+export 'src/actions/binding.dart' show AxisPart, Binding;
+export 'src/actions/binding_table.dart' show BindingClash, BindingTable;
+export 'src/actions/control.dart'
+    show
+        AxisSide,
+        Control,
+        KeyControl,
+        PadAxisControl,
+        PadButtonControl,
+        PadStickControl,
+        TouchControl;
+export 'src/actions/control_source.dart'
+    show ControlSource, FrameControls, pressPoint;
+export 'src/actions/input_action.dart' show ActionKind, Gestures, InputAction;
+export 'src/actions/input_context.dart' show InputContext;
+export 'src/actions/next_input.dart' show NextInput, PressedControls;
 export 'src/backend.dart'
     show PadBackend, PadDevice, RecordedPad, RecordedPads, noPads;
 export 'src/evdev.dart'
