@@ -22,6 +22,8 @@ void main() {
         KeyControl('KeyW'),
         PadButtonControl(PadButton.dpadLeft),
         PadAxisControl(PadAxis.rightTrigger),
+        PadAxisControl(PadAxis.leftX, side: AxisSide.positive),
+        PadAxisControl(PadAxis.leftX, side: AxisSide.negative),
         PadStickControl(PadStick.right),
         TouchControl('fire'),
       ];
@@ -29,6 +31,21 @@ void main() {
       for (final control in controls) {
         expect(Control.fromJson(control.toJson()), control);
       }
+    });
+
+    test('tells the halves of an axis apart', () {
+      const both = PadAxisControl(PadAxis.leftX);
+      const positive = PadAxisControl(PadAxis.leftX, side: AxisSide.positive);
+      const negative = PadAxisControl(PadAxis.leftX, side: AxisSide.negative);
+
+      expect({both, positive, negative}, hasLength(3));
+      expect(
+        positive,
+        const PadAxisControl(PadAxis.leftX, side: AxisSide.positive),
+      );
+      expect(positive.toJson(), {'padAxisPositive': 'leftX'});
+      expect(negative.toJson(), {'padAxisNegative': 'leftX'});
+      expect(both.toJson(), {'padAxis': 'leftX'});
     });
 
     test('rejects JSON that is not a control', () {
@@ -40,6 +57,8 @@ void main() {
         {'key': 'A', 'touch': 'B'},
         {'padButton': 'nope'},
         {'padAxis': 'nope'},
+        {'padAxisPositive': 'nope'},
+        {'padAxisNegative': 3},
         {'padStick': 'nope'},
         {'wat': 'KeyW'},
       ];
@@ -77,6 +96,20 @@ void main() {
       expect(controls.stick(PadStick.left).y, 0.8);
     });
 
+    test('reads one half of an axis as 0 to 1', () {
+      final controls = frame(axes: {PadAxis.leftX: 0.6, PadAxis.leftY: -0.7});
+      const rightOfX = PadAxisControl(PadAxis.leftX, side: AxisSide.positive);
+      const leftOfX = PadAxisControl(PadAxis.leftX, side: AxisSide.negative);
+      const upOfY = PadAxisControl(PadAxis.leftY, side: AxisSide.positive);
+      const downOfY = PadAxisControl(PadAxis.leftY, side: AxisSide.negative);
+
+      expect(controls.read(rightOfX), 0.6);
+      expect(controls.read(leftOfX), 0);
+      expect(controls.read(upOfY), 0);
+      expect(controls.read(downOfY), 0.7);
+      expect(controls.read(const PadAxisControl(PadAxis.leftY)), -0.7);
+    });
+
     test('lists what is pressed: keys, buttons, sticks, axes, touch', () {
       final controls = frame(
         keys: {'KeyW'},
@@ -93,10 +126,36 @@ void main() {
         KeyControl('KeyW'),
         PadButtonControl(PadButton.south),
         PadStickControl(PadStick.left),
-        PadAxisControl(PadAxis.leftX),
-        PadAxisControl(PadAxis.rightTrigger),
+        PadAxisControl(PadAxis.leftX, side: AxisSide.positive),
+        PadAxisControl(PadAxis.rightTrigger, side: AxisSide.positive),
         TouchControl('fire'),
       ]);
+    });
+
+    test('lists the half of an axis that was pushed', () {
+      final controls = frame(axes: {PadAxis.leftX: -0.9});
+
+      expect(controls.active, const [
+        PadStickControl(PadStick.left),
+        PadAxisControl(PadAxis.leftX, side: AxisSide.negative),
+      ]);
+    });
+
+    test('lists a trigger once, as the axis that travels', () {
+      const triggers = {
+        PadButton.leftTrigger: PadAxis.leftTrigger,
+        PadButton.rightTrigger: PadAxis.rightTrigger,
+      };
+
+      for (final MapEntry(key: button, value: axis) in triggers.entries) {
+        final travelled = frame(down: {button}, axes: {axis: 0.9});
+        final clicked = frame(down: {button});
+
+        expect(travelled.active, [
+          PadAxisControl(axis, side: AxisSide.positive),
+        ]);
+        expect(clicked.active, [PadButtonControl(button)]);
+      }
     });
 
     test('has nothing pressed when nothing is', () {
@@ -469,7 +528,8 @@ void main() {
       expect(map.isDown('jump'), isTrue);
 
       map.deactivate('vehicle');
-      map.update(frame(keys: {'Space'}), now: ms(32));
+      map.update(frame(), now: ms(32));
+      map.update(frame(keys: {'Space'}), now: ms(48));
       expect(map.isDown('jump'), isTrue);
     });
 
@@ -524,6 +584,44 @@ void main() {
 
       expect([map.isDown('jump'), map.wasReleased('jump')], [false, true]);
       expect(map.wasTapped('jump'), isFalse, reason: 'it was cut off');
+    });
+
+    test('release a button whose binding is taken over while it is down', () {
+      final map = actionMap(active: const ['play']);
+      map.update(frame(keys: {'Space'}), now: ms(0));
+      map.update(frame(keys: {'Space'}), now: ms(16));
+
+      map.activate('vehicle');
+      map.update(frame(keys: {'Space'}), now: ms(32));
+      expect(
+        [map.isDown('jump'), map.wasReleased('jump'), map.wasTapped('jump')],
+        [false, true, false],
+      );
+
+      map.deactivate('vehicle');
+      map.update(frame(keys: {'Space'}), now: ms(48));
+      expect(
+        [map.isDown('jump'), map.wasPressed('jump')],
+        [false, false],
+        reason: 'Space has been down all along',
+      );
+
+      map.update(frame(), now: ms(64));
+      map.update(frame(keys: {'Space'}), now: ms(80));
+      expect(map.wasPressed('jump'), isTrue);
+    });
+
+    test('release a button whose key is rebound while it is down', () {
+      final map = actionMap();
+      map.update(frame(keys: {'Space'}), now: ms(0));
+
+      map.bindings.rebind('jump', const KeyControl('KeyJ'), context: 'play');
+      map.update(frame(keys: {'Space'}), now: ms(16));
+
+      expect(
+        [map.isDown('jump'), map.wasReleased('jump'), map.wasTapped('jump')],
+        [false, true, false],
+      );
     });
 
     test('go to the top when activated again', () {

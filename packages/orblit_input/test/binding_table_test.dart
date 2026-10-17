@@ -55,6 +55,10 @@ void main() {
 
       expect(before.first.control, space);
       expect(controlsOf('jump').first, left);
+      expect(
+        () => table.bindingsIn('play')['jump']!.add(const Binding(space)),
+        throwsUnsupportedError,
+      );
     });
 
     test('refuses a context that does not exist', () {
@@ -137,6 +141,63 @@ void main() {
         () => table.rebind('jump', left, context: 'play', slot: -1),
         throwsRangeError,
       );
+      expect(
+        () => table.rebind('fire', space, context: 'play', slot: 4),
+        throwsRangeError,
+        reason: 'a bad slot is not a clash',
+      );
+    });
+
+    test('takes the scale and half it is told to', () {
+      table.rebind(
+        'move',
+        const PadAxisControl(PadAxis.rightY, side: AxisSide.negative),
+        context: 'play',
+        slot: 5,
+        scale: -1,
+        part: AxisPart.y,
+      );
+
+      final added = table.bindingsIn('play')['move']![5];
+      expect([added.scale, added.part], [-1, AxisPart.y]);
+
+      table.rebind('steer', left, context: 'play', scale: 0.5);
+      expect(table.bindingsIn('play')['steer']!.first.scale, 0.5);
+      map.update(frame(axes: {PadAxis.rightY: 0.9}), now: ms(0));
+      expect(map.vector('move').y, 0);
+      map.update(frame(axes: {PadAxis.rightY: -0.9}), now: ms(16));
+      expect(map.vector('move').y, closeTo(-0.9, 1e-9));
+    });
+
+    test('starts the scale and half again when a key becomes a stick', () {
+      const stick = PadStickControl(PadStick.right);
+
+      table.rebind('move', stick, context: 'play', slot: 2);
+      final onStick = table.bindingsIn('play')['move']![2];
+      expect([onStick.scale, onStick.part], [1, AxisPart.x]);
+
+      table.rebind('move', const KeyControl('KeyI'), context: 'play', slot: 4);
+      final onKey = table.bindingsIn('play')['move']![4];
+      expect([onKey.scale, onKey.part], [1, AxisPart.x]);
+    });
+
+    test('binds an action the context left out', () {
+      table.rebind('fire', left, context: 'menu');
+
+      expect(controlsOf('fire', context: 'menu'), [left]);
+      expect(saved(table), {
+        'contexts': {
+          'menu': {
+            'fire': [
+              {'key': 'ArrowLeft'},
+            ],
+          },
+        },
+      });
+      final fresh = actionMap(active: const ['play', 'menu']);
+      fresh.bindings.load(saved(table));
+      fresh.update(frame(keys: {'ArrowLeft'}), now: ms(0));
+      expect(fresh.isDown('fire'), isTrue);
     });
 
     test('refuses a control the action cannot take', () {
@@ -157,14 +218,22 @@ void main() {
         throwsArgumentError,
       );
       expect(
-        () => table.rebind('fire', left, context: 'menu'),
-        throwsArgumentError,
-        reason: 'the menu does not bind fire',
-      );
-      expect(
         () => table.rebind('nope', left, context: 'play'),
         throwsArgumentError,
       );
+    });
+
+    test('names the first of two bindings that have the control', () {
+      const a = KeyControl('KeyA');
+
+      expect(table.clash('fire', a, context: 'play'), 'steer');
+      expect(
+        () => table.rebind('fire', a, context: 'play', swap: true),
+        throwsA(isA<BindingClash>().having((e) => e.action, 'action', 'steer')),
+        reason: 'steer and move both have it, so there is nobody to trade with',
+      );
+      expect(controlsOf('fire'), [const KeyControl('KeyF')]);
+      expect(controlsOf('steer').first, a);
     });
 
     test('throws a clash and changes nothing when another action has it', () {
@@ -255,7 +324,7 @@ void main() {
           'play': {
             'steer': [
               {'key': 'ArrowLeft'},
-              {'key': 'KeyD'},
+              null,
             ],
           },
         },
@@ -300,6 +369,18 @@ void main() {
         const KeyControl('KeyJ'),
       );
       expect(newer.bindings.bindingsIn('play')['steer']!.first.control, left);
+    });
+
+    test('keeps a changed default in a slot the player never touched', () {
+      table.rebind('jump', const KeyControl('KeyJ'), context: 'play', slot: 1);
+      final newer = actionMap(jumpKey: 'KeyZ');
+
+      newer.bindings.load(saved(table));
+
+      expect(
+        [for (final b in newer.bindings.bindingsIn('play')['jump']!) b.control],
+        [const KeyControl('KeyZ'), const KeyControl('KeyJ')],
+      );
     });
 
     test('keeps the defaults a shorter list does not reach', () {
@@ -385,6 +466,78 @@ void main() {
       expect(controlsOf('steer').first, left);
     });
 
+    test('skips a control it cannot read and keeps the rest', () {
+      table.load({
+        'contexts': {
+          'play': {
+            'jump': [
+              {'padButton': 'goneInTheNextVersion'},
+              {'key': 'KeyJ'},
+            ],
+            'steer': [
+              {'key': 'ArrowLeft'},
+              7,
+            ],
+            'fire': [
+              {'key': 1},
+            ],
+          },
+          'gone': {
+            'jump': [
+              {'wat': 'x'},
+            ],
+          },
+        },
+      });
+
+      expect(controlsOf('jump'), [space, const KeyControl('KeyJ')]);
+      expect(controlsOf('steer'), [left, const KeyControl('KeyD')]);
+      expect(controlsOf('fire'), [const KeyControl('KeyF')]);
+    });
+
+    test('keeps a view somebody already holds up to date', () {
+      final view = table.bindingsIn('play');
+
+      table.load({
+        'contexts': {
+          'play': {
+            'fire': [
+              {'key': 'KeyG'},
+            ],
+          },
+        },
+      });
+
+      expect(view['fire']!.single.control, const KeyControl('KeyG'));
+      table.load(<String, Object?>{});
+      expect(view['fire']!.single.control, const KeyControl('KeyF'));
+    });
+
+    test('takes away an action a player bound in a context', () {
+      table.rebind('fire', left, context: 'menu');
+
+      table.load(<String, Object?>{});
+
+      expect(table.bindingsIn('menu').containsKey('fire'), isFalse);
+    });
+
+    test('hands out lists that cannot be changed after a load', () {
+      table.load({
+        'contexts': {
+          'play': {
+            'jump': [
+              {'key': 'KeyJ'},
+            ],
+          },
+        },
+      });
+
+      expect(
+        () => table.bindingsIn('play')['jump']!.clear(),
+        throwsUnsupportedError,
+      );
+    });
+
     test('is replaced, not added to, by the next load', () {
       table.rebind('steer', left, context: 'play');
 
@@ -433,9 +586,7 @@ void main() {
               'steer': [
                 {'key': 'KeyZ'},
               ],
-              'jump': [
-                {'key': 1},
-              ],
+              'jump': 'KeyZ',
             },
           },
         },

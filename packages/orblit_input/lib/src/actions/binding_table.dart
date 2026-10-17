@@ -24,9 +24,9 @@ final class BindingClash implements Exception {
 /// Which controls are wired to which actions, in each context.
 ///
 /// Starts as the defaults the contexts were made with. A player changes it
-/// with [rebind], and [toJson] writes down only what differs from the
-/// defaults, so a default the game changes later still reaches a player who
-/// never touched that action.
+/// with [rebind], and [toJson] writes down only the slots that differ from
+/// the defaults, so a default the game changes later still reaches a player
+/// who never touched that slot.
 ///
 /// Only a [rebind] is checked for clashes, and only inside its own context.
 /// A game's defaults may give one control to two actions on purpose.
@@ -35,17 +35,21 @@ final class BindingTable {
     required Map<String, ActionKind> kinds,
     required List<InputContext> contexts,
   }) : _kinds = Map.unmodifiable(kinds),
-       _contexts = {for (final context in contexts) context.name: context} {
+       _contexts = {for (final context in contexts) context.name: context},
+       _bound = {
+         for (final context in contexts)
+           context.name: <String, List<Binding>>{},
+       } {
     if (_contexts.length != contexts.length) {
       throw ArgumentError('Two contexts have the same name.');
     }
     contexts.forEach(_check);
-    _bound = _defaults();
+    _replace(_defaults());
   }
 
   final Map<String, ActionKind> _kinds;
   final Map<String, InputContext> _contexts;
-  late Map<String, Map<String, List<Binding>>> _bound;
+  final Map<String, Map<String, List<Binding>>> _bound;
 
   /// Whether a context of this name exists.
   bool hasContext(String context) => _contexts.containsKey(context);
@@ -53,7 +57,9 @@ final class BindingTable {
   /// Whether the contexts under [context] go quiet while it is on.
   bool blocks(String context) => _context(context).blocks;
 
-  /// What [context] binds now, by action name.
+  /// What [context] binds now, by action name. A view that follows every
+  /// [rebind] and [load]. The list for an action is never edited, only
+  /// replaced.
   Map<String, List<Binding>> bindingsIn(String context) =>
       UnmodifiableMapView(_bound[_context(context).name]!);
 
@@ -68,30 +74,43 @@ final class BindingTable {
     int slot = 0,
   }) {
     _slots(context, action);
-    return _holder(context, control, action: action, slot: slot)?.action;
+    return _holders(
+      context,
+      control,
+      action: action,
+      slot: slot,
+    ).firstOrNull?.action;
   }
 
   /// Points binding number [slot] of [action] at [control].
   ///
-  /// [slot] may be one past the last binding, which adds one. When another
-  /// binding in [context] has [control], this throws a [BindingClash] unless
-  /// [swap] is set, which gives that binding the control [slot] had.
+  /// [slot] may be one past the last binding, which adds one. The binding
+  /// keeps the scale and half the slot had, unless [scale] or [part] say
+  /// otherwise. A new binding starts at a scale of 1 on x.
+  ///
+  /// When another binding in [context] has [control], this throws a
+  /// [BindingClash] unless [swap] is set, which gives that binding the
+  /// control [slot] had. A swap needs exactly one other binding to trade with.
   void rebind(
     String action,
     Control control, {
     required String context,
     int slot = 0,
     bool swap = false,
+    double? scale,
+    AxisPart? part,
   }) {
     final slots = _slots(context, action);
     RangeError.checkValueInInterval(slot, 0, slots.length, 'slot');
     _requireAccepts(action, control);
-    final holder = _holder(context, control, action: action, slot: slot);
-    if (holder == null) {
-      _put(context, action, slot, control);
+    final holders = _holders(context, control, action: action, slot: slot);
+    if (holders.isEmpty) {
+      _put(context, action, slot, control, scale: scale, part: part);
       return;
     }
-    if (!swap) throw BindingClash(holder.action, control);
+    if (!swap || holders.length > 1) {
+      throw BindingClash(holders.first.action, control);
+    }
     if (slot == slots.length) {
       throw ArgumentError.value(
         slot,
@@ -99,13 +118,17 @@ final class BindingTable {
         'A new binding has nothing to swap.',
       );
     }
+    final holder = holders.single;
     final given = slots[slot].control;
     _requireAccepts(holder.action, given);
     _put(context, holder.action, holder.slot, given);
-    _put(context, action, slot, control);
+    _put(context, action, slot, control, scale: scale, part: part);
   }
 
-  /// The controls the player changed, as JSON. Empty contexts are left out.
+  /// The controls the player changed, as JSON.
+  ///
+  /// A changed action is written as one entry per slot. A slot still at its
+  /// default is null.
   Map<String, Object?> toJson() => {
     'contexts': {
       for (final MapEntry(key: context, value: actions) in _bound.entries)
@@ -118,8 +141,9 @@ final class BindingTable {
   /// Replaces the changes with those in [json], as [toJson] wrote them.
   ///
   /// Names the game no longer has are skipped, and so are controls an action
-  /// can no longer take, so an old profile loads into a newer game. Anything
-  /// that is not a profile throws a [FormatException] and changes nothing.
+  /// can no longer take or this build cannot read, so an old profile loads
+  /// into a newer game. A profile that is not made of objects and lists
+  /// throws a [FormatException] and changes nothing.
   void load(Object? json) {
     final overrides = _parse(json);
     final next = _defaults();
@@ -128,22 +152,25 @@ final class BindingTable {
         _override(next, context, action, controls);
       }
     }
-    _bound = next;
+    _replace(next);
   }
 
   InputContext _context(String context) =>
       _contexts[context] ??
       (throw ArgumentError('There is no context called "$context".'));
 
+  // An action the context does not mention has no bindings there yet, which
+  // is not the same as an action that does not exist.
   List<Binding> _slots(String context, String action) =>
       _bound[_context(context).name]![action] ??
-      (throw ArgumentError('"$context" has no bindings for "$action".'));
+      (_kinds.containsKey(action)
+          ? const []
+          : throw ArgumentError('There is no action called "$action".'));
 
   void _check(InputContext context) {
     for (final MapEntry(key: action, value: slots)
         in context.bindings.entries) {
-      final kind = _kinds[action];
-      if (kind == null) {
+      if (!_kinds.containsKey(action)) {
         throw ArgumentError(
           '"${context.name}" binds "$action", which is not an action.',
         );
@@ -166,31 +193,42 @@ final class BindingTable {
     for (final context in _contexts.values) context.name: {...context.bindings},
   };
 
-  ({String action, int slot})? _holder(
+  // In place, so the views [bindingsIn] handed out follow a load.
+  void _replace(Map<String, Map<String, List<Binding>>> next) {
+    for (final MapEntry(key: context, value: actions) in next.entries) {
+      _bound[context]!
+        ..clear()
+        ..addAll(actions);
+    }
+  }
+
+  List<({String action, int slot})> _holders(
     String context,
     Control control, {
     required String action,
     required int slot,
-  }) {
-    for (final MapEntry(key: name, value: slots) in _bound[context]!.entries) {
-      for (var i = 0; i < slots.length; i++) {
-        final self = name == action && i == slot;
-        if (slots[i].control == control && !self) {
-          return (action: name, slot: i);
-        }
-      }
-    }
-    return null;
-  }
+  }) => [
+    for (final MapEntry(key: name, value: slots) in _bound[context]!.entries)
+      for (var i = 0; i < slots.length; i++)
+        if (slots[i].control == control && !(name == action && i == slot))
+          (action: name, slot: i),
+  ];
 
   // Lists are replaced rather than edited, so a list handed out by
   // [bindingsIn] never changes under its reader.
-  void _put(String context, String action, int slot, Control control) {
+  void _put(
+    String context,
+    String action,
+    int slot,
+    Control control, {
+    double? scale,
+    AxisPart? part,
+  }) {
     final slots = [..._slots(context, action)];
     if (slot == slots.length) {
-      slots.add(Binding(control));
+      slots.add(Binding(control, scale: scale ?? 1, part: part ?? AxisPart.x));
     } else {
-      slots[slot] = slots[slot].withControl(control);
+      slots[slot] = slots[slot].withControl(control, scale: scale, part: part);
     }
     _bound[context]![action] = List.unmodifiable(slots);
   }
@@ -198,38 +236,55 @@ final class BindingTable {
   Map<String, Object?> _changed(
     String context,
     Map<String, List<Binding>> actions,
-  ) => {
-    for (final MapEntry(key: action, value: slots) in actions.entries)
-      if (!_sameControls(slots, _contexts[context]!.bindings[action]!))
-        action: [for (final binding in slots) binding.control.toJson()],
-  };
+  ) {
+    final changed = <String, Object?>{};
+    for (final MapEntry(key: action, value: slots) in actions.entries) {
+      final was = _contexts[context]!.bindings[action] ?? const <Binding>[];
+      final changes = _changes(slots, was);
+      if (changes.any((change) => change != null)) changed[action] = changes;
+    }
+    return changed;
+  }
 
   void _override(
     Map<String, Map<String, List<Binding>>> next,
     String context,
     String action,
-    List<Control> controls,
+    List<Control?> controls,
   ) {
-    final slots = next[context]?[action];
+    final actions = next[context];
     final kind = _kinds[action];
-    if (slots == null || kind == null || !controls.every(kind.accepts)) return;
-    next[context]![action] = List.unmodifiable([
-      for (var i = 0; i < math.max(slots.length, controls.length); i++)
-        if (i >= controls.length)
-          slots[i]
-        else if (i < slots.length)
-          slots[i].withControl(controls[i])
-        else
-          Binding(controls[i]),
-    ]);
+    if (actions == null || kind == null) return;
+    if (!controls.whereType<Control>().every(kind.accepts)) return;
+    actions[action] = _merge(actions[action] ?? const [], controls);
   }
 }
 
-bool _sameControls(List<Binding> a, List<Binding> b) =>
-    a.length == b.length &&
-    Iterable<int>.generate(a.length).every((i) => a[i].control == b[i].control);
+List<Object?> _changes(List<Binding> now, List<Binding> was) => [
+  for (var i = 0; i < now.length; i++)
+    if (i < was.length && was[i].control == now[i].control)
+      null
+    else
+      now[i].control.toJson(),
+];
 
-Map<String, Map<String, List<Control>>> _parse(Object? json) {
+// A null control leaves its slot as it is. Controls past the last slot are
+// added.
+List<Binding> _merge(List<Binding> slots, List<Control?> controls) {
+  final merged = <Binding>[];
+  for (var i = 0; i < math.max(slots.length, controls.length); i++) {
+    final control = i < controls.length ? controls[i] : null;
+    final slot = i < slots.length ? slots[i] : null;
+    if (control == null) {
+      if (slot != null) merged.add(slot);
+    } else {
+      merged.add(slot?.withControl(control) ?? Binding(control));
+    }
+  }
+  return List.unmodifiable(merged);
+}
+
+Map<String, Map<String, List<Control?>>> _parse(Object? json) {
   final contexts = _object(
     _object(json, 'The profile')['contexts'] ?? const <String, Object?>{},
     '"contexts"',
@@ -251,7 +306,19 @@ Map<String, Object?> _object(Object? value, String what) =>
     ? value
     : throw FormatException('$what should be an object.');
 
-List<Control> _controlList(Object? value, String action) =>
+List<Control?> _controlList(Object? value, String action) =>
     value is List<Object?>
-    ? [for (final item in value) Control.fromJson(item)]
+    ? [for (final item in value) _readable(item)]
     : throw FormatException('"$action" should be a list of controls.');
+
+// A control this build cannot read, such as a button a later engine dropped,
+// leaves its slot at the default. Refusing it would cost the player the
+// whole profile.
+Control? _readable(Object? json) {
+  if (json == null) return null;
+  try {
+    return Control.fromJson(json);
+  } on FormatException {
+    return null;
+  }
+}

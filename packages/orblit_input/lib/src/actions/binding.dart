@@ -28,8 +28,20 @@ final class Binding {
   /// A dead zone and curve on top of any the pad already applied.
   final Shaping shaping;
 
-  /// This binding on another control. The scale, part and shaping stay, so a
-  /// player who rebinds a key does not change which way it steers.
-  Binding withControl(Control control) =>
-      Binding(control, scale: scale, part: part, shaping: shaping);
+  /// This binding on another control.
+  ///
+  /// The scale, part and shaping stay, so a player who rebinds a key does not
+  /// change which way it steers. A whole stick has no sign or half of its
+  /// own, so moving to or from one starts again at a scale of 1 on x. [scale]
+  /// and [part] replace what would stay.
+  Binding withControl(Control control, {double? scale, AxisPart? part}) {
+    final restart =
+        (control is PadStickControl) != (this.control is PadStickControl);
+    return Binding(
+      control,
+      scale: scale ?? (restart ? 1 : this.scale),
+      part: part ?? (restart ? AxisPart.x : this.part),
+      shaping: shaping,
+    );
+  }
 }

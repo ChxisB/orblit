@@ -16,15 +16,30 @@
   times set per action. The clock is passed to `update`.
 
 - Rebinding. `BindingTable.rebind` points one binding at another control,
-  keeps its scale, half and shaping, and throws `BindingClash` when another
-  action in the context has the control. `swap` trades the two. `clash` asks
-  first. `NextInput` waits for the next control a rebinding screen should
-  take.
+  keeps its scale, half and shaping unless `scale` or `part` say otherwise,
+  and throws `BindingClash` when another action in the context has the
+  control. `swap` trades the two, and needs exactly one binding to trade
+  with. `clash` asks first. An action a context does not bind yet can be
+  bound there. `NextInput` waits for the next control a rebinding screen
+  should take.
 
-- A saved profile. `BindingTable.toJson` writes only what differs from the
-  defaults, and `load` reads it back all at once or not at all, so a default
-  the game changes later still reaches a player who never touched it. It
-  skips names the game no longer has. Writing the file is the game's job.
+- Half axes. `PadAxisControl` has a `side`, so a stick pushed left binds as
+  the left half of its axis. `FrameControls.active` lists the half that was
+  pushed, and a trigger once, as its axis.
+
+- A saved profile. `BindingTable.toJson` writes only the slots that differ
+  from the defaults, with null for a slot the player left alone, so a default
+  the game changes later still reaches a player who touched a neighbour. `load`
+  replaces the table in place, and a view from `bindingsIn` follows it. It
+  skips names the game no longer has and controls this version cannot read,
+  and refuses a profile that is not made of objects and lists, changing
+  nothing. Writing the file is the game's job.
+
+- `PressedControls` is what `NextInput` reads. `ControlSource` is what
+  `ActionMap` reads. `FrameControls` is both.
+
+- A button whose control was held when its binding appeared, or was cut off
+  by a menu or a rebinding, has to be seen up before it presses.
 
 ## 0.1.0
 

@@ -47,13 +47,56 @@ void main() {
     expect(next.captured, const KeyControl('KeyQ'));
   });
 
-  test('gives a button the axis of a stick, not the stick', () {
+  test('gives a button the half of a stick that was pushed', () {
     final next = NextInput(ActionKind.button);
     next.update(frame());
 
     next.update(frame(axes: {PadAxis.leftX: 0.9}));
 
-    expect(next.captured, const PadAxisControl(PadAxis.leftX));
+    expect(
+      next.captured,
+      const PadAxisControl(PadAxis.leftX, side: AxisSide.positive),
+    );
+  });
+
+  test('gives the other half for a push the other way', () {
+    final next = NextInput(ActionKind.axis);
+    next.update(frame());
+
+    next.update(frame(axes: {PadAxis.leftX: -0.9}));
+
+    expect(
+      next.captured,
+      const PadAxisControl(PadAxis.leftX, side: AxisSide.negative),
+    );
+  });
+
+  test('takes the other way of a stick that was held one way', () {
+    final next = NextInput(ActionKind.axis);
+    next.update(frame(axes: {PadAxis.leftX: 0.9}));
+    next.update(frame(axes: {PadAxis.leftX: 0.9}));
+    expect(next.captured, isNull);
+
+    next.update(frame(axes: {PadAxis.leftX: -0.9}));
+
+    expect(
+      next.captured,
+      const PadAxisControl(PadAxis.leftX, side: AxisSide.negative),
+    );
+  });
+
+  test('gives an axis action a trigger as its axis', () {
+    final next = NextInput(ActionKind.axis);
+    next.update(frame());
+
+    next.update(
+      frame(down: {PadButton.rightTrigger}, axes: {PadAxis.rightTrigger: 0.9}),
+    );
+
+    expect(
+      next.captured,
+      const PadAxisControl(PadAxis.rightTrigger, side: AxisSide.positive),
+    );
   });
 
   test('gives a two-axis action the whole stick', () {

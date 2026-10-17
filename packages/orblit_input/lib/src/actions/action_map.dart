@@ -49,6 +49,7 @@ final class ActionMap {
   final Map<String, ButtonTrack> _buttons = {};
   final Map<String, double> _values = {};
   final Map<String, Vector2> _vectors = {};
+  final Map<String, List<Binding>?> _seen = {};
 
   /// Whether [context] is switched on.
   bool isActive(String context) => _stack.contains(context);
@@ -73,22 +74,33 @@ final class ActionMap {
   void update(ControlSource source, {required Duration now}) {
     final shown = _shown();
     for (final action in _actions.values) {
-      final list = shown[action.name];
-      switch (action.kind) {
-        case ActionKind.button:
-          _buttons[action.name]!.advance(
-            down: list?.any((b) => _scalar(b, source) >= pressPoint),
-            now: now,
-            gestures: action.gestures,
-          );
-        case ActionKind.axis:
-          _values[action.name] = list == null ? 0 : _sum(list, source);
-        case ActionKind.axis2:
-          _vectors[action.name] = list == null
-              ? Vector2.zero()
-              : _combine(list, source);
-      }
+      _advance(action, shown[action.name], source, now);
     }
+  }
+
+  void _advance(
+    InputAction action,
+    List<Binding>? list,
+    ControlSource source,
+    Duration now,
+  ) {
+    final name = action.name;
+    switch (action.kind) {
+      case ActionKind.button:
+        _buttons[name]!.advance(
+          down: list?.any((b) => _scalar(b, source) >= pressPoint) ?? false,
+          // Bindings are replaced, never edited, so a new list is a new
+          // meaning. The first frame has nothing to differ from.
+          changed: _seen.containsKey(name) && !identical(_seen[name], list),
+          now: now,
+          gestures: action.gestures,
+        );
+      case ActionKind.axis:
+        _values[name] = list == null ? 0 : _sum(list, source);
+      case ActionKind.axis2:
+        _vectors[name] = list == null ? Vector2.zero() : _combine(list, source);
+    }
+    _seen[name] = list;
   }
 
   /// Whether the button is held.
@@ -97,8 +109,8 @@ final class ActionMap {
   /// Whether the button went down in the last [update].
   bool wasPressed(String action) => _button(action).wasPressed;
 
-  /// Whether the button came up in the last [update], or was hidden while
-  /// down.
+  /// Whether the button came up in the last [update], or was cut off while
+  /// down by a context hiding it or a rebinding.
   bool wasReleased(String action) => _button(action).wasReleased;
 
   /// Whether the button reached its hold time in the last [update]. True

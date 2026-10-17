@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import '../pad.dart';
 
 /// One thing a player can press, push or touch.
@@ -16,7 +18,7 @@ sealed class Control {
   Map<String, Object?> toJson() => switch (this) {
     KeyControl(:final key) => {'key': key},
     PadButtonControl(:final button) => {'padButton': button.name},
-    PadAxisControl(:final axis) => {'padAxis': axis.name},
+    PadAxisControl(:final axis, :final side) => {side.jsonKey: axis.name},
     PadStickControl(:final stick) => {'padStick': stick.name},
     TouchControl(:final region) => {'touch': region},
   };
@@ -47,11 +49,16 @@ sealed class Control {
 Control? _named(String kind, String name) => switch (kind) {
   'key' => KeyControl(name),
   'padButton' => _find(PadButton.values, name, PadButtonControl.new),
-  'padAxis' => _find(PadAxis.values, name, PadAxisControl.new),
+  'padAxis' => _axis(name, AxisSide.both),
+  'padAxisPositive' => _axis(name, AxisSide.positive),
+  'padAxisNegative' => _axis(name, AxisSide.negative),
   'padStick' => _find(PadStick.values, name, PadStickControl.new),
   'touch' => TouchControl(name),
   _ => null,
 };
+
+Control? _axis(String name, AxisSide side) =>
+    _find(PadAxis.values, name, (axis) => PadAxisControl(axis, side: side));
 
 Control? _find<E extends Enum>(
   List<E> values,
@@ -79,14 +86,43 @@ final class PadButtonControl extends Control {
   Object get _identity => button;
 }
 
+/// Which way along an axis a [PadAxisControl] reads.
+enum AxisSide {
+  /// Both ways, from -1 to 1.
+  both('padAxis'),
+
+  /// Only the push above the middle, from 0 to 1.
+  positive('padAxisPositive'),
+
+  /// Only the push below the middle, from 0 to 1.
+  negative('padAxisNegative');
+
+  const AxisSide(this.jsonKey);
+
+  /// The key a saved control is written under.
+  final String jsonKey;
+
+  /// [value] as this side reads it.
+  double read(double value) => switch (this) {
+    both => value,
+    positive => math.max(0, value),
+    negative => math.max(0, -value),
+  };
+}
+
 /// One axis of a pad, such as a trigger or half of a stick.
+///
+/// A half is a control like a key: it reads 0 to 1, and the binding's scale
+/// says which way the action goes. That keeps a rebound direction right when
+/// a player pushes a stick left for "steer left".
 final class PadAxisControl extends Control {
-  const PadAxisControl(this.axis);
+  const PadAxisControl(this.axis, {this.side = AxisSide.both});
 
   final PadAxis axis;
+  final AxisSide side;
 
   @override
-  Object get _identity => axis;
+  Object get _identity => (axis, side);
 }
 
 /// A whole stick, as the pair of axes it is. Only a two-axis action takes one.

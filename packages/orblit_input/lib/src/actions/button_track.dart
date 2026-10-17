@@ -11,7 +11,7 @@ final class ButtonTrack {
   bool _tapped = false;
   bool _doubleTapped = false;
 
-  // False from the moment the action is hidden until its control is seen
+  // False from the moment the action is cut off until its control is seen
   // up. A key still held when a menu closes would otherwise press the
   // action the player never meant to press.
   bool _armed = true;
@@ -25,7 +25,7 @@ final class ButtonTrack {
   /// Went down in the last advance.
   bool get wasPressed => _pressed;
 
-  /// Came up in the last advance, or was hidden while down.
+  /// Came up in the last advance, or was cut off while down.
   bool get wasReleased => _released;
 
   /// Passed the hold time in the last advance. True once per press.
@@ -37,31 +37,33 @@ final class ButtonTrack {
   /// Went down in the last advance soon after a tap came up.
   bool get wasDoubleTapped => _doubleTapped;
 
-  /// Moves to [now]. [down] is null when no active context shows the action.
+  /// Moves to [now].
+  ///
+  /// [changed] is true when what the action is bound to is not what it was
+  /// last time, which includes a context hiding it. A press in progress is
+  /// cut off then and is not a tap. The control may have been held before the
+  /// binding appeared, so it has to be seen up before it can press.
   void advance({
-    required bool? down,
+    required bool down,
+    required bool changed,
     required Duration now,
     required Gestures gestures,
   }) {
     _pressed = _released = _held = _tapped = _doubleTapped = false;
-    final next = _accept(down);
+    if (changed && down) {
+      _armed = false;
+    } else if (!down) {
+      _armed = true;
+    }
+    final next = down && _armed;
     if (next && !_down) {
       _begin(now, gestures);
     } else if (!next && _down) {
-      _end(now, gestures, hidden: down == null);
+      _end(now, gestures, cut: changed);
     } else if (next) {
       _checkHold(now, gestures);
     }
     _down = next;
-  }
-
-  bool _accept(bool? down) {
-    if (down == null) {
-      _armed = false;
-      return false;
-    }
-    if (!down) _armed = true;
-    return down && _armed;
   }
 
   void _begin(Duration now, Gestures gestures) {
@@ -73,10 +75,9 @@ final class ButtonTrack {
     _doubleTapped = _doublePress;
   }
 
-  void _end(Duration now, Gestures gestures, {required bool hidden}) {
+  void _end(Duration now, Gestures gestures, {required bool cut}) {
     _released = true;
-    // A press cut off by a menu opening was not a tap.
-    _tapped = !hidden && now - _downAt <= gestures.tap;
+    _tapped = !cut && now - _downAt <= gestures.tap;
     // The press that made a double tap does not start another.
     _tapEnded = _tapped && !_doublePress ? now : null;
   }
