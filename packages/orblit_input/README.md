@@ -48,6 +48,57 @@ for (final event in frame.events) {
   pads whose labels or axes differ. No external controller database.
 - **Hot-plug.** A pad that vanishes reads as neutral rather than as whatever
   it was holding, and takes its slot back when it returns.
+- **Actions.** A game asks about `jump` and `move`, never about a key. See
+  below.
+
+## Actions
+
+```dart
+final input = ActionMap(
+  actions: const [
+    InputAction.button('jump'),
+    InputAction.axis2('move'),
+  ],
+  contexts: [
+    InputContext('play', bindings: const {
+      'jump': [
+        Binding(KeyControl('Space')),
+        Binding(PadButtonControl(PadButton.south)),
+      ],
+      'move': [
+        Binding(KeyControl('KeyA'), scale: -1),
+        Binding(KeyControl('KeyD')),
+        Binding(KeyControl('KeyS'), scale: -1, part: AxisPart.y),
+        Binding(KeyControl('KeyW'), part: AxisPart.y),
+        Binding(PadStickControl(PadStick.left)),
+      ],
+    }),
+  ],
+  active: const ['play'],
+);
+
+// Once a frame. The game says which keys are down and what time it is.
+input.update(
+  FrameControls(keys: heldKeys, pad: pad),
+  now: elapsed,
+);
+if (input.wasPressed('jump')) jump();
+move(input.vector('move') * speed * delta);
+```
+
+Keys are strings the game supplies. The physical key, such as `KeyW`, keeps a
+binding in place when the layout changes. A key on both sides of an axis gives
+a diagonal no faster than a straight line, and a stick shares the action with
+the keys.
+
+Contexts stack. `input.activate('menu')` puts a context on top. If it was made
+with `blocks: true`, every action it does not bind reads as neutral until it
+is switched off. A key held while the menu closes does not press anything.
+
+A rebinding screen asks `input.bindings.clash(...)` and calls
+`input.bindings.rebind(...)`. `NextInput` finds the control to pass in.
+`input.bindings.toJson()` returns only what the player changed, and `load`
+reads it back. The game writes the file.
 
 Linux only so far, through evdev. The other platforms will each put their own
 gamepad interface behind the same front door.

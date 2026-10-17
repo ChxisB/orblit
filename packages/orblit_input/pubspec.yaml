@@ -2,8 +2,10 @@ name: orblit_input
 description: >-
   Gamepads as state a frame can ask about, and as the handful of things that
   happened between two frames. Dead zones, curves and layouts belong to the
-  engine rather than to every game written against it.
-version: 0.1.0
+  engine rather than to every game written against it. On top sit named
+  actions that a player can rebind, with contexts, gestures and a saved
+  profile.
+version: 0.2.0
 publish_to: none
 
 environment:
