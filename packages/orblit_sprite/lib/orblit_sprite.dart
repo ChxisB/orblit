@@ -28,4 +28,4 @@ export 'src/atlas_pack_isolate.dart' show packAtlasInBackground;
 export 'src/png_codec.dart'
     show DecodedPng, PngFormatException, decodePng, encodePng;
 export 'src/parallax.dart' show Layer, Parallax, View2;
-export 'src/tiles.dart' show TileLayer, TileMap, Tileset;
+export 'src/tiles.dart' show TileFlips, TileLayer, TileMap, Tileset;

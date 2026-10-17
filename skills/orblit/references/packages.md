@@ -280,7 +280,10 @@ A packed atlas may have trimmed regions: place them with `offsetX`,
 `offsetY` and `placedSize`. `AtlasPackOptions` has `allowRotation` off by
 default; keep it off, since `OrblitSprite` takes an upright rectangle.
 `Parallax(layers).at(cameraX, seconds)` gives each layer's offset;
-`TileMap` and `Tileset` hold tile maps. Guide: `/guides/two-dimensions/`.
+`TileMap.read` reads a Tiled JSON map, infinite ones too. `TileLayer.at`
+leaves the flip bits off and `flipsAt` returns them. `placeOf` gives where
+a tile is drawn, anchored to the bottom left of its cell. Guide:
+`/guides/two-dimensions/`.
 
 ## orblit_ui
 

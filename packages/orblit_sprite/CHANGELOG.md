@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.4.0
+
+- **Infinite Tiled maps are read.** A layer saved as chunks is joined into
+  one grid, and chunks at negative cells are fine. `TileLayer.left` and
+  `top` say which cell its first tile sits in, and `at` takes cells
+  relative to the map as before. Before, a map with `"infinite": true`
+  came back as null. Chunks that span more than four million cells still
+  come back as null.
+- **Flipped tiles are looked up by their number.** A tile number carries
+  three flip bits above it. `at` leaves them off, so `setFor` and `rectOf`
+  find the right set and tile again, and `flipsAt` returns them as
+  `TileFlips`. Before, a flipped tile found no tile at all in its set.
+- **A tile larger than the grid knows where it is drawn.** `TileMap.placeOf`
+  returns the rectangle in world pixels, anchored to the bottom left of the
+  cell. The rectangle a tile is cut from was already right.
+- A layer with fewer tiles than its width and height now comes back as null.
+  Before, `at` threw at its last cells.
+
 ## 0.3.0
 
 - The PNG codec moves out of `bin/src/` and into the package. It was already
