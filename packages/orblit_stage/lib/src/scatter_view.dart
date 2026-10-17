@@ -24,6 +24,12 @@ import 'package:vector_math/vector_math_64.dart';
 /// with more than a million of one model throws [ArgumentError]. An object
 /// has no range, so a model layer's is not kept: it is drawn however far off.
 ///
+/// A population's range is the layer's times [rangeScale], which is how a
+/// `DistancePolicy` pulls the grass in when frames run long. A layer with no
+/// range is drawn however far off, whatever the scale. Passing a new scale
+/// changes the range but not the revision, so the renderer keeps the buffers
+/// it holds.
+///
 /// Groups with nothing in them are left out, which is how the renderer learns
 /// that a layer has gone from a region. So are model layers when [models] is
 /// false, for a view that has no way to resolve their files.
@@ -37,6 +43,7 @@ import 'package:vector_math/vector_math_64.dart';
   String Function(String path)? mesh,
   int? Function(String path)? material,
   bool models = true,
+  double rangeScale = 1,
 }) {
   final layers = placer.layers;
   final populations = <OrblitPopulation>[];
@@ -54,7 +61,7 @@ import 'package:vector_math/vector_math_64.dart';
           colours: group.colours,
           minimum: group.minimum,
           maximum: group.maximum,
-          range: layer.range,
+          range: layer.range * rangeScale,
           revision: group.revision,
           castShadows: layer.castShadows,
         ),

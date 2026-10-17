@@ -21,6 +21,7 @@ library;
 
 export 'src/brush.dart' show Brush, BrushTool;
 export 'src/cover.dart' show Cover;
+export 'src/distance_policy.dart' show DistancePolicy;
 export 'src/ground_colour.dart' show GroundColour;
 export 'src/patch.dart' show TerrainLayer, TerrainPatch, TerrainRecorder;
 export 'src/region.dart'

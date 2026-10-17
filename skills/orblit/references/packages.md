@@ -17,7 +17,7 @@ the fullest reference.
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
-| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
+| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer`, `DistancePolicy` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
@@ -887,6 +887,18 @@ group's buffers. A model layer is one `OrblitObject` each (populations draw
 only the cube), keyed `objectKey + group.id * 1048576 + index`. Pass
 `models: false` to leave model layers out, for a view that cannot resolve
 their files. Rebuild when `placer.revision` moves, not every frame.
+`rangeScale: 0.5` halves every block layer's `range`. A layer with no range
+stays unlimited.
+
+View distance: `DistancePolicy({required ceiling, required high, required low, floor = 1, settle = 2})`
+steps the distance down when frames cost too much and back up when there is
+room. `update(cost, seconds)` takes one frame's cost and the time it was
+drawn at, in any unit, so long as `high` and `low` use it. Once every
+`settle` seconds it judges the mean cost since the last decision and moves
+one step: down above `high`, up below `low`, held between, so a cost that
+falls with the distance does not step it straight back. `steps` is the
+clipmap's `levels` for `terrainFrom`, and `fraction` is the share to pass as
+`rangeScale`. Nothing uses a policy unless the game makes one.
 
 Streaming: the renderer draws 256 regions at most, so a larger world is
 held a part at a time. `TerrainStreamer({required terrain, required source, loadRadius = 512, keepRadius, maxResident = 256, concurrency = 2})`
