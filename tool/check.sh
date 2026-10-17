@@ -18,6 +18,7 @@ PACKAGES=(
   packages/orblit_collide
   packages/orblit_codegen
   packages/orblit_core
+  packages/orblit_dialogue
   packages/orblit_effect
   packages/orblit_input
   packages/orblit_light

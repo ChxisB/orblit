@@ -19,6 +19,7 @@ the fullest reference.
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_progress` | Named small integers for a game's progress: quest stages, skill levels, flags. A schema names them, a table holds them and never changes, and a write gives the changes to send to one player | `ProgressSchema`, `Whole`, `Slice`, `ProgressTable`, `Changes` |
 | `orblit_quest` | Quests as data: an ordered list of stages kept as one integer in a progress table, read from `.oquest` files. The journal text, the requirements and the completion follow from the stage | `Quest`, `Stage`, `QuestBook`, `Moved`, `Refused` |
+| `orblit_dialogue` | Conversations as data: lines, choices, writes to a progress table and jumps, read from `.odialogue` files. The first variant whose conditions hold starts, so a character says something new as a quest moves | `Dialogue`, `DialogueBook`, `DialogueRunner`, `Before` |
 | `orblit_save` | Saves for a game server: bytes under a key with a reason, queued off the tick and written by a worker isolate, whole after a crash, with staggered autosaves, a history of versions, restore and offline edit. Server and tools only, not the web | `SaveQueue`, `SaveStore`, `FileSaveStore`, `SaveReason`, `AutoSave`, `HistoryStore`, `SaveTools` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
@@ -964,6 +965,21 @@ returns `Moved` (a new table, the `changes` to send, `completed`, `back`) or
 `Refused`. A quest goes forward only. `allowBack: true` goes back and sets
 `back`, so log it. Give the reward when `completed`. A quest that branches uses
 more than one name.
+
+## orblit_dialogue
+
+`Dialogue.parse(text)` reads a `.odialogue` file: `variants` (a `start` node and
+optional `when` conditions, first that holds wins) and `nodes` by id. A node is
+a `line` (speaker, text, `next`), a `choice` (options, each with `next` and
+optional `when`), a `set` (`writes` of name and value, then `next`) or a `jump`.
+Any node may name a `before` function. `DialogueBook(schema:, hooks:,
+dialogues:)` checks names, written values and hooks when the game starts.
+`book.start(key, table)` returns a `DialogueRunner`. Draw `runner.current` and
+`runner.options`, then call `next()` or `choose(i)`. `runner.table` holds every
+write and hook result, so send `table.changesSince(before)` and save it. A
+`Before` is `ProgressTable Function(ProgressTable)`. A hook that moves a quest
+returns the table `QuestBook.advance` gave back. A ring of sets and jumps with
+no line is refused.
 
 ## orblit_save
 
