@@ -3,21 +3,27 @@
 ## 0.16.0
 
 - **`pack diff <old> <new>`.** Lists the assets added, removed and changed
-  by name, with the old and new size of each change, and the scenes,
-  prefabs, clips and blends of the new pack that name an asset it does
-  not hold. It reads no blob for the three lists. It exits 1 when a name is
-  missing or a document is not JSON, so CI can hold a patch that would
-  blank a model.
+  by name, with the old and new size of each change, and the documents of
+  the new pack that still name an asset it dropped. It reads no blob for
+  the three lists. It exits 1 when a dropped name is still used or a
+  document is not JSON, so CI can hold a patch that would blank a model.
+  Packs for two targets are refused, because every cooked asset would show
+  as changed.
 - **Patches are read with their base.** `--base <pack>` gives the packs a
   patch was built on, in any order. The old and the new pack are searched
   too. A name the patch did not touch counts as present.
 - **`PackDiff.between`.** The same comparison for code: it takes two
   `MountedPacks` and returns `added`, `removed`, `changed`, `dangling` and
-  `unreadable`. A string in a document is a reference when it is an asset
-  id with an extension some asset in either pack has.
-- **`mountChain(top, pool)`.** Mounts a pack with the packs it was built
-  on, found by hash. It throws `PackMountRefused` for a base the pool does
-  not hold.
+  `unreadable`. Dangling means gone. A string, or a key, in an `.oscene`,
+  `.oprefab`, `.oclip`, `.oblend`, `.ocutscene`, `.obonemap`, `.omat`,
+  `.oterrain`, `.oui` or `.opath` that is exactly the name of an asset the
+  new pack dropped. Names that were never in the old pack are the build's
+  to refuse, and free text is never a name. The documents are only read
+  when something was removed. It throws `PackMountRefused` for two targets.
+- **`MountedPacks.withBases(top, pool)`.** Mounts a pack with the packs it
+  was built on, found by hash in any order. It throws `PackMountRefused`
+  for a base the pool does not hold. `MountedPacks.target` names the cook
+  target.
 
 ## 0.15.0
 

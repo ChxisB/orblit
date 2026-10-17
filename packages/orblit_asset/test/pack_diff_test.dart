@@ -31,20 +31,22 @@ void main() {
     ],
   });
 
-  Future<PackDiff> diff(AssetPack before, AssetPack after) async =>
-      PackDiff.between(
-        before: mountChain(before, const []),
-        after: mountChain(after, const []),
-      );
-
-  Future<PackDiff> diffPatch(
+  Future<PackDiff> diff(
     AssetPack before,
-    AssetPack after,
-    List<AssetPack> pool,
-  ) async => PackDiff.between(
-    before: mountChain(before, pool),
-    after: mountChain(after, pool),
+    AssetPack after, [
+    List<AssetPack> pool = const [],
+  ]) async => PackDiff.between(
+    before: MountedPacks.withBases(before, pool),
+    after: MountedPacks.withBases(after, pool),
   );
+
+  /// The older pack of a pair, holding every asset the newer one drops.
+  Future<AssetPack> older(Map<String, String> files) => build('before', {
+    'textures/gone.png': 'gone',
+    'models/tree.glb': 'tree',
+    'anim/gone.oclip': '{}',
+    ...files,
+  });
 
   group('PackDiff', () {
     test('lists what was added, removed and changed by name', () async {
@@ -104,69 +106,133 @@ void main() {
       expect(result.isBroken, isTrue);
     });
 
-    test('a prefab, a clip and a blend are read as well', () async {
-      final gone = jsonEncode({
+    test('every kind of document is read, by name', () async {
+      final names = jsonEncode({
         'clips': ['anim/gone.oclip'],
       });
       final after = await build('after', {
-        'anim/walk.oclip': '{}',
-        'a/rig.oprefab': gone,
-        'a/walk.oclip': gone,
+        'models/tree.glb': 'tree',
+        'a/rig.oprefab': names,
+        'a/walk.oclip': names,
         'a/move.oblend': jsonEncode({
           'states': [
             {'clip': 'anim/gone.oclip'},
           ],
         }),
+        'a/look.omat': jsonEncode({'albedo': 'textures/gone.png'}),
       });
 
-      final result = await diff(await build('before', {'a': ''}), after);
+      final result = await diff(await older({}), after);
 
       expect(result.dangling.map((d) => d.document.toString()), [
+        'a/look.omat',
         'a/move.oblend',
         'a/rig.oprefab',
         'a/walk.oclip',
-      ], reason: 'by name, and a list of strings counts');
+      ]);
+    });
+
+    test('a name used as a key counts', () async {
+      final after = await build('after', {
+        'models/tree.glb': 'tree',
+        'scenes/town.oscene': jsonEncode({
+          'overrides': {'textures/gone.png': 1},
+        }),
+      });
+
+      final result = await diff(await older({}), after);
+
+      expect(result.dangling.single.missing, id('textures/gone.png'));
     });
 
     test('a reference that starts "./" is read against its document', () async {
       final after = await build('after', {
-        'scenes/town.oscene': scene(['./tree.glb', '../models/tree.glb']),
+        'scenes/town.oscene': scene([
+          '../models/tree.glb',
+          './tree.glb',
+          './models/tree.glb',
+        ]),
         'scenes/tree.glb': 'tree',
-        'models/other.glb': 'other',
+        'textures/gone.png': 'kept',
       });
 
-      final result = await diff(await build('before', {'a': ''}), after);
+      final result = await diff(
+        await older({'scenes/tree.glb': 'tree'}),
+        after,
+      );
 
-      expect(result.dangling.map((d) => d.missing.toString()), [
-        'models/tree.glb',
-      ]);
+      expect(
+        result.dangling.map((d) => d.missing.toString()),
+        ['models/tree.glb'],
+        reason:
+            '"./tree.glb" is still there and "./models/tree.glb" is '
+            'another file',
+      );
     });
 
-    test('text that is not the name of a kind of asset is not a '
-        'reference', () async {
+    test('free text that ends in a removed name is not a reference', () async {
       final after = await build('after', {
         'models/tree.glb': 'tree',
         'scenes/town.oscene': jsonEncode({
           'name': 'Hero.1',
-          'note': 'see notes.txt',
+          'note': 'see textures/gone.png',
           'looks': 'matte white',
-          'model': 'models/tree.glb',
           'other': 'readme.txt',
         }),
       });
 
-      final result = await diff(await build('before', {'a': ''}), after);
+      final result = await diff(await older({}), after);
 
       expect(result.dangling, isEmpty);
     });
 
-    test('a document that is not JSON is listed as unreadable', () async {
-      final after = await build('after', {'scenes/town.oscene': 'not json'});
+    test('a name that never was in the older pack is not dangling', () async {
+      final after = await build('after', {
+        'models/tree.glb': 'tree',
+        'scenes/town.oscene': scene(['textures/never.png', 'models/tree.glb']),
+      });
 
-      final result = await diff(await build('before', {'a': ''}), after);
+      final result = await diff(await older({}), after);
+
+      expect(result.removed, [id('anim/gone.oclip'), id('textures/gone.png')]);
+      expect(result.dangling, isEmpty);
+    });
+
+    test('a name that is removed and still present is not dangling', () async {
+      final after = await build('after', {
+        'models/tree.glb': 'tree',
+        'textures/gone.png': 'back again',
+        'scenes/town.oscene': scene(['textures/gone.png']),
+      });
+
+      final result = await diff(await older({}), after);
+
+      expect(result.dangling, isEmpty);
+    });
+
+    test('a document that is not JSON is unreadable once something is '
+        'removed', () async {
+      final after = await build('after', {
+        'models/tree.glb': 'tree',
+        'scenes/town.oscene': 'not json',
+      });
+
+      final result = await diff(await older({}), after);
 
       expect(result.unreadable, [id('scenes/town.oscene')]);
       expect(result.isBroken, isTrue);
+    });
+
+    test('documents are not read when nothing was removed', () async {
+      final files = {'scenes/town.oscene': 'not json'};
+
+      final result = await diff(
+        await build('before', files),
+        await build('after', {...files, 'models/fresh.glb': 'fresh'}),
+      );
+
+      expect(result.unreadable, isEmpty);
+      expect(result.isBroken, isFalse);
     });
 
     test('a patch is read with its base, so what it did not touch is '
@@ -188,7 +254,7 @@ void main() {
         base: [game],
       );
 
-      final result = await diffPatch(game, patch, [game]);
+      final result = await diff(game, patch, [game]);
 
       expect(result.changed.map((c) => c.id.toString()), ['textures/wall.png']);
       expect(result.removed, [id('textures/roof.png')]);
@@ -214,14 +280,43 @@ void main() {
         base: [game],
       );
 
-      final result = await diffPatch(game, patch, [game]);
+      final result = await diff(game, patch, [game]);
 
       expect(result.dangling, isEmpty);
       expect(result.changed, hasLength(1));
     });
+
+    test('packs for different targets are refused', () async {
+      final android = await build('android', {'a/x.glb': 'one'});
+      final web = await build('web', {'a/x.glb': 'one'}, target: 'web');
+
+      await expectLater(
+        diff(android, web),
+        throwsA(
+          isA<PackMountRefused>().having(
+            (e) => e.message,
+            'message',
+            allOf(contains('android'), contains('web')),
+          ),
+        ),
+      );
+    });
+
+    test('the lists cannot be changed by the caller', () async {
+      final result = await diff(
+        await older({}),
+        await build('after', {'models/tree.glb': 'tree'}),
+      );
+
+      expect(() => result.added.add(id('a/b.glb')), throwsUnsupportedError);
+      expect(() => result.removed.clear(), throwsUnsupportedError);
+      expect(() => result.changed.clear(), throwsUnsupportedError);
+      expect(() => result.dangling.clear(), throwsUnsupportedError);
+      expect(() => result.unreadable.clear(), throwsUnsupportedError);
+    });
   });
 
-  group('mountChain', () {
+  group('MountedPacks.withBases', () {
     test('finds the packs under a patch by hash, in any order', () async {
       final game = await build('game', {'a/x.glb': 'one'});
       final first = await build('first', {'a/x.glb': 'two'}, base: [game]);
@@ -231,11 +326,15 @@ void main() {
         base: [game, first],
       );
 
-      final packs = mountChain(second, [first, game]);
+      final packs = MountedPacks.withBases(second, [first, game]);
 
       expect(packs.chainHash, second.hash);
+      expect(packs.target, 'android');
       expect(utf8.decode(await packs.read(id('a/x.glb'))), 'three');
-      expect(mountChain(second, [game, first]).chainHash, second.hash);
+      expect(
+        MountedPacks.withBases(second, [game, first]).chainHash,
+        second.hash,
+      );
     });
 
     test('names the pack that is missing', () async {
@@ -243,7 +342,7 @@ void main() {
       final patch = await build('patch', {'a/x.glb': 'two'}, base: [game]);
 
       expect(
-        () => mountChain(patch, const []),
+        () => MountedPacks.withBases(patch, const []),
         throwsA(
           isA<PackMountRefused>().having(
             (e) => e.message,
@@ -257,7 +356,7 @@ void main() {
     test('a pack with no base stands on its own', () async {
       final game = await build('game', {'a/x.glb': 'one'});
 
-      expect(mountChain(game, const []).chainHash, game.hash);
+      expect(MountedPacks.withBases(game, const []).chainHash, game.hash);
     });
   });
 }

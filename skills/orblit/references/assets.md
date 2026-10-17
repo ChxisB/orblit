@@ -243,9 +243,9 @@ final source = LayeredAssetSource([DirectoryAssetSource('assets'), pack]);
 - **`read` does not hash.** `findCorrupt()` hashes every blob and returns the
   ids that changed. Run it after a download, not on every read.
 - **`pack diff old new` compares by name.** It lists added, removed and
-  changed assets, and exits 1 when a scene, prefab, clip or blend in the new
-  pack names an asset it does not hold. Pass `--base` for the packs a patch
-  stands on. `PackDiff.between` and `mountChain` do the same in code.
+  changed assets, and exits 1 when a document in the new pack still names
+  an asset it dropped. Pass `--base` for the packs a patch stands on.
+  `PackDiff.between` and `MountedPacks.withBases` do the same in code.
 - **The target is stored.** A pack is for one cook target, because the
   textures in it are. `pack.target` says which.
 - **Same bytes, one blob.** Two assets with identical bytes share a blob, and
