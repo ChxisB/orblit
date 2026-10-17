@@ -39,3 +39,15 @@ a later schema.
 
 Taking a name out or reordering them moves slots. Read the old save under the
 old schema and write what you want to keep by name.
+
+A `Condition` is one comparison on a name, such as a quest stage at least 2.
+`Condition.allHold` is true when every condition in a list holds. For "or",
+write two lists and let the first that holds win.
+
+```dart
+final ready = Condition('quest.cook.stage', Compare.greaterOrEqual, 2);
+ready.holds(table);
+```
+
+In a file a condition is `{"name": "quest.cook.stage", "op": ">=", "value":
+2}`. `Condition.fromJson` throws `FormatException` for anything else.
