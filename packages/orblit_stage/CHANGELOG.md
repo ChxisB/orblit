@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0
+
+- `scatterFrom` takes `rangeScale`, which multiplies every block layer's
+  `range`. A layer with no range stays unlimited. It changes no revision, so
+  the renderer keeps the buffers it holds. A game passes a
+  `DistancePolicy.fraction` to pull the grass in when frames run long.
+
 ## 0.9.0
 
 - `OrblitParticleSheet` draws a grid of particles that something else moves,

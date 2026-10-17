@@ -226,6 +226,7 @@ for a game that ships, downloads or mounts it as a unit.
 dart run orblit_asset:pack build build/assets/android --target android -o game.opack
 dart run orblit_asset:pack list game.opack
 dart run orblit_asset:pack check game.opack
+dart run orblit_asset:pack diff old.opack new.opack
 ```
 
 ```dart
@@ -241,6 +242,10 @@ final source = LayeredAssetSource([DirectoryAssetSource('assets'), pack]);
   `FilePackBytes` when the pack is done with.
 - **`read` does not hash.** `findCorrupt()` hashes every blob and returns the
   ids that changed. Run it after a download, not on every read.
+- **`pack diff old new` compares by name.** It lists added, removed and
+  changed assets, and exits 1 when a document in the new pack still names
+  an asset it dropped. Pass `--base` for the packs a patch stands on.
+  `PackDiff.between` and `MountedPacks.withBases` do the same in code.
 - **The target is stored.** A pack is for one cook target, because the
   textures in it are. `pack.target` says which.
 - **Same bytes, one blob.** Two assets with identical bytes share a blob, and
@@ -342,6 +347,12 @@ final pack = await AssetPack.open(
 - **`RangePackBytes` asks for a range at a time.** The header, then the
   directory, then one range for each asset read. The first answer says how
   long the pack is, so `length()` is not a second request.
+- **Reads made together are one request.** A read waits 2 ms. Reads with 16
+  KiB or less between them are joined, up to 1 MiB, with at most four
+  requests out. `RangePackBytes(..., batching: RangeBatching(...))` sets
+  those, and `read(at, bytes, priority: RangePriority.later)` on the
+  `RangePackBytes` lets a read wait behind urgent ones. An `AssetPack` reads
+  with `now`. The defaults have not been timed on a real host.
 - **The host has to answer `Range` with `206`.** A host that sends the whole
   file is refused with `PackRangeFailed`, and the body is not read. Serve
   `.opack` as `application/octet-stream` with no content encoding. A range

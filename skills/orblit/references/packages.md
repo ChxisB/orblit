@@ -12,12 +12,12 @@ the fullest reference.
 | `orblit_filament` | The renderer, composited by Flutter | `OrblitView`, `OrblitScene` (see [scene-api.md](scene-api.md)) |
 | `orblit_camera` | Cameras as shots: say what to frame, and a brain works out where to be and blends between shots. An arm holds a camera on the near side of a wall | `CameraBrain`, `VirtualCamera`, `FollowBody`, `ArmBody`, `HardLookAt`, `Lens`, `damp` |
 | `orblit_agent` | Steering behaviours (where to go) and behaviour trees (what to want) | `Steerable`, `Seek`, `Arrive`, `Separate`, `Blend`, `Brain`, `Selector`, `Sequence` |
-| `orblit_path` | Splines read by distance and ridden, rails, patrols, and routes round walls over a grid or a navmesh baked from a terrain or a mesh | `Spline`, `PathFollower`, `Rail`, `Patrol`, `NavGrid`, `NavMesh`, `bakeTerrain`, `bakeMesh`, `NavWalker` |
+| `orblit_path` | Splines read by distance and ridden, rails, patrols, and routes round walls over a grid or a navmesh baked from a terrain or a mesh | `Spline`, `PathFollower`, `Rail`, `Patrol`, `NavGrid`, `NavMesh`, `bakeTerrain`, `bakeMesh`, `NavWalker`, `NavLink`, `LinkPlanner` |
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
-| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
+| `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer`, `DistancePolicy` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
@@ -27,7 +27,7 @@ the fullest reference.
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
-| `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
+| `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `Pads`, `PadState` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
@@ -133,6 +133,15 @@ from a behaviour's `force(agent)`: `Seek(target)`, `Flee`,
 `Cohere`, `FollowPath`. Combine with
 `Blend([(behaviour: ..., weight: ...), ...])`.
 
+Crowds: `Avoid(preferred, neighbours, horizon: 2)` returns the force for the
+velocity nearest `preferred` that hits no neighbour within `horizon` seconds.
+Pass the velocity the route wants, such as the direction of the next path
+point times `maxSpeed`. Give `Steerable(priority: ...)` to make others give
+way: a neighbour of lower priority is not avoided. Update the agents in the
+same order each frame and a run repeats. It looks at every neighbour in the
+list, so pass the near ones for a big crowd. A crowd packed tighter than one
+agent width per lane jams and overlaps.
+
 Behaviour trees: build a `Node` from `Selector([...])`, `Sequence([...])`,
 `Check(name, (tick) => bool)` and `Do(name, (tick) => Status.running)`, plus
 `Invert`, `Repeat`, `Cooldown`, `Deadline` and `Parallel`. Give each agent a
@@ -163,8 +172,29 @@ cell where the cover's navigation bit is set; `bakeMesh(mesh)` and
 steerable, planner: mesh.findPath)` walks a `Steerable` along a route with
 `goTo(goal)` and `update(seconds)`; `hasRoute` is false when there was none.
 
-A route is planned once, a navmesh is a snapshot, a cell has one floor, and
-agents do not avoid each other (use `Separate`). Guide:
+Links: a `NavLink(from:, to:, kind:, cost: 0, agents: {}, gate:, twoWay: false)`
+is a jump, a ladder, a door or a teleporter that the ground does not give.
+`LinkPlanner(ground: mesh.findPath, links: [...])` plans over the ground and
+the links at once. `findRoute(from, to, agent: 'climber')` answers a list of
+`WalkStep(points)` and `LinkStep(link, reversed:)`, or null. The cost of a link
+is added to the metres walked. A link with `agents` is open only to those
+kinds. A link with a `gate` is shut while `lock(gate)` is in force, and
+`unlock(gate)` opens it; ask again to plan round the change. The planner moves
+nothing: the game plays the crossing by `link.kind`. A `NavWalker` follows
+points, not steps, so walk each `WalkStep` with it. Links are not in a file.
+
+Doors and crates: `grid.addObstacleRect(minX:, minZ:, maxX:, maxZ:)` and
+`grid.addObstacleCircle(x, z, radius)` shut cells and answer a `NavObstacle`.
+`lift()` opens them again, except cells a wall or another obstacle shuts. To
+move one, lift it and add another. Give a walker `isClear: grid.isClear` and
+the planner of the same grid, and it checks the next `lookahead` legs (3 by
+default) each `update`, plans again from where it stands when one is shut, and
+stands with its `goal` kept when there is no way. A `NavMesh` and an
+`inflated` grid are snapshots and do not follow an obstacle.
+
+A route is planned once unless the walker checks, a navmesh is a snapshot, a
+cell has one floor, and agents do not avoid each other (use `Separate`).
+Guide:
 https://orblitengine.com/docs/guides/paths/.
 
 ## orblit_collide
@@ -280,7 +310,10 @@ A packed atlas may have trimmed regions: place them with `offsetX`,
 `offsetY` and `placedSize`. `AtlasPackOptions` has `allowRotation` off by
 default; keep it off, since `OrblitSprite` takes an upright rectangle.
 `Parallax(layers).at(cameraX, seconds)` gives each layer's offset;
-`TileMap` and `Tileset` hold tile maps. Guide: `/guides/two-dimensions/`.
+`TileMap.read` reads a Tiled JSON map, infinite ones too. `TileLayer.at`
+leaves the flip bits off and `flipsAt` returns them. `placeOf` gives where
+a tile is drawn, anchored to the bottom left of its cell. Guide:
+`/guides/two-dimensions/`.
 
 ## orblit_ui
 
@@ -887,6 +920,18 @@ group's buffers. A model layer is one `OrblitObject` each (populations draw
 only the cube), keyed `objectKey + group.id * 1048576 + index`. Pass
 `models: false` to leave model layers out, for a view that cannot resolve
 their files. Rebuild when `placer.revision` moves, not every frame.
+`rangeScale: 0.5` halves every block layer's `range`. A layer with no range
+stays unlimited.
+
+View distance: `DistancePolicy({required ceiling, required high, required low, floor = 1, settle = 2})`
+steps the distance down when frames cost too much and back up when there is
+room. `update(cost, seconds)` takes one frame's cost and the time it was
+drawn at, in any unit, so long as `high` and `low` use it. Once every
+`settle` seconds it judges the mean cost since the last decision and moves
+one step: down above `high`, up below `low`, held between, so a cost that
+falls with the distance does not step it straight back. `steps` is the
+clipmap's `levels` for `terrainFrom`, and `fraction` is the share to pass as
+`rangeScale`. Nothing uses a policy unless the game makes one.
 
 Streaming: the renderer draws 256 regions at most, so a larger world is
 held a part at a time. `TerrainStreamer({required terrain, required source, loadRadius = 512, keepRadius, maxResident = 256, concurrency = 2})`

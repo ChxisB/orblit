@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:orblit_sequence/orblit_sequence.dart';
 import 'package:test/test.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -104,6 +106,33 @@ void main() {
       // Halfway between a small turn one way and a small turn the other is no
       // turn at all, not a half turn.
       expect(middle.w.abs(), closeTo(1, 1e-6));
+    });
+
+    test('turns steadily through keys exactly half a turn apart', () {
+      // Neither way round is shorter. Written out rather than turned from an
+      // angle, because cos(pi / 2) is a hair above zero and the sign check
+      // would not sit on its edge. A curve that took the long way, or swung
+      // through a reflected turn, would show here.
+      final channel = Channel<Quaternion>([
+        Key(0, Quaternion(0, 0, 0, 1), hold: Hold.curve),
+        Key(1, Quaternion(0, 1, 0, 0)),
+      ], quaternionMixer);
+
+      double turned(double t) {
+        final q = channel.at(t);
+        expect(q.length, closeTo(1, 1e-9));
+        expect(q.y, greaterThanOrEqualTo(0), reason: 'always the same way');
+        return 2 * math.atan2(q.y, q.w);
+      }
+
+      var before = turned(0);
+      for (var step = 1; step <= 20; step++) {
+        final angle = turned(step / 20);
+        expect(angle, greaterThan(before), reason: 'at ${step / 20}');
+        expect(turned(1 - step / 20) + angle, closeTo(math.pi, 1e-9));
+        before = angle;
+      }
+      expect(turned(0.5), closeTo(math.pi / 2, 1e-9));
     });
 
     test('moves a flag the way a line does', () {

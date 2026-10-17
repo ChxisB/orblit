@@ -49,6 +49,23 @@ void main() {
     expect(keys.length, 2);
   });
 
+  test('a range scale shortens a layer range and leaves the buffers', () {
+    const bare = ScatterLayer(name: 'moss', seed: 9, density: 2);
+    final (_, placer) = placed([grass, bare]);
+
+    final full = scatterFrom(placer, key: 0).populations;
+    final half = scatterFrom(placer, key: 0, rangeScale: 0.5).populations;
+
+    expect(half, hasLength(full.length));
+    for (final (i, population) in half.indexed) {
+      final layer = placer.layers[placer.groups[i].layer];
+      expect(population.range, layer.range * 0.5);
+      expect(population.revision, full[i].revision);
+      expect(identical(population.transforms, full[i].transforms), isTrue);
+    }
+    expect(half.map((p) => p.range).toSet(), {20, 0});
+  });
+
   test('an edit sends again only the region it moved', () {
     final (terrain, placer) = placed([grass]);
     final before = scatterFrom(placer, key: 0).populations;

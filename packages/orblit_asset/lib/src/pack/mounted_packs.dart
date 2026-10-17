@@ -35,7 +35,36 @@ final class PackMountRefused implements Exception {
 final class MountedPacks implements AssetSource {
   MountedPacks({required CookTarget target}) : _target = target.name;
 
+  /// Mounts [top] with the packs it was built on, found by hash in [pool].
+  ///
+  /// A patch holds only what it changes, so it means nothing without the
+  /// packs under it. [pool] may hold more than the chain needs and may list
+  /// its packs in any order. Throws [PackMountRefused] when a pack in the
+  /// chain names a base that [pool] does not hold.
+  factory MountedPacks.withBases(AssetPack top, Iterable<AssetPack> pool) {
+    final byHash = {for (final pack in pool) pack.hash: pack};
+    final chain = [top];
+    for (var base = top.base; base != null; base = chain.last.base) {
+      final under = byHash[base];
+      if (under == null) {
+        throw PackMountRefused(
+          'A pack in this chain was built on ${_short(base)} and that pack '
+          'was not given.',
+        );
+      }
+      chain.add(under);
+    }
+    final packs = MountedPacks(target: CookTarget(name: top.target))
+      ..start(chain.last);
+    chain.reversed.skip(1).forEach(packs.patch);
+    return packs;
+  }
+
   final String _target;
+
+  /// The cook target every mounted pack is for.
+  String get target => _target;
+
   final List<AssetPack> _chain = [];
   final List<AssetPack> _mods = [];
   Map<AssetId, AssetPack> _owner = const {};

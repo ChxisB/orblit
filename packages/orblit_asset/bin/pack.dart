@@ -9,10 +9,12 @@ import 'package:orblit_asset/orblit_asset.dart';
 ///   `... --base <pack>` once for each pack shipped, to write a patch.
 ///   `dart run orblit_asset:pack list <file>`
 ///   `dart run orblit_asset:pack check <file>`
+///   `dart run orblit_asset:pack diff <old> <new> [--base <pack>]...`
 ///
 /// Exit codes: 0 when it worked, 1 when a pack or bundle was bad, 2 when the
-/// arguments did not make sense. A build reads the code. The text is for a
-/// person.
+/// arguments did not make sense. A diff also exits 1 when a removed name is
+/// still used or a document could not be read. A build reads the code. The
+/// text is for a person.
 Future<void> main(List<String> arguments) async {
   if (arguments.isEmpty || arguments.first == '--help') {
     stdout.write(_usage);
@@ -26,6 +28,8 @@ Future<void> main(List<String> arguments) async {
         await _list(_onlyPath(arguments));
       case 'check':
         await _check(_onlyPath(arguments));
+      case 'diff':
+        await _diff(arguments.skip(1).toList());
       default:
         _usageError('unknown command "${arguments.first}"');
     }
@@ -54,6 +58,11 @@ Usage: dart run orblit_asset:pack <command>
       Prints what a pack holds.
   check <file>
       Hashes every blob. Exits 1 when a byte has changed.
+  diff <old> <new> [--base <pack>]...
+      Lists the assets added, removed and changed by name, and the documents
+      in <new> that still name an asset it dropped. A patch is read with the
+      packs it was built on. Give those with --base, in any order. Exits 1
+      when a dropped name is still used or a document cannot be read.
 ''';
 
 Never _usageError(String message) {
@@ -118,26 +127,35 @@ Future<PackSummary> _packOver(
 ) async {
   final sources = <FilePackBytes>[];
   try {
-    final packs = <AssetPack>[];
-    for (final path in bases) {
-      if (!File(path).existsSync()) {
-        throw FileSystemException('There is no such file', path);
-      }
-      final source = FilePackBytes(path);
-      sources.add(source);
-      packs.add(await AssetPack.open(source));
-    }
     return await packBundle(
       bundlePath: bundle,
       outPath: out,
       target: target,
-      base: packs,
+      base: await _openAll(bases, sources),
     );
   } finally {
     for (final source in sources) {
       await source.close();
     }
   }
+}
+
+/// Opens each of [paths], adding its file to [sources] so the caller can
+/// close them whatever happens.
+Future<List<AssetPack>> _openAll(
+  List<String> paths,
+  List<FilePackBytes> sources,
+) async {
+  final packs = <AssetPack>[];
+  for (final path in paths) {
+    if (!File(path).existsSync()) {
+      throw FileSystemException('There is no such file', path);
+    }
+    final source = FilePackBytes(path);
+    sources.add(source);
+    packs.add(await AssetPack.open(source));
+  }
+  return packs;
 }
 
 String _value(List<String> arguments, int index) {
@@ -202,4 +220,63 @@ Future<void> _check(String path) async {
   }
   stderr.writeln('pack: ${corrupt.length} assets do not match their hash.');
   exit(1);
+}
+
+Future<void> _diff(List<String> arguments) async {
+  final paths = <String>[];
+  final bases = <String>[];
+  for (var i = 0; i < arguments.length; i++) {
+    if (arguments[i] == '--base') {
+      bases.add(_value(arguments, i++));
+    } else {
+      paths.add(arguments[i]);
+    }
+  }
+  if (paths.length != 2) _usageError('diff takes an old pack and a new one');
+  final diff = await _compare(paths, bases);
+  _printDiff(diff);
+  if (!diff.isBroken) return;
+  stderr.writeln(
+    'pack: missing names ${diff.dangling.length}, '
+    'unreadable documents ${diff.unreadable.length}.',
+  );
+  exit(1);
+}
+
+/// Compares the two packs in [paths]. The packs a patch stands on are found
+/// among [bases] and the two packs themselves, so a patch on the old pack
+/// needs no flag.
+Future<PackDiff> _compare(List<String> paths, List<String> bases) async {
+  final sources = <FilePackBytes>[];
+  try {
+    final packs = await _openAll([...paths, ...bases], sources);
+    return await PackDiff.between(
+      before: MountedPacks.withBases(packs[0], packs),
+      after: MountedPacks.withBases(packs[1], packs),
+    );
+  } finally {
+    for (final source in sources) {
+      await source.close();
+    }
+  }
+}
+
+void _printDiff(PackDiff diff) {
+  void section(String label, List<String> lines) {
+    stdout.writeln('${label.padRight(11)}${lines.length}');
+    for (final line in lines) {
+      stdout.writeln('  $line');
+    }
+  }
+
+  section('added', [for (final id in diff.added) '$id']);
+  section('removed', [for (final id in diff.removed) '$id']);
+  section('changed', [
+    for (final c in diff.changed) '${c.id}  ${c.before} to ${c.after} bytes',
+  ]);
+  section('dangling', [
+    for (final d in diff.dangling) '${d.document} names ${d.missing}',
+  ]);
+  if (diff.unreadable.isEmpty) return;
+  section('unreadable', [for (final id in diff.unreadable) '$id']);
 }

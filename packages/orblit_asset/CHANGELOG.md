@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.17.0
+
+- **`pack diff <old> <new>`.** Lists the assets added, removed and changed
+  by name, with the old and new size of each change, and the documents of
+  the new pack that still name an asset it dropped. It reads no blob for
+  the three lists. It exits 1 when a dropped name is still used or a
+  document is not JSON, so CI can hold a patch that would blank a model.
+  Packs for two targets are refused, because every cooked asset would show
+  as changed.
+- **Patches are read with their base.** `--base <pack>` gives the packs a
+  patch was built on, in any order. The old and the new pack are searched
+  too. A name the patch did not touch counts as present.
+- **`PackDiff.between`.** The same comparison for code: it takes two
+  `MountedPacks` and returns `added`, `removed`, `changed`, `dangling` and
+  `unreadable`. Dangling means gone. A string, or a key, in an `.oscene`,
+  `.oprefab`, `.oclip`, `.oblend`, `.ocutscene`, `.obonemap`, `.omat`,
+  `.oterrain`, `.oui` or `.opath` that is exactly the name of an asset the
+  new pack dropped. Names that were never in the old pack are the build's
+  to refuse, and free text is never a name. The documents are only read
+  when something was removed. It throws `PackMountRefused` for two targets.
+- **`MountedPacks.withBases(top, pool)`.** Mounts a pack with the packs it
+  was built on, found by hash in any order. It throws `PackMountRefused`
+  for a base the pool does not hold. `MountedPacks.target` names the cook
+  target.
+
+## 0.16.0
+
+- **`RangePackBytes` sends reads made together as fewer requests.** A read
+  waits two milliseconds. Reads whose gap is 16 KiB or less become one
+  request, cut at 1 MiB, and each asker gets its own copy of its bytes. Forty
+  adjacent blobs are one request, not forty. At most four requests are out.
+- **`RangeBatching`.** Sets `mergeGap`, `maxBatch`, `parallel` and `delay`.
+  Pass it as `RangePackBytes(..., batching:)`. The defaults are a guess and
+  have not been timed on a real host.
+- **`RangePriority`.** `read(at, bytes, priority:)` takes `now`, the default,
+  or `later`. A `later` read is sent only when no urgent one is queued, and
+  never in the last free request, so an urgent read has a slot. A `later`
+  read for bytes already queued as `now` stays urgent, and a `now` read for
+  bytes queued as `later` moves them up.
+- The checks from 0.12.0 still hold for every request: `206` only, and a
+  changed total length is refused. A failed request fails every read in it.
+- Reads inside a request already sent are not answered from it, and the
+  bytes between joined reads are dropped. `AssetPack` reads with `now`.
+
 ## 0.15.0
 
 - **`TerrainImporter`.** Claims `.oterrain` and `.oregion` and is one of the

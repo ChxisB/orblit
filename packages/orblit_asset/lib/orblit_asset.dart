@@ -85,6 +85,7 @@ export 'src/pack/bundled_pack.dart'
 export 'src/pack/mounted_packs.dart' show MountedPacks, PackMountRefused;
 export 'src/pack/pack_bundle.dart' show packBundle;
 export 'src/pack/pack_bytes.dart' show MemoryPackBytes, PackBytes;
+export 'src/pack/pack_diff.dart' show ChangedAsset, DanglingReference, PackDiff;
 export 'src/pack/pack_file.dart' show FilePackBytes;
 export 'src/pack/pack_folder.dart' show PackFolder;
 export 'src/pack/pack_listing.dart' show PackListing, UnreadablePack;
@@ -109,6 +110,7 @@ export 'src/net/network_asset_source.dart' show NetworkAssetSource;
 export 'src/net/picture_size.dart' show PictureSize, pictureSizeOf;
 export 'src/net/policy.dart' show AssetOrigin, FetchPolicy, FetchRefused;
 export 'src/net/range_pack_bytes.dart' show PackRangeFailed, RangePackBytes;
+export 'src/net/range_queue.dart' show RangeBatching, RangePriority;
 export 'src/net/progressive.dart' show AssetStage, ProgressiveFetch;
 export 'src/net/records.dart'
     show

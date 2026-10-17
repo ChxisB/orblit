@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+- **`DistancePolicy`.** Steps a view distance down when frames cost too much
+  and back up when there is room. `update(cost, seconds)` takes each frame,
+  and once every `settle` seconds it moves `steps` one way on the mean cost
+  since the last decision: down above `high`, up below `low`, held between.
+  `steps` is a ring count for the clipmap, and `fraction` is the share of a
+  scatter layer's range to keep. It reads no clock, so a test can script
+  the time. Nothing uses one unless a game makes it.
+
 ## 0.4.0
 
 - **`TerrainStreamer`.** Keeps the regions of a `Terrain` that are within

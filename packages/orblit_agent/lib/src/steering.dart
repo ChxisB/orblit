@@ -15,6 +15,7 @@ class Steerable {
     this.maxSpeed = 4,
     this.maxForce = 8,
     this.radius = 0.5,
+    this.priority = 0,
   }) : position = position ?? Vector3.zero(),
        velocity = velocity ?? Vector3.zero();
 
@@ -33,6 +34,10 @@ class Steerable {
 
   /// How wide it is, for the behaviours that care about touching.
   final double radius;
+
+  /// Who gives way. [Avoid] steps round a neighbour of the same priority or
+  /// higher and ignores a lower one, which is expected to step round it.
+  final int priority;
 
   double get speed => velocity.length;
 
@@ -298,6 +303,146 @@ class Separate extends Steering {
     if (urgency < 1e-9) return Vector3.zero();
     return away.normalized() * (self.maxSpeed * urgency.clamp(0.0, 1.0)) -
         self.velocity;
+  }
+}
+
+/// Steps round whatever it would walk into.
+///
+/// Of the velocities it could take, it picks the one that stays nearest to
+/// [preferred] and hits no neighbour within [horizon] seconds, or hits the
+/// latest one. A neighbour is assumed to keep the velocity it has, so two
+/// agents meeting head on both turn the same way about the vertical axis and
+/// pass on opposite sides. The candidates and their order are fixed, so the
+/// same crowd in the same order gives the same run.
+///
+/// [preferred] is the velocity the route wants, such as a [Seek] without the
+/// subtraction. It is capped at the agent's top speed. Neighbours of lower
+/// [Steerable.priority] are not avoided. The force is the velocity chosen
+/// minus the one it has, as [Seek] gives, so it blends with the others.
+///
+/// shortcut: every neighbour in the list is looked at, so a crowd of n costs
+/// n squared. Fine for a few hundred. Upgrade to a cell index for the
+/// neighbours before a crowd is in the thousands.
+final class Avoid extends Steering {
+  Avoid(
+    this.preferred,
+    this.neighbours, {
+    this.horizon = 2,
+    this.turns = 8,
+    this.weight = 2,
+  }) {
+    if (!(horizon > 0 && horizon.isFinite)) {
+      throw ArgumentError.value(horizon, 'horizon', 'Must be above zero.');
+    }
+    if (turns < 1) {
+      throw ArgumentError.value(turns, 'turns', 'Must be at least one.');
+    }
+    if (!(weight >= 0 && weight.isFinite)) {
+      throw ArgumentError.value(weight, 'weight', 'Must be zero or more.');
+    }
+  }
+
+  final Vector3 preferred;
+  final List<Steerable> neighbours;
+
+  /// How far ahead, in seconds, a hit is looked for.
+  final double horizon;
+
+  /// How many steps of turn it tries from straight on to straight back, each
+  /// side.
+  final int turns;
+
+  /// How much a near hit counts against a change of velocity. The cost of a
+  /// hit is this over the seconds until it, against the metres a second the
+  /// velocity moved from [preferred].
+  final double weight;
+
+  @override
+  Vector3 force(Steerable self) {
+    final wanted = _truncate(preferred, self.maxSpeed);
+    final threats = [
+      for (final other in neighbours)
+        if (_matters(self, other)) other,
+    ];
+    if (threats.isEmpty) return wanted - self.velocity;
+
+    var best = wanted;
+    var bestCost = double.infinity;
+    for (final candidate in _candidates(wanted)) {
+      final cost = _cost(self, candidate, wanted, threats);
+      if (cost < bestCost) {
+        best = candidate;
+        bestCost = cost;
+      }
+    }
+    return best - self.velocity;
+  }
+
+  bool _matters(Steerable self, Steerable other) {
+    if (other.priority < self.priority) return false;
+    final reach =
+        (self.maxSpeed + other.maxSpeed) * horizon + self.radius + other.radius;
+    return self.position.distanceTo(other.position) <= reach;
+  }
+
+  /// The velocity wanted first, then turns of it either side in growing
+  /// steps, positive first, each at full speed and at half, then standing
+  /// still. Positive turns an agent heading along +x towards -z, which is the
+  /// hand every agent favours when two meet head on.
+  Iterable<Vector3> _candidates(Vector3 wanted) sync* {
+    yield wanted;
+    for (var step = 1; step <= turns; step++) {
+      for (final sign in const [1, -1]) {
+        final turned = _turned(wanted, sign * step * math.pi / turns);
+        yield turned;
+        yield turned * 0.5;
+      }
+    }
+    yield wanted * 0.5;
+    yield Vector3.zero();
+  }
+
+  double _cost(
+    Steerable self,
+    Vector3 candidate,
+    Vector3 wanted,
+    List<Steerable> threats,
+  ) {
+    var soonest = double.infinity;
+    for (final other in threats) {
+      final hit = _timeToHit(self, other, candidate);
+      if (hit < soonest) soonest = hit;
+    }
+    final change = candidate.distanceTo(wanted);
+    if (soonest >= horizon) return change;
+    // Floored so a hit this instant costs a large number. Divided by zero it
+    // would be infinity, and a weight of zero would make it not a number.
+    return change + weight / math.max(soonest, 1e-3);
+  }
+
+  /// Seconds until [self], moving at [velocity], touches [other], moving as
+  /// it is, or infinity if it never does. Zero if they already touch and are
+  /// closing.
+  static double _timeToHit(Steerable self, Steerable other, Vector3 velocity) {
+    final offset = other.position - self.position;
+    final relative = velocity - other.velocity;
+    final reach = self.radius + other.radius;
+    final closing = offset.dot(relative);
+    final gap = offset.dot(offset) - reach * reach;
+    if (gap < 0) return closing > 0 ? 0 : double.infinity;
+
+    final speedSquared = relative.dot(relative);
+    if (closing <= 0 || speedSquared < 1e-12) return double.infinity;
+    final discriminant = closing * closing - speedSquared * gap;
+    if (discriminant <= 0) return double.infinity;
+    return (closing - math.sqrt(discriminant)) / speedSquared;
+  }
+
+  /// [v] turned by [angle] about the vertical axis.
+  static Vector3 _turned(Vector3 v, double angle) {
+    final c = math.cos(angle);
+    final s = math.sin(angle);
+    return Vector3(v.x * c + v.z * s, v.y, -v.x * s + v.z * c);
   }
 }
 
