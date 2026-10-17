@@ -17,6 +17,7 @@ the fullest reference.
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
+| `orblit_progress` | Named small integers for a game's progress: quest stages, skill levels, flags. A schema names them, a table holds them and never changes, and a write gives the changes to send to one player | `ProgressSchema`, `Whole`, `Slice`, `ProgressTable`, `Changes` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
@@ -940,6 +941,14 @@ Traps:
 Guide: `/guides/terrain/`. The gallery's Terrain example drives a box over
 hills with `heightAt` and `normalAt`, and scatters grass, stones and trees
 over them.
+
+## orblit_progress
+
+A `ProgressSchema` lists `Whole` names (a full unsigned 32 bit integer) and
+`Slice` names (some bits of a whole). `ProgressTable.set(name, value)` returns
+the new table and the `Changes`, which `encode` to six bytes a slot. Add
+names at the end and older saves still load. A value that does not fit its
+bits throws `RangeError`. `Changes.tryDecode` returns null for bad bytes.
 
 ## More worked examples
 

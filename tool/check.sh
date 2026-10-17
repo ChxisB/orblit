@@ -26,6 +26,7 @@ PACKAGES=(
   packages/orblit_native
   packages/orblit_noise
   packages/orblit_path
+  packages/orblit_progress
   packages/orblit_rig
   packages/orblit_scene
   packages/orblit_sequence
