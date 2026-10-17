@@ -22,6 +22,7 @@ final class NavGrid {
     this.originX = 0,
     this.originZ = 0,
   }) : _open = Uint8List(width * depth),
+       _shut = Uint16List(width * depth),
        _heights = Float32List(width * depth),
        _weights = Float32List(width * depth) {
     if (width <= 0 || depth <= 0) {
@@ -45,6 +46,10 @@ final class NavGrid {
   final double originZ;
 
   final Uint8List _open;
+
+  /// How many standing obstacles shut each cell. Apart from [_open] so that
+  /// lifting one never opens a cell a wall closes or another obstacle shuts.
+  final Uint16List _shut;
   final Float32List _heights;
   final Float32List _weights;
 
@@ -52,8 +57,10 @@ final class NavGrid {
 
   bool _inside(int i, int j) => i >= 0 && j >= 0 && i < width && j < depth;
 
-  /// Whether something can stand in cell ([i], [j]). Off the grid is closed.
-  bool isOpen(int i, int j) => _inside(i, j) && _open[j * width + i] == 1;
+  /// Whether something can stand in cell ([i], [j]). Off the grid is closed,
+  /// and so is a cell a standing [NavObstacle] shuts.
+  bool isOpen(int i, int j) =>
+      _inside(i, j) && _open[j * width + i] == 1 && _shut[j * width + i] == 0;
 
   void setOpen(int i, int j, {required bool open}) {
     if (_inside(i, j)) _open[j * width + i] = open ? 1 : 0;
@@ -101,19 +108,60 @@ final class NavGrid {
     required double maxX,
     required double maxZ,
   }) {
+    for (final at in _rectCells(minX, minZ, maxX, maxZ)) {
+      _open[at] = 0;
+    }
+  }
+
+  /// Closes every cell whose middle is within [radius] of ([x], [z]).
+  void blockCircle(double x, double z, double radius) {
+    for (final at in _circleCells(x, z, radius)) {
+      _open[at] = 0;
+    }
+  }
+
+  /// Shuts every cell the rectangle touches until the obstacle is lifted.
+  ///
+  /// A door that closes, a crate pushed into a corridor. Unlike [blockRect]
+  /// it can be undone, and only the cells it touched change either way.
+  NavObstacle addObstacleRect({
+    required double minX,
+    required double minZ,
+    required double maxX,
+    required double maxZ,
+  }) => _shutting(_rectCells(minX, minZ, maxX, maxZ));
+
+  /// Shuts every cell whose middle is within [radius] of ([x], [z]) until the
+  /// obstacle is lifted.
+  NavObstacle addObstacleCircle(double x, double z, double radius) =>
+      _shutting(_circleCells(x, z, radius));
+
+  NavObstacle _shutting(Iterable<int> cells) {
+    final shut = cells.toList(growable: false);
+    for (final at in shut) {
+      _shut[at]++;
+    }
+    return NavObstacle._(this, shut);
+  }
+
+  Iterable<int> _rectCells(
+    double minX,
+    double minZ,
+    double maxX,
+    double maxZ,
+  ) sync* {
     final first = math.max(0, ((minX - originX) / cell).floor());
     final last = math.min(width - 1, ((maxX - originX) / cell).floor());
     final top = math.max(0, ((minZ - originZ) / cell).floor());
     final bottom = math.min(depth - 1, ((maxZ - originZ) / cell).floor());
     for (var j = top; j <= bottom; j++) {
       for (var i = first; i <= last; i++) {
-        _open[j * width + i] = 0;
+        yield j * width + i;
       }
     }
   }
 
-  /// Closes every cell whose middle is within [radius] of ([x], [z]).
-  void blockCircle(double x, double z, double radius) {
+  Iterable<int> _circleCells(double x, double z, double radius) sync* {
     final reach = radius / cell;
     final ci = ((x - originX) / cell - 0.5).round();
     final cj = ((z - originZ) / cell - 0.5).round();
@@ -123,14 +171,15 @@ final class NavGrid {
         if (!_inside(i, j)) continue;
         final dx = originX + (i + 0.5) * cell - x;
         final dz = originZ + (j + 0.5) * cell - z;
-        if (dx * dx + dz * dz <= radius * radius) _open[j * width + i] = 0;
+        if (dx * dx + dz * dz <= radius * radius) yield j * width + i;
       }
     }
   }
 
   /// A copy with every cell within [radius] of a closed one closed too, so a
   /// route planned on it stays that far from every wall for something that
-  /// size. The edge of the grid is not a wall.
+  /// size. The edge of the grid is not a wall. A cell a standing obstacle
+  /// shuts counts as closed, and the copy does not change when it is lifted.
   NavGrid inflated(double radius) {
     final out = NavGrid(
       width: width,
@@ -144,7 +193,7 @@ final class NavGrid {
     out._open.setAll(0, _open);
     for (var j = 0; j < depth; j++) {
       for (var i = 0; i < width; i++) {
-        if (_open[j * width + i] == 0) {
+        if (!isOpen(i, j)) {
           out.blockCircle(
             originX + (i + 0.5) * cell,
             originZ + (j + 0.5) * cell,
@@ -354,5 +403,30 @@ final class NavGrid {
       run.add(at);
     }
     return run.reversed.toList();
+  }
+}
+
+/// Cells of a [NavGrid] shut for as long as it stands.
+///
+/// Made by [NavGrid.addObstacleRect] or [NavGrid.addObstacleCircle]. To move
+/// one, lift it and add another.
+final class NavObstacle {
+  NavObstacle._(this._grid, this._cells);
+
+  final NavGrid _grid;
+  final List<int> _cells;
+  bool _standing = true;
+
+  /// Whether the cells are still shut by this obstacle.
+  bool get standing => _standing;
+
+  /// Opens the cells it shut, except any a wall or another obstacle also
+  /// shuts. Lifting one that is not standing does nothing.
+  void lift() {
+    if (!_standing) return;
+    _standing = false;
+    for (final at in _cells) {
+      _grid._shut[at]--;
+    }
   }
 }
