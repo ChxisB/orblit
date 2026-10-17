@@ -28,6 +28,7 @@ PACKAGES=(
   packages/orblit_path
   packages/orblit_progress
   packages/orblit_rig
+  packages/orblit_save
   packages/orblit_scene
   packages/orblit_sequence
   packages/orblit_sprite
