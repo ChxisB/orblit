@@ -361,6 +361,57 @@ void main() {
       expect(again['street1/lamp3/shade']!.parent, 'street1/lamp3/bulb');
     });
 
+    test('a change saved on a street reaches it again from the file', () {
+      var document = opened(scene([stub('street1', streetAsset)]), source);
+      document = movedTo(document, 'street1/lamp3/bulb', 0, 4);
+      final saved = SceneDocument.decode(
+        foldInstances(document, source).encode(),
+      );
+
+      expect(saved.problems, isEmpty);
+      final again = opened(saved.document, source);
+      expect(positionOf(again, 'street1/lamp3/bulb').y, 4);
+    });
+
+    test('a change to the instance beats one the street made to its lamp', () {
+      var inStreet = opened(street().document, source);
+      inStreet = movedTo(inStreet, 'lamp3/bulb', 0, 3);
+      final tall = library({
+        lampAsset: lamp(),
+        streetAsset: PrefabDocument(
+          name: 'Street',
+          root: 'street',
+          document: foldInstances(inStreet, source),
+        ),
+      });
+      var document = opened(
+        scene([stub('street1', streetAsset), stub('street2', streetAsset)]),
+        tall,
+      );
+      expect(positionOf(document, 'street1/lamp3/bulb').y, 3);
+
+      document = movedTo(document, 'street1/lamp3/bulb', 0, 4);
+      final again = opened(
+        SceneDocument.decode(foldInstances(document, tall).encode()).document,
+        tall,
+      );
+
+      expect(positionOf(again, 'street1/lamp3/bulb').y, 4);
+      expect(positionOf(again, 'street2/lamp3/bulb').y, 3);
+    });
+
+    test('something hung inside the inner prefab opens in either order', () {
+      final flag = thing('flag', parent: 'street1/lamp3/bulb');
+      for (final entities in [
+        [flag, stub('street1', streetAsset)],
+        [stub('street1', streetAsset), flag],
+      ]) {
+        final document = opened(scene(entities), source);
+
+        expect(document['flag']!.parent, 'street1/lamp3/bulb');
+      }
+    });
+
     test('one that contains itself stays closed instead of looping', () {
       final loop = PrefabDocument(
         name: 'Loop',
