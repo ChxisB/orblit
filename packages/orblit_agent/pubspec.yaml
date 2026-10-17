@@ -2,7 +2,7 @@ name: orblit_agent
 description: >-
   What moves things that decide for themselves — steering behaviours that say
   where to go, and behaviour trees that say what to want.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

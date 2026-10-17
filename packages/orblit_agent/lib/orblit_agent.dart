@@ -37,6 +37,7 @@ export 'src/steering.dart'
     show
         Align,
         Arrive,
+        Avoid,
         Blend,
         Cohere,
         Evade,

@@ -133,6 +133,15 @@ from a behaviour's `force(agent)`: `Seek(target)`, `Flee`,
 `Cohere`, `FollowPath`. Combine with
 `Blend([(behaviour: ..., weight: ...), ...])`.
 
+Crowds: `Avoid(preferred, neighbours, horizon: 2)` returns the force for the
+velocity nearest `preferred` that hits no neighbour within `horizon` seconds.
+Pass the velocity the route wants, such as the direction of the next path
+point times `maxSpeed`. Give `Steerable(priority: ...)` to make others give
+way: a neighbour of lower priority is not avoided. Update the agents in the
+same order each frame and a run repeats. It looks at every neighbour in the
+list, so pass the near ones for a big crowd. A crowd packed tighter than one
+agent width per lane jams and overlaps.
+
 Behaviour trees: build a `Node` from `Selector([...])`, `Sequence([...])`,
 `Check(name, (tick) => bool)` and `Do(name, (tick) => Status.running)`, plus
 `Invert`, `Repeat`, `Cooldown`, `Deadline` and `Parallel`. Give each agent a
