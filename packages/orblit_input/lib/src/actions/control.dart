@@ -64,7 +64,10 @@ Control? _find<E extends Enum>(
   List<E> values,
   String name,
   Control Function(E) make,
-) => values.asNameMap().containsKey(name) ? make(values.byName(name)) : null;
+) {
+  final value = values.asNameMap()[name];
+  return value == null ? null : make(value);
+}
 
 /// A key, by the name the game gives it.
 final class KeyControl extends Control {

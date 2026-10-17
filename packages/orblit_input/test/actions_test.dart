@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'dart:math' as math;
 
 import 'package:orblit_input/orblit_input.dart';
@@ -622,6 +624,48 @@ void main() {
         [map.isDown('jump'), map.wasReleased('jump'), map.wasTapped('jump')],
         [false, true, false],
       );
+    });
+
+    test('keep a held button down through a load that changes nothing', () {
+      final map = actionMap();
+      map.bindings.rebind('jump', const KeyControl('KeyJ'), context: 'play');
+      map.update(frame(keys: {'KeyJ'}), now: ms(0));
+      map.update(frame(keys: {'KeyJ'}), now: ms(16));
+
+      map.bindings.load(jsonDecode(jsonEncode(map.bindings.toJson())));
+      map.update(frame(keys: {'KeyJ'}), now: ms(32));
+
+      expect(
+        [map.isDown('jump'), map.wasReleased('jump')],
+        [true, false],
+        reason: 'the player got the same bindings back',
+      );
+    });
+
+    test('cut a held button when a load changes its key', () {
+      final map = actionMap();
+      map.update(frame(keys: {'Space'}), now: ms(0));
+
+      map.bindings.load({
+        'contexts': {
+          'play': {
+            'jump': [
+              {'key': 'KeyJ'},
+            ],
+          },
+        },
+      });
+      map.update(frame(keys: {'Space'}), now: ms(16));
+
+      expect([map.isDown('jump'), map.wasReleased('jump')], [false, true]);
+    });
+
+    test('count a control that is down on the first update as a press', () {
+      final map = actionMap();
+
+      map.update(frame(keys: {'Space'}), now: ms(0));
+
+      expect(map.wasPressed('jump'), isTrue);
     });
 
     test('go to the top when activated again', () {

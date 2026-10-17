@@ -102,8 +102,10 @@ is switched off. A key held while the menu closes does not press anything.
 A rebinding screen asks `input.bindings.clash(...)` and calls
 `input.bindings.rebind(...)`. `NextInput` finds the control to pass in. A
 stick pushed left comes back as the left half of that axis, so "steer left"
-gets the push the player made. `input.bindings.toJson()` returns only the
-slots the player changed, and `load` reads it back. The game writes the file.
+gets the push the player made. Only the same control clashes, so a stick and
+its axes do not. `input.bindings.toJson()` returns only the slots the player
+changed, with their scale and half, and `load` reads it back. The game writes
+the file.
 
 `FrameControls` sees what is held at the moment of the poll. A pad button
 pressed and released between two polls is in `PadFrame.events` and not in the

@@ -31,17 +31,24 @@ final class Binding {
   /// This binding on another control.
   ///
   /// The scale, part and shaping stay, so a player who rebinds a key does not
-  /// change which way it steers. A whole stick has no sign or half of its
-  /// own, so moving to or from one starts again at a scale of 1 on x. [scale]
-  /// and [part] replace what would stay.
+  /// change which way it steers. A whole stick has no half of its own, so
+  /// moving to or from one starts again on x. A both-ways axis carries its
+  /// own sign, which a key or a half does not, so moving to or from one
+  /// starts again at a scale of 1. [scale] and [part] replace what would
+  /// stay.
   Binding withControl(Control control, {double? scale, AxisPart? part}) {
-    final restart =
+    final restartsPart =
         (control is PadStickControl) != (this.control is PadStickControl);
+    final restartsScale =
+        restartsPart || _bothWays(control) != _bothWays(this.control);
     return Binding(
       control,
-      scale: scale ?? (restart ? 1 : this.scale),
-      part: part ?? (restart ? AxisPart.x : this.part),
+      scale: scale ?? (restartsScale ? 1 : this.scale),
+      part: part ?? (restartsPart ? AxisPart.x : this.part),
       shaping: shaping,
     );
   }
 }
+
+bool _bothWays(Control control) =>
+    control is PadAxisControl && control.side == AxisSide.both;

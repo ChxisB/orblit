@@ -71,6 +71,9 @@ final class ActionMap {
   ///
   /// The clock is passed in so that a replay and a test decide what time it
   /// is. Call it once a frame, before asking about any action.
+  ///
+  /// A control that is down on the first call counts as a press. After that,
+  /// one that is down when its binding appears has to come up first.
   void update(ControlSource source, {required Duration now}) {
     final shown = _shown();
     for (final action in _actions.values) {
@@ -90,7 +93,8 @@ final class ActionMap {
         _buttons[name]!.advance(
           down: list?.any((b) => _scalar(b, source) >= pressPoint) ?? false,
           // Bindings are replaced, never edited, so a new list is a new
-          // meaning. The first frame has nothing to differ from.
+          // meaning. The first frame has nothing to differ from, so a test
+          // can press on it.
           changed: _seen.containsKey(name) && !identical(_seen[name], list),
           now: now,
           gestures: action.gestures,
@@ -144,6 +148,8 @@ final class ActionMap {
 
   /// What each action reads from now: the first context from the top that
   /// binds it, stopping after one that blocks.
+  // shortcut: a new map every update, which a game with hundreds of actions
+  // would feel. Cache it between changes of the stack and the bindings then.
   Map<String, List<Binding>> _shown() {
     final shown = <String, List<Binding>>{};
     for (final context in _stack.reversed) {

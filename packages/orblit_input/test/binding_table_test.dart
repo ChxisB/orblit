@@ -181,6 +181,38 @@ void main() {
       expect([onKey.scale, onKey.part], [1, AxisPart.x]);
     });
 
+    test('starts the scale again for a both-ways axis, not between halves', () {
+      const both = PadAxisControl(PadAxis.leftX);
+      const other = PadAxisControl(PadAxis.rightX);
+      const positive = PadAxisControl(PadAxis.leftX, side: AxisSide.positive);
+      const negative = PadAxisControl(PadAxis.leftX, side: AxisSide.negative);
+      double scaleOf() => table.bindingsIn('play')['steer']!.first.scale;
+
+      table.rebind('steer', both, context: 'play');
+      expect(scaleOf(), 1, reason: 'a key at -1 does not turn the axis round');
+
+      table.rebind('steer', other, context: 'play', scale: -1);
+      table.rebind('steer', both, context: 'play');
+      expect(scaleOf(), -1, reason: 'both ways to both ways keeps the sign');
+
+      table.rebind('steer', positive, context: 'play');
+      expect(scaleOf(), 1);
+
+      table.rebind('steer', positive, context: 'play', scale: -1);
+      table.rebind('steer', negative, context: 'play');
+      expect(scaleOf(), -1, reason: 'a half says which way the action goes');
+    });
+
+    test('refuses a scale that is not a finite number', () {
+      for (final scale in [double.nan, double.infinity]) {
+        expect(
+          () => table.rebind('steer', left, context: 'play', scale: scale),
+          throwsA(isA<ArgumentError>().having((e) => e.name, 'name', 'scale')),
+        );
+      }
+      expect(controlsOf('steer').first, const KeyControl('KeyA'));
+    });
+
     test('binds an action the context left out', () {
       table.rebind('fire', left, context: 'menu');
 
@@ -265,6 +297,34 @@ void main() {
       table.rebind('jump', space, context: 'play');
 
       expect(controlsOf('jump').first, space);
+    });
+
+    test('changing only the half of a shared key is not a clash', () {
+      const keyD = KeyControl('KeyD');
+
+      table.rebind('move', keyD, context: 'play', slot: 1, part: AxisPart.y);
+
+      expect(table.bindingsIn('play')['move']![1].part, AxisPart.y);
+      expect(controlsOf('steer')[1], keyD);
+      expect(saved(table), {
+        'contexts': {
+          'play': {
+            'move': [
+              null,
+              {'key': 'KeyD', 'part': 'y'},
+              null,
+              null,
+              null,
+            ],
+          },
+        },
+      });
+      expect(
+        table.clash('move', keyD, context: 'play', slot: 1),
+        isNull,
+        reason: 'the slot has it already',
+      );
+      expect(table.clash('move', keyD, context: 'play', slot: 0), 'steer');
     });
 
     test('swaps with the action that had it', () {
@@ -354,6 +414,105 @@ void main() {
       );
       fresh.update(frame(keys: {'KeyJ'}), now: ms(16));
       expect(fresh.isDown('jump'), isTrue);
+    });
+
+    test('keeps the scale and half a player chose', () {
+      const half = PadAxisControl(PadAxis.rightY, side: AxisSide.negative);
+      table.rebind(
+        'steer',
+        const PadAxisControl(PadAxis.leftX),
+        context: 'play',
+        scale: -1,
+      );
+      table.rebind(
+        'steer',
+        const KeyControl('ArrowRight'),
+        context: 'play',
+        slot: 1,
+        scale: 0.5,
+      );
+      table.rebind('fire', const KeyControl('KeyF'), context: 'play', scale: 2);
+      table.rebind(
+        'move',
+        half,
+        context: 'play',
+        slot: 5,
+        scale: -1,
+        part: AxisPart.y,
+      );
+      table.rebind('move', left, context: 'play', slot: 1, part: AxisPart.y);
+
+      expect(saved(table), {
+        'contexts': {
+          'play': {
+            'steer': [
+              {'padAxis': 'leftX', 'scale': -1},
+              {'key': 'ArrowRight', 'scale': 0.5},
+            ],
+            'fire': [
+              {'key': 'KeyF', 'scale': 2},
+            ],
+            'move': [
+              null,
+              {'key': 'ArrowLeft', 'part': 'y'},
+              null,
+              null,
+              null,
+              {'padAxisNegative': 'rightY', 'scale': -1, 'part': 'y'},
+            ],
+          },
+        },
+      });
+      final fresh = actionMap();
+      fresh.bindings.load(saved(table));
+      expect(saved(fresh.bindings), saved(table));
+      for (final action in ['steer', 'fire', 'move']) {
+        final now = fresh.bindings.bindingsIn('play')[action]!;
+        final was = table.bindingsIn('play')[action]!;
+        expect(
+          [for (final b in now) (b.control, b.scale, b.part)],
+          [for (final b in was) (b.control, b.scale, b.part)],
+        );
+      }
+    });
+
+    test('leaves a slot at the default when its scale or half is wrong', () {
+      table.load({
+        'contexts': {
+          'play': {
+            'jump': [
+              {'key': 'KeyJ', 'scale': 'big'},
+              {'padButton': 'north', 'scale': double.infinity},
+              {'key': 'KeyK', 'part': 'z'},
+              {'key': 'KeyL', 'part': 1},
+              {'key': 'KeyM', 'scale': null},
+            ],
+          },
+        },
+      });
+
+      expect(controlsOf('jump'), [
+        space,
+        const PadButtonControl(PadButton.south),
+      ]);
+    });
+
+    test('takes only the controls an action can take from a list', () {
+      table.load({
+        'contexts': {
+          'play': {
+            'steer': [
+              {'padStick': 'left'},
+              {'key': 'KeyZ'},
+            ],
+          },
+        },
+      });
+
+      expect(controlsOf('steer'), [
+        const KeyControl('KeyA'),
+        const KeyControl('KeyZ'),
+      ]);
     });
 
     test('lets a changed default through to a player who left it alone', () {
