@@ -27,6 +27,7 @@ PACKAGES=(
   packages/orblit_noise
   packages/orblit_path
   packages/orblit_progress
+  packages/orblit_quest
   packages/orblit_rig
   packages/orblit_save
   packages/orblit_scene

@@ -602,6 +602,7 @@ onto another skeleton, blends that mix and fade them, and cutscenes),
 `orblit_terrain` (ground as regions of heights, standing on it, and what is
 scattered over it),
 `orblit_progress` (named small integers for quest stages, levels and flags),
+`orblit_quest` (quests as `.oquest` files, kept as a stage in the progress table),
 `orblit_save` (saves for a game server, written off the tick),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or

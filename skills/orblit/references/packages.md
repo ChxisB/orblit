@@ -18,6 +18,7 @@ the fullest reference.
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_progress` | Named small integers for a game's progress: quest stages, skill levels, flags. A schema names them, a table holds them and never changes, and a write gives the changes to send to one player | `ProgressSchema`, `Whole`, `Slice`, `ProgressTable`, `Changes` |
+| `orblit_quest` | Quests as data: an ordered list of stages kept as one integer in a progress table, read from `.oquest` files. The journal text, the requirements and the completion follow from the stage | `Quest`, `Stage`, `QuestBook`, `Moved`, `Refused` |
 | `orblit_save` | Saves for a game server: bytes under a key with a reason, queued off the tick and written by a worker isolate, whole after a crash, with staggered autosaves, a history of versions, restore and offline edit. Server and tools only, not the web | `SaveQueue`, `SaveStore`, `FileSaveStore`, `SaveReason`, `AutoSave`, `HistoryStore`, `SaveTools` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
@@ -950,6 +951,19 @@ A `ProgressSchema` lists `Whole` names (a full unsigned 32 bit integer) and
 the new table and the `Changes`, which `encode` to six bytes a slot. Add
 names at the end and older saves still load. A value that does not fit its
 bits throws `RangeError`. `Changes.tryDecode` returns null for bad bytes.
+`Condition(name, Compare.greaterOrEqual, 2).holds(table)` compares one name with a
+number, and `Condition.allHold(list, table)` needs every one.
+
+## orblit_quest
+
+`Quest.parse(text)` reads a `.oquest` file: a key, a title and stages in order,
+each with journal text and optional `requires` conditions. `QuestBook(schema:,
+quests:)` checks every quest against the progress schema, which must name
+`quest.<key>.stage` with bits for every stage. `book.advance(table, key, to)`
+returns `Moved` (a new table, the `changes` to send, `completed`, `back`) or
+`Refused`. A quest goes forward only. `allowBack: true` goes back and sets
+`back`, so log it. Give the reward when `completed`. A quest that branches uses
+more than one name.
 
 ## orblit_save
 
