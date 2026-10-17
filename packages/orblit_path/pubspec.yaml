@@ -2,7 +2,7 @@ name: orblit_path
 description: >-
   Curves to follow and ways across ground: splines with tilt, rails and
   patrols, and grid and navmesh pathfinding that walks an agent round a wall.
-version: 0.1.0
+version: 0.3.0
 publish_to: none
 
 environment:

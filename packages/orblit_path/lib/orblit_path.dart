@@ -13,7 +13,7 @@ library;
 
 export 'src/bake.dart' show MeshWalk, bakeMesh, bakeTerrain, carve, marked;
 export 'src/follower.dart' show PathEnd, PathFollower, Rail;
-export 'src/grid.dart' show NavCell, NavGrid;
+export 'src/grid.dart' show NavCell, NavGrid, NavObstacle;
 export 'src/navmesh.dart' show NavMesh;
 export 'src/patrol.dart' show Patrol, PatrolStop;
 export 'src/spline.dart'
@@ -24,4 +24,4 @@ export 'src/spline.dart'
         PathNearest,
         Spline,
         pathExtension;
-export 'src/walker.dart' show NavWalker, Planner;
+export 'src/walker.dart' show Clear, NavWalker, Planner;

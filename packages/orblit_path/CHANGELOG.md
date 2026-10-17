@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0
+
+- `NavGrid.addObstacleRect` and `addObstacleCircle` shut cells until the
+  `NavObstacle` they return is lifted. Cells are counted, so lifting one never
+  opens a wall or a cell another obstacle shuts.
+- `NavWalker` takes `isClear` and `lookahead`. With `isClear` it plans again
+  from where it stands when a leg ahead is shut, and stands, keeping its goal,
+  when no way is left.
+- `NavGrid.inflated` treats a cell a standing obstacle shuts as closed.
+
 ## 0.1.0
 
 - First cut of `orblit_path`. Pre-alpha: everything is subject to change.

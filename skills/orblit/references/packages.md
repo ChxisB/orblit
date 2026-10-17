@@ -163,8 +163,18 @@ cell where the cover's navigation bit is set; `bakeMesh(mesh)` and
 steerable, planner: mesh.findPath)` walks a `Steerable` along a route with
 `goTo(goal)` and `update(seconds)`; `hasRoute` is false when there was none.
 
-A route is planned once, a navmesh is a snapshot, a cell has one floor, and
-agents do not avoid each other (use `Separate`). Guide:
+Doors and crates: `grid.addObstacleRect(minX:, minZ:, maxX:, maxZ:)` and
+`grid.addObstacleCircle(x, z, radius)` shut cells and answer a `NavObstacle`.
+`lift()` opens them again, except cells a wall or another obstacle shuts. To
+move one, lift it and add another. Give a walker `isClear: grid.isClear` and
+the planner of the same grid, and it checks the next `lookahead` legs (3 by
+default) each `update`, plans again from where it stands when one is shut, and
+stands with its `goal` kept when there is no way. A `NavMesh` and an
+`inflated` grid are snapshots and do not follow an obstacle.
+
+A route is planned once unless the walker checks, a navmesh is a snapshot, a
+cell has one floor, and agents do not avoid each other (use `Separate`).
+Guide:
 https://orblitengine.com/docs/guides/paths/.
 
 ## orblit_collide
