@@ -18,7 +18,7 @@ the fullest reference.
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_progress` | Named small integers for a game's progress: quest stages, skill levels, flags. A schema names them, a table holds them and never changes, and a write gives the changes to send to one player | `ProgressSchema`, `Whole`, `Slice`, `ProgressTable`, `Changes` |
-| `orblit_save` | Saves for a game server: bytes under a key with a reason, queued off the tick and written by a worker isolate, whole after a crash, with staggered autosaves. Server and tools only, not the web | `SaveQueue`, `SaveStore`, `FileSaveStore`, `SaveReason`, `AutoSave` |
+| `orblit_save` | Saves for a game server: bytes under a key with a reason, queued off the tick and written by a worker isolate, whole after a crash, with staggered autosaves, a history of versions, restore and offline edit. Server and tools only, not the web | `SaveQueue`, `SaveStore`, `FileSaveStore`, `SaveReason`, `AutoSave`, `HistoryStore`, `SaveTools` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
@@ -960,6 +960,13 @@ returns the keys still not stored. A key is letters, digits and `._-`. A damaged
 file throws `FormatException`. `AutoSave(perTick:, every:, jitter:, random:)`
 `.claim(liveKeys, tick)` returns the keys to save now. It is for servers and
 tools, not the web.
+
+`HistoryStore.files(dir)` keeps every version a queue writes. Call
+`store.history.prune(defaultSpacing, now)` on start and on a timer.
+`SaveTools(store:, isLive:, clock:)` has `restore(key, at)`, `restorePlan` then
+`applyRestore`, and `edit(key, change, reason)`. All refuse a key `isLive`
+says is in use, and a restore keeps the old save as `pre-restore`.
+`dart run orblit_save:history <dir> list|restore|restore-all` is the command.
 
 ## More worked examples
 

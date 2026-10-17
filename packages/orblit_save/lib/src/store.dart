@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'file_io.dart';
 import 'reason.dart';
 import 'record.dart';
 
@@ -63,8 +64,6 @@ const String _suffix = '.save';
 /// One file for each key in a directory. A write goes to a temporary file,
 /// is flushed, and replaces the real file by a rename, so a crash leaves the
 /// old save whole.
-// shortcut: the directory is not synced after the rename, so a power cut can
-// lose the newest save and keep the one before. Upgrade with a native fsync.
 final class FileSaveStore implements SaveStore {
   FileSaveStore(this.directory);
 
@@ -91,19 +90,8 @@ final class FileSaveStore implements SaveStore {
   }
 
   @override
-  Future<void> write(String key, SaveRecord record) async {
-    final path = _path(key);
-    await Directory(directory).create(recursive: true);
-    final temp = File('$path.tmp');
-    final file = await temp.open(mode: FileMode.write);
-    try {
-      await file.writeFrom(_encode(record));
-      await file.flush();
-    } finally {
-      await file.close();
-    }
-    await temp.rename(path);
-  }
+  Future<void> write(String key, SaveRecord record) async =>
+      writeWhole(_path(key), _encode(record));
 
   @override
   Future<bool> exists(String key) async => File(_path(key)).exists();
