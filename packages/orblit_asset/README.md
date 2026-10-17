@@ -40,7 +40,10 @@ final bytes = await pack.read(AssetId.parse('models/robot.glb'));
 ```
 
 `pack list` shows what a file holds. `pack check` hashes every blob and
-exits 1 when a byte has changed.
+exits 1 when a byte has changed. `pack diff old.opack new.opack` lists what
+was added, removed and changed by name, and exits 1 when a document in the
+new pack still names an asset it dropped. Give it the packs a patch stands
+on with `--base`.
 
 `pack build ... --base game.opack` writes a patch that holds only what
 changed. `MountedPacks` mounts a game, its patches and any mods as one
