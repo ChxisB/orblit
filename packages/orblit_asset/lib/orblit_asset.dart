@@ -85,6 +85,8 @@ export 'src/pack/bundled_pack.dart'
 export 'src/pack/mounted_packs.dart' show MountedPacks, PackMountRefused;
 export 'src/pack/pack_bundle.dart' show packBundle;
 export 'src/pack/pack_bytes.dart' show MemoryPackBytes, PackBytes;
+export 'src/pack/pack_diff.dart'
+    show ChangedAsset, DanglingReference, PackDiff, mountChain;
 export 'src/pack/pack_file.dart' show FilePackBytes;
 export 'src/pack/pack_folder.dart' show PackFolder;
 export 'src/pack/pack_listing.dart' show PackListing, UnreadablePack;
