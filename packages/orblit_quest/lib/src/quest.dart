@@ -55,10 +55,17 @@ final class Quest {
     }
     if (title.isEmpty) throw ArgumentError.value(title, 'title', 'is empty');
     if (stages.length < 2) {
-      throw ArgumentError.value(stages, 'stages', 'needs a start and an end');
+      throw ArgumentError.value(
+        stages.length,
+        'stages',
+        'needs a start and an end',
+      );
     }
-    if (stages.map((s) => s.id).toSet().length != stages.length) {
-      throw ArgumentError.value(stages, 'stages', 'repeat a stage id');
+    final ids = <String>{};
+    for (final stage in stages) {
+      if (!ids.add(stage.id)) {
+        throw ArgumentError.value(stage.id, 'stages', 'repeats a stage id');
+      }
     }
   }
 

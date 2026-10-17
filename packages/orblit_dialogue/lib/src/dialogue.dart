@@ -42,9 +42,13 @@ final class Dialogue {
     if (variants.isEmpty) {
       throw ArgumentError.value(variants, 'variants', 'is empty');
     }
-    if (this.nodes.length != nodes.length) {
-      throw ArgumentError.value(nodes, 'nodes', 'repeat an id');
+    final ids = <String>{};
+    for (final node in nodes) {
+      if (!ids.add(node.id)) {
+        throw ArgumentError.value(node.id, 'nodes', 'repeats an id');
+      }
     }
+    _checkVariants();
     _checkTargets();
     _checkNoSilentLoop();
   }
@@ -81,6 +85,16 @@ final class Dialogue {
   final List<Variant> variants;
   final Map<String, Node> nodes;
 
+  /// The node a conversation starts at for a player whose table is [table],
+  /// or null when no variant holds. It changes nothing and runs no hook, so a
+  /// game can ask it to see whether a character has something to say.
+  String? startFor(ProgressTable table) {
+    for (final variant in variants) {
+      if (Condition.allHold(variant.when, table)) return variant.start;
+    }
+    return null;
+  }
+
   /// The names of the functions nodes ask for, in the order they first appear.
   Set<String> get beforeNames => {
     for (final node in nodes.values) ?node.before,
@@ -100,6 +114,18 @@ final class Dialogue {
     ],
     'nodes': {for (final node in nodes.values) node.id: node.toJson()},
   });
+
+  /// A variant with no conditions always holds, so any after it is dead.
+  void _checkVariants() {
+    final open = variants.indexWhere((v) => v.when.isEmpty);
+    if (open >= 0 && open < variants.length - 1) {
+      throw ArgumentError.value(
+        variants[open].start,
+        'variants',
+        'has no conditions, so the variants after it never start',
+      );
+    }
+  }
 
   void _checkTargets() {
     for (final variant in variants) {

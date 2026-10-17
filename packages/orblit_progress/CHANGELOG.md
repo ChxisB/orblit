@@ -7,3 +7,4 @@
 - `Condition` compares one named value with a number, with `Compare` for the
   six operators. A list holds when every condition does. Quests and dialogue
   read them from JSON as `{"name": ..., "op": ..., "value": ...}`.
+- `ProgressSchema.fits(name, value)` says whether a value fits a name's bits.

@@ -36,16 +36,16 @@ A `.odialogue` file:
     "ask": {
       "type": "choice",
       "options": [
-        {"text": "The lamp?", "next": "begin"},
+        {"text": "The lamp?", "next": "told"},
         {"text": "Goodbye."}
       ]
     },
-    "begin": {
-      "type": "set",
-      "writes": [{"name": "quest.lamp.stage", "value": 1}],
-      "next": "told"
+    "told": {
+      "type": "line",
+      "speaker": "Guide",
+      "text": "Go and find it.",
+      "before": "begin-lamp"
     },
-    "told": {"type": "line", "speaker": "Guide", "text": "Go and find it."},
     "again": {"type": "line", "speaker": "Guide", "text": "Back so soon?"}
   }
 }
@@ -54,7 +54,12 @@ A `.odialogue` file:
 ```dart
 final book = DialogueBook(
   schema: schema,
-  hooks: {'give-lamp': (table) => table},
+  hooks: {
+    'begin-lamp': (table) => switch (quests.advance(table, 'lamp', 1)) {
+      Moved(:final table) => table,
+      Refused() => table,
+    },
+  },
   dialogues: [Dialogue.parse(text)],
 );
 
@@ -73,18 +78,30 @@ send(runner.table.changesSince(table));
 ```
 
 `DialogueBook` checks every dialogue when the game starts. Every name a
-condition or a write uses must be in the schema, a written value must fit its
-name's bits, and every `before` must be registered. A typo fails there, and
-not when a player talks.
+condition or a write uses must be in the schema, a value must fit its name's
+bits, and every `before` must be registered. A typo fails there, and not when
+a player talks.
+
+Move a quest from a `before` hook that calls `QuestBook.advance`, as above,
+and not with a `set` node on `quest.<key>.stage`. A `set` skips the quest's
+forward-only rule and its requirements, and never says the quest completed.
+A hook is game code, so it can give the reward when `Moved.completed` is true.
+Use `set` for flags and counters.
+
+`dialogue.startFor(table)` names the node a conversation would start at, or
+null, and runs nothing. Use it to show that a character has something to say.
 
 The runner holds no screen. It starts when made. When no variant holds,
-`isOver` is true at once. `next` throws `StateError` anywhere but a line and
+`isOver` is true at once. A hook that throws leaves the runner where it was.
+It works on the table it was given, so a game that lets other things change
+the player's table during a conversation ends the conversation when they do. `next` throws `StateError` anywhere but a line and
 `choose` throws it anywhere but a choice. `choose` takes an index into
 `options`, which is the options that hold, so a client sends that index and
 the server refuses one it does not have. A choice with nothing to offer ends
 the conversation.
 
 A ring of `set` and `jump` nodes with no line in it would never stop, so the
-file is refused. `Dialogue.parse` throws `DialogueFormatException` for text
+file is refused. So is a variant with no conditions that is followed by
+another, since the second could never start. `Dialogue.parse` throws `DialogueFormatException` for text
 that is not a dialogue, for one from a newer Orblit and for one that breaks a
 rule.

@@ -109,6 +109,33 @@ void main() {
       expect(book().stageOf(move.table, 'lamp'), 2);
     });
 
+    test('does not let a skip pass a requirement on the way', () {
+      final gated = QuestBook(
+        schema: schema,
+        quests: [
+          Quest(
+            key: 'lamp',
+            title: 'L',
+            stages: [
+              Stage(id: 'a', journal: ''),
+              Stage(
+                id: 'b',
+                journal: '',
+                requires: [Condition('gold', Compare.greaterOrEqual, 5)],
+              ),
+              Stage(id: 'c', journal: ''),
+            ],
+          ),
+        ],
+      );
+
+      final refused = gated.advance(at(0, gold: 4), 'lamp', 2);
+      final allowed = gated.advance(at(0, gold: 5), 'lamp', 2);
+
+      expect((refused as Refused).reason, QuestRefusal.requirement);
+      expect(allowed, isA<Moved>());
+    });
+
     test('completes once, on entering the last stage', () {
       final b = book();
       final first = moved(b.advance(at(1, gold: 5), 'lamp', 2));
@@ -116,6 +143,17 @@ void main() {
 
       expect(first.completed, isTrue);
       expect(again, isA<Refused>());
+    });
+
+    test('copes with a stage the quest has not got, from a longer quest', () {
+      final b = book();
+      final stray = at(3);
+
+      expect(b.journal(stray, 'lamp'), '');
+      expect(b.isComplete(stray, 'lamp'), isTrue);
+      final back = moved(b.advance(stray, 'lamp', 2, allowBack: true));
+      expect(back.back, isTrue);
+      expect(back.completed, isFalse);
     });
 
     test('throws for a stage the quest does not have', () {
@@ -175,6 +213,26 @@ void main() {
             id: 'b',
             journal: '',
             requires: [Condition('nope', Compare.equal, 1)],
+          ),
+        ],
+      );
+
+      expect(
+        () => QuestBook(schema: schema, quests: [bad]),
+        throwsArgumentError,
+      );
+    });
+
+    test('is refused when a requirement is too big for its value', () {
+      final bad = Quest(
+        key: 'lamp',
+        title: 'L',
+        stages: [
+          Stage(id: 'a', journal: ''),
+          Stage(
+            id: 'b',
+            journal: '',
+            requires: [Condition('quest.well.stage', Compare.equal, 8)],
           ),
         ],
       );

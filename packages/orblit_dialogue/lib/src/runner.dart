@@ -13,7 +13,13 @@ typedef Before = ProgressTable Function(ProgressTable table);
 /// [current] and [options], draws them, and calls [next] or [choose].
 ///
 /// The runner starts as soon as it is made. When no variant of the dialogue
-/// holds, [isOver] is true at once and nothing was run.
+/// holds, [isOver] is true at once and nothing was run. [DialogueBook.start]
+/// makes it, having checked the hooks.
+///
+/// The runner works on the table it was given and does not see changes made
+/// to the player's table meanwhile. A game that lets other things change the
+/// table during a conversation ends the conversation when they do, or reads
+/// the table again before it saves [table].
 final class DialogueRunner {
   DialogueRunner({
     required Dialogue dialogue,
@@ -22,12 +28,8 @@ final class DialogueRunner {
   }) : _dialogue = dialogue,
        _hooks = hooks,
        _table = table {
-    for (final variant in dialogue.variants) {
-      if (Condition.allHold(variant.when, table)) {
-        _enter(variant.start);
-        return;
-      }
-    }
+    final start = dialogue.startFor(table);
+    if (start != null) _enter(start);
   }
 
   final Dialogue _dialogue;
@@ -67,35 +69,40 @@ final class DialogueRunner {
     _enter(_options[index].next);
   }
 
+  /// Runs from [first] to the next line or choice, or to the end. The fields
+  /// are written once at the end, so a hook that throws leaves the runner
+  /// where it was.
   void _enter(String? first) {
-    _current = null;
-    _options = const [];
+    var table = _table;
+    Node? shown;
+    var offered = <ChoiceOption>[];
     var at = first;
     while (at != null) {
       final node = _dialogue.nodes[at]!;
       final before = node.before;
-      if (before != null) _table = _hooks[before]!(_table);
+      if (before != null) table = _hooks[before]!(table);
       switch (node) {
         case LineNode():
-          _current = node;
-          return;
+          shown = node;
+          at = null;
         case ChoiceNode(:final options):
-          final offered = [
+          offered = [
             for (final o in options)
-              if (Condition.allHold(o.when, _table)) o,
+              if (Condition.allHold(o.when, table)) o,
           ];
-          if (offered.isEmpty) return;
-          _current = node;
-          _options = offered;
-          return;
+          if (offered.isNotEmpty) shown = node;
+          at = null;
         case SetNode(:final writes, next: final following):
           for (final write in writes) {
-            _table = _table.set(write.name, write.value).table;
+            table = table.set(write.name, write.value).table;
           }
           at = following;
         case JumpNode(next: final following):
           at = following;
       }
     }
+    _table = table;
+    _current = shown;
+    _options = List.unmodifiable(offered);
   }
 }

@@ -35,6 +35,39 @@ void main() {
     });
   });
 
+  group('startFor', () {
+    test('names the start for a table and runs nothing', () {
+      final h = hooks();
+      final d = Dialogue(
+        key: 'k',
+        variants: [
+          Variant(start: 'b', when: [stageAtLeast(1)]),
+          Variant(start: 'a'),
+        ],
+        nodes: [
+          LineNode(id: 'a', speaker: 'X', text: 'A', before: 'take'),
+          LineNode(id: 'b', speaker: 'X', text: 'B', before: 'take'),
+        ],
+      );
+
+      expect(d.startFor(at()), 'a');
+      expect(d.startFor(at(stage: 1)), 'b');
+      expect(h.seen, isEmpty);
+    });
+
+    test('is null when no variant holds', () {
+      final d = Dialogue(
+        key: 'k',
+        variants: [
+          Variant(start: 'a', when: [stageAtLeast(2)]),
+        ],
+        nodes: [LineNode(id: 'a', speaker: 'X', text: 'A')],
+      );
+
+      expect(d.startFor(at()), isNull);
+    });
+  });
+
   group('a line', () {
     test('goes on with next and ends where it has no next', () {
       final runner = book().start('guide', at(stage: 1));
@@ -69,6 +102,10 @@ void main() {
     test('offers the options whose conditions hold, in file order', () {
       expect(texts(atAsk()), 'The lamp?|Goodbye.');
       expect(texts(atAsk(gold: 5)), 'The lamp?|I have gold.|Goodbye.');
+    });
+
+    test('gives a list the caller cannot change', () {
+      expect(() => atAsk().options.removeAt(0), throwsUnsupportedError);
     });
 
     test('is picked by an index into what is offered', () {
@@ -211,6 +248,33 @@ void main() {
         ..choose(1);
       expect(h.seen, [7]);
       expect(saying(runner), 'Thanks.');
+      expect(runner.table.get('gold'), 0);
+    });
+
+    test('that throws leaves the runner where it was', () {
+      final d = Dialogue(
+        key: 'k',
+        variants: [Variant(start: 'a')],
+        nodes: [
+          LineNode(id: 'a', speaker: 'X', text: 'One', next: 'w'),
+          SetNode(id: 'w', writes: [], next: 'b', before: 'bump'),
+          LineNode(id: 'b', speaker: 'X', text: 'Two', before: 'boom'),
+        ],
+      );
+      final b = DialogueBook(
+        schema: schema,
+        hooks: {
+          'bump': (table) => table.set('gold', 5).table,
+          'boom': (table) => throw StateError('no'),
+        },
+        dialogues: [d],
+      );
+      final runner = b.start('k', at());
+
+      expect(runner.next, throwsStateError);
+
+      expect(saying(runner), 'One');
+      expect(runner.isOver, isFalse);
       expect(runner.table.get('gold'), 0);
     });
 

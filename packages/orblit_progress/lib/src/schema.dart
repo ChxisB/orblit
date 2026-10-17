@@ -77,6 +77,13 @@ final class ProgressSchema {
 
   bool has(String name) => _places.containsKey(name);
 
+  /// Whether [value] fits the bits of [name]. Throws [ArgumentError] for a
+  /// name not in the schema.
+  bool fits(String name, int value) {
+    final place = placeOf(name);
+    return value >= 0 && value <= placeMask(place) >> place.low;
+  }
+
   /// Where [name] lives. Throws [ArgumentError] for a name not in the schema.
   Place placeOf(String name) =>
       _places[name] ?? (throw ArgumentError.value(name, 'name', 'is unknown'));

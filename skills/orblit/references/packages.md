@@ -963,8 +963,10 @@ quests:)` checks every quest against the progress schema, which must name
 `quest.<key>.stage` with bits for every stage. `book.advance(table, key, to)`
 returns `Moved` (a new table, the `changes` to send, `completed`, `back`) or
 `Refused`. A quest goes forward only. `allowBack: true` goes back and sets
-`back`, so log it. Give the reward when `completed`. A quest that branches uses
-more than one name.
+`back`, so log it. Give the reward when `completed`. A move ahead needs the
+requirements of every stage it enters, and `to` comes from the game, never a
+client. The table holds a stage's index, so add stages at the end of a shipped
+quest. A quest that branches uses more than one name.
 
 ## orblit_dialogue
 
@@ -977,9 +979,10 @@ dialogues:)` checks names, written values and hooks when the game starts.
 `book.start(key, table)` returns a `DialogueRunner`. Draw `runner.current` and
 `runner.options`, then call `next()` or `choose(i)`. `runner.table` holds every
 write and hook result, so send `table.changesSince(before)` and save it. A
-`Before` is `ProgressTable Function(ProgressTable)`. A hook that moves a quest
-returns the table `QuestBook.advance` gave back. A ring of sets and jumps with
-no line is refused.
+`Before` is `ProgressTable Function(ProgressTable)`. Move a quest from a hook
+that returns the table `QuestBook.advance` gave back, not with a `set` on the
+stage name, which skips the quest's rules. `dialogue.startFor(table)` says what
+would start and runs nothing. A ring of sets and jumps with no line is refused.
 
 ## orblit_save
 

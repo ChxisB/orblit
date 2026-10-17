@@ -50,13 +50,11 @@ void _check(
     }
   }
   for (final (where, condition) in _conditions(dialogue)) {
-    if (!schema.has(condition.name)) {
-      throw ArgumentError.value(condition.name, where, 'is not in the schema');
-    }
+    _checkName(schema, where, condition.name, condition.value);
   }
   for (final node in dialogue.nodes.values.whereType<SetNode>()) {
     for (final write in node.writes) {
-      _checkWrite(schema, '${dialogue.key}/${node.id}', write);
+      _checkName(schema, '${dialogue.key}/${node.id}', write.name, write.value);
     }
   }
 }
@@ -76,14 +74,11 @@ Iterable<(String, Condition)> _conditions(Dialogue dialogue) sync* {
   }
 }
 
-void _checkWrite(ProgressSchema schema, String where, Write write) {
-  final bits = schema.placeOf(write.name).bits;
-  // A shift by 32 wraps to zero on the web, so a whole slot is not shifted.
-  if (bits < 32 && write.value >= 1 << bits) {
-    throw ArgumentError.value(
-      write.value,
-      where,
-      '${write.name} has $bits bits, too few for it',
-    );
+void _checkName(ProgressSchema schema, String where, String name, int value) {
+  if (!schema.has(name)) {
+    throw ArgumentError.value(name, where, 'is not in the schema');
+  }
+  if (!schema.fits(name, value)) {
+    throw ArgumentError.value(value, where, '$name has too few bits for it');
   }
 }

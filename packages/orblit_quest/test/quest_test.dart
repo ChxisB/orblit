@@ -156,5 +156,24 @@ void main() {
         ),
       );
     });
+
+    test('names the stage id it found twice', () {
+      final twice = file()
+        ..['stages'] = [
+          {'id': 'same', 'journal': ''},
+          {'id': 'same', 'journal': 'x'},
+        ];
+
+      expect(
+        () => parse(twice),
+        throwsA(
+          isA<QuestFormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('same'),
+          ),
+        ),
+      );
+    });
   });
 }

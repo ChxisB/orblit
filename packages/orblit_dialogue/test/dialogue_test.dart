@@ -98,6 +98,33 @@ void main() {
       );
     });
 
+    test('is refused when a variant can never start', () {
+      final nodes = [LineNode(id: 'a', speaker: 'X', text: 'Hi')];
+
+      expect(
+        () => Dialogue(
+          key: 'k',
+          variants: [
+            Variant(start: 'a'),
+            Variant(start: 'a', when: [stageAtLeast(1)]),
+          ],
+          nodes: nodes,
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        Dialogue(
+          key: 'k',
+          variants: [
+            Variant(start: 'a', when: [stageAtLeast(1)]),
+            Variant(start: 'a'),
+          ],
+          nodes: nodes,
+        ).variants,
+        hasLength(2),
+      );
+    });
+
     test('is refused when nodes go round with nothing to show', () {
       expect(
         () => Dialogue(
@@ -251,6 +278,22 @@ void main() {
       }
     });
 
+    test('names the node id it found twice', () {
+      expect(
+        () => Dialogue(
+          key: 'k',
+          variants: [Variant(start: 'a')],
+          nodes: [
+            LineNode(id: 'a', speaker: 'X', text: 'Hi'),
+            LineNode(id: 'a', speaker: 'X', text: 'Yo'),
+          ],
+        ),
+        throwsA(
+          isA<ArgumentError>().having((e) => e.invalidValue, 'value', 'a'),
+        ),
+      );
+    });
+
     test('says what was wrong with a rule it broke', () {
       expect(
         () => parse(
@@ -308,6 +351,32 @@ void main() {
 
     test('is refused for a write to a name the schema lacks', () {
       final d = one(SetNode(id: 'a', writes: [Write('ghost', 1)]));
+
+      expect(
+        () => make(d),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('not in the schema'),
+          ),
+        ),
+      );
+    });
+
+    test('is refused for a condition value too big for its name', () {
+      final d = one(
+        ChoiceNode(
+          id: 'a',
+          options: [
+            ChoiceOption(
+              text: 'x',
+              next: null,
+              when: [Condition('met', Compare.equal, 2)],
+            ),
+          ],
+        ),
+      );
 
       expect(() => make(d), throwsArgumentError);
     });

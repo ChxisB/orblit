@@ -50,14 +50,20 @@ book.journal(table, 'lamp'); // 'Find the lamp.'
 
 `QuestBook` checks every quest against the schema when the game starts: the
 stage name must exist with bits for every stage, and every requirement must
-name a value the schema has.
+name a value the schema has, of a size its bits can hold.
 
 A quest goes forward. The stage asked for must be ahead of the player and
-its requirements must hold. A stage may be skipped to. `allowBack: true`
+the requirements of every stage it enters must hold, so a skip is no way round
+one. The stage comes from the game and never from a client. `allowBack: true`
 sends a player to an earlier stage and ignores that stage's requirements.
 The result has `back` set, so the game can log why. `completed` is true
 when a quest enters its last stage from an earlier one. A quest sent back
 and forward again completes again.
+
+The table holds the index of a stage, and a stage's `id` is for you. Add new
+stages at the end of a shipped quest. Inserting or removing one in the middle
+moves every saved player to a different stage. A saved index past the last
+stage has an empty journal and reads as complete.
 
 A quest that branches uses more than one name in the table. `Quest.parse`
 throws `QuestFormatException` for text that is not a quest, for one from a

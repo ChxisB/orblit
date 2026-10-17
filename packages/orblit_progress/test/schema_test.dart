@@ -127,6 +127,21 @@ void main() {
     expect(() => build([], version: 0x10000), throwsArgumentError);
   });
 
+  test('says whether a value fits the bits of a name', () {
+    final schema = build([
+      const Whole('a'),
+      const Slice('s', of: 'a', low: 4, bits: 3),
+      const Whole('b'),
+    ]);
+
+    expect(schema.fits('s', 7), isTrue);
+    expect(schema.fits('s', 8), isFalse);
+    expect(schema.fits('s', -1), isFalse);
+    expect(schema.fits('b', 0xFFFFFFFF), isTrue);
+    expect(schema.fits('b', 0x100000000), isFalse);
+    expect(() => schema.fits('x', 0), throwsArgumentError);
+  });
+
   test('knows a name and throws for one it does not', () {
     final schema = build([const Whole('a')]);
 

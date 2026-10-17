@@ -80,15 +80,16 @@ final class QuestBook {
   bool isComplete(ProgressTable table, String key) =>
       stageOf(table, key) >= quest(key).last;
 
-  /// The text for the stage the player is in.
+  /// The text for the stage the player is in, or empty for a stage the quest
+  /// no longer has, such as one in a save from before it was shortened.
   String journal(ProgressTable table, String key) =>
-      quest(key).stages[stageOf(table, key)].journal;
+      quest(key).stages.elementAtOrNull(stageOf(table, key))?.journal ?? '';
 
   /// Moves the player to stage [to]. A quest goes forward: a stage that is
   /// not ahead is refused unless [allowBack] is set and [to] is behind. A
-  /// stage ahead is refused when one of its conditions does not hold, and a
-  /// stage may be skipped to. Throws [RangeError] for a stage the quest does
-  /// not have.
+  /// move ahead is refused when a condition of any stage it enters does not
+  /// hold, so a skip is no way round one. [to] comes from the game and never
+  /// from a client. Throws [RangeError] for a stage the quest does not have.
   QuestMove advance(
     ProgressTable table,
     String key,
@@ -102,40 +103,49 @@ final class QuestBook {
     if (to == from || (back && !allowBack)) {
       return const Refused(QuestRefusal.notForward);
     }
-    if (!back && !Condition.allHold(quest.stages[to].requires, table)) {
+    if (!back && !_mayEnter(quest, from, to, table)) {
       return const Refused(QuestRefusal.requirement);
     }
     final written = table.set(questStageName(key), to);
     return Moved(
       table: written.table,
       changes: written.changes,
-      completed: to == quest.last,
+      completed: !back && to == quest.last,
       back: back,
     );
   }
 }
+
+bool _mayEnter(Quest quest, int from, int to, ProgressTable table) => quest
+    .stages
+    .skip(from + 1)
+    .take(to - from)
+    .every((stage) => Condition.allHold(stage.requires, table));
 
 void _check(ProgressSchema schema, Quest quest) {
   final name = questStageName(quest.key);
   if (!schema.has(name)) {
     throw ArgumentError.value(name, quest.key, 'is not in the schema');
   }
-  final bits = schema.placeOf(name).bits;
-  if (bits < 31 && quest.last >= 1 << bits) {
+  if (!schema.fits(name, quest.last)) {
     throw ArgumentError.value(
       name,
       quest.key,
-      'has $bits bits, too few for ${quest.stages.length} stages',
+      'has too few bits for ${quest.stages.length} stages',
     );
   }
   for (final stage in quest.stages) {
     for (final condition in stage.requires) {
+      final where = '${quest.key}/${stage.id}';
       if (!schema.has(condition.name)) {
         throw ArgumentError.value(
           condition.name,
-          '${quest.key}/${stage.id}',
+          where,
           'is not in the schema',
         );
+      }
+      if (!schema.fits(condition.name, condition.value)) {
+        throw ArgumentError.value(condition.value, where, 'is too big for it');
       }
     }
   }
