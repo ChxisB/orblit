@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- `SaveQueue.keys` lists every key with a save, including saves not yet
+  written.
+
 ## 0.2.0
 
 - `HistoryStore` keeps every version a store writes in a `SaveHistory`.

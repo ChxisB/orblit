@@ -3,7 +3,7 @@ description: >-
   Saves for a game server: bytes under a key with a reason, written off the
   tick by a worker isolate, whole after a crash, and staggered autosaves,
   with a history of versions, restore and offline edit.
-version: 0.2.0
+version: 0.2.1
 publish_to: none
 
 environment:

@@ -94,6 +94,9 @@ final class SaveQueue {
   Future<bool> exists(String key) async =>
       _held.containsKey(key) || await _store.exists(key);
 
+  /// Every key with a save, including one not yet written.
+  Future<Set<String>> keys() async => {..._held.keys, ...await _store.keys()};
+
   /// Writes again every save that failed, waits until none is waiting, and
   /// returns the keys that are still not on the store.
   Future<Set<String>> flush() async {

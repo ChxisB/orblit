@@ -285,6 +285,23 @@ void main() {
       expect(await queue.read('bo'), isNull);
       expect(await queue.exists('bo'), isFalse);
     });
+
+    test('lists the keys on the store and the ones still held', () async {
+      final store = _Gated();
+      await store.inner.write('ana', recordOf([7]));
+      final queue = SaveQueue.inline(
+        store,
+        clock: fixedClock,
+        onFailure: noteFailure,
+      );
+      queue.save('bo', Uint8List.fromList([1]), const Autosave());
+      addTearDown(() async {
+        store.let();
+        await queue.close();
+      });
+
+      expect(await queue.keys(), {'ana', 'bo'});
+    });
   });
 
   group('a queue with a worker isolate', () {
