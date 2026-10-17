@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+- **`NavLink` and `LinkPlanner`.** A route can cross a gap, climb a ladder,
+  use a door or step through a teleporter. A link joins two points and has a
+  `kind` name, a `cost`, the `agents` that may use it, an optional `gate` and
+  whether it is `twoWay`. `LinkPlanner` takes any `Planner` for the ground, so
+  a grid or a navmesh, and `findRoute` answers the `WalkStep`s and `LinkStep`s
+  of the cheapest route, or null. `lock` and `unlock` shut and open a gate;
+  ask again to plan round the change. Nothing moves an agent. Links are held
+  in memory and have no file.
+
 ## 0.1.0
 
 - First cut of `orblit_path`. Pre-alpha: everything is subject to change.

@@ -14,6 +14,8 @@ library;
 export 'src/bake.dart' show MeshWalk, bakeMesh, bakeTerrain, carve, marked;
 export 'src/follower.dart' show PathEnd, PathFollower, Rail;
 export 'src/grid.dart' show NavCell, NavGrid;
+export 'src/links.dart'
+    show LinkPlanner, LinkStep, NavLink, RouteStep, WalkStep;
 export 'src/navmesh.dart' show NavMesh;
 export 'src/patrol.dart' show Patrol, PatrolStop;
 export 'src/spline.dart'

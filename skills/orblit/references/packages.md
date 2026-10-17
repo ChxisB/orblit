@@ -12,7 +12,7 @@ the fullest reference.
 | `orblit_filament` | The renderer, composited by Flutter | `OrblitView`, `OrblitScene` (see [scene-api.md](scene-api.md)) |
 | `orblit_camera` | Cameras as shots: say what to frame, and a brain works out where to be and blends between shots. An arm holds a camera on the near side of a wall | `CameraBrain`, `VirtualCamera`, `FollowBody`, `ArmBody`, `HardLookAt`, `Lens`, `damp` |
 | `orblit_agent` | Steering behaviours (where to go) and behaviour trees (what to want) | `Steerable`, `Seek`, `Arrive`, `Separate`, `Blend`, `Brain`, `Selector`, `Sequence` |
-| `orblit_path` | Splines read by distance and ridden, rails, patrols, and routes round walls over a grid or a navmesh baked from a terrain or a mesh | `Spline`, `PathFollower`, `Rail`, `Patrol`, `NavGrid`, `NavMesh`, `bakeTerrain`, `bakeMesh`, `NavWalker` |
+| `orblit_path` | Splines read by distance and ridden, rails, patrols, and routes round walls over a grid or a navmesh baked from a terrain or a mesh | `Spline`, `PathFollower`, `Rail`, `Patrol`, `NavGrid`, `NavMesh`, `bakeTerrain`, `bakeMesh`, `NavWalker`, `NavLink`, `LinkPlanner` |
 | `orblit_collide` | Shapes, raycasts and overlap tests, 3D and 2D. Queries, not a physics simulation | `Sphere`, `Box`, `Capsule`, `contact`, `overlaps`, `Ray`, `raycastFirst`, `Broadphase` |
 | `orblit_effect` | Move, turn, grow, tint and fade as functions of time, sequenced and combined | `MoveBy`, `TurnBy`, `Then`, `Both`, `Shake`, `applied`, `Playing` |
 | `orblit_sequence` | Cutscenes: tracks of clips over a playhead | `Sequence`, `sampleAt`, `Director` |
@@ -171,6 +171,17 @@ cell where the cover's navigation bit is set; `bakeMesh(mesh)` and
 `indices`, `agentHeight`, `stepHeight` and `maxSlope`. A `NavWalker(body:
 steerable, planner: mesh.findPath)` walks a `Steerable` along a route with
 `goTo(goal)` and `update(seconds)`; `hasRoute` is false when there was none.
+
+Links: a `NavLink(from:, to:, kind:, cost: 0, agents: {}, gate:, twoWay: false)`
+is a jump, a ladder, a door or a teleporter that the ground does not give.
+`LinkPlanner(ground: mesh.findPath, links: [...])` plans over the ground and
+the links at once. `findRoute(from, to, agent: 'climber')` answers a list of
+`WalkStep(points)` and `LinkStep(link, reversed:)`, or null. The cost of a link
+is added to the metres walked. A link with `agents` is open only to those
+kinds. A link with a `gate` is shut while `lock(gate)` is in force, and
+`unlock(gate)` opens it; ask again to plan round the change. The planner moves
+nothing: the game plays the crossing by `link.kind`. A `NavWalker` follows
+points, not steps, so walk each `WalkStep` with it. Links are not in a file.
 
 A route is planned once, a navmesh is a snapshot, a cell has one floor, and
 agents do not avoid each other (use `Separate`). Guide:
