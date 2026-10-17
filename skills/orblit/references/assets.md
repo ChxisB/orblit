@@ -226,6 +226,7 @@ for a game that ships, downloads or mounts it as a unit.
 dart run orblit_asset:pack build build/assets/android --target android -o game.opack
 dart run orblit_asset:pack list game.opack
 dart run orblit_asset:pack check game.opack
+dart run orblit_asset:pack diff old.opack new.opack
 ```
 
 ```dart
@@ -241,6 +242,10 @@ final source = LayeredAssetSource([DirectoryAssetSource('assets'), pack]);
   `FilePackBytes` when the pack is done with.
 - **`read` does not hash.** `findCorrupt()` hashes every blob and returns the
   ids that changed. Run it after a download, not on every read.
+- **`pack diff old new` compares by name.** It lists added, removed and
+  changed assets, and exits 1 when a scene, prefab, clip or blend in the new
+  pack names an asset it does not hold. Pass `--base` for the packs a patch
+  stands on. `PackDiff.between` and `mountChain` do the same in code.
 - **The target is stored.** A pack is for one cook target, because the
   textures in it are. `pack.target` says which.
 - **Same bytes, one blob.** Two assets with identical bytes share a blob, and
