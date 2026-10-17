@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.16.0
+
+- **`RangePackBytes` sends reads made together as fewer requests.** A read
+  waits two milliseconds. Reads whose gap is 16 KiB or less become one
+  request, cut at 1 MiB, and each asker gets its own copy of its bytes. Forty
+  adjacent blobs are one request, not forty. At most four requests are out.
+- **`RangeBatching`.** Sets `mergeGap`, `maxBatch`, `parallel` and `delay`.
+  Pass it as `RangePackBytes(..., batching:)`. The defaults are a guess and
+  have not been timed on a real host.
+- **`RangePriority`.** `read(at, bytes, priority:)` takes `now`, the default,
+  or `later`. A `later` read is sent only when no urgent one is queued, and
+  never in the last free request, so an urgent read has a slot. A `later`
+  read for bytes already queued as `now` stays urgent, and a `now` read for
+  bytes queued as `later` moves them up.
+- The checks from 0.12.0 still hold for every request: `206` only, and a
+  changed total length is refused. A failed request fails every read in it.
+- Reads inside a request already sent are not answered from it, and the
+  bytes between joined reads are dropped. `AssetPack` reads with `now`.
+
 ## 0.15.0
 
 - **`TerrainImporter`.** Claims `.oterrain` and `.oregion` and is one of the

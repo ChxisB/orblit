@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../pack/pack_bytes.dart';
 import '../pack/pack_format.dart';
+import 'range_queue.dart';
 import 'transport.dart';
 
 /// The pack at [url] could not be read in parts.
@@ -33,23 +34,38 @@ final class PackRangeFailed implements Exception {
 /// `application/octet-stream` with no content encoding, since a range of an
 /// encoded reply counts the encoded bytes.
 ///
+/// Reads made close together are joined into fewer, larger requests, and an
+/// urgent read goes before one that can wait. [batching] sets how. A read
+/// with no [RangePriority] is urgent, which is what an [AssetPack] asks for.
+///
 /// A failure is not retried here. A caller that wants retries over a flaky
 /// connection wraps the transport.
 final class RangePackBytes implements PackBytes {
-  RangePackBytes(this._transport, this.url);
+  RangePackBytes(
+    this._transport,
+    this.url, {
+    RangeBatching batching = const RangeBatching(),
+  }) {
+    _queue = RangeQueue(fetch: _fetchBatch, batching: batching);
+  }
 
   final AssetTransport _transport;
 
   /// Where the pack is.
   final Uri url;
 
+  late final RangeQueue _queue;
   Future<_Head>? _head;
 
   @override
   Future<int> length() async => (await _headOf()).total;
 
   @override
-  Future<Uint8List> read(int at, int bytes) async {
+  Future<Uint8List> read(
+    int at,
+    int bytes, {
+    RangePriority priority = RangePriority.now,
+  }) async {
     if (at < 0 || bytes < 0) {
       throw RangeError('Cannot read $bytes bytes at $at from a pack.');
     }
@@ -63,6 +79,11 @@ final class RangePackBytes implements PackBytes {
     if (at + bytes <= head.start.length) {
       return Uint8List.fromList(head.start.sublist(at, at + bytes));
     }
+    return _queue.want(at, bytes, priority: priority);
+  }
+
+  Future<Uint8List> _fetchBatch(int at, int bytes) async {
+    final head = await _headOf();
     return (await _fetch(at, bytes, known: head.total)).bytes;
   }
 

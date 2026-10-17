@@ -342,6 +342,12 @@ final pack = await AssetPack.open(
 - **`RangePackBytes` asks for a range at a time.** The header, then the
   directory, then one range for each asset read. The first answer says how
   long the pack is, so `length()` is not a second request.
+- **Reads made together are one request.** A read waits 2 ms. Reads with 16
+  KiB or less between them are joined, up to 1 MiB, with at most four
+  requests out. `RangePackBytes(..., batching: RangeBatching(...))` sets
+  those, and `read(at, bytes, priority: RangePriority.later)` on the
+  `RangePackBytes` lets a read wait behind urgent ones. An `AssetPack` reads
+  with `now`. The defaults have not been timed on a real host.
 - **The host has to answer `Range` with `206`.** A host that sends the whole
   file is refused with `PackRangeFailed`, and the body is not read. Serve
   `.opack` as `application/octet-stream` with no content encoding. A range
