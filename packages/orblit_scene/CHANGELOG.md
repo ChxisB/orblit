@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.20.0
+
+- Add `SoundSourceComponent`, `SoundListenerComponent` and
+  `SoundSurfaceComponent`. A source is heard from its entity, with a clip,
+  a bus, a volume, a range and a falloff curve. The listener is the entity
+  that has it. A surface names what an entity is made of, for the sound of
+  two things touching. All three are kept through JSON. A document without
+  them reads as it did. A source whose clip is empty has no clip, and one
+  whose bus is empty plays on the master bus.
+
 ## 0.19.0
 
 - Add `VehicleComponent` and `WheelComponent`. A vehicle is a body with an
