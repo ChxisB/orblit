@@ -43,7 +43,8 @@ final class FrameControls implements ControlSource, PressedControls {
   final Set<String> touch;
 
   /// The sticks on a touch screen, by the pad stick each stands in for. When a
-  /// pad and a screen both push the same stick, the longer push is read.
+  /// pad and a screen both push the same stick, the longer push is read. A
+  /// binding to `PadStickControl` or to one of the stick's axes sees it.
   final Map<PadStick, Vector2> sticks;
 
   final PadState pad;
@@ -52,7 +53,7 @@ final class FrameControls implements ControlSource, PressedControls {
   double read(Control control) => switch (control) {
     KeyControl(:final key) => keys.contains(key) ? 1 : 0,
     PadButtonControl(:final button) => pad.isDown(button) ? 1 : 0,
-    PadAxisControl(:final axis, :final side) => side.read(pad.axis(axis)),
+    PadAxisControl(:final axis, :final side) => side.read(_axis(axis)),
     PadStickControl(stick: final which) => stick(which).length,
     TouchControl(:final region) => touch.contains(region) ? 1 : 0,
   };
@@ -61,9 +62,24 @@ final class FrameControls implements ControlSource, PressedControls {
   Vector2 stick(PadStick stick) {
     final padded = pad.stick(stick);
     final touched = sticks[stick];
+    // A copy, because a game may normalise or scale what it is handed.
     return touched != null && touched.length2 > padded.length2
-        ? touched
+        ? touched.clone()
         : padded;
+  }
+
+  /// A pad axis, or the touch stick that stands in for it when that is pushed
+  /// further. A trigger has no stick.
+  double _axis(PadAxis axis) {
+    final padded = pad.axis(axis);
+    final touched = switch (axis) {
+      PadAxis.leftX => sticks[PadStick.left]?.x,
+      PadAxis.leftY => sticks[PadStick.left]?.y,
+      PadAxis.rightX => sticks[PadStick.right]?.x,
+      PadAxis.rightY => sticks[PadStick.right]?.y,
+      _ => null,
+    };
+    return touched != null && touched.abs() > padded.abs() ? touched : padded;
   }
 
   @override
@@ -80,7 +96,7 @@ final class FrameControls implements ControlSource, PressedControls {
       if (this.stick(stick).length >= pressPoint) yield PadStickControl(stick);
     }
     for (final axis in PadAxis.values) {
-      final value = pad.axis(axis);
+      final value = _axis(axis);
       if (value.abs() < pressPoint) continue;
       yield PadAxisControl(
         axis,

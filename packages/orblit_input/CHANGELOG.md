@@ -8,8 +8,8 @@
   `FrameControls`.
 
 - `FrameControls.sticks` stands a screen in for a pad stick, so a binding to
-  `PadStickControl` works on a phone. When a pad and a screen push the same
-  stick, the longer push is read.
+  `PadStickControl` or to one of the stick's axes works on a phone. When a
+  pad and a screen push the same stick, the longer push is read.
 
 ## 0.2.0
 

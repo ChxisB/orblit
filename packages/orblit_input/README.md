@@ -135,8 +135,8 @@ look(touch.swiped * sensitivity);
 touch.endFrame();
 ```
 
-A touch stick stands in for a pad stick, so `PadStickControl` bindings work
-on a phone. A button binds with `TouchControl('jump')`. If a pad and a screen
+A touch stick stands in for a pad stick, so bindings to `PadStickControl` and
+to its axes work on a phone. A button binds with `TouchControl('jump')`. If a pad and a screen
 push the same stick, the longer push is read.
 
 Not here: motion sensors, touchpads, and pointer lock.

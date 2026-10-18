@@ -153,7 +153,33 @@ void main() {
       expect(controls().active, isEmpty);
 
       touch.moveStick(PadStick.left, [0.0, 0.6]);
-      expect(controls().active, const [PadStickControl(PadStick.left)]);
+      expect(controls().active, const [
+        PadStickControl(PadStick.left),
+        PadAxisControl(PadAxis.leftY, side: AxisSide.positive),
+      ]);
+    });
+
+    test('reads a stick axis from the screen too', () {
+      touch.moveStick(PadStick.left, [-0.8, 0.0]);
+
+      final now = controls();
+      expect(
+        now.read(const PadAxisControl(PadAxis.leftX, side: AxisSide.negative)),
+        closeTo(0.8, 1e-12),
+      );
+      expect(now.read(const PadAxisControl(PadAxis.rightX)), 0);
+      expect(now.active, const [
+        PadStickControl(PadStick.left),
+        PadAxisControl(PadAxis.leftX, side: AxisSide.negative),
+      ]);
+    });
+
+    test('hands out a copy, so a game can scale what it reads', () {
+      touch.moveStick(PadStick.left, [0.0, 0.5]);
+
+      controls().stick(PadStick.left).scale(4);
+
+      expect(touch.sticks[PadStick.left], Vector2(0, 0.5));
     });
 
     test('sees later changes, since it holds views of the screen', () {

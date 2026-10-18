@@ -12,6 +12,9 @@ import '../pad.dart';
 /// the shape of a payload, and a payload of any other shape is ignored,
 /// because it came from a script that was being edited.
 ///
+/// Name each element once. Two buttons called `jump` share one slot, so
+/// lifting one finger releases the other.
+///
 /// ```dart
 /// onEvent: (handler, payload) => switch (handler) {
 ///   'move' => touch.moveStick(PadStick.left, payload),
