@@ -1,5 +1,7 @@
 #include "OrblitRendererInternal.h"
 
+#include "OrblitSurfacePackage.h"
+
 // The compiled surfaces, and everything a material instance is dressed
 // with: textures, samplers and video.
 //
@@ -247,7 +249,7 @@ void Renderer::bindFieldEverywhere() {
   _colourPool.forEach([this](MaterialInstance *shared) { bindFieldTo(shared); });
   for (auto &entry : _materials) {
     if (entry.second.instance == nullptr) continue;
-    if ((entry.second.flags & 3) != 0) continue;
+    if ((entry.second.flags & (3 | kCustomFlag)) != 0) continue;
     bindFieldTo(entry.second.instance);
   }
 }
@@ -633,6 +635,182 @@ void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps
       _targetBindings.push_back({instance, kMapNames[i],
                                  path.substr(strlen(kTargetScheme))});
     }
+  }
+}
+
+/// The compiled package for a cooked author-written surface, read again when
+/// the file changes.
+///
+/// A package that cannot be used leaves the one before it in place and says
+/// why in a note, so a bad save costs the author a message rather than the
+/// surface. It is checked before Filament sees it because Filament answers a
+/// package it cannot use by aborting.
+Material *Renderer::customPackage(const std::string &path) {
+  CustomPackage &entry = _customPackages[path];
+  entry.seen = _materialGeneration;
+  const std::string note = "surface:" + path;
+
+  uint64_t stamp = 0;
+  if (!fileStamp(path, &stamp)) {
+    _surfaceNotes[note] = "The surface package " + path + " could not be found.";
+    return entry.material;
+  }
+  if (stamp == entry.stamp) return entry.material;
+  entry.stamp = stamp;
+
+  std::vector<uint8_t> bytes;
+  std::string problem = readFile(path, bytes)
+                            ? surfacePackageProblem(bytes.data(), bytes.size(),
+                                                    _engine->getBackend())
+                            : "The file could not be read.";
+  Material *built = nullptr;
+  if (problem.empty()) {
+    built = Material::Builder().package(bytes.data(), bytes.size()).build(*_engine);
+    if (built == nullptr) problem = "Filament would not build it.";
+  }
+  if (!problem.empty()) {
+    _surfaceNotes[note] = "The surface package " + path + " was not used. " + problem;
+    return entry.material;
+  }
+
+  _surfaceNotes.erase(note);
+  if (entry.material != nullptr) _packagesSpent.push_back(entry.material);
+  entry.material = built;
+  return built;
+}
+
+/// Packages no surface named this publish, handed to `_packagesSpent`.
+void Renderer::sweepCustomPackages() {
+  for (auto it = _customPackages.begin(); it != _customPackages.end();) {
+    if (it->second.seen == _materialGeneration) {
+      ++it;
+      continue;
+    }
+    if (it->second.material != nullptr) {
+      _packagesSpent.push_back(it->second.material);
+    }
+    _surfaceNotes.erase("surface:" + it->first);
+    it = _customPackages.erase(it);
+  }
+}
+
+/// Destroys the packages that have been let go, except any that a surface
+/// still wears. That is a surface whose key was flagged without a description
+/// this publish, which keeps the instance it had; the package stays until
+/// that instance goes.
+///
+/// Called after the spent instances are destroyed, so what remains worn is
+/// what is really in use.
+void Renderer::destroySpentPackages() {
+  std::set<const Material *> worn;
+  for (const auto &entry : _materials) {
+    if (entry.second.package != nullptr) worn.insert(entry.second.package);
+  }
+  std::vector<Material *> kept;
+  for (Material *spent : _packagesSpent) {
+    if (worn.count(spent) != 0) {
+      kept.push_back(spent);
+    } else {
+      _engine->destroy(spent);
+    }
+  }
+  _packagesSpent = std::move(kept);
+}
+
+/// Puts one author-written surface onto its instance, built from the package
+/// its staged description names. True when the instance is a new one.
+///
+/// A surface whose package is missing or unusable is left exactly as it was,
+/// which is the last good one, or the default surface when there is none.
+bool Renderer::applyCustom(Surfaced &surface, int64_t key, int32_t flags) {
+  const auto staged = _customSpecs.find(key);
+  Material *material =
+      staged == _customSpecs.end() ? nullptr : customPackage(staged->second.package);
+  if (material == nullptr) {
+    if (surface.instance != nullptr) return false;
+    // Nothing has drawn from this key yet. The default surface stands in
+    // until the package works, because every object needs an instance.
+    surface.instance = surfaceAt(surfaceIndexFor(0))->createInstance();
+    setDefaultsOn(surface.instance);
+    return true;
+  }
+  const CustomSpec &spec = staged->second;
+
+  const bool rebuild = surface.instance == nullptr || surface.package != material;
+  if (rebuild) {
+    if (surface.instance != nullptr) _materialsSpent.push_back(surface.instance);
+    surface.instance = material->createInstance();
+    surface.package = material;
+    surface.fingerprint.clear();
+  }
+  if (surface.flags != flags || surface.fingerprint != spec.fingerprint) {
+    surface.flags = flags;
+    surface.fingerprint = spec.fingerprint;
+    writeCustom(surface.instance, spec, flags);
+  }
+  return rebuild;
+}
+
+/// How many floats a parameter of this type takes, or 0 for one the host
+/// cannot set from a list of floats.
+static int widthOf(const Material::ParameterInfo &info) {
+  if (info.isSampler || info.isSubpass || info.count != 1) return 0;
+  switch (info.type) {
+    case backend::UniformType::BOOL:
+    case backend::UniformType::INT:
+    case backend::UniformType::FLOAT:
+      return 1;
+    case backend::UniformType::FLOAT2:
+      return 2;
+    case backend::UniformType::FLOAT3:
+      return 3;
+    case backend::UniformType::FLOAT4:
+      return 4;
+    default:
+      return 0;
+  }
+}
+
+/// Writes what the host described onto an author-written surface.
+///
+/// Matched by name against what the package declares, so a value the author
+/// has since deleted is skipped and a parameter nobody sent keeps the value
+/// the package gave it. Every sampler nobody sent is pointed at a white texel,
+/// because Filament draws nothing sensible from a sampler that was never set.
+void Renderer::writeCustom(MaterialInstance *instance, const CustomSpec &spec, int32_t flags) {
+  const Material *material = instance->getMaterial();
+  std::vector<Material::ParameterInfo> declared(material->getParameterCount());
+  declared.resize(material->getParameters(declared.data(), declared.size()));
+  const auto find = [&](const std::string &name) -> const Material::ParameterInfo * {
+    for (const auto &info : declared) {
+      if (name == info.name) return &info;
+    }
+    return nullptr;
+  };
+
+  for (const CustomSpec::Value &value : spec.values) {
+    const Material::ParameterInfo *info = find(value.name);
+    if (info == nullptr || widthOf(*info) != value.width) continue;
+    const float *n = value.numbers;
+    const char *name = value.name.c_str();
+    switch (info->type) {
+      case backend::UniformType::BOOL: instance->setParameter(name, n[0] != 0.0f); break;
+      case backend::UniformType::INT: instance->setParameter(name, static_cast<int32_t>(n[0])); break;
+      case backend::UniformType::FLOAT: instance->setParameter(name, n[0]); break;
+      case backend::UniformType::FLOAT2: instance->setParameter(name, float2{n[0], n[1]}); break;
+      case backend::UniformType::FLOAT3: instance->setParameter(name, float3{n[0], n[1], n[2]}); break;
+      default: instance->setParameter(name, float4{n[0], n[1], n[2], n[3]}); break;
+    }
+  }
+
+  const TextureSampler sampler = samplerFor(flags);
+  for (const auto &info : declared) {
+    if (!info.isSampler || info.samplerType != backend::SamplerType::SAMPLER_2D) continue;
+    Texture *texture = nullptr;
+    for (const CustomSpec::Map &map : spec.maps) {
+      if (map.name == info.name) texture = textureAtPath(map.path, map.srgb);
+    }
+    instance->setParameter(info.name, texture != nullptr ? texture : blankTexture(), sampler);
   }
 }
 

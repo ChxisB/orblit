@@ -217,7 +217,17 @@ if [ "${1:-}" = "test" ]; then
   "$OUT/orblit_texture_cook_check"
   "$OUT/orblit_splats_check"
   "$OUT/orblit_textures_check"
-  "$OUT/orblit_renderer_test"
+  # The surfaces the ABI test draws are cooked here, with the matc that goes
+  # with this SDK. Without one the test says it skipped them.
+  MATC="${ORBLIT_MATC:-$SDK/bin/matc}"
+  if [ -x "$MATC" ]; then
+    for name in custom_surface custom_surface_dim; do
+      "$MATC" -a metal -p all -o "$OUT/$name.filamat" "$name.mat"
+    done
+    ORBLIT_CUSTOM_DIR="$OUT" "$OUT/orblit_renderer_test"
+  else
+    "$OUT/orblit_renderer_test"
+  fi
   # Khronos's samples and the converted ones, from ORBLIT_SAMPLES when it is
   # set (tool/fetch_import_samples.sh puts them in assets/samples); without it
   # only the ABI is checked.

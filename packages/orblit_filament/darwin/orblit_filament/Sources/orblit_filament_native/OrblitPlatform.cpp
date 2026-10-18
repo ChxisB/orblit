@@ -17,6 +17,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#else
+#include <sys/stat.h>
+#include <sys/types.h>
 #endif
 
 #if !ORBLIT_PLATFORM_APPLE
@@ -200,6 +203,26 @@ bool readWholeFile(const std::string &path, void **bytes, size_t *size) {
   *size = all.size();
   return true;
 #endif
+}
+
+bool fileStamp(const std::string &path, uint64_t *stamp) {
+#if defined(_WIN32)
+  struct _stat64 facts;
+  if (_stat64(path.c_str(), &facts) != 0) return false;
+  const uint64_t nanos = 0;
+  const uint64_t seconds = uint64_t(facts.st_mtime);
+#else
+  struct stat facts;
+  if (stat(path.c_str(), &facts) != 0) return false;
+#if defined(__APPLE__)
+  const uint64_t nanos = uint64_t(facts.st_mtimespec.tv_nsec);
+#else
+  const uint64_t nanos = uint64_t(facts.st_mtim.tv_nsec);
+#endif
+  const uint64_t seconds = uint64_t(facts.st_mtime);
+#endif
+  *stamp = (seconds * 1000000007ull + nanos) * 1000003ull ^ uint64_t(facts.st_size);
+  return true;
 }
 
 std::string deletingLastPathComponent(const std::string &path) {

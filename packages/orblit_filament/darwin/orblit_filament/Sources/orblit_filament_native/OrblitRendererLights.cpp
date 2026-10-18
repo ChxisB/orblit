@@ -305,7 +305,7 @@ void Renderer::bindDecalsEverywhere() {
   }
   for (auto &entry : _materials) {
     if (entry.second.instance == nullptr) continue;
-    if ((entry.second.flags & 3) != 0) continue;
+    if ((entry.second.flags & (3 | kCustomFlag)) != 0) continue;
     bindDecalsTo(entry.second.instance);
   }
 }
