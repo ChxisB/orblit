@@ -27,7 +27,7 @@ the fullest reference.
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
-| `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `Pads`, `PadState` |
+| `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `TouchControls`, `Pads`, `PadState` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
@@ -295,6 +295,11 @@ handler in `props: {'onPressed': 'resume'}` and `onEvent` receives
 as good. Worked example:
 https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 `/guides/interfaces/`.
+
+For a touch screen, `stick`, `touch-button` and `swipe-pad` nodes name
+`onMove`, `onHold` or `onSwipe`. `onEvent` receives `[x, y]`, a `bool` or
+`[dx, dy]`, with up positive. `TouchControls` in `orblit_input` takes them
+and gives `FrameControls` its `touch:` and `sticks:`.
 
 ## orblit_scene and orblit_stage
 

@@ -4,6 +4,7 @@ import 'css.dart';
 import 'node.dart';
 import 'style.dart';
 import 'theme.dart';
+import 'touch.dart';
 import 'utilities.dart';
 
 /// What happens when somebody presses something.
@@ -111,6 +112,15 @@ class UiBuilder {
       'button' => _button(node, style, inherited, path),
       'field' => _field(node, style, inherited),
       'image' => _image(node, style),
+      'stick' => TouchStick(
+        send: _sender(node, 'onMove'),
+        knob: style.colour ?? const Color(0xB3FFFFFF),
+      ),
+      'touch-button' => TouchHold(
+        send: _sender(node, 'onHold'),
+        child: _container(node, style, path),
+      ),
+      'swipe-pad' => TouchSwipe(send: _sender(node, 'onSwipe')),
       'spacer' => const Spacer(),
       'row' ||
       'column' ||
@@ -434,6 +444,14 @@ class UiBuilder {
           ? null
           : (value) => onEvent?.call(handler, value),
     );
+  }
+
+  /// What a touch element calls, or null when script named no handler.
+  TouchSend? _sender(UiNode node, String event) {
+    final handler = node.handlerFor(event);
+    return handler == null
+        ? null
+        : (payload) => onEvent?.call(handler, payload);
   }
 
   Widget _image(UiNode node, UiStyle style) {

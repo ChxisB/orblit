@@ -19,7 +19,8 @@ class UiNode {
   });
 
   /// What to build: `column`, `row`, `stack`, `box`, `text`, `button`,
-  /// `image`, `spacer`, `field`, or anything a host has registered.
+  /// `image`, `spacer`, `field`, the touch elements `stick`, `touch-button`
+  /// and `swipe-pad`, or anything a host has registered.
   final String type;
 
   /// A utility class list, applied first.
