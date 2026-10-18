@@ -47,7 +47,7 @@ void main() {
         final left = where(poses[i * 2]);
         final right = where(poses[i * 2 + 1]);
         expect((right - left).length, closeTo(0.4, 1e-6));
-        expect((left + right) / 2, _near(Vector3(3.0 - i, 0, 0)));
+        expect((left + right) / 2, _near(Vector3(-i.toDouble(), 0, 0)));
       }
     });
 
@@ -75,9 +75,21 @@ void main() {
     test('fold rows past the end of the strip onto its last point', () {
       final poses = ribbon.poses(strip([3, 2], capacity: 4), eye);
 
-      expect(where(poses[4]), _near(Vector3(2, 0, 0)));
-      expect(where(poses[5]), _near(Vector3(2, 0, 0)));
-      expect(where(poses[7]), _near(Vector3(2, 0, 0)));
+      expect(where(poses[4]), _near(Vector3(-1, 0, 0)));
+      expect(where(poses[5]), _near(Vector3(-1, 0, 0)));
+      expect(where(poses[7]), _near(Vector3(-1, 0, 0)));
+    });
+
+    test('are relative to the head, so the object can sit on it', () {
+      final here = strip([3, 2, 1, 0]);
+      final far = strip([103, 102, 101, 100]);
+
+      expect(here.head, Vector3(3, 0, 0));
+      final near = ribbon.poses(here, eye);
+      final moved = ribbon.poses(far, eye + Vector3(100, 0, 0));
+      for (var i = 0; i < 8; i++) {
+        expect(where(moved[i]), _near(where(near[i])));
+      }
     });
 
     test('an empty strip draws nothing', () {

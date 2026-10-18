@@ -1007,9 +1007,12 @@ trail.sampleAlong(2, (time) => Vector3(4 * time, 0, 0), strip);
 
 `OrblitTrailStrip(points: trail.points)` in `orblit_stage` draws a strip. It
 is a sheet two particles wide: pass `toGlb()` to the renderer once, and each
-frame call `poses(strip, eye)` for the joint matrices. The ribbon turns its
-face to `eye`, so it cannot hold a fixed width axis, and it has no colour
-curve. A trail has no scene component or editor section yet.
+frame call `poses(strip, eye)` for the joint matrices. They are relative to
+`strip.head`, so draw the object with `Matrix4.translation(strip.head)`. The
+renderer culls from the sheet at rest, a box 1 m wide hanging `points - 1` m
+below the head, so a trail outside it can be culled while in view. The ribbon
+turns its face to `eye`, so it cannot hold a fixed width axis, and it has no
+colour curve. A trail has no scene component or editor section yet.
 
 ## More worked examples
 

@@ -4,7 +4,7 @@
 
 - `OrblitTrailStrip` draws a `TrailStrip` as a ribbon that turns its face to
   the camera. It is a sheet two particles wide, so a trail holds at most 128
-  points.
+  points. The poses are relative to the newest point, `TrailStrip.head`.
 
 ## 0.10.0
 

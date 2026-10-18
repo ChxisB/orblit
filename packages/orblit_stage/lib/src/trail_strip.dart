@@ -34,24 +34,32 @@ final class OrblitTrailStrip {
   /// Every joint set for [strip], for `OrblitObject.joints`. [eye] is where
   /// the camera is, in the same space as the strip.
   ///
+  /// The poses are relative to `strip.head`, so draw the object with
+  /// `Matrix4.translation(strip.head)`. The renderer culls from the sheet at
+  /// rest, a box 1 m wide that hangs `points - 1` m below the head, and a
+  /// trail outside it can be culled while in view.
+  ///
   /// Rows past the end of the strip are folded onto its last point, so they
   /// draw nothing. Where a point has no direction, no width, or lies in line
   /// with the eye, its two edges meet and the ribbon pinches there.
   List<OrblitJointPose> poses(TrailStrip strip, Vector3 eye) {
     final count = math.min(strip.count, points);
+    final head = strip.head;
     final centres = [
       for (var i = 0; i < count; i++)
         Vector3(
-          strip.positions[i * 3],
-          strip.positions[i * 3 + 1],
-          strip.positions[i * 3 + 2],
-        ),
+              strip.positions[i * 3],
+              strip.positions[i * 3 + 1],
+              strip.positions[i * 3 + 2],
+            ) -
+            head,
     ];
+    final seen = eye - head;
     final tail = centres.isEmpty ? Vector3.zero() : centres.last;
     final edges = <Vector3>[];
     for (var i = 0; i < points; i++) {
       edges.addAll(
-        i < count ? _edges(centres, i, strip.widths[i], eye) : [tail, tail],
+        i < count ? _edges(centres, i, strip.widths[i], seen) : [tail, tail],
       );
     }
     return _sheet.poses((particle) => edges[particle]);

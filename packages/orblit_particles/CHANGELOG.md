@@ -7,6 +7,7 @@
   asked for any time, so a seek never jumps. `TrailRing` keeps the history of
   a point whose path is not known, and clears when time runs backwards or a
   step is longer than the life.
+  `TrailStrip.head` is the newest point.
 
 ## 0.1.0
 

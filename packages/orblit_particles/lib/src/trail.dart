@@ -30,6 +30,11 @@ final class TrailStrip {
   /// How many slots hold a point.
   int count = 0;
 
+  /// The newest point, or the origin when the strip is empty.
+  Vector3 get head => count == 0
+      ? Vector3.zero()
+      : Vector3(positions[0], positions[1], positions[2]);
+
   void _add(Vector3 position, double width) {
     position.copyIntoArray(positions, count * 3);
     widths[count++] = width;
