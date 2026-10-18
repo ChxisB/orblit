@@ -93,7 +93,8 @@ final class SnapshotPad implements PadDevice {
   /// Read afresh and not remembered, so the drain that follows still reports a
   /// button already held. [Pads] ignores a press it already knows about, and
   /// the alternative, remembering here, would make a query change what the
-  /// next drain says.
+  /// next drain says. A release between this and the first drain would leave
+  /// no key-up, so the two must read the same poll, as [Pads.poll] does.
   @override
   PadSnapshot resync() => _alive() ? _read() : (buttons: {}, axes: {});
 

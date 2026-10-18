@@ -35,12 +35,13 @@ GamepadReading reading({
   List<double> axes = const [0, 0, 0, 0],
   bool connected = true,
   bool canRumble = false,
+  bool standard = true,
   int buttons = 17,
 }) => GamepadReading(
   index: index,
   id: id,
   connected: connected,
-  standard: true,
+  standard: standard,
   canRumble: canRumble,
   axes: axes,
   buttons: [
@@ -154,6 +155,16 @@ void main() {
       expect(identity.product, 0x09cc);
     });
 
+    test('a Chrome name that looks like a Firefox id keeps its numbers', () {
+      final identity = padIdentityOf(
+        'ab-cd-Pad (STANDARD GAMEPAD Vendor: 054c Product: 09cc)',
+        0,
+      );
+      expect(identity.name, 'ab-cd-Pad');
+      expect(identity.vendor, 0x054c);
+      expect(identity.product, 0x09cc);
+    });
+
     test('a pad with no numbers keeps its name and gets nought', () {
       final identity = padIdentityOf(
         'Xbox 360 Controller (XInput STANDARD GAMEPAD)',
@@ -245,7 +256,7 @@ void main() {
         ),
       );
       source.readings = [
-        reading(id: odd, pressed: {0}),
+        reading(id: odd, pressed: {0}, standard: false),
       ];
 
       // Index 30 is past the end of this pad's buttons, and is no fault.
@@ -254,8 +265,24 @@ void main() {
 
     test('is read in the standard order when nobody has written an entry', () {
       source.readings = [
+        reading(id: odd, pressed: {0}, standard: false),
+      ];
+      expect(pads.poll().first.held.toSet(), {PadButton.south});
+    });
+
+    test('is not read through an entry when the browser says standard', () {
+      pads = Pads(
+        backend: GamepadApiPads(
+          source,
+          mappings: {
+            key: const PadMapping(buttons: {0: 0x131}),
+          },
+        ),
+      );
+      source.readings = [
         reading(id: odd, pressed: {0}),
       ];
+
       expect(pads.poll().first.held.toSet(), {PadButton.south});
     });
   });

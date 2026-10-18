@@ -8,10 +8,10 @@ typedef GamepadButtonReading = ({bool pressed, double value});
 
 /// One pad as the W3C Gamepad API reports it, as plain data.
 ///
-/// Plain so that everything between the browser and a [PadState] (the id
-/// parsing, the numbering, the scaling, the hot-plug) is exercised on the VM
-/// against made-up readings, and only the few lines that touch `navigator`
-/// need a browser.
+/// Plain so that everything between the browser and a [PadState] is exercised
+/// on the VM against made-up readings. That covers the id parsing, the
+/// numbering, the scaling and the hot-plug. Only the few lines that touch
+/// `navigator` need a browser.
 final class GamepadReading {
   const GamepadReading({
     required this.index,
@@ -168,8 +168,9 @@ final class GamepadApiPads implements PadBackend {
   final GamepadSource _source;
 
   /// Mappings for pads the browser does not recognise, by [PadMapping.keyOf].
-  /// A pad in neither this nor the browser's standard order is read as if it
-  /// were in the standard order, which is a guess.
+  /// A pad the browser reports as standard never reads one. A pad in neither
+  /// this nor the browser's standard order is read as if it were in the
+  /// standard order, which is a guess.
   final Map<int, PadMapping> mappings;
 
   final Map<int, _Open> _open = {};
@@ -200,9 +201,11 @@ final class GamepadApiPads implements PadBackend {
 
   _Open _opened(GamepadReading reading) {
     final identity = padIdentityOf(reading.id, reading.index);
-    final mapping =
-        mappings[PadMapping.keyOf(identity.vendor, identity.product)] ??
-        PadMapping.standard;
+    final mapping = reading.standard
+        ? PadMapping.standard
+        : mappings[PadMapping.keyOf(identity.vendor, identity.product)] ??
+              PadMapping.standard;
+    final index = reading.index;
     final open = _Open(reading.id)..latest = reading;
     open.pad = SnapshotPad(
       identity: identity,
@@ -215,13 +218,8 @@ final class GamepadApiPads implements PadBackend {
             : mapping.snapshotOf(latest);
       },
       onRumble: reading.canRumble
-          ? ({required strong, required weak, required duration}) =>
-                _source.rumble(
-                  reading.index,
-                  strong: strong,
-                  weak: weak,
-                  duration: duration,
-                )
+          ? ({required strong, required weak, required duration}) => _source
+                .rumble(index, strong: strong, weak: weak, duration: duration)
           : null,
     );
     return open;
@@ -258,8 +256,10 @@ final RegExp _tail = RegExp(r'\s*\([^()]*\)\s*$');
 /// all. What is not in the id is left at nought, which sends the layout to its
 /// name table and then to the standard codes.
 PadIdentity padIdentityOf(String id, int index) {
-  final dashed = _dashed.firstMatch(id);
-  final numbers = dashed ?? _vendorProduct.firstMatch(id);
+  // Chrome first, since a Chrome name could itself look like a dashed id.
+  final chrome = _vendorProduct.firstMatch(id);
+  final dashed = chrome == null ? _dashed.firstMatch(id) : null;
+  final numbers = chrome ?? dashed;
   final named = dashed?.group(3) ?? id.replaceFirst(_tail, '');
   return PadIdentity(
     name: named.trim().isEmpty ? id : named.trim(),

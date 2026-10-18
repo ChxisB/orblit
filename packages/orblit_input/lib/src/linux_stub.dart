@@ -4,6 +4,9 @@
 import 'backend.dart';
 
 /// Gamepads on a Linux machine, which this platform is not.
+///
+/// Open, like the class it stands in for, and with the same constructor so a
+/// call site compiles on both.
 class LinuxPads implements PadBackend {
   LinuxPads({this.devices = '/dev/input', this.sysfs = '/sys/class/input'}) {
     throw UnsupportedError('LinuxPads reads evdev, which is Linux only');
