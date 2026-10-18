@@ -218,6 +218,9 @@ final class OrblitStaticMerge {
       return null;
     }
     final at = object.transform.storage;
+    // A position that is not a number has no square of ground, and floor
+    // throws on it.
+    if (!at[12].isFinite || !at[14].isFinite) return null;
     return (
       mesh: mesh,
       material: object.material,

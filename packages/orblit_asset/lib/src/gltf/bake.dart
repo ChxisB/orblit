@@ -4,6 +4,7 @@ import 'package:vector_math/vector_math_64.dart';
 
 import '../asset_id.dart';
 import '../asset_source.dart';
+import '../importer.dart' show ImportFailure;
 import 'accessor.dart';
 import 'document.dart';
 import 'merge.dart' show primitiveGroupKey;
@@ -25,8 +26,9 @@ import 'merge.dart' show primitiveGroupKey;
 /// Returns null when the model cannot be baked, and the caller keeps drawing
 /// it as it was. That is a model with a skin, an animation, a morph target, a
 /// compressed buffer, a node that is instanced already, a position, normal or
-/// tangent not stored as floats, or a buffer that is not in the file. Lights
-/// and cameras in the model are not carried over.
+/// tangent not stored as floats, a buffer that is not in the file, or bytes that
+/// are not a model. A placement with no volume or with a NaN or an infinity in
+/// it is skipped. Lights and cameras in the model are not carried over.
 ///
 /// The model's own geometry stays in the file beside the baked copy, because
 /// its textures share the buffer. A model whose geometry dwarfs its placements
@@ -44,6 +46,8 @@ Future<Uint8List?> bakeInstances(
       model,
       MemoryAssetSource(const {}),
     );
+  } on ImportFailure {
+    return null;
   } on FormatException {
     return null;
   } on AssetNotFound {
@@ -54,8 +58,9 @@ Future<Uint8List?> bakeInstances(
 
   final batches = <String, _Batch>{};
   for (final placement in placements) {
-    // A placement with no volume draws nothing, and has no normal matrix.
-    if (placement.determinant() == 0) continue;
+    // A placement with no volume draws nothing and has no normal matrix. One
+    // with a NaN or an infinity would put them in the file's bounds.
+    if (!_placeable(placement)) continue;
     for (final part in parts) {
       final matrix = placement.multiplied(part.world);
       (batches[part.key] ??= _Batch(
@@ -83,6 +88,9 @@ Future<Uint8List?> bakeInstances(
     ..['scene'] = 0;
   return document.toGlb();
 }
+
+bool _placeable(Matrix4 placement) =>
+    placement.storage.every((v) => v.isFinite) && placement.determinant() != 0;
 
 const _refused = ['EXT_meshopt_compression', 'KHR_draco_mesh_compression'];
 

@@ -238,6 +238,16 @@ void main() {
     expect(rig.calls, isEmpty);
   });
 
+  test('an object with no position is left alone', () async {
+    final rig = Rig();
+    final lost = rock(9)..transform.setEntry(0, 3, double.nan);
+    final objects = [...rocks(3), lost];
+    await rig.watch(objects, 4);
+
+    expect(rig.calls.single.$2, hasLength(3));
+    expect(rig.drawn(objects).where((o) => o.key == 9), hasLength(1));
+  });
+
   test('two squares of ground are two merges', () async {
     final rig = Rig();
     final objects = [

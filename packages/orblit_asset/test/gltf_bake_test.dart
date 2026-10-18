@@ -370,6 +370,21 @@ void main() {
       });
     }
 
+    test('bytes that are not a model', () async {
+      expect(await bakeInstances(Uint8List.fromList([1, 2, 3]), one), isNull);
+    });
+
+    test('a placement that is not a number', () async {
+      final model = TriangleModel()..triangle();
+      final nan = Matrix4.identity()..setEntry(0, 3, double.nan);
+      final far = Matrix4.identity()..setEntry(1, 3, double.infinity);
+      expect(await bakeInstances(model.toGlb(), [nan, far]), isNull);
+
+      final document = await baked(model, [nan, Matrix4.identity(), far]);
+      final primitive = primitivesOf(document).single;
+      expect(document.accessorCount(attribute(primitive, 'POSITION')), 3);
+    });
+
     test('a buffer it cannot read', () async {
       final model = TriangleModel()..triangle();
       model.json['buffers'] = [
