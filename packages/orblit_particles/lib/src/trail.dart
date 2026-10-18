@@ -11,18 +11,16 @@ typedef PathAt = Vector3 Function(double time);
 /// The points of a trail at one moment, newest first, as flat arrays a
 /// renderer can read without unpacking.
 final class TrailStrip {
-  TrailStrip(this.capacity)
-    : positions = Float32List(capacity * 3),
-      widths = Float32List(capacity) {
-    if (capacity < 2) {
-      throw ArgumentError.value(capacity, 'capacity', 'must be 2 or more');
-    }
-  }
+  TrailStrip(int capacity)
+    : capacity = _atLeastTwo(capacity),
+      positions = Float64List(capacity * 3),
+      widths = Float32List(capacity);
 
   final int capacity;
 
-  /// x, y, z per point.
-  final Float32List positions;
+  /// x, y, z per point. Doubles, because a strip far from the origin is
+  /// turned into offsets from its head and single precision would step.
+  final Float64List positions;
 
   /// Width per point, in metres.
   final Float32List widths;
@@ -58,11 +56,10 @@ final class Trail {
       'needs one or more widths of 0 or more',
     );
     _need(
-      points <= maxPoints,
+      life * rate <= maxPoints - 1,
       'life',
       life,
-      'at $rate samples a second needs $points points, and a strip holds '
-          '$maxPoints',
+      'times a rate of $rate must be $maxPoints points or fewer',
     );
   }
 
@@ -83,13 +80,18 @@ final class Trail {
   /// life, and the head.
   int get points => (life * rate).ceil() + 1;
 
+  // The seconds between points. A `rate` that does not divide the life into
+  // whole samples gives a slightly shorter step, so both ways of filling a
+  // strip use this one.
+  double get _step => life / (points - 1);
+
   /// Fills [out] with the strip at [time], from a path that can be asked for
   /// any time. Nothing is kept, so a seek gives the same strip and the strip
   /// never jumps. The path is not asked for a time before 0.
   void sampleAlong(double time, PathAt path, TrailStrip out) {
     out.count = 0;
     if (!(time >= 0 && time.isFinite)) return;
-    final step = life / (points - 1);
+    final step = _step;
     final count = points < out.capacity ? points : out.capacity;
     for (var i = 0; i < count && time - i * step >= 0; i++) {
       out._add(path(time - i * step), rampAt(width, 1, 0, i * step / life));
@@ -119,7 +121,9 @@ final class TrailRing {
     if (time < _now || time - _now > trail.life) _kept.clear();
     _now = time;
     _here.setFrom(position);
-    if (_kept.isEmpty || time - _kept.last.$1 >= 1 / trail.rate) {
+    // A frame clock at the trail's own rate lands a rounding error short of
+    // one step, so allow for it.
+    if (_kept.isEmpty || time - _kept.last.$1 >= trail._step * (1 - 1e-6)) {
       _kept.add((time, position.clone()));
     }
     final expired = _kept.indexWhere((s) => time - s.$1 <= trail.life);
@@ -142,6 +146,11 @@ final class TrailRing {
       out._add(_kept[i].$2, rampAt(trail.width, 1, 0, age / trail.life));
     }
   }
+}
+
+int _atLeastTwo(int capacity) {
+  _need(capacity >= 2, 'capacity', capacity, 'must be 2 or more');
+  return capacity;
 }
 
 void _need(bool ok, String name, Object? value, String why) {

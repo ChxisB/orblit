@@ -991,10 +991,11 @@ A trail is a ribbon behind a moving point. `Trail(life:, rate:, width:)` holds
 the settings, and `width` is a ramp from the newest point to the oldest, so a
 width that ends at 0 is the fade. `trail.sampleAlong(time, path, strip)` builds
 a `TrailStrip` from a `path` that can be asked for any time, so a seek never
-jumps. For a point whose path is not known, such as a physics body, call
-`TrailRing(trail).record(time, position)` each frame and `fill(strip)`. The
-ring clears when time runs backwards or a step is longer than `life`, and
-`clear()` is for a seek you know about. A trail holds at most 128 points.
+jumps. For a point whose path is not known, such as a physics body, make one
+`TrailRing(trail)` and keep it. Each frame call `ring.record(time, position)`
+and then `ring.fill(strip)`. The ring clears when time runs backwards or a
+step is longer than `life`, and `clear()` is for a seek you know about. A
+trail holds at most 128 points.
 
 ```dart
 import 'package:orblit_particles/orblit_particles.dart';

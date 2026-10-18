@@ -25,10 +25,17 @@ void main() {
         'no width': () => Trail(width: const []),
         'negative width': () => Trail(width: const [0.1, -1]),
         'too many points': () => Trail(life: 10, rate: 60),
+        'too many to count': () => Trail(life: 1e30, rate: 1),
+        'overflowing': () => Trail(life: 1e200, rate: 1e200),
       };
       for (final entry in bad.entries) {
         expect(entry.value, throwsArgumentError, reason: entry.key);
       }
+    });
+
+    test('a strip with room for fewer than two points is refused', () {
+      expect(() => TrailStrip(1), throwsArgumentError);
+      expect(() => TrailStrip(-1), throwsArgumentError);
     });
 
     test('a list handed in cannot be changed from outside afterwards', () {
@@ -124,6 +131,34 @@ void main() {
           reason: 'samples are at least a sample period apart',
         );
       }
+    });
+
+    test('keeps every frame when the clock runs at the trail\'s own rate', () {
+      final steady = Trail(life: 0.5, rate: 60);
+      final every = TrailRing(steady);
+      final all = TrailStrip(steady.points);
+
+      for (var frame = 0; frame <= 120; frame++) {
+        every.record(frame / 60, along(frame / 60));
+      }
+      every.fill(all);
+
+      expect(all.count, steady.points);
+    });
+
+    test('spaces samples as the known path does when rate does not divide', () {
+      final odd = Trail(life: 1, rate: 2.5);
+      final remembered = TrailRing(odd);
+      final fromRing = TrailStrip(odd.points);
+      final fromPath = TrailStrip(odd.points);
+
+      for (var frame = 0; frame <= 180; frame++) {
+        remembered.record(frame / 60, along(frame / 60));
+      }
+      remembered.fill(fromRing);
+      odd.sampleAlong(3, along, fromPath);
+
+      expect(fromRing.count, fromPath.count);
     });
 
     test('lets go of samples older than the life', () {
