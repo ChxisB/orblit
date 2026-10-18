@@ -5,6 +5,8 @@
 - `UiPanel` draws a widget tree without a window and takes pointers in its own
   pixels. It returns PNG bytes and tells listeners when the picture is out of
   date.
+- `LabelAtlas` packs many short strings into one picture and says where
+  each sits. The picture grows in height and never moves a string.
 
 ## 0.1.0
 

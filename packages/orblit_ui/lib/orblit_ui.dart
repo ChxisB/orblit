@@ -21,6 +21,7 @@ library;
 export 'src/builder.dart' show UiBuilder, UiDecorator, UiEvent;
 export 'src/css.dart' show UiCss;
 export 'src/document.dart' show CanvasFit, UiCanvas, UiDocument;
+export 'src/label_atlas.dart' show LabelAtlas;
 export 'src/node.dart' show UiNode;
 export 'src/panel.dart' show UiPanel;
 export 'src/responsive.dart' show UiBreakpoints;

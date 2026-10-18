@@ -1,29 +1,8 @@
-import 'dart:typed_data';
-import 'dart:ui' as ui;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_ui/orblit_ui.dart';
 
-/// The width, height and RGBA bytes of a PNG.
-Future<({int width, int height, Uint8List rgba})> decode(Uint8List png) async {
-  final codec = await ui.instantiateImageCodec(png);
-  final frame = await codec.getNextFrame();
-  final data = await frame.image.toByteData();
-  final out = (
-    width: frame.image.width,
-    height: frame.image.height,
-    rgba: data!.buffer.asUint8List(),
-  );
-  frame.image.dispose();
-  codec.dispose();
-  return out;
-}
-
-List<int> pixel(({int width, int height, Uint8List rgba}) image, int x, int y) {
-  final at = (y * image.width + x) * 4;
-  return image.rgba.sublist(at, at + 4);
-}
+import 'png.dart';
 
 void main() {
   group('a panel draws without a window', () {
