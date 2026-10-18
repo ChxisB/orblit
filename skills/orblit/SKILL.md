@@ -373,6 +373,12 @@ final shown = merge.replace(scene);
   a file until it is torn down, so a group bakes at most `maxBakes` (8) times
   and then stays single. The merged file also holds a second copy of the
   geometry. Lights and cameras inside the model are not carried over.
+- **Not handled.** A blended material loses its depth order when copies
+  join, so return null from your baker for such a model. The baked file keeps
+  the model's texture references as they are, and only models with the
+  textures inside the GLB were checked. Positions are 32-bit floats in world
+  space, so keep `cellSize` small far from the origin. A baker that says no or
+  throws declines its model for good.
 - **`observe` changes state and `replace` answers.** Call `dispose()` when
   you are done, and it releases every file.
 - **Checked headless on macOS only.** A merged group draws within a few
