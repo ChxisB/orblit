@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.20.0
+
+- Add `CellStreamer`. It keeps the cells of a world that are near a point in
+  a scene. A cell is a scene file, put in as one diff with `cell_<x>_<z>:`
+  on every id and taken out again when the point leaves. A frame spends at
+  most a set time on it. `CellLoad` reports what each cell cost.
+- Depend on `orblit_cells`.
+
 ## 0.19.0
 
 - Add `VehicleComponent` and `WheelComponent`. A vehicle is a body with an
