@@ -15,6 +15,7 @@ PACKAGES=(
   packages/orblit_agent
   packages/orblit_asset
   packages/orblit_camera
+  packages/orblit_cells
   packages/orblit_collide
   packages/orblit_codegen
   packages/orblit_core

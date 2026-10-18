@@ -1,0 +1,14 @@
+name: orblit_cells
+description: >-
+  Square cells on the ground plane, and the rule for which of them to load and
+  which to drop around a moving point. One grid for streaming, interest and
+  active regions.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
