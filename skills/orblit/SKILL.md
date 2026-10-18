@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -390,11 +390,12 @@ Full API, parameter lists and the traps: [references/assets.md](references/asset
 
 ## Physics
 
-Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as three
-git dependencies: `orblit_physics` (the solver, native platforms only, not the
+Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as git
+dependencies: `orblit_physics` (the solver, native platforms only, not the
 web), `orblit_physics_scene` (`ScenePhysics`, which simulates a scene
-document) and `orblit_physics_terrain` (`TerrainPhysics`, which lays a terrain
-as ground). An entity gets a body from a `body` component (`BodyComponent` in
+document), `orblit_physics_terrain` (`TerrainPhysics`, which lays a terrain
+as ground), `orblit_physics_vehicle` (cars, which the scene package
+brings in) and `orblit_physics_soft` (cloth and rope, stepped beside the world). An entity gets a body from a `body` component (`BodyComponent` in
 `orblit_scene`), and each `advance` answers with a `SceneDiff` for the view:
 
 ```dart
@@ -428,6 +429,14 @@ stand.
 In a scene, a body with `BodyMotion.character` is one: `scene.walk(entity,
 RootMotionWalk(player))` asks for its root motion once per step, and
 `scene.crouch(entity, true)` crouches it with its feet where they were.
+
+A car is a `vehicle` component (`VehicleComponent`) on a free body with
+`wheel` components (`WheelComponent`) on its direct children, each wheel placed
+where it sits at rest. `scene.pilot(entity, VehicleInput(throttle: 1, steer:
+-0.3))` drives it every step, `pilot(entity, null)` lets go, and
+`scene.vehicleOf(entity)` reads the gear, the rpm and each wheel. Front is
+minus z. The scene writes each wheel's suspension, roll and steer back to its
+entity. A body the vehicle refuses is just a body, with no error.
 
 Joints are `physics.join(id, const Joint.hinge(...), a: holder, b: body, at:
 ..., rotation: ...)`, in **radians**, with 0 for the world at either end. In a

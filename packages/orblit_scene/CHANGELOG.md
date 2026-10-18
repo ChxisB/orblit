@@ -1,12 +1,20 @@
 # Changelog
 
-## 0.19.0
+## 0.20.0
 
 - Add `ParticleEmitterComponent`. It holds the settings of an emitter of
   smoke, sparks, dust or fire: a shape, a rate and bursts, ranges for
   lifetime, speed and spin, size and colour over a life, gravity, drag, noise
   and a cap. It is kept through JSON and `copyWith`. A document without one
   reads as it did, and a number that makes no emitter reads as its default.
+
+## 0.19.0
+
+- Add `VehicleComponent` and `WheelComponent`. A vehicle is a body with an
+  engine, a gearbox and an anti-roll bar. Its wheels are the direct children
+  of the entity that carry a wheel, each with its radius, brake, spring and
+  grip. Both are kept through JSON and `copyWith`. A document without them
+  reads as it did.
 
 ## 0.18.0
 

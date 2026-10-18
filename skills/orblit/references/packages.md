@@ -21,7 +21,7 @@ the fullest reference.
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
