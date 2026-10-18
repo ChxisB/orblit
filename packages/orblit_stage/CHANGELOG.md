@@ -8,6 +8,11 @@
   that leaves the face keeps going.
 - `PointerRay.fromCamera` is the ray through a point of the view, for a
   perspective or an orthographic `OrblitCamera`.
+- `Nameplates` draws many short labels as quads that square up to the view.
+  Each distinct string is drawn once into a shared `LabelAtlas`, and a label
+  shows its string's rectangle of that picture. Labels fade out between two
+  distances, are dropped past the far one, and only the nearest `maxLabels`
+  are kept.
 - New dependency on `orblit_ui`.
 
 ## 0.9.0
