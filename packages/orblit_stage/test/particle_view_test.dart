@@ -224,7 +224,7 @@ void main() {
     });
 
     test('is not drawn from an entity with no emitter', () {
-      final view = viewOf([SceneEntity(id: 'a', name: 'a', components: {})]);
+      final view = viewOf([const SceneEntity(id: 'a', name: 'a')]);
       final particles = OrblitParticles(view, key: 0)..advance(1);
 
       expect(particles.populations, isEmpty);
