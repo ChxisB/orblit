@@ -324,6 +324,14 @@ void main() {
     expect(voice.volume, 0.5);
   });
 
+  test('a backend that cannot start a clip leaves no voice behind', () {
+    final refusing = Audio(_Refusing());
+
+    expect(() => refusing.play('missing'), throwsStateError);
+
+    expect(refusing.voices, isEmpty);
+  });
+
   test('a bus of another mixer is refused', () {
     final foreign = Mixer().add('sfx');
 
@@ -365,4 +373,23 @@ void main() {
     expect(() => audio.advance(-1), throwsArgumentError);
     expect(() => audio.advance(double.nan), throwsArgumentError);
   });
+}
+
+final class _Refusing implements AudioBackend {
+  @override
+  void start(
+    int voice,
+    String clip, {
+    required bool loop,
+    required Level level,
+  }) => throw StateError('no such clip: $clip');
+
+  @override
+  void update(int voice, Level level) {}
+
+  @override
+  void stop(int voice) {}
+
+  @override
+  bool isPlaying(int voice) => false;
 }

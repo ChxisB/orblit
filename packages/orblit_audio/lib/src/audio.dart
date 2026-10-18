@@ -182,8 +182,8 @@ final class Audio {
       pitch: pitch,
       backend: _backend,
     );
-    _voices.add(voice);
     voice._begin(listener);
+    _voices.add(voice);
     return voice;
   }
 

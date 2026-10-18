@@ -26,7 +26,9 @@ final class Level {
 /// line, so a backend plays the numbers it is given and nothing else.
 abstract interface class AudioBackend {
   /// Begins playing [clip] as [voice]. The id is the caller's and is never
-  /// reused.
+  /// reused. A backend that cannot play the clip either throws, and the voice
+  /// is dropped, or returns and answers false from [isPlaying], and the voice
+  /// ends at the next advance.
   void start(
     int voice,
     String clip, {

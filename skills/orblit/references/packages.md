@@ -28,7 +28,8 @@ the fullest reference.
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
-| `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. **No backend yet, so nothing is audible** | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `RecordedAudio` |
+| `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. Silent until a backend plays it | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `RecordedAudio` |
+| `orblit_audio_device` | The backend that plays `orblit_audio` through the output device: WAV, FLAC, MP3 and Ogg Vorbis, music streamed from disk. In a browser it plays over Web Audio and a clip is a URL. Tested on rendered samples and **not yet heard on a device** | `DeviceAudio` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
@@ -171,8 +172,12 @@ https://orblitengine.com/docs/guides/paths/.
 ## orblit_audio
 
 `Audio(backend)` is what a game calls. A backend plays the numbers it is
-given. There is none yet, so use `RecordedAudio()`, which writes every call
-down in `calls` and plays nothing. `audio.mixer.add('music', under: parent)`
+given. `DeviceAudio.open(directory:)` from `orblit_audio_device` plays them
+and throws `AudioDeviceException` when the machine has no output device. A
+test uses `RecordedAudio()`, which writes every call down in `calls`, or
+`DeviceAudio.offline()`, which mixes real files with no device and hands the
+samples back from `render(frames)`. In a browser a clip is a URL, and the first
+sound must start from a click or a key. `audio.mixer.add('music', under: parent)`
 makes a bus, and a bus has `volume`, `muted` and `gain`, the product of every
 bus above it. `audio.play('clip', bus:, loop:, volume:, pitch:, at:)` returns
 a `Voice` with `volume`, `pitch`, `fadeTo(v, seconds:)` and
