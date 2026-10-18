@@ -93,6 +93,61 @@ view.look = null;  // back to what each object wears by default
 
 Setting `look` rebuilds rather than diffs — it is a scene-wide swap.
 
+### Shaders you write (`.oshader`)
+
+A surface the `.omat` table cannot make is one short text file. The cook
+translates it to a Filament material and runs `matc`, so the cook machine
+needs `matc` (`ORBLIT_MATC`, or on `PATH`). A running game reads only the
+cooked package.
+
+```glsl
+shader_type spatial;
+render_mode unshaded;
+
+instance uniform vec4 tint : source_color = vec4(1.0, 0.5, 0.2, 1.0);
+instance uniform float speed : hint_range(0.0, 10.0, 0.1) = 2.0;
+
+void fragment() {
+  ALBEDO = tint.rgb * (0.6 + 0.4 * sin(TIME * speed));
+  ALPHA = tint.a;
+}
+```
+
+- Types: `bool`, `int`, `float`, `vec2`, `vec3`, `vec4`, `sampler2D`. A
+  picture cannot be an `instance uniform`.
+- Hints the editor acts on: `source_color` (a colour row) and
+  `hint_range(min, max[, step])` (a slider). The other known hints are
+  kept in `params.json` and nothing reads them yet.
+- Render modes: `blend_mix`, `blend_add`, `blend_mul`, `blend_premul_alpha`,
+  `cull_back`, `cull_front`, `cull_disabled`, `depth_draw_opaque`,
+  `depth_draw_always`, `depth_draw_never`, `depth_test_default`,
+  `depth_test_disabled`, `unshaded`. No blend mode means opaque.
+- `fragment()` writes `ALBEDO`, `ALPHA`, `METALLIC`, `ROUGHNESS`, `AO`,
+  `EMISSION`, `NORMAL_MAP` and reads `UV` and `TIME`. `TIME` is the
+  renderer's clock, not the scene's.
+- `#include "x.oshaderinc"` only. A cycle names both files.
+- Refused with the line: `vertex()`, `light()`, `varying`, another
+  `shader_type`, any other render mode or hint.
+
+An entity wears one through its material, with values of its own:
+
+```dart
+MaterialComponent(
+  asset: 'assets/pulse.oshader',
+  values: {'speed': 4, 'tint': [0.2, 1.0, 0.4, 1.0]},
+)
+```
+
+A value is a number, a flag, one to four numbers, or a picture path. A name
+the shader does not declare, or a value of the wrong width, is dropped.
+Entities that state nothing share one material. Stage the cooked shaders with
+`view.surfaces = {'assets/pulse.oshader': CookedSurface.fromParams(package,
+jsonDecode(paramsJson))}`; the package and `params.json` are
+`<bundle>/<id>.material.filamat` and `<bundle>/<id>.params.json`.
+
+Errors read `file:line: message` at the author's line, from the translator or
+from `matc`. Only macOS draws a surface so far. Guide: `/guides/shaders/`.
+
 ---
 
 ## Scene files (`.oscene`)

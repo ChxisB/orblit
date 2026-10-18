@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, shaders an author writes as `.oshader` files, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -629,8 +629,9 @@ Load these when the task needs them:
 - [references/game-loop.md](references/game-loop.md): a complete small game.
 - [references/platforms.md](references/platforms.md): per-platform setup and
   what has actually been seen to work.
-- [references/assets.md](references/assets.md): materials and looks, scene
-  files and their export and import, splats, cooked and networked assets.
+- [references/assets.md](references/assets.md): materials and looks, shaders
+  an author writes, scene files and their export and import, splats, cooked
+  and networked assets.
 - [references/physics.md](references/physics.md): the physics world,
   questions asked of it, characters and root motion on them, ground and
   terrain, triggers, zones, belts and contact rules, joints, bodies and joints

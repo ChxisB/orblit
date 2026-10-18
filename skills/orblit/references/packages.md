@@ -307,7 +307,8 @@ with only `position` resets rotation and scale, so carry them over. Guide:
 `/guides/scene-files/`.
 
 `orblit_scene` also holds the material document (`.omat`, `MaterialLibrary`,
-`MaterialComponent` and its looks) and the scene writers and readers —
+`MaterialComponent`, its looks and its `values` for a shader the author wrote,
+see [assets.md](assets.md)) and the scene writers and readers —
 `document.writeAs(SceneFormat.glb)` and `readSceneFrom(bytes)` for glTF, GLB
 and OBJ. Both report what they could not carry rather than throwing. Details
 and the traps: [assets.md](assets.md).
