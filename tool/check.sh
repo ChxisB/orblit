@@ -14,6 +14,7 @@ cd "$(dirname "$0")/.."
 PACKAGES=(
   packages/orblit_agent
   packages/orblit_asset
+  packages/orblit_audio
   packages/orblit_camera
   packages/orblit_collide
   packages/orblit_codegen
