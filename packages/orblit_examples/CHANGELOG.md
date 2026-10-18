@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.35.0
+
+- **Interface in the world, under Models & media.** A ticket booth drawn by
+  `orblit_ui` and hung on a wall as a picture. A click on it presses its
+  button and a drag on it moves its slider, and neither orbits the camera.
+  Two hundred names stand over a crowd as `Nameplates` that fade with
+  distance. The settings set how many names there are and whether each is
+  its own string. The package now depends on `orblit_ui`.
+
 ## 0.34.0
 
 - **The Terrain showcase grows grass, stones and trees.** Four

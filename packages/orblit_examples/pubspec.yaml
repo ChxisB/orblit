@@ -2,7 +2,7 @@ name: orblit_examples
 description: >-
   One technique at a time: a scene that shows it, the controls that change it,
   and the lines that do it. Shown by the gallery app and by the editor.
-version: 0.34.0
+version: 0.35.0
 publish_to: none
 
 environment:
@@ -25,6 +25,9 @@ dependencies:
     path: ../orblit_scene
   orblit_stage:
     path: ../orblit_stage
+  # For a screen drawn without a window, and a picture of many short labels.
+  orblit_ui:
+    path: ../orblit_ui
   orblit_weather:
     path: ../orblit_weather
   # For a landscape that is the same every time it is generated.

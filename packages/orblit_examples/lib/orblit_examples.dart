@@ -58,6 +58,7 @@ export 'src/examples/imported.dart' show ImportedExample, ImportedSample;
 export 'src/examples/scene_files.dart' show SceneFilesExample;
 export 'src/examples/splats.dart' show SplatsExample;
 export 'src/examples/sprites.dart' show SpritesExample;
+export 'src/examples/world_ui.dart' show WorldUiExample;
 export 'src/examples/textures.dart' show TexturesExample;
 export 'src/examples/post.dart' show PostExample;
 export 'src/examples/video.dart' show VideoExample;
@@ -104,6 +105,7 @@ import 'src/examples/terrain.dart';
 import 'src/examples/voxels.dart';
 import 'src/examples/weather.dart';
 import 'src/examples/volumes.dart';
+import 'src/examples/world_ui.dart';
 
 /// Every example that needs nothing but the engine, in the order to show them.
 ///
@@ -142,6 +144,7 @@ List<Example> engineExamples() => [
   SplatsExample(),
   SpritesExample(),
   VideoExample(),
+  WorldUiExample(),
   ManyExample(),
   BatchingExample(),
   CrowdExample(),
