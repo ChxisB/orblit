@@ -4,7 +4,7 @@ description: >-
   seed and the time, so a seek or a pause shows the same frame and a network
   client needs nothing sent. An opt-in stepped form adds turbulence and
   collision.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

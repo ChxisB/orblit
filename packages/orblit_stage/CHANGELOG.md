@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0
+
+- `OrblitTrailStrip` draws a `TrailStrip` as a ribbon that turns its face to
+  the camera. It is a sheet two particles wide, so a trail holds at most 128
+  points.
+
 ## 0.10.0
 
 - `OrblitParticles` draws the `ParticleEmitterComponent`s of a staged scene.

@@ -11,3 +11,4 @@ export 'src/sample.dart' show EmitterSampling;
 export 'src/sim.dart' show Hit, HitTest, ParticleSim;
 export 'src/shape.dart'
     show BoxShape, ConeShape, PointShape, Shape, SphereShape;
+export 'src/trail.dart' show PathAt, Trail, TrailRing, TrailStrip;

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:vector_math/vector_math_64.dart';
 
 import 'buffer.dart';
+import 'ramp.dart';
 import 'random.dart';
 import 'shape.dart';
 
@@ -172,9 +173,9 @@ final class Emitter {
   /// [age] seconds into a life of [life].
   void look(ParticleBuffer out, int slot, int id, double age, double life) {
     final fraction = age / life;
-    out.sizes[slot] = _ramp(size, 1, 0, fraction);
+    out.sizes[slot] = rampAt(size, 1, 0, fraction);
     for (var channel = 0; channel < 3; channel++) {
-      out.colours[slot * 3 + channel] = _ramp(colour, 3, channel, fraction);
+      out.colours[slot * 3 + channel] = rampAt(colour, 3, channel, fraction);
     }
     out.angles[slot] =
         unitAt(seed, id, 8) * 2 * math.pi + spin.at(unitAt(seed, id, 7)) * age;
@@ -238,15 +239,4 @@ final class Emitter {
 
 void _need(bool ok, String name, Object? value, String why) {
   if (!ok) throw ArgumentError.value(value, name, why);
-}
-
-/// [values] read as [stride] numbers per stop, spread evenly over 0 to 1.
-double _ramp(List<double> values, int stride, int channel, double fraction) {
-  final last = values.length ~/ stride - 1;
-  if (last == 0) return values[channel];
-  final at = fraction.clamp(0.0, 1.0) * last;
-  final stop = math.min(at.floor(), last - 1);
-  final across = at - stop;
-  return values[stop * stride + channel] * (1 - across) +
-      values[(stop + 1) * stride + channel] * across;
 }

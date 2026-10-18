@@ -21,12 +21,12 @@ the fullest reference.
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet, and a scene's particle emitters as populations | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet`, `OrblitParticles` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet, and a scene's particle emitters as populations | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet`, `OrblitParticles`, `OrblitTrailStrip` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
-| `orblit_particles` | Smoke, sparks, dust and fire: an emitter is data, and a particle is worked out from a seed, its number and the time, so the same time gives the same frame. Collision and turbulence are an opt-in stepped mode | `Emitter`, `Burst`, `ConeShape`, `ParticleBuffer`, `sample`, `ParticleSim` |
+| `orblit_particles` | Smoke, sparks, dust and fire: an emitter is data, and a particle is worked out from a seed, its number and the time, so the same time gives the same frame. Collision and turbulence are an opt-in stepped mode | `Emitter`, `Burst`, `ConeShape`, `ParticleBuffer`, `sample`, `ParticleSim`, `Trail`, `TrailRing` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
@@ -986,6 +986,30 @@ a population of camera-facing cubes. There is no alpha, material or flipbook,
 so smoke is a lit shape that shrinks. `key` must be clear of the keys the
 scene's other populations use. `budget` caps every emitter together.
 `rejected` names a component that does not make an emitter.
+
+A trail is a ribbon behind a moving point. `Trail(life:, rate:, width:)` holds
+the settings, and `width` is a ramp from the newest point to the oldest, so a
+width that ends at 0 is the fade. `trail.sampleAlong(time, path, strip)` builds
+a `TrailStrip` from a `path` that can be asked for any time, so a seek never
+jumps. For a point whose path is not known, such as a physics body, call
+`TrailRing(trail).record(time, position)` each frame and `fill(strip)`. The
+ring clears when time runs backwards or a step is longer than `life`, and
+`clear()` is for a seek you know about. A trail holds at most 128 points.
+
+```dart
+import 'package:orblit_particles/orblit_particles.dart';
+import 'package:vector_math/vector_math_64.dart';
+
+final trail = Trail(life: 0.5, rate: 30, width: const [0.2, 0]);
+final strip = TrailStrip(trail.points);
+trail.sampleAlong(2, (time) => Vector3(4 * time, 0, 0), strip);
+```
+
+`OrblitTrailStrip(points: trail.points)` in `orblit_stage` draws a strip. It
+is a sheet two particles wide: pass `toGlb()` to the renderer once, and each
+frame call `poses(strip, eye)` for the joint matrices. The ribbon turns its
+face to `eye`, so it cannot hold a fixed width axis, and it has no colour
+curve. A trail has no scene component or editor section yet.
 
 ## More worked examples
 
