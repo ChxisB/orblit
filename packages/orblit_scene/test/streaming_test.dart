@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -16,6 +17,8 @@ void main() {
   late List<CellLoad> loads;
   late Map<Cell, Object?> files;
   late Duration cost;
+  late Set<Cell> hung;
+  late bool explode;
 
   setUp(() {
     now = Duration.zero;
@@ -24,6 +27,8 @@ void main() {
     loads = [];
     files = {};
     cost = Duration.zero;
+    hung = {};
+    explode = false;
   });
 
   Uint8List file(List<SceneEntity> entities) =>
@@ -38,15 +43,21 @@ void main() {
     int radius = 1,
     int inFlight = 2,
     Duration budget = const Duration(milliseconds: 4),
+    Duration fetchTimeout = const Duration(seconds: 30),
+    PrefabSource? prefabs,
   }) => CellStreamer(
     window: CellWindow(grid, loadRadius: radius),
     inFlight: inFlight,
     budget: budget,
     retryAfter: const Duration(seconds: 5),
+    fetchTimeout: fetchTimeout,
+    prefabs: prefabs,
     clock: () => now,
     onLoad: loads.add,
     fetch: (cell) async {
       asked.add(cell);
+      // Never answers, as a request lost on a network does not.
+      if (hung.contains(cell)) return Completer<Uint8List?>().future;
       final found = files[cell];
       if (found is Exception) throw found;
       return found as Uint8List?;
@@ -54,6 +65,7 @@ void main() {
     apply: (diff) {
       now += cost;
       scene = diff.applyTo(scene);
+      if (explode) throw StateError('a shape the physics will not take');
     },
   );
 
@@ -264,6 +276,142 @@ void main() {
     expect(load.entities, 2);
     expect(load.apply, const Duration(milliseconds: 2));
     expect(load.error, isNull);
+  });
+
+  test('a cell that does not read is not counted as loaded', () async {
+    files[(x: 0, z: 0)] = Uint8List.fromList(utf8.encode('not a scene'));
+    final s = streamer(radius: 0);
+
+    var counted = 0;
+    for (var i = 0; i < 10; i++) {
+      s.step(middle, middle);
+      counted += s.lastStep.loaded;
+      await between();
+    }
+
+    expect(counted, 0);
+    expect(loads.single.error, isNotNull);
+  });
+
+  test('an apply that throws still leaves the cell to be dropped', () async {
+    files[(x: 0, z: 0)] = tree('half');
+    final s = streamer(radius: 0);
+    explode = true;
+    s.step(middle, middle);
+    await between();
+
+    expect(() => s.step(middle, middle), throwsStateError);
+    expect(s.isLoaded((x: 0, z: 0)), isTrue);
+
+    explode = false;
+    s.step(middle + 100, middle);
+    expect(scene.length, 0);
+  });
+
+  test('a fetch that never answers fails and lets the rest through', () async {
+    hung = {(x: 0, z: 0)};
+    for (final cell in grid.around((x: 0, z: 0), 1)) {
+      files[cell] = tree('c');
+    }
+    final s = streamer(
+      radius: 1,
+      fetchTimeout: const Duration(milliseconds: 20),
+    );
+    s.step(middle, middle);
+    await Future<void>.delayed(const Duration(milliseconds: 60));
+
+    await settle(s);
+
+    expect(loads.where((l) => l.error is TimeoutException), hasLength(1));
+    expect(s.isLoaded((x: -1, z: 0)), isTrue);
+    expect(s.isLoaded((x: 0, z: 0)), isFalse);
+  });
+
+  test('what the scene reader leaves out is reported', () async {
+    final json =
+        jsonDecode(
+              SceneDocument(
+                entities: [const SceneEntity(id: 'a', name: 'a')],
+              ).encode(),
+            )
+            as Map<String, Object?>;
+    (json['entities']! as List<Object?>).add({'name': 'no id'});
+    files[(x: 0, z: 0)] = Uint8List.fromList(utf8.encode(jsonEncode(json)));
+    final s = streamer(radius: 0);
+
+    await settle(s);
+
+    expect(loads.single.problems, isNotEmpty);
+    expect(loads.single.error, isNull);
+    expect(scene.length, 1);
+  });
+
+  group('a prefab instance in a cell file', () {
+    const lamp = 'props/lamp.oprefab';
+    final house = file([
+      const SceneEntity(
+        id: 'house',
+        name: 'house',
+        components: {SceneComponents.prefab: PrefabComponent(asset: lamp)},
+      ),
+    ]);
+    PrefabDocument? source(String asset) => asset != lamp
+        ? null
+        : PrefabDocument(
+            name: 'Lamp',
+            root: 'lamp',
+            document: SceneDocument(
+              entities: [
+                const SceneEntity(id: 'lamp', name: 'Lamp'),
+                const SceneEntity(id: 'pole', name: 'Pole', parent: 'lamp'),
+              ],
+            ),
+          );
+
+    test('is opened when the streamer is given the prefabs', () async {
+      files[(x: 0, z: 0)] = house;
+      final s = streamer(radius: 0, prefabs: source);
+
+      await settle(s);
+
+      expect(scene.entities.map((e) => e.id), contains('cell_0_0:house/pole'));
+      expect(scene.length, greaterThan(1));
+    });
+
+    test('stays a link without them', () async {
+      files[(x: 0, z: 0)] = house;
+      final s = streamer(radius: 0);
+
+      await settle(s);
+
+      expect(scene.length, 1);
+    });
+  });
+
+  test('a wait or timeout of nothing is refused', () {
+    CellStreamer make({Duration? retryAfter, Duration? fetchTimeout}) =>
+        CellStreamer(
+          window: CellWindow(grid, loadRadius: 0),
+          fetch: (cell) async => null,
+          apply: (diff) {},
+          retryAfter: retryAfter ?? const Duration(seconds: 1),
+          fetchTimeout: fetchTimeout ?? const Duration(seconds: 1),
+        );
+
+    expect(() => make(retryAfter: Duration.zero), throwsArgumentError);
+    expect(() => make(fetchTimeout: Duration.zero), throwsArgumentError);
+  });
+
+  test('the loaded cells are a copy that a step does not change', () async {
+    files[(x: 0, z: 0)] = tree('a');
+    final s = streamer(radius: 0);
+    await settle(s);
+    final held = s.loaded;
+
+    s.step(middle + 100, middle);
+
+    expect(s.isLoaded((x: 0, z: 0)), isFalse);
+    expect(held, [(x: 0, z: 0)]);
   });
 
   test('a point that is not a number leaves everything as it is', () async {

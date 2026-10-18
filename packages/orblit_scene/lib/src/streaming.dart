@@ -6,6 +6,7 @@ import 'package:orblit_cells/orblit_cells.dart';
 
 import 'diff.dart';
 import 'document.dart';
+import 'instances.dart';
 
 /// What one cell cost to bring in. The record a profile of loads is made of.
 final class CellLoad {
@@ -15,6 +16,7 @@ final class CellLoad {
     required this.apply,
     required this.bytes,
     required this.entities,
+    this.problems = const [],
     this.error,
   });
 
@@ -28,6 +30,10 @@ final class CellLoad {
 
   final int bytes;
   final int entities;
+
+  /// What the scene reader said about the file: entities it left out and
+  /// components it did not know. A cell with problems still loads.
+  final List<String> problems;
 
   /// Why the cell did not load, or null when it did.
   final Object? error;
@@ -57,7 +63,14 @@ final class CellStep {
 /// that adds and removes an entity already does to them.
 ///
 /// A cell file is written in world coordinates. Nothing is moved when it is
-/// put in, so it is tied to its place.
+/// put in, so it is tied to its place. Entities keep the order of their file,
+/// and cells are not ordered between each other: that depends on which loaded
+/// first. A scene that draws by document order should draw by depth instead.
+///
+/// The removal of a cell carries ids only, so its diff is for applying and not
+/// for undoing. If [apply] throws while a cell is going in, what got in is
+/// still the cell's and a later drop takes it out, and the throw reaches the
+/// caller of [step].
 ///
 /// Work in a frame is limited by [budget]. The time is read between cells, so
 /// one cell is never split: a frame can run over by the cost of one cell, and
@@ -68,9 +81,11 @@ final class CellStreamer {
     required this.fetch,
     required this.apply,
     this.onLoad,
+    this.prefabs,
     this.budget = const Duration(milliseconds: 4),
     this.inFlight = 2,
     this.retryAfter = const Duration(seconds: 5),
+    this.fetchTimeout = const Duration(seconds: 30),
     Duration Function()? clock,
   }) : _clock = clock ?? _monotonic() {
     if (budget <= Duration.zero) {
@@ -78,6 +93,12 @@ final class CellStreamer {
     }
     if (inFlight < 1) {
       throw ArgumentError.value(inFlight, 'inFlight', 'not above zero');
+    }
+    if (retryAfter <= Duration.zero) {
+      throw ArgumentError.value(retryAfter, 'retryAfter', 'not above zero');
+    }
+    if (fetchTimeout <= Duration.zero) {
+      throw ArgumentError.value(fetchTimeout, 'fetchTimeout', 'not above zero');
     }
   }
 
@@ -94,6 +115,11 @@ final class CellStreamer {
   /// Told about every cell that loaded or failed to.
   final void Function(CellLoad load)? onLoad;
 
+  /// Opens the prefab instances in a cell file. Without it an instance stays
+  /// a link and draws nothing. Its parts take the cell's prefix like any other
+  /// entity.
+  final PrefabSource? prefabs;
+
   /// The most time a frame spends reading and applying cells.
   final Duration budget;
 
@@ -102,6 +128,11 @@ final class CellStreamer {
   final int inFlight;
 
   final Duration retryAfter;
+
+  /// How long a fetch may take. One that never completes would hold a place
+  /// in [inFlight] for good, so it fails and is asked for again after
+  /// [retryAfter].
+  final Duration fetchTimeout;
 
   final Duration Function() _clock;
 
@@ -117,7 +148,8 @@ final class CellStreamer {
 
   CellStep _last = const CellStep();
 
-  Iterable<Cell> get loaded => _loaded.keys;
+  /// The loaded cells, as a copy that a later [step] does not disturb.
+  List<Cell> get loaded => _loaded.keys.toList(growable: false);
 
   bool isLoaded(Cell cell) => _loaded.containsKey(cell);
 
@@ -152,13 +184,33 @@ final class CellStreamer {
     );
     bool over() => _clock() - began >= budget;
 
+    final dropped = _dropAll(plan.drop, over);
+    final loaded = _admitReady(plan, focus, pinned, over);
+    for (final cell in plan.load) {
+      if (pending >= inFlight) break;
+      if (!_busy(cell)) unawaited(_ask(cell));
+    }
+    _last = CellStep(spent: _clock() - began, loaded: loaded, dropped: dropped);
+  }
+
+  int _dropAll(List<Cell> cells, bool Function() over) {
     var dropped = 0;
-    for (final cell in plan.drop) {
+    for (final cell in cells) {
       if (over()) break;
       _drop(cell);
       dropped++;
     }
+    return dropped;
+  }
 
+  /// Puts in the cells that have arrived, nearest first, while there is time.
+  /// Counts the ones that went in, not the ones that failed to read.
+  int _admitReady(
+    CellPlan plan,
+    Cell focus,
+    Set<Cell> pinned,
+    bool Function() over,
+  ) {
     final wanted = {for (var i = 0; i < plan.load.length; i++) plan.load[i]: i};
     _ready.removeWhere(
       (one) => !window.keeps(one.cell, focus) && !pinned.contains(one.cell),
@@ -170,15 +222,9 @@ final class CellStreamer {
     );
     var loaded = 0;
     while (_ready.isNotEmpty && !over()) {
-      _admit(_ready.removeAt(0));
-      loaded++;
+      if (_admit(_ready.removeAt(0))) loaded++;
     }
-
-    for (final cell in plan.load) {
-      if (pending >= inFlight) break;
-      if (!_busy(cell)) unawaited(_ask(cell));
-    }
-    _last = CellStep(spent: _clock() - began, loaded: loaded, dropped: dropped);
+    return loaded;
   }
 
   // Includes the cells loaded in this very step, which the plan was made
@@ -193,7 +239,7 @@ final class CellStreamer {
     _fetching.add(cell);
     final asked = _clock();
     try {
-      final bytes = await fetch(cell);
+      final bytes = await fetch(cell).timeout(fetchTimeout);
       _ready.add(_Fetched(cell, bytes, _clock() - asked));
     } on Object catch (error) {
       // The fetcher is the caller's code and may throw anything. A cell that
@@ -204,23 +250,55 @@ final class CellStreamer {
     }
   }
 
-  void _admit(_Fetched fetched) {
+  bool _admit(_Fetched fetched) {
     final began = _clock();
     final cell = fetched.cell;
-    final bytes = fetched.bytes;
-    final SceneDocument document;
+    final SceneLoad read;
     try {
-      document = bytes == null
-          ? SceneDocument()
-          : SceneDocument.decode(utf8.decode(bytes)).document;
+      read = _read(fetched.bytes);
     } on Exception catch (error) {
-      // A file that is not a scene reads as a cell that failed. Both the text
-      // and the scene reader throw an Exception.
+      // A file that is not a scene reads as a cell that failed. The text, the
+      // scene and the prefab readers all throw an Exception.
       _fail(cell, error, fetched.took);
-      return;
+      return false;
     }
-    final ids = <String>[];
+    final document = read.document;
+    final ids = [for (final entity in document.entities) idIn(cell, entity.id)];
+    final adds = _additions(cell, document);
+    try {
+      if (adds.isNotEmpty) apply(SceneDiff(adds));
+    } finally {
+      // Whatever got in is the cell's, so a drop takes it out again.
+      _loaded[cell] = ids;
+    }
+    onLoad?.call(
+      CellLoad(
+        cell: cell,
+        fetch: fetched.took,
+        apply: _clock() - began,
+        bytes: fetched.bytes?.length ?? 0,
+        entities: ids.length,
+        problems: read.problems,
+      ),
+    );
+    return true;
+  }
+
+  SceneLoad _read(Uint8List? bytes) {
+    if (bytes == null) return SceneLoad(document: SceneDocument());
+    final read = SceneDocument.decode(utf8.decode(bytes));
+    final source = prefabs;
+    if (source == null) return read;
+    final opened = expandInstances(read.document, source);
+    return SceneLoad(
+      document: opened.document,
+      problems: [...read.problems, ...opened.problems],
+    );
+  }
+
+  List<SceneOp> _additions(Cell cell, SceneDocument document) {
     final adds = <SceneOp>[];
+    String? previous;
     for (final entity in document.entities) {
       final parent = entity.parent;
       final id = idIn(cell, entity.id);
@@ -232,22 +310,12 @@ final class CellStreamer {
                 parent: parent == null ? null : idIn(cell, parent),
               )
               .toJson(),
-          after: ids.isEmpty ? null : ids.last,
+          after: previous,
         ),
       );
-      ids.add(id);
+      previous = id;
     }
-    if (adds.isNotEmpty) apply(SceneDiff(adds));
-    _loaded[cell] = ids;
-    onLoad?.call(
-      CellLoad(
-        cell: cell,
-        fetch: fetched.took,
-        apply: _clock() - began,
-        bytes: bytes?.length ?? 0,
-        entities: ids.length,
-      ),
-    );
+    return adds;
   }
 
   void _drop(Cell cell) {
