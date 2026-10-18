@@ -26,6 +26,7 @@ the fullest reference.
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
+| `orblit_profile` | Where a frame went on the Dart side: named spans, gauges, counters, a ring of frame times and a heap trend, as a JSON snapshot | `Profiler`, `Profiler.off` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
@@ -311,6 +312,13 @@ with only `position` resets rotation and scale, so carry them over. Guide:
 `document.writeAs(SceneFormat.glb)` and `readSceneFrom(bytes)` for glTF, GLB
 and OBJ. Both report what they could not carry rather than throwing. Details
 and the traps: [assets.md](assets.md).
+
+`OrblitDocumentView(document, profiler: profiler)` and `OrblitView(scene: ...,
+profiler: profiler)` time their work as the spans `scene build`, `diff`,
+`upload` and `submit`. Both default to `Profiler.off()`, which records
+nothing. Call `profiler.frame()` once per frame and read `profiler.snapshot()`.
+The heap line is resident size, not the Dart heap, and a game sets its own
+gauges. Guide: `/guides/profiling/`.
 
 ## orblit_asset
 
