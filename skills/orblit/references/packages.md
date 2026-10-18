@@ -21,11 +21,12 @@ the fullest reference.
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet, and a scene's particle emitters as populations | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet`, `OrblitParticles` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
+| `orblit_particles` | Smoke, sparks, dust and fire: an emitter is data, and a particle is worked out from a seed, its number and the time, so the same time gives the same frame. Collision and turbulence are an opt-in stepped mode | `Emitter`, `Burst`, `ConeShape`, `ParticleBuffer`, `sample`, `ParticleSim` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
@@ -55,7 +56,8 @@ importing everything together and analysing:
 | `Blend` | `orblit_agent` and `orblit_camera` | Prefix one: `import '...orblit_camera.dart' as cam;` |
 | `Wait` | `orblit_agent` and `orblit_effect` | Prefix or `hide` |
 | `Sequence` | `orblit_agent` and `orblit_sequence` | Prefix or `hide` |
-| `Shape` | `orblit_collide`, `orblit_mesh` and `orblit_physics` | Prefix or `hide` |
+| `Shape` | `orblit_collide`, `orblit_mesh`, `orblit_particles` and `orblit_physics` | Prefix or `hide` |
+| `Hit` | `orblit_collide` and `orblit_particles` | Prefix or `hide` |
 | `Layers` | `orblit_collide` and `orblit_physics` | Prefix or `hide` |
 
 The behaviour-tree time limit is `Deadline`, not `Timeout`.
@@ -940,6 +942,49 @@ Traps:
 Guide: `/guides/terrain/`. The gallery's Terrain example drives a box over
 hills with `heightAt` and `normalAt`, and scatters grass, stones and trees
 over them.
+
+## orblit_particles
+
+An `Emitter` is settings and nothing else. `emitter.sample(time, buffer)`
+fills a `ParticleBuffer` with what is alive at `time`, with nothing kept
+between calls, so scrubbing, replaying and two machines all agree. Built-in
+shapes: `PointShape`, `SphereShape`, `ConeShape`, `BoxShape`. A steady stream
+is `rate` births a second, and a `Burst(time, count)` adds a crowd at once.
+Size and colour are ramps over a life, given as a list of stops. `gravity`
+and `drag` have a closed form, and `noiseStrength` wobbles a particle without
+moving where it goes. A fixed emitter needs no `place`; a moving one passes
+`place: (time) => matrix`, the emitter's matrix at that time.
+
+```dart
+import 'package:orblit_particles/orblit_particles.dart';
+import 'package:vector_math/vector_math_64.dart';
+
+final sparks = Emitter(
+  seed: 3,
+  shape: ConeShape(angle: 0.5),
+  rate: 0,
+  bursts: [Burst(0, 40)],
+  lifetime: const Range(0.4, 0.9),
+  speed: const Range(3, 6),
+  gravity: Vector3(0, -9.8, 0),
+  size: const [0.08, 0],
+  colour: const [1, 0.8, 0.3, 1, 0.2, 0],
+);
+final frame = ParticleBuffer(sparks.maxParticles);
+sparks.sample(0.3, frame);
+```
+
+`ParticleSim(emitter, hit: ..., bounce: ...)` is the stepped mode for
+particles that must land on things. It is an Euler step, so two machines drift
+apart. Use `sample` where that matters.
+
+In a scene, a `ParticleEmitterComponent` on an entity is an emitter, and
+`OrblitParticles(view, key: ...)` in `orblit_stage` draws every shown one: call
+`advance(dt)` each frame and pass `populations` to the scene. Each emitter is
+a population of camera-facing cubes. There is no alpha, material or flipbook,
+so smoke is a lit shape that shrinks. `key` must be clear of the keys the
+scene's other populations use. `budget` caps every emitter together.
+`rejected` names a component that does not make an emitter.
 
 ## More worked examples
 
