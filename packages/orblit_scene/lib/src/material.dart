@@ -3,6 +3,9 @@ import 'values.dart';
 /// What a material file is called.
 const String materialExtension = '.omat';
 
+/// What a shader an author wrote is called.
+const String shaderExtension = '.oshader';
+
 /// The sort of value a material parameter holds, and therefore how it is read
 /// out of a file and how two of them merge.
 ///

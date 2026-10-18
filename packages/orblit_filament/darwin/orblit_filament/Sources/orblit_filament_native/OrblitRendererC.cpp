@@ -16,6 +16,7 @@
 #include <utility>
 #include <vector>
 
+#include "OrblitCustomSpecs.h"
 #include "OrblitDecals.h"
 #include "OrblitOutline.h"
 #include "OrblitRendererCore.h"
@@ -81,54 +82,6 @@ std::vector<std::string> strings(const char *const *items, uint32_t count) {
 }
 
 std::string text(const char *from) { return from != nullptr ? from : ""; }
-
-void remember(std::string &into, const void *bytes, size_t length) {
-  into.append(static_cast<const char *>(bytes), length);
-  into.push_back('\0');
-}
-
-/// The flat arrays of one set_custom_materials call, read front to back.
-struct CustomArrays {
-  std::vector<std::string> names;
-  const int32_t *widths;
-  const int32_t *maps;
-  const float *values;
-  size_t floatTotal;
-  std::vector<std::string> paths;
-  const int32_t *srgb;
-  size_t entry = 0;
-  size_t floats = 0;
-
-  /// Reads the next `entries` entries into `spec`: ORBLIT_OK, or the reason
-  /// the arrays do not agree with each other.
-  int read(orblit::CustomSpec &spec, int32_t entries) {
-    remember(spec.fingerprint, spec.package.data(), spec.package.size());
-    for (int32_t n = 0; n < entries; n++, entry++) {
-      if (entry >= names.size()) return ORBLIT_ERROR_LENGTH;
-      const int32_t width = widths[entry];
-      if (width < 0 || width > 4) return ORBLIT_ERROR_RANGE;
-      remember(spec.fingerprint, names[entry].data(), names[entry].size());
-      remember(spec.fingerprint, &width, sizeof(width));
-      if (width == 0) {
-        const int32_t at = maps[entry];
-        if (at < 0 || size_t(at) >= paths.size()) return ORBLIT_ERROR_RANGE;
-        spec.maps.push_back({names[entry], paths[at], srgb[at] != 0});
-        remember(spec.fingerprint, paths[at].data(), paths[at].size());
-        remember(spec.fingerprint, &srgb[at], sizeof(srgb[at]));
-        continue;
-      }
-      if (floats + size_t(width) > floatTotal) return ORBLIT_ERROR_LENGTH;
-      orblit::CustomSpec::Value value;
-      value.name = names[entry];
-      value.width = width;
-      std::memcpy(value.numbers, values + floats, sizeof(float) * size_t(width));
-      remember(spec.fingerprint, value.numbers, sizeof(float) * size_t(width));
-      spec.values.push_back(value);
-      floats += size_t(width);
-    }
-    return ORBLIT_OK;
-  }
-};
 
 /// Runs one call into the core, turning a throw into a result.
 template <typename Body>
@@ -483,23 +436,15 @@ int orblit_renderer_set_custom_materials(
       (value_floats != 0 && values == nullptr)) {
     return ORBLIT_ERROR_NULL;
   }
-  const std::vector<std::string> package_paths = strings(packages, count);
-  CustomArrays arrays{strings(names, entry_total), widths, maps, values,
-                      value_floats, strings(texture_paths, texture_count),
-                      texture_srgb};
-
+  orblit::CustomArrays arrays{strings(names, entry_total), widths, maps, values,
+                              value_floats,
+                              strings(texture_paths, texture_count),
+                              texture_srgb};
   std::unordered_map<int64_t, orblit::CustomSpec> specs;
-  for (uint32_t i = 0; i < count; i++) {
-    if (entry_counts[i] < 0) return ORBLIT_ERROR_RANGE;
-    orblit::CustomSpec spec;
-    spec.package = package_paths[i];
-    const int status = arrays.read(spec, entry_counts[i]);
-    if (status != ORBLIT_OK) return status;
-    specs[keys[i]] = std::move(spec);
-  }
-  if (arrays.entry != entry_total || arrays.floats != value_floats) {
-    return ORBLIT_ERROR_LENGTH;
-  }
+  const int status = arrays.readAll(std::vector<int64_t>(keys, keys + count),
+                                    strings(packages, count), entry_counts,
+                                    specs);
+  if (status != ORBLIT_OK) return status;
   return guarded(renderer, [&](orblit::Renderer &core) {
     core.setCustomMaterials(std::move(specs));
   });

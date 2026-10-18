@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+- Add `CookedSurface` and `OrblitDocumentView.surfaces`. A material asset
+  that ends in `.oshader` is drawn with the package the cook made for it.
+  An object that states no values shares one material with every other.
+  One that states a value gets a material of its own under a stable key,
+  so a value being dragged rewrites it in place. The stage sends the
+  defaults from `params.json`, because the package carries none. Until a
+  shader is cooked its objects keep what their mesh brought.
+
 ## 0.9.0
 
 - `OrblitParticleSheet` draws a grid of particles that something else moves,

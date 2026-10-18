@@ -207,6 +207,59 @@ class OrblitTexture {
   int get hashCode => Object.hash(path, srgb);
 }
 
+/// A surface an author wrote, as a material wears it.
+///
+/// The code is a cooked package, found by [package]. What differs from one
+/// object to the next is only what is stated here: the numbers and the
+/// pictures the package asked for. Two materials with the same [package] and
+/// different [values] share one compiled package and keep an instance each.
+///
+/// A name that the package does not declare is ignored by the renderer, and a
+/// declared name left out keeps the package's default, so a material states
+/// only what it changes.
+final class OrblitSurface {
+  OrblitSurface({
+    required this.package,
+    Map<String, List<double>> values = const {},
+    Map<String, OrblitTexture> textures = const {},
+  }) : values = Map.unmodifiable({
+         for (final entry in values.entries)
+           entry.key: List<double>.unmodifiable(entry.value),
+       }),
+       textures = Map.unmodifiable(textures) {
+    for (final entry in this.values.entries) {
+      final width = entry.value.length;
+      if (width < 1 || width > maxWidth) {
+        throw ArgumentError.value(
+          entry.value,
+          entry.key,
+          'A surface value holds 1 to $maxWidth numbers, not $width.',
+        );
+      }
+      if (this.textures.containsKey(entry.key)) {
+        throw ArgumentError.value(
+          entry.key,
+          'values',
+          'The name is also a texture, and a surface has one name for each '
+              'thing it is given.',
+        );
+      }
+    }
+  }
+
+  /// The most numbers one value holds: a colour with alpha.
+  static const int maxWidth = 4;
+
+  /// The cooked package, as a path the renderer can open.
+  final String package;
+
+  /// Scalars, vectors and colours by name, one to four numbers each.
+  final Map<String, List<double>> values;
+
+  /// Pictures by name.
+  final Map<String, OrblitTexture> textures;
+}
+
 /// How a surface answers the wind.
 ///
 /// Wind is a property of the world, so the obvious home for it is the scene.
@@ -353,6 +406,7 @@ class OrblitMaterial {
     this.metallicRoughnessMap,
     this.occlusionMap,
     this.emissiveMap,
+    this.surface,
   }) : _baseColour = baseColour,
        _emissive = emissive,
        _sheenColour = sheenColour,
@@ -537,6 +591,14 @@ class OrblitMaterial {
   /// Multiplied into [emissive]. sRGB.
   final OrblitTexture? emissiveMap;
 
+  /// The author-written surface this material draws with, or null for one of
+  /// the built-in shading models.
+  ///
+  /// When set, the package decides how the object is shaded and how it is
+  /// blended and culled. Of this material only [wrap] and [filter] are read,
+  /// for the surface's textures.
+  final OrblitSurface? surface;
+
   /// The maps in the order the renderer expects them.
   List<OrblitTexture?> get maps => [
     baseColourMap,
@@ -601,7 +663,8 @@ class OrblitMaterial {
       (wrap.index << 10) |
       (filter.index << 12) |
       (screenMapped ? 1 << 13 : 0) |
-      (litScreen ? 1 << 14 : 0);
+      (litScreen ? 1 << 14 : 0) |
+      (surface != null ? 1 << 15 : 0);
 
   /// Writes this material's numbers into [out] at [at], in the fixed order
   /// the renderer reads them back.
@@ -714,6 +777,7 @@ class OrblitMaterial {
       metallicRoughnessMap: metallicRoughnessMap,
       occlusionMap: occlusionMap,
       emissiveMap: emissiveMap,
+      surface: surface,
     );
   }
 }

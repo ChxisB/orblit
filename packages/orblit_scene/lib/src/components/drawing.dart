@@ -120,7 +120,11 @@ class MeshComponent extends SceneComponent {
 /// what it carries grows: groups and inheritance live in the material file,
 /// looks live here.
 class MaterialComponent extends SceneComponent {
-  const MaterialComponent({this.asset, this.looks = const {}});
+  const MaterialComponent({
+    this.asset,
+    this.looks = const {},
+    this.values = const {},
+  });
 
   static MaterialComponent fromJson(Map<String, Object?> json) {
     final looks = <String, String>{};
@@ -128,11 +132,41 @@ class MaterialComponent extends SceneComponent {
       final path = entry.value;
       if (path is String && path.isNotEmpty) looks[entry.key] = path;
     }
-    return MaterialComponent(asset: Values.text(json, 'asset'), looks: looks);
+    final values = <String, Object>{};
+    for (final entry in Values.object(json['values']).entries) {
+      final value = _surfaceValue(entry.value);
+      if (value != null) values[entry.key] = value;
+    }
+    return MaterialComponent(
+      asset: Values.text(json, 'asset'),
+      looks: looks,
+      values: values,
+    );
   }
 
-  /// The material, relative to the project.
+  /// A value a surface can take, or null for anything else: a number, a flag,
+  /// one to four numbers, or a path for a picture.
+  static Object? _surfaceValue(Object? raw) => switch (raw) {
+    num() || bool() => raw,
+    String() when raw.isNotEmpty => raw,
+    List()
+        when raw.isNotEmpty && raw.length <= 4 && raw.every((n) => n is num) =>
+      raw,
+    _ => null,
+  };
+
+  /// The material, relative to the project. An `.omat`, an image, or an
+  /// `.oshader` that an author wrote.
   final String? asset;
+
+  /// What this entity gives an author-written [asset], by the name the shader
+  /// declares it under.
+  ///
+  /// A number, a flag, a list of up to four numbers for a vector or a
+  /// colour, or a project path for a picture. Whatever is left out keeps the
+  /// shader's own default, so two entities can share one shader and differ
+  /// only in what they state. Read only when [asset] is a shader.
+  final Map<String, Object> values;
 
   /// What this entity wears instead under each named look, by look name.
   ///
@@ -154,8 +188,11 @@ class MaterialComponent extends SceneComponent {
   String get type => SceneComponents.material;
 
   @override
-  Map<String, Object?> toJson() =>
-      Values.pruned({'asset': asset, 'looks': looks.isEmpty ? null : looks});
+  Map<String, Object?> toJson() => Values.pruned({
+    'asset': asset,
+    'looks': looks.isEmpty ? null : looks,
+    'values': values.isEmpty ? null : values,
+  });
 }
 
 /// A Gaussian splat capture this entity draws.

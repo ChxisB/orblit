@@ -334,4 +334,41 @@ void main() {
       });
     });
   });
+
+  group('values for a shader', () {
+    test('survive being written out and read back', () {
+      const worn = MaterialComponent(
+        asset: 'pulse.oshader',
+        values: {
+          'speed': 2.5,
+          'glow': true,
+          'tint': [1, 0.5, 0.25, 1],
+          'noise': 'art/noise.png',
+        },
+      );
+      final again = MaterialComponent.fromJson(worn.toJson());
+      expect(again.values, worn.values);
+    });
+
+    test('a value no shader could take is dropped on reading', () {
+      final worn = MaterialComponent.fromJson({
+        'asset': 'pulse.oshader',
+        'values': {
+          'speed': 2,
+          'empty': <double>[],
+          'long': [1, 2, 3, 4, 5],
+          'words': ['a'],
+          'blank': '',
+          'nothing': null,
+        },
+      });
+      expect(worn.values, {'speed': 2});
+    });
+
+    test('a component with none writes none', () {
+      expect(const MaterialComponent(asset: 'a.omat').toJson(), {
+        'asset': 'a.omat',
+      });
+    });
+  });
 }

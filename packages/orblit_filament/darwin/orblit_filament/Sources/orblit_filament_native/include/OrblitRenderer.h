@@ -120,6 +120,26 @@ NS_ASSUME_NONNULL_BEGIN
                 videos:(const int32_t *)videos
                  count:(uint32_t)count;
 
+/// States the author-written surfaces the next `applyMaterials` may name.
+///
+/// One entry per surface, in the layout of `orblit_renderer_set_custom_materials`
+/// in orblit_renderer.h: the keys and packages run in step, each surface owns
+/// the next `entryCounts` rows of `names`/`widths`/`maps`, and a width of
+/// nought is a texture that `maps` points into `texturePaths`. What is stated
+/// here is read by the next `applyMaterials` and then forgotten, so it is sent
+/// every publish like everything else. NO when the arrays disagree, in which
+/// case nothing is staged.
+- (BOOL)setCustomMaterials:(const int64_t *)keys
+                  packages:(NSArray<NSString *> *)packages
+               entryCounts:(const int32_t *)entryCounts
+                     names:(NSArray<NSString *> *)names
+                    widths:(const int32_t *)widths
+                      maps:(const int32_t *)maps
+                    values:(const float *)values
+               valueFloats:(NSUInteger)valueFloats
+              texturePaths:(NSArray<NSString *> *)texturePaths
+               textureSrgb:(const int32_t *)textureSrgb;
+
 /// States how much of the frame's work actually happens.
 ///
 /// One pipeline with dials rather than a choice of pipelines: the order of

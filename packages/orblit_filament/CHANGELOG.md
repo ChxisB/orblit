@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.38.0
+
+- **Surfaces authors write.** `OrblitSurface` names a compiled package and
+  the numbers and pictures it is given by name. A material that carries one
+  sets bit 15 of its flags and is drawn by that package. Every other field
+  of the material is ignored but `wrap` and `filter`, because blend and
+  culling are fixed when the package is built.
+- The scene message gains the `surface*` keys: one key, package and entry
+  count per surface, then a name, a width and a picture index per entry,
+  then every number end to end. A scene with no surface sends none of them.
+- The macOS plugin checks those lengths before native code walks them, and
+  `OrblitRenderer.setCustomMaterials` stages them for the next
+  `applyMaterials`. A package that fails to load keeps the last good
+  surface drawing and adds a note. Other platforms ignore the keys and
+  draw the default surface for a bit-15 material.
+- A parameter nobody sends keeps the package's value. The cook writes no
+  defaults, so the stage sends them from `params.json`.
+
 ## 0.37.0
 
 - **A lit screen.** `OrblitMaterial(shading: OrblitShading.video, litScreen:

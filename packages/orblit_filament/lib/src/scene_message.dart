@@ -145,6 +145,68 @@ extension _Message on OrblitScene {
     };
   }
 
+  /// The author-written surfaces, in the layout of
+  /// `orblit_renderer_set_custom_materials`: a key, a package and an entry
+  /// count for each surface, then a name, a width and a texture index for
+  /// each entry, then every number end to end. A width of nought is a
+  /// texture, and its index points into the surface textures' own list.
+  ///
+  /// Null when no material has one, which is almost every scene.
+  Map<String, Object>? _surfaceMessage() {
+    final worn = [
+      for (final material in materials)
+        if (material.surface != null) material,
+    ];
+    if (worn.isEmpty) return null;
+
+    final keys = makeKeyList(worn.length);
+    final packages = <String>[];
+    final entryCounts = Int32List(worn.length);
+    final names = <String>[];
+    final widths = <int>[];
+    final maps = <int>[];
+    final numbers = <double>[];
+    final texturePaths = <String>[];
+    final textureSrgb = <int>[];
+    final textureAt = <OrblitTexture, int>{};
+
+    for (var i = 0; i < worn.length; i++) {
+      final surface = worn[i].surface!;
+      keys[i] = worn[i].key;
+      packages.add(surface.package);
+      entryCounts[i] = surface.values.length + surface.textures.length;
+      for (final entry in surface.values.entries) {
+        names.add(entry.key);
+        widths.add(entry.value.length);
+        maps.add(-1);
+        numbers.addAll(entry.value);
+      }
+      for (final entry in surface.textures.entries) {
+        names.add(entry.key);
+        widths.add(0);
+        maps.add(
+          textureAt.putIfAbsent(entry.value, () {
+            texturePaths.add(entry.value.path);
+            textureSrgb.add(entry.value.srgb ? 1 : 0);
+            return texturePaths.length - 1;
+          }),
+        );
+      }
+    }
+
+    return {
+      'surfaceKeys': keys,
+      'surfacePackages': packages,
+      'surfaceEntryCounts': entryCounts,
+      'surfaceNames': names,
+      'surfaceWidths': Int32List.fromList(widths),
+      'surfaceMaps': Int32List.fromList(maps),
+      'surfaceValues': Float32List.fromList(numbers),
+      'surfaceTexturePaths': texturePaths,
+      'surfaceTextureSrgb': Int32List.fromList(textureSrgb),
+    };
+  }
+
   /// The video tokens, one stride of floats each. Videos first, then feeds,
   /// which have no rate, volume or seek and send the neutral values.
   Map<String, Object> _videoMessage() {
