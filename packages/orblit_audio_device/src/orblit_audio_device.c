@@ -15,6 +15,7 @@ struct OrblitAudio {
   Voice* voices;
 };
 
+// shortcut: a linear scan, fine to a few hundred voices. Index by id past that.
 static Voice* find(const OrblitAudio* audio, int64_t id) {
   for (Voice* voice = audio->voices; voice != NULL; voice = voice->next) {
     if (voice->id == id) return voice;
@@ -83,6 +84,8 @@ void orblit_audio_destroy(OrblitAudio* audio) {
   free(audio);
 }
 
+// F2: eight plain values. A struct would need its own allocation for each call
+// across the FFI boundary.
 int32_t orblit_audio_start(OrblitAudio* audio, int64_t voice_id,
                            const char* path, int32_t loop, int32_t stream,
                            float gain, float pitch, float pan) {

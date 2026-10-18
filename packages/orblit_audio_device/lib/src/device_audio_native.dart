@@ -48,6 +48,7 @@ final class DeviceAudio implements AudioBackend {
 
   final Pointer<native.OrblitAudioStruct> _engine;
   final Map<String, bool> _streams = {};
+  bool _closed = false;
 
   @override
   void start(
@@ -56,7 +57,10 @@ final class DeviceAudio implements AudioBackend {
     required bool loop,
     required Level level,
   }) {
-    final path = directory.isEmpty ? clip : '$directory/$clip';
+    if (_closed) throw StateError('this DeviceAudio is disposed');
+    final path = directory.isEmpty || File(clip).isAbsolute
+        ? clip
+        : '$directory/$clip';
     final String? failure = _tryStart(voice, path, loop, level);
     if (failure == null) return;
     final handler = onError;
@@ -64,18 +68,26 @@ final class DeviceAudio implements AudioBackend {
     handler(clip, failure);
   }
 
+  // After dispose a voice is silent, so a game that goes on calling advance
+  // sees every voice end.
   @override
-  void update(int voice, Level level) =>
-      native.audioUpdate(_engine, voice, level.gain, level.pitch, level.pan);
+  void update(int voice, Level level) {
+    if (_closed) return;
+    native.audioUpdate(_engine, voice, level.gain, level.pitch, level.pan);
+  }
 
   @override
-  void stop(int voice) => native.audioStop(_engine, voice);
+  void stop(int voice) {
+    if (!_closed) native.audioStop(_engine, voice);
+  }
 
   @override
-  bool isPlaying(int voice) => native.audioIsPlaying(_engine, voice) != 0;
+  bool isPlaying(int voice) =>
+      !_closed && native.audioIsPlaying(_engine, voice) != 0;
 
   /// Mixes the next [frames] of an offline engine as interleaved stereo.
   Float32List render(int frames) {
+    if (_closed) throw StateError('this DeviceAudio is disposed');
     final out = calloc<Float>(frames * 2);
     try {
       final written = native.audioRender(_engine, out, frames);
@@ -85,8 +97,12 @@ final class DeviceAudio implements AudioBackend {
     }
   }
 
-  /// Stops every voice and closes the device. Nothing may be called after.
-  void dispose() => native.audioDestroy(_engine);
+  /// Stops every voice and closes the device. A second call does nothing.
+  void dispose() {
+    if (_closed) return;
+    _closed = true;
+    native.audioDestroy(_engine);
+  }
 
   String? _tryStart(int voice, String path, bool loop, Level level) {
     final bool stream;
@@ -124,9 +140,8 @@ final class DeviceAudio implements AudioBackend {
     try {
       final engine = native.audioCreate(offline ? 1 : 0, sampleRate, result);
       if (engine == nullptr) {
-        throw AudioDeviceException(
-          'no output device: ${_describe(result.value)}',
-        );
+        final what = offline ? 'cannot start the engine' : 'no output device';
+        throw AudioDeviceException('$what: ${_describe(result.value)}');
       }
       return engine;
     } finally {

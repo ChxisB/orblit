@@ -112,6 +112,31 @@ void main() {
     expect(peakOf(out, channel: 0), 0);
   });
 
+  test('disposing twice is safe', () {
+    final device = make();
+    device.start(1, tone, loop: true, level: const Level());
+
+    device.dispose();
+    device.dispose();
+
+    expect(device.isPlaying(1), isFalse);
+  });
+
+  test('a failed load of a stopped voice is not reported', () async {
+    final failures = <String>[];
+    final device = DeviceAudio.offline(
+      frames: rate ~/ 10,
+      onError: (clip, reason) => failures.add(clip),
+    );
+    addTearDown(device.dispose);
+
+    device.start(1, 'blob:nowhere', loop: false, level: const Level());
+    device.stop(1);
+    await device.render();
+
+    expect(failures, isEmpty);
+  });
+
   test('a clip that cannot load goes to the handler and ends', () async {
     final failures = <String>[];
     final device = DeviceAudio.offline(

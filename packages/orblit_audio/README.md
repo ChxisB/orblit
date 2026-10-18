@@ -15,8 +15,9 @@ dependencies:
       path: packages/orblit_audio
 ```
 
-Needs Dart alone. There is no backend yet, so nothing is audible. Use
-`RecordedAudio` to see what a game would play.
+Needs Dart alone. Nothing is audible until a backend plays it:
+[`orblit_audio_device`](../orblit_audio_device) does, on a speaker or in a
+browser. Use `RecordedAudio` to see what a game would play.
 
 ```dart
 final backend = RecordedAudio();

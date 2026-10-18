@@ -9,6 +9,8 @@
   streams files over a size you set.
 - `DeviceAudio.offline` mixes with no device and hands the samples back from
   `render`, which is how every test here runs.
+- With no output device `DeviceAudio.open` throws. miniaudio's null device is
+  compiled out, so a silent fallback cannot hide a missing speaker.
 - In a browser the same class plays over Web Audio. A clip is a URL,
   fetched and decoded on first use. The offline form renders once.
 - Heard on no device yet. The device half is built and tested on macOS only.

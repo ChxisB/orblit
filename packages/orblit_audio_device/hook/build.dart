@@ -25,6 +25,10 @@ void main(List<String> args) async {
       defines: {
         'MA_NO_ENCODING': null,
         'MA_NO_GENERATION': null,
+        // With no device, the engine fails to open. miniaudio would otherwise
+        // fall back to a null device that plays nothing, and the game would
+        // never hear that it is silent.
+        'MA_NO_NULL': null,
         // Linking the frameworks, not opening them at run time, is what Apple's
         // notarization accepts.
         if (apple) 'MA_NO_RUNTIME_LINKING': null,

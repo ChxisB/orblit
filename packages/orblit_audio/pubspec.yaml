@@ -3,7 +3,7 @@ description: >-
   Every sound call a game makes, run without a speaker. A mixer with a bus
   tree, voices that fade and loop, and a listener that hears a positioned
   sound by distance, direction and Doppler. A backend only plays the result.
-version: 0.1.0
+version: 0.1.1
 publish_to: none
 
 environment:

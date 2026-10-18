@@ -13,8 +13,8 @@ audio.advance(dt);
 ```
 
 On a device a clip is a path to a WAV, FLAC, MP3 or Ogg Vorbis file. A file
-over `streamAbove` bytes (1 MiB by default) is read as it plays. A smaller one
-is decoded once and shared by every voice playing it.
+over `streamAbove` bytes is read as it plays, and `streamAbove` is 1 MiB by
+default. A smaller one is decoded once and shared by every voice playing it.
 
 In a browser a clip is a URL, under `directory` when you give one. It is
 fetched and decoded on first use over Web Audio, in whatever formats the
@@ -42,7 +42,19 @@ sample. In a browser, `DeviceAudio.offline(frames: n)` fixes the length and
 
 ## What is not here
 
-- A cache with a budget. A decoded effect is freed when its last voice ends.
+- A cache with a budget. A decoded effect is freed when its last voice ends,
+  and decoded again at the next play. In a browser every clip stays decoded,
+  music included, because there is no streaming path.
+- A decode off the game thread. An effect is decoded where it is played, so a
+  large one can hitch the first frame. Lower `streamAbove` to stream it.
+- Smoothing of level changes on a device. A fade or a moving emitter changes
+  gain, pan and pitch each frame, and a big jump in one frame can click. The
+  browser glides over about 15 ms.
+- Prompt release of a clip that ended. Its slot is freed when the next voice
+  starts.
+- One `render` for both. On a device it is synchronous and takes a frame count
+  each call. In a browser it is a one-shot future over the length fixed when
+  the engine was made.
 - Non-ASCII file names on Windows.
 - Recovery from a device that is unplugged. The game goes on and plays
   nothing until the device is back.

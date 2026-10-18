@@ -50,6 +50,7 @@ final class DeviceAudio implements AudioBackend {
   final Map<int, _Playing> _voices = {};
   final Map<String, Future<AudioBuffer>> _buffers = {};
   final Set<Future<void>> _loading = {};
+  bool _closed = false;
 
   @override
   void start(
@@ -58,6 +59,7 @@ final class DeviceAudio implements AudioBackend {
     required bool loop,
     required Level level,
   }) {
+    if (_closed) throw StateError('this DeviceAudio is disposed');
     final playing = _Playing(loop: loop, level: level);
     _voices[voice] = playing;
     final context = _context;
@@ -118,8 +120,10 @@ final class DeviceAudio implements AudioBackend {
     return out;
   }
 
-  /// Stops every voice and closes the context. Nothing may be called after.
+  /// Stops every voice and closes the context. A second call does nothing.
   void dispose() {
+    if (_closed) return;
+    _closed = true;
     for (final voice in _voices.keys.toList()) {
       stop(voice);
     }
@@ -136,9 +140,11 @@ final class DeviceAudio implements AudioBackend {
       if (_voices[voice] != playing) return;
       _attach(voice, playing, buffer);
     } on Object catch (e) {
-      _voices.remove(voice);
       // A later start tries the fetch again.
       unawaited(_buffers.remove(clip));
+      // A voice stopped while loading has nobody left to tell.
+      if (_voices[voice] != playing) return;
+      _voices.remove(voice);
       final handler = onError;
       if (handler == null) rethrow;
       handler(clip, '$e');

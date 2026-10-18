@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1
+
+- `Audio.play` drops a voice whose backend throws from `start`. Before, the
+  voice stayed in the list as playing.
+
 ## 0.1.0
 
 - First cut of `orblit_audio`. Pre-alpha: everything is subject to change.

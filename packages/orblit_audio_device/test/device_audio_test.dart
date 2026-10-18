@@ -184,6 +184,28 @@ void main() {
     heard(rate ~/ 10);
 
     device.dispose();
-    device = DeviceAudio.offline(directory: dir.path);
+  });
+
+  test('disposing twice is safe and every voice is then over', () {
+    device.start(1, 'tone.wav', loop: true, level: const Level());
+
+    device.dispose();
+    device.dispose();
+
+    expect(device.isPlaying(1), isFalse);
+    expect(
+      () => device.start(2, 'tone.wav', loop: false, level: const Level()),
+      throwsStateError,
+    );
+    expect(() => device.render(10), throwsStateError);
+  });
+
+  test('an absolute clip path ignores the directory', () {
+    device.dispose();
+    device = DeviceAudio.offline(directory: 'test/support');
+
+    device.start(1, '${dir.path}/tone.wav', loop: false, level: const Level());
+
+    expect(peakOf(heard(rate ~/ 10), channel: 0), closeTo(peak, 0.01));
   });
 }
