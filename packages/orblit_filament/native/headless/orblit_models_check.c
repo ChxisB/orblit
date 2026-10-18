@@ -141,7 +141,13 @@ static uint8_t *frame_from(orblit_renderer *renderer, const float eye[3],
   orblit_renderer_set_camera(renderer, eye, look, 45.0f, 0, 10.0f, at);
   for (int i = 0; i < 12; i++) orblit_renderer_draw(renderer, 1.0);
   orblit_renderer_request_capture(renderer);
-  for (int i = 0; i < 6; i++) orblit_renderer_draw(renderer, 1.0);
+  // The read-back lands a frame or two after the request. Without a pause a
+  // slow GPU returns the previous capture of this renderer instead.
+  const struct timespec pause = {0, 10 * 1000 * 1000};
+  for (int i = 0; i < 6; i++) {
+    orblit_renderer_draw(renderer, 1.0);
+    nanosleep(&pause, NULL);
+  }
   uint32_t width = 0;
   uint32_t height = 0;
   const size_t bytes =
@@ -758,7 +764,7 @@ static void a_baked_group_draws_like_its_objects(void) {
   dump(each, "baked_each");
   dump(whole, "baked_whole");
   expect(drawn > 1000, "the objects draw something to compare");
-  expect(apart * 100 <= drawn * BAKED_LIMIT_PERCENT,
+  expect(apart >= 0 && apart * 100 <= drawn * BAKED_LIMIT_PERCENT,
          "the baked file draws the same pixels as its objects");
 
   free(empty);
