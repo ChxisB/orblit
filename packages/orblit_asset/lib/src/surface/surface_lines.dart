@@ -51,6 +51,17 @@ List<SurfaceLine> expandSurface(
   return out;
 }
 
+/// The project paths the `#include` lines of [text] name, in order. For a
+/// caller that has to read them before it can translate.
+List<String> includePaths(String path, String text) {
+  final lines = _blankComments(text).split('\n');
+  return [
+    for (var i = 0; i < lines.length; i++)
+      if (_includeLine.firstMatch(lines[i]) case final match?)
+        _resolve(path, match.group(1)!, SurfaceOrigin(path, i + 1)),
+  ];
+}
+
 void _checkChain(List<String> chain, String target, SurfaceOrigin at) {
   if (chain.contains(target)) {
     throw SurfaceError(

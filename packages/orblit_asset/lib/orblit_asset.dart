@@ -70,6 +70,8 @@ export 'src/importers/atlas_importer.dart' show AtlasImporter;
 export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';
 export 'src/importers/terrain_importer.dart' show TerrainImporter;
+export 'src/surface/surface_error.dart' show SurfaceError, SurfaceOrigin;
+export 'src/surface/surface_param.dart' show SurfaceParam, SurfaceType;
 export 'src/runtime_import.dart' show RuntimeImport;
 export 'src/importer.dart'
     show
