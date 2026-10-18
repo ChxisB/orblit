@@ -101,13 +101,16 @@ class OrblitDocumentView {
   /// scene to put back.
   OrblitCamera? through;
 
+  /// The camera the view is looking through now, which is [through] if set.
+  OrblitCamera get camera => through ?? _camera;
+
   /// The document as the renderer takes it.
   ///
   /// Assembled in document order every time rather than cached, because the
   /// lists are the cheap part — the objects in them are what cost something to
   /// build, and those are what is kept.
   OrblitScene get scene => OrblitScene(
-    camera: through ?? _camera,
+    camera: camera,
     objects: [
       for (final entity in _document.entities)
         if (_objects[entity.id] case final object?) object,
@@ -365,7 +368,7 @@ class OrblitDocumentView {
   /// this cannot fail to terminate on a document that came from a file; one
   /// built in memory is guarded anyway, because a hang is a much worse way to
   /// find out than a wrong transform.
-  Matrix4 _worldOf(String id) {
+  Matrix4 worldOf(String id) {
     final known = _world[id];
     if (known != null) return known;
 
@@ -376,7 +379,7 @@ class OrblitDocumentView {
     final parent = entity.parent;
     final world = parent == null || parent == id || !_document.contains(parent)
         ? local
-        : _worldOf(parent).multiplied(local);
+        : worldOf(parent).multiplied(local);
 
     _world[id] = world;
     return world;
@@ -404,6 +407,13 @@ class OrblitDocumentView {
         ..multiply(Matrix4.rotationY(radians(degrees.y)))
         ..multiply(Matrix4.rotationX(radians(degrees.x)));
 
+  /// Whether the entity [id] and everything above it is shown. One that is
+  /// not in the document is not shown.
+  bool isShown(String id) {
+    final entity = _document[id];
+    return entity != null && _shown(entity);
+  }
+
   /// Whether this and everything above it is shown.
   bool _shown(SceneEntity entity) {
     var current = entity;
@@ -419,7 +429,7 @@ class OrblitDocumentView {
   }
 
   void _build(SceneEntity entity) {
-    final world = _worldOf(entity.id);
+    final world = worldOf(entity.id);
     final shown = _shown(entity);
 
     if (entity[SceneComponents.mesh] case final MeshComponent mesh) {
@@ -500,7 +510,7 @@ class OrblitDocumentView {
   OrblitCamera? cameraOf(String id) {
     final camera = _document[id]?[SceneComponents.camera];
     if (camera is! CameraComponent) return null;
-    final world = _worldOf(id);
+    final world = worldOf(id);
     return OrblitCamera(
       position: world.getTranslation(),
       // Down the local -Z axis, which is where a camera looks.

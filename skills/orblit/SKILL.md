@@ -614,7 +614,7 @@ scattered over it),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
 CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),
 `orblit_light`, `orblit_mesh`, `orblit_rig`, `orblit_noise`,
-`orblit_weather`, `orblit_input`, `orblit_audio` (a mixer and voices),
+`orblit_weather`, `orblit_input`, `orblit_audio` (a mixer, voices, music, cues and contact sounds),
 `orblit_audio_device` (plays them on a speaker), `orblit_asset`, `orblit_core`. What each
 does and the entry points worth knowing are in
 [references/packages.md](references/packages.md). Add each the same way as
