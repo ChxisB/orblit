@@ -422,6 +422,8 @@ int orblit_renderer_set_depth_prepass(orblit_renderer *renderer, int enabled) {
   });
 }
 
+// Parallel arrays, as apply_materials passes them, so one call crosses the FFI
+// and the Swift bridge without building a struct on either side.
 int orblit_renderer_set_custom_materials(
     orblit_renderer *renderer, uint32_t count, const int64_t *keys,
     const char *const *packages, const int32_t *entry_counts,

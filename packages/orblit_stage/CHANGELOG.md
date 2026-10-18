@@ -10,7 +10,7 @@
   defaults from `params.json`, because the package carries none. Until a
   shader is cooked its objects keep what their mesh brought.
 - Add `SurfaceParam`, `CookedSurface.params` and `CookedSurface.valueOf`,
-  so an inspector can show a colour picker for `source_color`, a slider
+  so an inspector can show a colour row for `source_color`, a slider
   for `hint_range`, and the number the renderer is sent.
 
 ## 0.9.0

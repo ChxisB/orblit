@@ -149,13 +149,63 @@ exit 1'''),
     );
 
     await importer.import(request);
-    final dependencies = await importer.dependenciesOf(
+    final dependencies = await importer.dependenciesIn(
       request.id,
       request.bytes,
       const {},
+      request.source,
     );
 
     expect(dependencies, {AssetId.parse('materials/util.oshaderinc')});
+  });
+
+  test('an include inside an include is a dependency too', () async {
+    final importer = MaterialImporter(tool: fakeMatc('echo x > "\$out"'));
+    final request = _request(
+      '#include "a.oshaderinc"\nvoid fragment() { ROUGHNESS = half(1.0); }',
+      files: {
+        'materials/a.oshaderinc': '#include "deep/b.oshaderinc"',
+        'materials/deep/b.oshaderinc': 'float half(float x) { return x; }',
+      },
+    );
+
+    final dependencies = await importer.dependenciesIn(
+      request.id,
+      request.bytes,
+      const {},
+      request.source,
+    );
+
+    expect(dependencies, {
+      AssetId.parse('materials/a.oshaderinc'),
+      AssetId.parse('materials/deep/b.oshaderinc'),
+    });
+    await importer.import(request);
+  });
+
+  test('an include nobody wrote is told at its line, not as a missing asset', () {
+    final importer = MaterialImporter(tool: fakeMatc('exit 1'));
+    final request = _request('#include "gone.oshaderinc"\nvoid fragment() {}');
+
+    expect(
+      importer.dependenciesIn(
+        request.id,
+        request.bytes,
+        const {},
+        request.source,
+      ),
+      completion(isEmpty),
+    );
+    expect(
+      () => importer.import(request),
+      throwsA(
+        isA<ImportFailure>().having(
+          (f) => f.reason,
+          'reason',
+          'materials/flat.oshader:1: no file `materials/gone.oshaderinc` to include',
+        ),
+      ),
+    );
   });
 
   final real = NativeTool('matc', environmentVariable: 'ORBLIT_MATC').locate();

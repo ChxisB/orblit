@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import '../asset_id.dart';
+import '../asset_source.dart';
 import '../import_settings.dart';
 import '../importer.dart';
 import '../surface/surface_diagnostics.dart';
@@ -16,7 +17,7 @@ import 'native_tool.dart';
 /// The text is translated to a `.mat` and compiled by `matc` for the
 /// backends the target draws with. The outputs are `material.filamat`, which
 /// the renderer loads by name, and `params.json`, which lists the uniforms
-/// with their hints so an editor can show a colour picker or a slider
+/// with their hints so an editor can show a colour row or a slider
 /// without reading the source again.
 ///
 /// A mistake comes back as `file:line: message` at the author's own line,
@@ -53,25 +54,19 @@ class MaterialImporter extends Importer {
     return result.exitCode == 0 ? (result.stdout as String).trim() : 'unknown';
   }
 
-  /// Only the includes the file names itself.
+  /// Every file the source includes, however deep.
   ///
-  /// shortcut: an include inside an include is not a dependency, because
-  /// this cannot read files; upgrade when `dependenciesOf` is handed the
-  /// source.
+  /// An include that does not exist is left out. The translator reports it at
+  /// its line, and once the file is written the key changes.
   @override
-  Future<Set<AssetId>> dependenciesOf(
+  Future<Set<AssetId>> dependenciesIn(
     AssetId id,
     Uint8List bytes,
     Map<String, Object?> settings,
+    AssetSource source,
   ) async {
-    try {
-      return {
-        for (final path in includePaths(id.toString(), utf8.decode(bytes)))
-          ?AssetId.tryParse(path),
-      };
-    } on SurfaceError catch (error) {
-      throw ImportFailure(id, error.toString());
-    }
+    final files = await _readIncludes(source, id, utf8.decode(bytes));
+    return {for (final path in files.keys) AssetId.parse(path)};
   }
 
   @override
@@ -79,7 +74,7 @@ class MaterialImporter extends Importer {
     final id = request.id;
     final path = id.toString();
     final text = utf8.decode(request.bytes, allowMalformed: false);
-    final files = await _readIncludes(request, path, text);
+    final files = await _readIncludes(request.source, id, text);
     final SurfaceTranslation translation;
     try {
       translation = translateSurface(
@@ -120,24 +115,24 @@ class MaterialImporter extends Importer {
   }
 
   Future<Map<String, String>> _readIncludes(
-    ImportRequest request,
-    String path,
+    AssetSource source,
+    AssetId id,
     String text,
   ) async {
     final files = <String, String>{};
     try {
-      final queue = includePaths(path, text);
+      final queue = includePaths(id.toString(), text);
       while (queue.isNotEmpty) {
         final next = queue.removeLast();
-        final id = AssetId.tryParse(next);
-        if (files.containsKey(next) || id == null) continue;
-        if (!await request.source.exists(id)) continue;
-        final body = utf8.decode(await request.source.read(id));
+        final include = AssetId.tryParse(next);
+        if (files.containsKey(next) || include == null) continue;
+        if (!await source.exists(include)) continue;
+        final body = utf8.decode(await source.read(include));
         files[next] = body;
         queue.addAll(includePaths(next, body));
       }
     } on SurfaceError catch (error) {
-      throw ImportFailure(request.id, error.toString());
+      throw ImportFailure(id, error.toString());
     }
     return files;
   }

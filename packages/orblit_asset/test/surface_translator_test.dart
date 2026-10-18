@@ -148,6 +148,19 @@ void main() {
       expect(head('depth_draw_never'), contains('depthWrite : false'));
       expect(head('depth_test_disabled'), contains('depthCulling : false'));
     });
+
+    test('the last mode of a family wins, whatever came before', () {
+      String head(String modes) =>
+          _translate('render_mode $modes;\nvoid fragment() {}').material;
+
+      expect(head('cull_disabled, cull_back'), isNot(contains('doubleSided')));
+      expect(head('cull_disabled, cull_back'), contains('culling : back'));
+      expect(head('blend_add, blend_premul_alpha'), isNot(contains('* ALPHA')));
+      expect(
+        head('depth_draw_never, depth_draw_opaque'),
+        isNot(contains('depthWrite')),
+      );
+    });
   });
 
   group('includes', () {

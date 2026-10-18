@@ -74,8 +74,8 @@ void _checkChain(List<String> chain, String target, SurfaceOrigin at) {
   }
 }
 
-/// A leading slash is the project root. Anything else is beside the file that
-/// includes it.
+/// A leading slash is the assets folder, where asset ids start. Anything else
+/// is beside the file that includes it.
 String _resolve(String from, String named, SurfaceOrigin at) {
   if (!named.endsWith('.oshaderinc')) {
     throw SurfaceError(at, 'only .oshaderinc files can be included');
@@ -85,7 +85,9 @@ String _resolve(String from, String named, SurfaceOrigin at) {
       : (from.split('/')..removeLast());
   for (final part in named.split('/')) {
     if (part == '..') {
-      if (parts.isEmpty) throw SurfaceError(at, '`$named` leaves the project');
+      if (parts.isEmpty) {
+        throw SurfaceError(at, '`$named` leaves the assets folder');
+      }
       parts.removeLast();
     } else if (part.isNotEmpty && part != '.') {
       parts.add(part);

@@ -18,7 +18,10 @@
   and `#include` of `.oshaderinc` files. `vertex()`, `light()` and `varying`
   are refused with their line.
 - **The key.** The version `matc` reports is in the settings, so a Filament
-  upgrade cooks every material again.
+  upgrade cooks every material again. Every file a shader includes, however
+  deep, is in the key. `Importer.dependenciesIn` is handed the source for an
+  importer that has to read files to find them. It calls `dependenciesOf` by
+  default.
 - `SurfaceParam`, `SurfaceType`, `SurfaceError` and `SurfaceOrigin` are
   exported for tools that read `params.json`.
 

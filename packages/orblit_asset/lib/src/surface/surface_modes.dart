@@ -24,6 +24,8 @@ final class SurfaceModes {
   }
 }
 
+/// Each mode sets every field of its family, so the last mode of a family wins
+/// whichever order they are written in.
 final _modes = <String, void Function(SurfaceModes)>{
   'blend_mix': (m) {
     m.blending = 'transparent';
@@ -33,18 +35,30 @@ final _modes = <String, void Function(SurfaceModes)>{
     m.blending = 'add';
     m.premultiply = true;
   },
-  'blend_mul': (m) => m.blending = 'multiply',
-  'blend_premul_alpha': (m) => m.blending = 'transparent',
-  'cull_back': (m) => m.culling = 'back',
-  'cull_front': (m) => m.culling = 'front',
+  'blend_mul': (m) {
+    m.blending = 'multiply';
+    m.premultiply = false;
+  },
+  'blend_premul_alpha': (m) {
+    m.blending = 'transparent';
+    m.premultiply = false;
+  },
+  'cull_back': (m) {
+    m.culling = 'back';
+    m.doubleSided = false;
+  },
+  'cull_front': (m) {
+    m.culling = 'front';
+    m.doubleSided = false;
+  },
   'cull_disabled': (m) {
     m.culling = 'none';
     m.doubleSided = true;
   },
-  'depth_draw_opaque': (m) {},
+  'depth_draw_opaque': (m) => m.depthWrite = null,
   'depth_draw_always': (m) => m.depthWrite = true,
   'depth_draw_never': (m) => m.depthWrite = false,
-  'depth_test_default': (m) {},
+  'depth_test_default': (m) => m.depthCulling = null,
   'depth_test_disabled': (m) => m.depthCulling = false,
   'unshaded': (m) => m.unshaded = true,
 };
