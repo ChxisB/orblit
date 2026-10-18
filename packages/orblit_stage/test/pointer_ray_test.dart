@@ -49,6 +49,21 @@ void main() {
     });
   });
 
+  test('a tall view measures the angle across its width', () {
+    // The renderer measures the angle across the shorter side.
+    const tall = Size(100, 200);
+
+    final side = onFloor(
+      PointerRay.fromCamera(camera, const Offset(100, 100), tall),
+    );
+    final top = onFloor(
+      PointerRay.fromCamera(camera, const Offset(50, 0), tall),
+    );
+
+    expect(side.x, closeTo(5, 1e-9));
+    expect(top.y, closeTo(10, 1e-9));
+  });
+
   group('an orthographic camera', () {
     test('every ray runs the same way from its own place', () {
       final flat = camera.copyWith(orthographic: true, viewHeight: 10);

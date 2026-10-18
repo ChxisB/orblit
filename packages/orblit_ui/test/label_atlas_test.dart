@@ -130,5 +130,26 @@ void main() {
 
       expect(() => atlas.add('bbb'), throwsStateError);
     });
+
+    test(
+      'growing stops at the limit and a label that fits there is placed',
+      () {
+        final atlas = LabelAtlas(
+          style: _style,
+          width: 40,
+          initialHeight: 12,
+          maxHeight: 20,
+        )..add('aaa');
+
+        expect(atlas.size.height, 20);
+      },
+    );
+
+    test('a height of nothing is refused', () {
+      expect(
+        () => LabelAtlas(style: _style, initialHeight: 0),
+        throwsRangeError,
+      );
+    });
   });
 }

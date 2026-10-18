@@ -23,19 +23,23 @@ final class PointerRay {
     // camera gains an up vector.
     final right = forward.cross(Vector3(0, 1, 0))..normalize();
     final up = right.cross(forward);
-    final across = (2 * point.dx / view.width - 1) * view.width / view.height;
+    final aspect = view.width / view.height;
+    final across = 2 * point.dx / view.width - 1;
     final over = 1 - 2 * point.dy / view.height;
     if (camera.orthographic) {
       final half = camera.viewHeight / 2;
       return PointerRay(
-        camera.position + right * (across * half) + up * (over * half),
+        camera.position + right * (across * half * aspect) + up * (over * half),
         forward,
       );
     }
+    // The renderer measures the angle of view across the shorter side.
     final half = math.tan(camera.fieldOfView * math.pi / 360);
+    final wide = aspect < 1 ? half : half * aspect;
+    final tall = aspect < 1 ? half / aspect : half;
     return PointerRay(
       camera.position,
-      (forward + right * (across * half) + up * (over * half))..normalize(),
+      (forward + right * (across * wide) + up * (over * tall))..normalize(),
     );
   }
 

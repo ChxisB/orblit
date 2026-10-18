@@ -84,6 +84,30 @@ void main() {
     expect(told, 0);
   });
 
+  testWidgets('a pointer after taking a panel down does nothing', (
+    tester,
+  ) async {
+    var taps = 0;
+    final panel = UiPanel(
+      size: const Size(8, 8),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => taps++,
+      ),
+    );
+    await tester.runAsync(panel.paint);
+    panel.send(const PointerDownEvent(position: Offset(4, 4)));
+    panel.dispose();
+
+    expect(
+      () => panel
+        ..send(const PointerUpEvent(position: Offset(4, 4)))
+        ..send(const PointerDownEvent(position: Offset(4, 4))),
+      returnsNormally,
+    );
+    expect(taps, 0);
+  });
+
   group('a panel takes pointers in its own pixels', () {
     testWidgets('a slider has an overlay and follows a drag', (tester) async {
       var value = 0.5;

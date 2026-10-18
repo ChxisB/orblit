@@ -79,7 +79,14 @@ final class Nameplates {
   /// Draws any string [atlas] lacks and hands the renderer the new picture.
   /// Publish the scene again afterwards, because [build] names it.
   ///
-  /// Await one call before making the next.
+  /// Await one call before making the next, and before [dispose].
+  ///
+  /// The old picture's bytes are released and its texture is not. The
+  /// renderer keeps what it already made until it is disposed, so each new
+  /// picture adds to memory. Add strings in batches and not one at a time.
+  ///
+  /// A string wider than the atlas, or one that no longer fits at its
+  /// `maxHeight`, throws a [StateError]. Trim long names before they get here.
   Future<void> sync(Iterable<String> texts) async {
     texts.forEach(atlas.add);
     if (!atlas.isDirty) return;

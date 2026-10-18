@@ -84,8 +84,13 @@ class WorldUiExample extends Example {
     ),
   );
 
+  // Pointers arrive outside `scene`, and a picture lands after it.
   OrblitCamera? _camera;
   VoidCallback? _changed;
+
+  // A panel takes one pointer, so the first finger that began on the screen
+  // owns it until that finger lifts.
+  int? _pointer;
 
   // shortcut: one queue for the screen and the names, and a failed sync stops
   // it. Upgrade when something outside this example depends on the pictures.
@@ -195,6 +200,7 @@ class WorldUiExample extends Example {
   void down(Offset at, Size view) => _route(at, view, _wall.down);
   void move(Offset at, Size view) => _route(at, view, _wall.move);
   void up(Offset at, Size view) => _route(at, view, _wall.up);
+  void cancel() => _wall.cancel();
 
   void _route(Offset at, Size view, void Function(PointerRay) send) {
     final ray = _ray(at, view);
@@ -294,9 +300,24 @@ class WorldUiExample extends Example {
           },
           child: Listener(
             behavior: HitTestBehavior.translucent,
-            onPointerDown: (event) => down(event.localPosition, view),
-            onPointerMove: (event) => move(event.localPosition, view),
-            onPointerUp: (event) => up(event.localPosition, view),
+            onPointerDown: (event) {
+              if (_pointer != null || !hits(event.localPosition, view)) return;
+              _pointer = event.pointer;
+              down(event.localPosition, view);
+            },
+            onPointerMove: (event) {
+              if (event.pointer == _pointer) move(event.localPosition, view);
+            },
+            onPointerUp: (event) {
+              if (event.pointer != _pointer) return;
+              _pointer = null;
+              up(event.localPosition, view);
+            },
+            onPointerCancel: (event) {
+              if (event.pointer != _pointer) return;
+              _pointer = null;
+              cancel();
+            },
           ),
         );
       },
@@ -358,6 +379,7 @@ final ray = PointerRay.fromCamera(camera, point, view);
 wall.down(ray);
 wall.move(ray);
 wall.up(ray);
+// Or wall.cancel() when the system takes the touch back.
 
 // Two hundred names share one picture.
 final plates = Nameplates(atlas: LabelAtlas(), fadeStart: 6, fadeEnd: 14);
@@ -365,9 +387,9 @@ await plates.sync(texts);
 final named = plates.build(camera, [Nameplate(id: 1, text: 'Ada', position: p)]);
 OrblitScene(objects: named.objects, materials: named.materials, ...);
 
-// The renderer loads a name once, so each new picture has a new name and the
-// one before is released. That suits a screen somebody presses. It does not
-// suit a screen that changes every frame.
+// The renderer loads a name once, so each new picture has a new name, and it
+// keeps the texture of every one until it is disposed. That suits a screen
+// somebody presses. It does not suit a screen that changes every frame.
 ''';
 }
 

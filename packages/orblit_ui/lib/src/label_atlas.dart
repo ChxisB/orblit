@@ -23,8 +23,12 @@ final class LabelAtlas {
     int initialHeight = 128,
     this.maxHeight = 4096,
     this.padding = 2,
-  }) : assert(initialHeight <= maxHeight),
-       _height = initialHeight;
+  }) : _height = RangeError.checkValueInInterval(
+         initialHeight,
+         1,
+         maxHeight,
+         'initialHeight',
+       );
 
   /// How the strings are drawn. White, so the surface that samples the atlas
   /// can tint it.
@@ -119,10 +123,10 @@ final class LabelAtlas {
     final x = wraps ? gap : _x;
     final y = wraps ? _y + _shelf + gap : _y;
     var height = _height;
-    while (y + h + gap > height) {
-      height *= 2;
+    while (y + h + gap > height && height < maxHeight) {
+      height = math.min(height * 2, maxHeight);
     }
-    if (height > maxHeight) {
+    if (y + h + gap > height) {
       throw StateError('the label atlas is full at ${width}x$maxHeight');
     }
     _height = height;

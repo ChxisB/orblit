@@ -103,6 +103,7 @@ final class UiPanel extends ChangeNotifier {
   /// number of its own, because the gesture arena is shared with the real
   /// window and a real pointer already has the caller's number.
   void send(PointerEvent event) {
+    if (_disposed) return;
     final press = event is PointerDownEvent
         ? (_pressed[event.pointer] = _Press(
             _hit(event.position),
@@ -166,6 +167,9 @@ final class UiPanel extends ChangeNotifier {
       ..buildScope(_root)
       ..finalizeTree();
     _pipeline.rootNode = null;
+    _pressed.clear();
+    _view.child = null;
+    _boundary.dispose();
     _view.dispose();
     _build.focusManager.dispose();
     _pipeline.dispose();

@@ -9,7 +9,7 @@ publish_to: none
 
 environment:
   sdk: ^3.10.0
-  flutter: ">=3.35.0"
+  flutter: ">=3.47.0"
 
 dependencies:
   flutter:

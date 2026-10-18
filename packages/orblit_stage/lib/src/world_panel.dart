@@ -20,9 +20,13 @@ import 'pointer_ray.dart';
 /// pointer on the panel.
 ///
 /// The renderer loads a name once, so each picture goes under a name of its
-/// own and the one before is released. That is a copy of the whole picture per
-/// change, which is fine for a screen that changes when somebody presses
-/// something and not for one that animates every frame.
+/// own. Releasing the one before frees its bytes and not the texture the
+/// renderer already made from it, which stays until the renderer is disposed.
+/// That is a whole picture of memory per change. It is fine for a screen that
+/// changes when somebody presses something and not for one that animates.
+///
+/// A panel takes one pointer. Pass the events of a single pointer to [down],
+/// [move], [up] and [cancel], and not those of a second finger.
 final class WorldPanel {
   WorldPanel({
     required this.id,
@@ -101,7 +105,8 @@ final class WorldPanel {
     if (old != null) await OrblitResources.release(old);
   }
 
-  /// Lets go of the picture the renderer holds. The panel stays the caller's.
+  /// Lets go of the picture's bytes. The panel stays the caller's. Await any
+  /// [sync] in flight first, or its picture is provided after this and kept.
   Future<void> dispose() async {
     final name = _name;
     _name = null;
@@ -139,6 +144,15 @@ final class WorldPanel {
   void up(PointerRay ray) {
     _follow(ray, (pixel) => PointerUpEvent(position: pixel, pointer: _pointer));
     _last = null;
+  }
+
+  /// Drops the press without a release, as the system does for a touch it
+  /// takes back. A button under it is not tapped.
+  void cancel() {
+    final pixel = _last;
+    if (pixel == null) return;
+    _last = null;
+    panel.send(PointerCancelEvent(position: pixel, pointer: _pointer));
   }
 
   void _follow(PointerRay ray, PointerEvent Function(Offset pixel) make) {

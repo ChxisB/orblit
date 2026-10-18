@@ -428,9 +428,12 @@ void click(OrblitCamera camera, Offset at, Size view) {
 
 - Give the panel the same shape in pixels as the face has in metres.
 - `await wall.sync()` after a change, one at a time, then publish the scene
-  again. A name loads once, so each picture has a new name. That is a copy of
-  the picture per change, so it suits a screen somebody presses and not one
-  that animates every frame.
+  again. A name loads once, so each picture has a new name. Releasing the old
+  one frees its bytes and not its texture, which the renderer keeps until it
+  is disposed. A change costs a picture of memory for good, about 1.4 MB at
+  800 by 450. It suits a screen somebody presses and not one that animates.
+- A panel takes one pointer. Send `down`, `move`, `up` and `cancel` for one
+  finger, and await any `sync` before `dispose`.
 - A panel has no keyboard focus and no hover. A text field cannot be typed
   into.
 - Panel presses use their own pointer numbers, because the gesture arena is
@@ -438,7 +441,8 @@ void click(OrblitCamera camera, Offset at, Size view) {
   `tester.runAsync`.
 - `Nameplates(atlas:, fadeStart:, fadeEnd:)`: `await plates.sync(texts)`,
   then every frame `plates.build(camera, labels)` gives objects and
-  materials. Labels do not test against walls.
+  materials. Labels do not test against walls. A string wider than the atlas
+  throws, so trim long names.
 
 Guide: `/guides/world-interfaces/`. The gallery's Interface in the world
 example runs all of it.

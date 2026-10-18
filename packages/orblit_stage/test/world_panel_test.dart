@@ -162,6 +162,25 @@ void main() {
       expect(events, isEmpty);
     });
 
+    testWidgets('a cancelled press is not a tap', (tester) async {
+      final events = <String>[];
+      final wall = build(
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: () => events.add('tap'),
+        ),
+      );
+      await tester.runAsync(wall.sync);
+      final ray = rayTo(transform, eye, Vector3(0, 0, 1));
+
+      wall
+        ..down(ray)
+        ..cancel()
+        ..up(ray);
+
+      expect(events, isEmpty);
+    });
+
     testWidgets('a drag keeps reporting after it leaves the face', (
       tester,
     ) async {

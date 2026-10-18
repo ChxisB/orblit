@@ -3,17 +3,19 @@
 ## 0.10.0
 
 - `WorldPanel` puts a `UiPanel` on a thin cube face in the scene. It hands the
-  renderer each new picture under a new name, releases the one before, and
-  turns a `PointerRay` into a press, a drag and a release on the panel. A drag
-  that leaves the face keeps going.
+  renderer each new picture under a new name, releases the bytes of the one
+  before, and turns a `PointerRay` into a press, a drag, a release and a
+  cancel on the panel. A drag that leaves the face keeps going. The renderer
+  keeps the texture of a released picture until it is disposed.
 - `PointerRay.fromCamera` is the ray through a point of the view, for a
-  perspective or an orthographic `OrblitCamera`.
+  perspective or an orthographic `OrblitCamera`. It measures the angle of view
+  across the shorter side, as the renderer does, so a tall view is right.
 - `Nameplates` draws many short labels as quads that square up to the view.
   Each distinct string is drawn once into a shared `LabelAtlas`, and a label
   shows its string's rectangle of that picture. Labels fade out between two
   distances, are dropped past the far one, and only the nearest `maxLabels`
   are kept.
-- New dependency on `orblit_ui`.
+- New dependency on `orblit_ui`, so the Flutter floor is 3.47.0.
 
 ## 0.9.0
 

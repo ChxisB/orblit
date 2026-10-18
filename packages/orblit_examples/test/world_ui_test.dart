@@ -131,8 +131,7 @@ void main() {
   });
 
   group('the overlay', () {
-    Future<List<Offset>> dragFrom(WidgetTester tester, Offset start) async {
-      final orbit = <Offset>[];
+    Future<void> mount(WidgetTester tester, List<Offset> orbit) async {
       await open(tester);
       await tester.pumpWidget(
         Directionality(
@@ -158,6 +157,11 @@ void main() {
           ),
         ),
       );
+    }
+
+    Future<List<Offset>> dragFrom(WidgetTester tester, Offset start) async {
+      final orbit = <Offset>[];
+      await mount(tester, orbit);
       await tester.dragFrom(start, const Offset(120, 0));
       return orbit;
     }
@@ -172,6 +176,27 @@ void main() {
 
     exampleTest('a drag that starts beside it orbits', (tester) async {
       expect(await dragFrom(tester, const Offset(10, 10)), isNotEmpty);
+    });
+
+    exampleTest('a second finger on the screen does not take it over', (
+      tester,
+    ) async {
+      await mount(tester, []);
+      // The button asks for a new picture, which needs the real zone.
+      await tester.runAsync(() async {
+        final first = await tester.startGesture(onScreen(400, 225));
+        final second = await tester.startGesture(
+          onScreen(700, 386),
+          pointer: 9,
+        );
+        await second.up();
+        await first.up();
+        await example.idle;
+      });
+
+      // Without the guard the second finger replaces the first on the panel
+      // and the button never sees its release.
+      expect(example.presses, 1);
     });
   });
 
