@@ -346,7 +346,8 @@ final wall = WorldPanel(
   objectKey: 3,
   materialKey: 3,
 );
-panel.addListener(wall.sync); // draw again after a change
+// Draw again after a change. Wait for one picture before asking for the next.
+panel.addListener(() => later(wall.sync));
 
 // Put it in the scene.
 OrblitScene(objects: [wall.object], materials: [wall.material], ...);

@@ -19,9 +19,9 @@ the fullest reference.
 | `orblit_motion` | Animation clips as `.oclip` files, played on a scene's entities and a model's bones, with marks and root motion, imported from glTF, and retargeted onto another skeleton, by name or by the parts of a person, baked or live; blends as `.oblend` files, graphs of states that mix clips and fade between them; cutscenes as `.ocutscene` files, the scene keyed and seen through shots | `ClipDocument`, `ClipPlayer`, `sceneOpsFor`, `clipsFromGltf`, `retargetClip`, `BoneMap`, `LiveRetarget`, `humanoidOf`, `reduceKeys`, `RestSkeleton`, `BlendDocument`, `BlendPlayer`, `BlendPlace`, `CutsceneDocument` |
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
-| `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
+| `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets; a panel that draws a widget tree with no window | `UiSurface`, `UiNode`, `UiPanel`, `LabelAtlas` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet; puts a `UiPanel` on a face in the scene and draws many labels | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet`, `WorldPanel`, `PointerRay`, `Nameplates` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
@@ -295,6 +295,13 @@ handler in `props: {'onPressed': 'resume'}` and `onEvent` receives
 as good. Worked example:
 https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 `/guides/interfaces/`.
+
+`UiPanel(child:, size:, pixelRatio:)` builds a tree with no window.
+`paint()` returns PNG bytes and `send(PointerEvent)` takes a pointer in the
+panel's pixels. It notifies when out of date and never draws by itself.
+`LabelAtlas` packs whole strings into one PNG: `add`, `rectOf`, `paint`.
+`WorldPanel` and `Nameplates` in `orblit_stage` put these in the scene. See
+`/guides/world-interfaces/`.
 
 ## orblit_scene and orblit_stage
 
