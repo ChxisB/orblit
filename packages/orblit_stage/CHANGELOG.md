@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.10.0
+
+- `WorldPanel` puts a `UiPanel` on a thin cube face in the scene. It hands the
+  renderer each new picture under a new name, releases the one before, and
+  turns a `PointerRay` into a press, a drag and a release on the panel. A drag
+  that leaves the face keeps going.
+- `PointerRay.fromCamera` is the ray through a point of the view, for a
+  perspective or an orthographic `OrblitCamera`.
+- New dependency on `orblit_ui`.
+
 ## 0.9.0
 
 - `OrblitParticleSheet` draws a grid of particles that something else moves,
