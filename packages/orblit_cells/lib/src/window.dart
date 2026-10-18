@@ -73,7 +73,10 @@ final class CellWindow {
     final focus = grid.cellOf(x, z);
     if (focus == null) return const CellPlan();
 
-    final score = _ranking(x, z, facingX, facingZ);
+    final ranking = _ranking(x, z, facingX, facingZ);
+    // The cell the point stands in comes first, whichever way it faces. A
+    // neighbour ahead can otherwise outrank it from near a border.
+    double score(Cell cell) => cell == focus ? -1 : ranking(cell);
     final wanted = {...grid.around(focus, loadRadius), ...pinned};
     final load = [
       for (final cell in wanted)

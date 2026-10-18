@@ -14,11 +14,21 @@ final class Grid {
 
   final double cellSize;
 
-  /// The cell holding ([x], [z]), or null when either is not a finite number.
+  /// The cell holding ([x], [z]), or null when either is not a finite number
+  /// or lies more than [reach] cells from the origin.
+  ///
+  /// A position that far is a physics blow-up and not a place. Cell numbers
+  /// that large overflow when a window is drawn round them.
   Cell? cellOf(double x, double z) {
-    if (!x.isFinite || !z.isFinite) return null;
-    return (x: (x / cellSize).floor(), z: (z / cellSize).floor());
+    final cx = x / cellSize;
+    final cz = z / cellSize;
+    if (!cx.isFinite || !cz.isFinite) return null;
+    if (cx.abs() > reach || cz.abs() > reach) return null;
+    return (x: cx.floor(), z: cz.floor());
   }
+
+  /// The farthest a cell number may be from zero.
+  static const double reach = 1e9;
 
   /// The middle of [cell].
   ({double x, double z}) centerOf(Cell cell) =>

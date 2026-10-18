@@ -16,6 +16,13 @@ void main() {
       expect(grid.cellOf(0, double.infinity), isNull);
     });
 
+    test('has no cell for a place that is not one', () {
+      expect(grid.cellOf(1e300, 0), isNull);
+      expect(grid.cellOf(0, -1e12), isNull);
+      // A cell size this small makes the division overflow to infinity.
+      expect(Grid(1e-320).cellOf(1, 0), isNull);
+    });
+
     test('puts the centre in the middle of the cell', () {
       expect(grid.centerOf((x: 2, z: -1)), (x: 25.0, z: -5.0));
     });

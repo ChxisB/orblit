@@ -115,6 +115,26 @@ void main() {
     expect(plan.drop, isEmpty);
   });
 
+  test('a point far past the world keeps the world', () {
+    final window = CellWindow(grid, loadRadius: 1);
+
+    final plan = window.plan(1e300, 0, loaded: {(x: 0, z: 0)});
+
+    expect(plan.load, isEmpty);
+    expect(plan.drop, isEmpty);
+  });
+
+  test('the cell the point stands in loads before one ahead of it', () {
+    final window = CellWindow(grid, loadRadius: 1);
+
+    // Near the border, facing the neighbour. Its middle is straight ahead and
+    // the cell underfoot has its middle behind.
+    final plan = window.plan(0.1, 5, facingX: -1);
+
+    expect(plan.load.first, (x: 0, z: 0));
+    expect(plan.load[1], (x: -1, z: 0));
+  });
+
   test('a drop radius below the load radius is refused', () {
     expect(
       () => CellWindow(grid, loadRadius: 2, dropRadius: 1),
