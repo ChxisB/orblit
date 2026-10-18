@@ -62,6 +62,22 @@ void main() {
       );
     });
 
+    test('matches a file whose lines end in CRLF', () {
+      File(path)
+        ..createSync(recursive: true)
+        ..writeAsStringSync('a\r\nb\r\n');
+
+      expect('a\nb\n', matchesTextFile(path, update: false));
+    });
+
+    test('refuses a value that is not a String', () {
+      expect(
+        refusal(matchesTextFile(path, update: true), 42),
+        contains('not a String'),
+      );
+      expect(File(path).existsSync(), isFalse);
+    });
+
     test('says when this is longer than the file', () {
       expect('a\n', matchesTextFile(path, update: true));
 

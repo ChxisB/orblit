@@ -15,10 +15,12 @@ const _encoder = JsonEncoder.withIndent('  ');
 String describeChange(SceneDocument before, SceneDocument after) =>
     '${_encoder.convert(SceneDiff.between(before, after).toJson())}\n';
 
-/// Text equal to what the file at [path] holds.
+/// A String equal to what the file at [path] holds. A relative [path] is read
+/// from the directory the tests run in, which is the package root.
 ///
 /// With [update] true, or with `ORBLIT_UPDATE_GOLDENS=1` in the environment
-/// when it is left out, the file is written and the match passes.
+/// when it is left out, the file is written and the match passes. A file that
+/// changes is named on stderr.
 Matcher matchesTextFile(String path, {bool? update}) => _TextFile(
   path,
   update ?? Platform.environment['ORBLIT_UPDATE_GOLDENS'] == '1',
@@ -32,16 +34,22 @@ final class _TextFile extends Matcher {
 
   @override
   bool matches(Object? item, Map<Object?, Object?> matchState) {
+    if (item is! String) return false;
     final file = File(_path);
-    if (_update) {
-      // A matcher that writes, because a golden is rewritten by running the
-      // test again and a second command to do it would drift from this one.
+    final same = file.existsSync() && _read(file) == item;
+    if (!_update) return same;
+    // A matcher that writes: a second command to rewrite goldens would drift.
+    if (!same) {
       file.parent.createSync(recursive: true);
-      file.writeAsStringSync('$item');
-      return true;
+      file.writeAsStringSync(item);
+      stderr.writeln('wrote $_path');
     }
-    return file.existsSync() && file.readAsStringSync() == '$item';
+    return true;
   }
+
+  // A checkout may turn the file's line endings into CRLF.
+  static String _read(File file) =>
+      file.readAsStringSync().replaceAll('\r\n', '\n');
 
   @override
   Description describe(Description description) =>
@@ -54,14 +62,15 @@ final class _TextFile extends Matcher {
     Map<Object?, Object?> matchState,
     bool verbose,
   ) {
+    if (item is! String) return mismatch.add('is not a String');
     final file = File(_path);
     if (!file.existsSync()) {
       return mismatch.add(
         'there is no such file. Run with ORBLIT_UPDATE_GOLDENS=1 to write it',
       );
     }
-    final want = const LineSplitter().convert(file.readAsStringSync());
-    final got = const LineSplitter().convert('$item');
+    final want = const LineSplitter().convert(_read(file));
+    final got = const LineSplitter().convert(item);
     final line = Iterable<int>.generate(math.max(want.length, got.length))
         .firstWhere(
           (i) => i >= want.length || i >= got.length || want[i] != got[i],

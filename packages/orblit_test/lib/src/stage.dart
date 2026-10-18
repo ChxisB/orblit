@@ -36,15 +36,25 @@ final class TestStage {
 
   int _frames = 0;
 
+  // Microseconds times fps that have not made a whole frame yet. Integers, so
+  // a hundred steps of 8 ms are the 48 frames that 800 ms is.
+  int _owed = 0;
+
   /// Frames run so far.
   int get frames => _frames;
 
   /// Sampled time so far. Worked out from [frames] so it does not drift.
   Duration get now => Duration(microseconds: (_frames * 1000000 / fps).round());
 
-  /// Runs the frames that fit in [duration], rounded to the nearest whole one.
+  /// Runs the whole frames that fit in [duration]. What is left over waits for
+  /// the next step, so small steps add up to the time they say.
   void step(Duration duration) {
-    final count = (duration.inMicroseconds * fps / 1000000).round();
+    if (duration.isNegative) {
+      throw ArgumentError.value(duration, 'duration', 'is negative');
+    }
+    _owed += duration.inMicroseconds * fps;
+    final count = _owed ~/ 1000000;
+    _owed -= count * 1000000;
     for (var i = 0; i < count; i++) {
       _frame();
     }

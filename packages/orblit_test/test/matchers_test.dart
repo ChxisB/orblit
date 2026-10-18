@@ -23,6 +23,10 @@ void main() {
       expect(lamp, isNot(matcher));
       expect(refusal(matcher, lamp), contains('components'));
     });
+
+    test('refuses to be asked for no type at all', () {
+      expect(() => hasComponent(), throwsArgumentError);
+    });
   });
 
   group('isPositionedNear', () {

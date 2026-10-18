@@ -26,10 +26,29 @@ void main() {
       expect(stage.now, const Duration(seconds: 1));
     });
 
-    test('a span between frames rounds to the nearest one', () {
+    test('a span between frames waits for the next step', () {
       final stage = TestStage((_) {})..step(const Duration(milliseconds: 20));
 
       expect(stage.frames, 1);
+    });
+
+    test('small steps add up to the time they say', () {
+      final stage = TestStage((_) {});
+
+      for (var i = 0; i < 100; i++) {
+        stage.step(const Duration(milliseconds: 8));
+      }
+
+      expect(stage.frames, 48);
+    });
+
+    test('a step back in time is refused', () {
+      final stage = TestStage((_) {});
+
+      expect(
+        () => stage.step(const Duration(milliseconds: -16)),
+        throwsArgumentError,
+      );
     });
 
     test('a rate of nothing is refused', () {

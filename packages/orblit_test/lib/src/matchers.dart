@@ -14,14 +14,19 @@ final class _Reads<T, V> extends CustomMatcher {
   Object? featureValueOf(Object? actual) => _read(actual as T);
 }
 
-/// An entity with a component of type [T].
-Matcher hasComponent<T extends SceneComponent>() =>
-    _Reads<SceneEntity, Iterable<SceneComponent>>(
-      'an entity with a $T',
-      'components',
-      (entity) => entity.components.values,
-      contains(isA<T>()),
-    );
+/// An entity with a component of type [T]. Name the type, because a bare
+/// `hasComponent()` would match any entity at all.
+Matcher hasComponent<T extends SceneComponent>() {
+  if (T == SceneComponent) {
+    throw ArgumentError('hasComponent needs the type of component to find.');
+  }
+  return _Reads<SceneEntity, Iterable<SceneComponent>>(
+    'an entity with a $T',
+    'components',
+    (entity) => entity.components.values,
+    contains(isA<T>()),
+  );
+}
 
 /// An entity whose own position, not counting its parents, is within [within]
 /// of [point]. Fails for an entity with no transform.

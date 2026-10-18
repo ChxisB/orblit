@@ -21,10 +21,62 @@ void main() {
     expect(controls.read(const KeyControl('Space')), 0);
   });
 
-  test('an axis reads the value it was pressed at', () {
-    controls.press(const PadAxisControl(PadAxis.leftTrigger), 0.7);
+  test('an axis reads the value it was pushed to, by side', () {
+    controls.pushAxis(PadAxis.leftTrigger, 0.7);
+    controls.pushAxis(PadAxis.leftX, -0.4);
 
     expect(controls.read(const PadAxisControl(PadAxis.leftTrigger)), 0.7);
+    expect(
+      controls.read(
+        const PadAxisControl(PadAxis.leftX, side: AxisSide.negative),
+      ),
+      0.4,
+    );
+    expect(
+      controls.read(
+        const PadAxisControl(PadAxis.leftX, side: AxisSide.positive),
+      ),
+      0,
+    );
+  });
+
+  test('a stick is its two axes, so an axis binding sees a push', () {
+    controls.pushStick(PadStick.right, Vector2(-0.5, 0.25));
+
+    expect(
+      controls.read(
+        const PadAxisControl(PadAxis.rightX, side: AxisSide.negative),
+      ),
+      0.5,
+    );
+    expect(controls.read(const PadAxisControl(PadAxis.rightY)), 0.25);
+  });
+
+  test('a stick and an axis are pushed with their own calls', () {
+    expect(
+      () => controls.press(const PadAxisControl(PadAxis.leftX)),
+      throwsArgumentError,
+    );
+    expect(
+      () => controls.press(const PadStickControl(PadStick.left)),
+      throwsArgumentError,
+    );
+  });
+
+  test('a push beyond what a pad can give is refused', () {
+    expect(() => controls.pushAxis(PadAxis.leftX, 1.5), throwsArgumentError);
+    expect(
+      () => controls.pushAxis(PadAxis.leftX, double.nan),
+      throwsArgumentError,
+    );
+    expect(
+      () => controls.pushStick(PadStick.left, Vector2(1, 1)),
+      throwsArgumentError,
+    );
+    expect(
+      () => controls.press(const KeyControl('Space'), double.infinity),
+      throwsArgumentError,
+    );
   });
 
   test('a stick is read as a vector and as how far it is pushed', () {

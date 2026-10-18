@@ -18,7 +18,8 @@ extension SceneFinders on SceneDocument {
   }
 
   /// The entity whose id is [path]. An entity inside a prefab instance has
-  /// its path as its id, `street1/lamp3/bulb`.
+  /// its path as its id, `street1/lamp3/bulb`, once `expandInstances` has
+  /// opened the instance. Call that first.
   SceneEntity entityAt(String path) =>
       this[path] ?? (throw StateError('No entity has the id "$path".'));
 }
