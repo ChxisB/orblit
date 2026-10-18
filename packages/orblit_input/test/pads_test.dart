@@ -17,6 +17,7 @@ RecordedPad pad({
   String path = 'usb-0000:00:14.0-1/input0',
   Set<int>? held,
   Map<int, int>? resting,
+  bool canRumble = false,
 }) => RecordedPad(
   identity: PadIdentity(
     name: name,
@@ -39,6 +40,7 @@ RecordedPad pad({
   },
   held: held,
   resting: resting,
+  canRumble: canRumble,
 );
 
 void main() {
@@ -251,6 +253,22 @@ void main() {
       expect(gone.trigger(PadSide.left), 0);
     });
 
+    test('a pad pulled while holding a button lets it go first', () {
+      // A charge shot that waits for the release must not wait for ever.
+      final backend = RecordedPads();
+      final device = pad();
+      backend.attach(device);
+      final pads = Pads(backend: backend);
+      device.button(btnSouth, down: true);
+      pads.poll();
+
+      backend.detach(device);
+      final events = pads.poll().events;
+
+      expect(events.map((e) => e.runtimeType), [PadReleased, PadDisconnected]);
+      expect((events.first as PadReleased).button, PadButton.south);
+    });
+
     test('a pad that comes back gets its own player number again', () {
       final backend = RecordedPads();
       final one = pad(path: 'port-a');
@@ -391,6 +409,38 @@ void main() {
       pads.poll();
       pads.close();
       expect(device.isAlive, isFalse);
+    });
+  });
+
+  group('rumble', () {
+    test('goes to the pad in the slot, clamped to what a motor takes', () {
+      final device = pad(canRumble: true);
+      final pads = Pads(backend: RecordedPads([device]));
+      pads.poll();
+
+      expect(pads.canRumble(0), isTrue);
+      pads.rumble(
+        0,
+        strong: 2,
+        weak: double.nan,
+        duration: const Duration(milliseconds: -5),
+      );
+
+      expect(device.rumbles, [
+        (strong: 1.0, weak: 0.0, duration: Duration.zero),
+      ]);
+    });
+
+    test('says so when the pad cannot, and does nothing for an empty slot', () {
+      final device = pad();
+      final pads = Pads(backend: RecordedPads([device]));
+      pads.poll();
+
+      expect(pads.canRumble(0), isFalse);
+      expect(pads.canRumble(3), isFalse);
+      pads.rumble(0, strong: 1, weak: 1, duration: const Duration(seconds: 1));
+      pads.rumble(3, strong: 1, weak: 1, duration: const Duration(seconds: 1));
+      expect(device.rumbles, isEmpty);
     });
   });
 }

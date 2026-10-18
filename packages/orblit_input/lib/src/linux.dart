@@ -355,8 +355,20 @@ class _LinuxDevice implements PadDevice {
     return out.takeBytes();
   }
 
+  /// Force feedback on Linux is an ioctl per effect and nothing here has built
+  /// it, so a Linux pad says it cannot rumble rather than pretending.
   @override
-  ({Set<int> buttons, Map<int, int> axes}) resync() {
+  bool get canRumble => false;
+
+  @override
+  void rumble({
+    required double strong,
+    required double weak,
+    required Duration duration,
+  }) {}
+
+  @override
+  PadSnapshot resync() {
     final buttons = <int>{};
     if (_alive && _libc.ioctl(_fd, _eviocgkey96, _scratch.cast()) >= 0) {
       final bits = _scratch.asTypedList(96);

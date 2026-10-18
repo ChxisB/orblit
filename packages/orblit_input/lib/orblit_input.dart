@@ -24,7 +24,7 @@
 library;
 
 export 'src/backend.dart'
-    show PadBackend, PadDevice, RecordedPad, RecordedPads, noPads;
+    show PadBackend, PadDevice, PadSnapshot, RecordedPad, RecordedPads, noPads;
 export 'src/evdev.dart'
     show
         EvdevCapabilities,
@@ -36,8 +36,18 @@ export 'src/evdev.dart'
         evSyn,
         synDropped,
         synReport;
+export 'src/gamepad_api.dart'
+    show
+        GamepadApiPads,
+        GamepadButtonReading,
+        GamepadReading,
+        GamepadSource,
+        PadMapping,
+        padIdentityOf;
 export 'src/layout.dart' show PadAxisRange, PadLayout, PadLabels;
-export 'src/linux.dart' show LinuxPads;
+export 'src/linux_stub.dart'
+    if (dart.library.io) 'src/linux.dart'
+    show LinuxPads;
 export 'src/pad.dart'
     show PadAxis, PadButton, PadIdentity, PadSide, PadState, PadStick;
 export 'src/pads.dart'
@@ -50,3 +60,4 @@ export 'src/pads.dart'
         PadReleased,
         Pads;
 export 'src/shaping.dart' show Shaping;
+export 'src/snapshot.dart' show RumbleFunction, SnapshotPad;
