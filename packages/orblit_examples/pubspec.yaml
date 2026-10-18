@@ -52,3 +52,8 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   flutter_test:
     sdk: flutter
+  # For tests that step a game and press its controls with no window.
+  orblit_input:
+    path: ../orblit_input
+  orblit_test:
+    path: ../orblit_test
