@@ -15,9 +15,9 @@ import 'package:flutter/rendering.dart';
 /// the picture on a surface can turn a click on the surface into a click here.
 ///
 /// The tree is real Flutter, so a [UiSurface] or any widget goes in. It
-/// animates and answers events like any other. What it does not get is a
-/// window: no keyboard focus, no hover cursor and no overlay, so a text field
-/// or a tooltip has nothing to attach to.
+/// animates and answers events like any other. A slider or a menu has an
+/// overlay to float on. What it does not get is a window: no keyboard focus and
+/// no hover, so a text field cannot be typed into and a tooltip never shows.
 ///
 /// It notifies when the picture is out of date and does not draw by itself.
 /// Drawing costs a read-back of the image, so the caller decides how often,
@@ -63,6 +63,9 @@ final class UiPanel extends ChangeNotifier {
   /// the tree it began on, however far the pointer travels from it.
   final Map<int, _Press> _pressed = {};
 
+  // Real pointers count up from 1. These count down, so the two never meet.
+  static int _lastId = 0;
+
   bool _dirty = true;
   bool _disposed = false;
 
@@ -95,17 +98,23 @@ final class UiPanel extends ChangeNotifier {
   ///
   /// A move's `delta` is filled in here from the last position, because a
   /// caller that turns rays into positions has no previous event to hand over.
+  ///
+  /// The caller's pointer number is only a name for the press. The tree sees a
+  /// number of its own, because the gesture arena is shared with the real
+  /// window and a real pointer already has the caller's number.
   void send(PointerEvent event) {
     final press = event is PointerDownEvent
         ? (_pressed[event.pointer] = _Press(
             _hit(event.position),
             event.position,
+            --_lastId,
           ))
         : _pressed[event.pointer];
     if (press == null) return;
-    final delivered = event is PointerMoveEvent
-        ? event.copyWith(delta: event.position - press.at)
-        : event;
+    final delivered = event.copyWith(
+      pointer: press.id,
+      delta: event is PointerMoveEvent ? event.position - press.at : null,
+    );
     press.at = event.position;
     if (event is PointerUpEvent || event is PointerCancelEvent) {
       _pressed.remove(event.pointer);
@@ -137,9 +146,12 @@ final class UiPanel extends ChangeNotifier {
                 data: MediaQueryData(size: size, devicePixelRatio: pixelRatio),
                 child: Directionality(
                   textDirection: TextDirection.ltr,
-                  child: Material(
-                    type: MaterialType.transparency,
-                    child: child,
+                  // A slider draws its value indicator in an overlay.
+                  child: Overlay.wrap(
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: child,
+                    ),
                   ),
                 ),
               ),
@@ -147,11 +159,12 @@ final class UiPanel extends ChangeNotifier {
 
   @override
   void dispose() {
+    // First, so taking the tree down does not tell a listener to draw it.
+    _disposed = true;
     _adapter(null).attachToRenderTree(_build, _root);
     _build
       ..buildScope(_root)
       ..finalizeTree();
-    _disposed = true;
     _pipeline.rootNode = null;
     _view.dispose();
     _build.focusManager.dispose();
@@ -161,8 +174,9 @@ final class UiPanel extends ChangeNotifier {
 }
 
 final class _Press {
-  _Press(this.path, this.at);
+  _Press(this.path, this.at, this.id);
 
   final HitTestResult path;
   Offset at;
+  final int id;
 }

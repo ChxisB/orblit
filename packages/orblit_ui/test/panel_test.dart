@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_ui/orblit_ui.dart';
@@ -69,7 +70,38 @@ void main() {
     });
   });
 
+  testWidgets('taking a panel down tells nobody to draw it', (tester) async {
+    final panel = UiPanel(
+      size: const Size(8, 8),
+      child: const ColoredBox(color: Color(0xFFFF0000)),
+    );
+    await tester.runAsync(panel.paint);
+    var told = 0;
+    panel.addListener(() => told++);
+
+    panel.dispose();
+
+    expect(told, 0);
+  });
+
   group('a panel takes pointers in its own pixels', () {
+    testWidgets('a slider has an overlay and follows a drag', (tester) async {
+      var value = 0.5;
+      final panel = UiPanel(
+        size: const Size(200, 40),
+        child: Slider(value: value, onChanged: (v) => value = v),
+      );
+      addTearDown(panel.dispose);
+      await tester.runAsync(panel.paint);
+
+      panel
+        ..send(const PointerDownEvent(position: Offset(100, 20)))
+        ..send(const PointerMoveEvent(position: Offset(180, 20)))
+        ..send(const PointerUpEvent(position: Offset(180, 20)));
+
+      expect(value, greaterThan(0.8));
+    });
+
     testWidgets('a press and release on a button is its event', (tester) async {
       final events = <String>[];
       final panel = UiPanel(
@@ -93,6 +125,29 @@ void main() {
       panel.send(const PointerUpEvent(position: Offset(50, 25)));
 
       expect(events, ['start']);
+    });
+
+    testWidgets('a press leaves the real pointer with the same number alone', (
+      tester,
+    ) async {
+      final panel = UiPanel(
+        size: const Size(100, 50),
+        child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: () {}),
+      );
+      addTearDown(panel.dispose);
+      await tester.runAsync(panel.paint);
+      final arena = GestureBinding.instance.gestureArena;
+      arena.add(1, _Member());
+
+      panel.send(const PointerDownEvent(position: Offset(5, 5), pointer: 1));
+
+      // The arena of a real pointer is still open, so it takes a member. A
+      // panel press that shared its number would have closed it.
+      expect(() => arena.add(1, _Member()), returnsNormally);
+      panel.send(const PointerUpEvent(position: Offset(5, 5), pointer: 1));
+      arena
+        ..close(1)
+        ..sweep(1);
     });
 
     testWidgets('a press that lands on nothing does nothing', (tester) async {
@@ -145,4 +200,12 @@ void main() {
       expect(deltas.last, 90);
     });
   });
+}
+
+final class _Member extends GestureArenaMember {
+  @override
+  void acceptGesture(int pointer) {}
+
+  @override
+  void rejectGesture(int pointer) {}
 }
