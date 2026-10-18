@@ -361,12 +361,18 @@ streamer.step(player.x, player.z, facingX: look.x, facingZ: look.z);
   (`ScenePhysics.apply`) so a body joins when its cell loads and leaves with
   it.
 - **A frame has a budget** (4 ms by default). A cell is never split, so a
-  frame can run over by one cell. Null from `fetch` means an empty cell, which
-  is never asked for again. A throw is asked for again after `retryAfter`.
+  frame can run over by one cell. Null from `fetch` means an empty cell. It is
+  asked for again only after the cell leaves the window and comes back. A
+  throw, or a fetch slower than `fetchTimeout` (30 s), is asked for again after
+  `retryAfter`.
+- **Prefab instances stay links** unless you pass `prefabs`, the same lookup
+  `expandInstances` takes. Their parts take the cell's prefix too.
 - **A cell stays while it is within `loadRadius + 1`**, so standing on a
   border does not flicker. Pass `pinned` for cells that must stay, such as the
   one a character stands in while its ground is not there yet.
-- `onLoad` reports each cell's fetch time, apply time, bytes and entity count.
+- `onLoad` reports each cell's fetch time, apply time, bytes, entity count and
+  `problems` from the file reader. A cell with problems still loads.
+- The cell the point is in loads first, whichever way it faces.
 
 ## Models and files
 
