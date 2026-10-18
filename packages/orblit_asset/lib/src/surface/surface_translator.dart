@@ -252,6 +252,12 @@ List<String> _entry(_Reading state) {
       ? 'vec4(ALBEDO * ALPHA, ALPHA)'
       : 'vec4(ALBEDO, ALPHA)';
   return [
+    // Before the entry point, which writes `material.baseColor` and
+    // `material.emissive`: an alias of the same name would rewrite those into
+    // fields that do not exist. Filament's own code follows the block and has
+    // a `c` and an `n` of its own, so an alias must not outlive the author's
+    // text either.
+    for (final p in state.params) '#undef ${p.name}',
     '    void material(inout MaterialInputs material) {',
     '        vec3 ALBEDO = vec3(1.0);',
     '        float ALPHA = 1.0;',
@@ -273,9 +279,6 @@ List<String> _entry(_Reading state) {
     ],
     '        material.emissive = vec4(EMISSION, 1.0);',
     '    }',
-    // Filament's own code follows the block and has a `c` and an `n` of its
-    // own, so an alias must not outlive the author's text.
-    for (final p in state.params) '#undef ${p.name}',
     '}',
   ];
 }

@@ -72,6 +72,20 @@ void main() {
       );
     });
 
+    test(
+      'a uniform named like a material field does not rewrite the entry',
+      () {
+        final lines = _translate(
+          'uniform vec3 emissive;\nvoid fragment() { EMISSION = emissive; }',
+        ).material.split('\n');
+
+        expect(
+          lines.indexOf('#undef emissive'),
+          lessThan(lines.indexWhere((l) => l.contains('material.emissive'))),
+        );
+      },
+    );
+
     test('maps a material line back to the line the author wrote', () {
       final out = _translate(_pulse);
       final lines = out.material.split('\n');
