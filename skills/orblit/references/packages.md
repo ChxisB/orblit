@@ -20,6 +20,7 @@ the fullest reference.
 | `orblit_terrain` | Ground as data: regions of heights, cover and colour, kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, what is scattered over it, and no physics | `Terrain`, `TerrainSet`, `Cover`, `AutoCover`, `TerrainStroke`, `Brush`, `heightAt`, `normalAt`, `raycast`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
+| `orblit_cells` | A world cut into square cells: which cells to load and drop around a moving point. Pure Dart, no dependencies. `orblit_scene`'s `CellStreamer` puts them in a scene | `Grid`, `CellWindow`, `CellPlan` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
 | `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
@@ -295,6 +296,22 @@ handler in `props: {'onPressed': 'resume'}` and `onEvent` receives
 as good. Worked example:
 https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 `/guides/interfaces/`.
+
+## orblit_cells
+
+`Grid(cellSize)` turns a point into a cell, `(x: 3, z: -1)`, and back.
+`CellWindow(grid, loadRadius: 2)` plans a frame: `plan(x, z, loaded: ...,
+pinned: ...)` returns the cells to `load`, nearest first, and to `drop`,
+farthest first. Distance is the largest of the two cell differences, so the
+window is a square. A cell is kept while it is within `dropRadius`, one more
+than `loadRadius` unless set. Pass `facingX` and `facingZ` and cells behind
+count as farther (`behindWeight`), so the ones ahead load first. A point that
+is not finite plans nothing.
+
+`CellStreamer` in `orblit_scene` does the loading: it fetches a cell file,
+reads it, and puts it in a scene as one diff with the cell on every id. The
+"A world in cells" section of the skill has an example. `orblit_net` has its
+own `Grid` for interest management until it takes this one.
 
 ## orblit_scene and orblit_stage
 

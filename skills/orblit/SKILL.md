@@ -331,6 +331,43 @@ reproducible frames such as screenshots and tests.
 
 A population example is in [references/scene-api.md](references/scene-api.md).
 
+## A world in cells
+
+A world too big to hold at once is cut into square cells on a grid, one scene
+file each, written in world coordinates. `CellStreamer` keeps the cells near
+a point in a scene and no others.
+
+```dart
+import 'package:orblit_cells/orblit_cells.dart';
+import 'package:orblit_scene/orblit_scene.dart';
+import 'package:orblit_stage/orblit_stage.dart';
+
+final grid = Grid(64); // metres across one cell
+final view = OrblitDocumentView(SceneDocument());
+final streamer = CellStreamer(
+  window: CellWindow(grid, loadRadius: 2),
+  fetch: (cell) async => readCell(cell), // scene file bytes, or null
+  apply: view.apply,
+);
+
+// Once a frame, then draw view.scene.
+streamer.step(player.x, player.z, facingX: look.x, facingZ: look.z);
+```
+
+- **Ids take the cell.** An entity `rock` in cell (3, -1) is
+  `cell_3_-1:rock` in the scene. Use `CellStreamer.idIn` to build one. A cell
+  file has no root entity, so nothing sits above the cells.
+- **`apply` is yours.** Send the diff to the document view, and to physics too
+  (`ScenePhysics.apply`) so a body joins when its cell loads and leaves with
+  it.
+- **A frame has a budget** (4 ms by default). A cell is never split, so a
+  frame can run over by one cell. Null from `fetch` means an empty cell, which
+  is never asked for again. A throw is asked for again after `retryAfter`.
+- **A cell stays while it is within `loadRadius + 1`**, so standing on a
+  border does not flicker. Pass `pinned` for cells that must stay, such as the
+  one a character stands in while its ground is not there yet.
+- `onLoad` reports each cell's fetch time, apply time, bytes and entity count.
+
 ## Models and files
 
 - `mesh` is an absolute path to a `.glb` or `.gltf` (`.fbx` and `.obj` are
@@ -610,6 +647,7 @@ patrols and routes round walls), `orblit_collide` (shapes, raycasts, overlaps), 
 onto another skeleton, blends that mix and fade them, and cutscenes),
 `orblit_terrain` (ground as regions of heights, standing on it, and what is
 scattered over it),
+`orblit_cells` (a grid and the window of cells to hold around a point),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
 CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),
