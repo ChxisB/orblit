@@ -111,7 +111,35 @@ the file.
 pressed and released between two polls is in `PadFrame.events` and not in the
 action layer, so poll at the frame rate.
 
-Not here: rumble, motion sensors, touchpads, and pointer lock.
+On a touch screen, `TouchControls` takes the events of the `stick`,
+`touch-button` and `swipe-pad` elements of `orblit_ui`. The two packages do
+not import each other. They agree on the shape of a payload.
+
+```dart
+final touch = TouchControls();
+
+// In the interface's onEvent.
+(handler, payload) => switch (handler) {
+  'move' => touch.moveStick(PadStick.left, payload),
+  'jump' => touch.hold('jump', payload),
+  'look' => touch.swipe(payload),
+  _ => null,
+};
+
+// Once a frame.
+input.update(
+  FrameControls(touch: touch.held, sticks: touch.sticks, pad: pad),
+  now: elapsed,
+);
+look(touch.swiped * sensitivity);
+touch.endFrame();
+```
+
+A touch stick stands in for a pad stick, so `PadStickControl` bindings work
+on a phone. A button binds with `TouchControl('jump')`. If a pad and a screen
+push the same stick, the longer push is read.
+
+Not here: motion sensors, touchpads, and pointer lock.
 
 ## Checking it
 

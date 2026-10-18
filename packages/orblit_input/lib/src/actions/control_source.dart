@@ -29,14 +29,22 @@ abstract interface class ControlSource {
 /// released between two polls is in `PadFrame.events` and not here, so poll
 /// at the frame rate.
 final class FrameControls implements ControlSource, PressedControls {
-  FrameControls({this.keys = const {}, this.touch = const {}, PadState? pad})
-    : pad = pad ?? PadState.absent;
+  FrameControls({
+    this.keys = const {},
+    this.touch = const {},
+    this.sticks = const {},
+    PadState? pad,
+  }) : pad = pad ?? PadState.absent;
 
   /// The keys held now, by name.
   final Set<String> keys;
 
   /// The touch regions being touched now, by name.
   final Set<String> touch;
+
+  /// The sticks on a touch screen, by the pad stick each stands in for. When a
+  /// pad and a screen both push the same stick, the longer push is read.
+  final Map<PadStick, Vector2> sticks;
 
   final PadState pad;
 
@@ -45,12 +53,18 @@ final class FrameControls implements ControlSource, PressedControls {
     KeyControl(:final key) => keys.contains(key) ? 1 : 0,
     PadButtonControl(:final button) => pad.isDown(button) ? 1 : 0,
     PadAxisControl(:final axis, :final side) => side.read(pad.axis(axis)),
-    PadStickControl(:final stick) => pad.stick(stick).length,
+    PadStickControl(stick: final which) => stick(which).length,
     TouchControl(:final region) => touch.contains(region) ? 1 : 0,
   };
 
   @override
-  Vector2 stick(PadStick stick) => pad.stick(stick);
+  Vector2 stick(PadStick stick) {
+    final padded = pad.stick(stick);
+    final touched = sticks[stick];
+    return touched != null && touched.length2 > padded.length2
+        ? touched
+        : padded;
+  }
 
   @override
   Iterable<Control> get active sync* {
@@ -63,7 +77,7 @@ final class FrameControls implements ControlSource, PressedControls {
       if (!_listedAsAxis(button)) yield PadButtonControl(button);
     }
     for (final stick in PadStick.values) {
-      if (pad.stick(stick).length >= pressPoint) yield PadStickControl(stick);
+      if (this.stick(stick).length >= pressPoint) yield PadStickControl(stick);
     }
     for (final axis in PadAxis.values) {
       final value = pad.axis(axis);

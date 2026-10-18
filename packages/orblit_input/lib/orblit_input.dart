@@ -40,6 +40,7 @@ export 'src/actions/control_source.dart'
 export 'src/actions/input_action.dart' show ActionKind, Gestures, InputAction;
 export 'src/actions/input_context.dart' show InputContext;
 export 'src/actions/next_input.dart' show NextInput, PressedControls;
+export 'src/actions/touch_controls.dart' show TouchControls;
 export 'src/backend.dart'
     show PadBackend, PadDevice, RecordedPad, RecordedPads, noPads;
 export 'src/evdev.dart'

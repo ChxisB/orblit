@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- Touch controls. `TouchControls` holds what an on-screen interface says its
+  player is doing: the regions held, the sticks pushed and the distance
+  swiped. A game fills it from the events of `orblit_ui` and hands it to
+  `FrameControls`.
+
+- `FrameControls.sticks` stands a screen in for a pad stick, so a binding to
+  `PadStickControl` works on a phone. When a pad and a screen push the same
+  stick, the longer push is read.
+
 ## 0.2.0
 
 - Actions. A game names what a player can do, as a button, an axis or a
