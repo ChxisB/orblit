@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.38.0
+
+- `OrblitView(profiler: ...)` times each scene send as `upload` and `submit`.
+  Off by default.
+
 ## 0.37.0
 
 - **A lit screen.** `OrblitMaterial(shading: OrblitShading.video, litScreen:

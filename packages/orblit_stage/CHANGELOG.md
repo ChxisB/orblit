@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.10.0
+
+- `OrblitDocumentView(profiler: ...)` times `scene` as `scene build` and
+  `apply` as `diff`. Off by default.
+
 ## 0.9.0
 
 - `OrblitParticleSheet` draws a grid of particles that something else moves,

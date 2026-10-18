@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:orblit_profile/orblit_profile.dart';
 
 import 'device_profile.dart';
 import 'graph.dart';
@@ -24,6 +25,7 @@ class OrblitView extends StatefulWidget {
     this.onAssetInfo,
     this.onViewport,
     this.seconds,
+    this.profiler = const Profiler.off(),
   });
 
   /// What to draw. While this is null the renderer shows its own placeholder,
@@ -45,6 +47,11 @@ class OrblitView extends StatefulWidget {
   /// Null, the default, is this frame's own timestamp: the right answer for
   /// anything being watched rather than measured.
   final double? seconds;
+
+  /// Times the send of each scene: `upload` builds the message and `submit`
+  /// waits for the renderer to take it. A send that overlaps the next frame is
+  /// counted in the frame it finishes in.
+  final Profiler profiler;
 
   /// Called with anything the scene asked for that could not be given: a mesh
   /// file that would not load, a light the view has no room to shade. Subject
@@ -210,20 +217,25 @@ class _OrblitViewState extends State<OrblitView> {
     if (id == null || scene == null || _error != null) return;
     _sentScene = scene;
     try {
+      final uploading = widget.profiler.begin();
+      final message = scene.toMessage(
+        id,
+        sentRevisions: _sentRevisions,
+        sentSplatRevisions: _sentSplatRevisions,
+        sentSpriteRevisions: _sentSpriteRevisions,
+        sentTerrain: _sentTerrain,
+        // The frame's own timestamp, which is the clock everything in the
+        // frame was worked out on — including wherever the camera decided
+        // to be.
+        at: _frameSeconds(),
+      );
+      widget.profiler.end('upload', uploading);
+      final submitting = widget.profiler.begin();
       final notes = await _channel.invokeMapMethod<String, String>(
         'setScene',
-        scene.toMessage(
-          id,
-          sentRevisions: _sentRevisions,
-          sentSplatRevisions: _sentSplatRevisions,
-          sentSpriteRevisions: _sentSpriteRevisions,
-          sentTerrain: _sentTerrain,
-          // The frame's own timestamp, which is the clock everything in the
-          // frame was worked out on — including wherever the camera decided
-          // to be.
-          at: _frameSeconds(),
-        ),
+        message,
       );
+      widget.profiler.end('submit', submitting);
 
       // Only after it has landed. A send that threw left the renderer with
       // whatever it had, and claiming otherwise would leave a population
