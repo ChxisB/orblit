@@ -22,7 +22,7 @@
 /// where that becomes the view.
 library;
 
-export 'src/cooked_surface.dart' show CookedSurface;
+export 'src/cooked_surface.dart' show CookedSurface, SurfaceParam;
 export 'src/cutscenes.dart'
     show OrblitCutsceneStep, OrblitCutscenes, blendCameras;
 export 'src/document_view.dart' show OrblitDocumentView;

@@ -65,6 +65,36 @@ void main() {
       expect(surface.pictures, {'albedo': true});
     });
 
+    test('the declarations keep what an inspector shows', () {
+      final surface = CookedSurface.fromParams('p', [
+        {
+          'name': 'tint',
+          'type': 'vec4',
+          'instance': true,
+          'hints': {'source_color': <String>[]},
+        },
+        {
+          'name': 'speed',
+          'type': 'float',
+          'hints': {
+            'hint_range': ['0.0', '10.0', '0.1'],
+          },
+        },
+        {
+          'name': 'odd',
+          'type': 'float',
+          'hints': {
+            'hint_range': ['5', '1'],
+          },
+        },
+      ]);
+      final [tint, speed, odd] = surface.params;
+      expect([tint.name, tint.instance, tint.isColour], ['tint', true, true]);
+      expect(speed.instance, isFalse);
+      expect(speed.range, (min: 0.0, max: 10.0, step: 0.1));
+      expect(odd.range, isNull);
+    });
+
     test('an entry it cannot read is left out', () {
       final surface = CookedSurface.fromParams('p', [
         {'name': 'a', 'type': 'mat4'},

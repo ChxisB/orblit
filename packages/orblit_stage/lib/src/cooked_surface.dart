@@ -11,6 +11,46 @@ const Map<String, int> _widthOfType = {
   'sampler2D': 0,
 };
 
+/// One uniform an author declared, as an inspector needs to show it.
+final class SurfaceParam {
+  const SurfaceParam({
+    required this.name,
+    required this.type,
+    this.instance = false,
+    this.hints = const {},
+  });
+
+  final String name;
+
+  /// `bool`, `int`, `float`, `vec2`, `vec3`, `vec4` or `sampler2D`.
+  final String type;
+
+  /// Whether each object may state its own. The renderer takes a value for
+  /// any declared name, so this only says which ones an editor should offer.
+  final bool instance;
+
+  /// Each hint the author wrote, by name, with its arguments as written.
+  final Map<String, List<String>> hints;
+
+  /// A colour the author marked `source_color`.
+  bool get isColour => hints.containsKey('source_color');
+
+  /// The slider bounds from `hint_range(min, max, step)`, or null. The step is
+  /// zero when the author left it out.
+  ({double min, double max, double step})? get range {
+    final args = hints['hint_range'];
+    if (args == null || args.length < 2) return null;
+    final min = double.tryParse(args[0]);
+    final max = double.tryParse(args[1]);
+    if (min == null || max == null || min >= max) return null;
+    return (
+      min: min,
+      max: max,
+      step: args.length > 2 ? double.tryParse(args[2]) ?? 0 : 0,
+    );
+  }
+}
+
 /// An author-written surface after the cook: where its package is, and what it
 /// declares.
 ///
@@ -23,6 +63,7 @@ final class CookedSurface {
     this.widths = const {},
     this.defaults = const {},
     this.pictures = const {},
+    this.params = const [],
   });
 
   /// Reads the `params.json` the cook writes beside the package. Anything it
@@ -31,11 +72,20 @@ final class CookedSurface {
     final widths = <String, int>{};
     final defaults = <String, List<double>>{};
     final pictures = <String, bool>{};
+    final declared = <SurfaceParam>[];
     for (final entry in params is List ? params : const <Object?>[]) {
       if (entry is! Map || entry['name'] is! String) continue;
       final name = entry['name']! as String;
       final width = _widthOfType[entry['type']];
       if (width == null) continue;
+      declared.add(
+        SurfaceParam(
+          name: name,
+          type: entry['type']! as String,
+          instance: entry['instance'] == true,
+          hints: _hintsOf(entry['hints']),
+        ),
+      );
       if (width == 0) {
         pictures[name] = switch (entry['hints']) {
           final Map<Object?, Object?> hints => hints.containsKey(
@@ -54,8 +104,12 @@ final class CookedSurface {
       widths: widths,
       defaults: defaults,
       pictures: pictures,
+      params: declared,
     );
   }
+
+  /// Every uniform the author declared, in the order they wrote them.
+  final List<SurfaceParam> params;
 
   /// The compiled package, relative to the project.
   final String package;
@@ -105,4 +159,12 @@ List<double>? _numbersOf(Object? raw) => switch (raw) {
     for (final n in list) (n as num).toDouble(),
   ],
   _ => null,
+};
+
+/// The hints of one declaration: each name with its arguments as text.
+Map<String, List<String>> _hintsOf(Object? raw) => {
+  if (raw is Map)
+    for (final MapEntry(:key, :value) in raw.entries)
+      if (key is String)
+        key: [if (value is List) for (final arg in value) '$arg'],
 };
