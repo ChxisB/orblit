@@ -31,6 +31,24 @@ void main() {
       }
     });
 
+    test('a list handed in cannot be changed from outside afterwards', () {
+      final sizes = [0.1];
+      final colours = <double>[1, 1, 1];
+      final bursts = [Burst(0, 2)];
+      final emitter = Emitter(size: sizes, colour: colours, bursts: bursts);
+
+      sizes.clear();
+      colours.clear();
+      bursts.clear();
+
+      final out = ParticleBuffer(10);
+      emitter.sample(0.5, out);
+      expect(emitter.size, [0.1]);
+      expect(emitter.colour, [1, 1, 1]);
+      expect(emitter.bursts, hasLength(1));
+      expect(() => emitter.size.add(1), throwsUnsupportedError);
+    });
+
     test('a burst needs a time and a count it can carry', () {
       expect(() => Burst(-1, 5), throwsArgumentError);
       expect(() => Burst(0, 0), throwsArgumentError);

@@ -54,12 +54,12 @@ final class Emitter {
     this.seed = 0,
     this.shape = const PointShape(),
     this.rate = 10,
-    this.bursts = const [],
+    List<Burst> bursts = const [],
     this.duration,
     this.lifetime = const Range(1, 2),
     this.speed = const Range(1, 2),
-    this.size = const [0.1],
-    this.colour = const [1, 1, 1],
+    List<double> size = const [0.1],
+    List<double> colour = const [1, 1, 1],
     Vector3? gravity,
     this.drag = 0,
     this.noiseStrength = 0,
@@ -67,7 +67,10 @@ final class Emitter {
     this.spin = const Range.of(0),
     this.space = ParticleSpace.world,
     this.maxParticles = 1000,
-  }) : gravity = Vector3.copy(gravity ?? Vector3.zero()) {
+  }) : bursts = List.unmodifiable(bursts),
+       size = List.unmodifiable(size),
+       colour = List.unmodifiable(colour),
+       gravity = Vector3.copy(gravity ?? Vector3.zero()) {
     _check();
   }
 
@@ -78,7 +81,8 @@ final class Emitter {
   final double rate;
   final List<Burst> bursts;
 
-  /// Seconds after which no more are born, or null for no end.
+  /// Seconds after which no more steady births happen, or null for no end.
+  /// A particle born before then lives its whole life. Bursts ignore it.
   final double? duration;
 
   /// Seconds a particle lives.

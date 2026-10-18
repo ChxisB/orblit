@@ -76,6 +76,9 @@ final class ParticleSim {
   /// Moves on by [dt] seconds. [place] is where the emitter is, as for
   /// `sample`.
   void step(double dt, {Placement? place}) {
+    if (!(dt >= 0 && dt.isFinite)) {
+      throw ArgumentError.value(dt, 'dt', 'must be 0 or more');
+    }
     final old = _live.length;
     _time += dt;
     _birthAll(place);
@@ -107,6 +110,9 @@ final class ParticleSim {
   void _birthAll(Placement? place) {
     final rate = emitter.rate;
     final end = emitter.duration ?? double.infinity;
+    // Those born more than a longest life ago are dead on arrival, so a long
+    // pause does not birth them only to drop them.
+    _next = math.max(_next, ((_time - emitter.lifetime.max) * rate).floor());
     while (rate > 0 && _next / rate <= math.min(_time, end)) {
       _birth(_next, _next / rate, place);
       _next++;

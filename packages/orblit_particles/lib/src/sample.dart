@@ -28,6 +28,8 @@ extension EmitterSampling on Emitter {
   }
 }
 
+const double _negligibleDrag = 1e-6;
+
 typedef _Visit = void Function(int id, double born, double life);
 
 final class _Frame {
@@ -39,6 +41,7 @@ final class _Frame {
   final ParticleBuffer out;
   final Placement? place;
   final GradientNoise _noise;
+  final Vector3 _start = Vector3.zero();
   final Vector3 _position = Vector3.zero();
   final Vector3 _velocity = Vector3.zero();
   final Vector3 _push = Vector3.zero();
@@ -96,6 +99,7 @@ final class _Frame {
     final world = emitter.space == ParticleSpace.world;
     emitter.birth(id, _position, _velocity);
     if (world) _place(born);
+    _start.setFrom(_position);
     _fly(age);
     _wander(id, age);
     if (!world) _place(time);
@@ -116,7 +120,9 @@ final class _Frame {
   void _fly(double age) {
     final gravity = emitter.gravity;
     final drag = emitter.drag;
-    if (drag == 0) {
+    // Below this the closed form loses its digits to cancellation, and the
+    // drag-free path is off by less than a hair.
+    if (drag < _negligibleDrag) {
       _position
         ..addScaled(_velocity, age)
         ..addScaled(gravity, 0.5 * age * age);
@@ -124,20 +130,30 @@ final class _Frame {
     }
     final slide = (1 - math.exp(-drag * age)) / drag;
     _position
-      ..addScaled(gravity, age / drag - slide / drag)
+      ..addScaled(gravity, (age - slide) / drag)
       ..addScaled(_velocity, slide);
   }
 
   /// A smooth push about, which depends on where the particle is and not on
-  /// where it has been.
+  /// where it has been. The push a newborn would get is taken off, so a
+  /// particle starts on the shape and drifts from there.
   void _wander(int id, double age) {
     final strength = emitter.noiseStrength;
     if (strength == 0) return;
-    final scale = emitter.noiseScale;
-    final x = _position.x * scale + unitAt(emitter.seed, id, 9) * 64;
-    final y = _position.y * scale;
-    final z = _position.z * scale + age * scale;
-    swirl(_noise, x, y, z, _push);
+    _swirl(id, _position, age);
     _position.addScaled(_push, strength);
+    _swirl(id, _start, 0);
+    _position.addScaled(_push, -strength);
+  }
+
+  void _swirl(int id, Vector3 at, double age) {
+    final scale = emitter.noiseScale;
+    swirl(
+      _noise,
+      at.x * scale + unitAt(emitter.seed, id, 9) * 64,
+      at.y * scale,
+      at.z * scale + age * scale,
+      _push,
+    );
   }
 }

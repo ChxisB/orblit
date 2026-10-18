@@ -222,6 +222,22 @@ void main() {
       expect(out.positions[2], closeTo(p.z, 1e-3));
     });
 
+    test('a drag too small to matter acts as no drag', () {
+      final thrown = oneParticle(
+        speed: const Range.of(6),
+        shape: ConeShape(angle: 0.5),
+        gravity: Vector3(0, -9.8, 0),
+      );
+      final other = ParticleBuffer(10);
+
+      thrown.sample(3, out);
+      thrown.copyWith(drag: 1e-12).sample(3, other);
+
+      for (var axis = 0; axis < 3; axis++) {
+        expect(other.positions[axis], closeTo(out.positions[axis], 1e-6));
+      }
+    });
+
     test('drag slows a particle', () {
       final base = oneParticle(
         speed: const Range.of(6),
@@ -235,7 +251,7 @@ void main() {
       expect(other.positions[1], lessThan(out.positions[1]));
     });
 
-    test('noise moves a particle by at most its strength per axis', () {
+    test('noise moves a particle by at most twice its strength per axis', () {
       final other = ParticleBuffer(10);
       final calm = oneParticle();
 
@@ -248,7 +264,20 @@ void main() {
             math.pow(other.positions[2] - out.positions[2], 2),
       );
       expect(moved, greaterThan(0));
-      expect(moved, lessThanOrEqualTo(0.5 * math.sqrt(3) + 1e-6));
+      expect(moved, lessThanOrEqualTo(2 * 0.5 * math.sqrt(3) + 1e-6));
+    });
+  });
+
+  group('noise', () {
+    test('leaves a newborn where it was born', () {
+      final shaken = oneParticle(noiseStrength: 1, speed: const Range.of(2));
+      final still = shaken.copyWith(noiseStrength: 0);
+      final other = ParticleBuffer(10);
+
+      shaken.sample(0, out);
+      still.sample(0, other);
+
+      expect(positionsOf(out), positionsOf(other));
     });
   });
 

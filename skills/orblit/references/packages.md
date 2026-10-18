@@ -58,6 +58,7 @@ importing everything together and analysing:
 | `Sequence` | `orblit_agent` and `orblit_sequence` | Prefix or `hide` |
 | `Shape` | `orblit_collide`, `orblit_mesh`, `orblit_particles` and `orblit_physics` | Prefix or `hide` |
 | `Hit` | `orblit_collide` and `orblit_particles` | Prefix or `hide` |
+| `BoxShape` | Flutter and `orblit_particles` | Prefix or `hide` |
 | `Layers` | `orblit_collide` and `orblit_physics` | Prefix or `hide` |
 
 The behaviour-tree time limit is `Deadline`, not `Timeout`.

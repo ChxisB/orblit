@@ -10,7 +10,7 @@ enum EmitterShape { point, sphere, cone, box }
 enum EmitterSpace { world, local }
 
 /// [count] particles all born [time] seconds after the emitter began.
-class EmitterBurst {
+final class EmitterBurst {
   const EmitterBurst(this.time, this.count);
 
   final double time;
@@ -63,7 +63,7 @@ class ParticleEmitterComponent extends SceneComponent {
     final speed = _pair(json['speed'], 1, 2);
     final spin = _pair(json['spin'], 0, 0);
     return ParticleEmitterComponent(
-      seed: Values.number(json, 'seed', 0).round(),
+      seed: _seed(json),
       shape:
           Values.named(EmitterShape.values, json['shape']) ??
           EmitterShape.point,
@@ -81,7 +81,7 @@ class ParticleEmitterComponent extends SceneComponent {
       spinMax: spin.$2,
       size: _ramp(json['size'], 1, const [0.1], nonNegative: true),
       colour: _ramp(json['colour'], 3, const [1, 1, 1]),
-      gravity: Values.vector(json['gravity']),
+      gravity: _gravity(json['gravity']),
       drag: _atLeast(json, 'drag', 0),
       noiseStrength: _atLeast(json, 'noiseStrength', 0),
       noiseScale: _atLeast(json, 'noiseScale', 1, above: true),
@@ -234,6 +234,16 @@ double _atLeast(
   final value = Values.number(json, key, fallback);
   final ok = value.isFinite && (above ? value > 0 : value >= 0);
   return ok ? value : fallback;
+}
+
+int _seed(Map<String, Object?> json) {
+  final value = Values.number(json, 'seed', 0);
+  return value.isFinite ? value.round() : 0;
+}
+
+Vector3 _gravity(Object? raw) {
+  final read = Values.vector(raw);
+  return read.storage.every((g) => g.isFinite) ? read : Vector3.zero();
 }
 
 double _spread(Map<String, Object?> json) {

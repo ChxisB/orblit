@@ -111,6 +111,16 @@ void main() {
       expect(emitter.space, EmitterSpace.world);
     });
 
+    test('reads a seed or gravity that is not finite as the default', () {
+      final emitter = read({
+        'seed': double.infinity,
+        'gravity': [0, double.nan, 0],
+      });
+
+      expect(emitter.seed, 0);
+      expect(emitter.gravity, Vector3.zero());
+    });
+
     test('reads a range that is not a range as the default range', () {
       final cases = <List<Object?>>[
         [2, 1],

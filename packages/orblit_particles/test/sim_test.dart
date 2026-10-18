@@ -29,6 +29,25 @@ List<double> heights(ParticleSim sim, int steps) {
 }
 
 void main() {
+  test('a step that is not a span of time is refused', () {
+    final sim = ParticleSim(Emitter());
+
+    expect(() => sim.step(-0.1), throwsArgumentError);
+    expect(() => sim.step(double.nan), throwsArgumentError);
+    expect(() => sim.step(double.infinity), throwsArgumentError);
+  });
+
+  test('a long pause births only the particles that could be alive', () {
+    final sim = ParticleSim(
+      Emitter(rate: 1000, lifetime: const Range.of(1), maxParticles: 5000),
+    );
+
+    sim.step(1e5);
+
+    expect(sim.count, lessThanOrEqualTo(1001));
+    expect(sim.count, greaterThan(0));
+  });
+
   test('a stream holds about rate times lifetime once it has settled', () {
     final sim = ParticleSim(Emitter(rate: 10, lifetime: const Range.of(1)));
 
