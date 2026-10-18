@@ -28,6 +28,7 @@ the fullest reference.
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
+| `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. **No backend yet, so nothing is audible** | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `RecordedAudio` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
@@ -166,6 +167,27 @@ steerable, planner: mesh.findPath)` walks a `Steerable` along a route with
 A route is planned once, a navmesh is a snapshot, a cell has one floor, and
 agents do not avoid each other (use `Separate`). Guide:
 https://orblitengine.com/docs/guides/paths/.
+
+## orblit_audio
+
+`Audio(backend)` is what a game calls. A backend plays the numbers it is
+given. There is none yet, so use `RecordedAudio()`, which writes every call
+down in `calls` and plays nothing. `audio.mixer.add('music', under: parent)`
+makes a bus, and a bus has `volume`, `muted` and `gain`, the product of every
+bus above it. `audio.play('clip', bus:, loop:, volume:, pitch:, at:)` returns
+a `Voice` with `volume`, `pitch`, `fadeTo(v, seconds:)` and
+`stop(fadeSeconds:)`.
+
+A sound with a place takes `at: Emitter(position:, falloff: Falloff(near:,
+far:, curve:), cone: Cone(inner:, outer:, outerGain:), doppler:)`. Move it
+with `emitter.moveTo(position, seconds)` and the listener with
+`audio.listener.moveTo(...)`. Velocity is the last two positions. Use
+`teleport` for a cut, or Doppler hears a speed.
+
+Nothing reaches the backend until `audio.advance(seconds)`, which also moves
+fades on. Call it once a frame, with 0 when the game is paused. A clip that
+ends is noticed on the next advance. Effects on a bus are names that nothing
+reads yet.
 
 ## orblit_collide
 
