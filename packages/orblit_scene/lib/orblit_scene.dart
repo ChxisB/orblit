@@ -29,6 +29,8 @@ export 'src/components/flat.dart'
 export 'src/components/joint.dart'
     show JointAxis, JointComponent, JointGive, JointKind, JointRange;
 export 'src/components/motion.dart' show MotionComponent;
+export 'src/components/particles.dart'
+    show EmitterBurst, EmitterShape, EmitterSpace, ParticleEmitterComponent;
 export 'src/components/staging.dart'
     show CameraComponent, LightComponent, WeatherComponent;
 export 'src/components/terrain.dart' show TerrainComponent;

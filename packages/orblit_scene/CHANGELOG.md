@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.0
+
+- Add `ParticleEmitterComponent`. It holds the settings of an emitter of
+  smoke, sparks, dust or fire: a shape, a rate and bursts, ranges for
+  lifetime, speed and spin, size and colour over a life, gravity, drag, noise
+  and a cap. It is kept through JSON and `copyWith`. A document without one
+  reads as it did, and a number that makes no emitter reads as its default.
+
 ## 0.18.0
 
 - Add the `litScreen` material field. It is kept through JSON and diffs like
