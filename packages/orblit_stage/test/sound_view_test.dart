@@ -181,6 +181,29 @@ void main() {
       expect(lastLevel().pitch, 1);
     });
 
+    test('that cannot start is refused every frame until it can', () {
+      open([
+        fire(
+          Vector3.zero(),
+          source: SoundSourceComponent(clip: 'fire.ogg', bus: 'nowhere'),
+        ),
+      ]);
+
+      expect(frame, throwsArgumentError);
+      expect(frame, throwsArgumentError);
+    });
+
+    test('played before any frame is heard from where the listener is', () {
+      open([fire(Vector3(0, 0, 4))]);
+      sound.play('fire');
+      final played = lastLevel().gain;
+
+      open([fire(Vector3(0, 0, 4))]);
+      frame();
+
+      expect(played, lastLevel().gain);
+    });
+
     test('is silenced by stop', () {
       open([fire(Vector3(0, 0, 5))]);
       frame();
@@ -195,6 +218,23 @@ void main() {
       open([fire(Vector3(10, 0, 10))]);
       frame();
       expect(starts().single.level.pan, closeTo(1, 1e-9));
+    });
+
+    test('moving towards a sound is heard as a speed', () {
+      SceneDocument approach(double z) => world([
+        fire(Vector3(0, 0, -20)),
+        thing('ear', Vector3(0, 0, z), {
+          SceneComponents.soundListener: const SoundListenerComponent(),
+        }),
+      ]);
+      open([]);
+      view.replace(approach(10));
+      frame();
+
+      view.replace(approach(9));
+      frame(1);
+
+      expect(lastLevel().pitch, greaterThan(1));
     });
 
     test('is the first entity that has one, facing down its own -Z', () {

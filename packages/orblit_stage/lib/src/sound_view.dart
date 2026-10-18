@@ -54,6 +54,7 @@ final class OrblitSound {
   void play(String id) {
     if (_changed) {
       _scan();
+      if (!_heard) _hear(0);
       _reconcile();
     }
     final source = _sources[id];
@@ -74,7 +75,6 @@ final class OrblitSound {
     for (final MapEntry(:key, :value) in _sources.entries) {
       _glide(value.emitter, view.worldOf(key).getTranslation(), seconds);
     }
-    _hear(seconds);
     _cues.update([
       for (final sound in step?.sounds ?? const <SoundAt>[])
         Cue(sound.sound, sound.at, sound.gain, binding: sound.binding),
@@ -97,7 +97,6 @@ final class OrblitSound {
   /// the listener.
   void _scan() {
     final document = view.document;
-    _synced = document;
     _listenerId = null;
     _wanted = {};
     for (final entity in document.entities) {
@@ -132,6 +131,9 @@ final class OrblitSound {
       source.voice = _begin(key, source);
       _sources[key] = source;
     }
+    // Last, so a source that cannot start is tried again next frame and
+    // fails again, and not forgotten after one error.
+    _synced = view.document;
   }
 
   Emitter _emitterOf(String id, SoundSourceComponent source) => Emitter(

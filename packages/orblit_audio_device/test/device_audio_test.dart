@@ -82,6 +82,20 @@ void main() {
     expect(device.isPlaying(1), isFalse);
   });
 
+  test('a clip asked to begin past its end is over at once', () {
+    device.start(1, 'tone.wav', loop: false, level: const Level(), offset: 100);
+
+    expect(peakOf(heard(rate ~/ 20), channel: 0), 0);
+    expect(device.isPlaying(1), isFalse);
+  });
+
+  test('a loop asked to begin past its end wraps and keeps playing', () {
+    device.start(1, 'tone.wav', loop: true, level: const Level(), offset: 100);
+
+    expect(peakOf(heard(rate ~/ 20), channel: 0), greaterThan(0));
+    expect(device.isPlaying(1), isTrue);
+  });
+
   test('a higher pitch plays through sooner', () {
     device.start(1, 'tone.wav', loop: false, level: const Level(pitch: 2));
 

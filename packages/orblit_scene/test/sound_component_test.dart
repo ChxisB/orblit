@@ -50,6 +50,17 @@ void main() {
       expect(source.bus, 'master');
     });
 
+    test('reads a range without an end and a bad volume as the default', () {
+      final source = SoundSourceComponent.fromJson(const {
+        'far': double.infinity,
+        'volume': -1,
+      });
+
+      expect([source.near, source.far], [1, 50]);
+      expect(source.volume, 1);
+      expect(SoundSourceComponent.fromJson(const {'volume': 0}).volume, 0);
+    });
+
     test('reads a range that is not a range as the default one', () {
       final source = SoundSourceComponent.fromJson(const {
         'near': 20,

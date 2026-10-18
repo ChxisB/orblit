@@ -1,5 +1,6 @@
 #include "orblit_audio_device.h"
 
+#include <math.h>
 #include <stdlib.h>
 
 #include "miniaudio.h"
@@ -103,9 +104,23 @@ int32_t orblit_audio_start(OrblitAudio* audio, int64_t voice_id,
     voice->id = voice_id;
     ma_sound_set_looping(&voice->sound, loop ? MA_TRUE : MA_FALSE);
     apply(voice, gain, pitch, pan);
+    // miniaudio seeks on the mixing thread and drops a seek past the end, so
+    // the clip would play from its start. A clip that long gone is over, and
+    // a loop is wherever the wrap puts it.
+    float length = 0;
+    if (ma_sound_get_length_in_seconds(&voice->sound, &length) == MA_SUCCESS &&
+        length > 0 && offset >= length) {
+      if (!loop) {
+        ma_sound_uninit(&voice->sound);
+        free(voice);
+        return MA_SUCCESS;
+      }
+      offset = fmodf(offset, length);
+    }
     // Set before the start, so the first block mixed is already from here.
-    if (offset > 0) ma_sound_seek_to_second(&voice->sound, offset);
-    result = ma_sound_start(&voice->sound);
+    result = offset > 0 ? ma_sound_seek_to_second(&voice->sound, offset)
+                        : MA_SUCCESS;
+    if (result == MA_SUCCESS) result = ma_sound_start(&voice->sound);
     if (result != MA_SUCCESS) ma_sound_uninit(&voice->sound);
   }
   if (result != MA_SUCCESS) {

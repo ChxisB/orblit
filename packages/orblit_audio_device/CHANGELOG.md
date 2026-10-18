@@ -3,7 +3,9 @@
 ## 0.2.0
 
 - `start` takes an `offset` and begins that many seconds into the clip, on
-  the device and in the browser.
+  the device and in the browser. A clip that is not loaded yet begins at
+  the offset when it arrives, as on the device. On the device, an offset past
+  the end of a clip that does not loop starts nothing, and a loop wraps it.
 
 ## 0.1.0
 

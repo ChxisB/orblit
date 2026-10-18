@@ -11,7 +11,8 @@
 - Add `Music`, `MusicTrack` and `MusicMove`. One track loops at a time. A
   table of moves picks the change, which can wait for the next beat or bar
   and fade between tracks. A stinger plays over the top and turns the track
-  down while it lasts.
+  down while it lasts. `Music.stop` fades the track out and drops a change
+  that was waiting.
 - Add `ContactSounds` and `ContactRule`. Two surface names pick a clip, and
   the strength of the touch sets the volume. At most `limit` play at once.
 

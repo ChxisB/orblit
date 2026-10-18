@@ -57,7 +57,7 @@ final class ContactSounds {
   // a harder one sound alike.
   void hit(String a, String b, {required double strength, Emitter? at}) {
     _playing.removeWhere((voice) => !voice.isPlaying);
-    if (strength < quiet || _playing.length >= limit) return;
+    if (!(strength >= quiet) || _playing.length >= limit) return;
     final clip = _clipFor(a, b);
     if (clip == null) return;
     final volume = ((strength - quiet) / (loud - quiet)).clamp(0.0, 1.0);

@@ -93,6 +93,29 @@ void main() {
     expect(music.playing, 'fight');
   });
 
+  test(
+    'stopping fades the track out, drops a waiting change and starts anew',
+    () {
+      final music = make(
+        moves: [const MusicMove(to: 'fight', when: MusicWhen.nextBar)],
+      )..go('calm');
+      music.go('fight');
+
+      music.stop(fade: 1);
+      audio.advance(0.5);
+      expect(backend.levelOf(0)!.gain, closeTo(0.5, 1e-9));
+      audio.advance(0.5);
+      expect(backend.levelOf(0), isNull);
+      expect(music.playing, isNull);
+      expect(music.waitingFor, isNull);
+
+      music.advance(5);
+      expect(starts(), ['calm.ogg']);
+      music.go('fight');
+      expect(starts(), ['calm.ogg', 'fight.ogg']);
+    },
+  );
+
   test('a fade brings the new track in while the old one goes out', () {
     final music = make(moves: [const MusicMove(to: 'fight', fade: 1)])
       ..go('calm');

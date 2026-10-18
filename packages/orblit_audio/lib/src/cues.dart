@@ -75,7 +75,7 @@ final class CueBoard {
         _voices[key]?.volume = cue.gain;
         continue;
       }
-      _voices[key]?.stop(fadeSeconds: release);
+      _voices.remove(key)?.stop(fadeSeconds: release);
       _voices[key] = seeked && !bed ? null : _start(cue);
     }
   }

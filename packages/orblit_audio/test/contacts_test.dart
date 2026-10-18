@@ -63,6 +63,7 @@ void main() {
     final sounds = make();
 
     sounds.hit('wood', 'grass', strength: 0.9);
+    sounds.hit('wood', 'grass', strength: double.nan);
     sounds.hit('rubber', 'grass', strength: 9);
 
     expect(backend.calls, isEmpty);

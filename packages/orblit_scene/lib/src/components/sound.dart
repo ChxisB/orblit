@@ -13,9 +13,10 @@ enum SoundCurve { linear, inverse }
 /// from [far], and a source with no [clip] is silent, so a source can be
 /// placed before its sound is chosen.
 ///
-/// A file whose range is not a range, with [far] no further than [near] or
-/// [near] not above nothing, reads as the default range instead, since a
-/// sound with no falloff is better than a scene that will not open.
+/// A file whose range is not a range, with [far] no further than [near],
+/// [near] not above nothing or [far] without an end, reads as the default
+/// range instead, and a [volume] below nothing or without an end reads as 1,
+/// since a sound with no falloff is better than a scene that will not open.
 class SoundSourceComponent extends SceneComponent {
   SoundSourceComponent({
     this.clip,
@@ -30,7 +31,8 @@ class SoundSourceComponent extends SceneComponent {
   static SoundSourceComponent fromJson(Map<String, Object?> json) {
     final near = Values.number(json, 'near', 1);
     final far = Values.number(json, 'far', 50);
-    final ranged = near > 0 && far > near;
+    final ranged = near > 0 && far > near && far.isFinite;
+    final volume = Values.number(json, 'volume', 1);
     final clip = Values.text(json, 'clip');
     final bus = Values.text(json, 'bus');
     return SoundSourceComponent(
@@ -39,7 +41,7 @@ class SoundSourceComponent extends SceneComponent {
       clip: clip == null || clip.isEmpty ? null : clip,
       bus: bus == null || bus.isEmpty ? 'master' : bus,
       loop: Values.flag(json, 'loop', fallback: true),
-      volume: Values.number(json, 'volume', 1),
+      volume: volume.isFinite && volume >= 0 ? volume : 1,
       near: ranged ? near : 1,
       far: ranged ? far : 50,
       curve:

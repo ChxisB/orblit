@@ -102,6 +102,15 @@ final class Music {
     }
   }
 
+  /// Fades the track out over [fade] seconds and leaves nothing playing. A
+  /// change that was waiting is dropped, and the next [go] starts at once.
+  void stop({double fade = 0}) {
+    _pending = null;
+    _bed?.stop(fadeSeconds: fade);
+    _bed = null;
+    _playing = null;
+  }
+
   // shortcut: the duck and the recovery fade for a fixed time, make them
   // fields when a game wants to tune them.
   static const double _duckFade = 0.1;
