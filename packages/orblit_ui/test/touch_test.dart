@@ -18,7 +18,7 @@ const _controls = UiNode(
     ),
     UiNode(
       type: 'touch-button',
-      css: _size,
+      css: 'padding: 24px; background: #aa3300',
       props: {'onHold': 'jump'},
       children: [UiNode(type: 'text', text: 'Jump')],
     ),
@@ -123,6 +123,47 @@ void main() {
       ]);
     });
 
+    testWidgets('sends a plain zero for y level with the middle', (
+      tester,
+    ) async {
+      await show(tester, _controls);
+
+      await tester.startGesture(centre(tester, 'stick') + const Offset(40, 0));
+
+      final push = events.last[1]! as List<double>;
+      expect(push[1], 0);
+      expect(push[1].isNegative, isFalse, reason: 'not -0.0');
+    });
+
+    testWidgets('says nothing when the thumb has not moved', (tester) async {
+      await show(tester, _controls);
+      final thumb = await tester.startGesture(
+        centre(tester, 'stick') + const Offset(40, 0),
+      );
+      final count = events.length;
+
+      await thumb.moveBy(Offset.zero);
+
+      expect(events, hasLength(count));
+    });
+
+    testWidgets('draws the knob under the thumb', (tester) async {
+      await show(tester, _controls);
+      final middle = centre(tester, 'stick');
+      final knob = find.byWidgetPredicate(
+        (w) =>
+            w is DecoratedBox &&
+            w.decoration is BoxDecoration &&
+            (w.decoration as BoxDecoration).shape == BoxShape.circle,
+      );
+
+      await tester.startGesture(middle + const Offset(40, 0));
+      await tester.pump();
+
+      expect(tester.getCenter(knob).dx, closeTo(middle.dx + 40, 1e-6));
+      expect(tester.getCenter(knob).dy, closeTo(middle.dy, 1e-6));
+    });
+
     testWidgets('follows only its first finger', (tester) async {
       await show(tester, _controls);
       final middle = centre(tester, 'stick');
@@ -150,6 +191,32 @@ void main() {
       await finger.up();
       expect(events.last, ['jump', false]);
       expect(find.text('Jump'), findsOneWidget);
+    });
+
+    testWidgets('takes a touch on its padding and dims its whole face', (
+      tester,
+    ) async {
+      await show(tester, _controls);
+      final face = tester.getTopLeft(
+        find.byWidgetPredicate((w) => w.runtimeType.toString() == 'TouchHold'),
+      );
+
+      final finger = await tester.startGesture(face + const Offset(2, 2));
+      await tester.pump();
+
+      expect(events.last, ['jump', true]);
+      final dim = tester.widget<Opacity>(find.byType(Opacity));
+      expect(dim.opacity, 0.6);
+      expect(
+        find.descendant(
+          of: find.byType(Opacity),
+          matching: find.byType(DecoratedBox),
+        ),
+        findsOneWidget,
+        reason: 'the background dims with the label',
+      );
+
+      await finger.up();
     });
 
     testWidgets('lets go when the system takes the finger', (tester) async {
@@ -197,6 +264,36 @@ void main() {
           const <double>[-2, -3],
         ],
       ]);
+    });
+
+    testWidgets('is a square of its own when no size is given', (tester) async {
+      await show(
+        tester,
+        const UiNode(
+          type: 'row',
+          children: [
+            UiNode(type: 'swipe-pad'),
+            UiNode(type: 'stick'),
+          ],
+        ),
+      );
+
+      expect(
+        tester.getSize(
+          find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == 'TouchSwipe',
+          ),
+        ),
+        const Size(120, 120),
+      );
+      expect(
+        tester.getSize(
+          find.byWidgetPredicate(
+            (w) => w.runtimeType.toString() == 'TouchStick',
+          ),
+        ),
+        const Size(120, 120),
+      );
     });
 
     testWidgets('says nothing when the finger lands elsewhere', (tester) async {

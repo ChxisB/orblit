@@ -5,12 +5,9 @@ import 'package:flutter/widgets.dart';
 /// Where an element sends what it has seen. Null when script named no handler.
 typedef TouchSend = void Function(Object? payload);
 
-/// How big a touch element is when nothing in its style or its parent says.
-const double _fallback = 120;
-
 /// Where [local] sits in the circle that fills [size], from -1 to 1 each way
 /// with y down, brought back to the circle when it is outside.
-Offset stickAt(Offset local, Size size) {
+Offset _stickAt(Offset local, Size size) {
   final radius = size.shortestSide / 2;
   if (radius <= 0) return Offset.zero;
   final offset = (local - size.center(Offset.zero)) / radius;
@@ -21,16 +18,32 @@ Offset stickAt(Offset local, Size size) {
 // finger that lands on it. A gesture recogniser would put each finger into an
 // arena, and two elements in two arenas is what a thumb on a stick and
 // another on a jump button must not be.
+//
+// Each wraps the element's finished face, with its padding and background, so
+// every pixel of what the player sees takes a touch.
+//
+// A release is reported when a finger lifts or is cancelled. It is reported
+// from dispose as well, one microtask later, because a host may rebuild when
+// it hears the event. A host that is itself going away at that moment gets
+// the call after it has gone and checks `mounted`.
 
 /// A thumb stick. Sends `[x, y]`, each from -1 to 1 and positive up and to
-/// the right, when it changes. A stick let go sends `[0.0, 0.0]`.
-class TouchStick extends StatefulWidget {
-  const TouchStick({required this.send, required this.knob, super.key});
+/// the right, when it changes. A stick let go sends `[0.0, 0.0]`. The knob is
+/// drawn over [child], where the thumb is.
+final class TouchStick extends StatefulWidget {
+  const TouchStick({
+    required this.send,
+    required this.knob,
+    required this.child,
+    super.key,
+  });
 
   final TouchSend? send;
 
-  /// The colour of the knob. The base is whatever the element's style draws.
+  /// The colour of the knob. The base is whatever [child] draws.
   final Color knob;
+
+  final Widget child;
 
   @override
   State<TouchStick> createState() => _TouchStickState();
@@ -43,8 +56,11 @@ class _TouchStickState extends State<TouchStick> {
   void _push(Offset local) {
     final size = context.size;
     if (size == null) return;
-    setState(() => _at = stickAt(local, size));
-    widget.send?.call(<double>[_at.dx, -_at.dy]);
+    final at = _stickAt(local, size);
+    if (at == _at) return;
+    setState(() => _at = at);
+    // 0 - y, because -y turns a y of 0 into -0.0.
+    widget.send?.call(<double>[at.dx, 0.0 - at.dy]);
   }
 
   void _let(PointerEvent event) {
@@ -57,7 +73,6 @@ class _TouchStickState extends State<TouchStick> {
   @override
   void dispose() {
     final send = widget.send;
-    // After the frame, because a host may rebuild when it hears this.
     if (_pointer != null && send != null) {
       scheduleMicrotask(() => send(const <double>[0, 0]));
     }
@@ -77,29 +92,41 @@ class _TouchStickState extends State<TouchStick> {
     },
     onPointerUp: _let,
     onPointerCancel: _let,
-    child: SizedBox(
-      width: _fallback,
-      height: _fallback,
-      child: Align(
-        alignment: Alignment(_at.dx, _at.dy),
-        child: FractionallySizedBox(
-          widthFactor: 0.4,
-          heightFactor: 0.4,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: widget.knob,
-              shape: BoxShape.circle,
+    child: Stack(
+      children: [
+        widget.child,
+        Positioned.fill(
+          child: IgnorePointer(
+            child: LayoutBuilder(
+              builder: (context, box) {
+                final radius = box.biggest.shortestSide / 2;
+                return Center(
+                  child: Transform.translate(
+                    offset: _at * radius,
+                    child: SizedBox.square(
+                      dimension: radius * 0.8,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: widget.knob,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
         ),
-      ),
+      ],
     ),
   );
 }
 
 /// A button held under a finger. Sends `true` when a finger lands and `false`
-/// when it lifts, slides off the screen or is taken by the system.
-class TouchHold extends StatefulWidget {
+/// when it lifts, slides off the screen or is taken by the system. [child]
+/// dims while it is held.
+final class TouchHold extends StatefulWidget {
   const TouchHold({required this.send, required this.child, super.key});
 
   final TouchSend? send;
@@ -142,12 +169,12 @@ class _TouchHoldState extends State<TouchHold> {
 }
 
 /// An area a finger drags across. Sends `[dx, dy]` for each move, in logical
-/// pixels and positive up and to the right. It fills the space it is given,
-/// and is a square when it is given none.
-class TouchSwipe extends StatefulWidget {
-  const TouchSwipe({required this.send, super.key});
+/// pixels and positive up and to the right.
+final class TouchSwipe extends StatefulWidget {
+  const TouchSwipe({required this.send, required this.child, super.key});
 
   final TouchSend? send;
+  final Widget child;
 
   @override
   State<TouchSwipe> createState() => _TouchSwipeState();
@@ -166,17 +193,10 @@ class _TouchSwipeState extends State<TouchSwipe> {
     onPointerDown: (event) => _pointer ??= event.pointer,
     onPointerMove: (event) {
       if (event.pointer != _pointer || event.delta == Offset.zero) return;
-      widget.send?.call(<double>[event.delta.dx, -event.delta.dy]);
+      widget.send?.call(<double>[event.delta.dx, 0.0 - event.delta.dy]);
     },
     onPointerUp: _let,
     onPointerCancel: _let,
-    child: LayoutBuilder(
-      builder: (context, constraints) => SizedBox(
-        width: constraints.hasBoundedWidth ? constraints.maxWidth : _fallback,
-        height: constraints.hasBoundedHeight
-            ? constraints.maxHeight
-            : _fallback,
-      ),
-    ),
+    child: widget.child,
   );
 }

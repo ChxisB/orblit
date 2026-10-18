@@ -299,7 +299,8 @@ https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 For a touch screen, `stick`, `touch-button` and `swipe-pad` nodes name
 `onMove`, `onHold` or `onSwipe`. `onEvent` receives `[x, y]`, a `bool` or
 `[dx, dy]`, with up positive. `TouchControls` in `orblit_input` takes them
-and gives `FrameControls` its `touch:` and `sticks:`.
+and gives `FrameControls` its `touch:` and `sticks:`. A script UI gets the
+payload as text for now, so a Dart game is the place to use them.
 
 ## orblit_scene and orblit_stage
 
