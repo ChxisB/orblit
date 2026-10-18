@@ -45,6 +45,12 @@ theme.stop(fadeSeconds: 2);
 - **Voices.** Loop, pitch, volume, fade and stop with a fade.
 - **Positioned sound.** Falloff by distance, an optional cone, Doppler and
   pan. Velocity comes from the last two positions.
+- **Cues.** `CueBoard` plays the sounds a sequence says should be going,
+  once each, and starts a bed part-way in after a seek.
+- **Music.** `Music` loops one track at a time, changes by a table of moves
+  on the beat or the bar, and plays stingers over it.
+- **Touch.** `ContactSounds` picks a clip from the two surfaces that met and
+  scales it by how hard they met.
 - **A fake.** `RecordedAudio` stands in for a device in every test.
 
 Nothing reaches the backend until `Audio.advance`. A frame of no time is a

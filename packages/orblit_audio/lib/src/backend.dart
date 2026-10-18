@@ -25,7 +25,8 @@ final class Level {
 /// What [Audio] needs from a device. All the arithmetic stays above this
 /// line, so a backend plays the numbers it is given and nothing else.
 abstract interface class AudioBackend {
-  /// Begins playing [clip] as [voice]. The id is the caller's and is never
+  /// Begins playing [clip] as [voice], [offset] seconds into it. A clip that
+  /// is shorter than that ends at once. The id is the caller's and is never
   /// reused. A backend that cannot play the clip either throws, and the voice
   /// is dropped, or returns and answers false from [isPlaying], and the voice
   /// ends at the next advance.
@@ -34,6 +35,7 @@ abstract interface class AudioBackend {
     String clip, {
     required bool loop,
     required Level level,
+    double offset = 0,
   });
 
   /// Changes how a playing voice sounds. Only called for a voice that is

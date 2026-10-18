@@ -73,6 +73,15 @@ void main() {
     expect(device.isPlaying(1), isFalse);
   });
 
+  test('a clip begins where it is asked to', () {
+    device.start(1, 'tone.wav', loop: false, level: const Level(), offset: 0.4);
+
+    final first = heard(rate ~/ 20);
+    expect(peakOf(first, channel: 0), closeTo(peak, 0.05));
+    heard(rate ~/ 10);
+    expect(device.isPlaying(1), isFalse);
+  });
+
   test('a higher pitch plays through sooner', () {
     device.start(1, 'tone.wav', loop: false, level: const Level(pitch: 2));
 

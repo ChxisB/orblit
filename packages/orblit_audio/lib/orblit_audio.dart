@@ -12,7 +12,10 @@ library;
 
 export 'src/audio.dart' show Audio, Voice;
 export 'src/backend.dart' show AudioBackend, Level;
+export 'src/contacts.dart' show ContactRule, ContactSounds;
+export 'src/cues.dart' show Cue, CueBoard;
 export 'src/mixer.dart' show Bus, Mixer;
+export 'src/music.dart' show Music, MusicMove, MusicTrack, MusicWhen;
 export 'src/recorded.dart'
     show AudioCall, AudioStarted, AudioStopped, AudioUpdated, RecordedAudio;
 export 'src/spatial.dart'

@@ -34,6 +34,7 @@ external void audioDestroy(Pointer<OrblitAudioStruct> audio);
     Float,
     Float,
     Float,
+    Float,
   )
 >(symbol: 'orblit_audio_start', assetId: kOrblitAudioAsset)
 external int audioStart(
@@ -45,6 +46,7 @@ external int audioStart(
   double gain,
   double pitch,
   double pan,
+  double offset,
 );
 
 @Native<Void Function(Pointer<OrblitAudioStruct>, Int64, Float, Float, Float)>(

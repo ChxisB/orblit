@@ -369,6 +369,13 @@ void main() {
     expect(backend.levelOf(voice.id)!.pitch, 1);
   });
 
+  test('a voice begins where it is asked to, and not before zero', () {
+    audio.play('theme', offset: 12.5);
+
+    expect((backend.calls.single as AudioStarted).offset, 12.5);
+    expect(() => audio.play('theme', offset: -1), throwsArgumentError);
+  });
+
   test('time cannot run backwards', () {
     expect(() => audio.advance(-1), throwsArgumentError);
     expect(() => audio.advance(double.nan), throwsArgumentError);
@@ -382,6 +389,7 @@ final class _Refusing implements AudioBackend {
     String clip, {
     required bool loop,
     required Level level,
+    double offset = 0,
   }) => throw StateError('no such clip: $clip');
 
   @override

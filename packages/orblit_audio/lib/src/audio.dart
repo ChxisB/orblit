@@ -25,6 +25,7 @@ final class Voice {
     required this.bus,
     required this.loop,
     required this.emitter,
+    required this.offset,
     required double volume,
     required double pitch,
     required AudioBackend backend,
@@ -36,6 +37,9 @@ final class Voice {
   final String clip;
   final Bus bus;
   final bool loop;
+
+  /// Where in the clip the voice began, in seconds.
+  final double offset;
 
   /// Null for a sound with no place, such as music or an interface click.
   final Emitter? emitter;
@@ -103,7 +107,7 @@ final class Voice {
 
   void _begin(Listener listener) {
     _sent = levelFor(listener);
-    _backend.start(id, clip, loop: loop, level: _sent);
+    _backend.start(id, clip, loop: loop, level: _sent, offset: offset);
   }
 
   void _advance(double seconds, Listener listener) {
@@ -159,14 +163,15 @@ final class Audio {
   List<Voice> get voices =>
       List.unmodifiable(_voices.where((voice) => voice.isPlaying));
 
-  /// Plays [clip] on [bus], or on the master bus. A voice with an [at] is
-  /// heard from where that emitter is.
+  /// Plays [clip] on [bus], or on the master bus, from [offset] seconds in. A
+  /// voice with an [at] is heard from where that emitter is.
   Voice play(
     String clip, {
     Bus? bus,
     bool loop = false,
     double volume = 1,
     double pitch = 1,
+    double offset = 0,
     Emitter? at,
   }) {
     if (bus != null && !mixer.owns(bus)) {
@@ -178,6 +183,7 @@ final class Audio {
       bus: bus ?? mixer.master,
       loop: loop,
       emitter: at,
+      offset: checkedSeconds(offset, 'offset'),
       volume: volume,
       pitch: pitch,
       backend: _backend,

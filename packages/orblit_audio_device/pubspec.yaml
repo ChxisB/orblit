@@ -3,7 +3,7 @@ description: >-
   Plays an orblit_audio game on a real output device. A native build hook
   compiles miniaudio, decodes WAV, FLAC, MP3 and Ogg Vorbis, and streams long
   files. The browser gets Web Audio behind the same class.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:

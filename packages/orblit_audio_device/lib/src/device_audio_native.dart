@@ -56,12 +56,19 @@ final class DeviceAudio implements AudioBackend {
     String clip, {
     required bool loop,
     required Level level,
+    double offset = 0,
   }) {
     if (_closed) throw StateError('this DeviceAudio is disposed');
     final path = directory.isEmpty || File(clip).isAbsolute
         ? clip
         : '$directory/$clip';
-    final String? failure = _tryStart(voice, path, loop, level);
+    final String? failure = _tryStart(
+      voice,
+      path,
+      loop: loop,
+      level: level,
+      offset: offset,
+    );
     if (failure == null) return;
     final handler = onError;
     if (handler == null) throw AudioDeviceException('$clip: $failure');
@@ -104,7 +111,13 @@ final class DeviceAudio implements AudioBackend {
     native.audioDestroy(_engine);
   }
 
-  String? _tryStart(int voice, String path, bool loop, Level level) {
+  String? _tryStart(
+    int voice,
+    String path, {
+    required bool loop,
+    required Level level,
+    required double offset,
+  }) {
     final bool stream;
     try {
       stream = _streams.putIfAbsent(
@@ -125,6 +138,7 @@ final class DeviceAudio implements AudioBackend {
         level.gain,
         level.pitch,
         level.pan,
+        offset,
       );
       return result == 0 ? null : _describe(result);
     } finally {

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.0
+
+- `start` takes an `offset` and begins that many seconds into the clip, on
+  the device and in the browser.
+
 ## 0.1.0
 
 - First cut of `orblit_audio_device`. Pre-alpha: everything is subject to

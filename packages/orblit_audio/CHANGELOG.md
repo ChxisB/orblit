@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0
+
+- `Audio.play` takes an `offset`, the seconds into the clip to begin at. The
+  `AudioBackend.start` contract has the same optional parameter.
+  `RecordedAudio` writes it down in `AudioStarted.offset`.
+- Add `CueBoard`. It turns what a sequence says should be sounding into
+  starts, stops and gains, and starts a clip once. After a seek, a bed
+  starts part-way in and a one-shot starts nothing.
+- Add `Music`, `MusicTrack` and `MusicMove`. One track loops at a time. A
+  table of moves picks the change, which can wait for the next beat or bar
+  and fade between tracks. A stinger plays over the top and turns the track
+  down while it lasts.
+- Add `ContactSounds` and `ContactRule`. Two surface names pick a clip, and
+  the strength of the touch sets the volume. At most `limit` play at once.
+
 ## 0.1.1
 
 - `Audio.play` drops a voice whose backend throws from `start`. Before, the

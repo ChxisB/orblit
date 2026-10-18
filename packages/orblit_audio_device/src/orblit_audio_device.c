@@ -84,11 +84,11 @@ void orblit_audio_destroy(OrblitAudio* audio) {
   free(audio);
 }
 
-// F2: eight plain values. A struct would need its own allocation for each call
+// F2: nine plain values. A struct would need its own allocation for each call
 // across the FFI boundary.
 int32_t orblit_audio_start(OrblitAudio* audio, int64_t voice_id,
                            const char* path, int32_t loop, int32_t stream,
-                           float gain, float pitch, float pan) {
+                           float gain, float pitch, float pan, float offset) {
   // A clip that ended has nobody left to stop it, so its slot is freed when
   // the next one starts.
   release_ended(audio);
@@ -103,6 +103,8 @@ int32_t orblit_audio_start(OrblitAudio* audio, int64_t voice_id,
     voice->id = voice_id;
     ma_sound_set_looping(&voice->sound, loop ? MA_TRUE : MA_FALSE);
     apply(voice, gain, pitch, pan);
+    // Set before the start, so the first block mixed is already from here.
+    if (offset > 0) ma_sound_seek_to_second(&voice->sound, offset);
     result = ma_sound_start(&voice->sound);
     if (result != MA_SUCCESS) ma_sound_uninit(&voice->sound);
   }

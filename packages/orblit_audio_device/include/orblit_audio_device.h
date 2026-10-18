@@ -32,12 +32,14 @@ ORBLIT_AUDIO_API OrblitAudio* orblit_audio_create(int32_t offline,
 ORBLIT_AUDIO_API void orblit_audio_destroy(OrblitAudio* audio);
 
 /// Starts [path] as [voice]. A [stream] reads the file as it plays. Otherwise
-/// the file is decoded once and shared by every voice playing it. Returns 0,
-/// or a miniaudio result code with no voice started.
+/// the file is decoded once and shared by every voice playing it. It begins
+/// [offset] seconds in. Returns 0, or a miniaudio result code with no voice
+/// started.
 ORBLIT_AUDIO_API int32_t orblit_audio_start(OrblitAudio* audio, int64_t voice,
                                             const char* path, int32_t loop,
                                             int32_t stream, float gain,
-                                            float pitch, float pan);
+                                            float pitch, float pan,
+                                            float offset);
 
 /// Does nothing for a voice that is not playing.
 ORBLIT_AUDIO_API void orblit_audio_update(OrblitAudio* audio, int64_t voice,

@@ -13,11 +13,13 @@ final class AudioStarted extends AudioCall {
     required this.clip,
     required this.loop,
     required this.level,
+    required this.offset,
   });
 
   final String clip;
   final bool loop;
   final Level level;
+  final double offset;
 }
 
 final class AudioUpdated extends AudioCall {
@@ -53,12 +55,15 @@ final class RecordedAudio implements AudioBackend {
     String clip, {
     required bool loop,
     required Level level,
+    double offset = 0,
   }) {
     if (_everStarted.contains(voice)) {
       throw StateError('Voice $voice was started before.');
     }
     _everStarted.add(voice);
-    calls.add(AudioStarted(voice, clip: clip, loop: loop, level: level));
+    calls.add(
+      AudioStarted(voice, clip: clip, loop: loop, level: level, offset: offset),
+    );
     _playing[voice] = level;
   }
 

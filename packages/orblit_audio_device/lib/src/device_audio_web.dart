@@ -10,10 +10,20 @@ import 'exception.dart';
 /// One voice, from the call to start until its clip ends or it is stopped.
 /// The source is null until the clip has been fetched and decoded.
 final class _Playing {
-  _Playing({required this.loop, required this.level});
+  _Playing({
+    required this.loop,
+    required this.level,
+    required this.offset,
+    required this.askedAt,
+  });
 
   final bool loop;
   Level level;
+
+  /// Where in the clip it was asked to begin, and the context time it was
+  /// asked at, so a clip that loads late still begins in the right place.
+  final double offset;
+  final double askedAt;
   AudioBufferSourceNode? source;
   GainNode? gain;
   StereoPannerNode? pan;
@@ -58,9 +68,15 @@ final class DeviceAudio implements AudioBackend {
     String clip, {
     required bool loop,
     required Level level,
+    double offset = 0,
   }) {
     if (_closed) throw StateError('this DeviceAudio is disposed');
-    final playing = _Playing(loop: loop, level: level);
+    final playing = _Playing(
+      loop: loop,
+      level: level,
+      offset: offset,
+      askedAt: _context.currentTime,
+    );
     _voices[voice] = playing;
     final context = _context;
     if (context.isA<AudioContext>() && context.state == 'suspended') {
@@ -182,6 +198,6 @@ final class DeviceAudio implements AudioBackend {
       ..source = source
       ..gain = gain
       ..pan = pan;
-    source.start();
+    source.start(0, playing.offset + _context.currentTime - playing.askedAt);
   }
 }

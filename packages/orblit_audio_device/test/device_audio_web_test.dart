@@ -47,6 +47,19 @@ void main() {
     expect(peakOf(out, channel: 1), closeTo(peak * middle, 0.01));
   });
 
+  test('a clip begins where it is asked to', () async {
+    final device = make();
+    device.start(1, tone, loop: false, level: const Level(), offset: 0.4);
+
+    final out = await device.render();
+
+    // The clip is half a second long, so from 0.4 it is over by 0.1.
+    final head = out.sublist(0, rate ~/ 20 * 2);
+    final tail = out.sublist(rate ~/ 5 * 2);
+    expect(peakOf(head, channel: 0), greaterThan(0.1));
+    expect(peakOf(tail, channel: 0), 0);
+  });
+
   test('gain scales what is heard', () async {
     final device = make();
     device.start(1, tone, loop: false, level: const Level(gain: 0.5));
