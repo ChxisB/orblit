@@ -1,0 +1,23 @@
+// A surface that ignores light, for anything that carries its own brightness.
+// The plain path of the built-in unlit surface. A mirror's screen mapping is
+// not ported.
+shader_type spatial;
+render_mode unshaded, cull_disabled;
+
+uniform vec4 baseColor : source_color = vec4(1.0);
+uniform vec3 emissive = vec3(0.0);
+uniform float emissiveIntensity = 1.0;
+uniform vec4 uvTransform = vec4(1.0, 1.0, 0.0, 0.0);
+uniform sampler2D baseColorMap : source_color;
+uniform bool hasBaseColorMap = false;
+
+void fragment() {
+  vec2 uv = UV * uvTransform.xy + uvTransform.zw;
+  vec4 base = baseColor;
+  if (hasBaseColorMap) {
+    base *= texture(baseColorMap, uv);
+  }
+  ALBEDO = base.rgb;
+  ALPHA = base.a;
+  EMISSION = emissive * emissiveIntensity;
+}

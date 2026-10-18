@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int failures = 0;
 
@@ -956,6 +957,222 @@ static void custom_surfaces_draw(const char *directory) {
   free(dim);
 }
 
+/* ---- Surfaces translated from .oshader files ----
+ *
+ * build.sh cooks darwin/materials/unlit.oshader and surfaces/pulse.oshader
+ * with the project's own cook and names the bundle in ORBLIT_SHADER_DIR.
+ * Without Dart or a matc the section says so and is skipped. */
+
+typedef struct {
+  const char *name;
+  int width;
+  float number[4];
+} surface_value;
+
+typedef struct {
+  int64_t key;
+  const char *package;
+  int count;
+  surface_value values[6];
+} surface_spec;
+
+static int stage_surfaces(orblit_renderer *renderer, const surface_spec *specs,
+                          int count) {
+  int64_t keys[2];
+  const char *packages[2];
+  int32_t entry_counts[2];
+  const char *names[12];
+  int32_t widths[12];
+  int32_t maps[12];
+  float values[48];
+  const char *paths[1] = {""};
+  int32_t srgb[1] = {0};
+  uint32_t entries = 0;
+  uint32_t floats = 0;
+  for (int i = 0; i < count; i++) {
+    keys[i] = specs[i].key;
+    packages[i] = specs[i].package;
+    entry_counts[i] = specs[i].count;
+    for (int j = 0; j < specs[i].count; j++) {
+      const surface_value *value = &specs[i].values[j];
+      names[entries] = value->name;
+      widths[entries] = value->width;
+      maps[entries++] = 0;
+      memcpy(values + floats, value->number,
+             sizeof(float) * (size_t)value->width);
+      floats += (uint32_t)value->width;
+    }
+  }
+  return orblit_renderer_set_custom_materials(
+             renderer, (uint32_t)count, keys, packages, entry_counts, names,
+             widths, maps, entries, values, floats, paths, srgb,
+             0) == ORBLIT_OK;
+}
+
+/* One cube a material, side by side and `size` across. `flags` and `params`
+ * are what apply_materials reads; a custom material takes its numbers from
+ * what was staged under the same key. */
+static int apply_cubes(orblit_renderer *renderer, int count,
+                       const int64_t *keys, const int32_t *flags,
+                       const float *params, float size) {
+  int32_t material_maps[2 * 7];
+  int32_t videos[2] = {-1, -1};
+  int64_t object_keys[2];
+  float transforms[2 * 16];
+  float colours[6] = {1, 1, 1, 1, 1, 1};
+  int32_t meshes[2] = {-1, -1};
+  int32_t object_flags[2] = {7, 7};
+  int32_t materials[2] = {0, 1};
+  int32_t morphs[2] = {0, 0};
+  for (int i = 0; i < 2 * 7; i++) material_maps[i] = -1;
+  for (int i = 0; i < count; i++) {
+    object_keys[i] = 100 + i;
+    place(transforms + i * 16, (float)i * 3.0f - (float)(count - 1) * 1.5f,
+          0.0f, 0.0f, size, size, size);
+  }
+  return orblit_renderer_apply_materials(
+             renderer, (uint32_t)count, keys, flags, params,
+             (size_t)count * 37, material_maps, (size_t)count * 7, NULL, NULL,
+             0, videos) == ORBLIT_OK &&
+         orblit_renderer_apply_objects(
+             renderer, (uint32_t)count, object_keys, transforms,
+             (size_t)count * 16, colours, (size_t)count * 3, meshes,
+             object_flags, materials, morphs, NULL, 0, NULL, 0) == ORBLIT_OK;
+}
+
+/* The whole frame, settled and then captured, in the order colour_at does it.
+ * The caller frees it. */
+static uint8_t *frame_at(orblit_renderer *renderer, double seconds,
+                         size_t *bytes) {
+  uint32_t width = 0;
+  uint32_t height = 0;
+  for (int frame = 0; frame < 4; frame++) {
+    orblit_renderer_draw(renderer, seconds + frame / 60.0);
+  }
+  orblit_renderer_request_capture(renderer);
+  for (int frame = 4; frame < 10; frame++) {
+    orblit_renderer_draw(renderer, seconds + frame / 60.0);
+  }
+  *bytes = orblit_renderer_read_capture(renderer, NULL, 0, &width, &height);
+  uint8_t *pixels = *bytes == 0 ? NULL : malloc(*bytes);
+  if (pixels != NULL) {
+    orblit_renderer_read_capture(renderer, pixels, *bytes, &width, &height);
+  }
+  return pixels;
+}
+
+static void translated_surfaces_draw(const char *directory) {
+  char unlit_path[512];
+  char pulse_path[512];
+  snprintf(unlit_path, sizeof unlit_path, "%s/unlit.oshader.material.filamat",
+           directory);
+  snprintf(pulse_path, sizeof pulse_path, "%s/pulse.oshader.material.filamat",
+           directory);
+  orblit_surface_desc headless = {ORBLIT_SURFACE_HEADLESS, NULL};
+  orblit_renderer *renderer =
+      orblit_renderer_create(ORBLIT_BACKEND_DEFAULT, &headless, 64, 48);
+  expect(renderer != NULL, "a renderer for the translated surfaces starts");
+  if (renderer == NULL) return;
+  const float eye[3] = {0, 0, 6};
+  const float look[3] = {0, 0, 0};
+  orblit_renderer_set_camera(renderer, eye, look, 42.0f, 0, 10.0f, 0.0);
+  /* The default sky comes up over its first frames, so a frame compared
+   * with a later one would differ in every pixel of the background. */
+  const float black[3] = {0.0f, 0.0f, 0.0f};
+  orblit_renderer_set_exposure(renderer, 1.0f, 1.0f, 100.0f);
+  orblit_renderer_set_sky_colour(renderer, black, 0.0f, 0);
+
+  /* The built-in unlit material and unlit.oshader, given the same numbers. */
+  const int64_t one[1] = {1};
+  /* Unlit, double sided, writing depth: what an OrblitMaterial says by
+   * default but for its shading. */
+  const int32_t builtin_flags[1] = {1 | (1 << 8) | (1 << 9)};
+  float builtin[37] = {0};
+  builtin[0] = 0.2f;
+  builtin[1] = 0.6f;
+  builtin[2] = 0.9f;
+  builtin[3] = 1.0f;
+  builtin[10] = 1.0f;
+  builtin[13] = builtin[14] = 1.0f;
+  size_t size_a = 0;
+  size_t size_b = 0;
+  expect(apply_cubes(renderer, 1, one, builtin_flags, builtin, 2.0f),
+         "the built-in unlit material is taken");
+  uint8_t *plain = frame_at(renderer, 1.0, &size_a);
+
+  /* What the stage sends: the author's own defaults, then the one value
+   * this object states. */
+  const surface_spec translated[1] = {
+      {1, unlit_path, 5,
+       {{"baseColor", 4, {0.2f, 0.6f, 0.9f, 1.0f}},
+        {"emissive", 3, {0.0f, 0.0f, 0.0f}},
+        {"emissiveIntensity", 1, {1.0f}},
+        {"uvTransform", 4, {1.0f, 1.0f, 0.0f, 0.0f}},
+        {"hasBaseColorMap", 1, {0.0f}}}}};
+  const int32_t custom_flags[1] = {ORBLIT_MATERIAL_CUSTOM};
+  expect(stage_surfaces(renderer, translated, 1) &&
+             apply_cubes(renderer, 1, one, custom_flags, builtin, 2.0f),
+         "unlit.oshader is taken");
+  uint8_t *rewritten = frame_at(renderer, 1.0, &size_b);
+
+  expect(plain != NULL && rewritten != NULL && size_a == size_b,
+         "both frames arrive");
+  if (plain != NULL && rewritten != NULL && size_a == size_b) {
+    int worst = 0;
+    int bright = 0;
+    for (size_t i = 0; i < size_a; i++) {
+      const int gap = abs((int)plain[i] - (int)rewritten[i]);
+      if (gap > worst) worst = gap;
+      if (i % 4 != 3 && plain[i] > bright) bright = plain[i];
+    }
+    printf("unlit.oshader: worst channel difference %d, brightest %d\n",
+           worst, bright);
+    expect(bright > 100, "the cube is in the frame");
+    expect(worst <= 2, "unlit.oshader draws the frame unlit.mat draws");
+  }
+  free(plain);
+  free(rewritten);
+
+  /* The tint and pulse surface, two objects with a tint each. */
+  const int64_t two[2] = {1, 2};
+  const int32_t pair_flags[2] = {ORBLIT_MATERIAL_CUSTOM, ORBLIT_MATERIAL_CUSTOM};
+  float pair_params[2 * 37] = {0};
+  const surface_spec pair[2] = {
+      {1, pulse_path, 2,
+       {{"tint", 4, {1.0f, 0.0f, 0.0f, 1.0f}}, {"speed", 1, {2.0f}}}},
+      {2, pulse_path, 2,
+       {{"tint", 4, {0.0f, 1.0f, 0.0f, 1.0f}}, {"speed", 1, {2.0f}}}}};
+  expect(stage_surfaces(renderer, pair, 2) &&
+             apply_cubes(renderer, 2, two, pair_flags, pair_params, 1.0f),
+         "the pulse surface is taken");
+  float left[3];
+  float right[3];
+  expect(colour_at(renderer, 1.0, 0.255f, 0.5f, 1, left) &&
+             colour_at(renderer, 1.0, 0.745f, 0.5f, 1, right),
+         "and drawn");
+  printf("pulse: left %.0f/%.0f/%.0f right %.0f/%.0f/%.0f\n", left[0],
+         left[1], left[2], right[0], right[1], right[2]);
+  expect(mostly(left, 0) && mostly(right, 1),
+         "one surface, two tints: one cube red and the other green");
+
+  /* TIME is Filament's own clock, seconds since the renderer was made, not
+   * the seconds passed to draw. Speed 2 gives a period of 3 seconds, so
+   * the cube is read until it has both brightened and dimmed. */
+  float low = left[0];
+  float high = left[0];
+  for (int reads = 0; reads < 60 && high - low < 60.0f; reads++) {
+    float now[3];
+    usleep(100000);
+    expect(colour_at(renderer, 2.0 + reads, 0.255f, 0.5f, 1, now), "again");
+    if (now[0] < low) low = now[0];
+    if (now[0] > high) high = now[0];
+  }
+  printf("pulse: red between %.0f and %.0f\n", low, high);
+  expect(high - low >= 60.0f, "the surface moves with time");
+
+  orblit_renderer_destroy(renderer);
+}
+
 int main(void) {
   /* Nothing is a handle, and nothing crashes on being given nothing. */
   expect(orblit_renderer_draw(NULL, 0.0) == ORBLIT_ERROR_NULL,
@@ -1505,6 +1722,14 @@ int main(void) {
     custom_surfaces_draw(custom_directory);
   } else {
     printf("skipped the author-written surfaces: no ORBLIT_CUSTOM_DIR\n");
+  }
+
+  /* And again, with surfaces translated from .oshader files. */
+  const char *shader_directory = getenv("ORBLIT_SHADER_DIR");
+  if (shader_directory != NULL && shader_directory[0] != '\0') {
+    translated_surfaces_draw(shader_directory);
+  } else {
+    printf("skipped the translated surfaces: no ORBLIT_SHADER_DIR\n");
   }
 
   if (failures == 0) printf("the C ABI refuses what it should and draws\n");

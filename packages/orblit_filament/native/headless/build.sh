@@ -224,7 +224,23 @@ if [ "${1:-}" = "test" ]; then
     for name in custom_surface custom_surface_dim; do
       "$MATC" -a metal -p all -o "$OUT/$name.filamat" "$name.mat"
     done
-    ORBLIT_CUSTOM_DIR="$OUT" "$OUT/orblit_renderer_test"
+    # The two .oshader files go through the project's own cook, which needs
+    # Dart and this same matc. It is the only run of that cook on a GPU.
+    SHADER_DIR=""
+    if command -v dart >/dev/null; then
+      mkdir -p "$OUT/shaders/assets"
+      ABS_OUT="$(cd "$OUT" && pwd)"
+      ABS_MATC="$(cd "$(dirname "$MATC")" && pwd)/$(basename "$MATC")"
+      cp "$DARWIN/materials/unlit.oshader" surfaces/pulse.oshader \
+        "$OUT/shaders/assets/"
+      (cd ../../../orblit_asset && ORBLIT_MATC="$ABS_MATC" \
+        dart run orblit_asset:cook --target macos \
+          --assets "$ABS_OUT/shaders/assets" --out "$ABS_OUT/shaders/cooked" \
+          --cache "$ABS_OUT/shaders/cache")
+      SHADER_DIR="$ABS_OUT/shaders/cooked/macos"
+    fi
+    ORBLIT_CUSTOM_DIR="$OUT" ORBLIT_SHADER_DIR="$SHADER_DIR" \
+      "$OUT/orblit_renderer_test"
   else
     "$OUT/orblit_renderer_test"
   fi

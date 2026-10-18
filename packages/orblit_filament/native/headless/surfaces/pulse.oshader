@@ -1,0 +1,13 @@
+// A colour that breathes. The tint is picked in the editor and the speed is
+// a slider.
+shader_type spatial;
+render_mode unshaded;
+
+uniform vec4 tint : source_color = vec4(1.0, 0.5, 0.2, 1.0);
+uniform float speed : hint_range(0.0, 10.0, 0.1) = 2.0;
+
+void fragment() {
+  float pulse = 0.6 + 0.4 * sin(TIME * speed);
+  ALBEDO = tint.rgb * pulse;
+  ALPHA = tint.a;
+}
