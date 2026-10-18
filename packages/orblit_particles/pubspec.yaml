@@ -1,0 +1,20 @@
+name: orblit_particles
+description: >-
+  Smoke, sparks, dust and fire as data. An emitter is a pure function of its
+  seed and the time, so a seek or a pause shows the same frame and a network
+  client needs nothing sent. An opt-in stepped form adds turbulence and
+  collision.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_noise:
+    path: ../orblit_noise
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
