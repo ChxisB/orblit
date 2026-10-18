@@ -14,7 +14,10 @@
  *
  * where the directory holds Fox.glb, CesiumMan.glb, RiggedSimple.glb,
  * MaterialsVariantsShoe.glb, LightsPunctualLamp.glb, AnisotropyBarnLamp.glb,
- * ClearCoatTest.glb and SheenChair.glb, as glTF-Sample-Assets names them. */
+ * ClearCoatTest.glb and SheenChair.glb, as glTF-Sample-Assets names them.
+ *
+ * One more check reads ORBLIT_BAKED instead: see
+ * a_baked_group_draws_like_its_objects. */
 
 /* For nanosleep: textures decode on Filament's own threads, in wall-clock
  * time, however many frames are drawn meanwhile. */
@@ -39,17 +42,17 @@ static void expect(int holds, const char *what) {
   }
 }
 
-/* Reads a sample and provides it under a name of its own, written into
- * `name`. Null when the sample is not there, which is a skip rather than a
+/* Reads `file` from `dir` and provides it under a name of its own, written
+ * into `name`. Null when the file is not there, which is a skip rather than a
  * failure. */
-static const char *provide_into(const char *file, char *name, size_t room) {
-  const char *dir = getenv("ORBLIT_SAMPLES");
+static const char *provide_from(const char *dir, const char *scope,
+                                const char *file, char *name, size_t room) {
   if (dir == NULL) return NULL;
   char path[1024];
   snprintf(path, sizeof path, "%s/%s", dir, file);
   FILE *in = fopen(path, "rb");
   if (in == NULL) {
-    printf("skipped %s: not in ORBLIT_SAMPLES\n", file);
+    printf("skipped %s: not in %s\n", file, dir);
     skipped++;
     return NULL;
   }
@@ -60,12 +63,17 @@ static const char *provide_into(const char *file, char *name, size_t room) {
   const int read =
       bytes != NULL && fread(bytes, 1, (size_t)size, in) == (size_t)size;
   fclose(in);
-  snprintf(name, room, "orblit:resource/samples/%s", file);
+  snprintf(name, room, "orblit:resource/%s/%s", scope, file);
   const int provided =
       read && orblit_renderer_provide_resource(name, bytes, (size_t)size) ==
                   ORBLIT_OK;
   free(bytes);
   return provided ? name : NULL;
+}
+
+/* A sample, from ORBLIT_SAMPLES. */
+static const char *provide_into(const char *file, char *name, size_t room) {
+  return provide_from(getenv("ORBLIT_SAMPLES"), "samples", file, name, room);
 }
 
 static const char *provide(const char *file) {
@@ -643,6 +651,125 @@ static void lights_and_extensions_are_described(void) {
   }
 }
 
+/* `count` objects of one model, at `transforms`, and nothing else. */
+static int many_objects(orblit_renderer *renderer, const char *path, int count,
+                        const float *transforms) {
+  int64_t keys[16];
+  float colours[16 * 3];
+  int32_t meshes[16];
+  int32_t flags[16];
+  int32_t materials[16];
+  int32_t morphs[16];
+  for (int i = 0; i < count; i++) {
+    keys[i] = i + 1;
+    for (int c = 0; c < 3; c++) colours[i * 3 + c] = 0.8f;
+    meshes[i] = 0;
+    flags[i] = 7;
+    materials[i] = -1;
+    morphs[i] = 0;
+  }
+  const float weight = 0.0f;
+  const char *paths[1] = {path};
+  return orblit_renderer_apply_objects(
+             renderer, (uint32_t)count, keys, transforms, (size_t)count * 16,
+             colours, (size_t)count * 3, meshes, flags, materials, morphs,
+             &weight, 0, paths, 1) == ORBLIT_OK;
+}
+
+/* The matrices `tool/bake_sample.dart` wrote, sixteen numbers to a line. */
+static int read_placements(const char *path, float *out, int room) {
+  FILE *in = fopen(path, "r");
+  if (in == NULL) return 0;
+  int count = 0;
+  int whole = 1;
+  while (count < room && whole) {
+    for (int i = 0; i < 16 && whole; i++) {
+      whole = fscanf(in, "%f", &out[count * 16 + i]) == 1;
+    }
+    if (whole) count++;
+  }
+  fclose(in);
+  return count;
+}
+
+/* Objects of one model, drawn one by one, against the same placements baked
+ * into one file by `bakeInstances` and drawn as one object. The pictures have
+ * to match, or the merge has changed what the scene looks like.
+ *
+ *   dart run tool/bake_sample.dart LightsPunctualLamp.glb /some/dir 7 6
+ *   ORBLIT_BAKED=/some/dir build/orblit_models_check
+ *
+ * The camera stands well back from the grid of copies.
+ *
+ * The pictures are not identical. Baked positions and normals are rounded
+ * once on the CPU, and the renderer rounds them again on the GPU after its own
+ * transform, so a sharp highlight moves by a few levels and a pixel on a
+ * silhouette can fall either side of the edge. That is a few percent of the
+ * drawn pixels. A wrong normal, tangent sign or winding changes a fifth or
+ * more of them, which is what this limit is for. */
+#define BAKED_LIMIT_PERCENT 5
+static void a_baked_group_draws_like_its_objects(void) {
+  const char *dir = getenv("ORBLIT_BAKED");
+  if (dir == NULL) {
+    printf("skipped the baked group: ORBLIT_BAKED is not set\n");
+    skipped++;
+    return;
+  }
+  char single_name[256];
+  char merged_name[256];
+  const char *single =
+      provide_from(dir, "baked", "single.glb", single_name, sizeof single_name);
+  const char *merged =
+      provide_from(dir, "baked", "merged.glb", merged_name, sizeof merged_name);
+  char path[1024];
+  snprintf(path, sizeof path, "%s/placements.txt", dir);
+  float placements[16 * 16];
+  const int count = read_placements(path, placements, 16);
+  expect(single != NULL && merged != NULL && count > 0,
+         "the baked group's files are all there");
+  if (single == NULL || merged == NULL || count == 0) return;
+
+  const float eye[3] = {0.0f, 0.0f, 36.0f};
+  const float look[3] = {0.0f, 0.0f, 0.0f};
+
+  orblit_renderer *many = start();
+  orblit_renderer *one = start();
+  expect(many != NULL && one != NULL, "two renderers start");
+  if (many == NULL || one == NULL) return;
+  expect(many_objects(many, single, count, placements),
+         "the objects are named one by one");
+  expect(one_object(one, merged, kIdentity), "the baked file is named once");
+  settle(many);
+  settle(one);
+  uint8_t *each = frame_from(many, eye, look, 1.0);
+  uint8_t *whole = frame_from(one, eye, look, 1.0);
+  expect(orblit_renderer_apply_objects(many, 0, NULL, NULL, 0, NULL, 0, NULL,
+                                      NULL, NULL, NULL, NULL, 0, NULL,
+                                      0) == ORBLIT_OK,
+         "the scene is emptied");
+  uint8_t *empty = frame_from(many, eye, look, 1.0);
+
+  const int drawn = differing(empty, each, 2);
+  const int apart = differing(each, whole, 1);
+  printf("baked group of %d: %d px drawn, %d px differ by more than 1, "
+         "largest difference %d\n",
+         count, drawn, apart, largest(each, whole));
+  dump(empty, "baked_empty");
+  dump(each, "baked_each");
+  dump(whole, "baked_whole");
+  expect(drawn > 1000, "the objects draw something to compare");
+  expect(apart * 100 <= drawn * BAKED_LIMIT_PERCENT,
+         "the baked file draws the same pixels as its objects");
+
+  free(empty);
+  free(each);
+  free(whole);
+  orblit_renderer_destroy(many);
+  orblit_renderer_destroy(one);
+  orblit_renderer_release_resource(single);
+  orblit_renderer_release_resource(merged);
+}
+
 int main(void) {
   expect(orblit_renderer_stride(ORBLIT_STRIDE_POSE_INTS) == 4,
          "a pose is four whole numbers");
@@ -662,6 +789,8 @@ int main(void) {
     converted_models_load_and_play();
     lights_and_extensions_are_described();
   }
+
+  a_baked_group_draws_like_its_objects();
 
   if (failures > 0) {
     fprintf(stderr, "orblit_models_check: %d failed\n", failures);

@@ -205,10 +205,18 @@ void main() {
 
       final primitive = primitivesOf(document).single;
       expect(document.readIndices(primitive['indices']! as int), [0, 2, 1]);
+    });
+
+    test('leaves the tangent sign alone, as the renderer does', () async {
+      final model = TriangleModel()..triangle();
+      final document = await baked(model, [Matrix4.diagonal3Values(-1, 1, 1)]);
+
       final tangent = Float32List.sublistView(
-        document.accessorBytes(attribute(primitive, 'TANGENT')),
+        document.accessorBytes(
+          attribute(primitivesOf(document).single, 'TANGENT'),
+        ),
       );
-      expect(tangent[3], -1);
+      expect(tangent[3], 1);
     });
 
     test('keeps the model nodes in the baked positions', () async {

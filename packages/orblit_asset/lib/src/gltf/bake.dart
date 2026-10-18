@@ -20,7 +20,7 @@ import 'merge.dart' show primitiveGroupKey;
 /// The transform of every mesh node in the model is baked in too, so the rock
 /// comes out where it would have been drawn. Normals turn with the inverse
 /// transpose, so a stretch does not tilt the light. A mirrored placement turns
-/// its triangles round and flips the tangent sign, or it would draw inside out.
+/// its triangles round, or it would draw inside out.
 ///
 /// Returns null when the model cannot be baked, and the caller keeps drawing
 /// it as it was. That is a model with a skin, an animation, a morph target, a
@@ -261,34 +261,21 @@ final class _Batch {
     final positions = _points(source.positions, storage);
     _bounds(positions);
     _bytes.putIfAbsent('POSITION', BytesBuilder.new).add(_view(positions));
+    // The renderer turns a tangent with the normal matrix and leaves its sign
+    // alone, mirrored or not. Doing the same keeps a baked group looking like
+    // the objects it replaced.
+    final turn = Matrix3.zero()..copyNormalMatrix(matrix);
     final normals = source.normals;
     if (normals != null) {
-      final turned = _directions(
-        normals,
-        3,
-        Matrix3.zero()..copyNormalMatrix(matrix),
-      );
-      _bytes.putIfAbsent('NORMAL', BytesBuilder.new).add(_view(turned));
+      _bytes
+          .putIfAbsent('NORMAL', BytesBuilder.new)
+          .add(_view(_directions(normals, 3, turn)));
     }
     final tangents = source.tangents;
     if (tangents != null) {
-      final turned = _directions(
-        tangents,
-        4,
-        Matrix3(
-          storage[0],
-          storage[1],
-          storage[2], //
-          storage[4],
-          storage[5],
-          storage[6],
-          storage[8],
-          storage[9],
-          storage[10],
-        ),
-        sign: matrix.determinant() < 0 ? -1 : 1,
-      );
-      _bytes.putIfAbsent('TANGENT', BytesBuilder.new).add(_view(turned));
+      _bytes
+          .putIfAbsent('TANGENT', BytesBuilder.new)
+          .add(_view(_directions(tangents, 4, turn)));
     }
     for (final MapEntry(:key, :value) in source.raw.entries) {
       _bytes.putIfAbsent(key, BytesBuilder.new).add(value);
@@ -373,14 +360,8 @@ Float32List _points(Float32List from, Float64List m) {
 }
 
 /// Unit directions turned by [m]. An element is [stride] floats; the first
-/// three are the direction, and a fourth is a sign that is multiplied by
-/// [sign] and otherwise left as it is.
-Float32List _directions(
-  Float32List from,
-  int stride,
-  Matrix3 m, {
-  double sign = 1,
-}) {
+/// three are the direction, and a fourth is a sign that is left as it is.
+Float32List _directions(Float32List from, int stride, Matrix3 m) {
   final s = m.storage;
   final out = Float32List(from.length);
   for (var i = 0; i < from.length; i += stride) {
@@ -395,7 +376,7 @@ Float32List _directions(
     out[i] = a * scale;
     out[i + 1] = b * scale;
     out[i + 2] = c * scale;
-    if (stride == 4) out[i + 3] = from[i + 3] * sign;
+    if (stride == 4) out[i + 3] = from[i + 3];
   }
   return out;
 }
