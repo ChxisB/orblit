@@ -84,6 +84,22 @@ void main() {
       expect(diff['maxMs'], 4);
     });
 
+    test('count the frames before a span first ran as nothing', () {
+      final profiler = Profiler(clock: clock.call)..frame();
+      for (var i = 0; i < 3; i++) {
+        clock.now += 1000;
+        profiler.frame();
+      }
+      final started = profiler.begin();
+      clock.now += 8000;
+      profiler.end('late', started);
+      profiler.frame();
+
+      final late = section(section(profiler.snapshot(), 'spans'), 'late');
+      expect(late['meanMs'], 2);
+      expect(late['maxMs'], 8);
+    });
+
     test('ignore what ran before the first frame', () {
       final profiler = Profiler(clock: clock.call);
       final started = profiler.begin();

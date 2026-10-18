@@ -139,7 +139,17 @@ final class _Recording implements Profiler {
 
   @override
   void end(String name, int started) {
-    (_spans[name] ??= _Span(_frameCapacity)).sum += _clock() - started;
+    (_spans[name] ??= _newSpan()).sum += _clock() - started;
+  }
+
+  // A span that first runs on frame 300 was nothing on the 299 before it, so
+  // its mean covers the same frames as the frame times do.
+  _Span _newSpan() {
+    final span = _Span(_frameCapacity);
+    for (var i = 0; i < _frames.length; i++) {
+      span.ring.add(0);
+    }
+    return span;
   }
 
   @override
