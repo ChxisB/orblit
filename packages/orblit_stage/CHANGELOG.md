@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.0
+
+- `OrblitParticles` draws the `ParticleEmitterComponent`s of a staged scene.
+  Each shown emitter has a clock that starts when it is first shown and is
+  kept when its component is edited. An emitter is one population of
+  camera-facing cubes, sized and turned by the particle. A scene `budget`
+  caps the lot, and the emitters that started first keep their share. A
+  world-space emitter keeps where its entity has been, so particles stay
+  where they were born while the entity moves on. A component that does not
+  make an emitter is left out and named in `rejected`.
+- `OrblitDocumentView.camera` is the camera the view looks through now.
+  `worldOf` and `isShown` are public.
 ## 0.8.0
 
 - A staged material carries `litScreen` to the renderer.
