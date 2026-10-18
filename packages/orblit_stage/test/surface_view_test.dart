@@ -95,6 +95,20 @@ void main() {
       expect(odd.range, isNull);
     });
 
+    test('a value is what the object states, else the default', () {
+      expect(cooked.valueOf('speed', const {}), [1.5]);
+      expect(cooked.valueOf('speed', const {'speed': 4}), [4]);
+      expect(
+        cooked.valueOf('tint', const {
+          'tint': [0, 1, 0, 1],
+        }),
+        [0, 1, 0, 1],
+      );
+      // The wrong width is not drawn, so it is not shown either.
+      expect(cooked.valueOf('tint', const {'tint': 3}), [1.0, 0.5, 0.25, 1.0]);
+      expect(cooked.valueOf('glow', const {}), [0.0]);
+    });
+
     test('an entry it cannot read is left out', () {
       final surface = CookedSurface.fromParams('p', [
         {'name': 'a', 'type': 'mat4'},

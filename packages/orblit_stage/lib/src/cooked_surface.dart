@@ -123,6 +123,14 @@ final class CookedSurface {
   /// Every picture the surface reads, by name, and whether it holds a colour.
   final Map<String, bool> pictures;
 
+  /// The numbers the surface draws [name] with for an object that states
+  /// [given]: its own when they fit the width, else the default, else zeros.
+  List<double> valueOf(String name, Map<String, Object> given) {
+    final numbers = _numbersOf(given[name]);
+    if (numbers != null && numbers.length == widths[name]) return numbers;
+    return defaults[name] ?? List.filled(widths[name] ?? 1, 0.0);
+  }
+
   /// The surface one object draws: the defaults, then what [given] states.
   ///
   /// Null when the package cannot be placed. A value of the wrong width, or
@@ -166,5 +174,8 @@ Map<String, List<String>> _hintsOf(Object? raw) => {
   if (raw is Map)
     for (final MapEntry(:key, :value) in raw.entries)
       if (key is String)
-        key: [if (value is List) for (final arg in value) '$arg'],
+        key: [
+          if (value is List)
+            for (final arg in value) '$arg',
+        ],
 };
