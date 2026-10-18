@@ -21,14 +21,14 @@ the fullest reference.
 | `orblit_sprite` | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing; `OrblitSprites` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `orblit_ui` | A game interface as a tree of nodes with utility classes or CSS, built into real Flutter widgets | `UiSurface`, `UiNode` |
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
-| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet` |
+| `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet; swaps still copies of one model for one baked mesh | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet`, `OrblitStaticMerge` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
-| `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
+| `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource`, `bakeInstances` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
 
@@ -319,7 +319,10 @@ Assets as bytes, wherever they come from. Cooking source files for a device
 and fetching them over a network (`AssetOrigin`, `FetchPolicy`,
 `AssetFetcher`, `NetworkAssetSource`, `HttpTransport`, and `MapTransport` for
 tests). `fetchInStages` gives a stand-in, then a texture's own coarse mip
-levels while the rest arrives, then the whole file. Details:
+levels while the rest arrives, then the whole file. `bakeInstances` bakes
+copies of a glTF model at a list of placements into one model, or returns
+null for a skin, an animation or another model it cannot place.
+`OrblitStaticMerge` in `orblit_stage` is what calls it. Details:
 [assets.md](assets.md).
 
 ## orblit_sequence
