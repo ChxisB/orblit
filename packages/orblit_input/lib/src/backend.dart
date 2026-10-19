@@ -52,10 +52,30 @@ abstract class PadDevice {
   ///
   /// Returns the raw button codes and axis values, in the platform's own
   /// numbering — the mapping to names is [PadLayout]'s job, above.
-  ({Set<int> buttons, Map<int, int> axes}) resync();
+  PadSnapshot resync();
+
+  /// Whether [rumble] does anything on this pad.
+  ///
+  /// False is an answer rather than a fault: a pad with no motors, a platform
+  /// that cannot reach them, or a backend nobody has written that part of yet.
+  bool get canRumble;
+
+  /// Shakes the two motors for [duration].
+  ///
+  /// [strong] is the heavy, low-frequency motor and [weak] the light, high one,
+  /// each from nought to one. [Pads.rumble] clamps both, so a backend can pass
+  /// them straight to the platform. Does nothing where [canRumble] is false.
+  void rumble({
+    required double strong,
+    required double weak,
+    required Duration duration,
+  });
 
   void close();
 }
+
+/// Where a pad stands at one moment, in the platform's own numbering.
+typedef PadSnapshot = ({Set<int> buttons, Map<int, int> axes});
 
 /// A backend with nothing attached, for a platform with no implementation.
 ///
@@ -83,6 +103,7 @@ class RecordedPad implements PadDevice {
     Map<int, PadAxisRange>? ranges,
     Set<int>? held,
     Map<int, int>? resting,
+    this.canRumble = false,
   }) : ranges = ranges ?? const {},
        _held = held ?? <int>{},
        _resting = resting ?? <int, int>{};
@@ -95,6 +116,12 @@ class RecordedPad implements PadDevice {
 
   @override
   final Map<int, PadAxisRange> ranges;
+
+  @override
+  final bool canRumble;
+
+  /// Every rumble the pad was asked for, oldest first.
+  final List<({double strong, double weak, Duration duration})> rumbles = [];
 
   final Set<int> _held;
   final Map<int, int> _resting;
@@ -158,8 +185,15 @@ class RecordedPad implements PadDevice {
   Uint8List drain() => _queued.takeBytes();
 
   @override
-  ({Set<int> buttons, Map<int, int> axes}) resync() =>
+  PadSnapshot resync() =>
       (buttons: Set<int>.of(_held), axes: Map<int, int>.of(_resting));
+
+  @override
+  void rumble({
+    required double strong,
+    required double weak,
+    required Duration duration,
+  }) => rumbles.add((strong: strong, weak: weak, duration: duration));
 
   @override
   void close() => _alive = false;

@@ -5,7 +5,7 @@ description: >-
   engine rather than to every game written against it. On top sit named
   actions that a player can rebind, with contexts, gestures and a saved
   profile.
-version: 0.4.0
+version: 0.5.0
 publish_to: none
 
 environment:
@@ -14,6 +14,7 @@ environment:
 dependencies:
   ffi: ^2.1.0
   vector_math: ^2.1.4
+  web: ^1.1.0
 
 dev_dependencies:
   lints: ^5.0.0

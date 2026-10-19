@@ -17,8 +17,9 @@ dependencies:
       path: packages/orblit_input
 ```
 
-Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner. On
-a platform with no backend it reports no pads rather than failing.
+Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner and
+a browser. On a platform with no backend it reports no pads rather than
+failing.
 
 ```dart
 final pads = Pads.open();
@@ -52,8 +53,12 @@ for (final event in frame.events) {
 - **Actions.** A game asks about `jump` and `move`, never about a key. See
   below.
 
-Linux only so far, through evdev. The other platforms will each put their own
-gamepad interface behind the same front door.
+Pads on Linux come through evdev and pads in a browser through the Gamepad
+API. The other platforms will each put their own gamepad interface behind the
+same front door.
+
+Rumble is a method on `Pads`. A browser pad with a dual-rumble actuator has
+it. Check `Pads.canRumble(slot)` first, because a Linux pad says no.
 
 ## Actions
 
@@ -147,6 +152,10 @@ The parsing, the mapping, the shaping and the hot-plug run under
 `tool/check.sh` on any machine, against recorded byte streams. That is where
 the bugs are: a read that lands mid-record, a capability word whose top bit is
 set, the kernel admitting it dropped events.
+
+The browser backend runs against a stand-in for `navigator.getGamepads`, in
+Chrome, with `dart test -p chrome test/web_test.dart`. It shows the code reads
+the specification's object model. It does not show any make of pad.
 
 The read path itself needs a gamepad, and there was none, so Linux is asked
 to invent one. `/dev/uinput` takes the same description a driver would give

@@ -1,12 +1,10 @@
-import 'dart:io';
-
 import 'package:vector_math/vector_math_64.dart';
 
 import 'backend.dart';
 import 'evdev.dart';
 import 'layout.dart';
-import 'linux.dart';
 import 'pad.dart';
+import 'platform.dart';
 import 'shaping.dart';
 
 /// Something that happened between two polls.
@@ -127,12 +125,8 @@ class Pads {
     Shaping triggers = Shaping.triggers,
     int maxPads = 8,
   }) {
-    PadBackend backend = noPads;
-    if (Platform.isLinux) {
-      backend = LinuxPads();
-    }
     return Pads(
-      backend: backend,
+      backend: platformBackend(),
       sticks: sticks,
       triggers: triggers,
       maxPads: maxPads,
@@ -174,6 +168,9 @@ class Pads {
       final slot = entry.value;
       final still = seen[slot.token];
       if (still == null || !still.isAlive || !identical(still, slot.device)) {
+        // A held button is let go before the pad is, so a game waiting for the
+        // release to end a charge or a hold does not wait for ever.
+        slot.releaseAll(entry.key, events);
         events.add(PadDisconnected(entry.key, slot.device.identity));
         _remembered[slot.token] = entry.key;
         slot.device.close();
@@ -221,6 +218,31 @@ class Pads {
     return null;
   }
 
+  /// Whether the pad in [slot] can rumble. False for an empty slot.
+  bool canRumble(int slot) => _slots[slot]?.device.canRumble ?? false;
+
+  /// Shakes the pad in [slot]. Does nothing for an empty slot or a pad that
+  /// cannot, so a game can call it without asking first.
+  ///
+  /// [strong] is the heavy motor and [weak] the light one, from nought to one.
+  /// A value outside that is clamped, and one that is not a number is nought.
+  void rumble(
+    int slot, {
+    required double strong,
+    required double weak,
+    required Duration duration,
+  }) {
+    final device = _slots[slot]?.device;
+    if (device == null || !device.canRumble) return;
+    device.rumble(
+      strong: _unit(strong),
+      weak: _unit(weak),
+      duration: duration.isNegative ? Duration.zero : duration,
+    );
+  }
+
+  static double _unit(double value) => value > 0 ? (value < 1 ? value : 1) : 0;
+
   /// Lets go of every device.
   void close() {
     for (final slot in _slots.values) {
@@ -261,6 +283,16 @@ class _Slot {
     _axes
       ..clear()
       ..addAll(now.axes);
+  }
+
+  /// Lets go of everything held, with the events a player letting go would
+  /// have made.
+  void releaseAll(int slot, List<PadEvent> events) {
+    for (final code in _down) {
+      final button = layout.buttons[code];
+      if (button != null) events.add(PadReleased(slot, button));
+    }
+    _down = {};
   }
 
   /// Reads whatever has arrived and folds it in.
