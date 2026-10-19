@@ -71,6 +71,8 @@ export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';
 export 'src/importers/terrain_importer.dart' show TerrainImporter;
 export 'src/runtime_import.dart' show RuntimeImport;
+export 'src/kit/kit.dart' show Kit;
+export 'src/kit/kit_files.dart' show KitConflicts, extractKit, packKit;
 export 'src/kit/kit_manifest.dart' show KitManifest;
 export 'src/importer.dart'
     show
