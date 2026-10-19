@@ -25,6 +25,7 @@ library;
 export 'src/cooked_surface.dart' show CookedSurface, SurfaceParam;
 export 'src/cutscenes.dart'
     show OrblitCutsceneStep, OrblitCutscenes, blendCameras;
+export 'src/debug_lines.dart' show DebugLine, OrblitDebugLines;
 export 'src/document_view.dart' show OrblitDocumentView;
 export 'src/material_view.dart' show materialFrom;
 export 'src/nameplates.dart' show Nameplate, Nameplates;
