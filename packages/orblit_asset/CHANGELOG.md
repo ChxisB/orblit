@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.19.0
+
+- **Listing a kit.** `kit publish <folder> --url <url>` packs the folder,
+  opens the file and checks it as `kit check` does, and prints the entry
+  that lists it, with the hash and size filled in. The file is named after
+  the end of the url, or by `-o`. `--entries <folder>` adds the release to
+  `<publisher>/<slug>.json` in a folder of entries, written whole by rename,
+  and `--notes` sets the release notes. A version the entry lists already is
+  refused, because a listed release is not edited. The command uploads
+  nothing and runs no git command. It prints the steps that are left.
+- `publishKit(folder:, url:, outPath:, released:, notes:, entriesPath:)` is
+  what the command calls. It returns a `KitPublished` with the pack summary,
+  the `KitRelease` and the `KitEntry`. The caller passes the date.
+- `KitEntry.encode()` writes an entry file in the form `KitEntry.parse`
+  reads.
+
 ## 0.18.0
 
 - **Reading a store.** `KitStoreClient(base, transport)` reads `index()`,

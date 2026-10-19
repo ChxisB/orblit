@@ -139,7 +139,8 @@ final clashes = await kit.conflictsIn(DirectoryAssetSource('my_project'));
 ### A store of kits
 
 A store lists kits that people host themselves. Its source is a folder of
-entries, `<publisher>/<slug>.json`, each one a list of releases.
+entries, `<publisher>/<slug>.json`, each one a list of releases. `kit publish`
+writes an entry for you, as described below.
 
 ```json
 {
@@ -166,6 +167,31 @@ match the file, the kit must pass the same rules as an install, and its
 release stops it with every problem listed and writes nothing. The folder it
 writes holds `index.json`, a `releases.json` for each kit and the previews of
 the latest release. It reads from a plain directory with no network.
+
+### Listing a kit
+
+`kit publish` packs a kit and writes its entry, so the hash and the size are
+never copied by hand.
+
+```sh
+dart run orblit_asset:kit publish crate-pack \
+  --url https://example.com/crate-pack-1.1.0.opack \
+  --entries path/to/orblit-kits/kits --notes "Adds an open crate."
+```
+
+It packs the folder into `crate-pack-1.1.0.opack`, named after the end of the
+url, or by `-o` when the url ends in no plain file name. It opens the file and
+checks it as `kit check` does. The release takes its version from `kit.json`,
+its hash and size from the file, and its date from today in UTC. With
+`--entries`, the release goes into `<publisher>/<slug>.json` in that folder.
+Without it, the entry is printed. A version the entry lists already is
+refused, so raise `version` in `kit.json`. Nothing is uploaded and no git
+command runs. The command prints the steps that are left: upload the file,
+run `kit index` over the entries and open a pull request.
+
+`publishKit(folder:, url:, outPath:, released:, notes:, entriesPath:)` does
+the same in Dart and returns a `KitPublished` with the pack summary, the
+release and the entry.
 
 ### Reading a store and installing from it
 

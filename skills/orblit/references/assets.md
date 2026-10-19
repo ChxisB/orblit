@@ -513,6 +513,26 @@ kit's name and summary come from its `kit.json`, not the entry.
 - **Every run downloads every release.** Keep packs by hash between runs
   when a store holds hundreds of kits.
 
+#### Listing a kit
+
+`dart run orblit_asset:kit publish <folder> --url <url> [-o <file>]
+[--entries <folder>] [--notes <text>]` packs the folder, opens the file and
+checks it as `kit check` does, and prints the entry with the hash and size
+filled in. `publishKit(folder:, url:, outPath:, released:, notes:,
+entriesPath:)` is the same in Dart and returns a `KitPublished`.
+
+- **The file is named after the end of the url**, or by `-o`. A url that ends
+  in no plain file name is a usage error, exit 2.
+- **`--entries` writes `<publisher>/<slug>.json`** into a folder of entries by
+  rename and adds the release to the ones listed. A version already listed is
+  refused, because a listed release is not edited. Raise `version` in
+  `kit.json`. Without `--entries` it only prints the entry.
+- **The version comes from `kit.json`**, the hash and size from the file, and
+  the day from the clock, in UTC. `publishKit` takes the day as an argument.
+- **It uploads nothing and runs no git command.** It prints the steps left.
+- `KitEntry.encode()` writes the entry file in the form `KitEntry.parse`
+  reads.
+
 #### Reading a store and installing from it
 
 ```dart
