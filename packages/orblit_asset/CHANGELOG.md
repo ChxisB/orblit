@@ -13,9 +13,10 @@
   are not in the entry. They come from the `kit.json` of the latest release.
   `KitEntry` and `KitRelease` refuse a key they do not know, a version listed
   twice and more than 200 releases.
-- **What the builder checks.** It downloads each release from the host its
-  url names, up to `kitPackLimit` bytes, with the retries and the hash check
-  of `PackFolder.download`. The file must be the size the entry says, every
+- **What the builder checks.** It downloads each release from its url, up to
+  `kitPackLimit` bytes, with the retries and the hash check of
+  `PackFolder.download`. The server may redirect, and only the hash vouches
+  for the bytes. The file must be the size the entry says, every
   blob must match its hash, the kit must pass `kitProblems`, and its
   `kit.json` must name the publisher, slug and version of the entry. Every
   problem is listed, nothing is written until every release has passed, and

@@ -495,8 +495,8 @@ browser reads. `<entries>` holds `<publisher>/<slug>.json`, and each file is
 (`2026-10-19`) and an optional one line `notes`. The kit's name and summary
 come from its `kit.json`, not the entry.
 
-- **It checks every release.** It downloads each one from the host its url
-  names. The pack must have the entry's hash and size, every blob must match,
+- **It checks every release.** It downloads each one from its url, which
+  may redirect, because the hash vouches for the bytes. The pack must have the entry's hash and size, every blob must match,
   the kit must pass `kitProblems`, and `kit.json` must name the entry's
   publisher, slug and version. Every problem is listed, nothing is written
   until all pass, and the output folder must not exist.

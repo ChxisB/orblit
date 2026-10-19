@@ -25,14 +25,14 @@ const int _previewLimit = 1024 * 1024;
 /// a dot at the top, such as `.gitkeep`, is left alone. Anything else that is
 /// not an entry is a problem, and so is a link.
 ///
-/// A release is fetched over https from the host its url names, up to
-/// [kitPackLimit] bytes. The pack has to hash to the entry's hash and be the
-/// size it says, every blob has to match its hash, the kit has to pass
-/// [kitProblems], and its manifest has to name the same publisher, slug and
-/// version as the entry. Nothing is written until every release of every kit
-/// has passed, and [outPath] must not exist, so what is published is only what
-/// was checked this time. Throws a [FormatException] that lists every
-/// problem. Answers how many kits and releases it wrote.
+/// A release is fetched over https from its url, up to [kitPackLimit] bytes.
+/// The pack has to hash to the entry's hash and be the size it says, every
+/// blob has to match its hash, the kit has to pass [kitProblems], and its
+/// manifest has to name the same publisher, slug and version as the entry.
+/// Nothing is written until every release of every kit has passed, and
+/// [outPath] must not exist, so what is published is only what was checked
+/// this time. Throws a [FormatException] that lists every problem. Answers how
+/// many kits and releases it wrote.
 ///
 /// shortcut: every release is downloaded on every run, and the previews of
 /// every kit are held in memory until the last release has passed. Keep packs
@@ -242,8 +242,11 @@ final class _StoreBuild {
       '${_folder.path}${Platform.pathSeparator}${release.hash.hex}.opack';
 }
 
-/// A server that is the one the url names, and no other. The policy allows
-/// the origin's own host, so a redirect to a second host is refused.
+/// The origin of the url, which is the host the request goes to first.
+///
+/// [HttpTransport] follows a redirect to any host and the policy does not look
+/// at where it leads, so a release on a host that redirects, such as a GitHub
+/// release, works. The pack hash is what vouches for the bytes.
 AssetOrigin _originOf(KitRelease release) {
   final url = Uri.parse(release.url);
   return AssetOrigin(
