@@ -1,0 +1,18 @@
+name: orblit_remote
+description: >-
+  A control surface for a running debug game: a loopback socket that lists
+  entities, reads and sets components, pauses and steps time, and compares
+  snapshots.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_core:
+    path: ../orblit_core
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
