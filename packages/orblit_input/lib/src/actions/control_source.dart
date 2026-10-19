@@ -29,8 +29,12 @@ abstract interface class ControlSource {
 /// released between two polls is in `PadFrame.events` and not here, so poll
 /// at the frame rate.
 final class FrameControls implements ControlSource, PressedControls {
-  FrameControls({this.keys = const {}, this.touch = const {}, PadState? pad})
-    : pad = pad ?? PadState.absent;
+  FrameControls({
+    this.keys = const {},
+    this.touch = const {},
+    this.sticks = const {},
+    PadState? pad,
+  }) : pad = pad ?? PadState.absent;
 
   /// The keys held now, by name.
   final Set<String> keys;
@@ -38,19 +42,45 @@ final class FrameControls implements ControlSource, PressedControls {
   /// The touch regions being touched now, by name.
   final Set<String> touch;
 
+  /// The sticks on a touch screen, by the pad stick each stands in for. When a
+  /// pad and a screen both push the same stick, the longer push is read. A
+  /// binding to `PadStickControl` or to one of the stick's axes sees it.
+  final Map<PadStick, Vector2> sticks;
+
   final PadState pad;
 
   @override
   double read(Control control) => switch (control) {
     KeyControl(:final key) => keys.contains(key) ? 1 : 0,
     PadButtonControl(:final button) => pad.isDown(button) ? 1 : 0,
-    PadAxisControl(:final axis, :final side) => side.read(pad.axis(axis)),
-    PadStickControl(:final stick) => pad.stick(stick).length,
+    PadAxisControl(:final axis, :final side) => side.read(_axis(axis)),
+    PadStickControl(stick: final which) => stick(which).length,
     TouchControl(:final region) => touch.contains(region) ? 1 : 0,
   };
 
   @override
-  Vector2 stick(PadStick stick) => pad.stick(stick);
+  Vector2 stick(PadStick stick) {
+    final padded = pad.stick(stick);
+    final touched = sticks[stick];
+    // A copy, because a game may normalise or scale what it is handed.
+    return touched != null && touched.length2 > padded.length2
+        ? touched.clone()
+        : padded;
+  }
+
+  /// A pad axis, or the touch stick that stands in for it when that is pushed
+  /// further. A trigger has no stick.
+  double _axis(PadAxis axis) {
+    final padded = pad.axis(axis);
+    final touched = switch (axis) {
+      PadAxis.leftX => sticks[PadStick.left]?.x,
+      PadAxis.leftY => sticks[PadStick.left]?.y,
+      PadAxis.rightX => sticks[PadStick.right]?.x,
+      PadAxis.rightY => sticks[PadStick.right]?.y,
+      _ => null,
+    };
+    return touched != null && touched.abs() > padded.abs() ? touched : padded;
+  }
 
   @override
   Iterable<Control> get active sync* {
@@ -63,10 +93,10 @@ final class FrameControls implements ControlSource, PressedControls {
       if (!_listedAsAxis(button)) yield PadButtonControl(button);
     }
     for (final stick in PadStick.values) {
-      if (pad.stick(stick).length >= pressPoint) yield PadStickControl(stick);
+      if (this.stick(stick).length >= pressPoint) yield PadStickControl(stick);
     }
     for (final axis in PadAxis.values) {
-      final value = pad.axis(axis);
+      final value = _axis(axis);
       if (value.abs() < pressPoint) continue;
       yield PadAxisControl(
         axis,

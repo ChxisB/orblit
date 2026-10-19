@@ -27,7 +27,7 @@ the fullest reference.
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
-| `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `Pads`, `PadState` |
+| `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `TouchControls`, `Pads`, `PadState` |
 | `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. Silent until a backend plays it | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `Music`, `CueBoard`, `ContactSounds`, `RecordedAudio` |
 | `orblit_audio_device` | The backend that plays `orblit_audio` through the output device: WAV, FLAC, MP3 and Ogg Vorbis, music streamed from disk. In a browser it plays over Web Audio and a clip is a URL. Tested on rendered samples and **not yet heard on a device** | `DeviceAudio` |
 | `orblit_test` | Tests for a game with no window: a stage that steps sampled time and holds the controls, finders and matchers for a scene and for recorded sound, and a text capture of a frame's changes | `TestStage`, `ScriptedControls`, `SceneFinders`, `describeChange` |
@@ -388,6 +388,12 @@ handler in `props: {'onPressed': 'resume'}` and `onEvent` receives
 as good. Worked example:
 https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 `/guides/interfaces/`.
+
+For a touch screen, `stick`, `touch-button` and `swipe-pad` nodes name
+`onMove`, `onHold` or `onSwipe`. `onEvent` receives `[x, y]`, a `bool` or
+`[dx, dy]`, with up positive. `TouchControls` in `orblit_input` takes them
+and gives `FrameControls` its `touch:` and `sticks:`. A script UI gets the
+payload as text for now, so a Dart game is the place to use them.
 
 ## orblit_scene and orblit_stage
 

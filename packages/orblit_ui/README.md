@@ -19,6 +19,26 @@ dependencies:
 
 Needs Flutter. Runs anywhere Flutter runs.
 
+## Touch
+
+Three elements for a screen with fingers. `stick` reports `[x, y]` through
+the handler named in `onMove`. `touch-button` reports `true` and `false`
+through `onHold`. `swipe-pad` reports `[dx, dy]` through `onSwipe`. Up is
+positive, and each element follows the finger that landed on it first, so
+several can be used at once.
+
+```dart
+UiNode(
+  type: 'stick',
+  css: 'width: 160px; height: 160px; background: #33333388; '
+      'border-radius: 80px',
+  props: {'onMove': 'move'},
+)
+```
+
+`orblit_input` has the other half: `TouchControls` turns these events into
+controls an action can be bound to.
+
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
