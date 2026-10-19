@@ -302,11 +302,12 @@ For other languages, give a text or button node `props: {'textKey':
 `add('fr', {...})` or `addJson('fr', fileText)`, and pass it as `strings:` to
 `UiSurface`. `strings.use('fr')` redraws the live interface. A key a
 language lacks falls back to its parent language (`fr-ca` to `fr`), then to
-the default, then shows as the key. A count picks `play.one`, `play.few` and
+the default, then shows the node's own `text`, then the key. A count picks `play.one`, `play.few` and
 so on by the language's own rule. `fontFallback: ['Noto Sans JP']` names
 the fonts tried for a character the main font lacks. The editor reads
 `strings/<locale>.json` from the project folder. Only text and button
-labels are translated. Nothing here lays out right to left.
+labels are translated. Nothing here lays out right to left. A
+`ScriptedUiView` passes no table, so a script's keys show as written.
 
 ## orblit_scene and orblit_stage
 

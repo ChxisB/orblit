@@ -389,7 +389,7 @@ class UiBuilder {
   String _words(UiNode node) {
     final key = node.textKey;
     if (key == null) return node.text ?? '';
-    return strings?.text(key, node.textArgs) ?? key;
+    return strings?.find(key, node.textArgs) ?? node.text ?? key;
   }
 
   Widget _text(UiNode node, UiStyle style, TextStyle inherited) {

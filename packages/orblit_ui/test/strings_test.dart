@@ -35,6 +35,27 @@ void main() {
       final strings = _menu();
       expect(strings.text('greet', {'name': 'Ann'}), 'Hello, Ann');
       expect(strings.text('greet'), 'Hello, {name}');
+      expect(strings.text('greet', {'name': null}), 'Hello, {name}');
+    });
+
+    test('find is null for a key nobody has', () {
+      expect(_menu().find('quit'), isNull);
+      expect(_menu().find('play'), 'Play');
+    });
+
+    test('every shorter tag is tried, and the default has its own', () {
+      final strings = UiStrings(locale: 'zh-Hant-TW', fallback: 'en-GB')
+        ..add('zh-hant', {'play': '玩'})
+        ..add('en', {'quit': 'Quit'});
+      expect(strings.chain('zh-hant-tw'), [
+        'zh-hant-tw',
+        'zh-hant',
+        'zh',
+        'en-gb',
+        'en',
+      ]);
+      expect(strings.text('play'), '玩');
+      expect(strings.text('quit'), 'Quit');
     });
   });
 
@@ -73,6 +94,18 @@ void main() {
       expect(strings.text('items', {'count': 3}), '3 items');
     });
 
+    test('a count with no fraction is a whole count', () {
+      final strings = _menu();
+      expect(strings.text('items', {'count': 1.0}), '1.0 item');
+      expect(strings.text('items', {'count': 3.0}), '3.0 items');
+      expect(strings.text('items', {'count': 1.5}), 'items');
+    });
+
+    test('pt-PT counts zero as other and pt as one', () {
+      expect(UiStrings.pluralForm('pt-PT', 0), 'other');
+      expect(UiStrings.pluralForm('pt-BR', 0), 'one');
+    });
+
     test('a text found in the default takes the default\'s plurals', () {
       final strings = _menu()..use('ru');
       // 21 is one in Russian and other in English, so the wrong rule shows.
@@ -90,6 +123,15 @@ void main() {
       }
     });
 
+    test('can be dropped, which tells a listener', () {
+      final strings = _menu();
+      var heard = 0;
+      strings.addListener(() => heard++);
+      strings.clear();
+      expect(strings.locales, isEmpty);
+      expect(heard, 1);
+    });
+
     test('has a tag that is not empty', () {
       expect(() => UiStrings(locale: ' '), throwsArgumentError);
     });
@@ -104,6 +146,11 @@ void main() {
         'fr': ['items', 'quit'],
         'fr-ca': ['items', 'quit'],
       });
+    });
+
+    test('counts a used key that looks like a plural form as written', () {
+      final strings = UiStrings()..add('en', {'settings.other': 'Other'});
+      expect(strings.gaps(['settings.other']), isEmpty);
     });
 
     test('is empty when every language has every key', () {
@@ -159,6 +206,18 @@ void main() {
       expect(find.text('quit'), findsOneWidget);
       await show(tester, _keyed('quit'), null);
       expect(find.text('quit'), findsOneWidget);
+    });
+
+    testWidgets('shows its own text before a key nobody has', (tester) async {
+      const tree = UiNode(
+        type: 'text',
+        text: 'Quit game',
+        props: {'textKey': 'quit'},
+      );
+      await show(tester, tree, _menu());
+      expect(find.text('Quit game'), findsOneWidget);
+      await show(tester, tree, null);
+      expect(find.text('Quit game'), findsOneWidget);
     });
 
     testWidgets('sets text in the fallback fonts it was given', (tester) async {
