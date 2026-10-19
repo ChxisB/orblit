@@ -485,6 +485,65 @@ levels while the rest of it is still arriving.
 
 Full API, parameter lists and the traps: [references/assets.md](references/assets.md).
 
+## Interface in the world
+
+A screen on a wall and a name over a head are in the scene, not over the view.
+`UiPanel` (in `orblit_ui`) draws a widget tree with no window and returns PNG
+bytes. `WorldPanel` (in `orblit_stage`) shows one on the +z face of the
+built-in cube squashed thin, and turns a `PointerRay` into a click on it.
+`Nameplates` draws many short labels from one `LabelAtlas` picture.
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:orblit_filament/orblit_filament.dart';
+import 'package:orblit_stage/orblit_stage.dart';
+import 'package:orblit_ui/orblit_ui.dart';
+import 'package:vector_math/vector_math_64.dart' hide Colors;
+
+final panel = UiPanel(size: const Size(800, 450), child: const Text('Hi'));
+final wall = WorldPanel(
+  id: 'booth',
+  panel: panel,
+  transform: Matrix4.identity()
+    ..setTranslation(Vector3(0, 2.25, -2.49))
+    ..scaleByDouble(3, 1.6875, 0.005, 1), // half the size on each axis
+  objectKey: 3,
+  materialKey: 3,
+);
+
+OrblitScene scene(OrblitCamera camera) => OrblitScene(
+  camera: camera,
+  objects: [wall.object],
+  materials: [wall.material],
+);
+
+void click(OrblitCamera camera, Offset at, Size view) {
+  final ray = PointerRay.fromCamera(camera, at, view);
+  wall..down(ray)..up(ray);
+}
+```
+
+- Give the panel the same shape in pixels as the face has in metres.
+- `await wall.sync()` after a change, one at a time, then publish the scene
+  again. A name loads once, so each picture has a new name. Releasing the old
+  one frees its bytes and not its texture, which the renderer keeps until it
+  is disposed. A change costs a picture of memory for good, about 1.4 MB at
+  800 by 450. It suits a screen somebody presses and not one that animates.
+- A panel takes one pointer. Send `down`, `move`, `up` and `cancel` for one
+  finger, and await any `sync` before `dispose`.
+- A panel has no keyboard focus and no hover. A text field cannot be typed
+  into.
+- Panel presses use their own pointer numbers, because the gesture arena is
+  shared with the real window. In a test, `UiPanel.paint()` needs
+  `tester.runAsync`.
+- `Nameplates(atlas:, fadeStart:, fadeEnd:)`: `await plates.sync(texts)`,
+  then every frame `plates.build(camera, labels)` gives objects and
+  materials. Labels do not test against walls. A string wider than the atlas
+  throws, so trim long names.
+
+Guide: `/guides/world-interfaces/`. The gallery's Interface in the world
+example runs all of it.
+
 ## Physics
 
 Rigid bodies are in a separate repository, `ChxisB/orblit-physics`, as git
@@ -710,7 +769,9 @@ scattered over it),
 `orblit_cells` (a grid and the window of cells to hold around a point),
 `orblit_sprite` (atlases, sprite animation, parallax, tile maps),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
-CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),
+CSS, and a panel that draws one with no window), `orblit_scene` and
+`orblit_stage` (scene documents and staging them, a panel on a face in the
+scene and labels over heads),
 `orblit_light`, `orblit_mesh`, `orblit_rig`, `orblit_noise`,
 `orblit_particles` (emitters that are a function of time), `orblit_profile`
 (frame times, spans and a heap trend), `orblit_weather`, `orblit_input`,

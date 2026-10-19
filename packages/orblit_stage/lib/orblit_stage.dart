@@ -27,6 +27,7 @@ export 'src/cutscenes.dart'
     show OrblitCutsceneStep, OrblitCutscenes, blendCameras;
 export 'src/document_view.dart' show OrblitDocumentView;
 export 'src/material_view.dart' show materialFrom;
+export 'src/nameplates.dart' show Nameplate, Nameplates;
 export 'src/particle_sheet.dart' show OrblitParticleSheet;
 export 'src/particle_view.dart' show OrblitParticles;
 export 'src/trail_strip.dart' show OrblitTrailStrip;
@@ -35,4 +36,6 @@ export 'src/skin_binding.dart'
     show OrblitSkinBinding, armatureOfSkin, boneNamesOfSkin;
 export 'src/sound_view.dart' show OrblitSound;
 export 'src/static_merge.dart' show OrblitStaticMerge, StaticBaker;
+export 'src/pointer_ray.dart' show PointerRay;
 export 'src/terrain_view.dart' show terrainFrom;
+export 'src/world_panel.dart' show WorldPanel;
