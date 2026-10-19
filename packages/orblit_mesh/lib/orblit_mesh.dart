@@ -45,8 +45,7 @@ export 'src/gltf_read.dart' show GltfAccessors, gltfParts;
 export 'src/export.dart'
     show MeshExport, MeshFormat, Written, boundsOfGlb, boundsOfGltf;
 export 'src/mesh.dart' show Face, Mesh;
-export 'src/obj_read.dart'
-    show ObjGroup, ObjModel, boundsOfObj, readObj;
+export 'src/obj_read.dart' show ObjGroup, ObjModel, boundsOfObj, readObj;
 export 'src/ply_read.dart' show readPly;
 export 'src/read_limits.dart' show ReadLimits;
 export 'src/stl_read.dart' show readStl;
