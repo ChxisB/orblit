@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.16.0
+
+- **Kits.** A kit is a pack for the target `source` that holds files for a
+  project's own folders and a `kit.json`. `KitManifest` is the manifest. Its
+  constructor refuses a slug, name, version, licence or engine range that no
+  index could show, and `encode()` writes the same bytes every time.
+- **`Kit.open(pack)`.** Refuses a pack for another target, a patch, and one
+  with no valid `kit.json`. `files` lists what a person gets, `check()` lists
+  every problem and every blob that no longer matches its hash, and
+  `conflictsIn(source)` names the files a project has with other contents.
+- **`packKit` and `extractKit`.** `packKit(folder:, outPath:)` counts the
+  scripts itself and sets `containsScripts`. It refuses a link, a hidden
+  file, a name Windows reads as a device, two names that differ only in case
+  and a file over 64 MiB, before it reads a file for its bytes.
+  `extractKit(kit, project)` stops with `KitConflicts` before it writes
+  anything unless `overwrite` is set, and never writes through a link.
+- **`dart run orblit_asset:kit`.** `pack`, `check` and `extract`, with the
+  exit codes of `pack`.
+- `writePack` in `pack_bundle_io.dart` holds the layout and the blob check
+  that `packBundle` and `packKit` share. The message for a bundle file that
+  does not match its manifest no longer says which bundle it came from.
+
 ## 0.15.0
 
 - **`TerrainImporter`.** Claims `.oterrain` and `.oregion` and is one of the

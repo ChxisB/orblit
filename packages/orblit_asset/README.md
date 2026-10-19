@@ -110,6 +110,27 @@ origin's policy for a large patch.
 The guide is at
 [orblitengine.com](https://orblitengine.com/docs/guides/asset-packs/).
 
+## Kits
+
+A kit is a pack for the target `source`. It holds files to copy into a
+project and a `kit.json` that says what they are.
+
+```sh
+dart run orblit_asset:kit pack crate-pack -o crate-pack.opack
+dart run orblit_asset:kit check crate-pack.opack
+dart run orblit_asset:kit extract crate-pack.opack path/to/project
+```
+
+`extract` stops before it writes anything when the project already has a
+file with other contents. Pass `--overwrite` to replace it. A game never
+mounts a kit, because `MountedPacks` refuses a pack for another target.
+
+```dart
+final kit = await Kit.open(await AssetPack.open(FilePackBytes('kit.opack')));
+final problems = await kit.check();
+final clashes = await kit.conflictsIn(DirectoryAssetSource('my_project'));
+```
+
 ## Static model collision
 
 `CollisionMesh.fromGltf(id, bytes, source)` reads the active glTF/GLB scene

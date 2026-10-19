@@ -445,6 +445,41 @@ chain.standalone.forEach(packs.addMod);
   hash, which is right for a texture and wrong for a pack. A web build
   reads a patch with `RangePackBytes` and has no `PackFolder`.
 
+### Kits
+
+A kit is a pack for the target `source`. It holds files for a project's own
+folders and a `kit.json`. A game never mounts it.
+
+```
+dart run orblit_asset:kit pack crate-pack -o crate-pack.opack
+dart run orblit_asset:kit check crate-pack.opack
+dart run orblit_asset:kit extract crate-pack.opack path/to/project
+```
+
+```dart
+final kit = await Kit.open(await AssetPack.open(FilePackBytes('kit.opack')));
+final problems = await kit.check();
+final clashes = await kit.conflictsIn(DirectoryAssetSource('my_project'));
+await extractKit(kit, 'my_project');
+```
+
+- **The folder holds files and a `kit.json`.** The manifest names the
+  `slug`, `publisher`, `name`, `summary`, `version`, `licence` (`spdx` and
+  `url`), `engine` (`from` and `to`), `tags` and `previews`. The tool sets
+  `containsScripts` from the file names, so a value typed there is ignored.
+- **Packing refuses what a download could abuse.** A link, a hidden file
+  such as `.DS_Store`, a name that ends in a dot or a space, a Windows
+  device name, two names that differ only in case, and a file over 64 MiB.
+  Every problem is listed at once.
+- **Installing never overwrites by surprise.** `extractKit` throws
+  `KitConflicts` before it writes anything, unless `overwrite` is true. A
+  file that is already identical is left alone. It never writes `kit.json`
+  and never writes through a link.
+- **Files are written one at a time.** A failure half way leaves the earlier
+  ones, and running the install again is safe.
+- **Refusals are `FormatException`**, except a project folder that does not
+  exist, which is an `ArgumentError`.
+
 ---
 
 ## Network assets
