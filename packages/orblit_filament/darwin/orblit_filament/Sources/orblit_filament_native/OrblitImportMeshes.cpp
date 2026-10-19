@@ -20,8 +20,6 @@ void Converter::noteUnsupported() {
   auto count = [&](size_t n, const char *what) {
     if (n > 0) losses_.add(std::to_string(n) + " " + what);
   };
-  count(scene_->cameras.count, "camera(s) not carried: the importer writes no glTF cameras");
-  count(scene_->lights.count, "light(s) not carried: the importer writes no glTF lights");
   count(scene_->nurbs_curves.count + scene_->nurbs_surfaces.count +
             scene_->line_curves.count,
         "curve(s) or NURBS surface(s) not carried: only polygon meshes are");

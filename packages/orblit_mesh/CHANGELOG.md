@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.6.0
+
+- **Model files are read, not only written.** `readObj` reads a Wavefront
+  OBJ with its `.mtl`: n-gons as written, negative indices, groups, smoothing
+  groups, per-corner coordinates and the colour, roughness, metalness,
+  opacity and emission of each material. `readStl` reads binary and text STL
+  and joins equal corners. `readPly` reads text and binary PLY of either byte
+  order, keeping polygons and coordinates and reading past every other
+  property by its declared type.
+- **A bad line is a note, a bad file is an error.** `readObj` keeps going past
+  a line it cannot read and lists what it skipped in `ObjModel.problems`, at
+  most 50 notes. All three readers throw only `FormatException`, and a PLY of
+  splats is refused by name.
+- **`ReadLimits` bounds what a file may ask for.** Bytes, points, faces,
+  corners per face, corners in all faces, the groups and materials an OBJ
+  names, and the length of a line are checked while reading, so a header that
+  promises four billion vertices is refused before anything is allocated.
+- **A point that cannot be read keeps its place.** A `v` or `vt` line that
+  fails to parse stands in as the origin, so the points after it keep their
+  numbers, and a face on a missing point is dropped with a note. Only plain
+  decimal numbers name a point, so `0x1` and `+1` are refused as they are by
+  other readers. A `Kd` or `Ke` with one number is a grey. A library named on
+  many lines is read once.
+- **`boundsOfObj` sits beside `boundsOfGlb` and `boundsOfGltf`.**
+- **The `.mtl` writer adds `Pr` and `Pm`.** A material's metalness
+  survives an export and a read. `Ks` was the only line that carried it, and
+  other tools fill `Ks` in with a half.
+
 ## 0.5.0
 
 - **One place reads glTF, too.** `GltfAccessors` reads a document's

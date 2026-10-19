@@ -24,7 +24,7 @@ the fullest reference.
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
 | `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet, and a scene's particle emitters as populations | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet`, `OrblitParticles`, `OrblitTrailStrip` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
-| `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
+| `orblit_mesh` | Building and editing geometry, writing it out (OBJ, glb, STL, PLY), and reading OBJ, STL and PLY back, with limits for untrusted files | `Mesh`, `MeshExport`, `readObj`, `readStl`, `readPly`, `boundsOfObj`, `ReadLimits` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_particles` | Smoke, sparks, dust and fire: an emitter is data, and a particle is worked out from a seed, its number and the time, so the same time gives the same frame. Collision and turbulence are an opt-in stepped mode | `Emitter`, `Burst`, `ConeShape`, `ParticleBuffer`, `sample`, `ParticleSim`, `Trail`, `TrailRing` |
@@ -34,7 +34,7 @@ the fullest reference.
 | `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. Silent until a backend plays it | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `Music`, `CueBoard`, `ContactSounds`, `RecordedAudio` |
 | `orblit_audio_device` | The backend that plays `orblit_audio` through the output device: WAV, FLAC, MP3 and Ogg Vorbis, music streamed from disk. In a browser it plays over Web Audio and a clip is a URL. Tested on rendered samples and **not yet heard on a device** | `DeviceAudio` |
 | `orblit_test` | Tests for a game with no window: a stage that steps sampled time and holds the controls, finders and matchers for a scene and for recorded sound, and a text capture of a frame's changes | `TestStage`, `ScriptedControls`, `SceneFinders`, `describeChange` |
-| `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
+| `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource`, `CollisionMesh.fromObj` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
 | `orblit_remote` | A control surface in a debug game: a loopback WebSocket that lists entities, reads and sets components, pauses and steps time, and compares snapshots | `RemoteServer`, `RemoteHost`, `CoreWorldInspector`, `TimeGate`, `LogTail` |

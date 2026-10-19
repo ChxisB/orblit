@@ -4,7 +4,7 @@ description: >-
   content hashes, the sources assets are read from, a store that files bytes by
   their hash, the cache that keeps what cooking them produced, and the pack
   file that holds a cooked bundle as one file.
-version: 0.23.0
+version: 0.24.0
 publish_to: none
 
 environment:
@@ -13,6 +13,8 @@ environment:
 dependencies:
   crypto: ^3.0.7
   http: ^1.6.0
+  orblit_mesh:
+    path: ../orblit_mesh
   orblit_sprite:
     path: ../orblit_sprite
   orblit_terrain:

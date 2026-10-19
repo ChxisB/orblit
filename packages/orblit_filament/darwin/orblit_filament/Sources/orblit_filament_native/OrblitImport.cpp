@@ -33,6 +33,8 @@ void Converter::run(ImportSummary &summary) {
   planNodes();
   measure();
   writeSkins();
+  writeCameras();
+  writeLights();
   writeNodes();
   writeAnimations();
 
@@ -133,6 +135,11 @@ Imported convert(const uint8_t *bytes, size_t size, const std::string &name,
   // glTF's space: right-handed, +Y up, +Z the front, one unit a metre.
   opts.target_axes = ufbx_axes_right_handed_y_up;
   opts.target_unit_meters = 1;
+  // A glTF camera and a glTF light both point down -Z. FBX has them point
+  // down +X and -Y, which ufbx turns into the target's front axis, and in
+  // this space the front axis is +Z.
+  opts.target_camera_axes = ufbx_axes_right_handed_y_up;
+  opts.target_light_axes = ufbx_axes_right_handed_y_up;
   // An OBJ carries neither, and the usual exporters write Y-up metres, so
   // that is what it is taken to be: nothing is rotated or scaled.
   opts.obj_axes = ufbx_axes_right_handed_y_up;

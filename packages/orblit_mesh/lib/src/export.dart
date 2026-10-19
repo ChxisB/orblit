@@ -190,6 +190,10 @@ extension MeshExport on Mesh {
           'Ks ${_number(one.metallic)} ${_number(one.metallic)} '
           '${_number(one.metallic)}',
         )
+        // The physically based pair, which Blender writes and `readObj`
+        // trusts over the two lines above.
+        ..writeln('Pr ${_number(one.roughness)}')
+        ..writeln('Pm ${_number(one.metallic)}')
         ..writeln(
           'Ke ${_number(one.emissive[0])} ${_number(one.emissive[1])} '
           '${_number(one.emissive[2])}',

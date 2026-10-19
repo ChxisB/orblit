@@ -313,7 +313,7 @@ class Document {
  public:
   std::vector<uint8_t> bin;
   std::vector<std::string> bufferViews, accessors, images, samplers, textures,
-      materials, meshes, nodes, skins, animations;
+      materials, meshes, nodes, skins, animations, cameras, lights;
   std::vector<uint32_t> sceneNodes;
   // Ordered sets, so the lists come out the same on every run.
   std::set<std::string> extensionsUsed, extensionsRequired;
@@ -402,12 +402,21 @@ class Document {
     putList(json, "meshes", meshes);
     putList(json, "skins", skins);
     putList(json, "animations", animations);
+    putList(json, "cameras", cameras);
     putList(json, "materials", materials);
     putList(json, "textures", textures);
     putList(json, "images", images);
     putList(json, "samplers", samplers);
     putList(json, "accessors", accessors);
     putList(json, "bufferViews", bufferViews);
+    if (!lights.empty()) {
+      json += ",\"extensions\":{\"KHR_lights_punctual\":{\"lights\":[";
+      for (size_t i = 0; i < lights.size(); i++) {
+        if (i > 0) json += ',';
+        json += lights[i];
+      }
+      json += "]}}";
+    }
     if (!bin.empty()) {
       json += ",\"buffers\":[{\"byteLength\":" + std::to_string(bin.size()) +
               "}]";
@@ -627,6 +636,9 @@ class Converter {
   void planNodes();
   void measure();
   void writeSkins();
+  void writeCameras();
+  void writeLights();
+  void putAttributes(std::string &json, const ufbx_node *node) const;
   static void putName(std::string &json, const ufbx_node *node);
   void writeNodes();
   void putTransform(std::string &json, const ufbx_transform &t);
@@ -670,6 +682,9 @@ class Converter {
   std::vector<int> hierarchy_;
   std::vector<bool> moved_;
   std::vector<uint32_t> skinOf_;
+  /// The glTF camera and light each ufbx one became, by `typed_id`, or -1
+  /// for one that was not carried.
+  std::vector<int> cameraOf_, lightOf_;
   bool emitRoot_ = false;
   std::vector<std::pair<uint32_t, double>> influences_;
 

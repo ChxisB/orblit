@@ -211,6 +211,217 @@ void checkObjCompanions() {
   }
 }
 
+/// An ASCII FBX with a triangle, a camera, a spot light and a sun, in the
+/// file's own units of centimetres. `@PROJECTION@` is the camera's projection
+/// type, 0 for perspective, and `@SUN@` the sun's light type, 1 for
+/// directional.
+const char *kRig = R"fbx(; FBX 7.4.0 project file
+FBXHeaderExtension:  {
+	FBXHeaderVersion: 1003
+	FBXVersion: 7400
+}
+GlobalSettings:  {
+	Version: 1000
+	Properties70:  {
+		P: "UpAxis", "int", "Integer", "",1
+		P: "UpAxisSign", "int", "Integer", "",1
+		P: "FrontAxis", "int", "Integer", "",2
+		P: "FrontAxisSign", "int", "Integer", "",1
+		P: "CoordAxis", "int", "Integer", "",0
+		P: "CoordAxisSign", "int", "Integer", "",1
+		P: "UnitScaleFactor", "double", "Number", "",1
+	}
+}
+Definitions:  {
+	Version: 100
+	Count: 0
+}
+Objects:  {
+	Geometry: 3001, "Geometry::Tri", "Mesh" {
+		Vertices: *9 {
+			a: 0,0,0,1,0,0,0,1,0
+		}
+		PolygonVertexIndex: *3 {
+			a: 0,1,-3
+		}
+		GeometryVersion: 124
+	}
+	NodeAttribute: 1001, "NodeAttribute::Cam", "Camera" {
+		TypeFlags: "Camera"
+		Properties70:  {
+			P: "CameraProjectionType", "enum", "", "",@PROJECTION@
+			P: "FieldOfView", "FieldOfView", "", "A",60
+			P: "NearPlane", "double", "Number", "",0.5
+			P: "FarPlane", "double", "Number", "",200
+		}
+	}
+	NodeAttribute: 1002, "NodeAttribute::Lamp", "Light" {
+		TypeFlags: "Light"
+		Properties70:  {
+			P: "LightType", "enum", "", "",2
+			P: "Color", "Color", "", "A",1,0.5,0.25
+			P: "Intensity", "Number", "", "A",20000
+			P: "InnerAngle", "Number", "", "A",30
+			P: "OuterAngle", "Number", "", "A",60
+		}
+	}
+	NodeAttribute: 1003, "NodeAttribute::Sun", "Light" {
+		TypeFlags: "Light"
+		Properties70:  {
+			P: "LightType", "enum", "", "",@SUN@
+			P: "Intensity", "Number", "", "A",300
+		}
+	}
+	Model: 2000, "Model::Tri", "Mesh" {
+		Version: 232
+		Properties70:  {
+		}
+	}
+	Model: 2001, "Model::Cam", "Camera" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Translation", "Lcl Translation", "", "A",0,2,5
+		}
+	}
+	Model: 2002, "Model::Lamp", "Light" {
+		Version: 232
+		Properties70:  {
+		}
+	}
+	Model: 2003, "Model::Sun", "Light" {
+		Version: 232
+		Properties70:  {
+			P: "Lcl Rotation", "Lcl Rotation", "", "A",0,0,90
+		}
+	}
+}
+Connections:  {
+	C: "OO",2000,0
+	C: "OO",2001,0
+	C: "OO",2002,0
+	C: "OO",2003,0
+	C: "OO",3001,2000
+	C: "OO",1001,2001
+	C: "OO",1002,2002
+	C: "OO",1003,2003
+}
+)fbx";
+
+std::string rig(int projection, int sun) {
+  std::string text = kRig;
+  auto put = [&](const char *marker, int value) {
+    text.replace(text.find(marker), std::strlen(marker), std::to_string(value));
+  };
+  put("@PROJECTION@", projection);
+  put("@SUN@", sun);
+  return text;
+}
+
+/// The numbers of the first array after `key`, searched from `from`.
+std::vector<double> numbersAfter(const std::string &json, const std::string &key,
+                                 size_t from) {
+  std::vector<double> numbers;
+  const size_t at = json.find("\"" + key + "\":[", from);
+  if (at == std::string::npos) return numbers;
+  const char *cursor = json.c_str() + at + key.size() + 4;
+  char *end = nullptr;
+  for (double value = std::strtod(cursor, &end); end != cursor;
+       value = std::strtod(cursor, &end)) {
+    numbers.push_back(value);
+    cursor = *end == ',' ? end + 1 : end;
+  }
+  return numbers;
+}
+
+/// Where the node called `name` points, which is down -Z for a glTF camera or
+/// light, turned by the node's rotation.
+std::vector<double> pointingOf(const std::string &json, const std::string &name) {
+  const size_t node = json.find("\"name\":\"" + name + "\"");
+  const std::vector<double> q = numbersAfter(json, "rotation", node);
+  if (node == std::string::npos || q.size() != 4) return {};
+  return {-2 * (q[0] * q[2] + q[3] * q[1]), -2 * (q[1] * q[2] - q[3] * q[0]),
+          -(1 - 2 * (q[0] * q[0] + q[1] * q[1]))};
+}
+
+bool near(const std::vector<double> &got, const std::vector<double> &want) {
+  if (got.size() != want.size()) return false;
+  for (size_t i = 0; i < got.size(); i++) {
+    if (std::fabs(got[i] - want[i]) > 1e-5) return false;
+  }
+  return true;
+}
+
+void checkCamerasAndLights() {
+  Files files;
+  const orblit::Imported imported = importText(rig(0, 1), "rig.fbx", files);
+  std::string json;
+  expect(wellFormed(imported.glb, json), "an FBX with a camera and lights imports");
+  expect(contains(json, "\"cameras\":[{\"type\":\"perspective\""),
+         "its camera is a glTF perspective camera");
+  expect(contains(json, "\"extensionsUsed\":[\"KHR_lights_punctual\"]") &&
+             contains(json, "\"type\":\"spot\"") &&
+             contains(json, "\"type\":\"directional\""),
+         "its spot light and sun are punctual lights");
+  expect(!anyLoss(imported, "camera") && !anyLoss(imported, "light"),
+         "and nothing is said to be lost");
+
+  // An FBX camera looks down +X and a light down -Y, with no rotation. The
+  // sun is turned 90 degrees about Z, which takes -Y round to +X.
+  expect(near(pointingOf(json, "Cam"), {1, 0, 0}), "the camera looks the way it did");
+  expect(near(pointingOf(json, "Lamp"), {0, -1, 0}), "the spot light points the way it did");
+  expect(near(pointingOf(json, "Sun"), {1, 0, 0}), "the sun points the way it did");
+
+  // The file is in centimetres, and the glTF in metres.
+  const std::vector<double> at = numbersAfter(json, "translation", json.find("\"name\":\"Cam\""));
+  expect(at.size() == 3 && std::fabs(at[1] - 0.02) < 1e-6 && std::fabs(at[2] - 0.05) < 1e-6,
+         "the camera is where it was, in metres");
+  expect(contains(json, "\"yfov\":1.04719758") && contains(json, "\"zfar\":2}"),
+         "its angle is the vertical one in radians and its far plane is in metres");
+
+  // 200 watts over a sphere, and 3 watts a square metre, at 683 lumens a watt.
+  expect(contains(json, "\"intensity\":10870.28") && contains(json, "\"intensity\":2049"),
+         "strengths are in candela for a spot light and lux for a sun");
+  expect(contains(json, "\"innerConeAngle\":0.26179") &&
+             contains(json, "\"outerConeAngle\":0.52359"),
+         "a cone is stated as half its angle");
+
+  // The two kinds with no glTF form are left out and named.
+  const orblit::Imported partial = importText(rig(1, 4), "rig.fbx", files);
+  expect(anyLoss(partial, "camera(s) not carried") && anyLoss(partial, "light(s) not carried"),
+         "an orthographic camera and a volume light are said to be left out");
+  const std::string rest(partial.glb.begin(), partial.glb.end());
+  expect(!partial.glb.empty() && !contains(rest, "\"cameras\""),
+         "and the rest of the file arrives");
+}
+
+/// `text` with the first `from` replaced by `to`. A fixture that drifts from
+/// what a check expects is a failure, not a silent no-op.
+std::string swapped(std::string text, const std::string &from,
+                    const std::string &to) {
+  const size_t at = text.find(from);
+  expect(at != std::string::npos, "the fixture has " + from);
+  if (at != std::string::npos) text.replace(at, from.size(), to);
+  return text;
+}
+
+void checkHostileLights() {
+  Files files;
+  // A near plane below what a float holds, a cone whose inner angle is wider
+  // than its outer one, and a strength no float holds.
+  std::string text = swapped(rig(0, 1), "\"\",0.5\n", "\"\",1e-50\n");
+  text = swapped(text, "\"A\",30\n", "\"A\",90\n");
+  text = swapped(text, "\"A\",300\n", "\"A\",1e39\n");
+  const orblit::Imported imported = importText(text, "rig.fbx", files);
+  std::string json;
+  expect(wellFormed(imported.glb, json), "an FBX with out of range numbers imports");
+  expect(anyLoss(imported, "camera(s) not carried") && !contains(json, "\"znear\":0"),
+         "a near plane that is zero as a float is left out, not written as zero");
+  expect(contains(json, "\"innerConeAngle\":0.5230") && contains(json, "\"outerConeAngle\":0.52359"),
+         "an inner angle is held under the outer one");
+  expect(contains(json, "\"intensity\":3.40282") && !contains(json, "\"intensity\":0}"),
+         "a strength past a float is held at the largest one");
+}
+
 void checkRefused() {
   Files files;
   auto refused = [&](const orblit::Imported &imported, const std::string &what) {
@@ -398,6 +609,8 @@ int main(int argc, char **argv) {
   checkNames();
   checkObj();
   checkObjCompanions();
+  checkCamerasAndLights();
+  checkHostileLights();
   checkRefused();
   checkDamagedObj();
   const char *fromEnvironment = std::getenv("ORBLIT_IMPORT_SAMPLES");

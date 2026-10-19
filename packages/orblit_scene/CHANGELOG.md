@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.24.0
+
+- `readSceneFrom` opens an `.obj`. Each `o` or `g` group becomes one entity
+  with its faces as editable geometry and the colour of its first material.
+  A file is told from glTF by its first byte, so a GLB or a `.gltf` reads as
+  before, and a `.gltf` saved with a byte order mark still reads as glTF.
+  What the OBJ reader could not read comes back in
+  `SceneImported.problems`, with one more note for a group that wears more
+  than one material. Only the colour of a material reaches the scene. Its
+  alpha, roughness, metalness and emission stay in the `.mtl`.
+
 ## 0.23.0
 
 - Add `MaterialComponent.values` and `shaderExtension`. A material asset

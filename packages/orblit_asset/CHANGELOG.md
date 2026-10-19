@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.24.0
+
+- **`CollisionMesh.fromObj`.** Builds a collider from a Wavefront OBJ, every
+  group as one mesh with its polygons cut into triangles. A cooked FBX is a
+  GLB by then and already went through `fromGltf`. The package depends on
+  `orblit_mesh` for the reader. It takes a `ReadLimits` for a pack that is not
+  trusted, and a point too far out for a float is a `FormatException`.
+
 ## 0.23.0
 
 - **`MaterialImporter`.** Claims `.oshader` and is one of the default native
