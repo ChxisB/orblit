@@ -30,6 +30,7 @@ the fullest reference.
 | `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `Pads`, `PadState` |
 | `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. Silent until a backend plays it | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `Music`, `CueBoard`, `ContactSounds`, `RecordedAudio` |
 | `orblit_audio_device` | The backend that plays `orblit_audio` through the output device: WAV, FLAC, MP3 and Ogg Vorbis, music streamed from disk. In a browser it plays over Web Audio and a clip is a URL. Tested on rendered samples and **not yet heard on a device** | `DeviceAudio` |
+| `orblit_test` | Tests for a game with no window: a stage that steps sampled time and holds the controls, finders and matchers for a scene and for recorded sound, and a text capture of a frame's changes | `TestStage`, `ScriptedControls`, `SceneFinders`, `describeChange` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |

@@ -34,6 +34,7 @@ PACKAGES=(
   packages/orblit_sequence
   packages/orblit_sprite
   packages/orblit_terrain
+  packages/orblit_test
   packages/orblit_weather
 )
 
