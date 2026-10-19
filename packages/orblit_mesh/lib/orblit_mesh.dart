@@ -47,7 +47,9 @@ export 'src/export.dart'
 export 'src/mesh.dart' show Face, Mesh;
 export 'src/obj_read.dart'
     show ObjGroup, ObjModel, boundsOfObj, readObj;
+export 'src/ply_read.dart' show readPly;
 export 'src/read_limits.dart' show ReadLimits;
+export 'src/stl_read.dart' show readStl;
 export 'src/shapes.dart' show Shape, ShapeKind;
 export 'src/uv.dart' show FaceUv, UvFit;
 export 'src/uv_edits.dart' show MeshUvs;
