@@ -17,11 +17,14 @@ final class Bridge {
   final StreamIterator<String> _lines;
   int _next = 0;
 
-  static Future<Bridge> start(List<String> arguments) async {
+  static Future<Bridge> start(
+    List<String> arguments, {
+    Map<String, String> environment = const {},
+  }) async {
     final process = await Process.start(Platform.resolvedExecutable, [
       'bin/orblit_remote.dart',
       ...arguments,
-    ]);
+    ], environment: environment);
     // Notes go to stderr, and a full pipe would stall the child.
     unawaited(process.stderr.drain<void>());
     final lines = StreamIterator(
@@ -31,6 +34,16 @@ final class Bridge {
   }
 
   void notify(String method) => _send({'method': method});
+
+  void sendBytes(List<int> bytes) => _process.stdin.add(bytes);
+
+  /// The next line the program wrote, whatever it answers.
+  Future<Map<String, Object?>> next() async {
+    if (!await _lines.moveNext()) throw StateError('The bridge ended');
+    return jsonDecode(_lines.current) as Map<String, Object?>;
+  }
+
+  Future<int> get exitCode => _process.exitCode;
 
   Future<Map<String, Object?>> ask(
     String method, [
@@ -173,6 +186,103 @@ void main() {
         'value': 9,
       });
       expect((reply['error']! as Map<String, Object?>)['code'], -32602);
+      expect(await run.finish(), 0);
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test('a host that is not this machine is refused with 64', () async {
+    for (final address in [
+      'ws://example.com:80/?token=x',
+      'ws://127.0.0.1@evil.example:80/?token=x',
+      'ws://[::1]:80/?token=x',
+      'ws://127.0.0.1/?token=x',
+    ]) {
+      final result = await Process.run(Platform.resolvedExecutable, [
+        'bin/orblit_remote.dart',
+        address,
+      ]);
+      expect(result.exitCode, 64, reason: address);
+      expect(result.stdout, isEmpty);
+    }
+  });
+
+  test('an unknown flag is refused rather than ignored', () async {
+    final result = await Process.run(Platform.resolvedExecutable, [
+      'bin/orblit_remote.dart',
+      '--allow-writes',
+      '${server.uri}',
+    ]);
+    expect(result.exitCode, 64);
+  });
+
+  test('a wrong token exits with 69 and prints no token', () async {
+    final wrong = server.uri.replace(queryParameters: {'token': 'tok3nXYZ'});
+    final result = await Process.run(Platform.resolvedExecutable, [
+      'bin/orblit_remote.dart',
+      '$wrong',
+    ]);
+    expect(result.exitCode, 69);
+    expect(result.stderr, isNot(contains('tok3nXYZ')));
+    expect(result.stderr, contains('refused'));
+    expect(result.stdout, isEmpty);
+  });
+
+  test('the address can come from the environment', () async {
+    final run = bridge = await Bridge.start(
+      [],
+      environment: {'ORBLIT_REMOTE_ADDRESS': 'orblit-remote ${server.uri}'},
+    );
+    expect(await _toolNames(run), isNotEmpty);
+    expect(await run.finish(), 0);
+  });
+
+  test('the program exits with 69 when the game goes away', () async {
+    final run = bridge = await Bridge.start(['${server.uri}']);
+    expect(await _toolNames(run), isNotEmpty);
+    await server.close();
+    expect(await run.exitCode.timeout(const Duration(seconds: 15)), 69);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test(
+    'a game that is read only still refuses set with --allow-write',
+    () async {
+      final locked = await RemoteServer.start(
+        RemoteHost(
+          world: CoreWorldInspector(world, [transforms.local]),
+          gate: gate,
+          readOnly: true,
+        ),
+        random: Random(6),
+        announce: (_) {},
+      );
+      final run = bridge = await Bridge.start([
+        '--allow-write',
+        '${locked.uri}',
+      ]);
+      final reply = await run.tool('set', {
+        'id': a,
+        'component': 'orblit.LocalTransform',
+        'field': 'x',
+        'value': 9,
+      });
+      final result = reply['result']! as Map<String, Object?>;
+      expect(result['isError'], isTrue);
+      expect(jsonEncode(result['content']), contains('-32002'));
+      expect(await run.finish(), 0);
+      await locked.close();
+    },
+    timeout: const Timeout(Duration(seconds: 60)),
+  );
+
+  test(
+    'a stray byte on stdin is a parse error and the session goes on',
+    () async {
+      final run = bridge = await Bridge.start(['${server.uri}']);
+      run.sendBytes([0xff, 0xfe, 0x0a]);
+      final bad = await run.next();
+      expect((bad['error']! as Map<String, Object?>)['code'], -32700);
+      expect(await _toolNames(run), isNotEmpty);
       expect(await run.finish(), 0);
     },
     timeout: const Timeout(Duration(seconds: 60)),

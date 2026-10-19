@@ -91,35 +91,48 @@ assistant can look at a running game.
 dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
 ```
 
-Quote the address, because a shell reads `?` as a pattern. The line the game
-prints, with its `orblit-remote` prefix, works too. The host must be
-`127.0.0.1` or `localhost`, since the address holds the token. To register it
-with Claude Code:
+Run it from a project that depends on `orblit_remote`. The first run builds
+the native hook of `orblit_core` and says so on stderr, though the program
+loads no native code. Quote the address, because a shell reads `?` as a
+pattern. The line the game prints, with its `orblit-remote` prefix, works too.
+The host must be `127.0.0.1` or `localhost`, since the address holds the
+token.
+
+The address is new each time the game starts, so register the program again
+after a restart. In Claude Code:
 
 ```sh
 claude mcp add orblit -- dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
 ```
 
+An argument shows in the process list. To keep the token out of it, set
+`ORBLIT_REMOTE_ADDRESS` and give no argument. Either way the token sits in the
+assistant's configuration, so use this on a machine you own.
+
 | Tool | Does |
 | --- | --- |
-| `observe` | Counts the entities and lists the first `limit` (20), or reads one by `id` in full. |
-| `step` | Pauses and passes `n` frames. |
+| `observe` | Counts the entities and lists the first `limit`, 20 unless asked. With an `id`, reads one entity in full. |
+| `step` | Pauses and passes `n` frames, from 1 to 300. The game stays paused until the session ends. |
 | `snapshot` | Records the world and answers an id with counts. |
-| `diff` | Lists what changed between two snapshot ids, at most 200. |
+| `diff` | Lists what changed between two snapshot ids, at most 200 paths. |
 | `screenshot` | One PNG of the render view. |
 | `perf` | The game's phase times. |
 | `set` | Sets one component field. Only with `--allow-write`. |
 
-Without `--allow-write` the `set` tool is not in the list, and a call to it is
-refused. The host's `readOnly` flag still applies as well.
+Without `--allow-write` the assistant sees six tools. A call to `set` is
+refused as an unknown tool. With the flag, a game started with `readOnly: true`
+still refuses it.
 
 A refusal from the game comes back as an error result with its code and
-message, so the assistant can read it and try again. Answers are cut to a size
-a model can read, and say so with `truncated`. A screenshot is one frame. A
-diff holds only what its two snapshots held.
+message, so the assistant can read it and try again. `observe` and `diff` cut
+a long list and say `truncated: true`. The game has answered in full by then.
+One entity, a perf summary and the values inside a diff are not cut. A
+screenshot is one frame. A diff holds only what its two snapshots held.
 
-Exit codes are 64 for a bad address and 69 for a game that cannot be reached.
-Messages go one JSON object per line. Notes go to stderr.
+A batch of messages is answered as one array. A message with no id is never
+run. Exit codes are 64 for a bad address or an unknown flag, and 69 for a game
+that cannot be reached or that goes away during the session. Notes go to
+stderr.
 
 ## Status
 

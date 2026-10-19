@@ -1019,13 +1019,17 @@ the tool protocol on stdin and stdout. In Claude Code:
 claude mcp add orblit -- dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
 ```
 
-Add `--allow-write` to let the assistant change a value. Without it the `set`
-tool is not in the list and a call to it is refused.
+Run it from a project that depends on `orblit_remote`. The address is new at
+every game start, so register again after a restart. To keep the token out of
+the process list, set `ORBLIT_REMOTE_ADDRESS` and give no argument.
+
+Add `--allow-write` to let the assistant change a value. Without it the
+assistant sees six tools, and a call to `set` is refused as unknown.
 
 | Tool | Does |
 | --- | --- |
-| `observe` | Counts entities and lists the first `limit` (20), or reads one by `id` in full. `filter` is component names. |
-| `step` | Pauses, then passes `n` frames. |
+| `observe` | Counts entities and lists the first `limit`, 20 unless asked, or reads one by `id` in full. `filter` is component names. |
+| `step` | Pauses, then passes `n` frames, 1 to 300. The game stays paused until the session ends. |
 | `snapshot` | Records the world and answers an id with counts. |
 | `diff` | The first 200 paths that differ between snapshot ids `a` and `b`. |
 | `screenshot` | One PNG. |
@@ -1040,13 +1044,14 @@ What not to trust:
   `extras`, and anything that changed and changed back between the two, is
   invisible. Take the snapshots around the one thing you changed.
 - **`truncated: true` means rows were cut.** Narrow with `filter`. Do not
-  read the first twenty as the whole world.
+  read the first twenty as the whole world. One entity, `perf` and the values
+  inside a diff are not cut.
 - **A refusal is an error result, not a crash.** Read its code. `-32004` means
   the game did not give the surface that part, and no retry fixes it.
 
 Quote the address, because zsh reads `?` as a pattern. The host must be
-`127.0.0.1` or `localhost`. A bad address exits with 64 and an unreachable
-game with 69.
+`127.0.0.1` or `localhost`. A bad address or an unknown flag exits with 64. A
+game that cannot be reached, or that goes away mid session, exits with 69.
 
 Verified by tests over a real loopback socket, with an `orblit_core` world
 and a stand-in loop, and with the program run as a child process. Nothing has

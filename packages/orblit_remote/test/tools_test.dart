@@ -104,6 +104,86 @@ void main() {
     });
   });
 
+  group('ids, notifications and batches', () {
+    String message(Map<String, Object?> body) =>
+        jsonEncode({'jsonrpc': '2.0', ...body});
+
+    test('a tools/call with no id is never run', () async {
+      final made = _make(answers: {'perf.summary': {}});
+      final reply = await made.server.handle(
+        message({
+          'method': 'tools/call',
+          'params': {'name': 'perf'},
+        }),
+      );
+      expect(reply, isNull);
+      expect(made.seen, isEmpty);
+    });
+
+    test('an id of null is a notification', () async {
+      final reply = await _make().server.handle(
+        message({'id': null, 'method': 'ping'}),
+      );
+      expect(reply, isNull);
+    });
+
+    test('an id that is not a number or text is refused', () async {
+      for (final id in [
+        1.5,
+        {'a': 1},
+        [1],
+        true,
+      ]) {
+        final reply =
+            jsonDecode(
+                  (await _make().server.handle(
+                    message({'id': id, 'method': 'ping'}),
+                  ))!,
+                )
+                as Map<String, Object?>;
+        expect((reply['error']! as Map<String, Object?>)['code'], -32600);
+        expect(reply['id'], isNull);
+      }
+    });
+
+    test('a request with no method answers under its own id', () async {
+      final reply =
+          jsonDecode((await _make().server.handle(message({'id': 5})))!)
+              as Map<String, Object?>;
+      expect(reply['id'], 5);
+      expect((reply['error']! as Map<String, Object?>)['code'], -32600);
+    });
+
+    test('a batch is answered in order and leaves out notifications', () async {
+      final reply = await _make().server.handle(
+        jsonEncode([
+          {'jsonrpc': '2.0', 'id': 1, 'method': 'ping'},
+          {'jsonrpc': '2.0', 'method': 'notifications/initialized'},
+          {'jsonrpc': '2.0', 'id': 'b', 'method': 'ping'},
+        ]),
+      );
+      final answers = (jsonDecode(reply!) as List<Object?>)
+          .cast<Map<String, Object?>>();
+      expect(answers.map((a) => a['id']), [1, 'b']);
+    });
+
+    test('a batch of notifications is not answered', () async {
+      final reply = await _make().server.handle(
+        jsonEncode([
+          {'jsonrpc': '2.0', 'method': 'notifications/initialized'},
+        ]),
+      );
+      expect(reply, isNull);
+    });
+
+    test('an empty batch is an invalid request', () async {
+      final reply =
+          jsonDecode((await _make().server.handle('[]'))!)
+              as Map<String, Object?>;
+      expect((reply['error']! as Map<String, Object?>)['code'], -32600);
+    });
+  });
+
   group('the tool list', () {
     List<String> names(Map<String, Object?> reply) => [
       for (final tool in (_result(reply)['tools']! as List<Object?>))
@@ -138,6 +218,20 @@ void main() {
       });
       expect((reply['error']! as Map<String, Object?>)['code'], -32602);
       expect(made.seen, isEmpty);
+    });
+
+    test('says step and set change the game, and the rest do not', () async {
+      final reply = await _ask(_make(allowWrite: true).server, 'tools/list');
+      final hints = {
+        for (final tool in (_result(reply)['tools']! as List<Object?>))
+          (tool! as Map<String, Object?>)['name']:
+              ((tool as Map<String, Object?>)['annotations']!
+                  as Map<String, Object?>)['readOnlyHint'],
+      };
+      expect(hints['step'], isFalse);
+      expect(hints['set'], isFalse);
+      expect(hints['observe'], isTrue);
+      expect(hints['snapshot'], isTrue);
     });
 
     test('refuses a tool it does not have', () async {
@@ -213,6 +307,52 @@ void main() {
       final reply = await _tool(made.server, 'observe', {'limit': 0});
       expect(_result(reply)['isError'], isTrue);
       expect(_content(reply).single['text'], contains('limit'));
+    });
+
+    test('a tool that takes no arguments works without the field', () async {
+      final made = _make(
+        answers: {
+          'perf.summary': {'frame': 1},
+        },
+      );
+      final server = made.server;
+      final without = await _ask(server, 'tools/call', {'name': 'perf'});
+      expect(_result(without)['isError'], isFalse);
+      final nulled = await _ask(server, 'tools/call', {
+        'name': 'perf',
+        'arguments': null,
+      });
+      expect(_result(nulled)['isError'], isFalse);
+    });
+
+    test('step refuses a count outside 1 to 300', () async {
+      final made = _make(
+        answers: {
+          'time.step': {'stepped': 1},
+        },
+      );
+      for (final n in [0, 301, -1, 'x', 2.5]) {
+        final reply = await _tool(made.server, 'step', {'n': n});
+        expect(_result(reply)['isError'], isTrue, reason: '$n');
+      }
+      expect(made.seen, isEmpty);
+      await _tool(made.server, 'step', {'n': 300});
+      expect(made.seen.single.params, {'n': 300});
+    });
+
+    test('set refuses a value JSON cannot carry', () async {
+      final made = _make(allowWrite: true);
+      final reply = await made.server.handle(
+        '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":'
+        '{"name":"set","arguments":{"id":1,"component":"a","field":"b",'
+        '"value":1e999}}}',
+      );
+      final result =
+          (jsonDecode(reply!) as Map<String, Object?>)['result']!
+              as Map<String, Object?>;
+      expect(result['isError'], isTrue);
+      expect(jsonEncode(result['content']), contains('finite'));
+      expect(made.seen, isEmpty);
     });
 
     test('step passes one frame by default', () async {

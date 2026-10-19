@@ -9,6 +9,10 @@ const _protocolVersions = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const _defaultLimit = 20;
 const _diffLimit = 200;
 
+// One call must finish inside the client's deadline of thirty seconds, and a
+// game may run at ten frames a second.
+const _maxFrames = 300;
+
 /// Calls one verb of the control surface and answers its result. Throws
 /// [RemoteError] when the game refuses the call or cannot be reached.
 typedef RemoteCall =
@@ -24,12 +28,19 @@ final class _Tool {
     this.run, {
     this.required = const [],
     this.writes = false,
+    this.readOnlyHint = true,
   });
 
   final String description;
   final Map<String, Object?> properties;
   final List<String> required;
+
+  /// Gated behind the write flag.
   final bool writes;
+
+  /// What a client may read as "this changes nothing". `step` is not gated,
+  /// but it runs game code and holds time, so it does not claim it.
+  final bool readOnlyHint;
   final Future<_Content> Function(_Args args) run;
 }
 
@@ -62,14 +73,15 @@ final class ToolServer {
       _observe,
     ),
     'step': _Tool(
-      'Pauses the game and passes `n` frames (default 1), each one step '
-      'delta of the game, a sixtieth of a second unless it chose another. '
-      'Answers the frames passed. The game runs again when this session '
-      'ends.',
+      'Pauses the game and passes `n` frames (default 1, at most '
+      '$_maxFrames), each one step delta of the game, a sixtieth of a second '
+      'unless it chose another. Answers the frames passed. The game stays '
+      'paused until this session ends.',
       {
-        'n': {'type': 'integer', 'description': 'Frames, at least 1'},
+        'n': {'type': 'integer', 'minimum': 1, 'maximum': _maxFrames},
       },
       _step,
+      readOnlyHint: false,
     ),
     'set': _Tool(
       'Writes to the running game. Sets one field of one component on an '
@@ -83,6 +95,7 @@ final class ToolServer {
       _set,
       required: ['id', 'component', 'field', 'value'],
       writes: true,
+      readOnlyHint: false,
     ),
     'snapshot': _Tool(
       'Records every entity and the host extras under a new id, and answers '
@@ -114,16 +127,39 @@ final class ToolServer {
     ),
   };
 
-  /// The answer to one message, as JSON text. Null for a notification, a
-  /// message with no id, which is never answered.
+  // The one place the write gate is read. The list and the call both use it,
+  // so a tool cannot be listed and refused, or hidden and callable.
+  late final Map<String, _Tool> _visible = {
+    for (final entry in _tools.entries)
+      if (allowWrite || !entry.value.writes) entry.key: entry.value,
+  };
+
+  /// The answer to one message, as JSON text. Null when nothing is owed: a
+  /// notification, or a batch of them. A message with no id is never run,
+  /// since it could not be answered, and no notification this server knows
+  /// needs an action.
   Future<String?> handle(String message) async {
-    final Object? request;
+    final Object? decoded;
     try {
-      request = jsonDecode(message);
+      decoded = jsonDecode(message);
     } on FormatException {
       return _failure(null, RemoteError.parse, 'The message is not JSON');
     }
-    if (request is! Map<String, Object?> || request['method'] is! String) {
+    if (decoded is! List<Object?>) return _one(decoded);
+    if (decoded.isEmpty) {
+      return _failure(
+        null,
+        RemoteError.invalidRequest,
+        'A batch holds at least one message',
+      );
+    }
+    final answers = [for (final item in decoded) await _one(item)];
+    final owed = answers.nonNulls.toList();
+    return owed.isEmpty ? null : '[${owed.join(',')}]';
+  }
+
+  Future<String?> _one(Object? request) async {
+    if (request is! Map<String, Object?>) {
       return _failure(
         null,
         RemoteError.invalidRequest,
@@ -131,14 +167,23 @@ final class ToolServer {
       );
     }
     final id = request['id'];
-    try {
-      final result = await _dispatch(
-        request['method']! as String,
-        request['params'],
+    if (id != null && id is! int && id is! String) {
+      return _failure(
+        null,
+        RemoteError.invalidRequest,
+        'An id is a whole number or text',
       );
-      return id == null ? null : _reply({'id': id, 'result': result});
+    }
+    final method = request['method'];
+    if (method is! String) {
+      return _failure(id, RemoteError.invalidRequest, 'A message has a method');
+    }
+    if (id == null) return null;
+    try {
+      final result = await _dispatch(method, request['params']);
+      return _reply({'id': id, 'result': result});
     } on RemoteError catch (error) {
-      return id == null ? null : _failure(id, error.code, error.message);
+      return _failure(id, error.code, error.message);
     }
   }
 
@@ -170,27 +215,31 @@ final class ToolServer {
   }
 
   List<Map<String, Object?>> _list() => [
-    for (final entry in _tools.entries)
-      if (allowWrite || !entry.value.writes)
-        {
-          'name': entry.key,
-          'description': entry.value.description,
-          'inputSchema': {
-            'type': 'object',
-            'properties': entry.value.properties,
-            'required': entry.value.required,
-          },
-          'annotations': {'readOnlyHint': !entry.value.writes},
+    for (final entry in _visible.entries)
+      {
+        'name': entry.key,
+        'description': entry.value.description,
+        'inputSchema': {
+          'type': 'object',
+          'properties': entry.value.properties,
+          'required': entry.value.required,
         },
+        'annotations': {'readOnlyHint': entry.value.readOnlyHint},
+      },
   ];
 
   Future<Object?> _callTool(Object? params) async {
-    final name = params is Map<String, Object?> ? params['name'] : null;
-    final tool = _tools[name];
-    if (tool == null || (tool.writes && !allowWrite)) {
-      throw RemoteError(RemoteError.invalidParams, 'Unknown tool $name');
+    final call = params is Map<String, Object?>
+        ? params
+        : const <String, Object?>{};
+    final tool = _visible[call['name']];
+    if (tool == null) {
+      throw RemoteError(
+        RemoteError.invalidParams,
+        'Unknown tool ${call['name']}',
+      );
     }
-    final args = (params! as Map<String, Object?>)['arguments'] ?? {};
+    final args = call['arguments'] ?? const <String, Object?>{};
     if (args is! _Args) {
       throw const RemoteError(
         RemoteError.invalidParams,
@@ -208,6 +257,8 @@ final class ToolServer {
     }
   }
 
+  // shortcut: the cuts happen here, after the game has answered in full. Give
+  // world.entities a limit when a world is big enough for that to matter.
   Future<_Content> _observe(_Args args) async {
     final id = args['id'];
     if (id != null) return _text(await _call('entity.get', {'id': id}));
@@ -228,10 +279,26 @@ final class ToolServer {
     });
   }
 
-  Future<_Content> _step(_Args args) async =>
-      _text(await _call('time.step', {'n': args['n'] ?? 1}));
+  Future<_Content> _step(_Args args) async {
+    final n = args['n'] ?? 1;
+    if (n is! int || n < 1 || n > _maxFrames) {
+      throw const RemoteError(
+        RemoteError.invalidParams,
+        'n is a whole number from 1 to $_maxFrames. Call step again for more.',
+      );
+    }
+    return _text(await _call('time.step', {'n': n}));
+  }
 
   Future<_Content> _set(_Args args) async {
+    final value = args['value'];
+    // JSON cannot carry these, so the call would fail while it was written.
+    if (value is num && !value.isFinite) {
+      throw const RemoteError(
+        RemoteError.invalidParams,
+        'value must be a finite number',
+      );
+    }
     final written = {
       for (final name in const ['id', 'component', 'field', 'value'])
         name: args[name],

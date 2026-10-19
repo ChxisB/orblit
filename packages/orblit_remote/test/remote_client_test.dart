@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
@@ -120,6 +121,59 @@ void main() {
       ),
     );
   });
+
+  test('a span at zero is refused before anything connects', () async {
+    await expectLater(
+      RemoteClient.connect(server.uri, deadline: Duration.zero),
+      throwsArgumentError,
+    );
+    await expectLater(
+      RemoteClient.connect(server.uri, connectTimeout: Duration.zero),
+      throwsArgumentError,
+    );
+  });
+
+  test('a port that accepts and never answers ends at the timeout', () async {
+    final silent = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+    final held = <Socket>[];
+    silent.listen(held.add);
+    await expectLater(
+      RemoteClient.connect(
+        Uri.parse('ws://127.0.0.1:${silent.port}/?token=x'),
+        connectTimeout: const Duration(milliseconds: 200),
+      ),
+      throwsA(
+        isA<RemoteError>().having(
+          (e) => e.message,
+          'message',
+          contains('did not answer'),
+        ),
+      ),
+    );
+    for (final socket in held) {
+      socket.destroy();
+    }
+    await silent.close();
+  });
+
+  test('closed completes when the game ends the connection', () async {
+    final client = await RemoteClient.connect(server.uri);
+    await server.close();
+    await client.closed;
+  });
+
+  test(
+    'a value JSON cannot carry fails and leaves the client usable',
+    () async {
+      final client = await RemoteClient.connect(server.uri);
+      await expectLater(
+        client.call('perf.summary', {'v': double.nan}),
+        throwsA(isA<JsonUnsupportedObjectError>()),
+      );
+      expect(await client.call('perf.summary', {}), {'frame': 1});
+      await client.close();
+    },
+  );
 
   test('a port nobody listens on is unavailable', () async {
     final probe = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);

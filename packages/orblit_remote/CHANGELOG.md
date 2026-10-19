@@ -2,14 +2,19 @@
 
 ## 0.2.0
 
-- `ToolServer`: the control surface as seven named tools over the tool
-  protocol, for an assistant. Only `set` writes, and it is absent unless the
-  server is started with `--allow-write`.
-- `RemoteClient` joins a game's surface and pairs calls with answers.
-- `bin/orblit_remote.dart`, the `orblit_remote` executable: reads a game's
-  address, serves the tools on stdin and stdout, and logs to stderr. It exits
-  with 64 for a bad address and 69 for a game it cannot reach. The host must
-  be loopback.
+- The `orblit_remote` executable: reads a game's address, serves its control
+  surface as seven tools over the tool protocol on stdin and stdout, and logs
+  to stderr. Only `set` writes, and it is absent unless the program is
+  started with `--allow-write`.
+- The address comes from the command line or `ORBLIT_REMOTE_ADDRESS`. The
+  host must be loopback, and an unknown flag is refused.
+- Exit codes: 64 for a bad address, 69 for a game it cannot reach or that
+  goes away. A message with no id is never run. Batches are answered. Bad
+  UTF-8 on stdin is a parse error.
+- `step` takes 1 to 300 frames and is not marked read only, because it runs
+  game code and holds time.
+- The tool server and the client live under `lib/src` and are not exported.
+  The program is the interface.
 
 ## 0.1.0
 
