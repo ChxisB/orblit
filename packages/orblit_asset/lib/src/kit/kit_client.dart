@@ -26,8 +26,8 @@ final class KitStoreFailed implements Exception {
 /// is refused. Nothing here writes, and no file of a kit is fetched except
 /// the manifest.
 final class KitStoreClient {
-  /// Throws an [ArgumentError] unless [base] is an https address with no
-  /// user, query or fragment. A path with no trailing slash names a folder.
+  /// Throws an [ArgumentError] when [kitStoreAddressProblem] has something to
+  /// say about [base]. A path with no trailing slash names a folder.
   KitStoreClient(Uri base, this._transport) : base = _folder(base);
 
   final AssetTransport _transport;
@@ -91,17 +91,21 @@ final class KitStoreClient {
   }
 }
 
+/// Why [base] cannot be the address of a store, or null.
+///
+/// A store is read over https, from a host, with no user, query or fragment.
+String? kitStoreAddressProblem(Uri base) =>
+    base.scheme == 'https' &&
+        base.host.isNotEmpty &&
+        base.userInfo.isEmpty &&
+        !base.hasQuery &&
+        !base.hasFragment
+    ? null
+    : 'An address of a store is https, with a host and no user, query or '
+          'fragment.';
+
 Uri _folder(Uri base) {
-  if (base.scheme != 'https' ||
-      base.host.isEmpty ||
-      base.userInfo.isNotEmpty ||
-      base.hasQuery ||
-      base.hasFragment) {
-    throw ArgumentError.value(
-      '$base',
-      'base',
-      'must be an https address with no user, query or fragment',
-    );
-  }
+  final problem = kitStoreAddressProblem(base);
+  if (problem != null) throw ArgumentError.value('$base', 'base', problem);
   return base.path.endsWith('/') ? base : base.replace(path: '${base.path}/');
 }

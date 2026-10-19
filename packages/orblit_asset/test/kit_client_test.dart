@@ -132,7 +132,12 @@ void main() {
         throwsArgumentError,
         reason: text,
       );
+      expect(kitStoreAddressProblem(Uri.parse(text)), isNotNull, reason: text);
     }
+  });
+
+  test('an address with nothing wrong with it has no problem', () {
+    expect(kitStoreAddressProblem(base), isNull);
   });
 
   test('refuses a status other than 200', () async {

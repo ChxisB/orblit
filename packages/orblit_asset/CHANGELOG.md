@@ -7,6 +7,8 @@
   limit of that file, and `open(release)` lists a release's files and sizes by
   ranged requests, without its blobs. The base must be https. A reply that is
   not a 200, or a body past its limit, throws `KitStoreFailed`.
+  `kitStoreAddressProblem(base)` says why an address cannot be a store, and
+  `KitRelease.origin` is the origin and size limit to download a release with.
 - **Installing a kit.** `extractKit` takes `into`, a folder of the project to
   write under, and `only`, the files to take. A file the project has with
   other bytes still refuses the install unless `overwrite` is set.
