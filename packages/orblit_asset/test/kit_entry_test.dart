@@ -46,6 +46,8 @@ void main() {
     );
     expect(read.latest.offer.hash.hex, hash);
     expect(read.latest.toJson()['hash'], hash);
+    expect(read.latest.origin.base.host, 'example.com');
+    expect(read.latest.origin.policy.maxBytes, read.latest.bytes);
   });
 
   test('a url at a public name, a query or port 443 is read', () {

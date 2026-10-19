@@ -5,7 +5,6 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 
-import '../net/policy.dart';
 import '../net/transport.dart';
 import '../pack/asset_pack.dart';
 import '../pack/pack_file_io.dart';
@@ -224,7 +223,7 @@ final class _StoreBuild {
           .download(
             release.offer,
             transport: _transport,
-            origin: _originOf(release),
+            origin: release.origin,
           )
           .timeout(_timeout);
       return true;
@@ -266,17 +265,6 @@ final class _StoreBuild {
   String _packPath(KitRelease release) =>
       '${_folder.path}${Platform.pathSeparator}${release.hash.hex}.opack';
 }
-
-/// The origin of the url, which is the host the request goes to first, and a
-/// limit of the size the entry gives.
-///
-/// [HttpTransport] follows a redirect to any host and the policy does not look
-/// at where it leads, so a release on a host that redirects, such as a GitHub
-/// release, works. The pack hash is what vouches for the bytes.
-AssetOrigin _originOf(KitRelease release) => AssetOrigin(
-  Uri(scheme: 'https', host: Uri.parse(release.url).host),
-  policy: FetchPolicy(maxBytes: release.bytes),
-);
 
 List<String> _disagreements(
   KitEntry entry,

@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import '../content_hash.dart';
+import '../net/policy.dart';
 import '../pack/pack_offer.dart';
 import 'kit_json.dart';
 import 'kit_manifest.dart';
@@ -111,6 +112,17 @@ final class KitRelease {
 
   /// What `PackFolder.download` takes.
   PackOffer get offer => PackOffer(Uri.parse(url), hash);
+
+  /// What `PackFolder.download` takes with [offer]: the host the request goes
+  /// to first, and a limit of the size the release gives.
+  ///
+  /// `HttpTransport` follows a redirect to any host and the policy does not
+  /// look at where it leads, so a release on a host that redirects, such as a
+  /// GitHub release, works. The pack hash is what vouches for the bytes.
+  AssetOrigin get origin => AssetOrigin(
+    Uri(scheme: 'https', host: Uri.parse(url).host),
+    policy: FetchPolicy(maxBytes: bytes),
+  );
 
   Map<String, Object?> toJson() => {
     'bytes': bytes,
