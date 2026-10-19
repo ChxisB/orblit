@@ -100,6 +100,23 @@ void main() {
     );
   });
 
+  test('encodes to the bytes it reads back from', () {
+    final read = entry({
+      'releases': [release('1.2.0'), release('1.10.0')],
+    });
+    final bytes = read.encode();
+    expect(utf8.decode(bytes), endsWith('}\n'));
+    final again = KitEntry.parse(
+      bytes,
+      publisher: 'brass-lamp',
+      slug: 'crates',
+    );
+    expect(again.releases.map((r) => r.toJson()), [
+      for (final r in read.releases) r.toJson(),
+    ]);
+    expect(again.encode(), bytes);
+  });
+
   test('notes may be left out', () {
     final bare = release('1.0.0')..remove('notes');
     expect(

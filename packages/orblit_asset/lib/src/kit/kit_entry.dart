@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import '../content_hash.dart';
@@ -245,6 +246,16 @@ final class KitEntry {
   final List<KitRelease> releases;
 
   KitRelease get latest => releases.first;
+
+  /// The entry file, indented so a pull request shows each release as lines,
+  /// and ending in a new line. [parse] reads it back.
+  Uint8List encode() => Uint8List.fromList(
+    utf8.encode(
+      '${const JsonEncoder.withIndent('  ').convert({
+        'releases': [for (final release in releases) release.toJson()],
+      })}\n',
+    ),
+  );
 }
 
 const Set<String> _releaseKeys = {

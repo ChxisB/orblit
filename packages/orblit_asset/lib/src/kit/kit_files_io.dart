@@ -8,10 +8,14 @@ import '../asset_id.dart';
 import '../asset_manifest.dart';
 import '../content_hash.dart';
 import '../directory.dart';
+import '../pack/asset_pack.dart';
 import '../pack/pack_bundle_io.dart';
+import '../pack/pack_file_io.dart';
 import '../pack/pack_summary.dart';
 import 'kit.dart';
+import 'kit_entry.dart';
 import 'kit_manifest.dart';
+import 'kit_published.dart';
 import 'kit_rules.dart';
 
 /// Packs [folder] as one kit file at [outPath].
@@ -63,6 +67,102 @@ Future<PackSummary> packKit({
       'written. Pack it again.',
     );
   }
+}
+
+/// Packs [folder] as the kit file [outPath] and answers the entry that lists
+/// it, hosted at [url].
+///
+/// The file is opened again and checked, as CI will check it, so a file that
+/// does not read back is refused here. The release takes its version from the
+/// kit's own manifest and its hash and size from the file. [released] gives
+/// the day, as its own clock spells it, and [notes] is the one line of change
+/// notes.
+///
+/// With [entriesPath], the folder of entries `kit index` reads, the entry
+/// file `<publisher>/<slug>.json` is written there, with the release added to
+/// the ones it listed. A version already listed is refused, because a listed
+/// release is not edited. The entry is written whole by rename. Without it,
+/// only the kit file is written. Nothing is uploaded.
+///
+/// Throws a [FormatException] for a kit, a url, a note or an entry that is
+/// refused. A refusal after the pack leaves the kit file in place, whole.
+Future<KitPublished> publishKit({
+  required String folder,
+  required String url,
+  required String outPath,
+  required DateTime released,
+  String notes = '',
+  String? entriesPath,
+}) async {
+  if (entriesPath != null && !Directory(entriesPath).existsSync()) {
+    throw ArgumentError.value(entriesPath, 'entriesPath', 'is not a directory');
+  }
+  final summary = await packKit(folder: folder, outPath: outPath);
+  final manifest = await _readBack(outPath);
+  final release = KitRelease(
+    version: manifest.version,
+    url: url,
+    hash: summary.hash,
+    bytes: summary.bytes,
+    released: released.toIso8601String().substring(0, 10),
+    notes: notes,
+  );
+  final path = entriesPath == null
+      ? null
+      : [
+          entriesPath,
+          manifest.publisher,
+          '${manifest.slug}.json',
+        ].join(Platform.pathSeparator);
+  final listed = path == null
+      ? const <KitRelease>[]
+      : await _listed(path, manifest);
+  if (listed.any((held) => held.version == release.version)) {
+    throw FormatException(
+      '${manifest.publisher}/${manifest.slug} lists ${release.version} '
+      'already. A listed release is not edited. Raise "version" in kit.json.',
+    );
+  }
+  final entry = KitEntry(
+    publisher: manifest.publisher,
+    slug: manifest.slug,
+    releases: [...listed, release],
+  );
+  if (path != null) {
+    File(path).parent.createSync(recursive: true);
+    await _write(path, entry.encode());
+  }
+  return KitPublished(
+    summary: summary,
+    release: release,
+    entry: entry,
+    entryPath: path,
+  );
+}
+
+/// The manifest of the kit file at [path], after every blob in it has been
+/// hashed again.
+Future<KitManifest> _readBack(String path) async {
+  final source = FilePackBytes(path);
+  try {
+    final kit = await Kit.open(await AssetPack.open(source));
+    final problems = await kit.check();
+    if (problems.isNotEmpty) throw FormatException(problems.join('\n'));
+    return kit.manifest;
+  } finally {
+    await source.close();
+  }
+}
+
+/// The releases the entry file at [path] lists, or none when it is not there.
+Future<List<KitRelease>> _listed(String path, KitManifest manifest) async {
+  final file = File(path);
+  if (!file.existsSync()) return const [];
+  return KitEntry.parse(
+    await file.readAsBytes(),
+    publisher: manifest.publisher,
+    slug: manifest.slug,
+  ).releases;
 }
 
 /// The paths of the kit file and its temporary file, so a run does not pack
