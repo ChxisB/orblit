@@ -122,6 +122,8 @@ final class _ObjReader {
   var _unlisted = 0;
   var _line = 0;
   var _group = 'default';
+  // shortcut: a face before any usemtl wears material 0, whichever material
+  // that is. Give such faces a material of their own when a file mixes the two.
   var _material = 0;
   var _smooth = false;
 
