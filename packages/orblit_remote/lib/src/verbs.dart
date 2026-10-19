@@ -1,0 +1,311 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'inspector.dart';
+import 'log_tail.dart';
+import 'snapshot.dart';
+import 'time_gate.dart';
+
+/// A request the surface refuses, with the JSON-RPC code a client reads.
+final class RemoteError implements Exception {
+  const RemoteError(this.code, this.message);
+
+  static const parse = -32700;
+  static const invalidRequest = -32600;
+  static const noMethod = -32601;
+  static const invalidParams = -32602;
+  static const internal = -32603;
+  static const notFound = -32001;
+  static const readOnly = -32002;
+  static const timedOut = -32003;
+  static const unavailable = -32004;
+
+  final int code;
+  final String message;
+}
+
+/// The parts of a running game the surface can reach. Each is optional, and a
+/// verb that needs a part the game did not give answers [RemoteError.unavailable].
+final class RemoteHost {
+  const RemoteHost({
+    this.world,
+    this.gate,
+    this.log,
+    this.perf,
+    this.input,
+    this.screenshot,
+    this.extras = const {},
+    this.readOnly = false,
+    this.stepTimeout = const Duration(seconds: 10),
+  });
+
+  final WorldInspector? world;
+  final TimeGate? gate;
+  final LogTail? log;
+
+  /// The host's phase times, as JSON.
+  final Map<String, Object?> Function()? perf;
+
+  /// Passes one input event, as JSON, to the game.
+  final void Function(Map<String, Object?> event)? input;
+
+  /// The render view as PNG bytes.
+  final Future<Uint8List> Function()? screenshot;
+
+  /// Further state kept beside the entities in a snapshot, by name. The
+  /// physics world's own snapshot goes here.
+  final Map<String, Map<String, Object?> Function()> extras;
+
+  /// Refuses `entity.set` and `input.send`. Time control and snapshots stay,
+  /// because they change no value by themselves.
+  final bool readOnly;
+
+  /// How long `time.step` waits for the game's loop to pass the frames.
+  final Duration stepTimeout;
+}
+
+typedef _Run = Future<Object?> Function(Map<String, Object?> params);
+
+/// The verbs of the control surface, as one JSON-RPC request in and one
+/// answer out. It knows nothing of sockets, so a test can call it directly.
+final class RemoteVerbs {
+  RemoteVerbs(this._host);
+
+  final RemoteHost _host;
+  final SnapshotStore _snapshots = SnapshotStore();
+
+  late final Map<String, ({bool write, _Run run})> _table = {
+    'world.entities': (write: false, run: _entities),
+    'entity.get': (write: false, run: _get),
+    'entity.set': (write: true, run: _set),
+    'time.pause': (write: false, run: _pause),
+    'time.resume': (write: false, run: _resume),
+    'time.step': (write: false, run: _step),
+    'world.snapshot': (write: false, run: _snapshot),
+    'world.diff': (write: false, run: _diff),
+    'input.send': (write: true, run: _send),
+    'view.screenshot': (write: false, run: _screenshot),
+    'log.tail': (write: false, run: _tail),
+    'perf.summary': (write: false, run: _perf),
+  };
+
+  /// The answer to one request, as the JSON text to send back. Null for a
+  /// notification, a request with no id, which is never answered.
+  ///
+  /// shortcut: one request at a time, not a batch. Add arrays when a client
+  /// needs several answers in one round trip.
+  Future<String?> handle(String message) async {
+    final Map<String, Object?> request;
+    try {
+      request = _parse(message);
+    } on RemoteError catch (error) {
+      return _failure(null, error);
+    }
+    final id = request['id'];
+    try {
+      final result = await _call(request);
+      if (id == null) return null;
+      return jsonEncode({'jsonrpc': '2.0', 'id': id, 'result': result});
+    } on RemoteError catch (error) {
+      return id == null ? null : _failure(id, error);
+    } catch (error) {
+      // A host callback can throw anything, and the debugger must outlive it.
+      final wrapped = RemoteError(RemoteError.internal, '$error');
+      return id == null ? null : _failure(id, wrapped);
+    }
+  }
+
+  Map<String, Object?> _parse(String message) {
+    final Object? request;
+    try {
+      request = jsonDecode(message);
+    } on FormatException {
+      throw const RemoteError(RemoteError.parse, 'The request is not JSON');
+    }
+    final id = request is Map<String, Object?> ? request['id'] : null;
+    if (request is! Map<String, Object?> || (id is! int? && id is! String?)) {
+      throw const RemoteError(
+        RemoteError.invalidRequest,
+        'A request is one object with a method and an int or text id',
+      );
+    }
+    return request;
+  }
+
+  Future<Object?> _call(Map<String, Object?> request) async {
+    final verb = _table[request['method']];
+    if (verb == null) {
+      throw RemoteError(
+        RemoteError.noMethod,
+        'No method named ${request['method']}',
+      );
+    }
+    if (verb.write && _host.readOnly) {
+      throw const RemoteError(
+        RemoteError.readOnly,
+        'This session is read only',
+      );
+    }
+    final params = request['params'] ?? const <String, Object?>{};
+    if (params is! Map<String, Object?>) {
+      throw const RemoteError(
+        RemoteError.invalidParams,
+        'Params are an object of names, not a list',
+      );
+    }
+    try {
+      return await verb.run(params);
+    } on ArgumentError catch (error) {
+      throw RemoteError(RemoteError.invalidParams, '$error');
+    } on StateError catch (error) {
+      throw RemoteError(RemoteError.notFound, error.message);
+    }
+  }
+
+  String _failure(Object? id, RemoteError error) => jsonEncode({
+    'jsonrpc': '2.0',
+    'id': id,
+    'error': {'code': error.code, 'message': error.message},
+  });
+
+  T _need<T>(T? part, String name) =>
+      part ??
+      (throw RemoteError(
+        RemoteError.unavailable,
+        'This game did not give the surface $name',
+      ));
+
+  Future<Object?> _entities(Map<String, Object?> params) async {
+    final world = _need(_host.world, 'a world');
+    return [
+      for (final row in world.entities(_names(params['filter'])))
+        {'id': row.id, 'components': row.components},
+    ];
+  }
+
+  Future<Object?> _get(Map<String, Object?> params) async {
+    final id = _int(params, 'id');
+    final components = _need(_host.world, 'a world').read(id);
+    if (components == null) {
+      throw RemoteError(RemoteError.notFound, 'Entity $id is not alive');
+    }
+    return {'id': id, 'components': components};
+  }
+
+  Future<Object?> _set(Map<String, Object?> params) async {
+    _need(_host.world, 'a world').write(
+      _int(params, 'id'),
+      _string(params, 'component'),
+      _string(params, 'field'),
+      _num(params, 'value'),
+    );
+    return null;
+  }
+
+  Future<Object?> _pause(Map<String, Object?> _) async {
+    _need(_host.gate, 'a time gate').pause();
+    return {'paused': true};
+  }
+
+  Future<Object?> _resume(Map<String, Object?> _) async {
+    _need(_host.gate, 'a time gate').resume();
+    return {'paused': false};
+  }
+
+  // shortcut: a step cut short by a pause or a resume from another client
+  // still answers as done. Report the frames passed when a client needs them.
+  Future<Object?> _step(Map<String, Object?> params) async {
+    final gate = _need(_host.gate, 'a time gate');
+    final frames = _int(params, 'n');
+    try {
+      await gate.step(frames).timeout(_host.stepTimeout);
+    } on TimeoutException {
+      gate.pause();
+      throw RemoteError(
+        RemoteError.timedOut,
+        'The game passed no frames in ${_host.stepTimeout.inSeconds} s. '
+        'Its loop must call world.tick(gate.advance(delta)).',
+      );
+    }
+    return {'paused': true, 'stepped': frames};
+  }
+
+  // F5 is broken on purpose: a snapshot is kept so that a later diff can name
+  // it, and the client needs its id back with the content.
+  Future<Object?> _snapshot(Map<String, Object?> _) async {
+    final world = _need(_host.world, 'a world');
+    final entities = <String, Object?>{};
+    for (final row in world.entities(const [])) {
+      final components = world.read(row.id);
+      if (components != null) entities['${row.id}'] = components;
+    }
+    final snapshot = <String, Object?>{
+      'entities': entities,
+      'extras': {
+        for (final extra in _host.extras.entries) extra.key: extra.value(),
+      },
+    };
+    _snapshots.add(snapshot);
+    return {'id': _snapshots.lastId, ...snapshot};
+  }
+
+  Future<Object?> _diff(Map<String, Object?> params) async => [
+    for (final change in diffJson(_kept(params, 'a'), _kept(params, 'b')))
+      {'path': change.path, 'from': change.from, 'to': change.to},
+  ];
+
+  Future<Object?> _send(Map<String, Object?> params) async {
+    final event = params['event'];
+    if (event is! Map<String, Object?>) {
+      throw ArgumentError.value(event, 'event', 'must be an object');
+    }
+    _need(_host.input, 'an input sink')(event);
+    return null;
+  }
+
+  Future<Object?> _screenshot(Map<String, Object?> _) async {
+    final png = await _need(_host.screenshot, 'a screenshot source')();
+    return {'png': base64Encode(png)};
+  }
+
+  Future<Object?> _tail(Map<String, Object?> params) async {
+    final count = params['n'] == null ? 50 : _int(params, 'n');
+    return _need(_host.log, 'a log').tail(count);
+  }
+
+  Future<Object?> _perf(Map<String, Object?> _) async =>
+      _need(_host.perf, 'a perf summary')();
+
+  Map<String, Object?> _kept(Map<String, Object?> params, String name) {
+    final id = _string(params, name);
+    return _snapshots.find(id) ??
+        (throw RemoteError(RemoteError.notFound, 'No snapshot named $id'));
+  }
+}
+
+List<String> _names(Object? value) {
+  if (value == null) return const [];
+  if (value is List<Object?> && value.every((name) => name is String)) {
+    return value.cast<String>();
+  }
+  throw ArgumentError.value(value, 'filter', 'must be a list of names');
+}
+
+int _int(Map<String, Object?> params, String name) {
+  final value = params[name];
+  if (value is int) return value;
+  throw ArgumentError.value(value, name, 'must be a whole number');
+}
+
+num _num(Map<String, Object?> params, String name) {
+  final value = params[name];
+  if (value is num) return value;
+  throw ArgumentError.value(value, name, 'must be a number');
+}
+
+String _string(Map<String, Object?> params, String name) {
+  final value = params[name];
+  if (value is String) return value;
+  throw ArgumentError.value(value, name, 'must be text');
+}
