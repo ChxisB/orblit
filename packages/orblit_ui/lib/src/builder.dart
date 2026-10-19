@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'css.dart';
 import 'node.dart';
+import 'strings.dart';
 import 'style.dart';
 import 'theme.dart';
 import 'touch.dart';
@@ -46,6 +47,8 @@ class UiBuilder {
     UiTheme? theme,
     this.onEvent,
     this.fontFamily,
+    this.fontFallback = const [],
+    this.strings,
     this.decorate,
     this.width,
   }) : theme = theme ?? const UiTheme(),
@@ -59,6 +62,13 @@ class UiBuilder {
 
   /// The font everything is set in, when the host has one it wants used.
   final String? fontFamily;
+
+  /// Fonts tried, in order, for a character [fontFamily] has no glyph for.
+  /// Name the family that carries a script the main font lacks.
+  final List<String> fontFallback;
+
+  /// Where a text with a key finds its words. Null shows the key.
+  final UiStrings? strings;
 
   /// Called for every element, when a host wants to wrap them. Null in a game.
   final UiDecorator? decorate;
@@ -109,6 +119,7 @@ class UiBuilder {
       letterSpacing: style.letterSpacing,
       height: style.lineHeight,
       fontFamily: fontFamily,
+      fontFamilyFallback: fontFallback.isEmpty ? null : fontFallback,
     );
 
     Widget widget = switch (node.type) {
@@ -379,8 +390,16 @@ class UiBuilder {
     return spaced;
   }
 
+  /// The words an element shows: the table's text for its key when it has
+  /// one, and the key itself when the table is missing or has nothing.
+  String _words(UiNode node) {
+    final key = node.textKey;
+    if (key == null) return node.text ?? '';
+    return strings?.find(key, node.textArgs) ?? node.text ?? key;
+  }
+
   Widget _text(UiNode node, UiStyle style, TextStyle inherited) {
-    final words = node.text ?? '';
+    final words = _words(node);
     return Text(
       (style.uppercase ?? false) ? words.toUpperCase() : words,
       style: inherited,
@@ -401,7 +420,7 @@ class UiBuilder {
     List<int> path,
   ) {
     final handler = node.handlerFor('onPressed') ?? node.handlerFor('onTap');
-    final label = node.text ?? '';
+    final label = _words(node);
 
     // Built out of the same pieces as everything else rather than out of a
     // Material button, so a class list styles a button exactly the way it

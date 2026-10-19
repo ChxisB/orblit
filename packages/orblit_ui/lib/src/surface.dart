@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'builder.dart';
 import 'document.dart';
 import 'node.dart';
+import 'strings.dart';
 import 'theme.dart';
 
 /// An interface described somewhere else, drawn here.
@@ -26,6 +27,8 @@ class UiSurface extends StatelessWidget {
     this.width,
     this.onEvent,
     this.fontFamily,
+    this.fontFallback = const [],
+    this.strings,
     this.decorate,
   });
 
@@ -52,12 +55,29 @@ class UiSurface extends StatelessWidget {
 
   final String? fontFamily;
 
+  /// Fonts tried in order for a character [fontFamily] lacks.
+  final List<String> fontFallback;
+
+  /// The words for text nodes that name a key. The surface draws again when
+  /// the language or a table changes, so a live interface changes language
+  /// with no new description.
+  final UiStrings? strings;
+
   /// A hook the editor uses to draw over what it built. Null in a game, where
   /// the design chrome is not stripped out — it was never built.
   final UiDecorator? decorate;
 
   @override
   Widget build(BuildContext context) {
+    final strings = this.strings;
+    if (strings == null) return _measured();
+    return ListenableBuilder(
+      listenable: strings,
+      builder: (context, _) => _measured(),
+    );
+  }
+
+  Widget _measured() {
     if (width != null) return _at(width!);
 
     return LayoutBuilder(
@@ -81,6 +101,8 @@ class UiSurface extends StatelessWidget {
       theme: scaled,
       onEvent: onEvent,
       fontFamily: fontFamily,
+      fontFallback: fontFallback,
+      strings: strings,
       decorate: decorate,
       width: measured,
     );
@@ -93,6 +115,7 @@ class UiSurface extends StatelessWidget {
         fontSize: scaled.text['base'],
         color: scaled.colour('slate-100'),
         fontFamily: fontFamily,
+        fontFamilyFallback: fontFallback.isEmpty ? null : fontFallback,
       ),
       child: builder.build(description),
     );
