@@ -3,7 +3,7 @@ description: >-
   A control surface for a running debug game: a loopback socket that lists
   entities, reads and sets components, pauses and steps time, and compares
   snapshots.
-version: 0.1.0
+version: 0.2.0
 publish_to: none
 
 environment:
