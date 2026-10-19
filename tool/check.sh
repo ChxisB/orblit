@@ -27,6 +27,7 @@ PACKAGES=(
   packages/orblit_motion
   packages/orblit_native
   packages/orblit_noise
+  packages/orblit_particles
   packages/orblit_path
   packages/orblit_remote
   packages/orblit_rig

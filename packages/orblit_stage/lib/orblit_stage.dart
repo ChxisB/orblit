@@ -27,6 +27,8 @@ export 'src/cutscenes.dart'
 export 'src/document_view.dart' show OrblitDocumentView;
 export 'src/material_view.dart' show materialFrom;
 export 'src/particle_sheet.dart' show OrblitParticleSheet;
+export 'src/particle_view.dart' show OrblitParticles;
+export 'src/trail_strip.dart' show OrblitTrailStrip;
 export 'src/scatter_view.dart' show scatterFrom;
 export 'src/skin_binding.dart'
     show OrblitSkinBinding, armatureOfSkin, boneNamesOfSkin;

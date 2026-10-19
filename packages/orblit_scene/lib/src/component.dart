@@ -4,6 +4,7 @@ import 'components/drawing.dart';
 import 'components/flat.dart';
 import 'components/joint.dart';
 import 'components/motion.dart';
+import 'components/particles.dart';
 import 'components/sound.dart';
 import 'components/staging.dart';
 import 'components/terrain.dart';
@@ -85,6 +86,7 @@ abstract final class SceneComponents {
   static const String parallax = 'parallax';
   static const String weather = 'weather';
   static const String canvas = 'canvas';
+  static const String particles = 'particles';
   static const String soundSource = 'soundSource';
   static const String soundListener = 'soundListener';
   static const String soundSurface = 'soundSurface';
@@ -118,6 +120,7 @@ abstract final class SceneComponents {
     parallax,
     weather,
     canvas,
+    particles,
     soundSource,
     soundListener,
     soundSurface,
@@ -144,6 +147,7 @@ abstract final class SceneComponents {
     parallax: ParallaxComponent.fromJson,
     weather: WeatherComponent.fromJson,
     canvas: CanvasComponent.fromJson,
+    particles: ParticleEmitterComponent.fromJson,
     soundSource: SoundSourceComponent.fromJson,
     soundListener: SoundListenerComponent.fromJson,
     soundSurface: SoundSurfaceComponent.fromJson,
