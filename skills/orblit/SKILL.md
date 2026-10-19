@@ -315,8 +315,8 @@ reproducible frames such as screenshots and tests.
 
 - **Batching is on by default.** Four or more placeholder cubes with the same
   material, colour and flags are merged into draws of up to 64 while keeping
-  their own keys. Named meshes aren't merged yet. `batching: false` turns it
-  off.
+  their own keys. Named meshes are not; see "Merging static meshes" below.
+  `batching: false` turns it off.
 - **Past a few thousand, use an `OrblitPopulation`.** One mesh, one flat
   `Float32List` of transforms (16 floats each, column-major, world space) and
   one of colours (3 floats each, linear RGB), with one world-space box
@@ -373,6 +373,60 @@ streamer.step(player.x, player.z, facingX: look.x, facingZ: look.z);
 - `onLoad` reports each cell's fetch time, apply time, bytes, entity count and
   `problems` from the file reader. A cell with problems still loads.
 - The cell the point is in loads first, whichever way it faces.
+
+## Merging static meshes
+
+A named mesh costs a draw for each primitive of each object, so a thousand
+rocks that never move cost a thousand draws or more. `OrblitStaticMerge` in
+`orblit_stage` watches a scene and swaps still copies of one model for one
+baked file. `bakeInstances` in `orblit_asset` makes the file.
+
+```dart
+import 'dart:io';
+
+import 'package:orblit_asset/orblit_asset.dart';
+import 'package:orblit_stage/orblit_stage.dart';
+
+final merge = OrblitStaticMerge(
+  bake: (mesh, placements) async =>
+      bakeInstances(await File(mesh).readAsBytes(), placements),
+  onReady: publish, // build the scene again
+);
+
+// Each time you publish a scene, in this order.
+merge.observe(scene);
+final shown = merge.replace(scene);
+```
+
+- **Who qualifies.** At least `minimum` (8) objects of one mesh, material,
+  colour, shadow flags and layer, in one square of ground `cellSize` (64)
+  wide, that have held still for `settle` (30) observations. Smaller groups
+  stay single.
+- **One that moves, hides or leaves** puts its group back to single objects
+  at once, and the rest bake again without it. A merged object cannot be
+  picked as its members. A pick lands on the merged object, whose key counts
+  up from `keyBase`.
+- **Left alone:** objects with a clip, morph weights, joints or a variant,
+  hidden ones, and ones with no mesh. The built-in cube batches natively.
+- **A model the baker will not take**, one with a skin, an animation, a morph
+  target, compressed buffers, an instanced node, material variants or
+  vertices that are not float, stays single for good. `merge.declined` lists
+  them.
+- **It costs.** A bake is Dart work. The renderer keeps what it loaded from
+  a file until it is torn down, so a group bakes at most `maxBakes` (8) times
+  and then stays single. The merged file also holds a second copy of the
+  geometry. Lights and cameras inside the model are not carried over.
+- **Not handled.** A blended material loses its depth order when copies
+  join, so return null from your baker for such a model. The baked file keeps
+  the model's texture references as they are, and only models with the
+  textures inside the GLB were checked. Positions are 32-bit floats in world
+  space, so keep `cellSize` small far from the origin. A baker that says no or
+  throws declines its model for good.
+- **`observe` changes state and `replace` answers.** Call `dispose()` when
+  you are done, and it releases every file.
+- **Checked headless on macOS only.** A merged group draws within a few
+  percent of the pixels its objects drew, and a sharp highlight can differ by
+  a few levels. It has not been run in a window.
 
 ## Models and files
 

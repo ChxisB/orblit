@@ -123,7 +123,7 @@ int mergePrimitives(GltfDocument document, {int maxVertices = 65536}) {
     final order = <String>[];
     for (final primitive in primitives) {
       if (primitive is! Map<String, Object?>) continue;
-      final key = _groupKey(document, primitive);
+      final key = primitiveGroupKey(document, primitive);
       if (key == null) continue;
       if (!groups.containsKey(key)) order.add(key);
       (groups[key] ??= []).add(primitive);
@@ -181,7 +181,10 @@ int mergePrimitives(GltfDocument document, {int maxVertices = 65536}) {
 
 /// What two primitives have to agree on before they can become one, or null
 /// when this primitive cannot be merged at all.
-String? _groupKey(GltfDocument document, Map<String, Object?> primitive) {
+String? primitiveGroupKey(
+  GltfDocument document,
+  Map<String, Object?> primitive,
+) {
   final mode = primitive['mode'] ?? 4;
   if (mode != 4) return null;
   if (primitive.containsKey('targets')) return null;

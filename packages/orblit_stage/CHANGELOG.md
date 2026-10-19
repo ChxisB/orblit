@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.16.0
+
+- `OrblitStaticMerge` draws many objects that never move as one object per
+  model and square of ground. `observe` notes what has held still and starts a
+  bake through a caller's `StaticBaker`, and `replace` swaps each ready merge
+  in for its members. A member that moves, hides or leaves puts its group back
+  to single objects at once. A group bakes at most `maxBakes` times, because
+  the renderer keeps what it loaded. Objects with a clip, morph weights,
+  joints or a variant, and hidden ones, are left alone.
+
 ## 0.15.0
 
 - `OrblitDocumentView(profiler: ...)` times `scene` as `scene build` and

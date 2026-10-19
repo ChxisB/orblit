@@ -66,6 +66,7 @@ export 'src/cook.dart'
 export 'src/directory.dart'
     show DirectoryAssetSource, DirectoryContentStore, DirectoryFetchRecords;
 export 'src/import_settings.dart' show ImportSettings, ImportSettingsReader;
+export 'src/gltf/bake.dart' show bakeInstances;
 export 'src/importers/atlas_importer.dart' show AtlasImporter;
 export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';

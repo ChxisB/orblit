@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.25.0
+
+- **`bakeInstances(model, placements)`.** Places a model once for each matrix
+  and writes one GLB. Each transform is baked into the vertices, with the
+  model's own node transforms. Primitives that share a material and a vertex
+  layout are joined, so a thousand placements of a model with ten materials
+  draw as ten primitives and not ten thousand. A new primitive starts before
+  the vertex count passes `maxVertices` (65,536), so indices stay 16 bit.
+- **What it keeps right.** Normals and tangents turn with the inverse
+  transpose, and a tangent's sign is left alone, as the renderer does. A
+  mirrored placement turns its triangles round. Positions carry a bounding
+  box. A placement with no volume is skipped.
+- **What it leaves alone.** It returns null for a model with a skin, an
+  animation, a morph target, a compressed buffer, a node that is instanced
+  already, a position, normal or tangent that is not float, or a buffer that
+  is not in the file. Lights and cameras in the model are not carried over.
+  The model's own geometry stays in the file beside the baked copy.
+- `primitiveGroupKey` in the glTF merge is shared with the baker.
+
 ## 0.24.0
 
 - **`CollisionMesh.fromObj`.** Builds a collider from a Wavefront OBJ, every
