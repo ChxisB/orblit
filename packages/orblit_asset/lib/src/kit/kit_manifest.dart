@@ -43,6 +43,7 @@ const int _maxUrl = 200;
 
 const Set<String> _previewExtensions = {'png', 'jpg', 'jpeg', 'webp'};
 const int _maxTags = 8;
+
 /// The most previews a kit names.
 const int kitPreviewLimit = 6;
 
