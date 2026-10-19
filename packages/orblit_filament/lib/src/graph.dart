@@ -776,6 +776,12 @@ class OrblitPassTiming {
   /// How many draw calls it submitted.
   final int draws;
 
+  Map<String, Object?> toJson() => {
+    'name': name,
+    'milliseconds': milliseconds,
+    'draws': draws,
+  };
+
   @override
   String toString() =>
       '$name ${milliseconds.toStringAsFixed(2)}ms, $draws draws';

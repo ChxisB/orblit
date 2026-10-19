@@ -587,6 +587,86 @@ class OrblitMaterial {
   /// reads all three and fails here instead.
   static const int stride = 37;
 
+  /// The name of each float [pack] writes, in order, so a diagnostic can say
+  /// what the shader was sent. One name for each of [stride].
+  static const List<String> packedNames = [
+    'baseColour.r',
+    'baseColour.g',
+    'baseColour.b',
+    'baseColour.a',
+    'metallic',
+    'roughness',
+    'reflectance',
+    'emissive.r',
+    'emissive.g',
+    'emissive.b',
+    'emissiveIntensity',
+    'ambientOcclusion',
+    'normalScale',
+    'tiling.x',
+    'tiling.y',
+    'offset.x',
+    'offset.y',
+    'maskThreshold',
+    'depthBias',
+    'blendMode',
+    'blendAmount',
+    'blendSharpness',
+    'blendTiling.x',
+    'blendTiling.y',
+    'blendOffset.x',
+    'blendOffset.y',
+    'clearCoat',
+    'clearCoatRoughness',
+    'anisotropy',
+    'sheenColour.r',
+    'sheenColour.g',
+    'sheenColour.b',
+    'sheenRoughness',
+    'windDirection.x',
+    'windDirection.y',
+    'windSpeed',
+    'windStrength',
+  ];
+
+  /// The name of each slot of [maps], in order. One for each of [mapCount].
+  static const List<String> mapNames = [
+    'baseColour',
+    'normal',
+    'metallicRoughness',
+    'occlusion',
+    'emissive',
+    'blendBaseColour',
+    'blendMask',
+  ];
+
+  /// The material as the renderer holds it, as JSON-ready values. The floats
+  /// are the packed ones, so they are the 32 bit values the shader reads.
+  Map<String, Object?> toJson() {
+    final packed = Float32List(stride);
+    pack(packed, 0);
+    return {
+      'key': key,
+      'shading': shading.name,
+      'blend': blend.name,
+      'culling': culling.name,
+      'doubleSided': doubleSided,
+      'depthWrite': depthWrite,
+      'wrap': wrap.name,
+      'filter': filter.name,
+      'screenMapped': screenMapped,
+      'litScreen': litScreen,
+      'video': video,
+      'maps': {
+        for (final (slot, map) in maps.indexed)
+          if (map != null) mapNames[slot]: map.path,
+      },
+      'values': {
+        for (final (at, name) in packedNames.indexed) name: packed[at],
+      },
+    };
+  }
+
   /// The bits that decide which compiled material an instance comes from and
   /// how the rasteriser is set up. Separate from the floats because a change
   /// here means rebuilding the instance and a change there means writing a

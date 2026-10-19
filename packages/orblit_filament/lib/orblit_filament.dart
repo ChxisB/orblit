@@ -89,6 +89,7 @@ export 'src/post.dart'
         OrblitReflections,
         OrblitVignette,
         ToneMapping;
+export 'src/scene_rows.dart' show OrblitSceneRows;
 export 'src/scene.dart'
     show
         OrblitCamera,

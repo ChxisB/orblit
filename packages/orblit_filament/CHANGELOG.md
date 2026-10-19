@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.38.0
+
+- **Rows for a diagnostic.** `OrblitScene.drawRows()` is one row for each
+  object and population the scene submits, with its mesh, material key,
+  instance count, layer and flags. `materialRow(key)` is one material's values
+  and the objects made of it. `OrblitPassTiming.toJson()` is a pass row. They
+  are the shape `orblit_remote` takes for `view.draws`, `view.material` and
+  `view.passes`. A row is what the scene submitted, so it does not show culling
+  or batching.
+- `drawRows` says when an object names a material the scene does not list,
+  which the renderer draws in the object's colour on the default surface.
+- `OrblitMaterial.toJson()` holds the floats the shader is sent, by name, in
+  `OrblitMaterial.packedNames`. A test fails if `stride` and the names drift.
+
 ## 0.37.0
 
 - **A lit screen.** `OrblitMaterial(shading: OrblitShading.video, litScreen:
