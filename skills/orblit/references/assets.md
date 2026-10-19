@@ -518,8 +518,16 @@ kit's name and summary come from its `kit.json`, not the entry.
 ```dart
 final store = KitStoreClient(Uri.parse('https://example.com/store/'), HttpTransport());
 final row = (await store.index()).rows.first;
-final releases = await store.releases(row);
-final kit = await store.open(releases.releases.first.release);
+final latest = (await store.releases(row)).releases.first;
+final listed = await store.open(latest.release); // the file list only
+
+final pack = await PackFolder('downloads').download(
+  latest.release.offer,
+  transport: HttpTransport(),
+  origin: latest.release.origin,
+);
+final kit = await Kit.open(pack);
+final problems = await kit.check();
 final clashes = await kit.conflictsIn(
   DirectoryAssetSource('my_project'),
   into: 'assets/kits/crates',
@@ -530,18 +538,21 @@ await extractKit(kit, 'my_project', into: 'assets/kits/crates');
 - **The client reads and never writes.** `KitStoreClient` takes an https
   base and an `AssetTransport`, so a test serves a store from a
   `MapTransport`. It reads `index()`, `releases(row)`, `preview(row, name)`
-  and `thumbnail(row)`, each to the limit of its file. A reply that is not a
-  200 or a body past its limit throws `KitStoreFailed`.
-  `kitStoreAddressProblem(base)` says why an address cannot be a store.
-- **`open(release)` lists files by ranged requests.** The server must answer
-  `Range`, or it throws `PackRangeFailed`. The files of the kit are not
-  downloaded. To install, fetch the whole pack with `PackFolder` using
-  `KitRelease.origin`, which gives the origin and the size limit, then check
-  the hash.
+  and `thumbnail(row)`, each to the limit of its file and within `timeout`
+  (30 seconds). A reply that is not a 200, a body past its limit or no
+  answer in time throws `KitStoreFailed`. `kitStoreAddressProblem(base)` says
+  why an address cannot be a store.
+- **`open(release)` is for showing, not installing.** It lists files by
+  ranged requests to the host that holds the kit file, and it reads at most
+  4 MiB in one piece. The server must answer `Range`, or it throws
+  `PackRangeFailed`. Nothing has checked its bytes against the index hash.
+  Install from a download made with `PackFolder` and `KitRelease.origin`,
+  which checks the hash and throws `FetchCorrupt` with both hashes.
 - **`into` and `only` belong to `extractKit` and `conflictsIn`.** `into` is
   a folder of the project and cannot start with a dot or climb out of it.
   `only` is a set of the kit's own ids, and an id the kit does not hold is an
-  `ArgumentError`. Conflicts are counted at the new place.
+  `ArgumentError`. Conflicts are counted at the new place. A kit file named
+  `kits.lock` is refused at the root, in any case.
 - **`kit.scripts` lists what can run.** Show it before an install. An install
   never runs a script.
 - **`kitFitsEngine(range, version)` is inclusive at both ends.** It answers
@@ -552,9 +563,9 @@ await extractKit(kit, 'my_project', into: 'assets/kits/crates');
   out is not listed. `adding` replaces the older entry of the same kit. A
   newer `formatVersion` is refused. `extractKit` does not write the lock, so
   whoever installs does.
-- **The editor does this in File › Kit store.** It goes online only when the
-  person presses a button, and it replaces a file of the project only when
-  the person ticks it.
+- **The editor does this in Scene › Kit store.** It goes online only when the
+  person presses a button, reads a kit's file list only when asked, and
+  replaces a file of the project only when the person ticks it.
 
 ---
 

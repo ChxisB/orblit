@@ -7,9 +7,6 @@ import 'kit_json.dart';
 import 'kit_manifest.dart';
 import 'kit_rules.dart';
 
-/// The file at the root of a project that says which kits were installed.
-const String kitLockName = 'kits.lock';
-
 /// The format of `kits.lock` this code writes, and the newest it reads.
 const int kitLockFormat = 1;
 

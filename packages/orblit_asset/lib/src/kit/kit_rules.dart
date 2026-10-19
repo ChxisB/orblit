@@ -16,6 +16,9 @@ const int kitTotalLimit = 1024 * 1024 * 1024;
 /// the header, the directory and the padding between blobs.
 const int kitPackLimit = kitTotalLimit + 16 * 1024 * 1024;
 
+/// The file at the root of a project that says which kits were installed.
+const String kitLockName = 'kits.lock';
+
 const int _segmentLimit = 100;
 const int _pathLimit = 240;
 
@@ -104,8 +107,16 @@ AssetId kitPlace(AssetId id, String folder) =>
 /// The folder is held to the rules a file name is: no hidden folder, no name
 /// a file system reads as something else. Otherwise a kit installed into
 /// `.git/hooks` would write what a person never looked at.
+///
+/// At the root, a file that any case of `kits.lock` names would replace the
+/// record of what kits installed.
 String? kitPlaceProblem(String folder, Iterable<AssetId> ids) {
-  if (folder.isEmpty) return null;
+  if (folder.isEmpty) {
+    return ids.any((id) => '$id'.toLowerCase() == kitLockName)
+        ? 'A file named $kitLockName would replace the list of installed '
+              'kits. Install the kit into a folder.'
+        : null;
+  }
   final shown = kitShow(folder);
   if (AssetId.tryParse(folder) == null) {
     return '"$shown" is not a folder name. Use names joined by single '

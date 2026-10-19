@@ -176,6 +176,14 @@ void main() {
     expect(kitPlaceProblem(long, ids), contains('limit'));
   });
 
+  test('kitPlaceProblem keeps a kit off the kits.lock of the project', () {
+    for (final name in ['kits.lock', 'Kits.Lock']) {
+      final ids = files([name]).keys;
+      expect(kitPlaceProblem('', ids), contains('kits.lock'), reason: name);
+      expect(kitPlaceProblem('assets', ids), isNull, reason: name);
+    }
+  });
+
   test('kitFitsEngine counts both ends and guesses when it cannot read', () {
     const range = (from: '0.30.0', to: '0.40.0');
     expect(kitFitsEngine(range, '0.30.0'), isTrue);

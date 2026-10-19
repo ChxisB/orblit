@@ -9,12 +9,15 @@
   not a 200, or a body past its limit, throws `KitStoreFailed`.
   `kitStoreAddressProblem(base)` says why an address cannot be a store, and
   `KitRelease.origin` is the origin and size limit to download a release with.
+  Each read gives up after `timeout`, 30 seconds unless set. `open` reads at
+  most 4 MiB in one piece, so a header cannot choose how much it holds.
 - **Installing a kit.** `extractKit` takes `into`, a folder of the project to
   write under, and `only`, the files to take. A file the project has with
   other bytes still refuses the install unless `overwrite` is set.
   `Kit.conflictsIn(project, into:, only:)` lists those files first, and
   `Kit.chosen` checks a choice. `kitPlace` and `kitPlaceProblem` join a folder
-  to a file name and say what is wrong with the folder.
+  to a file name and say what is wrong with the folder. A file named
+  `kits.lock` is refused at the root of a project, in any case.
 - **Scripts and engine fit.** `Kit.scripts` lists the files that can run, by
   the same test as `containsScripts`. `kitFitsEngine(range, version)` is
   inclusive at both ends and answers true for a version it cannot read.

@@ -78,10 +78,10 @@ export 'src/kit/kit_client.dart'
 export 'src/kit/kit_entry.dart' show KitEntry, KitRelease;
 export 'src/kit/kit_index.dart'
     show KitIndex, KitReleases, KitRow, PublishedRelease;
-export 'src/kit/kit_lock.dart'
-    show KitLock, LockedKit, kitLockFormat, kitLockName;
+export 'src/kit/kit_lock.dart' show KitLock, LockedKit, kitLockFormat;
 export 'src/kit/kit_manifest.dart' show KitManifest, kitFitsEngine;
-export 'src/kit/kit_rules.dart' show kitPackLimit, kitPlace, kitPlaceProblem;
+export 'src/kit/kit_rules.dart'
+    show kitLockName, kitPackLimit, kitPlace, kitPlaceProblem;
 export 'src/kit/kit_store.dart' show buildKitStore;
 export 'src/importer.dart'
     show

@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:orblit_asset/orblit_asset.dart';
+import 'package:orblit_asset/src/pack/pack_format.dart' show PackHeader;
 import 'package:test/test.dart';
 
 final base = Uri.parse('https://store.example/store/');
@@ -86,6 +88,16 @@ final class _NoLength implements AssetTransport {
 
   @override
   void close() => _inner.close();
+}
+
+/// A network that never answers.
+final class _Silent implements AssetTransport {
+  @override
+  Future<FetchReply> send(FetchRequest request) =>
+      Completer<FetchReply>().future;
+
+  @override
+  void close() {}
 }
 
 void main() {
@@ -177,5 +189,42 @@ void main() {
       utf8.encode(text.replaceFirst('"formatVersion":1', '"formatVersion":9')),
     );
     await expectLater(client.index(), throwsFormatException);
+  });
+
+  test('gives up on a store that does not answer', () async {
+    final silent = KitStoreClient(
+      base,
+      _Silent(),
+      timeout: const Duration(milliseconds: 20),
+    );
+    await expectLater(silent.index(), throwsA(isA<KitStoreFailed>()));
+  });
+
+  test('refuses a file list that asks to read too much at once', () async {
+    final row = (await client.index()).rows.single;
+    final release = (await client.releases(row)).releases.single.release;
+    // A header that says the directory is 5 MiB, in a file that is long
+    // enough to hold it.
+    final bytes = Uint8List(6 * 1024 * 1024)
+      ..setRange(
+        0,
+        PackHeader.size,
+        const PackHeader(
+          directoryAt: 32,
+          directoryBytes: 5 * 1024 * 1024,
+        ).encode(),
+      );
+    final url = Uri.parse(release.url);
+    pages[url] = TransportPage(bytes);
+    await expectLater(
+      client.open(release),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('the most is'),
+        ),
+      ),
+    );
   });
 }

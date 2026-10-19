@@ -171,8 +171,8 @@ the latest release. It reads from a plain directory with no network.
 
 `KitStoreClient` reads a store over any `AssetTransport`. Its address must
 be https. It reads the index, the releases of one kit, a preview and the file
-list of a release, each to the size limit of that file. A reply that is not a
-200 throws `KitStoreFailed`.
+list of a release, each to the size limit of that file and within a timeout.
+A reply that is not a 200 throws `KitStoreFailed`.
 
 ```dart
 final store = KitStoreClient(
@@ -180,19 +180,34 @@ final store = KitStoreClient(
   HttpTransport(),
 );
 final row = (await store.index()).rows.first;
-final releases = await store.releases(row);
-final kit = await store.open(releases.releases.first.release);
+final latest = (await store.releases(row)).releases.first;
+final listed = await store.open(latest.release);
 ```
 
 `open` asks the server for byte ranges, so the files of the kit are not
-downloaded. To install, download the whole pack with `PackFolder`, open it as
-a `Kit` and check it again. `KitRelease.origin` gives the origin and the size
-limit to download with.
+downloaded. It is for showing what a kit holds. It reaches the host that
+holds the kit file, which is not the store. Do not install from it, because
+nothing has checked the bytes against the hash in the index.
+
+To install, download the whole pack with `PackFolder`. It checks the hash and
+throws `FetchCorrupt` with both hashes when they differ. Then check the kit
+again, as the editor does.
+
+```dart
+final pack = await PackFolder('downloads').download(
+  latest.release.offer,
+  transport: HttpTransport(),
+  origin: latest.release.origin,
+);
+final kit = await Kit.open(pack);
+final problems = await kit.check();
+```
 
 `extractKit` takes `into`, a folder of the project to write under, and
 `only`, the files to take. `kit.conflictsIn(project, into:, only:)` lists the
 files the project has with other contents, so a person can choose before
-anything is written.
+anything is written. A kit file named `kits.lock` is refused at the root of a
+project.
 
 ```dart
 final clashes = await kit.conflictsIn(
