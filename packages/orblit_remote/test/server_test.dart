@@ -39,6 +39,32 @@ final class Client {
   Future<void> close() => _socket.close();
 }
 
+/// The first line of the answer to a hand written upgrade request, so a header
+/// or a query that [WebSocket.connect] would not send can be sent.
+Future<String> rawStatus(
+  Uri uri, {
+  String? host,
+  String? query,
+  Map<String, String> extra = const {},
+}) async {
+  final socket = await Socket.connect(uri.host, uri.port);
+  final headers = {
+    'Host': host ?? '${uri.host}:${uri.port}',
+    'Connection': 'Upgrade',
+    'Upgrade': 'websocket',
+    'Sec-WebSocket-Version': '13',
+    'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
+    ...extra,
+  };
+  socket.write(
+    'GET /?${query ?? uri.query} HTTP/1.1\r\n'
+    '${headers.entries.map((e) => '${e.key}: ${e.value}\r\n').join()}\r\n',
+  );
+  final reply = await utf8.decoder.bind(socket).first;
+  socket.destroy();
+  return reply.split('\r\n').first;
+}
+
 void main() {
   late World world;
   late TransformComponents transforms;
@@ -147,6 +173,104 @@ void main() {
     expect(response.statusCode, HttpStatus.forbidden);
     await response.drain<void>();
     http.close();
+  });
+
+  test('a token that is not valid percent encoding is refused', () async {
+    expect(await rawStatus(server.uri, query: 'token=%ff'), contains('403'));
+    expect(await rawStatus(server.uri), contains('101'));
+  });
+
+  test('a request from a web page or for another host is refused', () async {
+    await expectLater(
+      WebSocket.connect(
+        '${server.uri}',
+        headers: {'Origin': 'http://evil.example'},
+      ),
+      throwsA(isA<WebSocketException>()),
+    );
+    expect(await rawStatus(server.uri, host: 'evil.example'), contains('403'));
+    expect(
+      await rawStatus(server.uri, host: 'localhost:${server.uri.port}'),
+      contains('101'),
+    );
+  });
+
+  test('a ninth connection is turned away', () async {
+    final open = [
+      for (var i = 0; i < 8; i++) await WebSocket.connect('${server.uri}'),
+    ];
+    await expectLater(
+      WebSocket.connect('${server.uri}'),
+      throwsA(isA<WebSocketException>()),
+    );
+    for (final socket in open) {
+      await socket.close();
+    }
+  });
+
+  test('a frame over a mebibyte closes its connection', () async {
+    final socket = await WebSocket.connect('${server.uri}');
+    final closed = socket.listen((_) {}).asFuture<void>();
+    socket.add('x' * (2 << 20));
+    await closed;
+    // The SDK reports an oversized frame as a protocol error.
+    expect(
+      socket.closeCode,
+      anyOf(WebSocketStatus.protocolError, WebSocketStatus.messageTooBig),
+    );
+  });
+
+  test('requests on one connection are answered in order', () async {
+    final socket = await WebSocket.connect('${server.uri}');
+    final order = <int>[];
+    final two = Completer<void>();
+    socket.listen((data) {
+      order.add(
+        (jsonDecode(data as String) as Map<String, Object?>)['id']! as int,
+      );
+      if (order.length == 2) two.complete();
+    });
+    socket.add('{"id":1,"method":"time.step","params":{"n":40}}');
+    socket.add('{"id":2,"method":"world.entities"}');
+    await two.future;
+    expect(order, [1, 2]);
+    await socket.close();
+  });
+
+  test('time runs again when the last client leaves', () async {
+    final socket = await WebSocket.connect('${server.uri}');
+    final client = Client(socket);
+    await client.call('time.pause');
+    expect(gate.paused, isTrue);
+    await client.close();
+    for (var i = 0; i < 100 && gate.paused; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
+    expect(gate.paused, isFalse);
+  });
+
+  test('time runs again when the server closes', () async {
+    gate.pause();
+    await server.close();
+    expect(gate.paused, isFalse);
+  });
+
+  test('a failing announce leaves no port open', () async {
+    late final Uri uri;
+    await expectLater(
+      RemoteServer.start(
+        RemoteHost(gate: TimeGate()),
+        announce: (line) {
+          uri = Uri.parse(line.split(' ').last);
+          throw StateError('no console');
+        },
+      ),
+      throwsStateError,
+    );
+    await expectLater(
+      Socket.connect(uri.host, uri.port),
+      throwsA(isA<SocketException>()),
+    );
   });
 
   test('close ends a connection that is still open', () async {
