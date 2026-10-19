@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-
 import '../asset_id.dart';
 import '../asset_source.dart';
 import '../content_hash.dart';
@@ -15,7 +13,8 @@ final class Kit {
   Kit._(this.pack, this.manifest);
 
   /// Throws a [FormatException] when [pack] is not a kit: it was made for
-  /// another target, it is a patch, or its `kit.json` is missing or wrong.
+  /// another target, it is a patch, or its `kit.json` is missing, too big,
+  /// not the bytes the pack lists for it, or wrong.
   static Future<Kit> open(AssetPack pack) async {
     if (pack.target != kitTarget) {
       throw FormatException(
@@ -26,11 +25,18 @@ final class Kit {
     if (pack.base != null || pack.removed.isNotEmpty) {
       throw const FormatException('A kit is a whole pack, not a patch.');
     }
-    final Uint8List bytes;
-    try {
-      bytes = await pack.read(kitManifestId);
-    } on AssetNotFound {
+    final entry = pack.manifest.entries[kitManifestId];
+    if (entry == null) {
       throw FormatException('This pack has no "$kitManifestId".');
+    }
+    if (entry.bytes > kitManifestLimit) {
+      throw FormatException(
+        '"$kitManifestId" is over $kitManifestLimit bytes.',
+      );
+    }
+    final bytes = await pack.read(kitManifestId);
+    if (ContentHash.of(bytes) != entry.hash) {
+      throw FormatException('"$kitManifestId" does not match its hash.');
     }
     return Kit._(pack, KitManifest.read(bytes));
   }
@@ -50,13 +56,17 @@ final class Kit {
   /// download shows up.
   Future<List<String>> check() async => [
     ...kitProblems(manifest, files),
-    for (final id in await pack.findCorrupt()) '"$id" does not match its hash.',
+    for (final id in await pack.findCorrupt())
+      '"${kitShow('$id')}" does not match its hash.',
   ];
 
   /// The files [project] already has with other bytes than the kit's.
   ///
   /// A file that is there and identical is not one, because writing it would
   /// change nothing. Only the project is read, never a blob of the kit.
+  ///
+  /// shortcut: every file the project has is read and hashed. Compare sizes
+  /// first when kits get large.
   Future<List<AssetId>> conflictsIn(AssetSource project) async => [
     for (final MapEntry(:key, :value) in pack.manifest.entries.entries)
       if (key != kitManifestId &&

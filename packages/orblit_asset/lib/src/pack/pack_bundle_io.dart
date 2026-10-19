@@ -34,15 +34,22 @@ Future<PackSummary> packBundle({
   final bundle = await _readManifest(bundlePath);
   final chain = _mount(target, base);
   final manifest = _changedFrom(bundle, chain);
-  return writePack(
-    manifest: manifest,
-    outPath: outPath,
-    target: target.name,
-    read: (id) => _readBundleFile(bundlePath, id),
-    base: chain?.chainHash,
-    removed: _droppedFrom(bundle, chain),
-    added: _newTo(manifest, chain),
-  );
+  try {
+    return await writePack(
+      manifest: manifest,
+      outPath: outPath,
+      target: target.name,
+      read: (id) => _readBundleFile(bundlePath, id),
+      base: chain?.chainHash,
+      removed: _droppedFrom(bundle, chain),
+      added: _newTo(manifest, chain),
+    );
+  } on FormatException catch (error) {
+    throw FormatException(
+      '${error.message} The bundle "$bundlePath" is stale or was changed by '
+      'hand. Cook the project again.',
+    );
+  }
 }
 
 /// Writes the assets of [manifest] as one pack at [outPath], for [target].
@@ -234,8 +241,7 @@ Future<Uint8List> _readBundleFile(String bundlePath, AssetId id) async {
     return await File(_inside(bundlePath, '$id')).readAsBytes();
   } on PathNotFoundException {
     throw FormatException(
-      'The manifest lists "$id" and "$bundlePath" has no such file. The '
-      'bundle is stale. Cook the project again.',
+      'The manifest lists "$id" and "$bundlePath" has no such file.',
     );
   }
 }
@@ -248,11 +254,7 @@ Future<Uint8List> _readChecked(
 ) async {
   final bytes = await read(id);
   if (bytes.length != expectedBytes || ContentHash.of(bytes) != expected) {
-    throw FormatException(
-      '"$id" is not what its manifest says. The source is stale or changed '
-      'while the pack was being written. For a cooked bundle, cook the '
-      'project again.',
-    );
+    throw FormatException('"$id" is not what its manifest says.');
   }
   return bytes;
 }

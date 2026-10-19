@@ -469,14 +469,20 @@ await extractKit(kit, 'my_project');
   `containsScripts` from the file names, so a value typed there is ignored.
 - **Packing refuses what a download could abuse.** A link, a hidden file
   such as `.DS_Store`, a name that ends in a dot or a space, a Windows
-  device name, two names that differ only in case, and a file over 64 MiB.
-  Every problem is listed at once.
-- **Installing never overwrites by surprise.** `extractKit` throws
-  `KitConflicts` before it writes anything, unless `overwrite` is true. A
-  file that is already identical is left alone. It never writes `kit.json`
-  and never writes through a link.
-- **Files are written one at a time.** A failure half way leaves the earlier
-  ones, and running the install again is safe.
+  device name, a character outside letters, digits, spaces and `_.()+-`, two
+  names that differ only in case, a name that is a file and a folder, a file
+  over 64 MiB, more than 5000 files, more than 1 GiB in all and a path over
+  240 characters. Every problem is listed at once. `containsScripts` is a
+  hint, because a file with no extension can still be a program.
+- **Installing checks the kit again and never overwrites by surprise.**
+  `extractKit` runs the same rules and the blob hashes, so a pack built by
+  hand gets no further than a folder would. It throws `KitConflicts`, or a
+  `FormatException` for a link or a file in the way, before it writes the
+  first file, unless `overwrite` is true. A file that is already identical is
+  left alone. It never writes `kit.json` and never writes through a link. A
+  file that `overwrite` replaces gets the default permissions.
+- **Files are written one at a time.** A full disk half way leaves the
+  earlier ones, and running the install again is safe.
 - **Refusals are `FormatException`**, except a project folder that does not
   exist, which is an `ArgumentError`.
 

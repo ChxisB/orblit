@@ -7,20 +7,32 @@
   constructor refuses a slug, name, version, licence or engine range that no
   index could show, and `encode()` writes the same bytes every time.
 - **`Kit.open(pack)`.** Refuses a pack for another target, a patch, and one
-  with no valid `kit.json`. `files` lists what a person gets, `check()` lists
+  with no valid `kit.json`, one over 64 KiB, or one whose bytes are not the
+  hash the pack lists. `files` lists what a person gets, `check()` lists
   every problem and every blob that no longer matches its hash, and
   `conflictsIn(source)` names the files a project has with other contents.
 - **`packKit` and `extractKit`.** `packKit(folder:, outPath:)` counts the
-  scripts itself and sets `containsScripts`. It refuses a link, a hidden
-  file, a name Windows reads as a device, two names that differ only in case
-  and a file over 64 MiB, before it reads a file for its bytes.
-  `extractKit(kit, project)` stops with `KitConflicts` before it writes
-  anything unless `overwrite` is set, and never writes through a link.
+  scripts itself and sets `containsScripts`. Before it reads a file for its
+  bytes it refuses a link, a hidden file, a name Windows reads as a device, a
+  name with a character outside letters, digits, spaces and `_.()+-`, two
+  names that differ only in case, a name that is both a file and a folder,
+  a file over 64 MiB, more than 5000 files, more than 1 GiB in all, and a
+  path over 240 characters. A kit file left in the folder by an earlier run
+  is not packed again. `extractKit(kit, project)` runs the same rules and the
+  blob hashes first, so a pack built by hand cannot write a name that
+  packing would refuse. It stops with `KitConflicts` unless `overwrite` is
+  set, and refuses a link, or a file where a folder must go, before it
+  writes the first file. Each file goes to a new name beside its place and
+  is renamed, so a file is whole or not there.
+- **`containsScripts` is a hint.** The extension list covers scripts,
+  programs and libraries, and a few build file names. A file with no
+  extension can still be a program.
 - **`dart run orblit_asset:kit`.** `pack`, `check` and `extract`, with the
   exit codes of `pack`.
 - `writePack` in `pack_bundle_io.dart` holds the layout and the blob check
-  that `packBundle` and `packKit` share. The message for a bundle file that
-  does not match its manifest no longer says which bundle it came from.
+  that `packBundle` and `packKit` share. Its message for a file that does not
+  match the manifest is plain, and each caller adds its own line about what
+  to do. A stale bundle still says to cook the project again.
 
 ## 0.15.0
 

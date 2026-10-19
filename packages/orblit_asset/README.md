@@ -121,9 +121,14 @@ dart run orblit_asset:kit check crate-pack.opack
 dart run orblit_asset:kit extract crate-pack.opack path/to/project
 ```
 
-`extract` stops before it writes anything when the project already has a
-file with other contents. Pass `--overwrite` to replace it. A game never
-mounts a kit, because `MountedPacks` refuses a pack for another target.
+`extract` checks the kit again before it writes. It stops, with nothing
+written, when the project already has a file with other contents, or has a
+link or a file where the kit needs a folder. Pass `--overwrite` to replace a
+file. A replaced file gets the default permissions. A game never mounts a
+kit, because `MountedPacks` refuses a pack for another target.
+
+File names in a kit use letters, digits, spaces and `_.()+-`. `kit pack`
+lists every name it refuses.
 
 ```dart
 final kit = await Kit.open(await AssetPack.open(FilePackBytes('kit.opack')));

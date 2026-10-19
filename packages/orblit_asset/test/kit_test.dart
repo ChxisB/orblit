@@ -65,33 +65,56 @@ Future<String> project(Map<String, String> files) async {
 
 String textOf(String path) => File(path).readAsStringSync();
 
-/// Hand built, because [packKit] never writes a pack that is not a kit.
+/// Hand built, because [packKit] never writes a pack that is not a kit. It
+/// holds [files], each a name and its text, and does not check their names.
 Future<AssetPack> handBuilt({
   String target = kitTarget,
   Map<String, Object?> manifest = const {},
+  Map<String, String> files = const {},
   ContentHash? base,
   bool withManifest = true,
 }) async {
   final bytes = utf8.encode(
     jsonEncode(
       manifest.isEmpty
-          ? {...authored, 'kind': kitKind, 'formatVersion': 1}
+          ? {
+              ...authored,
+              'kind': kitKind,
+              'formatVersion': 1,
+              'containsScripts': false,
+            }
           : manifest,
     ),
   );
+  final texts = {
+    for (final MapEntry(:key, :value) in files.entries)
+      AssetId.parse(key): utf8.encode(value),
+  };
   final entries = {
     if (withManifest)
       kitManifestId: AssetEntry(ContentHash.of(bytes), bytes.length),
+    for (final MapEntry(:key, :value) in texts.entries)
+      key: AssetEntry(ContentHash.of(Uint8List.fromList(value)), value.length),
   };
   final out = at('hand_${made++}.opack');
   await writePack(
     manifest: AssetManifest(entries: entries),
     outPath: out,
     target: target,
-    read: (_) async => Uint8List.fromList(bytes),
+    read: (id) async => Uint8List.fromList(texts[id] ?? bytes),
     base: base,
   );
   return AssetPack.open(FilePackBytes(out));
+}
+
+/// Changes [from] to [to] in the pack file at [path], two texts of one length.
+void tamper(String path, String from, String to) {
+  final bytes = File(path).readAsBytesSync();
+  final text = latin1.decode(bytes);
+  final place = text.indexOf(from);
+  expect(place, isNonNegative, reason: from);
+  bytes.setRange(place, place + to.length, latin1.encode(to));
+  File(path).writeAsBytesSync(bytes);
 }
 
 final class CountingBytes implements PackBytes {
@@ -153,6 +176,37 @@ void main() {
         expect((await crates()).manifest.containsScripts, isFalse);
       },
     );
+
+    test('takes a folder written with a trailing slash', () async {
+      final source = await folder({'a.txt': 'one', 'b/c.txt': 'two'});
+      final out = at('slash.opack');
+      await packKit(folder: '$source/', outPath: out);
+      final kit = await Kit.open(await AssetPack.open(FilePackBytes(out)));
+      expect(kit.files.keys.map((id) => '$id'), ['a.txt', 'b/c.txt']);
+    });
+
+    test('does not pack its own output on a second run', () async {
+      final source = await folder({'a.txt': 'one'});
+      final out = '$source${Platform.pathSeparator}crates.opack';
+      await packKit(folder: source, outPath: out);
+      final first = File(out).readAsBytesSync();
+      await packKit(folder: source, outPath: out);
+      expect(File(out).readAsBytesSync(), first);
+    });
+
+    test('refuses a file name outside the allowed characters', () async {
+      final source = await folder({'caf\u00e9.png': 'x'});
+      await expectLater(
+        packKit(folder: source, outPath: at('out.opack')),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('letters, digits'),
+          ),
+        ),
+      );
+    });
 
     test('refuses a hidden file and names it', () async {
       final source = await folder({'a.txt': 'one', '.DS_Store': 'x'});
@@ -238,6 +292,35 @@ void main() {
       await expectLater(Kit.open(pack), throwsFormatException);
     });
 
+    test('refuses a kit.json that is not what the pack lists', () async {
+      final out = at('flipped.opack');
+      await packKit(folder: await folder({'a.txt': 'one'}), outPath: out);
+      tamper(out, 'Twelve crates.', 'Twelve crates!');
+      await expectLater(
+        Kit.open(await AssetPack.open(FilePackBytes(out))),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('does not match its hash'),
+          ),
+        ),
+      );
+    });
+
+    test('refuses a kit.json over the size limit', () async {
+      final pack = await handBuilt(
+        manifest: {
+          ...authored,
+          'kind': kitKind,
+          'formatVersion': 1,
+          'containsScripts': false,
+          'summary': 'x' * (kitManifestLimit + 1),
+        },
+      );
+      await expectLater(Kit.open(pack), throwsFormatException);
+    });
+
     test('a game does not mount a kit', () async {
       final kit = await crates();
       final games = MountedPacks(target: CookTargets.find('macos')!);
@@ -256,6 +339,16 @@ void main() {
       File(out).writeAsBytesSync(bytes);
       final kit = await Kit.open(await AssetPack.open(FilePackBytes(out)));
       expect(await kit.check(), ['"a.txt" does not match its hash.']);
+    });
+
+    test('lists a name that packing would have refused', () async {
+      final kit = await Kit.open(
+        await handBuilt(files: {'.git/hooks/pre-commit': 'x'}),
+      );
+      expect(await kit.check(), [
+        '".git/hooks/pre-commit" has a part, ".git", that starts with a dot, '
+            'so it would write a hidden file.',
+      ]);
     });
   });
 
@@ -339,6 +432,67 @@ void main() {
       final mine = await project({'models': 'a file'});
       await expectLater(extractKit(kit, mine), throwsFormatException);
       expect(textOf('$mine/models'), 'a file');
+    });
+
+    test('writes nothing when a later file is blocked', () async {
+      final kit = await packed(
+        await folder({'a.txt': 'one', 'z/b.txt': 'two'}),
+      );
+      final mine = await project({'z': 'a file'});
+      await expectLater(extractKit(kit, mine), throwsFormatException);
+      expect(File('$mine/a.txt').existsSync(), isFalse);
+    });
+
+    test('writes nothing when a later blob is corrupt', () async {
+      final out = at('late.opack');
+      await packKit(
+        folder: await folder({'a.txt': 'one', 'z.txt': 'two'}),
+        outPath: out,
+      );
+      tamper(out, 'two', 'twX');
+      final kit = await Kit.open(await AssetPack.open(FilePackBytes(out)));
+      final mine = await project({});
+      await expectLater(extractKit(kit, mine), throwsFormatException);
+      expect(Directory(mine).listSync(), isEmpty);
+    });
+
+    test('refuses a pack with a name that packing would refuse', () async {
+      final kit = await Kit.open(
+        await handBuilt(files: {'.git/hooks/pre-commit': 'x'}),
+      );
+      final mine = await project({});
+      await expectLater(extractKit(kit, mine), throwsFormatException);
+      expect(Directory(mine).listSync(), isEmpty);
+    });
+
+    test('does not write through a link at the place of a file', () async {
+      final kit = await crates();
+      final mine = await project({});
+      final outside = await project({'target.txt': 'precious'});
+      Link('$mine/readme.txt').createSync('$outside/target.txt');
+      await expectLater(extractKit(kit, mine), throwsFormatException);
+      expect(textOf('$outside/target.txt'), 'precious');
+    });
+
+    test('does not write over a folder at the place of a file', () async {
+      final kit = await crates();
+      final mine = await project({'readme.txt/inner.txt': 'x'});
+      await expectLater(extractKit(kit, mine), throwsFormatException);
+      expect(textOf('$mine/readme.txt/inner.txt'), 'x');
+    });
+
+    test('leaves a file that has the temporary name alone', () async {
+      final kit = await crates();
+      final mine = await project({'readme.txt.partial': 'precious'});
+      await extractKit(kit, mine);
+      expect(textOf('$mine/readme.txt.partial'), 'precious');
+      expect(textOf('$mine/readme.txt'), 'Twelve.');
+    });
+
+    test('a conflict message shows no raw escape character', () {
+      final text = KitConflicts([AssetId.parse('a\u001b[31m.png')]).toString();
+      expect(text, isNot(contains('\u001b')));
+      expect(text, contains(r'a\u001b[31m.png'));
     });
 
     test('refuses a project folder that is not there', () async {

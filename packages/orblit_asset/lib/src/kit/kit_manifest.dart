@@ -17,9 +17,29 @@ const String kitTarget = 'source';
 final AssetId kitManifestId = AssetId.parse('kit.json');
 
 final RegExp _word = RegExp(r'^[a-z0-9]+(-[a-z0-9]+)*$');
-final RegExp _version = RegExp(r'^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$');
+final RegExp _version = RegExp(
+  r'^(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})\.(0|[1-9]\d{0,5})$',
+);
 final RegExp _licence = RegExp(r'^[A-Za-z0-9][A-Za-z0-9.+() -]*$');
-final RegExp _control = RegExp(r'[\u0000-\u001f\u007f]');
+
+/// Characters that change how a line is read or drawn: control characters,
+/// the C1 range, zero width and bidirectional marks, and the line separators.
+final RegExp unsafeText = RegExp(
+  r'[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e'
+  r'\u2060-\u2064\u2066-\u206f\ufeff\ufff9-\ufffb]',
+);
+
+/// [text] with each unsafe character written as `\uXXXX`, for a message. A kit
+/// is somebody else's file, and its words must not reach a terminal raw.
+String kitShow(String text) => text.replaceAllMapped(
+  unsafeText,
+  (match) =>
+      '\\u${match.input.codeUnitAt(match.start).toRadixString(16).padLeft(4, '0')}',
+);
+
+/// The largest `kit.json` read.
+const int kitManifestLimit = 64 * 1024;
+const int _maxUrl = 200;
 
 const Set<String> _previewExtensions = {'png', 'jpg', 'jpeg', 'webp'};
 const int _maxTags = 8;
@@ -88,7 +108,8 @@ final class KitManifest {
     final json = _object(bytes);
     if (json['kind'] != kitKind) {
       throw FormatException(
-        'This manifest says it is "${json['kind']}", not "$kitKind".',
+        'This manifest says it is "${kitShow('${json['kind']}')}", not '
+        '"$kitKind".',
       );
     }
     final format = json['formatVersion'];
@@ -99,7 +120,7 @@ final class KitManifest {
       );
     }
     if (format != kitFormat) {
-      throw FormatException('This manifest says format $format.');
+      throw FormatException('This manifest says format ${kitShow('$format')}.');
     }
     return _fields(json, containsScripts: _flag(json, 'containsScripts'));
   }
@@ -180,8 +201,8 @@ KitManifest _fields(
 void _checkWord(String field, String value, int longest) {
   if (value.length > longest || !_word.hasMatch(value)) {
     throw FormatException(
-      '"$field" is "$value". Use lower case letters and digits in groups '
-      'joined by single hyphens, up to $longest characters.',
+      '"$field" is "${kitShow(value)}". Use lower case letters and digits '
+      'in groups joined by single hyphens, up to $longest characters.',
     );
   }
 }
@@ -189,7 +210,7 @@ void _checkWord(String field, String value, int longest) {
 void _checkLine(String field, String value, int longest) {
   if (value.trim().isEmpty ||
       value.length > longest ||
-      _control.hasMatch(value)) {
+      unsafeText.hasMatch(value)) {
     throw FormatException(
       '"$field" must be one line of 1 to $longest characters with no '
       'control characters.',
@@ -200,7 +221,8 @@ void _checkLine(String field, String value, int longest) {
 void _checkVersion(String field, String value) {
   if (!_version.hasMatch(value)) {
     throw FormatException(
-      '"$field" is "$value". Write three whole numbers, such as 1.2.0.',
+      '"$field" is "${kitShow(value)}". Write three whole numbers of up to '
+      'six digits, such as 1.2.0.',
     );
   }
 }
@@ -220,15 +242,25 @@ void _checkLicence(({String spdx, String url}) licence) {
       spdx.toUpperCase() == 'NONE' || spdx.toUpperCase() == 'NOASSERTION';
   if (spdx.length > 80 || none || !_licence.hasMatch(spdx)) {
     throw FormatException(
-      'The licence "$spdx" is not an SPDX id or expression, such as MIT or '
-      'CC-BY-4.0. A kit needs a licence.',
+      'The licence "${kitShow(spdx)}" is not an SPDX id or expression, such '
+      'as MIT or CC-BY-4.0. A kit needs a licence.',
     );
   }
-  final url = Uri.tryParse(licence.url);
+  _checkUrl(licence.url);
+}
+
+void _checkUrl(String text) {
+  final url = Uri.tryParse(text);
   final web = url != null && (url.scheme == 'https' || url.scheme == 'http');
-  if (!web || url.host.isEmpty) {
+  if (!web ||
+      url.host.isEmpty ||
+      url.userInfo.isNotEmpty ||
+      text.length > _maxUrl ||
+      text.contains(' ') ||
+      unsafeText.hasMatch(text)) {
     throw FormatException(
-      'The licence URL "${licence.url}" is not an http or https address.',
+      'The licence URL "${kitShow(text)}" is not an http or https address of '
+      'up to $_maxUrl characters with no user name in it.',
     );
   }
 }
@@ -264,13 +296,18 @@ void _checkPreviews(List<AssetId> previews) {
   for (final id in previews) {
     if (!_previewExtensions.contains(id.extension)) {
       throw FormatException(
-        'The preview "$id" is not a png, jpg or webp image.',
+        'The preview "${kitShow('$id')}" is not a png, jpg or webp image.',
       );
     }
   }
 }
 
 Map<String, Object?> _object(Uint8List bytes) {
+  if (bytes.length > kitManifestLimit) {
+    throw const FormatException(
+      'The manifest is over $kitManifestLimit bytes.',
+    );
+  }
   final Object? parsed;
   try {
     parsed = jsonDecode(utf8.decode(bytes));
@@ -307,5 +344,7 @@ List<Object?> _list(Map<String, Object?> json, String key) {
 
 String _item(Object? value, String where) {
   if (value is String) return value;
-  throw FormatException('"$where" in the manifest holds $value, not text.');
+  throw FormatException(
+    '"$where" in the manifest holds ${kitShow('$value')}, not text.',
+  );
 }

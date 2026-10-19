@@ -52,8 +52,65 @@ void main() {
     expect(problems(['console.png', 'auxiliary/a.png']), isEmpty);
   });
 
-  test('a control character in a name is a problem', () {
-    expect(problems(['a\u0001b.png']), hasLength(1));
+  test('a character outside letters, digits and a few marks is a problem', () {
+    for (final name in [
+      'a\u0001b.png',
+      'caf\u00e9.png',
+      'a<b.png',
+      'a|b.png',
+      'a?.png',
+      'a\u202eb.png',
+      'a\u200bb.png',
+      '-a.png',
+      'a~b.png',
+    ]) {
+      expect(problems([name]), hasLength(1), reason: name);
+    }
+    expect(
+      problems(['Wall (2).png', 'a_b-c+d.png', '1.png', 'a/B.v2.glb']),
+      isEmpty,
+    );
+  });
+
+  test('a message shows no raw escape character', () {
+    final text = problems(['a\u001b[31m.png']).join('\n');
+    expect(text, isNot(contains('\u001b')));
+  });
+
+  test('more files than the limit is the one problem named', () {
+    final many = {
+      for (var i = 0; i <= kitCountLimit; i++) AssetId.parse('f/$i.bin'): 1,
+    };
+    expect(kitProblems(manifest(), many), [
+      'The kit holds ${kitCountLimit + 1} files, over the limit of '
+          '$kitCountLimit.',
+    ]);
+  });
+
+  test('more bytes than the limit in all is a problem', () {
+    final half = kitTotalLimit ~/ 2 + 1;
+    final big = {AssetId.parse('a.bin'): half, AssetId.parse('b.bin'): half};
+    expect(kitProblems(manifest(), big, fileLimit: kitTotalLimit), [
+      'The kit holds ${half * 2} bytes in all, over the limit of '
+          '$kitTotalLimit.',
+    ]);
+  });
+
+  test('a name or a path that is too long is a problem', () {
+    expect(problems(['${'a' * 97}.png']), hasLength(1));
+    expect(problems(['${'a' * 96}.png']), isEmpty);
+    expect(
+      problems([
+        ['b' * 90, 'c' * 90, 'd' * 90, 'e.png'].join('/'),
+      ]),
+      [isA<String>().having((s) => s, 'text', contains('longer than 240'))],
+    );
+  });
+
+  test('a name that is a file and a folder is a problem', () {
+    expect(problems(['a', 'a/b.png']), hasLength(1));
+    expect(problems(['Models', 'models/b.png']), hasLength(1));
+    expect(problems(['a/b.png', 'a/c.png']), isEmpty);
   });
 
   test('a file over the limit is a problem', () {
@@ -91,7 +148,18 @@ void main() {
   });
 
   test('carriesScripts counts what a person could run or compile', () {
-    for (final name in ['a.js', 'a.DART', 'x/y.sh', 'b.ps1', 'c.py']) {
+    for (final name in [
+      'a.js',
+      'a.DART',
+      'x/y.sh',
+      'b.ps1',
+      'c.py',
+      'd.ts',
+      'e.EXE',
+      'Makefile',
+      'tools/pubspec.yaml',
+      'gradlew',
+    ]) {
       expect(carriesScripts([AssetId.parse(name)]), isTrue, reason: name);
     }
     expect(carriesScripts(files(['a.glb', 'b.png', 'c.json']).keys), isFalse);

@@ -61,8 +61,40 @@ void main() {
       expect(() => manifest(summary: 'one\ntwo'), throwsFormatException);
     });
 
+    test('refuses characters that change how a line is read', () {
+      for (final bad in ['a\u0085b', 'a\u202eb', 'a\u200bb', 'a\u2028b']) {
+        expect(() => manifest(name: bad), throwsFormatException, reason: bad);
+        expect(
+          () => manifest(summary: bad),
+          throwsFormatException,
+          reason: bad,
+        );
+      }
+    });
+
+    test('a message shows no raw escape character', () {
+      expect(
+        () => manifest(slug: 'a\u001b[31m'),
+        throwsA(
+          isA<FormatException>().having(
+            (e) => e.message,
+            'message',
+            allOf(isNot(contains('\u001b')), contains(r'a\u001b[31m')),
+          ),
+        ),
+      );
+    });
+
     test('refuses a version that is not three whole numbers', () {
-      for (final bad in ['1', '1.2', '1.2.3.4', '01.2.3', 'v1.2.3', '1.2.x']) {
+      for (final bad in [
+        '1',
+        '1.2',
+        '1.2.3.4',
+        '01.2.3',
+        'v1.2.3',
+        '1.2.x',
+        '1.2.1234567',
+      ]) {
         expect(() => manifest(version: bad), throwsFormatException);
       }
     });
@@ -84,7 +116,16 @@ void main() {
     });
 
     test('refuses a licence address that is not http or https', () {
-      for (final bad in ['', 'file:///etc/passwd', 'example.com', 'https://']) {
+      for (final bad in [
+        '',
+        'file:///etc/passwd',
+        'example.com',
+        'https://',
+        'https://user:pw@x.org/l',
+        'https://x.org/${'a' * 200}',
+        'https://x.org/a b',
+        'https://x.org/\u202e',
+      ]) {
         expect(
           () => manifest(licence: (spdx: 'MIT', url: bad)),
           throwsFormatException,
@@ -178,6 +219,11 @@ void main() {
         ).containsScripts,
         isTrue,
       );
+    });
+
+    test('read refuses a manifest over the size limit', () {
+      final big = text({'name': 'x' * 70000});
+      expect(() => KitManifest.read(big), throwsFormatException);
     });
 
     test('read refuses text that is not a manifest', () {
