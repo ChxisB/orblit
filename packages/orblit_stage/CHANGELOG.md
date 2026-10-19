@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.15.0
+
+- `OrblitDocumentView(profiler: ...)` times `scene` as `scene build` and
+  `apply` as `diff`. Off by default.
+
 ## 0.14.0
 
 - Add `CookedSurface` and `OrblitDocumentView.surfaces`. A material asset

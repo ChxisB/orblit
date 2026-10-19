@@ -28,6 +28,7 @@ the fullest reference.
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_particles` | Smoke, sparks, dust and fire: an emitter is data, and a particle is worked out from a seed, its number and the time, so the same time gives the same frame. Collision and turbulence are an opt-in stepped mode | `Emitter`, `Burst`, `ConeShape`, `ParticleBuffer`, `sample`, `ParticleSim`, `Trail`, `TrailRing` |
+| `orblit_profile` | Where a frame went on the Dart side: named spans, gauges, counters, a ring of frame times and a heap trend, as a JSON snapshot | `Profiler`, `Profiler.off` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `TouchControls`, `Pads`, `PadState` |
 | `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. Silent until a backend plays it | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `Music`, `CueBoard`, `ContactSounds`, `RecordedAudio` |
@@ -431,6 +432,13 @@ see [assets.md](assets.md)) and the scene writers and readers —
 `document.writeAs(SceneFormat.glb)` and `readSceneFrom(bytes)` for glTF, GLB
 and OBJ. Both report what they could not carry rather than throwing. Details
 and the traps: [assets.md](assets.md).
+
+`OrblitDocumentView(document, profiler: profiler)` and `OrblitView(scene: ...,
+profiler: profiler)` time their work as the spans `scene build`, `diff`,
+`upload` and `submit`. Both default to `Profiler.off()`, which records
+nothing. Call `profiler.frame()` once per frame and read `profiler.snapshot()`.
+The heap line is resident size, not the Dart heap, and a game sets its own
+gauges. Guide: `/guides/profiling/`.
 
 ## orblit_asset
 

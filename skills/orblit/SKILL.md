@@ -658,12 +658,13 @@ scattered over it),
 `orblit_ui` (game interfaces from a tree of elements with utility classes or
 CSS), `orblit_scene` and `orblit_stage` (scene documents and staging them),
 `orblit_light`, `orblit_mesh`, `orblit_rig`, `orblit_noise`,
-`orblit_particles` (emitters that are a function of time), `orblit_weather`,
-`orblit_input`, `orblit_audio` (a mixer, voices, music, cues and contact
-sounds), `orblit_audio_device` (plays them on a speaker), `orblit_test`
-(tests with no window), `orblit_asset`, `orblit_core`, `orblit_remote` (a
-socket to drive a debug game, and a tool server so an assistant can). What
-each does and the entry points worth knowing are in
+`orblit_particles` (emitters that are a function of time), `orblit_profile`
+(frame times, spans and a heap trend), `orblit_weather`, `orblit_input`,
+`orblit_audio` (a mixer, voices, music, cues and contact sounds),
+`orblit_audio_device` (plays them on a speaker), `orblit_test` (tests with no
+window), `orblit_asset`, `orblit_core`, `orblit_remote` (a socket to drive a
+debug game, and a tool server so an assistant can). What each does and the
+entry points worth knowing are in
 [references/packages.md](references/packages.md). Add each the same way as
 `orblit_filament`, with its own `path`. Physics is the exception: it is in
 its own repository, as the section above says.

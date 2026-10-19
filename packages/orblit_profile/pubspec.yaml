@@ -1,0 +1,14 @@
+name: orblit_profile
+description: >-
+  Where a frame went on the Dart side: named spans, gauges, counters, a ring
+  of frame times and a heap trend, as a snapshot a tool can read. Off costs a
+  virtual call per span.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

@@ -30,6 +30,7 @@ PACKAGES=(
   packages/orblit_noise
   packages/orblit_particles
   packages/orblit_path
+  packages/orblit_profile
   packages/orblit_remote
   packages/orblit_rig
   packages/orblit_scene

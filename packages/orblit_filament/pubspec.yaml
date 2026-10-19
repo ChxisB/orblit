@@ -2,7 +2,7 @@ name: orblit_filament
 description: >-
   Filament rendering for Orblit, composited by Flutter. Renders into
   IOSurface-backed pixel buffers the texture registry adopts without a readback.
-version: 0.39.0
+version: 0.40.0
 publish_to: none
 
 environment:
@@ -13,6 +13,8 @@ dependencies:
   vector_math: ^2.1.4
   flutter:
     sdk: flutter
+  orblit_profile:
+    path: ../orblit_profile
   # The web implementation only. Both resolve on every platform — they are
   # plain pub packages — but nothing outside lib/src/web/ imports them, and
   # that directory is only ever compiled for a web target.

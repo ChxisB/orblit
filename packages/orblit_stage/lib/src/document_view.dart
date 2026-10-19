@@ -2,6 +2,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 
 import 'package:orblit_light/orblit_light.dart' as artist;
+import 'package:orblit_profile/orblit_profile.dart';
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:orblit_weather/orblit_weather.dart' show CelestialBody;
 import 'package:vector_math/vector_math_64.dart';
@@ -30,6 +31,7 @@ class OrblitDocumentView {
     this.projectRoot,
     MaterialLibrary? materials,
     String? look,
+    this.profiler = const Profiler.off(),
   }) : _library = materials ?? MaterialLibrary(),
        _look = look {
     _rebuildAll();
@@ -42,6 +44,9 @@ class OrblitDocumentView {
   /// it looks on disk, and a path rewritten to somewhere on this machine would
   /// miss it.
   final String? projectRoot;
+
+  /// Times [scene] as `scene build` and [apply] as `diff`.
+  final Profiler profiler;
 
   /// The project's materials, already read, with their parents and groups
   /// still to be spent. Resolving happens in here and is cached by the
@@ -114,7 +119,14 @@ class OrblitDocumentView {
   /// Assembled in document order every time rather than cached, because the
   /// lists are the cheap part — the objects in them are what cost something to
   /// build, and those are what is kept.
-  OrblitScene get scene => OrblitScene(
+  OrblitScene get scene {
+    final started = profiler.begin();
+    final built = _stage();
+    profiler.end('scene build', started);
+    return built;
+  }
+
+  OrblitScene _stage() => OrblitScene(
     camera: camera,
     objects: [
       for (final entity in _document.entities)
@@ -153,6 +165,12 @@ class OrblitDocumentView {
   /// had none, and it missed that hiding a group hides its contents. The
   /// closure cannot miss either, and costs a walk of the entity list.
   void apply(SceneDiff diff) {
+    final started = profiler.begin();
+    _apply(diff);
+    profiler.end('diff', started);
+  }
+
+  void _apply(SceneDiff diff) {
     if (diff.isEmpty) return;
 
     final touched = <String>{};

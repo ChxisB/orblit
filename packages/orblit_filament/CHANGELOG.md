@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.40.0
+
+- `OrblitView(profiler: ...)` times each scene send as `upload` and `submit`.
+  Off by default.
+
 ## 0.39.0
 
 - **Surfaces authors write.** `OrblitSurface` names a compiled package and
