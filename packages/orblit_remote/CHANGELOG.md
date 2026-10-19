@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0
+
+- `ToolServer`: the control surface as seven named tools over the tool
+  protocol, for an assistant. Only `set` writes, and it is absent unless the
+  server is started with `--allow-write`.
+
 ## 0.1.0
 
 - First cut of `orblit_remote`. Pre-alpha: everything is subject to change.
