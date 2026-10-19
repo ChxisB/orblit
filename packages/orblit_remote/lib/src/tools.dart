@@ -62,9 +62,10 @@ final class ToolServer {
       _observe,
     ),
     'step': _Tool(
-      'Pauses the game and passes `n` frames (default 1) of a sixtieth of a '
-      'second. Answers the frames passed. The game runs again when this '
-      'session ends.',
+      'Pauses the game and passes `n` frames (default 1), each one step '
+      'delta of the game, a sixtieth of a second unless it chose another. '
+      'Answers the frames passed. The game runs again when this session '
+      'ends.',
       {
         'n': {'type': 'integer', 'description': 'Frames, at least 1'},
       },

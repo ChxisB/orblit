@@ -1010,8 +1010,47 @@ Traps:
 - **Read only is narrow.** `readOnly: true` refuses `entity.set` and
   `input.send`. Pause, resume and step still work.
 
+### As tools for an assistant
+
+`orblit_remote` is also a program. Hand it the printed address and it speaks
+the tool protocol on stdin and stdout. In Claude Code:
+
+```sh
+claude mcp add orblit -- dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
+```
+
+Add `--allow-write` to let the assistant change a value. Without it the `set`
+tool is not in the list and a call to it is refused.
+
+| Tool | Does |
+| --- | --- |
+| `observe` | Counts entities and lists the first `limit` (20), or reads one by `id` in full. `filter` is component names. |
+| `step` | Pauses, then passes `n` frames. |
+| `snapshot` | Records the world and answers an id with counts. |
+| `diff` | The first 200 paths that differ between snapshot ids `a` and `b`. |
+| `screenshot` | One PNG. |
+| `perf` | The host's phase times. |
+| `set` | `id`, `component`, `field`, `value`. Only with `--allow-write`. |
+
+What not to trust:
+
+- **A screenshot is one frame.** It says nothing about motion. A paused game
+  gives the same picture each time, so step before you look again.
+- **A diff holds only what its snapshots held.** A field the host left out of
+  `extras`, and anything that changed and changed back between the two, is
+  invisible. Take the snapshots around the one thing you changed.
+- **`truncated: true` means rows were cut.** Narrow with `filter`. Do not
+  read the first twenty as the whole world.
+- **A refusal is an error result, not a crash.** Read its code. `-32004` means
+  the game did not give the surface that part, and no retry fixes it.
+
+Quote the address, because zsh reads `?` as a pattern. The host must be
+`127.0.0.1` or `localhost`. A bad address exits with 64 and an unreachable
+game with 69.
+
 Verified by tests over a real loopback socket, with an `orblit_core` world
-and a stand-in loop. Nothing has driven a game in a window.
+and a stand-in loop, and with the program run as a child process. Nothing has
+driven a game in a window, and no assistant has connected to it.
 
 ## More worked examples
 
