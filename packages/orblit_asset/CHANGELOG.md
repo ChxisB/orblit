@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.18.0
+
+- **Installing a kit.** `extractKit` takes `into`, a folder of the project to
+  write under, and `only`, the files to take. A file the project has with
+  other bytes still refuses the install unless `overwrite` is set.
+  `Kit.conflictsIn(project, into:, only:)` lists those files first, and
+  `Kit.chosen` checks a choice. `kitPlace` and `kitPlaceProblem` join a folder
+  to a file name and say what is wrong with the folder.
+- **Scripts and engine fit.** `Kit.scripts` lists the files that can run, by
+  the same test as `containsScripts`. `kitFitsEngine(range, version)` is
+  inclusive at both ends and answers true for a version it cannot read.
+- **`kits.lock`.** `KitLock` and `LockedKit` record each installed kit: the
+  publisher, slug, version, pack hash, target folder and the hash of every
+  file written. Adding a kit replaces its older entry.
+
 ## 0.17.0
 
 - **A store of kits.** A store is a folder of entries, one file for each kit

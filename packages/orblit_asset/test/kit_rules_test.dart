@@ -164,4 +164,26 @@ void main() {
     }
     expect(carriesScripts(files(['a.glb', 'b.png', 'c.json']).keys), isFalse);
   });
+
+  test('kitPlaceProblem refuses a folder that writes where nobody looks', () {
+    final ids = files(['models/crate.glb']).keys;
+    expect(kitPlaceProblem('', ids), isNull);
+    expect(kitPlaceProblem('assets/kits/crate-pack', ids), isNull);
+    for (final folder in ['.git', 'a/.b', 'a//b', 'a/', '/a', 'con', 'a b.']) {
+      expect(kitPlaceProblem(folder, ids), isNotNull, reason: folder);
+    }
+    final long = ['a' * 80, 'b' * 80, 'c' * 70].join('/');
+    expect(kitPlaceProblem(long, ids), contains('limit'));
+  });
+
+  test('kitFitsEngine counts both ends and guesses when it cannot read', () {
+    const range = (from: '0.30.0', to: '0.40.0');
+    expect(kitFitsEngine(range, '0.30.0'), isTrue);
+    expect(kitFitsEngine(range, '0.40.0'), isTrue);
+    expect(kitFitsEngine(range, '0.35.2'), isTrue);
+    expect(kitFitsEngine(range, '0.29.9'), isFalse);
+    expect(kitFitsEngine(range, '0.40.1'), isFalse);
+    expect(kitFitsEngine(range, '1.0.0'), isFalse);
+    expect(kitFitsEngine(range, 'unknown'), isTrue);
+  });
 }

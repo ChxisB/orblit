@@ -26,4 +26,6 @@ Future<List<AssetId>> extractKit(
   Kit kit,
   String projectPath, {
   bool overwrite = false,
+  String into = '',
+  Set<AssetId>? only,
 }) => throw UnsupportedError('extractKit needs a file system.');

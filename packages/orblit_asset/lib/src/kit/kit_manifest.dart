@@ -283,6 +283,20 @@ void checkKitEngine(({String from, String to}) engine) {
   }
 }
 
+/// Whether a kit written for [range] is meant for engine [version].
+///
+/// Both ends count. A [version] that is not three whole numbers fits, because
+/// the answer is a guess and a hidden kit is worse than one the person tries.
+bool kitFitsEngine(({String from, String to}) range, String version) {
+  try {
+    checkKitVersion('engine', version);
+  } on FormatException {
+    return true;
+  }
+  return compareKitVersions(range.from, version) <= 0 &&
+      compareKitVersions(version, range.to) <= 0;
+}
+
 void _checkTags(List<String> tags) {
   if (tags.length > _maxTags || tags.toSet().length != tags.length) {
     throw const FormatException(

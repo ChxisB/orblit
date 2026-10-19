@@ -103,7 +103,8 @@ Future<Map<AssetId, int>> _walk(Directory root, Set<String> skip) async {
 String _pathOf(String root, AssetId id) =>
     [root, ...id.toString().split('/')].join(Platform.pathSeparator);
 
-/// The files an install would replace. Nothing was written when it is thrown.
+/// The files an install would replace, as the kit names them. Nothing was
+/// written when it is thrown.
 final class KitConflicts implements Exception {
   const KitConflicts(this.ids);
 
@@ -116,7 +117,12 @@ final class KitConflicts implements Exception {
 }
 
 /// Writes the files of [kit] into the folder [projectPath] and answers which
-/// it wrote.
+/// it wrote, as the kit names them.
+///
+/// With [into], the files go under that folder of the project, which has to
+/// pass [kitPlaceProblem]. With [only], just those files are written, and a
+/// file the person left out cannot conflict. Both are settled before the first
+/// file is written.
 ///
 /// The kit is checked first, by the rules of [kitProblems] and by the hash of
 /// every blob, so a pack built by hand cannot write a name that packing would
@@ -124,9 +130,9 @@ final class KitConflicts implements Exception {
 /// install with a [KitConflicts], unless [overwrite] is set. A file that is
 /// there and identical is left alone. The manifest is not written. A link or a
 /// plain file where a folder must go, or a folder or link where a file must
-/// go, stops the install too. All of that is settled before the first file is
-/// written. Each blob is hashed again on the way out and written beside its
-/// place under a new name, then renamed, so a file is whole or not there.
+/// go, stops the install too. Each blob is hashed again on the way out and
+/// written beside its place under a new name, then renamed, so a file is whole
+/// or not there.
 ///
 /// A file that [overwrite] replaces gets the default permissions, so an
 /// executable flag on it is lost.
@@ -140,35 +146,47 @@ Future<List<AssetId>> extractKit(
   Kit kit,
   String projectPath, {
   bool overwrite = false,
+  String into = '',
+  Set<AssetId>? only,
 }) async {
   if (!Directory(projectPath).existsSync()) {
     throw ArgumentError.value(projectPath, 'projectPath', 'is not a directory');
   }
+  final picked = kit.chosen(only);
+  final misplaced = kitPlaceProblem(into, picked);
+  if (misplaced != null) throw FormatException(misplaced);
   final problems = await kit.check();
   if (problems.isNotEmpty) throw FormatException(problems.join('\n'));
   final root = await Directory(projectPath).resolveSymbolicLinks();
-  final conflicts = await kit.conflictsIn(DirectoryAssetSource(root));
+  final conflicts = await kit.conflictsIn(
+    DirectoryAssetSource(root),
+    into: into,
+    only: only,
+  );
   if (conflicts.isNotEmpty && !overwrite) throw KitConflicts(conflicts);
-  final entries = {
-    for (final MapEntry(:key, :value) in kit.pack.manifest.entries.entries)
-      if (key != kitManifestId) key: value.hash,
-  };
-  for (final id in entries.keys) {
-    _checkPlace(root, id);
+  final places = {for (final id in picked) id: kitPlace(id, into)};
+  for (final place in places.values) {
+    _checkPlace(root, place);
   }
   final written = <AssetId>[];
-  for (final MapEntry(:key, :value) in entries.entries) {
-    final bytes = await kit.pack.read(key);
-    if (ContentHash.of(bytes) != value) {
-      throw FormatException('"$key" does not match its hash in the kit.');
-    }
-    final path = _pathOf(root, key);
-    if (await _identical(path, value)) continue;
-    File(path).parent.createSync(recursive: true);
-    await _write(path, bytes);
-    written.add(key);
+  for (final MapEntry(key: id, value: place) in places.entries) {
+    final hash = kit.pack.manifest.entries[id]!.hash;
+    if (await _put(kit, id, _pathOf(root, place), hash)) written.add(id);
   }
   return written;
+}
+
+/// Writes [id] of [kit] to [path] unless it is there already. Answers whether
+/// it wrote.
+Future<bool> _put(Kit kit, AssetId id, String path, ContentHash hash) async {
+  final bytes = await kit.pack.read(id);
+  if (ContentHash.of(bytes) != hash) {
+    throw FormatException('"$id" does not match its hash in the kit.');
+  }
+  if (await _identical(path, hash)) return false;
+  File(path).parent.createSync(recursive: true);
+  await _write(path, bytes);
+  return true;
 }
 
 Future<bool> _identical(String path, ContentHash hash) async {

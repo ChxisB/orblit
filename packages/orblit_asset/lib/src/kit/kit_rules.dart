@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import '../asset_id.dart';
 import 'kit_manifest.dart';
 
@@ -83,12 +85,44 @@ final RegExp _device = RegExp(
 // make a name read differently from the file it writes.
 final RegExp _plain = RegExp(r'^[A-Za-z0-9_][A-Za-z0-9_.() +-]*$');
 
+/// True when [id] is a file a person could run, compile or load as code.
+bool isKitScript(AssetId id) =>
+    scriptExtensions.contains(id.extension) ||
+    scriptNames.contains(id.name.toLowerCase());
+
 /// True when one of [ids] is a script.
-bool carriesScripts(Iterable<AssetId> ids) => ids.any(
-  (id) =>
-      scriptExtensions.contains(id.extension) ||
-      scriptNames.contains(id.name.toLowerCase()),
-);
+bool carriesScripts(Iterable<AssetId> ids) => ids.any(isKitScript);
+
+/// Where [id] lands when a kit is written under [folder]. An empty [folder]
+/// is the project's own root.
+AssetId kitPlace(AssetId id, String folder) =>
+    folder.isEmpty ? id : AssetId.parse('$folder/$id');
+
+/// Why the files [ids] cannot be written under [folder], or null when they
+/// can.
+///
+/// The folder is held to the rules a file name is: no hidden folder, no name
+/// a file system reads as something else. Otherwise a kit installed into
+/// `.git/hooks` would write what a person never looked at.
+String? kitPlaceProblem(String folder, Iterable<AssetId> ids) {
+  if (folder.isEmpty) return null;
+  final shown = kitShow(folder);
+  if (AssetId.tryParse(folder) == null) {
+    return '"$shown" is not a folder name. Use names joined by single '
+        'slashes, with none at either end.';
+  }
+  for (final part in folder.split('/')) {
+    final why = _segmentWhy(part);
+    if (why != null) {
+      return '"$shown" has a part, "${kitShow(part)}", that $why.';
+    }
+  }
+  final longest = ids.fold(0, (most, id) => max(most, '$id'.length));
+  return folder.length + 1 + longest > _pathLimit
+      ? '"$shown" is so long that a file in the kit would pass the limit of '
+            '$_pathLimit characters.'
+      : null;
+}
 
 /// What is wrong with a kit that holds [files], each an id and its size in
 /// bytes, with the manifest left out. Empty when nothing is.
@@ -143,23 +177,29 @@ List<String> _fileProblems(AssetId id, int bytes, int limit) => [
 ];
 
 List<String>? _segmentProblem(AssetId id, String segment) {
-  final String? why;
-  if (segment.length > _segmentLimit) {
-    why = 'is longer than $_segmentLimit characters';
-  } else if (segment.startsWith('.')) {
-    why = 'starts with a dot, so it would write a hidden file';
-  } else if (segment.endsWith('.') || segment.endsWith(' ')) {
-    why = 'ends with a dot or a space, which Windows drops';
-  } else if (_device.hasMatch(segment)) {
-    why = 'is a Windows device name';
-  } else if (!_plain.hasMatch(segment)) {
-    why = 'uses a character other than letters, digits, spaces and _.()+-';
-  } else {
-    why = null;
-  }
+  final why = _segmentWhy(segment);
   return why == null
       ? null
       : ['"${kitShow('$id')}" has a part, "${kitShow(segment)}", that $why.'];
+}
+
+/// What is wrong with one part of a path, ending a sentence that starts with
+/// the part, or null.
+String? _segmentWhy(String segment) {
+  if (segment.length > _segmentLimit) {
+    return 'is longer than $_segmentLimit characters';
+  }
+  if (segment.startsWith('.')) {
+    return 'starts with a dot, so it would write a hidden file';
+  }
+  if (segment.endsWith('.') || segment.endsWith(' ')) {
+    return 'ends with a dot or a space, which Windows drops';
+  }
+  if (_device.hasMatch(segment)) return 'is a Windows device name';
+  if (!_plain.hasMatch(segment)) {
+    return 'uses a character other than letters, digits, spaces and _.()+-';
+  }
+  return null;
 }
 
 List<String> _caseClashes(Iterable<AssetId> ids) {

@@ -50,6 +50,15 @@ final class Kit {
       if (key != kitManifestId) key: value.bytes,
   };
 
+  /// The files that a person could run, compile or load as code, in the
+  /// order [files] has them.
+  ///
+  /// The same test as `containsScripts`. Installing a kit never runs one.
+  List<AssetId> get scripts => [
+    for (final id in files.keys)
+      if (isKitScript(id)) id,
+  ];
+
   /// What is wrong with the kit, in words. Empty when nothing is.
   ///
   /// Reads and hashes every blob, so it is the place a flipped byte in a
@@ -60,18 +69,50 @@ final class Kit {
       '"${kitShow('$id')}" does not match its hash.',
   ];
 
-  /// The files [project] already has with other bytes than the kit's.
+  /// The files of the kit, or those in [only], as the kit names them.
   ///
-  /// A file that is there and identical is not one, because writing it would
-  /// change nothing. Only the project is read, never a blob of the kit.
+  /// Throws an [ArgumentError] for a name the kit does not hold, so a typo
+  /// installs nothing instead of a part. The manifest is not a file a person
+  /// gets, so it cannot be chosen.
+  List<AssetId> chosen(Set<AssetId>? only) {
+    final all = files;
+    for (final id in only ?? const <AssetId>{}) {
+      if (!all.containsKey(id)) {
+        throw ArgumentError.value(
+          kitShow('$id'),
+          'only',
+          'is not a file of the kit',
+        );
+      }
+    }
+    return [
+      for (final id in all.keys)
+        if (only == null || only.contains(id)) id,
+    ];
+  }
+
+  /// The files [project] already has with other bytes than the kit's, as the
+  /// kit names them.
+  ///
+  /// With [into], each file is looked for under that folder, and with [only],
+  /// the others are not looked at. A file that is there and identical is not
+  /// a conflict, because writing it would change nothing. Only the project is
+  /// read, never a blob of the kit.
   ///
   /// shortcut: every file the project has is read and hashed. Compare sizes
   /// first when kits get large.
-  Future<List<AssetId>> conflictsIn(AssetSource project) async => [
-    for (final MapEntry(:key, :value) in pack.manifest.entries.entries)
-      if (key != kitManifestId &&
-          await project.exists(key) &&
-          ContentHash.of(await project.read(key)) != value.hash)
-        key,
-  ];
+  Future<List<AssetId>> conflictsIn(
+    AssetSource project, {
+    String into = '',
+    Set<AssetId>? only,
+  }) async {
+    final conflicts = <AssetId>[];
+    for (final id in chosen(only)) {
+      final place = kitPlace(id, into);
+      if (!await project.exists(place)) continue;
+      final held = ContentHash.of(await project.read(place));
+      if (held != pack.manifest.entries[id]!.hash) conflicts.add(id);
+    }
+    return conflicts;
+  }
 }
