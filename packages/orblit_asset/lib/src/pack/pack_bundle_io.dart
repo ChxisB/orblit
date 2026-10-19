@@ -34,28 +34,55 @@ Future<PackSummary> packBundle({
   final bundle = await _readManifest(bundlePath);
   final chain = _mount(target, base);
   final manifest = _changedFrom(bundle, chain);
-  final removed = _droppedFrom(bundle, chain);
-  final added = _newTo(manifest, chain);
-  final layout = _Layout.of(
-    manifest,
-    target.name,
-    base: chain?.chainHash,
-    removed: removed,
-  );
+  try {
+    return await writePack(
+      manifest: manifest,
+      outPath: outPath,
+      target: target.name,
+      read: (id) => _readBundleFile(bundlePath, id),
+      base: chain?.chainHash,
+      removed: _droppedFrom(bundle, chain),
+      added: _newTo(manifest, chain),
+    );
+  } on FormatException catch (error) {
+    throw FormatException(
+      '${error.message} The bundle "$bundlePath" is stale or was changed by '
+      'hand. Cook the project again.',
+    );
+  }
+}
+
+/// Writes the assets of [manifest] as one pack at [outPath], for [target].
+///
+/// [read] gives the bytes of an asset, and what it gives is checked against
+/// the manifest's hash and size on the way. A cooked bundle and a kit both
+/// write through here, because the layout rules change together. [added] is
+/// how many of the assets a base did not serve, every asset when it is null.
+Future<PackSummary> writePack({
+  required AssetManifest manifest,
+  required String outPath,
+  required String target,
+  required Future<Uint8List> Function(AssetId id) read,
+  ContentHash? base,
+  List<AssetId> removed = const [],
+  int? added,
+}) async {
+  final layout = _Layout.of(manifest, target, base: base, removed: removed);
   final temporary = File('$outPath.partial');
   try {
-    await _copyBlobs(bundlePath, temporary, layout);
+    await _copyBlobs(temporary, layout, read);
     await temporary.rename(outPath);
   } on Object {
     if (temporary.existsSync()) temporary.deleteSync();
     rethrow;
   }
+  final assets = manifest.entries.length;
   return PackSummary(
     hash: ContentHash.of(layout.directoryBytes),
     bytes: layout.directoryAt + layout.directoryBytes.length,
-    assets: manifest.entries.length,
-    added: added,
-    replaced: manifest.entries.length - added,
+    assets: assets,
+    added: added ?? assets,
+    replaced: assets - (added ?? assets),
     blobs: layout.firstUse.length,
     sharedBytes: layout.sharedBytes,
     removed: removed.length,
@@ -184,9 +211,9 @@ final class _Layout {
 }
 
 Future<void> _copyBlobs(
-  String bundlePath,
   File temporary,
   _Layout layout,
+  Future<Uint8List> Function(AssetId id) read,
 ) async {
   final header = PackHeader(
     directoryAt: layout.directoryAt,
@@ -197,7 +224,7 @@ Future<void> _copyBlobs(
     sink.add(header.encode());
     for (final MapEntry(key: hash, value: id) in layout.firstUse.entries) {
       final blob = layout.blobs[hash]!;
-      final bytes = await _readChecked(bundlePath, id, hash, blob.bytes);
+      final bytes = await _readChecked(read, id, hash, blob.bytes);
       sink.add(bytes);
       final padding = alignedOffset(blob.end) - blob.end;
       if (padding > 0) sink.add(Uint8List(padding));
@@ -209,26 +236,25 @@ Future<void> _copyBlobs(
   }
 }
 
+Future<Uint8List> _readBundleFile(String bundlePath, AssetId id) async {
+  try {
+    return await File(_inside(bundlePath, '$id')).readAsBytes();
+  } on PathNotFoundException {
+    throw FormatException(
+      'The manifest lists "$id" and "$bundlePath" has no such file.',
+    );
+  }
+}
+
 Future<Uint8List> _readChecked(
-  String bundlePath,
+  Future<Uint8List> Function(AssetId id) read,
   AssetId id,
   ContentHash expected,
   int expectedBytes,
 ) async {
-  final Uint8List bytes;
-  try {
-    bytes = await File(_inside(bundlePath, '$id')).readAsBytes();
-  } on PathNotFoundException {
-    throw FormatException(
-      'The manifest lists "$id" and "$bundlePath" has no such file. The '
-      'bundle is stale. Cook the project again.',
-    );
-  }
+  final bytes = await read(id);
   if (bytes.length != expectedBytes || ContentHash.of(bytes) != expected) {
-    throw FormatException(
-      '"$id" in "$bundlePath" is not what its manifest says. The bundle is '
-      'stale or was changed by hand. Cook the project again.',
-    );
+    throw FormatException('"$id" is not what its manifest says.');
   }
   return bytes;
 }

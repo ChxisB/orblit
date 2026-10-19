@@ -71,6 +71,21 @@ export 'src/importers/gltf_importer.dart' show GltfImporter, SceneImporter;
 export 'src/importers/native_importers.dart';
 export 'src/importers/terrain_importer.dart' show TerrainImporter;
 export 'src/runtime_import.dart' show RuntimeImport;
+export 'src/kit/kit.dart' show Kit;
+export 'src/kit/kit_files.dart'
+    show KitConflicts, extractKit, packKit, publishKit;
+export 'src/kit/kit_client.dart'
+    show KitStoreClient, KitStoreFailed, kitStoreAddressProblem;
+export 'src/kit/kit_entry.dart' show KitEntry, KitRelease;
+export 'src/kit/kit_index.dart'
+    show KitIndex, KitReleases, KitRow, PublishedRelease;
+export 'src/kit/kit_lock.dart' show KitLock, LockedKit, kitLockFormat;
+export 'src/kit/kit_manifest.dart' show KitManifest, kitFitsEngine;
+export 'src/kit/kit_published.dart' show KitPublished;
+export 'src/kit/kit_update.dart' show KitUpdatePlan, planKitUpdate;
+export 'src/kit/kit_rules.dart'
+    show kitLockName, kitPackLimit, kitPlace, kitPlaceProblem;
+export 'src/kit/kit_store.dart' show buildKitStore;
 export 'src/importer.dart'
     show
         CookTarget,

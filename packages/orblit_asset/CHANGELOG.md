@@ -1,5 +1,127 @@
 # Changelog
 
+## 0.22.0
+
+- **Planning an update.** `planKitUpdate` takes the files `kits.lock`
+  recorded, the files of a newer release and the hashes on disk. It answers
+  which files to replace, add and remove, and which to keep. A file is
+  replaced or removed only when it is still as the lock recorded it. A file
+  the person edited or deleted is kept and listed. It reads and writes
+  nothing. Nothing calls it yet.
+
+## 0.21.0
+
+- **Listing a kit.** `kit publish <folder> --url <url>` packs the folder,
+  opens the file and checks it as `kit check` does, and prints the entry
+  that lists it, with the hash and size filled in. The file is named after
+  the end of the url, or by `-o`. `--entries <folder>` adds the release to
+  `<publisher>/<slug>.json` in a folder of entries, written whole by rename,
+  and `--notes` sets the release notes. A version the entry lists already is
+  refused, because a listed release is not edited. The command uploads
+  nothing and runs no git command. It prints the steps that are left.
+  The file is packed beside its name and moved into place only after every
+  check has passed, so a refusal leaves an earlier file as it was. A file
+  named inside the folder is refused, because the next pack would take it in.
+- `publishKit(folder:, url:, outPath:, released:, notes:, entriesPath:)` is
+  what the command calls. It returns a `KitPublished` with the pack summary,
+  the `KitRelease` and the `KitEntry`. The caller passes the date.
+- `KitEntry.encode()` writes an entry file in the form `KitEntry.parse`
+  reads.
+
+## 0.20.0
+
+- **Reading a store.** `KitStoreClient(base, transport)` reads `index()`,
+  `releases(row)`, `preview(row, name)` and `thumbnail(row)`, each to the
+  limit of that file, and `open(release)` lists a release's files and sizes by
+  ranged requests, without its blobs. The base must be https. A reply that is
+  not a 200, or a body past its limit, throws `KitStoreFailed`.
+  `kitStoreAddressProblem(base)` says why an address cannot be a store, and
+  `KitRelease.origin` is the origin and size limit to download a release with.
+  Each read gives up after `timeout`, 30 seconds unless set. `open` reads at
+  most 4 MiB in one piece, so a header cannot choose how much it holds.
+- **Installing a kit.** `extractKit` takes `into`, a folder of the project to
+  write under, and `only`, the files to take. A file the project has with
+  other bytes still refuses the install unless `overwrite` is set.
+  `Kit.conflictsIn(project, into:, only:)` lists those files first, and
+  `Kit.chosen` checks a choice. `kitPlace` and `kitPlaceProblem` join a folder
+  to a file name and say what is wrong with the folder. A file named
+  `kits.lock` is refused at the root of a project, in any case.
+- **Scripts and engine fit.** `Kit.scripts` lists the files that can run, by
+  the same test as `containsScripts`. `kitFitsEngine(range, version)` is
+  inclusive at both ends and answers true for a version it cannot read.
+- **`kits.lock`.** `KitLock` and `LockedKit` record each installed kit: the
+  publisher, slug, version, pack hash, target folder and the hash of every
+  file written. Adding a kit replaces its older entry.
+
+## 0.19.0
+
+- **A store of kits.** A store is a folder of entries, one file for each kit
+  at `<publisher>/<slug>.json`. `buildKitStore(entriesPath:, outPath:,
+  transport:, timeout:)` turns it into the files a browser reads, and
+  `dart run orblit_asset:kit index <entries> -o <folder>` runs it.
+- **The entry.** `{"releases": [...]}` and no other key. A release has
+  `version`, `url`, `hash`, `bytes`, `released` (a day, such as
+  `2026-10-19`) and an optional one line `notes`. The url is https, up to 300
+  characters, at a public host name. An address, `localhost`, a name ending in
+  `.local` or `.internal`, a port other than 443, and a backslash, `#`, `@` or
+  space are refused, because CI fetches it. The hash is
+  the hash of the pack, which `kit pack` prints. The kit's name and summary
+  are not in the entry. They come from the `kit.json` of the latest release.
+  `KitEntry` and `KitRelease` refuse a key they do not know, a version listed
+  twice and more than 200 releases.
+- **What the builder checks.** It downloads each release from its url, up to
+  the size the entry gives and for up to `timeout` (ten minutes), with the
+  retries and the hash check of `PackFolder.download`. The server may
+  redirect, and only the hash vouches for the bytes. The file must be the size
+  the entry says, every blob must match its hash, the kit must pass
+  `kitProblems`, and its `kit.json` must name the publisher, slug and version
+  of the entry. An entry file must be a plain file of at most 256 KiB. Every
+  problem is listed, nothing is written until every release has passed, and
+  the output folder must not exist. The files are written beside it and
+  renamed into place, so a folder that appears during the run is not touched.
+- **What it writes.** `index.json` (`KitIndex`, one `KitRow` for each kit,
+  sorted by publisher and slug), `kits/<publisher>/<slug>/releases.json`
+  (`KitReleases`, newest first) and the previews of the latest release as
+  `preview-<n>.<extension>`. A preview is at most 1 MiB and starts like the
+  image its name says. The format is 1. The readers ignore a key they do not
+  know and refuse a newer one, and the writers refuse a file the readers
+  would, which is an `index.json` over 16 MiB.
+- `KitManifest` and `kitPackLimit` are exported.
+
+## 0.18.0
+
+- **Kits.** A kit is a pack for the target `source` that holds files for a
+  project's own folders and a `kit.json`. `KitManifest` is the manifest. Its
+  constructor refuses a slug, name, version, licence or engine range that no
+  index could show, and `encode()` writes the same bytes every time.
+- **`Kit.open(pack)`.** Refuses a pack for another target, a patch, and one
+  with no valid `kit.json`, one over 64 KiB, or one whose bytes are not the
+  hash the pack lists. `files` lists what a person gets, `check()` lists
+  every problem and every blob that no longer matches its hash, and
+  `conflictsIn(source)` names the files a project has with other contents.
+- **`packKit` and `extractKit`.** `packKit(folder:, outPath:)` counts the
+  scripts itself and sets `containsScripts`. Before it reads a file for its
+  bytes it refuses a link, a hidden file, a name Windows reads as a device, a
+  name with a character outside letters, digits, spaces and `_.()+-`, two
+  names that differ only in case, a name that is both a file and a folder,
+  a file over 64 MiB, more than 5000 files, more than 1 GiB in all, and a
+  path over 240 characters. A kit file left in the folder by an earlier run
+  is not packed again. `extractKit(kit, project)` runs the same rules and the
+  blob hashes first, so a pack built by hand cannot write a name that
+  packing would refuse. It stops with `KitConflicts` unless `overwrite` is
+  set, and refuses a link, or a file where a folder must go, before it
+  writes the first file. Each file goes to a new name beside its place and
+  is renamed, so a file is whole or not there.
+- **`containsScripts` is a hint.** The extension list covers scripts,
+  programs and libraries, and a few build file names. A file with no
+  extension can still be a program.
+- **`dart run orblit_asset:kit`.** `pack`, `check` and `extract`, with the
+  exit codes of `pack`.
+- `writePack` in `pack_bundle_io.dart` holds the layout and the blob check
+  that `packBundle` and `packKit` share. Its message for a file that does not
+  match the manifest is plain, and each caller adds its own line about what
+  to do. A stale bundle still says to cook the project again.
+
 ## 0.17.0
 
 - **`pack diff <old> <new>`.** Lists the assets added, removed and changed

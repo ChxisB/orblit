@@ -1,0 +1,351 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:orblit_asset/orblit_asset.dart';
+import 'package:test/test.dart';
+
+final hash = ContentHash.of([1, 2, 3]).hex;
+
+Map<String, Object?> release(
+  String version, [
+  Map<String, Object?> changes = const {},
+]) => {
+  'version': version,
+  'url': 'https://example.com/crates-$version.opack',
+  'hash': hash,
+  'bytes': 1234,
+  'released': '2026-10-19',
+  'notes': 'Changes.',
+  ...changes,
+};
+
+Uint8List entryBytes(Object? json) =>
+    Uint8List.fromList(utf8.encode(jsonEncode(json)));
+
+KitEntry entry(Object? json) =>
+    KitEntry.parse(entryBytes(json), publisher: 'brass-lamp', slug: 'crates');
+
+Matcher refuses(String what) => throwsA(
+  isA<FormatException>().having(
+    (error) => error.message,
+    'message',
+    allOf(contains('brass-lamp/crates'), contains(what)),
+  ),
+);
+
+void main() {
+  test('reads releases newest first and offers the pack to download', () {
+    final read = entry({
+      'releases': [release('1.2.0'), release('1.10.0'), release('1.9.0')],
+    });
+    expect(read.releases.map((r) => r.version), ['1.10.0', '1.9.0', '1.2.0']);
+    expect(read.latest.version, '1.10.0');
+    expect(
+      read.latest.offer.url,
+      Uri.parse('https://example.com/crates-1.10.0.opack'),
+    );
+    expect(read.latest.offer.hash.hex, hash);
+    expect(read.latest.toJson()['hash'], hash);
+    expect(read.latest.origin.base.host, 'example.com');
+    expect(read.latest.origin.policy.maxBytes, read.latest.bytes);
+  });
+
+  test('a url at a public name, a query or port 443 is read', () {
+    for (final url in const [
+      'https://github.com/o/r/releases/download/v1/a.opack',
+      'https://cdn-1.example.co.uk/a.opack?raw=1',
+      'https://example.com:443/a.opack',
+    ]) {
+      expect(
+        entry({
+          'releases': [
+            release('1.0.0', {'url': url}),
+          ],
+        }).latest.url,
+        url,
+      );
+    }
+  });
+
+  test('a missing field is named once', () {
+    final bare = release('1.0.0')..remove('url');
+    expect(
+      () => entry({
+        'releases': [bare],
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(contains('has no "url" text'), isNot(contains('is wrong'))),
+        ),
+      ),
+    );
+  });
+
+  test('a file name with a control character is escaped in the message', () {
+    expect(
+      () => KitEntry.parse(
+        entryBytes('nope').sublist(0, 2),
+        publisher: 'am\u001bber',
+        slug: 'rocks',
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(contains(r'am\u001bber'), isNot(contains('\u001b'))),
+        ),
+      ),
+    );
+  });
+
+  test('encodes to the bytes it reads back from', () {
+    final read = entry({
+      'releases': [release('1.2.0'), release('1.10.0')],
+    });
+    final bytes = read.encode();
+    expect(utf8.decode(bytes), endsWith('}\n'));
+    final again = KitEntry.parse(
+      bytes,
+      publisher: 'brass-lamp',
+      slug: 'crates',
+    );
+    expect(again.releases.map((r) => r.toJson()), [
+      for (final r in read.releases) r.toJson(),
+    ]);
+    expect(again.encode(), bytes);
+  });
+
+  test('notes may be left out', () {
+    final bare = release('1.0.0')..remove('notes');
+    expect(
+      entry({
+        'releases': [bare],
+      }).latest.notes,
+      '',
+    );
+  });
+
+  final bad = <String, (Object?, String)>{
+    'a key it does not know': (
+      {
+        'releases': [release('1.0.0')],
+        'name': 'x',
+      },
+      'not a key of this file',
+    ),
+    'a release key it does not know': (
+      {
+        'releases': [
+          release('1.0.0', {'sha': 'x'}),
+        ],
+      },
+      'not a key of this file',
+    ),
+    'no releases': ({'releases': <Object?>[]}, '1 to 200 releases'),
+    'releases that are not a list': ({'releases': 'x'}, 'no "releases" list'),
+    'a version twice': (
+      {
+        'releases': [release('1.0.0'), release('1.0.0')],
+      },
+      'a version twice',
+    ),
+    'a version with a tag': (
+      {
+        'releases': [release('1.0.0-beta')],
+      },
+      'three whole numbers',
+    ),
+    'an http url': (
+      {
+        'releases': [
+          release('1.0.0', {'url': 'http://example.com/a.opack'}),
+        ],
+      },
+      'not an https address',
+    ),
+    'a url with a user name': (
+      {
+        'releases': [
+          release('1.0.0', {'url': 'https://me@example.com/a'}),
+        ],
+      },
+      'not an https address',
+    ),
+    'a url with a space': (
+      {
+        'releases': [
+          release('1.0.0', {'url': 'https://example.com/a b'}),
+        ],
+      },
+      'not an https address',
+    ),
+    'a url with a control character': (
+      {
+        'releases': [
+          release('1.0.0', {'url': 'https://example.com/a\u202e'}),
+        ],
+      },
+      'not an https address',
+    ),
+    'a url that is too long': (
+      {
+        'releases': [
+          release('1.0.0', {'url': 'https://example.com/${'a' * 300}'}),
+        ],
+      },
+      'not an https address',
+    ),
+    for (final url in const [
+      'https://localhost/a.opack',
+      'https://127.0.0.1/a.opack',
+      'https://127.1/a.opack',
+      'https://0x7f.0.0.1/a.opack',
+      'https://2130706433/a.opack',
+      'https://169.254.169.254/latest',
+      'https://[::1]/a.opack',
+      'https://printer.local/a.opack',
+      'https://build.internal/a.opack',
+      'https://intranet/a.opack',
+      'https://example.com./a.opack',
+      'https://m\u00fcnchen.de/a.opack',
+      'https://example.com:8443/a.opack',
+      'https://example.com:99999/a.opack',
+      'https://example.com\\@evil.com/a.opack',
+      'https://example.com@evil.com/a.opack',
+      'https://example.com/a.opack#evil.com',
+    ])
+      'the url $url': (
+        {
+          'releases': [
+            release('1.0.0', {'url': url}),
+          ],
+        },
+        'not an https address',
+      ),
+    'a short hash': (
+      {
+        'releases': [
+          release('1.0.0', {'hash': 'abc'}),
+        ],
+      },
+      '64 hexadecimal digits',
+    ),
+    'a hash that is not hex': (
+      {
+        'releases': [
+          release('1.0.0', {'hash': 'z' * 64}),
+        ],
+      },
+      '64 hexadecimal digits',
+    ),
+    'no bytes': (
+      {
+        'releases': [
+          release('1.0.0', {'bytes': 0}),
+        ],
+      },
+      'A kit file is',
+    ),
+    'bytes as text': (
+      {
+        'releases': [
+          release('1.0.0', {'bytes': '12'}),
+        ],
+      },
+      'no "bytes" whole number',
+    ),
+    'too many bytes': (
+      {
+        'releases': [
+          release('1.0.0', {'bytes': 1 << 40}),
+        ],
+      },
+      'A kit file is',
+    ),
+    'a day that is not there': (
+      {
+        'releases': [
+          release('1.0.0', {'released': '2026-02-30'}),
+        ],
+      },
+      'a day that exists',
+    ),
+    'a day with one digit': (
+      {
+        'releases': [
+          release('1.0.0', {'released': '2026-2-3'}),
+        ],
+      },
+      'a day that exists',
+    ),
+    'notes on two lines': (
+      {
+        'releases': [
+          release('1.0.0', {'notes': 'a\nb'}),
+        ],
+      },
+      'one line',
+    ),
+    'notes that are too long': (
+      {
+        'releases': [
+          release('1.0.0', {'notes': 'a' * 301}),
+        ],
+      },
+      'one line',
+    ),
+  };
+  for (final MapEntry(:key, :value) in bad.entries) {
+    test('refuses $key', () {
+      expect(() => entry(value.$1), refuses(value.$2));
+    });
+  }
+
+  test('refuses a file that is not JSON, not an object or too big', () {
+    expect(() => entry('{'), throwsFormatException);
+    expect(() => entry(<Object?>[]), refuses('not a JSON object'));
+    expect(
+      () => KitEntry.parse(
+        Uint8List(300 * 1024),
+        publisher: 'brass-lamp',
+        slug: 'crates',
+      ),
+      throwsFormatException,
+    );
+  });
+
+  test('refuses a publisher or slug that is not a word', () {
+    for (final name in ['Brass', 'a b', '../x', '']) {
+      expect(
+        () => KitEntry.parse(
+          entryBytes({
+            'releases': [release('1.0.0')],
+          }),
+          publisher: name,
+          slug: 'crates',
+        ),
+        throwsFormatException,
+        reason: name,
+      );
+    }
+  });
+
+  test('a message does not carry a control character raw', () {
+    expect(
+      () => entry({
+        'releases': [
+          release('1.0.0', {'url': 'http://a\u202e'}),
+        ],
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(contains(r'\u202e'), isNot(contains('\u202e'))),
+        ),
+      ),
+    );
+  });
+}

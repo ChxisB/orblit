@@ -456,6 +456,151 @@ chain.standalone.forEach(packs.addMod);
   hash, which is right for a texture and wrong for a pack. A web build
   reads a patch with `RangePackBytes` and has no `PackFolder`.
 
+### Kits
+
+A kit is a pack for the target `source`. It holds files for a project's own
+folders and a `kit.json`. A game never mounts it.
+
+```
+dart run orblit_asset:kit pack crate-pack -o crate-pack.opack
+dart run orblit_asset:kit check crate-pack.opack
+dart run orblit_asset:kit extract crate-pack.opack path/to/project
+```
+
+```dart
+final kit = await Kit.open(await AssetPack.open(FilePackBytes('kit.opack')));
+final problems = await kit.check();
+final clashes = await kit.conflictsIn(DirectoryAssetSource('my_project'));
+await extractKit(kit, 'my_project');
+```
+
+- **The folder holds files and a `kit.json`.** The manifest names the
+  `slug`, `publisher`, `name`, `summary`, `version`, `licence` (`spdx` and
+  `url`), `engine` (`from` and `to`), `tags` and `previews`. The tool sets
+  `containsScripts` from the file names, so a value typed there is ignored.
+- **Packing refuses what a download could abuse.** A link, a hidden file
+  such as `.DS_Store`, a name that ends in a dot or a space, a Windows
+  device name, a character outside letters, digits, spaces and `_.()+-`, two
+  names that differ only in case, a name that is a file and a folder, a file
+  over 64 MiB, more than 5000 files, more than 1 GiB in all and a path over
+  240 characters. Every problem is listed at once. `containsScripts` is a
+  hint, because a file with no extension can still be a program.
+- **Installing checks the kit again and never overwrites by surprise.**
+  `extractKit` runs the same rules and the blob hashes, so a pack built by
+  hand gets no further than a folder would. It throws `KitConflicts`, or a
+  `FormatException` for a link or a file in the way, before it writes the
+  first file, unless `overwrite` is true. A file that is already identical is
+  left alone. It never writes `kit.json` and never writes through a link. A
+  file that `overwrite` replaces gets the default permissions.
+- **Files are written one at a time.** A full disk half way leaves the
+  earlier ones, and running the install again is safe.
+- **Refusals are `FormatException`**, except a project folder that does not
+  exist, which is an `ArgumentError`.
+
+#### A store of kits
+
+`dart run orblit_asset:kit index <entries> -o <folder>` builds the files a kit
+browser reads. `<entries>` holds `<publisher>/<slug>.json`, and each file is
+`{"releases": [...]}` with no other key. A release is `version`, `url`
+(https at a public host name, no address, `localhost`, port other than 443,
+space, backslash, `#` or `@`), `hash` (the pack hash that `kit pack` prints),
+`bytes`, `released` (`2026-10-19`) and an optional one line `notes`. The
+kit's name and summary come from its `kit.json`, not the entry.
+
+- **It checks every release.** It downloads each one from its url, up to the
+  size the entry gives and for up to ten minutes. The url may redirect,
+  because the hash vouches for the bytes. The pack must have the entry's hash
+  and size, every blob must match, the kit must pass `kitProblems`, and
+  `kit.json` must name the entry's publisher, slug and version. Every problem
+  is listed, nothing is written until all pass, and the output folder must not
+  exist.
+- **It writes `index.json`, `kits/<publisher>/<slug>/releases.json` and the
+  latest release's previews.** Read them with `KitIndex.parse` and
+  `KitReleases.parse`. A preview is at most 1 MiB and starts like a png, jpg
+  or webp. Unknown keys in these files are ignored and a newer
+  `formatVersion` is refused.
+- **`buildKitStore` is the same thing as a function** and takes an
+  `AssetTransport`, so a test serves the packs from a `MapTransport`.
+- **Every run downloads every release.** Keep packs by hash between runs
+  when a store holds hundreds of kits.
+
+#### Listing a kit
+
+`dart run orblit_asset:kit publish <folder> --url <url> [-o <file>]
+[--entries <folder>] [--notes <text>]` packs the folder, opens the file and
+checks it as `kit check` does, and prints the entry with the hash and size
+filled in. `publishKit(folder:, url:, outPath:, released:, notes:,
+entriesPath:)` is the same in Dart and returns a `KitPublished`.
+
+- **The file is named after the end of the url**, or by `-o`. A url that ends
+  in no plain file name is a usage error, exit 2.
+- **`--entries` writes `<publisher>/<slug>.json`** into a folder of entries by
+  rename and adds the release to the ones listed. A version already listed is
+  refused, because a listed release is not edited. Raise `version` in
+  `kit.json`. Without `--entries` it only prints the entry.
+- **The version comes from `kit.json`**, the hash and size from the file, and
+  the day from the clock, in UTC. `publishKit` takes the day as an argument.
+- **A refusal leaves the kit file as it was.** The file is packed beside its
+  name and moved into place after every check. A file named inside the folder
+  is refused.
+- **It uploads nothing and runs no git command.** It prints the steps left.
+- `KitEntry.encode()` writes the entry file in the form `KitEntry.parse`
+  reads.
+
+#### Reading a store and installing from it
+
+```dart
+final store = KitStoreClient(Uri.parse('https://example.com/store/'), HttpTransport());
+final row = (await store.index()).rows.first;
+final latest = (await store.releases(row)).releases.first;
+final listed = await store.open(latest.release); // the file list only
+
+final pack = await PackFolder('downloads').download(
+  latest.release.offer,
+  transport: HttpTransport(),
+  origin: latest.release.origin,
+);
+final kit = await Kit.open(pack);
+final problems = await kit.check();
+final clashes = await kit.conflictsIn(
+  DirectoryAssetSource('my_project'),
+  into: 'assets/kits/crates',
+);
+await extractKit(kit, 'my_project', into: 'assets/kits/crates');
+```
+
+- **The client reads and never writes.** `KitStoreClient` takes an https
+  base and an `AssetTransport`, so a test serves a store from a
+  `MapTransport`. It reads `index()`, `releases(row)`, `preview(row, name)`
+  and `thumbnail(row)`, each to the limit of its file and within `timeout`
+  (30 seconds). A reply that is not a 200, a body past its limit or no
+  answer in time throws `KitStoreFailed`. `kitStoreAddressProblem(base)` says
+  why an address cannot be a store.
+- **`open(release)` is for showing, not installing.** It lists files by
+  ranged requests to the host that holds the kit file, and it reads at most
+  4 MiB in one piece. The server must answer `Range`, or it throws
+  `PackRangeFailed`. Nothing has checked its bytes against the index hash.
+  Install from a download made with `PackFolder` and `KitRelease.origin`,
+  which checks the hash and throws `FetchCorrupt` with both hashes.
+- **`into` and `only` belong to `extractKit` and `conflictsIn`.** `into` is
+  a folder of the project and cannot start with a dot or climb out of it.
+  `only` is a set of the kit's own ids, and an id the kit does not hold is an
+  `ArgumentError`. Conflicts are counted at the new place. A kit file named
+  `kits.lock` is refused at the root, in any case.
+- **`kit.scripts` lists what can run.** Show it before an install. An install
+  never runs a script.
+- **`kitFitsEngine(range, version)` is inclusive at both ends.** It answers
+  true for a version it cannot read, because it cannot judge.
+- **`kits.lock` is at the project root.** `KitLock.parse(bytes)` reads it
+  and `encode()` writes it. A `LockedKit` holds the publisher, slug, version,
+  pack hash, `into` and the hash of each file written. A file the person left
+  out is not listed. `adding` replaces the older entry of the same kit. A
+  newer `formatVersion` is refused. `extractKit` does not write the lock, so
+  whoever installs does.
+- **The editor does this in Scene › Kit store.** It goes online only when the
+  person presses a button, reads a kit's file list only when asked, and
+  replaces a file of the project only when the person ticks it.
+
 ---
 
 ## Network assets

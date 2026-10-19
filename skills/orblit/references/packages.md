@@ -352,8 +352,11 @@ Assets as bytes, wherever they come from. Cooking source files for a device
 and fetching them over a network (`AssetOrigin`, `FetchPolicy`,
 `AssetFetcher`, `NetworkAssetSource`, `HttpTransport`, and `MapTransport` for
 tests). `fetchInStages` gives a stand-in, then a texture's own coarse mip
-levels while the rest arrives, then the whole file. Details:
-[assets.md](assets.md).
+levels while the rest arrives, then the whole file. A `Kit` is a pack for the
+target `source` that a person installs into a project with `extractKit`.
+`buildKitStore` turns a folder of kit entries into the index files a kit
+browser reads, `KitStoreClient` reads them, and `kits.lock` (`KitLock`) lists
+what an install put in a project. Details: [assets.md](assets.md).
 
 ## orblit_sequence
 
