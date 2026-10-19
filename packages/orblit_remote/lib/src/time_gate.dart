@@ -9,15 +9,27 @@ import 'dart:async';
 final class TimeGate {
   /// [stepDelta] is how much time one stepped frame passes, which defaults to
   /// a sixtieth of a second because the solver is tuned for that rate.
-  TimeGate({this.stepDelta = 1 / 60});
+  ///
+  /// Throws [ArgumentError] unless it is a positive, finite number, because a
+  /// stepped frame that passes no time or NaN would look like a frozen game.
+  TimeGate({this.stepDelta = 1 / 60}) {
+    if (!(stepDelta > 0 && stepDelta.isFinite)) {
+      throw ArgumentError.value(stepDelta, 'stepDelta', 'is not above 0');
+    }
+  }
 
   final double stepDelta;
 
   bool _paused = false;
   int _pending = 0;
+  int _passed = 0;
   Completer<void>? _stepped;
 
   bool get paused => _paused;
+
+  /// Stepped frames the loop has passed since the gate was made. A step reads
+  /// it before and after to say how many frames it got.
+  int get passed => _passed;
 
   /// Frames a step has asked for that the loop has not passed yet.
   int get pending => _pending;
@@ -30,6 +42,7 @@ final class TimeGate {
   double advance(double real) {
     if (_pending > 0) {
       _pending--;
+      _passed++;
       if (_pending == 0) _release();
       return stepDelta;
     }

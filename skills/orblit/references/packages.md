@@ -983,8 +983,8 @@ Traps:
 
 - **Pause needs the loop's help.** The stage has no clock. Time holds still
   only if the game's loop passes its delta through `gate.advance`. A
-  `time.step` on a loop that does not answers error `-32003` after ten
-  seconds and leaves the game paused.
+  `time.step` on a loop that does not answers error `-32003` once ten seconds
+  pass with no frame, and leaves the game paused.
 - **Debug builds only.** `RemoteServer.start` throws `StateError` unless
   asserts are on, so a profile or release build refuses. Do not look for a way
   round that.
@@ -1000,8 +1000,11 @@ Traps:
 - **Snapshots are eight deep.** The ninth drops `s1`. A diff of an id that was
   dropped answers `-32001`.
 - **Take the token from the printed line.** It changes at every start. A wrong
-  one gets a 403 before the upgrade. Never write it to a file the project
-  commits.
+  one, a browser `Origin` or a foreign `Host` gets a 403 before the upgrade.
+  Never write the token to a file the project commits.
+- **One request at a time per connection.** Open a second connection to pause
+  during a long `time.step`. Eight connections at most. When the last one
+  leaves, time runs again.
 - **Nothing about a render.** `view.screenshot` answers what the host gave it.
   A host with no screenshot source answers `-32004`.
 - **Read only is narrow.** `readOnly: true` refuses `entity.set` and

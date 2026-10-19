@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -197,6 +198,54 @@ void main() {
       });
     });
 
+    test('a snapshot is a copy of what the host gave', () async {
+      final shared = <String, Object?>{'bodies': 3};
+      final host = RemoteHost(world: world, extras: {'physics': () => shared});
+      final copying = RemoteVerbs(host);
+      final first =
+          (await call(copying, 'world.snapshot'))['result']!
+              as Map<String, Object?>;
+      shared['bodies'] = 4;
+      final second =
+          (await call(copying, 'world.snapshot'))['result']!
+              as Map<String, Object?>;
+      final diff = await call(copying, 'world.diff', {
+        'a': first['id'],
+        'b': second['id'],
+      });
+      expect(diff['result'], [
+        {'path': 'extras/physics/bodies', 'from': 3, 'to': 4},
+      ]);
+    });
+
+    test('a float JSON cannot write is kept as its name', () async {
+      final host = RemoteHost(
+        world: world,
+        extras: {
+          'physics': () => {'speed': double.nan},
+        },
+      );
+      final snap = await call(RemoteVerbs(host), 'world.snapshot');
+      expect((snap['result']! as Map<String, Object?>)['extras'], {
+        'physics': {'speed': 'NaN'},
+      });
+    });
+
+    test('a snapshot that cannot be written is not kept', () async {
+      var broken = true;
+      final host = RemoteHost(
+        world: world,
+        extras: {
+          'physics': () => {'body': broken ? Object() : 1},
+        },
+      );
+      final flaky = RemoteVerbs(host);
+      expect(codeOf(await call(flaky, 'world.snapshot')), RemoteError.internal);
+      broken = false;
+      final snap = await call(flaky, 'world.snapshot');
+      expect((snap['result']! as Map<String, Object?>)['id'], 's1');
+    });
+
     test('a diff of a snapshot nobody took is refused', () async {
       final diff = await call(verbs, 'world.diff', {'a': 's1', 'b': 's2'});
       expect(codeOf(diff), RemoteError.notFound);
@@ -227,12 +276,35 @@ void main() {
     test('step gives up when no loop passes the frames', () async {
       final gate = TimeGate();
       final timed = RemoteVerbs(
-        RemoteHost(gate: gate, stepTimeout: const Duration(milliseconds: 20)),
+        RemoteHost(gate: gate, timeout: const Duration(milliseconds: 20)),
       );
       final reply = await call(timed, 'time.step', {'n': 2});
       expect(codeOf(reply), RemoteError.timedOut);
       expect(gate.pending, 0);
       expect(gate.paused, isTrue);
+    });
+
+    test('step keeps waiting while frames keep passing', () async {
+      final gate = TimeGate();
+      final timed = RemoteVerbs(
+        RemoteHost(gate: gate, timeout: const Duration(milliseconds: 200)),
+      );
+      final reply = call(timed, 'time.step', {'n': 4});
+      for (var i = 0; i < 4; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 60));
+        gate.advance(0.5);
+      }
+      expect((await reply)['result'], {'paused': true, 'stepped': 4});
+    });
+
+    test('step says how many frames passed when it is cut short', () async {
+      final gate = TimeGate();
+      final timed = RemoteVerbs(RemoteHost(gate: gate));
+      final reply = call(timed, 'time.step', {'n': 5});
+      gate.advance(0.5);
+      gate.advance(0.5);
+      gate.pause();
+      expect((await reply)['result'], {'paused': true, 'stepped': 2});
     });
 
     test('step refuses fewer than one frame', () async {
@@ -316,6 +388,72 @@ void main() {
         }
       },
     );
+
+    test(
+      'a callback that fails by itself is internal, not a bad request',
+      () async {
+        final broken = RemoteVerbs(
+          RemoteHost(
+            input: (_) => throw ArgumentError('the game broke'),
+            screenshot: () async => throw StateError('no surface'),
+            perf: () => throw StateError('no clock'),
+          ),
+        );
+        final sent = await call(broken, 'input.send', {
+          'event': <String, Object?>{},
+        });
+        expect(codeOf(sent), RemoteError.internal);
+        expect(
+          codeOf(await call(broken, 'view.screenshot')),
+          RemoteError.internal,
+        );
+        expect(
+          codeOf(await call(broken, 'perf.summary')),
+          RemoteError.internal,
+        );
+      },
+    );
+
+    test('a callback that never answers times out', () async {
+      final hung = RemoteVerbs(
+        RemoteHost(
+          timeout: const Duration(milliseconds: 20),
+          input: (_) => Completer<void>().future,
+          screenshot: () => Completer<Uint8List>().future,
+        ),
+      );
+      final sent = await call(hung, 'input.send', {
+        'event': <String, Object?>{},
+      });
+      expect(codeOf(sent), RemoteError.timedOut);
+      expect(codeOf(await call(hung, 'view.screenshot')), RemoteError.timedOut);
+    });
+
+    test('an input sink that answers later is waited for', () async {
+      final seen = <Map<String, Object?>>[];
+      final slow = RemoteVerbs(
+        RemoteHost(
+          input: (event) async {
+            await Future<void>.delayed(const Duration(milliseconds: 10));
+            seen.add(event);
+          },
+        ),
+      );
+      final reply = await call(slow, 'input.send', {
+        'event': {'key': 'w'},
+      });
+      expect(reply['result'], isNull);
+      expect(seen, [
+        {'key': 'w'},
+      ]);
+    });
+
+    test('a timeout of zero is refused', () {
+      expect(
+        () => RemoteVerbs(const RemoteHost(timeout: Duration.zero)),
+        throwsArgumentError,
+      );
+    });
 
     test('a host callback that throws is answered, not rethrown', () async {
       final broken = RemoteVerbs(

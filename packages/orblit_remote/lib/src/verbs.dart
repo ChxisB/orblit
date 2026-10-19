@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math';
 import 'dart:typed_data';
 
 import 'inspector.dart';
@@ -37,7 +38,7 @@ final class RemoteHost {
     this.screenshot,
     this.extras = const {},
     this.readOnly = false,
-    this.stepTimeout = const Duration(seconds: 10),
+    this.timeout = const Duration(seconds: 10),
   });
 
   final WorldInspector? world;
@@ -48,7 +49,7 @@ final class RemoteHost {
   final Map<String, Object?> Function()? perf;
 
   /// Passes one input event, as JSON, to the game.
-  final void Function(Map<String, Object?> event)? input;
+  final FutureOr<void> Function(Map<String, Object?> event)? input;
 
   /// The render view as PNG bytes.
   final Future<Uint8List> Function()? screenshot;
@@ -62,8 +63,10 @@ final class RemoteHost {
   /// because they change no value by themselves.
   final bool readOnly;
 
-  /// How long `time.step` waits for the game's loop to pass the frames.
-  final Duration stepTimeout;
+  /// How long a verb waits on the game before it answers
+  /// [RemoteError.timedOut]: for the next stepped frame, the input sink and
+  /// the screenshot. It must be above zero.
+  final Duration timeout;
 }
 
 typedef _Run = Future<Object?> Function(Map<String, Object?> params);
@@ -71,7 +74,13 @@ typedef _Run = Future<Object?> Function(Map<String, Object?> params);
 /// The verbs of the control surface, as one JSON-RPC request in and one
 /// answer out. It knows nothing of sockets, so a test can call it directly.
 final class RemoteVerbs {
-  RemoteVerbs(this._host);
+  /// Throws [ArgumentError] for a [RemoteHost.timeout] of zero or less. A
+  /// const host cannot check it, so the owner of the clock does.
+  RemoteVerbs(this._host) {
+    if (_host.timeout <= Duration.zero) {
+      throw ArgumentError.value(_host.timeout, 'timeout', 'is not above 0');
+    }
+  }
 
   final RemoteHost _host;
   final SnapshotStore _snapshots = SnapshotStore();
@@ -214,22 +223,34 @@ final class RemoteVerbs {
     return {'paused': false};
   }
 
-  // shortcut: a step cut short by a pause or a resume from another client
-  // still answers as done. Report the frames passed when a client needs them.
+  // The deadline restarts whenever a frame passes, so a long step on a slow
+  // game finishes and a loop that never calls the gate is caught.
+  //
+  // shortcut: two clients stepping at once share one count, so `stepped` can
+  // be high for one of them. Give each step its own count when that matters.
   Future<Object?> _step(Map<String, Object?> params) async {
     final gate = _need(_host.gate, 'a time gate');
     final frames = _int(params, 'n');
-    try {
-      await gate.step(frames).timeout(_host.stepTimeout);
-    } on TimeoutException {
-      gate.pause();
-      throw RemoteError(
-        RemoteError.timedOut,
-        'The game passed no frames in ${_host.stepTimeout.inSeconds} s. '
-        'Its loop must call world.tick(gate.advance(delta)).',
-      );
+    final before = gate.passed;
+    final done = gate.step(frames);
+    var left = gate.pending;
+    while (true) {
+      try {
+        await done.timeout(_host.timeout);
+        break;
+      } on TimeoutException {
+        if (gate.pending >= left) {
+          gate.pause();
+          throw RemoteError(
+            RemoteError.timedOut,
+            'The game passed no frame in ${_host.timeout.inMilliseconds} ms. '
+            'Its loop must call world.tick(gate.advance(delta)).',
+          );
+        }
+        left = gate.pending;
+      }
     }
-    return {'paused': true, 'stepped': frames};
+    return {'paused': true, 'stepped': min(frames, gate.passed - before)};
   }
 
   // F5 is broken on purpose: a snapshot is kept so that a later diff can name
@@ -241,12 +262,18 @@ final class RemoteVerbs {
       final components = world.read(row.id);
       if (components != null) entities['${row.id}'] = components;
     }
-    final snapshot = <String, Object?>{
+    final raw = <String, Object?>{
       'entities': entities,
       'extras': {
-        for (final extra in _host.extras.entries) extra.key: extra.value(),
+        for (final extra in _host.extras.entries)
+          extra.key: await _fromHost(extra.value),
       },
     };
+    // The round trip copies the snapshot, so a host that reuses its maps
+    // cannot change a kept one, and it fails here, before anything is kept.
+    final snapshot =
+        jsonDecode(jsonEncode(raw, toEncodable: _finite))
+            as Map<String, Object?>;
     _snapshots.add(snapshot);
     return {'id': _snapshots.lastId, ...snapshot};
   }
@@ -261,13 +288,14 @@ final class RemoteVerbs {
     if (event is! Map<String, Object?>) {
       throw ArgumentError.value(event, 'event', 'must be an object');
     }
-    _need(_host.input, 'an input sink')(event);
+    final sink = _need(_host.input, 'an input sink');
+    await _fromHost(() => sink(event));
     return null;
   }
 
   Future<Object?> _screenshot(Map<String, Object?> _) async {
-    final png = await _need(_host.screenshot, 'a screenshot source')();
-    return {'png': base64Encode(png)};
+    final source = _need(_host.screenshot, 'a screenshot source');
+    return {'png': base64Encode(await _fromHost(source))};
   }
 
   Future<Object?> _tail(Map<String, Object?> params) async {
@@ -276,7 +304,24 @@ final class RemoteVerbs {
   }
 
   Future<Object?> _perf(Map<String, Object?> _) async =>
-      _need(_host.perf, 'a perf summary')();
+      _fromHost(_need(_host.perf, 'a perf summary'));
+
+  /// Runs a callback the game supplied. It can hang, and its own bug must not
+  /// read as a bad request, so an argument or state error from it is internal.
+  Future<T> _fromHost<T>(FutureOr<T> Function() call) async {
+    try {
+      return await Future.sync(call).timeout(_host.timeout);
+    } on TimeoutException {
+      throw RemoteError(
+        RemoteError.timedOut,
+        'The game did not answer in ${_host.timeout.inMilliseconds} ms',
+      );
+    } on ArgumentError catch (error) {
+      throw RemoteError(RemoteError.internal, '$error');
+    } on StateError catch (error) {
+      throw RemoteError(RemoteError.internal, error.message);
+    }
+  }
 
   Map<String, Object?> _kept(Map<String, Object?> params, String name) {
     final id = _string(params, name);
@@ -284,6 +329,10 @@ final class RemoteVerbs {
         (throw RemoteError(RemoteError.notFound, 'No snapshot named $id'));
   }
 }
+
+/// A float JSON cannot write is its name, as the inspector reports it.
+Object _finite(Object? value) =>
+    value is double ? '$value' : throw JsonUnsupportedObjectError(value);
 
 List<String> _names(Object? value) {
   if (value == null) return const [];

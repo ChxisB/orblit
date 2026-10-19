@@ -59,26 +59,31 @@ final class CoreWorldInspector implements WorldInspector {
   final Map<String, ComponentType> _byName;
   final Map<int, ComponentType> _byId;
   final Map<String, List<String>> _fields;
+  late final List<String> _sortedNames = _byName.keys.toList()..sort();
 
   @override
   List<EntityRow> entities(List<String> filter) {
     final query = _world.query([for (final name in filter) _type(name)]);
+    final rows = <EntityRow>[];
     try {
-      return [
-        for (final chunk in query.chunks)
-          for (final id in chunk.entities)
-            (id: id, components: _names(chunk.componentIds)),
-      ]..sort((a, b) => a.id.compareTo(b.id));
+      for (final chunk in query.chunks) {
+        // Every entity of a chunk has the same components, so name them once.
+        final names = _names(chunk.componentIds);
+        for (final id in chunk.entities) {
+          rows.add((id: id, components: names));
+        }
+      }
     } finally {
       query.dispose();
     }
+    return rows..sort((a, b) => a.id.compareTo(b.id));
   }
 
   @override
   Map<String, Map<String, Object?>>? read(int id) {
     if (!_world.isAlive(id)) return null;
     return {
-      for (final name in _byName.keys.toList()..sort())
+      for (final name in _sortedNames)
         if (_world.has(id, _byName[name]!)) name: _describe(id, _byName[name]!),
     };
   }

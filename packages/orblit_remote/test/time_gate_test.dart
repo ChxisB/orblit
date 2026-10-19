@@ -2,6 +2,24 @@ import 'package:orblit_remote/orblit_remote.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('a step delta that passes no time is refused', () {
+    for (final bad in [0.0, -1.0, double.nan, double.infinity]) {
+      expect(() => TimeGate(stepDelta: bad), throwsArgumentError);
+    }
+  });
+
+  test('passed counts the stepped frames the loop used', () {
+    final gate = TimeGate();
+    gate.advance(0.5);
+    expect(gate.passed, 0);
+    gate.step(2).ignore();
+    gate.advance(0.5);
+    expect(gate.passed, 1);
+    gate.pause();
+    gate.advance(0.5);
+    expect(gate.passed, 1);
+  });
+
   test('a running gate passes the frame delta through', () {
     final gate = TimeGate();
     expect(gate.advance(0.02), 0.02);

@@ -38,9 +38,15 @@ world.tick(gate.advance(delta));
 ```
 
 The server prints `orblit-remote ws://127.0.0.1:PORT/?token=TOKEN`. Connect to
-that address. A connection without the token gets a 403. The server binds the
-loopback address only, and throws `StateError` unless asserts are on, so a
-profile or release build never opens the port.
+that address. A connection gets a 403 unless it has the token, names a loopback
+host and sends no `Origin` header, which keeps a web page in the user's browser
+out. The server binds the loopback address only, and throws `StateError` unless
+asserts are on, so a profile or release build never opens the port.
+
+A connection is answered one request at a time, so a client that wants to pause
+during a long `time.step` opens a second connection. At most eight stay open,
+and a frame over one mebibyte closes its connection. When the last connection
+goes, or the server closes, time runs again.
 
 ## Verbs
 
@@ -52,7 +58,7 @@ Each request is a JSON-RPC 2.0 object with named params.
 | `entity.get` | `id` | the components of one entity, by field |
 | `entity.set` | `id`, `component`, `field`, `value` | nothing |
 | `time.pause`, `time.resume` | none | `paused` |
-| `time.step` | `n` | `stepped`, after the loop passed `n` frames |
+| `time.step` | `n` | `stepped`, the frames the loop passed, which is `n` unless a pause or resume cut it short |
 | `world.snapshot` | none | an `id`, the entities and the `extras` |
 | `world.diff` | `a`, `b` (snapshot ids) | each path that differs |
 | `input.send` | `event` | nothing |
@@ -68,6 +74,12 @@ The surface keeps the last eight snapshots. A component the inspector has no
 field names for is listed by name and cannot be set. `readOnly: true` refuses
 `entity.set` and `input.send`. A verb whose part the game did not give answers
 error `-32004`.
+
+`RemoteHost.timeout` (ten seconds) is how long a verb waits on the game. For
+`time.step` it restarts each time a frame passes. For `input.send` and
+`view.screenshot` it is the whole wait. A callback that outlasts it answers
+`-32003`. An argument or state error thrown by a host callback answers
+`-32603`, because it is the game's fault and not a bad request.
 
 ## Status
 
