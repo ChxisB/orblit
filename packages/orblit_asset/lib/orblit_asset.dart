@@ -78,6 +78,7 @@ export 'src/kit/kit_index.dart'
     show KitIndex, KitReleases, KitRow, PublishedRelease, kitStoreFormat;
 export 'src/kit/kit_manifest.dart' show KitManifest, compareKitVersions;
 export 'src/kit/kit_rules.dart' show kitPackLimit;
+export 'src/kit/kit_store.dart' show buildKitStore;
 export 'src/importer.dart'
     show
         CookTarget,
