@@ -24,6 +24,7 @@ library;
 
 export 'src/cutscenes.dart'
     show OrblitCutsceneStep, OrblitCutscenes, blendCameras;
+export 'src/debug_lines.dart' show DebugLine, OrblitDebugLines;
 export 'src/document_view.dart' show OrblitDocumentView;
 export 'src/material_view.dart' show materialFrom;
 export 'src/particle_sheet.dart' show OrblitParticleSheet;

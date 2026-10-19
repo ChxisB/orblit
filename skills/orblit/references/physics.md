@@ -104,6 +104,12 @@ physics.dispose();
   bodies by kind, `asleep`, `triggers`, `characters`, `joints`, `zones`,
   `rules`, `pairs`, `touching` and `points`, and `stepMicroseconds`. There is
   no island count.
+- Draw contacts with `OrblitDebugLines` from `orblit_stage` (0.10.0). Set
+  `enabled` and call `lines.draw(scene, () => [...])` where the scene is made
+  each frame. Each `DebugLine(from:, to:, colour:)` is a stretched cube, and
+  one shorter than `width` shows as a point. Off, it never calls the closure,
+  so `contacts` is not copied. Make a point and a normal from each contact:
+  `from: at` and `to: at + normal * 0.3`.
 
 ## Cylinders and hulls
 
@@ -777,7 +783,8 @@ OrblitObject(
 - **`contacts` and `stats` are the last step's.** A pair asleep is not in
   `contacts`, and `stepMicroseconds` is not in a snapshot.
 - **The editor** draws bodies, triggers, zones and joints (inspector sections
-  and wireframes) but does not simulate them. Nothing draws contacts yet.
+  and wireframes) but does not simulate them, so it has no contacts to draw.
+  The stage draws them with `OrblitDebugLines`.
 
 ## Compound and scaled shapes
 

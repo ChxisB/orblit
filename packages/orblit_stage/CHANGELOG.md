@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.10.0
+
+- `OrblitDebugLines` draws segments over a scene behind a switch. Each
+  `DebugLine` becomes a stretched cube, and a segment shorter than the width
+  shows as a point. It is stateless, and the caller turns a simulation's
+  contacts, rays or paths into lines.
+
 ## 0.9.0
 
 - `OrblitParticleSheet` draws a grid of particles that something else moves,
