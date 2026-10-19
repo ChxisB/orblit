@@ -167,7 +167,17 @@ read.problems;         // what could not be carried across
 ```
 
 The container is sniffed from the bytes, not the extension — a `.gltf` that is
-really a GLB is an ordinary thing to be handed.
+really a GLB is an ordinary thing to be handed. Anything that is not glTF is
+read as an OBJ: one entity per `o` or `g` group, with its faces as editable
+geometry and the colour of its first material. Pass the `.mtl` in `files`.
+A group that wears several materials is noted, and its pictures are not read.
+
+Below a scene, `readObj`, `readStl` and `readPly` in `orblit_mesh` return a
+`Mesh` and throw only `FormatException`. They check the size first and each
+count as they read, against a `ReadLimits` you can lower for a file you do not
+trust. `boundsOfObj` gives an OBJ's box without building a mesh, as
+`boundsOfGlb` does for a GLB. `CollisionMesh.fromObj` in `orblit_asset` makes a
+collider from one. An FBX has no Dart reader: cook it to a GLB first.
 
 A scene Orblit wrote comes back **as itself**: same ids, same order, same
 parents, same components, `encode()` for `encode()`. The exporter writes a

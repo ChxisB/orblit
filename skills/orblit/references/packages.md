@@ -23,12 +23,12 @@ the fullest reference.
 | `orblit_scene` | A scene as a document: entities with stable ids, components, migrations, diffs | `SceneDocument.decode`, `SceneDiff`, `TransformComponent` |
 | `orblit_stage` | Stages a scene document for the renderer, and a terrain and its scatter; plays cutscenes over it; draws a grid of particles, such as a cloth, as a skinned sheet | `OrblitDocumentView`, `terrainFrom`, `scatterFrom`, `OrblitCutscenes`, `OrblitParticleSheet` |
 | `orblit_light` | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
-| `orblit_mesh` | Building and editing geometry, and writing it out (OBJ, glb, STL, PLY) | `Mesh`, `MeshExport` |
+| `orblit_mesh` | Building and editing geometry, writing it out (OBJ, glb, STL, PLY), and reading OBJ, STL and PLY back, with limits for untrusted files | `Mesh`, `MeshExport`, `readObj`, `readStl`, `readPly`, `boundsOfObj`, `ReadLimits` |
 | `orblit_rig` | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `solveTwoBoneIk`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Gamepads as per-frame state. **Linux only so far**; elsewhere it reports no pads | `Pads`, `PadState` |
-| `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
+| `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource`, `CollisionMesh.fromObj` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
 
