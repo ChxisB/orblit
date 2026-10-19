@@ -28,7 +28,7 @@ Mesh readStl(Uint8List bytes, {ReadLimits limits = const ReadLimits()}) {
   if (_isBinary(bytes)) {
     _binary(bytes, welder, limits);
   } else {
-    _text(bytes, welder);
+    _text(bytes, welder, limits);
   }
   if (welder.mesh.faces.isEmpty || !welder.isBetweenTriangles) {
     throw const FormatException('This STL has no whole triangle.');
@@ -64,12 +64,14 @@ void _binary(Uint8List bytes, _Welder welder, ReadLimits limits) {
 
 final _space = RegExp(r'\s+');
 
-void _text(Uint8List bytes, _Welder welder) {
+final _solid = RegExp(r'^\s*solid');
+
+void _text(Uint8List bytes, _Welder welder, ReadLimits limits) {
   final text = utf8.decode(bytes, allowMalformed: true);
-  if (!text.trimLeft().startsWith('solid')) {
+  if (!_solid.hasMatch(text)) {
     throw const FormatException('This is not an STL.');
   }
-  for (final line in text.split('\n')) {
+  for (final line in linesOf(text, limits)) {
     final words = line.trim().split(_space);
     if (words.first.toLowerCase() != 'vertex') continue;
     final xyz = words.length < 4
@@ -111,7 +113,8 @@ final class _Welder {
     });
     _pending.add(at);
     if (_pending.length < 3) return;
-    if (_pending.toSet().length == 3) mesh.faces.add(Face([..._pending]));
+    final [a, b, c] = _pending;
+    if (a != b && b != c && a != c) mesh.faces.add(Face([a, b, c]));
     _pending.clear();
   }
 }

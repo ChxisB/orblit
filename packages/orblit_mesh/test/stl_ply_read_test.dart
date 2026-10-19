@@ -91,6 +91,16 @@ void main() {
         throwsFormatException,
       );
     });
+
+    test('a text line over the limit is refused', () {
+      expect(
+        () => readStl(
+          _bytes('solid a\n${' ' * 50}vertex 0 0 0\n'),
+          limits: const ReadLimits(line: 20),
+        ),
+        throwsFormatException,
+      );
+    });
   });
 
   group('PLY', () {
@@ -217,6 +227,18 @@ void main() {
             'element face 1',
             'property list uchar int vertex_indices',
           ], _bytes('0 0 0\n1 0 0\n0 1 0\n3 0 1 9\n')),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('faces with more corners than the limit allows are refused', () {
+      final cube = _cube();
+      expect(readPly(cube.toPly(binary: false)).faceCount, 12);
+      expect(
+        () => readPly(
+          cube.toPly(binary: false),
+          limits: const ReadLimits(indices: 35),
         ),
         throwsFormatException,
       );

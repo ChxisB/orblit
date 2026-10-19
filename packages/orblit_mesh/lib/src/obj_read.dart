@@ -102,6 +102,7 @@ ObjModel readObj(
 
 final _space = RegExp(r'\s+');
 final _slash = RegExp(r'[\\/]');
+final _integer = RegExp(r'^-?[0-9]+$');
 
 /// The most notes kept. A file of bad lines should not fill memory with
 /// sentences about them.
@@ -119,6 +120,9 @@ final class _ObjReader {
   final List<GlbMaterial> _materials = [];
   final Map<String, int> _materialAt = {};
   final List<String> _problems = [];
+  final Set<String> _loaded = {};
+  final Set<int> _unread = {};
+  var _corners = 0;
   var _unlisted = 0;
   var _line = 0;
   var _group = 'default';
@@ -128,8 +132,7 @@ final class _ObjReader {
   var _smooth = false;
 
   ObjModel read(String text) {
-    final body = text.startsWith('﻿') ? text.substring(1) : text;
-    for (final (number, line) in _lines(body)) {
+    for (final (number, line) in _lines(text)) {
       _line = number;
       _take(line);
     }
@@ -152,14 +155,17 @@ final class _ObjReader {
   /// The file's lines, each with the number of the line it began on. A line
   /// ending in a backslash goes on to the next, which is how long faces are
   /// wrapped.
-  static Iterable<(int, String)> _lines(String text) sync* {
+  Iterable<(int, String)> _lines(String text) sync* {
     final joined = StringBuffer();
     var start = 0;
     var number = 0;
-    for (final raw in text.split('\n')) {
+    for (final raw in linesOf(text, limits)) {
       number++;
       final line = raw.trimRight();
       if (joined.isEmpty) start = number;
+      if (joined.length + line.length > limits.line) {
+        throw FormatException('A line over ${limits.line} characters.');
+      }
       if (line.endsWith(r'\')) {
         joined
           ..write(line.substring(0, line.length - 1))
@@ -202,7 +208,13 @@ final class _ObjReader {
       throw FormatException('More than ${limits.vertices} points.');
     }
     final xyz = _numbers(args, 3);
-    if (xyz == null) return _note('a point needs three finite numbers.');
+    if (xyz == null) {
+      // The origin holds the place, so the points after it keep their
+      // numbers. A face that names it is dropped.
+      _unread.add(_mesh.vertexCount);
+      _mesh.positions.add(Vector3.zero());
+      return _note('a point needs three finite numbers.');
+    }
     _mesh.positions.add(Vector3(xyz[0], xyz[1], xyz[2]));
   }
 
@@ -211,8 +223,9 @@ final class _ObjReader {
       throw FormatException('More than ${limits.vertices} coordinates.');
     }
     final uv = _numbers(args.length == 1 ? [args[0], '0'] : args, 2);
-    if (uv == null) return _note('a coordinate needs finite numbers.');
-    _uvs.addAll(uv);
+    // A coordinate that cannot be read still takes its number.
+    _uvs.addAll(uv ?? const [0, 0]);
+    if (uv == null) _note('a coordinate needs finite numbers.');
   }
 
   void _face(List<String> args) {
@@ -230,12 +243,18 @@ final class _ObjReader {
     for (final word in args) {
       final parts = word.split('/');
       final point = _resolve(parts[0], _mesh.vertexCount);
-      if (point == null) return _note('"$word" is not a point read so far.');
+      if (point == null || _unread.contains(point)) {
+        return _note('"$word" is not a point read so far.');
+      }
       points.add(point);
       final uv = parts.length > 1 ? _resolve(parts[1], _uvs.length ~/ 2) : null;
       if (uv != null) uvs.add(Vector2(_uvs[uv * 2], _uvs[uv * 2 + 1]));
     }
-    _groups.putIfAbsent(_group, () => []).add(_mesh.faceCount);
+    _corners += points.length;
+    if (_corners > limits.indices) {
+      throw FormatException('More than ${limits.indices} face corners.');
+    }
+    _groups.putIfAbsent(_group, _newGroup).add(_mesh.faceCount);
     _mesh.faces.add(
       Face(
         points,
@@ -248,11 +267,19 @@ final class _ObjReader {
     );
   }
 
+  List<int> _newGroup() {
+    if (_groups.length >= limits.names) _tooMany();
+    return [];
+  }
+
+  void _tooMany() => throw FormatException('More than ${limits.names} names.');
+
   /// The zero-based index [word] names among [count] items, or null when it
   /// is not a number or is outside them. A negative one counts back from the
   /// last item read.
   static int? _resolve(String word, int count) {
-    final number = int.tryParse(word);
+    // tryParse alone reads 0x10 and +1, which other readers refuse.
+    final number = _integer.hasMatch(word) ? int.tryParse(word) : null;
     if (number == null || number == 0) return null;
     final at = number > 0 ? number - 1 : count + number;
     return at >= 0 && at < count ? at : null;
@@ -269,29 +296,39 @@ final class _ObjReader {
     return out;
   }
 
-  int _materialNamed(String name) => _materialAt.putIfAbsent(name, () {
-    _materials.add(GlbMaterial(name: name));
-    return _materials.length - 1;
-  });
+  int _materialNamed(String name) {
+    final at = _materialAt[name];
+    return at ?? _addMaterial(GlbMaterial(name: name));
+  }
 
   void _define(GlbMaterial material) {
     final at = _materialAt[material.name];
     if (at == null) {
-      _materialAt[material.name] = _materials.length;
-      _materials.add(material);
+      _addMaterial(material);
     } else {
       _materials[at] = material;
     }
   }
 
+  int _addMaterial(GlbMaterial material) {
+    if (_materials.length >= limits.names) _tooMany();
+    _materialAt[material.name] = _materials.length;
+    _materials.add(material);
+    return _materials.length - 1;
+  }
+
   void _library(String name) {
-    final bytes = files[name] ?? files[name.split(_slash).last];
+    final key = files.containsKey(name) ? name : name.split(_slash).last;
+    final bytes = files[key];
     if (bytes == null) return _note('the library $name was not given.');
     if (bytes.length > limits.bytes) {
       return _note('the library $name is over ${limits.bytes} bytes.');
     }
+    // A file that names one library a thousand times reads it once.
+    if (!_loaded.add(key)) return;
     _Draft? draft;
-    for (final raw in utf8.decode(bytes, allowMalformed: true).split('\n')) {
+    final text = utf8.decode(bytes, allowMalformed: true);
+    for (final raw in linesOf(text, limits)) {
       final line = raw.split('#').first.trim();
       if (line.isEmpty) continue;
       final words = line.split(_space);
@@ -363,8 +400,12 @@ final class _Draft {
   static bool _isPicture(String key) =>
       key.startsWith('map_') || const {'bump', 'disp', 'decal'}.contains(key);
 
+  /// A colour. One value is a grey, which the format allows.
   static bool _into(List<double> out, List<String> args) {
-    final values = _ObjReader._numbers(args, 3);
+    final values = _ObjReader._numbers(
+      args.length == 1 ? [args[0], args[0], args[0]] : args,
+      3,
+    );
     if (values == null) return false;
     out.setRange(0, 3, values);
     return true;

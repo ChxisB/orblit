@@ -264,6 +264,7 @@ final class _Body {
   final ReadLimits _limits;
   final Mesh _mesh = Mesh();
   final List<Vector2> _uvs = [];
+  var _corners = 0;
 
   Mesh read() {
     for (final element in _header.elements) {
@@ -382,6 +383,10 @@ final class _Body {
     final count = _length(p);
     if (count < 3 || count > _limits.corners) {
       throw FormatException('A PLY face has $count corners.');
+    }
+    _corners += count;
+    if (_corners > _limits.indices) {
+      throw FormatException('More than ${_limits.indices} face corners.');
     }
     return [
       for (var i = 0; i < count; i++)

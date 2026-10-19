@@ -85,6 +85,20 @@ void main() {
   });
 
   group('the sniff', () {
+    test('a glTF with a byte order mark still goes to the glTF reader', () {
+      final bytes = Uint8List.fromList([0xEF, 0xBB, 0xBF, ..._bytes('[1]')]);
+      expect(
+        () => readSceneFrom(bytes),
+        throwsA(
+          isA<SceneFormatException>().having(
+            (e) => e.message,
+            'message',
+            contains('glTF'),
+          ),
+        ),
+      );
+    });
+
     test('JSON, even an array, still goes to the glTF reader', () {
       expect(
         () => readSceneFrom(_bytes('  [1, 2]')),

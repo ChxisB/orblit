@@ -51,6 +51,12 @@ bool _isGltf(Uint8List bytes) {
   if (bytes.length >= 4 && String.fromCharCodes(bytes, 0, 4) == 'glTF') {
     return true;
   }
-  final first = bytes.indexWhere((byte) => byte > 32);
+  // A `.gltf` saved with a byte order mark still starts as JSON.
+  final bom =
+      bytes.length >= 3 &&
+      bytes[0] == 0xEF &&
+      bytes[1] == 0xBB &&
+      bytes[2] == 0xBF;
+  final first = bytes.indexWhere((byte) => byte > 32, bom ? 3 : 0);
   return first >= 0 && (bytes[first] == 0x7B || bytes[first] == 0x5B);
 }

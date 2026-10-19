@@ -235,6 +235,15 @@ void main() {
       expect(mesh.vertices.reduce((a, b) => a > b ? a : b), 2);
     });
 
+    test('a point too far out for a float is a format error, not a crash', () {
+      expect(
+        () => CollisionMesh.fromObj(
+          obj('v 1e39 0 0\nv 0 1e39 0\nv 0 0 1e39\nf 1 2 3\n'),
+        ),
+        throwsFormatException,
+      );
+    });
+
     test('a file that is not a model is refused as a format error', () {
       expect(
         () => CollisionMesh.fromObj(obj('v 0 0 0\n')),

@@ -13,9 +13,16 @@
   a line it cannot read and lists what it skipped in `ObjModel.problems`, at
   most 50 notes. All three readers throw only `FormatException`, and a PLY of
   splats is refused by name.
-- **`ReadLimits` bounds what a file may ask for.** Bytes, points, faces and
-  corners per face are checked while reading, so a header that promises four
-  billion vertices is refused before anything is allocated.
+- **`ReadLimits` bounds what a file may ask for.** Bytes, points, faces,
+  corners per face, corners in all faces, the groups and materials an OBJ
+  names, and the length of a line are checked while reading, so a header that
+  promises four billion vertices is refused before anything is allocated.
+- **A point that cannot be read keeps its place.** A `v` or `vt` line that
+  fails to parse stands in as the origin, so the points after it keep their
+  numbers, and a face on a missing point is dropped with a note. Only plain
+  decimal numbers name a point, so `0x1` and `+1` are refused as they are by
+  other readers. A `Kd` or `Ke` with one number is a grey. A library named on
+  many lines is read once.
 - **`boundsOfObj` sits beside `boundsOfGlb` and `boundsOfGltf`.**
 - **The `.mtl` writer adds `Pr` and `Pm`.** A material's metalness
   survives an export and a read. `Ks` was the only line that carried it, and

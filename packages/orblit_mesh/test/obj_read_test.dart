@@ -168,6 +168,15 @@ f 1 3 4
       expect(model.problems, isEmpty);
     });
 
+    test('one number for Kd is a grey', () {
+      final model = _read(
+        'mtllib a.mtl\n$_square\nusemtl a\nf 1 2 3\n',
+        files: {'a.mtl': 'newmtl a\nKd 0.5\n'},
+      );
+      expect(model.materials.single.colour.take(3), [0.5, 0.5, 0.5]);
+      expect(model.problems, isEmpty);
+    });
+
     test('roughness comes from the exponent when there is no Pr', () {
       final model = _read(
         'mtllib a.mtl\n$_square\nusemtl a\nf 1 2 3\n',
@@ -215,9 +224,83 @@ f 1 3 4
     });
 
     test('numbers that are not numbers, or not finite, are notes', () {
-      final model = _read('v 1e999 0 0\nv a b c\nv 1 2\n$_square\nf 1 2 3');
-      expect(model.mesh.vertexCount, 4);
+      final model = _read('v 1e999 0 0\nv a b c\nv 1 2\n$_square\nf 4 5 6');
+      expect(model.mesh.vertexCount, 7);
       expect(model.problems, hasLength(3));
+    });
+
+    test('a point that cannot be read keeps the numbers after it', () {
+      final model = _read('''
+v 0 0 0
+v 1 oops 0
+v 1 0 0
+v 0 1 0
+vt 0 0
+vt nope
+vt 1 1
+f 1 3 4
+f 1 2 3
+f 1/1 3/3 4/3
+''');
+      expect(model.mesh.faces.map((f) => f.vertices), [
+        [0, 2, 3],
+        [0, 2, 3],
+      ]);
+      expect(model.mesh.faces.last.uv.manual!.last.x, 1);
+      expect(model.problems, hasLength(3));
+    });
+
+    test('only plain decimal numbers name a point', () {
+      final model = _read('$_square\nf 1 2 3\nf 0x1 2 3\nf +1 2 3\n');
+      expect(model.mesh.faceCount, 1);
+      expect(model.problems, hasLength(2));
+    });
+
+    test('too many names, corners or characters stop the read', () {
+      expect(
+        () => _read(
+          '$_square\no a\nf 1 2 3\no b\nf 1 2 3\no c\nf 1 2 3',
+          limits: const ReadLimits(names: 2),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => _read(
+          '$_square\nusemtl a\nusemtl b\nusemtl c\nf 1 2 3',
+          limits: const ReadLimits(names: 2),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => _read(
+          '$_square\nf 1 2 3\nf 1 3 4 2',
+          limits: const ReadLimits(indices: 6),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => _read(
+          '$_square\nf 1 2 3 # ${'x' * 40}\n',
+          limits: const ReadLimits(line: 30),
+        ),
+        throwsFormatException,
+      );
+      expect(
+        () => _read(
+          '$_square\nf 1 2 \\\n${'3 ' * 20}\n',
+          limits: const ReadLimits(line: 30),
+        ),
+        throwsFormatException,
+      );
+    });
+
+    test('a library named again and again is read once', () {
+      final library = [for (var i = 0; i < 20000; i++) 'newmtl m$i\nKd 1 0 0'];
+      final model = _read(
+        '${'mtllib big.mtl\n' * 2000}$_square\nf 1 2 3',
+        files: {'big.mtl': library.join('\n')},
+      );
+      expect(model.materials, hasLength(20000));
     });
 
     test('no faces at all is not a model', () {
