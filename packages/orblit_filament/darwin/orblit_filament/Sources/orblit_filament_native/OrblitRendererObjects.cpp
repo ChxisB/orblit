@@ -229,14 +229,21 @@ void Renderer::pumpVideos() {
   }
 }
 
+void Renderer::setCustomMaterials(std::unordered_map<int64_t, CustomSpec> specs) {
+  if (_disposed) return;
+  _customSpecs = std::move(specs);
+}
+
 void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, const int32_t *videos, uint32_t count) {
   if (_disposed) return;
 
-  // Last publish's leavings, now that everything has been re-dressed.
+  // Last publish's leavings, now that everything has been re-dressed. The
+  // instances first: a package cannot go while one made from it is alive.
   for (MaterialInstance *spent : _materialsSpent) {
     _engine->destroy(spent);
   }
   _materialsSpent.clear();
+  destroySpentPackages();
 
   bool warmed = false;
   const uint64_t generation = ++_materialGeneration;
@@ -253,21 +260,34 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
   for (uint32_t i = 0; i < count; i++) {
     Surfaced &surface = _materials[keys[i]];
     surface.seen = generation;
+
+    // An author's surface has its own package and its own way of being
+    // written, so it takes none of the standard path below.
+    if ((flags[i] & kCustomFlag) != 0) {
+      const bool made = applyCustom(surface, keys[i], flags[i]);
+      _materialOrder.push_back(surface.instance);
+      _materialRebuilt.push_back(made);
+      continue;
+    }
+
     const float *values = params + i * kMaterialParams;
     const int32_t *entries = maps + i * kMaterialMaps;
 
     // A change of blend mode or shading is a different compiled material, so
     // the instance is replaced rather than reconfigured. Everything else is
-    // set on the instance in place.
+    // set on the instance in place. A key that was an author's surface and
+    // no longer is has an instance from a package that is not one of ours.
     const int wanted = surfaceIndexFor(flags[i]);
     const bool rebuild =
         surface.instance == nullptr ||
+        surface.package != nullptr ||
         surfaceIndexFor(surface.flags) != wanted ||
         surface.flags == -1;
     if (rebuild) {
       if (surface.instance != nullptr) {
         _materialsSpent.push_back(surface.instance);
       }
+      surface.package = nullptr;
       surface.instance = surfaceAt(wanted)->createInstance();
       if ((flags[i] & 3) == 0) setDefaultsOn(surface.instance);
       surface.written = false;
@@ -324,6 +344,8 @@ void Renderer::applyMaterials(const int64_t *keys, const int32_t *flags, const f
     }
     it = _materials.erase(it);
   }
+  sweepCustomPackages();
+  _customSpecs.clear();
   sweepResolvedFeeds();
 
   // Filament queues the compile commands rather than sending them, so without

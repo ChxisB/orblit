@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.23.0
+
+- Add `MaterialComponent.values` and `shaderExtension`. A material asset
+  that ends in `.oshader` is a surface an author wrote, and `values` gives
+  it numbers, flags, colours and picture paths by the name the shader
+  declares. They are kept through JSON. A document without them reads as
+  it did.
+
 ## 0.22.0
 
 - Add `CellStreamer`. It keeps the cells of a world that are near a point in

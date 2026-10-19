@@ -125,6 +125,11 @@ bool readFileStart(const std::string &path, size_t most,
 /// the file is missing, empty, or comes back short.
 bool readWholeFile(const std::string &path, void **bytes, size_t *size);
 
+/// A number that changes when a file's size or modification time does, for
+/// noticing that a cooked file was written again under the same name. False
+/// when the file cannot be found.
+bool fileStamp(const std::string &path, uint64_t *stamp);
+
 /// The directory a path is in: "/a/b/c.gltf" is "/a/b", "c.gltf" is "", and
 /// "/c.gltf" is "/". NSString's stringByDeletingLastPathComponent.
 std::string deletingLastPathComponent(const std::string &path);

@@ -292,6 +292,30 @@ int orblit_renderer_set_batching(orblit_renderer *renderer, int enabled);
  * the second entity per object is built. */
 int orblit_renderer_set_depth_prepass(orblit_renderer *renderer, int enabled);
 
+/* Describes the surfaces an author wrote, for the next apply_materials to
+ * build. A material is one of them when its flags carry
+ * ORBLIT_MATERIAL_CUSTOM; apply_materials then ignores its numbers and maps and
+ * takes everything from here. Call it before every apply_materials: what it
+ * stages is read once and forgotten, and a flagged material nothing was staged
+ * for keeps the instance it had.
+ *
+ * `count` surfaces. `packages[i]` is the path of the cooked .filamat that
+ * surface i is made from, and `entry_counts[i]` of the `entry_total` entries
+ * in `names` belong to it, in order. An entry with a `widths` of 1 to 4 takes
+ * that many floats from `values`; one with a width of 0 is a texture, and
+ * `maps` indexes `texture_paths` for it. Entries the package does not declare
+ * are skipped. A package that is missing, unfinished or from another matc
+ * leaves the surface as it was and adds a note.
+ */
+#define ORBLIT_MATERIAL_CUSTOM (1 << 15)
+int orblit_renderer_set_custom_materials(
+    orblit_renderer *renderer, uint32_t count, const int64_t *keys,
+    const char *const *packages, const int32_t *entry_counts,
+    const char *const *names, const int32_t *widths, const int32_t *maps,
+    uint32_t entry_total, const float *values, size_t value_floats,
+    const char *const *texture_paths, const int32_t *texture_srgb,
+    uint32_t texture_count);
+
 /* `count` materials of ORBLIT_STRIDE_MATERIAL floats and
  * ORBLIT_STRIDE_MATERIAL_MAPS map indices each. Maps index `texture_paths`,
  * and `texture_srgb` has one entry per path. `videos` has one per material. */

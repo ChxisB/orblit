@@ -352,7 +352,12 @@ class Cook {
 
     final resolved = importer.resolveSettings(settings);
     final bytes = await source.read(id);
-    final dependencies = await importer.dependenciesOf(id, bytes, resolved);
+    final dependencies = await importer.dependenciesIn(
+      id,
+      bytes,
+      resolved,
+      source,
+    );
 
     return _Plan(
       importer: importer,

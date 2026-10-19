@@ -343,6 +343,9 @@ private final class Viewport {
       }
     }
 
+    // Before the materials, which read what is staged here once and forget it.
+    scene.surfaces.apply(to: renderer)
+
     let materialCount = scene.materialKeys.count
     let materialKeys = materialCount == 0 ? [Int64(0)] : scene.materialKeys
     let materialFlags = materialCount == 0 ? [Int32(0)] : scene.materialFlags
@@ -673,6 +676,9 @@ private struct Scene {
 
   /// Sprite layers, decoded and checked in OrblitSpriteMessage.swift.
   let sprites: SpriteMessage
+
+  /// Author-written surfaces, decoded and checked in OrblitSurfaceMessage.swift.
+  let surfaces: SurfaceMessage
 
   /// Terrains, decoded and checked in OrblitTerrainMessage.swift.
   let terrain: TerrainMessage
@@ -1055,6 +1061,8 @@ private struct Scene {
     self.splats = splats
     guard let sprites = SpriteMessage(arguments: arguments) else { return nil }
     self.sprites = sprites
+    guard let surfaces = SurfaceMessage(arguments: arguments) else { return nil }
+    self.surfaces = surfaces
     guard let terrain = TerrainMessage(arguments: arguments) else { return nil }
     self.terrain = terrain
     guard let poses = PoseMessage(arguments: arguments) else { return nil }

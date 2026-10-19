@@ -411,6 +411,7 @@ class OrblitScene {
       'textureId': textureId,
       ..._objectMessage(),
       ..._materialMessage(),
+      ...?_surfaceMessage(),
       ..._videoMessage(),
       ..._decalMessage(),
       ..._probeMessage(),

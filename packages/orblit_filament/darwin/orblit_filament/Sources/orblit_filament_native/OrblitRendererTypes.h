@@ -575,6 +575,46 @@ struct Surfaced {
   int32_t maps[kMaterialMaps] = {-1, -1, -1, -1, -1, -1, -1};
   bool written = false;
   uint64_t seen = 0;
+
+  /// For an author-written surface: the compiled package the instance came
+  /// from, and what was last written to it. Null and empty for the rest.
+  const filament::Material *package = nullptr;
+  std::string fingerprint;
+};
+
+/// One author-written surface as the host described it. Held from
+/// set_custom_materials until the next apply_materials has read it.
+struct CustomSpec {
+  /// The path of the cooked package.
+  std::string package;
+
+  struct Value {
+    std::string name;
+    int32_t width = 0;
+    float numbers[4] = {};
+  };
+  std::vector<Value> values;
+
+  struct Map {
+    std::string name;
+    std::string path;
+    bool srgb = false;
+  };
+  std::vector<Map> maps;
+
+  /// Every field above as one string, so that "did anything change" is a
+  /// comparison and not a walk.
+  std::string fingerprint;
+};
+
+/// A compiled author-written package, kept by the file it was read from.
+struct CustomPackage {
+  filament::Material *material = nullptr;
+  /// What fileStamp said when this file was last read, whether or not the
+  /// read produced a material: a broken file is not read again until it
+  /// changes.
+  uint64_t stamp = 0;
+  uint64_t seen = 0;
 };
 
 /// How many floats one video contributes to the message.
@@ -756,6 +796,12 @@ constexpr int kSurfaceCount = 17;
 /// The material flag that makes a video shading lit; see
 /// OrblitMaterial.litScreen.
 constexpr int32_t kLitScreenFlag = 1 << 14;
+
+/// The material flag that says an author wrote the surface. It is built from
+/// a cooked package the host names rather than from one of the seventeen
+/// above, and its blending, culling and depth writes are compiled into that
+/// package. Only the wrap and filter bits still mean anything, for its maps.
+constexpr int32_t kCustomFlag = 1 << 15;
 
 /// An environment filtered at run time out of an .hdr or .exr picture, ready
 /// to light a scene: see OrblitEnvironment.cpp.

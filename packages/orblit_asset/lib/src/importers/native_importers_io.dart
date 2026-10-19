@@ -1,7 +1,9 @@
 import '../importer.dart';
+import 'material_importer.dart';
 import 'model_importer.dart';
 import 'texture_importer.dart';
 
+export 'material_importer.dart' show MaterialImporter;
 export 'model_importer.dart'
     show EnvironmentImporter, ModelImporter, SplatImporter;
 export 'native_tool.dart' show NativeTool, beside, inside;
@@ -17,6 +19,7 @@ List<Importer> get nativeImporters => [
   ModelImporter(),
   SplatImporter(),
   EnvironmentImporter(),
+  MaterialImporter(),
 ];
 
 /// Cooking is supported here; this exists so that code written against the

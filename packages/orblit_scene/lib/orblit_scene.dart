@@ -91,7 +91,8 @@ export 'src/material.dart'
         MaterialLibrary,
         MaterialLoad,
         ResolvedMaterial,
-        materialExtension;
+        materialExtension,
+        shaderExtension;
 export 'src/migration.dart' show SceneMigration, SceneMigrations;
 export 'src/path.dart' show EntityPath;
 export 'src/prefab.dart' show PrefabDocument, PrefabLoad, prefabExtension;

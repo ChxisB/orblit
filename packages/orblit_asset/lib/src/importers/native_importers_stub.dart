@@ -102,6 +102,16 @@ class SplatImporter extends _Unavailable {
 }
 
 /// HDR and EXR to environment lighting, which needs Filament's `cmgen`.
+class MaterialImporter extends _Unavailable {
+  MaterialImporter({NativeTool? tool}) : super('material');
+
+  @override
+  String get name => 'material';
+
+  @override
+  Set<String> get extensions => const {'oshader'};
+}
+
 class EnvironmentImporter extends _Unavailable {
   EnvironmentImporter({NativeTool? tool}) : super('environment');
 

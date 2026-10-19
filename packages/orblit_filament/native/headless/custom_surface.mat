@@ -1,0 +1,19 @@
+material {
+    name : custom_surface,
+    shadingModel : unlit,
+    requires : [ uv0 ],
+    parameters : [
+        { type : float4, name : tint },
+        { type : float, name : strength },
+        { type : sampler2d, name : albedo_map }
+    ],
+}
+fragment {
+    void material(inout MaterialInputs material) {
+        prepareMaterial(material);
+        vec3 sampled = texture(materialParams_albedo_map, getUV0()).rgb;
+        material.baseColor = vec4(
+            materialParams.tint.rgb * sampled * materialParams.strength,
+            materialParams.tint.a);
+    }
+}

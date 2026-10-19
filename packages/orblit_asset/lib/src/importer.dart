@@ -172,6 +172,17 @@ abstract class Importer {
     Map<String, Object?> settings,
   ) async => const {};
 
+  /// [dependenciesOf] for an importer that has to read other files to find
+  /// them, such as a source that includes a file that includes another.
+  ///
+  /// The cook calls this one. It reads nothing by default.
+  Future<Set<AssetId>> dependenciesIn(
+    AssetId id,
+    Uint8List bytes,
+    Map<String, Object?> settings,
+    AssetSource source,
+  ) => dependenciesOf(id, bytes, settings);
+
   /// Does the work.
   Future<ImportResult> import(ImportRequest request);
 

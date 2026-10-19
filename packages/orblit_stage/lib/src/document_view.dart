@@ -8,6 +8,7 @@ import 'package:vector_math/vector_math_64.dart';
 
 import 'package:orblit_filament/orblit_filament.dart';
 
+import 'cooked_surface.dart';
 import 'material_view.dart';
 
 /// A scene document, kept as something the renderer can draw.
@@ -47,6 +48,10 @@ class OrblitDocumentView {
   /// library, so a scene of four hundred objects wearing eleven materials
   /// walks eleven chains.
   MaterialLibrary _library;
+
+  /// The author-written surfaces that have been cooked, by the project path of
+  /// the `.oshader` they came from.
+  Map<String, CookedSurface> _surfaces = const {};
 
   /// The look the scene is being shown in, or null for what each object wears
   /// by default.
@@ -290,6 +295,9 @@ class OrblitDocumentView {
     if (component is! MaterialComponent) return null;
     final asset = component.under(_look);
     if (asset == null || asset.isEmpty) return null;
+    if (asset.endsWith(shaderExtension)) {
+      return _wearSurface(entity.id, asset, component.values);
+    }
 
     // Two ways of naming a material, and the file extension tells them apart.
     // An `.omat` is a material; anything else is an image, and naming one is
@@ -319,6 +327,33 @@ class OrblitDocumentView {
       material = OrblitMaterial(key: key, baseColourMap: OrblitTexture(found));
     }
     _materials[signature] = material;
+    return key;
+  }
+
+  /// The key of the surface [id] wears, built the first time it is asked for.
+  ///
+  /// An object that states nothing wears the surface as it was cooked, shared
+  /// with every other object that states nothing. One that states a value
+  /// wears its own, because the renderer holds one set of values to a key.
+  /// The key is stable, so a value being dragged rewrites it in place.
+  ///
+  /// Null while the shader has not been cooked, which leaves the object with
+  /// whatever its mesh brought.
+  int? _wearSurface(String id, String asset, Map<String, Object> given) {
+    final cooked = _surfaces[asset];
+    if (cooked == null) return null;
+
+    final signature = given.isEmpty ? 'surface:$asset' : 'surface:$asset@$id';
+    _materialOf[id] = signature;
+    _materialUsers.putIfAbsent(signature, () => <String>{}).add(id);
+
+    final built = _materials[signature];
+    if (built != null) return built.key;
+
+    final surface = cooked.surfaceFor(given, locate: _resolve);
+    if (surface == null) return null;
+    final key = _keyFor(signature, 'material');
+    _materials[signature] = OrblitMaterial(key: key, surface: surface);
     return key;
   }
 
@@ -354,6 +389,16 @@ class OrblitDocumentView {
   /// to look again.
   set materials(MaterialLibrary library) {
     _library = library;
+    _rebuildAll();
+  }
+
+  /// Replaces the surfaces authors have written that can be drawn.
+  ///
+  /// For a project whose shaders have been cooked again. An editor keeps the
+  /// last good entry for a shader that fails to compile, so the surface stays
+  /// on screen while the author fixes the line.
+  set surfaces(Map<String, CookedSurface> cooked) {
+    _surfaces = cooked;
     _rebuildAll();
   }
 

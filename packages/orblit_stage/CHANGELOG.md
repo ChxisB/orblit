@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.14.0
+
+- Add `CookedSurface` and `OrblitDocumentView.surfaces`. A material asset
+  that ends in `.oshader` is drawn with the package the cook made for it.
+  An object that states no values shares one material with every other.
+  One that states a value gets a material of its own under a stable key,
+  so a value being dragged rewrites it in place. The stage sends the
+  defaults from `params.json`, because the package carries none. Until a
+  shader is cooked its objects keep what their mesh brought.
+- Add `SurfaceParam`, `CookedSurface.params` and `CookedSurface.valueOf`,
+  so an inspector can show a colour row for `source_color`, a slider
+  for `hint_range`, and the number the renderer is sent.
+
 ## 0.13.0
 
 - `OrblitTrailStrip` draws a `TrailStrip` as a ribbon that turns its face to

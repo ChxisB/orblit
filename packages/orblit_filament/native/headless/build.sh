@@ -217,7 +217,33 @@ if [ "${1:-}" = "test" ]; then
   "$OUT/orblit_texture_cook_check"
   "$OUT/orblit_splats_check"
   "$OUT/orblit_textures_check"
-  "$OUT/orblit_renderer_test"
+  # The surfaces the ABI test draws are cooked here, with the matc that goes
+  # with this SDK. Without one the test says it skipped them.
+  MATC="${ORBLIT_MATC:-$SDK/bin/matc}"
+  if [ -x "$MATC" ]; then
+    for name in custom_surface custom_surface_dim; do
+      "$MATC" -a metal -p all -o "$OUT/$name.filamat" "$name.mat"
+    done
+    # The two .oshader files go through the project's own cook, which needs
+    # Dart and this same matc. It is the only run of that cook on a GPU.
+    SHADER_DIR=""
+    if command -v dart >/dev/null; then
+      mkdir -p "$OUT/shaders/assets"
+      ABS_OUT="$(cd "$OUT" && pwd)"
+      ABS_MATC="$(cd "$(dirname "$MATC")" && pwd)/$(basename "$MATC")"
+      cp "$DARWIN/materials/unlit.oshader" surfaces/pulse.oshader \
+        "$OUT/shaders/assets/"
+      (cd ../../../orblit_asset && ORBLIT_MATC="$ABS_MATC" \
+        dart run orblit_asset:cook --target macos \
+          --assets "$ABS_OUT/shaders/assets" --out "$ABS_OUT/shaders/cooked" \
+          --cache "$ABS_OUT/shaders/cache")
+      SHADER_DIR="$ABS_OUT/shaders/cooked/macos"
+    fi
+    ORBLIT_CUSTOM_DIR="$OUT" ORBLIT_SHADER_DIR="$SHADER_DIR" \
+      "$OUT/orblit_renderer_test"
+  else
+    "$OUT/orblit_renderer_test"
+  fi
   # Khronos's samples and the converted ones, from ORBLIT_SAMPLES when it is
   # set (tool/fetch_import_samples.sh puts them in assets/samples); without it
   # only the ABI is checked.

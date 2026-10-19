@@ -12,9 +12,11 @@
 #include <exception>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
+#include "OrblitCustomSpecs.h"
 #include "OrblitDecals.h"
 #include "OrblitOutline.h"
 #include "OrblitRendererCore.h"
@@ -417,6 +419,36 @@ int orblit_renderer_set_batching(orblit_renderer *renderer, int enabled) {
 int orblit_renderer_set_depth_prepass(orblit_renderer *renderer, int enabled) {
   return guarded(renderer, [&](orblit::Renderer &core) {
     core.setDepthPrepass(enabled != 0);
+  });
+}
+
+// Parallel arrays, as apply_materials passes them, so one call crosses the FFI
+// and the Swift bridge without building a struct on either side.
+int orblit_renderer_set_custom_materials(
+    orblit_renderer *renderer, uint32_t count, const int64_t *keys,
+    const char *const *packages, const int32_t *entry_counts,
+    const char *const *names, const int32_t *widths, const int32_t *maps,
+    uint32_t entry_total, const float *values, size_t value_floats,
+    const char *const *texture_paths, const int32_t *texture_srgb,
+    uint32_t texture_count) {
+  if (renderer == nullptr) return ORBLIT_ERROR_NULL;
+  if (!present(count, {keys, packages, entry_counts}) ||
+      !present(entry_total, {names, widths, maps}) ||
+      !present(texture_count, {texture_paths, texture_srgb}) ||
+      (value_floats != 0 && values == nullptr)) {
+    return ORBLIT_ERROR_NULL;
+  }
+  orblit::CustomArrays arrays{strings(names, entry_total), widths, maps, values,
+                              value_floats,
+                              strings(texture_paths, texture_count),
+                              texture_srgb};
+  std::unordered_map<int64_t, orblit::CustomSpec> specs;
+  const int status = arrays.readAll(std::vector<int64_t>(keys, keys + count),
+                                    strings(packages, count), entry_counts,
+                                    specs);
+  if (status != ORBLIT_OK) return status;
+  return guarded(renderer, [&](orblit::Renderer &core) {
+    core.setCustomMaterials(std::move(specs));
   });
 }
 

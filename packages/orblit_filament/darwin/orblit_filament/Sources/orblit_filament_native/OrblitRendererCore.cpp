@@ -553,6 +553,13 @@ void Renderer::dispose() {
   for (Material *surface : _surfaces) {
     if (surface != nullptr) _engine->destroy(surface);
   }
+  // After every instance, which went with _materials above.
+  for (auto &entry : _customPackages) {
+    if (entry.second.material != nullptr) _engine->destroy(entry.second.material);
+  }
+  _customPackages.clear();
+  for (Material *spent : _packagesSpent) _engine->destroy(spent);
+  _packagesSpent.clear();
 
   auto &entities = utils::EntityManager::get();
   _engine->destroyCameraComponent(_cameraEntity);

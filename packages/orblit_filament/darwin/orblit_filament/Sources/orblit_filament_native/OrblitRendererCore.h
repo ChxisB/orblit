@@ -56,6 +56,9 @@ class Renderer {
   uint32_t batchGroups();
   void setDepthPrepass(bool enabled);
   uint32_t prepassObjects();
+  /// The author-written surfaces the next applyMaterials may name, by key.
+  /// Called before it every publish; what it holds is read once.
+  void setCustomMaterials(std::unordered_map<int64_t, CustomSpec> specs);
   void applyMaterials(const int64_t *keys, const int32_t *flags,
                       const float *params, const int32_t *maps,
                       const std::vector<std::string> &texturePaths,
@@ -229,6 +232,11 @@ class Renderer {
   void applyTextureLimits();
   TextureSampler samplerFor(int32_t flags);
   void write(Surfaced &surface, const float *params, const int32_t *maps, const std::vector<std::string> &texturePaths, const int32_t *textureSrgb, int32_t video);
+  bool applyCustom(Surfaced &surface, int64_t key, int32_t flags);
+  Material *customPackage(const std::string &path);
+  void writeCustom(MaterialInstance *instance, const CustomSpec &spec, int32_t flags);
+  void sweepCustomPackages();
+  void destroySpentPackages();
   void writeScreen(Surfaced &surface, const float *params, int32_t video);
   void applyRasterState(Surfaced &surface, float threshold, float bias);
   void open(Movie &movie, const std::string &path);
@@ -528,6 +536,15 @@ class Renderer {
   /// Which of them were built afresh this publish, so the objects wearing
   /// them are re-dressed rather than left pointing at what was destroyed.
   std::vector<bool> _materialRebuilt{};
+
+  /// The author-written surfaces the host described for the next publish of
+  /// materials, by material key. Read and emptied by applyMaterials.
+  std::unordered_map<int64_t, CustomSpec> _customSpecs{};
+
+  /// Compiled author-written packages by file. A package nothing wears any
+  /// more is destroyed one publish later, after its instances.
+  std::unordered_map<std::string, CustomPackage> _customPackages{};
+  std::vector<filament::Material *> _packagesSpent{};
 
   /// Instances no material needs any more.
   ///

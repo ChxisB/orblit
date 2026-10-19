@@ -2,8 +2,11 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
+#include "OrblitCustomSpecs.h"
 #include "OrblitPlatform.h"
 #include "OrblitRendererCore.h"
 #include "OrblitResources.h"
@@ -129,6 +132,28 @@ void feedFailure(NSError **error, const std::string &reason) {
                  count:(uint32_t)count {
   _core->applyMaterials(keys, flags, params, maps, OrblitStrings(texturePaths),
                         textureSrgb, videos, count);
+}
+
+- (BOOL)setCustomMaterials:(const int64_t *)keys
+                  packages:(NSArray<NSString *> *)packages
+               entryCounts:(const int32_t *)entryCounts
+                     names:(NSArray<NSString *> *)names
+                    widths:(const int32_t *)widths
+                      maps:(const int32_t *)maps
+                    values:(const float *)values
+               valueFloats:(NSUInteger)valueFloats
+              texturePaths:(NSArray<NSString *> *)texturePaths
+               textureSrgb:(const int32_t *)textureSrgb {
+  orblit::CustomArrays arrays{OrblitStrings(names), widths, maps, values,
+                              valueFloats, OrblitStrings(texturePaths),
+                              textureSrgb};
+  std::unordered_map<int64_t, orblit::CustomSpec> specs;
+  const int status = arrays.readAll(
+      std::vector<int64_t>(keys, keys + packages.count), OrblitStrings(packages),
+      entryCounts, specs);
+  if (status != ORBLIT_OK) return NO;
+  _core->setCustomMaterials(std::move(specs));
+  return YES;
 }
 
 - (void)setPipeline:(const float *)params count:(NSUInteger)count {

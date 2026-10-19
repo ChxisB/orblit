@@ -24,6 +24,7 @@ export 'src/material.dart'
         OrblitFilter,
         OrblitMaterial,
         OrblitShading,
+        OrblitSurface,
         OrblitTexture,
         OrblitWind,
         OrblitWrap;

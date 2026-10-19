@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.23.0
+
+- **`MaterialImporter`.** Claims `.oshader` and is one of the default native
+  importers. It translates the source to a Filament material, runs `matc`
+  for the backends of the target and writes `material.filamat` and
+  `params.json`. The parameter list holds each uniform's type, default,
+  group, hints and whether it is an `instance uniform`.
+- **Errors at the author's line.** A refusal from the translator or an error
+  from `matc` comes back as `file:line: message`, for an included file as
+  its own name and line.
+- **The language.** `shader_type spatial`, `render_mode` for blending,
+  culling and depth, `uniform` and `instance uniform` with `source_color`,
+  `hint_range`, `hint_enum`, `hint_normal`, the sampler hints and
+  `group_uniforms`, a `fragment()` that writes `ALBEDO`, `ALPHA`, `METALLIC`,
+  `ROUGHNESS`, `AO`, `EMISSION` and `NORMAL_MAP` and reads `UV` and `TIME`,
+  and `#include` of `.oshaderinc` files. `vertex()`, `light()` and `varying`
+  are refused with their line.
+- **The key.** The version `matc` reports is in the settings, so a Filament
+  upgrade cooks every material again. Every file a shader includes, however
+  deep, is in the key. `Importer.dependenciesIn` is handed the source for an
+  importer that has to read files to find them. It calls `dependenciesOf` by
+  default.
+- `SurfaceParam`, `SurfaceType`, `SurfaceError` and `SurfaceOrigin` are
+  exported for tools that read `params.json`.
+
 ## 0.22.0
 
 - **Planning an update.** `planKitUpdate` takes the files `kits.lock`
