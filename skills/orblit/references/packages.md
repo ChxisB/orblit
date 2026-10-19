@@ -978,6 +978,35 @@ that exact address. Each request is JSON-RPC 2.0 with named params.
 | `view.screenshot` | none | `png` as base64 |
 | `log.tail` | `n`, default 50 | the last lines |
 | `perf.summary` | none | what the host reports |
+| `view.passes` | none | a row for each pass of the last frame: `name`, `milliseconds`, `draws` |
+| `view.draws` | `limit`, default 100 | `count`, the first `limit` rows as `draws`, and `truncated` |
+| `view.draw` | `id`: `object:<key>` or `population:<key>` | one draw row |
+| `view.material` | `key`: a whole number | the material's `values` by name, its `maps` and `usedBy` |
+
+The four `view.` verbs after `perf.summary` need a renderer. The surface
+does not depend on one, so the game hands `RemoteHost` a function for each and
+`orblit_filament` supplies the rows.
+
+```dart
+import 'package:orblit_filament/orblit_filament.dart';
+import 'package:orblit_remote/orblit_remote.dart';
+
+/// [scene] and [viewport] are read when a verb runs, so an answer is about
+/// the scene on screen. `OrblitView.onViewport` reports the number.
+RemoteHost renderHost({
+  required OrblitScene Function() scene,
+  required int? Function() viewport,
+}) => RemoteHost(
+  passes: () async {
+    final id = viewport();
+    if (id == null) throw StateError('The view has not reported its number');
+    final frame = await OrblitView.capture(id, scene().passNames);
+    return [for (final pass in frame.passes) pass.toJson()];
+  },
+  draws: () => scene().drawRows(),
+  material: (key) => scene().materialRow(key),
+);
+```
 
 Traps:
 
@@ -1005,8 +1034,17 @@ Traps:
 - **One request at a time per connection.** Open a second connection to pause
   during a long `time.step`. Eight connections at most. When the last one
   leaves, time runs again.
-- **Nothing about a render.** `view.screenshot` answers what the host gave it.
-  A host with no screenshot source answers `-32004`.
+- **A render verb answers what the host gave it.** `view.screenshot`,
+  `view.passes`, `view.draws`, `view.draw` and `view.material` each need their
+  own function in `RemoteHost`. A host without it answers `-32004`.
+- **A draw row is what the scene submitted.** Culling, range fade and batching
+  come after it, so a row can be listed and never drawn. A pass row is what
+  the renderer did, so use it to check a draw count. A row with
+  `materialListed: false` names a material the scene does not list, and the
+  renderer draws it in its own colour. A null `mesh` is the built-in cube.
+- **No pixels and no depth.** The plugin returns neither to Dart. A pixel of
+  the final frame or of another pass, and a scan for NaN or depth fighting,
+  are not verbs and wait on native work.
 - **Read only is narrow.** `readOnly: true` refuses `entity.set` and
   `input.send`. Pause, resume and step still work.
 
