@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:orblit_mesh/orblit_mesh.dart' show MeshTriangles, readObj;
 import 'package:vector_math/vector_math_64.dart';
 
 import 'asset_id.dart';
@@ -50,6 +51,18 @@ final class CollisionMesh {
     return CollisionMesh(
       vertices: [for (final v in positions) (v as num).toDouble()],
       indices: triangles.cast<int>(),
+    );
+  }
+
+  /// Reads every face of a Wavefront OBJ as one mesh, polygons cut into
+  /// triangles. Groups and materials do not matter to a collider, so the
+  /// `.mtl` is not read. Throws [FormatException] for a file that holds no
+  /// face or passes the reader's limits.
+  static CollisionMesh fromObj(Uint8List bytes) {
+    final triangles = readObj(bytes).mesh.triangulate();
+    return CollisionMesh(
+      vertices: triangles.positions,
+      indices: triangles.indices,
     );
   }
 

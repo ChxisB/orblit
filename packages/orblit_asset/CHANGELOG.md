@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.16.0
+
+- **`CollisionMesh.fromObj`.** Builds a collider from a Wavefront OBJ, every
+  group as one mesh with its polygons cut into triangles. A cooked FBX is a
+  GLB by then and already went through `fromGltf`. The package depends on
+  `orblit_mesh` for the reader.
+
 ## 0.15.0
 
 - **`TerrainImporter`.** Claims `.oterrain` and `.oregion` and is one of the

@@ -221,6 +221,29 @@ void main() {
     },
   );
 
+  group('from an OBJ', () {
+    Uint8List obj(String text) => Uint8List.fromList(utf8.encode(text));
+
+    test('quads and groups are cut into triangles of one mesh', () {
+      final mesh = CollisionMesh.fromObj(
+        obj(
+          'v 0 0 0\nv 2 0 0\nv 2 0 2\nv 0 0 2\nv 0 1 0\n'
+          'o floor\nf 1 2 3 4\no wall\nf 1 2 5\n',
+        ),
+      );
+      expect(mesh.indices, hasLength(9));
+      expect(mesh.vertices.reduce((a, b) => a > b ? a : b), 2);
+    });
+
+    test('a file that is not a model is refused as a format error', () {
+      expect(
+        () => CollisionMesh.fromObj(obj('v 0 0 0\n')),
+        throwsFormatException,
+      );
+      expect(() => CollisionMesh.fromObj(obj('')), throwsFormatException);
+    });
+  });
+
   test('skins and cyclic hierarchies fail before a collider is made', () async {
     await expectLater(read(model(skin: true)), throwsFormatException);
     await expectLater(
