@@ -524,12 +524,39 @@ class SceneDiff {
   }
 
   /// [document] with every operation applied, in order.
+  ///
+  /// A run of adds, or of removes, is applied in one pass over the document.
+  /// One operation at a time copies every entity for each, which is how a
+  /// hundred entities streamed into a scene of three thousand cost a third of
+  /// a million copies.
   SceneDocument applyTo(SceneDocument document) {
     var current = document;
-    for (final op in operations) {
-      current = op.applyTo(current);
+    var at = 0;
+    while (at < operations.length) {
+      final first = operations[at];
+      final end = _runEnd(at);
+      if (end - at < 2) {
+        current = first.applyTo(current);
+      } else if (first is AddEntity) {
+        current = _addedAll(current, operations.sublist(at, end));
+      } else {
+        current = _removedAll(current, operations.sublist(at, end));
+      }
+      at = end;
     }
     return current;
+  }
+
+  /// Where the run of adds or removes that starts at [from] stops, or the
+  /// next index for any other operation.
+  int _runEnd(int from) {
+    final kind = operations[from].runtimeType;
+    var end = from + 1;
+    if (kind != AddEntity && kind != RemoveEntity) return end;
+    while (end < operations.length && operations[end].runtimeType == kind) {
+      end++;
+    }
+    return end;
   }
 
   /// The diff that undoes this one.
@@ -614,6 +641,54 @@ class SceneDiff {
     final at = document.indexOf(id);
     return at > 0 ? document.entities[at - 1].id : null;
   }
+}
+
+/// What [adds] do to [document] one after another, in one pass.
+///
+/// The entities are linked so that putting one after another is a lookup.
+/// The rules are those of [AddEntity.applyTo]: an entity already there, or one
+/// that does not read, is skipped, and one placed after something missing goes
+/// to the end.
+SceneDocument _addedAll(SceneDocument document, List<SceneOp> adds) {
+  final head = _Link(null);
+  final byId = <String, _Link>{};
+  var tail = head;
+  for (final entity in document.entities) {
+    tail = tail.next = byId[entity.id] = _Link(entity);
+  }
+  for (final add in adds.cast<AddEntity>()) {
+    final entity = SceneEntity.fromJson(add.entity);
+    if (entity == null || byId.containsKey(entity.id)) continue;
+    final after = add.after;
+    final before = after == null ? head : byId[after] ?? tail;
+    final link = _Link(entity)..next = before.next;
+    before.next = byId[entity.id] = link;
+    if (before == tail) tail = link;
+  }
+  return document.copyWith(
+    entities: [
+      for (var link = head.next; link != null; link = link.next)
+        if (link.entity case final entity?) entity,
+    ],
+  );
+}
+
+/// What [removes] do to [document] one after another, in one pass.
+SceneDocument _removedAll(SceneDocument document, List<SceneOp> removes) {
+  final gone = {for (final remove in removes.cast<RemoveEntity>()) remove.id};
+  return document.copyWith(
+    entities: [
+      for (final entity in document.entities)
+        if (!gone.contains(entity.id)) entity,
+    ],
+  );
+}
+
+final class _Link {
+  _Link(this.entity);
+
+  final SceneEntity? entity;
+  _Link? next;
 }
 
 /// [entities] with [entity] put in immediately after [after].

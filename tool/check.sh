@@ -17,6 +17,7 @@ PACKAGES=(
   packages/orblit_audio
   packages/orblit_audio_device
   packages/orblit_camera
+  packages/orblit_cells
   packages/orblit_collide
   packages/orblit_codegen
   packages/orblit_core

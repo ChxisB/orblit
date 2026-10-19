@@ -41,4 +41,6 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  orblit_cells:
+    path: ../orblit_cells
   flutter_lints: ^5.0.0

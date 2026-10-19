@@ -95,6 +95,7 @@ export 'src/material.dart'
 export 'src/migration.dart' show SceneMigration, SceneMigrations;
 export 'src/path.dart' show EntityPath;
 export 'src/prefab.dart' show PrefabDocument, PrefabLoad, prefabExtension;
+export 'src/streaming.dart' show CellLoad, CellStep, CellStreamer;
 export 'src/values.dart' show Values;
 
 export 'src/components/body_part.dart' show BodyPart;

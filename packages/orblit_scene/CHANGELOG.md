@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.22.0
+
+- Add `CellStreamer`. It keeps the cells of a world that are near a point in
+  a scene. A cell is a scene file, put in as one diff with `cell_<x>_<z>:`
+  on every id and taken out again when the point leaves. A frame spends at
+  most a set time on it. `CellLoad` reports what each cell cost, and what the
+  reader said about its file in `problems`.
+- `CellStreamer` takes `prefabs` to open the instances in a cell, and
+  `fetchTimeout` so a fetch that never answers fails and is asked for again.
+  `loaded` is a copy. If `apply` throws while a cell goes in, what got in is
+  still the cell's, so a later drop takes it out.
+- Depend on `orblit_cells`.
+- `SceneDiff.applyTo` puts in or takes out a run of adds or removes in one
+  pass. A run of a hundred adds into a document of three thousand cost 6 ms
+  one by one and 0.4 ms in one pass. The result is the same.
+
 ## 0.21.0
 
 - Add `ParticleEmitterComponent`. It holds the settings of an emitter of

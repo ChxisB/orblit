@@ -3,13 +3,15 @@ description: >-
   A scene as a document: entities with stable ids, a parent and an order,
   components that describe what each one is, migrations from every older
   format, and diffs between two documents that can be applied and inverted.
-version: 0.21.0
+version: 0.22.0
 publish_to: none
 
 environment:
   sdk: ^3.10.0
 
 dependencies:
+  orblit_cells:
+    path: ../orblit_cells
   orblit_light:
     path: ../orblit_light
   orblit_mesh:
