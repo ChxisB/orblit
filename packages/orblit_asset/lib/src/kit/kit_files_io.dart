@@ -84,8 +84,10 @@ Future<PackSummary> packKit({
 /// release is not edited. The entry is written whole by rename. Without it,
 /// only the kit file is written. Nothing is uploaded.
 ///
-/// Throws a [FormatException] for a kit, a url, a note or an entry that is
-/// refused. A refusal after the pack leaves the kit file in place, whole.
+/// The kit file is packed beside [outPath] and moved into place only when
+/// every check has passed, so a refusal leaves [outPath] as it was. Throws a
+/// [FormatException] for a kit, a url, a note or an entry that is refused, and
+/// for an [outPath] inside [folder], where the next pack would take it in.
 Future<KitPublished> publishKit({
   required String folder,
   required String url,
@@ -97,26 +99,94 @@ Future<KitPublished> publishKit({
   if (entriesPath != null && !Directory(entriesPath).existsSync()) {
     throw ArgumentError.value(entriesPath, 'entriesPath', 'is not a directory');
   }
-  final summary = await packKit(folder: folder, outPath: outPath);
-  final manifest = await _readBack(outPath);
-  final release = KitRelease(
-    version: manifest.version,
-    url: url,
-    hash: summary.hash,
-    bytes: summary.bytes,
-    released: released.toIso8601String().substring(0, 10),
-    notes: notes,
-  );
-  final path = entriesPath == null
-      ? null
-      : [
-          entriesPath,
-          manifest.publisher,
-          '${manifest.slug}.json',
-        ].join(Platform.pathSeparator);
-  final listed = path == null
+  await _refuseInside(folder, outPath);
+  final staged = '$outPath.staged';
+  try {
+    final summary = await packKit(folder: folder, outPath: staged);
+    final manifest = await _readBack(staged, summary);
+    final release = KitRelease(
+      version: manifest.version,
+      url: url,
+      hash: summary.hash,
+      bytes: summary.bytes,
+      released: released.toIso8601String().substring(0, 10),
+      notes: notes,
+    );
+    final path = entriesPath == null ? null : _entryFile(entriesPath, manifest);
+    final entry = await _entryWith(path, manifest, release);
+    await File(staged).rename(outPath);
+    if (path != null) {
+      File(path).parent.createSync(recursive: true);
+      await _write(path, entry.encode());
+    }
+    return KitPublished(
+      summary: summary,
+      release: release,
+      entry: entry,
+      entryPath: path,
+    );
+  } finally {
+    final left = File(staged);
+    if (left.existsSync()) left.deleteSync();
+  }
+}
+
+/// Where the entry of [manifest] lives in the entries folder [root].
+String _entryFile(String root, KitManifest manifest) => [
+  root,
+  manifest.publisher,
+  '${manifest.slug}.json',
+].join(Platform.pathSeparator);
+
+/// Throws when a kit file at [outPath] would sit inside [folder].
+Future<void> _refuseInside(String folder, String outPath) async {
+  if (!Directory(folder).existsSync()) return; // packKit names this problem.
+  final root = await Directory(folder).resolveSymbolicLinks();
+  final parent = await File(outPath).absolute.parent.resolveSymbolicLinks();
+  final inside =
+      parent == root || parent.startsWith('$root${Platform.pathSeparator}');
+  if (inside) {
+    throw FormatException(
+      'The kit file "$outPath" would be inside "$folder", and the next pack '
+      'would take it in. Put it in another folder.',
+    );
+  }
+}
+
+/// The manifest of the kit file at [path], after every blob in it has been
+/// hashed again. Throws when the file is not the one [written] describes.
+Future<KitManifest> _readBack(String path, PackSummary written) async {
+  final source = FilePackBytes(path);
+  try {
+    final pack = await AssetPack.open(source);
+    if (pack.hash != written.hash || File(path).lengthSync() != written.bytes) {
+      throw FormatException('"$path" is not the file that was written.');
+    }
+    final kit = await Kit.open(pack);
+    final problems = await kit.check();
+    if (problems.isNotEmpty) throw FormatException(problems.join('\n'));
+    return kit.manifest;
+  } finally {
+    await source.close();
+  }
+}
+
+/// The entry at [path], or a new one when it is not there, with [release]
+/// added. Throws when [release] is listed already or the entry would be over
+/// the size `kit index` reads.
+Future<KitEntry> _entryWith(
+  String? path,
+  KitManifest manifest,
+  KitRelease release,
+) async {
+  final file = path == null ? null : File(path);
+  final listed = file == null || !file.existsSync()
       ? const <KitRelease>[]
-      : await _listed(path, manifest);
+      : KitEntry.parse(
+          await file.readAsBytes(),
+          publisher: manifest.publisher,
+          slug: manifest.slug,
+        ).releases;
   if (listed.any((held) => held.version == release.version)) {
     throw FormatException(
       '${manifest.publisher}/${manifest.slug} lists ${release.version} '
@@ -128,41 +198,13 @@ Future<KitPublished> publishKit({
     slug: manifest.slug,
     releases: [...listed, release],
   );
-  if (path != null) {
-    File(path).parent.createSync(recursive: true);
-    await _write(path, entry.encode());
+  if (entry.encode().length > kitEntryLimit) {
+    throw FormatException(
+      '${manifest.publisher}/${manifest.slug} would be over $kitEntryLimit '
+      'bytes, which is more than kit index reads.',
+    );
   }
-  return KitPublished(
-    summary: summary,
-    release: release,
-    entry: entry,
-    entryPath: path,
-  );
-}
-
-/// The manifest of the kit file at [path], after every blob in it has been
-/// hashed again.
-Future<KitManifest> _readBack(String path) async {
-  final source = FilePackBytes(path);
-  try {
-    final kit = await Kit.open(await AssetPack.open(source));
-    final problems = await kit.check();
-    if (problems.isNotEmpty) throw FormatException(problems.join('\n'));
-    return kit.manifest;
-  } finally {
-    await source.close();
-  }
-}
-
-/// The releases the entry file at [path] lists, or none when it is not there.
-Future<List<KitRelease>> _listed(String path, KitManifest manifest) async {
-  final file = File(path);
-  if (!file.existsSync()) return const [];
-  return KitEntry.parse(
-    await file.readAsBytes(),
-    publisher: manifest.publisher,
-    slug: manifest.slug,
-  ).releases;
+  return entry;
 }
 
 /// The paths of the kit file and its temporary file, so a run does not pack

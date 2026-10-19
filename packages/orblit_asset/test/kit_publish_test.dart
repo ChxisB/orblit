@@ -128,12 +128,47 @@ void main() {
     expect(File(entryFile()).readAsStringSync(), before);
   });
 
+  test('a refusal leaves the kit file as it was and none beside it', () async {
+    await publish();
+    final file = File(at('crate-pack-1.0.0.opack'));
+    final before = file.readAsBytesSync();
+    write('${source()}/models/more.obj', 'v 1 1 1');
+    await expectLater(publish(), throwsA(isA<FormatException>()));
+    expect(file.readAsBytesSync(), before);
+    expect(
+      scratch.listSync().map((entity) => entity.path),
+      isNot(contains(endsWith('.staged'))),
+    );
+  });
+
+  test('refuses a kit file inside the folder and keeps its files', () async {
+    final folder = source();
+    write('$folder/README.md', 'mine');
+    await expectLater(
+      publishKit(
+        folder: folder,
+        url: 'https://example.com/README.md',
+        outPath: '$folder/README.md',
+        released: day,
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          contains('inside'),
+        ),
+      ),
+    );
+    expect(File('$folder/README.md').readAsStringSync(), 'mine');
+  });
+
   test('refuses a url that CI would not fetch and writes no entry', () async {
     await expectLater(
       publish(address: 'http://example.com/a.opack'),
       throwsA(isA<FormatException>()),
     );
     expect(File(entryFile()).existsSync(), isFalse);
+    expect(File(at('crate-pack-1.0.0.opack')).existsSync(), isFalse);
   });
 
   test('refuses a long note and a folder that breaks a rule', () async {

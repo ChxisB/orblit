@@ -10,6 +10,9 @@
   and `--notes` sets the release notes. A version the entry lists already is
   refused, because a listed release is not edited. The command uploads
   nothing and runs no git command. It prints the steps that are left.
+  The file is packed beside its name and moved into place only after every
+  check has passed, so a refusal leaves an earlier file as it was. A file
+  named inside the folder is refused, because the next pack would take it in.
 - `publishKit(folder:, url:, outPath:, released:, notes:, entriesPath:)` is
   what the command calls. It returns a `KitPublished` with the pack summary,
   the `KitRelease` and the `KitEntry`. The caller passes the date.

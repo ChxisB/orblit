@@ -529,6 +529,9 @@ entriesPath:)` is the same in Dart and returns a `KitPublished`.
   `kit.json`. Without `--entries` it only prints the entry.
 - **The version comes from `kit.json`**, the hash and size from the file, and
   the day from the clock, in UTC. `publishKit` takes the day as an argument.
+- **A refusal leaves the kit file as it was.** The file is packed beside its
+  name and moved into place after every check. A file named inside the folder
+  is refused.
 - **It uploads nothing and runs no git command.** It prints the steps left.
 - `KitEntry.encode()` writes the entry file in the form `KitEntry.parse`
   reads.

@@ -189,7 +189,8 @@ Future<void> _publish(List<String> arguments) async {
 String _nextSteps(String file, String url, String? entries, String? written) {
   final entry = written == null
       ? 'Save the entry above as kits/<publisher>/<slug>.json in the '
-            'orblit-kits repository.'
+            'orblit-kits repository. If that file lists releases already, '
+            'add this release to them instead.'
       : 'Wrote the entry to $written.';
   return '''
 $entry

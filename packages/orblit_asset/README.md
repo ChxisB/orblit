@@ -185,7 +185,9 @@ checks it as `kit check` does. The release takes its version from `kit.json`,
 its hash and size from the file, and its date from today in UTC. With
 `--entries`, the release goes into `<publisher>/<slug>.json` in that folder.
 Without it, the entry is printed. A version the entry lists already is
-refused, so raise `version` in `kit.json`. Nothing is uploaded and no git
+refused, so raise `version` in `kit.json`. The file is moved into place only
+after every check has passed, so a refusal leaves an earlier file as it was,
+and a file named inside the folder is refused. Nothing is uploaded and no git
 command runs. The command prints the steps that are left: upload the file,
 run `kit index` over the entries and open a pull request.
 
