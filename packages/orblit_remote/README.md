@@ -1,0 +1,145 @@
+# orblit_remote
+
+A control surface for a running debug game. A script or an assistant connects
+over a loopback WebSocket, lists entities and their components, pauses and
+steps time, changes a value, takes a snapshot and compares two.
+
+Part of [Orblit](https://github.com/ChxisB/orblit), a Dart-first 3D game
+engine. The documentation is at [orblitengine.com](https://orblitengine.com).
+
+## Using it
+
+```yaml
+dependencies:
+  orblit_remote:
+    git:
+      url: https://github.com/ChxisB/orblit.git
+      path: packages/orblit_remote
+```
+
+Needs Dart alone. Runs anywhere Dart runs, including a headless CI runner.
+The server starts only when asserts are on, so a release build never opens the
+port.
+
+## Starting it
+
+```dart
+final gate = TimeGate();
+final log = LogTail();
+final server = await RemoteServer.start(
+  RemoteHost(
+    world: CoreWorldInspector(world, [position, health]),
+    gate: gate,
+    log: log,
+  ),
+);
+// In the game's loop, pass each delta through the gate so time can be held.
+world.tick(gate.advance(delta));
+```
+
+The server prints `orblit-remote ws://127.0.0.1:PORT/?token=TOKEN`. Connect to
+that address. A connection gets a 403 unless it has the token, names a loopback
+host and sends no `Origin` header, which keeps a web page in the user's browser
+out. The server binds the loopback address only, and throws `StateError` unless
+asserts are on, so a profile or release build never opens the port.
+
+A connection is answered one request at a time, so a client that wants to pause
+during a long `time.step` opens a second connection. At most eight stay open,
+and a frame over one mebibyte closes its connection. When the last connection
+goes, or the server closes, time runs again.
+
+## Verbs
+
+Each request is a JSON-RPC 2.0 object with named params.
+
+| Method | Params | Answers |
+| --- | --- | --- |
+| `world.entities` | `filter` (component names) | ids with component names |
+| `entity.get` | `id` | the components of one entity, by field |
+| `entity.set` | `id`, `component`, `field`, `value` | nothing |
+| `time.pause`, `time.resume` | none | `paused` |
+| `time.step` | `n` | `stepped`, the frames the loop passed, which is `n` unless a pause or resume cut it short |
+| `world.snapshot` | none | an `id`, the entities and the `extras` |
+| `world.diff` | `a`, `b` (snapshot ids) | each path that differs |
+| `input.send` | `event` | nothing |
+| `view.screenshot` | none | `png` as base64 |
+| `log.tail` | `n` (default 50) | the last lines |
+| `perf.summary` | none | what the host reports |
+
+A snapshot holds the entities and the `extras` the host gave, as JSON. The
+physics world's own `PhysicsSnapshot` is native memory with no JSON form, so a
+host puts what it wants compared, such as contacts or stats, in `extras`.
+
+The surface keeps the last eight snapshots. A component the inspector has no
+field names for is listed by name and cannot be set. `readOnly: true` refuses
+`entity.set` and `input.send`. A verb whose part the game did not give answers
+error `-32004`.
+
+`RemoteHost.timeout` (ten seconds) is how long a verb waits on the game. For
+`time.step` it restarts each time a frame passes. For `input.send` and
+`view.screenshot` it is the whole wait. A callback that outlasts it answers
+`-32003`. An argument or state error thrown by a host callback answers
+`-32603`, because it is the game's fault and not a bad request.
+
+## Tools for an assistant
+
+`orblit_remote` is also a program. It reads the address a game printed, joins
+the control surface, and speaks the tool protocol on stdin and stdout, so an
+assistant can look at a running game.
+
+```sh
+dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
+```
+
+Run it from a project that depends on `orblit_remote`. The first run builds
+the native hook of `orblit_core` and says so on stderr, though the program
+loads no native code. Quote the address, because a shell reads `?` as a
+pattern. The line the game prints, with its `orblit-remote` prefix, works too.
+The host must be `127.0.0.1` or `localhost`, since the address holds the
+token.
+
+The address is new each time the game starts, so register the program again
+after a restart. In Claude Code:
+
+```sh
+claude mcp add orblit -- dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
+```
+
+An argument shows in the process list. To keep the token out of it, set
+`ORBLIT_REMOTE_ADDRESS` and give no argument. Either way the token sits in the
+assistant's configuration, so use this on a machine you own.
+
+| Tool | Does |
+| --- | --- |
+| `observe` | Counts the entities and lists the first `limit`, 20 unless asked. With an `id`, reads one entity in full. |
+| `step` | Pauses and passes `n` frames, from 1 to 300. The game stays paused until the session ends. |
+| `snapshot` | Records the world and answers an id with counts. |
+| `diff` | Lists what changed between two snapshot ids, at most 200 paths. |
+| `screenshot` | One PNG of the render view. |
+| `perf` | The game's phase times. |
+| `set` | Sets one component field. Only with `--allow-write`. |
+
+Without `--allow-write` the assistant sees six tools. A call to `set` is
+refused as an unknown tool. With the flag, a game started with `readOnly: true`
+still refuses it.
+
+A refusal from the game comes back as an error result with its code and
+message, so the assistant can read it and try again. `observe` and `diff` cut
+a long list and say `truncated: true`. The game has answered in full by then.
+One entity, a perf summary and the values inside a diff are not cut. A
+screenshot is one frame. A diff holds only what its two snapshots held.
+
+A batch of messages is answered as one array. A message with no id is never
+run. Exit codes are 64 for a bad address or an unknown flag, and 69 for a game
+that cannot be reached or that goes away during the session. Notes go to
+stderr.
+
+## Status
+
+Pre-alpha. Nothing here is API-stable, and the version is bumped for every
+feature. See [VERSIONING.md](../../VERSIONING.md).
+
+## Licence
+
+MPL-2.0, © 2026 Chris Beckett. See [LICENSE](LICENSE), and the repository root
+for the third-party notices that apply to builds linking the renderer.
