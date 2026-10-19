@@ -176,7 +176,7 @@ void Converter::writeCameras() {
     const double far = camera->far_plane;
     const bool usable =
         camera->projection_mode == UFBX_PROJECTION_MODE_PERSPECTIVE &&
-        yfov > 0 && yfov < kPi && near > 0;
+        yfov > 0 && yfov < kPi && float(near) > 0.0f;
     if (!usable) {
       left++;
       continue;
@@ -185,7 +185,7 @@ void Converter::writeCameras() {
     putFloat(json, yfov);
     json += ",\"znear\":";
     putFloat(json, near);
-    if (std::isfinite(far) && far > near) {
+    if (std::isfinite(float(far)) && float(far) > float(near)) {
       json += ",\"zfar\":";
       putFloat(json, far);
     }
@@ -223,8 +223,11 @@ void Converter::writeLights() {
     const double watts = light->cast_light && std::isfinite(light->intensity)
                              ? std::max(0.0, double(light->intensity))
                              : 0.0;
+    // Held to what a float holds, because a larger value would be written as
+    // zero and a very bright light would come out dark.
     const double intensity =
-        watts * kLuminousEfficacy / (sun ? 1.0 : 4.0 * kPi);
+        std::min(watts * kLuminousEfficacy / (sun ? 1.0 : 4.0 * kPi),
+                 double(std::numeric_limits<float>::max()));
     const double colour[3] = {unitInterval(light->color.x),
                               unitInterval(light->color.y),
                               unitInterval(light->color.z)};
@@ -246,7 +249,8 @@ void Converter::writeLights() {
                                ? light->inner_angle * kPi / 360.0
                                : 0.0;
       json += ",\"spot\":{\"innerConeAngle\":";
-      putFloat(json, std::min(outer, std::max(0.0, inner)));
+      // glTF wants the inner angle strictly under the outer one.
+      putFloat(json, std::min(outer * 0.999, std::max(0.0, inner)));
       json += ",\"outerConeAngle\":";
       putFloat(json, outer);
       json += '}';

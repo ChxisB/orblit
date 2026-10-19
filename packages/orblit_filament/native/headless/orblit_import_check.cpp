@@ -394,6 +394,34 @@ void checkCamerasAndLights() {
          "and the rest of the file arrives");
 }
 
+/// `text` with the first `from` replaced by `to`. A fixture that drifts from
+/// what a check expects is a failure, not a silent no-op.
+std::string swapped(std::string text, const std::string &from,
+                    const std::string &to) {
+  const size_t at = text.find(from);
+  expect(at != std::string::npos, "the fixture has " + from);
+  if (at != std::string::npos) text.replace(at, from.size(), to);
+  return text;
+}
+
+void checkHostileLights() {
+  Files files;
+  // A near plane below what a float holds, a cone whose inner angle is wider
+  // than its outer one, and a strength no float holds.
+  std::string text = swapped(rig(0, 1), "\"\",0.5\n", "\"\",1e-50\n");
+  text = swapped(text, "\"A\",30\n", "\"A\",90\n");
+  text = swapped(text, "\"A\",300\n", "\"A\",1e39\n");
+  const orblit::Imported imported = importText(text, "rig.fbx", files);
+  std::string json;
+  expect(wellFormed(imported.glb, json), "an FBX with out of range numbers imports");
+  expect(anyLoss(imported, "camera(s) not carried") && !contains(json, "\"znear\":0"),
+         "a near plane that is zero as a float is left out, not written as zero");
+  expect(contains(json, "\"innerConeAngle\":0.5230") && contains(json, "\"outerConeAngle\":0.52359"),
+         "an inner angle is held under the outer one");
+  expect(contains(json, "\"intensity\":3.40282") && !contains(json, "\"intensity\":0}"),
+         "a strength past a float is held at the largest one");
+}
+
 void checkRefused() {
   Files files;
   auto refused = [&](const orblit::Imported &imported, const std::string &what) {
@@ -582,6 +610,7 @@ int main(int argc, char **argv) {
   checkObj();
   checkObjCompanions();
   checkCamerasAndLights();
+  checkHostileLights();
   checkRefused();
   checkDamagedObj();
   const char *fromEnvironment = std::getenv("ORBLIT_IMPORT_SAMPLES");
