@@ -6,13 +6,21 @@ import 'kit_json.dart';
 import 'kit_manifest.dart';
 import 'kit_rules.dart';
 
-const int _maxReleases = 200;
+/// The most releases one kit lists, in an entry and in `releases.json`.
+const int kitReleaseLimit = 200;
+
+/// The largest entry file read.
+const int kitEntryLimit = 256 * 1024;
+
 const int _maxUrl = 300;
 const int _maxNotes = 300;
-const int _entryLimit = 256 * 1024;
 
 final RegExp _hash = RegExp(r'^[0-9a-fA-F]{64}$');
 final RegExp _date = RegExp(r'^\d{4}-\d{2}-\d{2}$');
+final RegExp _hostLabel = RegExp(r'^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$');
+final RegExp _urlTrouble = RegExp(r'[\\#@\s]');
+final RegExp _startsWithLetter = RegExp('^[a-z]');
+const Set<String> _insideNames = {'localhost', 'local', 'internal'};
 
 /// One published version of a kit: where its file is and what it must be.
 ///
@@ -70,18 +78,16 @@ final class KitRelease {
         'has a "hash" of "${kitShow(hash)}", not 64 hexadecimal digits',
       );
     }
-    try {
-      return KitRelease(
+    return json.read(
+      () => KitRelease(
         version: json.text('version'),
         url: json.text('url'),
         hash: ContentHash.parse(hash),
         bytes: json.integer('bytes'),
         released: json.text('released'),
         notes: json.optionalText('notes') ?? '',
-      );
-    } on FormatException catch (error) {
-      throw json.problem('is wrong: ${error.message}');
-    }
+      ),
+    );
   }
 
   /// Three whole numbers, such as `1.2.0`.
@@ -116,20 +122,41 @@ final class KitRelease {
   };
 }
 
+/// Throws unless [text] is an https address of a public host name.
+///
+/// The builder fetches it from a CI runner, so an address, `localhost` or a
+/// port other than 443 is refused before anything is sent. A backslash, `#` or
+/// `@` is refused because parsers disagree about what follows it.
+///
+/// shortcut: a public name can still point at a private address in DNS, and a
+/// redirect can lead anywhere. The review of the pull request reads the url
+/// and the hash has to match what comes back. Resolve the name and refuse
+/// private addresses when a store takes entries from people nobody reviews.
 void _checkUrl(String text) {
   final url = Uri.tryParse(text);
   if (url == null ||
       url.scheme != 'https' ||
-      url.host.isEmpty ||
-      url.userInfo.isNotEmpty ||
+      (url.hasPort && url.port != 443) ||
+      !_isPublicName(url.host) ||
       text.length > _maxUrl ||
-      text.contains(' ') ||
+      _urlTrouble.hasMatch(text) ||
       unsafeText.hasMatch(text)) {
     throw FormatException(
       'The url "${kitShow(text)}" is not an https address of up to $_maxUrl '
-      'characters with no user name in it.',
+      'characters at a public host name. It has no port, space, backslash, '
+      '# or @.',
     );
   }
+}
+
+bool _isPublicName(String host) {
+  final labels = host.split('.');
+  // A last label that starts with a digit reads as part of an address, as in
+  // 127.1 or 0x7f.0.0.1.
+  return labels.length >= 2 &&
+      labels.every(_hostLabel.hasMatch) &&
+      _startsWithLetter.hasMatch(labels.last) &&
+      !_insideNames.contains(labels.last);
 }
 
 /// Throws a [FormatException] unless [text] is a day that exists, written as
@@ -160,9 +187,9 @@ final class KitEntry {
   }) {
     checkKitWord('publisher', publisher, 40);
     checkKitWord('slug', slug, 40);
-    if (releases.isEmpty || releases.length > _maxReleases) {
+    if (releases.isEmpty || releases.length > kitReleaseLimit) {
       throw const FormatException(
-        'An entry lists 1 to $_maxReleases releases.',
+        'An entry lists 1 to $kitReleaseLimit releases.',
       );
     }
     final versions = {for (final release in releases) release.version};
@@ -184,22 +211,19 @@ final class KitEntry {
     required String publisher,
     required String slug,
   }) {
-    final where = 'The entry "$publisher/$slug"';
-    final json = JsonObject.parse(bytes, where, limit: _entryLimit)
+    final where = 'The entry "${kitShow('$publisher/$slug')}"';
+    final json = JsonObject.parse(bytes, where, limit: kitEntryLimit)
       ..only({'releases'});
-    try {
-      return KitEntry(
+    return json.read(
+      () => KitEntry(
         publisher: publisher,
         slug: slug,
         releases: [
           for (final item in json.objects('releases'))
             KitRelease.fromJson(item..only(_releaseKeys)),
         ],
-      );
-    } on FormatException catch (error) {
-      if (error.message.startsWith(where)) rethrow;
-      throw json.problem('is wrong: ${error.message}');
-    }
+      ),
+    );
   }
 
   final String publisher;

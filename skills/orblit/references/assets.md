@@ -491,15 +491,18 @@ await extractKit(kit, 'my_project');
 `dart run orblit_asset:kit index <entries> -o <folder>` builds the files a kit
 browser reads. `<entries>` holds `<publisher>/<slug>.json`, and each file is
 `{"releases": [...]}` with no other key. A release is `version`, `url`
-(https), `hash` (the pack hash that `kit pack` prints), `bytes`, `released`
-(`2026-10-19`) and an optional one line `notes`. The kit's name and summary
-come from its `kit.json`, not the entry.
+(https at a public host name, no address, `localhost`, port other than 443,
+space, backslash, `#` or `@`), `hash` (the pack hash that `kit pack` prints),
+`bytes`, `released` (`2026-10-19`) and an optional one line `notes`. The
+kit's name and summary come from its `kit.json`, not the entry.
 
-- **It checks every release.** It downloads each one from its url, which
-  may redirect, because the hash vouches for the bytes. The pack must have the entry's hash and size, every blob must match,
-  the kit must pass `kitProblems`, and `kit.json` must name the entry's
-  publisher, slug and version. Every problem is listed, nothing is written
-  until all pass, and the output folder must not exist.
+- **It checks every release.** It downloads each one from its url, up to the
+  size the entry gives and for up to ten minutes. The url may redirect,
+  because the hash vouches for the bytes. The pack must have the entry's hash
+  and size, every blob must match, the kit must pass `kitProblems`, and
+  `kit.json` must name the entry's publisher, slug and version. Every problem
+  is listed, nothing is written until all pass, and the output folder must not
+  exist.
 - **It writes `index.json`, `kits/<publisher>/<slug>/releases.json` and the
   latest release's previews.** Read them with `KitIndex.parse` and
   `KitReleases.parse`. A preview is at most 1 MiB and starts like a png, jpg

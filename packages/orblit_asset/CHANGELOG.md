@@ -4,30 +4,36 @@
 
 - **A store of kits.** A store is a folder of entries, one file for each kit
   at `<publisher>/<slug>.json`. `buildKitStore(entriesPath:, outPath:,
-  transport:)` turns it into the files a browser reads, and
+  transport:, timeout:)` turns it into the files a browser reads, and
   `dart run orblit_asset:kit index <entries> -o <folder>` runs it.
 - **The entry.** `{"releases": [...]}` and no other key. A release has
-  `version`, `url` (https, up to 300 characters), `hash`, `bytes`, `released`
-  (a day, such as `2026-10-19`) and an optional one line `notes`. The hash is
+  `version`, `url`, `hash`, `bytes`, `released` (a day, such as
+  `2026-10-19`) and an optional one line `notes`. The url is https, up to 300
+  characters, at a public host name. An address, `localhost`, a name ending in
+  `.local` or `.internal`, a port other than 443, and a backslash, `#`, `@` or
+  space are refused, because CI fetches it. The hash is
   the hash of the pack, which `kit pack` prints. The kit's name and summary
   are not in the entry. They come from the `kit.json` of the latest release.
   `KitEntry` and `KitRelease` refuse a key they do not know, a version listed
   twice and more than 200 releases.
 - **What the builder checks.** It downloads each release from its url, up to
-  `kitPackLimit` bytes, with the retries and the hash check of
-  `PackFolder.download`. The server may redirect, and only the hash vouches
-  for the bytes. The file must be the size the entry says, every
-  blob must match its hash, the kit must pass `kitProblems`, and its
-  `kit.json` must name the publisher, slug and version of the entry. Every
+  the size the entry gives and for up to `timeout` (ten minutes), with the
+  retries and the hash check of `PackFolder.download`. The server may
+  redirect, and only the hash vouches for the bytes. The file must be the size
+  the entry says, every blob must match its hash, the kit must pass
+  `kitProblems`, and its `kit.json` must name the publisher, slug and version
+  of the entry. An entry file must be a plain file of at most 256 KiB. Every
   problem is listed, nothing is written until every release has passed, and
-  the output folder must not exist.
+  the output folder must not exist. The files are written beside it and
+  renamed into place, so a folder that appears during the run is not touched.
 - **What it writes.** `index.json` (`KitIndex`, one `KitRow` for each kit,
   sorted by publisher and slug), `kits/<publisher>/<slug>/releases.json`
   (`KitReleases`, newest first) and the previews of the latest release as
   `preview-<n>.<extension>`. A preview is at most 1 MiB and starts like the
-  image its name says. `kitStoreFormat` is 1. The readers ignore a key they do
-  not know and refuse a newer format.
-- `KitManifest`, `compareKitVersions` and `kitPackLimit` are exported.
+  image its name says. The format is 1. The readers ignore a key they do not
+  know and refuse a newer one, and the writers refuse a file the readers
+  would, which is an `index.json` over 16 MiB.
+- `KitManifest` and `kitPackLimit` are exported.
 
 ## 0.16.0
 

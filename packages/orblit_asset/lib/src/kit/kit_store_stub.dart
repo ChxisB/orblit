@@ -7,6 +7,7 @@ Future<({int kits, int releases})> buildKitStore({
   required String entriesPath,
   required String outPath,
   required AssetTransport transport,
+  Duration timeout = const Duration(minutes: 10),
 }) => throw UnsupportedError(
   'buildKitStore needs a file system, and this platform has none. Build the '
   'store on a build machine with `dart run orblit_asset:kit index`.',

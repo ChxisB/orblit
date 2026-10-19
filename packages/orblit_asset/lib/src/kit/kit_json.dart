@@ -38,6 +38,17 @@ final class JsonObject {
   FormatException problem(String what) =>
       FormatException(what.endsWith('.') ? '$where $what' : '$where $what.');
 
+  /// Runs [make], and says where this object is in a complaint that does not
+  /// already say so.
+  T read<T>(T Function() make) {
+    try {
+      return make();
+    } on FormatException catch (error) {
+      if (error.message.startsWith(where)) rethrow;
+      throw problem('is wrong: ${error.message}');
+    }
+  }
+
   String text(String key) {
     final value = map[key];
     if (value is String) return value;

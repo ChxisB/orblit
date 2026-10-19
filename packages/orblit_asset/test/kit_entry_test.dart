@@ -48,6 +48,56 @@ void main() {
     expect(read.latest.toJson()['hash'], hash);
   });
 
+  test('a url at a public name, a query or port 443 is read', () {
+    for (final url in const [
+      'https://github.com/o/r/releases/download/v1/a.opack',
+      'https://cdn-1.example.co.uk/a.opack?raw=1',
+      'https://example.com:443/a.opack',
+    ]) {
+      expect(
+        entry({
+          'releases': [
+            release('1.0.0', {'url': url}),
+          ],
+        }).latest.url,
+        url,
+      );
+    }
+  });
+
+  test('a missing field is named once', () {
+    final bare = release('1.0.0')..remove('url');
+    expect(
+      () => entry({
+        'releases': [bare],
+      }),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(contains('has no "url" text'), isNot(contains('is wrong'))),
+        ),
+      ),
+    );
+  });
+
+  test('a file name with a control character is escaped in the message', () {
+    expect(
+      () => KitEntry.parse(
+        entryBytes('nope').sublist(0, 2),
+        publisher: 'am\u001bber',
+        slug: 'rocks',
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(contains(r'am\u001bber'), isNot(contains('\u001b'))),
+        ),
+      ),
+    );
+  });
+
   test('notes may be left out', () {
     final bare = release('1.0.0')..remove('notes');
     expect(
@@ -128,6 +178,33 @@ void main() {
       },
       'not an https address',
     ),
+    for (final url in const [
+      'https://localhost/a.opack',
+      'https://127.0.0.1/a.opack',
+      'https://127.1/a.opack',
+      'https://0x7f.0.0.1/a.opack',
+      'https://2130706433/a.opack',
+      'https://169.254.169.254/latest',
+      'https://[::1]/a.opack',
+      'https://printer.local/a.opack',
+      'https://build.internal/a.opack',
+      'https://intranet/a.opack',
+      'https://example.com./a.opack',
+      'https://m\u00fcnchen.de/a.opack',
+      'https://example.com:8443/a.opack',
+      'https://example.com:99999/a.opack',
+      'https://example.com\\@evil.com/a.opack',
+      'https://example.com@evil.com/a.opack',
+      'https://example.com/a.opack#evil.com',
+    ])
+      'the url $url': (
+        {
+          'releases': [
+            release('1.0.0', {'url': url}),
+          ],
+        },
+        'not an https address',
+      ),
     'a short hash': (
       {
         'releases': [

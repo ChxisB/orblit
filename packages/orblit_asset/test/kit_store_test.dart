@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -155,9 +156,43 @@ Future<void> fails(String fragment) async {
     ),
   );
   expect(Directory(at('out')).existsSync(), isFalse);
+  expect(staged(), isEmpty);
 }
 
 Uint8List read(String name) => File(at(name)).readAsBytesSync();
+
+/// A network that never answers.
+final class _Stuck implements AssetTransport {
+  @override
+  Future<FetchReply> send(FetchRequest request) =>
+      Completer<FetchReply>().future;
+
+  @override
+  void close() {}
+}
+
+/// A network that runs [before] when the first request is sent.
+final class _Before implements AssetTransport {
+  _Before(this._inner, this._before);
+
+  final AssetTransport _inner;
+  final void Function() _before;
+
+  @override
+  Future<FetchReply> send(FetchRequest request) {
+    _before();
+    return _inner.send(request);
+  }
+
+  @override
+  void close() => _inner.close();
+}
+
+/// Names in [scratch] that a build leaves behind while it writes.
+List<String> staged() => [
+  for (final item in scratch.listSync())
+    if (item.path.endsWith('.partial')) item.path,
+];
 
 void main() {
   setUp(() {
@@ -255,6 +290,18 @@ void main() {
         if (file is File) file.path.substring(at('out').length + 1),
     ]..sort();
     expect(files, hasLength(7));
+    expect(staged(), isEmpty);
+  });
+
+  test('writes into a folder named with a trailing slash', () async {
+    await sample();
+    await buildKitStore(
+      entriesPath: at('entries'),
+      outPath: '${at('out')}${Platform.pathSeparator}',
+      transport: MapTransport(pages),
+    );
+    expect(File(at('out/index.json')).existsSync(), isTrue);
+    expect(staged(), isEmpty);
   });
 
   test('an empty entries folder builds an empty index', () async {
@@ -442,7 +489,7 @@ void main() {
     final rocks = await kitFile('amber', 'rocks');
     final crates = await kitFile('brass-lamp', 'crates');
     entry('amber', 'rocks', [
-      release(rocks, changes: {'bytes': 1}),
+      release(rocks, changes: {'bytes': rocks.bytes + 1}),
     ]);
     entry('brass-lamp', 'crates', [release(crates, version: '1.0.1')]);
     await fails('amber/rocks 1.0.0: the file is');
@@ -469,6 +516,86 @@ void main() {
     Directory(at('entries/amber')).createSync();
     Link(at('entries/amber/rocks.json')).createSync(at('real.json'));
     await fails('is not an entry');
+  }, skip: Platform.isWindows);
+
+  test('stops reading a release at the size the entry gives', () async {
+    final served = await kitFile('amber', 'rocks');
+    entry('amber', 'rocks', [
+      release(served, changes: {'bytes': served.bytes - 1}),
+    ]);
+    await fails('amber/rocks 1.0.0 could not be fetched');
+  });
+
+  test('gives up on a release that never arrives', () async {
+    final served = await kitFile('amber', 'rocks');
+    entry('amber', 'rocks', [release(served)]);
+    await expectLater(
+      buildKitStore(
+        entriesPath: at('entries'),
+        outPath: at('out'),
+        transport: _Stuck(),
+        timeout: const Duration(milliseconds: 50),
+      ),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(
+            contains('amber/rocks 1.0.0 could not be fetched'),
+            contains('TimeoutException'),
+          ),
+        ),
+      ),
+    );
+    expect(Directory(at('out')).existsSync(), isFalse);
+  });
+
+  test('leaves alone a folder that appeared while it ran', () async {
+    final served = await kitFile('amber', 'rocks');
+    entry('amber', 'rocks', [release(served)]);
+    await expectLater(
+      buildKitStore(
+        entriesPath: at('entries'),
+        outPath: at('out'),
+        transport: _Before(
+          MapTransport(pages),
+          () => write('out/theirs.txt', 'mine'),
+        ),
+      ),
+      throwsA(isA<FileSystemException>()),
+    );
+    expect(File(at('out/theirs.txt')).readAsStringSync(), 'mine');
+    expect(staged(), isEmpty);
+  });
+
+  test('refuses an entry file that is too large', () async {
+    write('entries/amber/big.json', 'a' * (256 * 1024 + 1));
+    await fails('"amber/big.json" is over 262144 bytes');
+  });
+
+  test('refuses a pipe where an entry belongs', () async {
+    Directory(at('entries/amber')).createSync();
+    Process.runSync('mkfifo', [at('entries/amber/pipe.json')]);
+    await fails('"amber/pipe.json" is not an entry');
+  }, skip: Platform.isWindows);
+
+  test('escapes a control character in a file name', () async {
+    write('entries/am\u001bber/rocks.json', 'nope');
+    write('entries/\u001bnote.txt', 'hello');
+    await expectLater(
+      build(),
+      throwsA(
+        isA<FormatException>().having(
+          (error) => error.message,
+          'message',
+          allOf(
+            contains(r'am\u001bber/rocks'),
+            contains(r'"\u001bnote.txt" is not a folder'),
+            isNot(contains('\u001b')),
+          ),
+        ),
+      ),
+    );
   }, skip: Platform.isWindows);
 
   test('refuses a release at an address that is not https', () async {

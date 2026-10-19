@@ -1,6 +1,8 @@
 // The half of the conditional export in kit_store.dart for platforms with a
 // file system.
+import 'dart:async';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 
 import '../net/policy.dart';
@@ -12,7 +14,6 @@ import 'kit.dart';
 import 'kit_entry.dart';
 import 'kit_index.dart';
 import 'kit_manifest.dart';
-import 'kit_rules.dart';
 
 const int _previewLimit = 1024 * 1024;
 
@@ -25,23 +26,25 @@ const int _previewLimit = 1024 * 1024;
 /// a dot at the top, such as `.gitkeep`, is left alone. Anything else that is
 /// not an entry is a problem, and so is a link.
 ///
-/// A release is fetched over https from its url, up to [kitPackLimit] bytes.
-/// The pack has to hash to the entry's hash and be the size it says, every
-/// blob has to match its hash, the kit has to pass [kitProblems], and its
-/// manifest has to name the same publisher, slug and version as the entry.
-/// Nothing is written until every release of every kit has passed, and
-/// [outPath] must not exist, so what is published is only what was checked
-/// this time. Throws a [FormatException] that lists every problem. Answers how
-/// many kits and releases it wrote.
+/// A release is fetched over https from its url, up to the number of bytes the
+/// entry gives and for no longer than [timeout]. The pack has to hash to the
+/// entry's hash and be the size it says, every blob has to match its hash, the
+/// kit has to pass `kitProblems`, and its manifest has to name the same
+/// publisher, slug and version as the entry. Nothing is written until every
+/// release of every kit has passed, and [outPath] must not exist. The files
+/// are written beside it and renamed into place, so what is published is only
+/// what was checked this time. Throws a [FormatException] that lists every
+/// problem. Answers how many kits and releases it wrote.
 ///
-/// shortcut: every release is downloaded on every run, and the previews of
-/// every kit are held in memory until the last release has passed. Keep packs
-/// by hash between runs and write each kit as it passes when the store grows
-/// past a few hundred kits.
+/// shortcut: every release is downloaded on every run, one after another, and
+/// the previews of every kit are held in memory until the last release has
+/// passed. Keep packs by hash between runs, fetch several at once and write
+/// each kit as it passes when the store grows past a few hundred kits.
 Future<({int kits, int releases})> buildKitStore({
   required String entriesPath,
   required String outPath,
   required AssetTransport transport,
+  Duration timeout = const Duration(minutes: 10),
 }) async {
   final root = Directory(entriesPath);
   if (!root.existsSync()) {
@@ -57,7 +60,7 @@ Future<({int kits, int releases})> buildKitStore({
   }
   final scratch = await Directory.systemTemp.createTemp('orblit_kit_store_');
   try {
-    final build = _StoreBuild(scratch.path, transport);
+    final build = _StoreBuild(scratch.path, transport, timeout);
     final kits = <_Built>[];
     for (final entry in await _readEntries(root, build.problems)) {
       final built = await build.kit(entry);
@@ -108,7 +111,7 @@ Future<List<KitEntry>> _readEntries(
     if (publisher is Directory) {
       entries.addAll(await _readPublisher(name, publisher, problems));
     } else {
-      problems.add('"$name" is not a folder of entries.');
+      problems.add('"${kitShow(name)}" is not a folder of entries.');
     }
   }
   return entries;
@@ -122,15 +125,15 @@ Future<List<KitEntry>> _readPublisher(
   final entries = <KitEntry>[];
   for (final file in await _sorted(folder)) {
     final name = _nameOf(file);
-    final shown = kitShow('$publisher/$name');
-    if (file is! File || !name.endsWith('.json')) {
-      problems.add('"$shown" is not an entry. An entry is a .json file.');
+    final unreadable = await _unreadable(file, name, '$publisher/$name');
+    if (unreadable != null) {
+      problems.add(unreadable);
       continue;
     }
     try {
       entries.add(
         KitEntry.parse(
-          await file.readAsBytes(),
+          await File(file.path).readAsBytes(),
           publisher: publisher,
           slug: name.substring(0, name.length - '.json'.length),
         ),
@@ -142,12 +145,34 @@ Future<List<KitEntry>> _readPublisher(
   return entries;
 }
 
+/// Why [file] is not read as an entry, or null when it is one. Looks before
+/// any byte is read, so a pipe or a huge file cannot stall the build.
+Future<String?> _unreadable(
+  FileSystemEntity file,
+  String name,
+  String path,
+) async {
+  final shown = kitShow(path);
+  final notEntry = '"$shown" is not an entry. An entry is a .json file.';
+  if (file is! File || !name.endsWith('.json')) return notEntry;
+  final stat = await file.stat();
+  if (stat.type != FileSystemEntityType.file) return notEntry;
+  return stat.size > kitEntryLimit
+      ? '"$shown" is over $kitEntryLimit bytes.'
+      : null;
+}
+
 /// Downloads and checks releases, one at a time, keeping every problem.
+///
+/// F5: each step answers what it found and also adds its reasons to
+/// [problems], so one run reports every bad release and not the first.
 final class _StoreBuild {
-  _StoreBuild(String scratch, this._transport) : _folder = PackFolder(scratch);
+  _StoreBuild(String scratch, this._transport, this._timeout)
+    : _folder = PackFolder(scratch);
 
   final PackFolder _folder;
   final AssetTransport _transport;
+  final Duration _timeout;
 
   /// Every reason the store cannot be published, one line each.
   final List<String> problems = [];
@@ -197,11 +222,13 @@ final class _StoreBuild {
   /// Downloads the release into the scratch folder, which checks its hash.
   Future<bool> _fetch(String name, KitRelease release) async {
     try {
-      await _folder.download(
-        release.offer,
-        transport: _transport,
-        origin: _originOf(release),
-      );
+      await _folder
+          .download(
+            release.offer,
+            transport: _transport,
+            origin: _originOf(release),
+          )
+          .timeout(_timeout);
       return true;
     } on Exception catch (error) {
       problems.add('$name could not be fetched. ${kitShow('$error')}');
@@ -242,18 +269,16 @@ final class _StoreBuild {
       '${_folder.path}${Platform.pathSeparator}${release.hash.hex}.opack';
 }
 
-/// The origin of the url, which is the host the request goes to first.
+/// The origin of the url, which is the host the request goes to first, and a
+/// limit of the size the entry gives.
 ///
 /// [HttpTransport] follows a redirect to any host and the policy does not look
 /// at where it leads, so a release on a host that redirects, such as a GitHub
 /// release, works. The pack hash is what vouches for the bytes.
-AssetOrigin _originOf(KitRelease release) {
-  final url = Uri.parse(release.url);
-  return AssetOrigin(
-    Uri(scheme: 'https', host: url.host, port: url.hasPort ? url.port : null),
-    policy: const FetchPolicy(maxBytes: kitPackLimit),
-  );
-}
+AssetOrigin _originOf(KitRelease release) => AssetOrigin(
+  Uri(scheme: 'https', host: Uri.parse(release.url).host),
+  policy: FetchPolicy(maxBytes: release.bytes),
+);
 
 List<String> _disagreements(
   KitEntry entry,
@@ -326,35 +351,44 @@ bool _starts(Uint8List bytes, List<int> prefix) =>
     ].every((x) => x);
 
 Future<void> _write(String outPath, List<_Built> kits) async {
-  final out = Directory(outPath);
-  await out.create(recursive: true);
+  // Staged beside the final place and renamed, so a folder that appeared while
+  // the build ran is never written into or deleted.
+  final suffix = Random().nextInt(1 << 32).toRadixString(16);
+  final staging = Directory(
+    '${outPath.replaceFirst(RegExp(r'[/\\]+$'), '')}.$suffix.partial',
+  );
+  await staging.create(recursive: true);
   try {
-    for (final kit in kits) {
-      final manifest = kit.row.manifest;
-      final folder = Directory(
-        [
-          outPath,
-          'kits',
-          manifest.publisher,
-          manifest.slug,
-        ].join(Platform.pathSeparator),
-      );
-      await folder.create(recursive: true);
-      await File(
-        '${folder.path}${Platform.pathSeparator}releases.json',
-      ).writeAsBytes(kit.releases.encode());
-      for (final MapEntry(:key, :value) in kit.previews.entries) {
-        await File(
-          '${folder.path}${Platform.pathSeparator}$key',
-        ).writeAsBytes(value);
-      }
-    }
-    await File(
-      '$outPath${Platform.pathSeparator}index.json',
-    ).writeAsBytes(KitIndex([for (final kit in kits) kit.row]).encode());
+    await _writeFiles(staging.path, kits);
+    await staging.rename(outPath);
   } on Object {
-    // The folder did not exist before this run, so nothing of anyone's is lost.
-    await out.delete(recursive: true);
+    await staging.delete(recursive: true);
     rethrow;
   }
+}
+
+Future<void> _writeFiles(String root, List<_Built> kits) async {
+  for (final kit in kits) {
+    final manifest = kit.row.manifest;
+    final folder = Directory(
+      [
+        root,
+        'kits',
+        manifest.publisher,
+        manifest.slug,
+      ].join(Platform.pathSeparator),
+    );
+    await folder.create(recursive: true);
+    await File(
+      '${folder.path}${Platform.pathSeparator}releases.json',
+    ).writeAsBytes(kit.releases.encode());
+    for (final MapEntry(:key, :value) in kit.previews.entries) {
+      await File(
+        '${folder.path}${Platform.pathSeparator}$key',
+      ).writeAsBytes(value);
+    }
+  }
+  await File(
+    '$root${Platform.pathSeparator}index.json',
+  ).writeAsBytes(KitIndex([for (final kit in kits) kit.row]).encode());
 }

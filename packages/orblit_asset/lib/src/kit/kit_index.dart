@@ -10,8 +10,6 @@ import 'kit_manifest.dart';
 const int kitStoreFormat = 1;
 
 const int _maxRows = 50000;
-const int _maxReleases = 200;
-const int _maxPreviews = 6;
 const int _indexLimit = 16 * 1024 * 1024;
 const int _releasesLimit = 1024 * 1024;
 
@@ -49,8 +47,8 @@ final class KitRow {
   factory KitRow.fromJson(JsonObject json) {
     final licence = json.section('licence');
     final engine = json.section('engine');
-    try {
-      return KitRow(
+    return json.read(
+      () => KitRow(
         manifest: KitManifest(
           slug: json.text('slug'),
           publisher: json.text('publisher'),
@@ -64,10 +62,8 @@ final class KitRow {
         ),
         updated: json.text('updated'),
         thumbnail: json.optionalText('thumbnail'),
-      );
-    } on FormatException catch (error) {
-      throw json.problem('is wrong: ${error.message}');
-    }
+      ),
+    );
   }
 
   /// The latest release's manifest, without its previews.
@@ -125,7 +121,7 @@ final class KitIndex {
 
   final List<KitRow> rows;
 
-  Uint8List encode() => _encode({
+  Uint8List encode() => _encode('index.json', _indexLimit, {
     'formatVersion': kitStoreFormat,
     'kits': [for (final row in rows) row.toJson()],
   });
@@ -151,16 +147,13 @@ final class PublishedRelease {
 
   factory PublishedRelease.fromJson(JsonObject json) {
     final engine = json.section('engine');
-    try {
-      return PublishedRelease(
+    return json.read(
+      () => PublishedRelease(
         release: KitRelease.fromJson(json),
         engine: (from: engine.text('from'), to: engine.text('to')),
         containsScripts: json.flag('containsScripts'),
-      );
-    } on FormatException catch (error) {
-      if (error.message.startsWith(json.where)) rethrow;
-      throw json.problem('is wrong: ${error.message}');
-    }
+      ),
+    );
   }
 
   final KitRelease release;
@@ -191,17 +184,17 @@ final class KitReleases {
   }) {
     final versions = {for (final item in releases) item.release.version};
     if (releases.isEmpty ||
-        releases.length > _maxReleases ||
+        releases.length > kitReleaseLimit ||
         versions.length != releases.length) {
       throw const FormatException(
-        'A release list holds 1 to $_maxReleases releases and no version '
+        'A release list holds 1 to $kitReleaseLimit releases and no version '
         'twice.',
       );
     }
-    if (previews.length > _maxPreviews ||
+    if (previews.length > kitPreviewLimit ||
         previews.toSet().length != previews.length) {
       throw const FormatException(
-        'A release list names up to $_maxPreviews previews and no preview '
+        'A release list names up to $kitPreviewLimit previews and no preview '
         'twice.',
       );
     }
@@ -247,7 +240,7 @@ final class KitReleases {
   /// Newest version first.
   final List<PublishedRelease> releases;
 
-  Uint8List encode() => _encode({
+  Uint8List encode() => _encode('releases.json', _releasesLimit, {
     'formatVersion': kitStoreFormat,
     'previews': previews,
     'releases': [for (final item in releases) item.toJson()],
@@ -267,5 +260,11 @@ void _checkFormat(JsonObject json) {
   }
 }
 
-Uint8List _encode(Map<String, Object?> json) =>
-    Uint8List.fromList(utf8.encode(jsonEncode(json)));
+/// The bytes of [json], refused when the reader would refuse them.
+Uint8List _encode(String name, int limit, Map<String, Object?> json) {
+  final bytes = Uint8List.fromList(utf8.encode(jsonEncode(json)));
+  if (bytes.length > limit) {
+    throw FormatException('$name would be ${bytes.length} bytes, over $limit.');
+  }
+  return bytes;
+}

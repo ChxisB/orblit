@@ -43,8 +43,38 @@ Uint8List bytes(Object? json) =>
 Map<String, Object?> json(Uint8List encoded) =>
     jsonDecode(utf8.decode(encoded)) as Map<String, Object?>;
 
+/// A row as wide as a row can be.
+KitRow wide(int n) => KitRow(
+  manifest: KitManifest(
+    slug: 'k$n',
+    publisher: 'brass-lamp',
+    name: 'Kit $n',
+    summary: 'x' * 200,
+    version: '1.0.0',
+    licence: (spdx: 'MIT', url: 'https://example.com/${'l' * 150}'),
+    engine: (from: '0.30.0', to: '0.40.0'),
+    containsScripts: false,
+    tags: [for (var i = 0; i < 8; i++) '${'t' * 20}$i'],
+  ),
+  updated: '2026-10-19',
+);
+
 void main() {
   group('index', () {
+    test('refuses to write an index its reader would refuse', () {
+      final index = KitIndex([for (var i = 0; i < 30000; i++) wide(i)]);
+      expect(
+        index.encode,
+        throwsA(
+          isA<FormatException>().having(
+            (error) => error.message,
+            'message',
+            contains('index.json would be'),
+          ),
+        ),
+      );
+    });
+
     test('sorts by publisher and slug and reads back the same bytes', () {
       final index = KitIndex([
         row('zebra'),

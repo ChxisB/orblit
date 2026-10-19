@@ -43,7 +43,8 @@ const int _maxUrl = 200;
 
 const Set<String> _previewExtensions = {'png', 'jpg', 'jpeg', 'webp'};
 const int _maxTags = 8;
-const int _maxPreviews = 6;
+/// The most previews a kit names.
+const int kitPreviewLimit = 6;
 
 /// What a kit says about itself, as `kit.json` in the pack.
 ///
@@ -293,10 +294,10 @@ void _checkTags(List<String> tags) {
 }
 
 void _checkPreviews(List<AssetId> previews) {
-  if (previews.length > _maxPreviews ||
+  if (previews.length > kitPreviewLimit ||
       previews.toSet().length != previews.length) {
     throw const FormatException(
-      'A kit has up to $_maxPreviews previews and no preview twice.',
+      'A kit has up to $kitPreviewLimit previews and no preview twice.',
     );
   }
   for (final id in previews) {
