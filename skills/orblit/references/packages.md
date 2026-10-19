@@ -995,6 +995,8 @@ Traps:
 - **A float that is not finite reads as text.** `"NaN"` and `"Infinity"`,
   because JSON cannot carry the number. That is usually the broken value you
   were looking for.
+- **Physics is not in a snapshot.** A `PhysicsSnapshot` is native memory with
+  no JSON form. Put what you want compared, such as contacts, in `extras`.
 - **Snapshots are eight deep.** The ninth drops `s1`. A diff of an id that was
   dropped answers `-32001`.
 - **Take the token from the printed line.** It changes at every start. A wrong

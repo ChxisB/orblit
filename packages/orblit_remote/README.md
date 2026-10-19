@@ -60,6 +60,10 @@ Each request is a JSON-RPC 2.0 object with named params.
 | `log.tail` | `n` (default 50) | the last lines |
 | `perf.summary` | none | what the host reports |
 
+A snapshot holds the entities and the `extras` the host gave, as JSON. The
+physics world's own `PhysicsSnapshot` is native memory with no JSON form, so a
+host puts what it wants compared, such as contacts or stats, in `extras`.
+
 The surface keeps the last eight snapshots. A component the inspector has no
 field names for is listed by name and cannot be set. `readOnly: true` refuses
 `entity.set` and `input.send`. A verb whose part the game did not give answers

@@ -53,8 +53,9 @@ final class RemoteHost {
   /// The render view as PNG bytes.
   final Future<Uint8List> Function()? screenshot;
 
-  /// Further state kept beside the entities in a snapshot, by name. The
-  /// physics world's own snapshot goes here.
+  /// Further state kept beside the entities in a snapshot, by name, as JSON.
+  /// The physics world's own snapshot is native memory with no JSON form, so a
+  /// host puts what it wants compared here, such as contacts or stats.
   final Map<String, Map<String, Object?> Function()> extras;
 
   /// Refuses `entity.set` and `input.send`. Time control and snapshots stay,
