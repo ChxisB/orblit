@@ -296,6 +296,18 @@ as good. Worked example:
 https://orblitengine.com/docs/examples/a-menu-over-the-game/ and
 `/guides/interfaces/`.
 
+For other languages, give a text or button node `props: {'textKey':
+'play'}` and, for `{name}` and plurals, `'textArgs': {'name': 'Ann',
+'count': 3}`. Build a `UiStrings(locale: 'en')`, fill it with
+`add('fr', {...})` or `addJson('fr', fileText)`, and pass it as `strings:` to
+`UiSurface`. `strings.use('fr')` redraws the live interface. A key a
+language lacks falls back to its parent language (`fr-ca` to `fr`), then to
+the default, then shows as the key. A count picks `play.one`, `play.few` and
+so on by the language's own rule. `fontFallback: ['Noto Sans JP']` names
+the fonts tried for a character the main font lacks. The editor reads
+`strings/<locale>.json` from the project folder. Only text and button
+labels are translated. Nothing here lays out right to left.
+
 ## orblit_scene and orblit_stage
 
 Scene files as documents, for games built in the editor.

@@ -290,6 +290,25 @@ class UiNode {
     return null;
   }
 
+  /// The key of this element's words in a `UiStrings` table, when they come
+  /// from one rather than from [text].
+  String? get textKey {
+    final value = props['textKey'];
+    return value is String && value.isNotEmpty ? value : null;
+  }
+
+  /// The arguments the words are filled in with: `{name}` in the text, and a
+  /// whole `count` to choose the plural form.
+  Map<String, Object?> get textArgs {
+    final value = props['textArgs'];
+    return value is Map
+        ? {for (final entry in value.entries) '${entry.key}': entry.value}
+        : const {};
+  }
+
+  /// Every key this tree asks a string table for.
+  Set<String> get textKeys => {for (final one in walk()) ?one.node.textKey};
+
   /// The name of the callback for an event, if script gave one.
   ///
   /// Callbacks cross as names rather than as functions: a function cannot be

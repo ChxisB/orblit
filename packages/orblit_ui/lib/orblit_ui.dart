@@ -23,6 +23,7 @@ export 'src/css.dart' show UiCss;
 export 'src/document.dart' show CanvasFit, UiCanvas, UiDocument;
 export 'src/node.dart' show UiNode;
 export 'src/responsive.dart' show UiBreakpoints;
+export 'src/strings.dart' show UiStrings;
 export 'src/style.dart' show UiStyle;
 export 'src/surface.dart' show UiSurface;
 export 'src/theme.dart' show UiTheme;
