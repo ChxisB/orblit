@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.38.0
+
+- **Cameras and lights from an FBX.** The importer carried neither. A
+  perspective camera arrives as a glTF camera, and a point, spot,
+  directional or area light as a `KHR_lights_punctual` light. Reading a
+  cooked FBX with `readSceneFrom` gives a camera or light component for
+  each. An orthographic camera and a volume light are still left out, and
+  the import notes say so.
+- FBX has no unit for a light's strength, so it is read as watts. A spot or
+  point light is written in candela and a sun in lux, the way the scene
+  exporter writes them. A Maya or Max multiplier is read as watts as well.
+- A glTF camera or light points down -Z. ufbx is told to turn a camera and a
+  light to that, and `orblit_import_check` reads where each of an unrotated
+  camera, spot light and sun looks. It fails when the axes are not set.
+- Checked on a GLB, not in a renderer. The renderer's handling of a file's
+  lights is unchanged: it takes them out and a host reads them from the
+  model's description.
+
 ## 0.37.0
 
 - **A lit screen.** `OrblitMaterial(shading: OrblitShading.video, litScreen:

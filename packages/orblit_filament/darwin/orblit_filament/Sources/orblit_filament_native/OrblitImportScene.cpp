@@ -146,6 +146,141 @@ void Converter::writeSkins() {
   }
 }
 
+namespace {
+
+constexpr double kPi = 3.14159265358979323846;
+
+/// Lumens per watt at the eye's most sensitive wavelength. The same number
+/// as `Photometry.luminousEfficacy` in orblit_light, which reads these
+/// lights back, so a light comes out of an FBX at the strength it would
+/// have had written from a scene.
+constexpr double kLuminousEfficacy = 683.0;
+
+double unitInterval(double value) {
+  return std::isfinite(value) ? std::min(1.0, std::max(0.0, value)) : 1.0;
+}
+
+}  // namespace
+
+/// Perspective cameras, stated as glTF does: the vertical angle and the
+/// planes. An orthographic camera has no equivalent in this engine, and is
+/// said to be left out.
+void Converter::writeCameras() {
+  cameraOf_.assign(scene_->cameras.count, -1);
+  size_t left = 0;
+  for (size_t n = 0; n < scene_->cameras.count; n++) {
+    const ufbx_camera *camera = scene_->cameras.data[n];
+    if (!camera) continue;
+    const double yfov = camera->field_of_view_deg.y * kPi / 180.0;
+    const double near = camera->near_plane;
+    const double far = camera->far_plane;
+    const bool usable =
+        camera->projection_mode == UFBX_PROJECTION_MODE_PERSPECTIVE &&
+        yfov > 0 && yfov < kPi && near > 0;
+    if (!usable) {
+      left++;
+      continue;
+    }
+    std::string json = "{\"type\":\"perspective\",\"perspective\":{\"yfov\":";
+    putFloat(json, yfov);
+    json += ",\"znear\":";
+    putFloat(json, near);
+    if (std::isfinite(far) && far > near) {
+      json += ",\"zfar\":";
+      putFloat(json, far);
+    }
+    json += "}}";
+    cameraOf_[n] = int(doc_.cameras.size());
+    doc_.cameras.push_back(std::move(json));
+  }
+  if (left > 0) {
+    losses_.add(std::to_string(left) +
+                " camera(s) not carried: only perspective ones are");
+  }
+}
+
+/// Point, spot and directional lights, in the units glTF uses.
+///
+/// FBX has no unit for a light's strength. Blender writes watts and other
+/// tools a multiplier, and both are taken as watts, so a Blender light
+/// arrives as bright as it left. A sun is per square metre and the rest
+/// spread over a sphere. An area light is written as a point and marked, as
+/// the scene exporter does, because glTF has no shape that emits.
+///
+/// shortcut: a Maya or Max multiplier is read as watts, add a scale to the
+/// import options when a game needs those to match.
+void Converter::writeLights() {
+  lightOf_.assign(scene_->lights.count, -1);
+  size_t left = 0;
+  for (size_t n = 0; n < scene_->lights.count; n++) {
+    const ufbx_light *light = scene_->lights.data[n];
+    if (!light) continue;
+    if (light->type == UFBX_LIGHT_VOLUME) {
+      left++;
+      continue;
+    }
+    const bool sun = light->type == UFBX_LIGHT_DIRECTIONAL;
+    const double watts = light->cast_light && std::isfinite(light->intensity)
+                             ? std::max(0.0, double(light->intensity))
+                             : 0.0;
+    const double intensity =
+        watts * kLuminousEfficacy / (sun ? 1.0 : 4.0 * kPi);
+    const double colour[3] = {unitInterval(light->color.x),
+                              unitInterval(light->color.y),
+                              unitInterval(light->color.z)};
+
+    std::string json = "{\"type\":\"";
+    json += sun ? "directional"
+                : light->type == UFBX_LIGHT_SPOT ? "spot" : "point";
+    json += "\",\"color\":";
+    putFloats(json, colour, 3);
+    json += ",\"intensity\":";
+    putFloat(json, intensity);
+    if (light->type == UFBX_LIGHT_SPOT) {
+      // FBX states the whole cone and glTF half of it.
+      const double whole = light->outer_angle * kPi / 180.0;
+      const double outer = whole > 0 && std::isfinite(whole)
+                               ? std::min(whole / 2, kPi / 2)
+                               : kPi / 4;
+      const double inner = std::isfinite(light->inner_angle)
+                               ? light->inner_angle * kPi / 360.0
+                               : 0.0;
+      json += ",\"spot\":{\"innerConeAngle\":";
+      putFloat(json, std::min(outer, std::max(0.0, inner)));
+      json += ",\"outerConeAngle\":";
+      putFloat(json, outer);
+      json += '}';
+    }
+    if (light->type == UFBX_LIGHT_AREA) {
+      json += ",\"extras\":{\"orblit\":{\"kind\":\"area\"}}";
+    }
+    json += '}';
+    lightOf_[n] = int(doc_.lights.size());
+    doc_.lights.push_back(std::move(json));
+  }
+  if (!doc_.lights.empty()) doc_.extensionsUsed.insert("KHR_lights_punctual");
+  if (left > 0) {
+    losses_.add(std::to_string(left) +
+                " light(s) not carried: glTF has point, spot and directional "
+                "lights only");
+  }
+}
+
+/// The camera or light a node holds, as the node's own fields.
+void Converter::putAttributes(std::string &json, const ufbx_node *node) const {
+  const ufbx_camera *camera = node->camera;
+  if (camera && camera->typed_id < cameraOf_.size() &&
+      cameraOf_[camera->typed_id] >= 0) {
+    json += "\"camera\":" + std::to_string(cameraOf_[camera->typed_id]) + ",";
+  }
+  const ufbx_light *light = node->light;
+  if (light && light->typed_id < lightOf_.size() &&
+      lightOf_[light->typed_id] >= 0) {
+    json += "\"extensions\":{\"KHR_lights_punctual\":{\"light\":" +
+            std::to_string(lightOf_[light->typed_id]) + "}},";
+  }
+}
+
 void Converter::putName(std::string &json, const ufbx_node *node) {
   if (node->name.length == 0) return;
   json += "\"name\":";
@@ -178,6 +313,7 @@ void Converter::writeNodes() {
     if (!children.empty()) json += "\"children\":" + indexList(children) + ",";
     putTransform(json, node->local_transform);
     if (meshOf[n] >= 0) json += "\"mesh\":" + std::to_string(meshOf[n]) + ",";
+    putAttributes(json, node);
     if (json.back() == ',') json.pop_back();
     json += '}';
     doc_.nodes.push_back(std::move(json));
