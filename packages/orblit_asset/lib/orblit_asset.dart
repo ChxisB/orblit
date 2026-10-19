@@ -82,6 +82,7 @@ export 'src/kit/kit_index.dart'
 export 'src/kit/kit_lock.dart' show KitLock, LockedKit, kitLockFormat;
 export 'src/kit/kit_manifest.dart' show KitManifest, kitFitsEngine;
 export 'src/kit/kit_published.dart' show KitPublished;
+export 'src/kit/kit_update.dart' show KitUpdatePlan, planKitUpdate;
 export 'src/kit/kit_rules.dart'
     show kitLockName, kitPackLimit, kitPlace, kitPlaceProblem;
 export 'src/kit/kit_store.dart' show buildKitStore;

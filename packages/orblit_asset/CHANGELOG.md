@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0
+
+- **Planning an update.** `planKitUpdate` takes the files `kits.lock`
+  recorded, the files of a newer release and the hashes on disk. It answers
+  which files to replace, add and remove, and which to keep. A file is
+  replaced or removed only when it is still as the lock recorded it. A file
+  the person edited or deleted is kept and listed. It reads and writes
+  nothing. Nothing calls it yet.
+
 ## 0.19.0
 
 - **Listing a kit.** `kit publish <folder> --url <url>` packs the folder,
