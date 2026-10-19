@@ -12,9 +12,18 @@ extension OrblitSceneRows on OrblitScene {
   /// One row for each object, then each population. The `id` is `object:` or
   /// `population:` and the key, because the two key spaces are separate.
   ///
-  /// A null `mesh` is the built-in cube. `materialListed` is false when an
-  /// object names a material the scene does not list, which draws it in its
-  /// own colour on the default surface.
+  /// A null `mesh` is the built-in cube. `materialListed` is null when the row
+  /// names no material, and false when an object names one the scene does not
+  /// list, which draws it in its own colour on the default surface. `layer` is
+  /// the one the renderer is sent, so an object past [OrblitScene.maxLayer]
+  /// reads as the last.
+  ///
+  /// Only objects and populations have rows. Terrain, sprites, splats and
+  /// decals have none, so a pass can count more draws than there are rows.
+  ///
+  /// shortcut: builds every row on each call, which is cheap for thousands of
+  /// draws. Make it lazy when a scene holds tens of thousands and an assistant
+  /// polls.
   List<Map<String, Object?>> drawRows() {
     final listed = {for (final material in materials) material.key};
     return [
@@ -24,9 +33,10 @@ extension OrblitSceneRows on OrblitScene {
   }
 
   /// The material with [key], with the ids of the objects made of it, or null
-  /// when the scene lists none.
+  /// when the scene lists none. When a key is listed twice the last wins, as it
+  /// does in the scene message.
   Map<String, Object?>? materialRow(int key) {
-    final material = materials.where((m) => m.key == key).firstOrNull;
+    final material = materials.where((m) => m.key == key).lastOrNull;
     if (material == null) return null;
     return {
       ...material.toJson(),
@@ -44,10 +54,12 @@ Map<String, Object?> _objectRow(OrblitObject object, Set<int> listed) => {
   'key': object.key,
   'mesh': object.mesh,
   'material': object.material,
-  'materialListed': listed.contains(object.material),
+  'materialListed': object.material == null
+      ? null
+      : listed.contains(object.material),
   'instances': 1,
   'visible': object.visible,
-  'layer': object.layer,
+  'layer': object.layer.clamp(0, OrblitScene.maxLayer),
   'castShadows': object.castShadows,
   'receiveShadows': object.receiveShadows,
   'colour': object.colour.storage.toList(),
@@ -60,10 +72,10 @@ Map<String, Object?> _populationRow(OrblitPopulation population) => {
   'key': population.key,
   'mesh': population.mesh,
   'material': null,
-  'materialListed': false,
+  'materialListed': null,
   'instances': population.count,
   'visible': population.isVisible,
-  'layer': population.layer,
+  'layer': population.layer.clamp(0, OrblitScene.maxLayer),
   'castShadows': population.castShadows,
   'receiveShadows': population.receiveShadows,
   'range': population.range,

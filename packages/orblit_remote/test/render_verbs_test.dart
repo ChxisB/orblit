@@ -74,6 +74,19 @@ void main() {
       });
     });
 
+    test('answers the first hundred rows unless asked for more', () async {
+      final many = hosted(
+        draws: [
+          for (var i = 0; i < 150; i++) {'id': 'object:$i'},
+        ],
+      );
+      final result =
+          resultOf(await call(many, 'view.draws'))! as Map<String, Object?>;
+      expect(result['count'], 150);
+      expect(result['draws'], hasLength(100));
+      expect(result['truncated'], isTrue);
+    });
+
     test('cuts at the limit and says so', () async {
       final result =
           resultOf(await call(hosted(), 'view.draws', {'limit': 2}))!
@@ -163,6 +176,16 @@ void main() {
         RemoteError.invalidParams,
       );
     });
+  });
+
+  test('a read only session still answers the render verbs', () async {
+    final verbs = RemoteVerbs(
+      RemoteHost(readOnly: true, draws: () => _drawRows),
+    );
+    expect(
+      resultOf(await call(verbs, 'view.draws')),
+      isA<Map<String, Object?>>(),
+    );
   });
 
   group('a host that gave no renderer', () {

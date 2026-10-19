@@ -27,6 +27,8 @@ final brass = OrblitMaterial(
   baseColourMap: const OrblitTexture('/tex/brass.png'),
 );
 
+final camera = OrblitCamera(position: Vector3(0, 2, 8), target: Vector3.zero());
+
 OrblitScene scene() => OrblitScene(
   objects: [
     thing(1, material: 7, at: Matrix4.translation(Vector3(1, 2, 3))),
@@ -46,7 +48,7 @@ OrblitScene scene() => OrblitScene(
     ),
   ],
   materials: [brass],
-  camera: OrblitCamera(position: Vector3(0, 2, 8), target: Vector3.zero()),
+  camera: camera,
 );
 
 void main() {
@@ -80,8 +82,28 @@ void main() {
       final rows = scene().drawRows();
       expect(rows[2]['material'], 99);
       expect(rows[2]['materialListed'], isFalse);
+    });
+
+    test('a row with no material has no answer to give about one', () {
+      final rows = scene().drawRows();
       expect(rows[3]['material'], isNull);
-      expect(rows[3]['materialListed'], isFalse);
+      expect(rows[3]['materialListed'], isNull);
+      expect(rows.last['materialListed'], isNull);
+    });
+
+    test('reports the layer the renderer is sent', () {
+      final rows = OrblitScene(
+        objects: [
+          OrblitObject(
+            key: 1,
+            transform: Matrix4.identity(),
+            colour: Vector3(1, 0, 0),
+            layer: 9,
+          ),
+        ],
+        camera: camera,
+      ).drawRows();
+      expect(rows.single['layer'], OrblitScene.maxLayer);
     });
 
     test('a hidden object is listed and says it is hidden', () {
@@ -110,8 +132,24 @@ void main() {
       expect(values['metallic'], 1);
       expect(values['roughness'], 0.25);
       expect(values['baseColour.g'], 0.25);
-      expect(row['maps'], {'baseColour': '/tex/brass.png'});
+      expect(row['maps'], {
+        'baseColour': {'path': '/tex/brass.png', 'srgb': true},
+      });
       expect(row['shading'], 'lit');
+      expect(row['blendMode'], 'none');
+    });
+
+    test('answers the last material when a key is listed twice', () {
+      final twice = OrblitScene(
+        objects: const [],
+        camera: camera,
+        materials: [
+          OrblitMaterial(key: 7),
+          OrblitMaterial(key: 7, metallic: 1),
+        ],
+      );
+      final values = twice.materialRow(7)!['values']! as Map<String, Object?>;
+      expect(values['metallic'], 1);
     });
 
     test('is null for a key the scene does not hold', () {
@@ -122,6 +160,55 @@ void main() {
       // A float added to pack without a name would go unread here.
       expect(OrblitMaterial.packedNames, hasLength(OrblitMaterial.stride));
       expect(OrblitMaterial.mapNames, hasLength(OrblitMaterial.mapCount));
+    });
+
+    test('each name is the field pack writes at its place', () {
+      // Every float gets its own value, so a name out of step with pack shows.
+      final distinct = {
+        for (final (at, name) in OrblitMaterial.packedNames.indexed)
+          name: (at + 1) / 64,
+      };
+      double v(String name) => distinct[name]!;
+      final material = OrblitMaterial(
+        key: 1,
+        baseColour: Vector4(
+          v('baseColour.r'),
+          v('baseColour.g'),
+          v('baseColour.b'),
+          v('baseColour.a'),
+        ),
+        metallic: v('metallic'),
+        roughness: v('roughness'),
+        reflectance: v('reflectance'),
+        emissive: Vector3(v('emissive.r'), v('emissive.g'), v('emissive.b')),
+        emissiveIntensity: v('emissiveIntensity'),
+        ambientOcclusion: v('ambientOcclusion'),
+        normalScale: v('normalScale'),
+        tiling: Vector2(v('tiling.x'), v('tiling.y')),
+        offset: Vector2(v('offset.x'), v('offset.y')),
+        maskThreshold: v('maskThreshold'),
+        depthBias: v('depthBias'),
+        blendAmount: v('blendAmount'),
+        blendSharpness: v('blendSharpness'),
+        blendTiling: Vector2(v('blendTiling.x'), v('blendTiling.y')),
+        blendOffset: Vector2(v('blendOffset.x'), v('blendOffset.y')),
+        clearCoat: v('clearCoat'),
+        clearCoatRoughness: v('clearCoatRoughness'),
+        anisotropy: v('anisotropy'),
+        sheenColour: Vector3(
+          v('sheenColour.r'),
+          v('sheenColour.g'),
+          v('sheenColour.b'),
+        ),
+        sheenRoughness: v('sheenRoughness'),
+      );
+      final values = material.toJson()['values']! as Map<String, Object?>;
+      // The blend mode and the wind are not plain fields, so they have their
+      // own checks.
+      for (final name in distinct.keys) {
+        if (name == 'blendMode' || name.startsWith('wind')) continue;
+        expect(values[name], distinct[name], reason: name);
+      }
     });
   });
 

@@ -640,8 +640,9 @@ class OrblitMaterial {
     'blendMask',
   ];
 
-  /// The material as the renderer holds it, as JSON-ready values. The floats
-  /// are the packed ones, so they are the 32 bit values the shader reads.
+  /// The material as the scene packs it for the renderer, as JSON-ready
+  /// values. The floats are the packed ones, so they are the 32 bit values
+  /// written to the message, not a read back from the renderer.
   Map<String, Object?> toJson() {
     final packed = Float32List(stride);
     pack(packed, 0);
@@ -657,9 +658,10 @@ class OrblitMaterial {
       'screenMapped': screenMapped,
       'litScreen': litScreen,
       'video': video,
+      'blendMode': blendMode.name,
       'maps': {
         for (final (slot, map) in maps.indexed)
-          if (map != null) mapNames[slot]: map.path,
+          if (map != null) mapNames[slot]: {'path': map.path, 'srgb': map.srgb},
       },
       'values': {
         for (final (at, name) in packedNames.indexed) name: packed[at],

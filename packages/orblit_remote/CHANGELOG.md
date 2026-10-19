@@ -11,8 +11,9 @@
 - A float JSON cannot write is text in these rows, so a NaN from the renderer
   can be read.
 - Not answerable yet: the pixel of a pass and a scan for NaN or depth fighting.
-  The plugin returns no pixels or depth to Dart. The task plan lists the
-  native work.
+  The plugin returns no pixels or depth to Dart. A pixel needs a frame read
+  on five ports, a NaN scan needs a float copy of the scene colour before tone
+  mapping, and depth fighting needs a depth read and an id for each pixel.
 
 ## 0.1.0
 

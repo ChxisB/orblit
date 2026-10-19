@@ -999,7 +999,12 @@ RemoteHost renderHost({
 }) => RemoteHost(
   passes: () async {
     final id = viewport();
-    if (id == null) throw StateError('The view has not reported its number');
+    if (id == null) {
+      throw const RemoteError(
+        RemoteError.unavailable,
+        'The view has not reported its number',
+      );
+    }
     final frame = await OrblitView.capture(id, scene().passNames);
     return [for (final pass in frame.passes) pass.toJson()];
   },
@@ -1039,9 +1044,15 @@ Traps:
   own function in `RemoteHost`. A host without it answers `-32004`.
 - **A draw row is what the scene submitted.** Culling, range fade and batching
   come after it, so a row can be listed and never drawn. A pass row is what
-  the renderer did, so use it to check a draw count. A row with
-  `materialListed: false` names a material the scene does not list, and the
-  renderer draws it in its own colour. A null `mesh` is the built-in cube.
+  the renderer did, so use it to check a draw count. Only objects and
+  populations have rows, so a pass can count more draws than there are rows.
+  A row with `materialListed: false` names a material the scene does not list,
+  and the renderer draws it in its own colour. `materialListed` is null when
+  the row names no material. A null `mesh` is the built-in cube.
+- **An empty pass list is not proof that nothing ran.** The capture is empty
+  until the renderer has reported timings.
+- **Material values are what the scene packs.** They are not read back from
+  the renderer, so a texture that failed to load still shows its path.
 - **No pixels and no depth.** The plugin returns neither to Dart. A pixel of
   the final frame or of another pass, and a scan for NaN or depth fighting,
   are not verbs and wait on native work.

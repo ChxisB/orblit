@@ -8,11 +8,14 @@
   and the objects made of it. `OrblitPassTiming.toJson()` is a pass row. They
   are the shape `orblit_remote` takes for `view.draws`, `view.material` and
   `view.passes`. A row is what the scene submitted, so it does not show culling
-  or batching.
+  or batching. Terrain, sprites, splats and decals have no rows.
 - `drawRows` says when an object names a material the scene does not list,
-  which the renderer draws in the object's colour on the default surface.
-- `OrblitMaterial.toJson()` holds the floats the shader is sent, by name, in
-  `OrblitMaterial.packedNames`. A test fails if `stride` and the names drift.
+  which the renderer draws in the object's colour on the default surface. The
+  row's `layer` is the one the renderer is sent, clamped to
+  `OrblitScene.maxLayer`.
+- `OrblitMaterial.toJson()` holds the floats the scene packs for the shader,
+  by name, in `OrblitMaterial.packedNames`, and each texture map's path and
+  `srgb` flag. A test fails if a name falls out of step with `pack`.
 
 ## 0.37.0
 

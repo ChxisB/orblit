@@ -64,9 +64,13 @@ final class RemoteHost {
   /// What the scene submitted to draw, one row each. A row carries a text `id`
   /// that is unique among the rows. Culling and batching come after the scene,
   /// so this is not what the renderer drew. [passes] is the check on it.
+  ///
+  /// A plain function runs to the end on the game's isolate, so [timeout] does
+  /// not cover it. Keep it quick.
   final List<Map<String, Object?>> Function()? draws;
 
-  /// One material by its key, or null for a key the scene does not hold.
+  /// One material by its key, or null for a key the scene does not hold. Like
+  /// [draws], it is not covered by [timeout].
   final Map<String, Object?>? Function(int key)? material;
 
   /// Further state kept beside the entities in a snapshot, by name, as JSON.
@@ -80,7 +84,7 @@ final class RemoteHost {
 
   /// How long a verb waits on the game before it answers
   /// [RemoteError.timedOut]: for the next stepped frame, the input sink, the
-  /// screenshot and the render callbacks. It must be above zero.
+  /// screenshot and [passes]. It must be above zero.
   final Duration timeout;
 }
 
@@ -290,9 +294,7 @@ final class RemoteVerbs {
     };
     // The round trip copies the snapshot, so a host that reuses its maps
     // cannot change a kept one, and it fails here, before anything is kept.
-    final snapshot =
-        jsonDecode(jsonEncode(raw, toEncodable: _finite))
-            as Map<String, Object?>;
+    final snapshot = _plain(raw)! as Map<String, Object?>;
     _snapshots.add(snapshot);
     return {'id': _snapshots.lastId, ...snapshot};
   }

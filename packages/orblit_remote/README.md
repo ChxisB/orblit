@@ -89,9 +89,11 @@ error `-32004`.
 
 `RemoteHost.timeout` (ten seconds) is how long a verb waits on the game. For
 `time.step` it restarts each time a frame passes. For `input.send`, the
-screenshot and the render verbs it is the whole wait. A callback that outlasts it answers
-`-32003`. An argument or state error thrown by a host callback answers
-`-32603`, because it is the game's fault and not a bad request.
+screenshot and `view.passes` it is the whole wait. A callback that outlasts it
+answers `-32003`. `draws`, `material` and `perf` are plain functions that run
+to the end, so keep them quick. An argument or state error thrown by a host
+callback answers `-32603`, because it is the game's fault and not a bad
+request.
 
 ## Status
 
