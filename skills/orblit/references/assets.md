@@ -513,6 +513,49 @@ kit's name and summary come from its `kit.json`, not the entry.
 - **Every run downloads every release.** Keep packs by hash between runs
   when a store holds hundreds of kits.
 
+#### Reading a store and installing from it
+
+```dart
+final store = KitStoreClient(Uri.parse('https://example.com/store/'), HttpTransport());
+final row = (await store.index()).kits.first;
+final releases = await store.releases(row);
+final kit = await store.open(releases.releases.first.release);
+final clashes = await kit.conflictsIn(
+  DirectoryAssetSource('my_project'),
+  into: 'assets/kits/crates',
+);
+await extractKit(kit, 'my_project', into: 'assets/kits/crates');
+```
+
+- **The client reads and never writes.** `KitStoreClient` takes an https
+  base and an `AssetTransport`, so a test serves a store from a
+  `MapTransport`. It reads `index()`, `releases(row)`, `preview(row, name)`
+  and `thumbnail(row)`, each to the limit of its file. A reply that is not a
+  200 or a body past its limit throws `KitStoreFailed`.
+  `kitStoreAddressProblem(base)` says why an address cannot be a store.
+- **`open(release)` lists files by ranged requests.** The server must answer
+  `Range`, or it throws `PackRangeFailed`. The files of the kit are not
+  downloaded. To install, fetch the whole pack with `PackFolder` using
+  `KitRelease.origin`, which gives the origin and the size limit, then check
+  the hash.
+- **`into` and `only` belong to `extractKit` and `conflictsIn`.** `into` is
+  a folder of the project and cannot start with a dot or climb out of it.
+  `only` is a set of the kit's own ids, and an id the kit does not hold is an
+  `ArgumentError`. Conflicts are counted at the new place.
+- **`kit.scripts` lists what can run.** Show it before an install. An install
+  never runs a script.
+- **`kitFitsEngine(range, version)` is inclusive at both ends.** It answers
+  true for a version it cannot read, because it cannot judge.
+- **`kits.lock` is at the project root.** `KitLock.parse(bytes)` reads it
+  and `encode()` writes it. A `LockedKit` holds the publisher, slug, version,
+  pack hash, `into` and the hash of each file written. A file the person left
+  out is not listed. `adding` replaces the older entry of the same kit. A
+  newer `formatVersion` is refused. `extractKit` does not write the lock, so
+  whoever installs does.
+- **The editor does this in File › Kit store.** It goes online only when the
+  person presses a button, and it replaces a file of the project only when
+  the person ticks it.
+
 ---
 
 ## Network assets

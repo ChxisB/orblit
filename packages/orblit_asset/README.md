@@ -167,6 +167,49 @@ release stops it with every problem listed and writes nothing. The folder it
 writes holds `index.json`, a `releases.json` for each kit and the previews of
 the latest release. It reads from a plain directory with no network.
 
+### Reading a store and installing from it
+
+`KitStoreClient` reads a store over any `AssetTransport`. Its address must
+be https. It reads the index, the releases of one kit, a preview and the file
+list of a release, each to the size limit of that file. A reply that is not a
+200 throws `KitStoreFailed`.
+
+```dart
+final store = KitStoreClient(
+  Uri.parse('https://example.com/store/'),
+  HttpTransport(),
+);
+final row = (await store.index()).kits.first;
+final releases = await store.releases(row);
+final kit = await store.open(releases.releases.first.release);
+```
+
+`open` asks the server for byte ranges, so the files of the kit are not
+downloaded. To install, download the whole pack with `PackFolder`, open it as
+a `Kit` and check it again. `KitRelease.origin` gives the origin and the size
+limit to download with.
+
+`extractKit` takes `into`, a folder of the project to write under, and
+`only`, the files to take. `kit.conflictsIn(project, into:, only:)` lists the
+files the project has with other contents, so a person can choose before
+anything is written.
+
+```dart
+final clashes = await kit.conflictsIn(
+  DirectoryAssetSource('my_project'),
+  into: 'assets/kits/crates',
+);
+await extractKit(kit, 'my_project', into: 'assets/kits/crates');
+```
+
+`kit.scripts` lists the files that can run. An install never runs one, and a
+person should see the list first.
+
+`kits.lock` sits at the root of the project and lists each installed kit: its
+publisher, slug, version, pack hash, folder and the hash of every file it
+wrote. `KitLock.parse` reads it and `KitLock.adding` replaces the older entry
+of a kit. The editor writes it. `extractKit` does not.
+
 ## Static model collision
 
 `CollisionMesh.fromGltf(id, bytes, source)` reads the active glTF/GLB scene
