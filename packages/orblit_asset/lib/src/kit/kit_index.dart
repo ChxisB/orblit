@@ -10,10 +10,20 @@ import 'kit_manifest.dart';
 const int kitStoreFormat = 1;
 
 const int _maxRows = 50000;
-const int _indexLimit = 16 * 1024 * 1024;
-const int _releasesLimit = 1024 * 1024;
+
+/// The most bytes of `index.json` a reader takes.
+const int kitIndexLimit = 16 * 1024 * 1024;
+
+/// The most bytes of one `releases.json` a reader takes.
+const int kitReleasesLimit = 1024 * 1024;
+
+/// The most bytes of one preview image a store holds or a reader takes.
+const int kitPreviewBytes = 1024 * 1024;
 
 final RegExp _previewName = RegExp(r'^preview-[0-5]\.(png|jpg|jpeg|webp)$');
+
+/// Whether [name] is a file name a store may give a preview image.
+bool isKitPreviewName(String name) => _previewName.hasMatch(name);
 
 /// One kit in `index.json`: what a browser lists before anyone opens it.
 ///
@@ -112,7 +122,7 @@ final class KitIndex {
   /// Reads `index.json`. Keys it does not know are ignored, and a newer
   /// format is refused.
   static KitIndex parse(Uint8List bytes) {
-    final json = JsonObject.parse(bytes, 'index.json', limit: _indexLimit);
+    final json = JsonObject.parse(bytes, 'index.json', limit: kitIndexLimit);
     _checkFormat(json);
     return KitIndex([
       for (final item in json.objects('kits')) KitRow.fromJson(item),
@@ -121,7 +131,7 @@ final class KitIndex {
 
   final List<KitRow> rows;
 
-  Uint8List encode() => _encode('index.json', _indexLimit, {
+  Uint8List encode() => _encode('index.json', kitIndexLimit, {
     'formatVersion': kitStoreFormat,
     'kits': [for (final row in rows) row.toJson()],
   });
@@ -199,7 +209,7 @@ final class KitReleases {
       );
     }
     for (final name in previews) {
-      if (!_previewName.hasMatch(name)) {
+      if (!isKitPreviewName(name)) {
         throw FormatException(
           'The preview "${kitShow(name)}" is not named preview-0.png to '
           'preview-5.webp.',
@@ -222,7 +232,7 @@ final class KitReleases {
     final json = JsonObject.parse(
       bytes,
       'releases.json',
-      limit: _releasesLimit,
+      limit: kitReleasesLimit,
     );
     _checkFormat(json);
     return KitReleases(
@@ -240,7 +250,7 @@ final class KitReleases {
   /// Newest version first.
   final List<PublishedRelease> releases;
 
-  Uint8List encode() => _encode('releases.json', _releasesLimit, {
+  Uint8List encode() => _encode('releases.json', kitReleasesLimit, {
     'formatVersion': kitStoreFormat,
     'previews': previews,
     'releases': [for (final item in releases) item.toJson()],

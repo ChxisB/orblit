@@ -73,6 +73,7 @@ export 'src/importers/terrain_importer.dart' show TerrainImporter;
 export 'src/runtime_import.dart' show RuntimeImport;
 export 'src/kit/kit.dart' show Kit;
 export 'src/kit/kit_files.dart' show KitConflicts, extractKit, packKit;
+export 'src/kit/kit_client.dart' show KitStoreClient, KitStoreFailed;
 export 'src/kit/kit_entry.dart' show KitEntry, KitRelease;
 export 'src/kit/kit_index.dart'
     show KitIndex, KitReleases, KitRow, PublishedRelease;

@@ -15,8 +15,6 @@ import 'kit_entry.dart';
 import 'kit_index.dart';
 import 'kit_manifest.dart';
 
-const int _previewLimit = 1024 * 1024;
-
 /// Reads the entries in [entriesPath], downloads and checks every release
 /// they list, and writes the files a browser reads into the new folder
 /// [outPath]: `index.json`, and `kits/<publisher>/<slug>/` with a
@@ -304,10 +302,10 @@ Future<Map<String, Uint8List>> _previews(Kit kit) async {
   final previews = <String, Uint8List>{};
   for (final (index, id) in kit.manifest.previews.indexed) {
     final size = kit.files[id]!;
-    if (size > _previewLimit) {
+    if (size > kitPreviewBytes) {
       throw FormatException(
         'The preview "${kitShow('$id')}" is $size bytes. A preview is at most '
-        '$_previewLimit.',
+        '$kitPreviewBytes.',
       );
     }
     final bytes = await kit.pack.read(id);
