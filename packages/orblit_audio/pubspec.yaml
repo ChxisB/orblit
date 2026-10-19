@@ -1,0 +1,17 @@
+name: orblit_audio
+description: >-
+  Every sound call a game makes, run without a speaker. A mixer with a bus
+  tree, voices that fade and loop, and a listener that hears a positioned
+  sound by distance, direction and Doppler. A backend only plays the result.
+version: 0.2.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  vector_math: ^2.1.4
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.11.0
+
+- Add `OrblitSound`. It plays each `SoundSourceComponent` from its entity
+  while the entity is shown, hears from the first `SoundListenerComponent`
+  or the view's camera, and plays a cutscene's sound cues. `surfaceOf`
+  names what an entity is made of.
+- `OrblitDocumentView` gives out `worldOf`, `isShown` and `camera`.
+
 ## 0.10.0
 
 - `scatterFrom` takes `rangeScale`, which multiplies every block layer's

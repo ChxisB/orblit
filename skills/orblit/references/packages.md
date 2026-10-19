@@ -28,6 +28,8 @@ the fullest reference.
 | `orblit_noise` | Deterministic value, gradient, cell and fractal noise | `GradientNoise`, `FractalNoise` |
 | `orblit_weather` | Weather conditions, day cycle, and the exposure they need | `WeatherState`, `DayCycle`, `CameraExposure` |
 | `orblit_input` | Named actions with contexts, gestures and rebinding, over gamepads as per-frame state. Pads are **Linux only so far**; elsewhere they report none | `ActionMap`, `FrameControls`, `Pads`, `PadState` |
+| `orblit_audio` | Every sound call a game makes, run without a speaker: a mixer with a bus tree, voices that fade and loop, a listener that hears a positioned sound by distance, cone and Doppler. Silent until a backend plays it | `Audio`, `Mixer`, `Voice`, `Emitter`, `Listener`, `Music`, `CueBoard`, `ContactSounds`, `RecordedAudio` |
+| `orblit_audio_device` | The backend that plays `orblit_audio` through the output device: WAV, FLAC, MP3 and Ogg Vorbis, music streamed from disk. In a browser it plays over Web Audio and a clip is a URL. Tested on rendered samples and **not yet heard on a device** | `DeviceAudio` |
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
@@ -197,6 +199,62 @@ A route is planned once unless the walker checks, a navmesh is a snapshot, a
 cell has one floor, and agents do not avoid each other (use `Separate`).
 Guide:
 https://orblitengine.com/docs/guides/paths/.
+
+## orblit_audio
+
+`Audio(backend)` is what a game calls. A backend plays the numbers it is
+given. `DeviceAudio.open(directory:)` from `orblit_audio_device` plays them
+and throws `AudioDeviceException` when the machine has no output device. A
+test uses `RecordedAudio()`, which writes every call down in `calls`, or
+`DeviceAudio.offline()`, which mixes real files with no device and hands the
+samples back from `render(frames)`. In a browser a clip is a URL, and the first
+sound must start from a click or a key. `audio.mixer.add('music', under: parent)`
+makes a bus, and a bus has `volume`, `muted` and `gain`, the product of every
+bus above it. `audio.play('clip', bus:, loop:, volume:, pitch:, at:)` returns
+a `Voice` with `volume`, `pitch`, `fadeTo(v, seconds:)` and
+`stop(fadeSeconds:)`.
+
+A sound with a place takes `at: Emitter(position:, falloff: Falloff(near:,
+far:, curve:), cone: Cone(inner:, outer:, outerGain:), doppler:)`. Move it
+with `emitter.moveTo(position, seconds)` and the listener with
+`audio.listener.moveTo(...)`. Velocity is the last two positions. Use
+`teleport` for a cut, or Doppler hears a speed.
+
+Nothing reaches the backend until `audio.advance(seconds)`, which also moves
+fades on. Call it once a frame, with 0 when the game is paused. A clip that
+ends is noticed on the next advance. Effects on a bus are names that nothing
+reads yet. `audio.play(..., offset:)` begins that many seconds into the clip.
+
+`Music(audio, tracks: {name: MusicTrack(clip, bpm:, beatsPerBar:)}, moves:
+[MusicMove(to:, from:, when: MusicWhen.nextBar, fade:)])` loops one track at a
+time. `go(name)` takes the first move that fits, else cuts. `advance(seconds)`
+fires a change that waits for the beat. `stinger(clip)` plays over the top and
+turns the track down to `duck` while it lasts. `ContactSounds(audio, rules:
+[ContactRule('wood', null, 'thud')])` has `hit(a, b, strength:, at:)`, which
+picks a clip by the two surface names and scales it by `strength` between
+`quiet` and `loud`. A rule that names both surfaces wins over one that names
+one. Feed it from physics touch events, using `event.force` as the strength.
+`CueBoard` plays the sounds a sequence says should be going. `update(cues,
+seeked:)` starts each once. After a seek a clip in `beds` starts part-way in
+and any other starts nothing.
+
+In a scene, `SoundSourceComponent` (`clip`, `bus`, `loop`, `volume`, `near`,
+`far`, `curve`) is heard from its entity, `SoundListenerComponent` marks where
+sound is heard from, and `SoundSurfaceComponent(name:)` names what an entity
+is made of. `OrblitSound(view, audio)` from `orblit_stage` plays them. Call
+`sound.advance(delta, step)` and then `audio.advance(delta)` once a frame,
+with the step `OrblitCutscenes.advance` returned or none. A looping source
+plays while its entity is shown. One that does not loop plays on appearing,
+and again on `sound.play(id)`. A bus the mixer lacks throws, naming the
+entity. `sound.surfaceOf(id)` is the name to hand `ContactSounds`.
+
+Traps:
+
+- A cue bound to an entity is heard from where the entity stood when it
+  started. It does not follow the entity.
+- Without a `SoundListenerComponent` the sound is heard from the camera,
+  taken to have the world's up. A camera looking straight up hears no pan.
+- Contact volume is linear in strength.
 
 ## orblit_collide
 
@@ -735,8 +793,8 @@ Traps:
   `view.cameraOf(id)` finds a camera shown or not.
 - Nothing is looked through before the first shot, in a gap between shots or
   at the very end. There the view falls back to the scene's own camera.
-- Orblit plays no sound. The step says what should be playing and how far
-  in, and the game plays it.
+- The step says what should be playing and how far in. `OrblitSound.advance`
+  plays it, and a game that does not use `OrblitSound` plays it itself.
 - A cutscene runs on the scene, not on a copy. Keep the game's own
   animators off what it keys while it runs.
 

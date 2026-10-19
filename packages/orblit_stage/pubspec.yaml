@@ -4,7 +4,7 @@ description: >-
   objects, lights, clouds and sprite layers, ground kept as data becomes
   terrain and what is scattered over it, and a diff moves only what it
   touched.
-version: 0.10.0
+version: 0.11.0
 publish_to: none
 
 environment:
@@ -15,6 +15,8 @@ dependencies:
   flutter:
     sdk: flutter
 
+  orblit_audio:
+    path: ../orblit_audio
   orblit_filament:
     path: ../orblit_filament
   orblit_light:

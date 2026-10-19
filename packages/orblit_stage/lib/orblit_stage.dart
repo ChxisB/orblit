@@ -30,4 +30,5 @@ export 'src/particle_sheet.dart' show OrblitParticleSheet;
 export 'src/scatter_view.dart' show scatterFrom;
 export 'src/skin_binding.dart'
     show OrblitSkinBinding, armatureOfSkin, boneNamesOfSkin;
+export 'src/sound_view.dart' show OrblitSound;
 export 'src/terrain_view.dart' show terrainFrom;

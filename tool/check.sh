@@ -14,6 +14,8 @@ cd "$(dirname "$0")/.."
 PACKAGES=(
   packages/orblit_agent
   packages/orblit_asset
+  packages/orblit_audio
+  packages/orblit_audio_device
   packages/orblit_camera
   packages/orblit_collide
   packages/orblit_codegen
@@ -83,6 +85,24 @@ for package in "${PACKAGES[@]}"; do
     echo "  FAIL  tests"; tail -25 /tmp/orblit_test.log; failures=$((failures+1))
   fi
 done
+
+# The browser half of the audio device needs a browser. A machine with none
+# skips it. CI sets CI and so fails without one.
+echo "== packages/orblit_audio_device (web) =="
+has_chrome() {
+  [ -n "${CHROME_EXECUTABLE:-}" ] || [ -d "/Applications/Google Chrome.app" ] \
+    || command -v google-chrome > /dev/null || command -v chromium > /dev/null
+}
+if [ -z "${CI:-}" ] && ! has_chrome; then
+  echo "  skip  web audio (no Chrome found)"
+elif (cd packages/orblit_audio_device \
+  && dart test -p chrome test/device_audio_web_test.dart \
+  && dart test -p chrome -c dart2wasm test/device_audio_web_test.dart) \
+  > /tmp/orblit_audio_web.log 2>&1; then
+  echo "  ok    web audio"
+else
+  echo "  FAIL  web audio"; tail -25 /tmp/orblit_audio_web.log; failures=$((failures+1))
+fi
 
 echo
 if [ "$failures" -eq 0 ]; then
