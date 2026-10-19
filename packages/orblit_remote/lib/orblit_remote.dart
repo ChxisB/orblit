@@ -9,3 +9,4 @@ export 'src/core_inspector.dart' show CoreWorldInspector;
 export 'src/inspector.dart' show EntityRow, WorldInspector;
 export 'src/log_tail.dart' show LogTail;
 export 'src/time_gate.dart' show TimeGate;
+export 'src/snapshot.dart' show Difference, SnapshotStore, diffJson;
