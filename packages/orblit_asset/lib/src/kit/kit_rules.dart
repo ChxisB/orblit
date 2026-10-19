@@ -10,6 +10,10 @@ const int kitCountLimit = 5000;
 /// The most bytes a kit may hold in all, counting a file once for each name.
 const int kitTotalLimit = 1024 * 1024 * 1024;
 
+/// The largest kit file a release may be: the files of a kit, and room for
+/// the header, the directory and the padding between blobs.
+const int kitPackLimit = kitTotalLimit + 16 * 1024 * 1024;
+
 const int _segmentLimit = 100;
 const int _pathLimit = 240;
 

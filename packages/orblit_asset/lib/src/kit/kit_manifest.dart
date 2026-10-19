@@ -80,13 +80,13 @@ final class KitManifest {
     List<String> tags = const [],
     List<AssetId> previews = const [],
   }) {
-    _checkWord('slug', slug, 40);
-    _checkWord('publisher', publisher, 40);
+    checkKitWord('slug', slug, 40);
+    checkKitWord('publisher', publisher, 40);
     _checkLine('name', name, 60);
     _checkLine('summary', summary, 200);
-    _checkVersion('version', version);
+    checkKitVersion('version', version);
     _checkLicence(licence);
-    _checkEngine(engine);
+    checkKitEngine(engine);
     _checkTags(tags);
     _checkPreviews(previews);
     return KitManifest._(
@@ -198,7 +198,9 @@ KitManifest _fields(
   );
 }
 
-void _checkWord(String field, String value, int longest) {
+/// Throws a [FormatException] unless [value] is lower case letters and digits
+/// in groups joined by single hyphens, up to [longest] characters.
+void checkKitWord(String field, String value, int longest) {
   if (value.length > longest || !_word.hasMatch(value)) {
     throw FormatException(
       '"$field" is "${kitShow(value)}". Use lower case letters and digits '
@@ -218,7 +220,8 @@ void _checkLine(String field, String value, int longest) {
   }
 }
 
-void _checkVersion(String field, String value) {
+/// Throws a [FormatException] unless [value] is three whole numbers.
+void checkKitVersion(String field, String value) {
   if (!_version.hasMatch(value)) {
     throw FormatException(
       '"$field" is "${kitShow(value)}". Write three whole numbers of up to '
@@ -227,7 +230,8 @@ void _checkVersion(String field, String value) {
   }
 }
 
-int _compare(String a, String b) {
+/// Orders two versions that passed [checkKitVersion], as `compareTo` does.
+int compareKitVersions(String a, String b) {
   final left = a.split('.').map(int.parse).toList();
   final right = b.split('.').map(int.parse).toList();
   for (var i = 0; i < 3; i++) {
@@ -265,10 +269,12 @@ void _checkUrl(String text) {
   }
 }
 
-void _checkEngine(({String from, String to}) engine) {
-  _checkVersion('engine.from', engine.from);
-  _checkVersion('engine.to', engine.to);
-  if (_compare(engine.from, engine.to) > 0) {
+/// Throws a [FormatException] unless both ends are versions and the range
+/// does not run backwards.
+void checkKitEngine(({String from, String to}) engine) {
+  checkKitVersion('engine.from', engine.from);
+  checkKitVersion('engine.to', engine.to);
+  if (compareKitVersions(engine.from, engine.to) > 0) {
     throw FormatException(
       'The engine range runs from ${engine.from} down to ${engine.to}.',
     );
@@ -282,7 +288,7 @@ void _checkTags(List<String> tags) {
     );
   }
   for (final tag in tags) {
-    _checkWord('tag', tag, 24);
+    checkKitWord('tag', tag, 24);
   }
 }
 

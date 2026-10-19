@@ -73,7 +73,11 @@ export 'src/importers/terrain_importer.dart' show TerrainImporter;
 export 'src/runtime_import.dart' show RuntimeImport;
 export 'src/kit/kit.dart' show Kit;
 export 'src/kit/kit_files.dart' show KitConflicts, extractKit, packKit;
-export 'src/kit/kit_manifest.dart' show KitManifest;
+export 'src/kit/kit_entry.dart' show KitEntry, KitRelease;
+export 'src/kit/kit_index.dart'
+    show KitIndex, KitReleases, KitRow, PublishedRelease, kitStoreFormat;
+export 'src/kit/kit_manifest.dart' show KitManifest, compareKitVersions;
+export 'src/kit/kit_rules.dart' show kitPackLimit;
 export 'src/importer.dart'
     show
         CookTarget,
