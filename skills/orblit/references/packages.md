@@ -31,6 +31,7 @@ the fullest reference.
 | `orblit_asset` | Asset ids, content hashes and sources. Its directory classes throw in a browser | `AssetId`, `AssetSource` |
 | `orblit_core` | An entity-component store in C++ over a C ABI | `World`, `Query` |
 | `orblit_native` | Compiling and loading C++ scripts | `NativeScript`, `ScriptRunner` |
+| `orblit_remote` | A control surface in a debug game: a loopback WebSocket that lists entities, reads and sets components, pauses and steps time, and compares snapshots | `RemoteServer`, `RemoteHost`, `CoreWorldInspector`, `TimeGate`, `LogTail` |
 
 Other repositories: `orblit-net` (multiplayer: replication, ownership,
 interpolation), `orblit-script` (TypeScript scripting on QuickJS),
@@ -940,6 +941,72 @@ Traps:
 Guide: `/guides/terrain/`. The gallery's Terrain example drives a box over
 hills with `heightAt` and `normalAt`, and scatters grass, stones and trees
 over them.
+
+## orblit_remote
+
+A running debug game can be driven from outside. A script or an assistant
+connects to a loopback WebSocket, lists entities, reads a component, sets a
+field, holds time still, steps it and compares two snapshots. Use it to find
+out what a game did, not to guess from the source.
+
+```dart
+final gate = TimeGate();
+final server = await RemoteServer.start(
+  RemoteHost(
+    world: CoreWorldInspector(world, [position, health]),
+    gate: gate,
+    log: LogTail(),
+  ),
+);
+// In the game's loop:
+world.tick(gate.advance(delta));
+```
+
+`start` prints `orblit-remote ws://127.0.0.1:PORT/?token=TOKEN`. Connect to
+that exact address. Each request is JSON-RPC 2.0 with named params.
+
+| Method | Params | Answers |
+| --- | --- | --- |
+| `world.entities` | `filter`: component names | ids with component names |
+| `entity.get` | `id` | components by field |
+| `entity.set` | `id`, `component`, `field`, `value` | nothing |
+| `time.pause`, `time.resume` | none | `paused` |
+| `time.step` | `n` | `stepped`, once the loop passed `n` frames |
+| `world.snapshot` | none | an `id` with the entities and `extras` |
+| `world.diff` | `a`, `b`: snapshot ids | every path that differs |
+| `input.send` | `event` | nothing |
+| `view.screenshot` | none | `png` as base64 |
+| `log.tail` | `n`, default 50 | the last lines |
+| `perf.summary` | none | what the host reports |
+
+Traps:
+
+- **Pause needs the loop's help.** The stage has no clock. Time holds still
+  only if the game's loop passes its delta through `gate.advance`. A
+  `time.step` on a loop that does not answers error `-32003` after ten
+  seconds and leaves the game paused.
+- **Debug builds only.** `RemoteServer.start` throws `StateError` unless
+  asserts are on, so a profile or release build refuses. Do not look for a way
+  round that.
+- **A component with no field names cannot be set.** It is listed by name and
+  its layout. Pass a manifest from `orblit_codegen` to name the fields. A
+  built-in `orblit.LocalTransform` is always named: `x`, `y`, `z`,
+  `rotationX` to `rotationW`, `scaleX` to `scaleZ`.
+- **A float that is not finite reads as text.** `"NaN"` and `"Infinity"`,
+  because JSON cannot carry the number. That is usually the broken value you
+  were looking for.
+- **Snapshots are eight deep.** The ninth drops `s1`. A diff of an id that was
+  dropped answers `-32001`.
+- **Take the token from the printed line.** It changes at every start. A wrong
+  one gets a 403 before the upgrade. Never write it to a file the project
+  commits.
+- **Nothing about a render.** `view.screenshot` answers what the host gave it.
+  A host with no screenshot source answers `-32004`.
+- **Read only is narrow.** `readOnly: true` refuses `entity.set` and
+  `input.send`. Pause, resume and step still work.
+
+Verified by tests over a real loopback socket, with an `orblit_core` world
+and a stand-in loop. Nothing has driven a game in a window.
 
 ## More worked examples
 
