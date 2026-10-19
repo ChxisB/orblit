@@ -1,0 +1,20 @@
+name: orblit_quest
+description: >-
+  Quests as data. A quest is an ordered list of stages kept in a progress
+  table, with the journal text, the requirements and the completion
+  following from the stage.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_progress:
+    path: ../orblit_progress
+
+dev_dependencies:
+  lints: ^5.0.0
+  orblit_save:
+    path: ../orblit_save
+  test: ^1.25.0

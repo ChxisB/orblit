@@ -21,6 +21,7 @@ PACKAGES=(
   packages/orblit_collide
   packages/orblit_codegen
   packages/orblit_core
+  packages/orblit_dialogue
   packages/orblit_effect
   packages/orblit_input
   packages/orblit_light
@@ -31,8 +32,11 @@ PACKAGES=(
   packages/orblit_particles
   packages/orblit_path
   packages/orblit_profile
+  packages/orblit_progress
+  packages/orblit_quest
   packages/orblit_remote
   packages/orblit_rig
+  packages/orblit_save
   packages/orblit_scene
   packages/orblit_sequence
   packages/orblit_sprite

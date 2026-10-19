@@ -1,0 +1,13 @@
+name: orblit_progress
+description: >-
+  Named small integers for a game's progress, with bit-range slices, deltas
+  for the owning client and bytes for a save.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0

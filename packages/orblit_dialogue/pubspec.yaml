@@ -1,0 +1,18 @@
+name: orblit_dialogue
+description: >-
+  Conversations as data. Nodes of lines, choices, writes and jumps, with
+  variants picked by conditions over a progress table, and a runner that
+  walks one.
+version: 0.1.0
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_progress:
+    path: ../orblit_progress
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.25.0
