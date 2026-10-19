@@ -179,7 +179,7 @@ final store = KitStoreClient(
   Uri.parse('https://example.com/store/'),
   HttpTransport(),
 );
-final row = (await store.index()).kits.first;
+final row = (await store.index()).rows.first;
 final releases = await store.releases(row);
 final kit = await store.open(releases.releases.first.release);
 ```
