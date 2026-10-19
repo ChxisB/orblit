@@ -93,5 +93,27 @@ void main() {
     expect((await kit(['spin'])).exitCode, 2);
     expect((await kit(['pack', at('crates')])).exitCode, 2);
     expect((await kit(['check'])).exitCode, 2);
+    expect((await kit(['index', at('kits')])).exitCode, 2);
+  });
+
+  test('an empty entries folder builds an empty index', () async {
+    write(at('kits/.gitkeep'), '');
+    final built = await kit(['index', at('kits'), '-o', at('site')]);
+    expect(built.exitCode, 0, reason: '${built.stderr}');
+    expect(built.stdout, contains('0 kits, 0 releases'));
+    expect(File(at('site/index.json')).existsSync(), isTrue);
+  });
+
+  test('an index goes to a new folder and names a bad entry', () async {
+    Directory(at('kits')).createSync();
+    Directory(at('site')).createSync();
+    final there = await kit(['index', at('kits'), '-o', at('site')]);
+    expect(there.exitCode, 1);
+    expect(there.stderr, contains('is there already'));
+    write(at('kits/amber/rocks.json'), '{');
+    final bad = await kit(['index', at('kits'), '-o', at('fresh')]);
+    expect(bad.exitCode, 1);
+    expect(bad.stderr, contains('amber/rocks'));
+    expect(Directory(at('fresh')).existsSync(), isFalse);
   });
 }

@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.17.0
+
+- **A store of kits.** A store is a folder of entries, one file for each kit
+  at `<publisher>/<slug>.json`. `buildKitStore(entriesPath:, outPath:,
+  transport:)` turns it into the files a browser reads, and
+  `dart run orblit_asset:kit index <entries> -o <folder>` runs it.
+- **The entry.** `{"releases": [...]}` and no other key. A release has
+  `version`, `url` (https, up to 300 characters), `hash`, `bytes`, `released`
+  (a day, such as `2026-10-19`) and an optional one line `notes`. The hash is
+  the hash of the pack, which `kit pack` prints. The kit's name and summary
+  are not in the entry. They come from the `kit.json` of the latest release.
+  `KitEntry` and `KitRelease` refuse a key they do not know, a version listed
+  twice and more than 200 releases.
+- **What the builder checks.** It downloads each release from the host its
+  url names, up to `kitPackLimit` bytes, with the retries and the hash check
+  of `PackFolder.download`. The file must be the size the entry says, every
+  blob must match its hash, the kit must pass `kitProblems`, and its
+  `kit.json` must name the publisher, slug and version of the entry. Every
+  problem is listed, nothing is written until every release has passed, and
+  the output folder must not exist.
+- **What it writes.** `index.json` (`KitIndex`, one `KitRow` for each kit,
+  sorted by publisher and slug), `kits/<publisher>/<slug>/releases.json`
+  (`KitReleases`, newest first) and the previews of the latest release as
+  `preview-<n>.<extension>`. A preview is at most 1 MiB and starts like the
+  image its name says. `kitStoreFormat` is 1. The readers ignore a key they do
+  not know and refuse a newer format.
+- `KitManifest`, `compareKitVersions` and `kitPackLimit` are exported.
+
 ## 0.16.0
 
 - **Kits.** A kit is a pack for the target `source` that holds files for a

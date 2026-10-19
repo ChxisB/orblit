@@ -2,12 +2,14 @@ import 'dart:io';
 
 import 'package:orblit_asset/orblit_asset.dart';
 
-/// Packs a folder as a kit, checks one and installs one into a project.
+/// Packs a folder as a kit, checks one, installs one into a project and
+/// builds the store index from a folder of entries.
 ///
 /// Usage:
 ///   `dart run orblit_asset:kit pack <folder> -o <file>`
 ///   `dart run orblit_asset:kit check <file>`
 ///   `dart run orblit_asset:kit extract <file> <project> [--overwrite]`
+///   `dart run orblit_asset:kit index <entries> -o <folder>`
 ///
 /// Exit codes: 0 when it worked, 1 when a kit or a folder was bad or an
 /// install would replace a file, 2 when the arguments did not make sense.
@@ -25,6 +27,8 @@ Future<void> main(List<String> arguments) async {
         await _check(_only(arguments.first, rest, 1).single);
       case 'extract':
         await _extract(rest);
+      case 'index':
+        await _index(rest);
       default:
         _usageError('unknown command "${arguments.first}"');
     }
@@ -55,6 +59,10 @@ Usage: dart run orblit_asset:kit <command>
   extract <file> <project> [--overwrite]
       Writes the files of a kit into <project>. A file the project already
       has with other contents stops it, unless --overwrite is given.
+  index <entries> -o <folder>
+      Downloads every release the entries in <entries> list, checks each
+      one, and writes index.json and the kit pages into <folder>, which must
+      not exist yet. Any bad release stops it and writes nothing.
 ''';
 
 Never _usageError(String message) {
@@ -68,7 +76,11 @@ List<String> _only(String command, List<String> rest, int count) {
   return rest;
 }
 
-Future<void> _pack(List<String> arguments) async {
+/// A folder and the `-o` that goes with it, for the commands that write one.
+({String folder, String out}) _folderAndOut(
+  String command,
+  List<String> arguments,
+) {
   String? folder;
   String? out;
   for (var i = 0; i < arguments.length; i++) {
@@ -80,12 +92,36 @@ Future<void> _pack(List<String> arguments) async {
       folder = arguments[i];
     }
   }
-  if (folder == null || out == null) _usageError('pack needs a folder and -o');
+  if (folder == null || out == null) {
+    _usageError('$command needs a folder and -o');
+  }
+  return (folder: folder, out: out);
+}
+
+Future<void> _pack(List<String> arguments) async {
+  final (:folder, :out) = _folderAndOut('pack', arguments);
   final summary = await packKit(folder: folder, outPath: out);
   stdout.writeln(
     '${summary.assets - 1} files, ${summary.bytes} bytes\n'
     '${summary.hash}  $out',
   );
+}
+
+Future<void> _index(List<String> arguments) async {
+  final (:folder, :out) = _folderAndOut('index', arguments);
+  final transport = HttpTransport();
+  try {
+    final built = await buildKitStore(
+      entriesPath: folder,
+      outPath: out,
+      transport: transport,
+    );
+    stdout.writeln(
+      '${built.kits} kits, ${built.releases} releases written to $out',
+    );
+  } finally {
+    transport.close();
+  }
 }
 
 Future<Kit> _open(FilePackBytes source, String path) async {

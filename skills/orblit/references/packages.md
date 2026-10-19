@@ -321,7 +321,8 @@ and fetching them over a network (`AssetOrigin`, `FetchPolicy`,
 tests). `fetchInStages` gives a stand-in, then a texture's own coarse mip
 levels while the rest arrives, then the whole file. A `Kit` is a pack for the
 target `source` that a person installs into a project with `extractKit`.
-Details: [assets.md](assets.md).
+`buildKitStore` turns a folder of kit entries into the index files a kit
+browser reads. Details: [assets.md](assets.md).
 
 ## orblit_sequence
 

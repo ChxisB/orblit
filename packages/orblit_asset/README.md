@@ -136,6 +136,37 @@ final problems = await kit.check();
 final clashes = await kit.conflictsIn(DirectoryAssetSource('my_project'));
 ```
 
+### A store of kits
+
+A store lists kits that people host themselves. Its source is a folder of
+entries, `<publisher>/<slug>.json`, each one a list of releases.
+
+```json
+{
+  "releases": [
+    {
+      "version": "1.1.0",
+      "url": "https://example.com/crate-pack-1.1.0.opack",
+      "hash": "<the hash `kit pack` printed>",
+      "bytes": 48213,
+      "released": "2026-10-19",
+      "notes": "Adds an open crate."
+    }
+  ]
+}
+```
+
+```sh
+dart run orblit_asset:kit index kits -o site
+```
+
+`index` downloads every release and checks it. The hash and the size must
+match the file, the kit must pass the same rules as an install, and its
+`kit.json` must name the publisher, slug and version of the entry. Any bad
+release stops it with every problem listed and writes nothing. The folder it
+writes holds `index.json`, a `releases.json` for each kit and the previews of
+the latest release. It reads from a plain directory with no network.
+
 ## Static model collision
 
 `CollisionMesh.fromGltf(id, bytes, source)` reads the active glTF/GLB scene

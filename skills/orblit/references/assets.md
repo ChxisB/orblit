@@ -486,6 +486,30 @@ await extractKit(kit, 'my_project');
 - **Refusals are `FormatException`**, except a project folder that does not
   exist, which is an `ArgumentError`.
 
+#### A store of kits
+
+`dart run orblit_asset:kit index <entries> -o <folder>` builds the files a kit
+browser reads. `<entries>` holds `<publisher>/<slug>.json`, and each file is
+`{"releases": [...]}` with no other key. A release is `version`, `url`
+(https), `hash` (the pack hash that `kit pack` prints), `bytes`, `released`
+(`2026-10-19`) and an optional one line `notes`. The kit's name and summary
+come from its `kit.json`, not the entry.
+
+- **It checks every release.** It downloads each one from the host its url
+  names. The pack must have the entry's hash and size, every blob must match,
+  the kit must pass `kitProblems`, and `kit.json` must name the entry's
+  publisher, slug and version. Every problem is listed, nothing is written
+  until all pass, and the output folder must not exist.
+- **It writes `index.json`, `kits/<publisher>/<slug>/releases.json` and the
+  latest release's previews.** Read them with `KitIndex.parse` and
+  `KitReleases.parse`. A preview is at most 1 MiB and starts like a png, jpg
+  or webp. Unknown keys in these files are ignored and a newer
+  `formatVersion` is refused.
+- **`buildKitStore` is the same thing as a function** and takes an
+  `AssetTransport`, so a test serves the packs from a `MapTransport`.
+- **Every run downloads every release.** Keep packs by hash between runs
+  when a store holds hundreds of kits.
+
 ---
 
 ## Network assets
