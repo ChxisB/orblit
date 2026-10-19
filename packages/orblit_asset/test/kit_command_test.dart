@@ -13,6 +13,21 @@ Future<ProcessResult> kit(List<String> arguments) => Process.run(
   workingDirectory: Directory.current.path,
 );
 
+/// Runs from the scratch folder, so a file named after a url lands there.
+Future<ProcessResult> kitHere(List<String> arguments) => Process.run(
+  Platform.resolvedExecutable,
+  ['run', '${Directory.current.path}/bin/kit.dart', ...arguments],
+  workingDirectory: scratch.path,
+);
+
+const String hosted = 'https://example.com/kits/crate-pack-1.0.0.opack';
+
+Map<String, Object?> listedRelease() {
+  final file = File(at('kits/brass-lamp/crate-pack.json'));
+  final releases = (jsonDecode(file.readAsStringSync()) as Map)['releases'];
+  return ((releases as List).single as Map).cast<String, Object?>();
+}
+
 void write(String path, String text) {
   File(path)
     ..parent.createSync(recursive: true)
@@ -94,6 +109,90 @@ void main() {
     expect((await kit(['pack', at('crates')])).exitCode, 2);
     expect((await kit(['check'])).exitCode, 2);
     expect((await kit(['index', at('kits')])).exitCode, 2);
+  });
+
+  test('publish packs the kit and writes the entry for the index', () async {
+    Directory(at('kits')).createSync();
+    final published = await kitHere([
+      'publish',
+      source(),
+      '--url',
+      hosted,
+      '--entries',
+      at('kits'),
+      '--notes',
+      'The first release.',
+    ]);
+    expect(published.exitCode, 0, reason: '${published.stderr}');
+    final file = File(at('crate-pack-1.0.0.opack'));
+    final release = listedRelease();
+    expect(release['url'], hosted);
+    expect(release['bytes'], file.lengthSync());
+    expect(release['notes'], 'The first release.');
+    expect(published.stdout, contains(release['hash']));
+    expect(published.stdout, contains('Wrote the entry to'));
+    expect(published.stdout, contains('Upload crate-pack-1.0.0.opack'));
+    expect((await kit(['check', file.path])).exitCode, 0);
+  });
+
+  test('publish without --entries prints the entry only', () async {
+    final published = await kit([
+      'publish',
+      source(),
+      '--url',
+      hosted,
+      '-o',
+      at('mine.opack'),
+    ]);
+    expect(published.exitCode, 0, reason: '${published.stderr}');
+    expect(File(at('mine.opack')).existsSync(), isTrue);
+    expect(published.stdout, contains('"version": "1.0.0"'));
+    expect(published.stdout, contains('Save the entry above as kits/'));
+    expect(Directory(at('kits')).existsSync(), isFalse);
+  });
+
+  test(
+    'publish refuses a version the entry lists and keeps the entry',
+    () async {
+      Directory(at('kits')).createSync();
+      final arguments = [
+        'publish',
+        source(),
+        '--url',
+        hosted,
+        '--entries',
+        at('kits'),
+      ];
+      expect((await kitHere(arguments)).exitCode, 0);
+      final before = File(
+        at('kits/brass-lamp/crate-pack.json'),
+      ).readAsStringSync();
+      final again = await kitHere(arguments);
+      expect(again.exitCode, 1);
+      expect(again.stderr, contains('Raise "version" in kit.json'));
+      expect(
+        File(at('kits/brass-lamp/crate-pack.json')).readAsStringSync(),
+        before,
+      );
+    },
+  );
+
+  test('publish exits 2 without a url or a file name', () async {
+    expect((await kit(['publish', source()])).exitCode, 2);
+    expect((await kit(['publish', '--url', hosted])).exitCode, 2);
+    final bare = await kit(['publish', source(), '--url', 'https://e.com/']);
+    expect(bare.exitCode, 2);
+    expect(bare.stderr, contains('give one with -o'));
+    expect((await kit(['publish', source(), '--url'])).exitCode, 2);
+    expect((await kit(['publish', source(), '--nope', 'x'])).exitCode, 2);
+  });
+
+  test('publish exits 1 for a folder that breaks a rule', () async {
+    write('${source()}/.DS_Store', 'x');
+    final result = await kitHere(['publish', at('crates'), '--url', hosted]);
+    expect(result.exitCode, 1);
+    expect(result.stderr, contains('.DS_Store'));
+    expect(File(at('crate-pack-1.0.0.opack')).existsSync(), isFalse);
   });
 
   test('an empty entries folder builds an empty index', () async {
