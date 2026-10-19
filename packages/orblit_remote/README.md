@@ -63,8 +63,20 @@ Each request is a JSON-RPC 2.0 object with named params.
 | `world.diff` | `a`, `b` (snapshot ids) | each path that differs |
 | `input.send` | `event` | nothing |
 | `view.screenshot` | none | `png` as base64 |
+| `view.passes` | none | a row for each pass of the last frame: `name`, `milliseconds`, `draws` |
+| `view.draws` | `limit`, 100 unless asked | `count`, the first `limit` rows and `truncated` |
+| `view.draw` | `id` | the row of one draw |
+| `view.material` | `key` | the values of one material |
 | `log.tail` | `n` (default 50) | the last lines |
 | `perf.summary` | none | what the host reports |
+
+The render verbs read functions the host gives: `RemoteHost.passes`, `draws`
+and `material`. A row of `draws` has a text `id` and says what the scene
+submitted, which is not what the renderer drew, because culling and batching
+come after. `view.passes` is what the renderer did, so set one against the
+other. A float JSON cannot write is text in these rows. There is no verb for
+the pixel of a pass or for a scan, because nothing returns pixels or depth to
+Dart yet.
 
 A snapshot holds the entities and the `extras` the host gave, as JSON. The
 physics world's own `PhysicsSnapshot` is native memory with no JSON form, so a
@@ -76,10 +88,12 @@ field names for is listed by name and cannot be set. `readOnly: true` refuses
 error `-32004`.
 
 `RemoteHost.timeout` (ten seconds) is how long a verb waits on the game. For
-`time.step` it restarts each time a frame passes. For `input.send` and
-`view.screenshot` it is the whole wait. A callback that outlasts it answers
-`-32003`. An argument or state error thrown by a host callback answers
-`-32603`, because it is the game's fault and not a bad request.
+`time.step` it restarts each time a frame passes. For `input.send`, the
+screenshot and `view.passes` it is the whole wait. A callback that outlasts it
+answers `-32003`. `draws`, `material` and `perf` are plain functions that run
+to the end, so keep them quick. An argument or state error thrown by a host
+callback answers `-32603`, because it is the game's fault and not a bad
+request.
 
 ## Tools for an assistant
 

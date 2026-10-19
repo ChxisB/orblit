@@ -289,6 +289,30 @@ void main() {
     await socket.close();
   });
 
+  test('the render verbs answer over the socket', () async {
+    final rendering = await RemoteServer.start(
+      RemoteHost(
+        draws: () => [
+          {'id': 'object:1', 'x': double.nan},
+        ],
+        material: (key) => {'key': key},
+      ),
+      random: Random(8),
+      announce: (_) {},
+    );
+    final client = Client(await WebSocket.connect('${rendering.uri}'));
+    expect(await client.call('view.draws'), {
+      'count': 1,
+      'draws': [
+        {'id': 'object:1', 'x': 'NaN'},
+      ],
+      'truncated': false,
+    });
+    expect(await client.call('view.material', {'key': 3}), {'key': 3});
+    await client.close();
+    await rendering.close();
+  });
+
   test('a release build refuses to start the server', () async {
     final probe = ['run', 'test/release_probe.dart'];
     final off = await Process.run(Platform.resolvedExecutable, probe);

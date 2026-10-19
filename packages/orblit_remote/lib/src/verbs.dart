@@ -36,6 +36,9 @@ final class RemoteHost {
     this.perf,
     this.input,
     this.screenshot,
+    this.passes,
+    this.draws,
+    this.material,
     this.extras = const {},
     this.readOnly = false,
     this.timeout = const Duration(seconds: 10),
@@ -54,6 +57,22 @@ final class RemoteHost {
   /// The render view as PNG bytes.
   final Future<Uint8List> Function()? screenshot;
 
+  /// The last frame's passes in the order they ran, as rows of `name`,
+  /// `milliseconds` and `draws`. What the renderer reports.
+  final Future<List<Map<String, Object?>>> Function()? passes;
+
+  /// What the scene submitted to draw, one row each. A row carries a text `id`
+  /// that is unique among the rows. Culling and batching come after the scene,
+  /// so this is not what the renderer drew. [passes] is the check on it.
+  ///
+  /// A plain function runs to the end on the game's isolate, so [timeout] does
+  /// not cover it. Keep it quick.
+  final List<Map<String, Object?>> Function()? draws;
+
+  /// One material by its key, or null for a key the scene does not hold. Like
+  /// [draws], it is not covered by [timeout].
+  final Map<String, Object?>? Function(int key)? material;
+
   /// Further state kept beside the entities in a snapshot, by name, as JSON.
   /// The physics world's own snapshot is native memory with no JSON form, so a
   /// host puts what it wants compared here, such as contacts or stats.
@@ -64,8 +83,8 @@ final class RemoteHost {
   final bool readOnly;
 
   /// How long a verb waits on the game before it answers
-  /// [RemoteError.timedOut]: for the next stepped frame, the input sink and
-  /// the screenshot. It must be above zero.
+  /// [RemoteError.timedOut]: for the next stepped frame, the input sink, the
+  /// screenshot and [passes]. It must be above zero.
   final Duration timeout;
 }
 
@@ -96,6 +115,10 @@ final class RemoteVerbs {
     'world.diff': (write: false, run: _diff),
     'input.send': (write: true, run: _send),
     'view.screenshot': (write: false, run: _screenshot),
+    'view.passes': (write: false, run: _passes),
+    'view.draws': (write: false, run: _draws),
+    'view.draw': (write: false, run: _draw),
+    'view.material': (write: false, run: _material),
     'log.tail': (write: false, run: _tail),
     'perf.summary': (write: false, run: _perf),
   };
@@ -271,9 +294,7 @@ final class RemoteVerbs {
     };
     // The round trip copies the snapshot, so a host that reuses its maps
     // cannot change a kept one, and it fails here, before anything is kept.
-    final snapshot =
-        jsonDecode(jsonEncode(raw, toEncodable: _finite))
-            as Map<String, Object?>;
+    final snapshot = _plain(raw)! as Map<String, Object?>;
     _snapshots.add(snapshot);
     return {'id': _snapshots.lastId, ...snapshot};
   }
@@ -296,6 +317,38 @@ final class RemoteVerbs {
   Future<Object?> _screenshot(Map<String, Object?> _) async {
     final source = _need(_host.screenshot, 'a screenshot source');
     return {'png': base64Encode(await _fromHost(source))};
+  }
+
+  Future<Object?> _passes(Map<String, Object?> _) async =>
+      _plain(await _fromHost(_need(_host.passes, 'a pass list')));
+
+  Future<Object?> _draws(Map<String, Object?> params) async {
+    final limit = params['limit'] == null ? 100 : _int(params, 'limit');
+    if (limit < 0) throw ArgumentError.value(limit, 'limit', 'is below 0');
+    final rows = await _fromHost(_need(_host.draws, 'a draw list'));
+    return _plain({
+      'count': rows.length,
+      'draws': rows.take(limit).toList(),
+      'truncated': rows.length > limit,
+    });
+  }
+
+  Future<Object?> _draw(Map<String, Object?> params) async {
+    final id = _string(params, 'id');
+    final rows = await _fromHost(_need(_host.draws, 'a draw list'));
+    final row = rows.where((row) => row['id'] == id).firstOrNull;
+    if (row == null) throw RemoteError(RemoteError.notFound, 'No draw $id');
+    return _plain(row);
+  }
+
+  Future<Object?> _material(Map<String, Object?> params) async {
+    final key = _int(params, 'key');
+    final read = _need(_host.material, 'a material list');
+    final row = await _fromHost(() => read(key));
+    if (row == null) {
+      throw RemoteError(RemoteError.notFound, 'No material with key $key');
+    }
+    return _plain(row);
   }
 
   Future<Object?> _tail(Map<String, Object?> params) async {
@@ -333,6 +386,11 @@ final class RemoteVerbs {
 /// A float JSON cannot write is its name, as the inspector reports it.
 Object _finite(Object? value) =>
     value is double ? '$value' : throw JsonUnsupportedObjectError(value);
+
+/// Rows from the renderer can hold the NaN that is being looked for, so it
+/// is text here and not an internal error from the encoder.
+Object? _plain(Object? rows) =>
+    jsonDecode(jsonEncode(rows, toEncodable: _finite));
 
 List<String> _names(Object? value) {
   if (value == null) return const [];
