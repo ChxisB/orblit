@@ -72,7 +72,7 @@ final class ToolServer {
     ),
     'set': _Tool(
       'Writes to the running game. Sets one field of one component on an '
-      'entity to a number.',
+      'entity to a number, and answers what it wrote.',
       {
         'id': {'type': 'integer'},
         'component': {'type': 'string'},
@@ -231,11 +231,12 @@ final class ToolServer {
       _text(await _call('time.step', {'n': args['n'] ?? 1}));
 
   Future<_Content> _set(_Args args) async {
-    await _call('entity.set', {
+    final written = {
       for (final name in const ['id', 'component', 'field', 'value'])
         name: args[name],
-    });
-    return _text('set');
+    };
+    await _call('entity.set', written);
+    return _text(written);
   }
 
   Future<_Content> _snapshot(_Args _) async {

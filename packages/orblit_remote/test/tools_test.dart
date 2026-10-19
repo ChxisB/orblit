@@ -234,6 +234,7 @@ void main() {
         'value': 5,
       });
       expect(_result(reply)['isError'], isFalse);
+      expect(_text(reply), made.seen.single.params);
       expect(made.seen.single.method, 'entity.set');
       expect(made.seen.single.params, {
         'id': 1,

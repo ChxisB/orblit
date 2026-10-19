@@ -5,6 +5,11 @@
 - `ToolServer`: the control surface as seven named tools over the tool
   protocol, for an assistant. Only `set` writes, and it is absent unless the
   server is started with `--allow-write`.
+- `RemoteClient` joins a game's surface and pairs calls with answers.
+- `bin/orblit_remote.dart`, the `orblit_remote` executable: reads a game's
+  address, serves the tools on stdin and stdout, and logs to stderr. It exits
+  with 64 for a bad address and 69 for a game it cannot reach. The host must
+  be loopback.
 
 ## 0.1.0
 

@@ -6,6 +6,9 @@ description: >-
 version: 0.2.0
 publish_to: none
 
+executables:
+  orblit_remote:
+
 environment:
   sdk: ^3.10.0
 

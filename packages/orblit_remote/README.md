@@ -81,6 +81,46 @@ error `-32004`.
 `-32003`. An argument or state error thrown by a host callback answers
 `-32603`, because it is the game's fault and not a bad request.
 
+## Tools for an assistant
+
+`orblit_remote` is also a program. It reads the address a game printed, joins
+the control surface, and speaks the tool protocol on stdin and stdout, so an
+assistant can look at a running game.
+
+```sh
+dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
+```
+
+Quote the address, because a shell reads `?` as a pattern. The line the game
+prints, with its `orblit-remote` prefix, works too. The host must be
+`127.0.0.1` or `localhost`, since the address holds the token. To register it
+with Claude Code:
+
+```sh
+claude mcp add orblit -- dart run orblit_remote 'ws://127.0.0.1:PORT/?token=TOKEN'
+```
+
+| Tool | Does |
+| --- | --- |
+| `observe` | Counts the entities and lists the first `limit` (20), or reads one by `id` in full. |
+| `step` | Pauses and passes `n` frames. |
+| `snapshot` | Records the world and answers an id with counts. |
+| `diff` | Lists what changed between two snapshot ids, at most 200. |
+| `screenshot` | One PNG of the render view. |
+| `perf` | The game's phase times. |
+| `set` | Sets one component field. Only with `--allow-write`. |
+
+Without `--allow-write` the `set` tool is not in the list, and a call to it is
+refused. The host's `readOnly` flag still applies as well.
+
+A refusal from the game comes back as an error result with its code and
+message, so the assistant can read it and try again. Answers are cut to a size
+a model can read, and say so with `truncated`. A screenshot is one frame. A
+diff holds only what its two snapshots held.
+
+Exit codes are 64 for a bad address and 69 for a game that cannot be reached.
+Messages go one JSON object per line. Notes go to stderr.
+
 ## Status
 
 Pre-alpha. Nothing here is API-stable, and the version is bumped for every
