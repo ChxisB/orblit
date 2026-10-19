@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'verbs.dart';
 
 /// The version the tool server reports. A test keeps it equal to the pubspec.
-const toolServerVersion = '0.2.0';
+const toolServerVersion = '0.3.0';
 
 const _protocolVersions = ['2025-06-18', '2025-03-26', '2024-11-05'];
 const _defaultLimit = 20;

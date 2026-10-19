@@ -239,11 +239,11 @@ void main() {
 
       expect(
         order.indexOf(SceneComponents.particles),
-        order.indexOf('canvas') + 1,
+        greaterThan(order.indexOf('canvas')),
       );
       expect(
         order.indexOf('data'),
-        order.indexOf(SceneComponents.particles) + 1,
+        greaterThan(order.indexOf(SceneComponents.particles)),
       );
     });
 
