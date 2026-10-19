@@ -63,7 +63,8 @@ KitUpdatePlan planKitUpdate({
 }
 
 _Move _decide(ContentHash? was, ContentHash? will, ContentHash? found) {
-  if (was == null) return _decideNew(will!, found); // No lock entry, so the release has it.
+  // No lock entry means the release has the file.
+  if (was == null) return _decideNew(will!, found);
   if (will == was) return _Move.nothing;
   if (will == null && found == null) return _Move.nothing;
   if (found != was) return _Move.keep;
