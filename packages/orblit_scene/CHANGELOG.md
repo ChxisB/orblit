@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.0
+
+- `readSceneFrom` opens an `.obj`. Each `o` or `g` group becomes one entity
+  with its faces as editable geometry and the colour of its first material.
+  A file is told from glTF by its first byte, so a GLB or a `.gltf` reads as
+  before. What the OBJ reader could not read comes back in
+  `SceneImported.problems`, with one more note for a group that wears more
+  than one material.
+
 ## 0.19.0
 
 - Add `VehicleComponent` and `WheelComponent`. A vehicle is a body with an
