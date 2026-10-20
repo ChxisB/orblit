@@ -34,6 +34,8 @@ dependencies:
     path: ../../packages/orblit_save
   orblit_sequence:
     path: ../../packages/orblit_sequence
+  orblit_sprite:
+    path: ../../packages/orblit_sprite
   vector_math: ^2.1.4
 
 dev_dependencies:

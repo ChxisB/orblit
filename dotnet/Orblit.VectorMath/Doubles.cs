@@ -81,6 +81,20 @@ public static class Doubles
     }
 
     /// <summary>
+    /// Dart's <c>double.ceil()</c>, which throws on NaN and infinity where a C#
+    /// cast gives an unspecified number.
+    /// </summary>
+    public static long Ceil(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "Only a finite number has a ceiling.");
+        }
+
+        return (long)Math.Ceiling(value);
+    }
+
+    /// <summary>
     /// Dart's <c>double.sign</c>: -1, 1, or the value itself for either zero
     /// and for NaN. <c>Math.Sign</c> returns an int and throws on NaN.
     /// </summary>

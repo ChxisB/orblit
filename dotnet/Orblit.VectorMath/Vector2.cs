@@ -12,6 +12,8 @@ public sealed class Vector2(double x, double y) : IEquatable<Vector2>
 
     public static Vector2 All(double value) => new(value, value);
 
+    public static Vector2 Zero() => new(0, 0);
+
     /// <summary>The summed squares, added y first as Dart's does, so the last bit agrees.</summary>
     public double Length2 => (Y * Y) + (X * X);
 

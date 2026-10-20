@@ -73,6 +73,20 @@ public class DoublesTests
         Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.Floor(value));
 
     [Theory]
+    [InlineData(2.1, 3)]
+    [InlineData(-2.9, -2)]
+    [InlineData(-0.5, 0)]
+    [InlineData(4.0, 4)]
+    public void CeilGoesUp(double value, long expected) => Assert.Equal(expected, Doubles.Ceil(value));
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void CeilOfSomethingNotFiniteIsRefused(double value) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.Ceil(value));
+
+    [Theory]
     [InlineData(2.5, 1)]
     [InlineData(-2.5, -1)]
     [InlineData(double.PositiveInfinity, 1)]

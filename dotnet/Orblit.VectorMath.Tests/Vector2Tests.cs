@@ -11,6 +11,14 @@ public class Vector2Tests
     }
 
     [Fact]
+    public void ZeroIsANewVectorEachTime()
+    {
+        var first = Vector2.Zero();
+        first.X = 1;
+        Assert.Equal(new Vector2(0, 0), Vector2.Zero());
+    }
+
+    [Fact]
     public void ACloneDoesNotShareItsComponents()
     {
         var original = new Vector2(1, 0.5);

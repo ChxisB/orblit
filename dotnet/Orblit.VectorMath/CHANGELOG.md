@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.8.0
+
+- `Doubles.Ceil`, which is Dart's `double.ceil()`.
+- `Vector2.Zero`, which the sprite port reads.
+
 ## 0.7.0
 
 - `Quaternion.Euler` and `Quaternion.Conjugate`, and `Vector3.Normalize` in

@@ -17,7 +17,7 @@ Each row is a place where a test will not always catch the difference.
 | `x.round()` rounds half away from zero, and throws on NaN or infinity | `Doubles.Round(x)` | `Math.Round` defaults to banker's rounding, and the cast of a non-finite value gives no error |
 | `x.floor()` on NaN or infinity throws | Check `double.IsFinite`, then `(long)Math.Floor(x)` | The C# cast gives an unspecified value and no error |
 | `jsonEncode(1.0)` gives `1.0` | A shared writer with invariant culture | `System.Text.Json` gives `1`, so byte goldens differ |
-| `List.sort` | `OrderBy` when the order of equals matters | `Array.Sort` and `List.Sort` are not stable |
+| `List.sort` | `OrderBy` when the order of equals matters | `Array.Sort` and `List.Sort` are not stable. Dart's is stable up to 33 items and a dual pivot quicksort above that, so equals come out in an order `OrderBy` does not give. A comparer that is a total order does not care |
 | `Float32List` | `float[]` or `Span<float>` | Keep the element type. `double` is not `float` |
 | `int` is 64 bit and wraps | `long`, inside `unchecked` | Do not narrow to `int`. Hashes rely on the wrap |
 | A sealed class and an exhaustive `switch` | An abstract record with sealed cases and a `switch` expression | C# does not check a class hierarchy for exhaustiveness. A test must |
@@ -74,6 +74,22 @@ Each row is a place where a test will not always catch the difference.
 | `sync*` and `yield` | An iterator method returning `IEnumerable<T>` | It runs when enumerated, not when called, in both languages. A refusal before the first `yield` also waits |
 | `assert` in a constructor | An `ArgumentException` that always runs | Dart skips asserts in a release build. The exporter must never build an invalid object, because Dart may not refuse it. The C# tests cover the refusals apart |
 | A name with a trailing underscore to dodge a keyword, `Easing.in_` | Drop the underscore, `Easing.In` | A fixture spells the Dart name, so its reader strips the underscore and ignores case |
+| `map.putIfAbsent(k, () => draw())` | `if (!map.ContainsKey(k))`, then `Add` | The Dart value is built only for a new key. `TryAdd(k, draw())` builds it every time, so a random draw happens on every call and the sequence drifts |
+| `jsonEncode` of text | A hand-written quoter | Dart escapes only the quote, the backslash, control characters and a lone surrogate. `System.Text.Json` escapes `<`, `>`, `&`, `+` and every non-ASCII character, so the bytes differ |
+| `jsonDecode` of a string with a lone surrogate | Unescape `GetRawText()` by hand | Dart keeps the surrogate. `JsonElement.GetString` throws `InvalidOperationException` |
+| A `Future` that is already done | `await Task.Yield()` first, where the caller holds a lock | Dart delivers the completion later, in a microtask. A C# `await` of a finished task goes on at once, so an answer can arrive inside the call that asked, and inside its lock |
+| `Future.delayed(Duration.zero)` to let a task run | `Support.Until(condition, what)` | Poll a condition. A fixed delay is a flake. A negative check, that nothing happened, still needs a short `Task.Delay` |
+| A regex `$` | `\z` | .NET `$` also matches before a final newline, so `ana\n` passes a key check |
+| `x.toStringAsFixed(n)` | `Doubles.ToStringAsFixed(x, n)` | Dart rounds the exact value with ties away from zero, so 115.25 is `115.3`. .NET `F1` goes to even and gives `115.2`. From 1e21 Dart gives the `toString` form, such as `1e+22`. A negative that rounds to zero keeps the sign, as in `-0.000`. Digits outside 0 to 20 throw |
+| `copyWith(...)` on an immutable value | `with { ... }` on a record | A positional record with defaults stands in for a class with named parameters, so a call names what it sets |
+| `Quaternion.euler`, `conjugate` and `normalize` from `vector_math` | `Quaternion.Euler`, `Conjugate` and `Normalize` | `conjugate` negates x, y and z in place. `normalize` returns the old length and multiplies by the reciprocal. `Vector3.Normalize` returns 0 and leaves a zero vector alone |
+| `BlendTable.between(null, null)` | The same lookup, kept | Dart looks a null name up as the text `null` while `set` stores `*`, so a `*->*` rule is never found. The port keeps it and the fixture covers it |
+| A Dart `enum` in an exhaustive `switch` | A `switch` with a default arm that throws `InvalidOperationException` | A C# enum takes any number. The default arm is the only way to refuse one, and it needs a C#-only test |
+| `num.clamp(a, b)` with `a > b` | `Doubles.Clamp` throws `ArgumentException` | Dart throws `ArgumentError`. Tests use `Record.Exception` and an `is ArgumentException` check, since `Assert.Throws` matches the exact type |
+| A Dart abstract class that only describes behaviour | An interface with an `I` prefix | `ICameraBody` and `ICameraTarget`. The classes that implement them keep the Dart names |
+| `jsonDecode` and `jsonEncode` | `DartJson.Decode` and `DartJson.Encode` in `Orblit.Json` | `System.Text.Json` reads `-0` as a double, takes a repeated key at its last place and has no refusal for `1e999`. `Orblit.Json` keeps Dart's reading and writes only what a package has needed |
+| A fixture int past 2^53 | `big()` in the exporter writes it as a string, and the test reads it with `long.Parse` | `JsonCompare` reads numbers as doubles, so an int past 2^53 loses its low bits and a wrong answer can compare equal. A string compares exactly |
+| A refusal in a fixture | Call the Dart code and record `{'throws': true}`, never write it by hand | A hand-written refusal passes in C# whatever Dart does. A Dart `assert` does not run under `dart run`, so a case that only an assert refuses must be a C#-only test |
 
 ## Fixtures
 
@@ -95,18 +111,6 @@ case per line, stamped with the commit that last changed the package.
 
 - Keep each Dart test as one C# test, with the same name in PascalCase.
 - A Dart loop that declares tests becomes a `[Theory]` over the same names.
+- A loop inside one Dart test stays inside one `[Fact]`. A `[Theory]` there adds run counts Dart does not have.
 - Tests the port adds, such as a fixture check, are counted apart in
   `PARITY.md`.
-| `map.putIfAbsent(k, () => draw())` | `if (!map.ContainsKey(k))`, then `Add` | The Dart value is built only for a new key. `TryAdd(k, draw())` builds it every time, so a random draw happens on every call and the sequence drifts |
-| `jsonEncode` of text | A hand-written quoter | Dart escapes only the quote, the backslash, control characters and a lone surrogate. `System.Text.Json` escapes `<`, `>`, `&`, `+` and every non-ASCII character, so the bytes differ |
-| `jsonDecode` of a string with a lone surrogate | Unescape `GetRawText()` by hand | Dart keeps the surrogate. `JsonElement.GetString` throws `InvalidOperationException` |
-| A `Future` that is already done | `await Task.Yield()` first, where the caller holds a lock | Dart delivers the completion later, in a microtask. A C# `await` of a finished task goes on at once, so an answer can arrive inside the call that asked, and inside its lock |
-| `Future.delayed(Duration.zero)` to let a task run | `Support.Until(condition, what)` | Poll a condition. A fixed delay is a flake. A negative check, that nothing happened, still needs a short `Task.Delay` |
-| A regex `$` | `\z` | .NET `$` also matches before a final newline, so `ana\n` passes a key check |
-| `x.toStringAsFixed(n)` | `Doubles.ToStringAsFixed(x, n)` | Dart rounds the exact value with ties away from zero, so 115.25 is `115.3`. .NET `F1` goes to even and gives `115.2`. From 1e21 Dart gives the `toString` form, such as `1e+22`. A negative that rounds to zero keeps the sign, as in `-0.000`. Digits outside 0 to 20 throw |
-| `copyWith(...)` on an immutable value | `with { ... }` on a record | A positional record with defaults stands in for a class with named parameters, so a call names what it sets |
-| `Quaternion.euler`, `conjugate` and `normalize` from `vector_math` | `Quaternion.Euler`, `Conjugate` and `Normalize` | `conjugate` negates x, y and z in place. `normalize` returns the old length and multiplies by the reciprocal. `Vector3.Normalize` returns 0 and leaves a zero vector alone |
-| `BlendTable.between(null, null)` | The same lookup, kept | Dart looks a null name up as the text `null` while `set` stores `*`, so a `*->*` rule is never found. The port keeps it and the fixture covers it |
-| A Dart `enum` in an exhaustive `switch` | A `switch` with a default arm that throws `InvalidOperationException` | A C# enum takes any number. The default arm is the only way to refuse one, and it needs a C#-only test |
-| `num.clamp(a, b)` with `a > b` | `Doubles.Clamp` throws `ArgumentException` | Dart throws `ArgumentError`. Tests use `Record.Exception` and an `is ArgumentException` check, since `Assert.Throws` matches the exact type |
-| A Dart abstract class that only describes behaviour | An interface with an `I` prefix | `ICameraBody` and `ICameraTarget`. The classes that implement them keep the Dart names |
