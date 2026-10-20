@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Square cells on the ground plane, and the rule for which of them to load and which to drop around a moving point.</Description>
+  </PropertyGroup>
+</Project>
