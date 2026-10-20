@@ -101,4 +101,44 @@ public class DoublesTests
     [InlineData(double.NegativeInfinity)]
     public void RoundOfSomethingNotFiniteIsRefused(double value) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.Round(value));
+
+    [Theory]
+    [InlineData(0.5, 0, "1")]
+    [InlineData(-0.5, 0, "-1")]
+    [InlineData(2.5, 0, "3")]
+    [InlineData(-2.5, 0, "-3")]
+    [InlineData(115.25, 1, "115.3")]
+    [InlineData(-0.125, 0, "-0")]
+    [InlineData(-0.125, 1, "-0.1")]
+    [InlineData(-0.0, 3, "-0.000")]
+    [InlineData(-0.0001, 3, "-0.000")]
+    [InlineData(0.0004, 3, "0.000")]
+    [InlineData(5e-324, 3, "0.000")]
+    [InlineData(1.005, 1, "1.0")]
+    [InlineData(4.35, 1, "4.3")]
+    [InlineData(1234567.8915, 3, "1234567.891")]
+    [InlineData(1e20, 1, "100000000000000000000.0")]
+    [InlineData(123456789012345680000.0, 0, "123456789012345683968")]
+    public void FixedPointRoundsTheExactValueAndTiesGoAwayFromZero(double value, int digits, string expected) =>
+        Assert.Equal(expected, Doubles.ToStringAsFixed(value, digits));
+
+    [Theory]
+    [InlineData(1e21, "1e+21")]
+    [InlineData(-1e21, "-1e+21")]
+    [InlineData(1.5e22, "1.5e+22")]
+    [InlineData(1e300, "1e+300")]
+    [InlineData(double.NaN, "NaN")]
+    [InlineData(double.PositiveInfinity, "Infinity")]
+    [InlineData(double.NegativeInfinity, "-Infinity")]
+    public void FixedPointGivesTheShortestFormWhereDartDoes(double value, string expected)
+    {
+        Assert.Equal(expected, Doubles.ToStringAsFixed(value, 0));
+        Assert.Equal(expected, Doubles.ToStringAsFixed(value, 3));
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(21)]
+    public void FixedPointRefusesDigitsOutsideZeroToTwenty(int digits) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.ToStringAsFixed(1.0, digits));
 }

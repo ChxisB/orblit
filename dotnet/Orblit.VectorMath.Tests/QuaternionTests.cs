@@ -102,4 +102,36 @@ public class QuaternionTests
     [Fact]
     public void LengthSquaredIsTheSumOfTheFourSquares() =>
         Assert.Equal(30, new Quaternion(1, 2, 3, 4).Length2, Tight);
+
+    [Fact]
+    public void ConjugatingNegatesTheVectorPartAndKeepsW()
+    {
+        var q = new Quaternion(1, -2, 3, 4);
+        q.Conjugate();
+        Assert.Equal(new Quaternion(-1, 2, -3, 4), q);
+    }
+
+    [Fact]
+    public void EulerWithNoAnglesIsTheIdentityAndAYawIsATurnAboutY()
+    {
+        Assert.Equal(Quaternion.Identity(), Quaternion.Euler(0, 0, 0));
+
+        var yaw = Quaternion.Euler(Math.PI / 2, 0, 0);
+        var about = Quaternion.AxisAngle(new Vector3(0, 1, 0), Math.PI / 2);
+        Assert.Equal(about.X, yaw.X, Tight);
+        Assert.Equal(about.Y, yaw.Y, Tight);
+        Assert.Equal(about.Z, yaw.Z, Tight);
+        Assert.Equal(about.W, yaw.W, Tight);
+    }
+
+    [Fact]
+    public void EulerPitchIsATurnAboutXAndRollIsATurnAboutZ()
+    {
+        var pitch = Quaternion.Euler(0, 0.6, 0);
+        Assert.Equal(Math.Sin(0.3), pitch.X, Tight);
+        Assert.Equal(0, pitch.Y, Tight);
+        var roll = Quaternion.Euler(0, 0, 0.6);
+        Assert.Equal(Math.Sin(0.3), roll.Z, Tight);
+        Assert.Equal(Math.Cos(0.3), roll.W, Tight);
+    }
 }

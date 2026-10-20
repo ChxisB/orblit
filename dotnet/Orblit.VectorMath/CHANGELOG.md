@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- `Quaternion.Euler` and `Quaternion.Conjugate`, and `Vector3.Normalize` in
+  place, which the camera port reads.
+- `Doubles.ToStringAsFixed`, which is Dart's `toStringAsFixed`.
+
 ## 0.6.0
 
 - `Quaternion` gains `Length`, `Length2` and `Normalize`, which the sequence

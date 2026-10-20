@@ -12,6 +12,8 @@ dependencies:
     path: ../../packages/orblit_agent
   orblit_audio:
     path: ../../packages/orblit_audio
+  orblit_camera:
+    path: ../../packages/orblit_camera
   orblit_cells:
     path: ../../packages/orblit_cells
   orblit_collide:

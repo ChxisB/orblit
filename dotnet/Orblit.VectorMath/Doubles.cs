@@ -1,3 +1,6 @@
+using System.Globalization;
+using System.Numerics;
+
 namespace Orblit.VectorMath;
 
 /// <summary>
@@ -95,5 +98,39 @@ public static class Doubles
         }
 
         return (long)Math.Round(value, MidpointRounding.AwayFromZero);
+    }
+
+    /// <summary>
+    /// Dart's <c>toStringAsFixed</c>: the exact value rounded to <paramref name="digits"/> places,
+    /// with a tie going away from zero where the .NET <c>F</c> format goes to the even digit, and the
+    /// shortest form for NaN, infinity and anything from 1e21 up, where .NET writes every digit.
+    /// A negative value that rounds to zero keeps its sign, as in Dart.
+    /// </summary>
+    public static string ToStringAsFixed(double value, int digits)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(digits);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(digits, 20);
+        if (!double.IsFinite(value))
+        {
+            return value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        if (Math.Abs(value) >= 1e21)
+        {
+            return value.ToString("R", CultureInfo.InvariantCulture).ToLowerInvariant();
+        }
+
+        // The value is exactly mantissa * 2^shift, so the rounding can be done in whole numbers.
+        var bits = BitConverter.DoubleToInt64Bits(value);
+        var biased = (int)((bits >> 52) & 0x7FF);
+        var fraction = bits & 0xFFFFFFFFFFFFFL;
+        var mantissa = biased == 0 ? fraction : fraction | (1L << 52);
+        var shift = Math.Max(biased, 1) - 1075;
+        var scaled = new BigInteger(mantissa) * BigInteger.Pow(10, digits);
+        var rounded = shift >= 0 ? scaled << shift : ((scaled << 1) + (BigInteger.One << -shift)) >> (1 - shift);
+
+        var text = rounded.ToString(CultureInfo.InvariantCulture).PadLeft(digits + 1, '0');
+        var sign = double.IsNegative(value) ? "-" : string.Empty;
+        return digits == 0 ? sign + text : $"{sign}{text[..^digits]}.{text[^digits..]}";
     }
 }

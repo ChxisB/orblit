@@ -62,6 +62,18 @@ public class Vector3Tests
     }
 
     [Fact]
+    public void NormalizingInPlaceGivesTheOldLengthAndLeavesNothingAlone()
+    {
+        var v = new Vector3(0, 3, 4);
+        Assert.Equal(5, v.Normalize(), 1e-15);
+        Assert.Equal(0.8, v.Z, 1e-15);
+
+        var zero = Vector3.Zero();
+        Assert.Equal(0, zero.Normalize());
+        Assert.Equal(Vector3.Zero(), zero);
+    }
+
+    [Fact]
     public void NormalisingNothingGivesNothingAndNotNotANumber()
     {
         var zero = Vector3.Zero();

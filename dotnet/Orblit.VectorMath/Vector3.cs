@@ -107,6 +107,25 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
         return new Vector3(X * d, Y * d, Z * d);
     }
 
+    /// <summary>
+    /// Scales to length one, in place, and returns the length it had. A vector of
+    /// length zero is left as it is and gives 0, as in Dart.
+    /// </summary>
+    public double Normalize()
+    {
+        var length = Length;
+        if (length == 0)
+        {
+            return 0;
+        }
+
+        var d = 1.0 / length;
+        X *= d;
+        Y *= d;
+        Z *= d;
+        return length;
+    }
+
     /// <summary>Component by component, so NaN is not equal to NaN, as in Dart.</summary>
     public bool Equals(Vector3? other) => other is not null && X == other.X && Y == other.Y && Z == other.Z;
 

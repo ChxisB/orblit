@@ -63,6 +63,29 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
         return new Quaternion(q[0], q[1], q[2], (rotation.Entry(k, j) - rotation.Entry(j, k)) * root);
     }
 
+    /// <summary>
+    /// The turn from three half-angle products, as Dart's <c>Quaternion.euler</c>:
+    /// <paramref name="yaw"/> about y, <paramref name="pitch"/> about x and
+    /// <paramref name="roll"/> about z.
+    /// </summary>
+    public static Quaternion Euler(double yaw, double pitch, double roll)
+    {
+        var halfYaw = yaw * 0.5;
+        var halfPitch = pitch * 0.5;
+        var halfRoll = roll * 0.5;
+        var cosYaw = Math.Cos(halfYaw);
+        var sinYaw = Math.Sin(halfYaw);
+        var cosPitch = Math.Cos(halfPitch);
+        var sinPitch = Math.Sin(halfPitch);
+        var cosRoll = Math.Cos(halfRoll);
+        var sinRoll = Math.Sin(halfRoll);
+        return new Quaternion(
+            (cosRoll * sinPitch * cosYaw) + (sinRoll * cosPitch * sinYaw),
+            (cosRoll * cosPitch * sinYaw) - (sinRoll * sinPitch * cosYaw),
+            (sinRoll * cosPitch * cosYaw) - (cosRoll * sinPitch * sinYaw),
+            (cosRoll * cosPitch * cosYaw) + (sinRoll * sinPitch * sinYaw));
+    }
+
     /// <summary>The turn <paramref name="b"/> followed by the turn <paramref name="a"/>, as Dart's <c>*</c>.</summary>
     public static Quaternion operator *(Quaternion a, Quaternion b) => new(
         (a.W * b.X) + (a.X * b.W) + (a.Y * b.Z) - (a.Z * b.Y),
@@ -71,6 +94,14 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
         (a.W * b.W) - (a.X * b.X) - (a.Y * b.Y) - (a.Z * b.Z));
 
     public Quaternion Clone() => new(X, Y, Z, W);
+
+    /// <summary>Negates x, y and z in place, which turns the other way. W is left as it is.</summary>
+    public void Conjugate()
+    {
+        X = -X;
+        Y = -Y;
+        Z = -Z;
+    }
 
     public double Length2 => (X * X) + (Y * Y) + (Z * Z) + (W * W);
 
