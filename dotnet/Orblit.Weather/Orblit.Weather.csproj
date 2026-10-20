@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>What the air is doing and what is above it: a day cycle for the sun and moon, a camera exposure to see by it, named weather states, and lightning worked out from the clock.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>

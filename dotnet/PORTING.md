@@ -130,6 +130,11 @@ Each row is a place where a test will not always catch the difference.
 | `'$value'` of a Dart `double`, `List` or `Map` in an error text | `Printed.Dart`: null, `true`, `1.0`, `[a, b]` and `{k: v}` | `ToString` gives `True`, `1` and `System.Collections.Generic...`. Exponent forms such as `1e+21` are not Dart's and the code says so |
 | A format version read as `is int` | A format version read as `is long`; a double such as `1.0` is no version | `DartJson.Decode` gives a `long` for every whole number, so an `int` arm would never run |
 | A private `_hex` in each exporter | `hex` in `tool/parity/lib/fixture.dart` | The third copy (save, progress, quest) was merged. Exporters import it from the parity tool |
+| A class with `copyWith` and no `==` | A positional `sealed record` with defaults, changed with `with` | A record compares by value where the Dart class compares by identity. Nothing in the package relies on identity, so a test pins `with` and not `Equals` |
+| `num.clamp`, `%` on doubles and `floor()` | `Doubles.Clamp`, `Doubles.Mod` and `Doubles.Floor` | `Math.Clamp` throws when the bounds are swapped, and Dart's `clamp` sends NaN to the upper bound. `Doubles.Floor` returns a `long` and throws on NaN, as `floor()` does |
+| `log(x) / ln2` | The same, with the Dart `ln2` constant written out | `Math.Log2` rounds differently in the last digit, and an exposure fixture compares to 1e-9 |
+| A const map of presets keyed by an enum | A `FrozenDictionary` behind `IReadOnlyDictionary`, with `GetValueOrDefault` and a fallback | The Dart enum is closed, so the fallback is dead there. A cast integer reaches it in C#, so a test covers it |
+| A `static final` that holds a mutable object (`Strike.none`) | A `static readonly` that holds the same shared `Vector3` | Both languages hand every caller the one object. A caller that changes its direction changes it for all, and a test pins `Assert.Same` |
 
 ## Fixtures
 
