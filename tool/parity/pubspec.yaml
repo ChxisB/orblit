@@ -18,6 +18,8 @@ dependencies:
     path: ../../packages/orblit_noise
   orblit_profile:
     path: ../../packages/orblit_profile
+  orblit_progress:
+    path: ../../packages/orblit_progress
   vector_math: ^2.1.4
 
 dev_dependencies:

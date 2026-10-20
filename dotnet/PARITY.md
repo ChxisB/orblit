@@ -14,6 +14,7 @@ is done when the two Run counts match.
 | `orblit_cells` | 21 | 21 | 21 | 21 | `cells.json`, 180 `cellOf` and 121 `plan` cases | `cellOf` fixture check (1 run), `plan` fixture check (1 run) | done |
 | `orblit_profile` | 16 | 16 | 16 | 16 | `profile.json`, 2 scripted runs of 150 frames | snapshot fixture check (1 run) | done |
 | `orblit_light` | 32 | 32 | 32 | 32 | `light.json`, 100 photometry, 34 tint and 266 light cases | photometry, tint and light fixture checks (3 run) | done |
+| `orblit_progress` | 37 | 37 | 37 | 37 | `progress.json`, 141 schema, 42 table script, 308 table decode, 236 changes decode, 30 condition and 144 comparison cases | schema, table, table decode, changes decode, condition, condition list and comparison fixture checks (7 run) | done |
 
 ## The rule for doubles
 
