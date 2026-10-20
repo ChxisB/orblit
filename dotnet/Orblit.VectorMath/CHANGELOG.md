@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.0
+
+- `Vector2.Dot`, which the mesh port reads.
+
 ## 0.10.0
 
 - `Matrix4` gains `Zero`, `Clone`, `SetFrom`, `Multiply`, `Multiplied`,

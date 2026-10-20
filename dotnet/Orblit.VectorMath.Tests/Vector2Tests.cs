@@ -19,6 +19,14 @@ public class Vector2Tests
     }
 
     [Fact]
+    public void DotMultipliesComponentsAndAddsThem()
+    {
+        Assert.Equal(14, new Vector2(2, 3).Dot(new Vector2(4, 2)));
+        Assert.Equal(0, new Vector2(1, 0).Dot(new Vector2(0, 5)));
+        Assert.Equal(-6, new Vector2(2, 3).Dot(new Vector2(-3, 0)));
+    }
+
+    [Fact]
     public void ACloneDoesNotShareItsComponents()
     {
         var original = new Vector2(1, 0.5);

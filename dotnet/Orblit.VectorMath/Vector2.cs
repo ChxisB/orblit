@@ -21,6 +21,8 @@ public sealed class Vector2(double x, double y) : IEquatable<Vector2>
 
     public Vector2 Clone() => new(X, Y);
 
+    public double Dot(Vector2 other) => (X * other.X) + (Y * other.Y);
+
     public static Vector2 operator +(Vector2 a, Vector2 b) => new(a.X + b.X, a.Y + b.Y);
 
     public static Vector2 operator -(Vector2 a, Vector2 b) => new(a.X - b.X, a.Y - b.Y);
