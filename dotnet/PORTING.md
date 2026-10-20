@@ -110,6 +110,16 @@ Each row is a place where a test will not always catch the difference.
 | A generated random case set | Seed `math.Random` in the exporter and keep the numbers in the fixture | The fixture holds the values, so C# needs no Dart generator (decision 77) |
 | `Quaternion.rotated` | `Quaternion.AxisAngle(...).AsRotationMatrix().Transformed(v)` | `rotated` turns by the inverse, so the rig goes through the matrix |
 | A pose `Location` edit | Written in the bone's local axes | A bone along +X maps local X to world -Y, so a move by (1, 0, 0) is not a world x move. A fixture case that needs a world move must say so |
+| A generator that parses source text | A Roslyn incremental generator over symbols (`ForAttributeWithMetadataName`) | Roslyn has resolved every type, so nothing is guessed. A field whose type does not resolve is refused as `ORBLIT001`, a case the Dart scanner could not see |
+| A Dart `double` field maps to `float32` | A C# `double` is `float64` and a `float` is `float32` | Dart has one floating type and the generator chose the narrow one. C# says how wide a field is, so the kind follows the field |
+| Annotation constructor arguments | Attribute properties (`Name`, `Kind`, `Replicated`, `OwnerWritable`), with `Kind` as a plain `ComponentKind` | A named attribute argument cannot be a nullable enum (CS0655). The scanner reads which arguments were given, so an unset kind still means infer it |
+| `orblit_components.json` written beside the code | A `const string Manifest` on the generated registry | A source generator cannot write a file. `ComponentEmitter.Manifest` writes the same bytes as Dart for the same components, and a fixture of 127 cases compares them |
+| The source path as the scanner found it | A path relative to `ProjectDir`, with forward slashes on every system | An absolute or backslash path would change the manifest from one machine to the next |
+| A typed view over a list (`Float32List`) | A `ref struct` column over `Span<T>`, with its own `_data` field | The same memory with names on the offsets. A primary constructor cannot capture a ref-like parameter (CS9110) |
+| A name written between single quotes unescaped | `SymbolDisplay.FormatLiteral` | A quote or a backslash in a component name breaks the generated Dart. The C# file compiles and registers the name as written |
+| `List.sort` of components with one name, past 32 | A stable `OrderBy` with ordinal comparison (decision 75) | Dart is stable up to 32 and not above. `DifferenceTests` pins 40 equal names in input order |
+| A command line tool that writes files and exits non-zero | `ORBLIT001` per refused type, and no registry written while any type is refused | A generator reports through diagnostics. A half registry would hide the refusal behind a later compile error |
+| No third party package | `Microsoft.CodeAnalysis.CSharp` 4.14.0, `PrivateAssets="all"` | A generator needs Roslyn. 4.14.0 loads in SDK 9 and 10, and a newer one fails to load in an older SDK (decision 78) |
 
 ## Fixtures
 

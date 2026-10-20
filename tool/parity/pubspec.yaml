@@ -16,6 +16,8 @@ dependencies:
     path: ../../packages/orblit_camera
   orblit_cells:
     path: ../../packages/orblit_cells
+  orblit_codegen:
+    path: ../../packages/orblit_codegen
   orblit_collide:
     path: ../../packages/orblit_collide
   orblit_core:
