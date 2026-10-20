@@ -71,4 +71,19 @@ public class DoublesTests
     [InlineData(double.NegativeInfinity)]
     public void FloorOfSomethingNotFiniteIsRefused(double value) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.Floor(value));
+
+    [Theory]
+    [InlineData(2.5, 1)]
+    [InlineData(-2.5, -1)]
+    [InlineData(double.PositiveInfinity, 1)]
+    [InlineData(double.NegativeInfinity, -1)]
+    public void SignIsPlusOrMinusOne(double value, double expected) => Assert.Equal(expected, Doubles.Sign(value));
+
+    [Fact]
+    public void SignOfEitherZeroOrNotANumberIsTheValueItself()
+    {
+        Assert.True(double.IsNegative(Doubles.Sign(-0.0)));
+        Assert.False(double.IsNegative(Doubles.Sign(0.0)));
+        Assert.True(double.IsNaN(Doubles.Sign(double.NaN)));
+    }
 }

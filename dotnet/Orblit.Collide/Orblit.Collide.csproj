@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Shapes that touch and rays that hit them. Spheres, boxes and capsules in three dimensions, circles and rectangles in two, a grid to find what is near, and a world that says what began touching.</Description>
+    <!-- Is and Step keep the Dart names, is_ and step. A Visual Basic caller can write [Is]. -->
+    <NoWarn>$(NoWarn);CA1716</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>

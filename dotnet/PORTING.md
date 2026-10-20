@@ -62,6 +62,13 @@ Each row is a place where a test will not always catch the difference.
 | A type named `Do` | `<NoWarn>CA1716</NoWarn>` in the csproj, with a comment | CA1716 flags a Visual Basic keyword. The Dart name stays |
 | `double.toString()` in a label | `Labels.Number`, which adds `.0` to a whole number | .NET switches to `E` notation at 1e15 and below 1e-4, so the two agree only from 0.0001 up to below 1e15 |
 | A method over ten branches | Split it into private methods, one per step | CA1502 counts every `if`, `foreach` and `&&`. `CueBoard.Update` became `Loudest`, `FadeOut`, `Follow` and `Start` |
+| A `LinkedHashSet` | `OrderedDictionary<T, bool>`, used for its keys, with a comment | .NET has no ordered set. A `HashSet` forgets the order things were added in |
+| `x.sign` on a double | `Doubles.Sign` | Dart gives back `-0.0`, `0.0` and NaN unchanged. `Math.Sign` gives an int and throws on NaN |
+| `a ~/ b` and `a % b` on ints that may be negative | `/` for the quotient, and the remainder fixed by hand when it is below zero | `/` truncates in both languages. C# `%` keeps the sign of `a`, where Dart's never goes negative |
+| A parameter or property named `is_` | `@is` for the parameter, `Is` for the property | `is` is a C# keyword. The Dart trailing underscore only dodges the same clash |
+| A member named like its class, `Box.box` | Drop it and keep the member that says the same, `Bounds` | CS0542. Say so in the `CHANGELOG.md` |
+| An override whose parameter has a new name | Rename the base parameter to match | CA1725 wants the same name all the way down. Dart renames freely |
+| A bug the Dart has, found while porting | Port it as it is, say so in the `CHANGELOG.md`, and fix it in its own commit after the port passes | `World2` pairs ids with `a * 1000003 + b`, which mis-pairs ids outside 0 to 1000002. The fixture holds odd ids, so a fix on one side shows as a failure |
 
 ## Fixtures
 

@@ -14,6 +14,8 @@ dependencies:
     path: ../../packages/orblit_audio
   orblit_cells:
     path: ../../packages/orblit_cells
+  orblit_collide:
+    path: ../../packages/orblit_collide
   orblit_core:
     path: ../../packages/orblit_core
   orblit_effect:

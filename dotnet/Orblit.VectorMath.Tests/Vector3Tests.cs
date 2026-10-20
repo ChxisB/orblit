@@ -112,4 +112,23 @@ public class Vector3Tests
         v.SetValues(7, 8, 9);
         Assert.Equal(new Vector3(7, 8, 9), v);
     }
+
+    [Fact]
+    public void AComponentCanBeReadAndWrittenByPosition()
+    {
+        var v = new Vector3(1, 2, 3);
+        Assert.Equal(new[] { 1.0, 2.0, 3.0 }, new[] { v[0], v[1], v[2] });
+        v[1] = 9;
+        Assert.Equal(new Vector3(1, 9, 3), v);
+    }
+
+    [Theory]
+    [InlineData(-1)]
+    [InlineData(3)]
+    public void APositionOutsideTheThreeComponentsIsRefused(int index)
+    {
+        var v = new Vector3(1, 2, 3);
+        Assert.Throws<ArgumentOutOfRangeException>(() => v[index]);
+        Assert.Throws<ArgumentOutOfRangeException>(() => v[index] = 0);
+    }
 }

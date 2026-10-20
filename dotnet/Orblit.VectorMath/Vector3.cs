@@ -13,6 +13,38 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     public double Z { get; set; } = z;
 
+    /// <summary>A component by position, 0 to 2, as Dart's <c>[]</c> reads it.</summary>
+    public double this[int index]
+    {
+        get => index switch
+        {
+            0 => X,
+            1 => Y,
+            2 => Z,
+            _ => throw OutOfRange(index),
+        };
+        set
+        {
+            switch (index)
+            {
+                case 0:
+                    X = value;
+                    break;
+                case 1:
+                    Y = value;
+                    break;
+                case 2:
+                    Z = value;
+                    break;
+                default:
+                    throw OutOfRange(index);
+            }
+        }
+    }
+
+    private static ArgumentOutOfRangeException OutOfRange(int index) =>
+        new(nameof(index), index, "A Vector3 has three components, 0 to 2.");
+
     /// <summary>The summed squares, added z first as Dart's does, so the last bit agrees.</summary>
     public double Length2 => (Z * Z) + (Y * Y) + (X * X);
 

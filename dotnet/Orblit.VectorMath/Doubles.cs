@@ -76,4 +76,10 @@ public static class Doubles
 
         return (long)Math.Floor(value);
     }
+
+    /// <summary>
+    /// Dart's <c>double.sign</c>: -1, 1, or the value itself for either zero
+    /// and for NaN. <c>Math.Sign</c> returns an int and throws on NaN.
+    /// </summary>
+    public static double Sign(double value) => value > 0 ? 1 : (value < 0 ? -1 : value);
 }

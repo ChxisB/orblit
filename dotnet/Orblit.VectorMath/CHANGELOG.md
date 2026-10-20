@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.0
+
+- `Vector2`, with what the collide port reads: `All`, `+`, `-`, `*` and `/` by a
+  scalar, unary `-`, `Length`, `Length2` and `Clone`.
+- `Vector3` gains an indexer. A position other than 0 to 2 throws.
+- `Doubles.Sign`, which is Dart's `double.sign`.
+
 ## 0.4.0
 
 - `Vector3` gains `DistanceTo` and `DistanceToSquared`, which the agent port
