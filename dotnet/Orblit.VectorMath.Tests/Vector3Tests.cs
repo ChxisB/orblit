@@ -143,4 +143,29 @@ public class Vector3Tests
         Assert.Throws<ArgumentOutOfRangeException>(() => v[index]);
         Assert.Throws<ArgumentOutOfRangeException>(() => v[index] = 0);
     }
+
+    [Fact]
+    public void InPlaceOperationsChangeTheVectorAndNotACopy()
+    {
+        var v = new Vector3(1, 2, 3);
+        v.Add(new Vector3(1, 1, 1));
+        Assert.Equal(new Vector3(2, 3, 4), v);
+        v.AddScaled(new Vector3(1, 0, -1), 2);
+        Assert.Equal(new Vector3(4, 3, 2), v);
+        v.Scale(0.5);
+        Assert.Equal(new Vector3(2, 1.5, 1), v);
+        v.SetFrom(new Vector3(7, 8, 9));
+        Assert.Equal(new Vector3(7, 8, 9), v);
+        v.SetZero();
+        Assert.Equal(Vector3.Zero(), v);
+    }
+
+    [Fact]
+    public void ScaledIsACopyAndLeavesTheOriginal()
+    {
+        var v = new Vector3(1, 2, 3);
+        var twice = v.Scaled(2);
+        Assert.Equal(new Vector3(2, 4, 6), twice);
+        Assert.Equal(new Vector3(1, 2, 3), v);
+    }
 }

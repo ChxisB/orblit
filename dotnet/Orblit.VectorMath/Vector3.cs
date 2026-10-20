@@ -67,6 +67,46 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     public Vector3 Clone() => new(X, Y, Z);
 
+    public void SetFrom(Vector3 other)
+    {
+        Z = other.Z;
+        Y = other.Y;
+        X = other.X;
+    }
+
+    public void SetZero()
+    {
+        Z = 0;
+        Y = 0;
+        X = 0;
+    }
+
+    /// <summary>Adds <paramref name="other"/> into this one, in place, which is Dart's <c>add</c>.</summary>
+    public void Add(Vector3 other)
+    {
+        Z += other.Z;
+        Y += other.Y;
+        X += other.X;
+    }
+
+    /// <summary>Adds <paramref name="other"/> times <paramref name="factor"/> into this one, in place.</summary>
+    public void AddScaled(Vector3 other, double factor)
+    {
+        Z += other.Z * factor;
+        Y += other.Y * factor;
+        X += other.X * factor;
+    }
+
+    /// <summary>Multiplies this one by <paramref name="factor"/>, in place.</summary>
+    public void Scale(double factor)
+    {
+        Z *= factor;
+        Y *= factor;
+        X *= factor;
+    }
+
+    public Vector3 Scaled(double factor) => this * factor;
+
     public void SetValues(double x, double y, double z)
     {
         Z = z;

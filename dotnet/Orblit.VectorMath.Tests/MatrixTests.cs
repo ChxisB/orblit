@@ -96,4 +96,116 @@ public class MatrixTests
         Assert.Same(point, result);
         Assert.Equal(new Vector3(11, 22, 33), point);
     }
+
+    private static Matrix4 Sample() => Matrix4.Compose(
+        new Vector3(1, -2, 3),
+        Quaternion.AxisAngle(new Vector3(1, 2, 3), 0.9),
+        new Vector3(2, 3, 0.5));
+
+    private static void SameMatrix(Matrix4 expected, Matrix4 actual, double tolerance = 1e-9)
+    {
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(expected[i], actual[i], tolerance);
+        }
+    }
+
+    [Fact]
+    public void AMatrixTimesItsInverseIsTheIdentity()
+    {
+        SameMatrix(Matrix4.Identity(), Sample().Multiplied(Matrix4.Inverted(Sample())));
+    }
+
+    [Fact]
+    public void MultiplyAppliesTheRightHandMatrixFirst()
+    {
+        var move = Matrix4.Identity();
+        move.SetTranslation(new Vector3(0, 5, 0));
+        var turn = Matrix4.Compose(Vector3.Zero(), Quaternion.AxisAngle(new Vector3(0, 0, 1), Math.PI / 2), Vector3.All(1));
+        var point = move.Multiplied(turn).Transform3(new Vector3(1, 0, 0));
+        Assert.Equal(0, point.X, 1e-9);
+        Assert.Equal(6, point.Y, 1e-9);
+    }
+
+    [Fact]
+    public void MultiplyLeavesTheArgumentAndMultipliedLeavesBoth()
+    {
+        var a = Sample();
+        var b = Matrix4.Identity();
+        b.SetTranslation(new Vector3(1, 1, 1));
+        _ = a.Multiplied(b);
+        SameMatrix(Sample(), a, 0);
+        a.Multiply(b);
+        SameMatrix(Sample().Multiplied(b), a, 0);
+    }
+
+    [Fact]
+    public void ACloneDoesNotShareStorage()
+    {
+        var a = Sample();
+        var b = a.Clone();
+        b[0] = 99;
+        Assert.NotEqual(99, a[0]);
+    }
+
+    [Fact]
+    public void AMatrixWithNoInverseIsRefusedByInvertedAndReportedByCopyInverse()
+    {
+        var flat = Matrix4.Compose(Vector3.Zero(), Quaternion.Identity(), new Vector3(1, 0, 1));
+        Assert.Throws<ArgumentException>(() => Matrix4.Inverted(flat));
+        var into = Matrix4.Zero();
+        Assert.Equal(0, into.CopyInverse(flat));
+        SameMatrix(flat, into, 0);
+    }
+
+    [Fact]
+    public void TheDeterminantIsTheProductOfTheScalesAndTurnsNegativeWhenFlipped()
+    {
+        Assert.Equal(3, Sample().Determinant(), 1e-9);
+        var flipped = Matrix4.Compose(Vector3.Zero(), Quaternion.Identity(), new Vector3(-1, 1, 1));
+        Assert.True(flipped.Determinant() < 0);
+    }
+
+    [Fact]
+    public void DecomposeGivesBackWhatComposeWasGiven()
+    {
+        var translation = Vector3.Zero();
+        var rotation = Quaternion.Identity();
+        var scale = Vector3.Zero();
+        Sample().Decompose(translation, rotation, scale);
+        Assert.Equal(new Vector3(1, -2, 3), translation);
+        Assert.Equal(2, scale.X, 1e-9);
+        Assert.Equal(3, scale.Y, 1e-9);
+        Assert.Equal(0.5, scale.Z, 1e-9);
+        SameMatrix(Sample(), Matrix4.Compose(translation, rotation, scale));
+    }
+
+    [Fact]
+    public void DecomposeGivesAFlippedMatrixANegativeXScale()
+    {
+        var flipped = Matrix4.Compose(Vector3.Zero(), Quaternion.Identity(), new Vector3(-2, 1, 1));
+        var scale = Vector3.Zero();
+        flipped.Decompose(Vector3.Zero(), Quaternion.Identity(), scale);
+        Assert.Equal(-2, scale.X, 1e-9);
+    }
+
+    [Fact]
+    public void RotateIgnoresTheTranslationAndTransformDoesNot()
+    {
+        var m = Matrix4.Compose(new Vector3(10, 20, 30), Quaternion.Identity(), Vector3.All(1));
+        Assert.Equal(new Vector3(1, 2, 3), m.Rotated3(new Vector3(1, 2, 3)));
+        Assert.Equal(new Vector3(11, 22, 33), m.Transformed3(new Vector3(1, 2, 3)));
+        var point = new Vector3(1, 2, 3);
+        Assert.Same(point, m.Rotate3(point));
+    }
+
+    [Fact]
+    public void TheNamedFactoriesPlaceTheirValuesInColumnMajorOrder()
+    {
+        Assert.Equal(new Vector3(11, 22, 33), Matrix4.TranslationValues(10, 20, 30).Transformed3(new Vector3(1, 2, 3)));
+        Assert.Equal(new Vector3(2, 6, 12), Matrix4.Diagonal3Values(2, 3, 4).Transformed3(new Vector3(1, 2, 3)));
+        var turned = Matrix4.RotationZ(Math.PI / 2).Rotated3(new Vector3(1, 0, 0));
+        Assert.Equal(0, turned.X, 1e-9);
+        Assert.Equal(1, turned.Y, 1e-9);
+    }
 }

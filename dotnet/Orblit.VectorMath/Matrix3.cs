@@ -18,4 +18,19 @@ public sealed class Matrix3
     public double Trace => _storage[0] + _storage[4] + _storage[8];
 
     public double Entry(int row, int column) => _storage[(column * 3) + row];
+
+    /// <summary>Turns <paramref name="argument"/> in place, and returns it.</summary>
+    public Vector3 Transform(Vector3 argument)
+    {
+        var x = (_storage[0] * argument.X) + (_storage[3] * argument.Y) + (_storage[6] * argument.Z);
+        var y = (_storage[1] * argument.X) + (_storage[4] * argument.Y) + (_storage[7] * argument.Z);
+        var z = (_storage[2] * argument.X) + (_storage[5] * argument.Y) + (_storage[8] * argument.Z);
+        argument.X = x;
+        argument.Y = y;
+        argument.Z = z;
+        return argument;
+    }
+
+    /// <summary>A turned copy of <paramref name="argument"/>.</summary>
+    public Vector3 Transformed(Vector3 argument) => Transform(argument.Clone());
 }

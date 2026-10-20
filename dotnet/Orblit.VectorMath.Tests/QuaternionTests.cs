@@ -134,4 +134,45 @@ public class QuaternionTests
         Assert.Equal(Math.Sin(0.3), roll.Z, Tight);
         Assert.Equal(Math.Cos(0.3), roll.W, Tight);
     }
+
+    [Fact]
+    public void ConjugatedAndNormalizedAreCopies()
+    {
+        var q = new Quaternion(1, 2, 3, 4);
+        Assert.Equal(new Quaternion(-1, -2, -3, 4), q.Conjugated());
+        Assert.Equal(1, q.Normalized().Length, Tight);
+        Assert.Equal(new Quaternion(1, 2, 3, 4), q);
+    }
+
+    [Fact]
+    public void SetFromAndSetValuesWriteInPlace()
+    {
+        var q = Quaternion.Identity();
+        q.SetValues(1, 2, 3, 4);
+        Assert.Equal(new Quaternion(1, 2, 3, 4), q);
+        q.SetFrom(new Quaternion(5, 6, 7, 8));
+        Assert.Equal(new Quaternion(5, 6, 7, 8), q);
+    }
+
+    [Fact]
+    public void TheRotationMatrixTurnsAVectorAsTheQuaternionIs()
+    {
+        var q = Quaternion.AxisAngle(new Vector3(0, 0, 1), Math.PI / 2);
+        var turned = q.AsRotationMatrix().Transformed(new Vector3(1, 0, 0));
+        Assert.Equal(0, turned.X, 1e-9);
+        Assert.Equal(1, turned.Y, 1e-9);
+    }
+
+    [Fact]
+    public void ARotationMatrixDividesOutTheScaleOfAQuaternionThatIsNotOfLengthOne()
+    {
+        var unit = Quaternion.AxisAngle(new Vector3(0, 1, 0), 0.7);
+        var big = new Quaternion(unit.X * 3, unit.Y * 3, unit.Z * 3, unit.W * 3);
+        var a = unit.AsRotationMatrix();
+        var b = big.AsRotationMatrix();
+        for (var i = 0; i < 9; i++)
+        {
+            Assert.Equal(a[i], b[i], 1e-12);
+        }
+    }
 }

@@ -95,6 +95,71 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
 
     public Quaternion Clone() => new(X, Y, Z, W);
 
+    public void SetFrom(Quaternion other)
+    {
+        X = other.X;
+        Y = other.Y;
+        Z = other.Z;
+        W = other.W;
+    }
+
+    public void SetValues(double x, double y, double z, double w)
+    {
+        X = x;
+        Y = y;
+        Z = z;
+        W = w;
+    }
+
+    /// <summary>A copy turned the other way. W is kept.</summary>
+    public Quaternion Conjugated()
+    {
+        var copy = Clone();
+        copy.Conjugate();
+        return copy;
+    }
+
+    public Quaternion Normalized()
+    {
+        var copy = Clone();
+        copy.Normalize();
+        return copy;
+    }
+
+    /// <summary>
+    /// The rotation as a matrix. The scale is divided out by the squared length,
+    /// so a quaternion that is not of length one still gives a rotation, and the
+    /// zero quaternion gives a matrix of not-a-number, where Dart only asserts.
+    /// </summary>
+    public Matrix3 AsRotationMatrix()
+    {
+        var s = 2.0 / Length2;
+        var xs = X * s;
+        var ys = Y * s;
+        var zs = Z * s;
+        var wx = W * xs;
+        var wy = W * ys;
+        var wz = W * zs;
+        var xx = X * xs;
+        var xy = X * ys;
+        var xz = X * zs;
+        var yy = Y * ys;
+        var yz = Y * zs;
+        var zz = Z * zs;
+
+        var m = new Matrix3();
+        m[0] = 1.0 - (yy + zz);
+        m[1] = xy + wz;
+        m[2] = xz - wy;
+        m[3] = xy - wz;
+        m[4] = 1.0 - (xx + zz);
+        m[5] = yz + wx;
+        m[6] = xz + wy;
+        m[7] = yz - wx;
+        m[8] = 1.0 - (xx + yy);
+        return m;
+    }
+
     /// <summary>Negates x, y and z in place, which turns the other way. W is left as it is.</summary>
     public void Conjugate()
     {

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.10.0
+
+- `Matrix4` gains `Zero`, `Clone`, `SetFrom`, `Multiply`, `Multiplied`,
+  `Determinant`, `CopyInverse`, `Inverted`, `Decompose`, `Rotate3`, `Rotated3`
+  and `Transformed3`, which the rig port reads.
+- `Matrix4.TranslationValues`, `Diagonal3Values` and `RotationZ`.
+- `Matrix3.Transform` and `Transformed`.
+- `Quaternion` gains `SetFrom`, `SetValues`, `Conjugated`, `Normalized` and
+  `AsRotationMatrix`.
+- `Vector3` gains `SetFrom`, `SetZero`, `Add`, `AddScaled`, `Scale` and
+  `Scaled`.
+
 ## 0.9.0
 
 - `Doubles.ToDartString`, which is Dart's `double.toString`.
