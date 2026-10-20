@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.6.0</Version>
+    <Description>Geometry somebody is building: faces of any size, the shapes and edits that make them, texture coordinates, and the OBJ, STL, PLY and glTF files they come from and go to.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Mesh.Tests" />
+  </ItemGroup>
+</Project>
