@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+
+- `Quaternion` gains `Length`, `Length2` and `Normalize`, which the sequence
+  port reads.
+- `Doubles.Round`, which is Dart's `double.round()`.
+
 ## 0.5.0
 
 - `Vector2`, with what the collide port reads: `All`, `+`, `-`, `*` and `/` by a

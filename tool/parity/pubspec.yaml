@@ -28,6 +28,8 @@ dependencies:
     path: ../../packages/orblit_profile
   orblit_progress:
     path: ../../packages/orblit_progress
+  orblit_sequence:
+    path: ../../packages/orblit_sequence
   vector_math: ^2.1.4
 
 dev_dependencies:

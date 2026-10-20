@@ -72,6 +72,29 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
 
     public Quaternion Clone() => new(X, Y, Z, W);
 
+    public double Length2 => (X * X) + (Y * Y) + (Z * Z) + (W * W);
+
+    public double Length => Math.Sqrt(Length2);
+
+    /// <summary>
+    /// Scales to length one, in place. A quaternion of length zero is left as it
+    /// is, and the multiply is by the reciprocal, as in Dart.
+    /// </summary>
+    public void Normalize()
+    {
+        var length = Length;
+        if (length == 0)
+        {
+            return;
+        }
+
+        var d = 1.0 / length;
+        X *= d;
+        Y *= d;
+        Z *= d;
+        W *= d;
+    }
+
     public bool Equals(Quaternion? other) =>
         other is not null && X == other.X && Y == other.Y && Z == other.Z && W == other.W;
 

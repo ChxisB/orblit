@@ -82,4 +82,18 @@ public static class Doubles
     /// and for NaN. <c>Math.Sign</c> returns an int and throws on NaN.
     /// </summary>
     public static double Sign(double value) => value > 0 ? 1 : (value < 0 ? -1 : value);
+
+    /// <summary>
+    /// Dart's <c>double.round()</c>: halves go away from zero, and NaN and
+    /// infinity throw. <c>Math.Round</c> goes to the even number by default.
+    /// </summary>
+    public static long Round(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "Only a finite number can be rounded.");
+        }
+
+        return (long)Math.Round(value, MidpointRounding.AwayFromZero);
+    }
 }

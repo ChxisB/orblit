@@ -85,4 +85,21 @@ public class QuaternionTests
         Assert.Equal(q.Z, sign * back.Z, 1e-9);
         Assert.Equal(q.W, sign * back.W, 1e-9);
     }
+
+    [Fact]
+    public void NormalizingGivesLengthOneAndLeavesTheZeroQuaternionAlone()
+    {
+        var q = new Quaternion(1, 2, 3, 4);
+        q.Normalize();
+        Assert.Equal(1, q.Length, Tight);
+        Assert.Equal(1.0 / Math.Sqrt(30), q.X, Tight);
+
+        var nothing = new Quaternion(0, 0, 0, 0);
+        nothing.Normalize();
+        Assert.Equal(new Quaternion(0, 0, 0, 0), nothing);
+    }
+
+    [Fact]
+    public void LengthSquaredIsTheSumOfTheFourSquares() =>
+        Assert.Equal(30, new Quaternion(1, 2, 3, 4).Length2, Tight);
 }

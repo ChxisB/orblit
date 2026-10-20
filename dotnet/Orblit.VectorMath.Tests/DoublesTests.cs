@@ -86,4 +86,19 @@ public class DoublesTests
         Assert.False(double.IsNegative(Doubles.Sign(0.0)));
         Assert.True(double.IsNaN(Doubles.Sign(double.NaN)));
     }
+
+    [Theory]
+    [InlineData(2.5, 3)]
+    [InlineData(-2.5, -3)]
+    [InlineData(0.49999999999999994, 0)]
+    [InlineData(-0.4, 0)]
+    [InlineData(1.5, 2)]
+    public void RoundGoesAwayFromZeroOnAHalf(double value, long expected) => Assert.Equal(expected, Doubles.Round(value));
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void RoundOfSomethingNotFiniteIsRefused(double value) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.Round(value));
 }

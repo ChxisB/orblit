@@ -14,7 +14,7 @@ Each row is a place where a test will not always catch the difference.
 | `a % b` on ints is never negative | A `Mod` helper | C# `%` keeps the sign of `a` |
 | `a % b` on doubles is never negative | `%`, then add `b` if the result is below zero | Same sign trap. Dart adds `b` inside `%`, and `TilingNoise.Wrap` does it by hand |
 | `a / b` on ints gives a double | Cast one side to `double` | C# `/` on two longs truncates |
-| `x.round()` rounds half away from zero | `Math.Round(x, MidpointRounding.AwayFromZero)` | `Math.Round` defaults to banker's rounding |
+| `x.round()` rounds half away from zero, and throws on NaN or infinity | `Doubles.Round(x)` | `Math.Round` defaults to banker's rounding, and the cast of a non-finite value gives no error |
 | `x.floor()` on NaN or infinity throws | Check `double.IsFinite`, then `(long)Math.Floor(x)` | The C# cast gives an unspecified value and no error |
 | `jsonEncode(1.0)` gives `1.0` | A shared writer with invariant culture | `System.Text.Json` gives `1`, so byte goldens differ |
 | `List.sort` | `OrderBy` when the order of equals matters | `Array.Sort` and `List.Sort` are not stable |
@@ -24,7 +24,7 @@ Each row is a place where a test will not always catch the difference.
 | `Stream` and `async*` | `IAsyncEnumerable<T>` or `Channel<T>` | Pass a `CancellationToken` on every async method |
 | `Isolate` | `Task.Run` or a thread | Messages were copies. Shared state now needs a lock |
 | `vector_math_64` `Vector3` | `Orblit.VectorMath.Vector3`, a mutable class of doubles | `System.Numerics.Vector3` is float32. The Dart vector is written through (`color.x = 0`), so it stays a class and a copy is `Clone()` |
-| A namespace and a type of one name | Rename the type | CA1724. `Orblit.Noise` holds `NoiseField`, not `Noise`, because a sibling namespace sees the namespace first |
+| A namespace and a type of one name | Rename the type | CA1724. `Orblit.Noise` holds `NoiseField`, not `Noise`, and `Orblit.Sequence` holds `CutSequence`, because a sibling namespace sees the namespace first |
 | Optional positional parameters on an override | Repeat the default on every override | A call through the derived type gets no default otherwise |
 | A `switch` over a table of cases | The `switch` expression, with `[SuppressMessage("Maintainability", "CA1502")]` and the reason `F2: a list of cases is data.` | CA1502 counts every arm |
 | `StateError` | `InvalidOperationException` | Dart `isA<StateError>` matches subclasses. `Assert.Throws<T>` matches the exact type, so use `ThrowsAny` for a subclass |
@@ -69,6 +69,11 @@ Each row is a place where a test will not always catch the difference.
 | A member named like its class, `Box.box` | Drop it and keep the member that says the same, `Bounds` | CS0542. Say so in the `CHANGELOG.md` |
 | An override whose parameter has a new name | Rename the base parameter to match | CA1725 wants the same name all the way down. Dart renames freely |
 | A bug the Dart has, found while porting | Port it as it is, say so in the `CHANGELOG.md`, and fix it in its own commit after the port passes | `World2` pairs ids with `a * 1000003 + b`, which mis-pairs ids outside 0 to 1000002. The fixture holds odd ids, so a fix on one side shows as a failure |
+| A generic `T?` where `T` may be a value type | `TryX(out T)` for a result, and a `Slope<T>?` wrapper struct for a parameter | `T?` on an unconstrained generic means two things in C#, and neither is Dart's. `PropertyTrack<T>.TryValueAt` and `Key<T>.SlopeIn` are the two cases |
+| `const` instances, `doubleMixer` and `boolMixer` | Static readonly fields on a static class, `Mixers.OfDouble` | A member named `Double` risks CA1720. The `Of` prefix keeps the four findable together |
+| `sync*` and `yield` | An iterator method returning `IEnumerable<T>` | It runs when enumerated, not when called, in both languages. A refusal before the first `yield` also waits |
+| `assert` in a constructor | An `ArgumentException` that always runs | Dart skips asserts in a release build. The exporter must never build an invalid object, because Dart may not refuse it. The C# tests cover the refusals apart |
+| A name with a trailing underscore to dodge a keyword, `Easing.in_` | Drop the underscore, `Easing.In` | A fixture spells the Dart name, so its reader strips the underscore and ignores case |
 
 ## Fixtures
 
