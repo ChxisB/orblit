@@ -97,3 +97,9 @@ case per line, stamped with the commit that last changed the package.
 - A Dart loop that declares tests becomes a `[Theory]` over the same names.
 - Tests the port adds, such as a fixture check, are counted apart in
   `PARITY.md`.
+| `map.putIfAbsent(k, () => draw())` | `if (!map.ContainsKey(k))`, then `Add` | The Dart value is built only for a new key. `TryAdd(k, draw())` builds it every time, so a random draw happens on every call and the sequence drifts |
+| `jsonEncode` of text | A hand-written quoter | Dart escapes only the quote, the backslash, control characters and a lone surrogate. `System.Text.Json` escapes `<`, `>`, `&`, `+` and every non-ASCII character, so the bytes differ |
+| `jsonDecode` of a string with a lone surrogate | Unescape `GetRawText()` by hand | Dart keeps the surrogate. `JsonElement.GetString` throws `InvalidOperationException` |
+| A `Future` that is already done | `await Task.Yield()` first, where the caller holds a lock | Dart delivers the completion later, in a microtask. A C# `await` of a finished task goes on at once, so an answer can arrive inside the call that asked, and inside its lock |
+| `Future.delayed(Duration.zero)` to let a task run | `Support.Until(condition, what)` | Poll a condition. A fixed delay is a flake. A negative check, that nothing happened, still needs a short `Task.Delay` |
+| A regex `$` | `\z` | .NET `$` also matches before a final newline, so `ana\n` passes a key check |
