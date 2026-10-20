@@ -61,6 +61,13 @@ every package with a changed file under `lib/`, it requires:
 - the package's `version:` to differ from the one on `main`, and
 - its `CHANGELOG.md` to mention the new version.
 
+The same holds for a .NET project under `dotnet/`. When a `.cs`, `.axaml` or
+`.csproj` file in `dotnet/<Project>/` changed, the check wants the `<Version>`
+in `<Project>.csproj` to differ from `main` and `dotnet/<Project>/CHANGELOG.md`
+to mention it. A project with no `<Version>`, such as a test project, is never
+asked for a bump. The exemption line names a project the same way:
+`Version-exempt: Orblit.Noise - dotnet format only`.
+
 It runs in CI on every pull request. A branch that only touches tests, docs,
 comments or CI passes without a bump, because those are not features.
 

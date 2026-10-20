@@ -11,6 +11,9 @@
 # rename with no behaviour in it — says so with a `Version-exempt: <reason>`
 # line in one of its commit messages, and this honours it and prints it.
 #
+# A C# project under dotnet/ follows the same rule. It counts when its csproj
+# has a <Version>, and a changed .cs, .axaml or .csproj file asks for a bump.
+#
 # Usage: check_versions.sh [base ref]   (default: origin/main, else main)
 set -uo pipefail
 cd "$(dirname "$0")/.."
@@ -45,6 +48,14 @@ version_at() {
     | sed -n 's/^version: *//p' | head -1
 }
 
+dotnet_version_at() {
+  # $1 ref, $2 project. A project is versioned by a <Version> in its csproj,
+  # which is named like its folder. Test and tool projects have none, so
+  # they are never asked for a bump.
+  git show "$1:dotnet/$2/$2.csproj" 2>/dev/null \
+    | sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' | head -1
+}
+
 # An escape hatch, because the check cannot tell a reflow from a rewrite.
 # `dart format` joining two lines is not a feature, and git cannot see that:
 # --ignore-all-space compares within lines and a reflow changes how many there
@@ -75,46 +86,61 @@ changed=$(git diff --name-only "$MERGE_BASE"...HEAD \
   | grep -vE '/(third_party|generated)/' \
   | cut -d/ -f2 | sort -u)
 
-if [ -z "$changed" ]; then
-  echo "no package library code changed — no version bump needed"
+# The C# projects. Only source counts, as only lib/ does above.
+changed_dotnet=$(git diff --name-only "$MERGE_BASE"...HEAD \
+    -- 'dotnet/*.cs' 'dotnet/*.axaml' 'dotnet/*.csproj' \
+  | grep -vE '/(bin|obj)/' | cut -d/ -f2 | sort -u)
+
+if [ -z "$changed$changed_dotnet" ]; then
+  echo "no package library code changed, so no version bump needed"
   exit 0
 fi
 
-failures=0
-for package in $changed; do
-  case "$exempt" in
-    *all*) echo "  --    $package exempted"; continue ;;
-  esac
-  if echo "$exempt" | grep -qx "$package"; then
-    echo "  --    $package exempted"
-    continue
+# $1 name, $2 version at the merge base, $3 version now, $4 where the version
+# lives, $5 the changelog. Prints one line and returns 1 on a failure.
+check_version() {
+  local name=$1 was=$2 now=$3 manifest=$4 changelog=$5
+
+  if echo "$exempt" | grep -qx all || echo "$exempt" | grep -qx "$name"; then
+    echo "  --    $name exempted"
+    return 0
   fi
 
-  was=$(version_at "$MERGE_BASE" "$package")
-  now=$(version_at HEAD "$package")
-
   if [ -z "$was" ]; then
-    echo "  ok    $package is new at $now"
-    continue
+    echo "  ok    $name is new at $now"
+    return 0
   fi
 
   if [ "$was" = "$now" ]; then
-    echo "  FAIL  $package: lib/ changed but version is still $now"
-    echo "        Bump it in packages/$package/pubspec.yaml and add a line to"
-    echo "        packages/$package/CHANGELOG.md. See VERSIONING.md."
-    failures=$((failures + 1))
-    continue
+    echo "  FAIL  $name: source changed but version is still $now"
+    echo "        Bump it in $manifest and add a line to"
+    echo "        $changelog. See VERSIONING.md."
+    return 1
   fi
 
   # A bump nobody wrote down is half the rule. The changelog is the half a
   # consumer actually reads.
-  if ! grep -qF "$now" "packages/$package/CHANGELOG.md" 2>/dev/null; then
-    echo "  FAIL  $package: version is $now but CHANGELOG.md does not mention it"
-    failures=$((failures + 1))
-    continue
+  if ! grep -qF "$now" "$changelog" 2>/dev/null; then
+    echo "  FAIL  $name: version is $now but $changelog does not mention it"
+    return 1
   fi
 
-  echo "  ok    $package $was -> $now"
+  echo "  ok    $name $was -> $now"
+}
+
+failures=0
+for package in $changed; do
+  check_version "$package" "$(version_at "$MERGE_BASE" "$package")" \
+    "$(version_at HEAD "$package")" "packages/$package/pubspec.yaml" \
+    "packages/$package/CHANGELOG.md" || failures=$((failures + 1))
+done
+
+for project in $changed_dotnet; do
+  now=$(dotnet_version_at HEAD "$project")
+  [ -n "$now" ] || continue
+  check_version "$project" "$(dotnet_version_at "$MERGE_BASE" "$project")" \
+    "$now" "dotnet/$project/$project.csproj" \
+    "dotnet/$project/CHANGELOG.md" || failures=$((failures + 1))
 done
 
 echo

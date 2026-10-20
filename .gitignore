@@ -72,3 +72,8 @@ packages/orblit_filament/native/web/captures/
 # Fetched by tool/check_gltf.sh: the Khronos glTF-Validator, which is the
 # reference implementation and not ours to vendor.
 node_modules/
+
+# .NET
+dotnet/**/bin/
+dotnet/**/obj/
+dotnet/**/TestResults/

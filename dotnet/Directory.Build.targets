@@ -1,0 +1,7 @@
+<Project>
+  <!-- Every test project names itself with IsTestProject and gets the same test framework. -->
+  <ItemGroup Condition="'$(IsTestProject)' == 'true'">
+    <PackageReference Include="xunit.v3" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+</Project>
