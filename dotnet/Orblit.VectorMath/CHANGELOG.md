@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+- `Vector3` gains `DistanceTo` and `DistanceToSquared`, which the agent port
+  reads.
+
 ## 0.3.0
 
 - `Vector3` gains `/` by a scalar, unary `-`, `Dot`, `Cross` and `SetValues`,

@@ -48,6 +48,17 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
     public Vector3 Cross(Vector3 other) =>
         new((Y * other.Z) - (Z * other.Y), (Z * other.X) - (X * other.Z), (X * other.Y) - (Y * other.X));
 
+    /// <summary>The squares summed x first, unlike <see cref="Length2"/>, because that is the order Dart sums them in.</summary>
+    public double DistanceToSquared(Vector3 other)
+    {
+        var dz = Z - other.Z;
+        var dy = Y - other.Y;
+        var dx = X - other.X;
+        return (dx * dx) + (dy * dy) + (dz * dz);
+    }
+
+    public double DistanceTo(Vector3 other) => Math.Sqrt(DistanceToSquared(other));
+
     /// <summary>
     /// A copy of length one. A vector of length zero comes back unchanged, and a
     /// multiply by the reciprocal is what Dart does, not a divide.

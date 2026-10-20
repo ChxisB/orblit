@@ -56,6 +56,11 @@ Each row is a place where a test will not always catch the difference.
 | A `const` constructor with default values | Optional parameters, called by name | The class stays sealed and immutable |
 | More than four named parameters | The same parameters, called by name, with a one-line `// F2:` comment at the constructor | The Dart named parameters count as the options object. A C# call by name does the same job |
 | A `LinkedHashMap` entry removed then added | `OrderedDictionary.Remove(key, out value)`, then the setter | Removing first moves the entry to the end, in both languages. Assigning to a key that exists keeps its place |
+| A Dart record `({Steering behaviour, double weight})` | A tuple `(Steering Behaviour, double Weight)` | Names change case, and a caller builds it positionally |
+| `T? read<T>(key)` on a map of `Object?` | `T? Read<T>(key)`, which gives `default` for a missing key | For a value type that is zero or false, where Dart gives null. The type stored must match the type read, so a `long` is read as `long`, never `int` |
+| A map keyed by node object, with `const` nodes | `Dictionary<Node, object?>`, which keys by reference | Dart makes two equal `const` nodes one object, so they share a key there. Two `new` nodes never do |
+| A type named `Do` | `<NoWarn>CA1716</NoWarn>` in the csproj, with a comment | CA1716 flags a Visual Basic keyword. The Dart name stays |
+| `double.toString()` in a label | `Labels.Number`, which adds `.0` to a whole number | .NET switches to `E` notation at 1e15 and below 1e-4, so the two agree only from 0.0001 up to below 1e15 |
 | A method over ten branches | Split it into private methods, one per step | CA1502 counts every `if`, `foreach` and `&&`. `CueBoard.Update` became `Loudest`, `FadeOut`, `Follow` and `Start` |
 
 ## Fixtures

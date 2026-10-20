@@ -96,6 +96,16 @@ public class Vector3Tests
     }
 
     [Fact]
+    public void DistanceToIsTheLengthOfTheDifference()
+    {
+        var a = new Vector3(1, 2, 3);
+        var b = new Vector3(4, 6, 3);
+        Assert.Equal(25, a.DistanceToSquared(b));
+        Assert.Equal(5, a.DistanceTo(b));
+        Assert.Equal(0, a.DistanceTo(a));
+    }
+
+    [Fact]
     public void SetValuesWritesAllThreeComponents()
     {
         var v = new Vector3(1, 2, 3);
