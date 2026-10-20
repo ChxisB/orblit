@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.2.0</Version>
+    <Version>0.2.1</Version>
     <Description>JSON read and written the way Dart's dart:convert does it, so a file one side wrote reads the same on the other. Whole numbers are long, the rest double, and a map keeps its keys in the order they came.</Description>
   </PropertyGroup>
   <ItemGroup>

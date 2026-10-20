@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- The string quoting sits in its own file, `DartQuote.cs`, so Orblit.Codegen can
+  compile the same source. Nothing written changes.
+
 ## 0.2.0
 
 - `DartJson.Encode` writes a `double` the way `jsonEncode` does, so `1.0`
