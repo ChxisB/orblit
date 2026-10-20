@@ -90,6 +90,11 @@ Each row is a place where a test will not always catch the difference.
 | `jsonDecode` and `jsonEncode` | `DartJson.Decode` and `DartJson.Encode` in `Orblit.Json` | `System.Text.Json` reads `-0` as a double, takes a repeated key at its last place and has no refusal for `1e999`. `Orblit.Json` keeps Dart's reading and writes only what a package has needed |
 | A fixture int past 2^53 | `big()` in the exporter writes it as a string, and the test reads it with `long.Parse` | `JsonCompare` reads numbers as doubles, so an int past 2^53 loses its low bits and a wrong answer can compare equal. A string compares exactly |
 | A refusal in a fixture | Call the Dart code and record `{'throws': true}`, never write it by hand | A hand-written refusal passes in C# whatever Dart does. A Dart `assert` does not run under `dart run`, so a case that only an assert refuses must be a C#-only test |
+| `utf8.decode` of a file header | `Encoding.UTF8.GetString`, after dropping one leading U+FEFF | Dart strips a byte order mark. .NET keeps it as a character, and the header then fails to parse |
+| A `Float32List` holding NaN, written to a file | Compare the decoded numbers, not the bytes | The payload bits of a NaN depend on the CPU. Dart on arm64 writes `0x7FC00000`, and C# `(float)double.NaN` writes `0xFFC00000`, so a region with a NaN height is not byte-stable between machines |
+| A seeded `Random(seed)` | `System.Random(seed)`, and a C# test that a seed repeats | The two generators differ and the Dart one is not ported (decision 77). A fixture cannot hold a jittered stroke |
+| A value class with named optional parameters and `copyWith` | A sealed class with a primary constructor, `IEquatable`, and `CopyWith(double? size = null, ...)` | A call still names what it sets. A record would work, but `Brush` has defaults that need checking in the constructor |
+| An `enum` that carries data | A C# enum plus an extension class, `BrushTools.Layer(tool)` | A C# enum has no members of its own |
 
 ## Fixtures
 
