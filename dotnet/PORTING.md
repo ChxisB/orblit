@@ -23,6 +23,7 @@ Each row is a place where a test will not always catch the difference.
 | A sealed class and an exhaustive `switch` | An abstract record with sealed cases and a `switch` expression | C# does not check a class hierarchy for exhaustiveness. A test must |
 | `Stream` and `async*` | `IAsyncEnumerable<T>` or `Channel<T>` | Pass a `CancellationToken` on every async method |
 | `Isolate` | `Task.Run` or a thread | Messages were copies. Shared state now needs a lock |
+| `vector_math_64` `Vector3` | `Orblit.VectorMath.Vector3`, a mutable class of doubles | `System.Numerics.Vector3` is float32. The Dart vector is written through (`color.x = 0`), so it stays a class and a copy is `Clone()` |
 | A namespace and a type of one name | Rename the type | CA1724. `Orblit.Noise` holds `NoiseField`, not `Noise`, because a sibling namespace sees the namespace first |
 | Optional positional parameters on an override | Repeat the default on every override | A call through the derived type gets no default otherwise |
 | A `switch` over a table of cases | The `switch` expression, with `[SuppressMessage("Maintainability", "CA1502")]` and the reason `F2: a list of cases is data.` | CA1502 counts every arm |

@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Double precision vectors for the ports of packages that used vector_math_64. System.Numerics holds floats only.</Description>
+  </PropertyGroup>
+</Project>
