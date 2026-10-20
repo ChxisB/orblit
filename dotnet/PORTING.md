@@ -47,7 +47,7 @@ Each row is a place where a test will not always catch the difference.
 | A library-private base class that public classes extend | A public abstract class with an `internal` constructor | CS0060 refuses a public class over an internal base. The internal constructor stops outside subclasses |
 | Top-level functions | A static class | Name it so it does not clash with the namespace, `Effects` in `Orblit.Effect` (CA1724) |
 | A function value as a default (`Ease ease = Eases.outQuad`) | `Ease? ease = null`, then `ease ?? Eases.OutQuad` | A method group is not a compile-time constant, so it cannot be a default |
-| A Dart type named like its package (`Effect`, `Audio`) | Rename the type, `TimedEffect`, `AudioPlayer` | CA1724 again, for the type that would shadow the namespace |
+| A Dart type named like its package (`Effect`, `Audio`, `Quest`) | Rename the type, `TimedEffect`, `AudioPlayer`, `QuestDefinition` | CA1724 again, for the type that would shadow the namespace |
 | `vector_math` `Vector4`, `Quaternion`, `Matrix3`, `Matrix4` | The same names in `Orblit.VectorMath`, grown a member at a time as a port needs one | A zero-length axis in `Quaternion.AxisAngle` gives the zero quaternion, as Dart does, not the identity |
 | An `abstract interface class Foo` | `interface IFoo` | The `I` prefix is the .NET rule. `AudioBackend` is `IAudioBackend` |
 | A `base mixin` | An abstract class with a `private protected` constructor | `Motion` in `Orblit.Audio`. Only a class in the same assembly can derive from it |
@@ -120,6 +120,10 @@ Each row is a place where a test will not always catch the difference.
 | `List.sort` of components with one name, past 32 | A stable `OrderBy` with ordinal comparison (decision 75) | Dart is stable up to 32 and not above. `DifferenceTests` pins 40 equal names in input order |
 | A command line tool that writes files and exits non-zero | `ORBLIT001` per refused type, and no registry written while any type is refused | A generator reports through diagnostics. A half registry would hide the refusal behind a later compile error |
 | No third party package | `Microsoft.CodeAnalysis.CSharp` 4.14.0, `PrivateAssets="all"` | A generator needs Roslyn. 4.14.0 loads in SDK 9 and 10, and a newer one fails to load in an older SDK (decision 78) |
+| `ArgumentError.value(value, name, rule)` read back as `name rule (value).` | An internal `RuleException` with that text, an `ArgumentException` | The C# message of `ArgumentException` adds a parameter name, so the port builds the Dart text itself and `Parse` passes it on in a `QuestFormatException` |
+| A regex `$` | `\z` | Dart's `$` stops at the end of the input. .NET's also matches before a final newline, so `"a\n"` would pass as a key |
+| A fixture message that holds a runtime's own words | `cutAfter` on the case: both sides compare up to and including that text | A JSON syntax error and a printed `Map` differ by language, and a value range error from another package has its own parity test |
+| A constant such as `questExtension` | A `const` on a static class, `QuestNames.Extension` | A top level constant has no home in C#. `Quests` would be shadowed by the `QuestBook.Quests` property |
 
 ## Fixtures
 
