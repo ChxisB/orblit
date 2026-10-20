@@ -8,26 +8,8 @@ import 'package:vector_math/vector_math_64.dart';
 
 typedef Case = Map<String, Object?>;
 
-/// An int JSON can carry exactly. A reader hands back a double past 2^53, so
-/// those travel as strings.
-Object big(int value) => value > 9007199254740992 || value < -9007199254740992
-    ? value.toString()
-    : value;
-
-String b64(List<int> bytes) => base64Encode(bytes);
-
 String dataB64(TypedData data) =>
     b64(data.buffer.asUint8List(data.offsetInBytes, data.lengthInBytes));
-
-Object? tree(Object? value) => switch (value) {
-  final double d => number(d),
-  final int i => big(i),
-  final Map<Object?, Object?> m => {
-    for (final e in m.entries) '${e.key}': tree(e.value),
-  },
-  final List<Object?> l => [for (final e in l) tree(e)],
-  _ => value,
-};
 
 Object? vec(Vector3? v) =>
     v == null ? null : [number(v.x), number(v.y), number(v.z)];

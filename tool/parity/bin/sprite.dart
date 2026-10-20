@@ -6,14 +6,6 @@ import 'package:orblit_parity_tool/fixture.dart';
 import 'package:orblit_sprite/orblit_sprite.dart';
 import 'package:vector_math/vector_math_64.dart';
 
-/// An int JSON can carry exactly. A reader hands back a double past 2^53, so
-/// those travel as strings.
-Object big(int value) => value > 9007199254740992 || value < -9007199254740992
-    ? value.toString()
-    : value;
-
-String b64(List<int> bytes) => base64Encode(bytes);
-
 Map<String, Object?> regionJson(Region r) => {
   'name': r.name,
   'x': big(r.x),
@@ -36,16 +28,6 @@ Map<String, Object?>? atlasJson(Atlas? a) => a == null
         'height': big(a.height),
         'regions': [for (final r in a.regions.values) regionJson(r)],
       };
-
-Object? tree(Object? value) => switch (value) {
-  final double d => number(d),
-  final int i => big(i),
-  final Map<Object?, Object?> m => {
-    for (final e in m.entries) '${e.key}': tree(e.value),
-  },
-  final List<Object?> l => [for (final e in l) tree(e)],
-  _ => value,
-};
 
 Map<String, Object?> rectJson(({int x, int y, int width, int height})? r) =>
     r == null
