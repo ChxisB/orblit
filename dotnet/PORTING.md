@@ -26,6 +26,12 @@ Each row is a place where a test will not always catch the difference.
 | A namespace and a type of one name | Rename the type | CA1724. `Orblit.Noise` holds `NoiseField`, not `Noise`, because a sibling namespace sees the namespace first |
 | Optional positional parameters on an override | Repeat the default on every override | A call through the derived type gets no default otherwise |
 | A `switch` over a table of cases | The `switch` expression, with `[SuppressMessage("Maintainability", "CA1502")]` and the reason `F2: a list of cases is data.` | CA1502 counts every arm |
+| `StateError` | `InvalidOperationException` | Dart `isA<StateError>` matches subclasses. `Assert.Throws<T>` matches the exact type, so use `ThrowsAny` for a subclass |
+| `ArgumentError` | `ArgumentException` | Same rule. A named subclass such as `ArgumentOutOfRangeException` fails `Throws<ArgumentException>` |
+| `RangeError` | `ArgumentOutOfRangeException` | |
+| `UnsupportedError` | `NotSupportedException` | |
+| An id the C header declares unsigned | `ulong` for an entity, `uint` for a component | Dart `int` is signed. Keep the C type so a handle with the top bit set does not turn negative |
+| An enum or method named `float32` or `int64` | Keep it, with `<NoWarn>CA1720</NoWarn>` and the reason | CA1720 objects to a name that is a type name |
 
 ## Fixtures
 

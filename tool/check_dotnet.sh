@@ -3,7 +3,8 @@
 #
 # The analyzer rules from the standard's C# section are build errors, so the
 # build is the lint. A build that fails stops the run, because a test over a
-# stale binary says nothing.
+# stale binary says nothing. The native libraries are built first, because the
+# test projects copy them next to the test assembly.
 set -uo pipefail
 cd "$(dirname "$0")/../dotnet"
 
@@ -21,6 +22,7 @@ step() {
   fi
 }
 
+step "native build" ../tool/build_native.sh || exit "$failures"
 step "dotnet build" dotnet build --nologo || exit "$failures"
 step "dotnet test" dotnet test --no-build
 step "dotnet format" dotnet format --verify-no-changes --no-restore

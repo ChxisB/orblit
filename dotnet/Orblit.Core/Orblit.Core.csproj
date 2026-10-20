@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>An archetype entity-component world over a native core. Components are views onto native memory.</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- The kinds and the column accessors keep the Dart names (float32, int64) so a ported system reads the same. -->
+    <NoWarn>$(NoWarn);CA1720</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Interop\Orblit.Interop.csproj" />
+  </ItemGroup>
+  <!-- The native core, built by tool/build_native.sh. It flows to every project that references this one, and into the package. -->
+  <ItemGroup>
+    <Content Include="..\native\runtimes\**\*" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes\%(RecursiveDir)" />
+  </ItemGroup>
+</Project>

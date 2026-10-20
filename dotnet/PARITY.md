@@ -9,6 +9,7 @@ is done when the two Run counts match.
 | Package | Dart declared | Dart run | C# declared | C# run | Fixtures | Added in C# | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `orblit_noise` | 16 | 41 | 16 | 41 | `noise.json`, 390 cases | fixture check (6 run), non-finite refusal (3 run) | done |
+| `orblit_core` | 32 | 32 | 32 | 32 | `core.json`, 1 world and 45 handles | snapshot of a built world (1 run) | wrapper layer only, `orblit_native` not started |
 
 ## The rule for doubles
 

@@ -77,3 +77,6 @@ node_modules/
 dotnet/**/bin/
 dotnet/**/obj/
 dotnet/**/TestResults/
+
+# The native libraries the .NET packages load, built by tool/build_native.sh.
+dotnet/native/
