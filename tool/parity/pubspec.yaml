@@ -12,6 +12,8 @@ dependencies:
     path: ../../packages/orblit_cells
   orblit_core:
     path: ../../packages/orblit_core
+  orblit_effect:
+    path: ../../packages/orblit_effect
   orblit_light:
     path: ../../packages/orblit_light
   orblit_noise:

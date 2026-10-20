@@ -40,6 +40,15 @@ Each row is a place where a test will not always catch the difference.
 | A class that has factory constructors and `implements` | An abstract class with static `Create` and `Off` members | An interface cannot hold a constructor |
 | `num.clamp` on a double | `Doubles.Clamp` | Dart orders by `compareTo`, so a NaN clamps to the upper limit. `Math.Clamp` returns NaN |
 | A `switch` over an enum with every case named | Add `_ => throw new UnreachableException()` | Dart knows the enum is closed. C# accepts a cast integer, and CS8509 is an error here |
+| A Dart enum with a symbol and a method | A sealed class with static instances and a `Values` list | An enum cannot hold a method body per case. `Values` stands in for `Enum.values` |
+| A JSON tree typed `Object?` | `IReadOnlyDictionary<string, object?>` for a map, `IReadOnlyList<object?>` for a list, `int` or `long` for a whole number, `double` for the rest | Keeps the Dart cast sites as `is` patterns |
+| A record typedef such as `Place` | A `readonly record struct` | Value equality comes free and it does not allocate |
+| `%` on a double, `floor()` on a double | `Doubles.Mod`, `Doubles.Floor` | Dart `%` is never negative and `floor()` throws on NaN or infinity. C# `%` keeps the sign and `Math.Floor` passes NaN through |
+| A library-private base class that public classes extend | A public abstract class with an `internal` constructor | CS0060 refuses a public class over an internal base. The internal constructor stops outside subclasses |
+| Top-level functions | A static class | Name it so it does not clash with the namespace, `Effects` in `Orblit.Effect` (CA1724) |
+| A function value as a default (`Ease ease = Eases.outQuad`) | `Ease? ease = null`, then `ease ?? Eases.OutQuad` | A method group is not a compile-time constant, so it cannot be a default |
+| A Dart type named like its package (`Effect`) | Rename the type, `TimedEffect` | CA1724 again, for the type that would shadow the namespace |
+| `vector_math` `Vector4`, `Quaternion`, `Matrix3`, `Matrix4` | The same names in `Orblit.VectorMath`, grown a member at a time as a port needs one | A zero-length axis in `Quaternion.AxisAngle` gives the zero quaternion, as Dart does, not the identity |
 
 ## Fixtures
 

@@ -15,6 +15,7 @@ is done when the two Run counts match.
 | `orblit_profile` | 16 | 16 | 16 | 16 | `profile.json`, 2 scripted runs of 150 frames | snapshot fixture check (1 run) | done |
 | `orblit_light` | 32 | 32 | 32 | 32 | `light.json`, 100 photometry, 34 tint and 266 light cases | photometry, tint and light fixture checks (3 run) | done |
 | `orblit_progress` | 37 | 37 | 37 | 37 | `progress.json`, 141 schema, 42 table script, 308 table decode, 236 changes decode, 30 condition and 144 comparison cases | schema, table, table decode, changes decode, condition, condition list and comparison fixture checks (7 run) | done |
+| `orblit_effect` | 35 | 35 | 35 | 35 | `effect.json`, 570 curve, 56 effect, 7 playing script, 77 applied, 196 shortest turn and 72 lerp cases | curve, effect, playing, applied and helper fixture checks (5 run) | done. `vector_math` has no package here, so its fixture is the effect one plus hand-written `Orblit.VectorMath.Tests` |
 
 ## The rule for doubles
 

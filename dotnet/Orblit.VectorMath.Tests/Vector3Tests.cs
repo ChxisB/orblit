@@ -30,4 +30,43 @@ public class Vector3Tests
         var odd = new Vector3(double.NaN, 0, 0);
         Assert.False(odd.Equals(odd.Clone()));
     }
+
+    [Fact]
+    public void ItAddsSubtractsAndScalesIntoANewVector()
+    {
+        var a = new Vector3(1, 2, 3);
+        var b = new Vector3(10, 20, 30);
+        Assert.Equal(new Vector3(11, 22, 33), a + b);
+        Assert.Equal(new Vector3(9, 18, 27), b - a);
+        Assert.Equal(new Vector3(2, 4, 6), a * 2);
+        Assert.Equal(new Vector3(1, 2, 3), a);
+    }
+
+    [Fact]
+    public void ItsLengthIsTheRootOfTheSummedSquares()
+    {
+        Assert.Equal(5, new Vector3(3, 4, 0).Length);
+        Assert.Equal(25, new Vector3(0, 3, 4).Length2);
+        Assert.Equal(0, Vector3.Zero().Length);
+        Assert.Equal(new Vector3(1, 1, 1), Vector3.All(1));
+    }
+
+    [Fact]
+    public void NormalisedIsACopyOfLengthOne()
+    {
+        var v = new Vector3(0, 3, 4);
+        var unit = v.Normalized();
+        Assert.Equal(1, unit.Length, 1e-15);
+        Assert.Equal(0.6, unit.Y, 1e-15);
+        Assert.Equal(new Vector3(0, 3, 4), v);
+    }
+
+    [Fact]
+    public void NormalisingNothingGivesNothingAndNotNotANumber()
+    {
+        var zero = Vector3.Zero();
+        var same = zero.Normalized();
+        Assert.Equal(zero, same);
+        Assert.NotSame(zero, same);
+    }
 }

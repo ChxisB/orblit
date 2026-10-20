@@ -46,4 +46,34 @@ public static class Doubles
 
         return Compare(value, upper) > 0 ? upper : value;
     }
+
+    /// <summary>
+    /// Dart's <c>%</c> on doubles. The result is never negative, and a zero is
+    /// always <c>0.0</c>. C# keeps the sign of the dividend, so <c>-1 % 3</c> is
+    /// <c>-1</c> there and <c>2</c> in Dart.
+    /// </summary>
+    public static double Mod(double value, double divisor)
+    {
+        var remainder = value % divisor;
+        if (remainder == 0)
+        {
+            return 0;
+        }
+
+        return remainder < 0 ? remainder + Math.Abs(divisor) : remainder;
+    }
+
+    /// <summary>
+    /// Dart's <c>double.floor()</c>, which throws on NaN and infinity where a C#
+    /// cast gives an unspecified number.
+    /// </summary>
+    public static long Floor(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), value, "Only a finite number has a floor.");
+        }
+
+        return (long)Math.Floor(value);
+    }
 }
