@@ -1,0 +1,15 @@
+name: orblit_parity_tool
+description: >-
+  Writes the fixtures the C# ports are checked against. Not a package anyone
+  depends on.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  orblit_noise:
+    path: ../../packages/orblit_noise
+
+dev_dependencies:
+  lints: ^5.0.0
