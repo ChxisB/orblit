@@ -69,4 +69,37 @@ public class Vector3Tests
         Assert.Equal(zero, same);
         Assert.NotSame(zero, same);
     }
+
+    [Fact]
+    public void DividingScalesByTheReciprocalAndNegatingFlipsEveryComponent()
+    {
+        var v = new Vector3(2, -4, 6);
+        Assert.Equal(new Vector3(1, -2, 3), v / 2);
+        Assert.Equal(new Vector3(-2, 4, -6), -v);
+        Assert.Equal(new Vector3(2, -4, 6), v);
+        var byZero = new Vector3(1, 0, -1) / 0;
+        Assert.Equal(double.PositiveInfinity, byZero.X);
+        Assert.True(double.IsNaN(byZero.Y));
+        Assert.Equal(double.NegativeInfinity, byZero.Z);
+    }
+
+    [Fact]
+    public void DotAndCrossFollowTheRightHandRule()
+    {
+        var x = new Vector3(1, 0, 0);
+        var y = new Vector3(0, 1, 0);
+        Assert.Equal(0, x.Dot(y));
+        Assert.Equal(32, new Vector3(1, 2, 3).Dot(new Vector3(4, 5, 6)));
+        Assert.Equal(new Vector3(0, 0, 1), x.Cross(y));
+        Assert.Equal(new Vector3(0, 0, -1), y.Cross(x));
+        Assert.Equal(new Vector3(-3, 6, -3), new Vector3(1, 2, 3).Cross(new Vector3(4, 5, 6)));
+    }
+
+    [Fact]
+    public void SetValuesWritesAllThreeComponents()
+    {
+        var v = new Vector3(1, 2, 3);
+        v.SetValues(7, 8, 9);
+        Assert.Equal(new Vector3(7, 8, 9), v);
+    }
 }

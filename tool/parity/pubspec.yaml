@@ -8,6 +8,8 @@ environment:
   sdk: ^3.10.0
 
 dependencies:
+  orblit_audio:
+    path: ../../packages/orblit_audio
   orblit_cells:
     path: ../../packages/orblit_cells
   orblit_core:

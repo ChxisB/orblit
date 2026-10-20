@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+- `Vector3` gains `/` by a scalar, unary `-`, `Dot`, `Cross` and `SetValues`,
+  which the audio port reads.
+
 ## 0.2.0
 
 - `Vector3` gains `Zero`, `All`, `+`, `-`, `*` by a scalar, `Length`, `Length2`

@@ -47,8 +47,16 @@ Each row is a place where a test will not always catch the difference.
 | A library-private base class that public classes extend | A public abstract class with an `internal` constructor | CS0060 refuses a public class over an internal base. The internal constructor stops outside subclasses |
 | Top-level functions | A static class | Name it so it does not clash with the namespace, `Effects` in `Orblit.Effect` (CA1724) |
 | A function value as a default (`Ease ease = Eases.outQuad`) | `Ease? ease = null`, then `ease ?? Eases.OutQuad` | A method group is not a compile-time constant, so it cannot be a default |
-| A Dart type named like its package (`Effect`) | Rename the type, `TimedEffect` | CA1724 again, for the type that would shadow the namespace |
+| A Dart type named like its package (`Effect`, `Audio`) | Rename the type, `TimedEffect`, `AudioPlayer` | CA1724 again, for the type that would shadow the namespace |
 | `vector_math` `Vector4`, `Quaternion`, `Matrix3`, `Matrix4` | The same names in `Orblit.VectorMath`, grown a member at a time as a port needs one | A zero-length axis in `Quaternion.AxisAngle` gives the zero quaternion, as Dart does, not the identity |
+| An `abstract interface class Foo` | `interface IFoo` | The `I` prefix is the .NET rule. `AudioBackend` is `IAudioBackend` |
+| A `base mixin` | An abstract class with a `private protected` constructor | `Motion` in `Orblit.Audio`. Only a class in the same assembly can derive from it |
+| A value class whose `==` compares doubles | A class with its own `Equals` that uses `==` | A `record` compares with `Equals`, which treats two NaNs as equal. Dart `==` does not. `Level` is a class for this reason |
+| A top-level `const` | A `const` in a static class | `Acoustics.SpeedOfSound` |
+| A `const` constructor with default values | Optional parameters, called by name | The class stays sealed and immutable |
+| More than four named parameters | The same parameters, called by name, with a one-line `// F2:` comment at the constructor | The Dart named parameters count as the options object. A C# call by name does the same job |
+| A `LinkedHashMap` entry removed then added | `OrderedDictionary.Remove(key, out value)`, then the setter | Removing first moves the entry to the end, in both languages. Assigning to a key that exists keeps its place |
+| A method over ten branches | Split it into private methods, one per step | CA1502 counts every `if`, `foreach` and `&&`. `CueBoard.Update` became `Loudest`, `FadeOut`, `Follow` and `Start` |
 
 ## Fixtures
 

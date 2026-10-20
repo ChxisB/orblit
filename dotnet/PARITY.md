@@ -16,6 +16,7 @@ is done when the two Run counts match.
 | `orblit_light` | 32 | 32 | 32 | 32 | `light.json`, 100 photometry, 34 tint and 266 light cases | photometry, tint and light fixture checks (3 run) | done |
 | `orblit_progress` | 37 | 37 | 37 | 37 | `progress.json`, 141 schema, 42 table script, 308 table decode, 236 changes decode, 30 condition and 144 comparison cases | schema, table, table decode, changes decode, condition, condition list and comparison fixture checks (7 run) | done |
 | `orblit_effect` | 35 | 35 | 35 | 35 | `effect.json`, 570 curve, 56 effect, 7 playing script, 77 applied, 196 shortest turn and 72 lerp cases | curve, effect, playing, applied and helper fixture checks (5 run) | done. `vector_math` has no package here, so its fixture is the effect one plus hand-written `Orblit.VectorMath.Tests` |
+| `orblit_audio` | 99 | 99 | 99 | 99 | `audio.json`, 504 falloff, 60 cone, 850 constructor refusal, 500 heard-by and 150 script cases (40 audio, 40 music, 40 cue, 30 contact) | falloff and cone, constructor refusal, heard-by and four script fixture checks (7 run) | done. `Orblit.VectorMath` gained `Dot`, `Cross`, `/`, unary `-` and `SetValues`, with 3 hand-written tests |
 
 ## The rule for doubles
 

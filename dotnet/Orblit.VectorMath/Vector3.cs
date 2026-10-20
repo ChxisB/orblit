@@ -28,7 +28,25 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     public static Vector3 operator *(Vector3 a, double scale) => new(a.X * scale, a.Y * scale, a.Z * scale);
 
+    /// <summary>A multiply by the reciprocal, which is what Dart does, not a divide.</summary>
+    public static Vector3 operator /(Vector3 a, double scale) => a * (1.0 / scale);
+
+    public static Vector3 operator -(Vector3 a) => new(-a.X, -a.Y, -a.Z);
+
     public Vector3 Clone() => new(X, Y, Z);
+
+    public void SetValues(double x, double y, double z)
+    {
+        Z = z;
+        Y = y;
+        X = x;
+    }
+
+    /// <summary>The products summed z first, as Dart's does, so the last bit agrees.</summary>
+    public double Dot(Vector3 other) => (Z * other.Z) + (Y * other.Y) + (X * other.X);
+
+    public Vector3 Cross(Vector3 other) =>
+        new((Y * other.Z) - (Z * other.Y), (Z * other.X) - (X * other.Z), (X * other.Y) - (Y * other.X));
 
     /// <summary>
     /// A copy of length one. A vector of length zero comes back unchanged, and a
