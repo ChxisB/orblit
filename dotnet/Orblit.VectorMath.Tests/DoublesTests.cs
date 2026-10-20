@@ -155,4 +155,30 @@ public class DoublesTests
     [InlineData(21)]
     public void FixedPointRefusesDigitsOutsideZeroToTwenty(int digits) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => Doubles.ToStringAsFixed(1.0, digits));
+
+    [Theory]
+    [InlineData(0.0, "0.0")]
+    [InlineData(-0.0, "-0.0")]
+    [InlineData(1.0, "1.0")]
+    [InlineData(-2.5, "-2.5")]
+    [InlineData(0.1, "0.1")]
+    [InlineData(100.0, "100.0")]
+    [InlineData(123.456, "123.456")]
+    [InlineData(1e-5, "0.00001")]
+    [InlineData(1e-6, "0.000001")]
+    [InlineData(1.5e-6, "0.0000015")]
+    [InlineData(1e-7, "1e-7")]
+    [InlineData(1.5e-7, "1.5e-7")]
+    [InlineData(5e-324, "5e-324")]
+    [InlineData(1e20, "100000000000000000000.0")]
+    [InlineData(123456789012345678.0, "123456789012345680.0")]
+    [InlineData(1e21, "1e+21")]
+    [InlineData(-1.5e22, "-1.5e+22")]
+    [InlineData(1e300, "1e+300")]
+    [InlineData(1.7976931348623157e308, "1.7976931348623157e+308")]
+    [InlineData(double.NaN, "NaN")]
+    [InlineData(double.PositiveInfinity, "Infinity")]
+    [InlineData(double.NegativeInfinity, "-Infinity")]
+    public void WritesDoublesTheWayDartDoes(double value, string expected) =>
+        Assert.Equal(expected, Doubles.ToDartString(value));
 }

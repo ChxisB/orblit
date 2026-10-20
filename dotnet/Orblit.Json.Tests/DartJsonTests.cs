@@ -133,5 +133,25 @@ public class DartJsonTests
 
     [Fact]
     public void RefusesAValueItDoesNotWrite() =>
-        Assert.Throws<ArgumentException>(() => DartJson.Encode(1.5));
+        Assert.Throws<ArgumentException>(() => DartJson.Encode(new object()));
+
+    [Theory]
+    [InlineData(1.0, "1.0")]
+    [InlineData(-0.0, "-0.0")]
+    [InlineData(1.5, "1.5")]
+    [InlineData(1e21, "1e+21")]
+    [InlineData(1.5e-7, "1.5e-7")]
+    public void WritesADoubleAsDartDoes(double value, string expected) =>
+        Assert.Equal(expected, DartJson.Encode(value));
+
+    [Theory]
+    [InlineData(double.NaN)]
+    [InlineData(double.PositiveInfinity)]
+    [InlineData(double.NegativeInfinity)]
+    public void RefusesADoubleJsonHasNoWordFor(double value) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => DartJson.Encode(new List<object?> { value }));
+
+    [Fact]
+    public void ReadsADoubleBackAsADouble() =>
+        Assert.Equal(1.0, Assert.IsType<double>(DartJson.Decode(DartJson.Encode(1.0))));
 }

@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text;
+using Orblit.VectorMath;
 
 namespace Orblit.Json;
 
@@ -22,8 +23,8 @@ internal static class JsonWriter
             case bool flag:
                 builder.Append(flag ? "true" : "false");
                 break;
-            case int or long:
-                builder.Append(Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture));
+            case int or long or double:
+                WriteNumber(builder, value);
                 break;
             case string text:
                 Quote(builder, text);
@@ -35,9 +36,25 @@ internal static class JsonWriter
                 WriteList(builder, list, indent, level);
                 break;
             default:
-                // shortcut: no doubles, because Dart's double.toString has no .NET twin yet, add one when a package writes a double.
                 throw new ArgumentException($"{value.GetType().Name} is not written.", nameof(value));
         }
+    }
+
+    private static void WriteNumber(StringBuilder builder, object value)
+    {
+        if (value is not double number)
+        {
+            builder.Append(Convert.ToInt64(value, CultureInfo.InvariantCulture).ToString(CultureInfo.InvariantCulture));
+            return;
+        }
+
+        // Dart's jsonEncode throws for these, because JSON has no word for them.
+        if (!double.IsFinite(number))
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), number, "JSON has no word for this number.");
+        }
+
+        builder.Append(Doubles.ToDartString(number));
     }
 
     private static void WriteMap(StringBuilder builder, IReadOnlyDictionary<string, object?> map, string? indent, int level)

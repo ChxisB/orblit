@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.0
+
+- `Doubles.ToDartString`, which is Dart's `double.toString`.
+
 ## 0.8.0
 
 - `Doubles.Ceil`, which is Dart's `double.ceil()`.

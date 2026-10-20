@@ -147,4 +147,58 @@ public static class Doubles
         var sign = double.IsNegative(value) ? "-" : string.Empty;
         return digits == 0 ? sign + text : $"{sign}{text[..^digits]}.{text[^digits..]}";
     }
+
+    /// <summary>
+    /// Dart's <c>double.toString</c>. The digits are the shortest that read back as the same
+    /// double, which .NET also gives, but the layout differs: Dart writes a point and a final
+    /// <c>.0</c> for anything from 1e-6 up to 1e21, and otherwise <c>1.5e-7</c> or <c>1e+21</c>
+    /// with no padding on the exponent.
+    /// </summary>
+    public static string ToDartString(double value)
+    {
+        if (!double.IsFinite(value))
+        {
+            return value.ToString(CultureInfo.InvariantCulture);
+        }
+
+        var sign = double.IsNegative(value) ? "-" : string.Empty;
+        if (value == 0)
+        {
+            return sign + "0.0";
+        }
+
+        var (digits, point) = ShortestDigits(Math.Abs(value));
+        var exponent = point - 1;
+        if (exponent is < -6 or >= 21)
+        {
+            var rest = digits.Length > 1 ? "." + digits[1..] : string.Empty;
+            var power = exponent < 0 ? "-" : "+";
+            return $"{sign}{digits[0]}{rest}e{power}{Math.Abs(exponent).ToString(CultureInfo.InvariantCulture)}";
+        }
+
+        if (point <= 0)
+        {
+            return $"{sign}0.{new string('0', -point)}{digits}";
+        }
+
+        return point >= digits.Length
+            ? $"{sign}{digits}{new string('0', point - digits.Length)}.0"
+            : $"{sign}{digits[..point]}.{digits[point..]}";
+    }
+
+    // The significant digits of a positive finite value, and where the point sits among them:
+    // 0 puts it before the first digit and 1 after it.
+    private static (string Digits, int Point) ShortestDigits(double value)
+    {
+        var text = value.ToString("R", CultureInfo.InvariantCulture);
+        var split = text.IndexOf('E', StringComparison.Ordinal);
+        var exponent = split < 0 ? 0 : int.Parse(text[(split + 1)..], CultureInfo.InvariantCulture);
+        var mantissa = split < 0 ? text : text[..split];
+        var dot = mantissa.IndexOf('.', StringComparison.Ordinal);
+        var whole = dot < 0 ? mantissa : mantissa[..dot];
+        var all = dot < 0 ? mantissa : whole + mantissa[(dot + 1)..];
+        var trimmed = all.TrimStart('0');
+        var point = whole.Length + exponent - (all.Length - trimmed.Length);
+        return (trimmed.TrimEnd('0'), point);
+    }
 }
