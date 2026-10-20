@@ -95,6 +95,18 @@ Each row is a place where a test will not always catch the difference.
 | A seeded `Random(seed)` | `System.Random(seed)`, and a C# test that a seed repeats | The two generators differ and the Dart one is not ported (decision 77). A fixture cannot hold a jittered stroke |
 | A value class with named optional parameters and `copyWith` | A sealed class with a primary constructor, `IEquatable`, and `CopyWith(double? size = null, ...)` | A call still names what it sets. A record would work, but `Brush` has defaults that need checking in the constructor |
 | An `enum` that carries data | A C# enum plus an extension class, `BrushTools.Layer(tool)` | A C# enum has no members of its own |
+| A top-level function or a global | A static method on the type it serves (`TwoBoneIk.Reach`, `SplineIk.SampleCurve`), or a static class (`Ik`, `BoneEdit`) | C# has no free functions. `_alongBone` was a shared global vector, and it is now a property that returns a fresh one, so no call can see another's edit |
+| A sealed class hierarchy | An abstract class with a `private protected` constructor and a switch that throws on the default arm | Dart checks the switch is exhaustive and C# does not. The throwing arm is the only guard |
+| Two private copies of one routine (`_deform`) | One `internal` class, `RigDeform` | The two copies changed together, so they were one routine (F1) |
+| `armature[name]!` | `Known(name)` or `RequireBone`, which throw `ArmatureException` | Dart throws a `TypeError` from the null check. Both refuse, and the C# message names the bone |
+| A `LinkedHashSet` | `IReadOnlyCollection<string>` over the keys of an `OrderedDictionary` | Order is part of the answer, and a `HashSet` does not keep it |
+| A `typedef` function type | A delegate for a public name (`ModelPoint`, `GroundProbe`), `Func<>` for a private one | A delegate shows its name in a signature |
+| A `required` named parameter | A required positional parameter first, then optional named ones | C# has no required named parameters. A call with many required values names them, with a one line `// F2:` comment |
+| Two Dart tests with one name in different groups | The C# names get a group prefix, with a comment | One C# class cannot hold two methods with one name |
+| A matrix product that a bound depends on | Compute the bound in the Dart exporter, as `snapStep` does | A hand-written bound is off by a rounding step, so a `>=` for `>` mutant survives. Probe the pose in Dart and pass the exact double as the spec value |
+| A generated random case set | Seed `math.Random` in the exporter and keep the numbers in the fixture | The fixture holds the values, so C# needs no Dart generator (decision 77) |
+| `Quaternion.rotated` | `Quaternion.AxisAngle(...).AsRotationMatrix().Transformed(v)` | `rotated` turns by the inverse, so the rig goes through the matrix |
+| A pose `Location` edit | Written in the bone's local axes | A bone along +X maps local X to world -Y, so a move by (1, 0, 0) is not a world x move. A fixture case that needs a world move must say so |
 
 ## Fixtures
 

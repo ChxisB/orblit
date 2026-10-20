@@ -30,6 +30,8 @@ dependencies:
     path: ../../packages/orblit_profile
   orblit_progress:
     path: ../../packages/orblit_progress
+  orblit_rig:
+    path: ../../packages/orblit_rig
   orblit_save:
     path: ../../packages/orblit_save
   orblit_sequence:
