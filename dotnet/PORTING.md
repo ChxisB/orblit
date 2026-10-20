@@ -135,6 +135,15 @@ Each row is a place where a test will not always catch the difference.
 | `log(x) / ln2` | The same, with the Dart `ln2` constant written out | `Math.Log2` rounds differently in the last digit, and an exposure fixture compares to 1e-9 |
 | A const map of presets keyed by an enum | A `FrozenDictionary` behind `IReadOnlyDictionary`, with `GetValueOrDefault` and a fallback | The Dart enum is closed, so the fallback is dead there. A cast integer reaches it in C#, so a test covers it |
 | A `static final` that holds a mutable object (`Strike.none`) | A `static readonly` that holds the same shared `Vector3` | Both languages hand every caller the one object. A caller that changes its direction changes it for all, and a test pins `Assert.Same` |
+| A hash that wraps at 32 bits (`unitAt`) | `UnitRandom.At` in `long` arithmetic with `Low32` | A Dart int is 64-bit on the VM and a JS number on the web, so the hash masks by hand. `System.Random` and `HashCode` differ by machine and by run. The mask on the first operand is redundant, since the later masks drop the high bits. A test of known values pins the output |
+| `Random` in a particle path | None. A particle is a function of seed, id and channel | `Sample` and `Birth` remember nothing, so a rewound or skipped frame finds the same particle. Decision 77 covers the packages that do need a seeded `Random` |
+| A class named `Range` | A `sealed record Range`, with `Range.Of(v)` for a point | Inside `Orblit.Particles` the record wins over `System.Range`. A consumer with `using System;` and `using Orblit.Particles;` gets an ambiguity and writes `Orblit.Particles.Range` or an alias |
+| `Float32List` filled by assignment | A `float[]` with a `(float)` cast on every write | Dart rounds to the nearest float32 on store, and so does the cast. A float minus a float is a float in C#, so a sum that Dart does in double is cast to `double` first |
+| `copyWith` on a class that checks its fields | A method that calls the constructor | A record `with` would skip the checks. A copy cannot clear `Duration` in either language, because null means keep |
+| `List.unmodifiable` | `ReadOnlyCollection` over a copy | An `IReadOnlyList` field that holds the caller's list still changes when the caller changes it. The copy is the freeze |
+| An extension `sample` on `Emitter` | A static `EmitterSampling.Sample(emitter, time, output, ...)` | A static call matches the other ports and reads the same |
+| `int` for a count or a capacity | `int`, 32-bit | A C# array is indexed by `int`, so a larger count could never be held. Dart's 64-bit int accepts it. Seeds, ids and burst ids stay `long`, because the hash and `BurstId` need all 64 bits |
+| Three private `_need` helpers that throw `ArgumentError.value` | One internal `Require.That(ok, name, value, why)` | The third copy was merged (F1). Each throws `ArgumentException` with the argument name and the Dart text |
 
 ## Fixtures
 

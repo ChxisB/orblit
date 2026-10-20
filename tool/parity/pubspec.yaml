@@ -32,6 +32,8 @@ dependencies:
     path: ../../packages/orblit_mesh
   orblit_noise:
     path: ../../packages/orblit_noise
+  orblit_particles:
+    path: ../../packages/orblit_particles
   orblit_profile:
     path: ../../packages/orblit_profile
   orblit_progress:
