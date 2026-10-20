@@ -6,6 +6,17 @@ import 'dart:io';
 /// reads back.
 Object number(double value) => value.isFinite ? value : value.toString();
 
+/// What a call gave, or that it threw. The kind of error is not compared:
+/// Dart's `RangeError`, `FormatException`, `StateError` and the like have no one
+/// .NET twin, and a refusal is what the callers see.
+Map<String, Object?> attempt(Object? Function() body) {
+  try {
+    return {'value': body()};
+  } on Object {
+    return {'throws': true};
+  }
+}
+
 /// Writes `dotnet/fixtures/<package>/<name>.json` under [root].
 ///
 /// The file is stamped with the commit that last changed the package, so a

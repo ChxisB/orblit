@@ -14,17 +14,6 @@ Object big(int value) => value > 9007199254740992 || value < -9007199254740992
     ? value.toString()
     : value;
 
-/// What a call gave, or that it threw. The kind of error is not compared:
-/// Dart's `RangeError`, `FormatException` and the format exceptions have no
-/// one .NET twin, and a refusal is what the callers see.
-Case attempt(Object? Function() body) {
-  try {
-    return {'value': body()};
-  } on Object {
-    return {'throws': true};
-  }
-}
-
 String b64(List<int> bytes) => base64Encode(bytes);
 
 String dataB64(TypedData data) =>

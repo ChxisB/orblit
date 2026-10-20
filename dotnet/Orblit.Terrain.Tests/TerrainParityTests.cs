@@ -4,48 +4,15 @@ using System.Text.Json.Nodes;
 using Orblit.Json;
 using Orblit.Parity;
 using Orblit.VectorMath;
-using static Orblit.Terrain.Tests.Dump;
+using static Orblit.Parity.Dump;
+using static Orblit.Terrain.Tests.TerrainDump;
 
 namespace Orblit.Terrain.Tests;
 
 public class TerrainParityTests
 {
-    /// <summary>
-    /// Runs <paramref name="run"/> over every fixture case of <paramref name="op"/> and compares
-    /// what it gives with what Dart gave. A case where the port throws is a failure, not a pass.
-    /// </summary>
-    private static void Check(string op, Func<JsonElement, JsonNode?> run)
-    {
-        var fixture = Fixture.Load("orblit_terrain", "terrain");
-        var cases = fixture.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
-        Assert.True(cases.Count > 0, $"the fixture has no {op} cases");
-
-        var failures = new List<string>();
-        for (var index = 0; index < cases.Count && failures.Count < 5; index++)
-        {
-            var c = cases[index];
-            var difference = Difference(c, run);
-            if (difference is not null)
-            {
-                var text = c.GetRawText();
-                failures.Add($"case {index} {(text.Length > 160 ? text[..160] : text)}: {difference}");
-            }
-        }
-
-        Assert.True(failures.Count == 0, $"{op}: {string.Join(Environment.NewLine, failures)} (from Dart commit {fixture.DartCommit})");
-    }
-
-    private static string? Difference(JsonElement c, Func<JsonElement, JsonNode?> run)
-    {
-        try
-        {
-            return JsonCompare.FirstDifference(c.GetProperty("expect"), JsonSerializer.SerializeToElement(run(c)));
-        }
-        catch (Exception e) when (e is not OutOfMemoryException)
-        {
-            return $"C# threw {e.GetType().Name}: {e.Message}";
-        }
-    }
+    private static void Check(string op, Func<JsonElement, JsonNode?> run) =>
+        Fixture.Load("orblit_terrain", "terrain").Check(op, run);
 
     private static long Long(JsonElement value) =>
         value.ValueKind == JsonValueKind.String ? long.Parse(value.GetString()!, CultureInfo.InvariantCulture) : value.GetInt64();
@@ -53,8 +20,6 @@ public class TerrainParityTests
     private static double Double(JsonElement value) => Fixture.Number(value);
 
     private static int Int(JsonElement value) => value.GetInt32();
-
-    private static JsonNode? Text(string value) => JsonValue.Create(value);
 
     private static Terrain World(JsonElement world)
     {
