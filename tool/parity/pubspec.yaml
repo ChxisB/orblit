@@ -22,6 +22,8 @@ dependencies:
     path: ../../packages/orblit_collide
   orblit_core:
     path: ../../packages/orblit_core
+  orblit_dialogue:
+    path: ../../packages/orblit_dialogue
   orblit_effect:
     path: ../../packages/orblit_effect
   orblit_light:

@@ -6,9 +6,6 @@ import 'package:orblit_quest/orblit_quest.dart';
 
 typedef _Json = Map<String, Object?>;
 
-String _hex(List<int> bytes) =>
-    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-
 /// A rule broken in Dart is an [ArgumentError], which a [RangeError] is one
 /// of. Anything else is a surprise and stops the export.
 Map<String, Object?> _arg(Object? Function() body) {
@@ -318,8 +315,8 @@ Object? _move(QuestMove move, String key) => switch (move) {
     'stage': move.table.get(questStageName(key)),
     'completed': move.completed,
     'back': move.back,
-    'changes': _hex(move.changes.encode()),
-    'table': _hex(move.table.encode()),
+    'changes': hex(move.changes.encode()),
+    'table': hex(move.table.encode()),
   },
   Refused() => {'refused': move.reason.name},
 };
@@ -379,7 +376,7 @@ _Json _tabled(QuestBook book, ProgressSchema schema, List<List<Object>> sets) =>
         table = table.set(a[0] as String, a[1] as int).table;
       }
       return {
-        'table': _hex(table.encode()),
+        'table': hex(table.encode()),
         'asks': [
           for (final key in [...book.quests.map((q) => q.key), 'nope'])
             _ask(book, table, key, [

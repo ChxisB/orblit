@@ -47,9 +47,6 @@ final class _Scripted implements Random {
   bool nextBool() => _rng.chance(2);
 }
 
-String _hex(List<int> bytes) =>
-    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-
 List<int> _bytes(_Rng rng, int most) => [
   for (var i = rng.next(most + 1); i > 0; i--) rng.next(256),
 ];
@@ -259,10 +256,10 @@ Future<List<Map<String, Object?>>> _fileCases(_Rng rng, Directory root) async {
     cases.add({
       'op': 'file',
       'key': key,
-      'bytes': _hex(bytes),
+      'bytes': hex(bytes),
       'reason': _units(reason.label),
       'at': at,
-      'file': _hex(file.readAsBytesSync()),
+      'file': hex(file.readAsBytesSync()),
     });
     file.deleteSync();
   }
@@ -344,7 +341,7 @@ Future<Map<String, Object?>> _readCase(
   final c = <String, Object?>{
     'op': 'fileRead',
     'note': note,
-    'file': _hex(file),
+    'file': hex(file),
   };
   final path = File('${root.path}/saves/ana.save');
   path.parent.createSync(recursive: true);
@@ -352,7 +349,7 @@ Future<Map<String, Object?>> _readCase(
   try {
     final record = (await FileSaveStore('${root.path}/saves').read('ana'))!;
     c['result'] = 'ok';
-    c['bytes'] = _hex(record.bytes);
+    c['bytes'] = hex(record.bytes);
     c['reason'] = _units(record.reason.label);
     c['at'] = record.at.millisecondsSinceEpoch;
   } on FormatException catch (e) {
@@ -406,14 +403,14 @@ Future<List<Map<String, Object?>>> _recordCases(_Rng rng, Directory root) async 
     cases.add({
       'op': 'record',
       'key': key,
-      'bytes': _hex(bytes),
+      'bytes': hex(bytes),
       'reason': _units(reason.label),
       'at': at,
       'entryName': entry.uri.pathSegments.last,
       'entryText': entry.readAsStringSync(),
       'blobName': blob.uri.pathSegments.last,
-      'blob': _hex(packed),
-      'plain': _hex(gzip.decode(packed)),
+      'blob': hex(packed),
+      'plain': hex(gzip.decode(packed)),
     });
     dir.deleteSync(recursive: true);
   }

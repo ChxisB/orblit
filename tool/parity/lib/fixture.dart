@@ -14,6 +14,10 @@ Object big(int value) => value > 9007199254740992 || value < -9007199254740992
 
 String b64(List<int> bytes) => base64Encode(bytes);
 
+/// Bytes as lower-case hex, the way a fixture holds an encoded value.
+String hex(List<int> bytes) =>
+    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+
 /// A decoded JSON value with its doubles and big ints written the way a
 /// fixture holds them.
 Object? tree(Object? value) => switch (value) {

@@ -124,6 +124,12 @@ Each row is a place where a test will not always catch the difference.
 | A regex `$` | `\z` | Dart's `$` stops at the end of the input. .NET's also matches before a final newline, so `"a\n"` would pass as a key |
 | A fixture message that holds a runtime's own words | `cutAfter` on the case: both sides compare up to and including that text | A JSON syntax error and a printed `Map` differ by language, and a value range error from another package has its own parity test |
 | A constant such as `questExtension` | A `const` on a static class, `QuestNames.Extension` | A top level constant has no home in C#. `Quests` would be shadowed by the `QuestBook.Quests` property |
+| A sealed `Node` base with one subclass per type | An abstract class with a `private protected` constructor, and a `switch` over the subclasses with an `UnreachableException` default | The constructor keeps the hierarchy closed to the assembly. A new node type then fails at the `default` arm and in no test that forgot it |
+| `typedef Before = ProgressTable Function(ProgressTable)` | A `public delegate ProgressTable Before(ProgressTable table)` | A bare `Func` would work, but the name keeps the signature in one place and reads as the Dart typedef does |
+| A Dart `Set<String>` that keeps insertion order (`BeforeNames`) | An `IReadOnlyList<string>` built with `Distinct()` | .NET's `HashSet` has no promised order, and a fixture compares the order |
+| `'$value'` of a Dart `double`, `List` or `Map` in an error text | `Printed.Dart`: null, `true`, `1.0`, `[a, b]` and `{k: v}` | `ToString` gives `True`, `1` and `System.Collections.Generic...`. Exponent forms such as `1e+21` are not Dart's and the code says so |
+| A format version read as `is int` | A format version read as `is long`; a double such as `1.0` is no version | `DartJson.Decode` gives a `long` for every whole number, so an `int` arm would never run |
+| A private `_hex` in each exporter | `hex` in `tool/parity/lib/fixture.dart` | The third copy (save, progress, quest) was merged. Exporters import it from the parity tool |
 
 ## Fixtures
 

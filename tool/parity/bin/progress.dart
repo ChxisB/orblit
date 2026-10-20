@@ -22,9 +22,6 @@ ProgressSchema _schema(int version, _Spec names) => ProgressSchema(
   ],
 );
 
-String _hex(List<int> bytes) =>
-    bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
-
 ProgressSchema? _tryBuild(int version, _Spec names) {
   try {
     return _schema(version, names);
@@ -274,8 +271,8 @@ Map<String, Object?> _tableCase(
       table = next;
       expect.add({
         'ok': true,
-        'changes': _hex(changes.encode()),
-        'table': _hex(table.encode()),
+        'changes': hex(changes.encode()),
+        'table': hex(table.encode()),
         'gets': [for (final n in names) table.get(n[1] as String)],
       });
     } else {
@@ -303,11 +300,11 @@ Map<String, Object?> _decodeTableCase(int version, _Spec names, Uint8List b) {
     'op': 'decodeTable',
     'version': version,
     'names': names,
-    'bytes': _hex(b),
+    'bytes': hex(b),
     'expect': table == null
         ? null
         : {
-            'table': _hex(table.encode()),
+            'table': hex(table.encode()),
             'gets': [for (final n in names) table.get(n[1] as String)],
           },
   };
@@ -319,8 +316,8 @@ Map<String, Object?> _decodeChangesCase(int version, _Spec names, Uint8List b) {
     'op': 'decodeChanges',
     'version': version,
     'names': names,
-    'bytes': _hex(b),
-    'expect': changes == null ? null : _hex(changes.encode()),
+    'bytes': hex(b),
+    'expect': changes == null ? null : hex(changes.encode()),
   };
 }
 
