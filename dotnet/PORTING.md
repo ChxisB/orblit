@@ -38,6 +38,8 @@ Each row is a place where a test will not always catch the difference.
 | An instance method that reads no field | Keep it an instance method, with `[SuppressMessage("Performance", "CA1822", Justification = "...")]` | CA1822 wants `static`. Making it static changes every call site, which is a design change for its own commit |
 | A method named `end`, `next`, `stop` or another Visual Basic keyword | Keep it, with `<NoWarn>CA1716</NoWarn>` and the reason | CA1716 is about Visual Basic callers, and one can write `[End]` |
 | A class that has factory constructors and `implements` | An abstract class with static `Create` and `Off` members | An interface cannot hold a constructor |
+| `num.clamp` on a double | `Doubles.Clamp` | Dart orders by `compareTo`, so a NaN clamps to the upper limit. `Math.Clamp` returns NaN |
+| A `switch` over an enum with every case named | Add `_ => throw new UnreachableException()` | Dart knows the enum is closed. C# accepts a cast integer, and CS8509 is an error here |
 
 ## Fixtures
 
@@ -51,6 +53,7 @@ case per line, stamped with the commit that last changed the package.
 - A fixture that is a whole JSON snapshot is compared with `JsonCompare.FirstDifference`, which applies the tolerance to every number.
 - A test project copies its fixtures beside the assembly. Add a `Content` item
   to its csproj, as `Orblit.Noise.Tests` does.
+- A double that may be NaN or infinite is written with `number()` in `tool/parity/lib/fixture.dart`, which turns it into a string JSON can hold, and read with `Fixture.Number`.
 - Integers and bytes compare with plain equality. Doubles compare with
   `Tolerance.Close` in `Orblit.Parity`.
 

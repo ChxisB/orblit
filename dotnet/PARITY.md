@@ -13,6 +13,7 @@ is done when the two Run counts match.
 | `orblit_native` | 24 | 24 | 24 | 24 | none | none | done. Compiles real C++ with the machine's clang, so it needs one on the PATH |
 | `orblit_cells` | 21 | 21 | 21 | 21 | `cells.json`, 180 `cellOf` and 121 `plan` cases | `cellOf` fixture check (1 run), `plan` fixture check (1 run) | done |
 | `orblit_profile` | 16 | 16 | 16 | 16 | `profile.json`, 2 scripted runs of 150 frames | snapshot fixture check (1 run) | done |
+| `orblit_light` | 32 | 32 | 32 | 32 | `light.json`, 100 photometry, 34 tint and 266 light cases | photometry, tint and light fixture checks (3 run) | done |
 
 ## The rule for doubles
 

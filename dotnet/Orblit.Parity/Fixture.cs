@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Orblit.Parity;
@@ -22,4 +23,13 @@ public sealed record Fixture(string Package, string DartCommit, IReadOnlyList<Js
             root.GetProperty("dartCommit").GetString() ?? throw new InvalidDataException($"{path} has no dartCommit."),
             [.. root.GetProperty("cases").EnumerateArray().Select(c => c.Clone())]);
     }
+
+    /// <summary>
+    /// A double the exporter wrote with <c>number</c>: a JSON number, or one of
+    /// the strings "NaN", "Infinity" and "-Infinity".
+    /// </summary>
+    public static double Number(JsonElement value) =>
+        value.ValueKind == JsonValueKind.String
+            ? double.Parse(value.GetString()!, CultureInfo.InvariantCulture)
+            : value.GetDouble();
 }

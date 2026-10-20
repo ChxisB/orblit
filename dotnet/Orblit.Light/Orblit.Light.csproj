@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.3.0</Version>
+    <Description>Lights described the way an artist states them, in watts, metres and degrees, and converted to the photometric units a renderer works in.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>

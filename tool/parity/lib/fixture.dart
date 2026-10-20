@@ -1,6 +1,11 @@
 import 'dart:convert';
 import 'dart:io';
 
+/// A double as JSON can hold it. JSON has no NaN or infinity, so those travel
+/// as the strings "NaN", "Infinity" and "-Infinity", which `Fixture.Number`
+/// reads back.
+Object number(double value) => value.isFinite ? value : value.toString();
+
 /// Writes `dotnet/fixtures/<package>/<name>.json` under [root].
 ///
 /// The file is stamped with the commit that last changed the package, so a
