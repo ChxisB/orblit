@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.12.0
+
+- `Vector2.DistanceTo` and `DistanceToSquared`, which the path port reads.
+
 ## 0.11.0
 
 - `Vector2.Dot`, which the mesh port reads.

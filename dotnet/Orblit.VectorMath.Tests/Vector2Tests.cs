@@ -27,6 +27,17 @@ public class Vector2Tests
     }
 
     [Fact]
+    public void DistanceIsTheLengthOfTheGapBetweenTwoPoints()
+    {
+        var from = new Vector2(1, 2);
+        var to = new Vector2(4, 6);
+        Assert.Equal(25, from.DistanceToSquared(to));
+        Assert.Equal(5, from.DistanceTo(to));
+        Assert.Equal(5, to.DistanceTo(from));
+        Assert.Equal(0, from.DistanceTo(from));
+    }
+
+    [Fact]
     public void ACloneDoesNotShareItsComponents()
     {
         var original = new Vector2(1, 0.5);

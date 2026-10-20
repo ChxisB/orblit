@@ -23,6 +23,15 @@ public sealed class Vector2(double x, double y) : IEquatable<Vector2>
 
     public double Dot(Vector2 other) => (X * other.X) + (Y * other.Y);
 
+    public double DistanceToSquared(Vector2 other)
+    {
+        var dx = X - other.X;
+        var dy = Y - other.Y;
+        return (dx * dx) + (dy * dy);
+    }
+
+    public double DistanceTo(Vector2 other) => Math.Sqrt(DistanceToSquared(other));
+
     public static Vector2 operator +(Vector2 a, Vector2 b) => new(a.X + b.X, a.Y + b.Y);
 
     public static Vector2 operator -(Vector2 a, Vector2 b) => new(a.X - b.X, a.Y - b.Y);
