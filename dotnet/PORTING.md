@@ -35,6 +35,8 @@ Each row is a place where a test will not always catch the difference.
 | A Dart `class FooError implements Exception` | `FooException`, derived from `Exception` | CA1710 wants the suffix. The Dart `message` field is `Exception.Message` |
 | `double.compareTo` and `sort` on doubles | A comparison that puts NaN last | Dart orders NaN above every number and `-0.0` below `0.0`. C# `CompareTo` puts NaN below and treats the zeros as equal |
 | An instance method that reads no field | Keep it an instance method, with `[SuppressMessage("Performance", "CA1822", Justification = "...")]` | CA1822 wants `static`. Making it static changes every call site, which is a design change for its own commit |
+| A method named `end`, `next`, `stop` or another Visual Basic keyword | Keep it, with `<NoWarn>CA1716</NoWarn>` and the reason | CA1716 is about Visual Basic callers, and one can write `[End]` |
+| A class that has factory constructors and `implements` | An abstract class with static `Create` and `Off` members | An interface cannot hold a constructor |
 
 ## Fixtures
 
@@ -45,6 +47,7 @@ case per line, stamped with the commit that last changed the package.
 - Run `tool/regen_parity.sh` to rewrite them and see the diff.
 - A fixture changes only when the Dart changes. Review the diff as a change to
   the contract.
+- A fixture that is a whole JSON snapshot is compared with `JsonCompare.FirstDifference`, which applies the tolerance to every number.
 - A test project copies its fixtures beside the assembly. Add a `Content` item
   to its csproj, as `Orblit.Noise.Tests` does.
 - Integers and bytes compare with plain equality. Doubles compare with

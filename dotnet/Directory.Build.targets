@@ -4,4 +4,8 @@
     <PackageReference Include="xunit.v3" />
     <Using Include="Xunit" />
   </ItemGroup>
+  <!-- A test builds its expected array once, so a constant array argument costs nothing. -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <NoWarn>$(NoWarn);CA1861</NoWarn>
+  </PropertyGroup>
 </Project>
