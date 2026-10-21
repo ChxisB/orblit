@@ -12,7 +12,7 @@ public sealed class CookTarget
     public CookTarget(string name, IReadOnlyDictionary<string, object?>? properties = null)
     {
         Name = name;
-        Properties = new ReadOnlyDictionary<string, object?>(Copy(properties));
+        Properties = new ReadOnlyDictionary<string, object?>(Ordered.Copy(properties));
     }
 
     /// <summary>A target with no properties at all, which every importer must still produce something for.</summary>
@@ -32,18 +32,7 @@ public sealed class CookTarget
 
     /// <summary>What goes into a <see cref="CookKey"/>'s <c>target</c>.</summary>
     public IReadOnlyDictionary<string, object?> Recipe =>
-        Copy(new Dictionary<string, object?> { ["name"] = Name }.Concat(Properties).ToDictionary());
+        Ordered.Copy(new Dictionary<string, object?> { ["name"] = Name }.Concat(Properties).ToDictionary());
 
     public override string ToString() => $"CookTarget({Name})";
-
-    private static OrderedDictionary<string, object?> Copy(IEnumerable<KeyValuePair<string, object?>>? pairs)
-    {
-        var copy = new OrderedDictionary<string, object?>();
-        foreach (var (key, value) in pairs ?? [])
-        {
-            copy[key] = value;
-        }
-
-        return copy;
-    }
 }

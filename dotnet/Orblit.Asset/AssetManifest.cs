@@ -26,13 +26,7 @@ public sealed class AssetManifest
 
     public AssetManifest(IReadOnlyDictionary<AssetId, AssetEntry>? entries = null)
     {
-        var copy = new OrderedDictionary<AssetId, AssetEntry>();
-        foreach (var (id, entry) in entries ?? new Dictionary<AssetId, AssetEntry>())
-        {
-            copy[id] = entry;
-        }
-
-        Entries = new ReadOnlyDictionary<AssetId, AssetEntry>(copy);
+        Entries = new ReadOnlyDictionary<AssetId, AssetEntry>(Ordered.Copy(entries));
     }
 
     /// <summary>Every asset and what it is. A changed manifest is a new one.</summary>
@@ -45,7 +39,7 @@ public sealed class AssetManifest
     public string Encode()
     {
         var assets = new OrderedDictionary<string, object?>();
-        foreach (var id in Entries.Keys.OrderBy(id => id.ToString(), StringComparer.Ordinal))
+        foreach (var id in Ordered.ById(Entries.Keys))
         {
             var entry = Entries[id];
             assets[id.ToString()] = new OrderedDictionary<string, object?> { ["bytes"] = entry.Bytes, ["hash"] = entry.Hash.Hex };

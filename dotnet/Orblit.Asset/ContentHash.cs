@@ -14,6 +14,9 @@ public sealed class ContentHash : IEquatable<ContentHash>
     /// <summary>The hash as 64 lower-case hexadecimal digits.</summary>
     public string Hex { get; }
 
+    /// <summary>The first twelve digits, which is as much of a hash as a message needs to name it.</summary>
+    internal string Short => Hex[..12];
+
     /// <summary>The first two digits, which a store uses as a folder name.</summary>
     public string Shard => Hex[..2];
 

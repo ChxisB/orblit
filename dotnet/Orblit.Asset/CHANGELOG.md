@@ -2,14 +2,21 @@
 
 ## 0.25.0
 
-- A port of the first part of `orblit_asset` 0.25.0. It holds `AssetId`,
-  `ContentHash`, the content stores, the asset sources, `AssetManifest`,
-  `ImportSettings`, `Importer` and `ImporterRegistry`, `CookKey` and the cook
-  caches.
-- A manifest, an import settings file and a cook cache directory read the
-  same on both sides. The Dart cache and the C# cache write the same bytes.
-- Not ported yet: packs, patches, the network sources, kits, glTF, runtime
-  import, the cook and the importers.
+- A port of the first two parts of `orblit_asset` 0.25.0. The first holds
+  `AssetId`, `ContentHash`, the content stores, the asset sources,
+  `AssetManifest`, `ImportSettings`, `Importer` and `ImporterRegistry`,
+  `CookKey` and the cook caches. The second holds packs and patches:
+  `AssetPack`, `PackBundle`, `MountedPacks`, `PackDiff`, `PatchChain`,
+  `PackFolder` (list and remove), `PackName`, `FilePackBytes`,
+  `MemoryPackBytes`, `CookTargets` and `TextureFamily`.
+- A manifest, an import settings file, a cook cache directory and a pack
+  read the same on both sides. The Dart writers and the C# writers give the
+  same bytes, so a pack or a patch that one wrote opens in the other.
+- `PackBundle.PackAsync` is the C# name for `packBundle`.
+- Not ported: `bundled_pack_io`, which finds a pack in a Flutter asset
+  folder. A .NET app opens its pack with `FilePackBytes`.
+- Not ported yet: the pack downloads, the network sources, kits, glTF,
+  runtime import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
