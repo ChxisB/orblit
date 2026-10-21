@@ -37,8 +37,16 @@
   `KitUpdatePlan` and `Kit`. A kit is a pack for the `source` target that holds
   `kit.json`. The kit rules and the manifest are public so a separate tool can
   call them. A licence address with a port past 65535 is refused.
-- Not ported yet: kit packing and extracting, the kit index, lock and store,
-  glTF, runtime import, the cook and the importers.
+- A seventh part holds the files a kit store publishes and a project keeps:
+  `KitEntry` with `KitRelease`, `KitIndex` with `KitRow`, `KitReleases` with
+  `PublishedRelease`, `KitLock` with `LockedKit`, and `KitStoreRules`. Each
+  reads and writes the same bytes as the Dart twin. A release address must be
+  an https name that is public, on port 443, with no user name. A day is
+  checked as Dart checks it, so year 0000 is read.
+- A release address and a licence address with a port past 65535 are
+  refused in C#, as `WebUrl` refuses every such address.
+- Not ported yet: kit packing and extracting, the store client, building a
+  store, glTF, runtime import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
