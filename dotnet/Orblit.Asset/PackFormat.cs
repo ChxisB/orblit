@@ -273,10 +273,11 @@ internal sealed class PackDirectory
                 throw new FormatException($"The blobs {previous} and {hash} overlap.");
             }
 
-            if (blob.End > directoryAt)
+            // Not At + Bytes, which wraps for a size near 2^63 and then passes.
+            if (blob.Bytes > directoryAt - blob.At)
             {
                 throw new FormatException(
-                    $"The blob {hash} ends at byte {blob.End}, inside the directory that starts at {directoryAt}.");
+                    $"The blob {hash} ends at byte {blob.At + (Int128)blob.Bytes}, inside the directory that starts at {directoryAt}.");
             }
 
             previousEnd = blob.End;

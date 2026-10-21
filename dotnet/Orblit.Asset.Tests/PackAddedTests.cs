@@ -148,6 +148,43 @@ public sealed class PackAddedTests : IDisposable
     }
 
     [Fact]
+    public async Task ADirectorySizePastSixtyThreeBitsIsRefusedWhole()
+    {
+        var good = await _fixture.BuildAsync("game", OneFile);
+        var huge = (byte[])good.Bytes.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(huge.AsSpan(20), 0x80000000);
+
+        var error = await Assert.ThrowsAsync<FormatException>(() => AssetPack.OpenAsync(new MemoryPackBytes(huge)));
+
+        Assert.Contains("past what any file can hold", error.Message);
+    }
+
+    [Fact]
+    public async Task ADirectoryWhoseStartAndSizeAddUpPastSixtyFourBitsIsShort()
+    {
+        var good = await _fixture.BuildAsync("game", OneFile);
+        var wraps = (byte[])good.Bytes.Clone();
+        BinaryPrimitives.WriteUInt32LittleEndian(wraps.AsSpan(12), 0x40000000);
+        BinaryPrimitives.WriteUInt32LittleEndian(wraps.AsSpan(20), 0x40000000);
+
+        var error = await Assert.ThrowsAsync<FormatException>(() => AssetPack.OpenAsync(new MemoryPackBytes(wraps)));
+
+        Assert.Contains("This pack is short by", error.Message);
+    }
+
+    [Fact]
+    public async Task ABlobSizeNearSixtyThreeBitsRunsIntoTheDirectory()
+    {
+        var good = await _fixture.BuildAsync("game", OneFile);
+        var wrong = AssetPackTests.WithDirectory(
+            good.Bytes, directory => ((OrderedDictionary<string, object?>)((OrderedDictionary<string, object?>)directory["blobs"]!).Values.First()!)["bytes"] = long.MaxValue - 8);
+
+        var error = await Assert.ThrowsAsync<FormatException>(() => AssetPack.OpenAsync(new MemoryPackBytes(wrong)));
+
+        Assert.Contains("inside the directory", error.Message);
+    }
+
+    [Fact]
     public async Task ABlobAtTheStartOfTheFileIsInsideTheHeader()
     {
         var good = await _fixture.BuildAsync("game", OneFile);

@@ -65,11 +65,17 @@ public sealed class AssetPack : IAssetSource
         }
 
         var header = PackHeader.Read(await bytes.ReadAsync(0, PackHeader.Size).ConfigureAwait(false));
-        var end = unchecked(header.DirectoryAt + header.DirectoryBytes);
+        if (header.DirectoryAt < 0 || header.DirectoryBytes < 0)
+        {
+            throw new FormatException("The header of this pack places its directory past what any file can hold.");
+        }
+
+        // Two sizes of 62 bits wrap in 64, so the sum is taken in 128. Dart wraps here and fails with a RangeError.
+        var end = (Int128)header.DirectoryAt + header.DirectoryBytes;
         if (end > total)
         {
             throw new FormatException(
-                $"This pack is short by {unchecked(end - total)} bytes. It was probably cut off while it was being copied or downloaded.");
+                $"This pack is short by {end - total} bytes. It was probably cut off while it was being copied or downloaded.");
         }
 
         if (header.DirectoryAt < PackHeader.Size)

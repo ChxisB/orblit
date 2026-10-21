@@ -31,6 +31,15 @@ public class NetRangeAddedTests
         Assert.Equal(TimeSpan.FromSeconds(seconds), wait);
     }
 
+    [Fact]
+    public void TheWaitStopsGrowingAtADayWhateverTheAttempt()
+    {
+        var download = DownloadWith(new Fixed(0.5));
+
+        Assert.Equal(TimeSpan.FromDays(1), download.WaitBefore(100));
+        Assert.Equal(TimeSpan.FromDays(1), download.WaitBefore(int.MaxValue));
+    }
+
     // A download that may not try has nothing to do, so the call says so and the task does not.
     [Fact]
     public void RefusesNoAttemptsAtTheCall()

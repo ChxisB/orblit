@@ -187,3 +187,12 @@
   match Dart. A missing assets folder prints .NET's own text.
 - `RuntimeImport.DefaultImporters()` returns `CookProject.DefaultImporters()`,
   where Dart writes the list twice.
+- A pack header whose directory start or size passes 63 bits is refused,
+  and a blob is checked against the directory without a sum that can wrap.
+  Dart wraps there and fails with a `RangeError`. A kit host can send such a
+  pack, so it ends in a `FormatException` here.
+- A fetch or pack download shares `Random.Shared` for its jitter, and the
+  retry wait stops growing at one day. A long loop of retries no longer
+  passes what `Task.Delay` takes.
+- `orblit-cook` ends with 1 and a `cook:` line when the disk refuses a
+  write. Dart lets that error crash the command.

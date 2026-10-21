@@ -54,6 +54,16 @@ public class NetFetcherAddedTests
         Assert.Equal(120.0, late.WaitBefore(1).TotalMilliseconds);
     }
 
+    [Fact]
+    public void TheWaitStopsGrowingAtADayWhateverTheAttempt()
+    {
+        using var transport = Map();
+        var fetcher = new AssetFetcher(Origin, transport, backoff: TimeSpan.FromSeconds(1), jitter: new Pinned(0.5));
+
+        Assert.Equal(TimeSpan.FromDays(1), fetcher.WaitBefore(100));
+        Assert.Equal(TimeSpan.FromDays(1), fetcher.WaitBefore(int.MaxValue));
+    }
+
     // The Dart twin lets this one surface as an error nobody catches. Here it is a failed attempt, tried
     // again like any other, and the caller hears about it.
     [Fact]

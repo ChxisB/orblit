@@ -59,9 +59,9 @@ internal sealed class PackDownload
     // devices that lost the same server come back at the same moment without it.
     internal TimeSpan WaitBefore(int attempt)
     {
-        var grown = Backoff * Math.Pow(2, attempt - 1);
+        var grown = Math.Min(Backoff.TotalMicroseconds * Math.Pow(2, attempt - 1), AssetFetcher.LongestWait.TotalMicroseconds);
         var noise = 1 + ((Jitter.NextDouble() - 0.5) * 0.4);
-        return TimeSpan.FromMicroseconds(Math.Round(grown.TotalMicroseconds * noise, MidpointRounding.AwayFromZero));
+        return TimeSpan.FromMicroseconds(Math.Round(grown * noise, MidpointRounding.AwayFromZero));
     }
 
     // One request, from wherever the part file ends.

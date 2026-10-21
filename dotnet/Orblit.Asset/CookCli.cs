@@ -78,12 +78,13 @@ internal static class CookCli
             {
                 report = await project.RunAsync(result => Report(result, options, output, error)).ConfigureAwait(false);
             }
-            catch (ArgumentException e)
+            catch (Exception e) when (e is ArgumentException or IOException or UnauthorizedAccessException)
             {
                 // shortcut: .NET's own text, which names the parameter and is longer than Dart's. Upgrade when a
-                // build has to match the Dart line.
+                // build has to match the Dart line. A disk that cannot be written ends the cook with 1, as in
+                // the pack and kit tools, where Dart lets it crash.
                 Line(error, $"cook: {e.Message}");
-                return BadUsage;
+                return e is ArgumentException ? BadUsage : Failed;
             }
 
             failures += report.Count(CookStatus.Failed);

@@ -17,6 +17,9 @@ namespace Orblit.Asset;
 /// </remarks>
 public sealed class AssetFetcher : IDisposable
 {
+    // A doubling wait passes what Task.Delay takes after about 25 attempts and what a TimeSpan holds after about 40.
+    internal static readonly TimeSpan LongestWait = TimeSpan.FromDays(1);
+
     private readonly Random _jitter;
     private readonly Dictionary<WebUrl, FetchDownload> _live = [];
     private readonly List<FetchDownload> _waiting = [];
@@ -47,7 +50,7 @@ public sealed class AssetFetcher : IDisposable
         Concurrent = concurrent;
         Attempts = attempts;
         Backoff = backoff ?? TimeSpan.FromMilliseconds(300);
-        _jitter = jitter ?? new Random();
+        _jitter = jitter ?? Random.Shared;
         Clock = clock ?? TimeProvider.System;
     }
 
@@ -246,9 +249,9 @@ public sealed class AssetFetcher : IDisposable
     /// </summary>
     internal TimeSpan WaitBefore(int attempt)
     {
-        var grown = Backoff * Math.Pow(2, attempt - 1);
+        var grown = Math.Min(Backoff.TotalMicroseconds * Math.Pow(2, attempt - 1), LongestWait.TotalMicroseconds);
         var noise = 1 + ((_jitter.NextDouble() - 0.5) * 0.4);
-        return TimeSpan.FromMicroseconds(Math.Round(grown.TotalMicroseconds * noise, MidpointRounding.AwayFromZero));
+        return TimeSpan.FromMicroseconds(Math.Round(grown * noise, MidpointRounding.AwayFromZero));
     }
 
     private async Task RunAsync(FetchDownload download)

@@ -37,6 +37,18 @@ public sealed class CookCliAddedTests : IDisposable
         return $"{_out}|{_err}";
     }
 
+    [Fact]
+    public async Task AnOutFolderThatIsAFileEndsTheCookWithOneAndNotACrash()
+    {
+        WriteModel("a.gltf");
+        File.WriteAllText(At("out"), "in the way");
+
+        var code = await Cook(Here("--target", "macos"));
+
+        Assert.Equal(1, code);
+        Assert.StartsWith("cook: ", _err.ToString());
+    }
+
     // Asking for help
 
     [Theory]
