@@ -104,8 +104,19 @@
   boxed as a `long`, and a bad property throws `ArgumentException` naming it.
 - Workers run on threads. `CookAllAsync` calls `onResult` one call at a time, and
   a dependency that many assets share is read once.
-- Not ported yet: the importers, the cook of a project and runtime import. The
-  cook test of the collision sidecar waits for them.
+- Not ported yet: the glTF, atlas and terrain importers, the cook of a project
+  and runtime import. The cook test of the collision sidecar waits for them.
+- A sixteenth part holds the importers that drive a native program:
+  `NativeTool`, `TextureImporter`, `ModelImporter`, `SplatImporter`,
+  `EnvironmentImporter` and `MaterialImporter`. `NativeImporters.Create()`
+  returns the five, and `NativeWork` holds the temporary directory and the
+  path helpers they share.
+- A program is found by an explicit path, then its environment variable,
+  then `NativeTool.SearchPath`, then `which` or `where`. `ORBLIT_TOOL_PATH`
+  adds directories to the search, split on a colon. A bad exit is an
+  `ImportFailureException` that carries what the program wrote, errors first.
+- `MaterialImporter` asks matc for its version once. A failed ask is not kept.
+  `CookingNotSupported` is not ported, by decision 71.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
