@@ -180,6 +180,7 @@ Each row is a place where a test will not always catch the difference.
 | `x << n` with a large `n` | Mask or test `n` first | C# masks the shift count to 5 or 6 bits, and Dart gives 0 for a count of 64 or more. |
 | `await` always yields to the event loop | A synchronous continuation when the task is done | Dart gives a fixed order to work that was asked for in one turn, and C# does not. A test that needs the order holds the transport open (`Gated`) until every ask is made. |
 | `close()` on a fetcher | `Dispose()` | Dispose cancels each download and lets jobs finish with `FetchCancelledException`. Take the jobs under the lock and complete them outside it. |
+| Cook workers on one isolate that share a map of hashes and call back in turn | `Interlocked.Increment` for the next index, a `ConcurrentDictionary` of `Lazy<Task<ContentHash>>`, and a lock round `onResult` | Dart never ran two pieces of cook code at once. Threads do, so a `Lazy` keeps a shared dependency to one read, and a callback that prints progress is still called one at a time. A test importer that records what it was asked uses a concurrent queue. |
 
 ## Fixtures
 

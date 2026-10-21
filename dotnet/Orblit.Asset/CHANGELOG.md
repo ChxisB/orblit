@@ -94,8 +94,18 @@
   `SurfaceException` with the file, the line and the reason.
 - Dart regex classes are written out in `DartPattern`, because .NET reads
   `\s`, `\w`, `\d`, `.` and `$` more widely than Dart does.
-- Not ported yet: runtime import, the cook and the other importers.
-  The cook test of the collision sidecar waits for them.
+- A fifteenth part holds the cook: `Cook` with `CookOneAsync`, `StateOfAsync`,
+  `StateOfAllAsync` and `CookAllAsync`, `CookResult`, `CookReport`, `CookStatus`,
+  `CookState` and `CookTargetProperties`. A cook builds the key before it runs an
+  importer, and a cached result runs none.
+- `CookResult.Error` is an `Exception`, so the stack trace is on it and there is
+  no `trace` field. `TextureFamilies`, `MaxTextureSize` and `HalfFloatTextures`
+  are extension methods on `CookTarget`. `MaxTextureSize` needs a whole number
+  boxed as a `long`, and a bad property throws `ArgumentException` naming it.
+- Workers run on threads. `CookAllAsync` calls `onResult` one call at a time, and
+  a dependency that many assets share is read once.
+- Not ported yet: the importers, the cook of a project and runtime import. The
+  cook test of the collision sidecar waits for them.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
