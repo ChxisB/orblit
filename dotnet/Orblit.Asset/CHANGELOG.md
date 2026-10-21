@@ -104,7 +104,7 @@
   boxed as a `long`, and a bad property throws `ArgumentException` naming it.
 - Workers run on threads. `CookAllAsync` calls `onResult` one call at a time, and
   a dependency that many assets share is read once.
-- Not ported yet: the atlas and terrain importers, the cook of a project
+- Not ported yet: the terrain importer, the cook of a project
   and runtime import. The cook test of the collision sidecar waits for them.
 - A sixteenth part holds the importers that drive a native program:
   `NativeTool`, `TextureImporter`, `ModelImporter`, `SplatImporter`,
@@ -130,3 +130,15 @@
   cannot be read faults the task and does not throw at the call.
 - The atlas cook needs `orblit_texture_cook`. Pages are held to the largest
   size the target samples, or 8192 when it names none, and the cook says so.
+- An eighteenth part holds `AtlasImporter`. A `.atlas.json` document names
+  sprites, and the importer packs them onto pages through `AtlasPacker`.
+  It writes `page{N}.png` and `page{N}.json` for each page and says how full
+  each page is. Settings given at the call win over the document's own.
+  It is not in `NativeImporters.Create()`, as in Dart.
+- A setting of the wrong type fails with `InvalidCastException` and Dart's
+  own text, such as `type 'String' is not a subtype of type 'int?' in type
+  cast`. A page size or count out of range throws `ArgumentException` with
+  `Invalid argument (key): …`.
+- `DependenciesOfAsync` runs on the thread pool, so a document that is not
+  JSON faults the task and does not throw at the call.
+- The test of the default importers of a project waits for the project cook.

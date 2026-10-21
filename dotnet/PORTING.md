@@ -190,6 +190,10 @@ Each row is a place where a test will not always catch the difference.
 | `is int` on a decoded JSON number, which is false for a double | `GltfJson.WholeAt`, which answers without throwing | `AsInt` throws `InvalidCastException` on a double or a string, and a model with `"byteOffset": 1.5` has to be skipped, as Dart skips it. |
 | `ModelAtlasCook.run`, one long method over local variables | `RunAsync` in steps that take a private sealed `Job` | The method is far over the complexity limit of 10. The `Job` holds what one run shares, so a step takes the run and not seven values from it. |
 | `Uri.decodeComponent` caught on `ArgumentError`, which hands back the uri as given | `DartText.PercentDecoded` | `DecodeUriComponent` throws `ArgumentException` for a bad escape, as Dart throws `ArgumentError`, so the catch sits in one place. Bytes that are not UTF-8 still throw `FormatException`, as in Dart. |
+| `settled['padding'] as int? ?? 2`, a cast that throws for a value of another type | `Typed<T>`, which throws `InvalidCastException` with Dart's text | A document can hold `"padding": "2"`. Dart fails with `type 'String' is not a subtype of type 'int?' in type cast`. A `switch` that fell back to the default would hide the mistake. |
+| `'${named.runtimeType}'` in a failure message | `DartType`, which names the Dart type of a decoded JSON value | The message says `_GrowableList<dynamic>` or `_Map<String, dynamic>`, as Dart does. Only the types the JSON reader produces can reach it. |
+| `ArgumentError.value(value, key, 'has to be a size in texels')` | `ArgumentException` with the text `Invalid argument (key): has to be a size in texels: value`, and `key` as the parameter name | That is Dart's own text. The C# message also ends with `(Parameter 'key')`, so tests read the start of it. |
+| `result.heuristic.name`, the name of a Dart enum value | `HeuristicLabel`, the C# member name with a lower-case first letter | C# members are in Pascal case, and the note reads `bestShortSideFit`, as in Dart. |
 
 ## Fixtures
 
