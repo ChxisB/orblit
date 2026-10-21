@@ -30,4 +30,25 @@ internal static class GltfJson
 
     /// <summary><c>value is int</c>.</summary>
     internal static bool IsInt(object? value) => value is int or long;
+
+    /// <summary>
+    /// A whole JSON number as an <c>int</c>, with one past 32 bits held at the end of the range. Dart's
+    /// <c>int</c> has 64 bits, so a range check on the number still refuses it where a narrowing would
+    /// throw or wrap into range.
+    /// </summary>
+    internal static int Saturated(object? value) => value switch
+    {
+        int whole => whole,
+        long whole => (int)Math.Clamp(whole, int.MinValue, int.MaxValue),
+        _ => throw new InvalidCastException($"{value?.GetType().Name ?? "null"} is not an int."),
+    };
+
+    /// <summary>A JSON number as a double, or null for anything that is not a number: <c>value is num</c>.</summary>
+    internal static double? AsNumber(object? value) => value switch
+    {
+        int whole => whole,
+        long whole => whole,
+        double number => number,
+        _ => null,
+    };
 }

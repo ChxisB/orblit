@@ -62,8 +62,16 @@
   `GltfDocument`, because `Orblit.Mesh` has a `GltfAccessors` already.
 - A buffer URI is percent decoded twice, as Dart does. A bad base64
   payload has no cause. A MAT2 or MAT3 accessor is read as packed.
-- Not ported yet: the collision mesh, glTF merge, bake and atlas, runtime
-  import, the cook and the importers.
+- An eleventh part holds `CollisionMesh`: the constructor, `ToJson`,
+  `Encode`, `Decode`, `FromObj` and `FromGltfAsync`. A glTF walk is
+  `ModelGeometry`, internal. A scene, a node tree or a bare mesh list is
+  read the way Dart reads it, and the refusal text of each case is the same.
+- The node walk stops at 512 nested nodes with the cyclic hierarchy error.
+  Dart has no limit, and a .NET stack that runs out ends the process. A
+  collision mesh version of `1.0` is accepted, as `1.0 == 1` in Dart. An
+  index past 31 bits is saturated, so it is refused as outside the mesh.
+- Not ported yet: glTF merge, bake and atlas, runtime import, the cook and
+  the importers. The cook test of the collision sidecar waits for them.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
