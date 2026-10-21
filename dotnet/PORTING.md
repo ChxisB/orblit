@@ -144,6 +144,19 @@ Each row is a place where a test will not always catch the difference.
 | An extension `sample` on `Emitter` | A static `EmitterSampling.Sample(emitter, time, output, ...)` | A static call matches the other ports and reads the same |
 | `int` for a count or a capacity | `int`, 32-bit | A C# array is indexed by `int`, so a larger count could never be held. Dart's 64-bit int accepts it. Seeds, ids and burst ids stay `long`, because the hash and `BurstId` need all 64 bits |
 | Three private `_need` helpers that throw `ArgumentError.value` | One internal `Require.That(ok, name, value, why)` | The third copy was merged (F1). Each throws `ArgumentException` with the argument name and the Dart text |
+| A package named `orblit_path` | The namespace `Orblit.Pathing` | `Orblit.Path` would hide `System.IO.Path` for any file in a namespace under `Orblit` (CA1724) |
+| An `int` cell index, 64-bit | `long` parameters on `IsOpen`, `SetOpen`, `HeightOf`, `WeightOf`, `CentreOf`, and a `long` field on `NavCell` | A cell index past 32 bits is off the grid in Dart. A C# `int` would wrap it into the grid. The array offset is an `int` only after `Inside` has passed |
+| `int.abs()` and `-` on 64-bit ints, which wrap | An own `Abs` and an `unchecked` block in `IsClear`. `NearestOpen` relies on the default unchecked `long` loop | `Math.Abs(long.MinValue)` throws. Dart wraps, so a far end gives a negative step budget and `IsClear` answers true. The wrap is kept and tested |
+| `width * depth` allocated before it is checked | `NavGrid` refuses a product above `Array.MaxLength` before it allocates | Dart accepts a larger grid and fails when the list is made, with a `RangeError` for a negative product. C# cannot hold the array at all |
+| `Uint16List` counter of standing obstacles | `ushort[]` | Both wrap at 65536, and 65536 obstacles on one cell open it. Kept, with a test on each side of the wrap |
+| `floor()` and `ceil()` of a huge double, which saturate to `int64` | `Doubles.Floor` and `Doubles.Ceil` with a `long` result, and `CellsAcross` clamps a count to `int.MaxValue` | `(long)Math.Floor(1e300)` is platform-defined in C#. Dart gives `int64` max |
+| Dart's euclidean `%` on a double | `Doubles.Mod` | C# `%` keeps the sign of the dividend |
+| A set passed to `NavLink` and kept by reference | `NavLink` copies the agents into its own set | A caller that changes its list later cannot change a link. Dart shares the set. Recorded in `AddedTests` |
+| `typedef Planner` and `typedef Clear` | `public delegate` types, with a method group converting to them | A `NavWalker` takes a `Planner` and an optional `Clear`. `grid.FindPath` and `grid.IsClear` convert without a lambda |
+| Sealed `RouteStep` with `WalkStep` and `LinkStep` | An abstract class with a `private protected` constructor and two sealed subclasses | Matches the sealed-hierarchy row. A `switch` over the two needs a default arm in C# |
+| Long search and walk methods with many branches | `CellSearch`, `PortalSearch`, `LinkSearch` and `FunnelWalk` classes, `Crossing` and `Spread` helpers | CA1502 is an error at 10. Each split keeps the Dart order of work. The names have no Dart twin |
+| A `PathEnd` enum switched with no default | A `default` arm that throws `InvalidOperationException` | A C# enum holds any number. Tested with `(PathEnd)99` |
+| A mesh index read from a list | `Number` throws `ArgumentOutOfRangeException` for any index off the end, including negative and past 32 bits | Dart's list throws `RangeError`. Both are a throw, so the fixture checks only that it throws |
 
 ## Fixtures
 
