@@ -78,7 +78,15 @@
   Dart does, so a later batch carries the `extras` of the first. An index at
   or past 2^31 throws `OverflowException`, where Dart carries it to a 32 bit
   buffer.
-- Not ported yet: glTF atlas, runtime import, the cook and the importers.
+- A thirteenth part holds the glTF atlas: `AtlasPixels` (`Resample`,
+  `Renormalise`, `MultiplyInto`, `Blit`, `BlankPage`), `Rgba` and
+  `ModelAtlas.AtlasModelAsync`, which finds the materials worth packing,
+  packs their maps onto shared pages, remaps the UVs and merges what
+  became identical. The cook decodes the images and passes the decoder in.
+- `Rgba` throws on a pixel length that does not fit its size, where Dart
+  only asserts. An image index outside the document throws
+  `ArgumentOutOfRangeException`, where Dart throws `RangeError`.
+- Not ported yet: runtime import, the cook and the importers.
   The cook test of the collision sidecar waits for them.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one

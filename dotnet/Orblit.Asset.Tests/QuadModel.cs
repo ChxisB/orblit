@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using Orblit.Sprite;
 using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
@@ -30,8 +31,31 @@ internal sealed class QuadModel
         return materials.Count - 1;
     }
 
-    /// <summary>Adds a quad drawn with <paramref name="material"/> starting at <paramref name="x"/>.</summary>
-    public void Quad(int material, double x = 0)
+    /// <summary>Adds a texture over a solid image, returning its texture index.</summary>
+    public int Texture(IReadOnlyList<int> rgba, int size = 8)
+    {
+        var pixels = new byte[size * size * 4];
+        for (var i = 0; i < pixels.Length; i++)
+        {
+            pixels[i] = (byte)rgba[i % 4];
+        }
+
+        var images = List("images");
+        images.Add(new GltfMap
+        {
+            ["bufferView"] = View(PngCodec.Encode(size, size, pixels)),
+            ["mimeType"] = "image/png",
+        });
+        var textures = List("textures");
+        textures.Add(new GltfMap { ["source"] = images.Count - 1 });
+        return textures.Count - 1;
+    }
+
+    /// <summary>
+    /// Adds a quad drawn with <paramref name="material"/> starting at <paramref name="x"/>, its corners at
+    /// <paramref name="uv"/> when given.
+    /// </summary>
+    public void Quad(int material, double x = 0, IReadOnlyList<double>? uv = null)
     {
         var position = Accessor(
             Bytes((float)x, 0, 0, (float)x + 1, 0, 0, (float)x + 1, 1, 0, (float)x, 1, 0),
@@ -39,7 +63,8 @@ internal sealed class QuadModel
             4,
             "VEC3",
             new GltfMap { ["min"] = new List<object?> { x, 0.0, 0.0 }, ["max"] = new List<object?> { x + 1, 1.0, 0.0 } });
-        var texCoord = Accessor(Bytes(0f, 0, 1, 0, 1, 1, 0, 1), 5126, 4, "VEC2");
+        var corners = uv?.Select(value => (float)value).ToArray() ?? [0f, 0, 1, 0, 1, 1, 0, 1];
+        var texCoord = Accessor(Bytes(corners), 5126, 4, "VEC2");
         var index = Accessor(Bytes([0, 1, 2, 0, 2, 3]), 5123, 6, "SCALAR");
 
         Primitives.Add(new GltfMap
@@ -62,16 +87,30 @@ internal sealed class QuadModel
         return Glb(Json, [.. _bin]);
     }
 
-    private int Accessor(byte[] bytes, int componentType, int count, string type, GltfMap? extra = null)
+    private List<object?> List(string key)
+    {
+        if (!Json.TryGetValue(key, out var value))
+        {
+            Json[key] = value = new List<object?>();
+        }
+
+        return (List<object?>)value!;
+    }
+
+    private int View(byte[] bytes)
     {
         var views = (List<object?>)Json["bufferViews"]!;
         views.Add(new GltfMap { ["buffer"] = 0, ["byteOffset"] = _bin.Count, ["byteLength"] = bytes.Length });
         _bin.AddRange(bytes);
         _bin.AddRange(new byte[(4 - (_bin.Count % 4)) % 4]);
+        return views.Count - 1;
+    }
 
+    private int Accessor(byte[] bytes, int componentType, int count, string type, GltfMap? extra = null)
+    {
         var value = new GltfMap
         {
-            ["bufferView"] = views.Count - 1,
+            ["bufferView"] = View(bytes),
             ["componentType"] = componentType,
             ["count"] = count,
             ["type"] = type,

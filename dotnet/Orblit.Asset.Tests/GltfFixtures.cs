@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.Json.Nodes;
 using Orblit.Json;
 
 namespace Orblit.Asset.Tests;
@@ -31,6 +32,18 @@ internal static class GltfFixtures
         BinaryPrimitives.WriteUInt32LittleEndian(glb.AsSpan(at + 4), 0x004E4942);
         binary.CopyTo(glb, at + 8);
         return glb;
+    }
+
+    /// <summary>A glb as its JSON text and its binary chunk, the way the Dart exporters wrote it.</summary>
+    internal static JsonObject GlbParts(byte[] glb)
+    {
+        var at = 20 + (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(12));
+        var end = at + 8 + (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(at));
+        return new JsonObject
+        {
+            ["json"] = Encoding.UTF8.GetString(glb, 20, at - 20),
+            ["bin"] = Convert.ToBase64String(glb, at + 8, end - at - 8),
+        };
     }
 
     internal static byte[] Bytes(params float[] values) => MemoryMarshal.AsBytes(values.AsSpan()).ToArray();

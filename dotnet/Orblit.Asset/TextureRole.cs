@@ -43,6 +43,18 @@ public static class TextureRoleTools
         _ => throw new InvalidOperationException($"{role} is not a texture role."),
     };
 
+    /// <summary>The role's name as a message gives it, which is Dart's enum name.</summary>
+    [SuppressMessage("Maintainability", "CA1502:Avoid excessive complexity", Justification = "F2: a list of cases is data.")]
+    public static string Name(this TextureRole role) => role switch
+    {
+        TextureRole.BaseColour => "baseColour",
+        TextureRole.MetallicRoughness => "metallicRoughness",
+        TextureRole.Normal => "normal",
+        TextureRole.Occlusion => "occlusion",
+        TextureRole.Emissive => "emissive",
+        _ => throw new InvalidOperationException($"{role} is not a texture role."),
+    };
+
     /// <summary>
     /// The suffix its page gets, so <c>atlas0.basecolour.ktx2</c> says what it holds without anyone opening it.
     /// </summary>

@@ -1,11 +1,10 @@
-using System.Buffers.Binary;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orblit.Json;
 using Orblit.Parity;
 using Orblit.VectorMath;
 using static Orblit.Asset.Tests.AssetCases;
+using static Orblit.Asset.Tests.GltfFixtures;
 using static Orblit.Asset.Tests.PackCases;
 
 namespace Orblit.Asset.Tests;
@@ -30,7 +29,7 @@ public class GltfEditParityTests
     {
         var document = await Open(c);
         var count = GltfMerge.MergePrimitives(document, In(c, 1).GetInt32());
-        var parts = Parts(document.ToGlb());
+        var parts = GlbParts(document.ToGlb());
         parts["count"] = count;
         return parts;
     });
@@ -51,7 +50,7 @@ public class GltfEditParityTests
         var placements = In(c, 1).EnumerateArray().Select(Placement).ToList();
         var baked = await GltfBake.BakeInstancesAsync(
             Convert.FromBase64String(Text(c, 0)), placements, In(c, 2).GetInt32());
-        return baked is null ? null : Parts(baked);
+        return baked is null ? null : GlbParts(baked);
     });
 
     private static Task<GltfDocument> Open(JsonElement c) => GltfDocument.ReadAsync(
@@ -66,17 +65,5 @@ public class GltfEditParityTests
         }
 
         return matrix;
-    }
-
-    // A glb as its JSON text and its binary chunk, the way the Dart exporter wrote it.
-    private static JsonObject Parts(byte[] glb)
-    {
-        var at = 20 + (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(12));
-        var end = at + 8 + (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(at));
-        return new JsonObject
-        {
-            ["json"] = Encoding.UTF8.GetString(glb, 20, at - 20),
-            ["bin"] = Convert.ToBase64String(glb, at + 8, end - at - 8),
-        };
     }
 }
