@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.25.0</Version>
+    <Description>What a project calls its assets and what bytes they are: ids, content hashes and stores, sources layered over each other, the manifest, import settings, importers and the cook cache.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Asset.Tests" />
+  </ItemGroup>
+</Project>

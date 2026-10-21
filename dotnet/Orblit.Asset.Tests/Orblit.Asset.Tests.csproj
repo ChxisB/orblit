@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Asset\Orblit.Asset.csproj" />
+    <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\fixtures\orblit_asset\*.json" Link="fixtures\orblit_asset\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

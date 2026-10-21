@@ -10,6 +10,8 @@ environment:
 dependencies:
   orblit_agent:
     path: ../../packages/orblit_agent
+  orblit_asset:
+    path: ../../packages/orblit_asset
   orblit_audio:
     path: ../../packages/orblit_audio
   orblit_camera:
