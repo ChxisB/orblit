@@ -45,8 +45,17 @@
   checked as Dart checks it, so year 0000 is read.
 - A release address and a licence address with a port past 65535 are
   refused in C#, as `WebUrl` refuses every such address.
-- Not ported yet: kit packing and extracting, the store client, building a
-  store, glTF, runtime import, the cook and the importers.
+- An eighth part holds the kit tools: `KitPacking` (pack and publish),
+  `KitExtraction`, `KitStoreClient` with `KitStoreFailedException`, and
+  `KitStoreBuilder`. A release is a `DateTime` written `yyyy-MM-dd`. A folder
+  is walked in id order. The client has no cancellation token. A wait that
+  runs out stops waiting, and the request goes on.
+- A ninth part holds the command lines. `orblit-kit` runs `pack`, `check`,
+  `extract`, `publish` and `index`, and `orblit-pack` runs `build`, `list`,
+  `check` and `diff`. Each is its own project, `Orblit.Kit` and `Orblit.Pack`,
+  over an internal class here. Output and exit codes match the Dart
+  commands, but the text names the new tools.
+- Not ported yet: glTF, runtime import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
