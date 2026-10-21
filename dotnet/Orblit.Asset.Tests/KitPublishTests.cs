@@ -152,6 +152,22 @@ public sealed class KitPublishTests : IDisposable
             }));
 
     [Fact]
+    public async Task WritesAnEntryTheIndexBuilderAccepts()
+    {
+        await PublishAsync();
+        var pages = new Dictionary<WebUrl, TransportPage>
+        {
+            [WebUrl.Parse(Url)] = new(await File.ReadAllBytesAsync(
+                _work.At("crate-pack-1.0.0.opack"), TestContext.Current.CancellationToken)),
+        };
+        using var transport = new MapTransport(pages);
+
+        var built = await KitStoreBuilder.BuildAsync(_work.At("kits"), _work.At("store"), transport);
+
+        Assert.Equal(new KitStoreBuilt(1, 1), built);
+    }
+
+    [Fact]
     public async Task AnEntryThatIsThereAndBadIsNamedAndNotReplaced()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(EntryFile())!);

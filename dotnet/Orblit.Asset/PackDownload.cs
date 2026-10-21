@@ -224,7 +224,7 @@ internal sealed class PackDownload
     private static bool MayWorkLater(Exception error) => !IsMistake(error) && !IsAnswer(error);
 
     // What Dart calls an Error: the program did something it should not have.
-    private static bool IsMistake(Exception error) =>
+    internal static bool IsMistake(Exception error) =>
         error is ArgumentException or InvalidOperationException or NotSupportedException or NotImplementedException
             or NullReferenceException or IndexOutOfRangeException or InvalidCastException or OutOfMemoryException;
 
