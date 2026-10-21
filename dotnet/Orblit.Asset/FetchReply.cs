@@ -38,6 +38,15 @@ public sealed class FetchReply
     /// </summary>
     public bool MayWorkLater => Status >= 500 || Status is 408 or 425 or 429;
 
+    /// <summary>
+    /// Lets go of a body nobody will read. Starting and disposing an enumerator is what closes the
+    /// connection behind it, so a reply that is turned away does not hold a socket open.
+    /// </summary>
+    internal async Task DiscardAsync()
+    {
+        await using var enumerator = Body.GetAsyncEnumerator();
+    }
+
     private static async IAsyncEnumerable<byte[]> NoChunks()
     {
         await Task.CompletedTask;

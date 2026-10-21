@@ -177,6 +177,8 @@ Each row is a place where a test will not always catch the difference.
 | `Uri` for a URL that came from a manifest or a page | `WebUrl`, an own parser | .NET `Uri` treats a leading `/` as a file path on Unix, and its rules for `\`, ports and relative references differ from Dart. Check a new case against the fixture. |
 | A `Timer` that fires after the synchronous turn | A real delay, with 2 ms as the least the parity scripts use | .NET cannot run a timer after the caller's loop, so wants made in one loop do not always join. Tests use 50 ms. |
 | `x << n` with a large `n` | Mask or test `n` first | C# masks the shift count to 5 or 6 bits, and Dart gives 0 for a count of 64 or more. |
+| `await` always yields to the event loop | A synchronous continuation when the task is done | Dart gives a fixed order to work that was asked for in one turn, and C# does not. A test that needs the order holds the transport open (`Gated`) until every ask is made. |
+| `close()` on a fetcher | `Dispose()` | Dispose cancels each download and lets jobs finish with `FetchCancelledException`. Take the jobs under the lock and complete them outside it. |
 
 ## Fixtures
 

@@ -24,7 +24,12 @@ public sealed class MapTransport(IDictionary<WebUrl, TransportPage> pages) : IAs
             throw new InvalidOperationException("This transport is closed.");
         }
 
-        Sent.Add(request);
+        // Downloads run on pool threads, so two sends can land together.
+        lock (Sent)
+        {
+            Sent.Add(request);
+        }
+
         return Pages.TryGetValue(request.Url, out var page) ? Answer(request, page) : FetchReply.Empty(404);
     }
 

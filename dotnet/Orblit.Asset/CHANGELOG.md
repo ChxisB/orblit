@@ -21,8 +21,14 @@
   `PictureSize`, `Ktx2Chain` and `WebUrl`. `WebUrl` stands in for Dart `Uri`.
 - A fetch record time without a zone reads as UTC, and a year outside 1 to
   9999 is dropped.
-- Not ported yet: the fetcher, the pack downloads, kits, glTF, runtime
-  import, the cook and the importers.
+- A fourth part holds the fetcher: `AssetFetcher` with `Fetch`, `FetchUrl`
+  and `ReadAsync`, `FetchJob`, `FetchUrgency`, `FetchProgress`, the three
+  fetch exceptions, `NetworkAssetSource` and `ProgressiveFetch`. `Dispose`
+  stands in for `close`.
+- A callback that throws counts as a failed attempt. The fetcher runs its
+  callbacks outside its lock.
+- Not ported yet: `HttpTransport`, range pack reads, the pack downloads,
+  kits, glTF, runtime import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
