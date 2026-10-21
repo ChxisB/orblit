@@ -5,7 +5,7 @@ using System.Text.RegularExpressions;
 namespace Orblit.Asset;
 
 /// <summary>What Dart's core library does with text where .NET does something a file name can see.</summary>
-internal static class DartText
+internal static partial class DartText
 {
     // DateTime.MaxValue.Ticks, written out because a pattern needs a constant.
     private const long LastTick = 3_155_378_975_999_999_999;
@@ -18,6 +18,104 @@ internal static class DartText
         "^([+-]?[0-9]{4,6})-?([0-9]{2})-?([0-9]{2})(?:[ T]([0-9]{2})(?::?([0-9]{2})(?::?([0-9]{2})(?:[.,]([0-9]+))?)?)?"
         + "( ?[zZ]| ?([-+])([0-9]{2})(?::?([0-9]{2}))?)?)?\\z",
         RegexOptions.CultureInvariant);
+
+    /// <summary>The characters <c>String.trim</c> takes off.</summary>
+    internal static bool IsSpace(char c) =>
+        c is (>= '\t' and <= '\r') or ' ' or '\u0085' or '\u00A0' or '\u1680' or (>= '\u2000' and <= '\u200A')
+            or '\u2028' or '\u2029' or '\u202F' or '\u205F' or '\u3000' or '\uFEFF';
+
+    /// <summary><c>String.trim</c>.</summary>
+    internal static string Trim(string text)
+    {
+        var start = 0;
+        var end = text.Length;
+        while (start < end && IsSpace(text[start]))
+        {
+            start++;
+        }
+
+        while (end > start && IsSpace(text[end - 1]))
+        {
+            end--;
+        }
+
+        return text[start..end];
+    }
+
+    [GeneratedRegex(@"^[+-]?(?:NaN|Infinity|(?:[0-9]+\.?[0-9]*|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)\z", RegexOptions.CultureInvariant)]
+    private static partial Regex FractionShape();
+
+    [GeneratedRegex(@"^([+-]?)(?:0[xX]([0-9a-fA-F]+)|([0-9]+))\z", RegexOptions.CultureInvariant)]
+    private static partial Regex WholeShape();
+
+    /// <summary><c>double.tryParse</c>. A number reads with a space on either side. Null when it is not a number.</summary>
+    internal static double? ParseDouble(string text)
+    {
+        var word = Trim(text);
+        if (!FractionShape().IsMatch(word))
+        {
+            return null;
+        }
+
+        var unsigned = word.TrimStart('+', '-');
+        var negative = word.StartsWith('-');
+        return unsigned switch
+        {
+            "NaN" => double.NaN,
+            "Infinity" => negative ? double.NegativeInfinity : double.PositiveInfinity,
+            _ => double.Parse(word, NumberStyles.Float, CultureInfo.InvariantCulture),
+        };
+    }
+
+    /// <summary>
+    /// <c>int.tryParse</c>. A decimal that does not fit 64 bits is not a number. A hexadecimal one
+    /// of up to sixteen digits is, and one with its top bit set wraps negative.
+    /// </summary>
+    internal static long? ParseInt(string text)
+    {
+        var shape = WholeShape().Match(Trim(text));
+        if (!shape.Success)
+        {
+            return null;
+        }
+
+        var negative = shape.Groups[1].Value == "-";
+        if (shape.Groups[3].Success)
+        {
+            var digits = (negative ? "-" : string.Empty) + shape.Groups[3].Value;
+            return long.TryParse(digits, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var whole)
+                ? whole
+                : null;
+        }
+
+        var hex = shape.Groups[2].Value.TrimStart('0');
+        if (hex.Length > 16)
+        {
+            return null;
+        }
+
+        var magnitude = hex.Length == 0 ? 0UL : ulong.Parse(hex, NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture);
+        if (negative && magnitude > 1UL << 63)
+        {
+            return null;
+        }
+
+        return unchecked(negative ? -(long)magnitude : (long)magnitude);
+    }
+
+    /// <summary>
+    /// <c>num.tryParse</c>: a boxed <see cref="long"/> when the text reads as a whole number, otherwise a boxed
+    /// <see cref="double"/>, or null when it reads as neither.
+    /// </summary>
+    internal static object? ParseNum(string text)
+    {
+        if (ParseInt(text) is { } whole)
+        {
+            return whole;
+        }
+
+        return ParseDouble(text);
+    }
 
     /// <summary><c>String.toLowerCase</c>, which also folds the Kelvin sign and the dotted capital I to ASCII.</summary>
     internal static string ToLower(string text) =>

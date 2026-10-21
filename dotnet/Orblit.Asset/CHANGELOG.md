@@ -86,7 +86,15 @@
 - `Rgba` throws on a pixel length that does not fit its size, where Dart
   only asserts. An image index outside the document throws
   `ArgumentOutOfRangeException`, where Dart throws `RangeError`.
-- Not ported yet: runtime import, the cook and the importers.
+- A fourteenth part holds the surface translator: `SurfaceTranslator.Translate`
+  turns an `.oshader` surface into a Filament material source with its
+  uniform parameters, `SurfaceLines` expands includes and blanks comments,
+  `SurfaceLiterals` reads hints and defaults, and `SurfaceDiagnostics` maps a
+  compiler message back to the file and line it came from. A refusal is a
+  `SurfaceException` with the file, the line and the reason.
+- Dart regex classes are written out in `DartPattern`, because .NET reads
+  `\s`, `\w`, `\d`, `.` and `$` more widely than Dart does.
+- Not ported yet: runtime import, the cook and the other importers.
   The cook test of the collision sidecar waits for them.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
