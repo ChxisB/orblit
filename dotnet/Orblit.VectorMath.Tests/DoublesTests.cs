@@ -181,4 +181,12 @@ public class DoublesTests
     [InlineData(double.NegativeInfinity, "-Infinity")]
     public void WritesDoublesTheWayDartDoes(double value, string expected) =>
         Assert.Equal(expected, Doubles.ToDartString(value));
+
+    [Fact]
+    public void RadiansAndDegreesMultiplyByAFactorWorkedOutOnce()
+    {
+        Assert.Equal(Math.PI, Doubles.Radians(180));
+        Assert.Equal(180, Doubles.Degrees(Math.PI));
+        Assert.Equal(90 * (Math.PI / 180.0), Doubles.Radians(90));
+    }
 }

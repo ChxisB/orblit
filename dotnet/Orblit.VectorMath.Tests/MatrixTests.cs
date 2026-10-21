@@ -317,4 +317,28 @@ public class MatrixTests
         Assert.Equal(1, normal[4], Tight);
         Assert.Equal(0.5, normal[8], Tight);
     }
+
+    [Fact]
+    public void AQuarterTurnAboutEachAxisCarriesTheNextAxisOntoTheOneAfter()
+    {
+        var quarter = Math.PI / 2;
+        var x = Matrix3.RotationX(quarter).Transformed(new Vector3(0, 1, 0));
+        var y = Matrix3.RotationY(quarter).Transformed(new Vector3(0, 0, 1));
+        var z = Matrix3.RotationZ(quarter).Transformed(new Vector3(1, 0, 0));
+        Assert.Equal(new Vector3(0, 0, 1).ToString(), Rounded(x).ToString());
+        Assert.Equal(new Vector3(1, 0, 0).ToString(), Rounded(y).ToString());
+        Assert.Equal(new Vector3(0, 1, 0).ToString(), Rounded(z).ToString());
+    }
+
+    [Fact]
+    public void MultiplyAppliesTheArgumentFirst()
+    {
+        var turn = Matrix3.RotationZ(Math.PI / 2);
+        turn.Multiply(Matrix3.RotationX(Math.PI / 2));
+        var through = Rounded(turn.Transformed(new Vector3(0, 1, 0)));
+        Assert.Equal(new Vector3(0, 0, 1).ToString(), through.ToString());
+    }
+
+    private static Vector3 Rounded(Vector3 value) =>
+        new(Math.Round(value.X, 9) + 0.0, Math.Round(value.Y, 9) + 0.0, Math.Round(value.Z, 9) + 0.0);
 }

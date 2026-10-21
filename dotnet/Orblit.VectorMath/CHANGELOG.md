@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.14.0
+
+- `Matrix3` gains `RotationX`, `RotationY`, `RotationZ` and `Multiply`, which
+  the scene transform reads.
+- `Doubles.Radians` and `Doubles.Degrees`, which round as `vector_math` does.
+
 ## 0.13.0
 
 - `Matrix3` gains `Determinant`, `CopyInverse`, `Transpose` and

@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.13.0</Version>
+    <Version>0.14.0</Version>
     <Description>Double precision maths for the ports of packages that used vector_math_64, and the places Dart and .NET order doubles differently.</Description>
   </PropertyGroup>
 </Project>

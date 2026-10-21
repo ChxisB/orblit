@@ -10,6 +10,15 @@ namespace Orblit.VectorMath;
 /// </summary>
 public static class Doubles
 {
+    /// <summary>
+    /// <c>radians</c> from <c>vector_math</c>: the factor is worked out once, so the product rounds
+    /// as it does there, which <c>degrees * Math.PI / 180</c> does not.
+    /// </summary>
+    public static double Radians(double degrees) => degrees * (Math.PI / 180.0);
+
+    /// <summary><c>degrees</c> from <c>vector_math</c>, as <see cref="Radians"/> is.</summary>
+    public static double Degrees(double radians) => radians * (180.0 / Math.PI);
+
     /// <summary>Dart's <c>double.compareTo</c>.</summary>
     public static int Compare(double a, double b)
     {

@@ -17,6 +17,48 @@ public sealed class Matrix3
 
     public double Trace => _storage[0] + _storage[4] + _storage[8];
 
+    /// <summary>A turn of <paramref name="radians"/> about X.</summary>
+    public static Matrix3 RotationX(double radians)
+    {
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var matrix = new Matrix3();
+        matrix._storage[0] = 1;
+        matrix._storage[4] = cosine;
+        matrix._storage[5] = sine;
+        matrix._storage[7] = -sine;
+        matrix._storage[8] = cosine;
+        return matrix;
+    }
+
+    /// <summary>A turn of <paramref name="radians"/> about Y.</summary>
+    public static Matrix3 RotationY(double radians)
+    {
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var matrix = new Matrix3();
+        matrix._storage[0] = cosine;
+        matrix._storage[2] = -sine;
+        matrix._storage[4] = 1;
+        matrix._storage[6] = sine;
+        matrix._storage[8] = cosine;
+        return matrix;
+    }
+
+    /// <summary>A turn of <paramref name="radians"/> about Z.</summary>
+    public static Matrix3 RotationZ(double radians)
+    {
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var matrix = new Matrix3();
+        matrix._storage[0] = cosine;
+        matrix._storage[1] = sine;
+        matrix._storage[3] = -sine;
+        matrix._storage[4] = cosine;
+        matrix._storage[8] = 1;
+        return matrix;
+    }
+
     public double Entry(int row, int column) => _storage[(column * 3) + row];
 
     public double Determinant()
@@ -55,6 +97,22 @@ public sealed class Matrix3
         double[] values = [ix, iy, iz, jx, jy, jz, kx, ky, kz];
         Array.Copy(values, _storage, 9);
         return det;
+    }
+
+    /// <summary>Sets this to this times <paramref name="other"/>.</summary>
+    public void Multiply(Matrix3 other)
+    {
+        var m = (double[])_storage.Clone();
+        var n = other._storage;
+        _storage[0] = (m[0] * n[0]) + (m[3] * n[1]) + (m[6] * n[2]);
+        _storage[3] = (m[0] * n[3]) + (m[3] * n[4]) + (m[6] * n[5]);
+        _storage[6] = (m[0] * n[6]) + (m[3] * n[7]) + (m[6] * n[8]);
+        _storage[1] = (m[1] * n[0]) + (m[4] * n[1]) + (m[7] * n[2]);
+        _storage[4] = (m[1] * n[3]) + (m[4] * n[4]) + (m[7] * n[5]);
+        _storage[7] = (m[1] * n[6]) + (m[4] * n[7]) + (m[7] * n[8]);
+        _storage[2] = (m[2] * n[0]) + (m[5] * n[1]) + (m[8] * n[2]);
+        _storage[5] = (m[2] * n[3]) + (m[5] * n[4]) + (m[8] * n[5]);
+        _storage[8] = (m[2] * n[6]) + (m[5] * n[7]) + (m[8] * n[8]);
     }
 
     public void Transpose()
