@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>orblit-kit</ToolCommandName>
+    <Version>0.1.0</Version>
+    <Description>Packs a folder as a kit, checks one, installs one into a project, lists a kit for the store and builds the store index.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Asset\Orblit.Asset.csproj" />
+  </ItemGroup>
+</Project>

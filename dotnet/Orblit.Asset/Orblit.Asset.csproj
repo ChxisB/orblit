@@ -8,5 +8,7 @@
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Orblit.Asset.Tests" />
+    <InternalsVisibleTo Include="Orblit.Kit" />
+    <InternalsVisibleTo Include="Orblit.Pack" />
   </ItemGroup>
 </Project>
