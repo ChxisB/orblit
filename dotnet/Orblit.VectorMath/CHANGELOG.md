@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.13.0
+
+- `Matrix3` gains `Determinant`, `CopyInverse`, `Transpose` and
+  `CopyNormalMatrix`, which the model bake reads.
+- `Matrix4.RotationX` and `RotateZ`.
+
 ## 0.12.0
 
 - `Vector2.DistanceTo` and `DistanceToSquared`, which the path port reads.

@@ -19,6 +19,61 @@ public sealed class Matrix3
 
     public double Entry(int row, int column) => _storage[(column * 3) + row];
 
+    public double Determinant()
+    {
+        var m = _storage;
+        var x = m[0] * ((m[4] * m[8]) - (m[5] * m[7]));
+        var y = m[1] * ((m[3] * m[8]) - (m[5] * m[6]));
+        var z = m[2] * ((m[3] * m[7]) - (m[4] * m[6]));
+        return x - y + z;
+    }
+
+    /// <summary>
+    /// Sets this to the inverse of <paramref name="other"/> and returns its determinant. A matrix with
+    /// no inverse is copied as it is, and the result is 0.
+    /// </summary>
+    public double CopyInverse(Matrix3 other)
+    {
+        var det = other.Determinant();
+        if (det == 0)
+        {
+            Array.Copy(other._storage, _storage, 9);
+            return 0;
+        }
+
+        var a = other._storage;
+        var invDet = 1 / det;
+        var ix = invDet * ((a[4] * a[8]) - (a[5] * a[7]));
+        var iy = invDet * ((a[2] * a[7]) - (a[1] * a[8]));
+        var iz = invDet * ((a[1] * a[5]) - (a[2] * a[4]));
+        var jx = invDet * ((a[5] * a[6]) - (a[3] * a[8]));
+        var jy = invDet * ((a[0] * a[8]) - (a[2] * a[6]));
+        var jz = invDet * ((a[2] * a[3]) - (a[0] * a[5]));
+        var kx = invDet * ((a[3] * a[7]) - (a[4] * a[6]));
+        var ky = invDet * ((a[1] * a[6]) - (a[0] * a[7]));
+        var kz = invDet * ((a[0] * a[4]) - (a[1] * a[3]));
+        double[] values = [ix, iy, iz, jx, jy, jz, kx, ky, kz];
+        Array.Copy(values, _storage, 9);
+        return det;
+    }
+
+    public void Transpose()
+    {
+        (_storage[1], _storage[3]) = (_storage[3], _storage[1]);
+        (_storage[2], _storage[6]) = (_storage[6], _storage[2]);
+        (_storage[5], _storage[7]) = (_storage[7], _storage[5]);
+    }
+
+    /// <summary>
+    /// Sets this to the inverse transpose of the top left 3 by 3 of <paramref name="other"/>, which
+    /// turns a normal the way <paramref name="other"/> turns a surface.
+    /// </summary>
+    public void CopyNormalMatrix(Matrix4 other)
+    {
+        CopyInverse(other.GetRotation());
+        Transpose();
+    }
+
     /// <summary>Turns <paramref name="argument"/> in place, and returns it.</summary>
     public Vector3 Transform(Vector3 argument)
     {

@@ -208,4 +208,113 @@ public class MatrixTests
         Assert.Equal(0, turned.X, 1e-9);
         Assert.Equal(1, turned.Y, 1e-9);
     }
+
+    [Fact]
+    public void RotationXTurnsYTowardsZ()
+    {
+        var turned = Matrix4.RotationX(Math.PI / 2).Rotated3(new Vector3(0, 1, 0));
+        Assert.Equal(0, turned.Y, 1e-9);
+        Assert.Equal(1, turned.Z, 1e-9);
+    }
+
+    [Fact]
+    public void RotateZIsTheMatrixTimesARotationAroundZ()
+    {
+        var turned = Matrix4.TranslationValues(0, 5, 0);
+        turned.RotateZ(Math.PI / 2);
+        var product = Matrix4.TranslationValues(0, 5, 0).Multiplied(Matrix4.RotationZ(Math.PI / 2));
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(product[i], turned[i], Tight);
+        }
+    }
+
+    [Fact]
+    public void RotateZLeavesTheTranslationAlone()
+    {
+        var turned = Matrix4.TranslationValues(1, 2, 3);
+        turned.RotateZ(1);
+        Assert.Equal(new Vector3(1, 2, 3), turned.GetTranslation());
+    }
+
+    private static Matrix3 Diagonal(double x, double y, double z)
+    {
+        var matrix = new Matrix3();
+        matrix[0] = x;
+        matrix[4] = y;
+        matrix[8] = z;
+        return matrix;
+    }
+
+    [Fact]
+    public void ADeterminantMultipliesTheDiagonalAndSubtractsTheCrossTerms()
+    {
+        Assert.Equal(24, Diagonal(2, 3, 4).Determinant());
+        var m = new Matrix3();
+        double[] values = [1, 2, 3, 0, 4, 5, 1, 0, 6];
+        for (var i = 0; i < 9; i++)
+        {
+            m[i] = values[i];
+        }
+
+        Assert.Equal(22, m.Determinant(), Tight);
+    }
+
+    [Fact]
+    public void CopyInverseGivesTheInverseAndTheDeterminant()
+    {
+        var m = new Matrix3();
+        double[] values = [1, 2, 3, 0, 4, 5, 1, 0, 6];
+        for (var i = 0; i < 9; i++)
+        {
+            m[i] = values[i];
+        }
+
+        var inverse = new Matrix3();
+        Assert.Equal(22, inverse.CopyInverse(m), Tight);
+        var back = m.Transformed(inverse.Transformed(new Vector3(1, 2, 3)));
+        Assert.Equal(1, back.X, 1e-9);
+        Assert.Equal(2, back.Y, 1e-9);
+        Assert.Equal(3, back.Z, 1e-9);
+    }
+
+    [Fact]
+    public void CopyInverseOfASingularMatrixCopiesItAndReturnsZero()
+    {
+        var singular = Diagonal(1, 0, 1);
+        singular[1] = 7;
+        var copy = new Matrix3();
+        Assert.Equal(0, copy.CopyInverse(singular));
+        for (var i = 0; i < 9; i++)
+        {
+            Assert.Equal(singular[i], copy[i]);
+        }
+    }
+
+    [Fact]
+    public void TransposeSwapsRowsAndColumns()
+    {
+        var m = new Matrix3();
+        for (var i = 0; i < 9; i++)
+        {
+            m[i] = i;
+        }
+
+        m.Transpose();
+        double[] expected = [0, 3, 6, 1, 4, 7, 2, 5, 8];
+        for (var i = 0; i < 9; i++)
+        {
+            Assert.Equal(expected[i], m[i]);
+        }
+    }
+
+    [Fact]
+    public void TheNormalMatrixOfAStretchSquashesTheNormal()
+    {
+        var normal = new Matrix3();
+        normal.CopyNormalMatrix(Matrix4.Diagonal3Values(4, 1, 2));
+        Assert.Equal(0.25, normal[0], Tight);
+        Assert.Equal(1, normal[4], Tight);
+        Assert.Equal(0.5, normal[8], Tight);
+    }
 }

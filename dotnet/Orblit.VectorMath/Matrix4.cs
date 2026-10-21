@@ -57,6 +57,18 @@ public sealed class Matrix4
         return matrix;
     }
 
+    public static Matrix4 RotationX(double radians)
+    {
+        var matrix = Identity();
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        matrix._storage[5] = cosine;
+        matrix._storage[6] = sine;
+        matrix._storage[9] = -sine;
+        matrix._storage[10] = cosine;
+        return matrix;
+    }
+
     /// <summary>
     /// A matrix that scales, then rotates, then translates. The rotation is the
     /// quaternion as given, so one that is not of length one scales as well.
@@ -224,6 +236,26 @@ public sealed class Matrix4
         m[7] = (m30 * n01) + (m31 * n11) + (m32 * n21) + (m33 * n31);
         m[11] = (m30 * n02) + (m31 * n12) + (m32 * n22) + (m33 * n32);
         m[15] = (m30 * n03) + (m31 * n13) + (m32 * n23) + (m33 * n33);
+    }
+
+    /// <summary>Sets this to this times <c>RotationZ(radians)</c>.</summary>
+    public void RotateZ(double radians)
+    {
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var m = _storage;
+        double[] turned =
+        [
+            (m[0] * cosine) + (m[4] * sine),
+            (m[1] * cosine) + (m[5] * sine),
+            (m[2] * cosine) + (m[6] * sine),
+            (m[3] * cosine) + (m[7] * sine),
+            (m[0] * -sine) + (m[4] * cosine),
+            (m[1] * -sine) + (m[5] * cosine),
+            (m[2] * -sine) + (m[6] * cosine),
+            (m[3] * -sine) + (m[7] * cosine),
+        ];
+        Array.Copy(turned, m, 8);
     }
 
     /// <summary>A copy of this times <paramref name="other"/>, which is Dart's <c>multiplied</c>.</summary>
