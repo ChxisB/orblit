@@ -5,6 +5,9 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+    <ProjectReference Include="..\Orblit.Mesh\Orblit.Mesh.csproj" />
+    <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
   </ItemGroup>
   <ItemGroup>
     <InternalsVisibleTo Include="Orblit.Asset.Tests" />

@@ -77,6 +77,68 @@ internal static class DartText
         return text.Length > 0 && text[0] == '﻿' ? text[1..] : text;
     }
 
+    /// <summary>
+    /// <c>base64Decode</c>, or null where Dart throws. Either alphabet, in any mix. The length is a
+    /// multiple of four with the padding written, and the unused bits are nought.
+    /// </summary>
+    internal static byte[]? DecodeBase64(string text)
+    {
+        if (text.Length % 4 != 0)
+        {
+            return null;
+        }
+
+        var padding = text.EndsWith("==", StringComparison.Ordinal) ? 2 : text.EndsWith('=') ? 1 : 0;
+        var values = new List<int>(text.Length);
+        foreach (var c in text.AsSpan(0, text.Length - padding))
+        {
+            var value = Base64Value(c);
+            if (value < 0)
+            {
+                return null;
+            }
+
+            values.Add(value);
+        }
+
+        return FromSextets(values, padding);
+    }
+
+    private static int Base64Value(char c) => c switch
+    {
+        >= 'A' and <= 'Z' => c - 'A',
+        >= 'a' and <= 'z' => c - 'a' + 26,
+        >= '0' and <= '9' => c - '0' + 52,
+        '+' or '-' => 62,
+        '/' or '_' => 63,
+        _ => -1,
+    };
+
+    private static byte[]? FromSextets(List<int> values, int padding)
+    {
+        var unusedBits = padding == 0 ? 0 : padding == 1 ? 2 : 4;
+        if (padding > 0 && values.Count > 0 && (values[^1] & ((1 << unusedBits) - 1)) != 0)
+        {
+            return null;
+        }
+
+        var bytes = new List<byte>(values.Count * 3 / 4);
+        var buffer = 0;
+        var bits = 0;
+        foreach (var value in values)
+        {
+            buffer = (buffer << 6) | value;
+            bits += 6;
+            if (bits >= 8)
+            {
+                bits -= 8;
+                bytes.Add((byte)((buffer >> bits) & 0xFF));
+            }
+        }
+
+        return [.. bytes];
+    }
+
     /// <summary><c>Uri.encodeComponent</c>: everything but <c>A-Za-z0-9-_.!~*'()</c> as upper-case percent-escaped UTF-8.</summary>
     internal static string EncodeComponent(string text)
     {

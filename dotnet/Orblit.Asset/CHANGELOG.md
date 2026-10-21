@@ -55,7 +55,15 @@
   `check` and `diff`. Each is its own project, `Orblit.Kit` and `Orblit.Pack`,
   over an internal class here. Output and exit codes match the Dart
   commands, but the text names the new tools.
-- Not ported yet: glTF, runtime import, the cook and the importers.
+- A tenth part holds the glTF document: `GltfDocument` reads a GLB or a
+  glTF with its buffers, edits the JSON in place and writes one GLB.
+  `ComponentType`, the accessor reads and adds, `TextureRole`,
+  `TextureRoles` and `TextureSlot` come with it. The accessors are part of
+  `GltfDocument`, because `Orblit.Mesh` has a `GltfAccessors` already.
+- A buffer URI is percent decoded twice, as Dart does. A bad base64
+  payload has no cause. A MAT2 or MAT3 accessor is read as packed.
+- Not ported yet: the collision mesh, glTF merge, bake and atlas, runtime
+  import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
