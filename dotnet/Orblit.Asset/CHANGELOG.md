@@ -33,7 +33,12 @@
   pack, and one that was cut off resumes from the bytes held.
 - A body that fails in the network is a `SocketFailureException`, which a
   download retries. A disk `IOException` is not retried.
-- Not ported yet: kits, glTF, runtime import, the cook and the importers.
+- A sixth part opens the kit format: `KitManifest`, `KitLicence`, `KitEngine`, `KitRules`,
+  `KitUpdatePlan` and `Kit`. A kit is a pack for the `source` target that holds
+  `kit.json`. The kit rules and the manifest are public so a separate tool can
+  call them. A licence address with a port past 65535 is refused.
+- Not ported yet: kit packing and extracting, the kit index, lock and store,
+  glTF, runtime import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
