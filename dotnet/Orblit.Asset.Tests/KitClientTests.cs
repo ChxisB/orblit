@@ -169,17 +169,23 @@ public sealed class KitClientTests : IAsyncLifetime
         Assert.Single((await other.IndexAsync()).Rows);
     }
 
-    [Theory]
-    [InlineData("http://store.example/store/")]
-    [InlineData("https://store.example/store/?a=1")]
-    [InlineData("https://store.example/store/#a")]
-    [InlineData("https://me@store.example/store/")]
-    [InlineData("/store/")]
-    [InlineData("https:///store/")]
-    public void RefusesABaseThatIsNotAPlainHttpsAddress(string text)
+    [Fact]
+    public void RefusesABaseThatIsNotAPlainHttpsAddress()
     {
-        Assert.Throws<ArgumentException>(() => new KitStoreClient(WebUrl.Parse(text), _transport));
-        Assert.NotNull(KitStoreClient.AddressProblem(WebUrl.Parse(text)));
+        foreach (var text in new[]
+        {
+            "http://store.example/store/",
+            "https://store.example/store/?a=1",
+            "https://store.example/store/#a",
+            "https://me@store.example/store/",
+            "/store/",
+        })
+        {
+            var error = Record.Exception(() => new KitStoreClient(WebUrl.Parse(text), _transport));
+
+            Assert.True(error?.GetType() == typeof(ArgumentException), text);
+            Assert.NotNull(KitStoreClient.AddressProblem(WebUrl.Parse(text)));
+        }
     }
 
     [Fact]
@@ -208,15 +214,17 @@ public sealed class KitClientTests : IAsyncLifetime
         }
     }
 
-    [Theory]
-    [InlineData("../index.json")]
-    [InlineData("releases.json")]
-    [InlineData("preview-9.png")]
-    public async Task RefusesAPreviewNameThatIsNotAPreview(string name)
+    [Fact]
+    public async Task RefusesAPreviewNameThatIsNotAPreview()
     {
         var row = (await _client.IndexAsync()).Rows.Single();
 
-        await Assert.ThrowsAsync<ArgumentException>(() => _client.PreviewAsync(row, name));
+        foreach (var name in new[] { "../index.json", "releases.json", "preview-9.png" })
+        {
+            var error = await Record.ExceptionAsync(() => _client.PreviewAsync(row, name));
+
+            Assert.True(error?.GetType() == typeof(ArgumentException), name);
+        }
     }
 
     [Fact]
@@ -267,6 +275,13 @@ public sealed class KitClientTests : IAsyncLifetime
 
         Assert.Contains(reason, error.Reason);
         Assert.True(body.Released);
+    }
+
+    [Fact]
+    public void RefusesABaseWithNoHost()
+    {
+        Assert.Throws<ArgumentException>(() => new KitStoreClient(WebUrl.Parse("https:///store/"), _transport));
+        Assert.NotNull(KitStoreClient.AddressProblem(WebUrl.Parse("https:///store/")));
     }
 
     [Fact]
