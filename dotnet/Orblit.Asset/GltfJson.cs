@@ -1,3 +1,6 @@
+using System.Globalization;
+using Orblit.VectorMath;
+
 namespace Orblit.Asset;
 
 /// <summary>
@@ -50,5 +53,21 @@ internal static class GltfJson
         long whole => whole,
         double number => number,
         _ => null,
+    };
+
+    /// <summary>
+    /// What Dart's string interpolation makes of a JSON value, so a key built from one tells <c>1</c> from
+    /// <c>1.0</c> as Dart's does.
+    /// </summary>
+    internal static string Display(object? value) => value switch
+    {
+        null => "null",
+        string text => text,
+        bool flag => flag ? "true" : "false",
+        int or long => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
+        double number => Doubles.ToDartString(number),
+        List<object?> list => $"[{string.Join(", ", list.Select(Display))}]",
+        GltfMap map => $"{{{string.Join(", ", map.Select(entry => $"{entry.Key}: {Display(entry.Value)}"))}}}",
+        _ => throw new ArgumentException($"{value.GetType().Name} is not a JSON value.", nameof(value)),
     };
 }

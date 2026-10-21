@@ -70,8 +70,16 @@
   Dart has no limit, and a .NET stack that runs out ends the process. A
   collision mesh version of `1.0` is accepted, as `1.0 == 1` in Dart. An
   index past 31 bits is saturated, so it is refused as outside the mesh.
-- Not ported yet: glTF merge, bake and atlas, runtime import, the cook and
-  the importers. The cook test of the collision sidecar waits for them.
+- A twelfth part holds the glTF edits: `GltfMerge` (`MergeMaterials`,
+  `MergePrimitives`, `PrimitiveGroupKey`) and `GltfBake.BakeInstancesAsync`.
+  A bake returns null when the model cannot be baked. A transform that is not
+  a number throws, as it does in Dart.
+- A bake keeps the first template of its batches for every later batch, as
+  Dart does, so a later batch carries the `extras` of the first. An index at
+  or past 2^31 throws `OverflowException`, where Dart carries it to a 32 bit
+  buffer.
+- Not ported yet: glTF atlas, runtime import, the cook and the importers.
+  The cook test of the collision sidecar waits for them.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.

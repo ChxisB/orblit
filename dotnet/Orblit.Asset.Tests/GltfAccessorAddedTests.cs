@@ -266,4 +266,50 @@ public sealed class GltfAccessorAddedTests
         Assert.Equal(new[] { 0.25f, 0.5f, 0.75f, 1f }, document.ReadVec2(added));
         Assert.Equal("VEC2", document.Accessor(added)["type"]);
     }
+
+    [Fact]
+    public async Task ElementBytesCopiesOneElementWholeAtTheViewStride()
+    {
+        // Two VEC2 shorts of four bytes each, eight bytes apart.
+        byte[] bytes = [1, 0, 2, 0, 9, 9, 9, 9, 3, 0, 4, 0, 9, 9, 9, 9];
+        var document = await GltfDocument.ReadAsync(
+            Id,
+            Glb(
+                Map($$"""
+                    {"asset": {"version": "2.0"},
+                     "buffers": [{"byteLength": {{bytes.Length}}}],
+                     "bufferViews": [{"buffer": 0, "byteOffset": 0, "byteLength": {{bytes.Length}}, "byteStride": 8}],
+                     "accessors": [{"bufferView": 0, "byteOffset": 0, "componentType": 5123, "count": 2, "type": "VEC2"}]}
+                    """),
+                bytes),
+            new MemoryAssetSource());
+
+        Assert.Equal(new byte[] { 1, 0, 2, 0 }, document.ElementBytes(0, 0).ToArray());
+        Assert.Equal(new byte[] { 3, 0, 4, 0 }, document.ElementBytes(0, 1).ToArray());
+    }
+
+    [Fact]
+    public async Task ElementBytesStartsAtTheAccessorOffsetWhenTheViewHasNoStride()
+    {
+        var document = await Of(
+            """{"bufferView": 0, "byteOffset": 2, "componentType": 5121, "count": 2, "type": "VEC2"}""",
+            [0],
+            [9, 9, 1, 2, 3, 4]);
+
+        Assert.Equal(new byte[] { 3, 4 }, document.ElementBytes(0, 1).ToArray());
+    }
+
+    [Fact]
+    public async Task ElementBytesIsZeroForAnAccessorWithNoViewAndRefusesOneThatReadsPastIt()
+    {
+        var empty = await Of("""{"componentType": 5126, "count": 1, "type": "VEC3"}""", null, []);
+        var truncated = await Of(
+            """{"bufferView": 0, "componentType": 5121, "count": 2, "type": "VEC2"}""", [0], [1, 2, 3]);
+
+        Assert.Equal(new byte[12], empty.ElementBytes(0, 0).ToArray());
+        Assert.Equal(new byte[] { 1, 2 }, truncated.ElementBytes(0, 0).ToArray());
+        Assert.Equal(
+            "accessor 0 reads past its buffer view",
+            Assert.Throws<FormatException>(() => truncated.ElementBytes(0, 1)).Message);
+    }
 }
