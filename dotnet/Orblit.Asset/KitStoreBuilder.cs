@@ -18,12 +18,13 @@ public static class KitStoreBuilder
     /// problem, and so is a link or an empty file.
     ///
     /// A release is fetched over https from its url, up to the number of bytes the entry gives and for no
-    /// longer than <paramref name="timeout"/> (ten minutes). The pack has to hash to the entry's hash and be
-    /// the size it says, every blob has to match its hash, the kit has to pass <see cref="Kit.CheckAsync"/>,
-    /// and its manifest has to name the same publisher, slug and version as the entry. Nothing is written
-    /// until every release of every kit has passed, and <paramref name="outPath"/> must not exist. The files
-    /// are written beside it and renamed into place, so what is published is only what was checked this
-    /// time. Throws a <see cref="FormatException"/> that lists every problem.
+    /// longer than <paramref name="timeout"/>, which is ten minutes when left out. The pack has to hash to
+    /// the entry's hash and be the size it says, every blob has to match its hash, the kit has to pass
+    /// <see cref="Kit.CheckAsync"/>, and its manifest has to name the same publisher, slug and version as the
+    /// entry. Nothing is written until every release of every kit has passed, and
+    /// <paramref name="outPath"/> must not exist. The files are written beside it and renamed into place, so
+    /// what is published is only what was checked this time. Throws a <see cref="FormatException"/> that
+    /// lists every problem.
     ///
     /// shortcut: every release is downloaded on every run, one after another, and the previews of every kit
     /// are held in memory until the last release has passed. Keep packs by hash between runs, fetch several

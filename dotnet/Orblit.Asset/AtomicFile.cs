@@ -8,6 +8,8 @@ internal static class AtomicFile
 {
     public static async Task WriteAsync(string temporary, string target, ReadOnlyMemory<byte> bytes)
     {
+        // Only a file this call made is removed. A file already at the name is somebody else's.
+        var made = false;
         try
         {
             if (Path.GetDirectoryName(target) is { Length: > 0 } folder)
@@ -17,6 +19,7 @@ internal static class AtomicFile
 
             var stream = new FileStream(
                 temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None, 4096, FileOptions.Asynchronous);
+            made = true;
             await using (stream.ConfigureAwait(false))
             {
                 await stream.WriteAsync(bytes).ConfigureAwait(false);
@@ -25,7 +28,7 @@ internal static class AtomicFile
 
             File.Move(temporary, target, overwrite: true);
         }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        catch (Exception error) when (made && error is IOException or UnauthorizedAccessException)
         {
             Discard(temporary);
             throw;

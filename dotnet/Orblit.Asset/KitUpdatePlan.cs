@@ -34,10 +34,10 @@ public sealed class KitUpdatePlan(
     }
 
     /// <summary>
-    /// Plans an update from what <paramref name="locked"/> recorded, what the new release holds
-    /// (<paramref name="incoming"/>) and what is on disk now (<paramref name="onDisk"/>, null for a missing
-    /// file). All three are keyed by place in the project. A place missing from <paramref name="onDisk"/>
-    /// counts as not there. Answers and changes nothing.
+    /// Plans an update from what <paramref name="locked"/> recorded, what the new release holds in
+    /// <paramref name="incoming"/> and what is on disk now in <paramref name="onDisk"/>. All three are keyed by
+    /// place in the project. A place missing from <paramref name="onDisk"/> counts as not there. Answers and
+    /// changes nothing.
     /// </summary>
     public static KitUpdatePlan Plan(
         IReadOnlyDictionary<AssetId, ContentHash> locked,
