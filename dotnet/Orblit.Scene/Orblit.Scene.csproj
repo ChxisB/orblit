@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.24.0</Version>
+    <Description>A scene as a document: entities with stable ids, a parent and an order, components that describe what each one is, migrations from every older format, and diffs between two documents that can be applied and inverted.</Description>
+    <!-- Values.Object keeps the Dart name, so a ported reader reads the same. -->
+    <NoWarn>$(NoWarn);CA1720</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
+    <ProjectReference Include="..\Orblit.Mesh\Orblit.Mesh.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+    <ProjectReference Include="..\Orblit.Weather\Orblit.Weather.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Scene.Tests" />
+  </ItemGroup>
+</Project>

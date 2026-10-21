@@ -48,6 +48,8 @@ dependencies:
     path: ../../packages/orblit_rig
   orblit_save:
     path: ../../packages/orblit_save
+  orblit_scene:
+    path: ../../packages/orblit_scene
   orblit_sequence:
     path: ../../packages/orblit_sequence
   orblit_sprite:
