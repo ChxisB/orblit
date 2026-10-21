@@ -401,7 +401,7 @@ public sealed partial class GltfDocument
                 return DataUri(text);
             }
 
-            var at = text.Contains(':', StringComparison.Ordinal) ? null : id.Resolve(Decode(text));
+            var at = text.Contains(':', StringComparison.Ordinal) ? null : id.Resolve(DartText.PercentDecoded(text));
             return at is null
                 ? throw new ImportFailureException(id, $"buffer {index} is at \"{text}\", which is not a name inside the project")
                 : await source.ReadAsync(at).ConfigureAwait(false);
@@ -421,18 +421,6 @@ public sealed partial class GltfDocument
                 ? throw new ImportFailureException(id, "has a data URI that is not base64, which this cook does not read")
                 : DartText.DecodeBase64(uri[(comma + 1)..])
                     ?? throw new ImportFailureException(id, "has a data URI that is not valid base64");
-        }
-
-        private static string Decode(string uri)
-        {
-            try
-            {
-                return DartText.DecodeUriComponent(uri);
-            }
-            catch (ArgumentException)
-            {
-                return uri;
-            }
         }
     }
 }

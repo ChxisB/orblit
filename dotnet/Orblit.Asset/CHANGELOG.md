@@ -104,7 +104,7 @@
   boxed as a `long`, and a bad property throws `ArgumentException` naming it.
 - Workers run on threads. `CookAllAsync` calls `onResult` one call at a time, and
   a dependency that many assets share is read once.
-- Not ported yet: the glTF, atlas and terrain importers, the cook of a project
+- Not ported yet: the atlas and terrain importers, the cook of a project
   and runtime import. The cook test of the collision sidecar waits for them.
 - A sixteenth part holds the importers that drive a native program:
   `NativeTool`, `TextureImporter`, `ModelImporter`, `SplatImporter`,
@@ -120,3 +120,13 @@
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
+- A seventeenth part holds the glTF and scene importers. `GltfImporter`
+  passes a model through, or with `"atlas": true` packs its textures onto
+  shared pages through `ModelAtlasCook` and merges the materials and
+  primitives that come to match. `"collision": true` adds `collision.json`.
+  `SceneImporter` reads a scene for the assets it names. Neither is in
+  `NativeImporters.Create()`, as in Dart.
+- `DependenciesOfAsync` of both runs on the thread pool, so a file that
+  cannot be read faults the task and does not throw at the call.
+- The atlas cook needs `orblit_texture_cook`. Pages are held to the largest
+  size the target samples, or 8192 when it names none, and the cook says so.

@@ -46,6 +46,14 @@ internal static class GltfJson
         _ => throw new InvalidCastException($"{value?.GetType().Name ?? "null"} is not an int."),
     };
 
+    /// <summary>
+    /// <c>map[key] is int ? map[key] as int : null</c>: the whole number at <paramref name="key"/>, held at the
+    /// end of the 32-bit range as <see cref="Saturated"/> holds it, or null for anything else, including a
+    /// fraction, where <see cref="IntAt"/> would throw.
+    /// </summary>
+    internal static int? WholeAt(GltfMap map, string key) =>
+        Get(map, key) is { } value && IsInt(value) ? Saturated(value) : null;
+
     /// <summary>A JSON number as a double, or null for anything that is not a number: <c>value is num</c>.</summary>
     internal static double? AsNumber(object? value) => value switch
     {

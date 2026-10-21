@@ -159,6 +159,23 @@ internal static partial class DartText
         return Decode(bytes.ToArray());
     }
 
+    /// <summary>
+    /// <see cref="DecodeUriComponent"/>, or <paramref name="text"/> as given when it is not valid percent
+    /// encoding. A glTF URI that is not encoded at all is common, and a file beside the model by that name
+    /// is the best guess left. Bytes that are not UTF-8 still throw <see cref="FormatException"/>, as in Dart.
+    /// </summary>
+    internal static string PercentDecoded(string text)
+    {
+        try
+        {
+            return DecodeUriComponent(text);
+        }
+        catch (ArgumentException)
+        {
+            return text;
+        }
+    }
+
     /// <summary><c>utf8.decode(bytes)</c>. Throws <see cref="FormatException"/> on a malformed byte. One leading byte order mark is dropped.</summary>
     internal static string Decode(ReadOnlySpan<byte> bytes)
     {

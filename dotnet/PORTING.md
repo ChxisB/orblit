@@ -186,6 +186,10 @@ Each row is a place where a test will not always catch the difference.
 | `Process.run` and `Process.runSync`, which throw `ProcessException` when the program does not exist | `NativeTool.Capture`, which reads stderr on a task while it reads stdout, and a caught `Win32Exception` for `which` | Reading one pipe to the end while the other fills stops a program that writes a lot to both. A machine with no `which` finds nothing on its PATH |
 | A fake tool that is a Dart script run by `dart` | A POSIX `sh` script written by `NativeToolWork.Fake(spec)`, and `[ShellFact]`, which skips without `/bin/sh` | The Windows runner has no `sh`, so the importer tests skip there. A function in `sh` has its own `$1`, so the script's arguments are passed in with `"$@"` |
 | `CookingNotSupported` and the `_stub`, `_web` importers | Not ported | Decision 71 leaves the stub and web files out, and only they throw `CookingNotSupported` |
+| An `async` `dependenciesOf` that returns a failed `Future` for an unreadable model or scene | `Task.Run` round the synchronous read | A C# method that throws before its first `await` throws at the call, and the Dart caller sees the error only when it awaits. The pool gives the same fault on the task. |
+| `is int` on a decoded JSON number, which is false for a double | `GltfJson.WholeAt`, which answers without throwing | `AsInt` throws `InvalidCastException` on a double or a string, and a model with `"byteOffset": 1.5` has to be skipped, as Dart skips it. |
+| `ModelAtlasCook.run`, one long method over local variables | `RunAsync` in steps that take a private sealed `Job` | The method is far over the complexity limit of 10. The `Job` holds what one run shares, so a step takes the run and not seven values from it. |
+| `Uri.decodeComponent` caught on `ArgumentError`, which hands back the uri as given | `DartText.PercentDecoded` | `DecodeUriComponent` throws `ArgumentException` for a bad escape, as Dart throws `ArgumentError`, so the catch sits in one place. Bytes that are not UTF-8 still throw `FormatException`, as in Dart. |
 
 ## Fixtures
 
