@@ -194,6 +194,7 @@ Each row is a place where a test will not always catch the difference.
 | `'${named.runtimeType}'` in a failure message | `DartType`, which names the Dart type of a decoded JSON value | The message says `_GrowableList<dynamic>` or `_Map<String, dynamic>`, as Dart does. Only the types the JSON reader produces can reach it. |
 | `ArgumentError.value(value, key, 'has to be a size in texels')` | `ArgumentException` with the text `Invalid argument (key): has to be a size in texels: value`, and `key` as the parameter name | That is Dart's own text. The C# message also ends with `(Parameter 'key')`, so tests read the start of it. |
 | `result.heuristic.name`, the name of a Dart enum value | `HeuristicLabel`, the C# member name with a lower-case first letter | C# members are in Pascal case, and the note reads `bestShortSideFit`, as in Dart. |
+| `Terrain` the class, in a file that sits in `Orblit.Asset` | `using TerrainData = Orblit.Terrain.Terrain;` | Inside `namespace Orblit.Asset` the simple name `Terrain` finds the namespace `Orblit.Terrain` first, so the type cannot be named without the alias. The type itself was ported in task 06 and is not renamed. |
 
 ## Fixtures
 

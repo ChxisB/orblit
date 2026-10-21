@@ -104,8 +104,8 @@
   boxed as a `long`, and a bad property throws `ArgumentException` naming it.
 - Workers run on threads. `CookAllAsync` calls `onResult` one call at a time, and
   a dependency that many assets share is read once.
-- Not ported yet: the terrain importer, the cook of a project
-  and runtime import. The cook test of the collision sidecar waits for them.
+- Not ported yet: the cook of a project and runtime import. The cook test
+  of the collision sidecar waits for them.
 - A sixteenth part holds the importers that drive a native program:
   `NativeTool`, `TextureImporter`, `ModelImporter`, `SplatImporter`,
   `EnvironmentImporter` and `MaterialImporter`. `NativeImporters.Create()`
@@ -142,3 +142,19 @@
 - `DependenciesOfAsync` runs on the thread pool, so a document that is not
   JSON faults the task and does not throw at the call.
 - The test of the default importers of a project waits for the project cook.
+- A nineteenth part holds `TerrainImporter` and `CookedTerrain`. A terrain
+  is an `.oterrain` file and an `.oregion` file for each region it lists.
+  Neither is cooked into anything smaller. The importer checks a region
+  against its own name and a terrain against each region's key and size,
+  and a terrain depends on its regions and on every image, model and
+  material its sets and scatter layers name. It is not in
+  `NativeImporters.Create()`, as in Dart.
+- The bundle files the outputs as `<asset id>.<output>`, so `world.oterrain`
+  becomes `world.oterrain.oterrain`. `CookedTerrain.OpenAsync` reads that
+  back from a bundle or a pack, and names a listed region the pack does not
+  hold in `Problems` and never asks for it.
+- `Orblit.Asset` now references `Orblit.Terrain`. Inside this namespace the
+  name `Terrain` is that namespace, so the files that need the type use
+  `using TerrainData = Orblit.Terrain.Terrain;`.
+- Three of the 27 Dart tests of the part cook through `CookProject`. They
+  are covered by tests on a hand-built pack and wait for part F4.
