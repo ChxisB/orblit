@@ -18,14 +18,17 @@ internal sealed class PackFixture : IDisposable
     public string At(string relative) => Path.Combine([_directory.FullName, .. relative.Split('/')]);
 
     /// <summary>Writes a bundle folder of <paramref name="files"/>, each a path and its text, with the manifest that goes with it.</summary>
-    public async Task<string> BundleAsync(string folder, IReadOnlyDictionary<string, string> files)
+    public Task<string> BundleAsync(string folder, IReadOnlyDictionary<string, string> files) =>
+        BundleAsync(folder, files.ToDictionary(file => file.Key, file => Encoding.UTF8.GetBytes(file.Value)));
+
+    /// <summary><see cref="BundleAsync(string, IReadOnlyDictionary{string, string})"/> for files that are bytes and not text.</summary>
+    public async Task<string> BundleAsync(string folder, IReadOnlyDictionary<string, byte[]> files)
     {
         var token = TestContext.Current.CancellationToken;
         Directory.CreateDirectory(At(folder));
         var entries = new Dictionary<AssetId, AssetEntry>();
-        foreach (var (key, value) in files)
+        foreach (var (key, bytes) in files)
         {
-            var bytes = Encoding.UTF8.GetBytes(value);
             var file = At($"{folder}/{key}");
             Directory.CreateDirectory(Path.GetDirectoryName(file)!);
             await File.WriteAllBytesAsync(file, bytes, token);

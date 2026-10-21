@@ -152,6 +152,348 @@ public sealed class PackFolderTests : IDisposable
         return files;
     }
 
+    // download
+
+    private static readonly WebUrl Url = WebUrl.Parse("https://cdn.example.com/patches/one.opack");
+    private static readonly AssetOrigin Origin = AssetOrigin.Parse("https://cdn.example.com/assets/");
+
+    private static MapTransport Serving(byte[] bytes, int cut = 0, int? stopAfter = null, List<Fault>? faults = null) =>
+        new(new Dictionary<WebUrl, TransportPage> { [Url] = new TransportPage(bytes, cut: cut, stopAfter: stopAfter, faults: faults) });
+
+    // F2: only the pack and the transport are required, and the rest are named at the call.
+    private Task<AssetPack> Download(
+        BuiltPack built,
+        IAssetTransport transport,
+        PackFolder? into = null,
+        int attempts = 3,
+        Action<FetchProgress>? onProgress = null,
+        AssetOrigin? from = null) =>
+        (into ?? _folder).DownloadAsync(
+            new PackOffer(Url, built.Hash), transport, from ?? Origin, attempts, TimeSpan.Zero, NetWorld.NoNoise, onProgress);
+
+    private async Task Leave(string file, byte[] bytes)
+    {
+        Directory.CreateDirectory(_folderPath);
+        await File.WriteAllBytesAsync(file, bytes, TestContext.Current.CancellationToken);
+    }
+
+    private static int IndexOf(byte[] haystack, byte[] needle)
+    {
+        var at = haystack.AsSpan().IndexOf(needle);
+        return at >= 0 ? at : throw new InvalidOperationException("The marker is not in the pack.");
+    }
+
+    [Fact]
+    public async Task FilesAWholePackUnderItsHash()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = Serving(built.Bytes);
+
+        var pack = await Download(built, transport);
+
+        Assert.Equal(built.Hash, pack.Hash);
+        Assert.Equal(built.Bytes, await File.ReadAllBytesAsync(PackFile(built.Hash), TestContext.Current.CancellationToken));
+        Assert.False(File.Exists(PartFile(built.Hash)));
+        Assert.Single(transport.Sent);
+        Assert.Null(transport.Sent[0].From);
+    }
+
+    [Fact]
+    public async Task IsCutOffHalfwayResumesChecksItAndMountsIt()
+    {
+        var both = await Pair();
+        var half = both.Patch.Bytes.Length / 2;
+        using var transport = Serving(both.Patch.Bytes, cut: 512, stopAfter: half);
+
+        var pack = await Download(both.Patch, transport);
+
+        Assert.Equal(2, transport.Sent.Count);
+        Assert.Equal<long?>(half, transport.Sent[1].From);
+        Assert.Equal(both.Patch.Hash, pack.Hash);
+        Assert.False(File.Exists(PartFile(both.Patch.Hash)));
+
+        var packs = new MountedPacks(CookTargets.Android);
+        packs.Start(both.Shipped.Pack);
+        packs.Patch(pack);
+        Assert.Equal(Body("wall v2"), await Text(packs, "textures/wall.ktx2"));
+        Assert.Equal(Body("tree"), await Text(packs, "models/tree.glb"));
+    }
+
+    [Fact]
+    public async Task ResumesFromAPartFileAnEarlierRunLeft()
+    {
+        var built = (await Pair()).Patch;
+        var held = built.Bytes.Length / 3;
+        await Leave(PartFile(built.Hash), built.Bytes[..held]);
+        using var transport = Serving(built.Bytes);
+
+        var pack = await Download(built, transport, into: new PackFolder(_folderPath));
+
+        Assert.Equal<long?>(held, transport.Sent.Single().From);
+        Assert.Equal(built.Hash, pack.Hash);
+        Assert.Equal(built.Bytes, await File.ReadAllBytesAsync(PackFile(built.Hash), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task TakesAPartThatIsAlreadyWholeWhenTheServerSays416()
+    {
+        var built = (await Pair()).Patch;
+        await Leave(PartFile(built.Hash), built.Bytes);
+        using var transport = new Answers(416);
+
+        var pack = await Download(built, transport);
+
+        Assert.Equal<long?>(built.Bytes.Length, transport.Sent.Single().From);
+        Assert.Equal(built.Hash, pack.Hash);
+        Assert.False(File.Exists(PartFile(built.Hash)));
+    }
+
+    [Fact]
+    public async Task DropsAPartTheServerHasNoByteForWhenItIsNotAPack()
+    {
+        var built = (await Pair()).Patch;
+        await Leave(PartFile(built.Hash), new byte[built.Bytes.Length + 50]);
+        using var transport = new Answers(416);
+
+        await Assert.ThrowsAsync<FetchFailedException>(() => Download(built, transport, attempts: 2));
+
+        Assert.False(File.Exists(PartFile(built.Hash)));
+        Assert.Equal<long?[]>([built.Bytes.Length + 50, null], [.. transport.Sent.Select(request => request.From)]);
+    }
+
+    [Fact]
+    public async Task StartsOverWhenTheServerIgnoresTheRange()
+    {
+        var both = await Pair();
+        var half = both.Patch.Bytes.Length / 2;
+        await Leave(PartFile(both.Patch.Hash), both.Patch.Bytes[..half]);
+        using var transport = Serving(both.Patch.Bytes);
+
+        var pack = await Download(both.Patch, new DropsTheRange(transport));
+
+        Assert.Equal(both.Patch.Hash, pack.Hash);
+        Assert.Equal(both.Patch.Bytes, await File.ReadAllBytesAsync(PackFile(both.Patch.Hash), TestContext.Current.CancellationToken));
+        Assert.Single(transport.Sent);
+    }
+
+    [Fact]
+    public async Task DoesNotTrustAServerThatResumesAtAnotherByte()
+    {
+        var both = await Pair();
+        var held = both.Patch.Bytes.Length / 2;
+        await Leave(PartFile(both.Patch.Hash), both.Patch.Bytes[..held]);
+        using var transport = Serving(both.Patch.Bytes);
+        var seen = new List<long>();
+
+        var pack = await Download(both.Patch, new ResumesEarly(transport), onProgress: progress => seen.Add(progress.Received));
+
+        Assert.Equal(both.Patch.Hash, pack.Hash);
+        Assert.Equal(both.Patch.Bytes, await File.ReadAllBytesAsync(PackFile(both.Patch.Hash), TestContext.Current.CancellationToken));
+        Assert.Equal<long?[]>([held - 10, null], [.. transport.Sent.Select(request => request.From)]);
+
+        // The reply that began at the wrong byte is not written, so no progress counts it. Written, it would put
+        // the file ten bytes past its own length before the check caught it.
+        Assert.Equal([(long)both.Patch.Bytes.Length], seen);
+    }
+
+    [Fact]
+    public async Task ReplacesAFileThatHasAPacksNameAndOtherContents()
+    {
+        var both = await Pair();
+        await Leave(PackFile(both.Patch.Hash), both.Shipped.Bytes);
+        using var transport = Serving(both.Patch.Bytes);
+
+        var pack = await Download(both.Patch, transport);
+
+        Assert.Equal(both.Patch.Hash, pack.Hash);
+        Assert.Equal(both.Patch.Bytes, await File.ReadAllBytesAsync(PackFile(both.Patch.Hash), TestContext.Current.CancellationToken));
+        Assert.Single(transport.Sent);
+    }
+
+    [Fact]
+    public async Task ThrowsAwayAPartThatBelongsToADifferentFile()
+    {
+        var both = await Pair();
+        var older = await _fixture.BuildAsync(
+            "older",
+            new Dictionary<string, string>
+            {
+                ["textures/wall.ktx2"] = Body("wall v0"),
+                ["models/tree.glb"] = Body("tree"),
+                ["scenes/town.oscene"] = Body("town"),
+            },
+            [both.Shipped.Pack]);
+        await Leave(PartFile(both.Patch.Hash), older.Bytes[..60]);
+        using var transport = Serving(both.Patch.Bytes);
+
+        var pack = await Download(both.Patch, transport);
+
+        Assert.Equal(both.Patch.Hash, pack.Hash);
+        Assert.Equal<long?[]>([60, null], [.. transport.Sent.Select(request => request.From)]);
+        Assert.Equal(both.Patch.Bytes, await File.ReadAllBytesAsync(PackFile(both.Patch.Hash), TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task RefusesAPackThatIsNotTheOneOfferedWhole()
+    {
+        var both = await Pair();
+        using var transport = Serving(both.Shipped.Bytes);
+
+        var error = await Assert.ThrowsAsync<FetchCorruptException>(() => Download(both.Patch, transport));
+
+        Assert.Equal(both.Patch.Hash, error.Wanted);
+        Assert.Equal(both.Shipped.Hash, error.Got);
+        Assert.Single(transport.Sent);
+        Assert.Empty(Directory.GetFileSystemEntries(_folderPath));
+    }
+
+    [Fact]
+    public async Task RefusesAPackWithADamagedBlobAndKeepsNothing()
+    {
+        var built = (await Pair()).Patch;
+        var damaged = (byte[])built.Bytes.Clone();
+        var at = IndexOf(damaged, Encoding.UTF8.GetBytes(Body("wall v2")));
+        damaged[at + 10] ^= 0xff;
+        using var transport = Serving(damaged);
+
+        var error = await Assert.ThrowsAsync<FormatException>(() => Download(built, transport));
+
+        Assert.Contains("textures/wall.ktx2", error.Message);
+        Assert.Empty(Directory.GetFileSystemEntries(_folderPath));
+        Assert.Single(transport.Sent);
+    }
+
+    [Fact]
+    public async Task DoesNotRetryA404()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = new MapTransport(new Dictionary<WebUrl, TransportPage>());
+
+        var error = await Assert.ThrowsAsync<FetchFailedException>(() => Download(built, transport));
+
+        Assert.Equal(404, error.Cause);
+        Assert.Single(transport.Sent);
+    }
+
+    [Fact]
+    public async Task TriesABusyServerAgainAndThenSucceeds()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = Serving(built.Bytes, faults: [Fault.OfStatus(503), Fault.Thrown()]);
+
+        var pack = await Download(built, transport);
+
+        Assert.Equal(built.Hash, pack.Hash);
+        Assert.Equal(3, transport.Sent.Count);
+    }
+
+    [Fact]
+    public async Task GivesUpAfterTheAttemptsItWasGiven()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = new Answers(503);
+
+        var error = await Assert.ThrowsAsync<FetchFailedException>(() => Download(built, transport, attempts: 3));
+
+        Assert.Equal(3, error.Attempts);
+        Assert.Equal(503, error.Cause);
+        Assert.Equal(3, transport.Sent.Count);
+    }
+
+    [Fact]
+    public async Task RefusesAHostTheOriginDoesNotAllowBeforeAnyRequest()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = new MapTransport(new Dictionary<WebUrl, TransportPage>());
+        var elsewhere = WebUrl.Parse("https://evil.example.net/one.opack");
+
+        await Assert.ThrowsAsync<FetchRefusedException>(
+            () => _folder.DownloadAsync(new PackOffer(elsewhere, built.Hash), transport, Origin));
+
+        Assert.Empty(transport.Sent);
+    }
+
+    [Fact]
+    public async Task RefusesAPackLongerThanThePolicyAllows()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = Serving(built.Bytes);
+        var small = new AssetOrigin(WebUrl.Parse("https://cdn.example.com/assets/"), new FetchPolicy(maxBytes: 1000));
+
+        await Assert.ThrowsAsync<FetchRefusedException>(() => Download(built, transport, from: small));
+
+        Assert.Empty(Directory.GetFileSystemEntries(_folderPath));
+    }
+
+    [Fact]
+    public async Task StopsReadingABodyThatRunsPastThePolicy()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = new NeverEnds();
+        var small = new AssetOrigin(WebUrl.Parse("https://cdn.example.com/assets/"), new FetchPolicy(maxBytes: 1000));
+
+        await Assert.ThrowsAsync<FetchRefusedException>(() => Download(built, transport, from: small));
+
+        Assert.Empty(Directory.GetFileSystemEntries(_folderPath));
+        Assert.True(transport.Pulled < 10);
+    }
+
+    [Fact]
+    public async Task DropsWhatAServerSentPastTheLengthItDeclared()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = new Lies(built.Bytes);
+
+        await Assert.ThrowsAsync<FetchFailedException>(() => Download(built, transport));
+
+        Assert.Equal<long?[]>([null, null, null], [.. transport.Sent.Select(request => request.From)]);
+        Assert.Empty(Directory.GetFileSystemEntries(_folderPath));
+    }
+
+    [Fact]
+    public async Task AnswersFromTheFolderWithoutARequestWhenItHoldsThePack()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = Serving(built.Bytes);
+        await Download(built, transport);
+
+        var again = await Download(built, transport);
+
+        Assert.Equal(built.Hash, again.Hash);
+        Assert.Single(transport.Sent);
+    }
+
+    [Fact]
+    public async Task SharesOneDownloadBetweenTwoCallers()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = Serving(built.Bytes);
+        using var gated = new Gated(transport);
+
+        var first = Download(built, gated);
+        var second = Download(built, gated);
+        gated.Open();
+        var both = await Task.WhenAll(first, second);
+
+        Assert.Equal([built.Hash, built.Hash], both.Select(pack => pack.Hash));
+        Assert.Single(transport.Sent);
+    }
+
+    [Fact]
+    public async Task ReportsHowMuchHasArrivedOfHowMuch()
+    {
+        var built = (await Pair()).Patch;
+        using var transport = Serving(built.Bytes, cut: 1024);
+        var seen = new List<FetchProgress>();
+
+        await Download(built, transport, onProgress: seen.Add);
+
+        Assert.True(seen.Count > 2);
+        Assert.Equal(built.Bytes.Length, seen[^1].Received);
+        Assert.Equal<long?>(built.Bytes.Length, seen[^1].Total);
+        Assert.Equal(seen.Select(p => p.Received).Order(), seen.Select(p => p.Received));
+    }
+
     // remove
 
     [Fact]
@@ -167,5 +509,99 @@ public sealed class PackFolderTests : IDisposable
 
         Assert.Empty(Directory.GetFileSystemEntries(_folderPath));
         Assert.False(await _folder.RemoveAsync(both.Patch.Hash));
+    }
+
+    // Answers every request with a status, and keeps what was asked.
+    private sealed class Answers(int status) : IAssetTransport
+    {
+        public List<FetchRequest> Sent { get; } = [];
+
+        public Task<FetchReply> SendAsync(FetchRequest request, CancellationToken cancellation = default)
+        {
+            lock (Sent)
+            {
+                Sent.Add(request);
+            }
+
+            return Task.FromResult(FetchReply.Empty(status));
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    // A server that sends the whole file whatever range it is asked for.
+    private sealed class DropsTheRange(MapTransport inner) : IAssetTransport
+    {
+        public Task<FetchReply> SendAsync(FetchRequest request, CancellationToken cancellation = default) =>
+            inner.SendAsync(new FetchRequest(request.Url), cancellation);
+
+        public void Dispose() => inner.Dispose();
+    }
+
+    // A server that answers a range from a byte a little before the one asked for, and says so.
+    private sealed class ResumesEarly(MapTransport inner) : IAssetTransport
+    {
+        private const int By = 10;
+
+        public Task<FetchReply> SendAsync(FetchRequest request, CancellationToken cancellation = default) =>
+            request.From is not { } from || from < By
+                ? inner.SendAsync(request, cancellation)
+                : inner.SendAsync(new FetchRequest(request.Url, from: from - By), cancellation);
+
+        public void Dispose() => inner.Dispose();
+    }
+
+    // A server that answers 200 with no length and a body far longer than any pack, counting the chunks it is
+    // asked for. The size can only be found out as the body arrives, and only a reader that stops early pulls few.
+    private sealed class NeverEnds : IAssetTransport
+    {
+        private int _pulled;
+
+        public int Pulled => Volatile.Read(ref _pulled);
+
+        public Task<FetchReply> SendAsync(FetchRequest request, CancellationToken cancellation = default) =>
+            Task.FromResult(new FetchReply { Status = 200, Body = Chunks() });
+
+        public void Dispose()
+        {
+        }
+
+        private async IAsyncEnumerable<byte[]> Chunks()
+        {
+            for (var i = 0; i < 5000; i++)
+            {
+                Interlocked.Increment(ref _pulled);
+                await Task.Yield();
+                yield return new byte[400];
+            }
+        }
+    }
+
+    // A server whose body is longer than the length it declares.
+    private sealed class Lies(byte[] bytes) : IAssetTransport
+    {
+        public List<FetchRequest> Sent { get; } = [];
+
+        public Task<FetchReply> SendAsync(FetchRequest request, CancellationToken cancellation = default)
+        {
+            lock (Sent)
+            {
+                Sent.Add(request);
+            }
+
+            return Task.FromResult(new FetchReply { Status = 200, Body = Single(), Length = bytes.Length - 100 });
+        }
+
+        public void Dispose()
+        {
+        }
+
+        private async IAsyncEnumerable<byte[]> Single()
+        {
+            await Task.Yield();
+            yield return bytes;
+        }
     }
 }

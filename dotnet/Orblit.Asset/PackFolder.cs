@@ -16,6 +16,9 @@ public sealed class PackFolder(string path)
     private const string PackSuffix = ".opack";
     private const string PartSuffix = ".part";
 
+    private readonly Lock _gate = new();
+    private readonly Dictionary<ContentHash, Task<AssetPack>> _running = [];
+
     /// <summary>The folder. It is made when the first pack arrives.</summary>
     public string Path { get; } = path;
 
@@ -59,7 +62,103 @@ public sealed class PackFolder(string path)
         return Task.FromResult(packGone || partGone);
     }
 
-    private static bool Delete(string file)
+    /// <summary>
+    /// Fetches the pack <paramref name="offer"/> names and answers it opened, with every blob checked.
+    /// Returns at once when the pack is already here. A download that was cut off, in this run or an earlier
+    /// one, resumes from the bytes held. The pack has to hash to <c>offer.Hash</c> and every blob in it has
+    /// to match the directory. A failure of either throws and leaves no file with a pack's name.
+    /// </summary>
+    /// <remarks>
+    /// A connection that failed, or a server that answered 5xx, 408, 425 or 429, is tried again up to
+    /// <paramref name="attempts"/> times in all, waiting <paramref name="backoff"/> (one second) and then
+    /// twice as long each time, give or take a fifth. A resumed attempt costs only the bytes still missing,
+    /// so more attempts are cheap. A 404, a host <paramref name="origin"/> does not allow, a pack over the
+    /// policy's <c>MaxBytes</c> and a pack that is not <paramref name="offer"/>'s throw at once.
+    /// <para>
+    /// A second call for the same hash while one is running shares it, and its
+    /// <paramref name="onProgress"/> is not called.
+    /// </para>
+    /// </remarks>
+    // F2: a download is described by what it fetches and how, all named at the call as Dart names them.
+    public Task<AssetPack> DownloadAsync(
+        PackOffer offer,
+        IAssetTransport transport,
+        AssetOrigin origin,
+        int attempts = 5,
+        TimeSpan? backoff = null,
+        Random? jitter = null,
+        Action<FetchProgress>? onProgress = null)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(attempts);
+        lock (_gate)
+        {
+            if (_running.TryGetValue(offer.Hash, out var running))
+            {
+                return running;
+            }
+
+            var download = new PackDownload
+            {
+                Offer = offer,
+                Transport = transport,
+                Origin = origin,
+                Part = PartFile(offer.Hash),
+                Attempts = attempts,
+                Backoff = backoff ?? TimeSpan.FromSeconds(1),
+                Jitter = jitter ?? Random.Shared,
+                OnProgress = onProgress,
+            };
+            return _running[offer.Hash] = FetchAsync(offer.Hash, download);
+        }
+    }
+
+    private async Task<AssetPack> FetchAsync(ContentHash hash, PackDownload download)
+    {
+        // The task is made under the gate, so it must not finish, and take itself out of the running list,
+        // before the gate has put it in.
+        await Task.Yield();
+        try
+        {
+            Directory.CreateDirectory(Path);
+            if (await HeldCopyAsync(hash).ConfigureAwait(false) is { } held)
+            {
+                return held;
+            }
+
+            // A file with the pack's name and other contents is in the way of the rename that finishes a download.
+            Delete(PackFile(hash));
+            return await download.RunAsync().ConfigureAwait(false);
+        }
+        finally
+        {
+            lock (_gate)
+            {
+                _running.Remove(hash);
+            }
+        }
+    }
+
+    // The pack already filed under hash, or null when there is none or what has its name is not that pack.
+    private async Task<AssetPack?> HeldCopyAsync(ContentHash hash)
+    {
+        var file = PackFile(hash);
+        if (!File.Exists(file))
+        {
+            return null;
+        }
+
+        try
+        {
+            var pack = await OpenFileAsync(file).ConfigureAwait(false);
+            return pack.Hash == hash ? pack : null;
+        }
+        catch (FormatException)
+        {
+            return null;
+        }
+    }
+
+    internal static bool Delete(string file)
     {
         if (!File.Exists(file))
         {
@@ -101,7 +200,7 @@ public sealed class PackFolder(string path)
 
     // Opens the pack in file and lets go of the file, which a read opens again. A folder with a dozen
     // packs in it does not hold a dozen handles for the ones that are never read.
-    private static async Task<AssetPack> OpenFileAsync(string file)
+    internal static async Task<AssetPack> OpenFileAsync(string file)
     {
         var bytes = new FilePackBytes(file);
         try

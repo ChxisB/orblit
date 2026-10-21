@@ -27,8 +27,13 @@
   stands in for `close`.
 - A callback that throws counts as a failed attempt. The fetcher runs its
   callbacks outside its lock.
-- Not ported yet: `HttpTransport`, range pack reads, the pack downloads,
-  kits, glTF, runtime import, the cook and the importers.
+- A fifth part holds `HttpTransport` over `HttpClient`, `RangePackBytes` and
+  `PackRangeFailedException`, and `PackFolder.DownloadAsync` with `PackOffer`.
+  A download is filed under its hash only after it has been checked as a
+  pack, and one that was cut off resumes from the bytes held.
+- A body that fails in the network is a `SocketFailureException`, which a
+  download retries. A disk `IOException` is not retried.
+- Not ported yet: kits, glTF, runtime import, the cook and the importers.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
   Dart takes a POSIX byte lock, and a Dart build and a C# build on one
   directory at the same moment may not exclude each other.
