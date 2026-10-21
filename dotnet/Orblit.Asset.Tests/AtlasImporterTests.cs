@@ -220,4 +220,11 @@ public sealed class AtlasImporterTests
         var again = await CookOver(files).CookOneAsync(Id("ui.atlas.json"));
         Assert.Equal(CookStatus.Cooked, again.Status);
     }
+
+    [Fact]
+    public void AProjectCooksAtlasesWithoutBeingToldTo()
+    {
+        Assert.NotNull(CookProject.DefaultImporters().ByName("atlas"));
+        Assert.NotNull(RuntimeImport.DefaultImporters().ByName("atlas"));
+    }
 }

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.RegularExpressions;
+using static Orblit.Asset.CliOutput;
 
 namespace Orblit.Asset;
 
@@ -99,8 +100,6 @@ internal static partial class KitCli
             "index" => IndexAsync(rest, environment),
             _ => throw new CliUsageException($"unknown command \"{command}\""),
         };
-
-    private static void Line(TextWriter writer, string text) => writer.Write(text + "\n");
 
     private static string[] Only(string command, IEnumerable<string> arguments, int count)
     {

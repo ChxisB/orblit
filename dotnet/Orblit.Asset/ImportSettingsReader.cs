@@ -8,7 +8,7 @@ namespace Orblit.Asset;
 /// <c>.import.json</c>, <c>textures/.import.json</c>, <c>textures/wood/.import.json</c> and
 /// <c>textures/wood/wall.png.import.json</c>.
 /// </summary>
-public sealed class ImportSettingsReader(IAssetSource source)
+public class ImportSettingsReader(IAssetSource source)
 {
     // A cook is a single pass over a project that does not change while it runs, so nothing here
     // expires. A tool that watches for edits makes a new reader.
@@ -35,7 +35,7 @@ public sealed class ImportSettingsReader(IAssetSource source)
     }
 
     /// <summary>What applies to <paramref name="id"/>, with each file above it laid over the last.</summary>
-    public async Task<ImportSettings> ForAssetAsync(AssetId id)
+    public virtual async Task<ImportSettings> ForAssetAsync(AssetId id)
     {
         var settled = new ImportSettings();
         foreach (var file in FilesFor(id))

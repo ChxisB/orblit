@@ -389,6 +389,10 @@ public sealed class TerrainImporterTests : IDisposable
         }
     }
 
+    [Fact]
+    public void ARunningAppClaimsThemToo() =>
+        Assert.IsType<TerrainImporter>(RuntimeImport.DefaultImporters().ByName("terrain"));
+
     // Cooks the three files a terrain is authored as and mounts the pack made from them, the way a running game
     // reads them back.
     private async Task<MountedPacks> CookAndMountAsync()

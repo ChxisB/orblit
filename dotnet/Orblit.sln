@@ -127,6 +127,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Kit", "Orblit.Kit\Or
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Pack", "Orblit.Pack\Orblit.Pack.csproj", "{031120F1-4284-4DA6-AD1C-A75A54A53F71}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Cook", "Orblit.Cook\Orblit.Cook.csproj", "{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -881,6 +883,18 @@ Global
 		{031120F1-4284-4DA6-AD1C-A75A54A53F71}.Release|x64.Build.0 = Release|Any CPU
 		{031120F1-4284-4DA6-AD1C-A75A54A53F71}.Release|x86.ActiveCfg = Release|Any CPU
 		{031120F1-4284-4DA6-AD1C-A75A54A53F71}.Release|x86.Build.0 = Release|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Debug|x64.Build.0 = Debug|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Debug|x86.Build.0 = Debug|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Release|x64.ActiveCfg = Release|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Release|x64.Build.0 = Release|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Release|x86.ActiveCfg = Release|Any CPU
+		{4E4F71C6-C488-462E-8D0C-47AADF76FCF4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -177,5 +177,13 @@
 - A string in an `Invalid argument (name): …` message is quoted as Dart
   quotes it. A list or a map prints differently, because Dart prints its
   length.
-- Not ported with this part: the cook command and `runtime_import`. They
-  are part F5.
+- A last part holds `RuntimeImport` and the cook command. `RuntimeImport`
+  imports one file a running app was handed: `NameFor`, `Handles`,
+  `ImportAsync`, `ReadAsync` and `ReadOnlyAsync`. `ImportSettingsReader` is
+  open and its `ForAssetAsync` virtual, so the settings given at the call
+  can be laid over the file's own.
+- `orblit-cook` is the tool for the cook command. It is `Orblit.Cook` over
+  an internal `CookCli` here, as the kit and pack tools are. The exit codes
+  match Dart. A missing assets folder prints .NET's own text.
+- `RuntimeImport.DefaultImporters()` returns `CookProject.DefaultImporters()`,
+  where Dart writes the list twice.

@@ -1,3 +1,5 @@
+using static Orblit.Asset.CliOutput;
+
 namespace Orblit.Asset;
 
 /// <summary>
@@ -72,8 +74,6 @@ internal static class PackCli
             "diff" => DiffAsync(args[1..], output, error),
             _ => throw new CliUsageException($"unknown command \"{args[0]}\""),
         };
-
-    private static void Line(TextWriter writer, string text) => writer.Write(text + "\n");
 
     private static string OnlyPath(string[] args) =>
         args.Length == 2 ? args[1] : throw new CliUsageException($"{args[0]} takes one file");

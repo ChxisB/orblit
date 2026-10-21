@@ -85,5 +85,27 @@ public class CollisionMeshTests
         await Assert.ThrowsAsync<FormatException>(() => ReadAsync(Model("""[{"mesh": 0, "children": [0]}]""")));
     }
 
+    [Fact]
+    public async Task ACookIncludesTheCollisionSidecarOnlyWhenRequested()
+    {
+        var importer = new GltfImporter();
+        var bytes = Write(Model());
+        Task<ImportResult> Cook(bool collision) => importer.ImportAsync(new ImportRequest
+        {
+            Id = AssetId.Parse("floor.gltf"),
+            Bytes = bytes,
+            Settings = importer.ResolveSettings(
+                new ImportSettings(values: new Dictionary<string, object?> { ["collision"] = collision })),
+            Target = CookTarget.Any,
+            Source = new MemoryAssetSource(),
+        });
+
+        Assert.Equal(["gltf"], (await Cook(false)).Outputs.Keys);
+        var cooked = await Cook(true);
+
+        Assert.Equal(bytes, cooked.Outputs["gltf"]);
+        Assert.Equal(Positions, CollisionMesh.Decode(cooked.Outputs["collision.json"]).Vertices);
+    }
+
     private static CollisionMesh FromObj(string text) => CollisionMesh.FromObj(Encoding.UTF8.GetBytes(text));
 }
