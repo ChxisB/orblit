@@ -260,8 +260,7 @@ public sealed class AtlasImporter : Importer
         {
             null => null,
             long size and > 0 => size,
-            var other => throw new ArgumentException(
-                $"Invalid argument ({key}): has to be a size in texels: {DartText.Print(other)}", key),
+            var other => throw DartArgument.Value(other, key, "has to be a size in texels"),
         };
 
     private static long? Count(ImportSettings settings, string key) =>
@@ -269,8 +268,7 @@ public sealed class AtlasImporter : Importer
         {
             null => null,
             long count and >= 0 => count,
-            var other => throw new ArgumentException(
-                $"Invalid argument ({key}): cannot be negative: {DartText.Print(other)}", key),
+            var other => throw DartArgument.Value(other, key, "cannot be negative"),
         };
 
     // Dart's `as int?`: absent is null, and a value of any other type is an error.

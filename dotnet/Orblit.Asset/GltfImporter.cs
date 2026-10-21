@@ -191,9 +191,8 @@ public sealed class GltfImporter(ModelAtlasCook? atlas = null) : Importer
         {
             null => fallback,
             long number when number >= bounds.Min && number <= bounds.Max => number,
-            var other => throw new ArgumentException(
-                $"Invalid argument ({key}): must be a whole number between {bounds.Min} and {bounds.Max}: {DartText.Print(other)}",
-                key),
+            var other => throw DartArgument.Value(
+                other, key, $"must be a whole number between {bounds.Min} and {bounds.Max}"),
         };
 
     private readonly record struct Bounds(long Min, long Max);

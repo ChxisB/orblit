@@ -195,6 +195,16 @@ Each row is a place where a test will not always catch the difference.
 | `ArgumentError.value(value, key, 'has to be a size in texels')` | `ArgumentException` with the text `Invalid argument (key): has to be a size in texels: value`, and `key` as the parameter name | That is Dart's own text. The C# message also ends with `(Parameter 'key')`, so tests read the start of it. |
 | `result.heuristic.name`, the name of a Dart enum value | `HeuristicLabel`, the C# member name with a lower-case first letter | C# members are in Pascal case, and the note reads `bestShortSideFit`, as in Dart. |
 | `Terrain` the class, in a file that sits in `Orblit.Asset` | `using TerrainData = Orblit.Terrain.Terrain;` | Inside `namespace Orblit.Asset` the simple name `Terrain` finds the namespace `Orblit.Terrain` first, so the type cannot be named without the alias. The type itself was ported in task 06 and is not renamed. |
+| `ArgumentError.value(value, name, rule)` in the cook files | `DartArgument.Value(value, name, rule)` | One helper, extracted when the copies passed three. A string value is quoted by `DartJson.Encode`, as Dart quotes it. A number, a bool and null print plain. A list or a map prints as its contents, where Dart prints `Instance(length:n)`. The earlier atlas and glTF messages printed a string unquoted and now match Dart. |
+| A Dart parameter named `out` | `@out` | `out` is a C# keyword. The name at the call stays `@out:`. |
+| `cookDuringBuild` and `packDuringBuild`, free functions | `BuildHook.CookDuringBuildAsync` and `BuildHook.PackDuringBuildAsync` | A free function becomes a member of a static class. The two hooks sit apart from `CookProject` because the build calls them and `CookProject` does not. |
+| `bundleHash(manifest)` | `BundleHash.Of(manifest)` | The hash of the manifest's UTF-8 bytes. |
+| `CookFailed`, an `Exception` | `CookFailedException` | Its `Message` names each failure and how many of how many, with the same text. |
+| `currentCookTarget`, which throws `UnsupportedError` | `CookProject.CurrentCookTarget`, which throws `NotSupportedException` | The platform comes from `OperatingSystem.Is…`. A platform with no target throws and does not fall back. |
+| `Platform.environment['ORBLIT_CACHE']`, then `HOME`, then `USERPROFILE`, then the system temp folder | `CookProject.DefaultCachePath(Func<string, string?>)`, called with `Environment.GetEnvironmentVariable` | The function is a parameter so a test does not change the environment of the whole process. |
+| `Directory.list(recursive: true, followLinks: false)` and `entry is! File` | `Directory.EnumerateFiles` with `EnumerationOptions { RecurseSubdirectories, AttributesToSkip = ReparsePoint }` | .NET skips hidden and system files unless told not to, and Dart lists them. The cook decides what a dot hides. A link is not followed in either. |
+| `Uri.file(path)` and `uri.toFilePath()` | `new Uri(Path.GetFullPath(path))` and `LocalPath` | A relative path makes `Uri` throw, so the full path is taken first. A folder's Uri ends in a separator. |
+| `file.writeAsBytes(bytes, flush: true)` | `AtomicFile.WriteBesideAsync` | The bytes are written beside the file and moved in, so a cook that stops half way leaves no half-written output. |
 
 ## Fixtures
 

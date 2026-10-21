@@ -141,7 +141,8 @@
   `Invalid argument (key): …`.
 - `DependenciesOfAsync` runs on the thread pool, so a document that is not
   JSON faults the task and does not throw at the call.
-- The test of the default importers of a project waits for the project cook.
+- The test that the project and the runtime registries both hold the atlas
+  importer waits for part F5, which holds the runtime one.
 - A nineteenth part holds `TerrainImporter` and `CookedTerrain`. A terrain
   is an `.oterrain` file and an `.oregion` file for each region it lists.
   Neither is cooked into anything smaller. The importer checks a region
@@ -156,5 +157,25 @@
 - `Orblit.Asset` now references `Orblit.Terrain`. Inside this namespace the
   name `Terrain` is that namespace, so the files that need the type use
   `using TerrainData = Orblit.Terrain.Terrain;`.
-- Three of the 27 Dart tests of the part cook through `CookProject`. They
-  are covered by tests on a hand-built pack and wait for part F4.
+- Four of the 27 Dart tests of the part cook through `CookProject`. They are
+  ported with part F4. The one that builds the runtime registry waits for
+  part F5.
+- A twentieth part holds `CookProject`, `BuildHook`, `BundleHash` and
+  `CookFailedException`. A project cooks everything under an assets
+  folder for one target and writes the bundle and its manifest. The hook
+  cooks, or cooks and packs, for the platform a build names, and reports
+  every file and folder it read.
+- `BuildHook.CookDuringBuildAsync` and `PackDuringBuildAsync` are the C#
+  names for `cookDuringBuild` and `packDuringBuild`. `BundleHash.Of` is
+  `bundleHash`. `CookProject.CurrentCookTarget` throws
+  `NotSupportedException` for a platform Orblit does not cook for. The
+  Dart `out` parameter is `@out`.
+- A link under the assets folder is not followed, and a hidden file is
+  listed and then left out by name, as in Dart. A folder that cannot be
+  read stops the listing. A bundle file is written to a temporary file
+  and renamed.
+- A string in an `Invalid argument (name): …` message is quoted as Dart
+  quotes it. A list or a map prints differently, because Dart prints its
+  length.
+- Not ported with this part: the cook command and `runtime_import`. They
+  are part F5.

@@ -338,4 +338,84 @@ public sealed class TerrainImporterTests : IDisposable
         Assert.Equal([new RegionKey(0, 0)], cooked.Regions.Keys);
         Assert.Contains("x1_z0.oregion", Assert.Single(cooked.Problems));
     }
+
+    [Fact]
+    public async Task ACookedTerrainOpensFromAPackWithItsSettingsAndItsRegions()
+    {
+        var packs = await CookAndMountAsync();
+        var cooked = await CookedTerrain.OpenAsync(packs, World);
+        Assert.Equal(4, cooked.Terrain.RegionSize);
+        Assert.Empty(cooked.Terrain.Regions);
+        Assert.Equal([new RegionKey(0, 0), new RegionKey(1, 0)], cooked.Regions.Keys);
+        Assert.Empty(cooked.Problems);
+    }
+
+    [Fact]
+    public async Task ACookedTerrainStreamsTheHeightsThatWereAuthored()
+    {
+        var packs = await CookAndMountAsync();
+        var cooked = await CookedTerrain.OpenAsync(packs, World);
+        var streamer = new TerrainStreamer(
+            terrain: cooked.Terrain, source: cooked.Regions, loadRadius: 1, keepRadius: 1);
+
+        await streamer.FollowAsync(0.5, 0.5);
+        Assert.Equal([new RegionKey(0, 0)], streamer.Resident);
+        Assert.Equal(10d, cooked.Terrain.HeightAt(0, 0));
+
+        await streamer.FollowAsync(6.5, 0.5);
+        Assert.Equal([new RegionKey(1, 0)], streamer.Resident);
+        Assert.Equal(100d, cooked.Terrain.HeightAt(4, 0));
+        Assert.Empty(streamer.Failures);
+    }
+
+    [Fact]
+    public async Task ACookedTerrainIsNotFoundWhenThePackHasNoSuchTerrain()
+    {
+        var packs = await CookAndMountAsync();
+        await Assert.ThrowsAsync<AssetNotFoundException>(
+            () => CookedTerrain.OpenAsync(packs, Id("terrain/other.oterrain")));
+    }
+
+    // the default importers
+
+    [Fact]
+    public void AProjectCookClaimsBothFiles()
+    {
+        var registry = CookProject.DefaultImporters();
+        Assert.IsType<TerrainImporter>(registry.ByName("terrain"));
+        foreach (var file in new[] { "a.oterrain", "x0_z0.oregion" })
+        {
+            Assert.NotNull(registry.ForAsset(Id(file), new ImportSettings()));
+        }
+    }
+
+    // Cooks the three files a terrain is authored as and mounts the pack made from them, the way a running game
+    // reads them back.
+    private async Task<MountedPacks> CookAndMountAsync()
+    {
+        await WriteAssetAsync("terrain/world.oterrain", TerrainFile(regions: [(0, 0), (1, 0)]));
+        await WriteAssetAsync("terrain/x0_z0.oregion", RegionFile(0, 0, height: 10));
+        await WriteAssetAsync("terrain/x1_z0.oregion", RegionFile(1, 0, height: 100));
+        var target = CookTargets.Find("android")!;
+        var project = new CookProject(
+            assetsPath: _packs.At("assets"),
+            outPath: _packs.At("out"),
+            target: target,
+            cachePath: _packs.At("cache"),
+            importers: new ImporterRegistry([_importer]));
+        var report = await project.RunAsync();
+        Assert.True(report.Ok, string.Join("\n", report.Results));
+        await PackBundle.PackAsync(project.BundlePath, _packs.At("game.opack"), target);
+        var bytes = await File.ReadAllBytesAsync(_packs.At("game.opack"), TestContext.Current.CancellationToken);
+        var packs = new MountedPacks(target);
+        packs.Start(await AssetPack.OpenAsync(new MemoryPackBytes(bytes)));
+        return packs;
+    }
+
+    private async Task WriteAssetAsync(string relative, byte[] bytes)
+    {
+        var file = _packs.At($"assets/{relative}");
+        Directory.CreateDirectory(Path.GetDirectoryName(file)!);
+        await File.WriteAllBytesAsync(file, bytes, TestContext.Current.CancellationToken);
+    }
 }

@@ -129,7 +129,7 @@ public sealed class AtlasImporterAddedTests
     [InlineData(0L, "0")]
     [InlineData(-1L, "-1")]
     [InlineData(2.5, "2.5")]
-    [InlineData("big", "big")]
+    [InlineData("big", "\"big\"")]
     [InlineData(true, "true")]
     public void RefusesAMaxPageSizeThatIsNotAPositiveWholeNumber(object value, string printed)
     {
@@ -145,7 +145,7 @@ public sealed class AtlasImporterAddedTests
     [InlineData("trimAlphaThreshold")]
     public void RefusesACountThatIsNegativeOrNotWhole(string key)
     {
-        foreach (var (value, printed) in new (object, string)[] { (-1L, "-1"), (1.5, "1.5"), ("2", "2"), (false, "false") })
+        foreach (var (value, printed) in new (object, string)[] { (-1L, "-1"), (1.5, "1.5"), ("2", "\"2\""), (false, "false") })
         {
             var error = Assert.Throws<ArgumentException>(() => Resolve(key, value));
             Assert.StartsWith($"Invalid argument ({key}): cannot be negative: {printed}", error.Message);
