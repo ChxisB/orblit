@@ -38,13 +38,6 @@ public sealed class DirectoryCookCache : ICookCache
 
     private static readonly TimeSpan UsedAtResolution = TimeSpan.FromHours(1);
     private static readonly TimeSpan LockRetry = TimeSpan.FromMilliseconds(10);
-    private static readonly string[] IsoFormats =
-    [
-        "yyyy-MM-dd'T'HH:mm:ss.FFFFFFFK",
-        "yyyy-MM-dd'T'HH:mm:ssK",
-        "yyyy-MM-dd'T'HH:mmK",
-        "yyyy-MM-dd",
-    ];
 
     // One queue for each directory, shared by every cache on it in this process. Keyed on the
     // absolute path, so a relative spelling and an absolute one queue together.
@@ -387,8 +380,7 @@ public sealed class DirectoryCookCache : ICookCache
     private static bool TryTime(object? value, out DateTimeOffset at)
     {
         at = default;
-        return value is string text
-            && DateTimeOffset.TryParseExact(text, IsoFormats, CultureInfo.InvariantCulture, DateTimeStyles.AssumeUniversal, out at);
+        return value is string text && DartText.TryParseTime(text, out at);
     }
 
     // Writes the index where a reader sees all of it or none of it. The temporary file is named

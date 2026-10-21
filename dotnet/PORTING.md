@@ -174,6 +174,9 @@ Each row is a place where a test will not always catch the difference.
 | A top-level function such as `packBundle` | A static method on a class named for the file, `PackBundle.PackAsync` | C# has no free functions. A bundle folder is made before the manifest is written, because a world with no files gives Dart an empty folder and C# an error |
 | `RandomAccessFile.read(n)` that is not held to the range it was given | `FilePackBytes` over a `SafeFileHandle`, held to the file and not to its `bytes` range | A read may run past the range but not past the end of the file, as Dart does. The Dart class has no test, so the `PackAddedTests` are the only check. The handle is held open, so a test disposes it with `await using` before it deletes the folder |
 | A `Future` for an id that is not in any pack | A `Task` that faults with `AssetNotFoundException`, and an `ExistsAsync` that answers without throwing | A caller that awaited the Dart future in a `try` still gets the throw at the `await` in C#. Do not throw before the task is made |
+| `Uri` for a URL that came from a manifest or a page | `WebUrl`, an own parser | .NET `Uri` treats a leading `/` as a file path on Unix, and its rules for `\`, ports and relative references differ from Dart. Check a new case against the fixture. |
+| A `Timer` that fires after the synchronous turn | A real delay, with 2 ms as the least the parity scripts use | .NET cannot run a timer after the caller's loop, so wants made in one loop do not always join. Tests use 50 ms. |
+| `x << n` with a large `n` | Mask or test `n` first | C# masks the shift count to 5 or 6 bits, and Dart gives 0 for a count of 64 or more. |
 
 ## Fixtures
 
