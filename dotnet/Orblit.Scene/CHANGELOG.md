@@ -2,9 +2,9 @@
 
 ## 0.24.0
 
-- A port of `orblit_scene` 0.24.0, parts S1 and S2: the components, the
-  document, the migrations and the diff. The material, prefab, streaming,
-  export and import parts follow.
+- A port of `orblit_scene` 0.24.0, parts S1 to S3: the components, the
+  document, the migrations, the diff, the materials and the prefab instances.
+  The streaming, export and import parts follow.
 - `SceneComponents.Read` and `Order` cover the 22 component types that are not
   `data` or `prefab`. An unknown type is kept whole as `UnknownComponent`.
 - `EnumNames.Of` writes the name a scene file uses, which starts with a
@@ -34,3 +34,20 @@
   version-three file reads "has no kind this editor can read". Neither is
   compared in the fixture.
 - The seeded run and property tests use .NET `Random`.
+- `MaterialDocument` reads and writes an `.omat` file. A value of the wrong
+  kind, an unknown parameter and an unknown map slot are named in
+  `MaterialLoad.Problems` and dropped. `MaterialLibrary.Resolve` lays a
+  material over its parents, eldest first, and then its group. A loop, a
+  missing parent and a missing group each end the chain and say so.
+- `PrefabDocument` reads and writes an `.oprefab` file. A file whose named
+  root is missing falls back to the first entity with nothing above it.
+- `Instances` expands, folds, makes, applies, reverts, refreshes and unpacks
+  instances of prefabs. The parts of an instance take ids that are paths, for
+  example `lamp1/bulb`. Prefabs inside prefabs open all the way down. A copy
+  stamped in before instances were links is relinked and keeps what was
+  changed about it. A prefab that cannot be read, or that contains itself,
+  leaves its instances folded and is named in `SceneLoad.Problems`.
+- `MaterialComponent.ToJson` writes `looks`. Part S1 read them back from a
+  file but never wrote them.
+- Fold and refresh skip an open instance that is itself a part. Revert and
+  unpack accept one, and apply refuses it with its own message.

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:orblit_parity_tool/fixture.dart';
 import 'package:orblit_parity_tool/scene_documents.dart';
+import 'package:orblit_parity_tool/scene_instances.dart';
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -252,6 +253,8 @@ void main(List<String> args) {
       ...diffCases(),
       ...operationCases(),
       ...entityCases(),
+      ...materialCases(),
+      ...instanceCases(),
     ],
   );
 }

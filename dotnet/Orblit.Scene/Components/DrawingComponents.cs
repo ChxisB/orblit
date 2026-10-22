@@ -184,7 +184,7 @@ public sealed class MaterialComponent(
     public override JsonMap ToJson() => Read.Pruned(new OrderedDictionary<string, object?>
     {
         ["asset"] = Asset,
-        ["looks"] = Looks.Count == 0 ? null : Looks,
+        ["looks"] = Looks.Count == 0 ? null : Read.TextMapToJson(Looks),
         ["values"] = Values.Count == 0 ? null : Values,
     });
 

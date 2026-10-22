@@ -95,6 +95,18 @@ public static class Values
     /// <summary>Numbers as a JSON list. A list of doubles is not a list of objects, so it is boxed here once.</summary>
     public static List<object?> NumbersToJson(IEnumerable<double> values) => [.. values.Select(static value => (object?)value)];
 
+    /// <summary>A map of texts as a JSON object, in the map's order.</summary>
+    public static OrderedDictionary<string, object?> TextMapToJson(IReadOnlyDictionary<string, string> texts)
+    {
+        var json = new OrderedDictionary<string, object?>();
+        foreach (var (key, text) in texts)
+        {
+            json[key] = text;
+        }
+
+        return json;
+    }
+
     /// <summary>A colour written <c>#RRGGBB</c>, as everywhere else in Orblit writes one.</summary>
     public static Tint ReadTint(object? raw, Tint? fallback = null)
     {
