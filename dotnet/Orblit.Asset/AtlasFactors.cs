@@ -59,7 +59,7 @@ internal static class AtlasFactors
         return numbers;
     }
 
-    // Dart's `as num?`: a missing key is one, and a value that is not a number is an error.
+    // A missing key is one, and a value that is not a number is an error.
     private static double NumberOr(GltfMap map, string key) => GltfJson.Get(map, key) switch
     {
         null => 1.0,

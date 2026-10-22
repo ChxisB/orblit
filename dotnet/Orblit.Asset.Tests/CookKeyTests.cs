@@ -7,7 +7,7 @@ public class CookKeyTests
 {
     private static ContentHash Hash(string text) => ContentHash.Of(Encoding.UTF8.GetBytes(text));
 
-    // F2: six parameters, all named at each call, as in the Dart helper.
+    // F2: six parameters, all named at each call.
     private static CookKey Key(
         string importer = "texture",
         int version = 1,
@@ -105,7 +105,7 @@ public class CookKeyTests
     public void IsCanonicalJsonWithEveryObjectInKeyOrder()
     {
         var recipe = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(
-            DartJson.Decode(Key(settings: new() { ["b"] = 1, ["a"] = 2 }).Recipe));
+            JsonText.Decode(Key(settings: new() { ["b"] = 1, ["a"] = 2 }).Recipe));
         var settings = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(recipe["settings"]);
         Assert.Equal(["a", "b"], settings.Keys);
         Assert.Equal([2L, 1L], settings.Values);

@@ -41,7 +41,7 @@ public sealed class NavGrid
             throw new ArgumentException("Must be above zero.", nameof(cell));
         }
 
-        // Dart takes a larger grid and fails when the list is made. An array cannot hold one.
+        // An array cannot hold a larger grid.
         if ((long)width * depth > Array.MaxLength)
         {
             throw new ArgumentException("A grid cannot hold more cells than an array can.");
@@ -342,7 +342,7 @@ public sealed class NavGrid
 
         var x = new Crossing(dx, ax, i);
         var z = new Crossing(dz, az, j);
-        // A far end that wraps the 64-bit difference gives a negative budget, and Dart returns true there.
+        // A far end that wraps the 64-bit difference gives a negative budget, and the answer is true there.
         var budget = unchecked(Abs(endI - i) + Abs(endJ - j) + 2);
         while ((i != endI || j != endJ) && budget-- > 0)
         {

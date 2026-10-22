@@ -2,7 +2,7 @@ using static Orblit.Sprite.Tests.Tree;
 
 namespace Orblit.Sprite.Tests;
 
-/// <summary>Tiled's JSON as the Dart tests wrote it, on a 16 pixel grid.</summary>
+/// <summary>Tiled's JSON as the ported tests wrote it, on a 16 pixel grid.</summary>
 internal static class TiledFixture
 {
     /// <summary>A tile set as Tiled writes it into a map, four tiles to a row.</summary>

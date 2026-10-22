@@ -6,7 +6,7 @@ using Orblit.Parity;
 
 namespace Orblit.Asset.Tests;
 
-// Reads the kit specs the Dart exporter wrote, and writes what the port gives in the shape the exporter used.
+// Reads the kit specs the fixture exporter wrote, and writes what the port gives in the shape the exporter used.
 internal static class KitCases
 {
     public static JsonObject ManifestOut(byte[] bytes, string mode)

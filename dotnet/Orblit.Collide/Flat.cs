@@ -338,12 +338,12 @@ public sealed class World2(double cellSize = 8)
 
     /// <summary>
     /// Two ids as one key. An id below 0 or above 1000002 can pair with the wrong
-    /// body, and <see cref="Unpair"/> of a negative key is wrong. This is the
-    /// Dart's own arithmetic.
+    /// body, and <see cref="Unpair"/> of a negative key is wrong. This pairing is
+    /// kept as it is for compatibility.
     /// </summary>
     private static long Pair(long a, long b) => (a * PairSize) + b;
 
-    /// <summary>Dart's <c>~/</c> and <c>%</c>: the quotient truncates and the remainder is never negative.</summary>
+    /// <summary>Integer-style division and remainder: the quotient truncates and the remainder is never negative.</summary>
     private static (long, long) Unpair(long key)
     {
         var remainder = key % PairSize;

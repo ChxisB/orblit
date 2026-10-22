@@ -29,7 +29,7 @@ public sealed class Atlas(string image, IReadOnlyDictionary<string, Region> regi
     /// becomes an animation: packers name frames <c>run_00</c>, <c>run_01</c> and the sort puts
     /// them back in order.
     /// </summary>
-    // shortcut: names that compare equal keep the file's order, which is Dart's order only up to 32 regions, where Dart's sort is stable.
+    // Names that compare equal keep the file's order.
     public IReadOnlyList<Region> Sequence(string prefix) =>
         [.. Regions.Values.Where(region => region.Name.StartsWith(prefix, StringComparison.Ordinal))
             .OrderBy(region => region.Name, Comparer<string>.Create(Naturally))];
@@ -38,7 +38,7 @@ public sealed class Atlas(string image, IReadOnlyDictionary<string, Region> regi
     /// A whole image cut into equal cells, named <c>name_0</c> and up in reading order. The
     /// other kind of sheet, with no metadata file at all.
     /// </summary>
-    // F2: nine parameters, and every one after the cell size is optional and called by name, as in Dart.
+    // F2: nine parameters, and every one after the cell size is optional and called by name.
     public static Atlas Grid(
         string image,
         long imageWidth,
@@ -93,7 +93,7 @@ public sealed class Atlas(string image, IReadOnlyDictionary<string, Region> regi
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException)
         {
@@ -195,7 +195,7 @@ public sealed class Atlas(string image, IReadOnlyDictionary<string, Region> regi
         return (a.Length - i).CompareTo(b.Length - j);
     }
 
-    // Dart's int wraps at 64 bits, so a run of digits too long for one does the same here.
+    // An integer wraps at 64 bits, so a run of digits too long for one wraps here.
     private static long DigitRun(string text, ref int at)
     {
         long value = 0;

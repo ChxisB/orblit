@@ -19,13 +19,13 @@ public static class ComponentEmitter
     };
 
     /// <summary>
-    /// The manifest other front ends read. The same bytes the Dart generator writes for the same
+    /// The manifest other front ends read. The same bytes for the same
     /// components, so a tool can learn what a package declares without compiling it.
     /// </summary>
     public static string Manifest(string package, IReadOnlyList<ComponentDeclaration> components)
     {
         var builder = new StringBuilder("{\n  \"formatVersion\": 1,\n  \"package\": ");
-        DartQuote.Append(builder, package);
+        JsonQuote.Append(builder, package);
         builder.Append(",\n  \"components\": ");
         builder.Append(components.Count == 0 ? "[]" : "[\n" + string.Join(",\n", components.Select(Entry)) + "\n  ]");
         return builder.Append("\n}\n").ToString();
@@ -34,11 +34,11 @@ public static class ComponentEmitter
     private static string Entry(ComponentDeclaration component)
     {
         var builder = new StringBuilder("    {\n      \"name\": ");
-        DartQuote.Append(builder, component.Name);
+        JsonQuote.Append(builder, component.Name);
         builder.Append(",\n      \"class\": ");
-        DartQuote.Append(builder, component.TypeName);
+        JsonQuote.Append(builder, component.TypeName);
         builder.Append(",\n      \"kind\": ");
-        DartQuote.Append(builder, component.Kind);
+        JsonQuote.Append(builder, component.Kind);
         builder.Append(",\n      \"arity\": ").Append(component.Arity);
         builder.Append(",\n      \"fields\": ").Append(Strings(component.Fields));
         builder.Append(",\n      \"replicated\": ").Append(Bool(component.Replicated));
@@ -48,7 +48,7 @@ public static class ComponentEmitter
         }
 
         builder.Append(",\n      \"source\": ");
-        DartQuote.Append(builder, component.Source);
+        JsonQuote.Append(builder, component.Source);
         return builder.Append("\n    }").ToString();
     }
 
@@ -65,7 +65,7 @@ public static class ComponentEmitter
         for (var i = 0; i < values.Count; i++)
         {
             builder.Append("        ");
-            DartQuote.Append(builder, values[i]);
+            JsonQuote.Append(builder, values[i]);
             builder.Append(i == values.Count - 1 ? "\n" : ",\n");
         }
 
@@ -141,7 +141,7 @@ public static class ComponentEmitter
         Line(builder, "    /// <summary>Components an owning client may write, by registered name.</summary>");
         Line(builder, $"    public static IReadOnlySet<string> OwnerWritable {{ get; }} = new HashSet<string> {{ {string.Join(", ", writable)} }};");
         Line(builder);
-        Line(builder, "    /// <summary>What <c>orblit_components.json</c> holds in a Dart package. A generator cannot write a file.</summary>");
+        Line(builder, "    /// <summary>What <c>orblit_components.json</c> holds in a package. A generator cannot write a file.</summary>");
         Line(builder, $"    public const string Manifest = {Literal(Manifest(package, all))};");
         Line(builder, "}");
         Line(builder);

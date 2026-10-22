@@ -52,7 +52,7 @@ public sealed class EnvironmentImporter(NativeTool? tool = null) : Importer
                 [
                     "--quiet",
                     "--format=ktx",
-                    $"--size={DartText.Print(request.Settings.GetValueOrDefault("size"))}",
+                    $"--size={TextRules.Print(request.Settings.GetValueOrDefault("size"))}",
                     $"--deploy={NativeWork.Beside(reflections, Stem)}",
                     input,
                 ],
@@ -61,7 +61,7 @@ public sealed class EnvironmentImporter(NativeTool? tool = null) : Importer
                 [
                     "--quiet",
                     "--format=ktx",
-                    $"--size={DartText.Print(request.Settings.GetValueOrDefault("skyboxSize"))}",
+                    $"--size={TextRules.Print(request.Settings.GetValueOrDefault("skyboxSize"))}",
                     $"--extract={NativeWork.Beside(sky, Stem)}",
                     input,
                 ],
@@ -85,7 +85,7 @@ public sealed class EnvironmentImporter(NativeTool? tool = null) : Importer
         {
             null => null,
             long size when long.IsPow2(size) => size,
-            var other => throw new FormatException($"\"{key}\" is {DartText.Print(other)}, and a cubemap face is a power of two."),
+            var other => throw new FormatException($"\"{key}\" is {TextRules.Print(other)}, and a cubemap face is a power of two."),
         };
 
     private static async Task<byte[]> ReadOrAsync(ImportRequest request, string path) =>

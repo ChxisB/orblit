@@ -1,6 +1,6 @@
 namespace Orblit.Asset;
 
-/// <summary>Order, which Dart keeps in every map and a plain <see cref="Dictionary{TKey,TValue}"/> does not promise.</summary>
+/// <summary>Order, which a plain <see cref="Dictionary{TKey,TValue}"/> does not promise.</summary>
 internal static class Ordered
 {
     /// <summary>Copies a map with its entries in the order they were given.</summary>
@@ -16,7 +16,7 @@ internal static class Ordered
         return copy;
     }
 
-    /// <summary>Ids in the order of their text, as Dart orders strings: by UTF-16 code unit.</summary>
+    /// <summary>Ids in the order of their text: by UTF-16 code unit.</summary>
     public static List<AssetId> ById(IEnumerable<AssetId> ids) =>
         [.. ids.OrderBy(id => id.ToString(), StringComparer.Ordinal)];
 }

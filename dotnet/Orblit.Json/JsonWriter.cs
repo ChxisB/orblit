@@ -27,7 +27,7 @@ internal static class JsonWriter
                 WriteNumber(builder, value);
                 break;
             case string text:
-                DartQuote.Append(builder, text);
+                JsonQuote.Append(builder, text);
                 break;
             case IReadOnlyDictionary<string, object?> map:
                 WriteMap(builder, map, indent, level);
@@ -48,13 +48,13 @@ internal static class JsonWriter
             return;
         }
 
-        // Dart's jsonEncode throws for these, because JSON has no word for them.
+        // These throw, because JSON has no word for them.
         if (!double.IsFinite(number))
         {
             throw new ArgumentOutOfRangeException(nameof(value), number, "JSON has no word for this number.");
         }
 
-        builder.Append(Doubles.ToDartString(number));
+        builder.Append(Doubles.ToFileString(number));
     }
 
     private static void WriteMap(StringBuilder builder, IReadOnlyDictionary<string, object?> map, string? indent, int level)
@@ -71,7 +71,7 @@ internal static class JsonWriter
         {
             Separate(builder, first, indent, level + 1);
             first = false;
-            DartQuote.Append(builder, key);
+            JsonQuote.Append(builder, key);
             builder.Append(indent is null ? ":" : ": ");
             WriteValue(builder, item, indent, level + 1);
         }

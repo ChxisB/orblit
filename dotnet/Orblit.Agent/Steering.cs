@@ -298,7 +298,7 @@ public class Wander(long seed, double at, double strength = 1, double rate = 0.3
     /// <summary>One integer to one number between -1 and 1, always the same one.</summary>
     private static double Hash(long seed, long at)
     {
-        // The multiplies wrap in 64 bits, as Dart's ints do, and the mask keeps the result positive.
+        // The multiplies wrap in 64 bits, and the mask keeps the result positive.
         var x = unchecked((at * 374761393) + (seed * 668265263)) & 0x7FFFFFFF;
         x = unchecked((x ^ (x >> 13)) * 1274126177) & 0x7FFFFFFF;
         x ^= x >> 16;

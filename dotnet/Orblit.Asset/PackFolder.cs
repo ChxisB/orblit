@@ -79,7 +79,7 @@ public sealed class PackFolder(string path)
     /// <paramref name="onProgress"/> is not called.
     /// </para>
     /// </remarks>
-    // F2: a download is described by what it fetches and how, all named at the call as Dart names them.
+    // F2: a download is described by what it fetches and how, all named at the call.
     public Task<AssetPack> DownloadAsync(
         PackOffer offer,
         IAssetTransport transport,

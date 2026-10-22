@@ -9,7 +9,7 @@ namespace Orblit.Camera;
 /// </summary>
 public sealed class VirtualCamera
 {
-    // F2: only the name is required. The rest are options, called by name, as Dart's named parameters were.
+    // F2: only the name is required. The rest are options, called by name.
     public VirtualCamera(
         string name,
         long priority = 10,

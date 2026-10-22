@@ -71,7 +71,7 @@ public sealed class ImportSettings
         if (version is not (null or long))
         {
             throw new AssetFormatException(
-                $"\"{from}\" says its formatVersion is {DartText.Print(version)}, and a format version is a whole number.");
+                $"\"{from}\" says its formatVersion is {TextRules.Print(version)}, and a format version is a whole number.");
         }
 
         if ((long?)version > FormatVersion)
@@ -118,17 +118,17 @@ public sealed class ImportSettings
         }
 
         json["settings"] = settings;
-        return DartJson.Encode(json, "  ") + "\n";
+        return JsonText.Encode(json, "  ") + "\n";
     }
 
-    public override string ToString() => $"ImportSettings(importer: {Importer ?? "null"}, values: {DartText.Print(Values)})";
+    public override string ToString() => $"ImportSettings(importer: {Importer ?? "null"}, values: {TextRules.Print(Values)})";
 
     private static IReadOnlyDictionary<string, object?> ObjectIn(string text, AssetId from)
     {
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException error)
         {
@@ -147,7 +147,7 @@ public sealed class ImportSettings
         if (importer is not (null or string))
         {
             throw new AssetFormatException(
-                $"\"{from}\" says its importer is {DartText.Print(importer)}, and an importer is named with a string.");
+                $"\"{from}\" says its importer is {TextRules.Print(importer)}, and an importer is named with a string.");
         }
 
         return importer is "" // an importer named as an empty string

@@ -44,7 +44,7 @@ public readonly record struct Tint(double Red, double Green, double Blue)
 
     public Tint Scaled(double by) => new(Red * by, Green * by, Blue * by);
 
-    /// <summary>Compared with <c>==</c> on each channel, so a NaN channel is not equal to itself, as in Dart.</summary>
+    /// <summary>Compared with <c>==</c> on each channel, so a NaN channel is not equal to itself.</summary>
     public bool Equals(Tint other) => Red == other.Red && Green == other.Green && Blue == other.Blue;
 
     public override int GetHashCode() => HashCode.Combine(Red, Green, Blue);

@@ -26,7 +26,7 @@ internal static class JsonReads
     };
 
     /// <summary>
-    /// What Dart's string interpolation makes of a parsed JSON value: <c>2.0</c> for a double,
+    /// A parsed JSON value as text: <c>2.0</c> for a double,
     /// strings bare, and <c>[1, a]</c> and <c>{k: v}</c> for the collections.
     /// </summary>
     internal static string Describe(object? value) => value switch
@@ -34,7 +34,7 @@ internal static class JsonReads
         null => "null",
         bool flag => flag ? "true" : "false",
         long whole => whole.ToString(System.Globalization.CultureInfo.InvariantCulture),
-        double fraction => Doubles.ToDartString(fraction),
+        double fraction => Doubles.ToFileString(fraction),
         IReadOnlyDictionary<string, object?> map =>
             "{" + string.Join(", ", map.Select(pair => $"{pair.Key}: {Describe(pair.Value)}")) + "}",
         IReadOnlyList<object?> list => "[" + string.Join(", ", list.Select(Describe)) + "]",

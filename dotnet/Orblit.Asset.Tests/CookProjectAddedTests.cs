@@ -26,9 +26,9 @@ public sealed class CookProjectAddedTests : IDisposable
     // the text of an invalid argument
 
     [Fact]
-    public void AStringValueIsQuotedAsDartQuotesIt()
+    public void AStringValueIsQuoted()
     {
-        var error = DartArgument.Value("a \"b\"\n", "name", "is not right");
+        var error = InvalidArgument.Value("a \"b\"\n", "name", "is not right");
         Assert.StartsWith("Invalid argument (name): is not right: \"a \\\"b\\\"\\n\"", error.Message);
         Assert.Equal("name", error.ParamName);
     }
@@ -39,7 +39,7 @@ public sealed class CookProjectAddedTests : IDisposable
     [InlineData(true, "true")]
     [InlineData(null, "null")]
     public void ANumberABoolOrNullPrintsPlain(object? value, string printed) =>
-        Assert.StartsWith($"Invalid argument (n): r: {printed}", DartArgument.Value(value, "n", "r").Message);
+        Assert.StartsWith($"Invalid argument (n): r: {printed}", InvalidArgument.Value(value, "n", "r").Message);
 
     // the cache
 

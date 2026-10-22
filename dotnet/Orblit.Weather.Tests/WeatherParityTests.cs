@@ -8,41 +8,41 @@ namespace Orblit.Weather.Tests;
 
 public class WeatherParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_weather", "weather");
+    private static readonly Fixture Golden = Fixture.Load("orblit_weather", "weather");
 
     [Fact]
-    public void DaysMatchTheDartTwin() => Dart.Check("day", c => Sky(DayCycle.At(Input(c, 0))));
+    public void DaysMatchTheFixture() => Golden.Check("day", c => Sky(DayCycle.At(Input(c, 0))));
 
     [Fact]
-    public void ExposuresMatchTheDartTwin() =>
-        Dart.Check("exposure", c => Exposure(CameraExposure.ForIlluminance(Input(c, 0))));
+    public void ExposuresMatchTheFixture() =>
+        Golden.Check("exposure", c => Exposure(CameraExposure.ForIlluminance(Input(c, 0))));
 
     [Fact]
-    public void DaylightMatchesTheDartTwin() => Dart.Check("daylight", _ => Exposure(CameraExposure.Daylight));
+    public void DaylightMatchesTheFixture() => Golden.Check("daylight", _ => Exposure(CameraExposure.Daylight));
 
     [Fact]
-    public void PresetsMatchTheDartTwin() => Dart.Check("preset", Preset);
+    public void PresetsMatchTheFixture() => Golden.Check("preset", Preset);
 
     [Fact]
-    public void LabelsMatchTheDartTwin() => Dart.Check("label", Label);
+    public void LabelsMatchTheFixture() => Golden.Check("label", Label);
 
     [Fact]
-    public void LerpsMatchTheDartTwin() => Dart.Check("lerp", Lerp);
+    public void LerpsMatchTheFixture() => Golden.Check("lerp", Lerp);
 
     [Fact]
-    public void StrikesMatchTheDartTwin() =>
-        Dart.Check("strike", c => Dump.Attempt(() => Place(Strike.At(Input(c, 0), Input(c, 1)))));
+    public void StrikesMatchTheFixture() =>
+        Golden.Check("strike", c => Dump.Attempt(() => Place(Strike.At(Input(c, 0), Input(c, 1)))));
 
     [Fact]
-    public void StrikesAskedThroughTheWeatherMatchTheDartTwin() =>
-        Dart.Check("strikeAt", c => Dump.Attempt(() => Place(WeatherState.StrikeAt(Input(c, 0), Input(c, 1)))));
+    public void StrikesAskedThroughTheWeatherMatchTheFixture() =>
+        Golden.Check("strikeAt", c => Dump.Attempt(() => Place(WeatherState.StrikeAt(Input(c, 0), Input(c, 1)))));
 
     [Fact]
-    public void FlashesMatchTheDartTwin() =>
-        Dart.Check("flashAt", c => Dump.Attempt(() => Dump.Num(WeatherState.FlashAt(Input(c, 0), Input(c, 1)))));
+    public void FlashesMatchTheFixture() =>
+        Golden.Check("flashAt", c => Dump.Attempt(() => Dump.Num(WeatherState.FlashAt(Input(c, 0), Input(c, 1)))));
 
     [Fact]
-    public void WindsMatchTheDartTwin() => Dart.Check("wind", Wind);
+    public void WindsMatchTheFixture() => Golden.Check("wind", Wind);
 
     private static double Input(JsonElement c, int index) => Fixture.Number(c.GetProperty("in")[index]);
 

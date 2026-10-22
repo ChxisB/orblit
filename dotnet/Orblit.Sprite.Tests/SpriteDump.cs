@@ -3,7 +3,7 @@ using static Orblit.Parity.Dump;
 
 namespace Orblit.Sprite.Tests;
 
-/// <summary>Writes what the sprite port computed in the shape the Dart exporter wrote.</summary>
+/// <summary>Writes what the sprite port computed in the shape the fixture exporter wrote.</summary>
 internal static class SpriteDump
 {
     public static string Base64(byte[] bytes) => Convert.ToBase64String(bytes);

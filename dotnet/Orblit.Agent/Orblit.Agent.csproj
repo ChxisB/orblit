@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Version>0.2.0</Version>
     <Description>What moves things that decide for themselves. Steering behaviours that say where to go, and behaviour trees that say what to want.</Description>
-    <!-- Do keeps the Dart name. A Visual Basic caller can write [Do]. -->
+    <!-- Do is the natural name. A Visual Basic caller can write [Do]. -->
     <NoWarn>$(NoWarn);CA1716</NoWarn>
   </PropertyGroup>
   <ItemGroup>

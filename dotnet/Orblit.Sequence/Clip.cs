@@ -8,7 +8,7 @@ namespace Orblit.Sequence;
 /// </summary>
 public sealed class Clip
 {
-    // F2: nine parameters, and every one after the first two is optional and called by name, as in Dart.
+    // F2: nine parameters, and every one after the first two is optional and called by name.
     public Clip(
         double start,
         double duration,

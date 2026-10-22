@@ -189,7 +189,7 @@ internal sealed class FetchDownload : IDisposable
         }
         catch (Exception e) when (e is not OutOfMemoryException)
         {
-            // The records or the store failed outside an attempt. Dart would leave the callers hanging.
+            // The records or the store failed outside an attempt. Failing here keeps the callers from hanging.
             Fail(e);
         }
     }

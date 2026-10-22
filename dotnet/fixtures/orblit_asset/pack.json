@@ -1,6 +1,6 @@
 {
   "package": "orblit_asset",
-  "dartCommit": "7dec8ad0470c45d95bb50eb32e00e7a5aa830077",
+  "sourceCommit": "7dec8ad0470c45d95bb50eb32e00e7a5aa830077",
   "cases": [
     {"op":"pack","in":[[{"files":{"a/x.glb":"one"},"base":[],"target":"android"}]],"expect":{"value":[{"bytes":"T1BBSwEAAAAwAAAAAAAAAA0BAAAAAAAAAAAAAAAAAABvbmUAAAAAAAAAAAAAAAAAeyJhc3NldHMiOnsiYS94LmdsYiI6Ijc2OTJjM2FkMzU0MGJiODAzYzAyMGIzYWVlNjZjZDg4ODcxMjMyMzRlYTBjNmU3MTQzYzBhZGQ3M2ZmNDMxZWQifSwiYmFzZSI6bnVsbCwiYmxvYnMiOnsiNzY5MmMzYWQzNTQwYmI4MDNjMDIwYjNhZWU2NmNkODg4NzEyMzIzNGVhMGM2ZTcxNDNjMGFkZDczZmY0MzFlZCI6eyJhdCI6MzIsImJ5dGVzIjozfX0sImZvcm1hdFZlcnNpb24iOjEsImtpbmQiOiJvcmJsaXQucGFjayIsInJlbW92ZWQiOltdLCJ0YXJnZXQiOiJhbmRyb2lkIn0=","hash":"2cb11a173e94c0054de22c5bd2c614da5cc214fb717a9c7287ddc03bed9e01d6","summary":{"hash":"2cb11a173e94c0054de22c5bd2c614da5cc214fb717a9c7287ddc03bed9e01d6","bytes":317,"assets":1,"added":1,"replaced":0,"blobs":1,"sharedBytes":0,"removed":0}}]}},
     {"op":"pack","in":[[{"files":{},"base":[],"target":"android"}]],"expect":{"value":[{"bytes":"T1BBSwEAAAAgAAAAAAAAAGsAAAAAAAAAAAAAAAAAAAB7ImFzc2V0cyI6e30sImJhc2UiOm51bGwsImJsb2JzIjp7fSwiZm9ybWF0VmVyc2lvbiI6MSwia2luZCI6Im9yYmxpdC5wYWNrIiwicmVtb3ZlZCI6W10sInRhcmdldCI6ImFuZHJvaWQifQ==","hash":"81d38969613617990a30fa7c34b266cb1233d46df18a0d8917f56968573e2167","summary":{"hash":"81d38969613617990a30fa7c34b266cb1233d46df18a0d8917f56968573e2167","bytes":139,"assets":0,"added":0,"replaced":0,"blobs":0,"sharedBytes":0,"removed":0}}]}},

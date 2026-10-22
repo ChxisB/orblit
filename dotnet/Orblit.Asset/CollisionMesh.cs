@@ -30,7 +30,7 @@ public sealed class CollisionMesh
         ["indices"] = new List<object?>(Indices.Select(i => (object?)i)),
     };
 
-    public byte[] Encode() => Encoding.UTF8.GetBytes(DartJson.Encode(ToJson()));
+    public byte[] Encode() => Encoding.UTF8.GetBytes(JsonText.Encode(ToJson()));
 
     /// <summary>
     /// Throws <see cref="FormatException"/> for bytes that are not collision mesh version 1, and
@@ -38,7 +38,7 @@ public sealed class CollisionMesh
     /// </summary>
     public static CollisionMesh Decode(ReadOnlySpan<byte> bytes)
     {
-        if (DartJson.Decode(DartText.Decode(bytes)) is not GltfMap json
+        if (JsonText.Decode(TextRules.Decode(bytes)) is not GltfMap json
             || !IsVersionOne(GltfJson.Get(json, "version"))
             || GltfJson.Get(json, "vertices") is not List<object?> positions
             || GltfJson.Get(json, "indices") is not List<object?> triangles)
@@ -90,7 +90,7 @@ public sealed class CollisionMesh
         return new ModelGeometry(document).Read();
     }
 
-    // A version written as 1.0 is read as one, because Dart's 1.0 == 1.
+    // A version written as 1.0 is read as one, because 1.0 is the number 1.
     private static bool IsVersionOne(object? version) => GltfJson.AsNumber(version) == 1;
 
     private static bool IsShape(IReadOnlyList<double> vertices, IReadOnlyList<int> indices)

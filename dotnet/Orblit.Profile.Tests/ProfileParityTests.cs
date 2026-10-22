@@ -38,7 +38,7 @@ public class ProfileParityTests
     }
 
     [Fact]
-    public void ASnapshotMatchesTheDartTwin()
+    public void ASnapshotMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_profile", "profile");
 
@@ -56,7 +56,7 @@ public class ProfileParityTests
 
             var actual = JsonSerializer.SerializeToElement(profiler.Snapshot());
             var difference = JsonCompare.FirstDifference(c.GetProperty("expect"), actual);
-            Assert.True(difference is null, $"{difference}, from Dart commit {fixture.DartCommit}");
+            Assert.True(difference is null, $"{difference}, from fixture commit {fixture.SourceCommit}");
         }
 
         Assert.True(fixture.Cases.Count > 0, "the fixture has no cases");

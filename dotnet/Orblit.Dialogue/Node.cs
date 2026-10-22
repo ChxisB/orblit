@@ -56,7 +56,7 @@ public abstract class Node
 /// </summary>
 public sealed class LineNode : Node
 {
-    // F2: five parameters, three of them required and all called by name, as Dart's required named parameters were.
+    // F2: five parameters, three of them required and all called by name.
     public LineNode(string id, string speaker, string text, string? next = null, string? before = null)
         : base(id, before)
     {

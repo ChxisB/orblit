@@ -19,7 +19,7 @@ public class ImportSettingsTests
         }
 
         json["settings"] = values ?? [];
-        return DartJson.Encode(json);
+        return JsonText.Encode(json);
     }
 
     private static void Same(IReadOnlyDictionary<string, object?> actual, Dictionary<string, object?> expected)

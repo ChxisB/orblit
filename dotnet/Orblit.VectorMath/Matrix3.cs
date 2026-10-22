@@ -8,7 +8,7 @@ public sealed class Matrix3
 {
     private readonly double[] _storage = new double[9];
 
-    /// <summary>Reads or writes by storage index, as Dart's <c>[]</c> does.</summary>
+    /// <summary>Reads or writes by storage index.</summary>
     public double this[int index]
     {
         get => _storage[index];

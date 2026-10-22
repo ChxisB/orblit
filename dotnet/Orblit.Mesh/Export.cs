@@ -61,7 +61,7 @@ public sealed class Written(string name, byte[] bytes)
     public byte[] Bytes { get; } = bytes;
 
     /// <summary>The contents as text. Throws <see cref="FormatException"/> when they are not UTF-8.</summary>
-    public string Text => DartText.Decode(Bytes);
+    public string Text => TextRules.Decode(Bytes);
 }
 
 /// <summary>Writing a mesh out.</summary>
@@ -185,9 +185,9 @@ public static class MeshExport
     {
         var cleaned = new StringBuilder();
         var inSpace = false;
-        foreach (var c in DartText.Trim(name))
+        foreach (var c in TextRules.Trim(name))
         {
-            if (!DartText.IsPatternSpace(c))
+            if (!TextRules.IsPatternSpace(c))
             {
                 cleaned.Append(c);
             }
@@ -196,7 +196,7 @@ public static class MeshExport
                 cleaned.Append('_');
             }
 
-            inSpace = DartText.IsPatternSpace(c);
+            inSpace = TextRules.IsPatternSpace(c);
         }
 
         return cleaned.Length == 0 ? "unnamed" : cleaned.ToString();
@@ -231,7 +231,7 @@ public static class MeshExport
     private static void WriteFaces(StringBuilder text, Mesh mesh, List<ObjCorner[]> perFace, IReadOnlyList<GlbMaterial> materials)
     {
         // Grouped by material, so a reader makes one object a material rather than switching back
-        // and forth down the file. A stable sort, which Dart's is only up to 32 faces (decision 75).
+        // and forth down the file. A stable sort (decision 75).
         var order = Enumerable.Range(0, mesh.FaceCount).OrderBy(i => mesh.Faces[i].Material);
         var wearing = -1;
         foreach (var at in order)
@@ -334,7 +334,7 @@ public static class MeshExport
 
         // Eighty bytes of anything, by convention not starting with "solid": a binary file that
         // does is read as text by half the readers there are. A long name is cut at 80 UTF-16 units
-        // and then at 80 bytes, as the Dart writer does.
+        // and then at 80 bytes.
         Encoding.UTF8.GetBytes($"Orblit {name}".PadRight(80)[..80]).AsSpan(0, 80).CopyTo(bytes);
         BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(80), (uint)facets.Count);
 
@@ -445,7 +445,7 @@ public static class MeshExport
     {
         try
         {
-            return JsonValues.Map(DartJson.Decode(json));
+            return JsonValues.Map(JsonText.Decode(json));
         }
         catch (FormatException)
         {

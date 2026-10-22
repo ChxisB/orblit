@@ -62,9 +62,8 @@ public class StreamerTests
     }
 
     /// <summary>
-    /// A synchronization context that moves only when the test says so, which is what
-    /// <c>pumpEventQueue</c> is in Dart: everything the streamer has been told to continue with
-    /// runs in <see cref="Settle"/>, on the test's own thread, in the order it was queued.
+    /// A synchronization context that moves only when the test says so: everything the streamer has been told
+    /// to continue with runs in <see cref="Settle"/>, on the test's own thread, in the order it was queued.
     /// </summary>
     private sealed class Pump : SynchronizationContext, IDisposable
     {

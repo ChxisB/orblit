@@ -14,7 +14,7 @@ internal static partial class KitText
     [GeneratedRegex(@"[\u0000-\u001f\u007f-\u009f\u200b-\u200f\u2028-\u202e\u2060-\u2064\u2066-\u206f\ufeff\ufff9-\ufffb]", RegexOptions.CultureInvariant)]
     private static partial Regex UnsafeText();
 
-    // Dart's $ is the end of the input only, so \z, where .NET's $ also matches before a last newline.
+    // The end of the input only, so \z, where .NET's $ also matches before a last newline.
     [GeneratedRegex(@"\A[a-z0-9]+(-[a-z0-9]+)*\z", RegexOptions.CultureInvariant)]
     private static partial Regex Word();
 
@@ -54,7 +54,7 @@ internal static partial class KitText
         var month = int.Parse(parts.Groups[2].Value, CultureInfo.InvariantCulture);
         var day = int.Parse(parts.Groups[3].Value, CultureInfo.InvariantCulture);
 
-        // Leap years repeat every 400 years, and DateTime has no year 0, which Dart reads.
+        // Leap years repeat every 400 years, and DateTime has no year 0, which a release date may hold.
         return month is >= 1 and <= 12 && day >= 1 && day <= DateTime.DaysInMonth(2000 + (year % 400), month);
     }
 

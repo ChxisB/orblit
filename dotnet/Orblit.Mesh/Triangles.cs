@@ -73,7 +73,7 @@ public static class MeshTriangles
             var smoothed = SmoothNormals(mesh);
 
             // In material order, so each material's triangles are one run. Sorted here rather than
-            // asked of the caller. Stable, where Dart's sort is stable up to 32 faces only.
+            // asked of the caller. Stable, so faces of one material keep their order.
             var group = -1;
             foreach (var face in mesh.Faces.OrderBy(one => one.Material))
             {

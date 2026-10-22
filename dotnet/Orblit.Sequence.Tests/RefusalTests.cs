@@ -1,7 +1,7 @@
 namespace Orblit.Sequence.Tests;
 
 /// <summary>
-/// Dart checks these with asserts, which a release build skips. C# always checks.
+/// The fixture exporter checked these with asserts, which a release build skips. The port always checks.
 /// </summary>
 public class RefusalTests
 {

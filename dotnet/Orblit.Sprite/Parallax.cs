@@ -19,7 +19,7 @@ namespace Orblit.Sprite;
 /// not following. Without it every layer is still whenever the camera is, and a still sky reads
 /// as a painted backdrop rather than as weather.
 /// </param>
-// F2: five parameters, and every one after the image is optional and called by name, as in Dart.
+// F2: five parameters, and every one after the image is optional and called by name.
 public sealed record Layer(string Image, double Depth = 1, double Size = 0, double Offset = 0, double Drift = 0);
 
 /// <summary>
@@ -73,8 +73,8 @@ public sealed class Parallax(IReadOnlyList<Layer> layers)
 public readonly record struct ViewBounds(Vector2 Minimum, Vector2 Maximum);
 
 /// <summary>
-/// A camera in two dimensions, with the bounds it will not leave. The Dart constructor also takes
-/// an <c>at</c> that it never reads. The port leaves it out, and no caller passed one.
+/// A camera in two dimensions, with the bounds it will not leave. There is no <c>at</c> argument,
+/// because nothing would read it.
 /// </summary>
 public sealed class View2(double width = 16, double height = 9, ViewBounds? bounds = null)
 {

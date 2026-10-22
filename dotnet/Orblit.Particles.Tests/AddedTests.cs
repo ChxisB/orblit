@@ -1,6 +1,6 @@
 namespace Orblit.Particles.Tests;
 
-// What C# does that Dart cannot be asked: a record compares by value, and a bad size is refused before it allocates.
+// What a fixture cannot be asked: a record compares by value, and a bad size is refused before it allocates.
 public class AddedTests
 {
     [Fact]

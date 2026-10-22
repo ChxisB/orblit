@@ -5,10 +5,10 @@ using System.Text.Json.Nodes;
 namespace Orblit.Parity;
 
 /// <summary>
-/// A file the Dart twin wrote. <paramref name="DartCommit"/> is the commit of
-/// the Dart package that produced it, with "+dirty" if it was not committed.
+/// A file the fixture exporter wrote. <paramref name="SourceCommit"/> is the commit of
+/// the source that produced it, with "+dirty" if it was not committed.
 /// </summary>
-public sealed record Fixture(string Package, string DartCommit, IReadOnlyList<JsonElement> Cases)
+public sealed record Fixture(string Package, string SourceCommit, IReadOnlyList<JsonElement> Cases)
 {
     /// <summary>
     /// Reads <c>fixtures/{package}/{name}.json</c> from beside the test
@@ -21,13 +21,13 @@ public sealed record Fixture(string Package, string DartCommit, IReadOnlyList<Js
         var root = document.RootElement;
         return new Fixture(
             root.GetProperty("package").GetString() ?? throw new InvalidDataException($"{path} has no package."),
-            root.GetProperty("dartCommit").GetString() ?? throw new InvalidDataException($"{path} has no dartCommit."),
+            root.GetProperty("sourceCommit").GetString() ?? throw new InvalidDataException($"{path} has no sourceCommit."),
             [.. root.GetProperty("cases").EnumerateArray().Select(c => c.Clone())]);
     }
 
     /// <summary>
     /// Runs <paramref name="run"/> over every case of <paramref name="op"/> and compares what it gives
-    /// with what Dart gave. A case where the port throws is a failure, not a pass.
+    /// with what the fixture holds. A case where the port throws is a failure, not a pass.
     /// </summary>
     public void Check(string op, Func<JsonElement, JsonNode?> run)
     {
@@ -50,7 +50,7 @@ public sealed record Fixture(string Package, string DartCommit, IReadOnlyList<Js
 
         if (failures.Count > 0)
         {
-            throw new ParityException($"{op}: {string.Join(Environment.NewLine, failures)} (from Dart commit {DartCommit})");
+            throw new ParityException($"{op}: {string.Join(Environment.NewLine, failures)} (from fixture commit {SourceCommit})");
         }
     }
 
@@ -76,5 +76,5 @@ public sealed record Fixture(string Package, string DartCommit, IReadOnlyList<Js
             : value.GetDouble();
 }
 
-/// <summary>The port gave an answer that differs from Dart's.</summary>
+/// <summary>The port gave an answer that differs from the fixture's.</summary>
 public sealed class ParityException(string message) : Exception(message);

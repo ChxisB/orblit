@@ -16,7 +16,7 @@ public class CameraParityTests
     }
 
     /// <summary>
-    /// Runs every case of one op. A case Dart refused with an ArgumentError has to be refused here
+    /// Runs every case of one op. A case the fixture exporter saw refused has to be refused here
     /// too, and every other case has to give the same tree of values.
     /// </summary>
     private static void Check(string op, Func<JsonElement, object?> run)
@@ -32,7 +32,7 @@ public class CameraParityTests
                 var error = Record.Exception(() => run(spec));
                 Assert.True(
                     error is ArgumentException,
-                    $"{where}: Dart refused it, C# gave {error?.GetType().Name ?? "an answer"}, from Dart commit {fixture.DartCommit}");
+                    $"{where}: the fixture refused it, the port gave {error?.GetType().Name ?? "an answer"}, from fixture commit {fixture.SourceCommit}");
                 continue;
             }
 
@@ -58,7 +58,7 @@ public class CameraParityTests
             default:
                 Assert.True(
                     Leaf(expected, actual),
-                    $"{where}: Dart {expected.GetRawText()}, C# {actual ?? "null"}, from Dart commit {fixture.DartCommit}");
+                    $"{where}: the fixture {expected.GetRawText()}, the port {actual ?? "null"}, from fixture commit {fixture.SourceCommit}");
                 break;
         }
     }
@@ -67,11 +67,11 @@ public class CameraParityTests
     {
         Assert.True(
             expected.ValueKind == JsonValueKind.Object,
-            $"{where}: Dart {expected.GetRawText()}, C# gave a record, from Dart commit {fixture.DartCommit}");
+            $"{where}: the fixture {expected.GetRawText()}, the port gave a record, from fixture commit {fixture.SourceCommit}");
         var names = expected.EnumerateObject().Select(p => p.Name).Order(StringComparer.Ordinal).ToList();
         Assert.True(
             names.SequenceEqual(map.Keys.Order(StringComparer.Ordinal)),
-            $"{where}: Dart has [{string.Join(", ", names)}], C# has [{string.Join(", ", map.Keys)}], from Dart commit {fixture.DartCommit}");
+            $"{where}: the fixture has [{string.Join(", ", names)}], the port has [{string.Join(", ", map.Keys)}], from fixture commit {fixture.SourceCommit}");
         foreach (var property in expected.EnumerateObject())
         {
             AssertTree(fixture, $"{where}.{property.Name}", property.Value, map[property.Name]);
@@ -82,7 +82,7 @@ public class CameraParityTests
     {
         Assert.True(
             expected.ValueKind == JsonValueKind.Array && expected.GetArrayLength() == list.Count,
-            $"{where}: Dart {Clip(expected.GetRawText())}, C# gave {list.Count} items, from Dart commit {fixture.DartCommit}");
+            $"{where}: the fixture {Clip(expected.GetRawText())}, the port gave {list.Count} items, from fixture commit {fixture.SourceCommit}");
         var i = 0;
         foreach (var item in expected.EnumerateArray())
         {
@@ -132,7 +132,7 @@ public class CameraParityTests
 
     private static double[] Write(Quaternion q) => [q.X, q.Y, q.Z, q.W];
 
-    /// <summary>A name as Dart spells it, <c>easeInOut</c>, read as the C# member.</summary>
+    /// <summary>A name as the fixture spells it, <c>easeInOut</c>, read as the C# member.</summary>
     private static TEnum Word<TEnum>(JsonElement name)
         where TEnum : struct, Enum => Enum.Parse<TEnum>(name.GetString()!, ignoreCase: true);
 
@@ -179,7 +179,7 @@ public class CameraParityTests
     // the pure functions
 
     [Fact]
-    public void DampingMatchesDart() => Check("damping", spec =>
+    public void DampingMatchesTheFixture() => Check("damping", spec =>
     {
         var (current, target, damping, delta) = (N(spec, "current"), N(spec, "target"), N(spec, "damping"), N(spec, "delta"));
         return Tree(
@@ -188,7 +188,7 @@ public class CameraParityTests
     });
 
     [Fact]
-    public void LensBlendsAndTextMatchDart() => Check("lens", spec =>
+    public void LensBlendsAndTextMatchTheFixture() => Check("lens", spec =>
     {
         var a = ReadLens(spec.GetProperty("a"));
         var b = ReadLens(spec.GetProperty("b"));
@@ -196,7 +196,7 @@ public class CameraParityTests
     });
 
     [Fact]
-    public void FlatLensesMatchDart() => Check("flat", spec =>
+    public void FlatLensesMatchTheFixture() => Check("flat", spec =>
     {
         var height = N(spec, "height");
         var lens = IsNull(spec, "near")
@@ -210,14 +210,14 @@ public class CameraParityTests
     });
 
     [Fact]
-    public void TheDefaultLensMatchesDart() => Check("defaultLens", _ =>
+    public void TheDefaultLensMatchesTheFixture() => Check("defaultLens", _ =>
     {
         var lens = new Lens();
         return Tree(("lens", Write(lens)), ("text", lens.ToString()));
     });
 
     [Fact]
-    public void ScreenRectsMatchDart() => Check("rect", spec =>
+    public void ScreenRectsMatchTheFixture() => Check("rect", spec =>
     {
         var rect = new ScreenRect(N(spec, "left"), N(spec, "top"), N(spec, "width"), N(spec, "height"));
         return Tree(
@@ -228,7 +228,7 @@ public class CameraParityTests
     });
 
     [Fact]
-    public void BlendEasingMatchesDart() => Check("blend", spec =>
+    public void BlendEasingMatchesTheFixture() => Check("blend", spec =>
     {
         var blend = Flag(spec, "ctor") ? Blend.Cut() : ReadBlend(spec);
         return Tree(("blend", Write(blend)), ("ease", blend.Ease(N(spec, "t"))));
@@ -248,7 +248,7 @@ public class CameraParityTests
     private static string? Name(JsonElement spec, string name) => IsNull(spec, name) ? null : spec.GetProperty(name).GetString();
 
     [Fact]
-    public void BlendTablesMatchDart() => Check("table", spec =>
+    public void BlendTablesMatchTheFixture() => Check("table", spec =>
     {
         var table = ReadTable(spec);
         return Tree(
@@ -257,20 +257,20 @@ public class CameraParityTests
     });
 
     [Fact]
-    public void RotatingAVectorMatchesDart() =>
+    public void RotatingAVectorMatchesTheFixture() =>
         Check("rotate", spec => Write(Rotations.RotateVector(Quat(spec.GetProperty("q")), Vec(spec.GetProperty("v")))));
 
     [Fact]
-    public void ShortestSlerpMatchesDart() => Check(
+    public void ShortestSlerpMatchesTheFixture() => Check(
         "slerp",
         spec => Write(Rotations.SlerpShortest(Quat(spec.GetProperty("a")), Quat(spec.GetProperty("b")), N(spec, "t"))));
 
     [Fact]
-    public void LookRotationMatchesDart() =>
+    public void LookRotationMatchesTheFixture() =>
         Check("look", spec => Write(Rotations.LookRotation(Vec(spec.GetProperty("forward")), VecOrNull(spec, "up"))));
 
     [Fact]
-    public void ProjectionMatchesDart() => Check("project", spec =>
+    public void ProjectionMatchesTheFixture() => Check("project", spec =>
     {
         var seen = Framing.Project(
             Vec(spec.GetProperty("position")),
@@ -282,7 +282,7 @@ public class CameraParityTests
     });
 
     [Fact]
-    public void RotationPlacingMatchesDart() => Check("placing", spec => Write(Framing.RotationPlacing(
+    public void RotationPlacingMatchesTheFixture() => Check("placing", spec => Write(Framing.RotationPlacing(
         Vec(spec.GetProperty("position")),
         Vec(spec.GetProperty("point")),
         N(spec, "ndcX"),
@@ -327,7 +327,7 @@ public class CameraParityTests
             damping: N(s, "damping"));
 
     [Fact]
-    public void AimsMatchDart() => Check("aim", spec =>
+    public void AimsMatchTheFixture() => Check("aim", spec =>
     {
         var aim = ReadAim(spec.GetProperty("aim"));
         var lookAt = ReadTarget(spec.GetProperty("lookAt"));
@@ -428,7 +428,7 @@ public class CameraParityTests
     }
 
     [Fact]
-    public void BodiesMatchDart() => Check("body", spec =>
+    public void BodiesMatchTheFixture() => Check("body", spec =>
     {
         var log = new List<object?>();
         var body = ReadBody(spec.GetProperty("body"), log);
@@ -464,7 +464,7 @@ public class CameraParityTests
         seed: s.GetProperty("seed").GetInt64());
 
     [Fact]
-    public void NoiseMatchesDart() => Check("noise", spec =>
+    public void NoiseMatchesTheFixture() => Check("noise", spec =>
     {
         var noise = ReadNoise(spec.GetProperty("noise"));
         return Tree(
@@ -554,7 +554,7 @@ public class CameraParityTests
                 .ToList()));
 
     [Fact]
-    public void TheBrainMatchesDart() => Check("brain", spec =>
+    public void TheBrainMatchesTheFixture() => Check("brain", spec =>
     {
         FixedTarget[] targets = [.. spec.GetProperty("targets").EnumerateArray().Select(t => ReadTarget(t)!)];
         VirtualCamera[] cameras = [.. spec.GetProperty("cameras").EnumerateArray().Select(c => ReadCamera(c, targets))];

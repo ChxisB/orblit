@@ -53,7 +53,7 @@ public sealed class TwoBoneIk(string root, string mid, ModelPoint target, ModelP
     /// Aims <paramref name="root"/> and <paramref name="mid"/> so the tail of <paramref name="mid"/>
     /// lands on <paramref name="target"/>, or as near as the limb reaches.
     /// </summary>
-    // F2: six parameters, all named at every call, as a Dart record of named arguments is.
+    // F2: six parameters, all named at every call.
     public static void Reach(Pose pose, string root, string mid, Vector3 target, Vector3? pole = null, double stretch = 0)
     {
         var rootBone = pose.Armature[root] ?? throw new ArmatureException($"No bone called \"{root}\" in this armature.");

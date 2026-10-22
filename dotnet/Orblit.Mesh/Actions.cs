@@ -751,7 +751,7 @@ public static class MeshActions
     /// Moves one corner of a face towards its middle, by at most <paramref name="distance"/>, and
     /// says which new point it moved to.
     /// </summary>
-    // F5: a bevel pulls the corner back and the caller needs the new point, as the Dart loop does.
+    // F5: a bevel pulls the corner back and the caller needs the new point.
     private static int PullBack(Mesh mesh, Face face, int vertex, double distance)
     {
         var towards = mesh.CentreOf(face) - mesh.Positions[vertex];
@@ -792,7 +792,7 @@ public static class MeshActions
         return taken;
     }
 
-    // F5: a lookup that adds on a miss, as Dart's ??= does.
+    // F5: a lookup that adds on a miss.
     private static int TakeVertex(Mesh from, Mesh into, Dictionary<int, int> moveTo, int index)
     {
         if (!moveTo.TryGetValue(index, out var taken))

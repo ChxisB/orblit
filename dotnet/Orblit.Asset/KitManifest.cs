@@ -37,7 +37,7 @@ public sealed class KitManifest
     /// <summary>
     /// Throws a <see cref="FormatException"/> naming the field that is wrong.
     /// </summary>
-    // F2: Dart names these ten as named parameters, which F2 counts as the options object. C# callers name them too.
+    // F2: ten parameters, all named at each call.
     public KitManifest(
         string slug,
         string publisher,
@@ -106,7 +106,7 @@ public sealed class KitManifest
         var kind = json.GetValueOrDefault("kind");
         if (kind is not string text || text != Kind)
         {
-            throw new FormatException($"This manifest says it is \"{KitText.Show(DartText.Print(kind))}\", not \"{Kind}\".");
+            throw new FormatException($"This manifest says it is \"{KitText.Show(TextRules.Print(kind))}\", not \"{Kind}\".");
         }
 
         CheckFormat(json.GetValueOrDefault("formatVersion"));
@@ -138,12 +138,12 @@ public sealed class KitManifest
             ["tags"] = new List<object?>(Tags),
             ["version"] = Version,
         };
-        return Encoding.UTF8.GetBytes(DartJson.Encode(json));
+        return Encoding.UTF8.GetBytes(JsonText.Encode(json));
     }
 
     private static void CheckFormat(object? format)
     {
-        // Dart compares a number with another by value, so a format of 1.0 is the format 1.
+        // A number compares by value, so a format of 1.0 is the format 1.
         if (format is long newer && newer > Format)
         {
             throw new FormatException(
@@ -152,7 +152,7 @@ public sealed class KitManifest
 
         if (!IsFormatOne(format))
         {
-            throw new FormatException($"This manifest says format {KitText.Show(DartText.Print(format))}.");
+            throw new FormatException($"This manifest says format {KitText.Show(TextRules.Print(format))}.");
         }
     }
 
@@ -248,7 +248,7 @@ public sealed class KitManifest
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {
@@ -275,5 +275,5 @@ public sealed class KitManifest
 
     private static string Item(object? value, string where) =>
         value as string
-            ?? throw new FormatException($"\"{where}\" in the manifest holds {KitText.Show(DartText.Print(value))}, not text.");
+            ?? throw new FormatException($"\"{where}\" in the manifest holds {KitText.Show(TextRules.Print(value))}, not text.");
 }

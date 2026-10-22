@@ -24,7 +24,7 @@ internal static class UnitRandom
         return h / 4294967296.0;
     }
 
-    /// <summary>32-bit wrapping multiply, the same one Dart wrote for the web.</summary>
+    /// <summary>32-bit wrapping multiply, which does not depend on the platform's integer width.</summary>
     private static long Times(long a, long b)
     {
         var x = a & Low32;

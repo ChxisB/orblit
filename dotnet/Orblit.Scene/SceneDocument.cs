@@ -329,14 +329,14 @@ public sealed class SceneDocument
     }
 
     /// <summary>The document as the bytes that go on disk.</summary>
-    public string Encode() => $"{DartJson.Encode(ToJson(), "  ")}\n";
+    public string Encode() => $"{JsonText.Encode(ToJson(), "  ")}\n";
 
     private static JsonMap Parsed(string text)
     {
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException error)
         {

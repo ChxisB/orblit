@@ -3,8 +3,8 @@ using System.Text;
 namespace Orblit.Terrain.Tests;
 
 /// <summary>
-/// Where the C# port differs from Dart on purpose. Dart's asserts are off outside tests and its
-/// seeded <c>Random</c> is not ported (decision 77), so none of these have a fixture twin.
+/// Where the port differs from the fixture on purpose. An assert is off outside tests and the seeded
+/// <c>Random</c> is not ported (decision 77), so none of these have a fixture twin.
 /// </summary>
 public class RefusalTests
 {
@@ -13,7 +13,7 @@ public class RefusalTests
     [InlineData(-1)]
     [InlineData(100.5)]
     [InlineData(double.NaN)]
-    public void ALayerRefusesADensityDartOnlyAsserts(double density)
+    public void ALayerRefusesADensityOutsideItsRange(double density)
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new ScatterLayer("grass", density: density));
     }
@@ -25,7 +25,7 @@ public class RefusalTests
     }
 
     [Fact]
-    public void AMapLengthNearTheTopOfALongIsAFormatErrorWhereDartThrowsRangeError()
+    public void AMapLengthNearTheTopOfALongIsAFormatError()
     {
         var header = $"{{\"kind\":\"{TerrainRegion.Marker}\",\"formatVersion\":{TerrainRegion.FormatVersion},\"x\":0,\"z\":0,\"size\":4,\"maps\":[{{\"name\":\"height\",\"bytes\":9223372036854775807}}]}}\n";
         Assert.Throws<RegionFormatException>(() => TerrainRegion.Decode(Encoding.UTF8.GetBytes(header)));

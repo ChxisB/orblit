@@ -205,7 +205,7 @@ public sealed class GltfAccessors
     private static List<IReadOnlyDictionary<string, object?>> MapsAt(IReadOnlyDictionary<string, object?> json, string key) =>
         [.. (JsonValues.List(json.GetValueOrDefault(key)) ?? []).Select(JsonValues.Map).OfType<IReadOnlyDictionary<string, object?>>()];
 
-    /// <summary>A whole number that is not negative, as Dart's <c>raw is int &amp;&amp; raw &gt;= 0</c> says.</summary>
+    /// <summary>A whole number that is not negative.</summary>
     private static long? WholeOf(IReadOnlyDictionary<string, object?> map, string key) => map.GetValueOrDefault(key) switch
     {
         long whole and >= 0 => whole,
@@ -237,7 +237,7 @@ public static partial class GltfFiles
         object? decoded;
         try
         {
-            decoded = DartJson.Decode(DartText.Decode(bytes));
+            decoded = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {
@@ -274,7 +274,7 @@ public static partial class GltfFiles
         // Named twice, because a URI is escaped and a filename is not: a buffer written beside a
         // scene called `old town.gltf` arrives as `old%20town.bin` and is on disk under the name
         // with the space in it.
-        return files.GetValueOrDefault(uri) ?? files.GetValueOrDefault(DartText.DecodeUriComponent(uri));
+        return files.GetValueOrDefault(uri) ?? files.GetValueOrDefault(TextRules.DecodeUriComponent(uri));
     }
 
     /// <summary>
@@ -286,6 +286,6 @@ public static partial class GltfFiles
         var comma = uri.IndexOf(',', StringComparison.Ordinal);
         return comma < 0 || !uri[..comma].EndsWith(";base64", StringComparison.Ordinal)
             ? null
-            : DartText.DecodeBase64(uri[(comma + 1)..]);
+            : TextRules.DecodeBase64(uri[(comma + 1)..]);
     }
 }

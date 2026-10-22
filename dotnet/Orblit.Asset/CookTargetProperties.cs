@@ -6,7 +6,7 @@ namespace Orblit.Asset;
 /// Reads <see cref="CookTarget.Properties"/> with the names the built-in importers agree on, so that a missing or
 /// mistyped property is caught once, here, rather than differently in each importer.
 /// </summary>
-[SuppressMessage("Usage", "CA2208:Instantiate argument exceptions correctly", Justification = "The error names the target property that is wrong, as the Dart error does, and a caller reads that name.")]
+[SuppressMessage("Usage", "CA2208:Instantiate argument exceptions correctly", Justification = "The error names the target property that is wrong, and a caller reads that name.")]
 public static class CookTargetProperties
 {
     /// <summary>Which compressed texture families to write. Empty means the caller did not say.</summary>

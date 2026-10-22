@@ -46,7 +46,7 @@ public sealed class AssetManifest
         }
 
         var json = new OrderedDictionary<string, object?> { ["formatVersion"] = (long)FormatVersion, ["assets"] = assets };
-        return DartJson.Encode(json, "  ") + "\n";
+        return JsonText.Encode(json, "  ") + "\n";
     }
 
     /// <summary>
@@ -79,7 +79,7 @@ public sealed class AssetManifest
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException error)
         {

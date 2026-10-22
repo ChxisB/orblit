@@ -6,7 +6,7 @@ public sealed class NetRangePackTests : IDisposable
 {
     private static readonly WebUrl Url = WebUrl.Parse("https://cdn.example.com/game.web.opack");
 
-    // Dart's event loop joins reads made in one turn. Threads have no turn, so a read waits long enough for
+    // Reads made together are joined. Threads have no turn, so a read waits long enough for
     // the others of its test to be made.
     private static readonly RangeBatching Joining = new() { Delay = TimeSpan.FromMilliseconds(50) };
 

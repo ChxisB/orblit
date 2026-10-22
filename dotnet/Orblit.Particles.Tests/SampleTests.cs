@@ -415,7 +415,7 @@ public class SampleTests
     /// One particle at time 0 that lives for <paramref name="life"/>, so a test
     /// can ask for it at any age.
     /// </summary>
-    // F2: nine settings, all optional and called by name, as in Dart.
+    // F2: nine settings, all optional and called by name.
     private static Emitter OneParticle(
         double life = 10,
         Range? speed = null,

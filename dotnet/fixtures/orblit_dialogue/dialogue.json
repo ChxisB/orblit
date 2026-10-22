@@ -1,6 +1,6 @@
 {
   "package": "orblit_dialogue",
-  "dartCommit": "33f0aff4b23c2ea21da1566b306f209a157a1513",
+  "sourceCommit": "33f0aff4b23c2ea21da1566b306f209a157a1513",
   "cases": [
     {"op":"parse","text":"{\"kind\":\"orblit.dialogue\",\"formatVersion\":1,\"key\":\"guide\",\"variants\":[{\"start\":\"a\"}],\"nodes\":{\"a\":{\"type\":\"line\",\"speaker\":\"X\",\"text\":\"Hi\"}}}","cutAfter":null,"expect":{"key":"guide","variants":[["a",[]]],"nodes":["a"],"beforeNames":[],"encoded":"{\n  \"kind\": \"orblit.dialogue\",\n  \"formatVersion\": 1,\n  \"key\": \"guide\",\n  \"variants\": [\n    {\n      \"start\": \"a\"\n    }\n  ],\n  \"nodes\": {\n    \"a\": {\n      \"type\": \"line\",\n      \"speaker\": \"X\",\n      \"text\": \"Hi\"\n    }\n  }\n}","stable":true}},
     {"op":"parse","text":"{\"kind\":\"orblit.dialogue\",\"formatVersion\":1,\"key\":\"a b.c/é\",\"variants\":[{\"start\":\"a\"}],\"nodes\":{\"a\":{\"type\":\"line\",\"speaker\":\"X\",\"text\":\"Hi\"}}}","cutAfter":null,"expect":{"key":"a b.c/é","variants":[["a",[]]],"nodes":["a"],"beforeNames":[],"encoded":"{\n  \"kind\": \"orblit.dialogue\",\n  \"formatVersion\": 1,\n  \"key\": \"a b.c/é\",\n  \"variants\": [\n    {\n      \"start\": \"a\"\n    }\n  ],\n  \"nodes\": {\n    \"a\": {\n      \"type\": \"line\",\n      \"speaker\": \"X\",\n      \"text\": \"Hi\"\n    }\n  }\n}","stable":true}},

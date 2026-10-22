@@ -6,7 +6,7 @@ public class NoiseParityTests
 {
     [Theory]
     [MemberData(nameof(Fields.Names), MemberType = typeof(Fields))]
-    public void MatchesTheDartTwin(string name)
+    public void MatchesTheFixture(string name)
     {
         var field = Fields.All[name];
         var fixture = Fixture.Load("orblit_noise", "noise");
@@ -19,7 +19,7 @@ public class NoiseParityTests
             var actual = field.At(at[0].GetDouble(), at[1].GetDouble(), at[2].GetDouble());
             Assert.True(
                 Tolerance.Close(expected, actual),
-                $"{name} at {at}: Dart {expected:R}, C# {actual:R}, from Dart commit {fixture.DartCommit}");
+                $"{name} at {at}: the fixture {expected:R}, the port {actual:R}, from fixture commit {fixture.SourceCommit}");
             checkedCases++;
         }
 
@@ -30,6 +30,6 @@ public class NoiseParityTests
     [InlineData(double.NaN)]
     [InlineData(double.PositiveInfinity)]
     [InlineData(double.NegativeInfinity)]
-    public void ANonFiniteCoordinateIsRefusedAsDartRefusesIt(double bad) =>
+    public void ANonFiniteCoordinateIsRefused(double bad) =>
         Assert.Throws<ArgumentOutOfRangeException>(() => Fields.Gradient.At(bad));
 }

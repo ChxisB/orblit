@@ -11,7 +11,7 @@ public sealed class Vector4(double x, double y, double z, double w) : IEquatable
 
     public double W { get; set; } = w;
 
-    /// <summary>The summed squares, added w first as Dart's does.</summary>
+    /// <summary>The summed squares, added w first.</summary>
     public double Length2 => (W * W) + (Z * Z) + (Y * Y) + (X * X);
 
     public double Length => Math.Sqrt(Length2);

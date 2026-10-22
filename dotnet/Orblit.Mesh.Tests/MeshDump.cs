@@ -6,7 +6,7 @@ using static Orblit.Parity.Dump;
 
 namespace Orblit.Mesh.Tests;
 
-/// <summary>Reads a mesh spec and writes results in the shape the Dart exporter wrote.</summary>
+/// <summary>Reads a mesh spec and writes results in the shape the fixture exporter wrote.</summary>
 internal static class MeshDump
 {
     public static JsonNode Vec(Vector3 v) => new JsonArray(Num(v.X), Num(v.Y), Num(v.Z));
@@ -106,8 +106,8 @@ internal static class MeshDump
 
     public static byte[] Bytes(JsonElement json) => Convert.FromBase64String(json.GetString()!);
 
-    /// <summary>A value the way the Dart reader sees it after JSON, for the readers that take any value.</summary>
-    public static object? Decoded(JsonElement json) => DartJson.Decode(json.GetRawText());
+    /// <summary>A value the way a reader sees it after JSON, for the readers that take any value.</summary>
+    public static object? Decoded(JsonElement json) => JsonText.Decode(json.GetRawText());
 
     public static Mesh MeshOf(JsonElement spec)
     {

@@ -3,9 +3,8 @@ using Orblit.Json;
 
 namespace Orblit.Asset.Tests;
 
-// What C# does that Dart cannot be asked: an index entry with the wrong kind of value is a miss where Dart throws a
-// TypeError, a size below nothing is refused by the constructor where Dart only asserts, and a recipe is written
-// for every kind of dictionary the caller can hold.
+// Edges a fixture cannot be asked: an index entry with the wrong kind of value is a miss, a size below nothing
+// is refused by the constructor, and a recipe is written for every kind of dictionary the caller can hold.
 public sealed class AddedTests : IDisposable
 {
     private readonly DirectoryInfo _temp = Directory.CreateTempSubdirectory("orblit_asset_added_");
@@ -30,10 +29,10 @@ public sealed class AddedTests : IDisposable
 
     private async Task Rewrite(Action<OrderedDictionary<string, object?>> edit)
     {
-        var index = (OrderedDictionary<string, object?>)DartJson.Decode(
+        var index = (OrderedDictionary<string, object?>)JsonText.Decode(
             await File.ReadAllTextAsync(IndexPath, TestContext.Current.CancellationToken))!;
         edit(index);
-        await File.WriteAllTextAsync(IndexPath, DartJson.Encode(index), TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(IndexPath, JsonText.Encode(index), TestContext.Current.CancellationToken);
     }
 
     private static OrderedDictionary<string, object?> EntryOf(OrderedDictionary<string, object?> index, string name) =>
@@ -49,7 +48,7 @@ public sealed class AddedTests : IDisposable
             failures[FailureHex(i)] = new OrderedDictionary<string, object?>
             {
                 ["reason"] = "old",
-                ["at"] = DartText.Iso(first.AddSeconds(i)),
+                ["at"] = TextRules.Iso(first.AddSeconds(i)),
             };
         }
 
@@ -58,7 +57,7 @@ public sealed class AddedTests : IDisposable
 
     private static string FailureHex(int i) => ContentHash.Of(System.Text.Encoding.UTF8.GetBytes($"failure {i}")).Hex;
 
-    // Dart keeps 4096 failures and drops the oldest, so a cache that kept more would grow with every broken file.
+    // The cache keeps 4096 failures and drops the oldest, so one that kept more would grow with every broken file.
     [Fact]
     public async Task TheOldestFailureIsDroppedOnceThereAreMoreThanTheCacheKeeps()
     {
@@ -67,7 +66,7 @@ public sealed class AddedTests : IDisposable
 
         await new DirectoryCookCache(_root).RecordFailureAsync(CookCases.Key(source: "bad"), "new");
 
-        var index = (OrderedDictionary<string, object?>)DartJson.Decode(
+        var index = (OrderedDictionary<string, object?>)JsonText.Decode(
             await File.ReadAllTextAsync(IndexPath, TestContext.Current.CancellationToken))!;
         var failures = (OrderedDictionary<string, object?>)index["failures"]!;
         Assert.Equal(4096, failures.Count);
@@ -76,12 +75,12 @@ public sealed class AddedTests : IDisposable
         Assert.True(failures.ContainsKey(CookCases.Key(source: "bad").Hash.Hex));
     }
 
-    // A message names the value as Dart prints it, so a whole double keeps its ".0".
+    // A message prints a whole double with its ".0", as the file format does.
     [Theory]
     [InlineData("""{"formatVersion":1.5}""", "formatVersion is 1.5,")]
     [InlineData("""{"formatVersion":2.0}""", "formatVersion is 2.0,")]
     [InlineData("""{"importer":1.5}""", "importer is 1.5,")]
-    public void ADoubleInAMessageIsPrintedTheDartWay(string text, string said)
+    public void ADoubleInAMessageIsPrintedInFileFormat(string text, string said)
     {
         var error = Assert.Throws<AssetFormatException>(
             () => ImportSettings.Parse(text, AssetId.Parse("textures/wall.png.import.json")));
@@ -143,7 +142,7 @@ public sealed class AddedTests : IDisposable
         Assert.NotNull(await new DirectoryCookCache(_root).LookUpAsync(CookCases.Key(source: "a")));
     }
 
-    // Dart's 1.0 == 1 is true, so an index a tool wrote with a point is still the same format.
+    // 1.0 and 1 are the same number, so an index a tool wrote with a point is still the same format.
     [Fact]
     public async Task AFormatVersionWrittenWithAPointIsRead()
     {
@@ -160,7 +159,7 @@ public sealed class AddedTests : IDisposable
     [InlineData("2026-10-21", true)]
     [InlineData("21 Oct 2026", false)]
     [InlineData("", false)]
-    public async Task ATimeIsReadInTheFormsDartWritesAndNoOthers(string text, bool hit)
+    public async Task ATimeIsReadOnlyInTheFormsItWrites(string text, bool hit)
     {
         await Stored("a");
         await Rewrite(index => EntryOf(index, "a")["usedAt"] = text);

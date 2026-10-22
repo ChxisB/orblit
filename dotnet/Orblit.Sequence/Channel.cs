@@ -27,8 +27,7 @@ public enum Hold
 }
 
 /// <summary>
-/// A slope named on a key. Dart writes it as a nullable <c>T</c>. Here a slope
-/// of zero and no slope at all have to differ, and <c>T?</c> does not say that
+/// A slope named on a key. A slope of zero and no slope at all have to differ, and <c>T?</c> does not say that
 /// for a value type.
 /// </summary>
 public readonly record struct Slope<T>(T Value)
@@ -39,7 +38,7 @@ public readonly record struct Slope<T>(T Value)
 /// <summary>One value at one moment.</summary>
 public sealed class Key<T>
 {
-    // F2: six parameters, and the four after the value are optional and called by name, as in Dart.
+    // F2: six parameters, and the four after the value are optional and called by name.
     public Key(
         double at,
         T value,
@@ -113,7 +112,7 @@ public interface ICurveMixer<T> : IMixer<T>
     /// <paramref name="b"/> over <paramref name="seconds"/>, leaving at the
     /// slope <paramref name="leave"/> and arriving at <paramref name="arrive"/>.
     /// </summary>
-    // F2: six parameters, the signature of the Dart curve, which has one caller.
+    // F2: six parameters, the signature of the curve, which has one caller.
     T Curve(T a, T leave, T b, T arrive, double seconds, double t);
 }
 
@@ -350,7 +349,7 @@ public sealed class BoolMixer : IMixer<bool>
     }
 }
 
-/// <summary>Dart's four const mixers, <c>doubleMixer</c> and the rest.</summary>
+/// <summary>The four mixers: <c>doubleMixer</c> and the rest.</summary>
 public static class Mixers
 {
     public static readonly DoubleMixer OfDouble = new();

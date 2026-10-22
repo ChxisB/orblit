@@ -2,7 +2,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Effect;
 
-/// <summary>The functions that sit beside the effects: <c>applied</c>, <c>lerp</c> and <c>shortestTurn</c> in Dart.</summary>
+/// <summary>The functions that sit beside the effects: <c>applied</c>, <c>lerp</c> and <c>shortestTurn</c>.</summary>
 public static class Effects
 {
     /// <summary>

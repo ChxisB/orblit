@@ -6,7 +6,7 @@ namespace Orblit.Asset;
 public enum SurfaceType
 {
     Boolean,
-    [SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "The Dart name, for the shader word int.")]
+    [SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "The shader word is int.")]
     Integer,
     Scalar,
     Vector2,

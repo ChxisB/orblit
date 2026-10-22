@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Version>0.1.0</Version>
     <Description>Where a frame went on the managed side: named spans, gauges, counters, a ring of frame times and a heap trend, as a snapshot a tool can read.</Description>
-    <!-- Begin and End keep the Dart names. A Visual Basic caller can write [End]. -->
+    <!-- Begin and End are the natural names. A Visual Basic caller can write [End]. -->
     <NoWarn>$(NoWarn);CA1716</NoWarn>
   </PropertyGroup>
 </Project>

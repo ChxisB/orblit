@@ -172,7 +172,7 @@ public class TerrainRegion
             listed.Add(new OrderedDictionary<string, object?> { ["name"] = name, ["bytes"] = (long)bytes.Length });
         }
 
-        var header = Encoding.UTF8.GetBytes(DartJson.Encode(new OrderedDictionary<string, object?>
+        var header = Encoding.UTF8.GetBytes(JsonText.Encode(new OrderedDictionary<string, object?>
         {
             ["kind"] = Marker,
             ["formatVersion"] = (long)FormatVersion,
@@ -263,7 +263,7 @@ public class TerrainRegion
             // The twin's UTF-8 decoder drops a leading byte order mark, so a header an editor put
             // one on still reads.
             var text = Strict.GetString(bytes, 0, end);
-            parsed = DartJson.Decode(text.StartsWith('﻿') ? text[1..] : text);
+            parsed = JsonText.Decode(text.StartsWith('﻿') ? text[1..] : text);
         }
         catch (Exception error) when (error is FormatException or DecoderFallbackException)
         {

@@ -4,8 +4,8 @@ using Orblit.Parity;
 namespace Orblit.Core.Tests;
 
 /// <summary>
-/// Builds in C# the world <c>tool/parity/bin/core.dart</c> builds in Dart, from
-/// the same steps, and compares what each language reads back. Both call the
+/// Builds in C# the world the core fixture exporter builds, from
+/// the same steps, and compares what each side reads back. Both call the
 /// same C++, so this checks the wrapper: handles, layouts, views and counts.
 /// </summary>
 public sealed class CoreParityTests : IDisposable
@@ -15,11 +15,11 @@ public sealed class CoreParityTests : IDisposable
     public void Dispose() => _world.Dispose();
 
     [Fact]
-    public void ABuiltWorldReadsBackAsTheDartTwinBuiltIt()
+    public void ABuiltWorldReadsBackAsTheFixtureBuiltIt()
     {
         var fixture = Fixture.Load("orblit_core", "core");
         var (handles, position, velocity, t, propagated) = Build();
-        var why = $"from Dart commit {fixture.DartCommit}";
+        var why = $"from fixture commit {fixture.SourceCommit}";
 
         var header = fixture.Cases[0];
         Assert.Equal(header.GetProperty("entityCount").GetInt32(), _world.EntityCount);

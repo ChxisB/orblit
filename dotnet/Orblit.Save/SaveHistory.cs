@@ -74,7 +74,7 @@ public sealed class SaveHistory(string directory)
             entries.Add(await ReadEntryAsync(key, file).ConfigureAwait(false));
         }
 
-        // The order is total, so an unstable sort gives the same list as Dart's.
+        // The order is total, so an unstable sort gives the same list.
         entries.Sort((a, b) => a.At != b.At ? b.At.CompareTo(a.At) : string.CompareOrdinal(a.Hash, b.Hash));
         return entries;
     }

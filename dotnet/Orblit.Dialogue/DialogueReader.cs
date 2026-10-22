@@ -22,7 +22,7 @@ internal static class DialogueReader
             "choice" => new ChoiceNode(id, [.. List(map, "options").Select(OptionFrom)], before),
             "set" => new SetNode(id, [.. List(map, "writes").Select(WriteFrom)], MaybeText(map, "next"), before),
             "jump" => new JumpNode(id, Text(map, "next"), before),
-            _ => throw new FormatException($"Node \"{id}\" has type {Printed.Dart(type)}, not line, choice, set or jump."),
+            _ => throw new FormatException($"Node \"{id}\" has type {Printed.Text(type)}, not line, choice, set or jump."),
         };
     }
 
@@ -42,21 +42,21 @@ internal static class DialogueReader
 
     private static IReadOnlyDictionary<string, object?> Object(object? json, string what) =>
         json as IReadOnlyDictionary<string, object?>
-        ?? throw new FormatException($"{what} is an object, not {Printed.Dart(json)}.");
+        ?? throw new FormatException($"{what} is an object, not {Printed.Text(json)}.");
 
     private static string Text(IReadOnlyDictionary<string, object?> json, string field) =>
         json.GetValueOrDefault(field) as string
-        ?? throw new FormatException($"\"{field}\" is text, not {Printed.Dart(json.GetValueOrDefault(field))}.");
+        ?? throw new FormatException($"\"{field}\" is text, not {Printed.Text(json.GetValueOrDefault(field))}.");
 
     private static string? MaybeText(IReadOnlyDictionary<string, object?> json, string field)
     {
         var value = json.GetValueOrDefault(field);
         return value is null or string
             ? (string?)value
-            : throw new FormatException($"\"{field}\" is text, not {Printed.Dart(value)}.");
+            : throw new FormatException($"\"{field}\" is text, not {Printed.Text(value)}.");
     }
 
     private static IReadOnlyList<object?> List(IReadOnlyDictionary<string, object?> json, string field) =>
         json.GetValueOrDefault(field) as IReadOnlyList<object?>
-        ?? throw new FormatException($"\"{field}\" is a list, not {Printed.Dart(json.GetValueOrDefault(field))}.");
+        ?? throw new FormatException($"\"{field}\" is a list, not {Printed.Text(json.GetValueOrDefault(field))}.");
 }

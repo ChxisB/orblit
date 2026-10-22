@@ -24,7 +24,7 @@ public sealed class CookResult
 
     public IReadOnlyList<string> Notes { get; init; } = [];
 
-    /// <summary>What failed. Its stack trace is the one Dart keeps in a separate <c>trace</c>.</summary>
+    /// <summary>What failed, with its stack trace.</summary>
     public Exception? Error { get; init; }
 
     public bool Ok => Status != CookStatus.Failed;

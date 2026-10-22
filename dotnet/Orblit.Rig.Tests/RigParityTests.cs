@@ -287,7 +287,7 @@ public class RigParityTests
     // bone
 
     [Fact]
-    public void BoneMatchesTheDartTwin() => Check("bone", c => Attempt(() =>
+    public void BoneMatchesTheFixture() => Check("bone", c => Attempt(() =>
     {
         var bone = BoneFrom(c.GetProperty("bone"));
         return new JsonObject
@@ -307,7 +307,7 @@ public class RigParityTests
         name.ValueKind == JsonValueKind.Null ? null : Enum.Parse<Side>(name.GetString()!, ignoreCase: true);
 
     [Fact]
-    public void NamingMatchesTheDartTwin() => Check("naming", c => Attempt(() =>
+    public void NamingMatchesTheFixture() => Check("naming", c => Attempt(() =>
     {
         var a = c.GetProperty("args");
         return c.GetProperty("fn").GetString() switch
@@ -327,7 +327,7 @@ public class RigParityTests
     // IK
 
     [Fact]
-    public void TwoBoneIkMatchesTheDartTwin() => Check("twoBoneIk", c => Attempt(() => IkDump(
+    public void TwoBoneIkMatchesTheFixture() => Check("twoBoneIk", c => Attempt(() => IkDump(
         Ik.SolveTwoBoneIk(
             root: V3(c.GetProperty("root")),
             pole: V3(c.GetProperty("pole")),
@@ -337,7 +337,7 @@ public class RigParityTests
             stretch: Or(c, "stretch", 0)))));
 
     [Fact]
-    public void FabrikMatchesTheDartTwin() => Check("fabrik", c => Attempt(() => Arr(
+    public void FabrikMatchesTheFixture() => Check("fabrik", c => Attempt(() => Arr(
         Ik.SolveFabrik(
             points: [.. c.GetProperty("points").EnumerateArray().Select(V3)],
             target: V3(c.GetProperty("target")),
@@ -348,12 +348,12 @@ public class RigParityTests
     // curves and widgets
 
     [Fact]
-    public void CurveMatchesTheDartTwin() => Check("curve", c => Attempt(() => Arr(
+    public void CurveMatchesTheFixture() => Check("curve", c => Attempt(() => Arr(
         SplineIk.SampleCurve([.. c.GetProperty("controls").EnumerateArray().Select(V3)], c.GetProperty("detail").GetInt32()),
         Vec)));
 
     [Fact]
-    public void WidgetMatchesTheDartTwin() => Check("widget", c => Attempt(() => Arr(
+    public void WidgetMatchesTheFixture() => Check("widget", c => Attempt(() => Arr(
         new BoneWidget(
             shape: Enum.Parse<WidgetShape>(Str(c, "shape")!, ignoreCase: true),
             size: Or(c, "size", 1),
@@ -377,7 +377,7 @@ public class RigParityTests
     }
 
     [Fact]
-    public void PoseMatchesTheDartTwin() => Check("pose", c => Attempt(() =>
+    public void PoseMatchesTheFixture() => Check("pose", c => Attempt(() =>
     {
         var pose = new Pose(ArmatureFrom(c.GetProperty("bones")));
         SetProperties(pose, c);
@@ -418,7 +418,7 @@ public class RigParityTests
     };
 
     [Fact]
-    public void ModifiersMatchTheDartTwin() => Check("modifier", c => Attempt(() =>
+    public void ModifiersMatchTheFixture() => Check("modifier", c => Attempt(() =>
     {
         var pose = new Pose(ArmatureFrom(c.GetProperty("bones")));
         SetProperties(pose, c);
@@ -458,7 +458,7 @@ public class RigParityTests
     // generated rigs
 
     [Fact]
-    public void GeneratedRigsMatchTheDartTwin() => Check("generate", c => Attempt(() =>
+    public void GeneratedRigsMatchTheFixture() => Check("generate", c => Attempt(() =>
     {
         var meta = new MetaRig(ArmatureFrom(c.GetProperty("bones")));
         foreach (var assignment in c.GetProperty("assign").EnumerateArray())
@@ -489,7 +489,7 @@ public class RigParityTests
     }));
 
     [Fact]
-    public void CollectionsMatchTheDartTwin() => Check("collections", c => Attempt(() =>
+    public void CollectionsMatchTheFixture() => Check("collections", c => Attempt(() =>
     {
         var collections = new BoneCollections();
         var bones = new HashSet<string> { "nobody" };

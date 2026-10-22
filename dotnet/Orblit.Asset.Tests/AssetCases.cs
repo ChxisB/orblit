@@ -6,10 +6,10 @@ using Orblit.Parity;
 
 namespace Orblit.Asset.Tests;
 
-// Reads the specs the Dart exporter wrote, and writes what the port gives in the shape the exporter used.
+// Reads the specs the fixture exporter wrote, and writes what the port gives in the shape the exporter used.
 internal static class AssetCases
 {
-    // The clock every cache run starts on, and the one the Dart exporter used.
+    // The clock every cache run starts on, and the one the fixture exporter used.
     private static readonly DateTimeOffset Epoch = new(2026, 10, 21, 10, 0, 0, 123, TimeSpan.Zero);
 
     public static JsonElement In(JsonElement c, int index) => c.GetProperty("in")[index];
@@ -79,7 +79,7 @@ internal static class AssetCases
 
     // An object as the decoder gives it: whole numbers as long, anything written with a point or an exponent as double.
     private static IReadOnlyDictionary<string, object?> Plain(JsonElement element) =>
-        (IReadOnlyDictionary<string, object?>)DartJson.Decode(element.GetRawText())!;
+        (IReadOnlyDictionary<string, object?>)JsonText.Decode(element.GetRawText())!;
 
     private static ContentHash Hash(string text) => ContentHash.Of(Encoding.UTF8.GetBytes(text));
 

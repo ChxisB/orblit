@@ -42,7 +42,7 @@ public class EffectParityTests
         {
             Assert.True(
                 Tolerance.Close(expected[i], actual[i]),
-                $"{what}, value {i}: Dart {expected[i]:R}, C# {actual[i]:R}, from Dart commit {fixture.DartCommit}");
+                $"{what}, value {i}: the fixture {expected[i]:R}, the port {actual[i]:R}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
@@ -143,11 +143,11 @@ public class EffectParityTests
         AssertClose(fixture, $"{what} fade", expected.GetProperty("fade"), actual.Fade);
         Assert.True(
             expected.GetProperty("isNothing").GetBoolean() == actual.IsNothing,
-            $"{what} isNothing: Dart {expected.GetProperty("isNothing").GetBoolean()}, from Dart commit {fixture.DartCommit}");
+            $"{what} isNothing: the fixture {expected.GetProperty("isNothing").GetBoolean()}, from fixture commit {fixture.SourceCommit}");
     }
 
     [Fact]
-    public void CurvesMatchTheDartTwin()
+    public void CurvesMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_effect", "effect");
 
@@ -160,7 +160,7 @@ public class EffectParityTests
     }
 
     [Fact]
-    public void EffectsMatchTheDartTwinAtEverySampledTime()
+    public void EffectsMatchTheFixtureAtEverySampledTime()
     {
         var fixture = Fixture.Load("orblit_effect", "effect");
 
@@ -189,7 +189,7 @@ public class EffectParityTests
     }
 
     [Fact]
-    public void PlayingMatchesTheDartTwinStepByStep()
+    public void PlayingMatchesTheFixtureStepByStep()
     {
         var fixture = Fixture.Load("orblit_effect", "effect");
 
@@ -239,7 +239,7 @@ public class EffectParityTests
     }
 
     [Fact]
-    public void AppliedMatchesTheDartTwin()
+    public void AppliedMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_effect", "effect");
 
@@ -267,7 +267,7 @@ public class EffectParityTests
     }
 
     [Fact]
-    public void HelpersMatchTheDartTwin()
+    public void HelpersMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_effect", "effect");
 

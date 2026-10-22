@@ -41,7 +41,7 @@ public sealed class SceneImporter : Importer
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {

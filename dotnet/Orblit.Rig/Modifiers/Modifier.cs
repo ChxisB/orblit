@@ -172,7 +172,7 @@ public sealed class ModifierSlot
 /// The pose has to be evaluated first, and has to be a pose of bones the clip wrote this frame. A bone
 /// the clip does not write keeps what the last frame's modifiers left.
 /// </summary>
-[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The Dart name, and the rigging term. It is an ordered list, not a Stack<T>.")]
+[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The rigging term. It is an ordered list, not a Stack<T>.")]
 public sealed class ModifierStack
 {
     private readonly List<ModifierSlot> _slots = [];

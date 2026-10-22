@@ -73,7 +73,7 @@ internal sealed class Ground(Terrain terrain, TerrainRegion region)
         var gz = 0.0;
         var total = 0.0;
 
-        // The cast makes the subtraction a double one, as it is in Dart.
+        // The cast makes the subtraction a double one.
         void Corner(int centre, double weight)
         {
             if (weight == 0)

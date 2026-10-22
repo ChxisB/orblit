@@ -74,7 +74,7 @@ public sealed class QuestBook
         _quests.TryGetValue(key, out var quest) ? quest : throw new RuleException("key", "is unknown", key);
 
     /// <summary>The index of the stage <paramref name="table"/> has the player in. Zero is not begun.</summary>
-    [SuppressMessage("Performance", "CA1822", Justification = "A port keeps the Dart shape: callers ask the book.")]
+    [SuppressMessage("Performance", "CA1822", Justification = "Callers ask the book, so it stays an instance method.")]
     public long StageOf(ProgressTable table, string key) => table.Get(QuestNames.StageName(key));
 
     public bool IsStarted(ProgressTable table, string key) => StageOf(table, key) > 0;

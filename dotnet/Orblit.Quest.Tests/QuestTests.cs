@@ -26,7 +26,7 @@ public class QuestTests
         return file;
     }
 
-    private static QuestDefinition Parse(Dictionary<string, object?> json) => QuestDefinition.Parse(DartJson.Encode(json));
+    private static QuestDefinition Parse(Dictionary<string, object?> json) => QuestDefinition.Parse(JsonText.Encode(json));
 
     private static Stage Stage(string id) => new(id, "");
 
@@ -112,7 +112,7 @@ public class QuestTests
         };
         foreach (var file in broken)
         {
-            Assert.True(Throws(() => Parse(file)), DartJson.Encode(file));
+            Assert.True(Throws(() => Parse(file)), JsonText.Encode(file));
         }
     }
 

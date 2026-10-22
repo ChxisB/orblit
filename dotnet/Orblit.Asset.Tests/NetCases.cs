@@ -29,10 +29,10 @@ internal static class NetCases
     public static JsonNode? ResolveOut(JsonElement c) =>
         UrlOut(WebUrl.Parse(Text(c, 0)).Resolve(WebUrl.Parse(Text(c, 1))));
 
-    public static JsonNode? EncodeOut(JsonElement c) => DartText.EncodeComponent(Text(c, 0));
+    public static JsonNode? EncodeOut(JsonElement c) => TextRules.EncodeComponent(Text(c, 0));
 
-    // The Dart reasons name Dart's own members, so the two names that differ only in case are compared as Dart spells them.
-    public static string AsDartSpells(string reason) =>
+    // The fixture reasons name members in camel case, so the two names that differ only in case are compared as the fixture spells them.
+    public static string AsFixtureSpells(string reason) =>
         reason.Replace("FetchPolicy.Hosts", "FetchPolicy.hosts").Replace("AllowInsecure", "allowInsecure");
 
     public static JsonNode? Origin(JsonElement c, Func<AssetOrigin, JsonNode?> use)
@@ -47,7 +47,7 @@ internal static class NetCases
         }
         catch (FetchRefusedException refused)
         {
-            return new JsonObject { ["refused"] = AsDartSpells(refused.Reason) };
+            return new JsonObject { ["refused"] = AsFixtureSpells(refused.Reason) };
         }
     }
 
@@ -74,7 +74,7 @@ internal static class NetCases
             return new JsonObject { ["allowed"] = true };
         });
 
-    // A record is written as the Dart exporter did: nothing known is an empty object.
+    // A record is written as the fixture exporter did: nothing known is an empty object.
     public static JsonNode RecordOut(FetchRecord? record) => record is null
         ? new JsonObject()
         : new JsonObject
@@ -82,12 +82,12 @@ internal static class NetCases
             ["hash"] = record.Hash.Hex,
             ["bytes"] = Dump.Big(record.Bytes),
             ["etag"] = record.ETag,
-            ["fetched"] = record.Fetched is { } at ? DartText.Iso(at) : null,
+            ["fetched"] = record.Fetched is { } at ? TextRules.Iso(at) : null,
             ["micros"] = record.Fetched is { } when ? Dump.Big((when.UtcTicks - DateTime.UnixEpoch.Ticks) / 10) : null,
             ["utc"] = record.Fetched is { } zoned ? zoned.Offset == TimeSpan.Zero : null,
         };
 
-    public static JsonNode? RecordParseOut(JsonElement c) => RecordOut(FetchRecord.FromJson(DartJson.Decode(Text(c, 0))));
+    public static JsonNode? RecordParseOut(JsonElement c) => RecordOut(FetchRecord.FromJson(JsonText.Decode(Text(c, 0))));
 
     private static Dictionary<WebUrl, FetchRecord> RecordsOf(JsonElement spec) =>
         spec.EnumerateArray().ToDictionary(
@@ -103,7 +103,7 @@ internal static class NetCases
             : null);
 
     private static DateTimeOffset FetchedAt(string text) =>
-        DartText.TryParseTime(text, out var at) ? at : throw new FormatException(text);
+        TextRules.TryParseTime(text, out var at) ? at : throw new FormatException(text);
 
     public static JsonNode? RecordsEncodeOut(JsonElement c) => FetchRecordsCodec.Encode(RecordsOf(In(c, 0)));
 
@@ -169,8 +169,8 @@ internal static class NetCases
     public static byte[] FileBytes(long at, long bytes) =>
         [.. Enumerable.Range(0, (int)bytes).Select(i => (byte)(((at + i) * 7) + 3))];
 
-    // Dart sends after the loop that made the wants has ended, even with no delay. .NET cannot wait for that,
-    // so a script with no delay runs with the 2 ms the others use. A zero delay has its own tests.
+    // A script with no delay runs with the 2 ms the others use, because a send cannot wait for the loop that
+    // made the wants to end. A zero delay has its own tests.
     private static RangeBatching BatchingOf(JsonElement spec)
     {
         var delay = spec.GetProperty("delay").GetInt32();

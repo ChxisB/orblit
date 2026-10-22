@@ -3,7 +3,7 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// Tests with no Dart original: the component types and accessor shapes Dart's tests leave alone.
+// Tests with no ported original: the component types and accessor shapes the ported tests leave alone.
 public sealed class GltfAccessorAddedTests
 {
     private static readonly AssetId Id = AssetId.Parse("models/thing.glb");
@@ -252,8 +252,8 @@ public sealed class GltfAccessorAddedTests
         Assert.Equal(new float[] { 4, 5, 6, 7, 8, 9 }, document.ReadVec3(added));
         Assert.Equal(24, document.AccessorBytes(added).Length);
         var accessor = document.Accessor(added);
-        Assert.Equal("[4,5,6]", DartJson.Encode(accessor["min"]).Replace(".0", "", StringComparison.Ordinal));
-        Assert.Equal("[7,8,9]", DartJson.Encode(accessor["max"]).Replace(".0", "", StringComparison.Ordinal));
+        Assert.Equal("[4,5,6]", JsonText.Encode(accessor["min"]).Replace(".0", "", StringComparison.Ordinal));
+        Assert.Equal("[7,8,9]", JsonText.Encode(accessor["max"]).Replace(".0", "", StringComparison.Ordinal));
     }
 
     [Fact]

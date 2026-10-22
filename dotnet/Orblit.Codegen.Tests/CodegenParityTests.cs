@@ -5,8 +5,8 @@ using static Orblit.Parity.Dump;
 namespace Orblit.Codegen.Tests;
 
 /// <summary>
-/// Runs the cases <c>tool/parity/bin/codegen.dart</c> wrote and compares the manifest the port writes with
-/// the one Dart wrote for the same components, byte for byte.
+/// Runs the cases the codegen fixture exporter wrote and compares the manifest the port writes with
+/// the one in the fixture for the same components, byte for byte.
 /// </summary>
 public class CodegenParityTests
 {

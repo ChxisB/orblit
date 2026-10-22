@@ -24,7 +24,7 @@ public sealed class MemoryPackBytes(byte[] data) : IPackBytes
 
     public Task<byte[]> ReadAsync(long at, long bytes)
     {
-        // The sum wraps as the Dart twin's does, so a range that wraps is refused by the last test.
+        // The sum wraps, so a range that wraps is refused by the last test.
         var end = unchecked(at + bytes);
         return at < 0 || bytes < 0 || end > data.Length || end < at
             ? Task.FromException<byte[]>(new ArgumentOutOfRangeException(

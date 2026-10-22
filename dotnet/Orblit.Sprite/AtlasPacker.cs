@@ -74,7 +74,7 @@ public static class AtlasPacker
                 ["size"] = new OrderedDictionary<string, object?> { ["w"] = atlas.Width, ["h"] = atlas.Height },
             },
         };
-        return DartJson.Encode(json, "  ") + "\n";
+        return JsonText.Encode(json, "  ") + "\n";
     }
 
     /// <summary>
@@ -327,7 +327,7 @@ public static class AtlasPacker
         canvas.Paste(box, block);
 
         // Never further than the padding there is to extrude into. With no padding at all the
-        // amount is left as given, which is what Dart does.
+        // amount is left as given.
         canvas.Extrude(box, Math.Clamp(options.Extrude, 0, options.Padding == 0 ? options.Extrude : options.Padding));
     }
 

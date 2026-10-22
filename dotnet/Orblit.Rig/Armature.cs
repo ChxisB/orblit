@@ -178,7 +178,7 @@ public sealed class PoseTransform(Vector3? location = null, Quaternion? rotation
 /// inverse kinematics is one answer about two bones at once. Solving it as two independent
 /// constraints means each is guessing at what the other will do.
 /// </summary>
-// F2: eight parameters, called by name, as the Dart named parameters are.
+// F2: eight parameters, called by name.
 public sealed class IkChain(
     string root,
     string mid,

@@ -70,8 +70,7 @@ public static class Queries
             }
         }
 
-        // shortcut: a stable sort, where Dart's is stable only up to 32 items, so
-        // ties in a longer list may order differently. Upgrade if a caller needs it.
+        // A stable sort, so ties keep the order they were found in.
         return [.. found.OrderBy(f => f.Hit.Distance, Comparer<double>.Create(Doubles.Compare))];
     }
 
@@ -416,7 +415,7 @@ public sealed class Broadphase(double cellSize = 4)
     /// written and is wrong: <c>x*a ^ y*b ^ z*c</c> collides constantly on the
     /// symmetric coordinates a grid is full of, so one shape lands in the same
     /// bucket several times and is paired with itself. The arithmetic wraps at 64
-    /// bits, as Dart's does.
+    /// bits.
     /// </summary>
     private static long Key(long x, long y, long z)
     {

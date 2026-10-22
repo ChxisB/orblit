@@ -143,7 +143,7 @@ internal sealed class AtlasFinder
             }
             catch (FormatException error)
             {
-                // The dash is Dart's text, kept so the notes compare equal.
+                // The dash is part of the note text that fixtures pin.
                 _notes.Add($"{label}: left unpacked — {error.Message}");
                 return false;
             }

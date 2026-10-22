@@ -7,17 +7,17 @@ namespace Orblit.Quest.Tests;
 
 public class QuestParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_quest", "quest");
+    private static readonly Fixture Golden = Fixture.Load("orblit_quest", "quest");
 
     [Fact]
-    public void ParsedFilesMatchTheDartTwin() => Dart.Check("parse", Parse);
+    public void ParsedFilesMatchTheFixture() => Golden.Check("parse", Parse);
 
     [Fact]
-    public void BooksMatchTheDartTwin() => Dart.Check("book", RunBook);
+    public void BooksMatchTheFixture() => Golden.Check("book", RunBook);
 
     [Fact]
-    public void StageNamesMatchTheDartTwin() =>
-        Dart.Check("name", c => QuestNames.StageName(c.GetProperty("key").GetString()!));
+    public void StageNamesMatchTheFixture() =>
+        Golden.Check("name", c => QuestNames.StageName(c.GetProperty("key").GetString()!));
 
     private static JsonNode? Parse(JsonElement c)
     {

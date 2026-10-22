@@ -148,7 +148,7 @@ public sealed partial class ModelAtlasCook(NativeTool? tool = null)
             return null;
         }
 
-        if (job.Request.Id.Resolve(DartText.PercentDecoded(uri)) is not { } id)
+        if (job.Request.Id.Resolve(TextRules.PercentDecoded(uri)) is not { } id)
         {
             return null;
         }
@@ -169,7 +169,7 @@ public sealed partial class ModelAtlasCook(NativeTool? tool = null)
         var comma = uri.IndexOf(',', StringComparison.Ordinal);
         return comma < 0 || !uri[..comma].EndsWith(";base64", StringComparison.Ordinal)
             ? null
-            : DartText.DecodeBase64(uri[(comma + 1)..]);
+            : TextRules.DecodeBase64(uri[(comma + 1)..]);
     }
 
     // PNG is decoded here because the codec is already in the repository and a cook that needs no native tool
@@ -444,7 +444,7 @@ public sealed partial class ModelAtlasCook(NativeTool? tool = null)
     {
         if (GltfJson.Get(image, "uri") is string { Length: > 0 } uri && !uri.StartsWith("data:", StringComparison.Ordinal))
         {
-            var name = DartText.PercentDecoded(uri);
+            var name = TextRules.PercentDecoded(uri);
             name = name[(name.LastIndexOf('/') + 1)..];
             var dot = name.LastIndexOf('.');
             var stem = NotFileSafe().Replace(dot > 0 ? name[..dot] : name, "_");
@@ -481,7 +481,7 @@ public sealed partial class ModelAtlasCook(NativeTool? tool = null)
         if (GltfJson.Get(image, "uri") is string uri)
         {
             var dot = uri.LastIndexOf('.');
-            var extension = dot > 0 ? DartText.ToLower(uri[(dot + 1)..]) : "";
+            var extension = dot > 0 ? TextRules.ToLower(uri[(dot + 1)..]) : "";
             if (dot < uri.Length - 1 && ShortExtension().IsMatch(extension))
             {
                 return extension;

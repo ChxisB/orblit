@@ -64,7 +64,7 @@ public sealed class KitEntry
     public byte[] Encode()
     {
         var json = new OrderedDictionary<string, object?> { ["releases"] = new List<object?>(Releases.Select(release => release.ToJson())) };
-        return Encoding.UTF8.GetBytes(DartJson.Encode(json, "  ") + "\n");
+        return Encoding.UTF8.GetBytes(JsonText.Encode(json, "  ") + "\n");
     }
 
     private static KitRelease ReleaseOf(KitJsonObject item)

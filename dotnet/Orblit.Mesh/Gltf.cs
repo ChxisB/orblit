@@ -214,7 +214,7 @@ public sealed class GltfBuffer
 
     /// <summary>
     /// The buffer, padded to four bytes so whatever follows starts aligned. F5: the padding is
-    /// part of <see cref="Length"/> from here on, which is how Dart's getter behaves.
+    /// part of <see cref="Length"/> from here on.
     /// </summary>
     public byte[] Bytes
     {
@@ -278,7 +278,7 @@ public static partial class GltfFiles
     /// </summary>
     public static byte[] GlbBytes(IReadOnlyDictionary<string, object?> json, ReadOnlySpan<byte> binary)
     {
-        var text = System.Text.Encoding.UTF8.GetBytes(DartJson.Encode(Tidy(json)));
+        var text = System.Text.Encoding.UTF8.GetBytes(JsonText.Encode(Tidy(json)));
         var jsonLength = Aligned(text.Length);
         var binaryLength = Aligned(binary.Length);
         var total = 12 + 8 + jsonLength + (binary.IsEmpty ? 0 : 8 + binaryLength);
@@ -332,7 +332,7 @@ public static partial class GltfFiles
     {
         try
         {
-            return DartJson.Decode(DartText.Decode(chunk)) as IReadOnlyDictionary<string, object?>;
+            return JsonText.Decode(TextRules.Decode(chunk)) as IReadOnlyDictionary<string, object?>;
         }
         catch (FormatException)
         {
@@ -357,7 +357,7 @@ public static partial class GltfFiles
     /// A <c>.gltf</c>'s JSON, with its buffer named as the file beside it. A sidecar rather than a
     /// base64 data URI, because a data URI makes the document a third larger than the bytes it
     /// carries. Indented for the same reason. F5: the document gains or loses its <c>buffers</c>
-    /// entry, as the Dart one does.
+    /// entry.
     /// </summary>
     public static string GltfText(OrderedDictionary<string, object?> json, string? buffer = null, int? byteLength = null)
     {
@@ -373,7 +373,7 @@ public static partial class GltfFiles
             json.Remove("buffers");
         }
 
-        return DartJson.Encode(Tidy(json), "  ");
+        return JsonText.Encode(Tidy(json), "  ");
     }
 
     /// <summary>

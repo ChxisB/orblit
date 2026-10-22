@@ -9,12 +9,12 @@ namespace Orblit.Asset.Tests;
 internal static class GltfFixtures
 {
     /// <summary>A glTF map read from JSON text, so a test can write the document as a glTF file shows it.</summary>
-    internal static GltfMap Map(string text) => (GltfMap)DartJson.Decode(text)!;
+    internal static GltfMap Map(string text) => (GltfMap)JsonText.Decode(text)!;
 
     /// <summary>A GLB holding <paramref name="json"/> and <paramref name="binary"/>, for tests that need a real container rather than a mock of one.</summary>
     internal static byte[] Glb(GltfMap json, byte[] binary)
     {
-        var text = Encoding.UTF8.GetBytes(DartJson.Encode(json));
+        var text = Encoding.UTF8.GetBytes(JsonText.Encode(json));
         var jsonLength = text.Length + ((4 - (text.Length % 4)) % 4);
         var binLength = binary.Length + ((4 - (binary.Length % 4)) % 4);
         var length = 12 + 8 + jsonLength + 8 + binLength;
@@ -34,7 +34,7 @@ internal static class GltfFixtures
         return glb;
     }
 
-    /// <summary>A glb as its JSON text and its binary chunk, the way the Dart exporters wrote it.</summary>
+    /// <summary>A glb as its JSON text and its binary chunk, the way the fixture exporters wrote it.</summary>
     internal static JsonObject GlbParts(byte[] glb)
     {
         var at = 20 + (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(12));

@@ -2,7 +2,7 @@ namespace Orblit.Audio;
 
 /// <summary>
 /// The checks a gain and a length of time share. Not part of the public
-/// surface, as the Dart functions are not exported.
+/// surface.
 /// </summary>
 internal static class Checks
 {

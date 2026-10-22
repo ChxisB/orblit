@@ -8,7 +8,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Pathing.Tests;
 
-// Reads the specs the Dart exporter wrote, and writes what the port gives in
+// Reads the specs the fixture exporter wrote, and writes what the port gives in
 // the shape the exporter used.
 internal static class PathCases
 {

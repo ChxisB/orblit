@@ -21,7 +21,7 @@ public readonly record struct TileFlips(bool Horizontal, bool Vertical, bool Dia
 /// <param name="Top">The row the first tile sits in.</param>
 /// <param name="Visible">Whether the editor showed the layer.</param>
 /// <param name="Opacity">How opaque the editor drew it.</param>
-// F2: eight parameters, and every one after the tiles is optional and called by name, as in Dart.
+// F2: eight parameters, and every one after the tiles is optional and called by name.
 public sealed record TileLayer(
     string Name,
     long Width,

@@ -4,15 +4,15 @@ using System.Text.RegularExpressions;
 
 namespace Orblit.Asset;
 
-/// <summary>What Dart's core library does with text where .NET does something a file name can see.</summary>
-internal static partial class DartText
+/// <summary>Text rules where .NET does something a file name can see.</summary>
+internal static partial class TextRules
 {
     // DateTime.MaxValue.Ticks, written out because a pattern needs a constant.
     private const long LastTick = 3_155_378_975_999_999_999;
 
     private static readonly UTF8Encoding Strict = new(false, true);
 
-    // The shape DateTime.tryParse reads. Each part is as loose as Dart lets it be: no dashes, a space for the T,
+    // The shape DateTime.tryParse reads. Each part is loose: no dashes, a space for the T,
     // an hour on its own, an offset of any size.
     private static readonly Regex TimeShape = new(
         "^([+-]?[0-9]{4,6})-?([0-9]{2})-?([0-9]{2})(?:[ T]([0-9]{2})(?::?([0-9]{2})(?::?([0-9]{2})(?:[.,]([0-9]+))?)?)?"
@@ -162,7 +162,7 @@ internal static partial class DartText
     /// <summary>
     /// <see cref="DecodeUriComponent"/>, or <paramref name="text"/> as given when it is not valid percent
     /// encoding. A glTF URI that is not encoded at all is common, and a file beside the model by that name
-    /// is the best guess left. Bytes that are not UTF-8 still throw <see cref="FormatException"/>, as in Dart.
+    /// is the best guess left. Bytes that are not UTF-8 still throw <see cref="FormatException"/>.
     /// </summary>
     internal static string PercentDecoded(string text)
     {
@@ -193,7 +193,7 @@ internal static partial class DartText
     }
 
     /// <summary>
-    /// <c>base64Decode</c>, or null where Dart throws. Either alphabet, in any mix. The length is a
+    /// Base64 decoding, or null for bad text. Either alphabet, in any mix. The length is a
     /// multiple of four with the padding written, and the unused bits are nought.
     /// </summary>
     internal static byte[]? DecodeBase64(string text)
@@ -275,7 +275,7 @@ internal static partial class DartText
 
     /// <summary>
     /// <c>DateTime.tryParse</c>, for the instants the fetch records hold. A month, day or hour past its range
-    /// carries into the next one, as it does in Dart. A time without a zone is read as UTC, where Dart reads
+    /// carries into the next one. A time without a zone is read as UTC, not as
     /// local time. An instant outside the years 1 to 9999 is refused, because a <see cref="DateTimeOffset"/>
     /// cannot hold it.
     /// </summary>
@@ -326,11 +326,11 @@ internal static partial class DartText
         return sign * ((TimePart(match, 10, 0) * 3_600) + (TimePart(match, 11, 0) * 60));
     }
 
-    // Dart keeps the first six digits of the fraction and drops the rest.
+    // The first six digits of the fraction are kept and the rest dropped.
     private static long Microseconds(Match match) =>
         match.Groups[7].Success ? long.Parse((match.Groups[7].Value + "000000")[..6], CultureInfo.InvariantCulture) : 0;
 
-    // Dart writes three fraction digits, or six when the instant has microseconds.
+    // Three fraction digits, or six when the instant has microseconds.
     internal static string Iso(DateTimeOffset at)
     {
         var utc = at.UtcDateTime;
@@ -339,7 +339,7 @@ internal static partial class DartText
             CultureInfo.InvariantCulture);
     }
 
-    /// <summary>A decoded JSON value as Dart prints it, so a message reads the same in both languages.</summary>
+    /// <summary>A decoded JSON value as an error message prints it.</summary>
     internal static string Print(object? value) => value switch
     {
         null => "null",

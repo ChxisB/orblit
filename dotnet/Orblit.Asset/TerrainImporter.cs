@@ -43,7 +43,7 @@ public sealed class TerrainImporter : Importer
         Task.Run<IReadOnlySet<AssetId>>(() => Named(id, bytes));
 
     // A region has nothing to await, so it runs on the pool for the same reason: a region that fails its check
-    // faults the task, as it does in Dart, rather than throwing at the call.
+    // faults the task rather than throwing at the call.
     public override Task<ImportResult> ImportAsync(ImportRequest request) =>
         request.Id.Extension == "oterrain" ? ImportTerrainAsync(request) : Task.Run(() => ImportRegion(request));
 
@@ -120,7 +120,7 @@ public sealed class TerrainImporter : Importer
         var count = load.Regions.Count;
         var notes = new List<string>
         {
-            $"{count} region{(count == 1 ? "" : "s")} of {size} texels, {DartText.Print(load.Terrain.Spacing)} m apart",
+            $"{count} region{(count == 1 ? "" : "s")} of {size} texels, {TextRules.Print(load.Terrain.Spacing)} m apart",
         };
         notes.AddRange(load.Problems);
         return new ImportResult
@@ -134,7 +134,7 @@ public sealed class TerrainImporter : Importer
     {
         try
         {
-            return TerrainData.Decode(DartText.Decode(bytes));
+            return TerrainData.Decode(TextRules.Decode(bytes));
         }
         catch (TerrainFormatException error)
         {

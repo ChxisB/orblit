@@ -4,7 +4,7 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// Tests with no Dart original: the refusals Dart's tests do not reach, and the reads C# has to make by hand.
+// Tests with no ported original: the refusals the ported tests do not reach, and the reads made by hand.
 public sealed class GltfAddedTests
 {
     private static readonly AssetId Id = AssetId.Parse("models/thing.gltf");
@@ -73,11 +73,11 @@ public sealed class GltfAddedTests
     }
 
     [Fact]
-    public async Task DecodesAFileNameTwiceAsTheDartOriginalDoes()
+    public async Task DecodesAFileNameTwice()
     {
         // The reader decodes the URI and AssetId.Resolve decodes it again, so %2520 reaches the source as a space
         // rather than as %20. Kept as it is: a file that relies on the first reading is rare, and a cook that
-        // read it differently from the Dart cook would put different assets in a pack.
+        // read it differently from other cooks would put different assets in a pack.
         var source = new MemoryAssetSource(new Dictionary<AssetId, byte[]>
         {
             [AssetId.Parse("models/my geometry.bin")] = [1, 2],

@@ -7,8 +7,8 @@ public sealed class NetRecordsStoreTests : IDisposable
     private static readonly WebUrl Url = WebUrl.Parse("https://cdn.example.com/game/robot.glb");
     private static readonly WebUrl Wall = WebUrl.Parse("https://cdn.example.com/game/wall.ktx2");
 
-    // The Dart timers fire only when the test awaits a timer, so a burst of awaited puts cannot outrun them.
-    // Here a settle is a real wait, so the ones that count writes use one that only a flush can cut short.
+    // A settle is a real wait, so a burst of puts can outrun it. The tests that count writes use one that
+    // only a flush can cut short.
     private static readonly TimeSpan Long = TimeSpan.FromSeconds(30);
 
     private readonly DirectoryInfo _temp = Directory.CreateTempSubdirectory("orblit_records_");

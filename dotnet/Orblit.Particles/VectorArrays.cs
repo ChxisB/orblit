@@ -4,7 +4,7 @@ namespace Orblit.Particles;
 
 internal static class VectorArrays
 {
-    /// <summary>Dart's <c>copyIntoArray</c> into single precision, which rounds as Dart does.</summary>
+    /// <summary>Copies a vector into an array of single precision numbers, rounding as a cast to float does.</summary>
     public static void Write(Vector3 vector, float[] array, int offset)
     {
         array[offset] = (float)vector.X;

@@ -9,7 +9,7 @@ internal static class JsonValues
 
     internal static IReadOnlyList<object?>? List(object? value) => value as IReadOnlyList<object?>;
 
-    /// <summary>A JSON number as a double. Null for anything that is not one, as Dart's <c>is num</c> says.</summary>
+    /// <summary>A JSON number as a double. Null for anything that is not one.</summary>
     internal static double? Num(object? value) => value switch
     {
         long whole => whole,
@@ -18,8 +18,7 @@ internal static class JsonValues
     };
 
     /// <summary>
-    /// A number, nought for null and a throw for anything else, as Dart's
-    /// <c>(value as num?)?.toDouble() ?? 0</c> does.
+    /// A number, nought for null and a throw for anything else.
     /// </summary>
     internal static double NumOrZero(object? value) =>
         value is null ? 0 : Num(value) ?? throw new InvalidCastException($"{value.GetType()} is not a number.");

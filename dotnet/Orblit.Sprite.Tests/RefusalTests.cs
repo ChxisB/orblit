@@ -3,7 +3,7 @@ using System.IO.Compression;
 namespace Orblit.Sprite.Tests;
 
 /// <summary>
-/// What the C# port refuses that Dart only asserts. Dart's asserts are off outside tests, and C#
+/// What the port refuses that the fixture exporter only asserted. An assert is off outside tests, and the port
 /// checks every time, so none of these have a fixture twin.
 /// </summary>
 public class RefusalTests

@@ -6,7 +6,7 @@ using static Orblit.Parity.Dump;
 
 namespace Orblit.Mesh.Tests;
 
-/// <summary>Runs one step of an edit sequence the way the Dart exporter ran it.</summary>
+/// <summary>Runs one step of an edit sequence the way the fixture exporter ran it.</summary>
 internal static class MeshSteps
 {
     private static List<Face> Which(Mesh mesh, JsonElement ids) =>

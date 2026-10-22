@@ -1,6 +1,6 @@
 {
   "package": "orblit_quest",
-  "dartCommit": "33f0aff4b23c2ea21da1566b306f209a157a1513",
+  "sourceCommit": "33f0aff4b23c2ea21da1566b306f209a157a1513",
   "cases": [
     {"op":"parse","text":"{\"kind\":\"orblit.quest\",\"formatVersion\":1,\"key\":\"lamp\",\"title\":\"The Lamp\",\"stages\":[{\"id\":\"unknown\",\"journal\":\"\"},{\"id\":\"find\",\"journal\":\"Find the lamp.\"}]}","cutAfter":null,"expect":{"key":"lamp","title":"The Lamp","last":1,"stages":[["unknown","",[]],["find","Find the lamp.",[]]],"encoded":"{\n  \"kind\": \"orblit.quest\",\n  \"formatVersion\": 1,\n  \"key\": \"lamp\",\n  \"title\": \"The Lamp\",\n  \"stages\": [\n    {\n      \"id\": \"unknown\",\n      \"journal\": \"\"\n    },\n    {\n      \"id\": \"find\",\n      \"journal\": \"Find the lamp.\"\n    }\n  ]\n}"}},
     {"op":"parse","text":"{\"kind\":\"orblit.quest\",\"formatVersion\":1,\"key\":\"a-b_C9\",\"title\":\"T\",\"stages\":[{\"id\":\"unknown\",\"journal\":\"\"},{\"id\":\"find\",\"journal\":\"Find the lamp.\"}]}","cutAfter":null,"expect":{"key":"a-b_C9","title":"T","last":1,"stages":[["unknown","",[]],["find","Find the lamp.",[]]],"encoded":"{\n  \"kind\": \"orblit.quest\",\n  \"formatVersion\": 1,\n  \"key\": \"a-b_C9\",\n  \"title\": \"T\",\n  \"stages\": [\n    {\n      \"id\": \"unknown\",\n      \"journal\": \"\"\n    },\n    {\n      \"id\": \"find\",\n      \"journal\": \"Find the lamp.\"\n    }\n  ]\n}"}},

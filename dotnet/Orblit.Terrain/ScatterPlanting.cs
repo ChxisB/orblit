@@ -91,7 +91,7 @@ internal sealed class Planting
         }
     }
 
-    // Each skip below tests "outside" rather than "inside", so a NaN gets through as it does in Dart.
+    // Each skip below tests "outside" rather than "inside", so a NaN gets through.
     private Site? Choose(long cx, long cz)
     {
         var spot = Mix(Mix(_seed ^ Low(cx)) ^ Low(cz));

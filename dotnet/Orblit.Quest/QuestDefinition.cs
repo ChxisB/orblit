@@ -135,7 +135,7 @@ public sealed partial class QuestDefinition
         }
     }
 
-    public string Encode() => DartJson.Encode(
+    public string Encode() => JsonText.Encode(
         new OrderedDictionary<string, object?>
         {
             ["kind"] = Marker,
@@ -154,7 +154,7 @@ public sealed partial class QuestDefinition
         object? json;
         try
         {
-            json = DartJson.Decode(text);
+            json = JsonText.Decode(text);
         }
         catch (FormatException error)
         {

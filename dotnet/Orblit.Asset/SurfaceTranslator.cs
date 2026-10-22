@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 using Orblit.Mesh;
-using static Orblit.Asset.DartPattern;
+using static Orblit.Asset.CharClasses;
 
 namespace Orblit.Asset;
 
@@ -149,7 +149,7 @@ internal static partial class SurfaceTranslator
         {
             foreach (var mode in modes.Groups[1].Value.Split(','))
             {
-                state.Modes.Add(DartText.Trim(mode), at);
+                state.Modes.Add(TextRules.Trim(mode), at);
             }
 
             return true;

@@ -29,14 +29,14 @@ public sealed class SplatImporter(NativeTool? tool = null) : Importer
         if (harmonics is not null && harmonics is not (>= 0L and <= 3L))
         {
             throw new FormatException(
-                $"\"harmonics\" is {DartText.Print(harmonics)}, and it is how many bands to keep: 0 to 3.");
+                $"\"harmonics\" is {TextRules.Print(harmonics)}, and it is how many bands to keep: 0 to 3.");
         }
 
         var limit = settings.Values.GetValueOrDefault("limit");
         if (limit is not null && limit is not > 0L)
         {
             throw new FormatException(
-                $"\"limit\" is {DartText.Print(limit)}, and it is the most splats to keep, so it is a "
+                $"\"limit\" is {TextRules.Print(limit)}, and it is the most splats to keep, so it is a "
                 + "positive whole number. Leave it out to keep all of them.");
         }
 
@@ -51,8 +51,8 @@ public sealed class SplatImporter(NativeTool? tool = null) : Importer
             var output = NativeWork.Inside(work, "out.osplat");
 
             var limit = request.Settings.GetValueOrDefault("limit");
-            string[] arguments = [input, output, "--harmonics", DartText.Print(request.Settings.GetValueOrDefault("harmonics"))];
-            await Tool.RunAsync(limit is null ? arguments : [.. arguments, "--limit", DartText.Print(limit)], request.Id)
+            string[] arguments = [input, output, "--harmonics", TextRules.Print(request.Settings.GetValueOrDefault("harmonics"))];
+            await Tool.RunAsync(limit is null ? arguments : [.. arguments, "--limit", TextRules.Print(limit)], request.Id)
                 .ConfigureAwait(false);
 
             return File.Exists(output)

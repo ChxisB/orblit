@@ -156,7 +156,7 @@ public sealed class PolyShape(List<Vector3>? points = null, double height = 2.0,
     /// being drawn on. Null when the ray runs parallel to it, which is somebody looking along the
     /// surface they are drawing on and is a question with no answer.
     /// </remarks>
-    // F2: Dart's four positional parameters, and a call reads as origin, direction, plane point, plane normal.
+    // F2: four positional parameters, and a call reads as origin, direction, plane point, plane normal.
     public static Vector3? OnPlane(Vector3 origin, Vector3 direction, Vector3 planePoint, Vector3 planeNormal)
     {
         var slope = planeNormal.Dot(direction);

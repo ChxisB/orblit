@@ -22,7 +22,7 @@ namespace Orblit.Asset;
 /// </para>
 /// <para>
 /// A map is an <c>OrderedDictionary&lt;string, object?&gt;</c> and a list is a
-/// <c>List&lt;object?&gt;</c>, as <see cref="DartJson"/> reads them. A map of another type is not
+/// <c>List&lt;object?&gt;</c>, as <see cref="JsonText"/> reads them. A map of another type is not
 /// seen as an object.
 /// </para>
 /// </remarks>
@@ -205,7 +205,7 @@ public sealed partial class GltfDocument
         }
 
         appended.CopyTo(binary.AsMemory(appendBase));
-        return Container(DartJson.Encode(Json), binary);
+        return Container(JsonText.Encode(Json), binary);
     }
 
     private GltfMap ViewAt(int index)
@@ -288,7 +288,7 @@ public sealed partial class GltfDocument
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {
@@ -366,7 +366,7 @@ public sealed partial class GltfDocument
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(chunk.Span));
+            parsed = JsonText.Decode(TextRules.Decode(chunk.Span));
         }
         catch (FormatException error)
         {
@@ -401,7 +401,7 @@ public sealed partial class GltfDocument
                 return DataUri(text);
             }
 
-            var at = text.Contains(':', StringComparison.Ordinal) ? null : id.Resolve(DartText.PercentDecoded(text));
+            var at = text.Contains(':', StringComparison.Ordinal) ? null : id.Resolve(TextRules.PercentDecoded(text));
             return at is null
                 ? throw new ImportFailureException(id, $"buffer {index} is at \"{text}\", which is not a name inside the project")
                 : await source.ReadAsync(at).ConfigureAwait(false);
@@ -419,7 +419,7 @@ public sealed partial class GltfDocument
             // guessing at it.
             return !uri[..comma].EndsWith(";base64", StringComparison.Ordinal)
                 ? throw new ImportFailureException(id, "has a data URI that is not base64, which this cook does not read")
-                : DartText.DecodeBase64(uri[(comma + 1)..])
+                : TextRules.DecodeBase64(uri[(comma + 1)..])
                     ?? throw new ImportFailureException(id, "has a data URI that is not valid base64");
         }
     }

@@ -45,7 +45,7 @@ public sealed class TerrainStroke
         Roughness = roughness;
         Height = height;
         TileSize = tileSize;
-        // Decision 77: a seed repeats a jitter, though not the one Dart's Random gave.
+        // Decision 77: a seed repeats a jitter, though the sequence is .NET's own.
         _random = new Random(seed);
     }
 

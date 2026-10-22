@@ -5,17 +5,17 @@ namespace Orblit.Progress.Tests;
 
 public class ProgressParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_progress", "progress");
+    private static readonly Fixture Golden = Fixture.Load("orblit_progress", "progress");
 
     private static List<JsonElement> Cases(string op)
     {
-        var cases = Dart.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
+        var cases = Golden.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
         Assert.True(cases.Count > 0, $"the fixture has no {op} cases");
         return cases;
     }
 
     private static string Why(JsonElement c, string what) =>
-        $"{what}, case {c.GetRawText()[..Math.Min(c.GetRawText().Length, 160)]}, from Dart commit {Dart.DartCommit}";
+        $"{what}, case {c.GetRawText()[..Math.Min(c.GetRawText().Length, 160)]}, from fixture commit {Golden.SourceCommit}";
 
     private static ProgressName[] Names(JsonElement names) =>
         [.. names.EnumerateArray().Select(n => n[0].GetString() == "w"
@@ -41,7 +41,7 @@ public class ProgressParityTests
     private static long[] Gets(ProgressTable table, JsonElement c) =>
         [.. Enumerable.Range(0, NameCount(c)).Select(i => table.Get(NameAt(c, i)))];
 
-    // What a JSON reader called decode gives in Dart: whole numbers are int, other numbers are double.
+    // What a JSON reader gives: whole numbers are integers, other numbers are doubles.
     private static object? Plain(JsonElement json) => json.ValueKind switch
     {
         JsonValueKind.Null => null,
@@ -80,7 +80,7 @@ public class ProgressParityTests
     }
 
     [Fact]
-    public void SchemasMatchTheDartTwin()
+    public void SchemasMatchTheFixture()
     {
         foreach (var c in Cases("schema"))
         {
@@ -88,11 +88,11 @@ public class ProgressParityTests
             var expect = c.GetProperty("expect");
             if (expect.ValueKind == JsonValueKind.Null)
             {
-                Assert.True(schema is null, Why(c, "C# accepted a schema Dart refused"));
+                Assert.True(schema is null, Why(c, "the port accepted a schema the fixture refused"));
                 continue;
             }
 
-            Assert.True(schema is not null, Why(c, "C# refused a schema Dart accepted"));
+            Assert.True(schema is not null, Why(c, "the port refused a schema the fixture accepted"));
             Assert.Equal(expect.GetProperty("slotCount").GetInt32(), schema.SlotCount);
             foreach (var p in expect.GetProperty("places").EnumerateArray())
             {
@@ -114,7 +114,7 @@ public class ProgressParityTests
     }
 
     [Fact]
-    public void TablesMatchTheDartTwin()
+    public void TablesMatchTheFixture()
     {
         foreach (var c in Cases("table"))
         {
@@ -126,7 +126,7 @@ public class ProgressParityTests
                 var (name, value) = (steps[i][0].GetString()!, steps[i][1].GetInt64());
                 if (!expects[i].GetProperty("ok").GetBoolean())
                 {
-                    Assert.False(table.Schema.Fits(name, value), Why(c, $"step {i}: C# fits a value Dart refused"));
+                    Assert.False(table.Schema.Fits(name, value), Why(c, $"step {i}: the port fits a value the fixture refused"));
                     Assert.Throws<ArgumentOutOfRangeException>(() => table.Set(name, value));
                     continue;
                 }
@@ -141,7 +141,7 @@ public class ProgressParityTests
     }
 
     [Fact]
-    public void DecodedTablesMatchTheDartTwin()
+    public void DecodedTablesMatchTheFixture()
     {
         foreach (var c in Cases("decodeTable"))
         {
@@ -149,18 +149,18 @@ public class ProgressParityTests
             var expect = c.GetProperty("expect");
             if (expect.ValueKind == JsonValueKind.Null)
             {
-                Assert.True(table is null, Why(c, "C# decoded a table Dart refused"));
+                Assert.True(table is null, Why(c, "the port decoded a table the fixture refused"));
                 continue;
             }
 
-            Assert.True(table is not null, Why(c, "C# refused a table Dart decoded"));
+            Assert.True(table is not null, Why(c, "the port refused a table the fixture decoded"));
             Assert.Equal(expect.GetProperty("table").GetString(), Written(table));
             Assert.Equal(expect.GetProperty("gets").EnumerateArray().Select(g => g.GetInt64()), Gets(table, c));
         }
     }
 
     [Fact]
-    public void DecodedChangesMatchTheDartTwin()
+    public void DecodedChangesMatchTheFixture()
     {
         foreach (var c in Cases("decodeChanges"))
         {
@@ -169,12 +169,12 @@ public class ProgressParityTests
             var actual = changes is null ? null : Convert.ToHexStringLower(changes.Encode());
             Assert.True(
                 expect.GetString() == actual,
-                Why(c, $"Dart {expect.GetString() ?? "refused"}, C# {actual ?? "refused"}"));
+                Why(c, $"the fixture {expect.GetString() ?? "refused"}, the port {actual ?? "refused"}"));
         }
     }
 
     [Fact]
-    public void ConditionsMatchTheDartTwin()
+    public void ConditionsMatchTheFixture()
     {
         foreach (var c in Cases("condition"))
         {
@@ -191,7 +191,7 @@ public class ProgressParityTests
             var expect = c.GetProperty("expect");
             Assert.True(
                 (expect.ValueKind == JsonValueKind.Null) == (condition is null),
-                Why(c, "C# and Dart disagree about whether this is a condition"));
+                Why(c, "the port and the fixture disagree about whether this is a condition"));
             if (condition is not null)
             {
                 var difference = JsonCompare.FirstDifference(expect, JsonSerializer.SerializeToElement(condition.ToJson()));
@@ -201,7 +201,7 @@ public class ProgressParityTests
     }
 
     [Fact]
-    public void ConditionListsMatchTheDartTwin()
+    public void ConditionListsMatchTheFixture()
     {
         foreach (var c in Cases("conditionList"))
         {
@@ -218,7 +218,7 @@ public class ProgressParityTests
             var expect = c.GetProperty("expect");
             Assert.True(
                 (expect.ValueKind == JsonValueKind.Null) == (list is null),
-                Why(c, "C# and Dart disagree about whether this is a list"));
+                Why(c, "the port and the fixture disagree about whether this is a list"));
             if (list is not null)
             {
                 var difference = JsonCompare.FirstDifference(
@@ -230,7 +230,7 @@ public class ProgressParityTests
     }
 
     [Fact]
-    public void ComparisonsHoldAsTheyDoInDart()
+    public void ComparisonsHoldAsTheyDoInTheFixture()
     {
         var schema = new ProgressSchema(
             1,

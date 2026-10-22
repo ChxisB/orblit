@@ -3,7 +3,7 @@ using Orblit.Core;
 
 namespace Orblit.Codegen.Tests;
 
-/// <summary>What the C# generator does that the Dart one has no twin for: the build pipeline, and running the code it writes.</summary>
+/// <summary>What no fixture covers: the build pipeline, and running the code it writes.</summary>
 public class AddedTests
 {
     private const string Pair = """

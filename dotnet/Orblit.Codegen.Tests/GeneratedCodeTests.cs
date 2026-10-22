@@ -1,7 +1,7 @@
 namespace Orblit.Codegen.Tests;
 
 /// <summary>
-/// Dart parses what it generates. Here the generated C# goes through the compiler, which reads more than a
+/// The generated C# goes through the compiler, which reads more than a
 /// parser does: a name that does not resolve fails too.
 /// </summary>
 public class GeneratedCodeTests

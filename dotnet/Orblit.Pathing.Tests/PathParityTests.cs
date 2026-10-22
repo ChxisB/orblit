@@ -8,106 +8,106 @@ namespace Orblit.Pathing.Tests;
 
 public class PathParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_path", "path");
+    private static readonly Fixture Golden = Fixture.Load("orblit_path", "path");
 
     // The grid.
 
     [Fact]
-    public void GridsMatchTheDartTwin() =>
-        Dart.Check("cells", c => Dump.Attempt(() => Whole(Build(In(c, 0)))));
+    public void GridsMatchTheFixture() =>
+        Golden.Check("cells", c => Dump.Attempt(() => Whole(Build(In(c, 0)))));
 
     [Fact]
-    public void InflatedGridsMatchTheDartTwin() =>
-        Dart.Check("inflated", c => Dump.Attempt(() => Cells(Build(In(c, 0)).Grid.Inflated(Num(c, 1)))));
+    public void InflatedGridsMatchTheFixture() =>
+        Golden.Check("inflated", c => Dump.Attempt(() => Cells(Build(In(c, 0)).Grid.Inflated(Num(c, 1)))));
 
     [Fact]
-    public void CellsAtAPointMatchTheDartTwin() =>
-        Dart.Check("cell", c => Dump.Attempt(() => CellOut(Build(In(c, 0)).Grid.CellAt(Num(c, 1), Num(c, 2)))));
+    public void CellsAtAPointMatchTheFixture() =>
+        Golden.Check("cell", c => Dump.Attempt(() => CellOut(Build(In(c, 0)).Grid.CellAt(Num(c, 1), Num(c, 2)))));
 
     [Fact]
-    public void NearestOpenCellsMatchTheDartTwin() =>
-        Dart.Check("nearest", c => Dump.Attempt(() => CellOut(
+    public void NearestOpenCellsMatchTheFixture() =>
+        Golden.Check("nearest", c => Dump.Attempt(() => CellOut(
             Build(In(c, 0)).Grid.NearestOpen(Num(c, 1), Num(c, 2), within: In(c, 3).GetInt32()))));
 
     [Fact]
-    public void CellCentresMatchTheDartTwin() =>
-        Dart.Check("centre", c => Dump.Attempt(() =>
+    public void CellCentresMatchTheFixture() =>
+        Golden.Check("centre", c => Dump.Attempt(() =>
             Triple(Build(In(c, 0)).Grid.CentreOf(In(c, 1).GetInt64(), In(c, 2).GetInt64()))));
 
     [Fact]
-    public void ClearLinesMatchTheDartTwin() =>
-        Dart.Check("clear", c => Dump.Attempt(() =>
+    public void ClearLinesMatchTheFixture() =>
+        Golden.Check("clear", c => Dump.Attempt(() =>
             JsonValue.Create(Build(In(c, 0)).Grid.IsClear(Vec(In(c, 1)), Vec(In(c, 2))))));
 
     [Fact]
-    public void PathsMatchTheDartTwin() => Dart.Check("path", c => Dump.Attempt(() => PathOf(c)));
+    public void PathsMatchTheFixture() => Golden.Check("path", c => Dump.Attempt(() => PathOf(c)));
 
     [Fact]
-    public void MeshesMatchTheDartTwin() => Dart.Check("mesh", c => Dump.Attempt(() => MeshPath(c)));
+    public void MeshesMatchTheFixture() => Golden.Check("mesh", c => Dump.Attempt(() => MeshPath(c)));
 
     // Walking and links.
 
     [Fact]
-    public void WalkersMatchTheDartTwin() => Dart.Check("walker", c => Dump.Attempt(() => RunWalker(c)));
+    public void WalkersMatchTheFixture() => Golden.Check("walker", c => Dump.Attempt(() => RunWalker(c)));
 
     [Fact]
-    public void RoutesOverLinksMatchTheDartTwin() => Dart.Check("links", c => Dump.Attempt(() => Route(c)));
+    public void RoutesOverLinksMatchTheFixture() => Golden.Check("links", c => Dump.Attempt(() => Route(c)));
 
     [Fact]
-    public void LockingAGateMatchesTheDartTwin() => Dart.Check("linkLock", c => Dump.Attempt(() => Locking(c)));
+    public void LockingAGateMatchesTheFixture() => Golden.Check("linkLock", c => Dump.Attempt(() => Locking(c)));
 
     [Fact]
-    public void LinksThatAreRefusedMatchTheDartTwin() =>
-        Dart.Check("linkMake", c => Dump.Attempt(() => JsonValue.Create(LinkOf(In(c, 0)).Kind.Length)));
+    public void LinksThatAreRefusedMatchTheFixture() =>
+        Golden.Check("linkMake", c => Dump.Attempt(() => JsonValue.Create(LinkOf(In(c, 0)).Kind.Length)));
 
     // Splines.
 
     [Fact]
-    public void SplinesMatchTheDartTwin() => Dart.Check("spline", c => Dump.Attempt(() => Described(c)));
+    public void SplinesMatchTheFixture() => Golden.Check("spline", c => Dump.Attempt(() => Described(c)));
 
     [Fact]
-    public void PositionsAlongASplineMatchTheDartTwin() =>
-        Dart.Check("position", c => Dump.Attempt(() => Triple(SplineOf(In(c, 0)).PositionAt(Num(c, 1)))));
+    public void PositionsAlongASplineMatchTheFixture() =>
+        Golden.Check("position", c => Dump.Attempt(() => Triple(SplineOf(In(c, 0)).PositionAt(Num(c, 1)))));
 
     [Fact]
-    public void FramesAlongASplineMatchTheDartTwin() =>
-        Dart.Check("frame", c => Dump.Attempt(() => Framed(SplineOf(In(c, 0)).FrameAt(Num(c, 1)))));
+    public void FramesAlongASplineMatchTheFixture() =>
+        Golden.Check("frame", c => Dump.Attempt(() => Framed(SplineOf(In(c, 0)).FrameAt(Num(c, 1)))));
 
     [Fact]
-    public void ForwardsAlongASplineMatchTheDartTwin() =>
-        Dart.Check("forward", c => Dump.Attempt(() => Triple(SplineOf(In(c, 0)).FrameAt(Num(c, 1)).Forward)));
+    public void ForwardsAlongASplineMatchTheFixture() =>
+        Golden.Check("forward", c => Dump.Attempt(() => Triple(SplineOf(In(c, 0)).FrameAt(Num(c, 1)).Forward)));
 
     [Fact]
-    public void NearestPointsOnASplineMatchTheDartTwin() => Dart.Check("closest", c => Dump.Attempt(() => Nearest(c)));
+    public void NearestPointsOnASplineMatchTheFixture() => Golden.Check("closest", c => Dump.Attempt(() => Nearest(c)));
 
     [Fact]
-    public void DecodedTextsMatchTheDartTwin() => Dart.Check("decode", c => Dump.Attempt(() => Decoded(c)));
+    public void DecodedTextsMatchTheFixture() => Golden.Check("decode", c => Dump.Attempt(() => Decoded(c)));
 
     // Followers.
 
     [Fact]
-    public void FollowersMatchTheDartTwin() => Dart.Check("follow", c => Dump.Attempt(() => Follow(c)));
+    public void FollowersMatchTheFixture() => Golden.Check("follow", c => Dump.Attempt(() => Follow(c)));
 
     [Fact]
-    public void FollowersStartedAnywhereMatchTheDartTwin() =>
-        Dart.Check("followFrom", c => Dump.Attempt(() => FollowFrom(c)));
+    public void FollowersStartedAnywhereMatchTheFixture() =>
+        Golden.Check("followFrom", c => Dump.Attempt(() => FollowFrom(c)));
 
     [Fact]
-    public void RailsMatchTheDartTwin() => Dart.Check("rail", c => Dump.Attempt(() => RideRail(c)));
+    public void RailsMatchTheFixture() => Golden.Check("rail", c => Dump.Attempt(() => RideRail(c)));
 
     [Fact]
-    public void PatrolsMatchTheDartTwin() => Dart.Check("patrol", c => Dump.Attempt(() => Patrolled(c)));
+    public void PatrolsMatchTheFixture() => Golden.Check("patrol", c => Dump.Attempt(() => Patrolled(c)));
 
     // Baking.
 
     [Fact]
-    public void BakedTerrainsMatchTheDartTwin() => Dart.Check("bakeTerrain", c => Dump.Attempt(() => BakedTerrain(c)));
+    public void BakedTerrainsMatchTheFixture() => Golden.Check("bakeTerrain", c => Dump.Attempt(() => BakedTerrain(c)));
 
     [Fact]
-    public void BakedMeshesMatchTheDartTwin() => Dart.Check("bakeMesh", c => Dump.Attempt(() => BakedMesh(c)));
+    public void BakedMeshesMatchTheFixture() => Golden.Check("bakeMesh", c => Dump.Attempt(() => BakedMesh(c)));
 
     [Fact]
-    public void CarvedGridsMatchTheDartTwin() => Dart.Check("carve", c => Dump.Attempt(() => Carved(c)));
+    public void CarvedGridsMatchTheFixture() => Golden.Check("carve", c => Dump.Attempt(() => Carved(c)));
 
     private static JsonObject Whole(Made made) => Cells(made.Grid, made.Obstacles);
 

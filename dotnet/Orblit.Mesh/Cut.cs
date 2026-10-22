@@ -276,7 +276,7 @@ public static class MeshCut
     /// The index a cut's end point comes to: the face's own corner, or a new vertex put into an
     /// edge. -1 for a point in the middle.
     /// </summary>
-    // F5: making the vertex and handing back its index is one step, as it is in the Dart original.
+    // F5: making the vertex and handing back its index is one step.
     private static int PlaceEnd(Mesh mesh, Face face, OnFace where, Vector3 point, List<Insert> inserts)
     {
         switch (where)

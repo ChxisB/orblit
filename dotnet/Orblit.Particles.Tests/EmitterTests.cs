@@ -52,7 +52,7 @@ public class EmitterTests
         Assert.Equal([1.0, 1.0, 1.0], emitter.Colour);
         Assert.Single(emitter.Bursts);
 
-        // Dart's list says it cannot change. Here the read-only view hides Add, so reach it through IList.
+        // The read-only view hides Add, so reach it through IList.
         Assert.Throws<NotSupportedException>(() => ((IList<double>)emitter.Size).Add(1));
     }
 

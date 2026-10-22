@@ -1,6 +1,6 @@
 {
   "package": "orblit_asset",
-  "dartCommit": "7dec8ad0470c45d95bb50eb32e00e7a5aa830077",
+  "sourceCommit": "7dec8ad0470c45d95bb50eb32e00e7a5aa830077",
   "cases": [
     {"op":"decode","in":["{\"version\":1,\"vertices\":[0,0,0,1,0,0,0,1,0],\"indices\":[0,1,2]}"],"expect":{"value":{"vertices":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0],"indices":[0,1,2],"encoded":"{\"version\":1,\"vertices\":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0],\"indices\":[0,1,2]}"}}},
     {"op":"decode","in":["{\"version\":1.0,\"vertices\":[0,0,0,1,0,0,0,1,0],\"indices\":[0,1,2]}"],"expect":{"value":{"vertices":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0],"indices":[0,1,2],"encoded":"{\"version\":1,\"vertices\":[0.0,0.0,0.0,1.0,0.0,0.0,0.0,1.0,0.0],\"indices\":[0,1,2]}"}}},

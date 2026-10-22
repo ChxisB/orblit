@@ -293,7 +293,7 @@ public sealed class AtlasImporterAddedTests
     [InlineData("allowRotation", 2.5, "double", "bool")]
     [InlineData("square", "no", "String", "bool")]
     [InlineData("powerOfTwo", 0, "int", "bool")]
-    public async Task RefusesASettingOfTheWrongTypeWithTheMessageDartGives(
+    public async Task RefusesASettingOfTheWrongTypeWithAMessage(
         string key, object value, string held, string wanted)
     {
         var error = await Assert.ThrowsAsync<InvalidCastException>(
@@ -304,7 +304,7 @@ public sealed class AtlasImporterAddedTests
     [Theory]
     [InlineData("[1]", "_GrowableList<dynamic>")]
     [InlineData("{}", "_Map<String, dynamic>")]
-    public async Task NamesAListOrAMapByTheTypeDartWouldSayItIs(string json, string held)
+    public async Task NamesAListOrAMapByItsTypeInTheMessage(string json, string held)
     {
         var files = Files(new(), Block(16, 16, 0));
         files[Id("ui.atlas.json")] = AtlasImporterTests.Document($$"""{"sprites": ["ui/s0.png"], "padding": {{json}}}""");

@@ -274,14 +274,14 @@ public sealed class DirectoryCookCacheTests : CookCacheContract, IDisposable
         await cache.StoreAsync(CookCases.Key(source: "a"), CookCases.Outputs("out", "a"));
         await cache.StoreAsync(CookCases.Key(source: "b"), CookCases.Outputs("out", "b"));
 
-        var index = (OrderedDictionary<string, object?>)DartJson.Decode(await File.ReadAllTextAsync(IndexPath, TestContext.Current.CancellationToken))!;
+        var index = (OrderedDictionary<string, object?>)JsonText.Decode(await File.ReadAllTextAsync(IndexPath, TestContext.Current.CancellationToken))!;
         var entries = (OrderedDictionary<string, object?>)index["entries"]!;
         entries[CookCases.Key(source: "a").Hash.Hex] = new Dictionary<string, object?>
         {
             ["usedAt"] = "not a time",
             ["outputs"] = new List<object?>(),
         };
-        await File.WriteAllTextAsync(IndexPath, DartJson.Encode(index), TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(IndexPath, JsonText.Encode(index), TestContext.Current.CancellationToken);
 
         var reopened = Open();
         Assert.Null(await reopened.LookUpAsync(CookCases.Key(source: "a")));
@@ -305,7 +305,7 @@ public sealed class DirectoryCookCacheTests : CookCacheContract, IDisposable
     {
         await Open().StoreAsync(CookCases.Key(), CookCases.Outputs("out", "cooked"));
         var text = await File.ReadAllTextAsync(IndexPath, TestContext.Current.CancellationToken);
-        DartJson.Decode(text);
+        JsonText.Decode(text);
         Assert.EndsWith("\n", text);
         Assert.DoesNotContain(
             Directory.EnumerateFileSystemEntries(_root),

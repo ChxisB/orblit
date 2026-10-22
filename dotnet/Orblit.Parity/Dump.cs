@@ -3,7 +3,7 @@ using System.Text.Json.Nodes;
 
 namespace Orblit.Parity;
 
-/// <summary>Writes what the port computed in the shape the Dart exporter wrote.</summary>
+/// <summary>Writes what the port computed in the shape the fixture exporter writes.</summary>
 public static class Dump
 {
     private const long ExactLimit = 9007199254740992;

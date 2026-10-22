@@ -259,6 +259,6 @@ public sealed class Ktx2Chain
 
     private static long U32(ReadOnlySpan<byte> bytes, int at) => BinaryPrimitives.ReadUInt32LittleEndian(bytes[at..]);
 
-    // Signed, so a length with the top bit set reads as negative the way it does in Dart.
+    // Signed, so a length with the top bit set reads as negative.
     private static long U64(ReadOnlySpan<byte> bytes, int at) => BinaryPrimitives.ReadInt64LittleEndian(bytes[at..]);
 }

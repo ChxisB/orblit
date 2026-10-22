@@ -89,7 +89,7 @@ public sealed class FilePackBytes : IPackBytes, IAsyncDisposable
     private SafeFileHandle Handle() =>
         _handle ??= File.OpenHandle(Path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite, FileOptions.Asynchronous);
 
-    // Reads past the end of the pack but not past the end of the file, as the Dart twin does.
+    // Reads past the end of the pack but not past the end of the file.
     private async Task<byte[]> ReadFromAsync(SafeFileHandle file, long at, long bytes)
     {
         var from = Start + at;

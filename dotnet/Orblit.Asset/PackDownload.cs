@@ -223,7 +223,7 @@ internal sealed class PackDownload
     // as 404, a full disk and a mistake in the program. A dropped connection and a busy server are the rest.
     private static bool MayWorkLater(Exception error) => !IsMistake(error) && !IsAnswer(error);
 
-    // What Dart calls an Error: the program did something it should not have.
+    // A mistake in the program, as against a failure of the world: the program did something it should not have.
     internal static bool IsMistake(Exception error) =>
         error is ArgumentException or InvalidOperationException or NotSupportedException or NotImplementedException
             or NullReferenceException or IndexOutOfRangeException or InvalidCastException or OutOfMemoryException;

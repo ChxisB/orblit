@@ -57,10 +57,10 @@ public sealed class AssetPackTests : IDisposable
     internal static byte[] WithDirectory(byte[] pack, Action<JsonMap> edit)
     {
         var header = PackHeader.Read(pack);
-        var directory = (JsonMap)DartJson.Decode(
+        var directory = (JsonMap)JsonText.Decode(
             Encoding.UTF8.GetString(pack, (int)header.DirectoryAt, (int)header.DirectoryBytes))!;
         edit(directory);
-        var text = Encoding.UTF8.GetBytes(DartJson.Encode(directory));
+        var text = Encoding.UTF8.GetBytes(JsonText.Encode(directory));
         var body = pack[..(int)header.DirectoryAt];
         new PackHeader(header.DirectoryAt, text.Length).Encode().CopyTo(body, 0);
         return [.. body, .. text];

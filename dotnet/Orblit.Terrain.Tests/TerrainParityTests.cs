@@ -47,7 +47,7 @@ public class TerrainParityTests
     // cover
 
     [Fact]
-    public void CoverMatchesTheDartTwin() => Check("cover", c => Attempt(() =>
+    public void CoverMatchesTheFixture() => Check("cover", c => Attempt(() =>
     {
         var a = c.GetProperty("args");
         var cover = Cover.Of(
@@ -101,7 +101,7 @@ public class TerrainParityTests
     // ground colour
 
     [Fact]
-    public void ColourMatchesTheDartTwin() => Check("colour", c => Attempt(() =>
+    public void ColourMatchesTheFixture() => Check("colour", c => Attempt(() =>
     {
         var a = c.GetProperty("args");
         var colour = c.GetProperty("kind").GetString() == "of"
@@ -132,7 +132,7 @@ public class TerrainParityTests
     // the distance policy
 
     [Fact]
-    public void PolicyMatchesTheDartTwin() => Check("policy", c => Attempt(() =>
+    public void PolicyMatchesTheFixture() => Check("policy", c => Attempt(() =>
     {
         var policy = new DistancePolicy(
             ceiling: Int(c.GetProperty("ceiling")),
@@ -153,19 +153,19 @@ public class TerrainParityTests
     // region keys
 
     [Fact]
-    public void KeyFromAFileNameMatchesTheDartTwin() => Check("keyName", c => Attempt(() =>
+    public void KeyFromAFileNameMatchesTheFixture() => Check("keyName", c => Attempt(() =>
         RegionKey.FromFileName(c.GetProperty("name").GetString()!) is { } key
             ? new JsonObject { ["key"] = KeyJson(key), ["name"] = key.FileName }
             : null));
 
     [Fact]
-    public void KeyContainingMatchesTheDartTwin() => Check("keyContaining", c => Attempt(() =>
+    public void KeyContainingMatchesTheFixture() => Check("keyContaining", c => Attempt(() =>
         KeyJson(RegionKey.Containing(Long(c.GetProperty("i")), Long(c.GetProperty("j")), Long(c.GetProperty("size"))))));
 
     // region files
 
     [Fact]
-    public void RegionEncodeMatchesTheDartTwin() => Check("regionEncode", c => Attempt(() =>
+    public void RegionEncodeMatchesTheFixture() => Check("regionEncode", c => Attempt(() =>
         Convert.ToBase64String(new TerrainRegion(
             new RegionKey(Long(c.GetProperty("x")), Long(c.GetProperty("z"))),
             Int(c.GetProperty("size")),
@@ -190,7 +190,7 @@ public class TerrainParityTests
     }
 
     [Fact]
-    public void RegionNewMatchesTheDartTwin() => Check("regionNew", c => Attempt(() =>
+    public void RegionNewMatchesTheFixture() => Check("regionNew", c => Attempt(() =>
     {
         var key = new RegionKey(0, 0);
         var size = checked((int)Long(c.GetProperty("size")));
@@ -202,11 +202,11 @@ public class TerrainParityTests
     }));
 
     [Fact]
-    public void ValidSizeMatchesTheDartTwin() => Check("validSize", c =>
+    public void ValidSizeMatchesTheFixture() => Check("validSize", c =>
         JsonValue.Create(TerrainRegion.ValidSize(Long(c.GetProperty("size")))));
 
     [Fact]
-    public void RegionDecodeMatchesTheDartTwin() => Check("regionDecode", c => Attempt(() =>
+    public void RegionDecodeMatchesTheFixture() => Check("regionDecode", c => Attempt(() =>
     {
         var load = TerrainRegion.Decode(Convert.FromBase64String(c.GetProperty("bytes").GetString()!));
         var region = load.Region;
@@ -225,7 +225,7 @@ public class TerrainParityTests
     // terrain files
 
     [Fact]
-    public void TerrainDecodeMatchesTheDartTwin() => Check("terrainDecode", c => Attempt(() =>
+    public void TerrainDecodeMatchesTheFixture() => Check("terrainDecode", c => Attempt(() =>
     {
         var load = Terrain.Decode(c.GetProperty("text").GetString()!);
         return new JsonObject
@@ -238,17 +238,17 @@ public class TerrainParityTests
     }));
 
     [Fact]
-    public void ScatterLayerFromJsonMatchesTheDartTwin() => Check("layer", c => Attempt(() =>
+    public void ScatterLayerFromJsonMatchesTheFixture() => Check("layer", c => Attempt(() =>
     {
         var problems = new List<string>();
-        var layer = ScatterLayer.FromJson(DartJson.Decode(c.GetProperty("text").GetString()!), problems);
+        var layer = ScatterLayer.FromJson(JsonText.Decode(c.GetProperty("text").GetString()!), problems);
         return new JsonObject { ["layer"] = Tree(layer?.ToJson()), ["problems"] = Arr(problems, Text) };
     }));
 
     // reading the ground
 
     [Fact]
-    public void QueriesMatchTheDartTwin() => Check("query", c =>
+    public void QueriesMatchTheFixture() => Check("query", c =>
     {
         var terrain = World(c.GetProperty("world"));
         var spots = c.GetProperty("heights").EnumerateArray().Select(p => (X: Double(p[0]), Z: Double(p[1]))).ToList();
@@ -275,7 +275,7 @@ public class TerrainParityTests
     // strokes
 
     [Fact]
-    public void StrokesMatchTheDartTwin() => Check("stroke", c => Attempt(() =>
+    public void StrokesMatchTheFixture() => Check("stroke", c => Attempt(() =>
     {
         var terrain = World(c.GetProperty("world"));
         var stroke = StrokeOf(terrain, c);
@@ -323,7 +323,7 @@ public class TerrainParityTests
     // scatter
 
     [Fact]
-    public void ScatterMatchesTheDartTwin() => Check("scatter", c =>
+    public void ScatterMatchesTheFixture() => Check("scatter", c =>
     {
         var terrain = World(c.GetProperty("world"));
         var placer = new ScatterPlacer();

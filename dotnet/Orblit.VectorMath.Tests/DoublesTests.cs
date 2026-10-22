@@ -32,7 +32,7 @@ public class DoublesTests
 
     [Fact]
     public void NegativeZeroClampsUpToPositiveZero() =>
-        Assert.True(double.IsPositive(Doubles.Clamp(-0.0, 0, 1)), "-0.0 is below 0.0 in Dart's order");
+        Assert.True(double.IsPositive(Doubles.Clamp(-0.0, 0, 1)), "-0.0 is below 0.0 in the file format's order");
 
     [Fact]
     public void ALowerLimitAboveTheUpperOneIsRefused() =>
@@ -49,7 +49,7 @@ public class DoublesTests
 
     [Fact]
     public void AModThatComesToNothingIsPositiveZero() =>
-        Assert.True(double.IsPositive(Doubles.Mod(-6, 3)), "Dart never answers -0.0 from %");
+        Assert.True(double.IsPositive(Doubles.Mod(-6, 3)), "the file format never answers -0.0 from %");
 
     [Fact]
     public void ModOfNotANumberOrAnInfinityIsNotANumber()
@@ -144,7 +144,7 @@ public class DoublesTests
     [InlineData(double.NaN, "NaN")]
     [InlineData(double.PositiveInfinity, "Infinity")]
     [InlineData(double.NegativeInfinity, "-Infinity")]
-    public void FixedPointGivesTheShortestFormWhereDartDoes(double value, string expected)
+    public void FixedPointWritesNonFiniteValuesByName(double value, string expected)
     {
         Assert.Equal(expected, Doubles.ToStringAsFixed(value, 0));
         Assert.Equal(expected, Doubles.ToStringAsFixed(value, 3));
@@ -179,8 +179,8 @@ public class DoublesTests
     [InlineData(double.NaN, "NaN")]
     [InlineData(double.PositiveInfinity, "Infinity")]
     [InlineData(double.NegativeInfinity, "-Infinity")]
-    public void WritesDoublesTheWayDartDoes(double value, string expected) =>
-        Assert.Equal(expected, Doubles.ToDartString(value));
+    public void WritesDoublesInFileFormat(double value, string expected) =>
+        Assert.Equal(expected, Doubles.ToFileString(value));
 
     [Fact]
     public void RadiansAndDegreesMultiplyByAFactorWorkedOutOnce()

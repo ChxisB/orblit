@@ -1,5 +1,5 @@
 using System.Text.RegularExpressions;
-using static Orblit.Asset.DartPattern;
+using static Orblit.Asset.CharClasses;
 
 namespace Orblit.Asset;
 
@@ -32,7 +32,7 @@ internal static partial class SurfaceLiterals
         var hints = new OrderedDictionary<string, IReadOnlyList<string>>();
         foreach (var piece in SplitTopLevel(text))
         {
-            var match = HintShape().Match(DartText.Trim(piece));
+            var match = HintShape().Match(TextRules.Trim(piece));
             if (!match.Success)
             {
                 throw new SurfaceException(at, $"cannot read hint `{piece}`");
@@ -71,23 +71,23 @@ internal static partial class SurfaceLiterals
 
             if (c == ',' && depth == 0)
             {
-                parts.Add(DartText.Trim(text[start..i]));
+                parts.Add(TextRules.Trim(text[start..i]));
                 start = i + 1;
             }
         }
 
-        parts.Add(DartText.Trim(text[start..]));
+        parts.Add(TextRules.Trim(text[start..]));
         return parts;
     }
 
     /// <summary>
     /// A default written as a literal: <c>1.5</c>, <c>true</c>, <c>vec3(0.5)</c> or <c>vec4(1.0, 0.5, 0.2, 1.0)</c>.
     /// A single argument fills every component. A whole number stays a <see cref="long"/> and a fraction is a
-    /// <see cref="double"/>, as Dart's <c>num</c> keeps them.
+    /// <see cref="double"/>.
     /// </summary>
     internal static object ParseDefault(SurfaceType type, string text, SurfaceOrigin at)
     {
-        var value = DartText.Trim(text);
+        var value = TextRules.Trim(text);
         if (type == SurfaceType.Boolean)
         {
             return ParseBoolean(value, at);
@@ -132,8 +132,8 @@ internal static partial class SurfaceLiterals
         return value[prefix.Length..^1];
     }
 
-    // A trailing f is GLSL's float suffix, and Dart's number reader does not know it.
+    // A trailing f is GLSL's float suffix, and the number reader does not know it.
     private static object ParseNumber(string text, SurfaceOrigin at) =>
-        DartText.ParseNum(text.EndsWith('f') || text.EndsWith('F') ? text[..^1] : text)
+        TextRules.ParseNum(text.EndsWith('f') || text.EndsWith('F') ? text[..^1] : text)
         ?? throw new SurfaceException(at, $"cannot read `{text}` as a number");
 }

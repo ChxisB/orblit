@@ -19,7 +19,7 @@ public static class FetchRecordsCodec
             entries[url.ToString()] = record.ToJson();
         }
 
-        return DartJson.Encode(new OrderedDictionary<string, object?>
+        return JsonText.Encode(new OrderedDictionary<string, object?>
         {
             ["formatVersion"] = (long)FormatVersion,
             ["records"] = entries,
@@ -36,7 +36,7 @@ public static class FetchRecordsCodec
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException)
         {
@@ -62,7 +62,7 @@ public static class FetchRecordsCodec
         return found;
     }
 
-    // A number equals 1 whether it was written 1 or 1.0, as in Dart.
+    // A number equals 1 whether it was written 1 or 1.0.
     private static bool IsFormat(object? version) => version switch
     {
         long whole => whole == FormatVersion,

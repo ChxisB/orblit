@@ -3,7 +3,7 @@ using System.Collections;
 namespace Orblit.Mesh;
 
 /// <summary>
-/// A set that enumerates in the order its members went in, as a Dart <c>Set</c> does. Which
+/// A set that enumerates in the order its members went in. Which
 /// edge a hole fill starts from, and which face a merge begins with, follow that order.
 /// </summary>
 public sealed class OrderedSet<T> : IReadOnlySet<T>

@@ -34,7 +34,7 @@ public static class CelestialBodyExtensions
 /// <param name="SkyColour">The colour of the sky itself.</param>
 /// <param name="Ambient">How much light the sky itself casts, in lux.</param>
 /// <param name="Exposure">What the camera has to be set to for any of this to be visible.</param>
-// F2: eight values, all required and all called by name, as the Dart constructor is.
+// F2: eight values, all required and all called by name.
 public sealed record SkyState(
     CelestialBody Body,
     Vector3 Direction,
@@ -105,7 +105,7 @@ public sealed record CameraExposure(double Aperture, double ShutterSpeed, double
     /// <summary>The exposure value these three add up to, at ISO 100.</summary>
     public double Ev100 => Log2(Aperture * Aperture / ShutterSpeed) - Log2(Sensitivity / 100);
 
-    // Dart divides by its ln2 constant. Math.Log2 rounds differently.
+    // This divides by an ln2 constant. Math.Log2 rounds differently.
     private static double Log2(double value) => Math.Log(value) / Ln2;
 }
 
@@ -210,7 +210,7 @@ public static class DayCycle
         return Tint.Lerp(DawnSky, DaySky, Smooth((swing - 0.18) / 0.5));
     }
 
-    /// <summary>Smoothstep, clamped. NaN clamps to one, as Dart's clamp does.</summary>
+    /// <summary>Smoothstep, clamped. NaN clamps to one.</summary>
     private static double Smooth(double t)
     {
         var x = Doubles.Clamp(t, 0.0, 1.0);

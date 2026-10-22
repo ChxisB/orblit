@@ -98,6 +98,6 @@ internal sealed class Ring
         return sorted[(int)Math.Round((Length - 1) * fraction, MidpointRounding.AwayFromZero)];
     }
 
-    // Dart's % is never negative, and the cursor sits at or below the count.
+    // The remainder is never negative, and the cursor sits at or below the count.
     private int Mod(int index) => ((index % _values.Length) + _values.Length) % _values.Length;
 }

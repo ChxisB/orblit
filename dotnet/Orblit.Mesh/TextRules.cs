@@ -5,25 +5,25 @@ using System.Text.RegularExpressions;
 namespace Orblit.Mesh;
 
 /// <summary>
-/// A whole number or a fraction, as Dart's <c>num</c> holds one. A reader that is handed
+/// A whole number or a fraction, as a JSON number holds one. A reader that is handed
 /// <c>5</c> and <c>5.0</c> keeps them apart, and a count written as <c>1e999</c> is not a count.
 /// </summary>
-internal readonly record struct DartNumber(bool IsWhole, long Whole, double Fraction)
+internal readonly record struct WholeOrFraction(bool IsWhole, long Whole, double Fraction)
 {
-    internal static DartNumber Of(long whole) => new(true, whole, 0);
+    internal static WholeOrFraction Of(long whole) => new(true, whole, 0);
 
-    internal static DartNumber Of(double fraction) => new(false, 0, fraction);
+    internal static WholeOrFraction Of(double fraction) => new(false, 0, fraction);
 
     internal double ToDouble() => IsWhole ? Whole : Fraction;
 }
 
 /// <summary>
-/// What Dart's core library does with text where .NET does something a file format can see.
+/// Text rules where .NET does something a file format can see.
 /// Whitespace is not the same set in a trim and in a pattern. A number reads with a space on
 /// either side and a hexadecimal whole number but never a hexadecimal fraction. A byte order mark
 /// is dropped from decoded text. A malformed escape in a name is an error, not a pass-through.
 /// </summary>
-internal static partial class DartText
+internal static partial class TextRules
 {
     private static readonly UTF8Encoding Strict = new(false, true);
 
@@ -32,7 +32,7 @@ internal static partial class DartText
         c is (>= '\t' and <= '\r') or ' ' or '\u0085' or '\u00A0' or '\u1680' or (>= '\u2000' and <= '\u200A')
             or '\u2028' or '\u2029' or '\u202F' or '\u205F' or '\u3000' or '\uFEFF';
 
-    /// <summary>What <c>\s</c> matches in a Dart pattern. The same as a trim, less the next-line character.</summary>
+    /// <summary>What <c>\s</c> matches in a file format's pattern. The same as a trim, less the next-line character.</summary>
     internal static bool IsPatternSpace(char c) => c != '\u0085' && IsSpace(c);
 
     internal static string Trim(string text) => TrimStart(TrimEnd(text));
@@ -155,14 +155,14 @@ internal static partial class DartText
     }
 
     /// <summary><c>num.tryParse</c>: a whole number when it reads as one, otherwise a fraction.</summary>
-    internal static DartNumber? ParseNum(string text)
+    internal static WholeOrFraction? ParseNum(string text)
     {
         if (ParseInt(text) is { } whole)
         {
-            return DartNumber.Of(whole);
+            return WholeOrFraction.Of(whole);
         }
 
-        return ParseDouble(text) is { } fraction ? DartNumber.Of(fraction) : null;
+        return ParseDouble(text) is { } fraction ? WholeOrFraction.Of(fraction) : null;
     }
 
     /// <summary>
@@ -187,7 +187,7 @@ internal static partial class DartText
     private static string DropMark(string text) => text.Length > 0 && text[0] == '\uFEFF' ? text[1..] : text;
 
     /// <summary>
-    /// <c>base64Decode</c>, or null where Dart throws. Either alphabet, in any mix. The length is a
+    /// Base64 decoding, or null for bad text. Either alphabet, in any mix. The length is a
     /// multiple of four with the padding written, and the unused bits are nought.
     /// </summary>
     internal static byte[]? DecodeBase64(string text)

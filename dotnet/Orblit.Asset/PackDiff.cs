@@ -25,7 +25,7 @@ public sealed class PackDiff
     private static readonly HashSet<string> Documents =
         ["oscene", "oprefab", "oclip", "oblend", "ocutscene", "obonemap", "omat", "oterrain", "oui", "opath"];
 
-    // Read-only wrappers, as the Dart lists are unmodifiable.
+    // Read-only wrappers, so a caller cannot change the lists.
     private PackDiff(List<AssetId> added, List<AssetId> removed, List<ChangedAsset> changed, Scan scan)
     {
         Added = added.AsReadOnly();
@@ -94,7 +94,7 @@ public sealed class PackDiff
             object? json;
             try
             {
-                json = DartJson.Decode(DartText.Decode(await after.ReadAsync(document).ConfigureAwait(false)));
+                json = JsonText.Decode(TextRules.Decode(await after.ReadAsync(document).ConfigureAwait(false)));
             }
             catch (FormatException)
             {

@@ -7,28 +7,28 @@ namespace Orblit.Asset.Tests;
 
 public class PackParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_asset", "pack");
+    private static readonly Fixture Golden = Fixture.Load("orblit_asset", "pack");
 
     // Both writers give the same file byte for byte, so each reads what the other wrote.
     [Fact]
-    public Task PacksMatchTheDartTwinByteForByte() => CheckAsync(Dart, "pack", PackOut);
+    public Task PacksMatchTheFixtureByteForByte() => CheckAsync(Golden, "pack", PackOut);
 
-    // The Dart files, opened from disk by the C# reader: the same hashes, no corrupt blob, and every patch
+    // The fixture's files, opened from disk by the reader: the same hashes, no corrupt blob, and every patch
     // chain mounts and reads back what its manifest says.
     [Fact]
-    public async Task PacksAndPatchesDartWroteAreReadFromFilesByTheCSharpReader()
+    public async Task PacksAndPatchesInTheFixtureAreReadFromFilesByTheReader()
     {
         using var fixture = new PackFixture();
         var held = new List<FilePackBytes>();
         var patches = 0;
         try
         {
-            foreach (var written in DartPacks())
+            foreach (var written in FixturePacks())
             {
                 var packs = new List<AssetPack>();
                 foreach (var pack in written)
                 {
-                    var path = fixture.At($"dart{held.Count}.opack");
+                    var path = fixture.At($"pack{held.Count}.opack");
                     await File.WriteAllBytesAsync(
                         path, Convert.FromBase64String(pack.GetProperty("bytes").GetString()!), TestContext.Current.CancellationToken);
                     held.Add(new FilePackBytes(path));
@@ -51,8 +51,8 @@ public class PackParityTests
         Assert.True(patches >= 3, $"only {patches} patches were mounted");
     }
 
-    private static IEnumerable<JsonElement.ArrayEnumerator> DartPacks() =>
-        Dart.Cases
+    private static IEnumerable<JsonElement.ArrayEnumerator> FixturePacks() =>
+        Golden.Cases
             .Where(c => c.GetProperty("op").GetString() == "pack" && c.GetProperty("expect").TryGetProperty("value", out _))
             .Select(c => c.GetProperty("expect").GetProperty("value").EnumerateArray());
 
@@ -76,23 +76,23 @@ public class PackParityTests
     }
 
     [Fact]
-    public Task OpenedPacksMatchTheDartTwin() => CheckAsync(Dart, "open", OpenOut);
+    public Task OpenedPacksMatchTheFixture() => CheckAsync(Golden, "open", OpenOut);
 
     [Fact]
-    public Task DiffsMatchTheDartTwin() => CheckAsync(Dart, "diff", DiffOut);
+    public Task DiffsMatchTheFixture() => CheckAsync(Golden, "diff", DiffOut);
 
     [Fact]
-    public Task PatchChainsMatchTheDartTwin() => CheckAsync(Dart, "chain", ChainOut);
+    public Task PatchChainsMatchTheFixture() => CheckAsync(Golden, "chain", ChainOut);
 
     [Fact]
-    public Task MountedPacksMatchTheDartTwin() => CheckAsync(Dart, "mount", MountOut);
+    public Task MountedPacksMatchTheFixture() => CheckAsync(Golden, "mount", MountOut);
 
     [Fact]
-    public Task PackFoldersMatchTheDartTwin() => CheckAsync(Dart, "folder", FolderOut);
+    public Task PackFoldersMatchTheFixture() => CheckAsync(Golden, "folder", FolderOut);
 
     [Fact]
-    public void CookTargetsMatchTheDartTwin() => Dart.Check("target", c => Dump.Attempt(() => TargetOut(Text(c, 0))));
+    public void CookTargetsMatchTheFixture() => Golden.Check("target", c => Dump.Attempt(() => TargetOut(Text(c, 0))));
 
     [Fact]
-    public void PackFileNamesMatchTheDartTwin() => Dart.Check("packName", c => Dump.Attempt(() => PackNameOut(c)));
+    public void PackFileNamesMatchTheFixture() => Golden.Check("packName", c => Dump.Attempt(() => PackNameOut(c)));
 }

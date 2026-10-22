@@ -1,7 +1,7 @@
 namespace Orblit.Noise.Tests;
 
 /// <summary>
-/// The six fields the Dart tests and the Dart exporter both use, under the same
+/// The six fields the ported tests and the fixture exporter both use, under the same
 /// names. The parity fixture and the ported tests read from here, so they
 /// cannot drift apart.
 /// </summary>

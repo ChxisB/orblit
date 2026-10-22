@@ -208,7 +208,7 @@ public sealed class GltfMergeTests
     [Fact]
     public async Task RefusesAnIndexThatDoesNotFitThirtyOneBits()
     {
-        // Dart's int is 64 bits and carries the index to a 32-bit buffer. This port throws instead.
+        // An index too large for a 32-bit buffer is refused.
         var model = new QuadModel();
         var a = model.Material(Map("{}"));
         model.Quad(a);

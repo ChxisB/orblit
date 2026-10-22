@@ -154,7 +154,7 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
         if (settings.GetValueOrDefault("cutout") is { } cutout)
         {
             yield return "--cutout";
-            yield return DartText.Print(cutout);
+            yield return TextRules.Print(cutout);
         }
 
         if (settings.GetValueOrDefault("mips") is not true)
@@ -170,13 +170,13 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
         if (maxSize is { } size)
         {
             yield return "--max-size";
-            yield return DartText.Print(size);
+            yield return TextRules.Print(size);
         }
 
         yield return "--uastc";
-        yield return DartText.Print(settings.GetValueOrDefault("uastc"));
+        yield return TextRules.Print(settings.GetValueOrDefault("uastc"));
         yield return "--zstd";
-        yield return DartText.Print(settings.GetValueOrDefault("zstd"));
+        yield return TextRules.Print(settings.GetValueOrDefault("zstd"));
         yield return "--quiet";
     }
 
@@ -185,7 +185,7 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
         {
             null => fallback,
             bool flag => flag,
-            var other => throw new FormatException($"\"{key}\" is {DartText.Print(other)}, and it has to be true or false."),
+            var other => throw new FormatException($"\"{key}\" is {TextRules.Print(other)}, and it has to be true or false."),
         };
 
     private static long WholeNumber(IReadOnlyDictionary<string, object?> values, string key, long fallback, Bounds bounds) =>
@@ -194,7 +194,7 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
             null => fallback,
             long number when number >= bounds.Min && number <= bounds.Max => number,
             var other => throw new FormatException(
-                $"\"{key}\" is {DartText.Print(other)}, and it has to be a whole number from {bounds.Min} to {bounds.Max}."),
+                $"\"{key}\" is {TextRules.Print(other)}, and it has to be a whole number from {bounds.Min} to {bounds.Max}."),
         };
 
     private static string? ColourSpace(IReadOnlyDictionary<string, object?> values)
@@ -205,7 +205,7 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
             null => null,
             "srgb" or "linear" => (string)value,
             _ => throw new FormatException(
-                $"\"colourSpace\" is {DartText.Print(value)}, and it is either \"srgb\", \"linear\", or left out so that the file decides."),
+                $"\"colourSpace\" is {TextRules.Print(value)}, and it is either \"srgb\", \"linear\", or left out so that the file decides."),
         };
     }
 
@@ -214,8 +214,8 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
         {
             null => null,
             long whole when whole is >= 0 and <= 1 => whole,
-            double fraction when !(fraction < 0 || fraction > 1) => fraction, // NaN passes, as it does in Dart
-            var other => throw new FormatException($"\"cutout\" is {DartText.Print(other)}, and an alpha threshold is between 0 and 1."),
+            double fraction when !(fraction < 0 || fraction > 1) => fraction, // NaN passes
+            var other => throw new FormatException($"\"cutout\" is {TextRules.Print(other)}, and an alpha threshold is between 0 and 1."),
         };
 
     private static long? MaxSize(IReadOnlyDictionary<string, object?> values) =>
@@ -224,7 +224,7 @@ public sealed class TextureImporter(NativeTool? tool = null) : Importer
             null => null,
             long size when long.IsPow2(size) => size,
             var other => throw new FormatException(
-                $"\"maxSize\" is {DartText.Print(other)}, and it has to be a power of two: mip levels are dropped to reach it, "
+                $"\"maxSize\" is {TextRules.Print(other)}, and it has to be a power of two: mip levels are dropped to reach it, "
                 + "and a level is always half the one above."),
         };
 

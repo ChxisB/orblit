@@ -2,7 +2,7 @@ using System.Diagnostics;
 
 namespace Orblit.Weather.Tests;
 
-// What C# does that Dart cannot be asked: an enum takes any number, and a record compares by value.
+// What a fixture cannot be asked: an enum takes any number, and a record compares by value.
 public class AddedTests
 {
     [Fact]

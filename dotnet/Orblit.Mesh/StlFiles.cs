@@ -87,7 +87,7 @@ public static class StlFiles
 
     private static void ReadText(byte[] bytes, Welder welder, ReadLimits limits)
     {
-        var text = DartText.DecodeLenient(bytes);
+        var text = TextRules.DecodeLenient(bytes);
         if (!StartsWithSolid(text))
         {
             throw new FormatException("This is not an STL.");
@@ -95,14 +95,14 @@ public static class StlFiles
 
         foreach (var line in limits.LinesOf(text))
         {
-            var trimmed = DartText.Trim(line);
-            var words = DartText.SplitSpace(trimmed);
-            if (DartText.ToLower(words[0]) != "vertex")
+            var trimmed = TextRules.Trim(line);
+            var words = TextRules.SplitSpace(trimmed);
+            if (TextRules.ToLower(words[0]) != "vertex")
             {
                 continue;
             }
 
-            var xyz = words.Count < 4 ? null : words.Skip(1).Take(3).Select(word => DartText.ParseDouble(word)).ToArray();
+            var xyz = words.Count < 4 ? null : words.Skip(1).Take(3).Select(word => TextRules.ParseDouble(word)).ToArray();
             if (xyz is null || xyz.Any(value => value is null))
             {
                 throw new FormatException($"\"{trimmed}\" is not a point.");
@@ -116,7 +116,7 @@ public static class StlFiles
     private static bool StartsWithSolid(string text)
     {
         var at = 0;
-        while (at < text.Length && DartText.IsPatternSpace(text[at]))
+        while (at < text.Length && TextRules.IsPatternSpace(text[at]))
         {
             at++;
         }

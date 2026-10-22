@@ -70,7 +70,7 @@ public sealed class TerrainSet(
         var tileSize = JsonReads.Number(map, "tileSize");
         if (tileSize <= 0)
         {
-            problems.Add($"The \"{name}\" set repeated every {Doubles.ToDartString(tileSize.Value)} m; it repeats every 4 m now.");
+            problems.Add($"The \"{name}\" set repeated every {Doubles.ToFileString(tileSize.Value)} m; it repeats every 4 m now.");
         }
 
         return new TerrainSet(

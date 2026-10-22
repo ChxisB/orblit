@@ -7,50 +7,50 @@ namespace Orblit.Particles.Tests;
 
 public class ParticleParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_particles", "particles");
+    private static readonly Fixture Golden = Fixture.Load("orblit_particles", "particles");
 
     [Fact]
-    public void UnitsMatchTheDartTwin() =>
-        Dart.Check("unit", c => Dump.Attempt(() => Dump.Num(UnitRandom.At(Long(c, 0), Long(c, 1), Long(c, 2)))));
+    public void UnitsMatchTheFixture() =>
+        Golden.Check("unit", c => Dump.Attempt(() => Dump.Num(UnitRandom.At(Long(c, 0), Long(c, 1), Long(c, 2)))));
 
     [Fact]
-    public void RampsMatchTheDartTwin() =>
-        Dart.Check("ramp", c => Dump.Attempt(() => Dump.Num(Ramp.At(Numbers(In(c, 0)), Int(c, 1), Int(c, 2), Num(c, 3)))));
+    public void RampsMatchTheFixture() =>
+        Golden.Check("ramp", c => Dump.Attempt(() => Dump.Num(Ramp.At(Numbers(In(c, 0)), Int(c, 1), Int(c, 2), Num(c, 3)))));
 
     [Fact]
-    public void ShapesMatchTheDartTwin() => Dart.Check("shape", c => Dump.Attempt(() => Pick(c)));
+    public void ShapesMatchTheFixture() => Golden.Check("shape", c => Dump.Attempt(() => Pick(c)));
 
     [Fact]
-    public void EmittersMatchTheDartTwinOnWhatTheyRefuse() =>
-        Dart.Check("make", c => Dump.Attempt(() => JsonValue.Create(EmitterOf(In(c, 0)) is not null)));
+    public void EmittersMatchTheFixtureOnWhatTheyRefuse() =>
+        Golden.Check("make", c => Dump.Attempt(() => JsonValue.Create(EmitterOf(In(c, 0)) is not null)));
 
     [Fact]
-    public void FramesMatchTheDartTwin() => Dart.Check("sample", c => Dump.Attempt(() => Sample(c)));
+    public void FramesMatchTheFixture() => Golden.Check("sample", c => Dump.Attempt(() => Sample(c)));
 
     [Fact]
-    public void BirthsMatchTheDartTwin() => Dart.Check("birth", c => Dump.Attempt(() => Birth(c)));
+    public void BirthsMatchTheFixture() => Golden.Check("birth", c => Dump.Attempt(() => Birth(c)));
 
     [Fact]
-    public void BurstIdsMatchTheDartTwin() =>
-        Dart.Check("burstId", c => Dump.Attempt(() => Dump.Big(Emitter.BurstId(Long(c, 0), Long(c, 1)))));
+    public void BurstIdsMatchTheFixture() =>
+        Golden.Check("burstId", c => Dump.Attempt(() => Dump.Big(Emitter.BurstId(Long(c, 0), Long(c, 1)))));
 
     [Fact]
-    public void LooksMatchTheDartTwin() => Dart.Check("look", c => Dump.Attempt(() => Look(c)));
+    public void LooksMatchTheFixture() => Golden.Check("look", c => Dump.Attempt(() => Look(c)));
 
     [Fact]
-    public void SimulationsMatchTheDartTwin() => Dart.Check("sim", c => Dump.Attempt(() => Simulate(c)));
+    public void SimulationsMatchTheFixture() => Golden.Check("sim", c => Dump.Attempt(() => Simulate(c)));
 
     [Fact]
-    public void TrailsMatchTheDartTwin() => Dart.Check("trail", c => Dump.Attempt(() => MadeTrail(c)));
+    public void TrailsMatchTheFixture() => Golden.Check("trail", c => Dump.Attempt(() => MadeTrail(c)));
 
     [Fact]
-    public void StripsMatchTheDartTwin() => Dart.Check("strip", c => Dump.Attempt(() => MadeStrip(c)));
+    public void StripsMatchTheFixture() => Golden.Check("strip", c => Dump.Attempt(() => MadeStrip(c)));
 
     [Fact]
-    public void TrailsAlongAKnownPathMatchTheDartTwin() => Dart.Check("along", c => Dump.Attempt(() => Along(c)));
+    public void TrailsAlongAKnownPathMatchTheFixture() => Golden.Check("along", c => Dump.Attempt(() => Along(c)));
 
     [Fact]
-    public void TrailsThatRememberMatchTheDartTwin() => Dart.Check("ring", c => Dump.Attempt(() => Remember(c)));
+    public void TrailsThatRememberMatchTheFixture() => Golden.Check("ring", c => Dump.Attempt(() => Remember(c)));
 
     private static JsonElement In(JsonElement c, int index) => c.GetProperty("in")[index];
 
@@ -88,7 +88,7 @@ public class ParticleParityTests
     private static Burst BurstOf(JsonElement pair) => new(Fixture.Number(pair[0]), pair[1].GetInt32());
 
     // Keys the case leaves out keep what a new Emitter has, so the defaults
-    // are compared with Dart's too.
+    // are compared with the fixture's too.
     private static Emitter EmitterOf(JsonElement spec) => new Emitter().CopyWith(
         seed: Val(spec, "seed", e => e.GetInt64()),
         shape: Ref(spec, "shape", ShapeOf),

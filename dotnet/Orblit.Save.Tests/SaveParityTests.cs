@@ -6,7 +6,7 @@ namespace Orblit.Save.Tests;
 
 public sealed class SaveParityTests : IDisposable
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_save", "save");
+    private static readonly Fixture Golden = Fixture.Load("orblit_save", "save");
 
     private readonly TempDir _dir = new();
 
@@ -14,7 +14,7 @@ public sealed class SaveParityTests : IDisposable
 
     private static List<JsonElement> Cases(string op)
     {
-        var cases = Dart.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
+        var cases = Golden.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
         Assert.True(cases.Count > 0, $"the fixture has no {op} cases");
         return cases;
     }
@@ -22,7 +22,7 @@ public sealed class SaveParityTests : IDisposable
     private static string Why(JsonElement c, string what)
     {
         var text = c.GetRawText();
-        return $"{what}, case {text[..Math.Min(text.Length, 160)]}, from Dart commit {Dart.DartCommit}";
+        return $"{what}, case {text[..Math.Min(text.Length, 160)]}, from fixture commit {Golden.SourceCommit}";
     }
 
     // Text arrives as UTF-16 code units, so a lone surrogate survives the fixture.
@@ -44,7 +44,7 @@ public sealed class SaveParityTests : IDisposable
         _ => throw new InvalidOperationException($"unknown reason {reason}"),
     };
 
-    // The words Dart's classifier looks for. The C# messages say the same things.
+    // The words the classifier looks for. The messages say the same things.
     private static string Classify(Exception e) => e switch
     {
         FormatException f when f.Message.Contains("not a save file", StringComparison.Ordinal) => "notSave",
@@ -74,7 +74,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public void ReasonParseMatchesDart()
+    public void ReasonParseMatchesTheFixture()
     {
         foreach (var c in Cases("reasonParse"))
         {
@@ -98,7 +98,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public void ReasonCustomMatchesDart()
+    public void ReasonCustomMatchesTheFixture()
     {
         foreach (var c in Cases("reasonCustom"))
         {
@@ -116,7 +116,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public void KeyCheckMatchesDart()
+    public void KeyCheckMatchesTheFixture()
     {
         foreach (var c in Cases("key"))
         {
@@ -129,7 +129,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public async Task FileWritesAreByteIdenticalToDartsAndReadBack()
+    public async Task FileWritesAreByteIdenticalToTheFixtureAndReadBack()
     {
         var store = new FileSaveStore(_dir.Sub("saves"));
         foreach (var c in Cases("file"))
@@ -153,7 +153,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public async Task FileReadsClassifyLikeDart()
+    public async Task FileReadsClassifyLikeTheFixture()
     {
         var store = new FileSaveStore(_dir.Sub("saves"));
         Directory.CreateDirectory(_dir.Sub("saves"));
@@ -186,7 +186,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public async Task HistoryRecordsMatchDartsAndDartsLoad()
+    public async Task HistoryRecordsMatchTheFixtureAndTheFixtureRecordsLoad()
     {
         var n = 0;
         foreach (var c in Cases("record"))
@@ -208,13 +208,13 @@ public sealed class SaveParityTests : IDisposable
                 Why(c, "entry text"));
             Assert.True(c.GetProperty("blobName").GetString() == Path.GetFileName(blob), Why(c, "blob name"));
             Assert.True(plain == HexOf(Gunzip(await File.ReadAllBytesAsync(blob, TestContext.Current.CancellationToken))), Why(c, "our blob"));
-            Assert.True(plain == HexOf(Gunzip(Hex(c.GetProperty("blob")))), Why(c, "Dart's blob"));
+            Assert.True(plain == HexOf(Gunzip(Hex(c.GetProperty("blob")))), Why(c, "the fixture's blob"));
 
-            await LoadDartsAsync(c, key, new SaveRecord(bytes, reason, at), _dir.Sub($"d{n}"));
+            await LoadFixtureAsync(c, key, new SaveRecord(bytes, reason, at), _dir.Sub($"d{n}"));
         }
     }
 
-    private static async Task LoadDartsAsync(JsonElement c, string key, SaveRecord expected, string root)
+    private static async Task LoadFixtureAsync(JsonElement c, string key, SaveRecord expected, string root)
     {
         Directory.CreateDirectory($"{root}/history/entries/{key}");
         Directory.CreateDirectory($"{root}/history/blobs");
@@ -230,8 +230,8 @@ public sealed class SaveParityTests : IDisposable
 
         var loaded = await history.LoadAsync(Assert.Single(await history.ListAsync(key)));
 
-        Assert.True(expected.Bytes.Span.SequenceEqual(loaded.Bytes.Span), Why(c, "Dart's bytes load"));
-        Assert.True(expected.Reason == loaded.Reason && expected.At == loaded.At, Why(c, "Dart's reason and time load"));
+        Assert.True(expected.Bytes.Span.SequenceEqual(loaded.Bytes.Span), Why(c, "the fixture's bytes load"));
+        Assert.True(expected.Reason == loaded.Reason && expected.At == loaded.At, Why(c, "the fixture's reason and time load"));
     }
 
     private static byte[] Gunzip(byte[] packed)
@@ -243,7 +243,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public async Task EntryReadsMatchDart()
+    public async Task EntryReadsMatchTheFixture()
     {
         var history = new SaveHistory(_dir.Sub("history"));
         var folder = _dir.Sub("history/entries/ana");
@@ -283,7 +283,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public void SpacingMatchesDart()
+    public void SpacingMatchesTheFixture()
     {
         foreach (var c in Cases("spacing"))
         {
@@ -302,7 +302,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public void AutosaveClaimsAndDrawsMatchDart()
+    public void AutosaveClaimsAndDrawsMatchTheFixture()
     {
         foreach (var c in Cases("autosave"))
         {
@@ -332,7 +332,7 @@ public sealed class SaveParityTests : IDisposable
     }
 
     [Fact]
-    public void AutosaveRefusalsMatchDart()
+    public void AutosaveRefusalsMatchTheFixture()
     {
         foreach (var c in Cases("autosaveRefuse"))
         {
@@ -346,7 +346,7 @@ public sealed class SaveParityTests : IDisposable
         }
     }
 
-    /// <summary>The random numbers of the Dart exporter: the same generator, and every bound recorded.</summary>
+    /// <summary>The random numbers of the fixture exporter: the same generator, and every bound recorded.</summary>
     private sealed class Scripted(int seed) : Random
     {
         private long _seed = seed;

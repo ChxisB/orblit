@@ -10,7 +10,7 @@ namespace Orblit.Rig;
 /// </summary>
 public sealed class RigContext(Armature source, Armature output, Pose pose)
 {
-    // A LinkedHashSet in Dart. The keys are the set and the value is unused, to keep insertion order.
+    // The keys are the set and the value is unused, to keep insertion order.
     private readonly OrderedDictionary<string, bool> _controls = [];
     private readonly OrderedDictionary<string, double> _defaults = [];
     private readonly OrderedDictionary<string, BoneWidget> _widgets = [];
@@ -53,7 +53,7 @@ public sealed class RigContext(Armature source, Armature output, Pose pose)
     /// Everything a generated rig contains starts as one of these or as a bone derived from one, so a
     /// control is always somewhere an artist actually put something.
     /// </summary>
-    // F2: six parameters, called by name, as the Dart named parameters are.
+    // F2: six parameters, called by name.
     public string Copy(
         string sourceName,
         BoneRole role = BoneRole.Control,
@@ -109,7 +109,7 @@ public sealed class RigContext(Armature source, Armature output, Pose pose)
     /// and the hidden chain a solver runs on are all invented during generation. The artist never
     /// drew them.
     /// </summary>
-    // F2: seven parameters, called by name, as the Dart named parameters are.
+    // F2: seven parameters, called by name.
     public string Create(
         string name,
         Vector3 head,

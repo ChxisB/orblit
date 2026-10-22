@@ -267,7 +267,7 @@ public sealed partial class GltfDocument
     private static string AsType(GltfMap accessor) =>
         GltfJson.Get(accessor, "type") as string ?? throw new InvalidCastException("An accessor's type is not a string.");
 
-    // What Dart prints for the value, which is the word itself and null when there is none.
+    // The value as text: the word itself, and null when there is none.
     private static string Describe(GltfMap map, string key) => GltfJson.Get(map, key)?.ToString() ?? "null";
 
     private static byte[] Pack(IReadOnlyList<int> values, int width)

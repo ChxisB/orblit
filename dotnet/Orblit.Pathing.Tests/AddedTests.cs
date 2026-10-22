@@ -2,7 +2,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Pathing.Tests;
 
-// What C# does that Dart cannot be asked: an array cannot hold a grid as large as Dart accepts, a bad enum value is
+// What a fixture cannot be asked: an array cannot hold a grid as large as the file format allows, a bad enum value is
 // a number, and a link keeps its own copy of the agents it was given.
 public class AddedTests
 {

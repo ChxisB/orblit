@@ -373,7 +373,7 @@ public class SceneMigrationTests
             Map(("id", "crate"), ("kind", "mesh"), ("position", List(1.0, 2.0, 3.0)))))));
 
         var saved = load.Document.Encode();
-        var parsed = Assert.IsAssignableFrom<JsonMap>(DartJson.Decode(saved));
+        var parsed = Assert.IsAssignableFrom<JsonMap>(JsonText.Decode(saved));
         Assert.Equal((long)SceneDocument.FormatVersion, parsed["formatVersion"]);
 
         var again = SceneDocument.Decode(saved);
@@ -383,5 +383,5 @@ public class SceneMigrationTests
 
     /// <summary>A file at an older version, as one was actually written.</summary>
     private static string OldScene(long version, params (string Key, object? Value)[] rest) =>
-        DartJson.Encode(With(Map(("formatVersion", version)), rest));
+        JsonText.Encode(With(Map(("formatVersion", version)), rest));
 }

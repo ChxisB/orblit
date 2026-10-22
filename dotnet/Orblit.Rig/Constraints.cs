@@ -100,7 +100,7 @@ public abstract class BoneConstraint(double influence = 1, string? influenceProp
 }
 
 /// <summary>Takes another bone's orientation.</summary>
-// F2: five parameters, called by name, as the Dart named parameters are.
+// F2: five parameters, called by name.
 public sealed class CopyRotation(
     string source,
     double influence = 1,
@@ -280,7 +280,7 @@ public sealed class CopyTransform(
 /// bone between two controls that has to stay attached to both. Volume is preserved by narrowing the
 /// cross-section as the bone lengthens. Scaling all three axes together would be a zoom.
 /// </summary>
-// F2: six parameters, called by name, as the Dart named parameters are.
+// F2: six parameters, called by name.
 public sealed class StretchTo(
     string target,
     double restLength,

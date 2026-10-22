@@ -143,7 +143,7 @@ public static class NavBake
 
     /// <summary>
     /// How many cells of <paramref name="cell"/> metres cover <paramref name="span"/>, at least one. A count past what an int
-    /// holds is refused by the grid, as Dart's is when the list is made.
+    /// holds is refused by the grid.
     /// </summary>
     private static int CellsAcross(double span, double cell) =>
         (int)Math.Min(Math.Max(1, Doubles.Ceil(span / cell)), int.MaxValue);
@@ -232,8 +232,7 @@ public static class NavBake
     }
 
     /// <summary>
-    /// One number of the mesh, by place. Off the end throws, where Dart's list throws a
-    /// <c>RangeError</c>, and a 64-bit index past what a list holds is off the end.
+    /// One number of the mesh, by place. Off the end throws, and a 64-bit index past what a list holds is off the end.
     /// </summary>
     private static double Number(IReadOnlyList<double> positions, long at) =>
         (ulong)at >= (ulong)positions.Count ? throw new ArgumentOutOfRangeException(nameof(at), at, "Not a place in the mesh.") : positions[(int)at];

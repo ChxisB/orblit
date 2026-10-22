@@ -125,7 +125,7 @@ public sealed class StoreTests : IDisposable
         Directory.CreateDirectory($"{PathOf("ana")}.tmp");
 
         var thrown = await Assert.ThrowsAnyAsync<Exception>(() => store.WriteAsync("ana", Support.RecordOf([9])));
-        // Dart throws FileSystemException. .NET says UnauthorizedAccessException for a folder.
+        // .NET says UnauthorizedAccessException for a folder and IOException for a file.
         Assert.True(thrown is IOException or UnauthorizedAccessException, thrown.ToString());
 
         var record = await store.ReadAsync("ana");

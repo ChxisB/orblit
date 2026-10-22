@@ -2,8 +2,8 @@ using System.Buffers.Binary;
 
 namespace Orblit.Asset.Tests;
 
-// What C# does that Dart cannot be asked: the messages a fixture does not compare, the read range of
-// FilePackBytes (the Dart class has no test of its own), a pack read through a cache, a pack header whose
+// What a fixture cannot be asked: the messages it does not compare, the read range of
+// FilePackBytes, a pack read through a cache, a pack header whose
 // directory sits past 4 GiB, a bundle file changed to other bytes of the same length, and lists a caller
 // cannot change.
 public sealed class PackAddedTests : IDisposable

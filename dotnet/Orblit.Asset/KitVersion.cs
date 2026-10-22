@@ -21,7 +21,7 @@ internal static partial class KitVersion
         }
     }
 
-    /// <summary>Orders two versions that passed <see cref="Check"/>, as Dart's <c>compareTo</c> does.</summary>
+    /// <summary>Orders two versions that passed <see cref="Check"/>.</summary>
     internal static int Compare(string a, string b)
     {
         var left = a.Split('.');

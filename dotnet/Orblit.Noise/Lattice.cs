@@ -6,7 +6,7 @@ namespace Orblit.Noise;
 // regenerated differently after an upgrade.
 internal static class Lattice
 {
-    // Dart's double.floor() throws on NaN and infinity. A cast would give long.MinValue.
+    // Floor throws on NaN and infinity. A cast would give long.MinValue.
     public static long Floor(double value)
     {
         if (!double.IsFinite(value))
@@ -61,7 +61,7 @@ internal static class Lattice
 
     // A hash of four integers. The constants are large odd primes, and the
     // shifts mix the high bits back down where the low bits can see them.
-    // Dart's int wraps at 64 bits. A large coordinate overflows the products,
+    // Integers wrap at 64 bits. A large coordinate overflows the products,
     // so this stays unchecked whatever the project setting is.
     public static long Hash(long seed, long x, long y, long z, long channel)
     {

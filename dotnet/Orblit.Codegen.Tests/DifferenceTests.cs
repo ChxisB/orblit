@@ -2,7 +2,7 @@ using Orblit.Core;
 
 namespace Orblit.Codegen.Tests;
 
-/// <summary>Where the C# generator gives a different answer from the Dart one on purpose. PORTING.md has the reasons.</summary>
+/// <summary>Where the generator gives a different answer from the fixture on purpose. PORTING.md has the reasons.</summary>
 public class DifferenceTests
 {
     [Fact]
@@ -15,7 +15,7 @@ public class DifferenceTests
     [Fact]
     public void ANameWithAQuoteStillCompiles()
     {
-        // The Dart emitter writes the name between single quotes unescaped, so it breaks the generated file.
+        // A name written between single quotes unescaped would break the generated file, so it is escaped.
         var compiled = Compiled.Of("""
             [OrblitComponent(Name = "It's \"odd\"")]
             public class Odd { public float A; }
@@ -31,7 +31,7 @@ public class DifferenceTests
     [Fact]
     public void ComponentsWithOneNameKeepTheirOrderPastThirtyTwo()
     {
-        // Dart's List.sort is stable up to 32 items. Past that it may reorder equal names (decision 75).
+        // A sort that is stable only up to 32 items may reorder equal names past that, so the sort here is always stable (decision 75).
         var found = Enumerable.Range(0, 40)
             .Select(i => new ComponentDeclaration("Same", $"C{i}", "float32", ["a"], replicated: false, ownerWritable: false, "lib/a.cs"))
             .ToList();

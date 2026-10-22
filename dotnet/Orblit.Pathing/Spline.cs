@@ -141,9 +141,9 @@ public sealed class Spline
     /// </summary>
     public string Encode()
     {
-        var lines = Knots.Select(knot => "    " + DartJson.Encode(KnotJson(knot)));
+        var lines = Knots.Select(knot => "    " + JsonText.Encode(KnotJson(knot)));
         return "{\n"
-            + $"  \"kind\": {DartJson.Encode(Marker)},\n"
+            + $"  \"kind\": {JsonText.Encode(Marker)},\n"
             + $"  \"formatVersion\": {FormatVersion},\n"
             + $"  \"closed\": {(Closed ? "true" : "false")},\n"
             + $"  \"knots\": [\n{string.Join(",\n", lines)}\n  ]\n"
@@ -217,7 +217,7 @@ public sealed class Spline
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException error)
         {
@@ -368,7 +368,7 @@ public sealed class Spline
         var span = along[low + 1] - along[low];
         var part = span <= 1e-12 ? 0.0 : (d - along[low]) / span;
         var global = low + part;
-        // The division is by a power of two, so it is exact, and a NaN throws as Dart's ~/ does.
+        // The division is by a power of two, so it is exact, and a NaN throws.
         var segment = (int)Math.Min(Doubles.Floor(global / Steps), Segments - 1);
         return new Place(segment, (global - (segment * Steps)) / Steps, low, part);
     }

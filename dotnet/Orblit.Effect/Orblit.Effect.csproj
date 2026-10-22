@@ -2,7 +2,7 @@
   <PropertyGroup>
     <Version>0.1.0</Version>
     <Description>Change stated as a function of time: move, turn, grow, fade, sequenced and composed.</Description>
-    <!-- And and Then keep the Dart names. A Visual Basic caller can write [And] and [Then]. -->
+    <!-- And and Then are the natural names. A Visual Basic caller can write [And] and [Then]. -->
     <NoWarn>$(NoWarn);CA1716</NoWarn>
   </PropertyGroup>
   <ItemGroup>

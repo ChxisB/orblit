@@ -13,7 +13,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     public double Z { get; set; } = z;
 
-    /// <summary>A component by position, 0 to 2, as Dart's <c>[]</c> reads it.</summary>
+    /// <summary>A component by position, 0 to 2.</summary>
     public double this[int index]
     {
         get => index switch
@@ -45,7 +45,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
     private static ArgumentOutOfRangeException OutOfRange(int index) =>
         new(nameof(index), index, "A Vector3 has three components, 0 to 2.");
 
-    /// <summary>The summed squares, added z first as Dart's does, so the last bit agrees.</summary>
+    /// <summary>The summed squares, added z first, an order that fixes the last bit.</summary>
     public double Length2 => (Z * Z) + (Y * Y) + (X * X);
 
     public double Length => Math.Sqrt(Length2);
@@ -60,7 +60,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     public static Vector3 operator *(Vector3 a, double scale) => new(a.X * scale, a.Y * scale, a.Z * scale);
 
-    /// <summary>A multiply by the reciprocal, which is what Dart does, not a divide.</summary>
+    /// <summary>A multiply by the reciprocal, not a divide.</summary>
     public static Vector3 operator /(Vector3 a, double scale) => a * (1.0 / scale);
 
     public static Vector3 operator -(Vector3 a) => new(-a.X, -a.Y, -a.Z);
@@ -81,7 +81,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
         X = 0;
     }
 
-    /// <summary>Adds <paramref name="other"/> into this one, in place, which is Dart's <c>add</c>.</summary>
+    /// <summary>Adds <paramref name="other"/> into this one, in place.</summary>
     public void Add(Vector3 other)
     {
         Z += other.Z;
@@ -114,13 +114,13 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
         X = x;
     }
 
-    /// <summary>The products summed z first, as Dart's does, so the last bit agrees.</summary>
+    /// <summary>The products summed z first, an order that fixes the last bit.</summary>
     public double Dot(Vector3 other) => (Z * other.Z) + (Y * other.Y) + (X * other.X);
 
     public Vector3 Cross(Vector3 other) =>
         new((Y * other.Z) - (Z * other.Y), (Z * other.X) - (X * other.Z), (X * other.Y) - (Y * other.X));
 
-    /// <summary>The squares summed x first, unlike <see cref="Length2"/>, because that is the order Dart sums them in.</summary>
+    /// <summary>The squares summed x first, unlike <see cref="Length2"/>, because that order fixes the last bit.</summary>
     public double DistanceToSquared(Vector3 other)
     {
         var dz = Z - other.Z;
@@ -133,7 +133,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     /// <summary>
     /// A copy of length one. A vector of length zero comes back unchanged, and a
-    /// multiply by the reciprocal is what Dart does, not a divide.
+    /// multiply by the reciprocal is used, not a divide.
     /// </summary>
     public Vector3 Normalized()
     {
@@ -149,7 +149,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 
     /// <summary>
     /// Scales to length one, in place, and returns the length it had. A vector of
-    /// length zero is left as it is and gives 0, as in Dart.
+    /// length zero is left as it is and gives 0.
     /// </summary>
     public double Normalize()
     {
@@ -166,7 +166,7 @@ public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
         return length;
     }
 
-    /// <summary>Component by component, so NaN is not equal to NaN, as in Dart.</summary>
+    /// <summary>Component by component, so NaN is not equal to NaN.</summary>
     public bool Equals(Vector3? other) => other is not null && X == other.X && Y == other.Y && Z == other.Z;
 
     public override bool Equals(object? obj) => Equals(obj as Vector3);

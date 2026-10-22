@@ -6,7 +6,7 @@ internal static class Facing
 {
     /// <summary>
     /// Which way along an axis an offset points. An offset of nothing points up
-    /// the axis, so a normal is never zero. NaN stays NaN, as in Dart.
+    /// the axis, so a normal is never zero. NaN stays NaN.
     /// </summary>
     internal static double Of(double offset)
     {

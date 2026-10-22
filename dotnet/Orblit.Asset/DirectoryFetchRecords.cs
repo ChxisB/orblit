@@ -18,7 +18,7 @@ public sealed class DirectoryFetchRecords(string rootPath, TimeSpan? settle = nu
     {
         try
         {
-            return DartText.Decode(await File.ReadAllBytesAsync(FilePath).ConfigureAwait(false));
+            return TextRules.Decode(await File.ReadAllBytesAsync(FilePath).ConfigureAwait(false));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or FormatException)
         {

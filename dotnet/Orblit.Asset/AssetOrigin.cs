@@ -103,7 +103,7 @@ public sealed class AssetOrigin
             throw new FetchRefusedException(wrote, SchemeReason(url.Scheme));
         }
 
-        var host = DartText.ToLower(url.Host);
+        var host = TextRules.ToLower(url.Host);
         if (host.Length == 0)
         {
             throw new FetchRefusedException(wrote, "it names no host");
@@ -112,7 +112,7 @@ public sealed class AssetOrigin
         // An origin always allows its own host. The policy's list is the extras. Written this way round so
         // the ordinary case needs no list at all, and an empty list means "only where my assets are" rather
         // than "anywhere".
-        if (!SameHost(host, Base.Host) && !Policy.Hosts.Any(one => DartText.ToLower(one) == host))
+        if (!SameHost(host, Base.Host) && !Policy.Hosts.Any(one => TextRules.ToLower(one) == host))
         {
             throw new FetchRefusedException(
                 wrote,
@@ -121,7 +121,7 @@ public sealed class AssetOrigin
     }
 
     // A host keeps the case of its percent escapes, so two spellings of one name compare after lower-casing.
-    private static bool SameHost(string one, string other) => DartText.ToLower(one) == DartText.ToLower(other);
+    private static bool SameHost(string one, string other) => TextRules.ToLower(one) == TextRules.ToLower(other);
 
     private static string SchemeReason(string scheme) => scheme switch
     {
@@ -131,7 +131,7 @@ public sealed class AssetOrigin
     };
 
     // Each segment on its own, so a ? or # in an id's name stays part of the name and the slashes still separate.
-    private static string Escape(string path) => string.Join('/', path.Split('/').Select(DartText.EncodeComponent));
+    private static string Escape(string path) => string.Join('/', path.Split('/').Select(TextRules.EncodeComponent));
 
     public override string ToString() => $"AssetOrigin({Base})";
 }

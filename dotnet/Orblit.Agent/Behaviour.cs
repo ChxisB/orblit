@@ -43,7 +43,7 @@ public class Tick(double seconds, Dictionary<string, object?>? blackboard = null
     /// <summary>
     /// What is stored under <paramref name="key"/>, or <c>default</c> when it is missing or of another type.
     ///
-    /// shortcut: for a value type that is zero or false, where Dart gives null.
+    /// shortcut: for a value type that is zero or false, where a reference type would give null.
     /// Upgrade to a <c>TryRead</c> when a tree has to tell a missing int from a zero.
     /// </summary>
     public T? Read<T>(string key) => Blackboard.TryGetValue(key, out var value) && value is T typed ? typed : default;
@@ -98,9 +98,9 @@ public class Memory
 internal static class Labels
 {
     /// <summary>
-    /// A number as Dart writes it, with the <c>.0</c> on a whole one.
+    /// A number with the <c>.0</c> on a whole one.
     ///
-    /// shortcut: Dart writes 1e-7 and 1e+21 where .NET writes 1E-07 and 1E+21,
+    /// shortcut: this writes 1e-7 and 1e+21 where .NET writes 1E-07 and 1E+21,
     /// and each switches at its own size, so only 0.0001 up to below 1e15
     /// agree. A label is for a trace, so upgrade only if one is ever parsed.
     /// </summary>
@@ -390,8 +390,7 @@ public class Cooldown(Node child, double seconds) : Node
 /// <summary>
 /// The child until it finishes, giving up after <see cref="Seconds"/>.
 ///
-/// Named for what it is rather than <c>Timeout</c>, which every test package in
-/// Dart also exports. A node nobody can import beside their own test
+/// Named for what it is rather than <c>Timeout</c>, which test packages commonly export. A node nobody can import beside their own test
 /// framework is a node nobody uses.
 /// </summary>
 public class Deadline(Node child, double seconds) : Node

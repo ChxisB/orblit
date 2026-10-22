@@ -1,6 +1,6 @@
 {
   "package": "orblit_camera",
-  "dartCommit": "c3bb84d3edb1991d0c847c074050956e66c052e6",
+  "sourceCommit": "c3bb84d3edb1991d0c847c074050956e66c052e6",
   "cases": [
     {"op":"defaultLens","spec":{},"result":{"lens":{"fov":50.0,"near":0.1,"far":1000.0,"dutch":0.0,"ortho":false,"height":10.0},"text":"Lens(50.0°)"}},
     {"op":"damping","spec":{"current":-0.6799999999999997,"target":4.470000000000001,"damping":0.84,"delta":0.43},"result":{"factor":0.40064713364716187,"damped":1.383332738282884}},

@@ -8,7 +8,7 @@ public sealed class Matrix4
 {
     private readonly double[] _storage = new double[16];
 
-    /// <summary>Reads or writes by storage index, as Dart's <c>[]</c> does.</summary>
+    /// <summary>Reads or writes by storage index.</summary>
     public double this[int index]
     {
         get => _storage[index];
@@ -127,7 +127,7 @@ public sealed class Matrix4
 
     /// <summary>
     /// The inverse of <paramref name="other"/>, which throws <see cref="ArgumentException"/>
-    /// when there is none, as Dart's <c>Matrix4.inverted</c> throws <c>ArgumentError</c>.
+    /// when there is none.
     /// </summary>
     public static Matrix4 Inverted(Matrix4 other)
     {
@@ -258,7 +258,7 @@ public sealed class Matrix4
         Array.Copy(turned, m, 8);
     }
 
-    /// <summary>A copy of this times <paramref name="other"/>, which is Dart's <c>multiplied</c>.</summary>
+    /// <summary>A copy of this times <paramref name="other"/>.</summary>
     public Matrix4 Multiplied(Matrix4 other)
     {
         var copy = Clone();

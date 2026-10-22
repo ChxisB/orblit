@@ -2,7 +2,7 @@ using Orblit.Json;
 
 namespace Orblit.Sprite.Tests;
 
-/// <summary>Builds the JSON documents the Dart tests wrote as map and list literals.</summary>
+/// <summary>Builds the JSON documents the ported tests wrote as map and list literals.</summary>
 internal static class Tree
 {
     public static OrderedDictionary<string, object?> Map(params (string Key, object? Value)[] pairs)
@@ -36,7 +36,7 @@ internal static class Tree
         return value;
     }
 
-    public static string Text(object? document) => DartJson.Encode(document);
+    public static string Text(object? document) => JsonText.Encode(document);
 
     public static OrderedDictionary<string, object?> Box(long x, long y, long w, long h) =>
         Map(("x", x), ("y", y), ("w", w), ("h", h));

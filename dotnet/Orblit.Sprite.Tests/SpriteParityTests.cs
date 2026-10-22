@@ -54,18 +54,18 @@ public class SpriteParityTests
     // the atlas
 
     [Fact]
-    public void AtlasReadMatchesTheDartTwin() => Check("atlasRead", c =>
+    public void AtlasReadMatchesTheFixture() => Check("atlasRead", c =>
         Attempt(() => Atlas(Orblit.Sprite.Atlas.Read(c.GetProperty("text").GetString()!, NullableText(c.GetProperty("image"))))));
 
     [Fact]
-    public void SequenceMatchesTheDartTwin() => Check("sequence", c =>
+    public void SequenceMatchesTheFixture() => Check("sequence", c =>
     {
         var atlas = AtlasOfNames(c.GetProperty("names").EnumerateArray().Select(n => n.GetString()!));
         return Arr(atlas.Sequence(c.GetProperty("prefix").GetString()!), r => Text(r.Name));
     });
 
     [Fact]
-    public void GridMatchesTheDartTwin() => Check("grid", c => Attempt(() => Atlas(Orblit.Sprite.Atlas.Grid(
+    public void GridMatchesTheFixture() => Check("grid", c => Attempt(() => Atlas(Orblit.Sprite.Atlas.Grid(
         c.GetProperty("image").GetString()!,
         Long(c.GetProperty("imageWidth")),
         Long(c.GetProperty("imageHeight")),
@@ -77,7 +77,7 @@ public class SpriteParityTests
         Long(c.GetProperty("margin"))))));
 
     [Fact]
-    public void RegionMatchesTheDartTwin() => Check("region", c =>
+    public void RegionMatchesTheFixture() => Check("region", c =>
     {
         var region = RegionOf(c.GetProperty("region"));
         var uv = region.Uv(c.GetProperty("imageWidth").GetInt64(), c.GetProperty("imageHeight").GetInt64());
@@ -93,7 +93,7 @@ public class SpriteParityTests
     });
 
     [Fact]
-    public void WriteAtlasMatchesTheDartTwin() => Check("writeAtlas", c =>
+    public void WriteAtlasMatchesTheFixture() => Check("writeAtlas", c =>
     {
         var regions = new OrderedDictionary<string, Region>();
         var names = c.GetProperty("names").EnumerateArray().Select(n => n.GetString()!).ToList();
@@ -109,7 +109,7 @@ public class SpriteParityTests
     // tiles
 
     [Fact]
-    public void TilesetMatchesTheDartTwin() => Check("tileset", c =>
+    public void TilesetMatchesTheFixture() => Check("tileset", c =>
     {
         var set = new Tileset(
             c.GetProperty("name").GetString()!,
@@ -127,7 +127,7 @@ public class SpriteParityTests
     });
 
     [Fact]
-    public void TileMapMatchesTheDartTwin() => Check("tileMap", c => Attempt(() => TileMapDump(c)));
+    public void TileMapMatchesTheFixture() => Check("tileMap", c => Attempt(() => TileMapDump(c)));
 
     private static JsonObject? TileMapDump(JsonElement c)
     {
@@ -175,7 +175,7 @@ public class SpriteParityTests
     private static HashSet<string>? OnlyOf(JsonElement only) =>
         only.ValueKind == JsonValueKind.Null ? null : only.EnumerateArray().Select(n => n.GetString()!).ToHashSet();
 
-    // The first layer of that name, or the first layer, as Dart's indexOf finds it by identity.
+    // The first layer of that name, or the first layer, as an identity search finds it.
     private static long IndexOf(TileMap map, string name)
     {
         var found = map.Layer(name) ?? map.Layers[0];
@@ -252,7 +252,7 @@ public class SpriteParityTests
     };
 
     [Fact]
-    public void AnimationMatchesTheDartTwin() => Check("animation", c =>
+    public void AnimationMatchesTheFixture() => Check("animation", c =>
     {
         var seconds = Doubles(c.GetProperty("seconds")).ToList();
         var frames = seconds.Select((s, i) => new Frame(Named($"f{i}"), s)).ToList();
@@ -261,7 +261,7 @@ public class SpriteParityTests
     });
 
     [Fact]
-    public void AnimationFromAnAtlasMatchesTheDartTwin() => Check("animationFrom", c =>
+    public void AnimationFromAnAtlasMatchesTheFixture() => Check("animationFrom", c =>
     {
         var atlas = AtlasOfNames(c.GetProperty("names").EnumerateArray().Select(n => n.GetString()!));
         var animation = SpriteAnimation.From(
@@ -274,7 +274,7 @@ public class SpriteParityTests
     });
 
     [Fact]
-    public void FlipbookMatchesTheDartTwin() => Check("flipbook", c =>
+    public void FlipbookMatchesTheFixture() => Check("flipbook", c =>
     {
         var clips = new OrderedDictionary<string, SpriteAnimation>();
         foreach (var clip in c.GetProperty("clips").EnumerateArray())
@@ -314,7 +314,7 @@ public class SpriteParityTests
     // parallax and the view
 
     [Fact]
-    public void ParallaxMatchesTheDartTwin() => Check("parallax", c =>
+    public void ParallaxMatchesTheFixture() => Check("parallax", c =>
     {
         var layers = c.GetProperty("layers").EnumerateArray().Select(l => new Layer(
             "x",
@@ -335,7 +335,7 @@ public class SpriteParityTests
     });
 
     [Fact]
-    public void ViewMatchesTheDartTwin() => Check("view", c =>
+    public void ViewMatchesTheFixture() => Check("view", c =>
     {
         var bounds = c.GetProperty("bounds");
         var limits = bounds.ValueKind == JsonValueKind.Null
@@ -396,7 +396,7 @@ public class SpriteParityTests
         char.ToLowerInvariant(heuristic.ToString()[0]) + heuristic.ToString()[1..];
 
     [Fact]
-    public void PackAtlasMatchesTheDartTwin() => Check("pack", c =>
+    public void PackAtlasMatchesTheFixture() => Check("pack", c =>
     {
         var sprites = c.GetProperty("sprites").EnumerateArray().Select(s => new AtlasSprite(
             s.GetProperty("name").GetString()!,
@@ -434,7 +434,7 @@ public class SpriteParityTests
     // PNG
 
     [Fact]
-    public void PngDecodeMatchesTheDartTwin() => Check("pngDecode", c => Attempt(() =>
+    public void PngDecodeMatchesTheFixture() => Check("pngDecode", c => Attempt(() =>
     {
         var decoded = PngCodec.Decode(Convert.FromBase64String(c.GetProperty("png").GetString()!));
         return new JsonObject
@@ -446,7 +446,7 @@ public class SpriteParityTests
     }));
 
     [Fact]
-    public void PngEncodeMatchesTheDartTwin() => Check("pngEncode", c =>
+    public void PngEncodeMatchesTheFixture() => Check("pngEncode", c =>
     {
         var png = PngCodec.Encode(
             c.GetProperty("width").GetInt64(),
@@ -456,7 +456,7 @@ public class SpriteParityTests
     });
 
     [Fact]
-    public void PngEncodeRefusesTheSameInputsAsTheDartTwin() => Check("pngEncodeRefused", c => Attempt(() =>
+    public void PngEncodeRefusesTheSameInputsAsTheFixture() => Check("pngEncodeRefused", c => Attempt(() =>
         Text(Base64(PngCodec.Encode(
             c.GetProperty("width").GetInt64(),
             c.GetProperty("height").GetInt64(),

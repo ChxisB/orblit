@@ -3,7 +3,7 @@ using static Orblit.Parity.Dump;
 
 namespace Orblit.Rig.Tests;
 
-/// <summary>Writes what the rig port computed in the shape the Dart exporter wrote.</summary>
+/// <summary>Writes what the rig port computed in the shape the fixture exporter wrote.</summary>
 internal static class RigDump
 {
     public static JsonNode Vec(Vector3 v) => new JsonArray(Num(v.X), Num(v.Y), Num(v.Z));
@@ -12,7 +12,7 @@ internal static class RigDump
 
     public static JsonNode Mat(Matrix4 m) => Arr(Enumerable.Range(0, 16), index => Num(m[index]));
 
-    /// <summary>An enum member the way Dart spells it: PascalCase becomes camelCase.</summary>
+    /// <summary>An enum member the way the fixture spells it: PascalCase becomes camelCase.</summary>
     public static string Lower(string name) => char.ToLowerInvariant(name[0]) + name[1..];
 
     public static JsonNode? NullableText(string? value) => value is null ? null : Text(value);

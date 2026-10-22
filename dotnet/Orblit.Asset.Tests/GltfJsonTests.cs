@@ -1,6 +1,6 @@
 namespace Orblit.Asset.Tests;
 
-// Dart's `as int?` and `as int`, as C# has to spell them.
+// Reading an optional and a required integer from a JSON node.
 public sealed class GltfJsonTests
 {
     [Fact]

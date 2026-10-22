@@ -14,7 +14,7 @@ namespace Orblit.Sprite;
 /// <param name="Layers">The tile layers, bottom first.</param>
 /// <param name="Tilesets">Every set a tile number may come from.</param>
 /// <param name="Properties">Whatever the map carried, unchanged.</param>
-// F2: seven parameters, and the last is optional and called by name, as in Dart.
+// F2: seven parameters, and the last is optional and called by name.
 public sealed record TileMap(
     long Width,
     long Height,
@@ -87,7 +87,7 @@ public sealed record TileMap(
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException)
         {
@@ -250,7 +250,7 @@ public sealed record TileMap(
         var width = unchecked(chunks.Aggregate(chunks[0].Left, (right, chunk) => Math.Max(right, chunk.Left + chunk.Width)) - left);
         var height = unchecked(chunks.Aggregate(chunks[0].Top, (bottom, chunk) => Math.Max(bottom, chunk.Top + chunk.Height)) - top);
 
-        // The product wraps in Dart as it does here, so a span past 64 bits can slip under the limit and fail at the copy.
+        // The product wraps, so a span past 64 bits can slip under the limit and fail at the copy.
         var cells = unchecked(width * height);
         if (cells > MaxCells)
         {

@@ -1,6 +1,6 @@
 {
   "package": "orblit_codegen",
-  "dartCommit": "98411523647090e9f19cea1385344d39a8f96f46",
+  "sourceCommit": "98411523647090e9f19cea1385344d39a8f96f46",
   "cases": [
     {"op":"manifest","package":[109,121,95,103,97,109,101],"components":[],"expect":{"value":"{\n  \"formatVersion\": 1,\n  \"package\": \"my_game\",\n  \"components\": []\n}\n"}},
     {"op":"manifest","package":[109,121,95,103,97,109,101],"components":[{"name":[80,111,115,105,116,105,111,110],"class":[80,111,115,105,116,105,111,110],"kind":[102,108,111,97,116,51,50],"fields":[[120],[121],[122]],"replicated":false,"ownerWritable":false,"source":[108,105,98,47,112,111,115,105,116,105,111,110,46,100,97,114,116]}],"expect":{"value":"{\n  \"formatVersion\": 1,\n  \"package\": \"my_game\",\n  \"components\": [\n    {\n      \"name\": \"Position\",\n      \"class\": \"Position\",\n      \"kind\": \"float32\",\n      \"arity\": 3,\n      \"fields\": [\n        \"x\",\n        \"y\",\n        \"z\"\n      ],\n      \"replicated\": false,\n      \"source\": \"lib/position.dart\"\n    }\n  ]\n}\n"}},

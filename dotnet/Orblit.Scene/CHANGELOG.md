@@ -7,18 +7,17 @@
   export and import parts follow.
 - `SceneComponents.Read` and `Order` cover the 22 component types that are not
   `data` or `prefab`. An unknown type is kept whole as `UnknownComponent`.
-- A Dart enum is a C# enum. `EnumNames.Of` writes the Dart name, which starts
-  with a lower-case letter.
+- `EnumNames.Of` writes the name a scene file uses, which starts with a
+  lower-case letter.
 - A component is a sealed class with `CopyWith`. `JointGive`, `JointRange` and
-  `EmitterBurst` are records, so they compare by value where the Dart classes
-  compare by identity.
-- `Values.Bits` gives its fallback for a non-finite double, where Dart throws.
+  `EmitterBurst` are records, so they compare by value.
+- `Values.Bits` gives its fallback for a non-finite double.
   A file cannot hold one.
 - A list a component exposes is a read-only wrapper over a copy, and writing
   to it throws `NotSupportedException`, as `List.unmodifiable` does.
-- A Dart `assert` is an `ArgumentException` that always runs.
+- A broken rule is an `ArgumentException` that always runs.
 - `BodyComponent` keeps `Size`, `Centre`, `Surface`, `CentreOfMass` and
-  `Inertia` as given, and `CopyWith` clones them. Dart does the same.
+  `Inertia` as given, and `CopyWith` clones them.
 - `SceneDocument.Decode` and `Encode` read and write the `.oscene` file at
   format version 5. A file with no version, a newer version or no entity list throws
   `SceneFormatException`. Anything else that cannot be read is dropped and
@@ -31,8 +30,7 @@
   reads them from the form an undo stack stores.
 - `DataComponent` and `PrefabComponent` complete the 24 component types.
 - The text after "This is not a scene file:" comes from `Orblit.Json`, so it
-  differs from the Dart message. The note for an object with no kind in a
-  version-three file reads "has no kind this editor can read" where Dart
-  prints `a "null"`. Neither is compared in the fixture.
-- The seeded run and property tests use .NET `Random`, so their sequences
-  differ from the Dart ones.
+  differs from the fixture's message. The note for an object with no kind in a
+  version-three file reads "has no kind this editor can read". Neither is
+  compared in the fixture.
+- The seeded run and property tests use .NET `Random`.

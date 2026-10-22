@@ -8,16 +8,13 @@
   `MemorySaveStore` given to `SaveQueue.Spawn` is the same store the caller
   reads, and it takes a lock for that.
 - `SaveQueue.KillWorker` ends the worker between two writes. A write that has
-  started finishes and is answered. Dart ends the isolate at once.
+  started finishes and is answered.
 - `onFailure` runs on the worker task, inside the queue's lock, and gets the
-  exception, where Dart gets its text.
-- Dart `Autosave` the reason and `AutoSave` the picker differ only in case,
+  exception.
+- The reason `Autosave` and the picker `AutoSave` would differ only in case,
   which CA1708 refuses. The picker is `AutoSaver`.
 - Times are `DateTimeOffset`, so a save time must be in the years 1 to 9999.
-  `DateTime` in Dart reaches further.
-- `dart run orblit_save:history` is the `orblit-save-history` tool, and its
-  usage text names it. A time that is not ISO 8601 is a `FormatException`.
-  The strings it accepts are .NET's, which are more than Dart's.
-- `Not a save reason` carries the label after a colon, where Dart keeps it in
-  `FormatException.source`.
-- A string with a lone surrogate reads back as it was written, as in Dart.
+- `orblit-save-history` is the history tool, and its usage text names it. A time that is not ISO 8601 is a `FormatException`.
+  The strings it accepts are .NET's.
+- `Not a save reason` carries the label after a colon.
+- A string with a lone surrogate reads back as it was written.

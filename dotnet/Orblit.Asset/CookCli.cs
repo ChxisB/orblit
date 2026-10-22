@@ -80,9 +80,8 @@ internal static class CookCli
             }
             catch (Exception e) when (e is ArgumentException or IOException or UnauthorizedAccessException)
             {
-                // shortcut: .NET's own text, which names the parameter and is longer than Dart's. Upgrade when a
-                // build has to match the Dart line. A disk that cannot be written ends the cook with 1, as in
-                // the pack and kit tools, where Dart lets it crash.
+                // shortcut: .NET's own text, which names the parameter. Upgrade when a build has to match a fixed
+                // line. A disk that cannot be written ends the cook with 1, as in the pack and kit tools.
                 Line(error, $"cook: {e.Message}");
                 return e is ArgumentException ? BadUsage : Failed;
             }
@@ -194,12 +193,12 @@ internal static class CookCli
             : Refuse(error, $"\"{value}\" is not a target. The targets are {TargetNames}.");
 
     private static Options? WithCacheLimit(Options options, string value, TextWriter error) =>
-        DartText.ParseInt(value) is { } megabytes and >= 0
+        TextRules.ParseInt(value) is { } megabytes and >= 0
             ? options with { CacheLimitMegabytes = megabytes }
             : Refuse(error, $"--cache-limit is megabytes, so \"{value}\" is not one. Pass 0 for no limit.");
 
     private static Options? WithJobs(Options options, string value, TextWriter error) =>
-        DartText.ParseInt(value) is { } count and >= 1
+        TextRules.ParseInt(value) is { } count and >= 1
             ? options with { Jobs = (int)Math.Min(count, int.MaxValue) }
             : Refuse(error, $"--jobs is how many at once, so it is at least 1, not \"{value}\".");
 

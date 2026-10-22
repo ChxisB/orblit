@@ -35,7 +35,7 @@ public sealed class SpriteAnimation(IReadOnlyList<Frame> frames, bool loop = tru
 
     public int Length => Frames.Count;
 
-    /// <summary>How long one run takes. Added in order, as Dart's fold does.</summary>
+    /// <summary>How long one run takes. Added in order.</summary>
     public double Duration => Frames.Aggregate(0.0, (total, frame) => total + frame.Seconds);
 
     /// <summary>How long a whole cycle takes, the way back included.</summary>

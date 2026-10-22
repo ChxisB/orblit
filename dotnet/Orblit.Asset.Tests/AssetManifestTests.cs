@@ -119,7 +119,7 @@ public class AssetManifestTests
     private static readonly Dictionary<string, object?> Good = new() { ["bytes"] = 3L, ["hash"] = AbcHash };
 
     private static string WithEntries(Dictionary<string, object?> assets) =>
-        DartJson.Encode(new Dictionary<string, object?> { ["formatVersion"] = 1L, ["assets"] = assets });
+        JsonText.Encode(new Dictionary<string, object?> { ["formatVersion"] = 1L, ["assets"] = assets });
 
     private static AssetManifestLoad ReadWith(string key, object? entry) =>
         AssetManifest.Read(WithEntries(new() { ["models/robot.glb"] = Good, [key] = entry }));

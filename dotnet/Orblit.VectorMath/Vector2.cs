@@ -14,7 +14,7 @@ public sealed class Vector2(double x, double y) : IEquatable<Vector2>
 
     public static Vector2 Zero() => new(0, 0);
 
-    /// <summary>The summed squares, added y first as Dart's does, so the last bit agrees.</summary>
+    /// <summary>The summed squares, added y first, an order that fixes the last bit.</summary>
     public double Length2 => (Y * Y) + (X * X);
 
     public double Length => Math.Sqrt(Length2);
@@ -40,10 +40,10 @@ public sealed class Vector2(double x, double y) : IEquatable<Vector2>
 
     public static Vector2 operator *(Vector2 a, double scale) => new(a.X * scale, a.Y * scale);
 
-    /// <summary>A multiply by the reciprocal, which is what Dart does, not a divide.</summary>
+    /// <summary>A multiply by the reciprocal, not a divide.</summary>
     public static Vector2 operator /(Vector2 a, double scale) => a * (1.0 / scale);
 
-    /// <summary>Component by component, so NaN is not equal to NaN, as in Dart.</summary>
+    /// <summary>Component by component, so NaN is not equal to NaN.</summary>
     public bool Equals(Vector2? other) => other is not null && X == other.X && Y == other.Y;
 
     public override bool Equals(object? obj) => Equals(obj as Vector2);

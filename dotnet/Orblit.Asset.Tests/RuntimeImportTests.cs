@@ -218,7 +218,7 @@ internal sealed class CountingImporter : Importer
         var tint = request.Settings["tint"];
         return Task.FromResult(new ImportResult
         {
-            Outputs = new Dictionary<string, byte[]> { ["out"] = [.. request.Bytes, .. Encoding.UTF8.GetBytes($" tint={DartText.Print(tint)}")] },
+            Outputs = new Dictionary<string, byte[]> { ["out"] = [.. request.Bytes, .. Encoding.UTF8.GetBytes($" tint={TextRules.Print(tint)}")] },
         });
     }
 }

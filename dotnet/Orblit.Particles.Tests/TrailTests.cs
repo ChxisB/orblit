@@ -120,7 +120,7 @@ public class TrailTests
         Assert.Equal(0, _strip.Count);
     }
 
-    // The same name is in both Dart groups, so the C# names say which one.
+    // The same name is in both groups of the ported tests, so these names say which one.
     [Fact]
     public void KnownPathAStripTooSmallGetsTheNewestPoints()
     {

@@ -5,7 +5,7 @@ using static Orblit.Parity.Dump;
 
 namespace Orblit.Terrain.Tests;
 
-/// <summary>Writes what the terrain port computed in the shape the Dart exporter wrote.</summary>
+/// <summary>Writes what the terrain port computed in the shape the fixture exporter wrote.</summary>
 internal static class TerrainDump
 {
     /// <summary>The bytes of a typed array, as the exporter's dataB64 wrote them.</summary>

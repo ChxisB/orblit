@@ -360,7 +360,7 @@ public static class MeshHandles
         }
 
         /// <summary>Scales corners about <paramref name="about"/>.</summary>
-        // F2: Dart's positional parameters, and the call reads in the order the Dart one does.
+        // F2: positional parameters, and the call reads as which, by, about.
         public void ScalePoints(IEnumerable<int> which, Vector3 by, Vector3 about)
         {
             foreach (var index in which.Where(index => index >= 0 && index < mesh.Positions.Count))

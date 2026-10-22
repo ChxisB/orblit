@@ -29,8 +29,8 @@ internal sealed class FamilyImporter : Importer
     }
 }
 
-// An importer for png that fails every asset it is given. It throws at the call, as the Dart one does, and the cook
-// has to turn that into a failed result either way.
+// An importer for png that fails every asset it is given. It throws at the call, and the cook has to turn that
+// into a failed result.
 internal sealed class BrokenImporter : Importer
 {
     public override string Name => "broken";

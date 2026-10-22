@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orblit.Asset;
 
 /// <summary>glTF component types, by their numbers.</summary>
-[SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "The Dart names, and glTF's own words for the types.")]
+[SuppressMessage("Naming", "CA1720:Identifier contains type name", Justification = "glTF's own words for the types.")]
 public static class ComponentType
 {
     public const int Byte = 5120;

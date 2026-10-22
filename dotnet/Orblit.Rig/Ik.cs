@@ -40,7 +40,7 @@ public static class Ik
     /// <paramref name="stretch"/> lets the limb grow rather than stopping short: at zero it stops at
     /// full extension, at one it reaches anything.
     /// </summary>
-    // F2: six parameters, called by name, as the Dart named parameters are.
+    // F2: six parameters, called by name.
     public static IkSolution SolveTwoBoneIk(
         Vector3 root,
         Vector3 pole,

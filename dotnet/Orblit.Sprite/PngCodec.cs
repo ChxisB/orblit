@@ -44,7 +44,7 @@ public static class PngCodec
     /// None throughout. Not the smallest a page could be, a real filter heuristic and multiple
     /// IDAT chunks would compress better, but simple enough to be sure it round-trips, which for
     /// a page an atlas depends on matters more than a few percent of file size. The compressed
-    /// bytes are zlib's and not Dart's, so two encoders agree on what they decode to and not on
+    /// bytes are zlib's, so two encoders agree on what they decode to and not on
     /// the file.
     /// </summary>
     public static byte[] Encode(long width, long height, byte[] rgba)

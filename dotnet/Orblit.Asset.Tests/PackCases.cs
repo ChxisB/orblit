@@ -7,7 +7,7 @@ using static Orblit.Asset.Tests.AssetCases;
 
 namespace Orblit.Asset.Tests;
 
-// Builds the worlds the Dart pack exporter described, and writes what the port gives in the shape it used.
+// Builds the worlds the fixture's pack exporter described, and writes what the port gives in the shape it used.
 internal static class PackCases
 {
     private static readonly Regex Placeholder = new(@"\{h(\d)\}", RegexOptions.CultureInvariant);
@@ -38,9 +38,9 @@ internal static class PackCases
     }
 
     /// <summary>Runs <paramref name="run"/> over every case of an op, with each case in a world of its own.</summary>
-    public static async Task CheckAsync(Fixture dart, string op, Func<JsonElement, Task<JsonNode?>> run)
+    public static async Task CheckAsync(Fixture golden, string op, Func<JsonElement, Task<JsonNode?>> run)
     {
-        var cases = dart.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
+        var cases = golden.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
         Assert.NotEmpty(cases);
         for (var i = 0; i < cases.Count; i++)
         {
@@ -49,7 +49,7 @@ internal static class PackCases
                 cases[i].GetProperty("expect"), JsonSerializer.SerializeToElement(got));
             Assert.True(
                 difference is null,
-                $"{op} case {i}: {difference} {error} (from Dart commit {dart.DartCommit})");
+                $"{op} case {i}: {difference} {error} (from fixture commit {golden.SourceCommit})");
         }
     }
 
@@ -258,7 +258,7 @@ internal static class PackCases
             : Encoding.UTF8.GetBytes(spec.GetProperty("text").GetString()!);
     }
 
-    // Paths relative to the folder with forward slashes, in code unit order as Dart sorts them.
+    // Paths relative to the folder with forward slashes, in code unit order.
     private static JsonArray Names(string folder, IEnumerable<string> paths) =>
         Dump.Arr(
             paths.Select(p => Path.GetRelativePath(folder, p).Replace('\\', '/')).Order(StringComparer.Ordinal),

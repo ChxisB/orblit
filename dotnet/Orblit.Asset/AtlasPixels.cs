@@ -119,7 +119,7 @@ internal static class AtlasPixels
     /// picks up its neighbour, which shows up as a fringe of the wrong texture along every seam and gets worse
     /// the further away the object is.
     /// </summary>
-    // F2: Dart's four positional parameters and one named, called the same way.
+    // F2: four positional parameters and one named.
     public static void Blit(Rgba page, Rgba source, int x, int y, int extrude = 0)
     {
         for (var row = 0; row < source.Height; row++)

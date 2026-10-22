@@ -1,8 +1,8 @@
 namespace Orblit.Rig.Tests;
 
 /// <summary>
-/// Where the C# port differs from Dart on purpose. Dart's asserts are off outside tests and an
-/// unknown bone is a null check, so none of these have a fixture twin.
+/// Where the port refuses what the fixture exporter only asserted. An assert is off outside tests and an
+/// unknown bone was a null check, so none of these have a fixture twin.
 /// </summary>
 public class RefusalTests
 {
@@ -14,7 +14,7 @@ public class RefusalTests
     }
 
     [Fact]
-    public void AskingForAnUnknownBoneNamesItWhereDartThrowsATypeError()
+    public void AskingForAnUnknownBoneNamesIt()
     {
         var pose = OneBone();
         Assert.Throws<ArmatureException>(() => pose.BaseOf("tail"));

@@ -27,7 +27,7 @@ public sealed class AssetFetcher : IDisposable
     private long _arrived;
     private bool _closed;
 
-    // F2: only the origin and the transport are required. The rest are named at the call, as Dart names them.
+    // F2: only the origin and the transport are required. The rest are named at the call.
     public AssetFetcher(
         AssetOrigin origin,
         IAssetTransport transport,

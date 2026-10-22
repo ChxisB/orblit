@@ -10,14 +10,14 @@ namespace Orblit.Asset.Tests;
 
 public class GltfAtlasParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_asset", "gltf_atlas");
+    private static readonly Fixture Golden = Fixture.Load("orblit_asset", "gltf_atlas");
 
     [Fact]
-    public Task ResampleMatchesDart() => CheckAsync(Dart, "resample", c => Task.FromResult<JsonNode?>(
+    public Task ResampleMatchesTheFixture() => CheckAsync(Golden, "resample", c => Task.FromResult<JsonNode?>(
         Out(AtlasPixels.Resample(Image(c, 0, 1, 2), In(c, 3).GetInt32(), In(c, 4).GetInt32(), In(c, 5).GetBoolean()))));
 
     [Fact]
-    public Task RenormaliseMatchesDart() => CheckAsync(Dart, "renormalise", c =>
+    public Task RenormaliseMatchesTheFixture() => CheckAsync(Golden, "renormalise", c =>
     {
         var image = Image(c, 0, 1, 2);
         AtlasPixels.Renormalise(image);
@@ -25,7 +25,7 @@ public class GltfAtlasParityTests
     });
 
     [Fact]
-    public Task MultiplyIntoMatchesDart() => CheckAsync(Dart, "multiply", c =>
+    public Task MultiplyIntoMatchesTheFixture() => CheckAsync(Golden, "multiply", c =>
     {
         var image = Image(c, 0, 1, 2);
         var factor = In(c, 3).EnumerateArray().Select(Fixture.Number).ToList();
@@ -34,7 +34,7 @@ public class GltfAtlasParityTests
     });
 
     [Fact]
-    public Task BlitMatchesDart() => CheckAsync(Dart, "blit", c =>
+    public Task BlitMatchesTheFixture() => CheckAsync(Golden, "blit", c =>
     {
         var page = Image(c, 0, 1, 2);
         foreach (var blit in In(c, 3).EnumerateArray())
@@ -47,11 +47,11 @@ public class GltfAtlasParityTests
     });
 
     [Fact]
-    public Task BlankPageMatchesDart() => CheckAsync(Dart, "blank", c => Task.FromResult<JsonNode?>(
+    public Task BlankPageMatchesTheFixture() => CheckAsync(Golden, "blank", c => Task.FromResult<JsonNode?>(
         Out(AtlasPixels.BlankPage((TextureRole)In(c, 0).GetInt32(), In(c, 1).GetInt32(), In(c, 2).GetInt32()))));
 
     [Fact]
-    public Task AtlasModelMatchesDart() => CheckAsync(Dart, "atlas", async c =>
+    public Task AtlasModelMatchesTheFixture() => CheckAsync(Golden, "atlas", async c =>
     {
         var document = await GltfDocument.ReadAsync(
             AssetId.Parse("models/thing.glb"), Convert.FromBase64String(Text(c, 0)), new MemoryAssetSource());

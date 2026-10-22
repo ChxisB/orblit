@@ -43,7 +43,7 @@ public static class TextureRoleTools
         _ => throw new InvalidOperationException($"{role} is not a texture role."),
     };
 
-    /// <summary>The role's name as a message gives it, which is Dart's enum name.</summary>
+    /// <summary>The role's name as a message gives it.</summary>
     [SuppressMessage("Maintainability", "CA1502:Avoid excessive complexity", Justification = "F2: a list of cases is data.")]
     public static string Name(this TextureRole role) => role switch
     {

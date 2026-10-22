@@ -50,7 +50,7 @@ public static partial class KitRules
         "makefile", "gradlew", "mvnw", "cmakelists.txt", "package.json", "pubspec.yaml", "pubspec_overrides.yaml",
     };
 
-    // Dart's pattern is case insensitive for ASCII only and its dot leaves out the four line ends, so
+    // The pattern is case insensitive for ASCII only and its dot leaves out the four line ends, so
     // the letters are spelt out and the dot is a class.
     [GeneratedRegex(
         @"\A([Cc][Oo][Nn]|[Pp][Rr][Nn]|[Aa][Uu][Xx]|[Nn][Uu][Ll]|[Cc][Oo][Mm][1-9]|[Ll][Pp][Tt][1-9])(\.[^\n\r\u2028\u2029]*)?\z",
@@ -64,7 +64,7 @@ public static partial class KitRules
 
     /// <summary>True when <paramref name="id"/> is a file a person could run, compile or load as code.</summary>
     public static bool IsScript(AssetId id) =>
-        ScriptExtensions.Contains(id.Extension) || ScriptNames.Contains(DartText.ToLower(id.Name));
+        ScriptExtensions.Contains(id.Extension) || ScriptNames.Contains(TextRules.ToLower(id.Name));
 
     /// <summary>True when one of <paramref name="ids"/> is a script.</summary>
     public static bool CarriesScripts(IEnumerable<AssetId> ids) => ids.Any(IsScript);
@@ -84,7 +84,7 @@ public static partial class KitRules
     {
         if (folder.Length == 0)
         {
-            return ids.Any(id => DartText.ToLower(id.ToString()) == LockName)
+            return ids.Any(id => TextRules.ToLower(id.ToString()) == LockName)
                 ? $"A file named {LockName} would replace the list of installed kits. Install the kit into a folder."
                 : null;
         }
@@ -150,7 +150,7 @@ public static partial class KitRules
 
     private static List<string> SizeProblems(IReadOnlyDictionary<AssetId, long> files)
     {
-        // Dart's integers wrap, so a sum past 64 bits does too, and does not throw as Sum would.
+        // A sum past 64 bits wraps and does not throw as Sum would.
         var total = files.Values.Aggregate(0L, (sum, bytes) => unchecked(sum + bytes));
         var problems = new List<string>();
         if (files.Count > CountLimit)
@@ -223,7 +223,7 @@ public static partial class KitRules
         var problems = new List<string>();
         foreach (var id in ids)
         {
-            var lower = DartText.ToLower(id.ToString());
+            var lower = TextRules.ToLower(id.ToString());
             if (seen.TryGetValue(lower, out var other))
             {
                 problems.Add($"\"{KitText.Show(other.ToString())}\" and \"{KitText.Show(id.ToString())}\" differ only in case.");
@@ -242,13 +242,13 @@ public static partial class KitRules
         var files = new Dictionary<string, AssetId>();
         foreach (var id in idList)
         {
-            files[DartText.ToLower(id.ToString())] = id;
+            files[TextRules.ToLower(id.ToString())] = id;
         }
 
         var problems = new List<string>();
         foreach (var id in idList)
         {
-            var parts = DartText.ToLower(id.ToString()).Split('/');
+            var parts = TextRules.ToLower(id.ToString()).Split('/');
             for (var i = 1; i < parts.Length; i++)
             {
                 if (files.TryGetValue(string.Join('/', parts.Take(i)), out var file))

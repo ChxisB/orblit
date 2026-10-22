@@ -45,7 +45,7 @@ public sealed class Wait(double duration) : TimedEffect
 /// A straight change from nothing to something. The base every concrete
 /// effect below is: a curve over a fraction, and a quantity scaled by it.
 /// Public because the effects that extend it are, and closed to other
-/// assemblies by its constructor, which is as private as Dart's was.
+/// assemblies by its constructor.
 /// </summary>
 public abstract class Tween : TimedEffect
 {
@@ -331,7 +331,7 @@ public sealed class Shake(double strength, double duration, double rate = 24, lo
 
     private static double Point(long seed, long at)
     {
-        // The multiplies wrap in 64 bits, as Dart's ints do, and the mask keeps the result positive.
+        // The multiplies wrap in 64 bits, and the mask keeps the result positive.
         var h = unchecked((at * 374761393) + (seed * 668265263)) & 0x7FFFFFFF;
         h = unchecked((h ^ (h >> 13)) * 1274126177) & 0x7FFFFFFF;
         h ^= h >> 16;

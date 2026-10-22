@@ -3,7 +3,7 @@ using System.Diagnostics.CodeAnalysis;
 namespace Orblit.Asset;
 
 /// <summary>
-/// An absolute or relative URL, read by the rules Dart's <c>Uri</c> uses: the scheme and host in lower
+/// An absolute or relative URL, read by the rules of RFC 3986: the scheme and host in lower
 /// case, percent-escapes in one form, dot segments removed, a default port left out. Equal URLs have equal
 /// text. <see cref="System.Uri"/> is not used for the fetch rules because it reads some addresses
 /// differently, and a rule that reads a URL differently from the thing that fetches it can be walked round.

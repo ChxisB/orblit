@@ -45,7 +45,7 @@ public sealed class FetchRecord : IEquatable<FetchRecord>
 
         if (Fetched is { } at)
         {
-            json["fetched"] = DartText.Iso(at);
+            json["fetched"] = TextRules.Iso(at);
         }
 
         return json;
@@ -76,7 +76,7 @@ public sealed class FetchRecord : IEquatable<FetchRecord>
             return null;
         }
 
-        var fetched = map.GetValueOrDefault("fetched") is string when && DartText.TryParseTime(when, out var at) ? at : (DateTimeOffset?)null;
+        var fetched = map.GetValueOrDefault("fetched") is string when && TextRules.TryParseTime(when, out var at) ? at : (DateTimeOffset?)null;
         return new FetchRecord(hash, bytes, map.GetValueOrDefault("etag") as string, fetched);
     }
 

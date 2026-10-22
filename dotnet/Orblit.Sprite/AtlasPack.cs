@@ -10,7 +10,7 @@ public sealed class AtlasSprite
 {
     public AtlasSprite(string name, long width, long height, byte[] pixels)
     {
-        // Two negative sides multiply to a plausible byte count, which Dart's length check lets through.
+        // Two negative sides multiply to a plausible byte count, which a length check alone would let through.
         ArgumentOutOfRangeException.ThrowIfNegative(width);
         ArgumentOutOfRangeException.ThrowIfNegative(height);
         if (pixels.Length != width * height * 4)
@@ -74,7 +74,7 @@ public enum MaxRectsHeuristic
 /// </summary>
 public sealed class AtlasPackOptions
 {
-    // F2: twelve parameters, every one optional and called by name, as in Dart.
+    // F2: twelve parameters, every one optional and called by name.
     public AtlasPackOptions(
         long maxPageSize = 2048,
         long minPageSize = 64,

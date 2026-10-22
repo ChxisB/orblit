@@ -25,7 +25,7 @@ public class LightParityTests
         {
             Assert.True(
                 Tolerance.Close(expected[i], actual[i]),
-                $"{what}, channel {i}: Dart {expected[i]:R}, C# {actual[i]:R}, from Dart commit {fixture.DartCommit}");
+                $"{what}, channel {i}: the fixture {expected[i]:R}, the port {actual[i]:R}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
@@ -33,7 +33,7 @@ public class LightParityTests
         AssertClose(fixture, what, [Fixture.Number(expected)], [actual]);
 
     [Fact]
-    public void PhotometryMatchesTheDartTwin()
+    public void PhotometryMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_light", "light");
 
@@ -55,7 +55,7 @@ public class LightParityTests
     }
 
     [Fact]
-    public void TintsMatchTheDartTwin()
+    public void TintsMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_light", "light");
 
@@ -89,7 +89,7 @@ public class LightParityTests
     }
 
     [Fact]
-    public void ARenderedLightMatchesTheDartTwin()
+    public void ARenderedLightMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_light", "light");
 

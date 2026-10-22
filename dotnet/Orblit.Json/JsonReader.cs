@@ -16,7 +16,7 @@ internal sealed class JsonReader(string text)
 
     private FormatException Fail(string reason) => new($"{reason} at {_at}.");
 
-    // Dart's whitespace is these four and nothing else, so a byte-order mark or a vertical tab is refused.
+    // The format's whitespace is these four and nothing else, so a byte-order mark or a vertical tab is refused.
     private void SkipSpace()
     {
         while (_at < text.Length && text[_at] is ' ' or '\t' or '\r' or '\n')
@@ -59,7 +59,7 @@ internal sealed class JsonReader(string text)
 
     private void Enter(int depth)
     {
-        if (depth >= DartJson.MaxDepth)
+        if (depth >= JsonText.MaxDepth)
         {
             throw Fail("Nested too deep");
         }

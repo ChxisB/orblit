@@ -13,7 +13,7 @@ namespace Orblit.Sprite;
 /// <param name="Count">How many tiles the set holds. Zero means it did not say.</param>
 /// <param name="Spacing">The gap between tiles, in pixels.</param>
 /// <param name="Margin">The border around the tiles, in pixels.</param>
-// F2: nine parameters, and every one after the column count is optional and called by name, as in Dart.
+// F2: nine parameters, and every one after the column count is optional and called by name.
 public sealed record Tileset(
     string Name,
     string Image,
@@ -37,7 +37,7 @@ public sealed record Tileset(
 
         var local = id - FirstId;
 
-        // Dart's % is never negative, and the difference of two far-apart ids wraps below zero.
+        // The remainder is never negative, and the difference of two far-apart ids wraps below zero.
         var column = local % Columns;
         if (column < 0)
         {

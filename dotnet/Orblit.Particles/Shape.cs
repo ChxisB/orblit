@@ -4,7 +4,7 @@ namespace Orblit.Particles;
 
 /// <summary>
 /// Where a particle starts and which way it first heads, in the emitter's own
-/// space, with +Y up. The subclasses are the five Dart had, and only this
+/// space, with +Y up. The subclasses are the five shapes, and only this
 /// assembly can add one.
 /// </summary>
 public abstract class Shape

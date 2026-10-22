@@ -134,7 +134,7 @@ public sealed class GltfImporter(ModelAtlasCook? atlas = null) : Importer
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(json));
+            parsed = JsonText.Decode(TextRules.Decode(json));
         }
         catch (FormatException error)
         {
@@ -150,7 +150,7 @@ public sealed class GltfImporter(ModelAtlasCook? atlas = null) : Importer
     private static AssetId? Resolved(AssetId document, string uri) =>
         uri.Contains(':', StringComparison.Ordinal)
             ? null
-            : document.Resolve(DartText.PercentDecoded(uri))
+            : document.Resolve(TextRules.PercentDecoded(uri))
                 ?? throw new ImportFailureException(
                     document,
                     $"refers to \"{uri}\", which is not a name inside the project. A glTF that reaches outside the "
@@ -191,7 +191,7 @@ public sealed class GltfImporter(ModelAtlasCook? atlas = null) : Importer
         {
             null => fallback,
             long number when number >= bounds.Min && number <= bounds.Max => number,
-            var other => throw DartArgument.Value(
+            var other => throw InvalidArgument.Value(
                 other, key, $"must be a whole number between {bounds.Min} and {bounds.Max}"),
         };
 

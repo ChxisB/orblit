@@ -1,6 +1,6 @@
 {
   "package": "orblit_asset",
-  "dartCommit": "7dec8ad0470c45d95bb50eb32e00e7a5aa830077",
+  "sourceCommit": "7dec8ad0470c45d95bb50eb32e00e7a5aa830077",
   "cases": [
     {"op":"id","in":["models/robot.glb"],"expect":{"value":{"path":"models/robot.glb","name":"robot.glb","directory":"models","extension":"glb","same":"models/robot.glb"}}},
     {"op":"id","in":["a"],"expect":{"value":{"path":"a","name":"a","directory":"","extension":"","same":"a"}}},

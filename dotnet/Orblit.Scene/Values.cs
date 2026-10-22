@@ -197,7 +197,7 @@ public static class Values
 
     internal static object? At(JsonMap json, string key) => json.TryGetValue(key, out var value) ? value : null;
 
-    /// <summary>A JSON number as a double, or null for anything else, as Dart's <c>is num</c> says.</summary>
+    /// <summary>A JSON number as a double, or null for anything else.</summary>
     internal static double? Num(object? value) => value switch
     {
         long whole => whole,
@@ -244,7 +244,7 @@ public static class Values
         return true;
     }
 
-    // Dart's int.tryParse(radix: 16) takes a leading sign and nothing else but hex digits.
+    // A hex whole number takes a leading sign and nothing else but hex digits.
     private static bool TryParseHex(string digits, out int value)
     {
         value = 0;

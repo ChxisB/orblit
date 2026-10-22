@@ -23,7 +23,7 @@ public class SceneDocumentTests
     public void RefusesAFileFromANewerOrblitRatherThanGuessing()
     {
         var error = Assert.Throws<SceneFormatException>(() => SceneDocument.Decode(
-            DartJson.Encode(Map(("formatVersion", (long)SceneDocument.FormatVersion + 1), ("entities", List())))));
+            JsonText.Encode(Map(("formatVersion", (long)SceneDocument.FormatVersion + 1), ("entities", List())))));
 
         Assert.Contains("newer Orblit", error.Message);
     }
@@ -179,7 +179,7 @@ public class SceneDocumentTests
         var document = new SceneDocument("Scene");
         var read = SceneDocument.Decode(document.Encode());
 
-        Assert.DoesNotContain("layerNames", Assert.IsAssignableFrom<JsonMap>(DartJson.Decode(document.Encode())).Keys);
+        Assert.DoesNotContain("layerNames", Assert.IsAssignableFrom<JsonMap>(JsonText.Decode(document.Encode())).Keys);
         Assert.Empty(read.Document.Settings.LayerNames);
     }
 
@@ -232,7 +232,7 @@ public class SceneDocumentTests
     }
 
     /// <summary>A version-four scene, written the way the encoder writes one.</summary>
-    private static string SceneOf(params object?[] entities) => DartJson.Encode(Map(
+    private static string SceneOf(params object?[] entities) => JsonText.Encode(Map(
         ("formatVersion", (long)SceneDocument.FormatVersion),
         ("name", "Scene"),
         ("entities", entities)));
@@ -253,7 +253,7 @@ public class SceneDocumentTests
         return map;
     }
 
-    private static string OldFile(JsonMap rest) => DartJson.Encode(With(
+    private static string OldFile(JsonMap rest) => JsonText.Encode(With(
         Map(("formatVersion", 4L)),
         [.. rest.Select(pair => (pair.Key, pair.Value)), ("entities", List())]));
 }

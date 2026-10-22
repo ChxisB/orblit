@@ -19,7 +19,7 @@ namespace Orblit.Asset;
 /// contents, so two writers racing write the same thing. Only the index is mutable, and only the
 /// index is locked.
 /// <para>
-/// The lock is a file lock, so it holds across processes, and Dart's cache over the same directory
+/// The lock is a file lock, so it holds across processes, and any other cache over the same directory
 /// takes the same lock. Inside one process it is backed up by a queue shared by every cache on the
 /// same directory, because a POSIX file lock belongs to the process rather than to whoever took it.
 /// </para>
@@ -275,7 +275,7 @@ public sealed class DirectoryCookCache : ICookCache
         try
         {
             var bytes = await File.ReadAllBytesAsync(IndexPath).ConfigureAwait(false);
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (Exception error) when (error is IOException or UnauthorizedAccessException or FormatException)
         {
@@ -288,7 +288,7 @@ public sealed class DirectoryCookCache : ICookCache
             : new Index();
     }
 
-    // A number equals 1 whether it was written 1 or 1.0, as in Dart.
+    // A number equals 1 whether it was written 1 or 1.0.
     private static bool IsFormat(object? version) => version switch
     {
         long whole => whole == FormatVersion,
@@ -380,7 +380,7 @@ public sealed class DirectoryCookCache : ICookCache
     private static bool TryTime(object? value, out DateTimeOffset at)
     {
         at = default;
-        return value is string text && DartText.TryParseTime(text, out at);
+        return value is string text && TextRules.TryParseTime(text, out at);
     }
 
     // Writes the index where a reader sees all of it or none of it. The temporary file is named
@@ -394,11 +394,11 @@ public sealed class DirectoryCookCache : ICookCache
             ["failures"] = Ordered(index.Failures, failure => new OrderedDictionary<string, object?>
             {
                 ["reason"] = failure.Reason,
-                ["at"] = DartText.Iso(failure.At),
+                ["at"] = TextRules.Iso(failure.At),
             }),
         };
         var temporary = $"{IndexPath}.{Environment.ProcessId}.{Interlocked.Increment(ref _writes) - 1}.{Random.Shared.NextInt64(1L << 32):x}.incoming";
-        var text = DartJson.Encode(json, "  ") + "\n";
+        var text = JsonText.Encode(json, "  ") + "\n";
         await AtomicFile.WriteAsync(temporary, IndexPath, System.Text.Encoding.UTF8.GetBytes(text)).ConfigureAwait(false);
     }
 
@@ -428,7 +428,7 @@ public sealed class DirectoryCookCache : ICookCache
     {
         public OrderedDictionary<string, object?> ToJson() => new()
         {
-            ["usedAt"] = DartText.Iso(UsedAt),
+            ["usedAt"] = TextRules.Iso(UsedAt),
             ["outputs"] = Asset.Outputs
                 .Select(output => (object?)new OrderedDictionary<string, object?>
                 {

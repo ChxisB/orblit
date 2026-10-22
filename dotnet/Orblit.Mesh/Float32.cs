@@ -1,7 +1,7 @@
 namespace Orblit.Mesh;
 
 /// <summary>
-/// The one quiet NaN a file holds. .NET makes a negative NaN from arithmetic where Dart's is
+/// The one quiet NaN a file holds. .NET makes a negative NaN from arithmetic where the file's is
 /// positive, so a file that kept whichever came would differ with the CPU that made it.
 /// </summary>
 internal static class Float32

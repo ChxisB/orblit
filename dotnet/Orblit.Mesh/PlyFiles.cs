@@ -134,7 +134,7 @@ internal sealed record PlyHeader(string Format, List<PlyElement> Elements, int B
         var elements = new List<PlyElement>();
         foreach (var line in lines)
         {
-            var words = DartText.SplitSpace(DartText.Trim(line));
+            var words = TextRules.SplitSpace(TextRules.Trim(line));
             switch (words[0])
             {
                 case "format":
@@ -164,7 +164,7 @@ internal sealed record PlyHeader(string Format, List<PlyElement> Elements, int B
 
     private static PlyElement ElementOf(List<string> words, List<PlyElement> before, ReadLimits limits)
     {
-        var count = words.Count == 3 ? DartText.ParseInt(words[2]) : null;
+        var count = words.Count == 3 ? TextRules.ParseInt(words[2]) : null;
         var most = words.Count > 1 && words[1] == "face" ? limits.Faces : limits.Vertices;
         if (count is not { } size || size < 0 || size > most)
         {
@@ -197,7 +197,7 @@ internal sealed record PlyHeader(string Format, List<PlyElement> Elements, int B
 /// <summary>The values of a PLY body, one type at a time.</summary>
 internal abstract class PlyValues
 {
-    internal abstract DartNumber Read(PlyType type);
+    internal abstract WholeOrFraction Read(PlyType type);
 
     /// <summary>Takes <paramref name="count"/> values of <paramref name="type"/> and drops them.</summary>
     internal virtual void Skip(PlyType type, long count)
@@ -213,7 +213,7 @@ internal sealed class PlyWords(byte[] bytes, int at) : PlyValues
 {
     private int _at = at;
 
-    internal override DartNumber Read(PlyType type)
+    internal override WholeOrFraction Read(PlyType type)
     {
         while (_at < bytes.Length && bytes[_at] <= 32)
         {
@@ -233,7 +233,7 @@ internal sealed class PlyWords(byte[] bytes, int at) : PlyValues
         }
 
         var word = Encoding.Latin1.GetString(bytes, start, _at - start);
-        return DartText.ParseNum(word) ?? throw new FormatException($"\"{word}\" is not a number.");
+        return TextRules.ParseNum(word) ?? throw new FormatException($"\"{word}\" is not a number.");
     }
 }
 
@@ -241,19 +241,19 @@ internal sealed class PlyBinary(byte[] bytes, int at, bool little) : PlyValues
 {
     private long _at = at;
 
-    internal override DartNumber Read(PlyType type)
+    internal override WholeOrFraction Read(PlyType type)
     {
         var span = bytes.AsSpan((int)Take(type.Size));
         return type.Kind switch
         {
-            PlyKind.Int8 => DartNumber.Of((long)(sbyte)span[0]),
-            PlyKind.UInt8 => DartNumber.Of((long)span[0]),
-            PlyKind.Int16 => DartNumber.Of((long)(little ? BinaryPrimitives.ReadInt16LittleEndian(span) : BinaryPrimitives.ReadInt16BigEndian(span))),
-            PlyKind.UInt16 => DartNumber.Of((long)(little ? BinaryPrimitives.ReadUInt16LittleEndian(span) : BinaryPrimitives.ReadUInt16BigEndian(span))),
-            PlyKind.Int32 => DartNumber.Of((long)(little ? BinaryPrimitives.ReadInt32LittleEndian(span) : BinaryPrimitives.ReadInt32BigEndian(span))),
-            PlyKind.UInt32 => DartNumber.Of((long)(little ? BinaryPrimitives.ReadUInt32LittleEndian(span) : BinaryPrimitives.ReadUInt32BigEndian(span))),
-            PlyKind.Float32 => DartNumber.Of((double)(little ? BinaryPrimitives.ReadSingleLittleEndian(span) : BinaryPrimitives.ReadSingleBigEndian(span))),
-            _ => DartNumber.Of(little ? BinaryPrimitives.ReadDoubleLittleEndian(span) : BinaryPrimitives.ReadDoubleBigEndian(span)),
+            PlyKind.Int8 => WholeOrFraction.Of((long)(sbyte)span[0]),
+            PlyKind.UInt8 => WholeOrFraction.Of((long)span[0]),
+            PlyKind.Int16 => WholeOrFraction.Of((long)(little ? BinaryPrimitives.ReadInt16LittleEndian(span) : BinaryPrimitives.ReadInt16BigEndian(span))),
+            PlyKind.UInt16 => WholeOrFraction.Of((long)(little ? BinaryPrimitives.ReadUInt16LittleEndian(span) : BinaryPrimitives.ReadUInt16BigEndian(span))),
+            PlyKind.Int32 => WholeOrFraction.Of((long)(little ? BinaryPrimitives.ReadInt32LittleEndian(span) : BinaryPrimitives.ReadInt32BigEndian(span))),
+            PlyKind.UInt32 => WholeOrFraction.Of((long)(little ? BinaryPrimitives.ReadUInt32LittleEndian(span) : BinaryPrimitives.ReadUInt32BigEndian(span))),
+            PlyKind.Float32 => WholeOrFraction.Of((double)(little ? BinaryPrimitives.ReadSingleLittleEndian(span) : BinaryPrimitives.ReadSingleBigEndian(span))),
+            _ => WholeOrFraction.Of(little ? BinaryPrimitives.ReadDoubleLittleEndian(span) : BinaryPrimitives.ReadDoubleBigEndian(span)),
         };
     }
 
@@ -378,7 +378,7 @@ internal sealed class PlyBody(PlyHeader header, PlyValues values, ReadLimits lim
 
     /// <summary>The value of <paramref name="p"/>, or for a list the number of items it dropped.</summary>
     // F5: reads and answers, as the cursor under it does.
-    private DartNumber ReadValue(PlyProperty p)
+    private WholeOrFraction ReadValue(PlyProperty p)
     {
         if (!p.IsList)
         {
@@ -387,7 +387,7 @@ internal sealed class PlyBody(PlyHeader header, PlyValues values, ReadLimits lim
 
         var count = Length(p);
         values.Skip(p.Type, count);
-        return DartNumber.Of(count);
+        return WholeOrFraction.Of(count);
     }
 
     private long Length(PlyProperty p)
@@ -401,7 +401,7 @@ internal sealed class PlyBody(PlyHeader header, PlyValues values, ReadLimits lim
         return length;
     }
 
-    private static long WholeNumber(DartNumber value)
+    private static long WholeNumber(WholeOrFraction value)
     {
         if (value.IsWhole)
         {
@@ -411,11 +411,11 @@ internal sealed class PlyBody(PlyHeader header, PlyValues values, ReadLimits lim
         var fraction = value.Fraction;
         if (double.IsFinite(fraction) && fraction == Math.Truncate(fraction))
         {
-            // Dart's toInt stops at the ends of the 64-bit range, where a C# cast does not.
+            // The result stops at the ends of the 64-bit range, where a C# cast does not.
             return fraction >= 9.2233720368547758E18 ? long.MaxValue : fraction <= -9.2233720368547758E18 ? long.MinValue : (long)fraction;
         }
 
-        throw new FormatException($"{Doubles.ToDartString(fraction)} is not a whole number.");
+        throw new FormatException($"{Doubles.ToFileString(fraction)} is not a whole number.");
     }
 
     private void ReadFaces(PlyElement element)

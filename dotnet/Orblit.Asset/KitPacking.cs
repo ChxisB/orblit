@@ -233,7 +233,7 @@ public static class KitPacking
             }
 
             var relative = Path.GetRelativePath(root, entry.FullName).Replace(Path.DirectorySeparatorChar, '/');
-            if (!skip.Contains(entry.FullName) && DartText.ToLower(relative) != KitManifest.ManifestId.ToString())
+            if (!skip.Contains(entry.FullName) && TextRules.ToLower(relative) != KitManifest.ManifestId.ToString())
             {
                 found[AssetId.Parse(relative)] = ((FileInfo)entry).Length;
             }

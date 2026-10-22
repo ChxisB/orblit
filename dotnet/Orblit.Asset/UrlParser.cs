@@ -4,9 +4,9 @@ using System.Text.RegularExpressions;
 namespace Orblit.Asset;
 
 /// <summary>
-/// Reads a URL the way Dart's <c>Uri.parse</c> does, because the fetch rules decide on host, path and
-/// scheme and two readers that differ on those are a way round them. Written from RFC 3986 and checked
-/// against what Dart gives, not from either implementation.
+/// Reads a URL by the rules of RFC 3986, because the fetch rules decide on host, path and
+/// scheme and two readers that differ on those are a way round them. Written from the RFC, not from
+/// <see cref="System.Uri"/>.
 /// </summary>
 internal static partial class UrlParser
 {
@@ -180,13 +180,13 @@ internal static partial class UrlParser
             return null;
         }
 
-        // Dart reads more than this: a sign, a space, a number past 65535. None of it is a port.
+        // A sign, a space or a number past 65535 is not a port.
         return port.All(char.IsAsciiDigit) && int.TryParse(port, out var number) && number <= 65535
             ? number
             : throw Invalid(whole, "the port is not a number up to 65535");
     }
 
-    // RFC 3986 IPv6address. A zone id is not allowed, which is stricter than Dart.
+    // RFC 3986 IPv6address. A zone id is not allowed.
     private static bool IsIPv6(string text)
     {
         var halves = text.Split("::");

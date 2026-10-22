@@ -47,7 +47,7 @@ public sealed class RuntimeImport(ICookCache cache, CookTarget target, ImporterR
     /// Every importer that could run in an app.
     /// The same list the cook command uses. A runtime import that quietly had fewer importers than the build
     /// machine would mean a file that works when shipped and fails when dropped in, which is the confusing way
-    /// round. Dart writes the list twice. Here it is one list, so the two cannot drift.
+    /// round. It is one list, so the two cannot drift.
     /// </summary>
     public static ImporterRegistry DefaultImporters() => CookProject.DefaultImporters();
 
@@ -68,7 +68,7 @@ public sealed class RuntimeImport(ICookCache cache, CookTarget target, ImporterR
         var cleaned = path.Split('?')[0].Split('#')[0];
         foreach (var segment in cleaned.Split('/', '\\').Reverse())
         {
-            var name = DartText.Trim(segment);
+            var name = TextRules.Trim(segment);
             if (name.Length > 0 && name is not ("." or ".."))
             {
                 return AssetId.TryParse(name.Replace(':', '_'));
@@ -92,8 +92,7 @@ public sealed class RuntimeImport(ICookCache cache, CookTarget target, ImporterR
     /// </summary>
     /// <param name="settings">
     /// What the user said at the call, such as "this is a normal map". It is laid over whatever settings files the
-    /// source has. Left out, the source's own settings apply. Dart's default is a shared empty value compared by
-    /// identity, so null is the same thing here.
+    /// source has. Left out, the source's own settings apply.
     /// </param>
     /// <param name="alongside">
     /// For a file that is not self-contained. A <c>.gltf</c> names its buffers and images in separate files, so a

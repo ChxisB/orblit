@@ -13,7 +13,7 @@ internal static class JsonValues
 
     /// <summary>
     /// A whole number as it is, a fraction rounded half away from zero, anything else nought.
-    /// Infinity throws, because Dart's <c>round()</c> does.
+    /// Infinity throws, because it has no whole value.
     /// </summary>
     internal static long Int(object? value) => value switch
     {

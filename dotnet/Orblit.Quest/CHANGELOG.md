@@ -3,14 +3,14 @@
 ## 0.1.0
 
 - Port of `orblit_quest` 0.1.0.
-- The Dart `Quest` is `QuestDefinition`, because a type named like its
+- `Quest` is `QuestDefinition`, because a type named like its
   namespace is flagged by CA1724.
 - `questExtension` and `questStageName` are `QuestNames.Extension` and
   `QuestNames.StageName`.
-- A stage index is a `long`, as a Dart `int` is 64 bit, so `StageOf` and
+- A stage index is a `long`, so `StageOf` and
   `Advance` take and give `long`.
 - A rule a quest breaks throws an `ArgumentException` whose message reads
-  `name rule (value).`, the text Dart's `ArgumentError.value` held. `Parse`
+  `name rule (value).`. `Parse`
   passes that text on in a `QuestFormatException`.
 - A quest key is checked with `\z`, not `$`, so a key ending in a new line is
-  refused as it is in Dart.
+  refused.

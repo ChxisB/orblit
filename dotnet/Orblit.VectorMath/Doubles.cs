@@ -4,8 +4,8 @@ using System.Numerics;
 namespace Orblit.VectorMath;
 
 /// <summary>
-/// Dart's answers where .NET's differ. Dart orders doubles by
-/// <c>compareTo</c>: NaN above every number and <c>-0.0</c> below <c>0.0</c>.
+/// Number rules where .NET's differ. Doubles order by
+/// a total order: NaN above every number and <c>-0.0</c> below <c>0.0</c>.
 /// .NET puts NaN first and treats the two zeros as equal.
 /// </summary>
 public static class Doubles
@@ -19,7 +19,7 @@ public static class Doubles
     /// <summary><c>degrees</c> from <c>vector_math</c>, as <see cref="Radians"/> is.</summary>
     public static double Degrees(double radians) => radians * (180.0 / Math.PI);
 
-    /// <summary>Dart's <c>double.compareTo</c>.</summary>
+    /// <summary>Total order on doubles: NaN above every number, <c>-0.0</c> below <c>0.0</c>.</summary>
     public static int Compare(double a, double b)
     {
         if (a < b)
@@ -41,7 +41,7 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>num.clamp</c>. A NaN value is above every limit, so it comes
+    /// Clamps between the limits. A NaN value is above every limit, so it comes
     /// back as <paramref name="upper"/>, where <c>Math.Clamp</c> returns NaN.
     /// </summary>
     public static double Clamp(double value, double lower, double upper)
@@ -60,9 +60,9 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>%</c> on doubles. The result is never negative, and a zero is
+    /// The remainder on doubles. The result is never negative, and a zero is
     /// always <c>0.0</c>. C# keeps the sign of the dividend, so <c>-1 % 3</c> is
-    /// <c>-1</c> there and <c>2</c> in Dart.
+    /// <c>-1</c> there and <c>2</c> here.
     /// </summary>
     public static double Mod(double value, double divisor)
     {
@@ -76,7 +76,7 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>double.floor()</c>, which throws on NaN and infinity where a C#
+    /// The floor, which throws on NaN and infinity where a C#
     /// cast gives an unspecified number.
     /// </summary>
     public static long Floor(double value)
@@ -90,7 +90,7 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>double.ceil()</c>, which throws on NaN and infinity where a C#
+    /// The ceiling, which throws on NaN and infinity where a C#
     /// cast gives an unspecified number.
     /// </summary>
     public static long Ceil(double value)
@@ -104,13 +104,13 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>double.sign</c>: -1, 1, or the value itself for either zero
+    /// The sign: -1, 1, or the value itself for either zero
     /// and for NaN. <c>Math.Sign</c> returns an int and throws on NaN.
     /// </summary>
     public static double Sign(double value) => value > 0 ? 1 : (value < 0 ? -1 : value);
 
     /// <summary>
-    /// Dart's <c>double.round()</c>: halves go away from zero, and NaN and
+    /// Rounds: halves go away from zero, and NaN and
     /// infinity throw. <c>Math.Round</c> goes to the even number by default.
     /// </summary>
     public static long Round(double value)
@@ -124,10 +124,10 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>toStringAsFixed</c>: the exact value rounded to <paramref name="digits"/> places,
+    /// Fixed-point text: the exact value rounded to <paramref name="digits"/> places,
     /// with a tie going away from zero where the .NET <c>F</c> format goes to the even digit, and the
     /// shortest form for NaN, infinity and anything from 1e21 up, where .NET writes every digit.
-    /// A negative value that rounds to zero keeps its sign, as in Dart.
+    /// A negative value that rounds to zero keeps its sign.
     /// </summary>
     public static string ToStringAsFixed(double value, int digits)
     {
@@ -158,12 +158,12 @@ public static class Doubles
     }
 
     /// <summary>
-    /// Dart's <c>double.toString</c>. The digits are the shortest that read back as the same
-    /// double, which .NET also gives, but the layout differs: Dart writes a point and a final
+    /// The file text of a double. The digits are the shortest that read back as the same
+    /// double, which .NET also gives, but the layout differs: this writes a point and a final
     /// <c>.0</c> for anything from 1e-6 up to 1e21, and otherwise <c>1.5e-7</c> or <c>1e+21</c>
     /// with no padding on the exponent.
     /// </summary>
-    public static string ToDartString(double value)
+    public static string ToFileString(double value)
     {
         if (!double.IsFinite(value))
         {

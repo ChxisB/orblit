@@ -11,7 +11,7 @@ internal readonly record struct UrlParts(
     string? Query,
     string? Fragment)
 {
-    /// <summary>The port a scheme leaves out of its text. Dart counts zero as the default for every other scheme.</summary>
+    /// <summary>The port a scheme leaves out of its text. Zero is the default for every other scheme.</summary>
     internal static int DefaultPort(string scheme) => scheme switch
     {
         "http" => 80,

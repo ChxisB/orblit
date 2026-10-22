@@ -58,7 +58,7 @@ void writeFixture({
   file.writeAsStringSync(
     '{\n'
     '  "package": ${jsonEncode(package)},\n'
-    '  "dartCommit": ${jsonEncode(_commitOf(root, package))},\n'
+    '  "sourceCommit": ${jsonEncode(_commitOf(root, package))},\n'
     '  "cases": [\n$body\n  ]\n'
     '}\n',
   );

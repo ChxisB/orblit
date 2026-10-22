@@ -14,7 +14,7 @@ internal static class GlbJson
     {
         var length = (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(12));
         var text = Encoding.UTF8.GetString(glb, 20, length).TrimEnd();
-        return (IReadOnlyDictionary<string, object?>)DartJson.Decode(text)!;
+        return (IReadOnlyDictionary<string, object?>)JsonText.Decode(text)!;
     }
 
     internal static IReadOnlyDictionary<string, object?> Map(object? value) => (IReadOnlyDictionary<string, object?>)value!;

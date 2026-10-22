@@ -1,6 +1,6 @@
 namespace Orblit.Asset.Tests;
 
-// Tests with no Dart original beside the atlas ones: the roles Dart reads out of a model's materials.
+// Tests with no ported original beside the atlas ones: the roles read out of a model's materials.
 public sealed class TextureRoleTests
 {
     private static readonly AssetId Id = AssetId.Parse("models/thing.gltf");

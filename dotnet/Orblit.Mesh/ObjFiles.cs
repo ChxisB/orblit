@@ -80,7 +80,7 @@ public static class ObjFiles
             throw new FormatException($"An OBJ over {limits.Bytes} bytes is not read.");
         }
 
-        return new ObjReader(files ?? new Dictionary<string, byte[]>(), limits).Read(DartText.DecodeLenient(bytes));
+        return new ObjReader(files ?? new Dictionary<string, byte[]>(), limits).Read(TextRules.DecodeLenient(bytes));
     }
 
     /// <summary>
@@ -163,7 +163,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         foreach (var raw in limits.LinesOf(text))
         {
             number++;
-            var line = DartText.TrimEnd(raw);
+            var line = TextRules.TrimEnd(raw);
             if (joined.Length == 0)
             {
                 start = number;
@@ -194,7 +194,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
     private void Take(string line)
     {
         var hash = line.IndexOf('#', StringComparison.Ordinal);
-        var words = DartText.SplitSpace(DartText.Trim(hash < 0 ? line : line[..hash]));
+        var words = TextRules.SplitSpace(TextRules.Trim(hash < 0 ? line : line[..hash]));
         var args = words.GetRange(1, words.Count - 1);
         switch (words[0])
         {
@@ -350,7 +350,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
     private static int? Resolve(string word, int count)
     {
         // A parse alone reads 0x10 and +1, which other readers refuse.
-        if (!IsInteger(word) || DartText.ParseInt(word) is not { } number || number == 0)
+        if (!IsInteger(word) || TextRules.ParseInt(word) is not { } number || number == 0)
         {
             return null;
         }
@@ -375,7 +375,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         var output = new double[count];
         for (var i = 0; i < count; i++)
         {
-            if (DartText.ParseDouble(words[i]) is not { } value || !double.IsFinite(value))
+            if (TextRules.ParseDouble(words[i]) is not { } value || !double.IsFinite(value))
             {
                 return null;
             }
@@ -433,7 +433,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         // A file that names one library a thousand times reads it once.
         if (_loaded.Add(key))
         {
-            ReadMaterials(DartText.DecodeLenient(bytes));
+            ReadMaterials(TextRules.DecodeLenient(bytes));
         }
     }
 
@@ -443,14 +443,14 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         foreach (var raw in limits.LinesOf(text))
         {
             var hash = raw.IndexOf('#', StringComparison.Ordinal);
-            var line = DartText.Trim(hash < 0 ? raw : raw[..hash]);
+            var line = TextRules.Trim(hash < 0 ? raw : raw[..hash]);
             if (line.Length == 0)
             {
                 continue;
             }
 
-            var words = DartText.SplitSpace(line);
-            if (DartText.ToLower(words[0]) == "newmtl")
+            var words = TextRules.SplitSpace(line);
+            if (TextRules.ToLower(words[0]) == "newmtl")
             {
                 Finish(draft);
                 draft = new MaterialDraft(string.Join(' ', words.Skip(1)));
@@ -510,7 +510,7 @@ internal sealed class MaterialDraft(string name)
     internal bool Read(List<string> words)
     {
         var args = words.GetRange(1, words.Count - 1);
-        switch (DartText.ToLower(words[0]))
+        switch (TextRules.ToLower(words[0]))
         {
             case "kd":
                 return Into(_colour, args);

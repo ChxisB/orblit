@@ -285,8 +285,8 @@ public class ScatterTests
         var stones = new ScatterLayer("stones", seed: 1, density: 2);
         var flowers = new ScatterLayer("flowers", seed: 2, density: 2);
         var placer = Placed(Flat(across: 1, scatter: [stones, flowers]));
-        var a = Spots(placer.Groups[0]).Select(s => $"{Doubles.ToDartString(s.X)},{Doubles.ToDartString(s.Z)}").ToHashSet();
-        var b = Spots(placer.Groups[1]).Select(s => $"{Doubles.ToDartString(s.X)},{Doubles.ToDartString(s.Z)}").ToHashSet();
+        var a = Spots(placer.Groups[0]).Select(s => $"{Doubles.ToFileString(s.X)},{Doubles.ToFileString(s.Z)}").ToHashSet();
+        var b = Spots(placer.Groups[1]).Select(s => $"{Doubles.ToFileString(s.X)},{Doubles.ToFileString(s.Z)}").ToHashSet();
         Assert.Empty(a.Intersect(b));
     }
 
@@ -606,7 +606,7 @@ public class ScatterTests
             ["size"] = new List<object?> { 1.0, 1.0, 1.0 },
             ["colour"] = "#ffffff",
         };
-        Assert.Equal(DartJson.Encode(expected), DartJson.Encode(new ScatterLayer("grass").ToJson()));
+        Assert.Equal(JsonText.Encode(expected), JsonText.Encode(new ScatterLayer("grass").ToJson()));
     }
 
     [Fact]
@@ -644,7 +644,7 @@ public class ScatterTests
     {
         var problems = new List<string>();
         var layer = ScatterLayer.FromJson(
-            DartJson.Decode("""{"name":"weeds","density":5000,"sets":[1,99],"minSlope":50,"maxSlope":10,"lean":3,"size":[1,-2,1]}"""),
+            JsonText.Decode("""{"name":"weeds","density":5000,"sets":[1,99],"minSlope":50,"maxSlope":10,"lean":3,"size":[1,-2,1]}"""),
             problems)!;
         Assert.Equal(ScatterLayer.MaxDensity, layer.Density);
         Assert.Equal([1], layer.Sets);
@@ -652,7 +652,7 @@ public class ScatterTests
         Assert.Equal(1, layer.Lean);
         Assert.Equal((1.0, 1.0, 1.0), layer.Size);
         Assert.Equal(4, problems.Count);
-        Assert.Null(ScatterLayer.FromJson(DartJson.Decode("""{"density":2}"""), problems));
+        Assert.Null(ScatterLayer.FromJson(JsonText.Decode("""{"density":2}"""), problems));
     }
 
     [Fact]

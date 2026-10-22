@@ -10,8 +10,8 @@ public sealed class CookProject
 {
     private const long DefaultLimitBytes = 2L * 1024 * 1024 * 1024;
 
-    // Links are skipped. .NET also skips files with the hidden or system attribute unless told not to, and Dart
-    // lists them, so this lists them too. The cook decides what a leading dot hides.
+    // Links are skipped. .NET also skips files with the hidden or system attribute unless told not to, and the
+    // cook lists them, so this lists them too. The cook decides what a leading dot hides.
     private static readonly EnumerationOptions Walk = new()
     {
         RecurseSubdirectories = true,
@@ -19,7 +19,7 @@ public sealed class CookProject
         IgnoreInaccessible = false,
     };
 
-    // F2: seven parameters, all named at each call, as in the Dart constructor.
+    // F2: seven parameters, all named at each call.
     public CookProject(
         string assetsPath,
         string outPath,
@@ -206,7 +206,7 @@ public sealed class CookProject
         ?? throw new NotSupportedException(
             $"Orblit does not cook assets for {operatingSystem}. It cooks for {string.Join(", ", CookTargets.Names)}.");
 
-    // Dart's Platform.operatingSystem. Anything else, such as FreeBSD, is named by what the runtime calls it.
+    // The names a cook target uses. Anything else, such as FreeBSD, is named by what the runtime calls it.
     private static string OperatingSystemName() =>
         OperatingSystem.IsAndroid() ? "android"
         : OperatingSystem.IsIOS() ? "ios"
@@ -226,7 +226,7 @@ public sealed class CookProject
     {
         if (!Directory.Exists(AssetsPath))
         {
-            throw DartArgument.Value(AssetsPath, "assetsPath", "is not a directory");
+            throw InvalidArgument.Value(AssetsPath, "assetsPath", "is not a directory");
         }
 
         var root = Path.GetFullPath(AssetsPath);

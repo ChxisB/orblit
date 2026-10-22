@@ -46,14 +46,14 @@ public sealed class MaterialImporter : Importer
     public override async Task<IReadOnlySet<AssetId>> DependenciesInAsync(
         AssetId id, byte[] bytes, IReadOnlyDictionary<string, object?> settings, IAssetSource source)
     {
-        var files = await ReadIncludesAsync(source, id, DartText.Decode(bytes)).ConfigureAwait(false);
+        var files = await ReadIncludesAsync(source, id, TextRules.Decode(bytes)).ConfigureAwait(false);
         return new HashSet<AssetId>(files.Keys.Select(AssetId.Parse));
     }
 
     public override async Task<ImportResult> ImportAsync(ImportRequest request)
     {
         var id = request.Id;
-        var text = DartText.Decode(request.Bytes);
+        var text = TextRules.Decode(request.Bytes);
         var files = await ReadIncludesAsync(request.Source, id, text).ConfigureAwait(false);
         SurfaceTranslation translation;
         try
@@ -90,7 +90,7 @@ public sealed class MaterialImporter : Importer
                 Outputs = new Dictionary<string, byte[]>
                 {
                     ["material.filamat"] = await File.ReadAllBytesAsync(output).ConfigureAwait(false),
-                    ["params.json"] = Encoding.UTF8.GetBytes(DartJson.Encode(translation.Params.Select(param => param.ToJson()).ToList())),
+                    ["params.json"] = Encoding.UTF8.GetBytes(JsonText.Encode(translation.Params.Select(param => param.ToJson()).ToList())),
                 },
             };
         }).ConfigureAwait(false);
@@ -123,7 +123,7 @@ public sealed class MaterialImporter : Importer
                     continue;
                 }
 
-                var body = DartText.Decode(await source.ReadAsync(include).ConfigureAwait(false));
+                var body = TextRules.Decode(await source.ReadAsync(include).ConfigureAwait(false));
                 files[next] = body;
                 queue.AddRange(SurfaceLines.IncludePaths(next, body));
             }
@@ -145,6 +145,6 @@ public sealed class MaterialImporter : Importer
         }
 
         var result = NativeTool.Capture(program, ["--version"]);
-        return result.ExitCode == 0 ? DartText.Trim(result.Output) : "unknown";
+        return result.ExitCode == 0 ? TextRules.Trim(result.Output) : "unknown";
     }
 }

@@ -8,7 +8,7 @@ namespace Orblit.Rig;
 /// </summary>
 public abstract class SpringCollider
 {
-    // Internal, so the three shapes below are the only ones. Dart's sealed class does the same.
+    // Internal, so the three shapes below are the only ones.
     private protected SpringCollider(string? bone)
     {
         Bone = bone;
@@ -120,7 +120,7 @@ public sealed class SpringBones : Modifier
     /// </param>
     /// <param name="colliders">What the chain may not pass through.</param>
     /// <param name="snapDistance">A head that moves further than this in one frame has been teleported.</param>
-    // F2: seven tuning values, one of them required, all named at every call, as the Dart constructor is.
+    // F2: seven tuning values, one of them required, all named at every call.
     public SpringBones(
         IReadOnlyList<string> bones,
         double stiffness = 80,

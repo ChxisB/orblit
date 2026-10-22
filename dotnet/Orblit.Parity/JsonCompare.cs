@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Orblit.Parity;
 
 /// <summary>
-/// Compares a JSON value the Dart twin wrote with one the port produced.
+/// Compares a JSON value the fixture holds with one the port produced.
 /// Numbers use <see cref="Tolerance.Close"/>, so what C# gives has to agree to
 /// 1e-9 and no closer. Objects match by key in any order, arrays by position.
 /// </summary>
@@ -34,7 +34,7 @@ public static class JsonCompare
         var names = expected.EnumerateObject().Select(p => p.Name).Order().ToList();
         if (!names.SequenceEqual(actual.EnumerateObject().Select(p => p.Name).Order()))
         {
-            return $"{path}: Dart keys {string.Join(",", names)}, C# {actual}";
+            return $"{path}: expected keys {string.Join(",", names)}, got {actual}";
         }
 
         return names
@@ -46,7 +46,7 @@ public static class JsonCompare
     {
         if (expected.GetArrayLength() != actual.GetArrayLength())
         {
-            return $"{path}: Dart length {expected.GetArrayLength()}, C# length {actual.GetArrayLength()}";
+            return $"{path}: expected length {expected.GetArrayLength()}, got length {actual.GetArrayLength()}";
         }
 
         return expected.EnumerateArray()
@@ -56,5 +56,5 @@ public static class JsonCompare
     }
 
     private static string Say(string path, JsonElement expected, JsonElement actual) =>
-        $"{path}: Dart {expected}, C# {actual}";
+        $"{path}: expected {expected}, got {actual}";
 }

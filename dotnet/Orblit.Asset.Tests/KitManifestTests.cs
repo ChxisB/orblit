@@ -136,7 +136,7 @@ public class KitManifestTests
         }
     }
 
-    // Dart reads a port of 99999 and takes the address. WebUrl refuses it, so no fixture case holds one.
+    // A port of 99999 is out of range. WebUrl refuses it, so no fixture case holds one.
     [Fact]
     public void RefusesALicenceAddressWithAPortPast65535() =>
         Refuses(() => Manifest(licence: new KitLicence("MIT", "https://x.org:99999/l")), "99999");

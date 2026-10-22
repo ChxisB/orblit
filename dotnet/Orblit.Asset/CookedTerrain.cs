@@ -38,7 +38,7 @@ public sealed class CookedTerrain
     public static async Task<CookedTerrain> OpenAsync(IAssetSource source, AssetId file)
     {
         var bytes = await source.ReadAsync(Cooked(file, TerrainImporter.TerrainOutput)).ConfigureAwait(false);
-        var load = TerrainData.Decode(DartText.Decode(bytes));
+        var load = TerrainData.Decode(TextRules.Decode(bytes));
         var present = new List<RegionKey>();
         var problems = new List<string>(load.Problems);
         foreach (var key in load.Regions)

@@ -36,7 +36,7 @@ public class AudioParityTests
         {
             Assert.True(
                 Tolerance.Close(expected[i], actual[i]),
-                $"{what}, value {i}: Dart {expected[i]:R}, C# {actual[i]:R}, from Dart commit {fixture.DartCommit}");
+                $"{what}, value {i}: the fixture {expected[i]:R}, the port {actual[i]:R}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
@@ -69,7 +69,7 @@ public class AudioParityTests
     }
 
     [Fact]
-    public void FalloffAndConeCurvesMatchTheDartTwin()
+    public void FalloffAndConeCurvesMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_audio", "audio");
 
@@ -88,7 +88,7 @@ public class AudioParityTests
     }
 
     [Fact]
-    public void ConstructorsRefuseWhatTheDartTwinRefuses()
+    public void ConstructorsRefuseWhatTheFixtureRefuses()
     {
         var fixture = Fixture.Load("orblit_audio", "audio");
 
@@ -119,12 +119,12 @@ public class AudioParityTests
 
             Assert.True(
                 c.GetProperty("throws").GetBoolean() == threw,
-                $"{c.GetRawText()}: Dart throws {c.GetProperty("throws").GetBoolean()}, from Dart commit {fixture.DartCommit}");
+                $"{c.GetRawText()}: the fixture throws {c.GetProperty("throws").GetBoolean()}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
     [Fact]
-    public void HeardByMatchesTheDartTwin()
+    public void HeardByMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_audio", "audio");
 
@@ -138,16 +138,16 @@ public class AudioParityTests
     }
 
     [Fact]
-    public void AudioScriptsMatchTheDartTwinStepByStep() => RunScripts("audio");
+    public void AudioScriptsMatchTheFixtureStepByStep() => RunScripts("audio");
 
     [Fact]
-    public void MusicScriptsMatchTheDartTwinStepByStep() => RunScripts("music");
+    public void MusicScriptsMatchTheFixtureStepByStep() => RunScripts("music");
 
     [Fact]
-    public void CueScriptsMatchTheDartTwinStepByStep() => RunScripts("cues");
+    public void CueScriptsMatchTheFixtureStepByStep() => RunScripts("cues");
 
     [Fact]
-    public void ContactScriptsMatchTheDartTwinStepByStep() => RunScripts("contacts");
+    public void ContactScriptsMatchTheFixtureStepByStep() => RunScripts("contacts");
 
     private static void RunScripts(string kind)
     {
@@ -171,7 +171,7 @@ public class AudioParityTests
 
                 Assert.True(
                     want.GetProperty("throws").GetBoolean() == threw,
-                    $"{what}: Dart throws {want.GetProperty("throws").GetBoolean()}, C# {threw}, from Dart commit {fixture.DartCommit}");
+                    $"{what}: the fixture throws {want.GetProperty("throws").GetBoolean()}, the port {threw}, from fixture commit {fixture.SourceCommit}");
                 AssertCalls(fixture, what, want.GetProperty("calls"), calls);
                 world.AssertState(fixture, what, want);
             }
@@ -183,7 +183,7 @@ public class AudioParityTests
         var want = expected.EnumerateArray().ToList();
         Assert.True(
             want.Count == actual.Count,
-            $"{what}: Dart made {want.Count} backend calls, C# {actual.Count}, from Dart commit {fixture.DartCommit}");
+            $"{what}: the fixture made {want.Count} backend calls, the port {actual.Count}, from fixture commit {fixture.SourceCommit}");
         for (var i = 0; i < want.Count; i++)
         {
             var call = want[i];

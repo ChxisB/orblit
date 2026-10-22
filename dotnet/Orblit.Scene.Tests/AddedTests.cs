@@ -2,7 +2,7 @@ using static Orblit.Scene.Tests.Tree;
 
 namespace Orblit.Scene.Tests;
 
-/// <summary>What the port checks that the Dart tests do not.</summary>
+/// <summary>What the port checks that the ported tests do not.</summary>
 public class AddedTests
 {
     [Fact]

@@ -12,14 +12,13 @@ namespace Orblit.Weather;
 /// <param name="Seed">What the bolt's shape is drawn from.</param>
 public sealed record Strike(double Flash, Vector3 Direction, double Seed)
 {
-    /// <summary>Nothing happening. One object, as in Dart.</summary>
+    /// <summary>Nothing happening. One object.</summary>
     public static readonly Strike None = new(0, new Vector3(0, 0.35, 1), 0);
 
     /// <summary>
     /// The strike at <paramref name="clock"/> seconds, for a storm striking at
     /// <paramref name="frequency"/>. A frequency is a rate, so zero is a dry
-    /// storm and one is close to continuous. A NaN or infinite clock throws, as
-    /// it does in Dart.
+    /// storm and one is close to continuous. A NaN or infinite clock throws.
     /// </summary>
     public static Strike At(double clock, double frequency)
     {
@@ -66,7 +65,7 @@ public sealed record Strike(double Flash, Vector3 Direction, double Seed)
 
     /// <summary>
     /// A number between zero and one that is the same for the same input. The
-    /// index wraps at 64 bits where Dart's does, so a huge clock agrees.
+    /// index wraps at 64 bits, so a huge clock still gives an index.
     /// </summary>
     private static double Scatter(long step)
     {

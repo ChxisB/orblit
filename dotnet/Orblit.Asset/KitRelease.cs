@@ -14,7 +14,7 @@ public sealed partial class KitRelease
     private static readonly HashSet<string> InsideNames = ["localhost", "local", "internal"];
 
     /// <summary>Throws a <see cref="FormatException"/> naming the field that is wrong.</summary>
-    // F2: Dart names these six as named parameters, which F2 counts as the options object. C# callers name them too.
+    // F2: six parameters, all named at each call.
     public KitRelease(string version, string url, ContentHash hash, long bytes, string released, string notes = "")
     {
         KitVersion.Check("version", version);
@@ -67,14 +67,14 @@ public sealed partial class KitRelease
     /// </summary>
     public AssetOrigin Origin => new(WebUrl.Parse($"https://{WebUrl.Parse(Url).Host}"), new FetchPolicy(maxBytes: Bytes));
 
-    // Dart's $ is the end of the input only, so \z, where .NET's $ also matches before a last newline.
+    // The end of the input only, so \z, where .NET's $ also matches before a last newline.
     [GeneratedRegex(@"\A[0-9a-fA-F]{64}\z", RegexOptions.CultureInvariant)]
     private static partial Regex HashShape();
 
     [GeneratedRegex(@"\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\z", RegexOptions.CultureInvariant)]
     private static partial Regex HostLabel();
 
-    // Dart's \s holds U+FEFF and not U+0085, which .NET's \s does the other way about, so the set is written out.
+    // The set holds U+FEFF and not U+0085, which .NET's \s does the other way about, so it is written out.
     [GeneratedRegex(@"[\\#@\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]", RegexOptions.CultureInvariant)]
     private static partial Regex UrlTrouble();
 

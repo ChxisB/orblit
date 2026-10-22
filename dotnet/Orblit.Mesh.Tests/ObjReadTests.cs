@@ -315,7 +315,7 @@ public class ObjReadTests
     [Fact]
     public void RandomBytesAreReadOrRefusedNeverACrash()
     {
-        // Seeded, but a different stream from Dart's, so the bytes differ. The parity fixture covers the
+        // Seeded, but a different stream from the fixture's, so the bytes differ. The parity fixture covers the
         // shared cases.
         var random = new Random(19);
         for (var round = 0; round < 400; round++)

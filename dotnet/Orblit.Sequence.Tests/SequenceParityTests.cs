@@ -44,7 +44,7 @@ public class SequenceParityTests
         return new Quaternion(v[0], v[1], v[2], v[3]);
     }
 
-    /// <summary>A name as Dart spells it, <c>in_</c> and <c>inOut</c>, read as the C# member.</summary>
+    /// <summary>A name as the fixture spells it, <c>in_</c> and <c>inOut</c>, read as the C# member.</summary>
     private static TEnum Word<TEnum>(JsonElement name)
         where TEnum : struct, Enum => Enum.Parse<TEnum>(name.GetString()!.Replace("_", ""), ignoreCase: true);
 
@@ -52,24 +52,24 @@ public class SequenceParityTests
     {
         Assert.True(
             expected.Length == actual.Length,
-            $"{what}: Dart gave {expected.Length} numbers, C# gave {actual.Length}, from Dart commit {fixture.DartCommit}");
+            $"{what}: the fixture gave {expected.Length} numbers, the port gave {actual.Length}, from fixture commit {fixture.SourceCommit}");
         for (var i = 0; i < expected.Length; i++)
         {
             Assert.True(
                 Tolerance.Close(expected[i], actual[i]),
-                $"{what}, value {i}: Dart {expected[i]:R}, C# {actual[i]:R}, from Dart commit {fixture.DartCommit}");
+                $"{what}, value {i}: the fixture {expected[i]:R}, the port {actual[i]:R}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
     private static void AssertSame<T>(Fixture fixture, string what, T expected, T actual) =>
         Assert.True(
             EqualityComparer<T>.Default.Equals(expected, actual),
-            $"{what}: Dart {expected}, C# {actual}, from Dart commit {fixture.DartCommit}");
+            $"{what}: the fixture {expected}, the port {actual}, from fixture commit {fixture.SourceCommit}");
 
     private static void AssertSameList<T>(Fixture fixture, string what, IEnumerable<T> expected, IEnumerable<T> actual) =>
         Assert.True(
             expected.SequenceEqual(actual),
-            $"{what}: Dart [{string.Join(", ", expected)}], C# [{string.Join(", ", actual)}], from Dart commit {fixture.DartCommit}");
+            $"{what}: the fixture [{string.Join(", ", expected)}], the port [{string.Join(", ", actual)}], from fixture commit {fixture.SourceCommit}");
 
     private static double[] Flat(object? value) => value switch
     {
@@ -79,19 +79,19 @@ public class SequenceParityTests
         _ => throw new InvalidOperationException($"{value?.GetType()} is not a value a track gives"),
     };
 
-    /// <summary>A value Dart wrote with nothing, a flag, a number or a list of numbers.</summary>
+    /// <summary>A value the fixture holds as nothing, a flag, a number or a list of numbers.</summary>
     private static void AssertValue(Fixture fixture, string what, JsonElement expected, object? actual)
     {
         switch (expected.ValueKind)
         {
             case JsonValueKind.Null:
-                Assert.True(actual is null, $"{what}: Dart gave nothing, C# gave {actual}, from Dart commit {fixture.DartCommit}");
+                Assert.True(actual is null, $"{what}: the fixture gave nothing, the port gave {actual}, from fixture commit {fixture.SourceCommit}");
                 break;
             case JsonValueKind.True:
             case JsonValueKind.False:
                 Assert.True(
                     actual is bool flag && flag == expected.GetBoolean(),
-                    $"{what}: Dart {expected.GetBoolean()}, C# {actual}, from Dart commit {fixture.DartCommit}");
+                    $"{what}: the fixture {expected.GetBoolean()}, the port {actual}, from fixture commit {fixture.SourceCommit}");
                 break;
             case JsonValueKind.Array:
                 AssertClose(fixture, what, Numbers(expected), Flat(actual));
@@ -212,7 +212,7 @@ public class SequenceParityTests
         var theirs = expected.EnumerateArray().ToList();
         Assert.True(
             theirs.Count == actual.Count,
-            $"{what}: Dart fired {theirs.Count} marks, C# fired {actual.Count}, from Dart commit {fixture.DartCommit}");
+            $"{what}: the fixture fired {theirs.Count} marks, the port fired {actual.Count}, from fixture commit {fixture.SourceCommit}");
         for (var i = 0; i < theirs.Count; i++)
         {
             AssertSame(fixture, $"{what}, mark {i} time", Fixture.Number(theirs[i][0]), actual[i].At);
@@ -317,7 +317,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void EveryEasingShapeMatchesDart()
+    public void EveryEasingShapeMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         foreach (var c in Cases(fixture, "ease"))
@@ -333,7 +333,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void ClipWeightsPositionsAndCoverageMatchDart()
+    public void ClipWeightsPositionsAndCoverageMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         var n = 0;
@@ -357,7 +357,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void ChannelSamplesAndSlopesMatchDart()
+    public void ChannelSamplesAndSlopesMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         var n = 0;
@@ -384,7 +384,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void MixerLerpMatchesDart()
+    public void MixerLerpMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         var n = 0;
@@ -411,7 +411,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void MixerMixMatchesDart()
+    public void MixerMixMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         var n = 0;
@@ -438,7 +438,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void SequenceFramesTracksMarksAndSnapsMatchDart()
+    public void SequenceFramesTracksMarksAndSnapsMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         var n = 0;
@@ -512,7 +512,7 @@ public class SequenceParityTests
     }
 
     [Fact]
-    public void DirectorScriptsMatchDart()
+    public void DirectorScriptsMatchTheFixture()
     {
         var fixture = Fixture.Load("orblit_sequence", "sequence");
         var n = 0;
@@ -542,22 +542,22 @@ public class SequenceParityTests
     {
         if (expected.TryGetProperty("frame", out var theirFrame))
         {
-            Assert.True(frame is not null, $"{what}: Dart gave a frame, C# gave none, from Dart commit {fixture.DartCommit}");
+            Assert.True(frame is not null, $"{what}: the fixture gave a frame, the port gave none, from fixture commit {fixture.SourceCommit}");
             AssertFrame(fixture, what, theirFrame, frame);
         }
         else
         {
-            Assert.True(frame is null, $"{what}: Dart gave no frame, C# gave one, from Dart commit {fixture.DartCommit}");
+            Assert.True(frame is null, $"{what}: the fixture gave no frame, the port gave one, from fixture commit {fixture.SourceCommit}");
         }
 
         if (expected.TryGetProperty("marks", out var theirMarks))
         {
-            Assert.True(marks is not null, $"{what}: Dart gave marks, C# gave none, from Dart commit {fixture.DartCommit}");
+            Assert.True(marks is not null, $"{what}: the fixture gave marks, the port gave none, from fixture commit {fixture.SourceCommit}");
             AssertMarks(fixture, what, theirMarks, marks);
         }
         else
         {
-            Assert.True(marks is null, $"{what}: Dart gave no marks, C# gave some, from Dart commit {fixture.DartCommit}");
+            Assert.True(marks is null, $"{what}: the fixture gave no marks, the port gave some, from fixture commit {fixture.SourceCommit}");
         }
     }
 }

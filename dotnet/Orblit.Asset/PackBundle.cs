@@ -79,7 +79,7 @@ public static class PackBundle
         string text;
         try
         {
-            text = DartText.Decode(await File.ReadAllBytesAsync(Inside(bundlePath, "manifest.json")).ConfigureAwait(false));
+            text = TextRules.Decode(await File.ReadAllBytesAsync(Inside(bundlePath, "manifest.json")).ConfigureAwait(false));
         }
         catch (Exception error) when (error is FileNotFoundException or DirectoryNotFoundException)
         {

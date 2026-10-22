@@ -2,8 +2,7 @@ using static Orblit.Asset.Tests.NetWorld;
 
 namespace Orblit.Asset.Tests;
 
-// What the C# fetcher does that the Dart one has no test for: its clock, its backoff arithmetic and the
-// places a thread pool can fail where a single event loop could not.
+// What no fixture covers: its clock, its backoff arithmetic and the places a thread pool can fail.
 public class NetFetcherAddedTests
 {
     private sealed class Pinned(double value) : Random
@@ -64,8 +63,7 @@ public class NetFetcherAddedTests
         Assert.Equal(TimeSpan.FromDays(1), fetcher.WaitBefore(int.MaxValue));
     }
 
-    // The Dart twin lets this one surface as an error nobody catches. Here it is a failed attempt, tried
-    // again like any other, and the caller hears about it.
+    // This is a failed attempt, tried again like any other, and the caller hears about it.
     [Fact]
     public async Task ACallbackThatThrowsFailsTheAttemptAndNotTheProcess()
     {
@@ -80,7 +78,7 @@ public class NetFetcherAddedTests
         Assert.Equal(2, transport.Sent.Count);
     }
 
-    // Dart would leave everyone waiting. A pool thread that dies quietly would do the same here.
+    // A pool thread that dies quietly would leave everyone waiting.
     [Fact]
     public async Task RecordsThatThrowFailTheDownloadInsteadOfHangingIt()
     {

@@ -2,7 +2,7 @@ using System.Net;
 
 namespace Orblit.Asset.Tests;
 
-// What the C# has that the Dart tests do not say, and where it chooses differently from Dart.
+// What the fixtures do not say, and where the port makes a choice.
 public class NetRangeAddedTests
 {
     private static readonly WebUrl Url = WebUrl.Parse("https://cdn.example.com/one.opack");

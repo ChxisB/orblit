@@ -1,6 +1,6 @@
 namespace Orblit.Asset.Tests;
 
-// Dart's tests wait one turn of the event loop. Threads have no such turn, so a test waits for what it
+// Threads have no turn of an event loop to wait on, so a test waits for what it
 // expects, or for long enough to see that something does not happen.
 internal static class Waits
 {

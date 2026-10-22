@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Orblit.Asset.Tests;
 
-// What the Dart cook does and its tests never said, and what the C# port does differently on purpose.
+// What the cook does that no fixture says, and the choices made on purpose.
 public class CookAddedTests
 {
     private static AssetId Id(string text) => AssetId.Parse(text);

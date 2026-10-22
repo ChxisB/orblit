@@ -365,9 +365,9 @@ public sealed class Terrain
         foreach (var (key, value) in ToJson())
         {
             var text = key is "sets" or "scatter" && value is List<object?> { Count: > 0 } items
-                ? "[\n" + string.Join(",\n", items.Select(item => "    " + DartJson.Encode(item))) + "\n  ]"
-                : DartJson.Encode(value);
-            lines.Add($"  {DartJson.Encode(key)}: {text}");
+                ? "[\n" + string.Join(",\n", items.Select(item => "    " + JsonText.Encode(item))) + "\n  ]"
+                : JsonText.Encode(value);
+            lines.Add($"  {JsonText.Encode(key)}: {text}");
         }
 
         return new StringBuilder("{\n").AppendJoin(",\n", lines).Append("\n}\n").ToString();
@@ -402,7 +402,7 @@ public sealed class Terrain
         var spacing = JsonReads.Number(json, "spacing") ?? 1;
         if (spacing <= 0)
         {
-            problems.Add($"The texels were {Doubles.ToDartString(spacing)} m apart; they are 1 m now.");
+            problems.Add($"The texels were {Doubles.ToFileString(spacing)} m apart; they are 1 m now.");
             spacing = 1;
         }
 
@@ -424,7 +424,7 @@ public sealed class Terrain
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(text);
+            parsed = JsonText.Decode(text);
         }
         catch (FormatException error)
         {

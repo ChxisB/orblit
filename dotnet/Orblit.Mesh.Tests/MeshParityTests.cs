@@ -8,8 +8,8 @@ using static Orblit.Parity.Dump;
 namespace Orblit.Mesh.Tests;
 
 /// <summary>
-/// Runs the cases the Dart exporter wrote for orblit_mesh and compares what the port gives with what
-/// Dart gave, including the cases where Dart refused.
+/// Runs the cases the fixture exporter wrote for orblit_mesh and compares what the port gives with what
+/// the fixture holds, including the cases that were refused.
 /// </summary>
 public class MeshParityTests
 {
@@ -242,7 +242,7 @@ public class MeshParityTests
         {
             "glb" => MeshExport.BoundsOfGlb(bytes),
             "obj" => ObjFiles.BoundsOfObj(bytes),
-            _ => MeshExport.BoundsOfGltf(DartText.Decode(bytes)),
+            _ => MeshExport.BoundsOfGltf(TextRules.Decode(bytes)),
         });
     });
 

@@ -11,21 +11,21 @@ namespace Orblit.Asset.Tests;
 
 public class GltfEditParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_asset", "gltf_edit");
+    private static readonly Fixture Golden = Fixture.Load("orblit_asset", "gltf_edit");
 
     [Fact]
-    public Task MergeMaterialsMatchesDart() => CheckAsync(Dart, "mergeMaterials", async c =>
+    public Task MergeMaterialsMatchesTheFixture() => CheckAsync(Golden, "mergeMaterials", async c =>
     {
         var document = await Open(c);
         return new JsonObject
         {
             ["count"] = GltfMerge.MergeMaterials(document),
-            ["json"] = DartJson.Encode(document.Json),
+            ["json"] = JsonText.Encode(document.Json),
         };
     });
 
     [Fact]
-    public Task MergePrimitivesMatchesDart() => CheckAsync(Dart, "mergePrimitives", async c =>
+    public Task MergePrimitivesMatchesTheFixture() => CheckAsync(Golden, "mergePrimitives", async c =>
     {
         var document = await Open(c);
         var count = GltfMerge.MergePrimitives(document, In(c, 1).GetInt32());
@@ -35,7 +35,7 @@ public class GltfEditParityTests
     });
 
     [Fact]
-    public Task GroupKeyMatchesDart() => CheckAsync(Dart, "groupKey", async c =>
+    public Task GroupKeyMatchesTheFixture() => CheckAsync(Golden, "groupKey", async c =>
     {
         var document = await Open(c);
         var keys = document.List("meshes")
@@ -45,7 +45,7 @@ public class GltfEditParityTests
     });
 
     [Fact]
-    public Task BakeMatchesDart() => CheckAsync(Dart, "bake", async c =>
+    public Task BakeMatchesTheFixture() => CheckAsync(Golden, "bake", async c =>
     {
         var placements = In(c, 1).EnumerateArray().Select(Placement).ToList();
         var baked = await GltfBake.BakeInstancesAsync(

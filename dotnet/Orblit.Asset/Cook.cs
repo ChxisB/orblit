@@ -13,7 +13,7 @@ public sealed class Cook
     private readonly ConcurrentDictionary<AssetId, Lazy<Task<ContentHash>>> _hashes = new();
     private readonly Lock _callbacks = new();
 
-    // F2: six parameters, all named at each call, as in the Dart constructor.
+    // F2: six parameters, all named at each call.
     public Cook(
         IAssetSource source,
         ICookCache cache,

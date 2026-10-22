@@ -7,15 +7,15 @@ namespace Orblit.Dialogue.Tests;
 
 public class DialogueParityTests
 {
-    private static readonly Fixture Dart = Fixture.Load("orblit_dialogue", "dialogue");
+    private static readonly Fixture Golden = Fixture.Load("orblit_dialogue", "dialogue");
 
     private const int MaxDepth = 8;
 
     [Fact]
-    public void ParsedFilesMatchTheDartTwin() => Dart.Check("parse", Parse);
+    public void ParsedFilesMatchTheFixture() => Golden.Check("parse", Parse);
 
     [Fact]
-    public void BooksMatchTheDartTwin() => Dart.Check("book", RunBook);
+    public void BooksMatchTheFixture() => Golden.Check("book", RunBook);
 
     private static JsonNode? Parse(JsonElement c)
     {
@@ -139,7 +139,7 @@ public class DialogueParityTests
         }
     }
 
-    // A rule this package wrote carries its text, which Dart words the same way.
+    // A rule this package wrote carries its text, worded the same way in the fixture.
     private static JsonObject Known(Func<JsonNode?> body)
     {
         try

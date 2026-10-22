@@ -59,7 +59,7 @@ public class ImportSettingsReader(IAssetSource source)
         ImportSettings? settings;
         try
         {
-            settings = ImportSettings.Parse(DartText.Decode(await Source.ReadAsync(file).ConfigureAwait(false)), file);
+            settings = ImportSettings.Parse(TextRules.Decode(await Source.ReadAsync(file).ConfigureAwait(false)), file);
         }
         catch (AssetNotFoundException)
         {

@@ -52,13 +52,13 @@ public sealed class AutoSaver
             _dueAt.Remove(gone);
         }
 
-        // Dart's putIfAbsent draws only for a new key, so TryAdd cannot be used here.
+        // A draw is made only for a new key, so TryAdd cannot be used here.
         foreach (var key in keys.Where(key => !_dueAt.ContainsKey(key)))
         {
             _dueAt.Add(key, tick + 1 + _random.Next(Every));
         }
 
-        // Dart compares strings by UTF-16 code unit, which is ordinal.
+        // Strings compare by UTF-16 code unit, which is ordinal.
         var picked = _dueAt
             .Where(entry => entry.Value <= tick)
             .OrderBy(entry => entry.Value)

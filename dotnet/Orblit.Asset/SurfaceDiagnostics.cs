@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Text.RegularExpressions;
-using static Orblit.Asset.DartPattern;
+using static Orblit.Asset.CharClasses;
 
 namespace Orblit.Asset;
 

@@ -8,7 +8,7 @@ namespace Orblit.Rig;
 /// an animator wants a dozen of them at a time. Collections are how the rest get out of the way:
 /// the face while animating a walk, the machinery always.
 /// </summary>
-[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The Dart name, and the rigging term. It holds a name and a colour, not bones.")]
+[SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The rigging term. It holds a name and a colour, not bones.")]
 public sealed class BoneCollection(string name, bool visible = true, int? colour = null)
 {
     public string Name { get; } = name;

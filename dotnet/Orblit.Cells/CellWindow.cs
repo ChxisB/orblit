@@ -139,7 +139,7 @@ public sealed class CellWindow
         return first.X != second.X ? first.X.CompareTo(second.X) : first.Z.CompareTo(second.Z);
     }
 
-    // Dart orders a NaN above every number and C# below. A rank is NaN when a
+    // A NaN ranks above every number here, where CompareTo ranks it below. A rank is NaN when a
     // cell's middle overflows to infinity. Negative zero is not reachable here.
     private static int NanLast(double a, double b) =>
         double.IsNaN(a) || double.IsNaN(b) ? double.IsNaN(a).CompareTo(double.IsNaN(b)) : a.CompareTo(b);

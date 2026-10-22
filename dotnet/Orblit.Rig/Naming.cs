@@ -65,7 +65,7 @@ public static class Sides
 public static partial class BoneNaming
 {
     // The tail of a name Blender gave a duplicate. \z and [0-9] because .NET's $ also matches
-    // before a final newline and its \d matches digits outside ASCII, where Dart's do not.
+    // before a final newline and its \d matches digits outside ASCII, which a name does not use.
     [GeneratedRegex(@"\.[0-9]{3}\z")]
     private static partial Regex Numeric();
 

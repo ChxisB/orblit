@@ -2,7 +2,7 @@ using System.Text;
 
 namespace Orblit.Asset.Tests;
 
-// Edges the Dart tests leave open: the name rules, settings laid over a file's own, layered sources and a cache
+// Edges the ported tests leave open: the name rules, settings laid over a file's own, layered sources and a cache
 // that has dropped bytes.
 public sealed class RuntimeImportAddedTests
 {

@@ -57,7 +57,7 @@ public sealed class Emitter
 {
     private const long BurstBase = 0x40000000;
 
-    // F2: sixteen settings, all optional and called by name, as in Dart.
+    // F2: sixteen settings, all optional and called by name.
     public Emitter(
         long seed = 0,
         Shape? shape = null,
@@ -153,7 +153,7 @@ public sealed class Emitter
 
     // shortcut: a copy cannot clear Duration. Build a new Emitter to remove it.
     [SuppressMessage("Maintainability", "CA1502:Avoid excessive complexity", Justification = "F2: a list of cases is data.")]
-    // F2: sixteen settings, all optional and called by name, as in Dart.
+    // F2: sixteen settings, all optional and called by name.
     public Emitter CopyWith(
         long? seed = null,
         Shape? shape = null,
@@ -207,7 +207,7 @@ public sealed class Emitter
     /// <paramref name="slot"/> of <paramref name="output"/>, <paramref name="age"/>
     /// seconds into a life of <paramref name="life"/>.
     /// </summary>
-    // F2: the five values are the Dart signature, and both callers pass them as they are.
+    // F2: the five values are the whole signature, and both callers pass them as they are.
     public void Look(ParticleBuffer output, int slot, long id, double age, double life)
     {
         var fraction = age / life;

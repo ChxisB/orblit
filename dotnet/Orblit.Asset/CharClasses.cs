@@ -1,10 +1,10 @@
 namespace Orblit.Asset;
 
 /// <summary>
-/// The classes a Dart pattern means by its short escapes. .NET reads <c>\s</c>, <c>\w</c>, <c>\d</c>, <c>.</c>
-/// and <c>$</c> more widely, and a pattern built from these reads the same text as Dart does.
+/// The classes the file formats mean by their short escapes. .NET reads <c>\s</c>, <c>\w</c>, <c>\d</c>, <c>.</c>
+/// and <c>$</c> more widely, and a pattern built from these reads only the text the formats allow.
 /// </summary>
-internal static class DartPattern
+internal static class CharClasses
 {
     /// <summary><c>\s</c>: the space of a trim, less the next-line character.</summary>
     internal const string Space = "[\\t\\n\\v\\f\\r \\u00a0\\u1680\\u2000-\\u200a\\u2028\\u2029\\u202f\\u205f\\u3000\\ufeff]";

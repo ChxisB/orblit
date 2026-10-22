@@ -90,7 +90,7 @@ public sealed record TilingNoise(NoiseField Inner, long Period = 16) : NoiseFiel
         return Inner.At(Wrap(x, p), Wrap(y, p), Wrap(z, p));
     }
 
-    // C#'s % keeps the sign of the dividend and Dart's does not, so the
+    // C#'s % keeps the sign of the dividend and this must not, so the
     // negative case is corrected here.
     private static double Wrap(double value, long period)
     {

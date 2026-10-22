@@ -12,7 +12,7 @@
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
-    <Compile Include="..\Orblit.Json\DartQuote.cs" Link="DartQuote.cs" />
+    <Compile Include="..\Orblit.Json\JsonQuote.cs" Link="JsonQuote.cs" />
     <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
   </ItemGroup>
 </Project>

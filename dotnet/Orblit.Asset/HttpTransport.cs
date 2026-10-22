@@ -117,14 +117,13 @@ public sealed partial class HttpTransport : IAssetTransport
         return reply.StatusCode == System.Net.HttpStatusCode.PartialContent ? null : reply.Content.Headers.ContentLength;
     }
 
-    // A header as the server wrote it, or null. Two of the same name are one value joined by a comma, as the
-    // Dart client reads them.
+    // A header as the server wrote it, or null. Two of the same name are one value joined by a comma.
     private static string? HeaderOf(HttpResponseMessage reply, string name) =>
         reply.Headers.TryGetValues(name, out var values) || reply.Content.Headers.TryGetValues(name, out values)
             ? string.Join(", ", values)
             : null;
 
-    // shortcut: a number in Dart's other forms, such as 0x10, is read as no number, and then a content-range
+    // shortcut: a number in another form, such as 0x10, is read as no number, and then a content-range
     // total in hex falls back to the content-length. Upgrade when a server is found that writes one.
     private static long? ParseNumber(string text) =>
         long.TryParse(text, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var number) ? number : null;
@@ -132,7 +131,7 @@ public sealed partial class HttpTransport : IAssetTransport
     [GeneratedRegex(@"^\s*bytes\s+([0-9]+)-", RegexOptions.CultureInvariant)]
     private static partial Regex RangeStart();
 
-    // The body, read once, as the Dart stream is. It is its own enumerator so that starting it and letting it
+    // The body, read once. It is its own enumerator so that starting it and letting it
     // go without a read, which is how a refused reply is turned away, still closes the connection. An
     // iterator method would not: its cleanup runs only if it was started.
     private sealed class ReplyBody(HttpResponseMessage reply) : IAsyncEnumerable<byte[]>, IAsyncEnumerator<byte[]>

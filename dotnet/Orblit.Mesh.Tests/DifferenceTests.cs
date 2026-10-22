@@ -3,8 +3,8 @@ using System.Buffers.Binary;
 namespace Orblit.Mesh.Tests;
 
 /// <summary>
-/// Where the port differs from Dart on purpose: a sort that stays stable past 32 faces
-/// (decision 75) and one quiet NaN in every file. Dart promises neither, so no fixture holds them.
+/// Where the port differs from the fixture on purpose: a sort that stays stable past 32 faces
+/// (decision 75) and one quiet NaN in every file. The fixture promises neither, so none holds them.
 /// </summary>
 public class DifferenceTests
 {

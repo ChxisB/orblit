@@ -3,7 +3,7 @@ namespace Orblit.Progress;
 /// <summary>A name a game gives to a number.</summary>
 public abstract class ProgressName
 {
-    // Closed to this assembly, as the Dart class is sealed.
+    // Closed to this assembly.
     private protected ProgressName(string name)
     {
         Name = name;

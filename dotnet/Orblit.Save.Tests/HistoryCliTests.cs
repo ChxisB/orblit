@@ -123,7 +123,7 @@ public sealed class HistoryCliTests : IAsyncLifetime
         Assert.Equal(64, await Run("list", "a", "b"));
         Assert.Equal(64, await Run("restore", "ana", "--server-stopped"));
         Assert.Equal(64, await Run("list", "--force"));
-        // The tool is a dotnet tool, so its name replaces `dart run orblit_save:history`.
+        // The tool is a dotnet tool, so its usage line names the executable.
         Assert.Contains("orblit-save-history", _err.ToString(), StringComparison.Ordinal);
     }
 }

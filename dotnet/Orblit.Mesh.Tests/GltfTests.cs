@@ -147,7 +147,7 @@ public class GltfTests
         var text = JsonTextOf(bytes);
 
         Assert.Equal("{\"asset\":{}}", text.TrimEnd());
-        Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(DartJson.Decode(text));
+        Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(JsonText.Decode(text));
     }
 
     [Fact]
@@ -222,7 +222,7 @@ public class GltfTests
             buffer: "model.bin",
             byteLength: 64);
 
-        var buffers = GlbJson.List(GlbJson.Map(DartJson.Decode(json))["buffers"]);
+        var buffers = GlbJson.List(GlbJson.Map(JsonText.Decode(json))["buffers"]);
         var only = GlbJson.Map(Assert.Single(buffers));
         Assert.Equal("model.bin", only["uri"]);
         Assert.Equal(64.0, GlbJson.Number(only["byteLength"]));
@@ -236,6 +236,6 @@ public class GltfTests
                 ("asset", Doc(("version", "2.0"))),
                 ("buffers", new List<object?> { Doc(("byteLength", 8L)) })),
             byteLength: 0);
-        Assert.False(GlbJson.Map(DartJson.Decode(json)).ContainsKey("buffers"));
+        Assert.False(GlbJson.Map(JsonText.Decode(json)).ContainsKey("buffers"));
     }
 }

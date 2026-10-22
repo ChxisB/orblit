@@ -280,7 +280,7 @@ public abstract class Profiler
                 return null;
             }
 
-            // Summed in order, as Dart's reduce does, so the two agree to the last digit.
+            // Summed in order, so the total is the same to the last digit.
             var sumX = 0.0;
             var sumY = 0.0;
             for (var i = 0; i < n; i++)

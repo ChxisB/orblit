@@ -29,7 +29,7 @@ public static class BuildHook
     /// encode every time.
     /// </param>
     /// <exception cref="CookFailedException">Some asset could not be cooked. The report is on the exception.</exception>
-    // F2: nine parameters, all named at each call, as in the Dart function.
+    // F2: nine parameters, all named at each call.
     public static async Task<CookReport> CookDuringBuildAsync(
         string packageRoot,
         string? targetOs,
@@ -72,7 +72,7 @@ public static class BuildHook
     /// <paramref name="dependencies"/>. A build treats a dependency that changed while the hook ran as stale and runs
     /// the hook again on every build, and the pack always changes while the hook runs.
     /// </remarks>
-    // F2: ten parameters, all named at each call, as in the Dart function.
+    // F2: ten parameters, all named at each call.
     public static async Task<PackSummary> PackDuringBuildAsync(
         string packageRoot,
         string? targetOs,
@@ -108,7 +108,7 @@ public static class BuildHook
     /// <summary>The target a hook's <c>targetOs</c> names, where a null one is the web.</summary>
     private static CookTarget TargetFor(string? targetOs) =>
         CookTargets.Find(targetOs ?? "web")
-        ?? throw DartArgument.Value(
+        ?? throw InvalidArgument.Value(
             targetOs,
             "targetOs",
             $"is not a platform Orblit cooks for. Orblit cooks for {string.Join(", ", CookTargets.Names)}");

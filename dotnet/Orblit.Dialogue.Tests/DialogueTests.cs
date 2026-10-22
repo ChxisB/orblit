@@ -28,7 +28,7 @@ public class DialogueTests
     }
 
     private static DialogueDefinition Parse(Dictionary<string, object?> json) =>
-        DialogueDefinition.Parse(DartJson.Encode(json));
+        DialogueDefinition.Parse(JsonText.Encode(json));
 
     private static DialogueFormatException FailsToLoad(Action load, string? containing = null)
     {
@@ -192,7 +192,7 @@ public class DialogueTests
             var json = bad[i];
             Assert.True(
                 Throws(() => Parse(json)),
-                $"case {i} {DartJson.Encode(json)}");
+                $"case {i} {JsonText.Encode(json)}");
         }
 
         static bool Throws(Action load)

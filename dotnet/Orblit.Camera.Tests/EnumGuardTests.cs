@@ -2,7 +2,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Camera.Tests;
 
-// Dart's enums are closed. A C# enum takes any number, so the two switches over one say so.
+// A C# enum takes any number, so the two switches over one say so.
 public class EnumGuardTests
 {
     [Fact]

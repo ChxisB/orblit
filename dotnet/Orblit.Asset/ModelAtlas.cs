@@ -24,7 +24,7 @@ namespace Orblit.Asset;
 /// The vertex count a merged primitive will not be pushed past. 65,536 on purpose: one more vertex forces
 /// 32-bit indices, which doubles the index bandwidth of every draw for the rest of the model's life.
 /// </param>
-// F2: seven options, all named and all optional, as in Dart.
+// F2: seven options, all named and all optional.
 internal sealed record ModelAtlasOptions(
     int MaxPageSize = 2048,
     int Padding = 4,

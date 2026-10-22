@@ -2,8 +2,8 @@ using System.Text.Json;
 
 namespace Orblit.Asset.Tests;
 
-// Ported from the 'the command' group in test/cook_project_test.dart. Dart starts a process for each one. These run
-// the command in this process on writers of their own, which reads the same exit code and the same text.
+// Ported from the 'the command' group in test/cook_project_test.dart. These run the command in this process on
+// writers of their own, which reads the same exit code and the same text as a process would.
 public sealed class CookCliTests : IDisposable
 {
     private readonly CookProjectWork _work = new();

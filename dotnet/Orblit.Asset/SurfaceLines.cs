@@ -1,7 +1,7 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using Orblit.Mesh;
-using static Orblit.Asset.DartPattern;
+using static Orblit.Asset.CharClasses;
 
 namespace Orblit.Asset;
 

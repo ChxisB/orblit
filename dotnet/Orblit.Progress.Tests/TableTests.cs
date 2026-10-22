@@ -15,7 +15,7 @@ public class TableTests
     private static ProgressSchema Named(int n, int version) =>
         new(version, Enumerable.Range(0, n).Select(i => (ProgressName)new Whole($"n{i}")).ToArray());
 
-    // Dart's ArgumentError and RangeError are two types; here a value that does not fit is the range one.
+    // A value that does not fit is a range error, not an argument error.
     private static void ThrowsRange(Action action) => Assert.Throws<ArgumentOutOfRangeException>(action);
 
     // A table is only changed by a write, so a chain of writes reads better than nested calls.

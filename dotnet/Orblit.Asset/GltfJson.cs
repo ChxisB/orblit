@@ -4,7 +4,7 @@ using Orblit.VectorMath;
 namespace Orblit.Asset;
 
 /// <summary>
-/// The reads a glTF rewrite makes on a document's JSON, as Dart's casts make them: a number that
+/// The reads a glTF rewrite makes on a document's JSON, as a typed cast makes them: a number that
 /// is not a whole number is not an <c>int</c>, and asking for one is an error.
 /// </summary>
 internal static class GltfJson
@@ -35,8 +35,8 @@ internal static class GltfJson
     internal static bool IsInt(object? value) => value is int or long;
 
     /// <summary>
-    /// A whole JSON number as an <c>int</c>, with one past 32 bits held at the end of the range. Dart's
-    /// <c>int</c> has 64 bits, so a range check on the number still refuses it where a narrowing would
+    /// A whole JSON number as an <c>int</c>, with one past 32 bits held at the end of the range. A
+    /// 64-bit whole number is read first, so a range check on the number still refuses it where a narrowing would
     /// throw or wrap into range.
     /// </summary>
     internal static int Saturated(object? value) => value switch
@@ -64,8 +64,8 @@ internal static class GltfJson
     };
 
     /// <summary>
-    /// What Dart's string interpolation makes of a JSON value, so a key built from one tells <c>1</c> from
-    /// <c>1.0</c> as Dart's does.
+    /// A JSON value as text, so a key built from one tells <c>1</c> from
+    /// <c>1.0</c>.
     /// </summary>
     internal static string Display(object? value) => value switch
     {
@@ -73,7 +73,7 @@ internal static class GltfJson
         string text => text,
         bool flag => flag ? "true" : "false",
         int or long => Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty,
-        double number => Doubles.ToDartString(number),
+        double number => Doubles.ToFileString(number),
         List<object?> list => $"[{string.Join(", ", list.Select(Display))}]",
         GltfMap map => $"{{{string.Join(", ", map.Select(entry => $"{entry.Key}: {Display(entry.Value)}"))}}}",
         _ => throw new ArgumentException($"{value.GetType().Name} is not a JSON value.", nameof(value)),

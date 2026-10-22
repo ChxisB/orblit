@@ -64,7 +64,7 @@ public sealed class BlendTable(Blend? defaultBlend = null)
 
     /// <summary>
     /// The blend for a transition, most specific rule first. A null name is looked up as the
-    /// text "null", as in Dart, so a rule set with a null name is only found through its "*".
+    /// text "null", so a rule set with a null name is only found through its "*".
     /// </summary>
     public Blend Between(string? from, string? to)
     {

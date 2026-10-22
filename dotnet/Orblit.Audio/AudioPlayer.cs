@@ -32,8 +32,7 @@ public sealed class Voice
     private double? _stopIn;
     private Level _sent = new();
 
-    // F2: nine parameters, and AudioPlayer.Play calls every one by name, as the
-    // Dart constructor's named parameters did.
+    // F2: nine parameters, and AudioPlayer.Play calls every one by name.
     internal Voice(
         long id,
         string clip,

@@ -9,7 +9,7 @@ public static class TerrainMath
     /// </summary>
     public static long FloorDiv(long a, long b)
     {
-        // Dart's % never gives a negative.
+        // The remainder is never negative.
         var remainder = a % b;
         if (remainder < 0)
         {

@@ -115,7 +115,7 @@ public class GltfReadTests
                         ("byteLength", 3L),
                         ("uri", "data:application/octet-stream;base64," + Convert.ToBase64String([1, 2, 3]))),
                 }));
-        var parts = GltfFiles.GltfParts(Encoding.UTF8.GetBytes(DartJson.Encode(json)));
+        var parts = GltfFiles.GltfParts(Encoding.UTF8.GetBytes(JsonText.Encode(json)));
         Assert.Equal(new byte[] { 1, 2, 3 }, parts.Binary);
     }
 
@@ -124,7 +124,7 @@ public class GltfReadTests
     {
         var json = Json(("buffers", new List<object?> { Json(("byteLength", 2L), ("uri", "old%20town.bin")) }));
         var parts = GltfFiles.GltfParts(
-            Encoding.UTF8.GetBytes(DartJson.Encode(json)),
+            Encoding.UTF8.GetBytes(JsonText.Encode(json)),
             new Dictionary<string, byte[]> { ["old town.bin"] = [7, 8] });
         Assert.Equal(new byte[] { 7, 8 }, parts.Binary);
     }

@@ -172,7 +172,7 @@ internal sealed class BakeBatch(GltfDocument document, int maxVertices)
         }
     }
 
-    // Dart's int is 64 bits and wraps nothing. An index at or past 2^31 throws here instead.
+    // An index at or past 2^31 throws.
     private int Offset(uint index) => checked((int)(_vertices + index));
 
     private void Close()

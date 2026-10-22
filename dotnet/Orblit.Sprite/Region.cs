@@ -18,7 +18,7 @@ namespace Orblit.Sprite;
 /// <param name="OffsetY">Where the trimmed part sits inside the original frame.</param>
 /// <param name="SourceWidth">How wide it was before trimming. Zero when it was never trimmed.</param>
 /// <param name="SourceHeight">How tall it was before trimming. Zero when it was never trimmed.</param>
-// F2: eleven parameters, and every one after the size is optional and called by name, as in Dart.
+// F2: eleven parameters, and every one after the size is optional and called by name.
 public sealed record Region(
     string Name,
     long X,

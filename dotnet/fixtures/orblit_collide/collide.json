@@ -1,6 +1,6 @@
 {
   "package": "orblit_collide",
-  "dartCommit": "98411523647090e9f19cea1385344d39a8f96f46",
+  "sourceCommit": "98411523647090e9f19cea1385344d39a8f96f46",
   "cases": [
     {"op":"contact","a":{"t":"box","p":[3.0,1.25,2.0],"size":[3.94,2.5,4.66]},"b":{"t":"sphere","p":[3.0,1.25,2.0],"r":1.69},"forward":{"point":[3.0,1.25,2.0],"normal":[-0.0,-1.0,-0.0],"depth":2.94},"backward":{"point":[3.0,1.25,2.0],"normal":[0.0,1.0,0.0],"depth":2.94},"overlaps":true},
     {"op":"contact","a":{"t":"capsule","p":[1.5,1.3600000000000003,-1.09],"height":0.09,"radius":1.0},"b":{"t":"box","p":[1.5,1.3600000000000003,-0.09000000000000008],"size":[4.0,2.61,3.44]},"forward":{"point":[1.5,1.3600000000000003,-1.09],"normal":[0.0,0.0,-1.0],"depth":1.72},"backward":{"point":[1.5,1.3600000000000003,-1.09],"normal":[-0.0,-0.0,1.0],"depth":1.72},"overlaps":true},

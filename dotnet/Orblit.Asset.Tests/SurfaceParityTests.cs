@@ -9,43 +9,43 @@ public class SurfaceParityTests
 {
     private const string Pulse = "materials/pulse.oshader";
 
-    private static readonly Fixture Dart = Fixture.Load("orblit_asset", "surface");
+    private static readonly Fixture Golden = Fixture.Load("orblit_asset", "surface");
 
     [Fact]
-    public void TranslateMatchesDart() => Dart.Check("translate", c => Try(() =>
+    public void TranslateMatchesTheFixture() => Golden.Check("translate", c => Try(() =>
         TranslationOut(SurfaceTranslator.Translate(Text(c, 0), Text(c, 1), Text(c, 2), Reader(In(c, 3))))));
 
     [Fact]
-    public void SplitMatchesDart() => Dart.Check("split", c =>
+    public void SplitMatchesTheFixture() => Golden.Check("split", c =>
         Dump.Attempt(() => Dump.Arr(SurfaceLiterals.SplitTopLevel(Text(c, 0)), Dump.Text)));
 
     [Fact]
-    public void HintsMatchDart() => Dart.Check("hints", c =>
+    public void HintsMatchTheFixture() => Golden.Check("hints", c =>
         Try(() => new JsonObject(SurfaceLiterals.ParseHints(Text(c, 0), new SurfaceOrigin("f", 3))
             .Select(hint => KeyValuePair.Create(hint.Key, (JsonNode?)Dump.Arr(hint.Value, Dump.Text))))));
 
     [Fact]
-    public void DefaultsMatchDart() => Dart.Check("default", c => Try(() =>
+    public void DefaultsMatchTheFixture() => Golden.Check("default", c => Try(() =>
     {
         var value = SurfaceLiterals.ParseDefault(SurfaceTypeTools.OfWord(Text(c, 0))!.Value, Text(c, 1), new SurfaceOrigin("f", 3));
         return new JsonObject { ["value"] = Dump.Tree(value), ["kinds"] = Kinds(value) };
     }));
 
     [Fact]
-    public void IncludePathsMatchDart() => Dart.Check("include_paths", c =>
+    public void IncludePathsMatchTheFixture() => Golden.Check("include_paths", c =>
         Try(() => Dump.Arr(SurfaceLines.IncludePaths(Text(c, 0), Text(c, 1)), Dump.Text)));
 
     [Fact]
-    public void DiagnosticsMatchDart() => Dart.Check("diagnostics", c => Try(() => Dump.Arr(
+    public void DiagnosticsMatchTheFixture() => Golden.Check("diagnostics", c => Try(() => Dump.Arr(
         SurfaceDiagnostics.Of(Text(c, 2), SurfaceTranslator.Translate("pulse", Pulse, Text(c, 0), Reader(In(c, 1)))),
         Dump.Text)));
 
     [Fact]
-    public void OriginOfMatchesDart() => Dart.Check("origin_of", c => Try(() => Dump.Text(
+    public void OriginOfMatchesTheFixture() => Golden.Check("origin_of", c => Try(() => Dump.Text(
         SurfaceTranslator.Translate("pulse", Pulse, Text(c, 0), Reader(In(c, 1))).OriginOf(In(c, 2).GetInt64()).ToString())));
 
     [Fact]
-    public void TypesMatchDart() => Dart.Check("type", c => Dump.Attempt(() => SurfaceTypeTools.OfWord(Text(c, 0)) is { } type
+    public void TypesMatchTheFixture() => Golden.Check("type", c => Dump.Attempt(() => SurfaceTypeTools.OfWord(Text(c, 0)) is { } type
         ? new JsonObject
         {
             ["index"] = (int)type,

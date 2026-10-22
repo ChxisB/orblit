@@ -14,7 +14,7 @@ public sealed class LockedKit
     /// Throws a <see cref="FormatException"/> when a name, the version or <paramref name="into"/> is wrong or
     /// <paramref name="files"/> holds too many files.
     /// </summary>
-    // F2: Dart names these six as named parameters, which F2 counts as the options object. C# callers name them too.
+    // F2: six parameters, all named at each call.
     public LockedKit(
         string publisher,
         string slug,

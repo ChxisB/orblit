@@ -7,8 +7,6 @@
   inside one region and a region's size are `int`.
 - `Cover` and `GroundColour` hold a `uint`, since both are thirty-two bits.
 - `TerrainStroke` draws its jitter from `System.Random`. A seed gives a
-  repeatable stroke, not Dart's stroke.
-- A region header that starts with a byte order mark is read, as Dart reads
-  it.
-- `TerrainStreamer` follows a position on a `SynchronizationContext`, where
-  Dart used the event loop. Its methods end in `Async`.
+  repeatable stroke.
+- A region header that starts with a byte order mark is read.
+- `TerrainStreamer` follows a position on a `SynchronizationContext`. Its methods end in `Async`.

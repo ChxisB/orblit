@@ -29,7 +29,7 @@ internal sealed class KitJsonObject(IReadOnlyDictionary<string, object?> map, st
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {
@@ -44,7 +44,7 @@ internal sealed class KitJsonObject(IReadOnlyDictionary<string, object?> map, st
     /// <summary>The bytes of <paramref name="json"/>, refused when the reader would refuse them.</summary>
     public static byte[] Encode(string name, int limit, IReadOnlyDictionary<string, object?> json)
     {
-        var bytes = Encoding.UTF8.GetBytes(DartJson.Encode(json));
+        var bytes = Encoding.UTF8.GetBytes(JsonText.Encode(json));
         return bytes.Length > limit ? throw new FormatException($"{name} would be {bytes.Length} bytes, over {limit}.") : bytes;
     }
 
@@ -99,7 +99,7 @@ internal sealed class KitJsonObject(IReadOnlyDictionary<string, object?> map, st
     public List<string> Strings(string key) =>
     [
         .. Items(key).Select(value =>
-            value as string ?? throw Problem($"holds {KitText.Show(DartText.Print(value))}, not text, in \"{key}\"")),
+            value as string ?? throw Problem($"holds {KitText.Show(TextRules.Print(value))}, not text, in \"{key}\"")),
     ];
 
     /// <summary>Throws unless every key is one of <paramref name="keys"/>, so a typo is caught.</summary>

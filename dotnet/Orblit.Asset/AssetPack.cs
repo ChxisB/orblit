@@ -70,7 +70,7 @@ public sealed class AssetPack : IAssetSource
             throw new FormatException("The header of this pack places its directory past what any file can hold.");
         }
 
-        // Two sizes of 62 bits wrap in 64, so the sum is taken in 128. Dart wraps here and fails with a RangeError.
+        // Two sizes of 62 bits wrap in 64, so the sum is taken in 128.
         var end = (Int128)header.DirectoryAt + header.DirectoryBytes;
         if (end > total)
         {

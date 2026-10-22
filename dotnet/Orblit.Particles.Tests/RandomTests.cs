@@ -10,7 +10,7 @@ public class RandomTests
         Assert.NotEqual(UnitRandom.At(7, 123456, 9), UnitRandom.At(8, 123456, 9));
     }
 
-    // These were read off the Dart VM. A web run must give the same digits, which
+    // These were recorded from the first implementation. A web run must give the same digits, which
     // is what the 32-bit multiply is for.
     [Fact]
     public void KnownValuesDoNotMove()

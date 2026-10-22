@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Orblit.Asset.Tests;
 
-// What the Dart tests leave open: every option's refusal, what each verbosity prints, several targets and several
+// What the ported tests leave open: every option's refusal, what each verbosity prints, several targets and several
 // failures. Run in this process, on writers of their own.
 public sealed class CookCliAddedTests : IDisposable
 {

@@ -88,7 +88,7 @@ public sealed class DialogueDefinition
         object? json;
         try
         {
-            json = DartJson.Decode(text);
+            json = JsonText.Decode(text);
         }
         catch (FormatException error)
         {
@@ -120,7 +120,7 @@ public sealed class DialogueDefinition
     public string? StartFor(ProgressTable table) =>
         Variants.FirstOrDefault(variant => Condition.AllHold(variant.When, table))?.Start;
 
-    public string Encode() => DartJson.Encode(
+    public string Encode() => JsonText.Encode(
         new OrderedDictionary<string, object?>
         {
             ["kind"] = Marker,

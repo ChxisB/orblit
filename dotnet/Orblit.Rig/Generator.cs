@@ -41,7 +41,7 @@ public sealed class RigProblem(string bone, string message)
 }
 
 /// <summary>A rig, generated.</summary>
-// F2: eight parameters, called by name, as the Dart named parameters are.
+// F2: eight parameters, called by name.
 public sealed class GeneratedRig(
     Armature armature,
     Pose pose,
@@ -95,7 +95,7 @@ public sealed class RigGenerator
         [BoneRole.Mechanism] = "MCH",
     };
 
-    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "The Dart generator is a const object a caller holds, so it stays an instance method.")]
+    [SuppressMessage("Performance", "CA1822:Mark members as static", Justification = "A generator is an object a caller holds, so it stays an instance method.")]
     public GeneratedRig Generate(MetaRig meta)
     {
         var output = new Armature();

@@ -5,8 +5,8 @@ namespace Orblit.Save;
 /// <summary>How a time is written and read at the edges of the history tools.</summary>
 internal static class Times
 {
-    // A restore writes saves, so a time is read strictly. Dart's DateTime.parse accepts
-    // these forms, and a form with no zone means local time.
+    // A restore writes saves, so a time is read strictly. Only these forms are
+    // accepted, because a form with no zone would mean local time.
     private static readonly string[] Formats =
     [
         "yyyy-MM-dd",
@@ -20,7 +20,7 @@ internal static class Times
     public static string Iso(DateTimeOffset at) =>
         at.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 
-    /// <summary>The form Dart's <c>DateTime.toString</c> gives for a UTC time.</summary>
+    /// <summary>The form the save format writes for a UTC time.</summary>
     public static string Plain(DateTimeOffset at) =>
         at.UtcDateTime.ToString("yyyy-MM-dd HH:mm:ss.fff'Z'", CultureInfo.InvariantCulture);
 

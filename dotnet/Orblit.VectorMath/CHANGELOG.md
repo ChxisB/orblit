@@ -34,31 +34,31 @@
 
 ## 0.9.0
 
-- `Doubles.ToDartString`, which is Dart's `double.toString`.
+- `Doubles.ToFileString`, the text of a double in a file.
 
 ## 0.8.0
 
-- `Doubles.Ceil`, which is Dart's `double.ceil()`.
+- `Doubles.Ceil`, the ceiling of a double.
 - `Vector2.Zero`, which the sprite port reads.
 
 ## 0.7.0
 
 - `Quaternion.Euler` and `Quaternion.Conjugate`, and `Vector3.Normalize` in
   place, which the camera port reads.
-- `Doubles.ToStringAsFixed`, which is Dart's `toStringAsFixed`.
+- `Doubles.ToStringAsFixed`, fixed-point text.
 
 ## 0.6.0
 
 - `Quaternion` gains `Length`, `Length2` and `Normalize`, which the sequence
   port reads.
-- `Doubles.Round`, which is Dart's `double.round()`.
+- `Doubles.Round`, rounds a double, halves away from zero.
 
 ## 0.5.0
 
 - `Vector2`, with what the collide port reads: `All`, `+`, `-`, `*` and `/` by a
   scalar, unary `-`, `Length`, `Length2` and `Clone`.
 - `Vector3` gains an indexer. A position other than 0 to 2 throws.
-- `Doubles.Sign`, which is Dart's `double.sign`.
+- `Doubles.Sign`, the sign of a double.
 
 ## 0.4.0
 
@@ -77,10 +77,10 @@
 - `Vector4`, `Quaternion`, `Matrix3` and `Matrix4`, with what the effect port
   reads: `Quaternion.AxisAngle`, `FromRotation` and `*`, and `Matrix4.Compose`,
   `GetTranslation`, `SetTranslation`, `GetRotation`, `GetColumn` and `Transform3`.
-- `Doubles.Mod` and `Doubles.Floor`, which are Dart's `%` and `floor()` on doubles.
+- `Doubles.Mod` and `Doubles.Floor`, the remainder and the floor of doubles.
 
 ## 0.1.0
 
 - `Vector3`, a mutable class of three doubles, as `vector_math_64` has it.
   Only what the ports so far read is here. Each later port adds what it needs.
-- `Doubles.Compare` and `Doubles.Clamp`, which order NaN and the zeros as Dart does.
+- `Doubles.Compare` and `Doubles.Clamp`, which order NaN and the zeros as a total order.

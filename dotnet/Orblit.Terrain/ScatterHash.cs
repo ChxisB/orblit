@@ -25,7 +25,7 @@ internal static class ScatterHash
     /// </summary>
     public static double Draw(uint spot, int n) => Mix(spot ^ ((uint)(n + 1) * 0x9E3779B9)) / 4294967296.0;
 
-    /// <summary>The low 32 bits of <paramref name="value"/>, so a negative cell counts the way it did in Dart.</summary>
+    /// <summary>The low 32 bits of <paramref name="value"/>, so a negative cell counts the way it always did.</summary>
     public static uint Low(long value) => (uint)(value & 0xFFFFFFFFL);
 
     /// <summary>An sRGB <c>0xRRGGBB</c> colour as linear RGB.</summary>

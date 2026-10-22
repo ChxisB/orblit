@@ -45,7 +45,7 @@ public sealed class GltfDocumentTests
         var jsonLength = (int)BinaryPrimitives.ReadUInt32LittleEndian(glb.AsSpan(12));
 
         Assert.Equal(20 + jsonLength, glb.Length);
-        var written = (GltfMap)DartJson.Decode(Encoding.UTF8.GetString(glb, 20, jsonLength).TrimEnd())!;
+        var written = (GltfMap)JsonText.Decode(Encoding.UTF8.GetString(glb, 20, jsonLength).TrimEnd())!;
         Assert.False(written.ContainsKey("buffers"));
     }
 
@@ -120,8 +120,8 @@ public sealed class GltfDocumentTests
             Empty);
 
         var again = await GltfDocument.ReadAsync(Id, document.ToGlb(), Empty);
-        Assert.Equal("""{"anything":42}""", DartJson.Encode(again.Json["extras"]));
-        Assert.Equal("""["KHR_materials_variants"]""", DartJson.Encode(again.Json["extensionsUsed"]));
+        Assert.Equal("""{"anything":42}""", JsonText.Encode(again.Json["extras"]));
+        Assert.Equal("""["KHR_materials_variants"]""", JsonText.Encode(again.Json["extensionsUsed"]));
         Assert.NotNull(again.Json["extensions"]);
         Assert.Equal(true, ((GltfMap)again.List("nodes")[0]["extras"]!)["mine"]);
         Assert.Equal("somebody else", ((GltfMap)again.Json["asset"]!)["generator"]);

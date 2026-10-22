@@ -36,14 +36,14 @@ public class AgentParityTests
         {
             Assert.True(
                 Tolerance.Close(expected[i], actual[i]),
-                $"{what}, value {i}: Dart {expected[i]:R}, C# {actual[i]:R}, from Dart commit {fixture.DartCommit}");
+                $"{what}, value {i}: the fixture {expected[i]:R}, the port {actual[i]:R}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
     private static void AssertSame<T>(Fixture fixture, string what, T expected, T actual) =>
         Assert.True(
             EqualityComparer<T>.Default.Equals(expected, actual),
-            $"{what}: Dart {expected}, C# {actual}, from Dart commit {fixture.DartCommit}");
+            $"{what}: the fixture {expected}, the port {actual}, from fixture commit {fixture.SourceCommit}");
 
     private static double[] Triple(Vector3 v) => [v.X, v.Y, v.Z];
 
@@ -103,7 +103,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void EveryForceAgreesWithDart()
+    public void EveryForceAgreesWithTheFixture()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         foreach (var spec in Cases(fixture, "force"))
@@ -127,7 +127,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void WhatAvoidRefusesIsWhatDartRefuses()
+    public void WhatAvoidRefusesIsWhatTheFixtureRefuses()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         foreach (var spec in Cases(fixture, "avoidNew"))
@@ -156,7 +156,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void IntegratingMovesAnAgentAsDartDoes()
+    public void IntegratingMovesAnAgentAsTheFixtureDoes()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         foreach (var spec in Cases(fixture, "integrate"))
@@ -173,7 +173,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void HeadingIsNullWhereDartsIs()
+    public void HeadingIsNullAsInTheFixture()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         foreach (var spec in Cases(fixture, "heading"))
@@ -256,7 +256,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void EveryTreeRunsAsDartsDoes()
+    public void EveryTreeRunsAsTheFixtureDoes()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         var index = 0;
@@ -285,7 +285,7 @@ public class AgentParityTests
                 AssertSame(fixture, $"{where} status", expected.GetProperty("status").GetInt32(), (int)status);
                 Assert.True(
                     expected.GetProperty("calls").EnumerateArray().Select(c => c.GetInt32()).SequenceEqual(calls),
-                    $"{where} calls: Dart {expected.GetProperty("calls")}, C# [{string.Join(",", calls)}], from Dart commit {fixture.DartCommit}");
+                    $"{where} calls: the fixture {expected.GetProperty("calls")}, the port [{string.Join(",", calls)}], from fixture commit {fixture.SourceCommit}");
                 AssertSame(fixture, $"{where} memory", expected.GetProperty("memory").GetInt32(), brain.Memory.Length);
                 AssertSame(fixture, $"{where} acts", OptionalLong(expected, "acts"), blackboard.TryGetValue("acts", out var acts) ? (long?)acts : null);
             }
@@ -293,7 +293,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void LabelsWriteTheirSecondsAsDartDoes()
+    public void LabelsWriteTheirSecondsAsTheFixtureDoes()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         foreach (var spec in Cases(fixture, "label"))
@@ -307,7 +307,7 @@ public class AgentParityTests
     }
 
     [Fact]
-    public void ACrowdCrossingEndsWhereDartsDoes()
+    public void ACrowdCrossingEndsWhereTheFixtureDoes()
     {
         var fixture = Fixture.Load("orblit_agent", "agent");
         var spec = Cases(fixture, "plaza").Single();

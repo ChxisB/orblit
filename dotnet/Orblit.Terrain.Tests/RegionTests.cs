@@ -133,7 +133,7 @@ public class RegionTests
         region.SetHeight(0, 0, 1);
         var bytes = region.Encode();
         var end = Array.IndexOf(bytes, (byte)0x0A);
-        var header = (OrderedDictionary<string, object?>)DartJson.Decode(Encoding.UTF8.GetString(bytes, 0, end))!;
+        var header = (OrderedDictionary<string, object?>)JsonText.Decode(Encoding.UTF8.GetString(bytes, 0, end))!;
         Assert.Equal("orblit.region", header["kind"]);
         Assert.Equal(1L, header["formatVersion"]);
         var map = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(Assert.Single((List<object?>)header["maps"]!));

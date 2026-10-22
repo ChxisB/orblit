@@ -7,9 +7,9 @@ namespace Orblit.Json;
 /// A string as JSON text. Linked into Orblit.Codegen, which targets netstandard2.0, so it keeps to what
 /// that target has.
 /// </summary>
-internal static class DartQuote
+internal static class JsonQuote
 {
-    // Dart escapes the quote, the backslash, control characters and a lone surrogate, and nothing else.
+    // The format escapes the quote, the backslash, control characters and a lone surrogate, and nothing else.
     internal static void Append(StringBuilder builder, string text)
     {
         builder.Append('"');

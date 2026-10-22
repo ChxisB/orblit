@@ -32,7 +32,7 @@ public class SceneParityTests
     {
         var input = c.GetProperty("in");
         var type = input[0].GetString()!;
-        var json = (JsonMap)DartJson.Decode(input[1].GetRawText())!;
+        var json = (JsonMap)JsonText.Decode(input[1].GetRawText())!;
         return Attempt(() => Tree(SceneComponents.Read(type, json).ToJson()));
     }
 
@@ -79,7 +79,7 @@ public class SceneParityTests
     {
         var input = c.GetProperty("in");
         var document = SceneDocument.Decode(input[0].GetString()!).Document;
-        var diff = SceneDiff.FromJson(DartJson.Decode(input[1].GetRawText()));
+        var diff = SceneDiff.FromJson(JsonText.Decode(input[1].GetRawText()));
         return new JsonObject
         {
             ["ops"] = Tree(diff.ToJson()),
@@ -91,7 +91,7 @@ public class SceneParityTests
     {
         var input = c.GetProperty("in");
         var notes = new List<string>();
-        var moved = SceneMigrations.Entity((JsonMap)DartJson.Decode(input[0].GetRawText())!, input[1].GetInt64(), notes);
+        var moved = SceneMigrations.Entity((JsonMap)JsonText.Decode(input[0].GetRawText())!, input[1].GetInt64(), notes);
         return new JsonObject { ["entity"] = Tree(moved), ["notes"] = Arr(notes, Text) };
     });
 }

@@ -147,7 +147,7 @@ public sealed class Keyed<T>(Clip clip, Channel<T> channel)
 /// </summary>
 public sealed class PropertyTrack<T> : Track
 {
-    // F2: six parameters, called by name as in Dart, and the last three are optional.
+    // F2: six parameters, called by name, and the last three are optional.
     public PropertyTrack(
         string property,
         IReadOnlyList<Keyed<T>> clips,
@@ -172,7 +172,7 @@ public sealed class PropertyTrack<T> : Track
 
     /// <summary>
     /// The value at <paramref name="at"/>, or false where no clip covers it.
-    /// Dart answers with null. Here it is a bool, because "this track says
+    /// It is a bool, because "this track says
     /// nothing here" and "this track says zero here" have to be different, and a
     /// <c>double</c> has no null.
     /// </summary>

@@ -21,8 +21,8 @@ internal static class PackFormat
     public static ReadOnlySpan<byte> Marker => "OPAK"u8;
 
     /// <summary>
-    /// The next multiple of <see cref="Alignment"/> at or after <paramref name="offset"/>. Wraps at 64 bits
-    /// as the Dart twin does, so a size too large to place gives the same answer in both.
+    /// The next multiple of <see cref="Alignment"/> at or after <paramref name="offset"/>. Wraps at 64 bits,
+    /// so a size too large to place gives the same answer on every machine.
     /// </summary>
     public static long AlignedOffset(long offset) => unchecked(((offset + Alignment - 1) / Alignment) * Alignment);
 }
@@ -68,7 +68,7 @@ internal sealed record PackHeader(long DirectoryAt, long DirectoryBytes)
             : new PackHeader(GetUint64(bytes, 8), GetUint64(bytes, 16));
     }
 
-    // Two 32-bit halves, the way the Dart twin writes them. A value past 63 bits reads back negative in both.
+    // Two 32-bit halves. A value past 63 bits reads back negative.
     private static void SetUint64(Span<byte> bytes, int at, long value)
     {
         BinaryPrimitives.WriteUInt32LittleEndian(bytes[at..], unchecked((uint)value));
@@ -141,14 +141,14 @@ internal sealed class PackDirectory
         if (kind is not string text || text != PackFormat.Kind)
         {
             throw new FormatException(
-                $"The directory of this pack says it is \"{DartText.Print(kind)}\", not \"{PackFormat.Kind}\".");
+                $"The directory of this pack says it is \"{TextRules.Print(kind)}\", not \"{PackFormat.Kind}\".");
         }
 
         var version = map.GetValueOrDefault("formatVersion");
         if (!IsTheVersion(version))
         {
             throw new FormatException(
-                $"The directory of this pack says format {DartText.Print(version)}, and its header says {PackFormat.Version}.");
+                $"The directory of this pack says format {TextRules.Print(version)}, and its header says {PackFormat.Version}.");
         }
 
         var @base = map.GetValueOrDefault("base");
@@ -189,7 +189,7 @@ internal sealed class PackDirectory
             ["removed"] = Ordered.ById(Removed).Select(id => (object?)id.ToString()).ToList(),
             ["target"] = Target,
         };
-        return Encoding.UTF8.GetBytes(DartJson.Encode(json));
+        return Encoding.UTF8.GetBytes(JsonText.Encode(json));
     }
 
     private static IReadOnlyDictionary<string, object?> Parse(ReadOnlySpan<byte> bytes)
@@ -197,7 +197,7 @@ internal sealed class PackDirectory
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {
@@ -208,7 +208,7 @@ internal sealed class PackDirectory
             ?? throw new FormatException("The directory of this pack is not a JSON object.");
     }
 
-    // Dart compares a number to 1 by value, so a directory that says 1.0 is read as format 1.
+    // A number compares by value, so a directory that says 1.0 is read as format 1.
     private static bool IsTheVersion(object? version) => version switch
     {
         long whole => whole == PackFormat.Version,
@@ -299,11 +299,11 @@ internal sealed class PackDirectory
 
     private static AssetId Id(object? value, string where) => value is string text
         ? AssetId.Parse(text)
-        : throw new FormatException($"\"{where}\" in this pack holds {DartText.Print(value)}, not an id.");
+        : throw new FormatException($"\"{where}\" in this pack holds {TextRules.Print(value)}, not an id.");
 
     private static ContentHash Hash(object? value, string where) => value is string text
         ? ContentHash.Parse(text)
-        : throw new FormatException($"\"{where}\" in this pack holds {DartText.Print(value)}, not a hash.");
+        : throw new FormatException($"\"{where}\" in this pack holds {TextRules.Print(value)}, not a hash.");
 
     private static PackBlob Blob(string hash, object? value) =>
         value is IReadOnlyDictionary<string, object?> map

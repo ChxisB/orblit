@@ -14,7 +14,7 @@ public sealed class Level(double gain = 1, double pitch = 1, double pan = 0) : I
 
     public double Pan { get; } = pan;
 
-    /// <summary>Number by number, so NaN is not equal to NaN, as in Dart.</summary>
+    /// <summary>Number by number, so NaN is not equal to NaN.</summary>
     public bool Equals(Level? other) => other is not null && other.Gain == Gain && other.Pitch == Pitch && other.Pan == Pan;
 
     public override bool Equals(object? obj) => Equals(obj as Level);

@@ -9,7 +9,7 @@ namespace Orblit.Asset;
 internal sealed class ModelGeometry(GltfDocument document)
 {
     // No real model nests this deep. The walk is recursive, and a .NET stack that runs out ends the
-    // process where Dart's throws an error that can be caught.
+    // process, which an error cannot catch.
     private const int MaxDepth = 512;
 
     private static readonly string[] ListKeys = ["nodes", "scenes", "meshes", "bufferViews"];

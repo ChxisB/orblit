@@ -33,7 +33,7 @@ internal sealed class Piece(long width, long height, byte[] pixels, IEnumerable<
 
     public void Add(Prepared member) => _members = Sorted(_members.Append(member));
 
-    // Stable, as Dart's sort is for the short lists a set of duplicates makes.
+    // Stable, so a set of duplicates keeps its order.
     private static List<Prepared> Sorted(IEnumerable<Prepared> members) =>
         [.. members.OrderBy(member => member.Name, StringComparer.Ordinal)];
 }

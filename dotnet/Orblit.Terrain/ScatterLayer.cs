@@ -285,7 +285,7 @@ public sealed class ScatterLayer(
 
     private static (double Low, double High) Ordered(double low, double high) => low > high ? (high, low) : (low, high);
 
-    // Dart's int.tryParse(text, radix: 16): an optional sign, hex digits, and the whitespace round
+    // A hex whole number: an optional sign, hex digits, and the whitespace round
     // them trimmed.
     private static long? ColourOf(object? raw)
     {
@@ -328,7 +328,7 @@ public sealed class ScatterLayer(
             if (found < low || found > high)
             {
                 var kept = Doubles.Clamp(found, low, high);
-                problems.Add($"The \"{name}\" layer's {key} was {Doubles.ToDartString(found)}; it is {Doubles.ToDartString(kept)} now.");
+                problems.Add($"The \"{name}\" layer's {key} was {Doubles.ToFileString(found)}; it is {Doubles.ToFileString(kept)} now.");
                 return kept;
             }
 
@@ -344,7 +344,7 @@ public sealed class ScatterLayer(
             }
 
             var kept = density > MaxDensity ? MaxDensity : otherwise;
-            problems.Add($"The \"{name}\" layer put down {Doubles.ToDartString(density)} per square metre; it puts down {Doubles.ToDartString(kept)} now.");
+            problems.Add($"The \"{name}\" layer put down {Doubles.ToFileString(density)} per square metre; it puts down {Doubles.ToFileString(kept)} now.");
             return kept;
         }
 

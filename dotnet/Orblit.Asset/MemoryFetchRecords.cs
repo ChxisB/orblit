@@ -6,7 +6,7 @@ namespace Orblit.Asset;
 /// </summary>
 public sealed class MemoryFetchRecords(IReadOnlyDictionary<WebUrl, FetchRecord>? records = null) : IFetchRecords
 {
-    // A fetcher asks from several tasks at once, where the Dart one asks from one.
+    // A fetcher asks from several tasks at once.
     private readonly Dictionary<WebUrl, FetchRecord> _records = records is null ? [] : new(records);
 
     public Task<FetchRecord?> GetAsync(WebUrl url)

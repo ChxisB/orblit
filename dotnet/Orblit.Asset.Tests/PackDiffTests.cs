@@ -17,7 +17,7 @@ public sealed class PackDiffTests : IDisposable
     private static AssetId Id(string text) => AssetId.Parse(text);
 
     // A scene that places each of paths as a model.
-    private static string Scene(params string[] paths) => DartJson.Encode(new JsonMap
+    private static string Scene(params string[] paths) => JsonText.Encode(new JsonMap
     {
         ["entities"] = paths.Select(path => (object?)new JsonMap { ["name"] = "thing", ["model"] = path }).ToList(),
     });
@@ -99,18 +99,18 @@ public sealed class PackDiffTests : IDisposable
     [Fact]
     public async Task EveryKindOfDocumentIsReadByName()
     {
-        var names = DartJson.Encode(new JsonMap { ["clips"] = new List<object?> { "anim/gone.oclip" } });
+        var names = JsonText.Encode(new JsonMap { ["clips"] = new List<object?> { "anim/gone.oclip" } });
         var after = await _fixture.PackAsync(
             "after",
             Files(
                 ("models/tree.glb", "tree"),
                 ("a/rig.oprefab", names),
                 ("a/walk.oclip", names),
-                ("a/move.oblend", DartJson.Encode(new JsonMap
+                ("a/move.oblend", JsonText.Encode(new JsonMap
                 {
                     ["states"] = new List<object?> { new JsonMap { ["clip"] = "anim/gone.oclip" } },
                 })),
-                ("a/look.omat", DartJson.Encode(new JsonMap { ["albedo"] = "textures/gone.png" }))));
+                ("a/look.omat", JsonText.Encode(new JsonMap { ["albedo"] = "textures/gone.png" }))));
 
         var result = await Diff(await Older(), after);
 
@@ -126,7 +126,7 @@ public sealed class PackDiffTests : IDisposable
             "after",
             Files(
                 ("models/tree.glb", "tree"),
-                ("scenes/town.oscene", DartJson.Encode(new JsonMap
+                ("scenes/town.oscene", JsonText.Encode(new JsonMap
                 {
                     ["overrides"] = new JsonMap { ["textures/gone.png"] = 1L },
                 }))));
@@ -159,7 +159,7 @@ public sealed class PackDiffTests : IDisposable
             "after",
             Files(
                 ("models/tree.glb", "tree"),
-                ("scenes/town.oscene", DartJson.Encode(new JsonMap
+                ("scenes/town.oscene", JsonText.Encode(new JsonMap
                 {
                     ["name"] = "Hero.1",
                     ["note"] = "see textures/gone.png",

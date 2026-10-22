@@ -2,7 +2,7 @@ using Orblit.Json;
 
 namespace Orblit.Scene.Tests;
 
-/// <summary>Builds the JSON documents the Dart tests wrote as map and list literals.</summary>
+/// <summary>Builds the JSON documents the ported tests wrote as map and list literals.</summary>
 internal static class Tree
 {
     public static OrderedDictionary<string, object?> Map(params (string Key, object? Value)[] pairs)
@@ -37,11 +37,11 @@ internal static class Tree
     public static object?[] List(params object?[] items) => items;
 
     /// <summary>
-    /// Asserts two trees are equal the way Dart's <c>equals</c> sees them: key order is ignored, and
+    /// Asserts two trees are equal the way the file format sees them: key order is ignored, and
     /// a whole number is not a fractional one, so <c>2</c> and <c>2.0</c> differ.
     /// </summary>
     public static void Same(object? expected, object? actual) =>
-        Assert.Equal(DartJson.Encode(Canonical(expected)), DartJson.Encode(Canonical(actual)));
+        Assert.Equal(JsonText.Encode(Canonical(expected)), JsonText.Encode(Canonical(actual)));
 
     public static T Some<T>(T? value)
         where T : class

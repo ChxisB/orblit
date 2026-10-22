@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 namespace Orblit.Save.Tests;
 
-/// <summary>Tests the C# port adds, for what Dart's types guaranteed without a test.</summary>
+/// <summary>Tests the port adds, for what its types guarantee without a fixture.</summary>
 public sealed class AddedTests
 {
     /// <summary>A store that notes whether a write started inside a call to <c>SaveQueue.Save</c>.</summary>

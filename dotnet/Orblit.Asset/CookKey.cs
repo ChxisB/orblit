@@ -37,7 +37,7 @@ public sealed class CookKey : IEquatable<CookKey>
     private string? _recipe;
     private ContentHash? _hash;
 
-    // F2: six parameters, all named at each call, as in the Dart constructor.
+    // F2: six parameters, all named at each call.
     public CookKey(
         string importer,
         int importerVersion,
@@ -138,10 +138,10 @@ public sealed class CookKey : IEquatable<CookKey>
         switch (value)
         {
             case null or bool or string:
-                output.Append(DartJson.Encode(value));
+                output.Append(JsonText.Encode(value));
                 break;
             case int or long:
-                output.Append(DartJson.Encode(Convert.ToInt64(value, CultureInfo.InvariantCulture)));
+                output.Append(JsonText.Encode(Convert.ToInt64(value, CultureInfo.InvariantCulture)));
                 break;
             case double number:
                 WriteDouble(number, output, where);
@@ -171,7 +171,7 @@ public sealed class CookKey : IEquatable<CookKey>
                 where);
         }
 
-        output.Append(DartJson.Encode(number));
+        output.Append(JsonText.Encode(number));
     }
 
     private static void WriteList(IList items, StringBuilder output, string where)
@@ -209,7 +209,7 @@ public sealed class CookKey : IEquatable<CookKey>
                 output.Append(',');
             }
 
-            output.Append(DartJson.Encode(keys[i])).Append(':');
+            output.Append(JsonText.Encode(keys[i])).Append(':');
             Write(map[keys[i]], output, $"{where}.{keys[i]}");
         }
 

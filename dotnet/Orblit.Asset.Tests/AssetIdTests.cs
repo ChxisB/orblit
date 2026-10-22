@@ -91,7 +91,7 @@ public class AssetIdTests
         Refused("models/", "empty folder name");
     }
 
-    // The two Dart names differ only in their quotes, which are words here.
+    // The two names differ only in their quotes, which are words here.
     [Fact]
     public void ItHasADotInPlaceOfAFolder()
     {

@@ -12,7 +12,7 @@ public enum Easing
     /// <summary>No shaping at all.</summary>
     Linear,
 
-    /// <summary>Starts slowly. Something getting under way. Dart's <c>in_</c>.</summary>
+    /// <summary>Starts slowly. Something getting under way.</summary>
     In,
 
     /// <summary>Ends slowly. Something arriving.</summary>
@@ -31,7 +31,7 @@ public enum Easing
     Bounce,
 }
 
-/// <summary>Dart's top level <c>ease</c>.</summary>
+/// <summary>The top level <c>ease</c>.</summary>
 public static class Easings
 {
     // The usual constants: enough overshoot to read as a snap without looking like a mistake.

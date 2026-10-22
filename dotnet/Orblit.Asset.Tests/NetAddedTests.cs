@@ -3,15 +3,15 @@ using Orblit.Json;
 
 namespace Orblit.Asset.Tests;
 
-// What the C# has that the Dart tests do not say, and where it chooses differently from Dart.
+// What the fixtures do not say, and where the port makes a choice.
 public class NetAddedTests
 {
     private static readonly ContentHash Hash = ContentHash.Of([1, 2, 3]);
 
     private static FetchRecord? Record(string fetched) =>
-        FetchRecord.FromJson(DartJson.Decode($$"""{"hash":"{{Hash.Hex}}","bytes":3,"fetched":"{{fetched}}"}"""));
+        FetchRecord.FromJson(JsonText.Decode($$"""{"hash":"{{Hash.Hex}}","bytes":3,"fetched":"{{fetched}}"}"""));
 
-    // Dart reads these as times the calendar can hold. A DateTimeOffset cannot, so the time is dropped and
+    // A DateTimeOffset cannot hold these times, so the time is dropped and
     // the record is kept, as for any other time that is not one.
     [Theory]
     [InlineData("0000-01-01T00:00:00.000Z")]
@@ -25,7 +25,7 @@ public class NetAddedTests
         Assert.Null(record.Fetched);
     }
 
-    // Dart reads a time with no zone as local time. A cache moves between machines, so C# reads it as UTC.
+    // A time with no zone is read as UTC, because a cache moves between machines.
     [Fact]
     public void ATimeWithNoZoneIsReadAsUTC()
     {
@@ -33,7 +33,7 @@ public class NetAddedTests
         Assert.Equal(new DateTimeOffset(2026, 9, 20, 11, 30, 0, TimeSpan.Zero), record.Fetched);
     }
 
-    // Dart's Uri accepts these. They are not addresses, and a rule that allows a host has to read the same
+    // A lenient URI parser accepts these. They are not addresses, and a rule that allows a host has to read the same
     // address the transport connects to.
     [Theory]
     [InlineData("https://a.example.com:65536/x")]
@@ -41,18 +41,18 @@ public class NetAddedTests
     [InlineData("https://a.example.com: 80/x")]
     [InlineData("http://[fe80::1%25eth0]/x")]
     [InlineData("http://[v1.fe]/x")]
-    public void AnAddressDartAcceptsButIsNotOneIsRefused(string text)
+    public void AnAddressThatIsNotOneIsRefused(string text)
     {
         Assert.False(WebUrl.TryParse(text, out _));
         Assert.Throws<FormatException>(() => WebUrl.Parse(text));
     }
 
     [Fact]
-    public void ABackslashIsASlashAsInDart() =>
+    public void ABackslashInAPathIsASlash() =>
         Assert.Equal("/a/b", WebUrl.Parse("https://h.example.com\\a\\b").Path);
 
     [Fact]
-    public void ARequestThatCannotBeMadeIsRefusedWhereDartAsserts()
+    public void ARequestThatCannotBeMadeIsRefused()
     {
         var url = WebUrl.Parse("https://h.example.com/a");
         Assert.Throws<ArgumentOutOfRangeException>(() => new FetchRequest(url, from: -1));
@@ -60,8 +60,8 @@ public class NetAddedTests
         Assert.Throws<ArgumentException>(() => new FetchRequest(url, from: 6, through: 5));
     }
 
-    // Dart adds one mip level at a time, so a header that claims billions of levels costs seconds there.
-    // C# adds the levels that are one pixel in one step and gives the same wrapped total.
+    // A header that claims billions of levels must not cost seconds. The levels that are one pixel are
+    // added in one step, with the same wrapped total.
     [Fact]
     public void AHeaderClaimingBillionsOfLevelsIsCountedInOneStep()
     {
@@ -75,8 +75,8 @@ public class NetAddedTests
         Assert.Equal(87381L + (uint.MaxValue - 9L), size.Pixels);
     }
 
-    // Dart sends after the loop that made the wants has ended, so a zero delay still joins them. .NET sends
-    // as soon as a thread is free, so the wants may go out apart, but each is answered with its own bytes.
+    // With a zero delay a send starts as soon as a thread is free, so the wants may go out apart, but each is
+    // answered with its own bytes.
     [Fact]
     public async Task AZeroDelayStillAnswersEveryWant()
     {

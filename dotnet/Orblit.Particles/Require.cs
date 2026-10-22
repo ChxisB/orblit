@@ -4,7 +4,7 @@ internal static class Require
 {
     /// <summary>
     /// Throws an <see cref="ArgumentException"/> naming <paramref name="name"/>
-    /// unless <paramref name="ok"/>. Dart repeated this check in three files.
+    /// unless <paramref name="ok"/>. Every particle type shares this check.
     /// </summary>
     public static void That(bool ok, string name, object? value, string why)
     {

@@ -105,7 +105,7 @@ public static class CloudKindExtensions
 /// <param name="Snow">How much snow is coming down. Rain and snow are two amounts so one can cross the other.</param>
 /// <param name="Lightning">How often it strikes, from never to every few seconds.</param>
 /// <param name="CloudHeight">How high the cloud hangs, in metres.</param>
-// F2: twelve values, eight required and all called by name, as the Dart constructor is.
+// F2: twelve values, eight required and all called by name.
 public sealed record WeatherState(
     double CloudCover,
     Tint FogColour,

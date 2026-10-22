@@ -6,7 +6,7 @@ public class CookTargetTests
 {
     [Fact]
     public void PutsItsNameInTheRecipeSoTwoTargetsNeverShareAKey() =>
-        Assert.Equal("""{"name":"macos"}""", DartJson.Encode(new CookTarget("macos").Recipe));
+        Assert.Equal("""{"name":"macos"}""", JsonText.Encode(new CookTarget("macos").Recipe));
 
     [Fact]
     public void CarriesItsPropertiesAlongside()
@@ -18,7 +18,7 @@ public class CookTargetTests
         });
         Assert.Equal(
             """{"name":"android","textureFamilies":["astc"],"maxTextureSize":2048}""",
-            DartJson.Encode(target.Recipe));
+            JsonText.Encode(target.Recipe));
     }
 
     [Fact]

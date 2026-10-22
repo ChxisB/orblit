@@ -15,7 +15,7 @@ public class CellsParityTests
     }
 
     [Fact]
-    public void CellOfMatchesTheDartTwin()
+    public void CellOfMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_cells", "cells");
 
@@ -30,12 +30,12 @@ public class CellsParityTests
                 expect.ValueKind == JsonValueKind.Null
                     ? actual is null
                     : actual == ToCell(expect),
-                $"size {size} at {at}: Dart {expect}, C# {actual}, from Dart commit {fixture.DartCommit}");
+                $"size {size} at {at}: the fixture {expect}, the port {actual}, from fixture commit {fixture.SourceCommit}");
         }
     }
 
     [Fact]
-    public void PlanMatchesTheDartTwin()
+    public void PlanMatchesTheFixture()
     {
         var fixture = Fixture.Load("orblit_cells", "cells");
 
@@ -60,7 +60,7 @@ public class CellsParityTests
                 loaded: c.GetProperty("loaded").EnumerateArray().Select(ToCell).ToHashSet(),
                 pinned: c.GetProperty("pinned").EnumerateArray().Select(ToCell).ToHashSet());
 
-            var where = $"{c.GetRawText()}, from Dart commit {fixture.DartCommit}";
+            var where = $"{c.GetRawText()}, from fixture commit {fixture.SourceCommit}";
             Assert.True(expect.GetProperty("load").EnumerateArray().Select(ToCell).SequenceEqual(plan.Load), "load " + where);
             Assert.True(expect.GetProperty("drop").EnumerateArray().Select(ToCell).SequenceEqual(plan.Drop), "drop " + where);
         }

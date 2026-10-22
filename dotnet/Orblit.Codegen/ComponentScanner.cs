@@ -3,8 +3,8 @@ using Microsoft.CodeAnalysis;
 namespace Orblit.Codegen;
 
 /// <summary>
-/// Reads one attributed type. Roslyn has already resolved the types, so this reads symbols where the Dart
-/// scanner parses source: what a declaration says is the same, and no name has to be guessed from text.
+/// Reads one attributed type. Roslyn has already resolved the types, so this reads symbols
+/// and no name has to be guessed from text.
 /// </summary>
 public static class ComponentScanner
 {
@@ -76,7 +76,7 @@ public static class ComponentScanner
         return null;
     }
 
-    // C# says how wide each numeric type is, so double is float64 here where Dart's double is float32.
+    // C# says how wide each numeric type is, so double is float64.
     private static string? InferKind(ITypeSymbol type) => type.SpecialType switch
     {
         SpecialType.System_Single => "float32",

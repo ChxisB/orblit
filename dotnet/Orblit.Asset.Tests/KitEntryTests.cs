@@ -161,8 +161,8 @@ public class KitEntryTests
         Assert.EndsWith("}\n", Encoding.UTF8.GetString(bytes));
         var again = KitEntry.Parse(bytes, "brass-lamp", "crates");
         Assert.Equal(
-            read.Releases.Select(release => DartJson.Encode(release.ToJson())),
-            again.Releases.Select(release => DartJson.Encode(release.ToJson())));
+            read.Releases.Select(release => JsonText.Encode(release.ToJson())),
+            again.Releases.Select(release => JsonText.Encode(release.ToJson())));
         Assert.Equal(bytes, again.Encode());
     }
 

@@ -60,7 +60,7 @@ public sealed class MaterialImporterTests : NativeToolWork
         var result = await importer.ImportAsync(Request(Source));
 
         Assert.Equal("PACKAGE", Encoding.UTF8.GetString(result.Outputs["material.filamat"]));
-        var decoded = Assert.IsAssignableFrom<IReadOnlyList<object?>>(DartJson.Decode(Encoding.UTF8.GetString(result.Outputs["params.json"])));
+        var decoded = Assert.IsAssignableFrom<IReadOnlyList<object?>>(JsonText.Decode(Encoding.UTF8.GetString(result.Outputs["params.json"])));
         var param = Assert.IsAssignableFrom<IReadOnlyDictionary<string, object?>>(Assert.Single(decoded));
         Assert.Equal("tint", param["name"]);
         Assert.Equal("vec4", param["type"]);

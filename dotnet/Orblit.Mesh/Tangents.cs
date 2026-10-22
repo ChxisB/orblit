@@ -127,7 +127,7 @@ public static class MeshTangents
         sums[start + 2] = (float)(sums[start + 2] + by.Z);
     }
 
-    /// <summary>Three numbers read left to right in the order the Dart arithmetic writes them.</summary>
+    /// <summary>Three numbers read left to right in the order the arithmetic writes them.</summary>
     private readonly record struct Direction(double X, double Y, double Z)
     {
         internal double Length => Math.Sqrt(Dot(this));

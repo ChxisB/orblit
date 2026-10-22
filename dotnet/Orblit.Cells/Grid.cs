@@ -55,11 +55,11 @@ public sealed class Grid
         ((cell.X + 0.5) * CellSize, (cell.Z + 0.5) * CellSize);
 
     /// <summary>How many cells apart <paramref name="a"/> and <paramref name="b"/> are, counting a diagonal step as one.</summary>
-    [SuppressMessage("Performance", "CA1822", Justification = "A port keeps the Dart shape: callers ask the grid.")]
+    [SuppressMessage("Performance", "CA1822", Justification = "Callers ask the grid, so it stays an instance method.")]
     public long Apart(Cell a, Cell b) => Math.Max(Math.Abs(a.X - b.X), Math.Abs(a.Z - b.Z));
 
     /// <summary><paramref name="from"/> and every cell within <paramref name="radius"/> steps of it, as a square.</summary>
-    [SuppressMessage("Performance", "CA1822", Justification = "A port keeps the Dart shape: callers ask the grid.")]
+    [SuppressMessage("Performance", "CA1822", Justification = "Callers ask the grid, so it stays an instance method.")]
     public IEnumerable<Cell> Around(Cell from, long radius)
     {
         if (radius < 0)

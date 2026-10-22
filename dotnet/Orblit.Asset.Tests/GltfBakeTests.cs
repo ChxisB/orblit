@@ -255,7 +255,7 @@ public sealed class GltfBakeTests
     [Fact]
     public async Task RefusesAnIndexThatDoesNotFitThirtyOneBits()
     {
-        // Dart's int is 64 bits and carries the index to a 32-bit buffer. This port throws instead.
+        // An index too large for a 32-bit buffer is refused.
         var model = new TriangleModel();
         model.Triangle();
         model.IndexWith(0x8000_0000u, 1, 2);

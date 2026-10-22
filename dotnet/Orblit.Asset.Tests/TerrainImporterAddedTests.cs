@@ -262,7 +262,7 @@ public sealed class TerrainImporterAddedTests : IDisposable
     [InlineData(0.5, "0.5 m apart")]
     [InlineData(10.0, "10.0 m apart")]
     [InlineData(2.25, "2.25 m apart")]
-    public async Task TheNoteGivesTheSpacingTheWayDartPrintsIt(double spacing, string expected)
+    public async Task TheNoteGivesTheSpacingInFileFormat(double spacing, string expected)
     {
         var result = await ImportTerrain(Spaced(spacing, (0, 0)), (0, 0));
         Assert.Equal($"1 region of 4 texels, {expected}", result.Notes[0]);

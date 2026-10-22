@@ -4,8 +4,8 @@ namespace Orblit.Sequence;
 
 /// <summary>
 /// A cutscene, as a thing rather than as a playing of one. A sequence holds no
-/// playhead and no bindings: it is the score, not the performance. Dart calls it
-/// <c>Sequence</c>, which a type in the namespace <c>Orblit.Sequence</c> cannot.
+/// playhead and no bindings: it is the score, not the performance. It is not
+/// called <c>Sequence</c>, which a type in the namespace <c>Orblit.Sequence</c> cannot be.
 /// </summary>
 public sealed class CutSequence(
     IReadOnlyList<Track> tracks,
@@ -80,8 +80,7 @@ public sealed class CutSequence(
             crossed.AddRange(track.MarksIn(from, to));
         }
 
-        // shortcut: Dart's sort is stable up to 32 marks and not above, so a
-        // longer list with equal times may order differently. Upgrade if a fixture shows it.
+        // A stable sort, so marks with equal times keep their order.
         return [.. crossed.OrderBy(mark => mark.At, Comparer<double>.Create(Doubles.Compare))];
     }
 

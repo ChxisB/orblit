@@ -15,7 +15,7 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
 
     /// <summary>
     /// A turn of <paramref name="radians"/> about <paramref name="axis"/>. An axis
-    /// of length zero gives the zero quaternion, not the identity, as in Dart.
+    /// of length zero gives the zero quaternion, not the identity.
     /// The axis is divided by its own length here, so it need not be normalised.
     /// </summary>
     public static Quaternion AxisAngle(Vector3 axis, double radians)
@@ -64,7 +64,7 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
     }
 
     /// <summary>
-    /// The turn from three half-angle products, as Dart's <c>Quaternion.euler</c>:
+    /// The turn from three half-angle products:
     /// <paramref name="yaw"/> about y, <paramref name="pitch"/> about x and
     /// <paramref name="roll"/> about z.
     /// </summary>
@@ -86,7 +86,7 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
             (cosRoll * cosPitch * cosYaw) + (sinRoll * sinPitch * sinYaw));
     }
 
-    /// <summary>The turn <paramref name="b"/> followed by the turn <paramref name="a"/>, as Dart's <c>*</c>.</summary>
+    /// <summary>The turn <paramref name="b"/> followed by the turn <paramref name="a"/>.</summary>
     public static Quaternion operator *(Quaternion a, Quaternion b) => new(
         (a.W * b.X) + (a.X * b.W) + (a.Y * b.Z) - (a.Z * b.Y),
         (a.W * b.Y) + (a.Y * b.W) + (a.Z * b.X) - (a.X * b.Z),
@@ -129,7 +129,7 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
     /// <summary>
     /// The rotation as a matrix. The scale is divided out by the squared length,
     /// so a quaternion that is not of length one still gives a rotation, and the
-    /// zero quaternion gives a matrix of not-a-number, where Dart only asserts.
+    /// zero quaternion gives a matrix of not-a-number.
     /// </summary>
     public Matrix3 AsRotationMatrix()
     {
@@ -174,7 +174,7 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
 
     /// <summary>
     /// Scales to length one, in place. A quaternion of length zero is left as it
-    /// is, and the multiply is by the reciprocal, as in Dart.
+    /// is, and the multiply is by the reciprocal.
     /// </summary>
     public void Normalize()
     {

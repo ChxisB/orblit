@@ -50,7 +50,7 @@ public sealed class AtlasImporter : Importer
     /// extension is the claim, the same way <c>.import.json</c> is.
     /// </summary>
     public override bool CanHandle(AssetId id) =>
-        DartText.ToLower(id.Name).EndsWith(".atlas.json", StringComparison.Ordinal);
+        TextRules.ToLower(id.Name).EndsWith(".atlas.json", StringComparison.Ordinal);
 
     public override IReadOnlyDictionary<string, object?> ResolveSettings(ImportSettings settings) =>
         new Dictionary<string, object?>
@@ -193,7 +193,7 @@ public sealed class AtlasImporter : Importer
         object? parsed;
         try
         {
-            parsed = DartJson.Decode(DartText.Decode(bytes));
+            parsed = JsonText.Decode(TextRules.Decode(bytes));
         }
         catch (FormatException error)
         {
@@ -212,7 +212,7 @@ public sealed class AtlasImporter : Importer
         if (named is not List<object?> entries)
         {
             throw new ImportFailureException(
-                id, $"\"sprites\" has to be a list of asset names, and this is a {DartType(named)}");
+                id, $"\"sprites\" has to be a list of asset names, and this is a {CastTypeName(named)}");
         }
 
         return [.. entries.Select(entry => SpriteNamed(id, entry))];
@@ -225,7 +225,7 @@ public sealed class AtlasImporter : Importer
         if (entry is not string name)
         {
             throw new ImportFailureException(
-                id, $"every entry in \"sprites\" has to be an asset name, and one is a {DartType(entry)}");
+                id, $"every entry in \"sprites\" has to be an asset name, and one is a {CastTypeName(entry)}");
         }
 
         var sprite = name.StartsWith("./", StringComparison.Ordinal) || name.StartsWith("../", StringComparison.Ordinal)
@@ -245,7 +245,7 @@ public sealed class AtlasImporter : Importer
             ? found
             : throw new ImportFailureException(
                 id,
-                $"\"{DartText.Print(value)}\" is not a packing heuristic. Use one of "
+                $"\"{TextRules.Print(value)}\" is not a packing heuristic. Use one of "
                 + $"{string.Join(", ", HeuristicsByName.Keys)}, or leave it out to have the best one chosen");
     }
 
@@ -260,7 +260,7 @@ public sealed class AtlasImporter : Importer
         {
             null => null,
             long size and > 0 => size,
-            var other => throw DartArgument.Value(other, key, "has to be a size in texels"),
+            var other => throw InvalidArgument.Value(other, key, "has to be a size in texels"),
         };
 
     private static long? Count(ImportSettings settings, string key) =>
@@ -268,10 +268,10 @@ public sealed class AtlasImporter : Importer
         {
             null => null,
             long count and >= 0 => count,
-            var other => throw DartArgument.Value(other, key, "cannot be negative"),
+            var other => throw InvalidArgument.Value(other, key, "cannot be negative"),
         };
 
-    // Dart's `as int?`: absent is null, and a value of any other type is an error.
+    // Absent is null, and a value of any other type is an error.
     private static T? Typed<T>(Dictionary<string, object?> settled, string key)
         where T : struct =>
         settled.GetValueOrDefault(key) switch
@@ -279,11 +279,11 @@ public sealed class AtlasImporter : Importer
             null => null,
             T value => value,
             var other => throw new InvalidCastException(
-                $"type '{DartType(other)}' is not a subtype of type '{DartType(default(T))}?' in type cast"),
+                $"type '{CastTypeName(other)}' is not a subtype of type '{CastTypeName(default(T))}?' in type cast"),
         };
 
-    // What Dart's runtimeType prints, for the messages that name the wrong type.
-    private static string DartType(object? value) => value switch
+    // The type name a cast message gives for the wrong type.
+    private static string CastTypeName(object? value) => value switch
     {
         null => "Null",
         bool => "bool",

@@ -3,7 +3,7 @@ namespace Orblit.Codegen;
 /// <summary>What the generator learned about one component type.</summary>
 public sealed class ComponentDeclaration : IEquatable<ComponentDeclaration>
 {
-    // F2: seven fields, always passed by name, as in the Dart constructor.
+    // F2: seven fields, always passed by name.
     public ComponentDeclaration(
         string name,
         string typeName,
@@ -82,7 +82,7 @@ public sealed class ScanResult
 {
     public ScanResult(IEnumerable<ComponentDeclaration> found, IReadOnlyList<ComponentError> errors)
     {
-        // OrderBy is stable. Dart's List.sort is stable only up to 32 items (decision 75).
+        // OrderBy is stable, so ties keep their input order (decision 75).
         Components = [.. found.OrderBy(c => c.Name, StringComparer.Ordinal)];
         Errors = errors;
     }

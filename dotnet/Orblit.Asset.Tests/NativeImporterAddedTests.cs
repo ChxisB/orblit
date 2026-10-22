@@ -5,7 +5,7 @@ namespace Orblit.Asset.Tests;
 [CollectionDefinition("NativeToolSearchPath", DisableParallelization = true)]
 public sealed class NativeToolSearchPathLock;
 
-/// <summary>Cases the Dart suite does not have, for the places where the port had to choose how to find or run a program.</summary>
+/// <summary>Cases the fixtures do not hold, for the places where the port had to choose how to find or run a program.</summary>
 [Collection("NativeToolSearchPath")]
 public sealed class NativeImporterAddedTests : NativeToolWork
 {
@@ -91,7 +91,7 @@ public sealed class NativeImporterAddedTests : NativeToolWork
     }
 
     [ShellFact]
-    public async Task AWholeNumberedCutoutIsPrintedAsADecimalLikeDartDoes()
+    public async Task AWholeNumberedCutoutIsPrintedAsADecimal()
     {
         var importer = new TextureImporter(Fake("writeInto=1:a.ktx2"));
         var settings = importer.ResolveSettings(new ImportSettings(values: new Dictionary<string, object?> { ["cutout"] = 1L }));

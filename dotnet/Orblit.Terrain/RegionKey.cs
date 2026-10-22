@@ -40,7 +40,7 @@ public readonly partial record struct RegionKey(long X, long Z)
 
     public override string ToString() => FormattableString.Invariant($"RegionKey({X}, {Z})");
 
-    // Dart's int.parse throws a FormatException for digits past 64 bits where long.Parse
+    // Digits past 64 bits give a FormatException here, where long.Parse
     // throws an OverflowException.
     private static long Parse(string digits) =>
         long.TryParse(digits, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var value)

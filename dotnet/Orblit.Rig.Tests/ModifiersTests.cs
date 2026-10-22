@@ -112,7 +112,7 @@ public class ModifiersTests
         Assert.True(pose.TailOf("b1").DistanceTo(once) < 1e-9);
     }
 
-    // The Dart suite names this test twice, once for the two-bone solver and once for chain IK.
+    // The ported tests name this test twice, once for the two-bone solver and once for chain IK.
     [Fact]
     public void TwoBoneStraightensTowardsATargetOutOfReach()
     {

@@ -32,7 +32,7 @@ public static class ShapeKinds
         public string Label => kind.ToString();
     }
 
-    /// <summary>The kind whose name is <paramref name="name"/>, as Dart's <c>name</c> spells it, or null when none is.</summary>
+    /// <summary>The kind whose name is <paramref name="name"/>, as a file spells it, or null when none is.</summary>
     public static ShapeKind? Named(object? name) =>
         Enum.GetValues<ShapeKind>().Cast<ShapeKind?>().FirstOrDefault(kind => name is string text && EnumNames.Of(kind!.Value) == text);
 }

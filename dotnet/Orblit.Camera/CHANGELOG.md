@@ -13,6 +13,6 @@
 - `Lens`, `Blend`, `ScreenRect`, `CameraGuides` and `ScreenPoint` are
   records, and `copyWith` is `with`.
 - `ArmProbe` is a delegate that answers a `double?`.
-- `BlendTable.Between` looks a null name up as the text `null`, as Dart does,
+- `BlendTable.Between` looks a null name up as the text `null`,
   so a rule written with a null name is found only through its `*` half.
 - `CameraBrain.Aspect` ignores a value that is not a finite number above zero.

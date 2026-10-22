@@ -48,7 +48,7 @@ public sealed class RangePackBytes : IPackBytes
         }
 
         var head = await HeadOfAsync().ConfigureAwait(false);
-        // The sum wraps as the Dart twin's does, and a wrapped one is refused here.
+        // The sum wraps, and a wrapped one is refused here.
         var end = unchecked(at + bytes);
         if (end < at || end > head.Total)
         {

@@ -91,7 +91,7 @@ public sealed class FootPlacement : Modifier
     /// How far above its own ground the animation lifts a foot before it is taken to be in the air, and
     /// left level.
     /// </param>
-    // F2: nine tuning values, two of them required, all named at every call, as the Dart constructor is.
+    // F2: nine tuning values, two of them required, all named at every call.
     public FootPlacement(
         IReadOnlyList<FootLeg> legs,
         GroundProbe probe,

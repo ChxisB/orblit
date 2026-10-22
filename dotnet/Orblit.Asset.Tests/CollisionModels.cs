@@ -4,7 +4,7 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// The model the Dart collision tests build: the unit quad at y = 0 as one mesh of one primitive.
+// The model the collision tests build: the unit quad at y = 0 as one mesh of one primitive.
 internal static class CollisionModels
 {
     public static readonly double[] Positions = [-1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1];
@@ -36,7 +36,7 @@ internal static class CollisionModels
             """);
     }
 
-    public static byte[] Write(GltfMap model) => Encoding.UTF8.GetBytes(DartJson.Encode(model));
+    public static byte[] Write(GltfMap model) => Encoding.UTF8.GetBytes(JsonText.Encode(model));
 
     public static Task<CollisionMesh> ReadAsync(byte[] bytes) =>
         CollisionMesh.FromGltfAsync(AssetId.Parse("floor.gltf"), bytes, new MemoryAssetSource());

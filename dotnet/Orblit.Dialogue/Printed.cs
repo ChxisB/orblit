@@ -2,16 +2,16 @@ using System.Globalization;
 
 namespace Orblit.Dialogue;
 
-/// <summary>A decoded JSON value as Dart prints it, so a message reads the same in both languages.</summary>
+/// <summary>A decoded JSON value as an error message prints it.</summary>
 internal static class Printed
 {
-    internal static string Dart(object? value) => value switch
+    internal static string Text(object? value) => value switch
     {
         null => "null",
         bool flag => flag ? "true" : "false",
         double number => Number(number),
-        IReadOnlyDictionary<string, object?> map => "{" + string.Join(", ", map.Select(e => $"{e.Key}: {Dart(e.Value)}")) + "}",
-        IReadOnlyList<object?> list => "[" + string.Join(", ", list.Select(Dart)) + "]",
+        IReadOnlyDictionary<string, object?> map => "{" + string.Join(", ", map.Select(e => $"{e.Key}: {Text(e.Value)}")) + "}",
+        IReadOnlyList<object?> list => "[" + string.Join(", ", list.Select(Text)) + "]",
         _ => Convert.ToString(value, CultureInfo.InvariantCulture) ?? "",
     };
 

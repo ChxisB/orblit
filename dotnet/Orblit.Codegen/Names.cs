@@ -8,8 +8,8 @@ public static class Names
         new([.. assembly.Select(c => char.IsLetterOrDigit(c) || c is '.' or '_' ? c : '_')]);
 
     /// <summary>
-    /// <c>My.Game-Core</c> becomes <c>MyGameCoreComponents</c>, as the Dart generator turns <c>my_game</c>
-    /// into <c>MyGameComponents</c>.
+    /// <c>My.Game-Core</c> becomes <c>MyGameCoreComponents</c>, and <c>my_game</c>
+    /// becomes <c>MyGameComponents</c>.
     /// </summary>
     public static string Registry(string assembly)
     {

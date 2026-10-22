@@ -28,7 +28,7 @@ internal static class GltfMerge
         var to = new Dictionary<int, int>();
         for (var i = 0; i < materials.Count; i++)
         {
-            var key = DartJson.Encode(Identity(materials[i]));
+            var key = JsonText.Encode(Identity(materials[i]));
             if (first.TryGetValue(key, out var already))
             {
                 to[i] = already;
@@ -169,7 +169,7 @@ internal static class GltfMerge
 
     // The JSON of a material without its name, with its keys in order and every number a double, so two
     // materials written by two exporters in two orders compare equal. 1 and 1.0 are the same glTF number
-    // and different Dart ones.
+    // and different texts.
     private static GltfMap Identity(GltfMap material)
     {
         var kept = new GltfMap();
@@ -399,7 +399,7 @@ internal static class GltfMerge
             var accessor = GltfJson.Get(primitive, "indices");
             if (GltfJson.IsInt(accessor))
             {
-                // Dart's int is 64 bits and wraps nothing. An index at or past 2^31 throws here instead.
+                // An index at or past 2^31 throws.
                 indices.AddRange(document.ReadIndices(GltfJson.Saturated(accessor)).Select(i => checked((int)(baseIndex + i))));
             }
             else

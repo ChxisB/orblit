@@ -1,6 +1,6 @@
 namespace Orblit.Scene;
 
-/// <summary>An enum member as Dart's <c>name</c> spells it: PascalCase becomes camelCase.</summary>
+/// <summary>An enum member as a scene file spells it: PascalCase becomes camelCase.</summary>
 internal static class EnumNames
 {
     internal static string Of<T>(T value)

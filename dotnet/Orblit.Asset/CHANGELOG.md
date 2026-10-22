@@ -10,15 +10,15 @@
   `PackFolder` (list and remove), `PackName`, `FilePackBytes`,
   `MemoryPackBytes`, `CookTargets` and `TextureFamily`.
 - A manifest, an import settings file, a cook cache directory and a pack
-  read the same on both sides. The Dart writers and the C# writers give the
-  same bytes, so a pack or a patch that one wrote opens in the other.
+  read the same on every machine. Every writer gives the same bytes, so a
+  pack or a patch that one wrote opens in another.
 - `PackBundle.PackAsync` is the C# name for `packBundle`.
 - Not ported: `bundled_pack_io`, which finds a pack in a Flutter asset
   folder. A .NET app opens its pack with `FilePackBytes`.
 - A third part holds the network contract: `AssetOrigin`, `FetchPolicy`,
   `FetchRequest`, `FetchReply`, `IAssetTransport` and `MapTransport`. It also
   holds fetch records with their codec and three stores, `RangeQueue`,
-  `PictureSize`, `Ktx2Chain` and `WebUrl`. `WebUrl` stands in for Dart `Uri`.
+  `PictureSize`, `Ktx2Chain` and `WebUrl`. `WebUrl` reads a URL by the rules of RFC 3986.
 - A fetch record time without a zone reads as UTC, and a year outside 1 to
   9999 is dropped.
 - A fourth part holds the fetcher: `AssetFetcher` with `Fetch`, `FetchUrl`
@@ -40,9 +40,9 @@
 - A seventh part holds the files a kit store publishes and a project keeps:
   `KitEntry` with `KitRelease`, `KitIndex` with `KitRow`, `KitReleases` with
   `PublishedRelease`, `KitLock` with `LockedKit`, and `KitStoreRules`. Each
-  reads and writes the same bytes as the Dart twin. A release address must be
+  reads and writes the same bytes every time. A release address must be
   an https name that is public, on port 443, with no user name. A day is
-  checked as Dart checks it, so year 0000 is read.
+  checked by the calendar, so year 0000 is read.
 - A release address and a licence address with a port past 65535 are
   refused in C#, as `WebUrl` refuses every such address.
 - An eighth part holds the kit tools: `KitPacking` (pack and publish),
@@ -53,47 +53,45 @@
 - A ninth part holds the command lines. `orblit-kit` runs `pack`, `check`,
   `extract`, `publish` and `index`, and `orblit-pack` runs `build`, `list`,
   `check` and `diff`. Each is its own project, `Orblit.Kit` and `Orblit.Pack`,
-  over an internal class here. Output and exit codes match the Dart
-  commands, but the text names the new tools.
+  over an internal class here. Output and exit codes are fixed, and
+  the text names the tools.
 - A tenth part holds the glTF document: `GltfDocument` reads a GLB or a
   glTF with its buffers, edits the JSON in place and writes one GLB.
   `ComponentType`, the accessor reads and adds, `TextureRole`,
   `TextureRoles` and `TextureSlot` come with it. The accessors are part of
   `GltfDocument`, because `Orblit.Mesh` has a `GltfAccessors` already.
-- A buffer URI is percent decoded twice, as Dart does. A bad base64
+- A buffer URI is percent decoded twice. A bad base64
   payload has no cause. A MAT2 or MAT3 accessor is read as packed.
 - An eleventh part holds `CollisionMesh`: the constructor, `ToJson`,
   `Encode`, `Decode`, `FromObj` and `FromGltfAsync`. A glTF walk is
   `ModelGeometry`, internal. A scene, a node tree or a bare mesh list is
-  read the way Dart reads it, and the refusal text of each case is the same.
+  read by fixed rules, and the refusal text of each case is fixed.
 - The node walk stops at 512 nested nodes with the cyclic hierarchy error.
-  Dart has no limit, and a .NET stack that runs out ends the process. A
-  collision mesh version of `1.0` is accepted, as `1.0 == 1` in Dart. An
+  A .NET stack that runs out ends the process. A
+  collision mesh version of `1.0` is accepted, as `1.0` is the number 1. An
   index past 31 bits is saturated, so it is refused as outside the mesh.
 - A twelfth part holds the glTF edits: `GltfMerge` (`MergeMaterials`,
   `MergePrimitives`, `PrimitiveGroupKey`) and `GltfBake.BakeInstancesAsync`.
   A bake returns null when the model cannot be baked. A transform that is not
-  a number throws, as it does in Dart.
-- A bake keeps the first template of its batches for every later batch, as
-  Dart does, so a later batch carries the `extras` of the first. An index at
-  or past 2^31 throws `OverflowException`, where Dart carries it to a 32 bit
-  buffer.
+  a number throws.
+- A bake keeps the first template of its batches for every later batch,
+  so a later batch carries the `extras` of the first. An index at
+  or past 2^31 throws `OverflowException`.
 - A thirteenth part holds the glTF atlas: `AtlasPixels` (`Resample`,
   `Renormalise`, `MultiplyInto`, `Blit`, `BlankPage`), `Rgba` and
   `ModelAtlas.AtlasModelAsync`, which finds the materials worth packing,
   packs their maps onto shared pages, remaps the UVs and merges what
   became identical. The cook decodes the images and passes the decoder in.
-- `Rgba` throws on a pixel length that does not fit its size, where Dart
-  only asserts. An image index outside the document throws
-  `ArgumentOutOfRangeException`, where Dart throws `RangeError`.
+- `Rgba` throws on a pixel length that does not fit its size. An image index
+  outside the document throws `ArgumentOutOfRangeException`.
 - A fourteenth part holds the surface translator: `SurfaceTranslator.Translate`
   turns an `.oshader` surface into a Filament material source with its
   uniform parameters, `SurfaceLines` expands includes and blanks comments,
   `SurfaceLiterals` reads hints and defaults, and `SurfaceDiagnostics` maps a
   compiler message back to the file and line it came from. A refusal is a
   `SurfaceException` with the file, the line and the reason.
-- Dart regex classes are written out in `DartPattern`, because .NET reads
-  `\s`, `\w`, `\d`, `.` and `$` more widely than Dart does.
+- The file formats' regex classes are written out in `CharClasses`, because
+  .NET reads `\s`, `\w`, `\d`, `.` and `$` more widely than the formats do.
 - A fifteenth part holds the cook: `Cook` with `CookOneAsync`, `StateOfAsync`,
   `StateOfAllAsync` and `CookAllAsync`, `CookResult`, `CookReport`, `CookStatus`,
   `CookState` and `CookTargetProperties`. A cook builds the key before it runs an
@@ -118,14 +116,14 @@
 - `MaterialImporter` asks matc for its version once. A failed ask is not kept.
   `CookingNotSupported` is not ported, by decision 71.
 - The C# cache holds its lock in `index.lock` with a `FileShare.None` open.
-  Dart takes a POSIX byte lock, and a Dart build and a C# build on one
-  directory at the same moment may not exclude each other.
+  A POSIX byte lock taken by another tool on one
+  directory at the same moment may not exclude it.
 - A seventeenth part holds the glTF and scene importers. `GltfImporter`
   passes a model through, or with `"atlas": true` packs its textures onto
   shared pages through `ModelAtlasCook` and merges the materials and
   primitives that come to match. `"collision": true` adds `collision.json`.
   `SceneImporter` reads a scene for the assets it names. Neither is in
-  `NativeImporters.Create()`, as in Dart.
+  `NativeImporters.Create()`.
 - `DependenciesOfAsync` of both runs on the thread pool, so a file that
   cannot be read faults the task and does not throw at the call.
 - The atlas cook needs `orblit_texture_cook`. Pages are held to the largest
@@ -134,9 +132,9 @@
   sprites, and the importer packs them onto pages through `AtlasPacker`.
   It writes `page{N}.png` and `page{N}.json` for each page and says how full
   each page is. Settings given at the call win over the document's own.
-  It is not in `NativeImporters.Create()`, as in Dart.
-- A setting of the wrong type fails with `InvalidCastException` and Dart's
-  own text, such as `type 'String' is not a subtype of type 'int?' in type
+  It is not in `NativeImporters.Create()`.
+- A setting of the wrong type fails with `InvalidCastException` and a text
+  such as `type 'String' is not a subtype of type 'int?' in type
   cast`. A page size or count out of range throws `ArgumentException` with
   `Invalid argument (key): …`.
 - `DependenciesOfAsync` runs on the thread pool, so a document that is not
@@ -149,7 +147,7 @@
   against its own name and a terrain against each region's key and size,
   and a terrain depends on its regions and on every image, model and
   material its sets and scatter layers name. It is not in
-  `NativeImporters.Create()`, as in Dart.
+  `NativeImporters.Create()`.
 - The bundle files the outputs as `<asset id>.<output>`, so `world.oterrain`
   becomes `world.oterrain.oterrain`. `CookedTerrain.OpenAsync` reads that
   back from a bundle or a pack, and names a listed region the pack does not
@@ -157,7 +155,7 @@
 - `Orblit.Asset` now references `Orblit.Terrain`. Inside this namespace the
   name `Terrain` is that namespace, so the files that need the type use
   `using TerrainData = Orblit.Terrain.Terrain;`.
-- Four of the 27 Dart tests of the part cook through `CookProject`. They are
+- Four of the 27 tests of the part cook through `CookProject`. They are
   ported with part F4. The one that builds the runtime registry waits for
   part F5.
 - A twentieth part holds `CookProject`, `BuildHook`, `BundleHash` and
@@ -169,14 +167,13 @@
   names for `cookDuringBuild` and `packDuringBuild`. `BundleHash.Of` is
   `bundleHash`. `CookProject.CurrentCookTarget` throws
   `NotSupportedException` for a platform Orblit does not cook for. The
-  Dart `out` parameter is `@out`.
+  `out` parameter is `@out`.
 - A link under the assets folder is not followed, and a hidden file is
-  listed and then left out by name, as in Dart. A folder that cannot be
+  listed and then left out by name. A folder that cannot be
   read stops the listing. A bundle file is written to a temporary file
   and renamed.
-- A string in an `Invalid argument (name): …` message is quoted as Dart
-  quotes it. A list or a map prints differently, because Dart prints its
-  length.
+- A string in an `Invalid argument (name): …` message is quoted. A list or a
+  map prints as its contents.
 - A last part holds `RuntimeImport` and the cook command. `RuntimeImport`
   imports one file a running app was handed: `NameFor`, `Handles`,
   `ImportAsync`, `ReadAsync` and `ReadOnlyAsync`. `ImportSettingsReader` is
@@ -184,15 +181,15 @@
   can be laid over the file's own.
 - `orblit-cook` is the tool for the cook command. It is `Orblit.Cook` over
   an internal `CookCli` here, as the kit and pack tools are. The exit codes
-  match Dart. A missing assets folder prints .NET's own text.
+  are fixed. A missing assets folder prints .NET's own text.
 - `RuntimeImport.DefaultImporters()` returns `CookProject.DefaultImporters()`,
-  where Dart writes the list twice.
+  so there is one list.
 - A pack header whose directory start or size passes 63 bits is refused,
   and a blob is checked against the directory without a sum that can wrap.
-  Dart wraps there and fails with a `RangeError`. A kit host can send such a
+  A kit host can send such a
   pack, so it ends in a `FormatException` here.
 - A fetch or pack download shares `Random.Shared` for its jitter, and the
   retry wait stops growing at one day. A long loop of retries no longer
   passes what `Task.Delay` takes.
 - `orblit-cook` ends with 1 and a `cook:` line when the disk refuses a
-  write. Dart lets that error crash the command.
+  write.

@@ -6,14 +6,14 @@ using System.Text.Json;
 namespace Orblit.Save;
 
 /// <summary>
-/// The JSON the headers and history entries are written in. It writes what Dart's
-/// <c>jsonEncode</c> writes, so a Dart file and a C# file of one save are the same bytes.
+/// The JSON the headers and history entries are written in. It writes the compact form, so every
+/// writer of one save gives the same bytes.
 /// </summary>
 internal static class SaveJson
 {
     /// <summary>
-    /// <paramref name="text"/> as a JSON string. Dart escapes the quote, the backslash,
-    /// control characters and a lone surrogate, and nothing else, where System.Text.Json
+    /// <paramref name="text"/> as a JSON string. Only the quote, the backslash,
+    /// control characters and a lone surrogate are escaped, where System.Text.Json
     /// also escapes <c>&lt;</c>, <c>&gt;</c>, <c>&amp;</c>, <c>+</c> and every non-ASCII character.
     /// </summary>
     internal static string Quote(string text)
@@ -65,7 +65,7 @@ internal static class SaveJson
 
     /// <summary>
     /// True when <paramref name="map"/> is an object whose <paramref name="name"/> is a
-    /// number equal to <paramref name="expected"/>. Dart compares with <c>==</c>, so 1.0
+    /// number equal to <paramref name="expected"/>. The comparison is numeric, so 1.0
     /// matches 1.
     /// </summary>
     internal static bool HasNumber(JsonElement map, string name, int expected) =>
@@ -87,7 +87,7 @@ internal static class SaveJson
         return value is not null;
     }
 
-    // GetString refuses a lone surrogate, which Dart's decoder keeps. The parser has
+    // GetString refuses a lone surrogate, which a file may hold. The parser has
     // already checked the escapes, so each backslash is followed by a valid one.
     private static string Unescape(string quoted)
     {
@@ -117,7 +117,7 @@ internal static class SaveJson
 
     /// <summary>
     /// True when <paramref name="name"/> is a whole number in <paramref name="map"/>.
-    /// A number written with a fraction or an exponent is a double in Dart, so it is
+    /// A number written with a fraction or an exponent is a double, so it is
     /// not one.
     /// </summary>
     internal static bool TryWhole(JsonElement map, string name, out long value)

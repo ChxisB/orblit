@@ -1,6 +1,6 @@
 {
   "package": "orblit_scene",
-  "dartCommit": "6b26738f964dc10d0bd534be8974c610ee4a818d",
+  "sourceCommit": "6b26738f964dc10d0bd534be8974c610ee4a818d",
   "cases": [
     {"op":"read","in":["mystery",{"a":1,"b":[2,3.5]}],"expect":{"value":{"a":1,"b":[2,3.5]}}},
     {"op":"read","in":["transform",{}],"expect":{"value":{"position":[0.0,0.0,0.0],"rotation":[0.0,0.0,0.0],"scale":[1.0,1.0,1.0]}}},
