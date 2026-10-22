@@ -77,4 +77,23 @@ public class SoundComponentTests
         Assert.Equal("a.ogg", louder.Clip);
         Assert.Equal(9, louder.Far);
     }
+
+    [Fact]
+    public void AListenerAndASurfaceSurviveATripThroughADocument()
+    {
+        var document = new SceneDocument("Scene", entities: [new SceneEntity(
+            "ear",
+            "Ear",
+            components: new Dictionary<string, SceneComponent>
+            {
+                [SceneComponents.Transform] = new TransformComponent(),
+                [SceneComponents.SoundListener] = new SoundListenerComponent(),
+                [SceneComponents.SoundSurface] = new SoundSurfaceComponent(name: "wood"),
+            })]);
+
+        var ear = SceneDocument.Decode(document.Encode()).Document["ear"]!;
+
+        Assert.IsType<SoundListenerComponent>(ear[SceneComponents.SoundListener]);
+        Assert.Equal("wood", Assert.IsType<SoundSurfaceComponent>(ear[SceneComponents.SoundSurface]).Name);
+    }
 }

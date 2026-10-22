@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:orblit_parity_tool/fixture.dart';
+import 'package:orblit_parity_tool/scene_documents.dart';
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -175,19 +176,6 @@ final Map<String, List<Map<String, Object?>>> _shaped = {
   ],
 };
 
-// A copy of [value] with every number made a different one, every flag
-// flipped and every text kept, so a reader that ignores a key still shows.
-Object? _changed(Object? value) => switch (value) {
-  final int i => i * 2 + 1,
-  final double d => d * 2 + 1,
-  final bool b => !b,
-  final Map<String, Object?> m => {
-    for (final e in m.entries) e.key: _changed(e.value),
-  },
-  final List<Object?> l => [for (final e in l) _changed(e)],
-  _ => value,
-};
-
 // Dart reads the input after a trip through JSON, as it would read a file:
 // a map literal typed by inference is not the map a decoder makes.
 Map<String, Object?> _read(String type, Map<String, Object?> json) {
@@ -199,9 +187,6 @@ Map<String, Object?> _read(String type, Map<String, Object?> json) {
   };
 }
 
-Map<String, Object?> _full(String type) =>
-    SceneComponents.read(type, {}).toJson();
-
 List<Map<String, Object?>> _readCases() {
   final cases = <Map<String, Object?>>[
     _read('mystery', {
@@ -210,11 +195,11 @@ List<Map<String, Object?>> _readCases() {
     }),
   ];
   for (final type in _types) {
-    final full = _full(type);
+    final full = fullOf(type);
     cases
       ..add(_read(type, {}))
       ..add(_read(type, full))
-      ..add(_read(type, _changed(full)! as Map<String, Object?>));
+      ..add(_read(type, changed(full)! as Map<String, Object?>));
     for (final key in full.keys) {
       for (final wrong in _wrong) {
         cases.add(_read(type, {...full, key: wrong}));
@@ -260,6 +245,13 @@ void main(List<String> args) {
     root: args.single,
     package: 'orblit_scene',
     name: 'scene',
-    cases: [..._readCases(), ..._rotationCases()],
+    cases: [
+      ..._readCases(),
+      ..._rotationCases(),
+      ...documentCases(),
+      ...diffCases(),
+      ...operationCases(),
+      ...entityCases(),
+    ],
   );
 }

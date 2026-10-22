@@ -79,6 +79,8 @@ public static class SceneComponents
     public const string SoundSource = "soundSource";
     public const string SoundListener = "soundListener";
     public const string SoundSurface = "soundSurface";
+    public const string Data = "data";
+    public const string Prefab = "prefab";
 
     /// <summary>
     /// The order components are written in, so two saves of one scene produce the same bytes and a
@@ -111,6 +113,8 @@ public static class SceneComponents
         SoundSource,
         SoundListener,
         SoundSurface,
+        Data,
+        Prefab,
     ];
 
     public static readonly FrozenDictionary<string, ComponentReader> Readers = new Dictionary<string, ComponentReader>
@@ -137,6 +141,8 @@ public static class SceneComponents
         [SoundSource] = SoundSourceComponent.FromJson,
         [SoundListener] = SoundListenerComponent.FromJson,
         [SoundSurface] = SoundSurfaceComponent.FromJson,
+        [Data] = DataComponent.FromJson,
+        [Prefab] = PrefabComponent.FromJson,
     }.ToFrozenDictionary();
 
     /// <summary>One component, typed when we know the name and kept whole when we do not.</summary>

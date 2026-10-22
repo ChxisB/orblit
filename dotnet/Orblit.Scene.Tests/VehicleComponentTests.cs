@@ -53,4 +53,33 @@ public class VehicleComponentTests
         Assert.Equal(0.8, wheel.Grip);
         Assert.Equal(0.35, wheel.Radius);
     }
+
+    [Fact]
+    public void SurvivesTheRoundTripThroughASceneFile()
+    {
+        var car = new VehicleComponent(
+            maxSteer: 40,
+            antiRoll: 8000,
+            torque: [1000, 100, 6000, 180],
+            ratios: [3, 1.5],
+            @lock: 200,
+            ground: 3);
+        var wheel = new WheelComponent(radius: 0.4, steers: true, drives: true, handbrake: true, grip: 1.2);
+        var document = new SceneDocument("Scene", entities:
+        [
+            new SceneEntity(
+                "car",
+                "Car",
+                components: new Dictionary<string, SceneComponent> { [SceneComponents.Vehicle] = car }),
+            new SceneEntity(
+                "wheel",
+                "Wheel",
+                parent: "car",
+                components: new Dictionary<string, SceneComponent> { [SceneComponents.Wheel] = wheel }),
+        ]);
+
+        var back = SceneDocument.Decode(document.Encode()).Document;
+        Same(car.ToJson(), Assert.IsType<VehicleComponent>(back["car"]![SceneComponents.Vehicle]).ToJson());
+        Same(wheel.ToJson(), Assert.IsType<WheelComponent>(back["wheel"]![SceneComponents.Wheel]).ToJson());
+    }
 }

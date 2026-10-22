@@ -347,4 +347,80 @@ public class BodyTests
         Assert.True(order.IndexOf(SceneComponents.Mesh) < order.IndexOf(SceneComponents.Body));
         Assert.True(order.IndexOf(SceneComponents.Body) < order.IndexOf(SceneComponents.Light));
     }
+
+    // a body in a scene
+
+    [Fact]
+    public void IsReadBackAsABodyNotAnUnknownComponent()
+    {
+        var document = DocumentOf(Crate(new BodyComponent(mass: 20)));
+        var read = SceneDocument.Decode(document.Encode());
+
+        Assert.Empty(read.Problems);
+        Assert.Equal(20, BodyOf(read.Document).Mass);
+        Assert.Equal(document.Encode(), read.Document.Encode());
+    }
+
+    [Fact]
+    public void AChangedFieldIsOneOperationAndItGoesBack()
+    {
+        var a = DocumentOf(Crate(new BodyComponent()));
+        var b = DocumentOf(Crate(new BodyComponent(mass: 40)));
+        var diff = SceneDiff.Between(a, b);
+
+        Assert.Equal("mass", Assert.IsType<SetField>(Assert.Single(diff.Operations)).Field);
+        DiffAssert.RoundTrips(diff, a, b);
+    }
+
+    [Fact]
+    public void TurningOnATriggerAndABeltIsTwoOperationsThatGoBack()
+    {
+        var a = DocumentOf(Crate(new BodyComponent()));
+        var b = DocumentOf(Crate(new BodyComponent(trigger: true, surface: new Vector3(1, 0, 0))));
+        var diff = SceneDiff.Between(a, b);
+
+        Assert.Equal(["surface", "trigger"], diff.Operations.OfType<SetField>().Select(op => op.Field).Order(StringComparer.Ordinal));
+        DiffAssert.RoundTrips(diff, a, b);
+    }
+
+    [Fact]
+    public void LockingAnAxisIsOneOperationAndItGoesBack()
+    {
+        var a = DocumentOf(Crate(new BodyComponent()));
+        var b = DocumentOf(Crate(new BodyComponent(locks: new HashSet<BodyLock> { BodyLock.MoveZ, BodyLock.TurnX })));
+        var diff = SceneDiff.Between(a, b);
+
+        Assert.Equal("locks", Assert.IsType<SetField>(Assert.Single(diff.Operations)).Field);
+        DiffAssert.RoundTrips(diff, a, b);
+    }
+
+    [Fact]
+    public void ASceneWithLocksAndAWeightedCentreReadsBackTheSame()
+    {
+        var document = DocumentOf(Crate(new BodyComponent(
+            locks: new HashSet<BodyLock> { BodyLock.MoveX },
+            gravityScale: 0.5,
+            maxSpeed: 4,
+            centreOfMass: new Vector3(0, -0.3, 0))));
+        var read = SceneDocument.Decode(document.Encode());
+
+        Assert.Empty(read.Problems);
+        Assert.Equal(document.Encode(), read.Document.Encode());
+        Assert.Equal([BodyLock.MoveX], BodyOf(read.Document).Locks);
+        Assert.Equal(new Vector3(0, -0.3, 0), BodyOf(read.Document).CentreOfMass);
+    }
+
+    private static SceneDocument DocumentOf(params SceneEntity[] entities) => new("Scene", entities: entities);
+
+    private static SceneEntity Crate(BodyComponent body) => new(
+        "crate",
+        "Crate",
+        components: new Dictionary<string, SceneComponent>
+        {
+            [SceneComponents.Transform] = new TransformComponent(),
+            [SceneComponents.Body] = body,
+        });
+
+    private static BodyComponent BodyOf(SceneDocument document) =>
+        Assert.IsType<BodyComponent>(document["crate"]![SceneComponents.Body]);
 }

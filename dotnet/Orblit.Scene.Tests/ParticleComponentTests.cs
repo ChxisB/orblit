@@ -179,4 +179,57 @@ public class ParticleComponentTests
 
         Assert.Equal(new Vector3(0, -9.8, 0), emitter.Gravity);
     }
+
+    // an emitter in a scene
+
+    [Fact]
+    public void IsReadBackAsAnEmitterNotAnUnknownComponent()
+    {
+        var document = DocumentOf(new ParticleEmitterComponent(bursts: [new EmitterBurst(1, 4)]));
+        var back = SceneDocument.Decode(document.Encode());
+
+        Assert.Empty(back.Problems);
+        Assert.IsType<ParticleEmitterComponent>(back.Document["fire"]![SceneComponents.Particles]);
+        Assert.Equal(document.Encode(), back.Document.Encode());
+    }
+
+    [Fact]
+    public void IsWrittenAfterTheCanvasAndBeforeTheData()
+    {
+        var order = SceneComponents.Order.ToList();
+
+        Assert.True(order.IndexOf(SceneComponents.Particles) > order.IndexOf(SceneComponents.Canvas));
+        Assert.True(order.IndexOf(SceneComponents.Data) > order.IndexOf(SceneComponents.Particles));
+    }
+
+    [Fact]
+    public void AddingOneIsAChangeThatGoesBack()
+    {
+        var a = DocumentOf(null);
+        var b = DocumentOf(new ParticleEmitterComponent(rate: 40));
+
+        DiffAssert.RoundTrips(SceneDiff.Between(a, b), a, b);
+    }
+
+    [Fact]
+    public void AChangedFieldIsOneOperationAndItGoesBack()
+    {
+        var a = DocumentOf(new ParticleEmitterComponent(rate: 1));
+        var b = DocumentOf(new ParticleEmitterComponent(rate: 2));
+        var diff = SceneDiff.Between(a, b);
+
+        Assert.Equal("rate", Assert.IsType<SetField>(Assert.Single(diff.Operations)).Field);
+        DiffAssert.RoundTrips(diff, a, b);
+    }
+
+    private static SceneDocument DocumentOf(ParticleEmitterComponent? emitter)
+    {
+        var components = new Dictionary<string, SceneComponent> { [SceneComponents.Transform] = new TransformComponent() };
+        if (emitter is not null)
+        {
+            components[SceneComponents.Particles] = emitter;
+        }
+
+        return new SceneDocument("Scene", entities: [new SceneEntity("fire", "Fire", components: components)]);
+    }
 }

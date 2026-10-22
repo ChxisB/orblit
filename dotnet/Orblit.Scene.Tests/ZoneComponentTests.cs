@@ -93,4 +93,54 @@ public class ZoneComponentTests
         Assert.Equal(order.IndexOf("motion") + 1, order.IndexOf(SceneComponents.Zone));
         Assert.Equal(order.IndexOf(SceneComponents.Zone) + 1, order.IndexOf(SceneComponents.Vehicle));
     }
+
+    // a zone in a scene
+
+    [Fact]
+    public void IsReadBackAsAZoneNotAnUnknownComponent()
+    {
+        var document = DocumentOf(new ZoneComponent(gravity: new Vector3(0, 9, 0)));
+        var read = SceneDocument.Decode(document.Encode());
+
+        Assert.Empty(read.Problems);
+        Assert.IsType<ZoneComponent>(read.Document["pool"]![SceneComponents.Zone]);
+        Assert.Equal(document.Encode(), read.Document.Encode());
+    }
+
+    [Fact]
+    public void AddingOneIsAChangeThatGoesBack()
+    {
+        var a = DocumentOf(null);
+        var b = DocumentOf(new ZoneComponent(linearDamping: 4));
+        var diff = SceneDiff.Between(a, b);
+
+        Assert.True(diff.IsNotEmpty);
+        DiffAssert.RoundTrips(diff, a, b);
+    }
+
+    [Fact]
+    public void AChangedFieldIsOneOperationAndItGoesBack()
+    {
+        var a = DocumentOf(new ZoneComponent(priority: 1));
+        var b = DocumentOf(new ZoneComponent(priority: 2));
+        var diff = SceneDiff.Between(a, b);
+
+        Assert.Equal("priority", Assert.IsType<SetField>(Assert.Single(diff.Operations)).Field);
+        DiffAssert.RoundTrips(diff, a, b);
+    }
+
+    private static SceneDocument DocumentOf(ZoneComponent? zone)
+    {
+        var components = new Dictionary<string, SceneComponent>
+        {
+            [SceneComponents.Transform] = new TransformComponent(),
+            [SceneComponents.Body] = new BodyComponent(motion: BodyMotion.Fixed),
+        };
+        if (zone is not null)
+        {
+            components[SceneComponents.Zone] = zone;
+        }
+
+        return new SceneDocument("Scene", entities: [new SceneEntity("pool", "Pool", components: components)]);
+    }
 }

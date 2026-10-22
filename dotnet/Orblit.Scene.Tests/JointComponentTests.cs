@@ -233,4 +233,27 @@ public class JointComponentTests
 
         Assert.Equal(Ends("b", null), ends);
     }
+
+    [Fact]
+    public void SurvivesTheRoundTripThroughASceneFile()
+    {
+        var door = new JointComponent(
+            limits: new Dictionary<JointAxis, JointRange> { [JointAxis.AboutX] = new(-10, 95) },
+            speed: 30,
+            strength: 5,
+            breakingTorque: 400);
+        var document = new SceneDocument("Scene", entities: [new SceneEntity(
+            "hinge",
+            "Hinge",
+            components: new Dictionary<string, SceneComponent>
+            {
+                [SceneComponents.Transform] = new TransformComponent(),
+                [SceneComponents.Joint] = door,
+            })]);
+
+        var back = SceneDocument.Decode(document.Encode()).Document;
+        var joint = Assert.IsType<JointComponent>(back["hinge"]![SceneComponents.Joint]);
+        Same(door.ToJson(), joint.ToJson());
+        Assert.Equal(95, joint.Limits[JointAxis.AboutX].High);
+    }
 }
