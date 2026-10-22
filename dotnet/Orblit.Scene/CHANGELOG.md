@@ -2,9 +2,15 @@
 
 ## 0.24.0
 
-- A port of `orblit_scene` 0.24.0, parts S1 to S3: the components, the
-  document, the migrations, the diff, the materials and the prefab instances.
-  The streaming, export and import parts follow.
+- A port of `orblit_scene` 0.24.0, parts S1 to S4: the components, the
+  document, the migrations, the diff, the materials, the prefab instances and
+  cell streaming. The export and import parts follow.
+- `CellStreamer`, `CellLoad` and `CellStep` stream a world of scene files
+  into one scene as cells come near. `Orblit.Scene` now references
+  `Orblit.Cells`. `Step` is called from one thread. A fetch may finish on any
+  thread and is put into the scene on a later `Step`. A fetch that is already
+  answered finishes inside the `Step` that asked for it, and one that fails at
+  once frees its place for the next cell in the same `Step`.
 - `SceneComponents.Read` and `Order` cover the 22 component types that are not
   `data` or `prefab`. An unknown type is kept whole as `UnknownComponent`.
 - `EnumNames.Of` writes the name a scene file uses, which starts with a

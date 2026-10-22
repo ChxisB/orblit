@@ -35,6 +35,9 @@ public class SceneParityTests
     [Fact]
     public void InstancesOpenFoldAndEditAsTheFixtureSays() => Expected.Check("instances", InstanceSteps);
 
+    [Fact]
+    public void CellsStreamInAsTheFixtureSays() => Expected.Check("streaming", static c => StreamingRun.Run(c.GetProperty("in")));
+
     private static JsonNode? Read(JsonElement c)
     {
         var input = c.GetProperty("in");

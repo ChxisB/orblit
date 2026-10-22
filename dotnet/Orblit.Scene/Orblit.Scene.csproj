@@ -6,6 +6,7 @@
     <NoWarn>$(NoWarn);CA1720</NoWarn>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Orblit.Cells\Orblit.Cells.csproj" />
     <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
     <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
     <ProjectReference Include="..\Orblit.Mesh\Orblit.Mesh.csproj" />

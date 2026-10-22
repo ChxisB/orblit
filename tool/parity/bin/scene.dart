@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:orblit_parity_tool/fixture.dart';
 import 'package:orblit_parity_tool/scene_documents.dart';
 import 'package:orblit_parity_tool/scene_instances.dart';
+import 'package:orblit_parity_tool/scene_streaming.dart';
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:vector_math/vector_math_64.dart';
 
@@ -241,7 +242,7 @@ Map<String, Object?> _rotation(Vector3 degrees) {
   };
 }
 
-void main(List<String> args) {
+Future<void> main(List<String> args) async {
   writeFixture(
     root: args.single,
     package: 'orblit_scene',
@@ -255,6 +256,7 @@ void main(List<String> args) {
       ...entityCases(),
       ...materialCases(),
       ...instanceCases(),
+      ...await streamingCases(),
     ],
   );
 }
