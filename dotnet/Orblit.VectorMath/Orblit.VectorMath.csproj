@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.14.0</Version>
+    <Version>0.15.0</Version>
     <Description>Double precision maths for the ports of packages that used vector_math_64, and the places .NET's number rules differ from the file format's.</Description>
   </PropertyGroup>
 </Project>

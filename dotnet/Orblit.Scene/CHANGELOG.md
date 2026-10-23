@@ -4,7 +4,21 @@
 
 - A port of `orblit_scene` 0.24.0, parts S1 to S4: the components, the
   document, the migrations, the diff, the materials, the prefab instances and
-  cell streaming. The export and import parts follow.
+  cell streaming. Part S5a adds the export. The import follows.
+- `SceneDocument.WriteAs` writes a scene as glTF, GLB or OBJ and returns a
+  `SceneWritten`: the files in the order to save them, and what the format
+  could not hold. `ToGltf` and `ToObj` give the same output without the file
+  names. `SceneFormat` names the three formats. FBX is not a format it writes.
+- An export takes the bytes of every model and texture the scene names as a
+  dictionary keyed by project path. The package reads no files.
+- A model placed by a mesh component is copied into the output under the node
+  that places it. A model with its data or pictures in files beside it, or in
+  more than one buffer, is refused with a `GraftException` that names the
+  file, and the export reports it as a problem.
+- A picture is told apart by its first bytes, not its name. PNG, JPEG, WebP and
+  KTX2 are embedded.
+- Faces are put in material order with a stable sort, so the faces of one
+  material keep the order they were made in.
 - `CellStreamer`, `CellLoad` and `CellStep` stream a world of scene files
   into one scene as cells come near. `Orblit.Scene` now references
   `Orblit.Cells`. `Step` is called from one thread. A fetch may finish on any

@@ -218,6 +218,14 @@ public class MatrixTests
     }
 
     [Fact]
+    public void RotationYTurnsZTowardsX()
+    {
+        var turned = Matrix4.RotationY(Math.PI / 2).Rotated3(new Vector3(0, 0, 1));
+        Assert.Equal(1, turned.X, 1e-9);
+        Assert.Equal(0, turned.Z, 1e-9);
+    }
+
+    [Fact]
     public void RotateZIsTheMatrixTimesARotationAroundZ()
     {
         var turned = Matrix4.TranslationValues(0, 5, 0);

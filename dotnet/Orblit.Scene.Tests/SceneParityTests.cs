@@ -2,6 +2,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orblit.Json;
+using Orblit.Mesh;
 using Orblit.Parity;
 using static Orblit.Parity.Dump;
 
@@ -37,6 +38,9 @@ public class SceneParityTests
 
     [Fact]
     public void CellsStreamInAsTheFixtureSays() => Expected.Check("streaming", static c => StreamingRun.Run(c.GetProperty("in")));
+
+    [Fact]
+    public void ScenesExportAsTheFixtureSays() => Expected.Check("export", Exported);
 
     private static JsonNode? Read(JsonElement c)
     {
@@ -122,6 +126,46 @@ public class SceneParityTests
                 .Select(path => KeyValuePair.Create(path, (JsonNode?)Resolved(library.Resolve(path))))),
         };
     });
+
+    private static JsonNode? Exported(JsonElement c) => Attempt(() =>
+    {
+        var input = c.GetProperty("in");
+        var scene = SceneDocument.Decode(input.GetProperty("scene").GetString()!).Document;
+        var format = Enum.Parse<SceneFormat>(input.GetProperty("format").GetString()!, ignoreCase: true);
+        var library = input.GetProperty("materials") is { ValueKind: JsonValueKind.Object } materials
+            ? new MaterialLibrary(MaterialsOf(materials).ToDictionary(static one => one.Key, static one => one.Value.Document))
+            : null;
+        var files = input.GetProperty("files").EnumerateObject()
+            .ToDictionary(static file => file.Name, static file => Convert.FromBase64String(file.Value.GetString()!));
+        var written = scene.WriteAs(format, input.GetProperty("name").GetString()!, library, files);
+        return new JsonObject
+        {
+            ["files"] = Arr(written.Files, WrittenNode),
+            ["problems"] = Arr(written.Problems, Text),
+        };
+    });
+
+    // A glb is compared as its header tree and its bytes, as the fixture holds it.
+    private static JsonNode WrittenNode(Written file)
+    {
+        var node = new JsonObject { ["name"] = Text(file.Name) };
+        if (file.Name.EndsWith(".glb", StringComparison.Ordinal))
+        {
+            var chunks = GltfFiles.GlbChunks(file.Bytes)!.Value;
+            node["json"] = Tree(chunks.Json);
+            node["binary"] = Text(Convert.ToBase64String(chunks.Binary));
+        }
+        else if (file.Name.EndsWith(".bin", StringComparison.Ordinal))
+        {
+            node["binary"] = Text(Convert.ToBase64String(file.Bytes));
+        }
+        else
+        {
+            node["text"] = Text(file.Text);
+        }
+
+        return node;
+    }
 
     private static Dictionary<string, MaterialLoad> MaterialsOf(JsonElement files) =>
         files.EnumerateObject().ToDictionary(

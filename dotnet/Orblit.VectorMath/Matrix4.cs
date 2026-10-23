@@ -57,6 +57,18 @@ public sealed class Matrix4
         return matrix;
     }
 
+    public static Matrix4 RotationY(double radians)
+    {
+        var matrix = Identity();
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        matrix._storage[0] = cosine;
+        matrix._storage[2] = -sine;
+        matrix._storage[8] = sine;
+        matrix._storage[10] = cosine;
+        return matrix;
+    }
+
     public static Matrix4 RotationX(double radians)
     {
         var matrix = Identity();

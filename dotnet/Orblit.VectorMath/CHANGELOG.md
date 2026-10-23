@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.15.0
+
+- `Matrix4.RotationY`, which the scene export reads.
+
 ## 0.14.0
 
 - `Matrix3` gains `RotationX`, `RotationY`, `RotationZ` and `Multiply`, which
