@@ -4,7 +4,14 @@
 
 - A port of `orblit_scene` 0.24.0, parts S1 to S4: the components, the
   document, the migrations, the diff, the materials, the prefab instances and
-  cell streaming. Part S5a adds the export. The import follows.
+  cell streaming. Part S5a adds the export and part S5b the import.
+- `SceneImport.ReadSceneFrom` reads a scene back from the bytes of a glTF,
+  GLB or OBJ file and returns a `SceneImported`: the document, what could not
+  be carried across, and whether the file held Orblit's own record of the
+  scene. It throws `SceneFormatException` only when there is nothing to read.
+  A file from elsewhere is worked out from the parts of glTF that have an
+  equivalent. A document written by Orblit before version four loses its parts
+  and says why.
 - `SceneDocument.WriteAs` writes a scene as glTF, GLB or OBJ and returns a
   `SceneWritten`: the files in the order to save them, and what the format
   could not hold. `ToGltf` and `ToObj` give the same output without the file
