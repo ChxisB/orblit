@@ -12,16 +12,20 @@ import 'fixture.dart';
 /// The cases for scene export: a scene, a format, the materials and files it
 /// can reach, and the files and problems that come out.
 List<Map<String, Object?>> exportCases() => [
-  for (final scenario in [
-    ..._treeScenarios(),
-    ..._lightScenarios(),
-    ..._meshScenarios(),
-    ..._materialScenarios(),
-    ..._lookScenarios(),
-    ..._modelScenarios(),
-    ..._objScenarios(),
-  ])
+  for (final scenario in exportScenarios())
     {'op': 'export', 'in': scenario, 'expect': _exported(scenario)},
+];
+
+/// Every scenario the export cases run, in the order they are written. The
+/// import cases read what these write, by position.
+List<Map<String, Object?>> exportScenarios() => [
+  ..._treeScenarios(),
+  ..._lightScenarios(),
+  ..._meshScenarios(),
+  ..._materialScenarios(),
+  ..._lookScenarios(),
+  ..._modelScenarios(),
+  ..._objScenarios(),
 ];
 
 const _cube = MeshComponent(shape: Shape(kind: ShapeKind.cube));
@@ -93,10 +97,19 @@ SceneDocument _within32Faces(SceneDocument scene) {
 // The scene is read back from its text, as the C# side reads it, so both sides
 // export the same document and not the same object.
 Map<String, Object?> _exported(Map<String, Object?> scenario) => attempt(() {
+  final written = writeScenario(scenario);
+  return {
+    'files': [for (final file in written.files) _file(file)],
+    'problems': written.problems,
+  };
+});
+
+/// What a scenario writes. Throws when the export does.
+SceneWritten writeScenario(Map<String, Object?> scenario) {
   final scene = SceneDocument.decode(scenario['scene']! as String).document;
   final materials = scenario['materials'] as Map<String, Object?>?;
   final files = scenario['files']! as Map<String, Object?>;
-  final written = scene.writeAs(
+  return scene.writeAs(
     SceneFormat.values.byName(scenario['format']! as String),
     name: scenario['name']! as String,
     materials: materials == null
@@ -113,11 +126,7 @@ Map<String, Object?> _exported(Map<String, Object?> scenario) => attempt(() {
       for (final e in files.entries) e.key: base64Decode(e.value! as String),
     },
   );
-  return {
-    'files': [for (final file in written.files) _file(file)],
-    'problems': written.problems,
-  };
-});
+}
 
 // A glb is held as its header tree and its bytes, so a difference shows up as
 // a key and not as a changed letter in a base64 string.

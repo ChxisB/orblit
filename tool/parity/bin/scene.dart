@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:orblit_parity_tool/fixture.dart';
 import 'package:orblit_parity_tool/scene_documents.dart';
 import 'package:orblit_parity_tool/scene_export.dart';
+import 'package:orblit_parity_tool/scene_import.dart';
 import 'package:orblit_parity_tool/scene_instances.dart';
 import 'package:orblit_parity_tool/scene_streaming.dart';
 import 'package:orblit_scene/orblit_scene.dart';
@@ -258,6 +259,7 @@ Future<void> main(List<String> args) async {
       ...materialCases(),
       ...instanceCases(),
       ...exportCases(),
+      ...importCases(),
       ...await streamingCases(),
     ],
   );

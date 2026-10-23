@@ -42,6 +42,9 @@ public class SceneParityTests
     [Fact]
     public void ScenesExportAsTheFixtureSays() => Expected.Check("export", Exported);
 
+    [Fact]
+    public void ScenesImportAsTheFixtureSays() => Expected.Check("import", Imported);
+
     private static JsonNode? Read(JsonElement c)
     {
         var input = c.GetProperty("in");
@@ -129,7 +132,16 @@ public class SceneParityTests
 
     private static JsonNode? Exported(JsonElement c) => Attempt(() =>
     {
-        var input = c.GetProperty("in");
+        var written = WriteScenario(c.GetProperty("in"));
+        return new JsonObject
+        {
+            ["files"] = Arr(written.Files, WrittenNode),
+            ["problems"] = Arr(written.Problems, Text),
+        };
+    });
+
+    private static SceneWritten WriteScenario(JsonElement input)
+    {
         var scene = SceneDocument.Decode(input.GetProperty("scene").GetString()!).Document;
         var format = Enum.Parse<SceneFormat>(input.GetProperty("format").GetString()!, ignoreCase: true);
         var library = input.GetProperty("materials") is { ValueKind: JsonValueKind.Object } materials
@@ -137,11 +149,38 @@ public class SceneParityTests
             : null;
         var files = input.GetProperty("files").EnumerateObject()
             .ToDictionary(static file => file.Name, static file => Convert.FromBase64String(file.Value.GetString()!));
-        var written = scene.WriteAs(format, input.GetProperty("name").GetString()!, library, files);
+        return scene.WriteAs(format, input.GetProperty("name").GetString()!, library, files);
+    }
+
+    // An input is either the bytes themselves or the place of an export case, read back from what this side wrote.
+    private static JsonNode? Imported(JsonElement c) => Attempt(() =>
+    {
+        var input = c.GetProperty("in");
+        SceneImported read;
+        if (input.TryGetProperty("export", out var place))
+        {
+            var scenario = Expected.Cases.Where(static one => one.GetProperty("op").GetString() == "export")
+                .ElementAt(place.GetInt32()).GetProperty("in");
+            var written = WriteScenario(scenario);
+            read = SceneImport.ReadSceneFrom(
+                written.Files[0].Bytes,
+                files: written.Files.Skip(1).ToDictionary(static file => file.Name, static file => file.Bytes));
+        }
+        else
+        {
+            var files = input.GetProperty("files").EnumerateObject()
+                .ToDictionary(static file => file.Name, static file => Convert.FromBase64String(file.Value.GetString()!));
+            read = SceneImport.ReadSceneFrom(
+                Convert.FromBase64String(input.GetProperty("bytes").GetString()!),
+                input.GetProperty("name").GetString()!,
+                files);
+        }
+
         return new JsonObject
         {
-            ["files"] = Arr(written.Files, WrittenNode),
-            ["problems"] = Arr(written.Problems, Text),
+            ["document"] = Tree(read.Document.ToJson()),
+            ["problems"] = Arr(read.Problems, Text),
+            ["wasWrittenHere"] = read.WasWrittenHere,
         };
     });
 
