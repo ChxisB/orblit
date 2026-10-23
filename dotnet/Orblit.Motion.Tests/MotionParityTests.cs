@@ -27,7 +27,7 @@ public class MotionParityTests
     [Fact]
     public void RootStepsComposeAsTheFixtureSays() => Expected.Check("then", Composed);
 
-    private static ClipDocument Clip(JsonElement text) => ClipDocument.Decode(text.GetString()!).Clip;
+    internal static ClipDocument Clip(JsonElement text) => ClipDocument.Decode(text.GetString()!).Clip;
 
     private static JsonNode? Decoded(JsonElement c) => Attempt(() =>
     {
@@ -75,17 +75,17 @@ public class MotionParityTests
 
     private static RootStep Step(JsonElement step) => new(Vector(step[0]), Turn(step[1]));
 
-    private static Vector3 Vector(JsonElement parts) =>
+    internal static Vector3 Vector(JsonElement parts) =>
         new(Fixture.Number(parts[0]), Fixture.Number(parts[1]), Fixture.Number(parts[2]));
 
-    private static Quaternion Turn(JsonElement parts) =>
+    internal static Quaternion Turn(JsonElement parts) =>
         new(Fixture.Number(parts[0]), Fixture.Number(parts[1]), Fixture.Number(parts[2]), Fixture.Number(parts[3]));
 
-    private static JsonArray? Dumped(Vector3? v) => v is null ? null : new JsonArray(Num(v.X), Num(v.Y), Num(v.Z));
+    internal static JsonArray? Dumped(Vector3? v) => v is null ? null : new JsonArray(Num(v.X), Num(v.Y), Num(v.Z));
 
-    private static JsonArray? Dumped(Quaternion? q) => q is null ? null : new JsonArray(Num(q.X), Num(q.Y), Num(q.Z), Num(q.W));
+    internal static JsonArray? Dumped(Quaternion? q) => q is null ? null : new JsonArray(Num(q.X), Num(q.Y), Num(q.Z), Num(q.W));
 
-    private static JsonObject Dumped(RootStep step) => new()
+    internal static JsonObject Dumped(RootStep step) => new()
     {
         ["position"] = Dumped(step.Position),
         ["rotation"] = Dumped(step.Rotation),
@@ -101,7 +101,7 @@ public class MotionParityTests
         _ => throw new InvalidOperationException($"no dump for {value.GetType()}"),
     };
 
-    private static JsonObject Dumped(ClipFrame frame) => new()
+    internal static JsonObject Dumped(ClipFrame frame) => new()
     {
         ["values"] = new JsonObject(frame.Values.Select(target => KeyValuePair.Create<string, JsonNode?>(
             target.Key,

@@ -7,9 +7,9 @@ import 'package:vector_math/vector_math_64.dart';
 
 typedef Case = Map<String, Object?>;
 
-Object _vec(Vector3 v) => [number(v.x), number(v.y), number(v.z)];
+Object vecDump(Vector3 v) => [number(v.x), number(v.y), number(v.z)];
 
-Object _quat(Quaternion q) => [
+Object quatDump(Quaternion q) => [
   number(q.x),
   number(q.y),
   number(q.z),
@@ -18,8 +18,8 @@ Object _quat(Quaternion q) => [
 
 Object? _value(Object value) => switch (value) {
   final double d => number(d),
-  final Vector3 v => _vec(v),
-  final Quaternion q => _quat(q),
+  final Vector3 v => vecDump(v),
+  final Quaternion q => quatDump(q),
   final bool b => b,
   _ => throw StateError('no dump for ${value.runtimeType}'),
 };
@@ -39,9 +39,9 @@ Object frameDump(ClipFrame frame) => {
       target.key: {
         for (final bone in target.value.entries)
           bone.key: {
-            'position': bone.value.position.andThen(_vec),
-            'rotation': bone.value.rotation.andThen(_quat),
-            'scale': bone.value.scale.andThen(_vec),
+            'position': bone.value.position.andThen(vecDump),
+            'rotation': bone.value.rotation.andThen(quatDump),
+            'scale': bone.value.scale.andThen(vecDump),
           },
       },
   },
@@ -53,8 +53,8 @@ extension on Object? {
 }
 
 Object stepDump(RootStep step) => {
-  'position': _vec(step.position),
-  'rotation': _quat(step.rotation),
+  'position': vecDump(step.position),
+  'rotation': quatDump(step.rotation),
   'none': step.isNone,
 };
 
@@ -526,8 +526,8 @@ List<Case> thenCases() => [
       {
         'op': 'then',
         'in': [
-          [_vec(pa), _quat(ra)],
-          [_vec(pb), _quat(rb)],
+          [vecDump(pa), quatDump(ra)],
+          [vecDump(pb), quatDump(rb)],
         ],
         'expect': attempt(
           () => stepDump(

@@ -31,7 +31,7 @@ public sealed class RootStep(Vector3? position = null, Quaternion? rotation = nu
     public override string ToString() => $"RootStep({Position}, {Rotation})";
 
     /// <summary><paramref name="step"/> taken <paramref name="times"/> times over, in as few compositions as it can.</summary>
-    internal static RootStep Repeated(RootStep step, int times)
+    internal static RootStep Repeated(RootStep step, long times)
     {
         var done = new RootStep();
         var power = step;

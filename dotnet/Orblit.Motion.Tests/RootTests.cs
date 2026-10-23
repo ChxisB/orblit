@@ -103,6 +103,70 @@ public class RootTests
     }
 
     [Fact]
+    public void PlayedALoopThatWrapsMidStepStillTakesTheWholeStep()
+    {
+        var player = new ClipPlayer(Walk());
+        player.Play();
+        player.Advance(0.75);
+        var wrapped = player.Advance(0.5);
+        ExpectVector(wrapped.Moved.Position, new Vector3(0, 0, 1));
+        Assert.Equal(0.25, player.At, 1e-12);
+        var held = wrapped.Frame.BoneOf(string.Empty, "hips")!;
+        ExpectVector(held.Position, new Vector3(0, 1.1, 0));
+    }
+
+    [Fact]
+    public void PlayedATurningLoopGoesOnFromWhereTheLastLapLeftIt()
+    {
+        var clip = Walk(turns: true, turn: 90);
+        var player = new ClipPlayer(clip);
+        player.Play();
+        var moved = player.Advance(1.5).Moved;
+        var expected = clip.RootStepBetween(0, 1).Then(clip.RootStepBetween(0, 0.5));
+        ExpectVector(moved.Position, expected.Position);
+        ExpectTurn(moved.Rotation, Yaw(135));
+    }
+
+    [Fact]
+    public void PlayedBackwardsWalksBackwards()
+    {
+        var player = new ClipPlayer(Walk(), speed: -1);
+        player.Seek(1);
+        player.Play();
+        ExpectVector(player.Advance(0.5).Moved.Position, new Vector3(0, 0, -1));
+    }
+
+    [Fact]
+    public void PlayedABounceComesBackTheWayItWent()
+    {
+        var player = new ClipPlayer(Walk(), WhenDone.Bounce);
+        player.Play();
+        ExpectVector(player.Advance(1.5).Moved.Position, new Vector3(0, 0, 1));
+    }
+
+    [Fact]
+    public void PlayedAStepManyLapsLongGoesTheWholeWay()
+    {
+        var player = new ClipPlayer(Walk());
+        player.Play();
+        var moved = player.Advance(1000.25).Moved;
+        Assert.Equal(2000.5, moved.Position.Z, 1e-6);
+        Assert.True(Math.Abs(moved.Position.X) + Math.Abs(moved.Position.Y) < 1e-9);
+    }
+
+    [Fact]
+    public void PlayedATurningStepManyLapsLongTurnsTheWholeWay()
+    {
+        // A quarter turn a lap: a thousand laps is two hundred and fifty times round, and back where it
+        // started facing.
+        var clip = Walk(turns: true, turn: 90);
+        var player = new ClipPlayer(clip);
+        player.Play();
+        var moved = player.Advance(1000).Moved;
+        ExpectTurn(moved.Rotation, Quaternion.Identity());
+    }
+
+    [Fact]
     public void AClipWithNoRootMotionGoesNowhereAndHoldsNothing()
     {
         var clip = Walk().CopyWith(clearRootMotion: true);
