@@ -32,6 +32,8 @@ dependencies:
     path: ../../packages/orblit_light
   orblit_mesh:
     path: ../../packages/orblit_mesh
+  orblit_motion:
+    path: ../../packages/orblit_motion
   orblit_noise:
     path: ../../packages/orblit_noise
   orblit_path:
