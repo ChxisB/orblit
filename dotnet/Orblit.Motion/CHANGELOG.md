@@ -28,4 +28,22 @@
   poses a skeleton's rest origins. `ClipScene` turns a frame into `SetField`
   changes, and `ClipScope` says which entity each name in the clip means.
 - These are checked against a second fixture of 6,052 cases to 1e-9 relative.
-  Blends, retargeting and cutscenes come in the next parts.
+- Part M3 adds `BlendDocument`, a graph of states, sources and conditions
+  saved as `.oblend` text, with `BlendPlayer` to run it. `BlendPlace` is the
+  state of a player as explicit data: it saves as JSON and as 21 float64
+  values. `PoseSnapshot` holds a frozen pose to fade out of.
+- Part M4 adds `ClipLayer` and `BoneMask`. A layer lays one frame over another
+  by weight on the bones a mask names, or adds it on top of a reference.
+- Part M5 adds bone names, `HumanoidMap` and `LimbReach`. A skeleton is
+  searched for the bones of a person by name and by shape. `ClipRetarget`
+  carries a clip from one skeleton to another, and `BoneMap` saves the pairs
+  worked out or set by hand.
+- Part M6 adds `GltfImport`, which reads a model's animations as clips and
+  its skins as skeletons, and `LiveRetarget`, which carries a source frame
+  onto a target skeleton one bone at a time and pins a limb to a source bone.
+  `Orblit.Motion` now refers to `Orblit.Mesh`.
+- Part M7 adds `CutsceneDocument`, a clip that moves what is in the scene
+  with `CutsceneShot` and `CutsceneSound`, saved as `.ocutscene` text. Its
+  `Sequence` blends shots over the time they overlap and cuts where they
+  touch. A cutscene refuses keys on bones and root motion.
+- Each part is checked against a fixture of its own to 1e-9 relative.
