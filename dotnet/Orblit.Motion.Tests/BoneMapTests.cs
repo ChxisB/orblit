@@ -45,6 +45,16 @@ public class BoneMapTests
             new HashSet<string> { "lower" }));
 
     [Fact]
+    public void UnpairedIsKeptOffALiveRetargetToo()
+    {
+        var live = new LiveRetarget(_from, _to, unpaired: new HashSet<string> { "lower" });
+        var turn = Quaternion.AxisAngle(new Vector3(0, 0, 1), 1);
+        var pose = live.Follow(new Dictionary<string, BoneLocal> { ["upper"] = new(rotation: turn), ["lower"] = new(rotation: turn) });
+        Assert.DoesNotContain("lower", pose.Keys);
+        Assert.Contains("upper", pose.Keys);
+    }
+
+    [Fact]
     public void ABoneMapKeepsWhatItWasGivenAndSortsItOnTheWayOut()
     {
         var map = new BoneMap(

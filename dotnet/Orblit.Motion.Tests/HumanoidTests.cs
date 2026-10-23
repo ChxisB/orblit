@@ -144,6 +144,15 @@ public class HumanoidTests
         Assert.False(pairs.ContainsKey("clavicle_l"));
     }
 
+    [Fact]
+    public void AFoxIsNotReadAsAPerson()
+    {
+        var skeleton = GltfImport.Skeletons(GltfSamples.Sample("Fox"))[0];
+        var map = HumanoidMap.Of(skeleton);
+        Assert.Empty(map.Bones);
+        Assert.NotEmpty(map.Problems);
+    }
+
     private static Matrix4 At(double x, double y, double z) => Matrix4.TranslationValues(x, y, z);
 
     private static void Same(Dictionary<HumanoidBone, string> expected, IReadOnlyDictionary<HumanoidBone, string> actual)

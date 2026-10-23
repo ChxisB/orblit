@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+    <ProjectReference Include="..\Orblit.Mesh\Orblit.Mesh.csproj" />
     <ProjectReference Include="..\Orblit.Rig\Orblit.Rig.csproj" />
     <ProjectReference Include="..\Orblit.Scene\Orblit.Scene.csproj" />
     <ProjectReference Include="..\Orblit.Sequence\Orblit.Sequence.csproj" />

@@ -119,7 +119,7 @@ public class MotionParityTests
         return dump;
     }
 
-    private static JsonObject Dumped(BoneLocal local) => new()
+    internal static JsonObject Dumped(BoneLocal local) => new()
     {
         ["position"] = Dumped(local.Position),
         ["rotation"] = Dumped(local.Rotation),
