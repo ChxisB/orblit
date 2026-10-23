@@ -391,14 +391,8 @@ Quaternion _turn(Object parts) {
   );
 }
 
-List<Object?> _part(Vector3 position, Quaternion rotation, Vector3 scale) => [
-  vecDump(position),
-  quatDump(rotation),
-  vecDump(scale),
-];
-
 List<Object?> _rest(double x, double y, double z) =>
-    _part(Vector3(x, y, z), Quaternion.identity(), Vector3.all(1));
+    partDump(Vector3(x, y, z), Quaternion.identity(), Vector3.all(1));
 
 /// Skeletons as a fixture holds them: names, parents, and a position, a
 /// rotation and a scale for each bone in its parent.
@@ -420,18 +414,18 @@ final Map<String, Map<String, Object?>> _skeletons = {
     'parents': [-1, 0, 1, 1, 3, 0, 5],
     'local': [
       _rest(0, 90, 0),
-      _part(
+      partDump(
         Vector3(0, 25, 2),
         _about(1, 0, 0, 0.1),
         Vector3(1, 1.1, 1),
       ),
       _rest(0, 30, 0),
-      _part(Vector3(12, 20, 0), _about(0, 0, 1, -1.4), Vector3.all(1)),
-      _part(Vector3(25, 0, 0), _about(0, 1, 0, 0.3), Vector3(1, 1, 1.5)),
-      _part(Vector3(-8, -5, 0), _about(0, 0, 1, 3.1), Vector3.all(1)),
+      partDump(Vector3(12, 20, 0), _about(0, 0, 1, -1.4), Vector3.all(1)),
+      partDump(Vector3(25, 0, 0), _about(0, 1, 0, 0.3), Vector3(1, 1, 1.5)),
+      partDump(Vector3(-8, -5, 0), _about(0, 0, 1, 3.1), Vector3.all(1)),
       _rest(0, -40, 0),
     ],
-    'above': _part(
+    'above': partDump(
       Vector3(0, 0, 0),
       _about(1, 0, 0, -math.pi / 2),
       Vector3.all(0.01),
@@ -447,11 +441,11 @@ final Map<String, Map<String, Object?>> _skeletons = {
     'names': ['root', 'child', 'tip'],
     'parents': [-1, 0, 1],
     'local': [
-      _part(Vector3(0, 1, 0), _about(0, 0, 1, 0.8), Vector3.all(1)),
+      partDump(Vector3(0, 1, 0), _about(0, 0, 1, 0.8), Vector3.all(1)),
       _rest(1, 0, 0),
       _rest(1, 0, 0),
     ],
-    'above': _part(Vector3(0, 0, 0), _about(1, 0, 0, 0.3), Vector3.all(1)),
+    'above': partDump(Vector3(0, 0, 0), _about(1, 0, 0, 0.3), Vector3.all(1)),
   },
   'none': {'names': [], 'parents': [], 'local': [], 'above': null},
   'twice': {

@@ -404,8 +404,6 @@ final Map<String, BlendDocument> _blends = {
   for (final e in _blendTexts.entries) e.key: BlendDocument.decode(e.value).blend,
 };
 
-Object? _json(Object? value) => jsonDecode(jsonEncode(value));
-
 double _d(Object? value) =>
     value is String ? double.parse(value) : (value! as num).toDouble();
 
@@ -421,15 +419,6 @@ BlendDocument _blend(Object? name) => _blends[name]!;
 
 BlendPlace _placed(Object? blend, Object? json) =>
     BlendPlace.fromJson(json, _blend(blend)) ?? (throw StateError('no place'));
-
-Case _case(
-  String op,
-  List<Object?> input,
-  Object? Function(List<Object?> input) run,
-) {
-  final seen = _json(input)! as List<Object?>;
-  return {'op': op, 'in': seen, 'expect': attempt(() => run(seen))};
-}
 
 Object? _marks(List<Mark> marks) => [
   for (final mark in marks) [number(mark.at), mark.name],
@@ -475,7 +464,7 @@ List<Case> libraryCases() => [
   },
 ];
 
-Case _decodeCase(String text) => _case(
+Case _decodeCase(String text) => caseOf(
   'decode',
   [text],
   (input) => _loadDump(BlendDocument.decode(input[0]! as String)),
@@ -812,7 +801,7 @@ List<Case> placeCases() => [
     ('nested', {'state': 'ground', 'lap': 0.5}),
     ('nested', {'state': 'ground/idle'}),
   ])
-    _case('place', [blend, place], (input) {
+    caseOf('place', [blend, place], (input) {
       final into = _blend(input[0]);
       final read = BlendPlace.fromJson(input[1], into);
       if (read == null) return {'read': false};
@@ -844,7 +833,7 @@ const List<double> _spoils = [
 List<double> _numbersOf(BlendPlace place) =>
     place.toNumbers(_blend('moves')).toList();
 
-Case _numbersCase(List<double> numbers) => _case(
+Case _numbersCase(List<double> numbers) => caseOf(
   'numbers',
   [
     'moves',
@@ -900,7 +889,7 @@ Case _readingCase(
   Map<String, double> values,
   Object? Function(BlendDocument blend, BlendPlace place, Map<String, double> values)
   run,
-) => _case(op, [blend, place, _numbered(values)], (input) {
+) => caseOf(op, [blend, place, _numbered(values)], (input) {
   final into = _blend(input[0]);
   return run(into, _placed(input[0], input[1]), _values(input[2]));
 });
@@ -966,7 +955,7 @@ Object _rest() {
 List<Case> restedCases() => [
   for (final place in _movesPlaces())
     for (final values in const [<String, double>{}, {'speed': 2.5}])
-      _case('rested', ['moves', place.toJson(), _numbered(values), _rest()], (
+      caseOf('rested', ['moves', place.toJson(), _numbered(values), _rest()], (
         input,
       ) {
         final rest = PoseSnapshot.fromJson(input[3])!.sample();
@@ -990,7 +979,7 @@ List<Case> lengthCases() => [
     ('nested', 'swim'),
   ])
     for (final values in [..._readings, ..._odd])
-      _case('length', [blend, state, _numbered(values)], (input) {
+      caseOf('length', [blend, state, _numbered(values)], (input) {
         return number(
           _blend(input[0]).lengthOf(
             input[1]! as String,
@@ -1005,13 +994,13 @@ List<Case> routeCases() => [
   for (final blend in ['moves', 'nested'])
     for (final from in [..._blend(blend).states.map((s) => s.name), 'swim'])
       for (final to in [..._blend(blend).states.map((s) => s.name), 'swim'])
-        _case('route', [blend, from, to], (input) {
+        caseOf('route', [blend, from, to], (input) {
           return _blend(input[0]).routeTo(input[1]! as String, input[2]! as String);
         }),
-  _case('route', ['nested', 'ground', 'air'], (input) {
+  caseOf('route', ['nested', 'ground', 'air'], (input) {
     return _blend('nested').routeTo('ground', 'air');
   }),
-  _case('route', ['nested', 'air', 'ground'], (input) {
+  caseOf('route', ['nested', 'air', 'ground'], (input) {
     return _blend('nested').routeTo('air', 'ground');
   }),
 ];
@@ -1050,7 +1039,7 @@ Case _playerCase(
   Object? place,
   Map<String, double> inputs,
   List<List<Object?>> script,
-) => _case('player', [blend, place, _numbered(inputs), script], (input) {
+) => caseOf('player', [blend, place, _numbered(inputs), script], (input) {
   final player = BlendPlayer(
     _blend(input[0]),
     clips: _clips,

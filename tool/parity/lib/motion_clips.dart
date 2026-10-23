@@ -7,6 +7,19 @@ import 'package:vector_math/vector_math_64.dart';
 
 typedef Case = Map<String, Object?>;
 
+/// A case: the call's input as a fixture holds it, and what the call gave.
+///
+/// The input is round-tripped through JSON first, so the call sees what a
+/// reader of the fixture will.
+Case caseOf(
+  String op,
+  List<Object?> input,
+  Object? Function(List<Object?> input) run,
+) {
+  final seen = jsonDecode(jsonEncode(input)) as List<Object?>;
+  return {'op': op, 'in': seen, 'expect': attempt(() => run(seen))};
+}
+
 Object vecDump(Vector3 v) => [number(v.x), number(v.y), number(v.z)];
 
 Object quatDump(Quaternion q) => [
@@ -14,6 +27,13 @@ Object quatDump(Quaternion q) => [
   number(q.y),
   number(q.z),
   number(q.w),
+];
+
+/// A bone's rest transform as a fixture holds it: position, turn and scale.
+List<Object?> partDump(Vector3 position, Quaternion rotation, Vector3 scale) => [
+  vecDump(position),
+  quatDump(rotation),
+  vecDump(scale),
 ];
 
 Object? _value(Object value) => switch (value) {

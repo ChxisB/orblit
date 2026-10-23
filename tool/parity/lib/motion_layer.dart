@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import 'package:orblit_motion/orblit_motion.dart';
 import 'package:orblit_parity_tool/fixture.dart';
 import 'package:orblit_parity_tool/motion_clips.dart';
@@ -8,14 +6,8 @@ import 'package:vector_math/vector_math_64.dart';
 Quaternion _about(double x, double y, double z, double radians) =>
     Quaternion.axisAngle(Vector3(x, y, z).normalized(), radians);
 
-List<Object?> _part(Vector3 position, Quaternion rotation, Vector3 scale) => [
-  vecDump(position),
-  quatDump(rotation),
-  vecDump(scale),
-];
-
 List<Object?> _rest(double x, double y, double z) =>
-    _part(Vector3(x, y, z), Quaternion.identity(), Vector3.all(1));
+    partDump(Vector3(x, y, z), Quaternion.identity(), Vector3.all(1));
 
 /// A bone as a frame holds it: any of position, rotation and scale.
 List<Object?> _bone(Vector3? p, Quaternion? q, Vector3? s) => [
@@ -34,8 +26,8 @@ final Map<String, Map<String, Object?>> _skeletons = {
       _rest(0, 1, 0),
       _rest(0, -1, 0),
       _rest(0, 1, 0),
-      _part(Vector3(1, 0, 0), _about(0, 0, 1, 0.2), Vector3.all(1)),
-      _part(Vector3(1, 0, 0), Quaternion.identity(), Vector3.all(1.5)),
+      partDump(Vector3(1, 0, 0), _about(0, 0, 1, 0.2), Vector3.all(1)),
+      partDump(Vector3(1, 0, 0), Quaternion.identity(), Vector3.all(1.5)),
     ],
   },
   'prop': {
@@ -441,15 +433,6 @@ List<Case> libraryCases() => [
   },
 ];
 
-Case _case(
-  String op,
-  List<Object?> input,
-  Object? Function(List<Object?> input) run,
-) {
-  final seen = jsonDecode(jsonEncode(input)) as List<Object?>;
-  return {'op': op, 'in': seen, 'expect': attempt(() => run(seen))};
-}
-
 Map<String, RestSkeleton> _skeletonsOf(Object? names) => {
   for (final one in names! as List<Object?>)
     one! as String: _skeleton(_skeletons[one]),
@@ -462,14 +445,14 @@ List<Case> restCases() => [
     ['prop'],
     ['rig', 'prop'],
   ])
-    _case('rest', [
+    caseOf('rest', [
       names,
     ], (input) => _framed(restFrame(_skeletonsOf(input[0])))),
 ];
 
 List<Case> completeCases() => [
   for (final frame in _frames.keys)
-    _case(
+    caseOf(
       'complete',
       [frame, 'rest'],
       (input) => _framed(
@@ -477,7 +460,7 @@ List<Case> completeCases() => [
       ),
     ),
   for (final frame in const ['base', 'overlay'])
-    _case(
+    caseOf(
       'complete',
       [frame, 'empty'],
       (input) => _framed(
@@ -490,7 +473,7 @@ List<Case> maskCases() => [
   for (final bone in const ['hips', 'leg', 'spine', 'arm', 'hand', 'nope'])
     for (final target in const ['', 'prop'])
       for (final weight in const [1.0, 0.5, 0.0])
-        _case(
+        caseOf(
           'below',
           ['rig', bone, target, weight],
           (input) => _weights(
@@ -503,7 +486,7 @@ List<Case> maskCases() => [
           ),
         ),
   for (final weight in _badWeights)
-    _case(
+    caseOf(
       'below',
       ['rig', 'arm', '', number(weight)],
       (input) => _weights(
@@ -516,9 +499,9 @@ List<Case> maskCases() => [
     ),
   for (final name in _masks.keys)
     if (_masks[name] != null)
-      _case('mask', [_masks[name]], (input) => _weights(_mask(input[0])!)),
+      caseOf('mask', [_masks[name]], (input) => _weights(_mask(input[0])!)),
   for (final weight in [-0.5, 1.5, double.nan, double.infinity])
-    _case('mask', [
+    caseOf('mask', [
       {
         'target': '',
         'weights': [
@@ -534,7 +517,7 @@ List<Case> layerCases() => [
     for (final overlay in _overlays)
       for (final mask in _masks.keys)
         for (final weight in _layerWeights)
-          _case(
+          caseOf(
             'layer',
             [base, overlay, 'rest', _masks[mask], weight],
             (input) => _framed(
@@ -548,7 +531,7 @@ List<Case> layerCases() => [
             ),
           ),
   for (final weight in _badWeights)
-    _case(
+    caseOf(
       'layer',
       ['base', 'overlay', 'rest', null, number(weight)],
       (input) => _framed(
@@ -568,7 +551,7 @@ List<Case> addCases() => [
       for (final reference in const [null, 'reference', 'noScale', 'extra'])
         for (final mask in const ['none', 'upper', 'half'])
           for (final weight in _addWeights)
-            _case(
+            caseOf(
               'add',
               [base, overlay, 'rest', reference, _masks[mask], weight],
               (input) => _framed(
@@ -585,7 +568,7 @@ List<Case> addCases() => [
               ),
             ),
   for (final weight in _badWeights)
-    _case(
+    caseOf(
       'add',
       ['base', 'overlay', 'rest', null, null, number(weight)],
       (input) => _framed(
@@ -626,7 +609,7 @@ List<Case> weightCases() => [
     for (final (fadeIn, fadeOut) in _fades)
       for (final influence in const [1.0, 0.5])
         for (final at in const [0.0, 0.05, 0.1, 0.3, 0.5, 0.95, 1.0, 1.5])
-          _case(
+          caseOf(
             'weight',
             [clip, number(fadeIn), number(fadeOut), influence, at],
             (input) => number(
@@ -652,7 +635,7 @@ List<Case> weightCases() => [
     (0.1, 0.1, -1.0),
     (0.1, 0.1, double.nan),
   ])
-    _case(
+    caseOf(
       'weight',
       ['reach', number(fadeIn), number(fadeOut), number(influence), 0.5],
       (input) => number(
@@ -673,9 +656,9 @@ List<Case> advanceCases() => [
   for (final clip in const ['reach', 'props', 'zero'])
     for (final at in const [0.0, 0.25, 0.5, 0.75, 1.0, 1.5])
       for (final seconds in const [0.0, 0.25, 0.5, 1.0, 5.0, -1.0])
-        _case('advance', [clip, at, seconds], (input) => _stepped(input)),
+        caseOf('advance', [clip, at, seconds], (input) => _stepped(input)),
   for (final seconds in [double.nan, double.infinity, double.negativeInfinity])
-    _case('advance', [
+    caseOf('advance', [
       'reach',
       0.25,
       number(seconds),
@@ -707,7 +690,7 @@ List<Case> sampleCases() => [
       for (final mask in const ['none', 'upper'])
         for (final base in _bases)
           for (final at in const [0.0, 0.05, 0.5, 0.95, 1.0, 1.5])
-            _case(
+            caseOf(
               'sample',
               [
                 clip,
@@ -756,7 +739,7 @@ const List<Object?> _places = [
 
 List<Case> placeCases() => [
   for (final raw in _places)
-    _case('place', [raw], (input) {
+    caseOf('place', [raw], (input) {
       final place = LayerPlace.fromJson(input[0]);
       if (place == null) return null;
       return {
@@ -766,11 +749,11 @@ List<Case> placeCases() => [
       };
     }),
   for (final at in const [0.0, 0.25, 1e300, -0.0, -1.0, double.nan])
-    _case('placeAt', [
+    caseOf('placeAt', [
       number(at),
     ], (input) => number(LayerPlace(_num(input[0])).at)),
   for (final at in const [double.infinity, double.negativeInfinity])
-    _case('placeAt', [
+    caseOf('placeAt', [
       number(at),
     ], (input) => number(LayerPlace(_num(input[0])).at)),
 ];
