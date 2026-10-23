@@ -145,6 +145,69 @@ public class QuaternionTests
     }
 
     [Fact]
+    public void InvertedUndoesATurnEvenWhenItIsNotOfLengthOne()
+    {
+        var q = new Quaternion(1, 2, 3, 4);
+        var product = q * q.Inverted();
+        Assert.Equal(0, product.X, Tight);
+        Assert.Equal(0, product.Y, Tight);
+        Assert.Equal(0, product.Z, Tight);
+        Assert.Equal(1, product.W, Tight);
+        Assert.Equal(new Quaternion(1, 2, 3, 4), q);
+    }
+
+    [Fact]
+    public void InverseWorksInPlaceAndTheZeroQuaternionHasNone()
+    {
+        var q = new Quaternion(0, 0, 0.5, 0.5);
+        q.Inverse();
+        Assert.Equal(new Quaternion(0, 0, -1, 1), q);
+        Assert.True(double.IsNaN(new Quaternion(0, 0, 0, 0).Inverted().W));
+    }
+
+    [Fact]
+    public void FromTwoVectorsTurnsOneDirectionOntoTheOther()
+    {
+        var a = new Vector3(1, 2, 3);
+        var b = new Vector3(-2, 0.5, 1);
+        var turned = Quaternion.FromTwoVectors(a, b).AsRotationMatrix().Transformed(a.Normalized());
+        var want = b.Normalized();
+        Assert.Equal(want.X, turned.X, Tight);
+        Assert.Equal(want.Y, turned.Y, Tight);
+        Assert.Equal(want.Z, turned.Z, Tight);
+    }
+
+    [Fact]
+    public void FromTwoVectorsGivesTheIdentityForDirectionsAboutTheSame()
+    {
+        var q = Quaternion.FromTwoVectors(new Vector3(0, 1, 0), new Vector3(0.01, 1, 0));
+        Assert.Equal(0, q.X, Tight);
+        Assert.Equal(0, q.Y, Tight);
+        Assert.Equal(0, q.Z, Tight);
+        Assert.Equal(1, q.W, Tight);
+    }
+
+    [Fact]
+    public void FromTwoVectorsHalfTurnsOppositeDirectionsAboutAnAxisSquareToThem()
+    {
+        foreach (var a in new[] { new Vector3(1, 0, 0), new Vector3(0, 1, 0), new Vector3(0, 0, -1) })
+        {
+            var q = Quaternion.FromTwoVectors(a, -a);
+            var turned = q.AsRotationMatrix().Transformed(a);
+            Assert.Equal(-a.X, turned.X, Tight);
+            Assert.Equal(-a.Y, turned.Y, Tight);
+            Assert.Equal(-a.Z, turned.Z, Tight);
+            Assert.Equal(0, q.W, Tight);
+        }
+    }
+
+    [Fact]
+    public void FromTwoVectorsGivesTheZeroQuaternionForADirectionlessVector()
+    {
+        Assert.Equal(new Quaternion(0, 0, 0, 0), Quaternion.FromTwoVectors(Vector3.Zero(), new Vector3(1, 0, 0)));
+    }
+
+    [Fact]
     public void SetFromAndSetValuesWriteInPlace()
     {
         var q = Quaternion.Identity();

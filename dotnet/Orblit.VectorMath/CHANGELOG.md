@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.16.0
+
+- `Quaternion.Inverted` and `Inverse`, which divide by the squared length, and
+  `Quaternion.FromTwoVectors`, which the clip retarget reads.
+
 ## 0.15.0
 
 - `Matrix4.RotationY`, which the scene export reads.

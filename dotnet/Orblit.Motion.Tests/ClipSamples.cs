@@ -70,11 +70,15 @@ internal static class ClipSamples
 
     /// <summary>A rotation channel on <paramref name="bone"/> with straight lines between the keys.</summary>
     public static ClipChannel<Quaternion> Turns(string bone, params (double At, Quaternion Turn)[] keys) =>
+        Turns(bone, Hold.Linear, keys);
+
+    /// <summary>A rotation channel on <paramref name="bone"/> holding every key as <paramref name="hold"/> says.</summary>
+    public static ClipChannel<Quaternion> Turns(string bone, Hold hold, params (double At, Quaternion Turn)[] keys) =>
         new(
             string.Empty,
             "rotation",
             ChannelKind.Rotation,
-            [.. keys.Select(key => new Key<Quaternion>(key.At, key.Turn, Hold.Linear))],
+            [.. keys.Select(key => new Key<Quaternion>(key.At, key.Turn, hold))],
             bone);
 
     /// <summary>A position channel on <paramref name="bone"/> with straight lines between the keys.</summary>

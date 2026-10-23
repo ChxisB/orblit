@@ -31,6 +31,39 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
     }
 
     /// <summary>
+    /// The shortest turn that takes the direction of <paramref name="a"/> to the direction of
+    /// <paramref name="b"/>.
+    /// </summary>
+    /// <remarks>
+    /// Directions less than about two degrees apart give the identity, and opposite ones a half
+    /// turn about an axis square to <paramref name="a"/>. A zero vector gives the zero quaternion, since it
+    /// has no direction.
+    /// </remarks>
+    public static Quaternion FromTwoVectors(Vector3 a, Vector3 b)
+    {
+        var v1 = a.Normalized();
+        var v2 = b.Normalized();
+        var c = v1.Dot(v2);
+        var angle = Math.Acos(c);
+        var axis = v1.Cross(v2);
+        if (Math.Abs(1.0 + c) < 0.0005)
+        {
+            angle = Math.PI;
+
+            // Opposite directions: any axis square to the first will do, found by crossing with an axis the
+            // first does not lean towards.
+            axis = v1.X > v1.Y && v1.X > v1.Z ? v1.Cross(new Vector3(0, 1, 0)) : v1.Cross(new Vector3(1, 0, 0));
+        }
+        else if (Math.Abs(1.0 - c) < 0.0005)
+        {
+            angle = 0.0;
+            axis = new Vector3(1, 0, 0);
+        }
+
+        return AxisAngle(axis.Normalized(), angle);
+    }
+
+    /// <summary>
     /// The rotation held in the top left of a matrix. A matrix that carries a
     /// scale gives a quaternion that is not a unit one: nothing is divided out.
     /// </summary>
@@ -127,6 +160,18 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
     }
 
     /// <summary>
+    /// A copy that undoes this turn. Unlike <see cref="Conjugated"/> it divides by the squared length, so a
+    /// quaternion that is not of length one still gives the true inverse, and the zero quaternion gives
+    /// not-a-number.
+    /// </summary>
+    public Quaternion Inverted()
+    {
+        var copy = Clone();
+        copy.Inverse();
+        return copy;
+    }
+
+    /// <summary>
     /// The rotation as a matrix. The scale is divided out by the squared length,
     /// so a quaternion that is not of length one still gives a rotation, and the
     /// zero quaternion gives a matrix of not-a-number.
@@ -166,6 +211,16 @@ public sealed class Quaternion(double x, double y, double z, double w) : IEquata
         X = -X;
         Y = -Y;
         Z = -Z;
+    }
+
+    /// <summary>Inverts in place: turns the other way and divides by the squared length.</summary>
+    public void Inverse()
+    {
+        var l = 1.0 / Length2;
+        W *= l;
+        Z = -Z * l;
+        Y = -Y * l;
+        X = -X * l;
     }
 
     public double Length2 => (X * X) + (Y * Y) + (Z * Z) + (W * W);

@@ -40,7 +40,7 @@ public class NamesParityTests
 
     private static Matrix4 Composed(JsonElement parts) => Matrix4.Compose(Vector(parts[0]), Turn(parts[1]), Vector(parts[2]));
 
-    private static RestSkeleton Named(JsonElement name) => Skeletons[name.GetString()!];
+    internal static RestSkeleton Named(JsonElement name) => Skeletons[name.GetString()!];
 
     private static Vector3? MaybeVector(JsonElement part) => part.ValueKind == JsonValueKind.Null ? null : Vector(part);
 

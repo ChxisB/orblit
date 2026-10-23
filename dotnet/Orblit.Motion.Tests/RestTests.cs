@@ -75,6 +75,23 @@ public class RestTests
         ExpectNear(posed[1], new Vector3(1, 6, 0));
     }
 
+    [Fact]
+    public void PosedOriginsAgreeWithForwardKinematicsWorkedOutByHandOnAPerson()
+    {
+        var who = People.Build(People.Mannequin, armsDown: 0.6);
+        var pose = new Dictionary<string, BoneLocal>
+        {
+            [who.Slots[HumanoidBone.Hips]] = new BoneLocal(position: new Vector3(0, 0.6, 0.1)),
+            [who.Slots[HumanoidBone.Spine]] = new BoneLocal(rotation: Quaternion.AxisAngle(new Vector3(1, 0, 0), 0.3)),
+            [who.Slots[HumanoidBone.LeftUpperArm]] = new BoneLocal(rotation: Quaternion.AxisAngle(new Vector3(0, 0, 1), -0.8)),
+        };
+        var posed = who.Skeleton.PosedOrigins(pose);
+        foreach (var name in who.Names)
+        {
+            ExpectNear(posed[who.IndexOf(name)], who.OriginOf(name, pose));
+        }
+    }
+
     private static Matrix4 At(double x, double y, double z) =>
         Matrix4.Compose(new Vector3(x, y, z), Quaternion.Identity(), Vector3.All(1));
 

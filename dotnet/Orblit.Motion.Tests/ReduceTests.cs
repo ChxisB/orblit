@@ -105,5 +105,38 @@ public class ReduceTests
         Assert.Equal(clip.Name, reduced.Name);
     }
 
-    private static ClipDocument ClipOf(ClipChannel channel) => new("Reduced", 2, channels: [channel]);
+    [Fact]
+    public void AfterARetargetTakesTheKeysABakeAddedBackOut()
+    {
+        // The target has one spine bone where the source has three, so its neck is turned by all three and gets
+        // a key whenever any one has one.
+        var from = People.Build(People.Capture, spine: 3);
+        var to = People.Build(People.Capture, spine: 1);
+        var clip = ClipOf(
+            ClipSamples.Turns(
+                from.Slots[HumanoidBone.Chest],
+                [.. Enumerable.Range(0, 5).Select(i => (i / 2.0, ClipSamples.About(1, 0, 0, i * 10.0)))]),
+            ClipSamples.Turns(
+                from.Slots[HumanoidBone.Neck],
+                (0, Quaternion.Identity()),
+                (1.3, Quaternion.Identity()),
+                (2, Quaternion.Identity())));
+        var baked = ClipRetarget.Of(clip, from.Skeleton, to.Skeleton, humanoid: true).Clip;
+        var neck = to.Slots[HumanoidBone.Neck];
+        var reduced = KeyReducer.Reduce(baked);
+        var whole = NeckOf(baked, neck);
+        var thin = NeckOf(reduced, neck);
+        Assert.True(thin.BoxedKeys.Count < whole.BoxedKeys.Count);
+        for (var at = 0.0; at <= 2; at += 0.1)
+        {
+            var a = baked.SampleAt(at).Bones[string.Empty][neck].Rotation!;
+            var b = reduced.SampleAt(at).Bones[string.Empty][neck].Rotation!;
+            Assert.True(ClipSamples.TurnBetween(a, b) < 1e-3, $"at {at}");
+        }
+    }
+
+    private static ClipChannel NeckOf(ClipDocument clip, string neck) =>
+        Assert.Single(clip.Channels, channel => channel.Bone == neck && channel.Property == "rotation");
+
+    private static ClipDocument ClipOf(params ClipChannel[] channels) => new("Reduced", 2, channels: channels);
 }

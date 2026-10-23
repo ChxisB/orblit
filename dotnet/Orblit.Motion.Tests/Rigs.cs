@@ -14,10 +14,14 @@ internal sealed class Rig(
 
     public List<string> Names { get; } = names;
 
+    public List<int> Parents { get; } = parents;
+
+    public List<(Vector3 Position, Quaternion Turn)> Rest { get; } = rest;
+
     public RestSkeleton Skeleton => new(
         Names,
-        parents,
-        [.. rest.Select(static bone => Matrix4.Compose(bone.Position, bone.Turn, Vector3.All(1)))],
+        Parents,
+        [.. Rest.Select(static bone => Matrix4.Compose(bone.Position, bone.Turn, Vector3.All(1)))],
         _above);
 
     /// <summary>How far the farthest bone is from where the roots hang, at rest.</summary>
@@ -30,18 +34,24 @@ internal sealed class Rig(
         }
     }
 
-    /// <summary>Every bone in the world at rest.</summary>
-    public List<Matrix4> Pose()
+    /// <summary>Every bone in the world with <paramref name="clip"/> at <paramref name="time"/>, or at rest with none.</summary>
+    public List<Matrix4> Pose(ClipDocument? clip = null, double time = 0)
     {
+        var frame = clip?.SampleAt(time);
         var world = new List<Matrix4>();
         for (var i = 0; i < Names.Count; i++)
         {
-            var local = Matrix4.Compose(rest[i].Position, rest[i].Turn, Vector3.All(1));
-            world.Add((parents[i] < 0 ? _above : world[parents[i]]).Multiplied(local));
+            var local = LocalOf(i, frame?.BoneOf(string.Empty, Names[i]));
+            world.Add((Parents[i] < 0 ? _above : world[Parents[i]]).Multiplied(local));
         }
 
         return world;
     }
+
+    private Matrix4 LocalOf(int bone, BoneLocal? posed) => Matrix4.Compose(
+        posed?.Position ?? Rest[bone].Position,
+        posed?.Rotation ?? Rest[bone].Turn,
+        posed?.Scale ?? Vector3.All(1));
 }
 
 internal static class Rigs
@@ -106,4 +116,83 @@ internal static class Rigs
         names,
         [.. Enumerable.Range(0, names.Length).Select(static i => i - 1)],
         [.. names.Select(static _ => Matrix4.Identity())]);
+
+    /// <summary>The hips, spine, chest, head and left arm at four moments, and one mark.</summary>
+    public static ClipDocument Walk() => new(
+        "Walk",
+        1.5,
+        channels:
+        [
+            ClipSamples.Turns(
+                "hips",
+                Hold.Smooth,
+                (0, Tip(0, 0, 0)),
+                (0.4, Tip(10, 25, -5)),
+                (0.9, Tip(-15, 40, 20)),
+                (1.5, Tip(0, 0, 0))),
+            ClipSamples.Turns(
+                "spine",
+                (0, Tip(0, 0, 0)),
+                (0.4, Tip(20, 40, 0)),
+                (0.9, Tip(-10, 15, 30)),
+                (1.5, Tip(0, 0, 0))),
+            ClipSamples.Turns(
+                "chest",
+                (0, Tip(0, 0, 0)),
+                (0.4, Tip(30, -20, 10)),
+                (0.9, Tip(0, 30, -20)),
+                (1.5, Tip(0, 0, 0))),
+            ClipSamples.Turns("head", (0, Tip(0, 0, 0)), (0.4, Tip(20, 40, 0))),
+            ClipSamples.Turns(
+                "armL",
+                (0, Tip(0, 0, -90)),
+                (0.4, Tip(40, 20, -60)),
+                (0.9, Tip(-30, 50, -120)),
+                (1.5, Tip(0, 0, -90))),
+        ],
+        marks: [new Mark(0.4, "step")]);
+
+    public static Quaternion TurnAt(ClipDocument clip, string bone, int key) =>
+        Assert.IsType<ClipChannel<Quaternion>>(clip.ChannelFor(string.Empty, "rotation", bone)).Keys[key].Value;
+
+    /// <summary>
+    /// Every bone of <paramref name="to"/> that <paramref name="from"/> has a bone of the same name for stands
+    /// in the world where that bone did, measured from where each rests.
+    /// </summary>
+    // F2: six parameters, called by name.
+    public static void ExpectSamePose(
+        Rig from,
+        Rig to,
+        ClipDocument clip,
+        ClipDocument retargeted,
+        IReadOnlyList<double> times,
+        double within = 1e-9)
+    {
+        var fromRest = from.Pose();
+        var toRest = to.Pose();
+        foreach (var time in times)
+        {
+            var fromPose = from.Pose(clip, time);
+            var toPose = to.Pose(retargeted, time);
+            for (var i = 0; i < to.Names.Count; i++)
+            {
+                var s = from.Names.IndexOf(to.Names[i]);
+                if (s < 0)
+                {
+                    continue;
+                }
+
+                var offset = TurnOf(fromRest[s]);
+                offset.Transpose();
+                offset.Multiply(TurnOf(toRest[i]));
+                var expected = TurnOf(fromPose[s]);
+                expected.Multiply(offset);
+                var actual = TurnOf(toPose[i]);
+                for (var e = 0; e < 9; e++)
+                {
+                    Assert.True(Math.Abs(actual[e] - expected[e]) <= within, $"{to.Names[i]} at {time}: {actual[e]} is not {expected[e]}");
+                }
+            }
+        }
+    }
 }

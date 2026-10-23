@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:orblit_motion/orblit_motion.dart';
 // ignore: implementation_imports, cleanName is not part of the public API
 import 'package:orblit_motion/src/bone_names.dart' show cleanName;
@@ -16,13 +18,21 @@ final class _Body {
   final List<int> parents = [];
   final List<Vector3> positions = [];
   final List<Quaternion> turns = [];
+  final List<Vector3> scales = [];
   final _Place? above;
 
-  int add(String name, int parent, Vector3 position, [Quaternion? turn]) {
+  int add(
+    String name,
+    int parent,
+    Vector3 position, [
+    Quaternion? turn,
+    Vector3? scale,
+  ]) {
     names.add(name);
     parents.add(parent);
     positions.add(position);
     turns.add(turn ?? Quaternion.identity());
+    scales.add(scale ?? Vector3.all(1));
     return names.length - 1;
   }
 
@@ -53,7 +63,13 @@ final class _Body {
   _Body renamed(String Function(String name) rename) {
     final out = _Body(above: above);
     for (var i = 0; i < names.length; i++) {
-      out.add(rename(names[i]), parents[i], positions[i].clone(), turns[i]);
+      out.add(
+        rename(names[i]),
+        parents[i],
+        positions[i].clone(),
+        turns[i],
+        scales[i],
+      );
     }
     return out;
   }
@@ -72,7 +88,7 @@ final class _Body {
       'parents': parents,
       'local': [
         for (var i = 0; i < names.length; i++)
-          partDump(positions[i], turns[i], Vector3.all(1)),
+          partDump(positions[i], turns[i], scales[i]),
       ],
       'above': lifted == null
           ? null
@@ -83,7 +99,13 @@ final class _Body {
   _Body _copy({_Place? above}) {
     final out = _Body(above: above ?? this.above);
     for (var i = 0; i < names.length; i++) {
-      out.add(names[i], parents[i], positions[i].clone(), turns[i].clone());
+      out.add(
+        names[i],
+        parents[i],
+        positions[i].clone(),
+        turns[i].clone(),
+        scales[i].clone(),
+      );
     }
     return out;
   }
@@ -109,6 +131,7 @@ final class _Body {
         parent < 0 ? -1 : placedAt[parent]!,
         positions[i].clone(),
         turns[i].clone(),
+        scales[i].clone(),
       );
     }
     return out;
@@ -591,6 +614,7 @@ Map<String, _Body> _makeBodies() {
   out['capture.a60'] = _person(_schemes['capture']!, armsDown: 0.6).body;
   _addLimbs(out);
   _addEdges(out);
+  _addRetargeting(out);
   return out;
 }
 
@@ -637,6 +661,89 @@ void _addLimbs(Map<String, _Body> out) {
     ..add('a', -1, Vector3.zero())
     ..add('b', 0, Vector3.zero())
     ..add('c', 1, up(1));
+}
+
+/// A y that makes (-0.7, y, 0) a unit vector to the last bit, so that once
+/// it is normalised it dots with an axis to exactly -0.7.
+double _unitY() {
+  final start = math.sqrt(1 - 0.7 * 0.7);
+  for (var step = 0; step < 100; step++) {
+    for (final sign in [1, -1]) {
+      final y = start * (1 + sign * step * 2.220446049250313e-16);
+      if (Vector3(-0.7, y, 0).length == 1.0) return y;
+    }
+  }
+  throw StateError('No unit y for -0.7.');
+}
+
+/// Skeletons for the retarget cases. Some stand on a number the retarget
+/// compares with, so that moving the comparison by one step shows. The rest
+/// are chains bent a different way in each, so a bone's turn depends on the
+/// bones above it.
+void _addRetargeting(Map<String, _Body> out) {
+  Vector3 up(double length) => Vector3(0, length, 0);
+  out['rt.flat'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3.zero());
+  out['rt.hair'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(1e-9, 0, 0));
+  _Body chain([Vector3? scale]) => _Body()
+    ..add('a', -1, up(0))
+    ..add('b', 0, up(1))
+    ..add('c', 1, up(1), null, scale)
+    ..add('d', 2, up(1));
+  out['rt.plain4'] = chain();
+  out['rt.scales'] = chain(Vector3(-1, 1e-12, 1));
+  out['rt.stays'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, up(1))
+    ..add('c', 1, Vector3.zero());
+  out['rt.bendA'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(1, 0, 0))
+    ..add('c', 1, Vector3(1, 1, 0))
+    ..add('d', 2, Vector3(0, 1, 1));
+  out['rt.bendB'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(0, 1, 0))
+    ..add(
+      'c',
+      1,
+      Vector3(0, 1, 1),
+      Quaternion.axisAngle(Vector3(0, 0, 1), 0.5),
+    )
+    ..add('d', 2, Vector3(1, 0, 1));
+  out['rt.zeroTo'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3.zero())
+    ..add('c', 1, up(1));
+  out['rt.tinyTo'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(1e-9, 0, 0))
+    ..add('c', 1, up(1));
+  out['rt.dotTo'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(1, 0, 0))
+    ..add('c', 1, Vector3(1, 0, 0));
+  out['rt.dotFrom'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(-0.7, _unitY(), 0))
+    ..add('c', 1, up(1));
+  out['rt.pairX'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(1, 0, 0));
+  out['rt.pairZ'] = _Body()
+    ..add('a', -1, Vector3.zero())
+    ..add('b', 0, Vector3(0, 0, 1));
+  // Three turns of 2.2 radians put the third bone past a full turn, where
+  // its world turn is the product of the three with the opposite sign.
+  final lap = Quaternion.axisAngle(Vector3(0, 0, 1), 2.2);
+  out['rt.wrap'] = _Body()
+    ..add('a', -1, Vector3.zero(), lap)
+    ..add('x', 0, up(1), lap)
+    ..add('y', 1, up(1), lap)
+    ..add('c', 2, up(1));
 }
 
 /// Bones that stand exactly on a number the finder or the reach compares
@@ -782,6 +889,12 @@ List<Case> libraryCases() => [
 ];
 
 final Map<String, RestSkeleton> _built = {};
+
+/// A skeleton of the library, by name.
+RestSkeleton skeletonNamed(String name) => _skeletonNamed(name);
+
+/// Whether the library holds a skeleton called [name].
+bool hasSkeleton(String name) => _bodies.containsKey(name);
 
 RestSkeleton _skeletonNamed(Object? name) =>
     _built.putIfAbsent(name! as String, () => _skeleton(_bodies[name]!.spec));
@@ -960,7 +1073,10 @@ List<(String, String)> _pairs() => [
   for (final from in _nameSets)
     for (final to in _nameSets) (from, to),
   for (final name in _bodies.keys.where(
-    (name) => !name.startsWith('n.') && !_nameSets.contains(name),
+    (name) =>
+        !name.startsWith('n.') &&
+        !name.startsWith('rt.') &&
+        !_nameSets.contains(name),
   )) ...[('capture', name), (name, 'mannequin')],
 ];
 
@@ -1014,7 +1130,9 @@ Case _humanoidCase(String name, [(Vector3, Vector3)? stance]) => caseOf(
 );
 
 List<Case> humanoidCases() => [
-  for (final name in _bodies.keys.where((name) => !name.startsWith('n.')))
+  for (final name in _bodies.keys.where(
+    (name) => !name.startsWith('n.') && !name.startsWith('rt.'),
+  ))
     _humanoidCase(name),
   for (final base in ['plain', 'capture'])
     _humanoidCase(base, (Vector3(0, 1, 0), Vector3(0, 0, -1))),
