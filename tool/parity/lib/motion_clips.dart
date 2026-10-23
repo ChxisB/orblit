@@ -347,6 +347,20 @@ String _with(Object? base, List<Object> path, Object? replacement) {
   return jsonEncode(tree);
 }
 
+/// The text of [base] with each place in it given each of [values] in turn.
+Iterable<String> replacements(Object? base, List<Object?> values) sync* {
+  for (final path in _paths(base)) {
+    for (final value in values) {
+      yield _with(base, path, value);
+    }
+  }
+}
+
+/// The text of [base] with each place in it given a value of the wrong kind
+/// in turn, and then taken away.
+Iterable<String> mutations(Object? base) =>
+    replacements(base, [..._wrong, _gone]);
+
 Case _decodeCase(String text) => {
   'op': 'decode',
   'in': [text],
@@ -383,10 +397,7 @@ List<Case> decodeCases() {
       '{"kind": "$marker", "formatVersion": 1, "rate": -5, "duration": -1}',
     ])
       _decodeCase(text),
-    for (final path in _paths(base)) ...[
-      for (final wrong in _wrong) _decodeCase(_with(base, path, wrong)),
-      _decodeCase(_with(base, path, _gone)),
-    ],
+    for (final text in mutations(base)) _decodeCase(text),
   ];
 }
 
