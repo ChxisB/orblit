@@ -111,6 +111,14 @@ public class MotionParityTests
             new JsonObject(target.Value.Select(bone => KeyValuePair.Create<string, JsonNode?>(bone.Key, Dumped(bone.Value))))))),
     };
 
+    // A frame as some callers read it also says which moment it was taken at.
+    internal static JsonObject Framed(ClipFrame frame)
+    {
+        var dump = Dumped(frame);
+        dump["at"] = Num(frame.At);
+        return dump;
+    }
+
     private static JsonObject Dumped(BoneLocal local) => new()
     {
         ["position"] = Dumped(local.Position),

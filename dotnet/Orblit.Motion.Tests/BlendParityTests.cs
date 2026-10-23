@@ -199,14 +199,6 @@ public class BlendParityTests
         return new JsonObject { ["place"] = Tree(player.Place.ToJson()) };
     }
 
-    // A blend's frame also says which moment its marks were read at.
-    private static JsonObject Framed(ClipFrame frame)
-    {
-        var dump = Dumped(frame);
-        dump["at"] = Num(frame.At);
-        return dump;
-    }
-
     private static JsonObject Stepped(BlendStep step) => new()
     {
         ["place"] = Tree(step.Place.ToJson()),
