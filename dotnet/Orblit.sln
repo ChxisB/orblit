@@ -149,6 +149,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Ui", "Orblit.Ui\Orbl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Ui.Tests", "Orblit.Ui.Tests\Orblit.Ui.Tests.csproj", "{10D5A666-4B09-4BE2-B7C2-9627FDF2A49D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Ui.Avalonia", "Orblit.Ui.Avalonia\Orblit.Ui.Avalonia.csproj", "{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Ui.Avalonia.Tests", "Orblit.Ui.Avalonia.Tests\Orblit.Ui.Avalonia.Tests.csproj", "{0F27D83C-969A-470D-B32C-A43AE7AF0963}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1035,6 +1039,30 @@ Global
 		{10D5A666-4B09-4BE2-B7C2-9627FDF2A49D}.Release|x64.Build.0 = Release|Any CPU
 		{10D5A666-4B09-4BE2-B7C2-9627FDF2A49D}.Release|x86.ActiveCfg = Release|Any CPU
 		{10D5A666-4B09-4BE2-B7C2-9627FDF2A49D}.Release|x86.Build.0 = Release|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Debug|x64.Build.0 = Debug|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Debug|x86.Build.0 = Debug|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Release|x64.ActiveCfg = Release|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Release|x64.Build.0 = Release|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Release|x86.ActiveCfg = Release|Any CPU
+		{DDBA1024-FAA6-45E5-840C-A0EF65F91CB1}.Release|x86.Build.0 = Release|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Debug|x64.Build.0 = Debug|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Debug|x86.Build.0 = Debug|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Release|x64.ActiveCfg = Release|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Release|x64.Build.0 = Release|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Release|x86.ActiveCfg = Release|Any CPU
+		{0F27D83C-969A-470D-B32C-A43AE7AF0963}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

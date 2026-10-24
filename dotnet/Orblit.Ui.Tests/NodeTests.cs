@@ -178,4 +178,47 @@ public class NodeTests
         Assert.Contains("left: 10px", moved.Css);
         Assert.Contains("top: 21px", moved.Css);
     }
+
+    [Fact]
+    public void ReadsTheShapeScriptSends()
+    {
+        var node = UiNode.Decode("""
+            {
+              "type": "column",
+              "class": "p-4 gap-2",
+              "children": [
+                {"type": "text", "text": "Score", "class": "text-sm text-slate-400"},
+                {"type": "button", "text": "Again", "props": {"onPressed": "restart"}}
+              ]
+            }
+            """);
+
+        Assert.Equal(("column", "p-4 gap-2", 2), (node.Type, node.Classes, node.Children.Count));
+        Assert.Equal("restart", node.Children[^1].HandlerFor("onPressed"));
+    }
+
+    [Fact]
+    public void APlainStringIsText()
+    {
+        var node = UiNode.Decode("\"just words\"");
+        Assert.Equal(("text", "just words"), (node.Type, node.Text));
+    }
+
+    [Fact]
+    public void SomethingThatIsNotADescriptionSaysSoRatherThanThrowing()
+    {
+        var node = UiNode.Decode("{oh dear");
+        Assert.Equal("text", node.Type);
+        Assert.Contains("could not be read", node.Text);
+    }
+
+    [Fact]
+    public void ADescriptionSurvivesARoundTrip()
+    {
+        var node = new UiNode { Type = "box", Classes = "p-2", Css = "color: #fff", Children = [new UiNode { Type = "text", Text = "hello" }] };
+        var back = UiNode.FromJson(node.ToJson());
+
+        Assert.Equal((node.Type, node.Classes, node.Css), (back.Type, back.Classes, back.Css));
+        Assert.Equal("hello", back.Children.Single().Text);
+    }
 }

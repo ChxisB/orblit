@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Builds Avalonia controls from an Orblit interface description: the flex layout, the box every element sits in, the surface that measures itself and the image loader.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <ProjectReference Include="..\Orblit.Ui\Orblit.Ui.csproj" />
+    <InternalsVisibleTo Include="Orblit.Ui.Avalonia.Tests" />
+  </ItemGroup>
+</Project>
