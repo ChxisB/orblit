@@ -128,6 +128,23 @@ public sealed class Matrix4
         return m;
     }
 
+    /// <summary>A matrix from 16 numbers in storage order, which throws <see cref="ArgumentException"/> for any other count.</summary>
+    public static Matrix4 FromList(IReadOnlyList<double> values)
+    {
+        if (values.Count != 16)
+        {
+            throw new ArgumentException("A matrix is 16 numbers.", nameof(values));
+        }
+
+        var matrix = new Matrix4();
+        for (var i = 0; i < 16; i++)
+        {
+            matrix._storage[i] = values[i];
+        }
+
+        return matrix;
+    }
+
     public Matrix4 Clone()
     {
         var copy = new Matrix4();

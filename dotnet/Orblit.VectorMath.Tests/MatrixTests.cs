@@ -347,6 +347,18 @@ public class MatrixTests
         Assert.Equal(new Vector3(0, 0, 1).ToString(), through.ToString());
     }
 
+    [Fact]
+    public void FromListReadsStorageOrderAndRefusesOtherCounts()
+    {
+        var matrix = Matrix4.FromList(Enumerable.Range(0, 16).Select(i => (double)i).ToList());
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(i, matrix[i]);
+        }
+
+        Assert.Throws<ArgumentException>(() => Matrix4.FromList([1.0, 2.0]));
+    }
+
     private static Vector3 Rounded(Vector3 value) =>
         new(Math.Round(value.X, 9) + 0.0, Math.Round(value.Y, 9) + 0.0, Math.Round(value.Z, 9) + 0.0);
 }

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.17.0
+
+- `Matrix4.FromList`, which the model file description reads.
+
 ## 0.16.0
 
 - `Quaternion.Inverted` and `Inverse`, which divide by the squared length, and
