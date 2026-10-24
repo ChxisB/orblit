@@ -9,6 +9,9 @@
   32BGRA or biplanar 4:2:0 and keeps it without a copy. Other platforms
   make no feed and refuse a buffer. The Dart API and the plugins are
   unchanged.
+- **Closing a renderer that had drawn an irradiance field no longer
+  aborts.** The field's triangle was destroyed after the material instance it
+  wears, and Filament refuses that. The triangle now goes first.
 
 ## 0.41.0
 

@@ -433,6 +433,13 @@ void Renderer::dispose() {
     utils::EntityManager::get().destroy(entity);
     _fieldCamera = nullptr;
   }
+  // The entity first. Filament refuses to destroy a material instance while a
+  // renderable still wears it, and the entity carries that renderable.
+  if (!_fieldEntity.isNull()) {
+    _engine->destroy(_fieldEntity);
+    utils::EntityManager::get().destroy(_fieldEntity);
+    _fieldEntity = {};
+  }
   if (_fieldInstance != nullptr) {
     _engine->destroy(_fieldInstance);
     _fieldInstance = nullptr;
@@ -448,11 +455,6 @@ void Renderer::dispose() {
   if (_fieldIndices != nullptr) {
     _engine->destroy(_fieldIndices);
     _fieldIndices = nullptr;
-  }
-  if (!_fieldEntity.isNull()) {
-    _engine->destroy(_fieldEntity);
-    utils::EntityManager::get().destroy(_fieldEntity);
-    _fieldEntity = {};
   }
 
   if (_smaaArea != nullptr) {
