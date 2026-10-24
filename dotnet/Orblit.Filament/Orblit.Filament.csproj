@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.41.0</Version>
+    <Description>The Orblit renderer over its C API. A scene is described in whole batches and drawn by Filament.</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Interop\Orblit.Interop.csproj" />
+    <InternalsVisibleTo Include="Orblit.Filament.Tests" />
+  </ItemGroup>
+  <!-- The renderer, built by tool/build_native.sh when a Filament release is present. It flows to every project that references this one, and into the package. -->
+  <ItemGroup>
+    <Content Include="..\native\runtimes\**\*orblit_filament*" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes\%(RecursiveDir)" />
+  </ItemGroup>
+</Project>

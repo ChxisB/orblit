@@ -22,11 +22,20 @@ rid=$os-$arch
 
 build() {
   local package=$1
+  shift
   local dir="$root/dotnet/native/build/$package"
-  cmake -S "$root/packages/$package" -B "$dir" -DORBLIT_RID="$rid" -DCMAKE_BUILD_TYPE=Release > /dev/null
+  cmake -S "$root/packages/$package" -B "$dir" -DORBLIT_RID="$rid" -DCMAKE_BUILD_TYPE=Release "$@" > /dev/null
   cmake --build "$dir" --config Release > /dev/null
   cmake --install "$dir" --config Release --prefix "$root/dotnet/native" > /dev/null
   echo "  ok    $package -> runtimes/$rid/native"
 }
 
 build orblit_core
+
+# The renderer needs a Filament release, which is not in the repository.
+sdk=${ORBLIT_FILAMENT_SDK:-$root/packages/orblit_filament/darwin/third_party/filament-mac/filament}
+if [ -f "$sdk/include/filament/Engine.h" ]; then
+  build orblit_filament -DORBLIT_FILAMENT_SDK="$sdk"
+else
+  echo "  skip  orblit_filament (no Filament release at $sdk, set ORBLIT_FILAMENT_SDK)"
+fi
