@@ -1,3 +1,5 @@
+using Orblit.Json;
+
 namespace Orblit.Asset;
 
 /// <summary>
@@ -34,7 +36,7 @@ public sealed class AssetId : IEquatable<AssetId>
         {
             var name = Name;
             var dot = name.LastIndexOf('.');
-            return dot <= 0 ? "" : TextRules.ToLower(name[(dot + 1)..]);
+            return dot <= 0 ? "" : PlainText.ToLower(name[(dot + 1)..]);
         }
     }
 

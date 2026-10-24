@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text;
+using Orblit.Json;
 using Orblit.VectorMath;
 
 namespace Orblit.Mesh;
@@ -134,7 +135,7 @@ internal sealed record PlyHeader(string Format, List<PlyElement> Elements, int B
         var elements = new List<PlyElement>();
         foreach (var line in lines)
         {
-            var words = TextRules.SplitSpace(TextRules.Trim(line));
+            var words = PlainText.SplitSpace(PlainText.Trim(line));
             switch (words[0])
             {
                 case "format":
@@ -164,7 +165,7 @@ internal sealed record PlyHeader(string Format, List<PlyElement> Elements, int B
 
     private static PlyElement ElementOf(List<string> words, List<PlyElement> before, ReadLimits limits)
     {
-        var count = words.Count == 3 ? TextRules.ParseInt(words[2]) : null;
+        var count = words.Count == 3 ? PlainText.ParseInt(words[2]) : null;
         var most = words.Count > 1 && words[1] == "face" ? limits.Faces : limits.Vertices;
         if (count is not { } size || size < 0 || size > most)
         {

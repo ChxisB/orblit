@@ -1,3 +1,5 @@
+using Orblit.Json;
+
 namespace Orblit.Asset;
 
 /// <summary>
@@ -103,7 +105,7 @@ public sealed class AssetOrigin
             throw new FetchRefusedException(wrote, SchemeReason(url.Scheme));
         }
 
-        var host = TextRules.ToLower(url.Host);
+        var host = PlainText.ToLower(url.Host);
         if (host.Length == 0)
         {
             throw new FetchRefusedException(wrote, "it names no host");
@@ -112,7 +114,7 @@ public sealed class AssetOrigin
         // An origin always allows its own host. The policy's list is the extras. Written this way round so
         // the ordinary case needs no list at all, and an empty list means "only where my assets are" rather
         // than "anywhere".
-        if (!SameHost(host, Base.Host) && !Policy.Hosts.Any(one => TextRules.ToLower(one) == host))
+        if (!SameHost(host, Base.Host) && !Policy.Hosts.Any(one => PlainText.ToLower(one) == host))
         {
             throw new FetchRefusedException(
                 wrote,
@@ -121,7 +123,7 @@ public sealed class AssetOrigin
     }
 
     // A host keeps the case of its percent escapes, so two spellings of one name compare after lower-casing.
-    private static bool SameHost(string one, string other) => TextRules.ToLower(one) == TextRules.ToLower(other);
+    private static bool SameHost(string one, string other) => PlainText.ToLower(one) == PlainText.ToLower(other);
 
     private static string SchemeReason(string scheme) => scheme switch
     {

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Orblit.Json;
 using Orblit.Mesh;
 using static Orblit.Asset.CharClasses;
 
@@ -149,7 +150,7 @@ internal static partial class SurfaceTranslator
         {
             foreach (var mode in modes.Groups[1].Value.Split(','))
             {
-                state.Modes.Add(TextRules.Trim(mode), at);
+                state.Modes.Add(PlainText.Trim(mode), at);
             }
 
             return true;

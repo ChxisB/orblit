@@ -1,4 +1,5 @@
 using System.Text;
+using Orblit.Json;
 using Orblit.VectorMath;
 
 namespace Orblit.Mesh;
@@ -163,7 +164,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         foreach (var raw in limits.LinesOf(text))
         {
             number++;
-            var line = TextRules.TrimEnd(raw);
+            var line = PlainText.TrimEnd(raw);
             if (joined.Length == 0)
             {
                 start = number;
@@ -194,7 +195,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
     private void Take(string line)
     {
         var hash = line.IndexOf('#', StringComparison.Ordinal);
-        var words = TextRules.SplitSpace(TextRules.Trim(hash < 0 ? line : line[..hash]));
+        var words = PlainText.SplitSpace(PlainText.Trim(hash < 0 ? line : line[..hash]));
         var args = words.GetRange(1, words.Count - 1);
         switch (words[0])
         {
@@ -350,7 +351,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
     private static int? Resolve(string word, int count)
     {
         // A parse alone reads 0x10 and +1, which other readers refuse.
-        if (!IsInteger(word) || TextRules.ParseInt(word) is not { } number || number == 0)
+        if (!IsInteger(word) || PlainText.ParseInt(word) is not { } number || number == 0)
         {
             return null;
         }
@@ -375,7 +376,7 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         var output = new double[count];
         for (var i = 0; i < count; i++)
         {
-            if (TextRules.ParseDouble(words[i]) is not { } value || !double.IsFinite(value))
+            if (PlainText.ParseDouble(words[i]) is not { } value || !double.IsFinite(value))
             {
                 return null;
             }
@@ -443,14 +444,14 @@ internal sealed class ObjReader(IReadOnlyDictionary<string, byte[]> files, ReadL
         foreach (var raw in limits.LinesOf(text))
         {
             var hash = raw.IndexOf('#', StringComparison.Ordinal);
-            var line = TextRules.Trim(hash < 0 ? raw : raw[..hash]);
+            var line = PlainText.Trim(hash < 0 ? raw : raw[..hash]);
             if (line.Length == 0)
             {
                 continue;
             }
 
-            var words = TextRules.SplitSpace(line);
-            if (TextRules.ToLower(words[0]) == "newmtl")
+            var words = PlainText.SplitSpace(line);
+            if (PlainText.ToLower(words[0]) == "newmtl")
             {
                 Finish(draft);
                 draft = new MaterialDraft(string.Join(' ', words.Skip(1)));
@@ -510,7 +511,7 @@ internal sealed class MaterialDraft(string name)
     internal bool Read(List<string> words)
     {
         var args = words.GetRange(1, words.Count - 1);
-        switch (TextRules.ToLower(words[0]))
+        switch (PlainText.ToLower(words[0]))
         {
             case "kd":
                 return Into(_colour, args);

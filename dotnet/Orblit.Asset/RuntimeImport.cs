@@ -1,3 +1,5 @@
+using Orblit.Json;
+
 namespace Orblit.Asset;
 
 /// <summary>
@@ -68,7 +70,7 @@ public sealed class RuntimeImport(ICookCache cache, CookTarget target, ImporterR
         var cleaned = path.Split('?')[0].Split('#')[0];
         foreach (var segment in cleaned.Split('/', '\\').Reverse())
         {
-            var name = TextRules.Trim(segment);
+            var name = PlainText.Trim(segment);
             if (name.Length > 0 && name is not ("." or ".."))
             {
                 return AssetId.TryParse(name.Replace(':', '_'));

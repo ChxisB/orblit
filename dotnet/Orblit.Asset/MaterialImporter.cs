@@ -145,6 +145,6 @@ public sealed class MaterialImporter : Importer
         }
 
         var result = NativeTool.Capture(program, ["--version"]);
-        return result.ExitCode == 0 ? TextRules.Trim(result.Output) : "unknown";
+        return result.ExitCode == 0 ? PlainText.Trim(result.Output) : "unknown";
     }
 }

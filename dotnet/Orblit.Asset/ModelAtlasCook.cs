@@ -1,5 +1,6 @@
 using System.Buffers.Binary;
 using System.Text.RegularExpressions;
+using Orblit.Json;
 using Orblit.Sprite;
 
 namespace Orblit.Asset;
@@ -481,7 +482,7 @@ public sealed partial class ModelAtlasCook(NativeTool? tool = null)
         if (GltfJson.Get(image, "uri") is string uri)
         {
             var dot = uri.LastIndexOf('.');
-            var extension = dot > 0 ? TextRules.ToLower(uri[(dot + 1)..]) : "";
+            var extension = dot > 0 ? PlainText.ToLower(uri[(dot + 1)..]) : "";
             if (dot < uri.Length - 1 && ShortExtension().IsMatch(extension))
             {
                 return extension;

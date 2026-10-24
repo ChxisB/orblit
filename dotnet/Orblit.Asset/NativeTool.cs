@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using Orblit.Json;
 
 namespace Orblit.Asset;
 
@@ -81,7 +82,7 @@ public sealed class NativeTool
         var result = await Task.Run(() => Capture(program, arguments)).ConfigureAwait(false);
         if (result.ExitCode != 0)
         {
-            var said = string.Join("\n", new[] { TextRules.Trim(result.Error), TextRules.Trim(result.Output) }.Where(text => text.Length > 0));
+            var said = string.Join("\n", new[] { PlainText.Trim(result.Error), PlainText.Trim(result.Output) }.Where(text => text.Length > 0));
             throw new ImportFailureException(
                 on,
                 $"{Name} exited {result.ExitCode}.\n  {program} {string.Join(' ', arguments)}",
@@ -112,7 +113,7 @@ public sealed class NativeTool
         try
         {
             var found = Capture(OperatingSystem.IsWindows() ? "where" : "which", [Name]);
-            var first = found.ExitCode == 0 ? TextRules.Trim(found.Output.Split('\n')[0]) : "";
+            var first = found.ExitCode == 0 ? PlainText.Trim(found.Output.Split('\n')[0]) : "";
             return first.Length == 0 ? null : first;
         }
         catch (Win32Exception)

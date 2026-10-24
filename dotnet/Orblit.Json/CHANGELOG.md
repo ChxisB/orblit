@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- `PlainText` holds the text rules the asset, mesh and interface readers share:
+  `IsSpace`, `IsPatternSpace`, `Trim`, `TrimEnd`, `SplitSpace`, `ToLower`,
+  `ParseDouble` and `ParseInt`. Orblit.Asset and Orblit.Mesh read them from
+  here. Nothing read or written changes.
+
 ## 0.2.1
 
 - The string quoting sits in its own file, `JsonQuote.cs`, so Orblit.Codegen can

@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Orblit.Json;
 
 namespace Orblit.Asset;
 
@@ -64,7 +65,7 @@ public static partial class KitRules
 
     /// <summary>True when <paramref name="id"/> is a file a person could run, compile or load as code.</summary>
     public static bool IsScript(AssetId id) =>
-        ScriptExtensions.Contains(id.Extension) || ScriptNames.Contains(TextRules.ToLower(id.Name));
+        ScriptExtensions.Contains(id.Extension) || ScriptNames.Contains(PlainText.ToLower(id.Name));
 
     /// <summary>True when one of <paramref name="ids"/> is a script.</summary>
     public static bool CarriesScripts(IEnumerable<AssetId> ids) => ids.Any(IsScript);
@@ -84,7 +85,7 @@ public static partial class KitRules
     {
         if (folder.Length == 0)
         {
-            return ids.Any(id => TextRules.ToLower(id.ToString()) == LockName)
+            return ids.Any(id => PlainText.ToLower(id.ToString()) == LockName)
                 ? $"A file named {LockName} would replace the list of installed kits. Install the kit into a folder."
                 : null;
         }
@@ -223,7 +224,7 @@ public static partial class KitRules
         var problems = new List<string>();
         foreach (var id in ids)
         {
-            var lower = TextRules.ToLower(id.ToString());
+            var lower = PlainText.ToLower(id.ToString());
             if (seen.TryGetValue(lower, out var other))
             {
                 problems.Add($"\"{KitText.Show(other.ToString())}\" and \"{KitText.Show(id.ToString())}\" differ only in case.");
@@ -242,13 +243,13 @@ public static partial class KitRules
         var files = new Dictionary<string, AssetId>();
         foreach (var id in idList)
         {
-            files[TextRules.ToLower(id.ToString())] = id;
+            files[PlainText.ToLower(id.ToString())] = id;
         }
 
         var problems = new List<string>();
         foreach (var id in idList)
         {
-            var parts = TextRules.ToLower(id.ToString()).Split('/');
+            var parts = PlainText.ToLower(id.ToString()).Split('/');
             for (var i = 1; i < parts.Length; i++)
             {
                 if (files.TryGetValue(string.Join('/', parts.Take(i)), out var file))

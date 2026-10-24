@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Orblit.Json;
 using static Orblit.Asset.CharClasses;
 
 namespace Orblit.Asset;
@@ -32,7 +33,7 @@ internal static partial class SurfaceLiterals
         var hints = new OrderedDictionary<string, IReadOnlyList<string>>();
         foreach (var piece in SplitTopLevel(text))
         {
-            var match = HintShape().Match(TextRules.Trim(piece));
+            var match = HintShape().Match(PlainText.Trim(piece));
             if (!match.Success)
             {
                 throw new SurfaceException(at, $"cannot read hint `{piece}`");
@@ -71,12 +72,12 @@ internal static partial class SurfaceLiterals
 
             if (c == ',' && depth == 0)
             {
-                parts.Add(TextRules.Trim(text[start..i]));
+                parts.Add(PlainText.Trim(text[start..i]));
                 start = i + 1;
             }
         }
 
-        parts.Add(TextRules.Trim(text[start..]));
+        parts.Add(PlainText.Trim(text[start..]));
         return parts;
     }
 
@@ -87,7 +88,7 @@ internal static partial class SurfaceLiterals
     /// </summary>
     internal static object ParseDefault(SurfaceType type, string text, SurfaceOrigin at)
     {
-        var value = TextRules.Trim(text);
+        var value = PlainText.Trim(text);
         if (type == SurfaceType.Boolean)
         {
             return ParseBoolean(value, at);

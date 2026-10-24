@@ -50,7 +50,7 @@ public sealed class AtlasImporter : Importer
     /// extension is the claim, the same way <c>.import.json</c> is.
     /// </summary>
     public override bool CanHandle(AssetId id) =>
-        TextRules.ToLower(id.Name).EndsWith(".atlas.json", StringComparison.Ordinal);
+        PlainText.ToLower(id.Name).EndsWith(".atlas.json", StringComparison.Ordinal);
 
     public override IReadOnlyDictionary<string, object?> ResolveSettings(ImportSettings settings) =>
         new Dictionary<string, object?>

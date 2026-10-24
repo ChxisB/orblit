@@ -1,4 +1,5 @@
 using System.Buffers.Binary;
+using Orblit.Json;
 using Orblit.VectorMath;
 
 namespace Orblit.Mesh;
@@ -95,14 +96,14 @@ public static class StlFiles
 
         foreach (var line in limits.LinesOf(text))
         {
-            var trimmed = TextRules.Trim(line);
-            var words = TextRules.SplitSpace(trimmed);
-            if (TextRules.ToLower(words[0]) != "vertex")
+            var trimmed = PlainText.Trim(line);
+            var words = PlainText.SplitSpace(trimmed);
+            if (PlainText.ToLower(words[0]) != "vertex")
             {
                 continue;
             }
 
-            var xyz = words.Count < 4 ? null : words.Skip(1).Take(3).Select(word => TextRules.ParseDouble(word)).ToArray();
+            var xyz = words.Count < 4 ? null : words.Skip(1).Take(3).Select(word => PlainText.ParseDouble(word)).ToArray();
             if (xyz is null || xyz.Any(value => value is null))
             {
                 throw new FormatException($"\"{trimmed}\" is not a point.");
@@ -116,7 +117,7 @@ public static class StlFiles
     private static bool StartsWithSolid(string text)
     {
         var at = 0;
-        while (at < text.Length && TextRules.IsPatternSpace(text[at]))
+        while (at < text.Length && PlainText.IsPatternSpace(text[at]))
         {
             at++;
         }

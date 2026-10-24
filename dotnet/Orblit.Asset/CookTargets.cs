@@ -1,3 +1,5 @@
+using Orblit.Json;
+
 namespace Orblit.Asset;
 
 /// <summary>
@@ -67,7 +69,7 @@ public static class CookTargets
         .ToDictionary(target => target.Name);
 
     /// <summary>The target called <paramref name="name"/>, or null.</summary>
-    public static CookTarget? Find(string name) => ByName.GetValueOrDefault(TextRules.ToLower(name));
+    public static CookTarget? Find(string name) => ByName.GetValueOrDefault(PlainText.ToLower(name));
 
     private static CookTarget Desktop(string name) => Make(name, [TextureFamily.Bc], 16384, halfFloat: true);
 

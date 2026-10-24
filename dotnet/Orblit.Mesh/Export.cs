@@ -185,9 +185,9 @@ public static class MeshExport
     {
         var cleaned = new StringBuilder();
         var inSpace = false;
-        foreach (var c in TextRules.Trim(name))
+        foreach (var c in PlainText.Trim(name))
         {
-            if (!TextRules.IsPatternSpace(c))
+            if (!PlainText.IsPatternSpace(c))
             {
                 cleaned.Append(c);
             }
@@ -196,7 +196,7 @@ public static class MeshExport
                 cleaned.Append('_');
             }
 
-            inSpace = TextRules.IsPatternSpace(c);
+            inSpace = PlainText.IsPatternSpace(c);
         }
 
         return cleaned.Length == 0 ? "unnamed" : cleaned.ToString();

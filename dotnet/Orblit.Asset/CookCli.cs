@@ -1,3 +1,5 @@
+using Orblit.Json;
+
 using static Orblit.Asset.CliOutput;
 
 namespace Orblit.Asset;
@@ -193,12 +195,12 @@ internal static class CookCli
             : Refuse(error, $"\"{value}\" is not a target. The targets are {TargetNames}.");
 
     private static Options? WithCacheLimit(Options options, string value, TextWriter error) =>
-        TextRules.ParseInt(value) is { } megabytes and >= 0
+        PlainText.ParseInt(value) is { } megabytes and >= 0
             ? options with { CacheLimitMegabytes = megabytes }
             : Refuse(error, $"--cache-limit is megabytes, so \"{value}\" is not one. Pass 0 for no limit.");
 
     private static Options? WithJobs(Options options, string value, TextWriter error) =>
-        TextRules.ParseInt(value) is { } count and >= 1
+        PlainText.ParseInt(value) is { } count and >= 1
             ? options with { Jobs = (int)Math.Min(count, int.MaxValue) }
             : Refuse(error, $"--jobs is how many at once, so it is at least 1, not \"{value}\".");
 
