@@ -1,8 +1,10 @@
-// Writes dotnet/fixtures/orblit_ui/style.json and node.json: what the class
-// list, CSS, theme and breakpoint readers give for a spread of inputs, and what
-// the node tree reads, edits and places. It needs the Flutter package it reads,
-// so tool/parity/flutter/regen.sh copies it into that package's test folder,
-// runs it there and removes the copy.
+// Writes dotnet/fixtures/orblit_ui/style.json, node.json, canvas.json,
+// document.json and strings.json: what the class list, CSS, theme and
+// breakpoint readers give for a spread of inputs, what the node tree reads,
+// edits and places, how a canvas lays out a grid, how a document reads and
+// writes, and which plural form and text a locale table gives. It needs the
+// Flutter package it reads, so tool/parity/flutter/regen.sh copies it into that
+// package's test folder, runs it there and removes the copy.
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Color;
@@ -747,6 +749,581 @@ List<Map<String, Object?>> _placeCases() => [
     },
 ];
 
+Map<String, Object?> _spec({
+  double width = 1920,
+  double height = 1080,
+  String fit = 'contain',
+  double safeArea = 0.05,
+  int columns = 12,
+  double gutter = 24,
+  double minScale = 0.8,
+  double maxScale = 1.5,
+}) => {
+  'width': number(width),
+  'height': number(height),
+  'fit': fit,
+  'safeArea': number(safeArea),
+  'columns': columns,
+  'gutter': number(gutter),
+  'minScale': number(minScale),
+  'maxScale': number(maxScale),
+};
+
+double _d(Object? value) =>
+    value is String ? double.parse(value) : (value! as num).toDouble();
+
+UiCanvas _canvasOf(Map<String, Object?> s) => UiCanvas(
+  width: _d(s['width']),
+  height: _d(s['height']),
+  fit: CanvasFit.named(s['fit']),
+  safeArea: _d(s['safeArea']),
+  columns: s['columns']! as int,
+  gutter: _d(s['gutter']),
+  minScale: _d(s['minScale']),
+  maxScale: _d(s['maxScale']),
+);
+
+Map<String, Object?> _canvasFields(UiCanvas c) => {
+  'width': number(c.width),
+  'height': number(c.height),
+  'fit': c.fit.name,
+  'label': c.fit.label,
+  'safeArea': number(c.safeArea),
+  'columns': c.columns,
+  'gutter': number(c.gutter),
+  'minScale': number(c.minScale),
+  'maxScale': number(c.maxScale),
+  'json': tree(c.toJson()),
+};
+
+final _specs = <Map<String, Object?>>[
+  _spec(),
+  _spec(width: 1000, columns: 4, gutter: 20),
+  _spec(fit: 'responsive'),
+  _spec(width: 1280, height: 720, fit: 'width'),
+  _spec(width: 1280, height: 720, fit: 'height'),
+  _spec(width: 1280, height: 720, fit: 'none'),
+  _spec(width: 1280, height: 720, fit: 'responsive', columns: 6, gutter: 32),
+  _spec(fit: 'responsive', minScale: 0.5, maxScale: 2),
+  _spec(fit: 'responsive', minScale: 2, maxScale: 1),
+  _spec(fit: 'responsive', minScale: double.nan),
+  _spec(fit: 'responsive', maxScale: double.nan),
+  _spec(fit: 'responsive', minScale: 1, maxScale: 1),
+  _spec(width: 0, height: 0),
+  _spec(width: 0, height: 1080, fit: 'responsive'),
+  _spec(width: 1920, height: 0, fit: 'width'),
+  _spec(width: -100, height: 50, fit: 'responsive'),
+  _spec(width: double.nan, fit: 'responsive'),
+  _spec(width: double.infinity, fit: 'responsive'),
+  _spec(columns: 0),
+  _spec(columns: -3),
+  _spec(columns: 1, gutter: 0),
+  _spec(columns: 5),
+  _spec(columns: 7, gutter: 10),
+  _spec(columns: 8),
+  _spec(columns: 24, gutter: 8),
+  _spec(gutter: 0),
+  _spec(gutter: -5),
+  _spec(gutter: 400),
+  _spec(gutter: double.nan),
+  _spec(gutter: double.infinity),
+  _spec(safeArea: 0),
+  _spec(safeArea: 0.45),
+  _spec(safeArea: 0.5),
+  _spec(safeArea: 1),
+  _spec(safeArea: -0.1),
+  _spec(safeArea: double.nan),
+];
+
+const _canvasWidths = [
+  0.0, -1.0, 1.0, 39.0, 40.0, 41.0, 80.0, 100.0, 390.0, 480.0, 640.0, 900.0, //
+  1000.0, 1280.0, 1920.0, 2880.0, 3840.0, 7680.0, 1e9, 1e308, double.nan,
+  double.infinity, double.negativeInfinity, -0.0,
+];
+
+Map<String, Object?> _canvasOp(
+  String op,
+  Map<String, Object?> spec,
+  Map<String, Object?> input,
+  Object? Function(UiCanvas) run,
+) => {
+  'op': op,
+  'canvas': spec,
+  ...input,
+  'expect': attempt(() => run(_canvasOf(spec))),
+};
+
+List<Object> _edges(({double left, double right}) span) => [
+  number(span.left),
+  number(span.right),
+];
+
+List<Map<String, Object?>> _canvasCases() => [
+  for (final spec in _specs)
+    for (final w in _canvasWidths) ...[
+      _canvasOp(
+        'canvas-fluid',
+        spec,
+        {'width': number(w)},
+        (c) => number(c.fluidScale(w)),
+      ),
+      _canvasOp(
+        'canvas-columns',
+        spec,
+        {'width': number(w)},
+        (c) => {
+          'span': _edges(c.gridSpanAcross(w)),
+          'at': c.columnsAt(w),
+          'across': [
+            for (final column in c.columnsAcross(w))
+              [number(column.left), number(column.right)],
+          ],
+        },
+      ),
+    ],
+  for (final spec in _specs)
+    for (final (w, h) in const <(double, double)>[
+      (960, 1080), (1920, 540), (3840, 540), (100, 100), (0, 0), (-5, 10), //
+      (double.nan, 1), (1, double.nan), (double.infinity, double.infinity),
+      (1920, 1080), (390, 844), (1280, 0), (0, 720),
+    ])
+      _canvasOp(
+        'canvas-scale',
+        spec,
+        {'width': number(w), 'height': number(h)},
+        (c) => {'scale': number(c.scaleFor(w, h)), 'aspect': number(c.aspect)},
+      ),
+  for (final spec in [_specs[0], _specs[1], _specs[6], _specs[22], _specs[18]])
+    for (final w in const [1000.0, 1920.0, 390.0, 0.0, double.nan])
+      for (final x in const [
+        0.0, 49.0, 50.0, 53.0, 150.0, 257.0, 260.0, 280.0, 950.0, 1000.0, //
+        96.0, 100.0, -3.0, double.nan, double.infinity,
+      ])
+        for (final within in const [8.0, 0.0, 100.0, -1.0, double.nan])
+          _canvasOp(
+            'canvas-snap',
+            spec,
+            {'x': number(x), 'width': number(w), 'within': number(within)},
+            (c) {
+              final edge = c.snapAcross(x, w, within: within);
+              return edge == null ? null : number(edge);
+            },
+          ),
+];
+
+const _fitNames = [
+  'responsive', 'width', 'height', 'contain', 'none', 'sideways', //
+  'Responsive', '', ' width', 'null', '3',
+];
+
+final _canvasJson = [
+  '{}', '[]', '"x"', 'null', '3', '1.5', 'true', '{"width":1280}', //
+  '{"width":1280,"height":720}', '{"width":0}', '{"width":-5}', '{"width":1e999}',
+  '{"width":"x"}', '{"width":null}', '{"width":1.5}', '{"width":true}',
+  '{"width":12345678901234567890}', '{"height":720.5}',
+  '{"safeArea":9.0}', '{"safeArea":-1.0}', '{"safeArea":0}', '{"safeArea":0.45}',
+  '{"safeArea":0.46}', '{"safeArea":-0.0}', '{"safeArea":1e999}',
+  '{"safeArea":-1e999}', '{"safeArea":"x"}', '{"safeArea":0.3}',
+  '{"columns":0}', '{"columns":1}', '{"columns":6}', '{"columns":12}',
+  '{"columns":24}', '{"columns":25}', '{"columns":99}', '{"columns":-3}',
+  '{"columns":2.5}', '{"columns":3.5}', '{"columns":-2.5}', '{"columns":0.5}',
+  '{"columns":1e999}', '{"columns":-1e999}', '{"columns":1e300}',
+  '{"columns":"x"}', '{"columns":null}', '{"columns":4.4999}',
+  '{"gutter":0}', '{"gutter":400}', '{"gutter":401}', '{"gutter":-1}',
+  '{"gutter":12.5}', '{"gutter":1e999}', '{"gutter":"x"}',
+  '{"minScale":0.05}', '{"minScale":0.1}', '{"minScale":0.5}', '{"minScale":1}',
+  '{"minScale":1.5}', '{"minScale":-1}', '{"maxScale":0.5}', '{"maxScale":1}',
+  '{"maxScale":2}', '{"maxScale":8}', '{"maxScale":9}', '{"maxScale":1e999}',
+  '{"fit":"responsive","columns":6,"gutter":32,"minScale":0.5,"maxScale":2}',
+  '{"width":1280,"height":720}',
+  for (final fit in _fitNames) '{"fit":"$fit"}',
+  '{"fit":3}', '{"fit":null}', '{"fit":["width"]}',
+];
+
+Map<String, Object?> _canvasJsonCase(String text) => {
+  'op': 'canvas-json',
+  'json': text,
+  'expect': attempt(() => _canvasFields(UiCanvas.fromJson(jsonDecode(text)))),
+};
+
+List<Map<String, Object?>> _canvasJsonCases() => [
+  for (final text in _canvasJson) _canvasJsonCase(text),
+  for (final fit in _fitNames)
+    {
+      'op': 'fit-named',
+      'name': fit,
+      'expect': attempt(() {
+        final found = CanvasFit.named(fit);
+        return {'name': found.name, 'label': found.label};
+      }),
+    },
+];
+
+const _rootTexts = [
+  '{"type":"box"}',
+  '{"type":"column","class":"p-4","children":[{"type":"text","text":"Title"}]}',
+  '{"type":"stack","props":{"a":1,"b":1.5,"c":[1,2.0],"d":{"e":null}}}',
+  '"just words"',
+];
+
+const _names = [
+  'Interface', 'Main menu', '', ' ', 'a"b', 'tab\t', 'nl\n', '\u0000', //
+  'é', '\u{1F600}', ' ', 'back\\slash', '</script>', '\u007f',
+];
+
+String _documentText(
+  Map<String, Object?> spec,
+  String rootText,
+  String name,
+) => UiDocument(
+  name: name,
+  canvas: _canvasOf(spec),
+  root: UiNode.decode(rootText),
+).toText();
+
+const _documentTexts = [
+  'nonsense', '', ' ', '{}', '[]', 'null', '"orblit.ui"', '3', //
+  '{"kind":"orblit.data"}', '{"kind":"orblit.ui"}', '{"kind":"orblit.ui","name":3}',
+  '{"kind":"orblit.ui","name":"Main menu"}', '{"kind":"orblit.ui","name":null}',
+  '{"kind":"orblit.ui","canvas":[],"root":"hi"}',
+  '{"kind":"orblit.ui","canvas":{"width":1280,"height":720,"fit":"width"}}',
+  '{"kind":"orblit.ui","canvas":{"columns":1e999}}',
+  '{"kind":"orblit.ui","canvas":{"width":1e999}}',
+  '{"kind":"orblit.ui","canvas":{"safeArea":9}}',
+  '{"kind":"orblit.ui","root":{"type":"row"}}',
+  '{"kind":"orblit.ui","root":{"type":"row","children":["a",1,null]}}',
+  '{"kind":"orblit.ui","root":3}', '{"kind":"orblit.ui","root":null}',
+  '{"kind":"orblit.ui","formatVersion":99,"extra":true}',
+  '{"kind":"orblit.ui","name":"\\ud83d"}', '{"kind":"orblit.ui","name":"\\u00e9\\ud83d\\ude00"}',
+  '﻿{"kind":"orblit.ui"}', ' {"kind":"orblit.ui"} ', '{"kind":"orblit.ui"} x',
+  '{"kind":"orblit.ui"', '{"kind":"orblit.ui",}', '{"kind":"Orblit.UI"}',
+  '{"kind":["orblit.ui"]}', '{"kind":"orblit.ui","kind":"x"}',
+];
+
+Object? _read(UiDocument? document) => document == null
+    ? null
+    : _units({
+        'name': document.name,
+        'canvas': _canvasFields(document.canvas),
+        'root': tree(document.root.toJson()),
+      });
+
+List<Map<String, Object?>> _documentCases() => [
+  for (final text in _documentTexts)
+    {
+      'op': 'read',
+      'text': text,
+      'expect': attempt(() => _read(UiDocument.read(text))),
+    },
+  for (final text in _documentTexts)
+    {
+      'op': 'read-text',
+      'text': text,
+      'expect': attempt(() => UiDocument.read(text)?.toText()),
+    },
+  for (final name in _names)
+    {
+      'op': 'blank',
+      'name': name,
+      'expect': attempt(() {
+        final made = UiDocument.blank(name);
+        return {
+          'name': made.name,
+          'canvas': _canvasFields(made.canvas),
+          'root': tree(made.root.toJson()),
+          'text': made.toText(),
+        };
+      }),
+    },
+  for (final spec in _specs)
+    for (final root in _rootTexts)
+      {
+        'op': 'write',
+        'canvas': spec,
+        'root': root,
+        'name': 'Main menu',
+        'expect': attempt(() => _documentText(spec, root, 'Main menu')),
+      },
+  for (final name in _names)
+    {
+      'op': 'write',
+      'canvas': _specs[0],
+      'root': _rootTexts[1],
+      'name': name,
+      'expect': attempt(() => _documentText(_specs[0], _rootTexts[1], name)),
+    },
+];
+
+const _pluralLocales = [
+  'en', 'fr', 'ja', 'zh', 'ko', 'vi', 'th', 'id', 'ru', 'uk', 'pl', 'cs', //
+  'sk', 'ar', 'pt', 'pt-PT', 'pt-BR', 'pt_pt', 'PT-pt', 'zh-Hant-TW', 'hi',
+  'de', 'xx', ' en ', 'RU', 'ru-RU', 'ar-EG', 'pl-PL', 'fr-CA', '', ' ',
+  '-', 'en--us',
+];
+
+const _pluralCounts = [
+  0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 19, 20, 21, 22, 24, //
+  25, 26, 99, 100, 101, 102, 103, 104, 105, 110, 111, 112, 113, 114, 115,
+  121, 122, 1000, 1001, 1002, 1011, 1012, 100000, -1, -2, -5, -11, -12, -21,
+  -22, -100, -111, 9223372036854775807, -9223372036854775807,
+  -9223372036854775808, 9223372036854775806,
+];
+
+const _tags = [
+  'en', 'EN', 'fr_CA', 'fr-CA', ' fr-ca ', 'zh_Hant_TW', 'a__b', 'a--b', //
+  'İ', 'ǅ', 'SS', 'ß', 'x ', ' x', '\u0085x', 'x﻿',
+  '\t', '\n', '', ' ', '_', '-', 'en_', '_en', 'K', 'Σ',
+];
+
+const _chains = [
+  ('zh-Hant-TW', 'en-GB'), ('en', 'en'), ('fr_CA', 'en'), ('FR-ca', 'FR-CA'), //
+  ('de', 'zh-hant'), ('a-b-c-d', 'x-y'), ('en', ' '), (' ', 'en'), ('', ''),
+  ('x', 'x-y'), ('x-y', 'x'),
+];
+
+List<Map<String, Object?>> _pluralCases() => [
+  for (final locale in _pluralLocales)
+    for (final count in _pluralCounts)
+      {
+        'op': 'plural',
+        'locale': locale,
+        'count': big(count),
+        'expect': attempt(() => UiStrings.pluralForm(locale, count)),
+      },
+  for (final tag in _tags)
+    {'op': 'tag', 'tag': tag, 'expect': attempt(() => UiStrings.tagOf(tag))},
+  for (final (locale, fallback) in _chains)
+    {
+      'op': 'chain',
+      'locale': locale,
+      'fallback': fallback,
+      'expect': attempt(
+        () => UiStrings(fallback: fallback).chain(locale),
+      ),
+    },
+];
+
+const _menu = <String, Map<String, String>>{
+  'en': {
+    'play': 'Play',
+    'greet': 'Hello, {name}',
+    'items.one': '{count} item',
+    'items.other': '{count} items',
+    'brace': '{} { } {a b} {a-b} {näme} {name}{name} {{name}} {name',
+    'both': '{name} has {count} {name}',
+    'only.other': 'only other',
+    'zero.zero': 'never',
+  },
+  'fr': {'play': 'Jouer', 'greet': 'Bonjour, {name}', 'items.one': '{count} chose'},
+  'fr-ca': {'play': 'Joue'},
+  'ru': {
+    'items.one': '{count} predmet',
+    'items.few': '{count} predmeta',
+    'items.many': '{count} predmetov',
+    'items.other': '{count} predmeta?',
+  },
+  'ar': {
+    'items.zero': 'zero {count}',
+    'items.one': 'one {count}',
+    'items.two': 'two {count}',
+    'items.few': 'few {count}',
+    'items.many': 'many {count}',
+    'items.other': 'other {count}',
+  },
+  'pl': {'items.one': '1 rzecz', 'items.few': '{count} rzeczy'},
+  'pt-pt': {'items.one': 'um', 'items.other': 'varios'},
+  'pt': {'items.one': 'um (pt)', 'items.other': 'varios (pt)'},
+};
+
+const _keys = [
+  'play', 'greet', 'items', 'items.other', 'items.one', 'quit', '', 'brace', //
+  'both', 'only', 'only.other', 'zero', 'zero.zero', 'Play',
+];
+
+const _argTexts = [
+  '{}', '{"name":"Ann"}', '{"name":null}', '{"name":5}', '{"name":1.0}', //
+  '{"name":true}', '{"name":[1,"a",null,2.5]}', '{"name":{"a":1,"b":[]}}',
+  '{"name":1e21}', '{"name":1e-7}', '{"name":-0.0}', '{"name":""}',
+  '{"name":"\\u00e9"}', '{"count":0}', '{"count":1}', '{"count":2}',
+  '{"count":3}', '{"count":5}', '{"count":11}', '{"count":21}',
+  '{"count":22}', '{"count":100}', '{"count":-1}', '{"count":-21}',
+  '{"count":1.0}', '{"count":3.0}', '{"count":1.5}', '{"count":-0.0}',
+  '{"count":1e30}', '{"count":-1e30}', '{"count":1e999}',
+  '{"count":12345678901234567890}', '{"count":"1"}', '{"count":null}',
+  '{"count":true}', '{"count":[1]}', '{"count":9223372036854775807}',
+  '{"count":-9223372036854775808}', '{"count":1,"name":"Ann"}',
+  '{"count":2.0,"name":"Ann"}', '{"count":0.5,"name":"Ann"}',
+];
+
+Map<String, Object?> _script(
+  List<Object?> steps, {
+  String locale = 'en',
+  String fallback = 'en',
+}) {
+  var heard = 0;
+  final results = <Object?>[];
+  UiStrings? made;
+  final init = attempt(() {
+    made = UiStrings(locale: locale, fallback: fallback)
+      ..addListener(() => heard++);
+    return null;
+  });
+  if (made != null) {
+    for (final step in steps) {
+      results.add(attempt(() => _run(made!, step! as List<Object?>)));
+    }
+  }
+  return {
+    'op': 'script',
+    'locale': locale,
+    'fallback': fallback,
+    'steps': steps,
+    'expect': {
+      'init': init,
+      'results': results,
+      'heard': heard,
+      'locale': made?.locale,
+      'locales': made?.locales,
+    },
+  };
+}
+
+Map<String, String> _table(Object? text) =>
+    (jsonDecode(text! as String) as Map).cast<String, String>();
+
+Object? _at(List<Object?> step, int index) =>
+    index < step.length ? step[index] : null;
+
+Map<String, Object?> _args(Object? text) =>
+    text == null ? const {} : (jsonDecode(text as String) as Map).cast();
+
+Object? _run(UiStrings s, List<Object?> step) {
+  final verb = step[0];
+  return switch (verb) {
+    'add' => () {
+      s.add(step[1]! as String, _table(step[2]));
+      return null;
+    }(),
+    'addJson' => () {
+      s.addJson(step[1]! as String, step[2]! as String);
+      return null;
+    }(),
+    'use' => () {
+      s.use(step[1]! as String);
+      return null;
+    }(),
+    'clear' => () {
+      s.clear();
+      return null;
+    }(),
+    'text' => s.text(step[1]! as String, _args(_at(step, 2))),
+    'find' => s.find(step[1]! as String, _args(_at(step, 2))),
+    'chain' => s.chain(step[1]! as String),
+    'gaps' => s.gaps([for (final k in step[1]! as List) '$k']),
+    'locale' => s.locale,
+    'locales' => s.locales,
+    _ => throw StateError('unknown step $verb'),
+  };
+}
+
+List<Object?> _loadMenu() => [
+  for (final e in _menu.entries) ['add', e.key, jsonEncode(e.value)],
+];
+
+List<Map<String, Object?>> _scriptCases() => [
+  for (final locale in const [
+    'en', 'fr', 'fr_CA', 'fr-ca', 'ru', 'ar', 'pl', 'pt', 'pt-PT', 'de', //
+    'zh-Hant-TW', 'FR',
+  ])
+    _script([
+      ..._loadMenu(),
+      ['use', locale],
+      ['locale'],
+      for (final key in _keys) ...[
+        ['text', key],
+        ['find', key],
+        for (final args in _argTexts) ['text', key, args],
+      ],
+    ]),
+  _script([
+    ..._loadMenu(),
+    ['gaps', <Object?>[]],
+    ['gaps', <Object?>['quit']],
+    ['gaps', <Object?>['quit', 'items.one', 'items.other', 'play.zero']],
+    ['add', 'de', '{"items.other":"Dinge"}'],
+    ['gaps', <Object?>['quit']],
+    ['locales'],
+    ['clear'],
+    ['locales'],
+    ['gaps', <Object?>[]],
+    ['gaps', <Object?>['a', 'b.one']],
+  ]),
+  _script([
+    ['gaps', <Object?>[]],
+  ]),
+  _script([
+    ['add', 'en', '{"settings.other":"Other"}'],
+    ['gaps', <Object?>['settings.other']],
+    ['gaps', <Object?>['settings']],
+    ['gaps', <Object?>['settings.few', 'x.zero']],
+  ]),
+  _script(
+    [
+      ['add', 'zh-hant', '{"play":"玩"}'],
+      ['add', 'en', '{"quit":"Quit"}'],
+      ['chain', 'zh-hant-tw'],
+      ['text', 'play'],
+      ['text', 'quit'],
+      ['gaps', <Object?>[]],
+    ],
+    locale: 'zh-Hant-TW',
+    fallback: 'en-GB',
+  ),
+  _script([
+    ['addJson', 'de', '{"play": "Spielen"}'],
+    ['use', 'de'],
+    ['text', 'play'],
+    for (final bad in const [
+      '[]', '{"play": 3}', '{"play"', '', 'null', '"x"', '{"a":null}',
+      '{"a":{"b":"c"}}', '{"a":["x"]}', '{}', '{"a":"b","a":"c"}', //
+      '{"a":1.5}', '{"a":true}',
+    ])
+      ['addJson', 'de', bad],
+    ['addJson', '', '{"a":"b"}'],
+    ['addJson', ' ', '[]'],
+    ['addJson', '', '{"a":'],
+    ['locales'],
+    ['text', 'a'],
+  ]),
+  _script([
+    ['use', 'en'],
+    ['use', 'EN'],
+    ['use', 'fr'],
+    ['use', 'fr_FR'],
+    ['use', 'fr-fr'],
+    ['use', ''],
+    ['use', ' '],
+    ['locale'],
+    ['add', '', '{}'],
+    ['add', 'x', '{}'],
+    ['add', 'x', '{}'],
+    ['clear'],
+    ['clear'],
+  ]),
+  _script([], locale: ' '),
+  _script([], fallback: ''),
+  _script([['locale']], locale: 'EN_gb', fallback: 'FR_ca'),
+  _script([
+    ['add', 'en', '{"a":"1"}'],
+    ['add', 'en', '{"a":"2","b":"3"}'],
+    ['text', 'a'],
+    ['text', 'b'],
+    ['add', 'EN', '{"a":"4"}'],
+    ['text', 'a'],
+    ['locales'],
+  ]),
+];
+
 void main() {
   test('writes the ui fixtures', () {
     final root = Directory('../..').absolute.path;
@@ -778,6 +1355,27 @@ void main() {
         for (final json in _propsCases) _props(json),
         ..._placeCases(),
       ],
+    );
+
+    writeFixture(
+      root: root,
+      package: 'orblit_ui',
+      name: 'canvas',
+      cases: [..._canvasCases(), ..._canvasJsonCases()],
+    );
+
+    writeFixture(
+      root: root,
+      package: 'orblit_ui',
+      name: 'document',
+      cases: _documentCases(),
+    );
+
+    writeFixture(
+      root: root,
+      package: 'orblit_ui',
+      name: 'strings',
+      cases: [..._pluralCases(), ..._scriptCases()],
     );
   });
 }

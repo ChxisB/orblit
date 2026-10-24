@@ -15,7 +15,7 @@ internal static class ParityJson
         {
             return new JsonObject { ["value"] = body() };
         }
-        catch (ArgumentException)
+        catch (Exception error) when (error is ArgumentException or FormatException)
         {
             return new JsonObject { ["throws"] = true };
         }
@@ -33,6 +33,7 @@ internal static class ParityJson
     {
         null => null,
         bool flag => JsonValue.Create(flag),
+        int whole => Whole(whole),
         long whole => Whole(whole),
         double fraction => Number(fraction),
         string text => Text(text),

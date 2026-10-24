@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.0
+
+- `UiCanvas` and `CanvasFit`: the size an interface was laid out at, how it
+  is scaled onto a screen, the fluid scale, and the column grid with its
+  snapping.
+- `UiDocument`: an interface saved as a file, read as null when it is not one.
+- `UiStrings`: tables of text by key and language, plural forms for 33
+  languages, a lookup that walks from the regional language to the default,
+  and the gaps a translator fills.
+- A canvas read from a map takes an `int` as well as a `long`.
+
 ## 0.1.0
 
 - A port of the model half of `orblit_ui` 0.4.0: the node tree, the style, the
