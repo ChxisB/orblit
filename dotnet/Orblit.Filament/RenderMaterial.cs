@@ -106,6 +106,60 @@ public sealed record RenderMaterial
     /// </summary>
     public const int MapCount = 7;
 
+    /// <summary>The name of each float <c>Pack</c> writes, in order, so a diagnostic can say what the shader was sent.</summary>
+    internal static readonly IReadOnlyList<string> PackedNames =
+    [
+        "baseColour.r",
+        "baseColour.g",
+        "baseColour.b",
+        "baseColour.a",
+        "metallic",
+        "roughness",
+        "reflectance",
+        "emissive.r",
+        "emissive.g",
+        "emissive.b",
+        "emissiveIntensity",
+        "ambientOcclusion",
+        "normalScale",
+        "tiling.x",
+        "tiling.y",
+        "offset.x",
+        "offset.y",
+        "maskThreshold",
+        "depthBias",
+        "blendMode",
+        "blendAmount",
+        "blendSharpness",
+        "blendTiling.x",
+        "blendTiling.y",
+        "blendOffset.x",
+        "blendOffset.y",
+        "clearCoat",
+        "clearCoatRoughness",
+        "anisotropy",
+        "sheenColour.r",
+        "sheenColour.g",
+        "sheenColour.b",
+        "sheenRoughness",
+        "windDirection.x",
+        "windDirection.y",
+        "windSpeed",
+        "windStrength",
+    ];
+
+    /// <summary>The name of each slot of <see cref="Maps"/>, in order.</summary>
+    internal static readonly IReadOnlyList<string> MapNames =
+    [
+        "baseColour",
+        "normal",
+        "metallicRoughness",
+        "occlusion",
+        "emissive",
+        "blendBaseColour",
+        "blendMask",
+    ];
+
     private readonly Vector2? _blendTiling;
     private readonly Vector2? _blendOffset;
 
@@ -232,6 +286,49 @@ public sealed record RenderMaterial
         | (ScreenMapped ? 1 << 13 : 0)
         | (LitScreen ? 1 << 14 : 0)
         | (Surface is not null ? 1 << 15 : 0);
+
+    /// <summary>
+    /// The material as the scene packs it for the renderer, as JSON ready values. The floats are
+    /// the packed ones, so they are the 32 bit values written to the message and not a read back
+    /// from the renderer.
+    /// </summary>
+    public OrderedDictionary<string, object?> ToJson()
+    {
+        var packed = new float[Stride];
+        Pack(packed, 0);
+        var maps = new OrderedDictionary<string, object?>();
+        for (var slot = 0; slot < MapCount; slot++)
+        {
+            if (Maps[slot] is { } map)
+            {
+                maps[MapNames[slot]] = new OrderedDictionary<string, object?> { ["path"] = map.Path, ["srgb"] = map.Srgb };
+            }
+        }
+
+        var values = new OrderedDictionary<string, object?>();
+        for (var at = 0; at < Stride; at++)
+        {
+            values[PackedNames[at]] = (double)packed[at];
+        }
+
+        return new OrderedDictionary<string, object?>
+        {
+            ["key"] = Key,
+            ["shading"] = EnumNames.Of(Shading),
+            ["blend"] = EnumNames.Of(Blend),
+            ["culling"] = EnumNames.Of(Culling),
+            ["doubleSided"] = DoubleSided,
+            ["depthWrite"] = DepthWrite,
+            ["wrap"] = EnumNames.Of(Wrap),
+            ["filter"] = EnumNames.Of(Filter),
+            ["screenMapped"] = ScreenMapped,
+            ["litScreen"] = LitScreen,
+            ["video"] = Video,
+            ["blendMode"] = EnumNames.Of(BlendMode),
+            ["maps"] = maps,
+            ["values"] = values,
+        };
+    }
 
     internal void Pack(float[] into, int at) => Packing.Floats(
         BaseColour.X, BaseColour.Y, BaseColour.Z, BaseColour.W,

@@ -58,4 +58,15 @@ reads back as a negative `int` on the wire and the same bits in the renderer.
 16 floats, and `Cut` turns a rectangle in pixels into fractions of the image.
 A held cloud or layer sends its settings and its records only when its
 revision changes. A file cloud never sends records. A scene with neither pays
-nothing. The rest follow.
+nothing.
+
+`DeviceProfile` is what the device under a viewport can do, built from the
+renderer's eight answers with `DeviceProfile.FromCapabilities` or from a
+running renderer with `Renderer.GetProfile`. A missing or negative answer
+reads as the least a device has. Its `Tier` is low, medium or high, and the
+texture size, upload, splat and colour degree budgets follow the tier.
+`TextureCandidates` lists the cooked siblings of a texture the device can
+sample, best first. `SceneRows.DrawRows` has a row for each object and
+population a scene submits, and `SceneRows.MaterialRow` has the packed
+values of one material and the objects made of it. `NamedPassTiming.ToJson` is the
+row for one pass. The rest follow.

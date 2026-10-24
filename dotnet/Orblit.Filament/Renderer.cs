@@ -56,6 +56,10 @@ public sealed partial class Renderer : IDisposable
     /// <summary>One answer about the device this runs on, or -1 for a question the renderer does not know.</summary>
     public int GetCapability(Capability which) => NativeMethods.CapabilityOf(Alive, which);
 
+    /// <summary>What the device under this renderer can do, worked out from its answers to every question.</summary>
+    public DeviceProfile GetProfile() =>
+        DeviceProfile.FromCapabilities([.. Enum.GetValues<Capability>().Select(GetCapability)]);
+
     /// <summary>Asks for the next frame drawn to be read back into memory.</summary>
     public void RequestCapture() => Check(NativeMethods.RequestCapture(Alive), "request_capture");
 

@@ -6,7 +6,16 @@ namespace Orblit.Filament;
 /// <param name="Name">The pass, as the graph named it.</param>
 /// <param name="Milliseconds">What it cost.</param>
 /// <param name="Draws">How many draw calls it submitted.</param>
-public sealed record NamedPassTiming(string Name, double Milliseconds, int Draws);
+public sealed record NamedPassTiming(string Name, double Milliseconds, int Draws)
+{
+    /// <summary>The pass as a row of its name, time and draws.</summary>
+    public OrderedDictionary<string, object?> ToJson() => new()
+    {
+        ["name"] = Name,
+        ["milliseconds"] = Milliseconds,
+        ["draws"] = Draws,
+    };
+}
 
 /// <summary>
 /// What actually happened in a frame: which passes ran, in what order and what each cost. That is
