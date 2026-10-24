@@ -11,11 +11,14 @@ export PATH="$HOME/development/flutter/bin:$PATH"
 copies=(
   packages/orblit_filament/test/zz_filament_scene_test.dart
   packages/orblit_ui/test/zz_ui_test.dart
+  packages/orblit_stage/test/zz_stage_test.dart
 )
 trap 'rm -f "${copies[@]/#/$root/}"' EXIT
 cp tool/parity/flutter/filament_scene_test.dart "${copies[0]}"
 cp tool/parity/flutter/ui_test.dart "${copies[1]}"
+cp tool/parity/flutter/stage_test.dart "${copies[2]}"
 (cd packages/orblit_filament && flutter test test/zz_filament_scene_test.dart)
 (cd packages/orblit_ui && flutter test test/zz_ui_test.dart)
+(cd packages/orblit_stage && flutter test test/zz_stage_test.dart)
 
-git diff --stat -- dotnet/fixtures/orblit_filament dotnet/fixtures/orblit_ui
+git diff --stat -- dotnet/fixtures/orblit_filament dotnet/fixtures/orblit_ui dotnet/fixtures/orblit_stage

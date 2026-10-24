@@ -1,15 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.2.0</Version>
-    <Description>A scene document staged for the renderer: debug lines, materials, scattered models, terrain, custom surfaces, the merge of models that never move and the armature that drives a model's skin.</Description>
+    <Version>0.3.0</Version>
+    <Description>A scene document staged for the renderer: debug lines, materials, scattered models, terrain, custom surfaces, the merge of models that never move, the armature that drives a model's skin and the view that keeps a whole document drawn as it is edited.</Description>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
+    <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
     <ProjectReference Include="..\Orblit.Motion\Orblit.Motion.csproj" />
+    <ProjectReference Include="..\Orblit.Profile\Orblit.Profile.csproj" />
     <ProjectReference Include="..\Orblit.Rig\Orblit.Rig.csproj" />
     <ProjectReference Include="..\Orblit.Scene\Orblit.Scene.csproj" />
     <ProjectReference Include="..\Orblit.Terrain\Orblit.Terrain.csproj" />
     <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+    <ProjectReference Include="..\Orblit.Weather\Orblit.Weather.csproj" />
     <InternalsVisibleTo Include="Orblit.Stage.Tests" />
   </ItemGroup>
 </Project>

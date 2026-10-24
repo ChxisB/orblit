@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.3.0
+
+- `DocumentView`, a port of `document_view` from `orblit_stage`. It stages a
+  scene document as a render scene and moves only what a diff touched.
+  `DocumentStaging` holds the pure steps: lights, sprites, splats, sky, fog and
+  rain.
+- `Materials=`, `Surfaces=` and `Look=` are the methods `SetMaterials`,
+  `SetSurfaces` and `SetLook`. A property that does work is a method here.
+- `Looks` is a list in document order with no repeats. Dart returns a `Set`.
+- A splat budget outside 1 to 0xFFFFFF is refused by `SplatCloud` in every
+  build. Dart only asserts in debug. A budget past the `int` range is clamped
+  first so it cannot wrap round to a valid one.
+- The incremental tests draw from `System.Random`, so a seed makes a different
+  document than the same seed does in Dart. The fixture carries its documents
+  as text, so the parity checks do not depend on the generator.
+- The fixture `document_view.json` has 96 cases: first staging, one
+  replacement and a run of ten. It compares every key the view handed out, so
+  the order keys are allocated in matches Dart.
+
 ## 0.2.0
 
 - `SkinRig` and `SkinBinding`, a port of `skin_binding` from `orblit_stage`.
