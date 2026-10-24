@@ -85,4 +85,11 @@ platforms throw `PlatformNotSupportedException`. A `Feed` in
 3 and a mirror flag. A screen points at the key with `RenderMaterial.Video`.
 A feed travels after the videos at rate 1 and volume 1, and a key used by a
 video and a feed in one scene throws. `Texture.OfFeed` copies a feed into any
-map at its own size or a smaller one. The rest follow.
+map at its own size or a smaller one.
+
+`Renderer.CopyPresented` hands a host the frame a platform renderer last
+drew, as a `PresentedFrame` that holds the pixel buffer, its size and its
+IOSurface with the identifier the system gave it. A headless renderer has
+none and answers null. The Metal events a viewport needs to hand that frame
+to a compositor are in `orblit_filament_apple`, a second library built beside
+the renderer on Apple platforms. The rest follow.

@@ -117,6 +117,18 @@ else()
     -stdlib=libc++ -Wl,--start-group ${ORBLIT_ARCHIVES} -Wl,--end-group pthread dl m)
 endif()
 
-install(TARGETS orblit_filament
+set(ORBLIT_TARGETS orblit_filament)
+if(APPLE)
+  # Metal events for the Avalonia viewport. A library of its own, because the
+  # renderer's C API is shared with the Flutter plugins and must not grow Metal
+  # calls only one host uses.
+  add_library(orblit_filament_apple SHARED "${CMAKE_CURRENT_SOURCE_DIR}/native/apple/orblit_filament_apple.mm")
+  set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/native/apple/orblit_filament_apple.mm"
+    PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  target_link_libraries(orblit_filament_apple PRIVATE "-framework Metal" "-framework Foundation")
+  list(APPEND ORBLIT_TARGETS orblit_filament_apple)
+endif()
+
+install(TARGETS ${ORBLIT_TARGETS}
   LIBRARY DESTINATION runtimes/${ORBLIT_RID}/native
   RUNTIME DESTINATION runtimes/${ORBLIT_RID}/native)

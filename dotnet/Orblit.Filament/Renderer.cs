@@ -60,6 +60,16 @@ public sealed partial class Renderer : IDisposable
     public DeviceProfile GetProfile() =>
         DeviceProfile.FromCapabilities([.. Enum.GetValues<Capability>().Select(GetCapability)]);
 
+    /// <summary>
+    /// The frame most recently presented, for a <see cref="SurfaceKind.Platform"/> renderer, or null
+    /// for any other. Safe from any thread. Dispose the result when the host has taken what it needs.
+    /// </summary>
+    public PresentedFrame? CopyPresented()
+    {
+        var buffer = NativeMethods.CopyPresented(Alive);
+        return buffer == nint.Zero ? null : new PresentedFrame(buffer);
+    }
+
     /// <summary>Asks for the next frame drawn to be read back into memory.</summary>
     public void RequestCapture() => Check(NativeMethods.RequestCapture(Alive), "request_capture");
 
