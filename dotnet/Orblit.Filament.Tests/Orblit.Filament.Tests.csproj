@@ -7,10 +7,18 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
+    <!-- Only for the cook that turns a surface source into the package the renderer draws with. -->
+    <ProjectReference Include="..\Orblit.Asset\Orblit.Asset.csproj" />
     <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\fixtures\orblit_filament\*.json" Link="fixtures\orblit_filament\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <!-- A cube and two small pictures, which the draw tests hand to the renderer as bytes. -->
+    <Content Include="..\fixtures\orblit_filament\*.glb;..\fixtures\orblit_filament\*.png" Link="fixtures\orblit_filament\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <!-- The surfaces the renderer draws with, cooked by the tests that need them. -->
+  <ItemGroup>
+    <Content Include="..\..\packages\orblit_filament\native\headless\custom_surface.mat;..\..\packages\orblit_filament\native\headless\custom_surface_dim.mat;..\..\packages\orblit_filament\native\headless\surfaces\pulse.oshader;..\..\packages\orblit_filament\darwin\materials\unlit.oshader" Link="surfaces\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- The C header is the contract the declarations are checked against. -->
   <ItemGroup>
