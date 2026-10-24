@@ -7,7 +7,7 @@ namespace Orblit.Filament;
 /// apart from <see cref="Resize"/>, which is safe from any thread. Dispose it
 /// after every other thread has stopped calling it.
 /// </summary>
-public sealed class Renderer : IDisposable
+public sealed partial class Renderer : IDisposable
 {
     private nint _renderer;
 

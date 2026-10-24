@@ -55,6 +55,7 @@ Each row is a place where a test will not always catch the difference.
 | A top-level `const` | A `const` in a static class | `Acoustics.SpeedOfSound` |
 | A `const` constructor with default values | Optional parameters, called by name | The class stays sealed and immutable |
 | More than four named parameters | The same parameters, called by name, with a one-line `// F2:` comment at the constructor | The Dart named parameters count as the options object. A C# call by name does the same job |
+| A value with many fields and a `copyWith` | A `sealed record` with `required` and `init` properties, changed with `with` | `RenderScene`, `RenderObject`, `RenderLight`. A record compares a list by reference, so nothing compares two scenes. A `Vector3` field is a mutable object that a `with` copy shares |
 | A `LinkedHashMap` entry removed then added | `OrderedDictionary.Remove(key, out value)`, then the setter | Removing first moves the entry to the end, in both languages. Assigning to a key that exists keeps its place |
 | A Dart record `({Steering behaviour, double weight})` | A tuple `(Steering Behaviour, double Weight)` | Names change case, and a caller builds it positionally |
 | `T? read<T>(key)` on a map of `Object?` | `T? Read<T>(key)`, which gives `default` for a missing key | For a value type that is zero or false, where Dart gives null. The type stored must match the type read, so a `long` is read as `long`, never `int` |
