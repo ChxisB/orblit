@@ -10,8 +10,22 @@ import 'dart:math';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:orblit_audio/orblit_audio.dart'
+    show Audio, AudioCall, AudioStarted, AudioStopped, AudioUpdated, RecordedAudio;
 import 'package:orblit_filament/orblit_filament.dart';
 import 'package:orblit_light/orblit_light.dart' show LightType, Tint;
+import 'package:orblit_motion/orblit_motion.dart'
+    show
+        ChannelKind,
+        ClipChannel,
+        ClipDocument,
+        CutsceneDocument,
+        CutsceneShot,
+        CutsceneSound,
+        Hold,
+        Key,
+        Mark,
+        WhenDone;
 import 'package:orblit_particles/orblit_particles.dart' show Trail, TrailStrip;
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:orblit_stage/orblit_stage.dart';
@@ -465,6 +479,445 @@ List<Map<String, Object?>> _ribbonCases() => [
     }(),
 ];
 
+SceneEntity _cam(
+  String id, {
+  required Vector3 at,
+  Vector3? turned,
+  double fieldOfView = 50,
+  bool visible = true,
+}) => SceneEntity(
+  id: id,
+  name: id,
+  visible: visible,
+  components: {
+    SceneComponents.transform: TransformComponent(
+      position: at,
+      rotation: turned,
+    ),
+    SceneComponents.camera: CameraComponent(fieldOfView: fieldOfView),
+  },
+);
+
+/// The game's camera, three more for a cutscene to cut between, and a cube.
+/// 'back' looks straight at 'game', so the two cancel when blended evenly.
+SceneDocument _cutStage() => SceneDocument(
+  entities: [
+    _cam('game', at: Vector3(0, 0, 10)),
+    _cam('front', at: Vector3(0, 0, 5), fieldOfView: 40, visible: false),
+    _cam(
+      'side',
+      at: Vector3(5, 0, 0),
+      turned: Vector3(0, 90, 0),
+      fieldOfView: 60,
+      visible: false,
+    ),
+    _cam(
+      'back',
+      at: Vector3(0, 0, -10),
+      turned: Vector3(0, 180, 0),
+      fieldOfView: 30,
+      visible: false,
+    ),
+    SceneEntity(
+      id: 'cube',
+      name: 'cube',
+      components: {
+        SceneComponents.transform: TransformComponent(),
+        SceneComponents.mesh: const MeshComponent(),
+      },
+    ),
+  ],
+);
+
+CutsceneDocument _cutIntro(WhenDone whenDone) => CutsceneDocument(
+  motion: ClipDocument(
+    name: 'Intro',
+    duration: 4,
+    whenDone: whenDone,
+    channels: [
+      ClipChannel<Vector3>(
+        target: 'cube',
+        property: 'transform.position',
+        kind: ChannelKind.vector,
+        keys: [
+          Key(0, Vector3.zero(), hold: Hold.linear),
+          Key(4, Vector3(4, 0, 0)),
+        ],
+      ),
+    ],
+    marks: const [Mark(3, 'boom')],
+  ),
+  shots: [
+    CutsceneShot(camera: 'front', start: 0, duration: 3),
+    CutsceneShot(camera: 'side', start: 2, duration: 2),
+  ],
+  sounds: [CutsceneSound(sound: 'swell.ogg', start: 0, duration: 4)],
+);
+
+CutsceneDocument _cutOutro() => CutsceneDocument(
+  motion: ClipDocument(name: 'Outro', duration: 1, channels: const []),
+  shots: [CutsceneShot(camera: 'back', start: 0, duration: 1)],
+);
+
+Map<String, Object?> _camera(OrblitCamera c) => {
+  'position': _point(c.position),
+  'target': _point(c.target),
+  'fieldOfView': number(c.fieldOfView),
+  'aperture': number(c.aperture),
+};
+
+Map<String, Object?> _cutFrame(
+  OrblitCutscenes cutscenes,
+  OrblitDocumentView view,
+  OrblitCutsceneStep? step,
+) {
+  final through = view.through;
+  final cube =
+      (view.document['cube']![SceneComponents.transform]! as TransformComponent)
+          .position;
+  return {
+    'playing': cutscenes.playing,
+    'cube': _point(cube),
+    'through': through == null ? null : _camera(through),
+    'marks': [
+      for (final m in step?.marks ?? const [])
+        {'at': number(m.at), 'name': m.name},
+    ],
+    'sounds': [
+      for (final s in step?.sounds ?? const [])
+        {
+          'sound': s.sound,
+          'at': number(s.at),
+          'gain': number(s.gain),
+          'binding': s.binding,
+        },
+    ],
+    'ended': step?.ended ?? false,
+  };
+}
+
+/// Each action is one call on the cutscenes, and the frame is what the view
+/// shows after it.
+Map<String, Object?> _cutCase(
+  List<CutsceneDocument> cutscenes,
+  List<List<Object?>> script,
+) {
+  final text = _cutStage().encode();
+  final texts = [for (final c in cutscenes) c.encode()];
+  final view = OrblitDocumentView(_read(text));
+  final player = OrblitCutscenes(view, [
+    for (final t in texts) CutsceneDocument.decode(t).cutscene,
+  ]);
+  final frames = <Map<String, Object?>>[];
+  for (final action in script) {
+    OrblitCutsceneStep? step;
+    switch (action[0]) {
+      case 'start':
+        player.start(action[1]! as String);
+      case 'startFrom':
+        player.startFrom([
+          for (final name in action[1]! as List) Mark(0, name as String),
+        ]);
+      case 'stop':
+        player.stop();
+      case 'advance':
+        step = player.advance((action[1]! as num).toDouble());
+    }
+    frames.add(_cutFrame(player, view, step));
+  }
+  return {
+    'op': 'cutscene',
+    'in': {'document': text, 'cutscenes': texts, 'script': script},
+    'expect': frames,
+  };
+}
+
+Map<String, Object?> _blendCase(List<(String, double)> picks) {
+  final text = _cutStage().encode();
+  final view = OrblitDocumentView(_read(text));
+  final blended = blendCameras([
+    for (final (id, weight) in picks) (view.cameraOf(id)!, weight),
+  ]);
+  return {
+    'op': 'blend',
+    'in': {
+      'document': text,
+      'cameras': [
+        for (final (id, weight) in picks) [id, weight],
+      ],
+    },
+    'expect': blended == null ? null : _camera(blended),
+  };
+}
+
+List<Map<String, Object?>> _cutsceneCases() => [
+  _cutCase(
+    [_cutIntro(WhenDone.hold)],
+    [
+      ['start', 'Intro'],
+      ['advance', 1.0],
+      ['advance', 1.5],
+      ['advance', 0.5],
+      ['advance', 1.0],
+      ['advance', 1.0],
+    ],
+  ),
+  _cutCase(
+    [_cutIntro(WhenDone.release)],
+    [
+      ['start', 'Intro'],
+      ['advance', 2.5],
+      ['advance', 2.0],
+      ['advance', 1.0],
+    ],
+  ),
+  _cutCase(
+    [_cutIntro(WhenDone.loop)],
+    [
+      ['start', 'Intro'],
+      ['advance', 3.5],
+      ['advance', 1.0],
+      ['advance', 2.0],
+    ],
+  ),
+  _cutCase(
+    [_cutIntro(WhenDone.bounce)],
+    [
+      ['start', 'Intro'],
+      ['advance', 3.0],
+      ['advance', 2.0],
+    ],
+  ),
+  _cutCase(
+    [_cutIntro(WhenDone.release), _cutOutro()],
+    [
+      ['startFrom', <String>['nothing', 'Outro', 'Intro']],
+      ['advance', 0.5],
+      ['start', 'Intro'],
+      ['advance', 1.0],
+      ['start', 'Outro'],
+      ['advance', 0.5],
+      ['stop'],
+      ['advance', 1.0],
+    ],
+  ),
+  _blendCase([('front', 0.5), ('side', 0.5)]),
+  _blendCase([('front', 0.25), ('side', 0.75), ('game', 0)]),
+  _blendCase([('front', 1), ('side', 0)]),
+  _blendCase([('front', 0), ('side', -1)]),
+  _blendCase([('game', 1), ('back', 1)]),
+  _blendCase([('game', 2), ('back', 1), ('side', 1)]),
+];
+
+SceneEntity _thing(
+  String id,
+  Vector3 at,
+  Map<String, SceneComponent> parts, {
+  Vector3? turned,
+  bool visible = true,
+}) => SceneEntity(
+  id: id,
+  name: id,
+  visible: visible,
+  components: {
+    SceneComponents.transform: TransformComponent(
+      position: at,
+      rotation: turned,
+    ),
+    ...parts,
+  },
+);
+
+SceneEntity _fire(Vector3 at, {bool visible = true}) => _thing(
+  'fire',
+  at,
+  {
+    SceneComponents.soundSource: SoundSourceComponent(
+      clip: 'fire.ogg',
+      bus: 'sfx',
+    ),
+  },
+  visible: visible,
+);
+
+SceneEntity _wind(Vector3 at) => _thing('wind', at, {
+  SceneComponents.soundSource: SoundSourceComponent(
+    clip: 'wind.ogg',
+    bus: 'sfx',
+    loop: false,
+    volume: 0.5,
+    near: 2,
+    far: 30,
+    curve: SoundCurve.linear,
+  ),
+});
+
+SceneEntity _ear(Vector3 at, Vector3 turned) => _thing('ear', at, {
+  SceneComponents.soundListener: const SoundListenerComponent(),
+}, turned: turned);
+
+SceneDocument _world(List<SceneEntity> others, {Vector3? eye}) =>
+    SceneDocument(
+      entities: [
+        _thing(
+          'game',
+          eye ?? Vector3(0, 0, 10),
+          {SceneComponents.camera: const CameraComponent()},
+        ),
+        ...others,
+      ],
+    );
+
+CutsceneDocument _swell() => CutsceneDocument(
+  motion: ClipDocument(name: 'Swell', duration: 1, channels: const []),
+  sounds: [CutsceneSound(sound: 'swell.ogg', start: 0, duration: 1)],
+);
+
+Map<String, Object?> _audioCall(AudioCall call) => switch (call) {
+  AudioStarted s => {
+    'kind': 'start',
+    'voice': big(s.voice),
+    'clip': s.clip,
+    'loop': s.loop,
+    'gain': number(s.level.gain),
+    'pitch': number(s.level.pitch),
+    'pan': number(s.level.pan),
+    'offset': number(s.offset),
+  },
+  AudioUpdated u => {
+    'kind': 'update',
+    'voice': big(u.voice),
+    'gain': number(u.level.gain),
+    'pitch': number(u.level.pitch),
+    'pan': number(u.level.pan),
+  },
+  AudioStopped x => {'kind': 'stop', 'voice': big(x.voice)},
+};
+
+/// Each action is one call on the sound view, and the frame is every call the
+/// backend got since the last action, with where the listener stands.
+Map<String, Object?> _soundCase(
+  List<SceneDocument> documents,
+  List<CutsceneDocument> cutscenes,
+  List<List<Object?>> script,
+) {
+  final texts = [for (final d in documents) d.encode()];
+  final cutTexts = [for (final c in cutscenes) c.encode()];
+  final backend = RecordedAudio();
+  final audio = Audio(backend)..mixer.add('sfx');
+  final view = OrblitDocumentView(_read(texts.first));
+  final sound = OrblitSound(view, audio);
+  final player = OrblitCutscenes(view, [
+    for (final t in cutTexts) CutsceneDocument.decode(t).cutscene,
+  ]);
+  final frames = <Map<String, Object?>>[];
+  var seen = 0;
+  for (final action in script) {
+    switch (action[0]) {
+      case 'replace':
+        view.replace(_read(texts[(action[1]! as num).toInt()]));
+      case 'play':
+        sound.play(action[1]! as String);
+      case 'stop':
+        sound.stop();
+      case 'start':
+        player.start(action[1]! as String);
+      case 'frame':
+        final seconds = (action[1]! as num).toDouble();
+        sound.advance(seconds, player.advance(seconds));
+        audio.advance(seconds);
+    }
+    frames.add({
+      'calls': [for (final c in backend.calls.skip(seen)) _audioCall(c)],
+      'position': _point(audio.listener.position),
+      'forward': _point(audio.listener.forward),
+      'up': _point(audio.listener.up),
+    });
+    seen = backend.calls.length;
+  }
+  return {
+    'op': 'sound',
+    'in': {'documents': texts, 'cutscenes': cutTexts, 'script': script},
+    'expect': frames,
+  };
+}
+
+List<Map<String, Object?>> _soundCases() => [
+  _soundCase(
+    [
+      _world([_fire(Vector3(10, 0, 10))]),
+    ],
+    [],
+    [
+      ['frame', 1 / 60],
+      ['frame', 1 / 60],
+      ['play', 'fire'],
+      ['frame', 1 / 60],
+      ['play', 'nothing'],
+    ],
+  ),
+  _soundCase(
+    [
+      _world([
+        _ear(Vector3(1, 0, 0), Vector3(0, 90, 0)),
+        _fire(Vector3(4, 0, 0)),
+        _wind(Vector3(-6, 0, 2)),
+      ]),
+      _world([
+        _ear(Vector3(1, 0, 0), Vector3(0, 90, 0)),
+        _fire(Vector3(4, 0, 0), visible: false),
+        _wind(Vector3(-6, 0, 2)),
+      ]),
+      _world([
+        _ear(Vector3(1, 0, 0), Vector3(0, 90, 0)),
+        _fire(Vector3(4, 0, 0)),
+        _wind(Vector3(200, 0, 2)),
+      ]),
+    ],
+    [],
+    [
+      ['frame', 1 / 60],
+      ['frame', 0.5],
+      ['replace', 1],
+      ['frame', 1 / 60],
+      ['play', 'fire'],
+      ['replace', 2],
+      ['frame', 1 / 60],
+      ['frame', 1 / 60],
+      ['stop'],
+      ['replace', 0],
+      ['frame', 1 / 60],
+    ],
+  ),
+  _soundCase(
+    [
+      _world([_fire(Vector3(2, 0, 8))]),
+      _world([_fire(Vector3(2, 0, 8))], eye: Vector3(0, 0, 9.95)),
+      _world([_fire(Vector3(2, 0, 8))], eye: Vector3(300, 0, 9.95)),
+    ],
+    [],
+    [
+      ['frame', 1 / 60],
+      ['replace', 1],
+      ['frame', 1 / 60],
+      ['replace', 2],
+      ['frame', 1 / 60],
+    ],
+  ),
+  _soundCase(
+    [_world([])],
+    [_swell()],
+    [
+      ['frame', 1 / 60],
+      ['start', 'Swell'],
+      ['frame', 0.4],
+      ['frame', 0.4],
+      ['frame', 0.4],
+      ['frame', 0.1],
+    ],
+  ),
+];
+
 void main() {
   test('writes the particle fixtures', () {
     writeFixture(
@@ -472,6 +925,15 @@ void main() {
       package: 'orblit_stage',
       name: 'particles',
       cases: [..._particleCases(), ..._clothCases(), ..._ribbonCases()],
+    );
+  });
+
+  test('writes the sound and cutscene fixtures', () {
+    writeFixture(
+      root: Directory('../..').absolute.path,
+      package: 'orblit_stage',
+      name: 'sound_cutscenes',
+      cases: [..._cutsceneCases(), ..._soundCases()],
     );
   });
 

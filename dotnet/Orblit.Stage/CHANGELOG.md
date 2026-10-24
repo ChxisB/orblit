@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5.0
+
+- `SoundView` and `Cutscenes`, a port of `sound_view` and `cutscenes` from
+  `orblit_stage`. The sound view plays each sound source of a scene from where
+  its entity stands, and hears from the listener entity or else the camera.
+  The cutscenes play one cutscene at a time over a staged scene and hand the
+  game its marks and sounds.
+- `OrblitSound` is `SoundView` and `OrblitCutscenes` is `Cutscenes`. The Dart
+  `blendCameras` is the static `Cutscenes.BlendCameras`. The Dart `Audio` is
+  `AudioPlayer`.
+- An error for a bad name is `ArgumentException`. A source on a bus the mixer
+  lacks throws one with the `ArgumentOutOfRangeException` from the mixer as its
+  inner exception.
+- Neither class exposes its view or its audio.
+- A scene that changes after `Stop` starts its sources again. Starting a
+  cutscene ends the one running first. Dart has no test for either.
+- The profile test of `DocumentView` is `DocumentViewProfileTests`.
+- The fixture `sound_cutscenes.json` has 15 cases: 5 cutscene scripts, 6
+  blends and 4 sound scripts. It compares every frame the view shows, every
+  step, and every call the recorded backend got with where the listener stood.
+
 ## 0.4.0
 
 - `ParticleView`, `ParticleSheet` and `TrailRibbon`, a port of `particle_view`,
