@@ -3,13 +3,19 @@ namespace Orblit.Filament;
 /// <summary>How a scene becomes the flat arrays the renderer reads, one topic at a time.</summary>
 internal static class SceneMessage
 {
-    /// <summary>The objects, and the mesh paths they point at.</summary>
-    internal static void Objects(IReadOnlyList<RenderObject> objects, IDictionary<string, object> into)
+    /// <summary>The objects, and the mesh paths and materials they point at.</summary>
+    internal static void Objects(
+        IReadOnlyList<RenderObject> objects,
+        IReadOnlyList<RenderMaterial> materials,
+        IDictionary<string, object> into)
     {
+        // Materials are pointed at by position in this frame's list, so the renderer never searches.
+        // Keys are what survive between frames and positions are what travel in one.
+        var materialAt = PositionOf(materials.Select(material => material.Key));
         var columns = new ObjectColumns(objects.Count);
         for (var i = 0; i < objects.Count; i++)
         {
-            columns.Set(i, objects[i]);
+            columns.Set(i, objects[i], materialAt);
         }
 
         into["objectKeys"] = columns.Keys;
@@ -19,8 +25,130 @@ internal static class SceneMessage
         into["objectFlags"] = columns.Flags;
         into["objectMorphCounts"] = columns.MorphCounts;
         into["objectMorphWeights"] = columns.MorphWeights;
-        into["meshPaths"] = columns.Paths.ToArray();
+        into["meshPaths"] = columns.Paths.Items.ToArray();
         into["objectMaterials"] = columns.Materials;
+    }
+
+    /// <summary>The materials, and the textures they draw from. Both travel by position.</summary>
+    internal static void Materials(
+        IReadOnlyList<RenderMaterial> materials,
+        IReadOnlyList<Video> videos,
+        IDictionary<string, object> into)
+    {
+        var count = materials.Count;
+        var keys = new long[count];
+        var flags = new int[count];
+        var packed = new float[count * RenderMaterial.Stride];
+        var maps = new int[count * RenderMaterial.MapCount];
+        var screens = new int[count];
+        var videoAt = PositionOf(videos.Select(video => video.Key));
+        var textures = new IndexedSet<Texture>();
+
+        for (var i = 0; i < count; i++)
+        {
+            var material = materials[i];
+            keys[i] = material.Key;
+            flags[i] = material.Flags;
+            material.Pack(packed, i * RenderMaterial.Stride);
+            screens[i] = material.Video is { } video ? videoAt.GetValueOrDefault(video, -1) : -1;
+            for (var m = 0; m < RenderMaterial.MapCount; m++)
+            {
+                maps[(i * RenderMaterial.MapCount) + m] = material.Maps[m] is { } map ? textures.IndexOf(map) : -1;
+            }
+        }
+
+        into["materialKeys"] = keys;
+        into["materialFlags"] = flags;
+        into["materialParams"] = packed;
+        into["materialMaps"] = maps;
+        into["materialVideos"] = screens;
+        into["texturePaths"] = textures.Items.Select(texture => texture.Path).ToArray();
+        into["textureSrgb"] = textures.Items.Select(texture => texture.Srgb ? 1 : 0).ToArray();
+    }
+
+    /// <summary>The shaders somebody wrote. Adds nothing when no material wears one, which is almost every scene.</summary>
+    internal static void Surfaces(IReadOnlyList<RenderMaterial> materials, IDictionary<string, object> into)
+    {
+        var columns = new SurfaceColumns();
+        foreach (var material in materials)
+        {
+            if (material.Surface is { } surface)
+            {
+                columns.Add(material.Key, surface);
+            }
+        }
+
+        if (columns.Keys.Count == 0)
+        {
+            return;
+        }
+
+        into["surfaceKeys"] = columns.Keys.ToArray();
+        into["surfacePackages"] = columns.Packages.ToArray();
+        into["surfaceEntryCounts"] = columns.EntryCounts.ToArray();
+        into["surfaceNames"] = columns.Names.ToArray();
+        into["surfaceWidths"] = columns.Widths.ToArray();
+        into["surfaceMaps"] = columns.Maps.ToArray();
+        into["surfaceValues"] = columns.Numbers.ToArray();
+        into["surfaceTexturePaths"] = columns.Textures.Items.Select(texture => texture.Path).ToArray();
+        into["surfaceTextureSrgb"] = columns.Textures.Items.Select(texture => texture.Srgb ? 1 : 0).ToArray();
+    }
+
+    internal static void Videos(IReadOnlyList<Video> videos, IDictionary<string, object> into)
+    {
+        var keys = new long[videos.Count];
+        var flags = new int[videos.Count];
+        var packed = new float[videos.Count * Video.Stride];
+        var paths = new string[videos.Count];
+
+        for (var i = 0; i < videos.Count; i++)
+        {
+            var video = videos[i];
+            keys[i] = video.Key;
+            flags[i] = video.Flags;
+            paths[i] = video.Path;
+            // A seek of minus one is no seek asked for, so a token that moved with no target is a no-op rather than a jump to the start.
+            Packing.Floats(video.Rate, video.Volume, video.SeekTo ?? -1, video.SeekToken).CopyTo(packed, i * Video.Stride);
+        }
+
+        into["videoKeys"] = keys;
+        into["videoFlags"] = flags;
+        into["videoParams"] = packed;
+        into["videoPaths"] = paths;
+    }
+
+    /// <summary>The decals, with their pictures sent once and pointed at.</summary>
+    internal static void Decals(IReadOnlyList<Decal> decals, IDictionary<string, object> into)
+    {
+        var packed = new float[decals.Count * Decal.Stride];
+        var images = new int[decals.Count];
+        var paths = new IndexedSet<string>();
+
+        for (var i = 0; i < decals.Count; i++)
+        {
+            decals[i].Pack(packed, i * Decal.Stride);
+            images[i] = decals[i].Texture is { } texture ? paths.IndexOf(texture.Path) : -1;
+        }
+
+        into["decalParams"] = packed;
+        into["decalImages"] = images;
+        into["decalPaths"] = paths.Items.ToArray();
+    }
+
+    /// <summary>
+    /// The selection outline, the shafts of light and the bending of air. The shafts follow the
+    /// first directional light, which is the one the renderer draws, and thin under cloud only when
+    /// the sky that carries the cloud is drawn.
+    /// </summary>
+    internal static void Screen(RenderScene scene, IDictionary<string, object> into)
+    {
+        var sun = scene.Lights.FirstOrDefault(light => light.Kind == RenderLightKind.Directional);
+        var clouds = scene.Sky.Drawn && scene.Sky.Clouds.IsVisible ? scene.Sky.Clouds.Cover : 0;
+
+        into["outlineKeys"] = scene.Outline.PackedKeys;
+        into["outlineParams"] = scene.Outline.Packed;
+        into["godRayParams"] = scene.GodRays.Pack(sun is null ? null : -sun.Direction, sun?.Colour, clouds);
+        into["distortionParams"] = Distortion.PackAll(scene.Distortions);
     }
 
     internal static void Lights(IReadOnlyList<RenderLight> lights, IDictionary<string, object> into)
@@ -70,6 +198,64 @@ internal static class SceneMessage
         into["skyEnabled"] = sky.Drawn;
     }
 
+    /// <summary>Where each key sits in <paramref name="keys"/>. A key given twice points at its last place.</summary>
+    private static Dictionary<long, int> PositionOf(IEnumerable<long> keys)
+    {
+        var at = new Dictionary<long, int>();
+        var i = 0;
+        foreach (var key in keys)
+        {
+            at[key] = i++;
+        }
+
+        return at;
+    }
+
+    /// <summary>
+    /// The surface columns: a key, a package and an entry count for each surface, then a name, a
+    /// width and a texture position for each entry, then every number end to end. A width of
+    /// nought is a texture, and its position points into the surface textures' own list.
+    /// </summary>
+    private sealed class SurfaceColumns
+    {
+        internal List<long> Keys { get; } = [];
+
+        internal List<string> Packages { get; } = [];
+
+        internal List<int> EntryCounts { get; } = [];
+
+        internal List<string> Names { get; } = [];
+
+        internal List<int> Widths { get; } = [];
+
+        internal List<int> Maps { get; } = [];
+
+        internal List<float> Numbers { get; } = [];
+
+        internal IndexedSet<Texture> Textures { get; } = new();
+
+        internal void Add(long key, CustomSurface surface)
+        {
+            Keys.Add(key);
+            Packages.Add(surface.Package);
+            EntryCounts.Add(surface.Values.Count + surface.Textures.Count);
+            foreach (var (name, numbers) in surface.Values)
+            {
+                Names.Add(name);
+                Widths.Add(numbers.Count);
+                Maps.Add(-1);
+                Numbers.AddRange(numbers.Select(number => (float)number));
+            }
+
+            foreach (var (name, texture) in surface.Textures)
+            {
+                Names.Add(name);
+                Widths.Add(0);
+                Maps.Add(Textures.IndexOf(texture));
+            }
+        }
+    }
+
     /// <summary>
     /// The object columns. Paths are sent once and pointed at by index, because the same mesh is
     /// usually on many objects. Morph weights are packed end to end with a count each, because a
@@ -77,7 +263,6 @@ internal static class SceneMessage
     /// </summary>
     private sealed class ObjectColumns(int count)
     {
-        private readonly Dictionary<string, int> _pathAt = [];
         private readonly List<float> _weights = [];
 
         internal long[] Keys { get; } = new long[count];
@@ -90,19 +275,20 @@ internal static class SceneMessage
 
         internal int[] Flags { get; } = new int[count];
 
-        internal int[] Materials { get; } = Enumerable.Repeat(-1, count).ToArray();
+        internal int[] Materials { get; } = new int[count];
 
         internal int[] MorphCounts { get; } = new int[count];
 
-        internal List<string> Paths { get; } = [];
+        internal IndexedSet<string> Paths { get; } = new();
 
         /// <summary>Never empty, because the far side takes a pointer and an empty array has none to give.</summary>
         internal float[] MorphWeights => _weights.Count == 0 ? [0f] : _weights.ToArray();
 
-        internal void Set(int i, RenderObject one)
+        internal void Set(int i, RenderObject one, Dictionary<long, int> materialAt)
         {
             Keys[i] = one.Key;
-            Meshes[i] = one.Mesh is null ? -1 : PathIndex(one.Mesh);
+            Meshes[i] = one.Mesh is null ? -1 : Paths.IndexOf(one.Mesh);
+            Materials[i] = one.Material is { } material ? materialAt.GetValueOrDefault(material, -1) : -1;
             Flags[i] = one.Flags;
             for (var k = 0; k < 16; k++)
             {
@@ -119,18 +305,6 @@ internal static class SceneMessage
                 MorphCounts[i] = weights.Count;
                 _weights.AddRange(weights.Select(weight => (float)weight));
             }
-        }
-
-        private int PathIndex(string path)
-        {
-            if (_pathAt.TryGetValue(path, out var at))
-            {
-                return at;
-            }
-
-            _pathAt.Add(path, Paths.Count);
-            Paths.Add(path);
-            return Paths.Count - 1;
         }
     }
 }

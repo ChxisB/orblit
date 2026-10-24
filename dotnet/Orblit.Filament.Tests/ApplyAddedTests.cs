@@ -4,7 +4,8 @@ namespace Orblit.Filament.Tests;
 
 /// <summary>
 /// Applies a scene to a live headless renderer. A scene core has no render graph yet, so nothing
-/// it describes shows. What these check is that the renderer accepts every array.
+/// it describes shows. What these check is that the renderer accepts every array, including a
+/// texture, a video and a shader whose files are not there.
 /// </summary>
 public sealed class ApplyAddedTests
 {
@@ -19,6 +20,21 @@ public sealed class ApplyAddedTests
             Sky = new Sky { Clouds = Clouds.Cumulus },
             Fog = new Fog(),
             Precipitation = new Precipitation { Amount = 0.5 },
+            Materials =
+            [
+                new RenderMaterial { Key = 1, Roughness = 0.3, BaseColourMap = new Texture("/nowhere/base.png") },
+                new RenderMaterial
+                {
+                    Key = 2,
+                    Surface = new CustomSurface("/nowhere/pulse.filamat", new Dictionary<string, IReadOnlyList<double>> { ["speed"] = [2.5] }),
+                },
+                new RenderMaterial { Key = 3, Shading = MaterialShading.Video, Video = 9 },
+            ],
+            Videos = [new Video { Key = 9, Path = "/nowhere/clip.mp4" }],
+            Decals = [new Decal { Key = 4, Position = Vector3.Zero(), Size = Vector3.All(1), Texture = new Texture("/nowhere/mark.png") }],
+            Outline = new Outline { Keys = [100, 101], Primary = 100 },
+            GodRays = new GodRays { Strength = 0.5 },
+            Distortions = [Distortion.Shockwave(Vector3.Zero(), 2), Distortion.Lens(0.01)],
         };
 
     [RendererFact]

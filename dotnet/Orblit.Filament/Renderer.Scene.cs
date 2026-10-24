@@ -13,11 +13,123 @@ public sealed partial class Renderer
 
         Check(NativeMethods.SetBatching(Alive, scene.Batching ? 1 : 0), "set_batching");
         Check(NativeMethods.SetDepthPrepass(Alive, scene.DepthPrepass ? 1 : 0), "set_depth_prepass");
+        SetGodRays(message);
+        SetCustomMaterials(message);
+        ApplyVideos(message);
+        ApplyMaterials(message);
         ApplyObjects(message);
         ApplyPoses(message, at);
         ApplyLights(message);
+        ApplyDecals(message);
         ApplyAir(scene, message);
         SetCamera(scene.Camera, message, at);
+        SetOutline(message);
+    }
+
+    private void SetGodRays(OrderedDictionary<string, object> message)
+    {
+        var godRays = Packing.Read<float[]>(message, "godRayParams");
+        var distortions = Packing.Read<float[]>(message, "distortionParams");
+        Check(
+            NativeMethods.SetGodRays(Alive, godRays, (nuint)godRays.Length, distortions, (nuint)distortions.Length),
+            "set_god_rays");
+    }
+
+    /// <summary>The shaders somebody wrote, sent only when a material wears one.</summary>
+    private void SetCustomMaterials(OrderedDictionary<string, object> message)
+    {
+        if (!message.TryGetValue("surfaceKeys", out var held))
+        {
+            return;
+        }
+
+        var keys = (long[])held;
+        var names = Packing.Read<string[]>(message, "surfaceNames");
+        var values = Packing.Read<float[]>(message, "surfaceValues");
+        var texturePaths = Packing.Read<string[]>(message, "surfaceTexturePaths");
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.SetCustomMaterials(
+                Alive,
+                (uint)keys.Length,
+                keys,
+                Packing.Read<string[]>(message, "surfacePackages"),
+                Packing.Read<int[]>(message, "surfaceEntryCounts"),
+                names,
+                Packing.Read<int[]>(message, "surfaceWidths"),
+                Packing.Read<int[]>(message, "surfaceMaps"),
+                (uint)names.Length,
+                values,
+                (nuint)values.Length,
+                texturePaths,
+                Packing.Read<int[]>(message, "surfaceTextureSrgb"),
+                (uint)texturePaths.Length),
+            "set_custom_materials");
+    }
+
+    private void ApplyVideos(OrderedDictionary<string, object> message)
+    {
+        var keys = Packing.Read<long[]>(message, "videoKeys");
+        var packed = Packing.Read<float[]>(message, "videoParams");
+        var paths = Packing.Read<string[]>(message, "videoPaths");
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.ApplyVideos(
+                Alive,
+                (uint)keys.Length,
+                keys,
+                Packing.Read<int[]>(message, "videoFlags"),
+                packed,
+                (nuint)packed.Length,
+                paths,
+                (uint)paths.Length),
+            "apply_videos");
+    }
+
+    private void ApplyMaterials(OrderedDictionary<string, object> message)
+    {
+        var keys = Packing.Read<long[]>(message, "materialKeys");
+        var packed = Packing.Read<float[]>(message, "materialParams");
+        var maps = Packing.Read<int[]>(message, "materialMaps");
+        var texturePaths = Packing.Read<string[]>(message, "texturePaths");
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.ApplyMaterials(
+                Alive,
+                (uint)keys.Length,
+                keys,
+                Packing.Read<int[]>(message, "materialFlags"),
+                packed,
+                (nuint)packed.Length,
+                maps,
+                (nuint)maps.Length,
+                texturePaths,
+                Packing.Read<int[]>(message, "textureSrgb"),
+                (uint)texturePaths.Length,
+                Packing.Read<int[]>(message, "materialVideos")),
+            "apply_materials");
+    }
+
+    private void ApplyDecals(OrderedDictionary<string, object> message)
+    {
+        var images = Packing.Read<int[]>(message, "decalImages");
+        var packed = Packing.Read<float[]>(message, "decalParams");
+        var paths = Packing.Read<string[]>(message, "decalPaths");
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.ApplyDecals(Alive, (uint)images.Length, packed, (nuint)packed.Length, images, paths, (uint)paths.Length),
+            "apply_decals");
+    }
+
+    private void SetOutline(OrderedDictionary<string, object> message)
+    {
+        var keys = Packing.Read<long[]>(message, "outlineKeys");
+        var packed = Packing.Read<float[]>(message, "outlineParams");
+        Check(NativeMethods.SetOutline(Alive, keys, (uint)keys.Length, packed, (nuint)packed.Length), "set_outline");
     }
 
     private void ApplyObjects(OrderedDictionary<string, object> message)

@@ -20,6 +20,21 @@ public sealed record RenderScene
 
     public Sky Sky { get; init; } = new();
 
+    public IReadOnlyList<RenderMaterial> Materials { get; init; } = [];
+
+    public IReadOnlyList<Video> Videos { get; init; } = [];
+
+    public IReadOnlyList<Decal> Decals { get; init; } = [];
+
+    /// <summary>Which objects are drawn with a line round them. Nothing by default, and free while nothing is.</summary>
+    public Outline Outline { get; init; } = Outline.None;
+
+    /// <summary>Shafts of light from the first directional light. Off by default, and free when off.</summary>
+    public GodRays GodRays { get; init; } = GodRays.Off;
+
+    /// <summary>Air that bends the light through it. None by default, and free when none moves anything.</summary>
+    public IReadOnlyList<Distortion> Distortions { get; init; } = [];
+
     public Fog Fog { get; init; } = Fog.None;
 
     public Precipitation Precipitation { get; init; } = Precipitation.None;
@@ -46,10 +61,15 @@ public sealed record RenderScene
     public OrderedDictionary<string, object> ToMessage(double? at = null)
     {
         var message = new OrderedDictionary<string, object>();
-        SceneMessage.Objects(Objects, message);
+        SceneMessage.Objects(Objects, Materials, message);
+        SceneMessage.Materials(Materials, Videos, message);
+        SceneMessage.Surfaces(Materials, message);
+        SceneMessage.Videos(Videos, message);
+        SceneMessage.Decals(Decals, message);
         SceneMessage.Lights(Lights, message);
         SceneMessage.Camera(Camera, message);
         SceneMessage.Air(Sky, Fog, Precipitation, message);
+        SceneMessage.Screen(this, message);
         message["batching"] = Batching;
         message["depthPrepass"] = DepthPrepass;
         message["at"] = at ?? 0.0;

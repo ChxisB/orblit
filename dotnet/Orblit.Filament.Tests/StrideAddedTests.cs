@@ -9,6 +9,13 @@ public sealed class StrideAddedTests
         [
             (NativeMethods.Stride.Transform, 16),
             (NativeMethods.Stride.Colour, 3),
+            (NativeMethods.Stride.Material, RenderMaterial.Stride),
+            (NativeMethods.Stride.MaterialMaps, RenderMaterial.MapCount),
+            (NativeMethods.Stride.Video, Video.Stride),
+            (NativeMethods.Stride.Decal, Decal.Stride),
+            (NativeMethods.Stride.Outline, Outline.Stride),
+            (NativeMethods.Stride.GodRays, GodRays.Stride),
+            (NativeMethods.Stride.Distortion, Distortion.Stride),
             (NativeMethods.Stride.Light, RenderLight.Stride),
             (NativeMethods.Stride.Sky, Sky.Stride),
             (NativeMethods.Stride.Fog, Fog.Stride),

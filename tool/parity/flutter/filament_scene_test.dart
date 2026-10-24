@@ -5,6 +5,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
+import 'dart:ui' show Color;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_filament/orblit_filament.dart';
@@ -26,6 +27,7 @@ OrblitObject _object(
   OrblitAnimation? animation,
   int? variant,
   List<OrblitJointPose>? joints,
+  int? material,
 }) => OrblitObject(
   key: key,
   mesh: mesh,
@@ -39,6 +41,7 @@ OrblitObject _object(
   animation: animation,
   variant: variant,
   joints: joints,
+  material: material,
 );
 
 Map<String, ({OrblitScene scene, double? at})> _scenes() => {
@@ -230,6 +233,239 @@ Map<String, ({OrblitScene scene, double? at})> _scenes() => {
         flashDirection: Vector3.zero(),
       ),
       fog: OrblitFog(),
+    ),
+    at: null,
+  ),
+  'materials': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: [
+        _object(1, material: 20),
+        _object(2, material: 21),
+        _object(3, material: 999),
+        _object(4),
+        _object(5, material: 22),
+      ],
+      videos: const [
+        OrblitVideo(key: 70, path: '/v/a.mp4'),
+        OrblitVideo(key: 71, path: '/v/b.mp4', playing: false, loop: false),
+      ],
+      materials: [
+        OrblitMaterial(
+          key: 20,
+          shading: OrblitShading.unlit,
+          blend: OrblitBlend.masked,
+          culling: OrblitCulling.none,
+          doubleSided: true,
+          baseColour: Vector4(0.2, 0.4, 0.6, 0.5),
+          metallic: 0.9,
+          roughness: 0.2,
+          reflectance: 0.7,
+          clearCoat: 0.6,
+          clearCoatRoughness: 0.05,
+          anisotropy: -0.4,
+          sheenColour: Vector3(0.3, 0.2, 0.1),
+          sheenRoughness: 0.45,
+          wind: const OrblitWind(bearing: 90, speed: 6, strength: 0.75),
+          emissive: Vector3(0.5, 0.25, 0.1),
+          emissiveIntensity: 3,
+          ambientOcclusion: 0.8,
+          normalScale: 1.5,
+          tiling: Vector2(2, 3),
+          offset: Vector2(0.25, 0.5),
+          maskThreshold: 0.55,
+          depthWrite: false,
+          depthBias: 0.01,
+          wrap: OrblitWrap.mirror,
+          filter: OrblitFilter.sharp,
+          baseColourMap: const OrblitTexture('/art/a.png'),
+          normalMap: const OrblitTexture('/art/n.png', srgb: false),
+          metallicRoughnessMap: const OrblitTexture('/art/n.png', srgb: false),
+          occlusionMap: const OrblitTexture('/art/a.png', srgb: false),
+          emissiveMap: const OrblitTexture('/art/e.png'),
+        ),
+        OrblitMaterial(
+          key: 21,
+          shading: OrblitShading.video,
+          video: 71,
+          screenMapped: true,
+          litScreen: true,
+          blendMode: OrblitBlendMode.masked,
+          blendAmount: 0.6,
+          blendSharpness: 4,
+          blendTiling: Vector2(3, 3),
+          blendOffset: Vector2(0.1, 0.2),
+          blendBaseColourMap: const OrblitTexture('/art/b.png'),
+          blendMaskMap: const OrblitTexture('/art/m.png', srgb: false),
+          baseColourMap: const OrblitTexture('/art/a.png'),
+        ),
+        OrblitMaterial(
+          key: 22,
+          shading: OrblitShading.shadowCatcher,
+          video: 999,
+          wind: const OrblitWind(bearing: 0, speed: 0, strength: 2),
+        ),
+        const OrblitMaterial(key: 20, roughness: 0.7),
+      ],
+    ),
+    at: null,
+  ),
+  'surfaces': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: [_object(1, material: 8), _object(2, material: 9)],
+      materials: [
+        const OrblitMaterial(key: 7),
+        OrblitMaterial(
+          key: 8,
+          surface: OrblitSurface(
+            package: '/pkg/water.matc',
+            values: {
+              'speed': [2.5],
+              'tint': [1, 0.5, 0.25, 1],
+            },
+            textures: {'noise': const OrblitTexture('/art/noise.png')},
+          ),
+        ),
+        OrblitMaterial(
+          key: 9,
+          surface: OrblitSurface(
+            package: '/pkg/water.matc',
+            values: {
+              'speed': [4],
+            },
+            textures: {'noise': const OrblitTexture('/art/noise.png')},
+          ),
+        ),
+      ],
+    ),
+    at: null,
+  ),
+  'decals': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      decals: [
+        OrblitDecal(
+          key: 1,
+          position: Vector3(1, 2, 3),
+          size: Vector3(2, 0.5, 4),
+          rotation: Quaternion.axisAngle(Vector3(1, 0, 0), 1.5707963267948966),
+          texture: const OrblitTexture('/art/scorch.png'),
+          colour: Vector3(0.9, 0.8, 0.7),
+          opacity: 0.75,
+          fadeStartAngle: 0.5,
+          fadeEndAngle: 1.2,
+          roughness: 0.3,
+          layers: {0, 2, 9, -1},
+          sortOrder: 3,
+        ),
+        OrblitDecal(
+          key: 2,
+          position: Vector3.zero(),
+          size: Vector3(1, 1, 1),
+          metallic: 0.8,
+        ),
+        OrblitDecal(
+          key: 3,
+          position: Vector3(0, 1, 0),
+          size: Vector3(3, 3, 3),
+          texture: const OrblitTexture('/art/scorch.png', srgb: false),
+          fadeStartAngle: OrblitDecal.noFade,
+          fadeEndAngle: OrblitDecal.noFade,
+        ),
+      ],
+    ),
+    at: null,
+  ),
+  'outline': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: [_object(3), _object(7), _object(9)],
+      outline: const OrblitOutline(
+        keys: {3, 7, 9},
+        primary: 7,
+        colour: Color(0xFF00FF00),
+        primaryColour: Color(0x80FF0000),
+        width: 400,
+        occluded: OrblitOccluded.faint,
+        occludedOpacity: 0.25,
+        dash: -5,
+      ),
+    ),
+    at: null,
+  ),
+  'outline-only-primary': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      outline: const OrblitOutline(primary: 4, width: -2),
+    ),
+    at: null,
+  ),
+  'screen': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      lights: [
+        OrblitLight(
+          key: 1,
+          kind: OrblitLightKind.point,
+          intensity: 100,
+          position: Vector3(1, 1, 1),
+        ),
+        OrblitLight(
+          key: 2,
+          kind: OrblitLightKind.directional,
+          intensity: 1000,
+          colour: Vector3(1, 0.8, 0.6),
+          direction: Vector3(0, -0.2, -1).normalized(),
+        ),
+      ],
+      sky: OrblitSky(clouds: OrblitClouds.stratus()),
+      godRays: const OrblitGodRays(strength: 0.5, samples: 32),
+      distortions: [
+        OrblitDistortion.shockwave(
+          centre: Vector3(1, 2, 3),
+          radius: 4,
+          thickness: 0.5,
+          strength: 0.02,
+          chromatic: 0.3,
+        ),
+        OrblitDistortion.haze(
+          centre: Vector3(-1, 0, 2),
+          halfSize: Vector3(0.5, 1, 0.5),
+          scale: 0.2,
+          speed: 2,
+          seconds: 3,
+        ),
+        OrblitDistortion.lens(strength: -0.1),
+        OrblitDistortion.expanding(
+          centre: Vector3.zero(),
+          age: 1.5,
+          speed: 4,
+          lifetime: 2,
+          strength: 0.04,
+        ),
+        OrblitDistortion.lens(strength: 0),
+      ],
+    ),
+    at: null,
+  ),
+  'screen-tint': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      lights: [
+        OrblitLight(
+          key: 2,
+          kind: OrblitLightKind.directional,
+          intensity: 1000,
+          direction: Vector3(1, 0, 0),
+        ),
+      ],
+      sky: OrblitSky(drawn: false, clouds: OrblitClouds.stratus()),
+      godRays: OrblitGodRays(strength: 1, tint: Vector3(0.2, 0.4, 1)),
     ),
     at: null,
   ),

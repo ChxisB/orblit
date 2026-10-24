@@ -27,7 +27,8 @@ public class SceneFixtureTests
         double[]? morphWeights = null,
         ModelAnimation? animation = null,
         int? variant = null,
-        JointPose[]? joints = null) =>
+        JointPose[]? joints = null,
+        long? material = null) =>
         new()
         {
             Key = key,
@@ -42,6 +43,7 @@ public class SceneFixtureTests
             Animation = animation,
             Variant = variant,
             Joints = joints,
+            Material = material,
         };
 
     private static Matrix4 Moved()
@@ -208,6 +210,218 @@ public class SceneFixtureTests
             {
                 Sky = new Sky { Drawn = false, ShowBody = false, BodyDirection = Vector3.Zero(), FlashDirection = Vector3.Zero() },
                 Fog = new Fog(),
+            },
+            null),
+        ["materials"] = (
+            Scene(
+                Object(1, material: 20),
+                Object(2, material: 21),
+                Object(3, material: 999),
+                Object(4),
+                Object(5, material: 22)) with
+            {
+                Videos =
+                [
+                    new Video { Key = 70, Path = "/v/a.mp4" },
+                    new Video { Key = 71, Path = "/v/b.mp4", Playing = false, Loop = false },
+                ],
+                Materials =
+                [
+                    new RenderMaterial
+                    {
+                        Key = 20,
+                        Shading = MaterialShading.Unlit,
+                        Blend = MaterialBlend.Masked,
+                        Culling = MaterialCulling.None,
+                        DoubleSided = true,
+                        BaseColour = new Vector4(0.2, 0.4, 0.6, 0.5),
+                        Metallic = 0.9,
+                        Roughness = 0.2,
+                        Reflectance = 0.7,
+                        ClearCoat = 0.6,
+                        ClearCoatRoughness = 0.05,
+                        Anisotropy = -0.4,
+                        SheenColour = new Vector3(0.3, 0.2, 0.1),
+                        SheenRoughness = 0.45,
+                        Wind = new Wind { Bearing = 90, Speed = 6, Strength = 0.75 },
+                        Emissive = new Vector3(0.5, 0.25, 0.1),
+                        EmissiveIntensity = 3,
+                        AmbientOcclusion = 0.8,
+                        NormalScale = 1.5,
+                        Tiling = new Vector2(2, 3),
+                        Offset = new Vector2(0.25, 0.5),
+                        MaskThreshold = 0.55,
+                        DepthWrite = false,
+                        DepthBias = 0.01,
+                        Wrap = MaterialWrap.Mirror,
+                        Filter = MaterialFilter.Sharp,
+                        BaseColourMap = new Texture("/art/a.png"),
+                        NormalMap = new Texture("/art/n.png", Srgb: false),
+                        MetallicRoughnessMap = new Texture("/art/n.png", Srgb: false),
+                        OcclusionMap = new Texture("/art/a.png", Srgb: false),
+                        EmissiveMap = new Texture("/art/e.png"),
+                    },
+                    new RenderMaterial
+                    {
+                        Key = 21,
+                        Shading = MaterialShading.Video,
+                        Video = 71,
+                        ScreenMapped = true,
+                        LitScreen = true,
+                        BlendMode = MaterialBlendMode.Masked,
+                        BlendAmount = 0.6,
+                        BlendSharpness = 4,
+                        BlendTiling = new Vector2(3, 3),
+                        BlendOffset = new Vector2(0.1, 0.2),
+                        BlendBaseColourMap = new Texture("/art/b.png"),
+                        BlendMaskMap = new Texture("/art/m.png", Srgb: false),
+                        BaseColourMap = new Texture("/art/a.png"),
+                    },
+                    new RenderMaterial
+                    {
+                        Key = 22,
+                        Shading = MaterialShading.ShadowCatcher,
+                        Video = 999,
+                        Wind = new Wind { Bearing = 0, Speed = 0, Strength = 2 },
+                    },
+                    new RenderMaterial { Key = 20, Roughness = 0.7 },
+                ],
+            },
+            null),
+        ["surfaces"] = (
+            Scene(Object(1, material: 8), Object(2, material: 9)) with
+            {
+                Materials =
+                [
+                    new RenderMaterial { Key = 7 },
+                    new RenderMaterial
+                    {
+                        Key = 8,
+                        Surface = new CustomSurface(
+                            "/pkg/water.matc",
+                            new Dictionary<string, IReadOnlyList<double>>
+                            {
+                                ["speed"] = new[] { 2.5 },
+                                ["tint"] = new[] { 1, 0.5, 0.25, 1 },
+                            },
+                            new Dictionary<string, Texture> { ["noise"] = new("/art/noise.png") }),
+                    },
+                    new RenderMaterial
+                    {
+                        Key = 9,
+                        Surface = new CustomSurface(
+                            "/pkg/water.matc",
+                            new Dictionary<string, IReadOnlyList<double>> { ["speed"] = new[] { 4.0 } },
+                            new Dictionary<string, Texture> { ["noise"] = new("/art/noise.png") }),
+                    },
+                ],
+            },
+            null),
+        ["decals"] = (
+            Scene() with
+            {
+                Decals =
+                [
+                    new Decal
+                    {
+                        Key = 1,
+                        Position = new Vector3(1, 2, 3),
+                        Size = new Vector3(2, 0.5, 4),
+                        Rotation = Quaternion.AxisAngle(new Vector3(1, 0, 0), Math.PI / 2),
+                        Texture = new Texture("/art/scorch.png"),
+                        Colour = new Vector3(0.9, 0.8, 0.7),
+                        Opacity = 0.75,
+                        FadeStartAngle = 0.5,
+                        FadeEndAngle = 1.2,
+                        Roughness = 0.3,
+                        Layers = new HashSet<int> { 0, 2, 9, -1 },
+                        SortOrder = 3,
+                    },
+                    new Decal { Key = 2, Position = Vector3.Zero(), Size = new Vector3(1, 1, 1), Metallic = 0.8 },
+                    new Decal
+                    {
+                        Key = 3,
+                        Position = new Vector3(0, 1, 0),
+                        Size = new Vector3(3, 3, 3),
+                        Texture = new Texture("/art/scorch.png", Srgb: false),
+                        FadeStartAngle = Decal.NoFade,
+                        FadeEndAngle = Decal.NoFade,
+                    },
+                ],
+            },
+            null),
+        ["outline"] = (
+            Scene(Object(3), Object(7), Object(9)) with
+            {
+                Outline = new Outline
+                {
+                    Keys = [3, 7, 9],
+                    Primary = 7,
+                    Colour = DisplayColour.FromArgb(0xFF00FF00),
+                    PrimaryColour = DisplayColour.FromArgb(0x80FF0000),
+                    Width = 400,
+                    Occluded = OutlineOccluded.Faint,
+                    OccludedOpacity = 0.25,
+                    Dash = -5,
+                },
+            },
+            null),
+        ["outline-only-primary"] = (
+            Scene() with { Outline = new Outline { Primary = 4, Width = -2 } },
+            null),
+        ["screen"] = (
+            Scene() with
+            {
+                Lights =
+                [
+                    new RenderLight
+                    {
+                        Key = 1,
+                        Kind = RenderLightKind.Point,
+                        Intensity = 100,
+                        Position = new Vector3(1, 1, 1),
+                    },
+                    new RenderLight
+                    {
+                        Key = 2,
+                        Kind = RenderLightKind.Directional,
+                        Intensity = 1000,
+                        Colour = new Vector3(1, 0.8, 0.6),
+                        Direction = new Vector3(0, -0.2, -1).Normalized(),
+                    },
+                ],
+                Sky = new Sky { Clouds = Clouds.Stratus },
+                GodRays = new GodRays { Strength = 0.5, Samples = 32 },
+                Distortions =
+                [
+                    Distortion.Shockwave(new Vector3(1, 2, 3), 4, thickness: 0.5, strength: 0.02, chromatic: 0.3),
+                    Distortion.Haze(
+                        new Vector3(-1, 0, 2),
+                        new Vector3(0.5, 1, 0.5),
+                        scale: 0.2,
+                        speed: 2,
+                        seconds: 3),
+                    Distortion.Lens(-0.1),
+                    Distortion.Expanding(Vector3.Zero(), 1.5, speed: 4, lifetime: 2, strength: 0.04),
+                    Distortion.Lens(0),
+                ],
+            },
+            null),
+        ["screen-tint"] = (
+            Scene() with
+            {
+                Lights =
+                [
+                    new RenderLight
+                    {
+                        Key = 2,
+                        Kind = RenderLightKind.Directional,
+                        Intensity = 1000,
+                        Direction = new Vector3(1, 0, 0),
+                    },
+                ],
+                Sky = new Sky { Drawn = false, Clouds = Clouds.Stratus },
+                GodRays = new GodRays { Strength = 1, Tint = new Vector3(0.2, 0.4, 1) },
             },
             null),
         ["camera"] = (

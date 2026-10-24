@@ -27,6 +27,18 @@ internal static class SceneBuilders
                 }),
             ]);
 
+    /// <summary>A float32 cannot hold most of the doubles written into it, so packed numbers compare within a small distance.</summary>
+    internal static void Near(double expected, float actual) => Assert.Equal(expected, actual, 1e-6);
+
+    internal static void NearAll(float[] actual, params double[] expected)
+    {
+        Assert.Equal(expected.Length, actual.Length);
+        for (var i = 0; i < expected.Length; i++)
+        {
+            Near(expected[i], actual[i]);
+        }
+    }
+
     internal static T Read<T>(IReadOnlyDictionary<string, object> message, string key)
         where T : class => (T)message[key];
 

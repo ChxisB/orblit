@@ -15,5 +15,12 @@ own order. Objects carry a layer, morph weights, a clip to play and joint
 poses. `AssetInfo` reads a model description, `Bounds` and `Bvh` answer
 box, frustum and ray queries over a scene, and `Bvh.Refit` follows what
 moved. A fixture from an independent run of the original packers checks the
-arrays byte for byte. Materials, the render graph, volumes, splats and the
-rest follow.
+arrays byte for byte.
+
+Lights and materials follow. `RenderMaterial` carries shading, blend, maps,
+wind, clear coat, anisotropy, sheen, a screen that plays a `Video`, a second
+blended surface and a `CustomSurface` shader. A scene also holds `Decals`, an
+`Outline` of chosen objects, `GodRays` and `Distortion`. The same picture on
+several materials is sent once. `with` on a material keeps every field. The
+original dropped the screen and blend fields when it copied. The render
+graph, volumes, splats and the rest follow.

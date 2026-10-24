@@ -25,6 +25,9 @@ public sealed record RenderObject
 
     public bool Visible { get; init; } = true;
 
+    /// <summary>The key of the <see cref="RenderMaterial"/> this object wears, or null for the default. A key the scene lacks is drawn as the default.</summary>
+    public long? Material { get; init; }
+
     /// <summary>A group of seven, nought to <see cref="RenderScene.MaxLayer"/>. Out of range is clamped.</summary>
     public int Layer { get; init; }
 
