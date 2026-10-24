@@ -8,4 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
   </ItemGroup>
+  <!-- The C header is the contract the declarations are checked against. -->
+  <ItemGroup>
+    <Content Include="..\..\packages\orblit_filament\darwin\orblit_filament\Sources\orblit_filament_native\include\orblit_renderer.h" Link="orblit_renderer.h" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

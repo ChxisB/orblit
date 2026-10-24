@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Orblit.Interop;
 
 namespace Orblit.Filament.Tests;
@@ -20,4 +21,17 @@ public static class RendererLibrary
 
     // A feed is a CoreVideo pixel buffer, which only Apple has.
     public static bool ApplePresent { get; } = OperatingSystem.IsMacOS() && Present;
+}
+
+/// <summary>A test that needs the renderer library, skipped where it is not built.</summary>
+public sealed class RendererFactAttribute : FactAttribute
+{
+    public RendererFactAttribute([CallerFilePath] string? sourceFilePath = null, [CallerLineNumber] int sourceLineNumber = -1)
+        : base(sourceFilePath, sourceLineNumber)
+    {
+        if (!RendererLibrary.Present)
+        {
+            Skip = RendererLibrary.SkipReason;
+        }
+    }
 }
