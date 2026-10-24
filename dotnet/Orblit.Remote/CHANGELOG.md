@@ -43,3 +43,13 @@
   refused token says so and never repeats the token. A text frame that is not
   valid UTF-8 is read with replacement characters, where Dart closes the
   connection.
+- `ToolServer` serves the verbs as seven named tools over the tool protocol,
+  one message in and one answer out, with batches. `set` is neither listed
+  nor callable unless writes are allowed. It reports the package version
+  instead of a copy of it that a test must keep equal.
+- `RemoteCli` and the `orblit-remote` tool in `Orblit.Remote.Tool` carry the
+  tools over stdin and stdout. The address must name 127.0.0.1 or localhost
+  with a port, because the token goes to whatever host is named. Exit 64 is
+  a usage fault and 69 is a game that cannot be reached or has closed.
+- `RemoteCli.OpenInput` reads stdin as UTF-8 and nothing else. A reader that
+  looks for a byte order mark took a stray `0xff 0xfe` for UTF-16.

@@ -171,6 +171,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Remote", "Orblit.Rem
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Remote.Tests", "Orblit.Remote.Tests\Orblit.Remote.Tests.csproj", "{C31014CD-6CC5-46D8-8A23-F5D9FABB823D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Remote.Tool", "Orblit.Remote.Tool\Orblit.Remote.Tool.csproj", "{292756F5-3D79-42C7-BAA5-A0272AB016F7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1189,6 +1191,18 @@ Global
 		{C31014CD-6CC5-46D8-8A23-F5D9FABB823D}.Release|x64.Build.0 = Release|Any CPU
 		{C31014CD-6CC5-46D8-8A23-F5D9FABB823D}.Release|x86.ActiveCfg = Release|Any CPU
 		{C31014CD-6CC5-46D8-8A23-F5D9FABB823D}.Release|x86.Build.0 = Release|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Debug|x64.Build.0 = Debug|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Debug|x86.Build.0 = Debug|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Release|x64.ActiveCfg = Release|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Release|x64.Build.0 = Release|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Release|x86.ActiveCfg = Release|Any CPU
+		{292756F5-3D79-42C7-BAA5-A0272AB016F7}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

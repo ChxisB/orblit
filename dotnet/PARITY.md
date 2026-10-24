@@ -86,7 +86,8 @@ is done when the two Run counts match.
 | `orblit_remote` part R1 | 20 | 20 | 20 | 21 | `diff.json`: 404 cases, 126 with no difference | the diff fixture check (1 run) | done. The error type, `LogTail`, `TimeGate`, `SnapshotStore` and `JsonDiff`. The rest of the package is parts R2 to R6 |
 | `orblit_remote` part R2 | 17 | 17 | 17 | 17 | none, because the tests build their own world | none | done. `IWorldInspector` and `CoreWorldInspector`. Entity handles are signed 64 bit on the wire, as in Dart |
 | `orblit_remote` part R3 | 48 | 48 | 48 | 49 | none, because the tests drive the verbs with a fake world and fake host parts | a log tail count past 32 bits (1 run) | done. `RemoteHost`, `RemoteVerbs` and the render verbs, as one `HandleAsync` call. A callback that blocks is not covered by the timeout, as in Dart |
-| `orblit_remote` part R4 | 26 | 26 | 26 | 42 | none, because the tests drive a real socket on loopback | the pump thread, the head timeout, a binary frame and the upgrade rules (16 runs) | done. `RemoteServer`, `RemoteClient` and `GameLoopContext`. The 11 bridge tests move to part R5 with the command line tool |
+| `orblit_remote` part R4 | 26 | 26 | 26 | 42 | none, because the tests drive a real socket on loopback | the pump thread, the head timeout, a binary frame and the upgrade rules (16 runs) | done. `RemoteServer`, `RemoteClient` and `GameLoopContext` |
+| `orblit_remote` part R5 | 45 | 45 | 45 | 52 | none, because the tests use a fake game and a real one on loopback | an address with a port and then userinfo (1 run) | done. `ToolServer`, `RemoteCli` and the `orblit-remote` tool. The 11 bridge tests run in this process, through a real pipe for stdin |
 
 ## The rule for doubles
 
