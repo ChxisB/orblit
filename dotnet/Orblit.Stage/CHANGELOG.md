@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.0
+
+- `SkinRig` and `SkinBinding`, a port of `skin_binding` from `orblit_stage`.
+  `SkinRig.ArmatureOf` makes an armature from a model's skin. `SkinBinding`
+  turns a pose, or a clip frame, into the joint transforms the renderer takes.
+- `SkinRig.BoneNamesOf` and `SkinRig.ArmatureOf` are the Dart top level
+  functions `boneNamesOfSkin` and `armatureOfSkin`.
+- A pose that was never evaluated throws `ArmatureException`, and its message
+  names `Pose.Evaluate`. A pose of another armature throws
+  `ArgumentException`.
+- The order of joints is found by walking up to the first joint already
+  placed, not by recursion. A skin with a very long chain of joints does not
+  overflow the stack. The order is the same as Dart's.
+
 ## 0.1.0
 
 - A port of the first part of `orblit_stage` 0.18.0: `DebugLines`,
