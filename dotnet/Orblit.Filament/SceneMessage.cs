@@ -232,6 +232,106 @@ internal static class SceneMessage
         into["skyEnabled"] = sky.Drawn;
     }
 
+    /// <summary>
+    /// The populations. The transforms and colours are left out for any population whose revision
+    /// the renderer already has: six megabytes of transforms is not something to send sixty times a
+    /// second in order to say that nothing moved. The ones that are sent are packed end to end in
+    /// the order the changed keys appear. A scene with no populations says nothing at all.
+    /// </summary>
+    internal static void Populations(
+        IReadOnlyList<Population> populations,
+        IReadOnlyDictionary<int, int>? held,
+        IDictionary<string, object> into)
+    {
+        if (populations.Count == 0)
+        {
+            return;
+        }
+
+        var columns = new PopulationColumns(populations.Count);
+        var changed = new List<Population>();
+        for (var i = 0; i < populations.Count; i++)
+        {
+            columns.Set(i, populations[i]);
+            if (held is null || !held.TryGetValue(populations[i].Key, out var revision) || revision != populations[i].Revision)
+            {
+                changed.Add(populations[i]);
+            }
+        }
+
+        into["populationKeys"] = columns.Keys;
+        into["populationCounts"] = columns.Counts;
+        into["populationMeshes"] = columns.Meshes;
+        into["populationFlags"] = columns.Flags;
+        into["populationRevisions"] = columns.Revisions;
+        into["populationRanges"] = columns.Ranges;
+        into["populationBounds"] = columns.Bounds;
+        into["populationPaths"] = columns.Paths.Items.ToArray();
+        into["populationChanged"] = changed.Select(one => one.Key).ToArray();
+        into["populationTransforms"] = Joined(changed, one => one.Transforms);
+        into["populationColours"] = Joined(changed, one => one.Colours);
+    }
+
+    /// <summary>
+    /// The terrains: three arrays read in step, laid out as the renderer's terrain call says. A
+    /// region's maps and a terrain's pictures are left out when <paramref name="held"/> says the
+    /// renderer already holds them. A region 256 texels across is three quarters of a megabyte, and
+    /// a brush stroke changes one or two. A scene with no terrain says nothing at all.
+    /// </summary>
+    internal static void Terrain(
+        IReadOnlyList<RenderTerrain> terrain,
+        IReadOnlyDictionary<int, TerrainHeld>? held,
+        IDictionary<string, object> into)
+    {
+        if (terrain.Count == 0)
+        {
+            return;
+        }
+
+        // The renderer refuses a key named twice, and with it the whole scene.
+        if (terrain.Select(ground => ground.Key).Distinct().Count() != terrain.Count)
+        {
+            throw new ArgumentException("Terrain keys are unique.", nameof(terrain));
+        }
+
+        var sends = terrain.Select(ground => TerrainSend.Of(ground, held?.GetValueOrDefault(ground.Key))).ToList();
+        var ints = new int[1 + sends.Sum(send => send.Ground.IntCount)];
+        var floats = new float[sends.Sum(send => send.Ground.FloatCount)];
+        var data = new byte[sends.Sum(send => send.DataLength)];
+        ints[0] = sends.Count;
+        var intAt = 1;
+        var floatAt = 0;
+        var dataAt = 0;
+        foreach (var send in sends)
+        {
+            send.Ground.WriteInts(ints, intAt, send.Pictures, send.Arrived);
+            send.Ground.WriteFloats(floats, floatAt);
+            send.WriteData(data, dataAt);
+            intAt += send.Ground.IntCount;
+            floatAt += send.Ground.FloatCount;
+            dataAt += send.DataLength;
+        }
+
+        into["terrainInts"] = ints;
+        into["terrainFloats"] = floats;
+        into["terrainData"] = data;
+    }
+
+    /// <summary>The floats of every population in <paramref name="changed"/>, end to end.</summary>
+    private static float[] Joined(List<Population> changed, Func<Population, float[]> pick)
+    {
+        var joined = new float[changed.Sum(one => pick(one).Length)];
+        var at = 0;
+        foreach (var one in changed)
+        {
+            var part = pick(one);
+            part.CopyTo(joined, at);
+            at += part.Length;
+        }
+
+        return joined;
+    }
+
     /// <summary>Where each key sits in <paramref name="keys"/>. A key given twice points at its last place.</summary>
     internal static Dictionary<TKey, int> PositionOf<TKey>(IEnumerable<TKey> keys)
         where TKey : notnull
@@ -339,6 +439,78 @@ internal static class SceneMessage
             {
                 MorphCounts[i] = weights.Count;
                 _weights.AddRange(weights.Select(weight => (float)weight));
+            }
+        }
+    }
+
+    /// <summary>
+    /// The population columns. Mesh paths are sent once and pointed at by index, and a population
+    /// with no mesh points at nothing.
+    /// </summary>
+    private sealed class PopulationColumns(int count)
+    {
+        internal int[] Keys { get; } = new int[count];
+
+        internal int[] Counts { get; } = new int[count];
+
+        internal int[] Meshes { get; } = new int[count];
+
+        internal int[] Flags { get; } = new int[count];
+
+        internal int[] Revisions { get; } = new int[count];
+
+        internal float[] Ranges { get; } = new float[count];
+
+        internal float[] Bounds { get; } = new float[count * Population.BoundsStride];
+
+        internal IndexedSet<string> Paths { get; } = new();
+
+        internal void Set(int i, Population one)
+        {
+            Keys[i] = one.Key;
+            Counts[i] = one.Count;
+            Meshes[i] = one.Mesh is null ? -1 : Paths.IndexOf(one.Mesh);
+            Flags[i] = one.Flags;
+            Revisions[i] = one.Revision;
+            Ranges[i] = (float)one.Range;
+
+            var at = i * Population.BoundsStride;
+            Bounds[at] = (float)one.Bounds.Minimum.X;
+            Bounds[at + 1] = (float)one.Bounds.Minimum.Y;
+            Bounds[at + 2] = (float)one.Bounds.Minimum.Z;
+            Bounds[at + 3] = (float)one.Bounds.Maximum.X;
+            Bounds[at + 4] = (float)one.Bounds.Maximum.Y;
+            Bounds[at + 5] = (float)one.Bounds.Maximum.Z;
+        }
+    }
+
+    /// <summary>One terrain, and which of its maps the renderer is about to be sent.</summary>
+    private sealed record TerrainSend(RenderTerrain Ground, bool Pictures, IReadOnlyList<bool> Arrived)
+    {
+        // shortcut: lengths are int, so a message over 2 GiB cannot be built, when a world needs more.
+        internal int DataLength => (Pictures ? Ground.PicturesLength : 0) + (Arrived.Count(one => one) * Ground.RegionLength);
+
+        internal static TerrainSend Of(RenderTerrain ground, TerrainHeld? held) =>
+            new(
+                ground,
+                held is null || !held.HoldsPictures(ground),
+                [.. ground.Regions.Select(region => held is null || !held.HoldsRegion(ground, region))]);
+
+        internal void WriteData(byte[] into, int at)
+        {
+            if (Pictures)
+            {
+                Ground.WritePictures(into, at);
+                at += Ground.PicturesLength;
+            }
+
+            for (var r = 0; r < Ground.Regions.Count; r++)
+            {
+                if (Arrived[r])
+                {
+                    Ground.Regions[r].WriteTo(into, at);
+                    at += Ground.RegionLength;
+                }
             }
         }
     }

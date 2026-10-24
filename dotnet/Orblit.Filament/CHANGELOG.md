@@ -33,4 +33,19 @@ schedules scene, reflection and effect passes over named targets and reports
 builds its own passes and `FrameCapture` names the slowest. The screen
 effects are added to the graph only when the scene has something to draw
 them. Closing a renderer that had drawn an irradiance field aborted in the
-native code. That is fixed there. Volumes, splats and the rest follow.
+native code. That is fixed there.
+
+The world follows. A `Population` is thousands of copies of one mesh. The
+renderer is sent its transforms only when its revision moves. `Held` is what
+the renderer already has, and `Renderer` fills it after every `Apply`, so
+the next message leaves out what the renderer keeps. A call with no
+population clears every one the renderer held. `LevelOfDetail` picks a mesh
+by distance, with a margin that stops a thing flickering at a boundary, and
+`LevelOfDetailState` remembers the step for each thing. `RenderTerrain`
+packs a landscape as regions of heights, cover and colour with sets of
+pictures, and a held terrain sends its settings and only the regions that
+moved. A terrain key used twice throws. `EnvironmentVolume` is a box or a
+sphere with a weight, a priority and a blend distance. `RenderScene.Resolved`
+folds the volumes the camera is in into the fog, sky, exposure, environment
+and image work before the scene is sent, so the renderer is told one look. A
+scene with no volumes pays nothing. Splats and the rest follow.

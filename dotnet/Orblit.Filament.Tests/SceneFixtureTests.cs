@@ -659,7 +659,129 @@ public class SceneFixtureTests
         ["graph-god-rays-no-sun"] = (
             Scene() with { GodRays = new GodRays { Strength = 0.5 } },
             null),
+        ["populations"] = (
+            Scene() with
+            {
+                Populations =
+                [
+                    new Population(4, Ramp(3 * 16, 0.5), Ramp(3 * 3, 0.1), new Bounds(new Vector3(-10, 0, -10), new Vector3(10, 6, 10)))
+                    {
+                        Mesh = "/m/tree.glb",
+                        Range = 120,
+                        Fade = Fade.Shrink,
+                        Revision = 7,
+                        CastShadows = true,
+                        Layer = 2,
+                    },
+                    new Population(2, Ramp(2 * 16, 3), Ramp(2 * 3, 0.5), new Bounds(Vector3.Zero(), Vector3.All(1)))
+                    {
+                        Mesh = "/m/rock.glb",
+                        Fade = Fade.None,
+                        Revision = 1,
+                        ReceiveShadows = false,
+                    },
+                    new Population(9, Ramp(16, 1), Ramp(3, 0.9), new Bounds(new Vector3(1, 2, 3), new Vector3(4, 5, 6)))
+                    {
+                        Mesh = "/m/tree.glb",
+                    },
+                ],
+            },
+            null),
+        ["terrain"] = (
+            Scene() with
+            {
+                Terrain =
+                [
+                    new RenderTerrain(
+                        3,
+                        [Region(0, 0), Region(-1, 2, revision: 4)],
+                        [new TerrainSet { Albedo = Picture(2, 10), Normal = Picture(2, 20) }, new TerrainSet { TileSize = 8, Triplanar = true }],
+                        new TerrainOptions
+                        {
+                            RegionSize = 16,
+                            Spacing = 0.5,
+                            MeshSize = 32,
+                            Levels = 4,
+                            AutoSteep = 2,
+                            AutoFlat = 5,
+                            PicturesRevision = 3,
+                            CastShadows = false,
+                        }),
+                    new RenderTerrain(5),
+                ],
+            },
+            null),
+        ["volumes"] = (
+            Scene() with
+            {
+                Camera = SceneBuilders.CameraAt(6, 0, 0),
+                Sky = new Sky { Colour = new Vector3(0.6, 0.7, 0.9), Ambient = 20000 },
+                Fog = new Fog { Density = 0.002, Colour = new Vector3(0.7, 0.8, 0.9) },
+                Environment = new RenderEnvironment { Rotation = 350 * Math.PI / 180 },
+                Volumes =
+                [
+                    Hall(),
+                    EnvironmentVolume.Sphere(
+                        2,
+                        new Vector3(3, 0, 0),
+                        2,
+                        new EnvironmentOverrides
+                        {
+                            FogColour = new Vector3(0.1, 0.2, 0.6),
+                            Ambient = 500,
+                            EnvironmentRotation = 10 * Math.PI / 180,
+                            BloomStrength = 0.4,
+                            Saturation = 0.5,
+                            Temperature = 0.2,
+                            Midtones = new Vector3(1, 0.9, 0.8),
+                        }) with
+                    {
+                        BlendDistance = 3,
+                        Priority = 1,
+                    },
+                ],
+            },
+            null),
+        ["volumes-outside"] = (
+            Scene() with
+            {
+                Camera = SceneBuilders.CameraAt(0, 0, 20),
+                Fog = new Fog { Density = 0.002 },
+                Volumes = [Hall()],
+            },
+            null),
     };
+
+    private static float[] Ramp(int count, double start) => [.. Enumerable.Range(0, count).Select(i => (float)(start + (i * 0.25)))];
+
+    private static TerrainRegion Region(int x, int z, int revision = 1) =>
+        new(
+            x,
+            z,
+            Ramp(256, x + (z * 0.5)),
+            [.. Enumerable.Range(0, 256).Select(i => 0xF8000000u + (uint)i)],
+            [.. Enumerable.Range(0, 1024).Select(i => (byte)(i % 251))])
+        {
+            Revision = revision,
+        };
+
+    private static byte[] Picture(int size, byte value) => [.. Enumerable.Repeat(value, size * size * 4)];
+
+    private static EnvironmentVolume Hall() =>
+        EnvironmentVolume.Box(
+            1,
+            Vector3.Zero(),
+            Vector3.All(5),
+            new EnvironmentOverrides
+            {
+                FogDensity = 0.1,
+                FogColour = new Vector3(0.4, 0.3, 0.2),
+                Ambient = 2000,
+                ExposureCompensation = -1,
+            }) with
+        {
+            BlendDistance = 2,
+        };
 
     /// <summary>The bytes a packed array holds, as the fixture writes them in base 64.</summary>
     private static string Encoded(object value) => value switch
@@ -667,6 +789,7 @@ public class SceneFixtureTests
         float[] f => Convert.ToBase64String(ToBytes(f)),
         int[] i => Convert.ToBase64String(ToBytes(i)),
         long[] l => Convert.ToBase64String(ToBytes(l)),
+        byte[] b => Convert.ToBase64String(b),
         _ => throw new InvalidDataException($"unexpected {value.GetType().Name}"),
     };
 
@@ -692,6 +815,18 @@ public class SceneFixtureTests
         if (expected.TryGetProperty("i64", out var i64))
         {
             return Same(i64.GetString(), Encoded(actual));
+        }
+
+        if (expected.TryGetProperty("u8", out var u8))
+        {
+            return Same(u8.GetString(), Encoded(actual));
+        }
+
+        if (expected.TryGetProperty("ints", out var ints))
+        {
+            return Same(
+                string.Join(',', ints.EnumerateArray().Select(n => n.GetInt64())),
+                string.Join(',', ((int[])actual).Select(n => (long)n)));
         }
 
         if (expected.TryGetProperty("strings", out var strings))

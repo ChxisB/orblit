@@ -35,6 +35,14 @@ public sealed class LayersTests
     }
 
     [Fact]
+    public void APopulationCarriesALayerTheSameWay()
+    {
+        var forest = new Population(1, new float[16], new float[3], new Bounds(Vector3.Zero(), Vector3.All(1))) { Layer = 2 };
+        Assert.Equal(2, forest.Flags >> 8);
+        Assert.Equal(2, forest.Flags & 0xFF);
+    }
+
+    [Fact]
     public void ASceneThatSaysNothingAboutTheGraphDrawsOnePassIntoTheFrame()
     {
         var scene = SceneBuilders.Of([SceneBuilders.Plain(1)], SceneBuilders.CameraAt(0, 0, 5));

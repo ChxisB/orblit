@@ -1,3 +1,5 @@
+using Orblit.VectorMath;
+
 namespace Orblit.Filament;
 
 /// <summary>
@@ -25,6 +27,21 @@ public sealed record RenderScene
     public IReadOnlyList<Video> Videos { get; init; } = [];
 
     public IReadOnlyList<Decal> Decals { get; init; } = [];
+
+    /// <summary>
+    /// Thousands of copies of one mesh, drawn as a few draws. The renderer is sent a population's
+    /// transforms only when its revision moves.
+    /// </summary>
+    public IReadOnlyList<Population> Populations { get; init; } = [];
+
+    /// <summary>The landscapes. Each is sent in full the first time, and after that only what changed.</summary>
+    public IReadOnlyList<RenderTerrain> Terrain { get; init; } = [];
+
+    /// <summary>
+    /// Places that look different from the rest of the world. Resolved against the camera before
+    /// the scene is sent, so the renderer is told a fog and a sky and an exposure as it always was.
+    /// </summary>
+    public IReadOnlyList<EnvironmentVolume> Volumes { get; init; } = [];
 
     /// <summary>Which objects are drawn with a line round them. Nothing by default, and free while nothing is.</summary>
     public Outline Outline { get; init; } = Outline.None;
@@ -94,14 +111,30 @@ public sealed record RenderScene
     internal RenderLight? Sun => Lights.FirstOrDefault(light => light.Kind == RenderLightKind.Directional);
 
     /// <summary>
+    /// This scene with its volumes folded into the fog, sky, exposure, environment and image work,
+    /// as seen from <paramref name="at"/>, which is the camera where it is not given. The same
+    /// scene when there are no volumes, so a host that has none pays nothing.
+    /// </summary>
+    public RenderScene Resolved(Vector3? at = null) =>
+        Volumes.Count == 0
+            ? this
+            : EnvironmentSettings.Of(this).Resolve(Volumes, at ?? Camera.Position).ApplyTo(this);
+
+    /// <summary>
     /// The scene packed into the flat arrays the renderer reads, under the names the renderer's
     /// parts agree on. <paramref name="at"/> is when the application reckons this is, in its own
     /// seconds: the renderer draws far more often than it is told anything and works out where the
     /// camera is in between, and the clock the camera was solved on is steadier than the clock a
-    /// message arrives on.
+    /// message arrives on. <paramref name="held"/> is what the renderer already has, which keeps
+    /// the populations and terrain it holds out of the message.
     /// </summary>
-    public OrderedDictionary<string, object> ToMessage(double? at = null)
+    public OrderedDictionary<string, object> ToMessage(double? at = null, Held? held = null)
     {
+        if (Volumes.Count > 0)
+        {
+            return Resolved().ToMessage(at, held);
+        }
+
         var message = new OrderedDictionary<string, object>();
         SceneMessage.Objects(Objects, Materials, message);
         SceneMessage.Materials(Materials, Videos, message);
@@ -117,6 +150,8 @@ public sealed record RenderScene
         message["batching"] = Batching;
         message["depthPrepass"] = DepthPrepass;
         message["at"] = at ?? 0.0;
+        SceneMessage.Populations(Populations, held?.Populations, message);
+        SceneMessage.Terrain(Terrain, held?.Terrain, message);
         if (PoseMessage.Pack(Objects) is { } poses)
         {
             foreach (var (key, value) in poses)

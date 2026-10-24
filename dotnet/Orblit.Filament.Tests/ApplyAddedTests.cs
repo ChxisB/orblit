@@ -106,6 +106,63 @@ public sealed class ApplyAddedTests
     }
 
     [RendererFact]
+    public void APopulationIsAcceptedAndThenClearedWhenTheLastOneGoes()
+    {
+        using var renderer = new Renderer(64, 48);
+        var forest = new Population(1, new float[16 * 3], new float[3 * 3], new Bounds(Vector3.Zero(), Vector3.All(4)))
+        {
+            Range = 30,
+            Fade = Fade.Shrink,
+        };
+
+        renderer.Apply(SceneBuilders.Row() with { Populations = [forest] });
+        renderer.Draw(0);
+        renderer.Apply(SceneBuilders.Row() with { Populations = [forest] }, at: 1.0 / 60);
+        renderer.Draw(1.0 / 60);
+        renderer.Apply(SceneBuilders.Row(), at: 2.0 / 60);
+        renderer.Draw(2.0 / 60);
+
+        Assert.True(renderer.RenderedFrames >= 3);
+    }
+
+    [RendererFact]
+    public void ATerrainIsAcceptedMovedAndTakenAway()
+    {
+        using var renderer = new Renderer(64, 48);
+        var maps = new[] { new TerrainRegion(0, 0, new float[256], new uint[256], new byte[1024]) };
+        var land = new RenderTerrain(3, maps, options: new TerrainOptions { RegionSize = 16, MeshSize = 16, Levels = 2 });
+
+        renderer.Apply(SceneBuilders.Row() with { Terrain = [land] });
+        renderer.Draw(0);
+        var moved = new RenderTerrain(
+            3,
+            [new TerrainRegion(0, 0, new float[256], new uint[256], new byte[1024]) { Revision = 2 }],
+            options: new TerrainOptions { RegionSize = 16, MeshSize = 16, Levels = 2 });
+        renderer.Apply(SceneBuilders.Row() with { Terrain = [moved] }, at: 1.0 / 60);
+        renderer.Draw(1.0 / 60);
+        renderer.Apply(SceneBuilders.Row(), at: 2.0 / 60);
+        renderer.Draw(2.0 / 60);
+
+        Assert.True(renderer.RenderedFrames >= 3);
+    }
+
+    [RendererFact]
+    public void ASceneWithAVolumeIsDrawnAsTheVolumeResolvesIt()
+    {
+        using var renderer = new Renderer(64, 48);
+        var hall = EnvironmentVolume.Box(
+            1,
+            Vector3.Zero(),
+            Vector3.All(10),
+            new EnvironmentOverrides { FogDensity = 0.1, Ambient = 2000, ExposureCompensation = -1 });
+
+        renderer.Apply(SceneBuilders.Row() with { Volumes = [hall], Fog = new Fog() });
+        renderer.Draw(0);
+
+        Assert.True(renderer.RenderedFrames >= 1);
+    }
+
+    [RendererFact]
     public void EveryNamedDetailIsAccepted()
     {
         using var renderer = new Renderer(64, 48);

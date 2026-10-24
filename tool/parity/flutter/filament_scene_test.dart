@@ -4,6 +4,7 @@
 // folder, runs it there and removes the copy.
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Color;
 
@@ -42,6 +43,35 @@ OrblitObject _object(
   variant: variant,
   joints: joints,
   material: material,
+);
+
+Float32List _ramp(int count, double start) =>
+    Float32List.fromList([for (var i = 0; i < count; i++) start + i * 0.25]);
+
+OrblitTerrainRegion _region(int x, int z, {int revision = 1}) =>
+    OrblitTerrainRegion(
+      x: x,
+      z: z,
+      heights: _ramp(256, x + z * 0.5),
+      cover: Uint32List.fromList([for (var i = 0; i < 256; i++) 0xF8000000 + i]),
+      colour: Uint8List.fromList([for (var i = 0; i < 1024; i++) i % 251]),
+      revision: revision,
+    );
+
+Uint8List _picture(int size, int value) =>
+    Uint8List(size * size * 4)..fillRange(0, size * size * 4, value);
+
+OrblitEnvironmentVolume _hall() => OrblitEnvironmentVolume.box(
+  key: 1,
+  centre: Vector3.zero(),
+  halfExtents: Vector3.all(5),
+  blendDistance: 2,
+  overrides: OrblitEnvironmentOverrides(
+    fogDensity: 0.1,
+    fogColour: Vector3(0.4, 0.3, 0.2),
+    ambient: 2000,
+    exposureCompensation: -1,
+  ),
 );
 
 Map<String, ({OrblitScene scene, double? at})> _scenes() => {
@@ -762,6 +792,111 @@ Map<String, ({OrblitScene scene, double? at})> _scenes() => {
       camera: _camera(),
       objects: const [],
       godRays: const OrblitGodRays(strength: 0.5),
+    ),
+    at: null,
+  ),
+  'populations': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      populations: [
+        OrblitPopulation(
+          key: 4,
+          transforms: _ramp(3 * 16, 0.5),
+          colours: _ramp(3 * 3, 0.1),
+          minimum: Vector3(-10, 0, -10),
+          maximum: Vector3(10, 6, 10),
+          mesh: '/m/tree.glb',
+          range: 120,
+          fade: OrblitFade.shrink,
+          revision: 7,
+          castShadows: true,
+          layer: 2,
+        ),
+        OrblitPopulation(
+          key: 2,
+          transforms: _ramp(2 * 16, 3),
+          colours: _ramp(2 * 3, 0.5),
+          minimum: Vector3.zero(),
+          maximum: Vector3.all(1),
+          mesh: '/m/rock.glb',
+          fade: OrblitFade.none,
+          revision: 1,
+          receiveShadows: false,
+        ),
+        OrblitPopulation(
+          key: 9,
+          transforms: _ramp(16, 1),
+          colours: _ramp(3, 0.9),
+          minimum: Vector3(1, 2, 3),
+          maximum: Vector3(4, 5, 6),
+          mesh: '/m/tree.glb',
+        ),
+      ],
+    ),
+    at: null,
+  ),
+  'terrain': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      terrain: [
+        OrblitTerrain(
+          key: 3,
+          regions: [_region(0, 0), _region(-1, 2, revision: 4)],
+          regionSize: 16,
+          spacing: 0.5,
+          meshSize: 32,
+          levels: 4,
+          autoSteep: 2,
+          autoFlat: 5,
+          sets: [
+            OrblitTerrainSet(albedo: _picture(2, 10), normal: _picture(2, 20)),
+            const OrblitTerrainSet(tileSize: 8, triplanar: true),
+          ],
+          picturesRevision: 3,
+          castShadows: false,
+        ),
+        OrblitTerrain(key: 5),
+      ],
+    ),
+    at: null,
+  ),
+  'volumes': (
+    scene: OrblitScene(
+      camera: OrblitCamera(position: Vector3(6, 0, 0), target: Vector3.zero()),
+      objects: const [],
+      sky: OrblitSky(colour: Vector3(0.6, 0.7, 0.9), ambient: 20000),
+      fog: OrblitFog(density: 0.002, colour: Vector3(0.7, 0.8, 0.9)),
+      environment: const OrblitEnvironment(rotation: 350 * math.pi / 180),
+      volumes: [
+        _hall(),
+        OrblitEnvironmentVolume.sphere(
+          key: 2,
+          centre: Vector3(3, 0, 0),
+          radius: 2,
+          blendDistance: 3,
+          priority: 1,
+          overrides: OrblitEnvironmentOverrides(
+            fogColour: Vector3(0.1, 0.2, 0.6),
+            ambient: 500,
+            environmentRotation: 10 * math.pi / 180,
+            bloomStrength: 0.4,
+            saturation: 0.5,
+            temperature: 0.2,
+            midtones: Vector3(1, 0.9, 0.8),
+          ),
+        ),
+      ],
+    ),
+    at: null,
+  ),
+  'volumes-outside': (
+    scene: OrblitScene(
+      camera: OrblitCamera(position: Vector3(0, 0, 20), target: Vector3.zero()),
+      objects: const [],
+      fog: OrblitFog(density: 0.002),
+      volumes: [_hall()],
     ),
     at: null,
   ),

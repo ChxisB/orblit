@@ -9,6 +9,7 @@ namespace Orblit.Filament;
 /// </summary>
 public sealed partial class Renderer : IDisposable
 {
+    private readonly Held _held = new();
     private nint _renderer;
 
     /// <summary>Starts Filament at the given size. Headless unless <paramref name="surface"/> says otherwise.</summary>

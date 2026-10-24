@@ -28,6 +28,11 @@ public sealed class StrideAddedTests
             (NativeMethods.Stride.Precipitation, Precipitation.Stride),
             (NativeMethods.Stride.PoseInts, ModelAnimation.IntStride),
             (NativeMethods.Stride.Pose, ModelAnimation.Stride),
+            (NativeMethods.Stride.PopulationBounds, Population.BoundsStride),
+            (NativeMethods.Stride.TerrainInts, RenderTerrain.HeaderInts),
+            (NativeMethods.Stride.TerrainRegionInts, RenderTerrain.RegionInts),
+            (NativeMethods.Stride.Terrain, RenderTerrain.Stride),
+            (NativeMethods.Stride.TerrainSet, TerrainSet.Stride),
         ];
 
         foreach (var (which, width) in widths)

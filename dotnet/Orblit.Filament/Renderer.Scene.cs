@@ -10,7 +10,10 @@ public sealed partial class Renderer
     /// </summary>
     public void Apply(RenderScene scene, double at = 0)
     {
-        var message = scene.ToMessage(at);
+        // Volumes first: the sky's ambient, the fog's visibility and the exposure below are read
+        // from the scene and not from the message, and a volume moves all three.
+        scene = scene.Resolved();
+        var message = scene.ToMessage(at, _held);
 
         SetEnvironment(message);
         SetRenderGraph(message);
@@ -22,6 +25,8 @@ public sealed partial class Renderer
         ApplyMaterials(message);
         ApplyObjects(message);
         ApplyPoses(message, at);
+        ApplyPopulations(message);
+        ApplyTerrain(message);
         ApplyLights(message);
         ApplyDecals(message);
         ApplyProbes(message);
@@ -29,6 +34,7 @@ public sealed partial class Renderer
         ApplyAir(scene, message);
         SetCamera(scene.Camera, message, at);
         SetOutline(message);
+        _held.Remember(scene);
     }
 
     private void SetEnvironment(OrderedDictionary<string, object> message)
@@ -238,6 +244,59 @@ public sealed partial class Renderer
                 (nuint)jointTransforms.Length,
                 at),
             "apply_poses");
+    }
+
+    /// <summary>
+    /// The populations. A call that names none clears every one the renderer holds, so it is made
+    /// when the scene has lost its last, and skipped when there is nothing to lose.
+    /// </summary>
+    private void ApplyPopulations(OrderedDictionary<string, object> message)
+    {
+        if (!message.ContainsKey("populationKeys") && !_held.HasPopulations)
+        {
+            return;
+        }
+
+        var keys = Packing.Read<int[]>(message, "populationKeys", []);
+        var bounds = Packing.Read<float[]>(message, "populationBounds", []);
+        var paths = Packing.Read<string[]>(message, "populationPaths", []);
+        var changed = Packing.Read<int[]>(message, "populationChanged", []);
+        var transforms = Packing.Read<float[]>(message, "populationTransforms", []);
+        var colours = Packing.Read<float[]>(message, "populationColours", []);
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.ApplyPopulations(
+                Alive,
+                (uint)keys.Length,
+                keys,
+                Packing.Read<int[]>(message, "populationCounts", []),
+                Packing.Read<int[]>(message, "populationMeshes", []),
+                Packing.Read<int[]>(message, "populationFlags", []),
+                Packing.Read<int[]>(message, "populationRevisions", []),
+                Packing.Read<float[]>(message, "populationRanges", []),
+                bounds,
+                (nuint)bounds.Length,
+                paths,
+                (uint)paths.Length,
+                changed,
+                (uint)changed.Length,
+                transforms,
+                (nuint)transforms.Length,
+                colours,
+                (nuint)colours.Length),
+            "apply_populations");
+    }
+
+    /// <summary>The terrain. Always called: arrays with nothing in them take the terrain away.</summary>
+    private void ApplyTerrain(OrderedDictionary<string, object> message)
+    {
+        var ints = Packing.Read<int[]>(message, "terrainInts", []);
+        var floats = Packing.Read<float[]>(message, "terrainFloats", []);
+        var data = Packing.Read<byte[]>(message, "terrainData", []);
+        Check(
+            NativeMethods.ApplyTerrain(Alive, ints, (nuint)ints.Length, floats, (nuint)floats.Length, data, (nuint)data.Length),
+            "apply_terrain");
     }
 
     private void ApplyLights(OrderedDictionary<string, object> message)
