@@ -165,10 +165,10 @@ public class ElementTests
     [Fact]
     public Task ATouchFaceHasASizeWhenTheStyleGivesNone() => Headless.Run(() =>
     {
-        var bare = Assert.IsType<Border>(Built(new UiNode { Type = "stick" }));
+        var bare = Assert.IsType<Border>(Assert.IsType<TouchStick>(Built(new UiNode { Type = "stick" })).Children[0]);
         Assert.Equal((120, 120), (bare.Width, bare.Height));
 
-        var sized = Assert.IsType<Border>(Built(new UiNode { Type = "swipe-pad", Classes = "w-24 h-6" }));
+        var sized = Assert.IsType<Border>(Assert.Single(Assert.IsType<TouchSwipe>(Built(new UiNode { Type = "swipe-pad", Classes = "w-24 h-6" })).Children));
         var face = Assert.IsType<Border>(sized.Child);
         Assert.Equal((96, 24), (face.Width, face.Height));
     });

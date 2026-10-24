@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0
+
+- The `stick`, `touch-button` and `swipe-pad` elements listen for touches.
+  Each claims the first finger that lands on it and follows that finger
+  alone, so a thumb on a stick and another on a jump button do not compete.
+  A mouse drives them too.
+- A stick sends `double[] { x, y }`, each from -1 to 1 and positive up and to
+  the right, only when the value changes. It sends `{ 0, 0 }` when let go. The
+  knob is drawn over the face and follows the thumb.
+- A touch button sends `true` on touch and `false` on lift, and dims its whole
+  face while held. A swipe pad sends `{ dx, dy }` for each move, up positive,
+  and nothing for a touch alone.
+- A release is reported when the finger lifts, when the system takes it and
+  when the control leaves the tree while the finger is down. The Flutter build
+  reports that last one a microtask later.
+- `LabelAtlas` packs many short strings into one picture with shelf packing.
+  `Paint` returns PNG bytes. The picture grows in height and never moves a
+  string. A string wider than the picture is an `ArgumentException`. A full
+  atlas at its limit is an `InvalidOperationException`.
+- `UiPanel` is not here. Where a panel gets its host in Avalonia waits on
+  decision 85.
+
 ## 0.1.0
 
 - A port of the builder and the surface of `orblit_ui` 0.4.0 to Avalonia.

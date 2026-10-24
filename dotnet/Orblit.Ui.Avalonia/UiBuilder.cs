@@ -153,7 +153,7 @@ public sealed class UiBuilder
     private (Control Control, UiStyle Style) BuildStyled(UiNode node, IReadOnlyList<int> path)
     {
         var style = StyleOf(node);
-        var control = Tapped(UiBox.Wrap(Leaf(node, style, path), style), node);
+        var control = Tapped(Touched(UiBox.Wrap(Leaf(node, style, path), style), node, style), node);
 
         // The host's wrapper goes on before anything a parent reads. Growing and placing are read from
         // the outermost control, so one between the two would lose the child its size or its place.
@@ -191,6 +191,20 @@ public sealed class UiBuilder
         tap.Tapped += (_, _) => Raise(handler, null);
         return tap;
     }
+
+    private TouchSend? SenderFor(UiNode node, string eventName) =>
+        node.HandlerFor(eventName) is { } handler ? payload => Raise(handler, payload) : null;
+
+    // The touch areas wrap the finished face, so its padding and background take touches too.
+    private Control Touched(Control face, UiNode node, UiStyle style) => node.Type switch
+    {
+        "stick" => new TouchStick(face, KnobOf(style), SenderFor(node, "onMove")),
+        "touch-button" => new TouchHold(face, SenderFor(node, "onHold")),
+        "swipe-pad" => new TouchSwipe(face, SenderFor(node, "onSwipe")),
+        _ => face,
+    };
+
+    private static IBrush KnobOf(UiStyle style) => style.Colour is { } colour ? UiBox.Brush(colour) : new SolidColorBrush(Color.FromUInt32(0xB3FFFFFF));
 
     private TextBlock Words(UiNode node, UiStyle style, bool align)
     {
