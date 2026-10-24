@@ -24,6 +24,14 @@ public sealed class Pads
         MaxPads = maxPads;
     }
 
+    /// <summary>
+    /// The pads on this machine, through whichever backend the platform has. A platform with no
+    /// backend gets one that reports nothing and not an exception. A game run on a machine it was not
+    /// built for should be short of a controller and not dead.
+    /// </summary>
+    public static Pads Open(Shaping? sticks = null, Shaping? triggers = null, int maxPads = 8) =>
+        new(PlatformBackend(), sticks, triggers, maxPads);
+
     /// <summary>How every pad's sticks are shaped, unless its layout says otherwise.</summary>
     public Shaping Sticks { get; }
 
@@ -87,6 +95,8 @@ public sealed class Pads
     }
 
     private static double Unit(double value) => value > 0 ? (value < 1 ? value : 1) : 0;
+
+    private static IPadBackend PlatformBackend() => OperatingSystem.IsLinux() ? new LinuxPads() : NoPads.Instance;
 
     private void DropGone(OrderedDictionary<string, IPadDevice> seen, List<PadEvent> events)
     {

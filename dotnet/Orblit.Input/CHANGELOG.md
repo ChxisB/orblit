@@ -3,7 +3,7 @@
 ## 0.5.0
 
 - A port of `orblit_input` 0.5.0: the pad model, the evdev decoder and
-  `Pads`, and the named actions. The Linux backend comes next.
+  `Pads`, the named actions and the Linux backend.
 - A backend is `IPadBackend` and a device is `IPadDevice`. `RecordedPad` and
   `RecordedPads` drive a session from a test, and `SnapshotPad` reads a
   platform that answers with a snapshot.
@@ -16,4 +16,9 @@
   to plain `i` and `k`, as Dart does.
 - A pad axis that reads NaN counts as a push on the negative side in
   `FrameControls.Active`, as it does in Dart.
+- `LinuxPads` reads gamepads through evdev. Sysfs says what is a pad and
+  libc `open`, `read`, `ioctl` and `close` read it, so no native library is
+  built. `Pads.Open` picks it on Linux and a backend that reports nothing
+  elsewhere. It lists pads in event number order and exposes `Problems` for
+  a node it could not open.
 - The browser Gamepad API and the web backend are not ported.

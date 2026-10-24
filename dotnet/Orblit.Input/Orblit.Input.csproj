@@ -2,6 +2,7 @@
   <PropertyGroup>
     <Version>0.5.0</Version>
     <Description>Gamepads as state a frame can ask about, and as the handful of things that happened between two frames. Dead zones, curves and layouts belong to the engine, and named actions can be rebound by a player.</Description>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
