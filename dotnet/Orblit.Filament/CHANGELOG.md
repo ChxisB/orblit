@@ -92,4 +92,5 @@ drew, as a `PresentedFrame` that holds the pixel buffer, its size and its
 IOSurface with the identifier the system gave it. A headless renderer has
 none and answers null. The Metal events a viewport needs to hand that frame
 to a compositor are in `orblit_filament_apple`, a second library built beside
-the renderer on Apple platforms. The rest follow.
+the renderer on Apple platforms. `Renderer.TryReadCapture` copies a captured
+frame into a buffer the host owns and allocates nothing. The rest follow.

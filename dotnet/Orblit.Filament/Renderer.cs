@@ -89,6 +89,17 @@ public sealed partial class Renderer : IDisposable
         return copied == size ? new Capture(width, height, rgba) : null;
     }
 
+    /// <summary>
+    /// Copies the last frame read back into <paramref name="into"/> and gives its size. False until
+    /// a frame has arrived, and false with <paramref name="into"/> left alone when it is too small.
+    /// Allocates nothing, which a viewport that reads a frame every tick needs.
+    /// </summary>
+    public bool TryReadCapture(Span<byte> into, out uint width, out uint height)
+    {
+        var size = NativeMethods.ReadCapture(Alive, into, (nuint)into.Length, out width, out height);
+        return size != 0 && size <= (nuint)into.Length;
+    }
+
     public Stats GetStats()
     {
         Check(NativeMethods.ReadStats(Alive, out var stats), "stats");

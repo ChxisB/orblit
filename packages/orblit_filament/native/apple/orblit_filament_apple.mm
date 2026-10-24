@@ -5,7 +5,7 @@
 // plugins do not build this file.
 #import <Metal/Metal.h>
 
-// A shared event on the default device, retained once. Free it with CFRelease.
+// A shared event on the default device, retained once. Free it with release.
 extern "C" void *orblit_apple_event_create(void) {
   id<MTLDevice> device = MTLCreateSystemDefaultDevice();
   if (device == nil) return nullptr;
@@ -18,4 +18,8 @@ extern "C" void orblit_apple_event_signal(void *event, uint64_t value) {
 
 extern "C" uint64_t orblit_apple_event_value(void *event) {
   return ((__bridge id<MTLSharedEvent>)event).signaledValue;
+}
+
+extern "C" void orblit_apple_event_release(void *event) {
+  (void)(__bridge_transfer id<MTLSharedEvent>)event;
 }
