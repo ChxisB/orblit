@@ -18,3 +18,11 @@
 - An entity handle goes on the wire as a signed 64 bit number, so a handle
   with its top bit set is negative, as in Dart. An integer written to a
   column wraps to the column width and loses bits past 2^53.
+- `RemoteHost` holds the parts of a game the surface can reach, each
+  optional. A timeout that is not above zero is refused where it is set.
+- `RemoteVerbs.HandleAsync` answers one JSON-RPC request with the sixteen
+  verbs of the Dart surface. It never throws for a bad request or a failing
+  host callback. A notification is run and not answered. A callback that
+  blocks is not covered by the timeout.
+- A count past 32 bits is read as the nearest 32 bit count. That reads the
+  same for a log tail or a draw limit, and a step that large times out.
