@@ -253,7 +253,7 @@ internal static class SceneMessage
         for (var i = 0; i < populations.Count; i++)
         {
             columns.Set(i, populations[i]);
-            if (held is null || !held.TryGetValue(populations[i].Key, out var revision) || revision != populations[i].Revision)
+            if (Moved(held, populations[i].Key, populations[i].Revision))
             {
                 changed.Add(populations[i]);
             }
@@ -271,6 +271,104 @@ internal static class SceneMessage
         into["populationTransforms"] = Joined(changed, one => one.Transforms);
         into["populationColours"] = Joined(changed, one => one.Colours);
     }
+
+    /// <summary>
+    /// The clouds. The records of one held in memory travel only when its revision is not the one
+    /// the renderer holds, for the same reason a population's transforms do. A scene with no
+    /// clouds says nothing at all, so every scene that never uses them sends what it always sent.
+    /// </summary>
+    internal static void Splats(
+        IReadOnlyList<SplatCloud> clouds,
+        IReadOnlyDictionary<int, int>? held,
+        IDictionary<string, object> into)
+    {
+        if (clouds.Count == 0)
+        {
+            return;
+        }
+
+        var keys = new int[clouds.Count];
+        var flags = new int[clouds.Count];
+        var revisions = new int[clouds.Count];
+        var parameters = new float[clouds.Count * SplatCloud.Stride];
+        var paths = new string[clouds.Count];
+        var changed = new List<SplatCloud>();
+        for (var i = 0; i < clouds.Count; i++)
+        {
+            var cloud = clouds[i];
+            keys[i] = cloud.Key;
+            flags[i] = cloud.Flags;
+            revisions[i] = cloud.Revision;
+            cloud.PackParams(parameters, i * SplatCloud.Stride);
+            paths[i] = cloud.Path ?? "";
+            if (cloud.Data is not null && Moved(held, cloud.Key, cloud.Revision))
+            {
+                changed.Add(cloud);
+            }
+        }
+
+        into["splatKeys"] = keys;
+        into["splatFlags"] = flags;
+        into["splatRevisions"] = revisions;
+        into["splatParams"] = parameters;
+        into["splatPaths"] = paths;
+        into["splatChanged"] = changed.Select(cloud => cloud.Key).ToArray();
+        into["splatChangedCounts"] = changed.Select(cloud => cloud.Count).ToArray();
+        into["splatData"] = Joined(changed, cloud => cloud.Data ?? []);
+    }
+
+    /// <summary>
+    /// The sprite layers. Every layer's settings travel every time, because they are twenty floats
+    /// and moving a whole layer by its transform is how a backdrop scrolls without sending a
+    /// sprite. Its sprites travel only when its revision is not the one the renderer holds. A
+    /// scene with no layers says nothing at all.
+    /// </summary>
+    internal static void Sprites(
+        IReadOnlyList<SpriteLayer> layers,
+        IReadOnlyDictionary<int, int>? held,
+        IDictionary<string, object> into)
+    {
+        if (layers.Count == 0)
+        {
+            return;
+        }
+
+        var keys = new int[layers.Count];
+        var flags = new int[layers.Count];
+        var orders = new int[layers.Count];
+        var revisions = new int[layers.Count];
+        var parameters = new float[layers.Count * SpriteLayer.Stride];
+        var paths = new string[layers.Count];
+        var changed = new List<SpriteLayer>();
+        for (var i = 0; i < layers.Count; i++)
+        {
+            var layer = layers[i];
+            keys[i] = layer.Key;
+            flags[i] = layer.Flags;
+            orders[i] = layer.Order;
+            revisions[i] = layer.Revision;
+            layer.PackParams(parameters, i * SpriteLayer.Stride);
+            paths[i] = layer.Image?.Path ?? "";
+            if (Moved(held, layer.Key, layer.Revision))
+            {
+                changed.Add(layer);
+            }
+        }
+
+        into["spriteKeys"] = keys;
+        into["spriteFlags"] = flags;
+        into["spriteOrders"] = orders;
+        into["spriteRevisions"] = revisions;
+        into["spriteParams"] = parameters;
+        into["spritePaths"] = paths;
+        into["spriteChanged"] = changed.Select(layer => layer.Key).ToArray();
+        into["spriteChangedCounts"] = changed.Select(layer => layer.Count).ToArray();
+        into["spriteData"] = Joined(changed, layer => layer.Sprites);
+    }
+
+    /// <summary>Whether the renderer lacks this revision of <paramref name="key"/>, and so has to be sent it.</summary>
+    private static bool Moved(IReadOnlyDictionary<int, int>? held, int key, int revision) =>
+        held is null || !held.TryGetValue(key, out var sent) || sent != revision;
 
     /// <summary>
     /// The terrains: three arrays read in step, laid out as the renderer's terrain call says. A
@@ -317,10 +415,10 @@ internal static class SceneMessage
         into["terrainData"] = data;
     }
 
-    /// <summary>The floats of every population in <paramref name="changed"/>, end to end.</summary>
-    private static float[] Joined(List<Population> changed, Func<Population, float[]> pick)
+    /// <summary>What <paramref name="pick"/> gives for each of <paramref name="changed"/>, end to end.</summary>
+    private static TValue[] Joined<TItem, TValue>(List<TItem> changed, Func<TItem, TValue[]> pick)
     {
-        var joined = new float[changed.Sum(one => pick(one).Length)];
+        var joined = new TValue[changed.Sum(one => pick(one).Length)];
         var at = 0;
         foreach (var one in changed)
         {

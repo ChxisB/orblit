@@ -836,6 +836,72 @@ Map<String, ({OrblitScene scene, double? at})> _scenes() => {
     ),
     at: null,
   ),
+  'splats': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      splats: [
+        OrblitSplats(
+          key: 7,
+          data: OrblitSplats.pack(
+            positions: Float32List.fromList([1, 2, 3, -4, 5, -6]),
+            scales: Float32List.fromList([0.1, 0.2, 0.3, 1, 1, 1]),
+            colours: Float32List.fromList([1, 0.5, 0, 0.25, 0, 0, 0, 1]),
+            rotations: Float32List.fromList([1, 0, 0, 0, 0, 0, 0, 2]),
+          ),
+          transform: Matrix4.translationValues(1, 2, 3),
+          opacity: 0.5,
+          brightness: 2,
+          harmonics: 1,
+          limit: 5000,
+          coarseOrder: true,
+          revision: 3,
+        ),
+        OrblitSplats(
+          key: 2,
+          path: '/captures/garden.ply',
+          sorted: false,
+          harmonics: 3,
+          limit: OrblitSplats.maxLimit,
+        ),
+        OrblitSplats(key: 5, path: '/captures/room.splat'),
+      ],
+    ),
+    at: null,
+  ),
+  'sprites': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      sprites: [
+        OrblitSprites(
+          key: 7,
+          sprites: OrblitSprites.pack(const [
+            OrblitSprite(x: 1, y: 2, width: 3, height: 4, rotation: 0.5),
+            OrblitSprite(x: -1, y: -2, width: -2, u0: 0.25, v1: 0.5, alpha: 0.75),
+          ]),
+          image: const OrblitTexture('orblit:resource/atlas.png'),
+          transform: Matrix4.translationValues(5, 6, 7),
+          tint: Vector4(0.1, 0.2, 0.3, 0.4),
+          order: -3,
+          revision: 4,
+        ),
+        OrblitSprites(
+          key: 1,
+          sprites: OrblitSprites.pack(const [OrblitSprite(x: 0, y: 0)]),
+          image: const OrblitTexture('/art/n.png', srgb: false),
+          filter: OrblitFilter.smooth,
+          snap: true,
+          blend: OrblitSpriteBlend.add,
+        ),
+        OrblitSprites(
+          key: 3,
+          sprites: OrblitSprites.pack(const [OrblitSprite(x: 9, y: 9)]),
+        ),
+      ],
+    ),
+    at: null,
+  ),
   'terrain': (
     scene: OrblitScene(
       camera: _camera(),

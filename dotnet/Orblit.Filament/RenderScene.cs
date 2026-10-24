@@ -34,6 +34,21 @@ public sealed record RenderScene
     /// </summary>
     public IReadOnlyList<Population> Populations { get; init; } = [];
 
+    /// <summary>
+    /// Clouds of 3D Gaussians: captured places, or generated ones. Apart from the objects and
+    /// populations because they are not surfaces. They are drawn after everything solid, sorted
+    /// back to front among themselves, and hidden by anything solid in front of them.
+    /// </summary>
+    public IReadOnlyList<SplatCloud> Splats { get; init; } = [];
+
+    /// <summary>
+    /// Layers of flat pictures: sprites, tiles, a scrolling backdrop. Drawn after everything solid,
+    /// in their layers' order and then in the order each layer gives them, which is what a 2D scene
+    /// means by "on top". A scene of nothing else, seen through an orthographic camera, is a 2D
+    /// game drawn by the same renderer as a 3D one.
+    /// </summary>
+    public IReadOnlyList<SpriteLayer> Sprites { get; init; } = [];
+
     /// <summary>The landscapes. Each is sent in full the first time, and after that only what changed.</summary>
     public IReadOnlyList<RenderTerrain> Terrain { get; init; } = [];
 
@@ -126,7 +141,7 @@ public sealed record RenderScene
     /// seconds: the renderer draws far more often than it is told anything and works out where the
     /// camera is in between, and the clock the camera was solved on is steadier than the clock a
     /// message arrives on. <paramref name="held"/> is what the renderer already has, which keeps
-    /// the populations and terrain it holds out of the message.
+    /// the populations, clouds, sprite layers and terrain it holds out of the message.
     /// </summary>
     public OrderedDictionary<string, object> ToMessage(double? at = null, Held? held = null)
     {
@@ -151,6 +166,8 @@ public sealed record RenderScene
         message["depthPrepass"] = DepthPrepass;
         message["at"] = at ?? 0.0;
         SceneMessage.Populations(Populations, held?.Populations, message);
+        SceneMessage.Splats(Splats, held?.Splats, message);
+        SceneMessage.Sprites(Sprites, held?.Sprites, message);
         SceneMessage.Terrain(Terrain, held?.Terrain, message);
         if (PoseMessage.Pack(Objects) is { } poses)
         {

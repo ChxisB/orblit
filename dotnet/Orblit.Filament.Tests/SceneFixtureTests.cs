@@ -687,6 +687,58 @@ public class SceneFixtureTests
                 ],
             },
             null),
+        ["splats"] = (
+            Scene() with
+            {
+                Splats =
+                [
+                    new SplatCloud(
+                        7,
+                        data: SplatCloud.Pack([1, 2, 3, -4, 5, -6], [0.1f, 0.2f, 0.3f, 1, 1, 1], [1, 0.5f, 0, 0.25f, 0, 0, 0, 1], [1, 0, 0, 0, 0, 0, 0, 2]))
+                    {
+                        Transform = Matrix4.TranslationValues(1, 2, 3),
+                        Opacity = 0.5,
+                        Brightness = 2,
+                        Harmonics = 1,
+                        Limit = 5000,
+                        CoarseOrder = true,
+                        Revision = 3,
+                    },
+                    new SplatCloud(2, "/captures/garden.ply") { Sorted = false, Harmonics = 3, Limit = SplatCloud.MaxLimit },
+                    new SplatCloud(5, "/captures/room.splat"),
+                ],
+            },
+            null),
+        ["sprites"] = (
+            Scene() with
+            {
+                Sprites =
+                [
+                    new SpriteLayer(
+                        7,
+                        SpriteLayer.Pack(
+                        [
+                            new LayerSprite { X = 1, Y = 2, Width = 3, Height = 4, Rotation = 0.5 },
+                            new LayerSprite { X = -1, Y = -2, Width = -2, U0 = 0.25, V1 = 0.5, Alpha = 0.75 },
+                        ]))
+                    {
+                        Image = new Texture("orblit:resource/atlas.png"),
+                        Transform = Matrix4.TranslationValues(5, 6, 7),
+                        Tint = new Vector4(0.1, 0.2, 0.3, 0.4),
+                        Order = -3,
+                        Revision = 4,
+                    },
+                    new SpriteLayer(1, SpriteLayer.Pack([new LayerSprite { X = 0, Y = 0 }]))
+                    {
+                        Image = new Texture("/art/n.png", Srgb: false),
+                        Filter = MaterialFilter.Smooth,
+                        Snap = true,
+                        Blend = SpriteBlend.Add,
+                    },
+                    new SpriteLayer(3, SpriteLayer.Pack([new LayerSprite { X = 9, Y = 9 }])),
+                ],
+            },
+            null),
         ["terrain"] = (
             Scene() with
             {

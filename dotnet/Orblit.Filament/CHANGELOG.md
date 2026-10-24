@@ -48,4 +48,14 @@ moved. A terrain key used twice throws. `EnvironmentVolume` is a box or a
 sphere with a weight, a priority and a blend distance. `RenderScene.Resolved`
 folds the volumes the camera is in into the fog, sky, exposure, environment
 and image work before the scene is sent, so the renderer is told one look. A
-scene with no volumes pays nothing. Splats and the rest follow.
+scene with no volumes pays nothing.
+
+`SplatCloud` is a cloud of 3D Gaussians, read from a file or packed into
+32-byte records with `SplatCloud.Pack`. Its flags carry the sort, the colour
+degree, a coarse order and a limit of up to 16777215 splats, so a large limit
+reads back as a negative `int` on the wire and the same bits in the renderer.
+`SpriteLayer` is a layer of flat pictures. `LayerSprite` is one sprite in it,
+16 floats, and `Cut` turns a rectangle in pixels into fractions of the image.
+A held cloud or layer sends its settings and its records only when its
+revision changes. A file cloud never sends records. A scene with neither pays
+nothing. The rest follow.

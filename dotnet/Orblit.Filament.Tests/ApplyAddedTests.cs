@@ -126,6 +126,44 @@ public sealed class ApplyAddedTests
     }
 
     [RendererFact]
+    public void ASplatCloudIsAcceptedFromMemoryAndByPathAndClearedWhenTheLastOneGoes()
+    {
+        using var renderer = new Renderer(64, 48);
+        var records = SplatCloud.Pack([0, 0, 0, 1, 1, 1], [1, 1, 1, 1, 1, 1], new float[8]);
+        var memory = new SplatCloud(1, data: records);
+        var file = new SplatCloud(2, "/no/such/garden.ply");
+
+        renderer.Apply(SceneBuilders.Row() with { Splats = [memory, file] });
+        renderer.Draw(0);
+        renderer.Apply(SceneBuilders.Row() with { Splats = [new SplatCloud(1, data: records) { Revision = 1 }] }, at: 1.0 / 60);
+        renderer.Draw(1.0 / 60);
+        renderer.Apply(SceneBuilders.Row(), at: 2.0 / 60);
+        renderer.Draw(2.0 / 60);
+
+        Assert.True(renderer.RenderedFrames >= 3);
+    }
+
+    [RendererFact]
+    public void ASpriteLayerIsAcceptedMovedAndClearedWhenTheLastOneGoes()
+    {
+        using var renderer = new Renderer(64, 48);
+        var sprites = SpriteLayer.Pack([new LayerSprite { X = 0, Y = 0, Width = 2, Height = 2 }]);
+        var layer = new SpriteLayer(1, sprites) { Order = 1 };
+        var scene = SceneBuilders.Row() with { Camera = SceneBuilders.CameraAt(0, 0, 10) with { Orthographic = true } };
+
+        renderer.Apply(scene with { Sprites = [layer] });
+        renderer.Draw(0);
+        renderer.Apply(scene with { Sprites = [layer] }, at: 1.0 / 60);
+        renderer.Draw(1.0 / 60);
+        renderer.Apply(scene with { Sprites = [new SpriteLayer(1, sprites) { Order = 1, Revision = 1 }] }, at: 2.0 / 60);
+        renderer.Draw(2.0 / 60);
+        renderer.Apply(scene, at: 3.0 / 60);
+        renderer.Draw(3.0 / 60);
+
+        Assert.True(renderer.RenderedFrames >= 4);
+    }
+
+    [RendererFact]
     public void ATerrainIsAcceptedMovedAndTakenAway()
     {
         using var renderer = new Renderer(64, 48);

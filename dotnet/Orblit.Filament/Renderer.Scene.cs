@@ -26,6 +26,8 @@ public sealed partial class Renderer
         ApplyObjects(message);
         ApplyPoses(message, at);
         ApplyPopulations(message);
+        ApplySplats(message);
+        ApplySprites(message);
         ApplyTerrain(message);
         ApplyLights(message);
         ApplyDecals(message);
@@ -286,6 +288,81 @@ public sealed partial class Renderer
                 colours,
                 (nuint)colours.Length),
             "apply_populations");
+    }
+
+    /// <summary>
+    /// The clouds. Skipped when there are none and the renderer holds none, so a scene without
+    /// them costs nothing here.
+    /// </summary>
+    private void ApplySplats(OrderedDictionary<string, object> message)
+    {
+        if (!message.ContainsKey("splatKeys") && !_held.HasSplats)
+        {
+            return;
+        }
+
+        var keys = Packing.Read<int[]>(message, "splatKeys", []);
+        var parameters = Packing.Read<float[]>(message, "splatParams", []);
+        var paths = Packing.Read<string[]>(message, "splatPaths", []);
+        var changed = Packing.Read<int[]>(message, "splatChanged", []);
+        var data = Packing.Read<byte[]>(message, "splatData", []);
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.ApplySplats(
+                Alive,
+                (uint)keys.Length,
+                keys,
+                Packing.Read<int[]>(message, "splatFlags", []),
+                Packing.Read<int[]>(message, "splatRevisions", []),
+                parameters,
+                (nuint)parameters.Length,
+                paths,
+                (uint)paths.Length,
+                changed,
+                Packing.Read<int[]>(message, "splatChangedCounts", []),
+                (uint)changed.Length,
+                data,
+                (nuint)data.Length),
+            "apply_splats");
+    }
+
+    /// <summary>
+    /// The sprite layers. Skipped when there are none and the renderer holds none, so a scene
+    /// without them costs nothing here.
+    /// </summary>
+    private void ApplySprites(OrderedDictionary<string, object> message)
+    {
+        if (!message.ContainsKey("spriteKeys") && !_held.HasSprites)
+        {
+            return;
+        }
+
+        var keys = Packing.Read<int[]>(message, "spriteKeys", []);
+        var parameters = Packing.Read<float[]>(message, "spriteParams", []);
+        var paths = Packing.Read<string[]>(message, "spritePaths", []);
+        var changed = Packing.Read<int[]>(message, "spriteChanged", []);
+        var records = Packing.Read<float[]>(message, "spriteData", []);
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.ApplySprites(
+                Alive,
+                (uint)keys.Length,
+                keys,
+                Packing.Read<int[]>(message, "spriteFlags", []),
+                Packing.Read<int[]>(message, "spriteOrders", []),
+                Packing.Read<int[]>(message, "spriteRevisions", []),
+                parameters,
+                (nuint)parameters.Length,
+                paths,
+                (uint)paths.Length,
+                changed,
+                Packing.Read<int[]>(message, "spriteChangedCounts", []),
+                (uint)changed.Length,
+                records,
+                (nuint)records.Length),
+            "apply_sprites");
     }
 
     /// <summary>The terrain. Always called: arrays with nothing in them take the terrain away.</summary>
