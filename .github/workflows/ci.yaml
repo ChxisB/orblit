@@ -121,6 +121,23 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
+
+      # Only macOS has the renderer path written and run. Windows and Linux
+      # build the managed code and skip the tests that draw. The cache key is
+      # the macOS job's, so one download serves both.
+      - name: Cache Filament SDK
+        if: runner.os == 'macOS'
+        uses: actions/cache@v4
+        with:
+          path: packages/orblit_filament/darwin/third_party
+          key: filament-${{ runner.os }}-${{ hashFiles('packages/orblit_filament/darwin/setup.sh') }}
+
+      - name: Fetch Filament
+        if: runner.os == 'macOS'
+        run: |
+          bash packages/orblit_filament/darwin/setup.sh
+          echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV"
+
       - name: Build, test and check format
         shell: bash
         run: ./tool/check_dotnet.sh

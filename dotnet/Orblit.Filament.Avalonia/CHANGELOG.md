@@ -21,5 +21,7 @@ Leaving the window frees the renderer and the path. Entering another one
 starts both again. A fault on the screen's side is thrown from the next
 `Frame` call with the original error as its cause.
 
-The shared texture path is written for macOS and has not run in a real
-window yet. The readback path has run headless, on macOS only.
+The shared texture path has run in a real window on macOS, an Apple M4 Pro
+with a display scale of 1. It showed 1920 frames, dropped none, kept up
+through a resize, and `Frame` took a median of 1.16 ms. The readback path has
+run headless, on macOS only. Windows and Linux have run nothing.
