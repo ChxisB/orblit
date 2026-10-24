@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.42.0
+
+- **Feed calls in the C API.** `orblit_renderer_create_feed`,
+  `orblit_renderer_release_feed` and `orblit_renderer_submit_feed_buffer`
+  make a feed and give it a picture from C. Until now only the Dart channel
+  and Swift could. On Apple a feed takes an IOSurface-backed buffer in
+  32BGRA or biplanar 4:2:0 and keeps it without a copy. Other platforms
+  make no feed and refuse a buffer. The Dart API and the plugins are
+  unchanged.
+
 ## 0.41.0
 
 - **Cameras and lights from an FBX.** The importer carried neither. A
