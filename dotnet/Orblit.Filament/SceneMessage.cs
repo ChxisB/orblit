@@ -33,6 +33,7 @@ internal static class SceneMessage
     internal static void Materials(
         IReadOnlyList<RenderMaterial> materials,
         IReadOnlyList<Video> videos,
+        IReadOnlyList<Feed> feeds,
         IDictionary<string, object> into)
     {
         var count = materials.Count;
@@ -42,6 +43,15 @@ internal static class SceneMessage
         var maps = new int[count * RenderMaterial.MapCount];
         var screens = new int[count];
         var videoAt = PositionOf(videos.Select(video => video.Key));
+        for (var i = 0; i < feeds.Count; i++)
+        {
+            if (!videoAt.TryAdd(feeds[i].Key, videos.Count + i))
+            {
+                throw new ArgumentException(
+                    $"Key {feeds[i].Key} is a video and a feed in the same scene, so a screen could not say which it shows.");
+            }
+        }
+
         var textures = new IndexedSet<Texture>();
 
         for (var i = 0; i < count; i++)
@@ -94,12 +104,14 @@ internal static class SceneMessage
         into["surfaceTextureSrgb"] = columns.Textures.Items.Select(texture => texture.Srgb ? 1 : 0).ToArray();
     }
 
-    internal static void Videos(IReadOnlyList<Video> videos, IDictionary<string, object> into)
+    /// <summary>The videos, then the feeds, which travel as videos that play at rate 1 and volume 1 and are never sought.</summary>
+    internal static void Videos(IReadOnlyList<Video> videos, IReadOnlyList<Feed> feeds, IDictionary<string, object> into)
     {
-        var keys = new long[videos.Count];
-        var flags = new int[videos.Count];
-        var packed = new float[videos.Count * Video.Stride];
-        var paths = new string[videos.Count];
+        var count = videos.Count + feeds.Count;
+        var keys = new long[count];
+        var flags = new int[count];
+        var packed = new float[count * Video.Stride];
+        var paths = new string[count];
 
         for (var i = 0; i < videos.Count; i++)
         {
@@ -109,6 +121,15 @@ internal static class SceneMessage
             paths[i] = video.Path;
             // A seek of minus one is no seek asked for, so a token that moved with no target is a no-op rather than a jump to the start.
             Packing.Floats(video.Rate, video.Volume, video.SeekTo ?? -1, video.SeekToken).CopyTo(packed, i * Video.Stride);
+        }
+
+        for (var i = 0; i < feeds.Count; i++)
+        {
+            var place = videos.Count + i;
+            keys[place] = feeds[i].Key;
+            flags[place] = feeds[i].Flags;
+            paths[place] = feeds[i].Path;
+            Packing.Floats(1, 1, -1, 0).CopyTo(packed, place * Video.Stride);
         }
 
         into["videoKeys"] = keys;

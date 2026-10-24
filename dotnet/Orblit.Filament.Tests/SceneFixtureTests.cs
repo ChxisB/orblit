@@ -56,6 +56,30 @@ public class SceneFixtureTests
     private static RenderScene Scene(params RenderObject[] objects) =>
         new() { Camera = Camera(), Objects = objects };
 
+    /// <summary>Two sources numbered 7 and 8 by a host that counts up, as the exporter's stand-in plugin does.</summary>
+    private static RenderScene Feeds()
+    {
+        var host = new FakeFeedHost();
+        var turned = new Feed(90, FeedSource.Create(1280, 720, host), rotation: 1);
+        var front = new Feed(91, FeedSource.Create(640, 480, host), rotation: 3, mirror: true);
+        return Scene(Object(1, material: 30), Object(2, material: 31)) with
+        {
+            Videos = [new Video { Key = 70, Path = "/v/a.mp4", Rate = 2 }],
+            Feeds = [turned, front],
+            Materials =
+            [
+                new RenderMaterial { Key = 30, Shading = MaterialShading.Video, Video = 90 },
+                new RenderMaterial { Key = 31, Shading = MaterialShading.Video, Video = 70 },
+                new RenderMaterial
+                {
+                    Key = 32,
+                    BaseColourMap = Texture.OfFeed(front, width: 320),
+                    NormalMap = Texture.OfTarget("reflection"),
+                },
+            ],
+        };
+    }
+
     private static Dictionary<string, (RenderScene Scene, double? At)> Scenes() => new()
     {
         ["objects"] = (
@@ -288,6 +312,7 @@ public class SceneFixtureTests
                 ],
             },
             null),
+        ["feeds"] = (Feeds(), null),
         ["surfaces"] = (
             Scene(Object(1, material: 8), Object(2, material: 9)) with
             {

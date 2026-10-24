@@ -222,7 +222,7 @@ public sealed record RenderMaterial
 
     public MaterialFilter Filter { get; init; } = MaterialFilter.Smooth;
 
-    /// <summary>The key of the video a <see cref="MaterialShading.Video"/> screen shows.</summary>
+    /// <summary>The key of the video or feed a <see cref="MaterialShading.Video"/> screen shows.</summary>
     public long? Video { get; init; }
 
     /// <summary>Whether the screen's picture is laid across the view rather than across the surface.</summary>

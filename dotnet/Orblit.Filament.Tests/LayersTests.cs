@@ -2,7 +2,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from the render layers and graph groups of layers_test.dart. The texture target group follows with the resources.</summary>
+/// <summary>Ported from layers_test.dart.</summary>
 public sealed class LayersTests
 {
     private static int Flags(int layer)
@@ -40,6 +40,23 @@ public sealed class LayersTests
         var forest = new Population(1, new float[16], new float[3], new Bounds(Vector3.Zero(), Vector3.All(1))) { Layer = 2 };
         Assert.Equal(2, forest.Flags >> 8);
         Assert.Equal(2, forest.Flags & 0xFF);
+    }
+
+    [Fact]
+    public void ATargetIsAPathWithASchemeNotASecondField()
+    {
+        var mirror = Texture.OfTarget("reflection");
+
+        Assert.Equal("reflection", mirror.Target);
+        Assert.Equal("orblit:target/reflection", mirror.Path);
+        // What a pass drew is already linear, and decoding it again would darken every reflection.
+        Assert.False(mirror.Srgb);
+    }
+
+    [Fact]
+    public void AnOrdinaryTextureNamesNoTarget()
+    {
+        Assert.Null(new Texture("/tmp/wood.png").Target);
     }
 
     [Fact]

@@ -8,6 +8,7 @@ import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' show Color;
 
+import 'package:flutter/services.dart' show MethodCall, MethodChannel;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_filament/orblit_filament.dart';
 import 'package:vector_math/vector_math_64.dart';
@@ -974,6 +975,31 @@ String _b64(TypedData data) => base64Encode(
 
 Object _number(double value) => value.isFinite ? value : value.toString();
 
+// A feed needs a source, which only a platform can make. The sources here
+// answer to a mock of the platform's channel, which hands out 7 and then 8.
+({OrblitScene scene, double? at}) _feedScene(List<OrblitFeedSource> sources) {
+  final turned = OrblitFeed(key: 90, source: sources[0], rotation: 1);
+  final front = OrblitFeed(key: 91, source: sources[1], rotation: 3, mirror: true);
+  return (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: [_object(1, material: 30), _object(2, material: 31)],
+      videos: const [OrblitVideo(key: 70, path: '/v/a.mp4', rate: 2)],
+      feeds: [turned, front],
+      materials: [
+        OrblitMaterial(key: 30, shading: OrblitShading.video, video: 90),
+        OrblitMaterial(key: 31, shading: OrblitShading.video, video: 70),
+        OrblitMaterial(
+          key: 32,
+          baseColourMap: OrblitTexture.ofFeed(front, width: 320),
+          normalMap: OrblitTexture.ofTarget('reflection'),
+        ),
+      ],
+    ),
+    at: null,
+  );
+}
+
 Map<String, Object?> _dump(Object? value) => switch (value) {
   final Float32List l => {'f32': _b64(l)},
   final Float64List l => {'f64': _b64(l)},
@@ -1003,10 +1029,20 @@ String _commit(String root) {
 }
 
 void main() {
-  test('writes the scene fixture', () {
+  test('writes the scene fixture', () async {
+    TestWidgetsFlutterBinding.ensureInitialized();
+    const channel = MethodChannel('orblit_filament');
+    var next = 7;
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall call) async => next++);
+    final sources = [
+      await OrblitFeedSource.create(width: 1280, height: 720, channel: channel),
+      await OrblitFeedSource.create(width: 640, height: 480, channel: channel),
+    ];
+    final scenes = {..._scenes(), 'feeds': _feedScene(sources)};
     final root = Directory('../..').absolute.path;
     final cases = [
-      for (final MapEntry(key: name, value: scene) in _scenes().entries)
+      for (final MapEntry(key: name, value: scene) in scenes.entries)
         {
           'op': 'scene',
           'name': name,

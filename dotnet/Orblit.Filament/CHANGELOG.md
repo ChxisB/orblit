@@ -69,4 +69,20 @@ texture size, upload, splat and colour degree budgets follow the tier.
 sample, best first. `SceneRows.DrawRows` has a row for each object and
 population a scene submits, and `SceneRows.MaterialRow` has the packed
 values of one material and the objects made of it. `NamedPassTiming.ToJson` is the
-row for one pass. The rest follow.
+row for one pass.
+
+`RenderResources.Provide` keeps bytes under a name for every renderer in the
+process, and `Release` says whether there was anything to let go of.
+`NameFor` puts the `orblit:resource/` prefix on a path. `AssetFiles` asks a
+package source where an asset sits as a path, an offset and a length. No
+source ships yet, so it answers null everywhere. `Texture.OfTarget` samples
+what a pass drew, and `Texture.Target` reads the name back.
+
+`FeedSource.Create` makes a picture the application draws itself, and
+`Submit` hands it each finished pixel buffer. Apple platforms take them. Other
+platforms throw `PlatformNotSupportedException`. A `Feed` in
+`RenderScene.Feeds` names a source with a key, a quarter turn count from 0 to
+3 and a mirror flag. A screen points at the key with `RenderMaterial.Video`.
+A feed travels after the videos at rate 1 and volume 1, and a key used by a
+video and a feed in one scene throws. `Texture.OfFeed` copies a feed into any
+map at its own size or a smaller one. The rest follow.

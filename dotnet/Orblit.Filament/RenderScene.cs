@@ -26,6 +26,13 @@ public sealed record RenderScene
 
     public IReadOnlyList<Video> Videos { get; init; } = [];
 
+    /// <summary>
+    /// Pictures the application draws itself. Keyed with the videos, as screens point at one list of
+    /// both: a screen's <see cref="RenderMaterial.Video"/> is a video's key or a feed's, and a scene
+    /// that gave one key to both is refused.
+    /// </summary>
+    public IReadOnlyList<Feed> Feeds { get; init; } = [];
+
     public IReadOnlyList<Decal> Decals { get; init; } = [];
 
     /// <summary>
@@ -152,9 +159,9 @@ public sealed record RenderScene
 
         var message = new OrderedDictionary<string, object>();
         SceneMessage.Objects(Objects, Materials, message);
-        SceneMessage.Materials(Materials, Videos, message);
+        SceneMessage.Materials(Materials, Videos, Feeds, message);
         SceneMessage.Surfaces(Materials, message);
-        SceneMessage.Videos(Videos, message);
+        SceneMessage.Videos(Videos, Feeds, message);
         SceneMessage.Decals(Decals, message);
         SceneMessage.Probes(Probes, message);
         SceneMessage.Lights(Lights, message);
