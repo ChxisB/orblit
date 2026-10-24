@@ -2,6 +2,9 @@
 
 ## 0.42.0
 
+The renderer and its Apple helper are packed at `runtimes/<rid>/native`, where NuGet looks
+for them. `matc` is not packed. The cook finds it with `NativeTool`.
+
 Port of `orblit_filament` 0.42.0, begun. This part loads the renderer
 library and declares all 49 calls of its C API, checked against the header.
 `Renderer` starts a renderer, resizes it, swaps its surface, draws, reads back

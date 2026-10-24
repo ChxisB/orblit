@@ -12,6 +12,6 @@
   </ItemGroup>
   <!-- The renderer, built by tool/build_native.sh when a Filament release is present. It flows to every project that references this one, and into the package. -->
   <ItemGroup>
-    <Content Include="..\native\runtimes\**\*orblit_filament*" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes\%(RecursiveDir)" />
+    <Content Include="..\native\runtimes\**\*orblit_filament*" Link="runtimes\%(RecursiveDir)%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" Pack="true" PackagePath="runtimes\%(RecursiveDir)%(Filename)%(Extension)" />
   </ItemGroup>
 </Project>
