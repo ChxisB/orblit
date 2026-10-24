@@ -6,6 +6,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Input\Orblit.Input.csproj" />
+    <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
     <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
   </ItemGroup>
   <ItemGroup>
