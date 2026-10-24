@@ -57,4 +57,13 @@ internal static partial class NativeMethods
         nuint capacity,
         out uint width,
         out uint height);
+
+    [LibraryImport(Library, EntryPoint = "orblit_renderer_create_feed")]
+    internal static partial long CreateFeed(int width, int height);
+
+    [LibraryImport(Library, EntryPoint = "orblit_renderer_release_feed")]
+    internal static partial void ReleaseFeed(long feed);
+
+    [LibraryImport(Library, EntryPoint = "orblit_renderer_submit_feed_buffer")]
+    internal static partial int SubmitFeedBuffer(long feed, nint pixelBuffer);
 }

@@ -170,6 +170,31 @@ int orblit_renderer_provide_resource(const char *name, const uint8_t *bytes,
  * Any thread. */
 int orblit_renderer_release_resource(const char *name);
 
+/* ---- Feeds ---- */
+
+/* Makes a feed: a picture the host draws and a scene shows by its number.
+ * Returns the number, above 0, or 0 where this platform has no feeds or could
+ * not make one, with the reason logged. Like resources, a feed belongs to the
+ * process and not to a renderer.
+ *
+ * `width` and `height` are what a producer is first asked to draw at. They are
+ * not used on Apple, where each buffer has its own size. Any thread. */
+int64_t orblit_renderer_create_feed(int32_t width, int32_t height);
+
+/* Lets go of a feed. A screen still showing it keeps its last picture until
+ * the scene stops naming the feed. Does nothing for a number that is not one.
+ * Any thread. */
+void orblit_renderer_release_feed(int64_t feed);
+
+/* Makes `pixel_buffer` the newest picture of `feed`. It is a CVPixelBufferRef
+ * on Apple, IOSurface-backed and 32BGRA or biplanar 4:2:0. It is retained and
+ * not copied, and the producer may reuse it once the next picture is in.
+ *
+ * ORBLIT_ERROR_NULL for a NULL buffer. ORBLIT_ERROR_FAILED when the feed is
+ * not open, when the buffer is of another kind, and on every platform that
+ * takes no pixel buffers, with the reason logged. Any thread. */
+int orblit_renderer_submit_feed_buffer(int64_t feed, void *pixel_buffer);
+
 typedef struct orblit_renderer orblit_renderer;
 
 /* ---- Lifetime ---- */

@@ -1215,6 +1215,20 @@ int main(void) {
            "a null renderer can do nothing");
   }
 
+  /* Feeds need no renderer. This build takes no pixel buffers, so it makes no
+     feed and refuses a buffer. The Apple answers are tested from C#. */
+  {
+    int unused = 0;
+    expect(orblit_renderer_create_feed(64, 48) == 0,
+           "a platform with no feeds makes none");
+    expect(orblit_renderer_submit_feed_buffer(1, NULL) == ORBLIT_ERROR_NULL,
+           "a feed needs a buffer");
+    expect(orblit_renderer_submit_feed_buffer(1, &unused) == ORBLIT_ERROR_FAILED,
+           "and a platform with no feeds refuses the buffer");
+    orblit_renderer_release_feed(1);
+    orblit_renderer_release_feed(0);
+  }
+
   orblit_surface_desc headless = {ORBLIT_SURFACE_HEADLESS, NULL};
   orblit_renderer *renderer =
       orblit_renderer_create(ORBLIT_BACKEND_DEFAULT, &headless, 64, 48);

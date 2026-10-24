@@ -257,6 +257,38 @@ int orblit_renderer_release_resource(const char *name) {
   return orblit::releaseResource(name) ? ORBLIT_OK : ORBLIT_ERROR_RANGE;
 }
 
+// ---- Feeds ----
+
+int64_t orblit_renderer_create_feed(int32_t width, int32_t height) {
+  try {
+    std::string why;
+    const int64_t feed = orblit::createFeed(width, height, why);
+    if (feed == 0) orblit::log("[orblit] no feed was made: %s", why.c_str());
+    return feed;
+  } catch (...) {
+    orblit::log("[orblit] no feed was made: out of memory.");
+    return 0;
+  }
+}
+
+void orblit_renderer_release_feed(int64_t feed) { orblit::releaseFeed(feed); }
+
+int orblit_renderer_submit_feed_buffer(int64_t feed, void *pixel_buffer) {
+  if (pixel_buffer == nullptr) return ORBLIT_ERROR_NULL;
+#if ORBLIT_PLATFORM_APPLE
+  std::string why;
+  if (orblit::submitFeed(feed, static_cast<CVPixelBufferRef>(pixel_buffer),
+                         why)) {
+    return ORBLIT_OK;
+  }
+  orblit::log("[orblit] a feed took no picture: %s", why.c_str());
+#else
+  (void)feed;
+  orblit::log("[orblit] this platform takes no pixel buffers for a feed.");
+#endif
+  return ORBLIT_ERROR_FAILED;
+}
+
 int32_t orblit_renderer_capability(const orblit_renderer *renderer,
                                   orblit_capability which) {
   if (renderer == nullptr || renderer->core == nullptr) return -1;
