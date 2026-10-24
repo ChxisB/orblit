@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0
+
+- `ParticleView`, `ParticleSheet` and `TrailRibbon`, a port of `particle_view`,
+  `particle_sheet` and `trail_strip` from `orblit_stage`. The view runs the
+  emitters of a document and hands out one population for each. The sheet is
+  the cloth glb with a joint for each particle. The ribbon is a sheet two
+  particles wide that turns its face to the eye.
+- The population arrays are copies. Dart hands out views over its own buffers,
+  so a later frame could change a population already handed out. A copy cannot.
+- `TrailRibbon` is the Dart `OrblitTrailStrip`, renamed so it does not sit
+  beside `TrailStrip` from `Orblit.Particles`. A ribbon is white unless a
+  colour is given. A sheet is grey.
+- `Poses` returns `JointPose` values, the type `SkinBinding` already uses.
+- The messages of `ArgumentException` and of `ParticleView.Rejected` are .NET
+  text. They name the parameter in the .NET way, so the case of the first letter
+  differs from Dart.
+- A burst count or a maximum particle count past the `int` range is clamped
+  first. The `Burst` and `Emitter` constructors then refuse it or cap it.
+- `ParticleView` does not expose its key or its budget.
+- The fixture `particles.json` has 12 cases: 3 runs of a view, 4 sheets and 5
+  ribbons. It compares every population key, revision, transform and colour,
+  the whole glb as bytes, and every pose.
+
 ## 0.3.0
 
 - `DocumentView`, a port of `document_view` from `orblit_stage`. It stages a

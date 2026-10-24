@@ -7,20 +7,20 @@ internal static class Near
 {
     public const double Tolerance = 1e-5;
 
-    public static void Vector(Vector3 actual, Vector3 expected, string? reason = null)
+    public static void Vector(Vector3 actual, Vector3 expected, string? reason = null, double tolerance = Tolerance)
     {
         var because = reason is null ? "" : $" ({reason})";
-        Assert.True(Math.Abs(actual.X - expected.X) <= Tolerance, $"x of {actual}{because}");
-        Assert.True(Math.Abs(actual.Y - expected.Y) <= Tolerance, $"y of {actual}{because}");
-        Assert.True(Math.Abs(actual.Z - expected.Z) <= Tolerance, $"z of {actual}{because}");
+        Assert.True(Math.Abs(actual.X - expected.X) <= tolerance, $"x of {actual}{because}");
+        Assert.True(Math.Abs(actual.Y - expected.Y) <= tolerance, $"y of {actual}{because}");
+        Assert.True(Math.Abs(actual.Z - expected.Z) <= tolerance, $"z of {actual}{because}");
     }
 
-    public static void Matrix(Matrix4 actual, Matrix4 expected, string? reason = null)
+    public static void Matrix(Matrix4 actual, Matrix4 expected, string? reason = null, double tolerance = Tolerance)
     {
         var because = reason is null ? "" : $" of {reason}";
         for (var at = 0; at < 16; at++)
         {
-            Assert.True(Math.Abs(actual[at] - expected[at]) <= Tolerance, $"element {at}{because}");
+            Assert.True(Math.Abs(actual[at] - expected[at]) <= tolerance, $"element {at}{because}");
         }
     }
 
