@@ -3,8 +3,8 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from lighting_test.dart. The light clustering group follows with the pipeline and the
-/// detail tiers, which it reads.
+/// Ported from lighting_test.dart: the lights as they are packed, and the light clustering that
+/// rides on the end of the pipeline block.
 /// </summary>
 public sealed class LightingTests
 {
@@ -128,5 +128,43 @@ public sealed class LightingTests
         };
 
         Assert.Equal(3, SceneBuilders.Read<int[]>(scene.ToMessage(), "materialFlags").Single() & 3);
+    }
+
+    [Fact]
+    public void ClusteringDefaultsAreTheOnesARoomSizedSceneWants()
+    {
+        var lighting = new Lighting();
+
+        Assert.Equal(5, lighting.ClusterNear);
+        Assert.Equal(100, lighting.ClusterFar);
+    }
+
+    [Fact]
+    public void ClusteringCrossesOnTheEndOfThePipelineBlock()
+    {
+        var packed = new Pipeline { Lighting = new Lighting { ClusterNear = 2, ClusterFar = 400 } }.Packed;
+
+        Assert.Equal(Pipeline.Stride, packed.Length);
+        Assert.Equal(2f, packed[16]);
+        Assert.Equal(400f, packed[17]);
+    }
+
+    [Fact]
+    public void APipelineThatSaysNothingStillSendsTheNumbers()
+    {
+        // A short block is one from before clustering existed, and the renderer reads it as "use
+        // the renderer's own defaults". A pipeline built today is never short, so the two paths do
+        // not have to agree about anything.
+        Assert.Equal(5f, new Pipeline().Packed[16]);
+        Assert.Equal(100f, new Pipeline().Packed[17]);
+    }
+
+    [Fact]
+    public void EveryNamedDetailTierCarriesClusteringToo()
+    {
+        foreach (var detail in Enum.GetValues<Detail>())
+        {
+            Assert.Equal(Pipeline.Stride, Pipeline.At(detail).Packed.Length);
+        }
     }
 }

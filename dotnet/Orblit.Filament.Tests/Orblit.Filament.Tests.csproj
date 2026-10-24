@@ -16,4 +16,9 @@
   <ItemGroup>
     <Content Include="..\..\packages\orblit_filament\darwin\orblit_filament\Sources\orblit_filament_native\include\orblit_renderer.h" Link="orblit_renderer.h" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Two native sources are read as text, for the effect numbering and the order of one pass. -->
+  <ItemGroup>
+    <Content Include="..\..\packages\orblit_filament\darwin\orblit_filament\Sources\orblit_filament_native\OrblitRendererTypes.h" Link="native\OrblitRendererTypes.h" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\packages\orblit_filament\darwin\orblit_filament\Sources\orblit_filament_native\OrblitMotionBlur.cpp" Link="native\OrblitMotionBlur.cpp" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

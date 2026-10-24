@@ -4,13 +4,16 @@ public sealed partial class Renderer
 {
     /// <summary>
     /// Describes the scene to the renderer, whole. The calls go in the order the renderer's own
-    /// scene holder makes them, because a later call reads what an earlier one set. Poses are sent
-    /// even when no object has any, so an object that stops animating returns to rest.
+    /// scene holder makes them, because a later call reads what an earlier one set: the
+    /// environment and the passes first, since everything after is drawn into and lit by them.
+    /// Poses are sent even when no object has any, so an object that stops animating returns to rest.
     /// </summary>
     public void Apply(RenderScene scene, double at = 0)
     {
         var message = scene.ToMessage(at);
 
+        SetEnvironment(message);
+        SetRenderGraph(message);
         Check(NativeMethods.SetBatching(Alive, scene.Batching ? 1 : 0), "set_batching");
         Check(NativeMethods.SetDepthPrepass(Alive, scene.DepthPrepass ? 1 : 0), "set_depth_prepass");
         SetGodRays(message);
@@ -21,9 +24,45 @@ public sealed partial class Renderer
         ApplyPoses(message, at);
         ApplyLights(message);
         ApplyDecals(message);
+        ApplyProbes(message);
+        ApplyField(message);
         ApplyAir(scene, message);
         SetCamera(scene.Camera, message, at);
         SetOutline(message);
+    }
+
+    private void SetEnvironment(OrderedDictionary<string, object> message)
+    {
+        var packed = Packing.Read<float[]>(message, "environmentParams");
+        Check(
+            NativeMethods.SetEnvironment(
+                Alive,
+                Packing.Read<string>(message, "environmentRadiance"),
+                Packing.Read<string>(message, "environmentSkybox"),
+                packed,
+                (nuint)packed.Length),
+            "set_environment");
+    }
+
+    private void SetRenderGraph(OrderedDictionary<string, object> message)
+    {
+        var passes = Packing.Read<float[]>(message, "graphPasses");
+        var targets = Packing.Read<float[]>(message, "graphTargets");
+        var names = Packing.Read<string[]>(message, "graphTargetNames");
+
+        // F2: the ABI's own signature.
+        Check(
+            NativeMethods.SetRenderGraph(
+                Alive,
+                (uint)(passes.Length / RenderGraph.PassStride),
+                passes,
+                (nuint)passes.Length,
+                (uint)names.Length,
+                targets,
+                (nuint)targets.Length,
+                names,
+                (uint)names.Length),
+            "set_render_graph");
     }
 
     private void SetGodRays(OrderedDictionary<string, object> message)
@@ -125,6 +164,19 @@ public sealed partial class Renderer
             "apply_decals");
     }
 
+    private void ApplyProbes(OrderedDictionary<string, object> message)
+    {
+        var keys = Packing.Read<long[]>(message, "probeKeys");
+        var packed = Packing.Read<float[]>(message, "probeParams");
+        Check(NativeMethods.ApplyProbes(Alive, (uint)keys.Length, keys, packed, (nuint)packed.Length), "apply_probes");
+    }
+
+    private void ApplyField(OrderedDictionary<string, object> message)
+    {
+        var packed = Packing.Read<float[]>(message, "fieldParams");
+        Check(NativeMethods.ApplyField(Alive, packed, (nuint)packed.Length, Packing.Read<string>(message, "fieldFrom")), "apply_field");
+    }
+
     private void SetOutline(OrderedDictionary<string, object> message)
     {
         var keys = Packing.Read<long[]>(message, "outlineKeys");
@@ -205,6 +257,10 @@ public sealed partial class Renderer
             "apply_lights");
     }
 
+    /// <summary>
+    /// The sky, the fog, the image work and the pipeline, then the weather. The order is the
+    /// renderer's own, because the pipeline reads what the fog and the post process set.
+    /// </summary>
     private void ApplyAir(RenderScene scene, OrderedDictionary<string, object> message)
     {
         var sky = scene.Sky;
@@ -214,6 +270,12 @@ public sealed partial class Renderer
 
         var fog = Packing.Read<float[]>(message, "fogParams");
         Check(NativeMethods.SetFog(Alive, scene.Fog.IsVisible ? 1 : 0, fog, (nuint)fog.Length), "set_fog");
+
+        var post = Packing.Read<float[]>(message, "postParams");
+        Check(NativeMethods.SetPostProcess(Alive, post, (nuint)post.Length), "set_post_process");
+
+        var pipeline = Packing.Read<float[]>(message, "pipelineParams");
+        Check(NativeMethods.SetPipeline(Alive, pipeline, (nuint)pipeline.Length), "set_pipeline");
 
         var precipitation = Packing.Read<float[]>(message, "precipitationParams");
         Check(

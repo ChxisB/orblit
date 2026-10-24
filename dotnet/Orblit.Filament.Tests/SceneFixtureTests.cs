@@ -440,6 +440,225 @@ public class SceneFixtureTests
                 },
             },
             null),
+        ["post"] = (
+            Scene() with
+            {
+                Post = new PostProcess
+                {
+                    AntiAliasing = AntiAliasing.Temporal,
+                    Bloom = new Bloom
+                    {
+                        Enabled = true,
+                        Strength = 0.3,
+                        Levels = 5,
+                        Threshold = false,
+                        LensFlare = true,
+                        FlareStrength = 0.07,
+                    },
+                    DepthOfField = new DepthOfField
+                    {
+                        Enabled = true,
+                        FocusDistance = 4,
+                        BlurScale = 2,
+                        MaxForeground = 3,
+                        MaxBackground = 5,
+                    },
+                    Vignette = new Vignette
+                    {
+                        Enabled = true,
+                        MidPoint = 0.3,
+                        Roundness = 0.8,
+                        Feather = 0.2,
+                        Colour = new Vector3(0.1, 0.2, 0.3),
+                    },
+                    Occlusion = new Occlusion
+                    {
+                        Enabled = true,
+                        Radius = 0.6,
+                        Strength = 0.8,
+                        Bias = 0.002,
+                        Quality = 2,
+                        BentNormals = true,
+                    },
+                    Reflections = new Reflections
+                    {
+                        Enabled = true,
+                        Thickness = 0.2,
+                        Bias = 0.03,
+                        MaxDistance = 7,
+                        Stride = 3,
+                    },
+                    Grading = new Grading
+                    {
+                        Enabled = true,
+                        ToneMapping = ToneMapping.Aces,
+                        Exposure = 0.5,
+                        Contrast = 1.2,
+                        Saturation = 0.9,
+                        Vibrance = 1.4,
+                        Temperature = -0.2,
+                        Tint = 0.1,
+                        Shadows = new Vector3(0.9, 1, 1.1),
+                        Midtones = new Vector3(1, 1.05, 1),
+                        Highlights = new Vector3(1.2, 1, 0.8),
+                    },
+                    Dithering = false,
+                },
+            },
+            null),
+        ["post-off"] = (
+            Scene() with { Post = new PostProcess { Enabled = false, AntiAliasing = AntiAliasing.Off } },
+            null),
+        ["pipeline"] = (
+            Scene() with
+            {
+                Pipeline = new Pipeline
+                {
+                    Shadows = new ShadowSettings
+                    {
+                        Kind = ShadowKind.Area,
+                        MapSize = 2048,
+                        Cascades = 3,
+                        Distance = 60,
+                        Lambda = 0.7,
+                        ConstantBias = 0.002,
+                        NormalBias = 0.5,
+                        Stable = true,
+                        Contact = true,
+                        Softness = 1.5,
+                        Splits = [0.1, 0.3, 0.6, 0.9],
+                        SoftnessFalloff = 2,
+                        ContactDistance = 0.5,
+                        ContactSteps = 12,
+                        Variance = new VarianceShadows
+                        {
+                            Blur = 2.5,
+                            Anisotropy = 4,
+                            Samples = 2,
+                            LightBleedReduction = 0.3,
+                            HighPrecision = true,
+                            Mipmapping = true,
+                            Exponential = true,
+                        },
+                    },
+                    Resolution = new Resolution { Adaptive = true, MinScale = 0.6, MaxScale = 0.9, Sharpness = 0.4 },
+                    Lighting = new Lighting { ClusterNear = 1, ClusterFar = 250 },
+                    Samples = 4,
+                    Precise = true,
+                    Culling = false,
+                    Refraction = false,
+                    Textures = new TextureLimits { MaxSize = 2048, UploadKilobytes = 512 },
+                },
+            },
+            null),
+        ["pipeline-fixed-scale"] = (
+            Scene() with
+            {
+                Pipeline = new Pipeline
+                {
+                    Shadows = new ShadowSettings { Enabled = false, Splits = [0.5], MapSize = 256 },
+                    Resolution = new Resolution { Scale = 0.75 },
+                    Textures = new TextureLimits { MaxSize = 1 << 20, UploadKilobytes = -5 },
+                },
+            },
+            null),
+        ["pipeline-handheld"] = (
+            Scene() with { Pipeline = Pipeline.ForDisplay(new Display(1280, 800, Detail.Ultra)) },
+            null),
+        ["pipeline-handheld-low"] = (
+            Scene() with { Pipeline = Pipeline.ForDisplay(new Display(1280, 800, Detail.Low)) },
+            null),
+        ["pipeline-large-display"] = (
+            Scene() with { Pipeline = Pipeline.ForDisplay(new Display(3840, 2160, Detail.High)) },
+            null),
+        ["environment"] = (
+            Scene() with
+            {
+                Environment = RenderEnvironment.FromImage("/e/room.hdr") with
+                {
+                    Intensity = 20000,
+                    Rotation = 1.2,
+                    ShowSkybox = false,
+                    Size = 512,
+                },
+                Probes =
+                [
+                    new Probe
+                    {
+                        Key = 40,
+                        Position = new Vector3(1, 2, 3),
+                        Radius = 8,
+                        Resolution = 128,
+                        Version = 2,
+                        Layers = 0x0F,
+                        Intensity = 0.5,
+                    },
+                    new Probe { Key = 41, Position = new Vector3(-4, 1.5, 0) },
+                ],
+                Field = new IrradianceField
+                {
+                    Enabled = true,
+                    Origin = new Vector3(-8, 0, -8),
+                    Spacing = new Vector3(1, 1, 1),
+                    Counts = new Vector3(4, 2, 4),
+                    From = "light",
+                    Intensity = 1.5,
+                    Retention = 0.9,
+                    Bias = 0.2,
+                },
+            },
+            null),
+        ["environment-split"] = (
+            Scene() with { Environment = new RenderEnvironment { Radiance = "/e/radiance.ktx", Skybox = "/e/sky.ktx" } },
+            null),
+        ["graph-custom"] = (
+            Scene() with
+            {
+                Graph = new RenderGraph
+                {
+                    Targets =
+                    [
+                        new RenderTarget { Name = "frame", Scale = 0.5 },
+                        new RenderTarget { Name = "mirror", Width = 640, Height = 360, Depth = false },
+                        new RenderTarget { Name = "flat", Colour = false },
+                    ],
+                    Passes =
+                    [
+                        new RenderPass
+                        {
+                            Name = "mirror",
+                            Kind = PassKind.Reflection,
+                            Into = "mirror",
+                            Plane = [0, 1, 0, -0.5],
+                            Clear = false,
+                            Layers = 0x03,
+                        },
+                        new RenderPass { Name = "world", Into = "frame", Layers = 0x0F },
+                        new RenderPass { Name = "off", Into = "flat", Enabled = false },
+                        new RenderPass
+                        {
+                            Name = "sharpen",
+                            Kind = PassKind.Effect,
+                            Effect = PassEffect.Sharpen,
+                            Reads = ["frame", "mirror"],
+                            Plane = [0.6],
+                        },
+                    ],
+                },
+            },
+            null),
+        ["graph-problem"] = (
+            Scene() with { Graph = new RenderGraph { Passes = [new RenderPass { Name = "a" }, new RenderPass { Name = "b" }] } },
+            null),
+        ["graph-motion-blur"] = (
+            Scene() with { Graph = new MotionBlur { Shutter = 0.5, Samples = 8 }.Graph() },
+            null),
+        ["graph-distortion-only"] = (
+            Scene() with { Distortions = [Distortion.Lens(strength: -0.1)] },
+            null),
+        ["graph-god-rays-no-sun"] = (
+            Scene() with { GodRays = new GodRays { Strength = 0.5 } },
+            null),
     };
 
     /// <summary>The bytes a packed array holds, as the fixture writes them in base 64.</summary>
@@ -480,6 +699,11 @@ public class SceneFixtureTests
             return Same(
                 string.Join('|', strings.EnumerateArray().Select(s => s.GetString())),
                 string.Join('|', (string[])actual));
+        }
+
+        if (expected.TryGetProperty("string", out var text))
+        {
+            return Same(text.GetString(), (string)actual);
         }
 
         if (expected.TryGetProperty("bool", out var flag))

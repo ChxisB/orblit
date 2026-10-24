@@ -485,6 +485,286 @@ Map<String, ({OrblitScene scene, double? at})> _scenes() => {
     ),
     at: null,
   ),
+  'post': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      post: OrblitPostProcess(
+        antiAliasing: AntiAliasing.temporal,
+        bloom: OrblitBloom(
+          enabled: true,
+          strength: 0.3,
+          levels: 5,
+          threshold: false,
+          lensFlare: true,
+          flareStrength: 0.07,
+        ),
+        depthOfField: OrblitDepthOfField(
+          enabled: true,
+          focusDistance: 4,
+          blurScale: 2,
+          maxForeground: 3,
+          maxBackground: 5,
+        ),
+        vignette: OrblitVignette(
+          enabled: true,
+          midPoint: 0.3,
+          roundness: 0.8,
+          feather: 0.2,
+          colour: Vector3(0.1, 0.2, 0.3),
+        ),
+        occlusion: OrblitOcclusion(
+          enabled: true,
+          radius: 0.6,
+          strength: 0.8,
+          bias: 0.002,
+          quality: 2,
+          bentNormals: true,
+        ),
+        reflections: OrblitReflections(
+          enabled: true,
+          thickness: 0.2,
+          bias: 0.03,
+          maxDistance: 7,
+          stride: 3,
+        ),
+        grading: OrblitGrading(
+          enabled: true,
+          toneMapping: ToneMapping.aces,
+          exposure: 0.5,
+          contrast: 1.2,
+          saturation: 0.9,
+          vibrance: 1.4,
+          temperature: -0.2,
+          tint: 0.1,
+          shadows: Vector3(0.9, 1, 1.1),
+          midtones: Vector3(1, 1.05, 1),
+          highlights: Vector3(1.2, 1, 0.8),
+        ),
+        dithering: false,
+      ),
+    ),
+    at: null,
+  ),
+  'post-off': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      post: OrblitPostProcess(enabled: false, antiAliasing: AntiAliasing.off),
+    ),
+    at: null,
+  ),
+  'pipeline': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      pipeline: OrblitPipeline(
+        shadows: OrblitShadows(
+          kind: OrblitShadowKind.area,
+          mapSize: 2048,
+          cascades: 3,
+          distance: 60,
+          lambda: 0.7,
+          constantBias: 0.002,
+          normalBias: 0.5,
+          stable: true,
+          contact: true,
+          softness: 1.5,
+          splits: [0.1, 0.3, 0.6, 0.9],
+          softnessFalloff: 2,
+          contactDistance: 0.5,
+          contactSteps: 12,
+          variance: OrblitVarianceShadows(
+            blur: 2.5,
+            anisotropy: 4,
+            samples: 2,
+            lightBleedReduction: 0.3,
+            highPrecision: true,
+            mipmapping: true,
+            exponential: true,
+          ),
+        ),
+        resolution: OrblitResolution(
+          adaptive: true,
+          minScale: 0.6,
+          maxScale: 0.9,
+          sharpness: 0.4,
+        ),
+        lighting: OrblitLighting(clusterNear: 1, clusterFar: 250),
+        samples: 4,
+        precise: true,
+        culling: false,
+        refraction: false,
+        textures: OrblitTextureLimits(maxSize: 2048, uploadKilobytes: 512),
+      ),
+    ),
+    at: null,
+  ),
+  'pipeline-fixed-scale': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      pipeline: OrblitPipeline(
+        shadows: OrblitShadows(
+          enabled: false,
+          splits: [0.5],
+          mapSize: 256,
+        ),
+        resolution: OrblitResolution(scale: 0.75),
+        textures: OrblitTextureLimits(maxSize: 1 << 20, uploadKilobytes: -5),
+      ),
+    ),
+    at: null,
+  ),
+  'pipeline-handheld': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      pipeline: OrblitPipeline.forDisplay(
+        const OrblitDisplay(
+          width: 1280,
+          height: 800,
+          detail: OrblitDetail.ultra,
+        ),
+      ),
+    ),
+    at: null,
+  ),
+  'pipeline-handheld-low': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      pipeline: OrblitPipeline.forDisplay(
+        const OrblitDisplay(
+          width: 1280,
+          height: 800,
+          detail: OrblitDetail.low,
+        ),
+      ),
+    ),
+    at: null,
+  ),
+  'pipeline-large-display': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      pipeline: OrblitPipeline.forDisplay(
+        const OrblitDisplay(
+          width: 3840,
+          height: 2160,
+          detail: OrblitDetail.high,
+        ),
+      ),
+    ),
+    at: null,
+  ),
+  'environment': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      environment: const OrblitEnvironment.fromImage(
+        '/e/room.hdr',
+        intensity: 20000,
+        rotation: 1.2,
+        showSkybox: false,
+        size: 512,
+      ),
+      probes: [
+        OrblitProbe(
+          key: 40,
+          position: Vector3(1, 2, 3),
+          radius: 8,
+          resolution: 128,
+          version: 2,
+          layers: 0x0F,
+          intensity: 0.5,
+        ),
+        OrblitProbe(key: 41, position: Vector3(-4, 1.5, 0)),
+      ],
+      field: OrblitField(
+        enabled: true,
+        origin: Vector3(-8, 0, -8),
+        spacing: Vector3(1, 1, 1),
+        counts: Vector3(4, 2, 4),
+        from: 'light',
+        intensity: 1.5,
+        retention: 0.9,
+        bias: 0.2,
+      ),
+    ),
+    at: null,
+  ),
+  'environment-split': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      environment: const OrblitEnvironment(
+        radiance: '/e/radiance.ktx',
+        skybox: '/e/sky.ktx',
+      ),
+    ),
+    at: null,
+  ),
+  'graph-custom': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      graph: const OrblitRenderGraph(
+        targets: [
+          OrblitTarget(name: 'frame', scale: 0.5),
+          OrblitTarget(name: 'mirror', width: 640, height: 360, depth: false),
+          OrblitTarget(name: 'flat', colour: false),
+        ],
+        passes: [
+          OrblitPass(name: 'mirror', kind: OrblitPassKind.reflection, into: 'mirror', plane: [0, 1, 0, -0.5], clear: false, layers: 0x03),
+          OrblitPass(name: 'world', into: 'frame', layers: 0x0F),
+          OrblitPass(name: 'off', into: 'flat', enabled: false),
+          OrblitPass(
+            name: 'sharpen',
+            kind: OrblitPassKind.effect,
+            effect: OrblitEffect.sharpen,
+            reads: ['frame', 'mirror'],
+            plane: [0.6],
+          ),
+        ],
+      ),
+    ),
+    at: null,
+  ),
+  'graph-problem': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      graph: const OrblitRenderGraph(
+        passes: [OrblitPass(name: 'a'), OrblitPass(name: 'b')],
+      ),
+    ),
+    at: null,
+  ),
+  'graph-motion-blur': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      graph: const OrblitMotionBlur(shutter: 0.5, samples: 8).graph(),
+    ),
+    at: null,
+  ),
+  'graph-distortion-only': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      distortions: [OrblitDistortion.lens(strength: -0.1)],
+    ),
+    at: null,
+  ),
+  'graph-god-rays-no-sun': (
+    scene: OrblitScene(
+      camera: _camera(),
+      objects: const [],
+      godRays: const OrblitGodRays(strength: 0.5),
+    ),
+    at: null,
+  ),
 };
 
 String _b64(TypedData data) => base64Encode(

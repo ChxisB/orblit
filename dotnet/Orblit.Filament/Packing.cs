@@ -14,6 +14,9 @@ internal static class Packing
         return packed;
     }
 
+    /// <summary>A switch as the renderer reads it: one or nought.</summary>
+    internal static double Flag(bool on) => on ? 1 : 0;
+
     /// <summary>The array the message holds under <paramref name="key"/>.</summary>
     internal static T Read<T>(IReadOnlyDictionary<string, object> message, string key)
         where T : class => (T)message[key];

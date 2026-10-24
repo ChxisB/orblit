@@ -142,13 +142,47 @@ internal static class SceneMessage
     /// </summary>
     internal static void Screen(RenderScene scene, IDictionary<string, object> into)
     {
-        var sun = scene.Lights.FirstOrDefault(light => light.Kind == RenderLightKind.Directional);
+        var sun = scene.Sun;
         var clouds = scene.Sky.Drawn && scene.Sky.Clouds.IsVisible ? scene.Sky.Clouds.Cover : 0;
 
         into["outlineKeys"] = scene.Outline.PackedKeys;
         into["outlineParams"] = scene.Outline.Packed;
         into["godRayParams"] = scene.GodRays.Pack(sun is null ? null : -sun.Direction, sun?.Colour, clouds);
         into["distortionParams"] = Distortion.PackAll(scene.Distortions);
+    }
+
+    internal static void Probes(IReadOnlyList<Probe> probes, IDictionary<string, object> into)
+    {
+        var keys = new long[probes.Count];
+        var packed = new float[probes.Count * Probe.Stride];
+        for (var i = 0; i < probes.Count; i++)
+        {
+            keys[i] = probes[i].Key;
+            probes[i].Pack(packed, i * Probe.Stride);
+        }
+
+        into["probeKeys"] = keys;
+        into["probeParams"] = packed;
+    }
+
+    /// <summary>
+    /// How the frame is made: the image work, the pipeline's dials, the light kept in the world,
+    /// the place the scene stands in and the passes. The graph is the one that is drawn, with the
+    /// passes for the shafts and the bending of air put in.
+    /// </summary>
+    internal static void Picture(RenderScene scene, IDictionary<string, object> into)
+    {
+        var graph = scene.DrawnGraph;
+        into["postParams"] = scene.Post.Packed;
+        into["pipelineParams"] = scene.Pipeline.Packed;
+        into["fieldParams"] = scene.Field.Packed;
+        into["fieldFrom"] = scene.Field.From;
+        into["environmentRadiance"] = scene.Environment.Radiance ?? "";
+        into["environmentSkybox"] = scene.Environment.Skybox ?? "";
+        into["environmentParams"] = scene.Environment.Packed;
+        into["graphPasses"] = graph.PackedPasses;
+        into["graphTargets"] = graph.PackedTargets;
+        into["graphTargetNames"] = graph.Targets.Select(target => target.Name).ToArray();
     }
 
     internal static void Lights(IReadOnlyList<RenderLight> lights, IDictionary<string, object> into)
@@ -199,9 +233,10 @@ internal static class SceneMessage
     }
 
     /// <summary>Where each key sits in <paramref name="keys"/>. A key given twice points at its last place.</summary>
-    private static Dictionary<long, int> PositionOf(IEnumerable<long> keys)
+    internal static Dictionary<TKey, int> PositionOf<TKey>(IEnumerable<TKey> keys)
+        where TKey : notnull
     {
-        var at = new Dictionary<long, int>();
+        var at = new Dictionary<TKey, int>();
         var i = 0;
         foreach (var key in keys)
         {

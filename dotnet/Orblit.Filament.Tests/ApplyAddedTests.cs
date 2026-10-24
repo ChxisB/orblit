@@ -3,9 +3,9 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Applies a scene to a live headless renderer. A scene core has no render graph yet, so nothing
-/// it describes shows. What these check is that the renderer accepts every array, including a
-/// texture, a video and a shader whose files are not there.
+/// Applies a scene to a live headless renderer. What these check is that the renderer accepts
+/// every array, including a texture, a video, a shader and an environment whose files are not
+/// there. They do not read the picture back.
 /// </summary>
 public sealed class ApplyAddedTests
 {
@@ -35,6 +35,11 @@ public sealed class ApplyAddedTests
             Outline = new Outline { Keys = [100, 101], Primary = 100 },
             GodRays = new GodRays { Strength = 0.5 },
             Distortions = [Distortion.Shockwave(Vector3.Zero(), 2), Distortion.Lens(0.01)],
+            Post = new PostProcess { Bloom = new Bloom { Enabled = true }, Vignette = new Vignette { Enabled = true } },
+            Pipeline = Pipeline.At(Detail.High),
+            Environment = RenderEnvironment.FromImage("/nowhere/sky.hdr"),
+            Probes = [new Probe { Key = 5, Position = new Vector3(0, 1, 0), Resolution = 32 }],
+            Field = new IrradianceField { Enabled = true, From = "lit" },
         };
 
     [RendererFact]
@@ -63,5 +68,54 @@ public sealed class ApplyAddedTests
         renderer.Draw(1);
 
         Assert.True(renderer.RenderedFrames >= 2);
+    }
+
+    [RendererFact]
+    public void ACustomGraphIsAcceptedAndDrawn()
+    {
+        using var renderer = new Renderer(64, 48);
+        var graph = new RenderGraph
+        {
+            Targets = [new RenderTarget { Name = "mirror", Scale = 0.5 }, new RenderTarget { Name = "frame" }],
+            Passes =
+            [
+                new RenderPass { Name = "water", Kind = PassKind.Reflection, Into = "mirror", Plane = [0, 1, 0, 0] },
+                new RenderPass { Name = "world", Into = "frame", Reads = ["mirror"] },
+                new MotionBlur().Pass(reads: "frame"),
+            ],
+        };
+
+        renderer.Apply(SceneBuilders.Row() with { Graph = graph });
+        renderer.Draw(0);
+
+        Assert.True(renderer.RenderedFrames >= 1);
+    }
+
+    [RendererFact]
+    public void AGraphWithProblemsIsAcceptedAsNoPassesAtAll()
+    {
+        using var renderer = new Renderer(64, 48);
+        var broken = new RenderGraph { Passes = [new RenderPass { Name = "one" }, new RenderPass { Name = "two" }] };
+
+        renderer.Apply(SceneBuilders.Row() with { Graph = broken });
+        renderer.Draw(0);
+        renderer.Apply(SceneBuilders.Row());
+        renderer.Draw(1.0 / 60);
+
+        Assert.True(renderer.RenderedFrames >= 2);
+    }
+
+    [RendererFact]
+    public void EveryNamedDetailIsAccepted()
+    {
+        using var renderer = new Renderer(64, 48);
+
+        foreach (var detail in Enum.GetValues<Detail>())
+        {
+            renderer.Apply(SceneBuilders.Row() with { Pipeline = Pipeline.ForDisplay(new Display(64, 48, detail)) });
+            renderer.Draw(0);
+        }
+
+        Assert.True(renderer.RenderedFrames >= 4);
     }
 }

@@ -22,5 +22,15 @@ wind, clear coat, anisotropy, sheen, a screen that plays a `Video`, a second
 blended surface and a `CustomSurface` shader. A scene also holds `Decals`, an
 `Outline` of chosen objects, `GodRays` and `Distortion`. The same picture on
 several materials is sent once. `with` on a material keeps every field. The
-original dropped the screen and blend fields when it copied. The render
-graph, volumes, splats and the rest follow.
+original dropped the screen and blend fields when it copied.
+
+The picture follows. `RenderEnvironment` sets the image lighting and the sky
+box, `Probe` and `IrradianceField` set reflections and bounced light, and
+`PostProcess` holds the image work. `Pipeline` picks a `Detail` for a
+`Display`, with `ShadowSettings`, `Lighting` and `Resolution`. `RenderGraph`
+schedules scene, reflection and effect passes over named targets and reports
+`GraphProblem` values. A graph with problems sends no passes. `MotionBlur`
+builds its own passes and `FrameCapture` names the slowest. The screen
+effects are added to the graph only when the scene has something to draw
+them. Closing a renderer that had drawn an irradiance field aborted in the
+native code. That is fixed there. Volumes, splats and the rest follow.
