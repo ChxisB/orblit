@@ -1,2 +1,5 @@
 # The .NET gates compare bytes, and Windows checks out CRLF by default.
 dotnet/** text eol=lf
+# A picture or a model is bytes. The PNG signature holds a CRLF pair, which the rule above would rewrite.
+dotnet/**/*.png binary
+dotnet/**/*.glb binary
