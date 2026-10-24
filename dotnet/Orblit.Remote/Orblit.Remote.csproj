@@ -6,5 +6,6 @@
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Core\Orblit.Core.csproj" />
     <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+    <InternalsVisibleTo Include="Orblit.Remote.Tests" />
   </ItemGroup>
 </Project>
