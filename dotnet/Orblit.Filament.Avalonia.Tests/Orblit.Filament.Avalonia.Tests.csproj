@@ -6,9 +6,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia.Headless" />
-    <PackageReference Include="Avalonia.Skia" />
-    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <Using Include="Orblit.HeadlessSupport" />
+    <ProjectReference Include="..\Orblit.HeadlessSupport\Orblit.HeadlessSupport.csproj" />
     <ProjectReference Include="..\Orblit.Filament.Avalonia\Orblit.Filament.Avalonia.csproj" />
   </ItemGroup>
 </Project>

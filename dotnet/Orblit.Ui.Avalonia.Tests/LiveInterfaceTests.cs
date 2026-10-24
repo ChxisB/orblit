@@ -36,7 +36,7 @@ public class LiveInterfaceTests
             Type = "column",
             Children = [Keyed("greet", "Ann"), new UiNode { Type = "button", Props = new Dictionary<string, object?> { ["textKey"] = "play" } }],
         };
-        var window = Headless.Show(new UiSurface { Description = tree, Strings = strings });
+        var window = TestWindow.Show(new UiSurface { Description = tree, Strings = strings });
         Assert.Equal("Hello, Ann", Probe.Words(window, "Hello, Ann").Text);
         Assert.Equal("Play", Probe.Words(window, "Play").Text);
 
@@ -50,7 +50,7 @@ public class LiveInterfaceTests
     public Task ShowsAMissingKeyNotABlank() => Headless.Run(() =>
     {
         var surface = new UiSurface { Description = Keyed("quit"), Strings = Menu() };
-        var window = Headless.Show(surface);
+        var window = TestWindow.Show(surface);
         Assert.Equal("quit", Probe.Words(window, "quit").Text);
 
         surface.Strings = null;
@@ -63,7 +63,7 @@ public class LiveInterfaceTests
     {
         var tree = new UiNode { Type = "text", Text = "Quit game", Props = new Dictionary<string, object?> { ["textKey"] = "quit" } };
         var surface = new UiSurface { Description = tree, Strings = Menu() };
-        var window = Headless.Show(surface);
+        var window = TestWindow.Show(surface);
         Assert.Equal("Quit game", Probe.Words(window, "Quit game").Text);
 
         surface.Strings = null;
@@ -74,7 +74,7 @@ public class LiveInterfaceTests
     [Fact]
     public Task SetsTextInTheFallbackFontsItWasGiven() => Headless.Run(() =>
     {
-        var window = Headless.Show(new UiSurface
+        var window = TestWindow.Show(new UiSurface
         {
             Description = new UiNode { Type = "text", Text = "Hi" },
             FontFamily = "Main",
@@ -87,7 +87,7 @@ public class LiveInterfaceTests
     public Task ALanguageAddedLaterReachesAnInterfaceAlreadyShown() => Headless.Run(() =>
     {
         var strings = new UiStrings();
-        var window = Headless.Show(new UiSurface { Description = Keyed("play"), Strings = strings });
+        var window = TestWindow.Show(new UiSurface { Description = Keyed("play"), Strings = strings });
         Assert.Equal("play", Probe.Words(window, "play").Text);
 
         strings.Add("en", new Dictionary<string, string> { ["play"] = "Play" });

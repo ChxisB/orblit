@@ -5,9 +5,8 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Avalonia.Headless" />
-    <PackageReference Include="Avalonia.Skia" />
-    <PackageReference Include="Avalonia.Themes.Fluent" />
+    <Using Include="Orblit.HeadlessSupport" />
+    <ProjectReference Include="..\Orblit.HeadlessSupport\Orblit.HeadlessSupport.csproj" />
     <ProjectReference Include="..\Orblit.Ui.Avalonia\Orblit.Ui.Avalonia.csproj" />
   </ItemGroup>
 </Project>

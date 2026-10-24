@@ -47,7 +47,7 @@ public class BuilderTests
         {
             Description = new UiNode { Type = "box", Classes = "p-4 bg-slate-800 rounded-lg", Children = [Text("inside")] },
         };
-        Headless.Show(surface);
+        TestWindow.Show(surface);
 
         var box = Assert.IsType<Border>(surface.Child);
         Assert.Equal(new Thickness(16), box.Padding);

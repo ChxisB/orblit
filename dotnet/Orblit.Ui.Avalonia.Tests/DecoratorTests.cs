@@ -26,7 +26,7 @@ public class DecoratorTests
     {
         Dictionary<string, IReadOnlyList<int>> seen = [];
 
-        Headless.Show(new UiSurface
+        TestWindow.Show(new UiSurface
         {
             Description = Tree,
             Decorate = (node, path, built) =>
@@ -46,7 +46,7 @@ public class DecoratorTests
     {
         // Growing and placing are read by the parent that lays the child out, so they go on the
         // outermost control, which is the wrapper a host hands back.
-        var window = Headless.Show(new UiSurface
+        var window = TestWindow.Show(new UiSurface
         {
             Description = new UiNode
             {
@@ -71,7 +71,7 @@ public class DecoratorTests
     {
         // The hook is null in a game: the chrome is not stripped out, it was never built.
         var surface = new UiSurface { Description = Tree };
-        var window = Headless.Show(surface);
+        var window = TestWindow.Show(surface);
 
         Assert.Equal("One", Probe.Words(window, "One").Text);
         var box = Assert.IsType<Border>(surface.Child);

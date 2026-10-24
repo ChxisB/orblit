@@ -25,7 +25,7 @@ public sealed class RendererViewportTests
     {
         var viewport = new RendererViewport();
 
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         Assert.Equal(ViewportPath.Readback, viewport.Path);
         Assert.False(string.IsNullOrWhiteSpace(viewport.Fallback));
@@ -37,7 +37,7 @@ public sealed class RendererViewportTests
     {
         var viewport = new RendererViewport(new FakePresenter().Choose());
 
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         Assert.Equal(ViewportPath.SharedTexture, viewport.Path);
         Assert.Null(viewport.Fallback);
@@ -48,7 +48,7 @@ public sealed class RendererViewportTests
     public async Task FramesDrawAtTheSizeOfTheControlAndReachTheScreen() => await Headless.Run(async () =>
     {
         var viewport = new RendererViewport();
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         for (var tick = 0; tick < Ticks; tick++)
         {
@@ -65,7 +65,7 @@ public sealed class RendererViewportTests
     public async Task AResizedControlResizesTheRenderer() => await Headless.Run(async () =>
     {
         var viewport = new RendererViewport();
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
         for (var tick = 0; tick < Ticks; tick++)
         {
             viewport.Frame(Scenes.Box(), tick / 60.0);
@@ -91,7 +91,7 @@ public sealed class RendererViewportTests
     public async Task LeavingTheWindowFreesTheRendererAndAReturnStartsAnother() => await Headless.Run(async () =>
     {
         var viewport = new RendererViewport();
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
         viewport.Frame(Scenes.Box(), 0);
         var first = viewport.Renderer!;
 
@@ -114,7 +114,7 @@ public sealed class RendererViewportTests
     {
         var path = new FakePresenter();
         var viewport = new RendererViewport(path.Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         window.Content = null;
 
@@ -145,7 +145,7 @@ public sealed class RendererViewportTests
     {
         var path = new FakePresenter { Busy = true };
         var viewport = new RendererViewport(path.Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         Assert.False(viewport.Frame(Scenes.Box(), 0));
 
@@ -160,7 +160,7 @@ public sealed class RendererViewportTests
     {
         var path = new FakePresenter();
         var viewport = new RendererViewport(path.Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         Assert.True(viewport.Frame(Scenes.Box(), 0));
 
@@ -175,7 +175,7 @@ public sealed class RendererViewportTests
     public async Task TheSceneIsDescribedBeforeTheFrameIsDrawn() => await Headless.Run(async () =>
     {
         var viewport = new RendererViewport(new FakePresenter().Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         viewport.Frame(Scenes.Row(), 0);
 
@@ -189,7 +189,7 @@ public sealed class RendererViewportTests
     {
         var path = new FakePresenter { Shows = false };
         var viewport = new RendererViewport(path.Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         Assert.True(viewport.Frame(Scenes.Box(), 0));
 
@@ -202,7 +202,7 @@ public sealed class RendererViewportTests
     {
         var cause = new InvalidOperationException("the compositor said no");
         var viewport = new RendererViewport(new FakePresenter { Fault = cause }.Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
 
         var thrown = Assert.Throws<InvalidOperationException>(() => viewport.Frame(Scenes.Box(), 0));
 
@@ -215,7 +215,7 @@ public sealed class RendererViewportTests
     {
         var path = new FakePresenter();
         var viewport = new RendererViewport(path.Choose());
-        var window = await Headless.ShowAsync(viewport, Width, Height);
+        var window = await TestWindow.ShowAsync(viewport, Width, Height);
         path.Calls.Clear();
 
         viewport.InvalidateVisual();
@@ -233,7 +233,7 @@ public sealed class RendererViewportTests
     {
         var path = new FakePresenter();
         var viewport = new RendererViewport(path.Choose());
-        var window = await Headless.ShowAsync(viewport, width, height);
+        var window = await TestWindow.ShowAsync(viewport, width, height);
 
         Assert.False(viewport.Frame(Scenes.Box(), 0));
 

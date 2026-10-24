@@ -39,7 +39,7 @@ public class TouchTests
     {
         List<(string, object?)> events = [];
         var surface = new UiSurface { Description = description, OnEvent = (handler, payload) => events.Add((handler, payload)) };
-        return (Headless.Show(surface, 700, 300), events, surface);
+        return (TestWindow.Show(surface, 700, 300), events, surface);
     }
 
     private static double[] Last(List<(string Handler, object? Payload)> events) => Assert.IsType<double[]>(events[^1].Payload);

@@ -15,7 +15,7 @@ internal static class Probe
     internal static TextBlock Words(Visual root, string words) => All<TextBlock>(root).Single(block => block.Text == words);
 
     internal static Window Show(UiNode description, UiEvent? onEvent = null) =>
-        Headless.Show(new UiSurface { Description = description, OnEvent = onEvent });
+        TestWindow.Show(new UiSurface { Description = description, OnEvent = onEvent });
 
     /// <summary>Presses and lets go in the middle of <paramref name="target"/>, as a mouse would.</summary>
     internal static void Click(Window window, Control target)

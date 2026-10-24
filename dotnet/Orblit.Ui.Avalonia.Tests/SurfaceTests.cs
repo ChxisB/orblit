@@ -23,7 +23,7 @@ public class SurfaceTests
     private static (Window Window, Border Slot) Seat(UiSurface surface, double width)
     {
         var slot = new Border { Width = width, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Child = surface };
-        return (Headless.Show(slot, 1400, 600), slot);
+        return (TestWindow.Show(slot, 1400, 600), slot);
     }
 
     [Fact]
@@ -64,7 +64,7 @@ public class SurfaceTests
     {
         // A surface inside a row that scrolls is offered no width. The window is the honest answer.
         var scroller = new ScrollViewer { HorizontalScrollBarVisibility = ScrollBarVisibility.Auto, Content = new UiSurface { Description = Card } };
-        var window = Headless.Show(scroller, 1400, 600);
+        var window = TestWindow.Show(scroller, 1400, 600);
         Assert.Equal(Orientation.Horizontal, Assert.Single(Probe.All<FlexPanel>(window)).Orientation);
     });
 
@@ -72,7 +72,7 @@ public class SurfaceTests
     public Task AnotherDescriptionIsBuiltAgain() => Headless.Run(() =>
     {
         var surface = new UiSurface { Description = new UiNode { Type = "text", Text = "One" } };
-        var window = Headless.Show(surface);
+        var window = TestWindow.Show(surface);
         Assert.Equal("One", Probe.Words(window, "One").Text);
 
         surface.Description = new UiNode { Type = "text", Text = "Two" };
@@ -85,7 +85,7 @@ public class SurfaceTests
     public Task WithNoDescriptionItShowsNothingAndDoesNotThrow() => Headless.Run(() =>
     {
         var surface = new UiSurface();
-        Headless.Show(surface);
+        TestWindow.Show(surface);
         Assert.Null(surface.Child);
     });
 }

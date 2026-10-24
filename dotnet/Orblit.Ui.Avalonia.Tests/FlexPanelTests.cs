@@ -199,7 +199,7 @@ public class FlexPanelTests
     public Task ChangingAPropertyLaysTheChildrenOutAgain() => Headless.Run(() =>
     {
         var row = Row(Box(50), Elastic(30));
-        var window = Headless.Show(row, 300, 100);
+        var window = TestWindow.Show(row, 300, 100);
         Assert.Equal([0, 50], Lefts(row));
 
         row.Gap = 20;

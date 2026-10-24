@@ -157,6 +157,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Stage", "Orblit.Stag
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Stage.Tests", "Orblit.Stage.Tests\Orblit.Stage.Tests.csproj", "{C1ACE7C1-C5A1-4D0E-B327-72AEA4A485F3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.HeadlessSupport", "Orblit.HeadlessSupport\Orblit.HeadlessSupport.csproj", "{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1091,6 +1093,18 @@ Global
 		{C1ACE7C1-C5A1-4D0E-B327-72AEA4A485F3}.Release|x64.Build.0 = Release|Any CPU
 		{C1ACE7C1-C5A1-4D0E-B327-72AEA4A485F3}.Release|x86.ActiveCfg = Release|Any CPU
 		{C1ACE7C1-C5A1-4D0E-B327-72AEA4A485F3}.Release|x86.Build.0 = Release|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Debug|x64.Build.0 = Debug|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Debug|x86.Build.0 = Debug|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Release|x64.ActiveCfg = Release|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Release|x64.Build.0 = Release|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Release|x86.ActiveCfg = Release|Any CPU
+		{3F5D89A1-B760-40AC-ACD8-22E626EEDFDC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
