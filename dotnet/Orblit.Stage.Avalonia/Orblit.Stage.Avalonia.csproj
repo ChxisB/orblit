@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Puts interface in a staged scene: the line from a point on the screen into the world, the name labels that square up to the view, and the quad a panel's picture is shown on.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Avalonia" />
+    <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
+    <ProjectReference Include="..\Orblit.Ui.Avalonia\Orblit.Ui.Avalonia.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>

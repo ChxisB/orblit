@@ -8,7 +8,9 @@
 import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
+import 'dart:ui' show Offset, Size;
 
+import 'package:flutter/widgets.dart' show SizedBox;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:orblit_audio/orblit_audio.dart'
     show Audio, AudioCall, AudioStarted, AudioStopped, AudioUpdated, RecordedAudio;
@@ -29,6 +31,7 @@ import 'package:orblit_motion/orblit_motion.dart'
 import 'package:orblit_particles/orblit_particles.dart' show Trail, TrailStrip;
 import 'package:orblit_scene/orblit_scene.dart';
 import 'package:orblit_stage/orblit_stage.dart';
+import 'package:orblit_ui/orblit_ui.dart' show UiPanel;
 import 'package:orblit_weather/orblit_weather.dart'
     show WeatherCondition, WeatherState;
 import 'package:vector_math/vector_math_64.dart';
@@ -918,7 +921,185 @@ List<Map<String, Object?>> _soundCases() => [
   ),
 ];
 
+Vector3 _spread(Random random, double reach) => Vector3(
+  (random.nextDouble() * 2 - 1) * reach,
+  (random.nextDouble() * 2 - 1) * reach,
+  (random.nextDouble() * 2 - 1) * reach,
+);
+
+Map<String, Object?> _rayCase(OrblitCamera camera, Offset point, Size view) {
+  final ray = PointerRay.fromCamera(camera, point, view);
+  return {
+    'op': 'ray',
+    'in': {
+      'position': _point(camera.position),
+      'target': _point(camera.target),
+      'fieldOfView': number(camera.fieldOfView),
+      'orthographic': camera.orthographic,
+      'viewHeight': number(camera.viewHeight),
+      'point': [number(point.dx), number(point.dy)],
+      'view': [number(view.width), number(view.height)],
+    },
+    'expect': {
+      'origin': _point(ray.origin),
+      'direction': _point(ray.direction),
+    },
+  };
+}
+
+List<Map<String, Object?>> _rayCases() {
+  final random = Random(7);
+  const views = [
+    Size(100, 100),
+    Size(200, 100),
+    Size(100, 200),
+    Size(640, 480),
+    Size(333, 777),
+  ];
+  Map<String, Object?> random_(int at) {
+    final view = views[at % views.length];
+    final camera = OrblitCamera(
+      position: _spread(random, 10),
+      target: _spread(random, 10),
+      fieldOfView: 20 + random.nextDouble() * 80,
+      orthographic: at % 4 == 3,
+      viewHeight: 2 + random.nextDouble() * 18,
+    );
+    final point = Offset(
+      random.nextDouble() * view.width,
+      random.nextDouble() * view.height,
+    );
+    return _rayCase(camera, point, view);
+  }
+
+  final front = OrblitCamera(
+    position: Vector3(0, 0, 5),
+    target: Vector3.zero(),
+    fieldOfView: 90,
+  );
+  return [
+    for (final corner in const [
+      Offset(0, 0),
+      Offset(100, 0),
+      Offset(0, 100),
+      Offset(100, 100),
+      Offset(50, 50),
+    ])
+      _rayCase(front, corner, const Size(100, 100)),
+    _rayCase(front, const Offset(200, 0), const Size(200, 100)),
+    _rayCase(front, const Offset(100, 100), const Size(100, 200)),
+    _rayCase(
+      front.copyWith(orthographic: true, viewHeight: 10),
+      const Offset(100, 0),
+      const Size(100, 100),
+    ),
+    // Looking straight down has no right-hand side.
+    _rayCase(
+      OrblitCamera(position: Vector3(0, 10, 0), target: Vector3.zero()),
+      const Offset(30, 70),
+      const Size(100, 100),
+    ),
+    for (var at = 0; at < 40; at++) random_(at),
+  ];
+}
+
+Map<String, Object?> _pixelCase(
+  Matrix4 transform,
+  Size size,
+  Vector3 origin,
+  Vector3 direction,
+) {
+  final panel = UiPanel(child: const SizedBox(), size: size);
+  final wall = WorldPanel(
+    id: 'wall',
+    panel: panel,
+    transform: transform,
+    objectKey: 1,
+    materialKey: 2,
+  );
+  final pixel = wall.pixelAt(PointerRay(origin, direction));
+  panel.dispose();
+  return {
+    'op': 'pixel',
+    'in': {
+      'transform': _cells(transform),
+      'size': [number(size.width), number(size.height)],
+      'origin': _point(origin),
+      'direction': _point(direction),
+    },
+    'expect': pixel == null ? null : [number(pixel.dx), number(pixel.dy)],
+  };
+}
+
+Map<String, Object?> _pixelThrough(
+  Matrix4 transform,
+  Size size,
+  Vector3 from,
+  Vector3 local,
+) {
+  final target = transform.transformed3(local);
+  return _pixelCase(transform, size, from, (target - from)..normalize());
+}
+
+List<Map<String, Object?>> _pixelCases() {
+  final wall = Matrix4.identity()
+    ..setTranslation(Vector3(2, 1, 0))
+    ..rotateY(pi / 2)
+    ..scaleByVector3(Vector3(2, 1, 0.05));
+  const size = Size(200, 100);
+  final eye = Vector3(10, 1, 0);
+  final cases = <Map<String, Object?>>[
+    for (final local in [
+      Vector3(0, 0, 1),
+      Vector3(0.5, 0.5, 1),
+      Vector3(-0.9, -0.9, 1),
+      Vector3(1.5, 0, 1),
+      Vector3(0, -2, 1),
+    ])
+      _pixelThrough(wall, size, eye, local),
+    _pixelThrough(wall, size, Vector3(-6, 1, 0), Vector3(0, 0, 1)),
+    _pixelCase(wall, size, Vector3(-6, 1, 0), Vector3(-1, 0, 0)),
+    _pixelCase(wall, size, Vector3(10, 1, 0), Vector3(0, 0, 1)),
+  ];
+  final random = Random(11);
+  for (var at = 0; at < 24; at++) {
+    final turn = Quaternion.axisAngle(
+      _spread(random, 1)..normalize(),
+      random.nextDouble() * 2 * pi,
+    );
+    final placed = Matrix4.compose(
+      _spread(random, 5),
+      turn,
+      Vector3(0.5 + random.nextDouble() * 3, 0.5 + random.nextDouble() * 3, 0.05),
+    );
+    cases.add(
+      _pixelThrough(
+        placed,
+        Size(50 + random.nextDouble() * 400, 50 + random.nextDouble() * 400),
+        _spread(random, 12),
+        Vector3(
+          (random.nextDouble() * 2 - 1) * 1.4,
+          (random.nextDouble() * 2 - 1) * 1.4,
+          1,
+        ),
+      ),
+    );
+  }
+  return cases;
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  test('writes the pointing fixtures', () {
+    writeFixture(
+      root: Directory('../..').absolute.path,
+      package: 'orblit_stage',
+      name: 'pointing',
+      cases: [..._rayCases(), ..._pixelCases()],
+    );
+  });
+
   test('writes the particle fixtures', () {
     writeFixture(
       root: Directory('../..').absolute.path,
