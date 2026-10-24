@@ -84,6 +84,9 @@ public static partial class PlainText
     [GeneratedRegex(@"^([+-]?)(?:0[xX]([0-9a-fA-F]+)|([0-9]+))\z", RegexOptions.CultureInvariant)]
     private static partial Regex WholeShape();
 
+    [GeneratedRegex(@"^([+-]?)([0-9a-fA-F]+)\z", RegexOptions.CultureInvariant)]
+    private static partial Regex HexShape();
+
     /// <summary>Reads a fraction, with a space allowed on either side. Null when it is not a number.</summary>
     public static double? ParseDouble(string text)
     {
@@ -124,7 +127,22 @@ public static partial class PlainText
                 : null;
         }
 
-        var hex = shape.Groups[2].Value.TrimStart('0');
+        return HexValue(negative, shape.Groups[2].Value);
+    }
+
+    /// <summary>
+    /// Reads hexadecimal digits with one optional sign and a space allowed on either side. There is
+    /// no <c>0x</c>. The size rules are those of <see cref="ParseInt"/>.
+    /// </summary>
+    public static long? ParseHex(string text)
+    {
+        var shape = HexShape().Match(Trim(text));
+        return shape.Success ? HexValue(shape.Groups[1].Value == "-", shape.Groups[2].Value) : null;
+    }
+
+    private static long? HexValue(bool negative, string digits)
+    {
+        var hex = digits.TrimStart('0');
         if (hex.Length > 16)
         {
             return null;

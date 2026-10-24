@@ -14,7 +14,9 @@ internal sealed class JsonReader(string text)
         return _at < text.Length ? throw Fail("Unexpected character") : value;
     }
 
-    private FormatException Fail(string reason) => new($"{reason} at {_at}.");
+    private JsonFormatException Fail(string reason) => new(reason, _at);
+
+    private JsonFormatException Unexpected() => Fail(_at >= text.Length ? "Unexpected end of input" : "Unexpected character");
 
     // The format's whitespace is these four and nothing else, so a byte-order mark or a vertical tab is refused.
     private void SkipSpace()
@@ -48,13 +50,14 @@ internal sealed class JsonReader(string text)
 
     private object? ReadWord(string word, object? value)
     {
-        if (string.CompareOrdinal(text, _at, word, 0, word.Length) != 0)
+        var matched = 0;
+        while (matched < word.Length && _at + matched < text.Length && text[_at + matched] == word[matched])
         {
-            throw Fail(_at + word.Length > text.Length ? "Unexpected end of input" : "Unexpected character");
+            matched++;
         }
 
-        _at += word.Length;
-        return value;
+        _at += matched;
+        return matched < word.Length ? throw Unexpected() : value;
     }
 
     private void Enter(int depth)
@@ -82,7 +85,7 @@ internal sealed class JsonReader(string text)
             SkipSpace();
             if (Peek() != '"')
             {
-                throw Fail("Unexpected character");
+                throw Unexpected();
             }
 
             var key = ReadString();
@@ -138,14 +141,9 @@ internal sealed class JsonReader(string text)
 
     private void Expect(char c)
     {
-        if (_at >= text.Length)
+        if (_at >= text.Length || text[_at] != c)
         {
-            throw Fail("Unexpected end of input");
-        }
-
-        if (text[_at] != c)
-        {
-            throw Fail("Unexpected character");
+            throw Unexpected();
         }
 
         _at++;
@@ -195,13 +193,24 @@ internal sealed class JsonReader(string text)
 
     private char ReadUnit()
     {
-        if (_at + 4 > text.Length
-            || !int.TryParse(text.AsSpan(_at, 4), NumberStyles.AllowHexSpecifier, CultureInfo.InvariantCulture, out var unit))
+        var unit = 0;
+        for (var i = 0; i < 4; i++)
         {
-            throw Fail("Invalid unicode escape");
+            if (_at >= text.Length)
+            {
+                throw Fail("Unterminated string");
+            }
+
+            var c = text[_at];
+            if (!char.IsAsciiHexDigit(c))
+            {
+                throw Fail("Invalid unicode escape");
+            }
+
+            unit = (unit * 16) + (c <= '9' ? c - '0' : (c | 0x20) - 'a' + 10);
+            _at++;
         }
 
-        _at += 4;
         return (char)unit;
     }
 
@@ -213,12 +222,12 @@ internal sealed class JsonReader(string text)
             _at++;
         }
 
-        ReadDigits(leadingZeroEndsIt: true);
+        ReadDigits(leadingZeroEndsIt: true, notADigit: "Missing expected digit");
         var whole = true;
         if (Peek() == '.')
         {
             _at++;
-            ReadDigits(leadingZeroEndsIt: false);
+            ReadDigits(leadingZeroEndsIt: false, notADigit: "Unexpected character");
             whole = false;
         }
 
@@ -230,7 +239,7 @@ internal sealed class JsonReader(string text)
                 _at++;
             }
 
-            ReadDigits(leadingZeroEndsIt: false);
+            ReadDigits(leadingZeroEndsIt: false, notADigit: "Missing expected digit");
             whole = false;
         }
 
@@ -241,11 +250,12 @@ internal sealed class JsonReader(string text)
     }
 
     // A whole part that starts with 0 is that 0 alone, so 01 reads as 0 followed by a stray 1.
-    private void ReadDigits(bool leadingZeroEndsIt)
+    // The text may stop short of a digit, which is its own refusal, so the reason for a wrong character is passed in.
+    private void ReadDigits(bool leadingZeroEndsIt, string notADigit)
     {
         if (!char.IsAsciiDigit(Peek()))
         {
-            throw Fail("Missing expected digit");
+            throw Fail(_at >= text.Length ? "Unterminated number literal" : notADigit);
         }
 
         if (leadingZeroEndsIt && Peek() == '0')

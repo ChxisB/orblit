@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0
+
+- A refusal is a `JsonFormatException`, still a `FormatException`. Its `Reason`
+  is the wording without the place, such as `Unexpected end of input`.
+- The reader gives the reasons Dart's reader gives. Text that stops inside a
+  number is `Unterminated number literal`. A wrong character after `-` or an
+  exponent is `Missing expected digit`, and after `.` it is `Unexpected
+  character`. A `\u` escape cut short is `Unterminated string`, and one with
+  a wrong digit is `Invalid unicode escape`. A bare `{` or a trailing comma
+  at the end of the text is `Unexpected end of input`.
+- `PlainText.ParseHex` reads hexadecimal digits with an optional sign and no
+  `0x`.
+
 ## 0.3.0
 
 - `PlainText` holds the text rules the asset, mesh and interface readers share:

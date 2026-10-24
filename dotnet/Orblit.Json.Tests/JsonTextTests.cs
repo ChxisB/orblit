@@ -56,7 +56,48 @@ public class JsonTextTests
     [InlineData("[1 2]")]
     [InlineData("1 2")]
     public void RefusesTextThatIsNotJson(string text) =>
-        Assert.Throws<FormatException>(() => JsonText.Decode(text));
+        Assert.Throws<JsonFormatException>(() => JsonText.Decode(text));
+
+    // The reasons are the ones an interface file's reader has always shown its author.
+    [Theory]
+    [InlineData("", "Unexpected end of input")]
+    [InlineData("tr", "Unexpected end of input")]
+    [InlineData("tx", "Unexpected character")]
+    [InlineData("nux", "Unexpected character")]
+    [InlineData("truex", "Unexpected character")]
+    [InlineData("{", "Unexpected end of input")]
+    [InlineData("{ ", "Unexpected end of input")]
+    [InlineData("{\"a\":1,", "Unexpected end of input")]
+    [InlineData("{\"a\":1,}", "Unexpected character")]
+    [InlineData("[1,", "Unexpected end of input")]
+    [InlineData("01", "Unexpected character")]
+    [InlineData("-", "Unterminated number literal")]
+    [InlineData("1.", "Unterminated number literal")]
+    [InlineData("1e+", "Unterminated number literal")]
+    [InlineData("[-", "Unterminated number literal")]
+    [InlineData("-x", "Missing expected digit")]
+    [InlineData("-.5", "Missing expected digit")]
+    [InlineData("1ex", "Missing expected digit")]
+    [InlineData("[1e]", "Missing expected digit")]
+    [InlineData("1.x", "Unexpected character")]
+    [InlineData("[1.]", "Unexpected character")]
+    [InlineData("\"abc", "Unterminated string")]
+    [InlineData("\"\\", "Unterminated string")]
+    [InlineData("\"\\u12", "Unterminated string")]
+    [InlineData("\"\\u12\"", "Invalid unicode escape")]
+    [InlineData("\"\\u+123\"", "Invalid unicode escape")]
+    [InlineData("\"\\x\"", "Unrecognized string escape")]
+    [InlineData("\"a\tb\"", "Control character in string")]
+    public void NamesWhyItRefused(string text, string reason) =>
+        Assert.Equal(reason, Assert.Throws<JsonFormatException>(() => JsonText.Decode(text)).Reason);
+
+    [Fact]
+    public void SaysWhereItRefusedAndStaysAFormatException()
+    {
+        var error = Assert.Throws<JsonFormatException>(() => JsonText.Decode("[1,"));
+        Assert.Equal("Unexpected end of input at 3.", error.Message);
+        Assert.IsAssignableFrom<FormatException>(error);
+    }
 
     [Fact]
     public void ReadsStringsWithEveryEscape()
@@ -98,7 +139,7 @@ public class JsonTextTests
     {
         string Nested(int depth) => new string('[', depth) + new string(']', depth);
         Assert.NotNull(JsonText.Decode(Nested(JsonText.MaxDepth)));
-        Assert.Throws<FormatException>(() => JsonText.Decode(Nested(JsonText.MaxDepth + 1)));
+        Assert.Equal("Nested too deep", Assert.Throws<JsonFormatException>(() => JsonText.Decode(Nested(JsonText.MaxDepth + 1))).Reason);
     }
 
     private static OrderedDictionary<string, object?> Sample() => new()

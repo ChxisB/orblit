@@ -63,6 +63,26 @@ public class PlainTextTests
     [InlineData("1.0")]
     public void RefusesTextThatIsNotAWholeNumber(string text) => Assert.Null(PlainText.ParseInt(text));
 
+    [Theory]
+    [InlineData("ff", 255L)]
+    [InlineData(" -FF ", -255L)]
+    [InlineData("+0a", 10L)]
+    [InlineData("\u00A0 1F\u2003", 31L)]
+    [InlineData("0000000000000000ff", 255L)]
+    [InlineData("FFFFFFFFFFFFFFFF", -1L)]
+    public void ReadsHexDigitsWithAnOptionalSign(string text, long expected) =>
+        Assert.Equal(expected, PlainText.ParseHex(text));
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("0x1f")]
+    [InlineData("--1")]
+    [InlineData("1 2")]
+    [InlineData("g")]
+    [InlineData("10000000000000000")]
+    [InlineData("-8000000000000001")]
+    public void RefusesTextThatIsNotHexDigits(string text) => Assert.Null(PlainText.ParseHex(text));
+
     [Fact]
     public void LowerCaseFoldsTheKelvinSignAndTheDottedCapitalI() =>
         Assert.Equal("ik", PlainText.ToLower("\u0130\u212A"));
