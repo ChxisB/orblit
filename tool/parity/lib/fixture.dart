@@ -75,6 +75,9 @@ String _commitOf(String root, String package) {
   }
 
   final commit = git(['log', '-1', '--format=%H', '--', path]);
-  final dirty = git(['status', '--porcelain', '--', path]).isNotEmpty;
-  return dirty ? '$commit+dirty' : commit;
+  // regen.sh copies an exporter into the package's test folder while it runs.
+  final changed = git(['status', '--porcelain', '--', path])
+      .split('\n')
+      .where((line) => line.isNotEmpty && !line.contains('/test/zz_'));
+  return changed.isEmpty ? commit : '$commit+dirty';
 }

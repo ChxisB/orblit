@@ -8,9 +8,14 @@ root=$PWD
 
 export PATH="$HOME/development/flutter/bin:$PATH"
 
-copy=packages/orblit_filament/test/zz_filament_scene_test.dart
-trap 'rm -f "$root/$copy"' EXIT
-cp tool/parity/flutter/filament_scene_test.dart "$copy"
+copies=(
+  packages/orblit_filament/test/zz_filament_scene_test.dart
+  packages/orblit_ui/test/zz_ui_test.dart
+)
+trap 'rm -f "${copies[@]/#/$root/}"' EXIT
+cp tool/parity/flutter/filament_scene_test.dart "${copies[0]}"
+cp tool/parity/flutter/ui_test.dart "${copies[1]}"
 (cd packages/orblit_filament && flutter test test/zz_filament_scene_test.dart)
+(cd packages/orblit_ui && flutter test test/zz_ui_test.dart)
 
-git diff --stat -- dotnet/fixtures/orblit_filament
+git diff --stat -- dotnet/fixtures/orblit_filament dotnet/fixtures/orblit_ui
