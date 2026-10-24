@@ -28,6 +28,8 @@ dependencies:
     path: ../../packages/orblit_dialogue
   orblit_effect:
     path: ../../packages/orblit_effect
+  orblit_input:
+    path: ../../packages/orblit_input
   orblit_light:
     path: ../../packages/orblit_light
   orblit_mesh:

@@ -38,6 +38,28 @@ public class Vector2Tests
     }
 
     [Fact]
+    public void NormalizeScalesToLengthOneAndSaysTheOldLength()
+    {
+        var vector = new Vector2(3, 4);
+        Assert.Equal(5, vector.Normalize());
+        Assert.Equal(0.6, vector.X, 12);
+        Assert.Equal(0.8, vector.Y, 12);
+
+        var kept = new Vector2(3, 4);
+        Assert.Equal(0.6, kept.Normalized().X, 12);
+        Assert.Equal(3, kept.X);
+    }
+
+    [Fact]
+    public void ANullVectorStaysAsItIsWhenNormalized()
+    {
+        var vector = Vector2.Zero();
+        Assert.Equal(0, vector.Normalize());
+        Assert.Equal(0, vector.X);
+        Assert.Equal(0, vector.Y);
+    }
+
+    [Fact]
     public void ACloneDoesNotShareItsComponents()
     {
         var original = new Vector2(1, 0.5);

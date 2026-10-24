@@ -32,6 +32,35 @@ public sealed class Vector2(double x, double y) : IEquatable<Vector2>
 
     public double DistanceTo(Vector2 other) => Math.Sqrt(DistanceToSquared(other));
 
+    /// <summary>
+    /// A copy of length one. A vector of length zero comes back unchanged, and a
+    /// multiply by the reciprocal is used, not a divide.
+    /// </summary>
+    public Vector2 Normalized()
+    {
+        var copy = Clone();
+        copy.Normalize();
+        return copy;
+    }
+
+    /// <summary>
+    /// Scales to length one, in place, and returns the length it had. A vector of
+    /// length zero is left as it is and gives 0.
+    /// </summary>
+    public double Normalize()
+    {
+        var length = Length;
+        if (length == 0)
+        {
+            return 0;
+        }
+
+        var d = 1.0 / length;
+        X *= d;
+        Y *= d;
+        return length;
+    }
+
     public static Vector2 operator +(Vector2 a, Vector2 b) => new(a.X + b.X, a.Y + b.Y);
 
     public static Vector2 operator -(Vector2 a, Vector2 b) => new(a.X - b.X, a.Y - b.Y);

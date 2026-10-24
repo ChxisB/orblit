@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.18.0
+
+- `Vector2.Normalize` and `Normalized`, which the input actions read.
+
 ## 0.17.0
 
 - `Matrix4.FromList`, which the model file description reads.
