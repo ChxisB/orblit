@@ -8,6 +8,7 @@
     <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
     <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
     <ProjectReference Include="..\Orblit.Remote\Orblit.Remote.csproj" />
+    <ProjectReference Include="..\Orblit.Remote.Tool\Orblit.Remote.Tool.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="..\fixtures\orblit_remote\*.json" Link="fixtures\orblit_remote\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />

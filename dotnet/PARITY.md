@@ -88,6 +88,7 @@ is done when the two Run counts match.
 | `orblit_remote` part R3 | 48 | 48 | 48 | 49 | none, because the tests drive the verbs with a fake world and fake host parts | a log tail count past 32 bits (1 run) | done. `RemoteHost`, `RemoteVerbs` and the render verbs, as one `HandleAsync` call. A callback that blocks is not covered by the timeout, as in Dart |
 | `orblit_remote` part R4 | 26 | 26 | 26 | 42 | none, because the tests drive a real socket on loopback | the pump thread, the head timeout, a binary frame and the upgrade rules (16 runs) | done. `RemoteServer`, `RemoteClient` and `GameLoopContext` |
 | `orblit_remote` part R5 | 45 | 45 | 45 | 52 | none, because the tests use a fake game and a real one on loopback | an address with a port and then userinfo (1 run) | done. `ToolServer`, `RemoteCli` and the `orblit-remote` tool. The 11 bridge tests run in this process, through a real pipe for stdin |
+| `orblit_remote` part R6 | 0 | 0 | 4 | 4 | none, because the peer is a live Dart process, `packages/orblit_remote/tool/cross_peer.dart` | a Dart client on the C# server, a C# client on the Dart server, and the tool on both (4 runs) | done. The two skip when no Dart SDK is found. The wording of an InvalidParams message differs by design and its code is checked. The world is a fake, so the Dart side needs no native `orblit_core` |
 
 ## The rule for doubles
 

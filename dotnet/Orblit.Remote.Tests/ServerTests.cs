@@ -150,10 +150,11 @@ public sealed partial class ServerTests
         await using var game = await Game.Start();
         await using var chat = await Chat.Open(game.Server.Uri);
 
-        await chat.Send(new string('x', 2 << 20));
         var ended = false;
         try
         {
+            // The server may close while the client is still writing, so the send can fail too.
+            await chat.Send(new string('x', 2 << 20));
             ended = await chat.Read() is null;
         }
         catch (WebSocketException)

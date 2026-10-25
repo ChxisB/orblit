@@ -65,9 +65,17 @@ internal sealed class Chat : IAsyncDisposable
 
     public async ValueTask DisposeAsync()
     {
-        if (Socket.State == WebSocketState.Open)
+        try
         {
-            await Socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            if (Socket.State == WebSocketState.Open)
+            {
+                await Socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, CancellationToken.None);
+            }
+        }
+        catch (WebSocketException)
+        {
+            // A server that ended the connection first leaves nothing to close. Tests of that
+            // already assert the end, so a broken pipe here must not hide their result.
         }
 
         Socket.Dispose();
