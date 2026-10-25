@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.AudioDevice\Orblit.AudioDevice.csproj" />
+  </ItemGroup>
+  <!-- The one Ogg Vorbis file the Dart tests decode, shared so both decoders hear the same bytes. -->
+  <ItemGroup>
+    <Content Include="..\..\packages\orblit_audio_device\test\support\sine.ogg" Link="support\sine.ogg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

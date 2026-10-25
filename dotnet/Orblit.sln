@@ -177,6 +177,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Test", "Orblit.Test\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.Test.Tests", "Orblit.Test.Tests\Orblit.Test.Tests.csproj", "{B2AC9573-B099-41F7-B3AA-E0A7BFB29A94}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.AudioDevice", "Orblit.AudioDevice\Orblit.AudioDevice.csproj", "{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orblit.AudioDevice.Tests", "Orblit.AudioDevice.Tests\Orblit.AudioDevice.Tests.csproj", "{B573C6BD-427C-4699-B1B4-58F10784551A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -1231,6 +1235,30 @@ Global
 		{B2AC9573-B099-41F7-B3AA-E0A7BFB29A94}.Release|x64.Build.0 = Release|Any CPU
 		{B2AC9573-B099-41F7-B3AA-E0A7BFB29A94}.Release|x86.ActiveCfg = Release|Any CPU
 		{B2AC9573-B099-41F7-B3AA-E0A7BFB29A94}.Release|x86.Build.0 = Release|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Debug|x64.Build.0 = Debug|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Debug|x86.Build.0 = Debug|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Release|x64.ActiveCfg = Release|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Release|x64.Build.0 = Release|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Release|x86.ActiveCfg = Release|Any CPU
+		{4278F6A8-0AAD-4034-A6AF-A76B88D0A703}.Release|x86.Build.0 = Release|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Debug|x64.Build.0 = Debug|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Debug|x86.Build.0 = Debug|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Release|x64.ActiveCfg = Release|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Release|x64.Build.0 = Release|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Release|x86.ActiveCfg = Release|Any CPU
+		{B573C6BD-427C-4699-B1B4-58F10784551A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

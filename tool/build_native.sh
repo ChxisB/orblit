@@ -31,6 +31,7 @@ build() {
 }
 
 build orblit_core
+build orblit_audio_device
 
 # The renderer needs a Filament release, which is not in the repository.
 sdk=${ORBLIT_FILAMENT_SDK:-$root/packages/orblit_filament/darwin/third_party/filament-mac/filament}
