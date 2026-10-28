@@ -7,6 +7,11 @@ public static class EngineExamples
     public static IReadOnlyList<Example> All() =>
     [
         new SurfaceExample(),
+        new LightsExample(),
+        new PanelShadowExample(),
+        new ShadowsExample(),
+        new ProbesExample(),
         new BounceExample(),
+        new FieldExample(),
     ];
 }
