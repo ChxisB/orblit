@@ -17,8 +17,8 @@ public sealed class AtmosphereFramesTests
     public void TheSkyAtDawnAndDuskMatchesDart(double hour, string digest)
     {
         var example = new DayAndNightExample();
-        Control<Toggle>(example, "Running").Change(false);
-        Control<Setting>(example, "Hour").Change(hour);
+        example.Control<Toggle>("Running").Change(false);
+        example.Control<Setting>("Hour").Change(hour);
 
         Assert.Equal(digest, SceneDigest.Of(SceneDigest.Message(example, 0)));
     }
@@ -27,7 +27,7 @@ public sealed class AtmosphereFramesTests
     public void AStoppedClockHasNoSpeed()
     {
         var example = new DayAndNightExample();
-        Control<Toggle>(example, "Running").Change(false);
+        example.Control<Toggle>("Running").Change(false);
 
         Assert.DoesNotContain(example.Settings(), control => control.Label == "Speed");
     }
@@ -41,7 +41,7 @@ public sealed class AtmosphereFramesTests
     public void TheDampCornerMatchesDart()
     {
         var example = new VolumesExample();
-        Control<Setting>(example, "Where").Change(0.95);
+        example.Control<Setting>("Where").Change(0.95);
 
         Assert.Equal("5cf1a564df87f115", SceneDigest.Of(SceneDigest.Message(example, 0)));
     }
@@ -52,12 +52,8 @@ public sealed class AtmosphereFramesTests
     {
         var example = new WeatherExample();
         // The condition list always picks.
-        Control<Choice>(example, "Condition").Select!("Storm");
+        example.Control<Choice>("Condition").Select!("Storm");
 
         Assert.Equal("149c09b1fe29f613", SceneDigest.Of(SceneDigest.Message(example, 2.4)));
     }
-
-    private static T Control<T>(Example example, string label)
-        where T : ExampleSetting =>
-        example.Settings().OfType<T>().Single(control => control.Label == label);
 }

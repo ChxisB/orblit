@@ -24,5 +24,13 @@ public static class EngineExamples
         new GodRaysExample(),
         new WeatherExample(),
         new VolumesExample(),
+        new PostExample(),
+        new MotionBlurExample(),
+        new DistortionExample(),
+        new OutlineExample(),
+        new ManyExample(),
+        new BatchingExample(),
+        new OverdrawExample(),
+        new PipelineExample(Environment.GetEnvironmentVariable),
     ];
 }

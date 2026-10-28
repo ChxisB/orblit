@@ -305,6 +305,23 @@ public class MatrixTests
         }
     }
 
+    [Fact]
+    public void TranslateByDoubleIsTheMatrixTimesATranslation()
+    {
+        var moved = Matrix4.RotationZ(0.7);
+        moved.SetTranslation(new Vector3(1, 2, 3));
+        moved.ScaleByDouble(2, 3, 4, 1);
+        var product = moved.Clone();
+        moved.TranslateByDouble(0.5, -2, 3, 1.5);
+        var translation = Matrix4.TranslationValues(0.5, -2, 3);
+        translation[15] = 1.5;
+        product.Multiply(translation);
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(product[i], moved[i], Tight);
+        }
+    }
+
     private static Matrix3 Diagonal(double x, double y, double z)
     {
         var matrix = new Matrix3();

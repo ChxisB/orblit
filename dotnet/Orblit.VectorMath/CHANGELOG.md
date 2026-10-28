@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.20.0
+
+- `Matrix4.TranslateByDouble`, which the motion blur example reads.
+
 ## 0.19.0
 
 - `Matrix4.RotateX`, `RotateY` and `ScaleByDouble`, which the examples read.

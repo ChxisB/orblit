@@ -338,6 +338,16 @@ public sealed class Matrix4
         }
     }
 
+    /// <summary>Sets the last column to this times the point (x, y, z, w).</summary>
+    public void TranslateByDouble(double x, double y, double z, double w)
+    {
+        var m = _storage;
+        for (var row = 0; row < 4; row++)
+        {
+            m[12 + row] = (m[row] * x) + (m[4 + row] * y) + (m[8 + row] * z) + (m[12 + row] * w);
+        }
+    }
+
     /// <summary>A copy of this times <paramref name="other"/>.</summary>
     public Matrix4 Multiplied(Matrix4 other)
     {

@@ -21,6 +21,11 @@
   outside the fixture's five seconds, so they are pinned to digests from
   the Dart examples. The weather example uses `Orblit.Weather` for its
   strikes.
+- The four effects examples are ported: `Post`, `MotionBlur`,
+  `Distortion` and `Outline`. So are four performance examples: `Many`,
+  `Batching`, `Overdraw` and `Pipeline`. Their scenes match the
+  fixture's digests. The pipeline example reads `ORBLIT_DETAIL` from the
+  environment it is given.
 - Settings are data. `Setting`, `Choice` and `Toggle` say what a control
   is and what a change does, and the host draws them. A `Caption` is a
   line of text between them.
