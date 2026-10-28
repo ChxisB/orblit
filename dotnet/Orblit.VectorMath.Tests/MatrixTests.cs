@@ -245,6 +245,66 @@ public class MatrixTests
         Assert.Equal(new Vector3(1, 2, 3), turned.GetTranslation());
     }
 
+    /// <summary>Turned about all three axes and given a bottom row, so no entry a rotation reads is zero.</summary>
+    private static Matrix4 Tilted()
+    {
+        var tilted = Matrix4.RotationZ(0.3).Multiplied(Matrix4.RotationX(0.5)).Multiplied(Matrix4.RotationY(0.2));
+        tilted[3] = 0.25;
+        tilted[7] = 0.5;
+        tilted[11] = 0.75;
+        return tilted;
+    }
+
+    [Fact]
+    public void RotateXIsTheMatrixTimesARotationAroundX()
+    {
+        var turned = Tilted();
+        turned.RotateX(0.7);
+        var product = Tilted().Multiplied(Matrix4.RotationX(0.7));
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(product[i], turned[i], Tight);
+        }
+    }
+
+    [Fact]
+    public void RotateYIsTheMatrixTimesARotationAroundY()
+    {
+        var turned = Tilted();
+        turned.RotateY(0.7);
+        var product = Tilted().Multiplied(Matrix4.RotationY(0.7));
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(product[i], turned[i], Tight);
+        }
+    }
+
+    [Fact]
+    public void RotateXAndRotateYLeaveTheTranslationAlone()
+    {
+        var turned = Matrix4.TranslationValues(1, 2, 3);
+        turned.RotateX(1);
+        turned.RotateY(1);
+        Assert.Equal(new Vector3(1, 2, 3), turned.GetTranslation());
+    }
+
+    [Fact]
+    public void ScaleByDoubleIsTheMatrixTimesADiagonal()
+    {
+        var scaled = Matrix4.RotationY(0.4);
+        scaled.SetTranslation(new Vector3(1, 2, 3));
+        scaled.ScaleByDouble(2, 3, 4, 5);
+        var product = Matrix4.RotationY(0.4);
+        product.SetTranslation(new Vector3(1, 2, 3));
+        var diagonal = Matrix4.Diagonal3Values(2, 3, 4);
+        diagonal[15] = 5;
+        product.Multiply(diagonal);
+        for (var i = 0; i < 16; i++)
+        {
+            Assert.Equal(product[i], scaled[i], Tight);
+        }
+    }
+
     private static Matrix3 Diagonal(double x, double y, double z)
     {
         var matrix = new Matrix3();

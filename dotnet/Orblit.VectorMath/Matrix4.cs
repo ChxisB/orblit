@@ -287,6 +287,57 @@ public sealed class Matrix4
         Array.Copy(turned, m, 8);
     }
 
+    /// <summary>Sets this to this times <c>RotationX(radians)</c>.</summary>
+    public void RotateX(double radians)
+    {
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var m = _storage;
+        double[] turned =
+        [
+            (m[4] * cosine) + (m[8] * sine),
+            (m[5] * cosine) + (m[9] * sine),
+            (m[6] * cosine) + (m[10] * sine),
+            (m[7] * cosine) + (m[11] * sine),
+            (m[4] * -sine) + (m[8] * cosine),
+            (m[5] * -sine) + (m[9] * cosine),
+            (m[6] * -sine) + (m[10] * cosine),
+            (m[7] * -sine) + (m[11] * cosine),
+        ];
+        Array.Copy(turned, 0, m, 4, 8);
+    }
+
+    /// <summary>Sets this to this times <c>RotationY(radians)</c>.</summary>
+    public void RotateY(double radians)
+    {
+        var cosine = Math.Cos(radians);
+        var sine = Math.Sin(radians);
+        var m = _storage;
+        double[] turned =
+        [
+            (m[0] * cosine) + (m[8] * -sine),
+            (m[1] * cosine) + (m[9] * -sine),
+            (m[2] * cosine) + (m[10] * -sine),
+            (m[3] * cosine) + (m[11] * -sine),
+            (m[0] * sine) + (m[8] * cosine),
+            (m[1] * sine) + (m[9] * cosine),
+            (m[2] * sine) + (m[10] * cosine),
+            (m[3] * sine) + (m[11] * cosine),
+        ];
+        Array.Copy(turned, 0, m, 0, 4);
+        Array.Copy(turned, 4, m, 8, 4);
+    }
+
+    /// <summary>Scales each of the four columns by its own factor.</summary>
+    public void ScaleByDouble(double x, double y, double z, double w)
+    {
+        double[] factors = [x, y, z, w];
+        for (var i = 0; i < 16; i++)
+        {
+            _storage[i] *= factors[i / 4];
+        }
+    }
+
     /// <summary>A copy of this times <paramref name="other"/>.</summary>
     public Matrix4 Multiplied(Matrix4 other)
     {

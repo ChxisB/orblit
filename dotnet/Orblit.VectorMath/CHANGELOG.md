@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.0
+
+- `Matrix4.RotateX`, `RotateY` and `ScaleByDouble`, which the examples read.
+
 ## 0.18.0
 
 - `Vector2.Normalize` and `Normalized`, which the input actions read.
