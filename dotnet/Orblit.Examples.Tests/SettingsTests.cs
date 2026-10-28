@@ -13,9 +13,9 @@ public sealed class SettingsTests
     public static TheoryData<string, int, int> Moves()
     {
         var moves = new TheoryData<string, int, int>();
-        foreach (var example in EngineExamples.All())
+        foreach (var example in ExampleFixture.All())
         {
-            var settings = example.Settings();
+            var settings = Controls(example);
             for (var control = 0; control < settings.Count; control++)
             {
                 for (var move = 0; move < Moves(settings[control]).Count; move++)
@@ -35,7 +35,7 @@ public sealed class SettingsTests
         var wanted = ExampleFixture.Case(name).GetProperty("controls").EnumerateArray()
             .Select(control => control.GetProperty("label").GetString());
 
-        Assert.Equal(wanted, ExampleFixture.Example(name).Settings().Select(setting => setting.Label));
+        Assert.Equal(wanted, Controls(ExampleFixture.Example(name)).Select(setting => setting.Label));
     }
 
     [Theory]
@@ -44,12 +44,15 @@ public sealed class SettingsTests
     {
         var example = ExampleFixture.Example(name);
 
-        var moved = Moves(example.Settings()[control])[move]();
+        var moved = Moves(Controls(example)[control])[move]();
 
-        Assert.Equal(moved, Shown(example.Settings()[control]));
+        Assert.Equal(moved, Shown(Controls(example)[control]));
         var wanted = ExampleFixture.Case(name).GetProperty("controls")[control].GetProperty("values")[move].GetString();
         Assert.Equal(wanted, SceneDigest.Of(SceneDigest.Message(example, 1)));
     }
+
+    /// <summary>The settings that can be moved. A caption is text, and the fixture does not list it.</summary>
+    private static List<ExampleSetting> Controls(Example example) => [.. example.Settings().Where(setting => setting is not Caption)];
 
     /// <summary>
     /// Each way a control is moved, giving where it went. A slider goes to its

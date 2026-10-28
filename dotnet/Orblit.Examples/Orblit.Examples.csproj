@@ -6,6 +6,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
     <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
+    <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
     <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
   </ItemGroup>
 </Project>

@@ -14,9 +14,15 @@ internal static class ExampleFixture
         ["A scene as a control"] = "A scene as a widget",
     };
 
-    public static TheoryData<string> Names() => [.. EngineExamples.All().Select(example => example.Name)];
+    /// <summary>
+    /// Every example, with nowhere to keep a picture. The Dart fixture was
+    /// written before any example's pictures were, so its scenes name none.
+    /// </summary>
+    public static IReadOnlyList<Example> All() => EngineExamples.All(new NoPictures());
 
-    public static Example Example(string name) => EngineExamples.All().Single(example => example.Name == name);
+    public static TheoryData<string> Names() => [.. All().Select(example => example.Name)];
+
+    public static Example Example(string name) => All().Single(example => example.Name == name);
 
     public static JsonElement Case(string name)
     {
@@ -25,5 +31,10 @@ internal static class ExampleFixture
         { ValueKind: JsonValueKind.Object } found
             ? found
             : throw new InvalidDataException($"The fixture has no example called {named}.");
+    }
+
+    private sealed class NoPictures : IPictureFolder
+    {
+        public string? Keep(string example, string name, int size, byte[] rgba) => null;
     }
 }

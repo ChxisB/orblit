@@ -5,7 +5,7 @@ public sealed class SectionsTests
     [Fact]
     public void TheGroupedListHoldsEveryExampleInItsOwnOrder()
     {
-        var all = EngineExamples.All();
+        var all = ExampleFixture.All();
         var grouped = Example.BySection(all);
 
         Assert.Equal(

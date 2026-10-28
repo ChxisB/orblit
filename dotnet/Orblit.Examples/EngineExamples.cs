@@ -3,8 +3,11 @@ namespace Orblit.Examples;
 /// <summary>Every example the gallery shows, in the order it lists them.</summary>
 public static class EngineExamples
 {
-    /// <summary>A fresh set each call, because each example keeps its own settings.</summary>
-    public static IReadOnlyList<Example> All() =>
+    /// <summary>
+    /// A fresh set each call, because each example keeps its own settings. The
+    /// examples that draw their own textures keep them in <paramref name="pictures"/>.
+    /// </summary>
+    public static IReadOnlyList<Example> All(IPictureFolder pictures) =>
     [
         new SurfaceExample(),
         new LightsExample(),
@@ -13,5 +16,9 @@ public static class EngineExamples
         new ProbesExample(),
         new BounceExample(),
         new FieldExample(),
+        new MaterialsExample(pictures),
+        new TexturesExample(Environment.GetEnvironmentVariable),
+        new BlendExample(pictures),
+        new DecalsExample(pictures),
     ];
 }

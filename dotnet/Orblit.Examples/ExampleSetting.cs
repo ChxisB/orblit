@@ -43,3 +43,6 @@ public sealed record Toggle(string Label, bool Value, Action<bool> Change) : Exa
     /// <summary>False for a setting with nothing to act on yet. Shown rather than hidden.</summary>
     public bool Enabled { get; init; } = true;
 }
+
+/// <summary>A line of text between the controls, for what the controls do not say. The label is the text.</summary>
+public sealed record Caption(string Label) : ExampleSetting(Label);

@@ -25,6 +25,14 @@ public abstract class Example
     /// <summary>Where the camera starts, so an example opens framed on its subject.</summary>
     public virtual ViewPoint ViewPoint => new();
 
+    /// <summary>
+    /// What the device under the view can do, once the gallery has asked, or
+    /// null before then. On the base class because the gallery owns the view,
+    /// and an example that suits itself to its device should not need a way of
+    /// its own to ask.
+    /// </summary>
+    public DeviceProfile? Device { get; set; }
+
     /// <summary>The lines that matter, as somebody would write them.</summary>
     public abstract string Code { get; }
 

@@ -232,6 +232,10 @@ case per line, stamped with the commit that last changed the package.
 - A double that may be NaN or infinite is written with `number()` in `tool/parity/lib/fixture.dart`, which turns it into a string JSON can hold, and read with `Fixture.Number`.
 - Integers and bytes compare with plain equality. Doubles compare with
   `Tolerance.Close` in `Orblit.Parity`.
+- A `flutter test` runs under fake async. Work that awaits real IO, such as
+  writing a file, never finishes inside it. An example that draws its
+  textures in its constructor is recorded with those paths still null. The
+  C# test passes a picture folder that keeps nothing, to match.
 
 ## Tests
 
