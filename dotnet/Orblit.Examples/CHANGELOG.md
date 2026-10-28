@@ -15,6 +15,12 @@
   `TempPictureFolder` keeps them as PNG files. `EngineExamples.All` takes
   the folder. The textures example reads its files from the environment
   and names them once the host sets `Example.Device`.
+- The four atmosphere examples are ported: `DayAndNight`, `GodRays`,
+  `Weather` and `Volumes`. Their scenes match the fixture's digests.
+  Dawn, dusk, the walk back out of the hall and a lightning strike fall
+  outside the fixture's five seconds, so they are pinned to digests from
+  the Dart examples. The weather example uses `Orblit.Weather` for its
+  strikes.
 - Settings are data. `Setting`, `Choice` and `Toggle` say what a control
   is and what a change does, and the host draws them. A `Caption` is a
   line of text between them.

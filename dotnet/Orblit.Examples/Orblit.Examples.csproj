@@ -8,5 +8,6 @@
     <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
     <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
     <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+    <ProjectReference Include="..\Orblit.Weather\Orblit.Weather.csproj" />
   </ItemGroup>
 </Project>

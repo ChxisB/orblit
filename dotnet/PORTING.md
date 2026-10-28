@@ -236,6 +236,10 @@ case per line, stamped with the commit that last changed the package.
   writing a file, never finishes inside it. An example that draws its
   textures in its constructor is recorded with those paths still null. The
   C# test passes a picture folder that keeps nothing, to match.
+- The examples' `ticks.json` covers five seconds and moves each control at
+  one. A branch that only the clock reaches, such as a sunset, is checked
+  by a digest from a one-off Dart run pinned in a C# test. See
+  `AtmosphereFramesTests`.
 
 ## Tests
 

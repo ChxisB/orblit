@@ -20,5 +20,9 @@ public static class EngineExamples
         new TexturesExample(Environment.GetEnvironmentVariable),
         new BlendExample(pictures),
         new DecalsExample(pictures),
+        new DayAndNightExample(),
+        new GodRaysExample(),
+        new WeatherExample(),
+        new VolumesExample(),
     ];
 }
