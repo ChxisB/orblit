@@ -1,61 +1,91 @@
-using System.Text.Json;
-
 namespace Orblit.Examples.Tests;
 
+/// <summary>
+/// The controls each example shows, against the fixture. The Dart exporter
+/// moves every control the way <see cref="Moves(ExampleSetting)"/> does and
+/// digests the scene a second in, so a port is checked away from its
+/// defaults too.
+/// </summary>
 public sealed class SettingsTests
 {
-    public static TheoryData<string, int> Controls()
+    public static TheoryData<string> Names() => ExampleFixture.Names();
+
+    public static TheoryData<string, int, int> Moves()
     {
-        var controls = new TheoryData<string, int>();
+        var moves = new TheoryData<string, int, int>();
         foreach (var example in EngineExamples.All())
         {
-            for (var i = 0; i < example.Settings().Count; i++)
+            var settings = example.Settings();
+            for (var control = 0; control < settings.Count; control++)
             {
-                controls.Add(example.Name, i);
+                for (var move = 0; move < Moves(settings[control]).Count; move++)
+                {
+                    moves.Add(example.Name, control, move);
+                }
             }
         }
 
-        return controls;
+        return moves;
     }
 
     [Theory]
-    [MemberData(nameof(Controls))]
-    public void EachControlChangesTheSceneAndShowsItsNewValue(string name, int index)
+    [MemberData(nameof(Names))]
+    public void TheControlsAreTheOnesTheFixtureShows(string name)
     {
-        var example = EngineExamples.All().Single(one => one.Name == name);
-        var before = Message(example);
+        var wanted = ExampleFixture.Case(name).GetProperty("controls").EnumerateArray()
+            .Select(control => control.GetProperty("label").GetString());
 
-        var moved = Move(example.Settings()[index]);
-
-        Assert.NotEqual(before, Message(example));
-        Assert.Equal(moved, Shown(example.Settings()[index]));
+        Assert.Equal(wanted, ExampleFixture.Example(name).Settings().Select(setting => setting.Label));
     }
 
-    /// <summary>The scene a second in, when a spin has had time to show.</summary>
-    private static string Message(Example example) =>
-        JsonSerializer.Serialize(example.Scene(example.ViewPoint.ToRenderCamera(), 1).ToMessage(1));
-
-    /// <summary>Moves a control away from where it stands, and gives where it went.</summary>
-    private static object Move(ExampleSetting setting)
+    [Theory]
+    [MemberData(nameof(Moves))]
+    public void EachMoveDrawsTheFixtureSceneAndShowsItsNewValue(string name, int control, int move)
     {
-        switch (setting)
-        {
-            case Setting slider:
+        var example = ExampleFixture.Example(name);
+
+        var moved = Moves(example.Settings()[control])[move]();
+
+        Assert.Equal(moved, Shown(example.Settings()[control]));
+        var wanted = ExampleFixture.Case(name).GetProperty("controls")[control].GetProperty("values")[move].GetString();
+        Assert.Equal(wanted, SceneDigest.Of(SceneDigest.Message(example, 1)));
+    }
+
+    /// <summary>
+    /// Each way a control is moved, giving where it went. A slider goes to its
+    /// far end, or to its near end when it is already at the far one, and
+    /// settles there. A switch flips. A choice goes to each option it is not on.
+    /// </summary>
+    private static IReadOnlyList<Func<object>> Moves(ExampleSetting setting) => setting switch
+    {
+        Setting slider =>
+        [
+            () =>
+            {
                 var to = slider.Value == slider.Max ? slider.Min : slider.Max;
                 slider.Change(to);
+                slider.Settle?.Invoke(to);
                 return to;
-            case Toggle toggle:
+            },
+        ],
+        Toggle toggle =>
+        [
+            () =>
+            {
                 toggle.Change(!toggle.Value);
                 return !toggle.Value;
-            case Choice choice:
-                var other = choice.Options.First(option => option != choice.Selected);
-                Assert.NotNull(choice.Select);
-                choice.Select(other);
-                return other;
-            default:
-                throw new InvalidOperationException($"No way to move {setting.GetType()}.");
-        }
-    }
+            },
+        ],
+        Choice { Select: { } select } choice =>
+        [
+            .. choice.Options.Where(option => option != choice.Selected).Select(option => (Func<object>)(() =>
+            {
+                select(option);
+                return option;
+            })),
+        ],
+        _ => [],
+    };
 
     private static object Shown(ExampleSetting setting) => setting switch
     {
