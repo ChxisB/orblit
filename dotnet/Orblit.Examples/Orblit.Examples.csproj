@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>The engine's examples: one scene each, with its settings and the code that matters, grouped under the headings the gallery lists them by.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
+    <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>
