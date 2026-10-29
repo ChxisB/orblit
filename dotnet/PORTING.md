@@ -248,3 +248,50 @@ case per line, stamped with the commit that last changed the package.
 - A loop inside one Dart test stays inside one `[Fact]`. A `[Theory]` there adds run counts Dart does not have.
 - Tests the port adds, such as a fixture check, are counted apart in
   `PARITY.md`.
+
+## Paths and switches
+
+The C# build writes to these places.
+
+| Path | What | Made by |
+| --- | --- | --- |
+| `~/.orblit/feed` | The NuGet folder the other repos restore the engine from | `tool/pack_local.sh`. Its first argument or `ORBLIT_FEED` names another. It also clears each package it packs from the NuGet cache, because a repacked version keeps its number |
+| `dotnet/native/runtimes/<rid>/native` | The native libraries the packages load | `tool/build_native.sh` |
+| `packages/orblit_filament/darwin/third_party/filament-mac/filament` | The Filament release the renderer builds against | `packages/orblit_filament/darwin/setup.sh` fetches it. `ORBLIT_FILAMENT_SDK` names another |
+| `dotnet/fixtures/<package>/` | The parity fixtures | `tool/regen_parity.sh`, and `tool/parity/flutter/regen.sh` for the ones that need Flutter |
+
+`EngineExamples.All` takes an `environment` function. The gallery passes the
+process environment. A test passes an empty table, so a developer's own
+switches never reach a test. The examples read these.
+
+| Switch | Example | What it sets | When it is not set |
+| --- | --- | --- | --- |
+| `ORBLIT_BISTRO` | Bistro | The folder of the Bistro download | `../orblit/assets/bistro` |
+| `ORBLIT_TEXTURES` | Textures | The folder its KTX2 files come from | `../orblit/assets/bistro/Textures` |
+| `ORBLIT_TEXTURE_FILES` | Textures | The files it shows, split on commas | Four of the Bistro's base colours |
+| `ORBLIT_TEXTURE_SIZE` | Textures | The largest texture the renderer keeps | The renderer's own limit |
+| `ORBLIT_PICTURE` | Textures | An `.hdr` or `.exr` for its picture setting | That setting is greyed out |
+| `ORBLIT_SAMPLES` | Imported | The folder of sample models | `../orblit/assets/samples` |
+| `ORBLIT_MODEL` | Imported | The sample it opens on, by name | The first |
+| `ORBLIT_MESH` | Meshes | A `.glb` or `.gltf` to show | Placeholder cubes |
+| `ORBLIT_VIDEO` | Video | A film to play, when the file exists | The example says it has no film |
+| `ORBLIT_SPLAT` | Gaussian splats | A capture to draw | A cloud made in code |
+| `ORBLIT_SPLAT_COUNT`, `ORBLIT_SPLAT_HARMONICS`, `ORBLIT_SPLAT_LIMIT` | Gaussian splats | The cloud's size, its harmonic bands from 0 to 3, and the most splats drawn | The example's own values |
+| `ORBLIT_SPLAT_SORT=0`, `ORBLIT_SPLAT_PILLAR=0`, `ORBLIT_SPLAT_DEVICE=0`, `ORBLIT_SPLAT_COARSE=1` | Gaussian splats | The first state of Sort back to front, Solid pillar, Device limits and Coarse sort | The first three on, Coarse sort off |
+| `ORBLIT_DETAIL` | Pipeline | The detail it opens on, by name in any case | The example's own |
+| `ORBLIT_AUTOPILOT=1` | Runner | The autopilot plays from the start | A person plays |
+
+A relative path is taken from the working directory. A worktree has no
+`../orblit/assets`, so set the three folders there.
+
+An example that draws its own pictures keeps them as PNG files in
+`orblit_gallery_<example>` under the temporary folder. A model or picture made
+in code reaches the renderer through `RenderResources.Provide`, under
+`orblit:resource/`. When its bytes change it takes a new name, such as the
+Runner's `runner/v2/`, because a renderer that has loaded a name does not load
+it again.
+
+The gallery in `orblit-examples` reads `ORBLIT_EXAMPLE`, `ORBLIT_BARE` and
+`ORBLIT_ORBIT`. Its `Launch` says what each does. The renderer's native core
+reads its own switches, such as `ORBLIT_BACKEND`, `ORBLIT_PACE` and
+`ORBLIT_DUMP_FRAME`. The C# build compiles the same core.
