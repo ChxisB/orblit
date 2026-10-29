@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- The interface vocabulary is gone, by decision 95: `UiNode`, `UiDocument`,
+  `UiStyle`, `UiCss`, `UiUtilities`, `UiTheme`, `UiBreakpoints`, `UiCanvas`,
+  `CanvasFit` and `UiColour`. An interface is made of Avalonia controls.
+- `UiStrings` and its plural rules stay.
+
 ## 0.2.0
 
 - `UiCanvas` and `CanvasFit`: the size an interface was laid out at, how it

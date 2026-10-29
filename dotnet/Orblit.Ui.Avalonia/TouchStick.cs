@@ -6,25 +6,25 @@ using Avalonia.Controls.Shapes;
 namespace Orblit.Ui.Avalonia;
 
 /// <summary>
-/// A thumb stick. It sends <c>[x, y]</c>, each from -1 to 1 and positive up and to the right, when
-/// they change. A stick let go sends <c>[0.0, 0.0]</c>. The knob is drawn over the face, where the
-/// thumb is, and the base is whatever the face draws.
+/// A thumb stick. <see cref="Tilted"/> gives where the thumb is when that changes, each way from -1 to
+/// 1 and positive up and to the right. A stick let go gives zero. The knob is drawn over the face,
+/// where the thumb is, and the base is whatever the face draws.
 /// </summary>
-internal sealed class TouchStick : TouchArea
+public sealed class TouchStick : TouchArea
 {
     private readonly Control _face;
     private readonly Ellipse _knob;
-    private readonly TouchSend? _send;
     private Vector _at;
 
-    internal TouchStick(Control face, IBrush knob, TouchSend? send)
+    public TouchStick(Control face, IBrush knob)
         : base(face)
     {
         _face = face;
-        _send = send;
         _knob = new Ellipse { Fill = knob, IsHitTestVisible = false };
         Children.Add(_knob);
     }
+
+    public event Action<Vector>? Tilted;
 
     /// <summary>Where a point sits in the circle that fills <paramref name="size"/>, from -1 to 1 each way with y down. Outside the circle it is brought back to it.</summary>
     private static Vector StickAt(Point local, Size size)
@@ -47,7 +47,7 @@ internal sealed class TouchStick : TouchArea
     {
         _at = default;
         InvalidateArrange();
-        _send?.Invoke(new double[2]);
+        Tilted?.Invoke(default);
     }
 
     protected override Size MeasureOverride(Size availableSize)
@@ -79,6 +79,6 @@ internal sealed class TouchStick : TouchArea
         InvalidateArrange();
 
         // 0 - y, because -y turns a y of 0 into -0.0.
-        _send?.Invoke(new[] { at.X, 0.0 - at.Y });
+        Tilted?.Invoke(new Vector(at.X, 0.0 - at.Y));
     }
 }

@@ -4,9 +4,8 @@ namespace Orblit.Native;
 
 /// <summary>
 /// A compiled script, loaded and running.
-/// The four questions and nothing else. What a script is (a <c>.cpp</c>, a
-/// TypeScript module) stops mattering at this line: everything above it sees
-/// start, step and stop.
+/// The four questions and nothing else. Above this line nothing knows the
+/// script was C++. Everything there sees start, step and stop.
 /// </summary>
 public sealed unsafe class NativeScript
 {

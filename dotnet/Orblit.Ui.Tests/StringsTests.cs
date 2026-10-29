@@ -178,21 +178,4 @@ public class StringsTests
 
     [Fact]
     public void GapsAreEmptyWhenEveryLanguageHasEveryKey() => Assert.Empty(new UiStrings().Gaps());
-
-    [Fact]
-    public void ATextNodeNamesItsKeys()
-    {
-        var tree = new UiNode
-        {
-            Type = "column",
-            Children =
-            [
-                new UiNode { Type = "text", Props = With("textKey", "play") },
-                new UiNode { Type = "text", Text = "Fixed" },
-                new UiNode { Type = "button", Props = With("textKey", "quit") },
-            ],
-        };
-
-        Assert.Equal(new HashSet<string> { "play", "quit" }, tree.TextKeys);
-    }
 }

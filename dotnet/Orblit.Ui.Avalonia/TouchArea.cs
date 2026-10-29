@@ -5,21 +5,19 @@ using Avalonia.Media;
 
 namespace Orblit.Ui.Avalonia;
 
-/// <summary>Where an element sends what it has seen. Null when script named no handler.</summary>
-internal delegate void TouchSend(object? payload);
-
 /// <summary>
 /// Claims the first finger that lands on it and follows that finger alone. A gesture recogniser would
 /// put every finger into one contest, and a thumb on a stick and another on a jump button must not
-/// be that. The area wraps the element's finished face, so every pixel the player sees takes a touch.
-/// A release is reported when the finger lifts, when the system takes it and when the area is
-/// removed from the tree while it is down.
+/// be that. The area wraps the face it is given, so every pixel the player sees takes a touch. A
+/// release is reported when the finger lifts, when the system takes it and when the area is removed
+/// from the tree while it is down.
 /// </summary>
-internal abstract class TouchArea : Panel
+public abstract class TouchArea : Panel
 {
     private IPointer? _finger;
 
-    protected TouchArea(Control face)
+    // Only the touch controls here derive from it.
+    private protected TouchArea(Control face)
     {
         // A panel is only hit where it draws, and a transparent fill is how it asks to be.
         Background = Brushes.Transparent;

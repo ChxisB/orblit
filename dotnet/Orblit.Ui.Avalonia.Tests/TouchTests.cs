@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Controls.Shapes;
 
@@ -9,297 +10,303 @@ namespace Orblit.Ui.Avalonia.Tests;
 
 public class TouchTests
 {
-    private const string Size = "width: 160px; height: 160px";
+    private static readonly IBrush Knob = new SolidColorBrush(Color.FromUInt32(0xB3FFFFFF));
 
-    private static readonly double[] Zero = [0.0, 0.0];
-
-    private static readonly UiNode Controls = new()
-    {
-        Type = "row",
-        Children =
-        [
-            Node("stick", "move", $"{Size}; background: #333333; border-radius: 80px"),
-            Node("touch-button", "jump", "padding: 24px; background: #aa3300", new UiNode { Type = "text", Text = "Jump" }),
-            Node("swipe-pad", "look", Size),
-        ],
-    };
-
-    private static UiNode Node(string type, string handler, string css, params UiNode[] children) => new()
-    {
-        Type = type,
-        Css = css,
-        Children = children,
-        Props = new Dictionary<string, object?> { [type switch { "stick" => "onMove", "touch-button" => "onHold", _ => "onSwipe" }] = handler },
-    };
+    // A face that draws nothing, so the control's own fill is what takes a touch.
+    private static Border Square() => new() { Width = 160, Height = 160 };
 
     private static Point Middle(Window window, Visual target) =>
         target.TranslatePoint(new Point(target.Bounds.Width / 2, target.Bounds.Height / 2), window)!.Value;
 
-    private static (Window Window, List<(string Handler, object? Payload)> Events, UiSurface Surface) Show(UiNode description)
-    {
-        List<(string, object?)> events = [];
-        var surface = new UiSurface { Description = description, OnEvent = (handler, payload) => events.Add((handler, payload)) };
-        return (TestWindow.Show(surface, 700, 300), events, surface);
-    }
-
-    private static double[] Last(List<(string Handler, object? Payload)> events) => Assert.IsType<double[]>(events[^1].Payload);
-
     [Fact]
     public Task AStickSendsWhereTheThumbIsUpPositiveAndZeroOnRelease() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var middle = Middle(window, Probe.All<TouchStick>(window).Single());
+        var row = new TouchRow();
+        var middle = Middle(row.Window, row.Stick);
 
-        var thumb = window.TouchBegin(middle + new Vector(40, -20));
-        Assert.Equal("move", events[^1].Handler);
-        Assert.Equal(0.5, Last(events)[0], 1e-9);
-        Assert.Equal(0.25, Last(events)[1], 1e-9);
+        var thumb = row.Window.TouchBegin(middle + new Vector(40, -20));
+        Assert.Equal("move", row.Events[^1].Control);
+        Assert.Equal(0.5, row.Last.X, 1e-9);
+        Assert.Equal(0.25, row.Last.Y, 1e-9);
 
-        window.TouchMove(thumb, middle + new Vector(0, 40));
-        Assert.Equal(0, Last(events)[0], 1e-9);
-        Assert.Equal(-0.5, Last(events)[1], 1e-9);
+        row.Window.TouchMove(thumb, middle + new Vector(0, 40));
+        Assert.Equal(0, row.Last.X, 1e-9);
+        Assert.Equal(-0.5, row.Last.Y, 1e-9);
 
-        window.TouchEnd(thumb, middle + new Vector(0, 40));
-        Assert.Equal(Zero, Last(events));
+        row.Window.TouchEnd(thumb, middle + new Vector(0, 40));
+        Assert.Equal(default, row.Last);
     });
 
     [Fact]
     public Task AStickHoldsAPushPastTheEdgeToTheCircle() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
+        var row = new TouchRow();
 
-        window.TouchBegin(Middle(window, Probe.All<TouchStick>(window).Single()) + new Vector(70, 70));
+        row.Window.TouchBegin(Middle(row.Window, row.Stick) + new Vector(70, 70));
 
-        Assert.Equal(0.7071, Last(events)[0], 1e-4);
-        Assert.Equal(-0.7071, Last(events)[1], 1e-4);
+        Assert.Equal(0.7071, row.Last.X, 1e-4);
+        Assert.Equal(-0.7071, row.Last.Y, 1e-4);
     });
 
     [Fact]
     public Task AStickLetsGoWhenTheSystemTakesTheFinger() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var thumb = window.TouchBegin(Middle(window, Probe.All<TouchStick>(window).Single()) + new Vector(30, 0));
+        var row = new TouchRow();
+        var thumb = row.Window.TouchBegin(Middle(row.Window, row.Stick) + new Vector(30, 0));
 
         thumb.Dispose();
 
-        Assert.Equal(Zero, Last(events));
+        Assert.Equal(default, row.Last);
     });
 
     [Fact]
-    public Task AStickLetsGoWhenItIsRebuiltAway() => Headless.Run(() =>
+    public Task AStickLetsGoWhenItIsTakenAway() => Headless.Run(() =>
     {
-        var (window, events, surface) = Show(Controls);
-        window.TouchBegin(Middle(window, Probe.All<TouchStick>(window).Single()) + new Vector(30, 0));
-        events.Clear();
+        var row = new TouchRow();
+        row.Window.TouchBegin(Middle(row.Window, row.Stick) + new Vector(30, 0));
+        row.Events.Clear();
 
-        surface.Description = new UiNode { Type = "text", Text = "Paused" };
-        window.UpdateLayout();
+        row.Panel.Children.Remove(row.Stick);
+        row.Window.UpdateLayout();
 
-        var (handler, payload) = Assert.Single(events);
-        Assert.Equal("move", handler);
-        Assert.Equal(Zero, Assert.IsType<double[]>(payload));
+        Assert.Equal(("move", (object)default(Vector)), Assert.Single(row.Events));
     });
 
     [Fact]
     public Task AStickSendsAPlainZeroForYLevelWithTheMiddle() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
+        var row = new TouchRow();
 
-        window.TouchBegin(Middle(window, Probe.All<TouchStick>(window).Single()) + new Vector(40, 0));
+        row.Window.TouchBegin(Middle(row.Window, row.Stick) + new Vector(40, 0));
 
-        Assert.Equal(0, Last(events)[1]);
-        Assert.False(double.IsNegative(Last(events)[1]), "not -0.0");
+        Assert.Equal(0, row.Last.Y);
+        Assert.False(double.IsNegative(row.Last.Y), "not -0.0");
     });
 
     [Fact]
     public Task AStickSaysNothingWhenTheThumbHasNotMoved() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var at = Middle(window, Probe.All<TouchStick>(window).Single()) + new Vector(40, 0);
-        var thumb = window.TouchBegin(at);
-        var count = events.Count;
+        var row = new TouchRow();
+        var at = Middle(row.Window, row.Stick) + new Vector(40, 0);
+        var thumb = row.Window.TouchBegin(at);
+        var count = row.Events.Count;
 
-        window.TouchMove(thumb, at);
+        row.Window.TouchMove(thumb, at);
 
-        Assert.Equal(count, events.Count);
+        Assert.Equal(count, row.Events.Count);
     });
 
     [Fact]
-    public Task AStickDrawsTheKnobUnderTheThumb() => Headless.Run(() =>
+    public Task AStickDrawsTheKnobUnderTheThumbAndBackInTheMiddle() => Headless.Run(() =>
     {
-        var (window, _, _) = Show(Controls);
-        var stick = Probe.All<TouchStick>(window).Single();
-        var middle = Middle(window, stick);
+        var row = new TouchRow();
+        var middle = Middle(row.Window, row.Stick);
 
-        window.TouchBegin(middle + new Vector(40, 0));
-        window.UpdateLayout();
+        var thumb = row.Window.TouchBegin(middle + new Vector(40, 0));
+        row.Window.UpdateLayout();
 
-        var knob = Middle(window, Probe.All<Ellipse>(stick).Single());
-        Assert.Equal(middle.X + 40, knob.X, 1e-6);
-        Assert.Equal(middle.Y, knob.Y, 1e-6);
+        var knob = row.Stick.Children.OfType<Ellipse>().Single();
+        Assert.Equal(middle.X + 40, Middle(row.Window, knob).X, 1e-6);
+        Assert.Equal(middle.Y, Middle(row.Window, knob).Y, 1e-6);
+
+        row.Window.TouchEnd(thumb, middle + new Vector(40, 0));
+        row.Window.UpdateLayout();
+        Assert.Equal(middle, Middle(row.Window, knob));
     });
 
     [Fact]
     public Task AStickFollowsOnlyItsFirstFinger() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var middle = Middle(window, Probe.All<TouchStick>(window).Single());
-        window.TouchBegin(middle + new Vector(40, 0));
-        var count = events.Count;
+        var row = new TouchRow();
+        var middle = Middle(row.Window, row.Stick);
+        row.Window.TouchBegin(middle + new Vector(40, 0));
+        var count = row.Events.Count;
 
-        var second = window.TouchBegin(middle + new Vector(-40, 0));
-        window.TouchMove(second, middle + new Vector(0, 40));
-        window.TouchEnd(second, middle + new Vector(0, 40));
+        var second = row.Window.TouchBegin(middle + new Vector(-40, 0));
+        row.Window.TouchMove(second, middle + new Vector(0, 40));
+        row.Window.TouchEnd(second, middle + new Vector(0, 40));
 
-        Assert.Equal(count, events.Count);
+        Assert.Equal(count, row.Events.Count);
     });
 
     [Fact]
     public Task ATouchButtonIsHeldFromTouchToLift() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var at = Middle(window, Probe.All<TouchHold>(window).Single());
+        var row = new TouchRow();
+        var at = Middle(row.Window, row.Hold);
 
-        var finger = window.TouchBegin(at);
-        Assert.Equal(("jump", (object?)true), events[^1]);
+        var finger = row.Window.TouchBegin(at);
+        Assert.Equal(("jump", (object)true), row.Events[^1]);
 
-        window.TouchEnd(finger, at);
-        Assert.Equal(("jump", (object?)false), events[^1]);
-        Assert.Single(Probe.All<TextBlock>(window), block => block.Text == "Jump");
+        row.Window.TouchEnd(finger, at);
+        Assert.Equal(("jump", (object)false), row.Events[^1]);
+        Assert.Equal("Jump", Assert.IsType<TextBlock>(row.Face.Child).Text);
     });
 
     [Fact]
     public Task ATouchButtonTakesATouchOnItsPaddingAndDimsItsWholeFace() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var hold = Probe.All<TouchHold>(window).Single();
-        var corner = hold.TranslatePoint(new Point(2, 2), window)!.Value;
+        var row = new TouchRow();
+        var corner = row.Hold.TranslatePoint(new Point(2, 2), row.Window)!.Value;
 
-        var finger = window.TouchBegin(corner);
+        var finger = row.Window.TouchBegin(corner);
 
-        Assert.Equal(("jump", (object?)true), events[^1]);
-        Assert.Equal(0.6, hold.Opacity);
-        Assert.Contains(Probe.All<Border>(hold), box => box.Background is ISolidColorBrush { Color.A: 255 });
+        Assert.Equal(("jump", (object)true), row.Events[^1]);
+        Assert.Equal(0.6, row.Hold.Opacity);
+        Assert.Equal(1, row.Face.Opacity);
 
-        window.TouchEnd(finger, corner);
-        Assert.Equal(1, hold.Opacity);
+        row.Window.TouchEnd(finger, corner);
+        Assert.Equal(1, row.Hold.Opacity);
     });
 
     [Fact]
     public Task ATouchButtonLetsGoWhenTheSystemTakesTheFinger() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var finger = window.TouchBegin(Middle(window, Probe.All<TouchHold>(window).Single()));
+        var row = new TouchRow();
+        var finger = row.Window.TouchBegin(Middle(row.Window, row.Hold));
 
         finger.Dispose();
 
-        Assert.Equal(("jump", (object?)false), events[^1]);
+        Assert.Equal(("jump", (object)false), row.Events[^1]);
     });
 
     [Fact]
-    public Task ATouchButtonLetsGoWhenItIsRebuiltAway() => Headless.Run(() =>
+    public Task ATouchButtonLetsGoWhenItIsTakenAway() => Headless.Run(() =>
     {
-        var (window, events, surface) = Show(Controls);
-        window.TouchBegin(Middle(window, Probe.All<TouchHold>(window).Single()));
-        events.Clear();
+        var row = new TouchRow();
+        row.Window.TouchBegin(Middle(row.Window, row.Hold));
+        row.Events.Clear();
 
-        surface.Description = new UiNode { Type = "text", Text = "Paused" };
-        window.UpdateLayout();
+        row.Panel.Children.Remove(row.Hold);
+        row.Window.UpdateLayout();
 
-        Assert.Equal(("jump", (object?)false), Assert.Single(events));
+        Assert.Equal(("jump", (object)false), Assert.Single(row.Events));
     });
 
     [Fact]
     public Task ASwipePadSendsEachMoveUpPositive() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var start = Middle(window, Probe.All<TouchSwipe>(window).Single());
+        var row = new TouchRow();
+        var start = Middle(row.Window, row.Swipe);
 
-        var finger = window.TouchBegin(start);
-        Assert.Empty(events);
+        var finger = row.Window.TouchBegin(start);
+        Assert.Empty(row.Events);
 
-        window.TouchMove(finger, start + new Vector(6, -4));
-        window.TouchMove(finger, start + new Vector(4, -1));
-        window.TouchEnd(finger, start + new Vector(4, -1));
+        row.Window.TouchMove(finger, start + new Vector(6, -4));
+        row.Window.TouchMove(finger, start + new Vector(4, -1));
+        row.Window.TouchMove(finger, start + new Vector(4, -1));
+        row.Window.TouchEnd(finger, start + new Vector(4, -1));
 
-        Assert.Equal(2, events.Count);
-        Assert.Equal(new[] { 6.0, 4.0 }, Assert.IsType<double[]>(events[0].Payload));
-        Assert.Equal(new[] { -2.0, -3.0 }, Assert.IsType<double[]>(events[1].Payload));
+        Assert.Equal([("look", (object)new Vector(6, 4)), ("look", new Vector(-2, -3))], row.Events);
     });
 
     [Fact]
-    public Task ASwipePadAndAStickAreSquaresOfTheirOwnWhenNoSizeIsGiven() => Headless.Run(() =>
+    public Task AStickAndASwipePadAreTheSizeOfTheirFace() => Headless.Run(() =>
     {
-        var (window, _, _) = Show(new UiNode { Type = "row", Children = [new UiNode { Type = "swipe-pad" }, new UiNode { Type = "stick" }] });
+        var stick = new TouchStick(new Border { Width = 120, Height = 90 }, Knob);
+        var swipe = new TouchSwipe(new Border { Width = 100, Height = 70 });
+        TestWindow.Show(new StackPanel { Orientation = Orientation.Horizontal, Children = { stick, swipe } }, 700, 300);
 
-        Assert.Equal(new Size(120, 120), Probe.All<TouchSwipe>(window).Single().Bounds.Size);
-        Assert.Equal(new Size(120, 120), Probe.All<TouchStick>(window).Single().Bounds.Size);
+        Assert.Equal(new Size(120, 90), stick.DesiredSize);
+        Assert.Equal(new Size(100, 70), swipe.DesiredSize);
     });
 
     [Fact]
     public Task ASwipePadSaysNothingWhenTheFingerLandsElsewhere() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var at = Middle(window, Probe.All<TouchStick>(window).Single());
-        var finger = window.TouchBegin(at);
+        var row = new TouchRow();
+        var at = Middle(row.Window, row.Stick);
+        var finger = row.Window.TouchBegin(at);
 
-        window.TouchMove(finger, at + new Vector(5, 5));
+        row.Window.TouchMove(finger, at + new Vector(5, 5));
 
-        Assert.DoesNotContain(events, e => e.Handler == "look");
+        Assert.DoesNotContain(row.Events, e => e.Control == "look");
     });
 
     [Fact]
     public Task ThreeFingersDriveAStickAButtonAndASwipeAtOnce() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var stick = Middle(window, Probe.All<TouchStick>(window).Single());
-        var button = Middle(window, Probe.All<TouchHold>(window).Single());
-        var swipe = Middle(window, Probe.All<TouchSwipe>(window).Single());
+        var row = new TouchRow();
+        var stick = Middle(row.Window, row.Stick);
+        var button = Middle(row.Window, row.Hold);
+        var swipe = Middle(row.Window, row.Swipe);
 
-        var thumb = window.TouchBegin(stick + new Vector(40, 0));
-        var jump = window.TouchBegin(button);
-        var look = window.TouchBegin(swipe);
-        window.TouchMove(look, swipe + new Vector(10, 0));
-        window.TouchMove(thumb, stick + new Vector(40, -20));
+        var thumb = row.Window.TouchBegin(stick + new Vector(40, 0));
+        var jump = row.Window.TouchBegin(button);
+        var look = row.Window.TouchBegin(swipe);
+        row.Window.TouchMove(look, swipe + new Vector(10, 0));
+        row.Window.TouchMove(thumb, stick + new Vector(40, -20));
 
-        Assert.Equal(new[] { "jump", "look", "move" }, events.Select(e => e.Handler).Distinct().Order());
-        Assert.Equal(("jump", (object?)true), Assert.Single(events, e => e.Handler == "jump"));
+        Assert.Equal(new[] { "jump", "look", "move" }, row.Events.Select(e => e.Control).Distinct().Order());
+        Assert.Equal(("jump", (object)true), Assert.Single(row.Events, e => e.Control == "jump"));
 
-        window.TouchEnd(jump, button);
-        Assert.Equal(("jump", (object?)false), events[^1]);
-        Assert.True(Assert.IsType<double[]>(events.Last(e => e.Handler == "move").Payload)[0] > 0.2, "the thumb is still down");
+        row.Window.TouchEnd(jump, button);
+        Assert.Equal(("jump", (object)false), row.Events[^1]);
+        Assert.True(Assert.IsType<Vector>(row.Events.Last(e => e.Control == "move").Payload).X > 0.2, "the thumb is still down");
     });
 
     [Fact]
-    public Task AnElementWithNoHandlerNamedStillDrawsAndListens() => Headless.Run(() =>
+    public Task AControlNobodyListensToStillDrawsAndFollows() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(new UiNode
-        {
-            Type = "column",
-            Children = [new UiNode { Type = "stick", Css = Size }, new UiNode { Type = "swipe-pad", Css = Size }],
-        });
-        var at = Middle(window, Probe.All<TouchStick>(window).Single());
+        var stick = new TouchStick(Square(), Knob);
+        var swipe = new TouchSwipe(Square());
+        var window = TestWindow.Show(new StackPanel { Children = { stick, swipe } }, 300, 400);
+        var at = Middle(window, stick);
 
         var finger = window.TouchBegin(at);
         window.TouchMove(finger, at + new Vector(10, 0));
-        window.TouchEnd(finger, at + new Vector(10, 0));
+        window.UpdateLayout();
+        var look = window.TouchBegin(Middle(window, swipe));
+        window.TouchMove(look, Middle(window, swipe) + new Vector(10, 0));
 
-        Assert.Empty(events);
-        Assert.Single(Probe.All<Ellipse>(window));
+        Assert.Equal(at.X + 10, Middle(window, stick.Children.OfType<Ellipse>().Single()).X, 1e-6);
     });
 
     [Fact]
     public Task AMouseDragsAStickToo() => Headless.Run(() =>
     {
-        var (window, events, _) = Show(Controls);
-        var middle = Middle(window, Probe.All<TouchStick>(window).Single());
+        var row = new TouchRow();
+        var middle = Middle(row.Window, row.Stick);
 
-        window.MouseDown(middle + new Vector(40, 0), MouseButton.Left);
-        window.MouseMove(middle + new Vector(200, 0));
-        window.MouseUp(middle + new Vector(200, 0), MouseButton.Left);
+        row.Window.MouseDown(middle + new Vector(40, 0), MouseButton.Left);
+        row.Window.MouseMove(middle + new Vector(200, 0));
+        row.Window.MouseUp(middle + new Vector(200, 0), MouseButton.Left);
 
-        Assert.Equal(3, events.Count);
-        Assert.Equal(new[] { 1.0, 0.0 }, Assert.IsType<double[]>(events[1].Payload));
-        Assert.Equal(Zero, Last(events));
+        Assert.Equal(3, row.Events.Count);
+        Assert.Equal(new Vector(1, 0), row.Events[1].Payload);
+        Assert.Equal(default, row.Last);
     });
+
+    /// <summary>A stick, a button and a swipe pad side by side, and every event they raise in order.</summary>
+    private sealed class TouchRow
+    {
+        public TouchRow()
+        {
+            Face = new Border { Padding = new Thickness(24), Background = new SolidColorBrush(Color.FromUInt32(0xFFAA3300)), Child = new TextBlock { Text = "Jump" } };
+            Stick = new TouchStick(new Border { Width = 160, Height = 160, Background = new SolidColorBrush(Color.FromUInt32(0xFF333333)), CornerRadius = new CornerRadius(80) }, Knob);
+            Hold = new TouchHold(Face);
+            Swipe = new TouchSwipe(Square());
+            Stick.Tilted += at => Events.Add(("move", at));
+            Hold.Held += held => Events.Add(("jump", held));
+            Swipe.Swiped += step => Events.Add(("look", step));
+            Panel = new StackPanel { Orientation = Orientation.Horizontal, Children = { Stick, Hold, Swipe } };
+            Window = TestWindow.Show(Panel, 700, 300);
+        }
+
+        public List<(string Control, object Payload)> Events { get; } = [];
+
+        public Border Face { get; }
+
+        public TouchStick Stick { get; }
+
+        public TouchHold Hold { get; }
+
+        public TouchSwipe Swipe { get; }
+
+        public StackPanel Panel { get; }
+
+        public Window Window { get; }
+
+        public Vector Last => Assert.IsType<Vector>(Events[^1].Payload);
+    }
 }

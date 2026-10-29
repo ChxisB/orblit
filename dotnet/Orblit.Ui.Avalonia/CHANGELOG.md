@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+- `UiBuilder`, `UiBuilderOptions`, `UiSurface`, `UiDecorator` and `UiEvent`
+  are gone, by decision 95. An interface is made of Avalonia controls, so the
+  package no longer depends on `Orblit.Ui`.
+- `TouchStick`, `TouchHold` and `TouchSwipe` are public controls. Each wraps
+  the face it is given and reports through an event. `TouchStick.Tilted`
+  gives a `Vector`, `TouchHold.Held` a `bool` and `TouchSwipe.Swiped` a
+  `Vector`. The values are the ones the elements sent, positive up and to the
+  right.
+- `TouchArea` is public so that the three can be. Only they derive from it.
+
 ## 0.2.0
 
 - The `stick`, `touch-button` and `swipe-pad` elements listen for touches.
