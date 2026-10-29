@@ -21,5 +21,7 @@
   forward slashes on every system.
 - A name with a quote or a backslash is written as a C# string literal.
 - Components with one name keep their input order. See decision 75.
+- The package carries the generator as an analyzer, and `tool/pack_local.sh`
+  packs it.
 - `Microsoft.CodeAnalysis.CSharp` 4.14.0 is the one new package. It loads in
   SDK 9 and 10. See decision 78.

@@ -14,11 +14,10 @@ mkdir -p "$feed"
 marker=$(mktemp)
 trap 'rm -f "$marker"' EXIT
 
-# Tests are not libraries. The code generator is an analyzer, which a package
-# cannot carry as a library.
+# Tests are not libraries. The code generator packs as an analyzer.
 for project in Orblit.*/Orblit.*.csproj; do
   case $project in
-    *.Tests/* | Orblit.Tests.*/* | Orblit.Codegen/*) continue ;;
+    *.Tests/* | Orblit.Tests.*/*) continue ;;
   esac
   dotnet pack "$project" -c Release -o "$feed" --nologo -v q
 done
