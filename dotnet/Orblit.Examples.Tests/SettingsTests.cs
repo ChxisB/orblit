@@ -86,6 +86,17 @@ public sealed class SettingsTests
     [InlineData("Benchmark", 2, 1, "f093a3e930df7529")]
     [InlineData("Benchmark", 3, 0, "608acdda807f58c5")]
     [InlineData("Benchmark", 4, 0, "3599cee696ff863d")]
+    [InlineData("Terrain", 0, 0, "5e7e92a6d6039c68")]
+    [InlineData("Terrain", 1, 0, "bb4c91b88e730f33")]
+    [InlineData("Terrain", 2, 0, "2582f68d265a579d")]
+    [InlineData("Terrain", 3, 0, "2a6138373fb67aa1")]
+    [InlineData("Terrain", 4, 0, "3ea600504be57d57")]
+    [InlineData("Terrain", 5, 0, "11b9ab086ab06686")]
+    [InlineData("Terrain", 6, 0, "e70f3868f93bd5d2")]
+    [InlineData("Terrain", 7, 0, "36c2fcb151fdca78")]
+    [InlineData("Terrain", 8, 0, "bc6a1788d4536098")]
+    [InlineData("Terrain", 8, 1, "d30b74458223dacd")]
+    [InlineData("Terrain", 8, 2, "e64831e1c65805cf")]
     public void EachSeededMoveMatchesDartAroundItsSeededKeys(string name, int control, int move, string rest)
     {
         var example = ExampleFixture.Example(name);

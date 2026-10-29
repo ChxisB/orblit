@@ -41,5 +41,6 @@ public static class EngineExamples
         new OverdrawExample(),
         new PipelineExample(Environment.GetEnvironmentVariable),
         new BenchmarkExample(),
+        new TerrainExample(),
     ];
 }

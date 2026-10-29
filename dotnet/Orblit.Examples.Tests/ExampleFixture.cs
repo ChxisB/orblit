@@ -21,14 +21,18 @@ internal static class ExampleFixture
     public static readonly HashSet<string> Unlisted = ["Scene files"];
 
     /// <summary>
-    /// The keys each seeded example fills from <see cref="Random"/>. As decision
-    /// 77 has it, they match the Dart generator's on shape only.
+    /// The keys each example fills from what the two runtimes do not share, so
+    /// they match on shape only. Most are filled from <see cref="Random"/>, and
+    /// decision 77 says why its numbers differ from the Dart generator's. The
+    /// terrain's population revisions come from a count kept across the whole
+    /// process, so they depend on what else ran first.
     /// </summary>
     public static readonly Dictionary<string, HashSet<string>> Seeded = new()
     {
         ["Gaussian splats"] = ["splatData"],
         ["A hundred thousand"] = ["populationTransforms", "populationColours"],
         ["Benchmark"] = ["populationTransforms", "populationColours"],
+        ["Terrain"] = ["populationRevisions"],
     };
 
     /// <summary>

@@ -60,3 +60,6 @@
   `ORBLIT_SPLAT_PILLAR`, `ORBLIT_SPLAT_COARSE` and `ORBLIT_SPLAT_DEVICE`
   from the environment it is given. With `Example.Device` set, it holds
   the cloud to what the device can carry.
+- The terrain example is ported: `Terrain`. Its population revisions
+  match on shape, because the scatter count runs across the whole
+  process. `Orblit.Examples` uses `Orblit.Noise`.

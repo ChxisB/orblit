@@ -8,6 +8,7 @@
     <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
     <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
     <ProjectReference Include="..\Orblit.Motion\Orblit.Motion.csproj" />
+    <ProjectReference Include="..\Orblit.Noise\Orblit.Noise.csproj" />
     <ProjectReference Include="..\Orblit.Scene\Orblit.Scene.csproj" />
     <ProjectReference Include="..\Orblit.Sequence\Orblit.Sequence.csproj" />
     <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
