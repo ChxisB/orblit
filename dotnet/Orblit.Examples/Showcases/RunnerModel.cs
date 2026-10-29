@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Runtime.InteropServices;
 using System.Text;
 using Orblit.Json;
+using Orblit.Light;
 using Orblit.VectorMath;
 
 namespace Orblit.Examples;
@@ -324,13 +325,14 @@ internal sealed class RunnerModel
 
         public void Add(Surface surface)
         {
+            var colour = Tint.Hex((int)(surface.Colour & 0xFFFFFF)).Linear;
             _materials.Add(new Dictionary<string, object?>
             {
                 ["pbrMetallicRoughness"] = new Dictionary<string, object?>
                 {
                     ["baseColorFactor"] = new List<object?>
                     {
-                        Linear(surface.Colour >> 16), Linear(surface.Colour >> 8), Linear(surface.Colour), 1.0,
+                        colour.X, colour.Y, colour.Z, 1.0,
                     },
                     ["metallicFactor"] = 0.0,
                     ["roughnessFactor"] = surface.Roughness,
@@ -386,12 +388,6 @@ internal sealed class RunnerModel
             BinaryPrimitives.WriteUInt32LittleEndian(bytes.AsSpan(binAt + 4), 0x004E4942);
             bin.CopyTo(bytes, binAt + 8);
             return bytes;
-        }
-
-        private static double Linear(uint channel)
-        {
-            var c = (channel & 0xFF) / 255.0;
-            return c <= 0.04045 ? c / 12.92 : Math.Pow((c + 0.055) / 1.055, 2.4);
         }
 
         private Dictionary<string, object?> Indices(int count)
