@@ -43,5 +43,7 @@ public static class EngineExamples
         new BenchmarkExample(),
         new TerrainExample(),
         new VoxelExample(),
+        new BistroExteriorExample(Environment.GetEnvironmentVariable, File.Exists, File.ReadAllText),
+        new BistroInteriorExample(Environment.GetEnvironmentVariable, File.Exists, File.ReadAllText),
     ];
 }

@@ -66,3 +66,7 @@
 - The blocks example is ported: `Voxel`. Its trees come from `Random`
   and change how many blocks are drawn, so its population keys are left
   out of the fixture match. Each world with its trees off matches Dart.
+- The two Bistro examples are ported: `BistroExterior` and
+  `BistroInterior`. They read `ORBLIT_BISTRO` from the environment they
+  are given, or look in `../orblit/assets/bistro`. Each is lit by the
+  fixtures the fetch script read out of its model.

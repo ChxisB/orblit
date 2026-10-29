@@ -112,6 +112,10 @@ public sealed class SettingsTests
     // Worlds 2 to 4 are left out. Their trees stand where the body lands,
     // so VoxelTests matches them with the trees off.
     [InlineData("Blocks", 6, 0, "a53e5bda87250765")]
+    [InlineData("Bistro exterior", 0, 0, "22debabd0d1275a8")]
+    [InlineData("Bistro exterior", 1, 0, "9df289cc8c4fe6bf")]
+    [InlineData("Bistro exterior", 2, 0, "c568c4da6b63976e")]
+    [InlineData("Bistro interior", 0, 0, "1716b06f22fbe851")]
     public void EachSeededMoveMatchesDartAroundItsSeededKeys(string name, int control, int move, string rest)
     {
         var example = ExampleFixture.Example(name);
@@ -129,7 +133,8 @@ public sealed class SettingsTests
     /// <summary>The settings that can be moved, as the fixture lists them. It leaves out captions and text.</summary>
     private static List<ExampleSetting> Controls(Example example) => ExampleFixture.Unlisted.Contains(example.Name)
         ? []
-        : [.. example.Settings().Where(setting => setting is Setting or Toggle or Choice)];
+        : [.. example.Settings().Where(setting => setting is Setting or Toggle or Choice
+            && !ExampleFixture.Plain.GetValueOrDefault(example.Name, []).Contains(setting.Label))];
 
     /// <summary>
     /// Each way a control is moved, giving where it went. A slider goes to its

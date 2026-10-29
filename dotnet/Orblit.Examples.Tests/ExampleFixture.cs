@@ -21,11 +21,22 @@ internal static class ExampleFixture
     public static readonly HashSet<string> Unlisted = ["Scene files"];
 
     /// <summary>
+    /// Sliders the Dart examples drew as plain widgets beside listed controls,
+    /// by example. The exporter did not see them. Their own tests move them.
+    /// </summary>
+    public static readonly Dictionary<string, HashSet<string>> Plain = new()
+    {
+        ["Bistro exterior"] = ["Film speed"],
+        ["Bistro interior"] = ["Ambient"],
+    };
+
+    /// <summary>
     /// The keys each example fills from what the two runtimes do not share, so
     /// they match on shape only. Most are filled from <see cref="Random"/>, and
     /// decision 77 says why its numbers differ from the Dart generator's. The
     /// terrain's population revisions come from a count kept across the whole
-    /// process, so they depend on what else ran first.
+    /// process, so they depend on what else ran first. The Bistro's mesh paths
+    /// are absolute, so they name the machine that ran the exporter.
     /// </summary>
     public static readonly Dictionary<string, HashSet<string>> Seeded = new()
     {
@@ -34,6 +45,8 @@ internal static class ExampleFixture
         ["Benchmark"] = ["populationTransforms", "populationColours"],
         ["Terrain"] = ["populationRevisions"],
         ["Blocks"] = ["populationTransforms", "populationColours", "populationCounts"],
+        ["Bistro exterior"] = ["meshPaths"],
+        ["Bistro interior"] = ["meshPaths"],
     };
 
     /// <summary>
