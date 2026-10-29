@@ -122,6 +122,110 @@ public sealed class RunnerTests
     }
 
     [Fact]
+    public void GoStartsResumesAndRestartsButNotInTheMomentOfACrash()
+    {
+        var game = Game();
+        game.Confirm();
+        Assert.Equal(RunnerPhase.Running, game.Phase);
+
+        game.Pause();
+        game.Confirm();
+        Assert.Equal(RunnerPhase.Running, game.Phase);
+
+        // Nobody steers, so the run ends at the first thing in the middle lane.
+        for (var i = 0; i < 60 * 60 && game.Phase == RunnerPhase.Running; i++)
+        {
+            game.Update(Step);
+        }
+
+        Assert.True(game.NewBest);
+        game.Confirm();
+        Assert.Equal(RunnerPhase.Over, game.Phase);
+
+        for (var i = 0; i < 45; i++)
+        {
+            game.Update(Step);
+        }
+
+        game.Confirm();
+        Assert.Equal(RunnerPhase.Running, game.Phase);
+        Assert.Equal(0.0, game.Travelled);
+        Assert.False(game.NewBest);
+    }
+
+    [Fact]
+    public void TheCoinsJustTakenShowOverTheRunner()
+    {
+        var game = Game();
+        game.Autopilot = true;
+        Assert.Null(game.Popup());
+
+        game.Start();
+        var popups = new List<(RunnerPopup Popup, int Coins)>();
+        for (var i = 0; i < 60 * 30; i++)
+        {
+            game.Update(Step);
+            if (game.Popup() is { } popup)
+            {
+                popups.Add((popup, game.Coins));
+            }
+        }
+
+        var (first, coins) = popups[0];
+        Assert.Equal(1, coins);
+        Assert.Equal(1, first.Points);
+        Assert.Equal(1.0, first.Opacity);
+        // The camera follows the runner from behind, so the runner is near the
+        // middle across.
+        Assert.InRange(first.At.X, -0.5, 0.5);
+        Assert.InRange(first.At.Y, -1.0, 1.0);
+
+        // Each line of coins counts its own, rather than the run's, and fades
+        // out after it.
+        Assert.Contains(popups, one => one.Popup.Points < one.Coins);
+        // The second coin of a line is worth 2.
+        Assert.Contains(
+            popups.Zip(popups.Skip(1)),
+            pair => pair.Second.Coins - pair.First.Coins == 1 && pair.Second.Popup.Points - pair.First.Popup.Points == 2);
+        Assert.Contains(popups, one => one.Popup.Opacity is > 0 and < 1);
+    }
+
+    [Fact]
+    public void AStumbleIsForgivenOnceButNotTwiceInQuickSuccession()
+    {
+        // The autopilot plays, and is turned into a container that is already
+        // alongside. That is a stumble and a bounce back.
+        var game = new RunnerExample((_, _) => { }, _ => null) { Autopilot = true };
+        game.Start();
+        var frame = 0;
+        void Run(int frames)
+        {
+            for (var i = 0; i < frames; i++)
+            {
+                game.Scene(Camera, ++frame * Step);
+            }
+        }
+
+        var side = 0;
+        while (side == 0 && frame < 60 * 30)
+        {
+            side = ContainerBeside(game.Scene(Camera, ++frame * Step).Objects);
+        }
+
+        game.Steer(side);
+        Run(6);
+        Assert.Equal(RunnerPhase.Running, game.Phase);
+        Assert.True(game.Careful);
+
+        // The same container again, once a graze of it has stopped counting as
+        // the same one, is a second stumble too soon.
+        Run(36);
+        game.Steer(side);
+        Run(6);
+        Assert.Equal(RunnerPhase.Over, game.Phase);
+    }
+
+    [Fact]
     public void WithCrashingTurnedOffNothingEndsTheRun()
     {
         var game = Game();
@@ -308,6 +412,27 @@ public sealed class RunnerTests
         }
 
         return passes;
+    }
+
+    /// <summary>
+    /// Which way a container is that is up to 4 m into passing in the next lane
+    /// over: -1 for the left, 1 for the right, and 0 for none.
+    /// </summary>
+    private static int ContainerBeside(IReadOnlyList<RenderObject> objects)
+    {
+        // A container is drawn at its near end and is 10 m long.
+        var body = objects.First(one => one.Key == 1).Transform.GetTranslation();
+        foreach (var one in objects.Where(one => one.Key >= 2400))
+        {
+            var at = one.Transform.GetTranslation();
+            var across = at.X - body.X;
+            if (body.Z - at.Z is > -4 and < 0 && Math.Abs(Math.Abs(across) - 2.6) < 0.3)
+            {
+                return Math.Sign(across);
+            }
+        }
+
+        return 0;
     }
 
     /// <summary>Whether a hurdle at <paramref name="at"/> is 6 to 10 m ahead, in the runner's lane.</summary>

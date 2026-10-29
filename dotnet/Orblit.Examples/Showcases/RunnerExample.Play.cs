@@ -180,6 +180,7 @@ public sealed partial class RunnerExample
     {
         Phase = RunnerPhase.Over;
         _crashedAt = _clock;
+        NewBest = Score > Best;
         Best = Math.Max(Best, Score);
         _shake = 0.8;
         _vy = 6.5;
@@ -215,8 +216,20 @@ public sealed partial class RunnerExample
         Coins++;
         // One after another is worth more each time, which is what makes a
         // line of them worth following rather than merely worth having.
-        _streak = _clock - _lastCoinAt < 0.8 ? _streak + 1 : 0;
-        _bonus += 1 + _streak;
+        if (_clock - _lastCoinAt < 0.8)
+        {
+            _streak++;
+        }
+        else
+        {
+            // A new line of coins counts its "+N" from nothing.
+            _streak = 0;
+            _popup = 0;
+        }
+
+        var worth = 1 + _streak;
+        _bonus += worth;
+        _popup += worth;
         _lastCoinAt = _clock;
         for (var i = 0; i < 4; i++)
         {

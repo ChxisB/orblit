@@ -77,6 +77,7 @@ public sealed partial class RunnerExample : Example
     private double _step;
     private int _bonus;
     private int _streak;
+    private int _popup;
     private double _lastCoinAt = -100;
     private int _runs;
     private Random _chance = new(1);

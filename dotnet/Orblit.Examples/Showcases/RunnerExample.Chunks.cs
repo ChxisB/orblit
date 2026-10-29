@@ -25,6 +25,8 @@ public sealed partial class RunnerExample
         _slideQueued = false;
         _jumpBuffer = 0;
         _stumbledAt = -100;
+        _popup = 0;
+        NewBest = false;
         _spin = 0;
         Coins = 0;
         _bonus = 0;
