@@ -33,7 +33,15 @@ internal static class ExampleFixture
         ["A hundred thousand"] = ["populationTransforms", "populationColours"],
         ["Benchmark"] = ["populationTransforms", "populationColours"],
         ["Terrain"] = ["populationRevisions"],
+        ["Blocks"] = ["populationTransforms", "populationColours", "populationCounts"],
     };
+
+    /// <summary>
+    /// Seeded examples whose seeded keys change length with the generator, so
+    /// not even their shapes match. Their frames are matched key by key with
+    /// those keys left out, and each move by its rest digest.
+    /// </summary>
+    public static readonly HashSet<string> Grown = ["Blocks"];
 
     /// <summary>
     /// Every example, with nowhere to keep a picture. The Dart fixture was

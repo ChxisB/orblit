@@ -54,6 +54,12 @@ public sealed class SettingsTests
             Assert.Equal(moved, Shown(Controls(example)[control]));
         }
 
+        // A grown example's scene is checked by its rest digest instead.
+        if (ExampleFixture.Grown.Contains(name))
+        {
+            return;
+        }
+
         var seeded = ExampleFixture.Seeded.ContainsKey(name);
         var message = SceneDigest.Message(example, 1);
         var wanted = ExampleFixture.Case(name).GetProperty("controls")[control]
@@ -97,6 +103,15 @@ public sealed class SettingsTests
     [InlineData("Terrain", 8, 0, "bc6a1788d4536098")]
     [InlineData("Terrain", 8, 1, "d30b74458223dacd")]
     [InlineData("Terrain", 8, 2, "e64831e1c65805cf")]
+    [InlineData("Blocks", 0, 0, "32b5420cc2cb95e7")]
+    [InlineData("Blocks", 1, 0, "63ea50e3b4d7e0c7")]
+    [InlineData("Blocks", 2, 0, "d345e4f13e3ecf71")]
+    [InlineData("Blocks", 3, 0, "9a26fbfbaf39ed0c")]
+    [InlineData("Blocks", 4, 0, "4355f6295ec55527")]
+    [InlineData("Blocks", 5, 0, "77d952304fe35712")]
+    // Worlds 2 to 4 are left out. Their trees stand where the body lands,
+    // so VoxelTests matches them with the trees off.
+    [InlineData("Blocks", 6, 0, "a53e5bda87250765")]
     public void EachSeededMoveMatchesDartAroundItsSeededKeys(string name, int control, int move, string rest)
     {
         var example = ExampleFixture.Example(name);

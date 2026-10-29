@@ -63,3 +63,6 @@
 - The terrain example is ported: `Terrain`. Its population revisions
   match on shape, because the scatter count runs across the whole
   process. `Orblit.Examples` uses `Orblit.Noise`.
+- The blocks example is ported: `Voxel`. Its trees come from `Random`
+  and change how many blocks are drawn, so its population keys are left
+  out of the fixture match. Each world with its trees off matches Dart.

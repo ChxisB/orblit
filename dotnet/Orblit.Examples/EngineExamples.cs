@@ -42,5 +42,6 @@ public static class EngineExamples
         new PipelineExample(Environment.GetEnvironmentVariable),
         new BenchmarkExample(),
         new TerrainExample(),
+        new VoxelExample(),
     ];
 }

@@ -23,13 +23,16 @@ public sealed class ExampleTicksTests
         var (values, keyValues) = Replay(ExampleFixture.Example(name), seeded);
 
         // A seeded frame matches on shape only. Its keys that are not seeded
-        // still match on value, every frame, in the key digests.
+        // still match on value, every frame, in the key digests. A grown frame
+        // does not match even on shape, so only its key digests are matched,
+        // with the seeded keys left out.
+        HashSet<string> left = ExampleFixture.Grown.Contains(name) ? seeded : [];
         var wanted = expected.GetProperty(seeded.Count == 0 ? "values" : "shapes").EnumerateArray()
             .Select(value => value.GetString()).ToList();
-        var first = wanted.Zip(values).TakeWhile(pair => pair.First == pair.Second).Count();
-        var wantedKeys = expected.GetProperty("keyValues").EnumerateObject().ToDictionary(key => key.Name, key =>
+        var first = left.Count > 0 ? Frames : wanted.Zip(values).TakeWhile(pair => pair.First == pair.Second).Count();
+        var wantedKeys = expected.GetProperty("keyValues").EnumerateObject().Where(key => !left.Contains(key.Name)).ToDictionary(key => key.Name, key =>
             (seeded.Contains(key.Name) ? expected.GetProperty("keyShapes").GetProperty(key.Name) : key.Value).GetString());
-        var keys = wantedKeys.Keys.Union(keyValues.Keys)
+        var keys = wantedKeys.Keys.Union(keyValues.Keys.Except(left))
             .Where(key => wantedKeys.GetValueOrDefault(key) != keyValues.GetValueOrDefault(key))
             .Order(StringComparer.Ordinal).ToList();
         Assert.True(first == Frames && keys.Count == 0, $"Frame {first} differs, in {string.Join(", ", keys)}.");
