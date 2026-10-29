@@ -29,5 +29,24 @@
 - Settings are data. `Setting`, `Choice` and `Toggle` say what a control
   is and what a change does, and the host draws them. A `Caption` is a
   line of text between them.
+- The rest of the basics are ported: `SceneFiles` and `Cameras`. So are
+  four content examples: `Meshes`, `Imported`, `Sprites` and `Video`.
+  Their scenes match the fixture's digests. The fixture ran with no model,
+  sheet or film, so the scenes with one are pinned in tests of their own.
+  The sprite sheet matches the Dart one byte for byte. The coins come
+  from another generator, so as decision 77 has it they match on shape.
+- `TextEntry` is a line to type into. `Buttons` is a row of buttons whose
+  press is an event, so none stays chosen.
+- `Example.Note` says what went wrong with a file the scene named.
+  `Example.Models` holds what each model file holds, as the renderer
+  reported it. The host fills both. `Example.Needs` names a
+  `Downloadable`: what the repository does not carry, and the command
+  that fetches it.
+- The imported models example reads its files through `ISampleFiles`.
+  `DiskSamples` reads them from disk and hands them to the renderer. It
+  reads `ORBLIT_SAMPLES` and `ORBLIT_MODEL`. The meshes example reads
+  `ORBLIT_MESH` and the video example reads `ORBLIT_VIDEO`.
+- The package uses `Orblit.Camera`, `Orblit.Scene`, `Orblit.Stage`,
+  `Orblit.Motion` and `Orblit.Sequence`.
 - `ViewPoint` is a record, and `ToRenderCamera` gives the camera for it.
 - The first example is called "A scene as a control".

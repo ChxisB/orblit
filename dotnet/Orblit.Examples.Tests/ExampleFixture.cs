@@ -15,6 +15,12 @@ internal static class ExampleFixture
     };
 
     /// <summary>
+    /// Examples whose Dart controls were plain widgets, which the exporter does
+    /// not see. Their own tests move them.
+    /// </summary>
+    public static readonly HashSet<string> Unlisted = ["Scene files"];
+
+    /// <summary>
     /// Every example, with nowhere to keep a picture. The Dart fixture was
     /// written before any example's pictures were, so its scenes name none.
     /// </summary>

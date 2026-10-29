@@ -51,8 +51,10 @@ public sealed class SettingsTests
         Assert.Equal(wanted, SceneDigest.Of(SceneDigest.Message(example, 1)));
     }
 
-    /// <summary>The settings that can be moved. A caption is text, and the fixture does not list it.</summary>
-    private static List<ExampleSetting> Controls(Example example) => [.. example.Settings().Where(setting => setting is not Caption)];
+    /// <summary>The settings that can be moved, as the fixture lists them. It leaves out captions and text.</summary>
+    private static List<ExampleSetting> Controls(Example example) => ExampleFixture.Unlisted.Contains(example.Name)
+        ? []
+        : [.. example.Settings().Where(setting => setting is Setting or Toggle or Choice)];
 
     /// <summary>
     /// Each way a control is moved, giving where it went. A slider goes to its

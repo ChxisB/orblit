@@ -1,6 +1,7 @@
 using System.Globalization;
 using System.Runtime.InteropServices;
 using System.Text;
+using Orblit.Filament;
 
 namespace Orblit.Examples.Tests;
 
@@ -16,8 +17,11 @@ internal static class SceneDigest
 
     /// <summary>What an example sends the renderer at one moment, each value in its byte form.</summary>
     public static Dictionary<string, byte[]> Message(Example example, double seconds) =>
-        example.Scene(example.ViewPoint.ToRenderCamera(), seconds).ToMessage(seconds)
-            .ToDictionary(entry => entry.Key, entry => Form(entry.Value));
+        Message(example.Scene(example.ViewPoint.ToRenderCamera(), seconds), seconds);
+
+    /// <summary>What <paramref name="scene"/> sends the renderer, for a test that also reads the scene itself.</summary>
+    public static Dictionary<string, byte[]> Message(RenderScene scene, double seconds) =>
+        scene.ToMessage(seconds).ToDictionary(entry => entry.Key, entry => Form(entry.Value));
 
     /// <summary>A digest of one message, key by key in ordinal order.</summary>
     public static string Of(Dictionary<string, byte[]> message)
@@ -27,6 +31,23 @@ internal static class SceneDigest
         {
             digest.Add(Text(key));
             digest.Add(message[key]);
+        }
+
+        return digest.Hex;
+    }
+
+    /// <summary>
+    /// A digest of each key's type and length, and nothing of its values. What a
+    /// seeded example can match when its generator is not the one the fixture's was.
+    /// </summary>
+    public static string ShapeOf(Dictionary<string, byte[]> message)
+    {
+        var digest = new Digest();
+        foreach (var key in message.Keys.Order(StringComparer.Ordinal))
+        {
+            digest.Add(Text(key));
+            // The type letter and the length.
+            digest.Add(message[key][..5]);
         }
 
         return digest.Hex;

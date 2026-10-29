@@ -33,6 +33,34 @@ public abstract class Example
     /// </summary>
     public DeviceProfile? Device { get; set; }
 
+    /// <summary>
+    /// What went wrong with a file this example's scene named, or null. A model
+    /// that cannot be read still draws, as a placeholder cube, and the renderer
+    /// reports why. On the base class because whether there is something to say
+    /// is mostly the renderer's business. An example that never expected a note
+    /// is the one whose silence would read as the engine being broken. The
+    /// gallery sets it from the renderer's notes, and an example that reads a
+    /// file itself sets it too.
+    /// </summary>
+    public string? Note { get; set; }
+
+    /// <summary>
+    /// What each model file this example's scene named holds, by the path it
+    /// was named by, as the renderer has reported them so far. On the base
+    /// class for the reason <see cref="Note"/> is: the gallery owns the view
+    /// the reports arrive through. Empty until a model has been built.
+    /// </summary>
+    public Dictionary<string, AssetInfo> Models { get; } = [];
+
+    /// <summary>
+    /// What this example needs that the repository does not carry, or null.
+    /// Some scenes are somebody else's art, and hundreds of megabytes of it, so
+    /// they are fetched rather than committed. Until they are, the example
+    /// draws a placeholder and says why. The useful thing to show beside that
+    /// is not an explanation but a button.
+    /// </summary>
+    public virtual Downloadable? Needs => null;
+
     /// <summary>The lines that matter, as somebody would write them.</summary>
     public abstract string Code { get; }
 

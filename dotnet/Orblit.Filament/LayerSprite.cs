@@ -73,8 +73,12 @@ public sealed record LayerSprite
             V1 = (double)(top + height) / imageHeight,
         };
 
-    /// <summary>Writes this sprite's <see cref="Stride"/> floats at <paramref name="at"/>.</summary>
-    internal void WriteInto(float[] into, int at) => Packing.Floats(
+    /// <summary>
+    /// Writes this sprite's <see cref="Stride"/> floats at <paramref name="at"/>. For a layer
+    /// whose sprites all move every frame, written into one buffer kept between frames rather than
+    /// packed into a new one each time.
+    /// </summary>
+    public void WriteInto(float[] into, int at) => Packing.Floats(
         X, Y, Depth, Rotation,
         Width, Height, PivotX, PivotY,
         U0, V0, U1, V1,

@@ -30,8 +30,9 @@ public sealed class PicturesTests
     /// <summary>
     /// The pixels of every picture drawn, pinned by hash. The Dart gallery's
     /// materials and decals pictures matched these on every opaque pixel and
-    /// every alpha. Blending seeds a different generator, so its stones are
-    /// only pinned to stay the same from run to run.
+    /// every alpha, and its sprite sheet on every byte. Blending seeds a
+    /// different generator, so its stones are only pinned to stay the same
+    /// from run to run.
     /// </summary>
     [Fact]
     public void EachPictureIsDrawnTheSameEveryRun()
@@ -55,6 +56,7 @@ public sealed class PicturesTests
                 ["materials/cutout.png"] = "202d148e7a6260ee5de6131215b40013c00037707949c220b51021d9485f1534",
                 ["materials/normals.png"] = "d8848d6e5953e0b5b5fed97dd60d8e055ba3e3add18cbaa6ae7fc7b88f38e5e5",
                 ["materials/packed.png"] = "23f384112d9ea387d804878891997033dfa63f8de98f8a5df793c1c44d5e7d7b",
+                ["sprites/sheet.png"] = "76b0cfc778c382d1270591fb4138b26193a6999c13e86a6c31703984e6b36813",
             },
             folder.Kept.ToDictionary(kept => kept.Key, kept => Convert.ToHexStringLower(SHA256.HashData(kept.Value))));
     }
@@ -63,6 +65,7 @@ public sealed class PicturesTests
     [InlineData("Materials", "materials", 4)]
     [InlineData("Blending", "blend", 3)]
     [InlineData("Decals", "decals", 5)]
+    [InlineData("Sprites", "sprites", 1)]
     public void TheSceneNamesEveryPictureItKept(string name, string folderName, int pictures)
     {
         var folder = new Recording();
@@ -72,7 +75,9 @@ public sealed class PicturesTests
 
         var kept = folder.Kept.Keys.Where(path => path.StartsWith($"{folderName}/", StringComparison.Ordinal)).ToList();
         Assert.Equal(pictures, kept.Count);
-        var named = scene.Materials.SelectMany(Maps).Concat(scene.Decals.Select(decal => decal.Texture?.Path));
+        var named = scene.Materials.SelectMany(Maps)
+            .Concat(scene.Decals.Select(decal => decal.Texture?.Path))
+            .Concat(scene.Sprites.Select(layer => layer.Image?.Path));
         Assert.All(kept, path => Assert.Contains(path, named));
     }
 

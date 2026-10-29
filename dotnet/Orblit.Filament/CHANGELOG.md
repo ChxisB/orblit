@@ -59,6 +59,8 @@ degree, a coarse order and a limit of up to 16777215 splats, so a large limit
 reads back as a negative `int` on the wire and the same bits in the renderer.
 `SpriteLayer` is a layer of flat pictures. `LayerSprite` is one sprite in it,
 16 floats, and `Cut` turns a rectangle in pixels into fractions of the image.
+`WriteInto` writes one into a buffer kept between frames, for a layer whose
+sprites all move every frame.
 A held cloud or layer sends its settings and its records only when its
 revision changes. A file cloud never sends records. A scene with neither pays
 nothing.

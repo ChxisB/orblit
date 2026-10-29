@@ -4,9 +4,14 @@
     <Description>The engine's examples: one scene each, with its settings and the code that matters, grouped under the headings the gallery lists them by.</Description>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Orblit.Camera\Orblit.Camera.csproj" />
     <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
     <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
+    <ProjectReference Include="..\Orblit.Motion\Orblit.Motion.csproj" />
+    <ProjectReference Include="..\Orblit.Scene\Orblit.Scene.csproj" />
+    <ProjectReference Include="..\Orblit.Sequence\Orblit.Sequence.csproj" />
     <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
+    <ProjectReference Include="..\Orblit.Stage\Orblit.Stage.csproj" />
     <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
     <ProjectReference Include="..\Orblit.Weather\Orblit.Weather.csproj" />
   </ItemGroup>

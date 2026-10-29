@@ -10,6 +10,8 @@ public static class EngineExamples
     public static IReadOnlyList<Example> All(IPictureFolder pictures) =>
     [
         new SurfaceExample(),
+        new SceneFilesExample(),
+        new CamerasExample(),
         new LightsExample(),
         new PanelShadowExample(),
         new ShadowsExample(),
@@ -28,6 +30,10 @@ public static class EngineExamples
         new MotionBlurExample(),
         new DistortionExample(),
         new OutlineExample(),
+        new MeshesExample(Environment.GetEnvironmentVariable),
+        new ImportedExample(Environment.GetEnvironmentVariable, new DiskSamples()),
+        new SpritesExample(pictures),
+        new VideoExample(Environment.GetEnvironmentVariable, File.Exists),
         new ManyExample(),
         new BatchingExample(),
         new OverdrawExample(),

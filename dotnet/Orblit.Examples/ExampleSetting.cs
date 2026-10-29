@@ -44,5 +44,15 @@ public sealed record Toggle(string Label, bool Value, Action<bool> Change) : Exa
     public bool Enabled { get; init; } = true;
 }
 
+/// <summary>A line to type into, such as a path. Each edit is a change.</summary>
+public sealed record TextEntry(string Label, string Value, Action<string> Change) : ExampleSetting(Label)
+{
+    /// <summary>An example of what goes in, shown while it is empty.</summary>
+    public string Hint { get; init; } = "";
+}
+
+/// <summary>A row of buttons. A press is an event rather than a state, so no button stays chosen.</summary>
+public sealed record Buttons(string Label, IReadOnlyList<string> Options, Action<string> Press) : ExampleSetting(Label);
+
 /// <summary>A line of text between the controls, for what the controls do not say. The label is the text.</summary>
 public sealed record Caption(string Label) : ExampleSetting(Label);
