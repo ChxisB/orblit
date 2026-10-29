@@ -39,7 +39,7 @@ public sealed class PicturesTests
     {
         var folder = new Recording();
 
-        _ = EngineExamples.All(folder, _ => null);
+        _ = EngineExamples.All(folder, _ => null, ExampleFixture.NoRenderer);
 
         Assert.Equal(
             new Dictionary<string, string>
@@ -69,7 +69,7 @@ public sealed class PicturesTests
     public void TheSceneNamesEveryPictureItKept(string name, string folderName, int pictures)
     {
         var folder = new Recording();
-        var example = EngineExamples.All(folder, _ => null).Single(example => example.Name == name);
+        var example = EngineExamples.All(folder, _ => null, ExampleFixture.NoRenderer).Single(example => example.Name == name);
 
         var scene = example.Scene(new ViewPoint().ToRenderCamera(), 1);
 

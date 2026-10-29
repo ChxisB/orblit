@@ -8,9 +8,13 @@ public static class EngineExamples
     /// examples that draw their own textures keep them in <paramref name="pictures"/>.
     /// The ones that can be pointed at other files look them up in
     /// <paramref name="environment"/>. The gallery passes the process
-    /// environment, and a test passes an empty one.
+    /// environment, and a test passes an empty one. The ones that make their
+    /// models in code hand them to the renderer through <paramref name="provide"/>.
     /// </summary>
-    public static IReadOnlyList<Example> All(IPictureFolder pictures, Func<string, string?> environment) =>
+    public static IReadOnlyList<Example> All(
+        IPictureFolder pictures,
+        Func<string, string?> environment,
+        Action<string, byte[]> provide) =>
     [
         new SurfaceExample(),
         new SceneFilesExample(),
@@ -46,6 +50,7 @@ public static class EngineExamples
         new BenchmarkExample(),
         new TerrainExample(),
         new VoxelExample(),
+        new RunnerExample(provide, environment),
         new BistroExteriorExample(environment, File.Exists, File.ReadAllText),
         new BistroInteriorExample(environment, File.Exists, File.ReadAllText),
     ];

@@ -228,7 +228,7 @@ public sealed class BistroTests
     [Fact]
     public void TheListReadsTheEnvironmentItIsGiven()
     {
-        var example = EngineExamples.All(new ExampleFixture.NoPictures(), name => name == "ORBLIT_BISTRO" ? "/elsewhere" : null).OfType<BistroExteriorExample>().Single();
+        var example = EngineExamples.All(new ExampleFixture.NoPictures(), name => name == "ORBLIT_BISTRO" ? "/elsewhere" : null, ExampleFixture.NoRenderer).OfType<BistroExteriorExample>().Single();
 
         Assert.Equal("/elsewhere/BistroExterior.gltf", Assert.Single(example.Scene(Camera, 0).Objects).Mesh);
     }

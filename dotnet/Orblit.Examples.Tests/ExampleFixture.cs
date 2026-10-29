@@ -21,13 +21,14 @@ internal static class ExampleFixture
     public static readonly HashSet<string> Unlisted = ["Scene files"];
 
     /// <summary>
-    /// Sliders the Dart examples drew as plain widgets beside listed controls,
+    /// Controls the Dart examples drew as plain widgets beside listed controls,
     /// by example. The exporter did not see them. Their own tests move them.
     /// </summary>
     public static readonly Dictionary<string, HashSet<string>> Plain = new()
     {
         ["Bistro exterior"] = ["Film speed"],
         ["Bistro interior"] = ["Ambient"],
+        ["Video"] = [""],
     };
 
     /// <summary>
@@ -45,6 +46,7 @@ internal static class ExampleFixture
         ["Benchmark"] = ["populationTransforms", "populationColours"],
         ["Terrain"] = ["populationRevisions"],
         ["Blocks"] = ["populationTransforms", "populationColours", "populationCounts"],
+        ["Runner"] = ["populationTransforms", "populationColours"],
         ["Bistro exterior"] = ["meshPaths"],
         ["Bistro interior"] = ["meshPaths"],
     };
@@ -57,11 +59,16 @@ internal static class ExampleFixture
     public static readonly HashSet<string> Grown = ["Blocks"];
 
     /// <summary>
-    /// Every example, with nowhere to keep a picture and nothing set in the
-    /// environment. The Dart fixture was written before any example's
-    /// pictures were, so its scenes name none.
+    /// Every example, with nowhere to keep a picture, nothing set in the
+    /// environment and no renderer. The Dart fixture was written before any
+    /// example's pictures were, so its scenes name none. Its runner never had
+    /// its models, so it drew none.
     /// </summary>
-    public static IReadOnlyList<Example> All() => EngineExamples.All(new NoPictures(), _ => null);
+    public static IReadOnlyList<Example> All() => EngineExamples.All(new NoPictures(), _ => null, NoRenderer);
+
+    /// <summary>Hands nothing to a renderer, because there is none.</summary>
+    public static readonly Action<string, byte[]> NoRenderer = (name, _) =>
+        throw new DllNotFoundException($"There is no renderer to hand {name} to.");
 
     public static TheoryData<string> Names() => [.. All().Select(example => example.Name)];
 

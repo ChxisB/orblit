@@ -48,8 +48,9 @@ public sealed class SettingsTests
         var moved = Moves(setting)[move]();
 
         // The exporter flips a disabled switch too. What it shows then is the
-        // example's business, and its own tests say.
-        if (setting is not Toggle { Enabled: false })
+        // example's business, and its own tests say. A press is an event, so a
+        // button shows nothing afterwards.
+        if (setting is not (Toggle { Enabled: false } or Buttons))
         {
             Assert.Equal(moved, Shown(Controls(example)[control]));
         }
@@ -112,6 +113,10 @@ public sealed class SettingsTests
     // Worlds 2 to 4 are left out. Their trees stand where the body lands,
     // so VoxelTests matches them with the trees off.
     [InlineData("Blocks", 6, 0, "a53e5bda87250765")]
+    [InlineData("Runner", 0, 0, "67a0a8eb3f495bc9")]
+    [InlineData("Runner", 1, 0, "67a0a8eb3f495bc9")]
+    [InlineData("Runner", 2, 0, "67a0a8eb3f495bc9")]
+    [InlineData("Runner", 3, 0, "c98d59eea8b37fc5")]
     [InlineData("Bistro exterior", 0, 0, "22debabd0d1275a8")]
     [InlineData("Bistro exterior", 1, 0, "9df289cc8c4fe6bf")]
     [InlineData("Bistro exterior", 2, 0, "c568c4da6b63976e")]
@@ -133,13 +138,14 @@ public sealed class SettingsTests
     /// <summary>The settings that can be moved, as the fixture lists them. It leaves out captions and text.</summary>
     private static List<ExampleSetting> Controls(Example example) => ExampleFixture.Unlisted.Contains(example.Name)
         ? []
-        : [.. example.Settings().Where(setting => setting is Setting or Toggle or Choice
+        : [.. example.Settings().Where(setting => setting is Setting or Toggle or Choice or Buttons
             && !ExampleFixture.Plain.GetValueOrDefault(example.Name, []).Contains(setting.Label))];
 
     /// <summary>
     /// Each way a control is moved, giving where it went. A slider goes to its
     /// far end, or to its near end when it is already at the far one, and
     /// settles there. A switch flips. A choice goes to each option it is not on.
+    /// A row of buttons has each one pressed.
     /// </summary>
     private static IReadOnlyList<Func<object>> Moves(ExampleSetting setting) => setting switch
     {
@@ -166,6 +172,14 @@ public sealed class SettingsTests
             .. choice.Options.Where(option => option != choice.Selected).Select(option => (Func<object>)(() =>
             {
                 select(option);
+                return option;
+            })),
+        ],
+        Buttons buttons =>
+        [
+            .. buttons.Options.Select(option => (Func<object>)(() =>
+            {
+                buttons.Press(option);
                 return option;
             })),
         ],
