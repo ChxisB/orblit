@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Orblit.Filament;
 
 namespace Orblit.Examples.Tests;
@@ -33,8 +32,8 @@ public sealed class SpritesTests
         Assert.Equal(shape, SceneDigest.ShapeOf(message));
         message.Remove("spriteData");
         Assert.Equal(rest, SceneDigest.Of(message));
-        Assert.Equal("ca9f4da05fca8145", Raw(scene.Sprites[0].Sprites));
-        Assert.Equal(sparks, scene.Sprites.Count > 2 ? Raw(scene.Sprites[2].Sprites) : null);
+        Assert.Equal("ca9f4da05fca8145", SceneDigest.Raw(scene.Sprites[0].Sprites));
+        Assert.Equal(sparks, scene.Sprites.Count > 2 ? SceneDigest.Raw(scene.Sprites[2].Sprites) : null);
     }
 
     /// <summary>The backdrop scrolls left and starts over every tile, so it is back at nothing on a whole tile.</summary>
@@ -58,7 +57,7 @@ public sealed class SpritesTests
         Assert.Equal(first, second);
         Assert.Equal(2000, first.Length / LayerSprite.Stride);
         // Pinned from this port's own run. The Dart crowd came from another generator.
-        Assert.Equal("49e6e7f5e83450ab", Raw(first));
+        Assert.Equal("49e6e7f5e83450ab", SceneDigest.Raw(first));
     }
 
     /// <summary>Coins all move every frame, so each frame is a new revision of the one buffer.</summary>
@@ -123,13 +122,6 @@ public sealed class SpritesTests
         var select = example.Control<Choice>("Coins").Select;
         Assert.NotNull(select);
         select(option);
-    }
-
-    private static string Raw(float[] floats)
-    {
-        var digest = new SceneDigest.Digest();
-        digest.Add(MemoryMarshal.AsBytes<float>(floats).ToArray());
-        return digest.Hex;
     }
 
     /// <summary>Names the sheet as the Dart run did, so the layers' paths match its digests.</summary>

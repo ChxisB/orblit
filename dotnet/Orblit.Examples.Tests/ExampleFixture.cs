@@ -21,6 +21,17 @@ internal static class ExampleFixture
     public static readonly HashSet<string> Unlisted = ["Scene files"];
 
     /// <summary>
+    /// The keys each seeded example fills from <see cref="Random"/>. As decision
+    /// 77 has it, they match the Dart generator's on shape only.
+    /// </summary>
+    public static readonly Dictionary<string, HashSet<string>> Seeded = new()
+    {
+        ["Gaussian splats"] = ["splatData"],
+        ["A hundred thousand"] = ["populationTransforms", "populationColours"],
+        ["Benchmark"] = ["populationTransforms", "populationColours"],
+    };
+
+    /// <summary>
     /// Every example, with nowhere to keep a picture. The Dart fixture was
     /// written before any example's pictures were, so its scenes name none.
     /// </summary>

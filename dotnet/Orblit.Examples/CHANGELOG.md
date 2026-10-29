@@ -50,3 +50,13 @@
   `Orblit.Motion` and `Orblit.Sequence`.
 - `ViewPoint` is a record, and `ToRenderCamera` gives the camera for it.
 - The first example is called "A scene as a control".
+- The three heavy examples are ported: `Splats`, `Crowd` and
+  `Benchmark`. Their clouds and fields come from `Random`, so as
+  decision 77 has it they match the fixture on shape. The rest of each
+  scene matches on value, and so does the rest of the scene after each
+  move. Each seed is pinned to this port's own run.
+- The splats example reads `ORBLIT_SPLAT`, `ORBLIT_SPLAT_COUNT`,
+  `ORBLIT_SPLAT_HARMONICS`, `ORBLIT_SPLAT_LIMIT`, `ORBLIT_SPLAT_SORT`,
+  `ORBLIT_SPLAT_PILLAR`, `ORBLIT_SPLAT_COARSE` and `ORBLIT_SPLAT_DEVICE`
+  from the environment it is given. With `Example.Device` set, it holds
+  the cloud to what the device can carry.

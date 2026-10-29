@@ -32,11 +32,14 @@ public static class EngineExamples
         new OutlineExample(),
         new MeshesExample(Environment.GetEnvironmentVariable),
         new ImportedExample(Environment.GetEnvironmentVariable, new DiskSamples()),
+        new SplatsExample(Environment.GetEnvironmentVariable),
         new SpritesExample(pictures),
         new VideoExample(Environment.GetEnvironmentVariable, File.Exists),
         new ManyExample(),
         new BatchingExample(),
+        new CrowdExample(),
         new OverdrawExample(),
         new PipelineExample(Environment.GetEnvironmentVariable),
+        new BenchmarkExample(),
     ];
 }

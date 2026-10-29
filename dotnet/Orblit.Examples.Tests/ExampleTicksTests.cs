@@ -19,28 +19,35 @@ public sealed class ExampleTicksTests
     public void TheFirstFramesMatchTheFixture(string name)
     {
         var expected = ExampleFixture.Case(name);
-        var (values, keyValues) = Replay(ExampleFixture.Example(name));
+        var seeded = ExampleFixture.Seeded.GetValueOrDefault(name) ?? [];
+        var (values, keyValues) = Replay(ExampleFixture.Example(name), seeded);
 
-        var wanted = expected.GetProperty("values").EnumerateArray().Select(value => value.GetString()).ToList();
+        // A seeded frame matches on shape only. Its keys that are not seeded
+        // still match on value, every frame, in the key digests.
+        var wanted = expected.GetProperty(seeded.Count == 0 ? "values" : "shapes").EnumerateArray()
+            .Select(value => value.GetString()).ToList();
         var first = wanted.Zip(values).TakeWhile(pair => pair.First == pair.Second).Count();
-        var wantedKeys = expected.GetProperty("keyValues").EnumerateObject()
-            .ToDictionary(key => key.Name, key => key.Value.GetString());
+        var wantedKeys = expected.GetProperty("keyValues").EnumerateObject().ToDictionary(key => key.Name, key =>
+            (seeded.Contains(key.Name) ? expected.GetProperty("keyShapes").GetProperty(key.Name) : key.Value).GetString());
         var keys = wantedKeys.Keys.Union(keyValues.Keys)
             .Where(key => wantedKeys.GetValueOrDefault(key) != keyValues.GetValueOrDefault(key))
-            .Order(StringComparer.Ordinal);
-        Assert.True(first == Frames, $"Frame {first} differs, in {string.Join(", ", keys)}.");
+            .Order(StringComparer.Ordinal).ToList();
+        Assert.True(first == Frames && keys.Count == 0, $"Frame {first} differs, in {string.Join(", ", keys)}.");
     }
 
-    private static (List<string> Values, Dictionary<string, string> KeyValues) Replay(Example example)
+    private static (List<string> Values, Dictionary<string, string> KeyValues) Replay(Example example, HashSet<string> seeded)
     {
         var frames = Enumerable.Range(0, Frames).Select(i => SceneDigest.Message(example, i / 60.0)).ToList();
-        var values = frames.Select(SceneDigest.Of).ToList();
+        Func<Dictionary<string, byte[]>, string> digestOf = seeded.Count == 0 ? SceneDigest.Of : SceneDigest.ShapeOf;
+        var values = frames.Select(digestOf).ToList();
         var keyValues = frames.SelectMany(frame => frame.Keys).Distinct().ToDictionary(key => key, key =>
         {
             var digest = new SceneDigest.Digest();
             foreach (var frame in frames)
             {
-                digest.Add(frame.GetValueOrDefault(key) ?? SceneDigest.Absent);
+                var form = frame.GetValueOrDefault(key) ?? SceneDigest.Absent;
+                // The type letter and the length.
+                digest.Add(seeded.Contains(key) ? form[..5] : form);
             }
 
             return digest.Hex;

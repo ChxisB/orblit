@@ -15,4 +15,7 @@
     <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
     <ProjectReference Include="..\Orblit.Weather\Orblit.Weather.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Examples.Tests" />
+  </ItemGroup>
 </Project>

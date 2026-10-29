@@ -44,11 +44,60 @@ public sealed class SettingsTests
     {
         var example = ExampleFixture.Example(name);
 
-        var moved = Moves(Controls(example)[control])[move]();
+        var setting = Controls(example)[control];
+        var moved = Moves(setting)[move]();
 
-        Assert.Equal(moved, Shown(Controls(example)[control]));
-        var wanted = ExampleFixture.Case(name).GetProperty("controls")[control].GetProperty("values")[move].GetString();
-        Assert.Equal(wanted, SceneDigest.Of(SceneDigest.Message(example, 1)));
+        // The exporter flips a disabled switch too. What it shows then is the
+        // example's business, and its own tests say.
+        if (setting is not Toggle { Enabled: false })
+        {
+            Assert.Equal(moved, Shown(Controls(example)[control]));
+        }
+
+        var seeded = ExampleFixture.Seeded.ContainsKey(name);
+        var message = SceneDigest.Message(example, 1);
+        var wanted = ExampleFixture.Case(name).GetProperty("controls")[control]
+            .GetProperty(seeded ? "shapes" : "values")[move].GetString();
+        Assert.Equal(wanted, seeded ? SceneDigest.ShapeOf(message) : SceneDigest.Of(message));
+    }
+
+    /// <summary>
+    /// Each move of a seeded example, on every key but the seeded ones. The
+    /// fixture keeps only a seeded scene's shape, so these digests are from a
+    /// one-off run of the Dart exporter with those keys left out.
+    /// </summary>
+    [Theory]
+    [InlineData("Gaussian splats", 0, 0, "68f11b059452379b")]
+    [InlineData("Gaussian splats", 1, 0, "e9e8429c972d5f00")]
+    [InlineData("Gaussian splats", 2, 0, "b0b59c4e69e56328")]
+    [InlineData("Gaussian splats", 3, 0, "b0b59c4e69e56328")]
+    [InlineData("Gaussian splats", 4, 0, "b0efe0518911cfba")]
+    [InlineData("Gaussian splats", 5, 0, "30b1a04b49bec0a6")]
+    [InlineData("Gaussian splats", 5, 1, "8ead3cf80bc7d05c")]
+    [InlineData("Gaussian splats", 7, 0, "f256d662f92672c3")]
+    [InlineData("Gaussian splats", 8, 0, "12e76fe3c41805b3")]
+    [InlineData("A hundred thousand", 0, 0, "8ee46a4594427414")]
+    [InlineData("A hundred thousand", 1, 0, "ceefbca4068ee61e")]
+    [InlineData("A hundred thousand", 2, 0, "45fbf8326e9bae6d")]
+    [InlineData("A hundred thousand", 3, 0, "d6d77d7928be81ff")]
+    [InlineData("Benchmark", 0, 0, "9d870cf8468e7902")]
+    [InlineData("Benchmark", 1, 0, "8b57973f9f348789")]
+    [InlineData("Benchmark", 2, 0, "307bc0dc00e64718")]
+    [InlineData("Benchmark", 2, 1, "f093a3e930df7529")]
+    [InlineData("Benchmark", 3, 0, "608acdda807f58c5")]
+    [InlineData("Benchmark", 4, 0, "3599cee696ff863d")]
+    public void EachSeededMoveMatchesDartAroundItsSeededKeys(string name, int control, int move, string rest)
+    {
+        var example = ExampleFixture.Example(name);
+        Moves(Controls(example)[control])[move]();
+
+        var message = SceneDigest.Message(example, 1);
+        foreach (var key in ExampleFixture.Seeded[name])
+        {
+            message.Remove(key);
+        }
+
+        Assert.Equal(rest, SceneDigest.Of(message));
     }
 
     /// <summary>The settings that can be moved, as the fixture lists them. It leaves out captions and text.</summary>

@@ -53,6 +53,15 @@ internal static class SceneDigest
         return digest.Hex;
     }
 
+    /// <summary>A digest of a buffer's raw bytes, for a test that pins one from this port's own run.</summary>
+    public static string Raw<T>(T[] values)
+        where T : unmanaged
+    {
+        var digest = new Digest();
+        digest.Add(MemoryMarshal.AsBytes<T>(values).ToArray());
+        return digest.Hex;
+    }
+
     /// <summary>A value's type letter, then its length, then its bytes.</summary>
     private static byte[] Form(object value) => value switch
     {
