@@ -168,6 +168,7 @@ public sealed class VoxelExample : Example
             // of it was not there to see it.
             var dt = Math.Clamp(seconds - _wasAt, 0, 0.05);
             _wasAt = seconds;
+            // A query that steps, because the gallery's one call a frame is this.
             Step(dt);
             // A copy, because the next frame moves the eye and this scene may
             // still be read.
@@ -284,7 +285,7 @@ public sealed class VoxelExample : Example
         {
             Note = "Where it is warm enough and damp enough for them",
         },
-        // The water comes and goes with the next build, as the Dart did.
+        // The water comes and goes with the next build.
         new Toggle("Sea", _sea, value => _sea = value) { Note = $"Everything below {SeaLevel} is under it" },
         new Choice("World", ["1", "2", "3", "4"], _seed.ToString(CultureInfo.InvariantCulture), option =>
         {
@@ -406,7 +407,7 @@ public sealed class VoxelExample : Example
                 var lowest = Math.Min(
                     Math.Min(top, Math.Min(HeightAt(wx + 1, wz), HeightAt(wx - 1, wz))),
                     Math.Min(HeightAt(wx, wz + 1), HeightAt(wx, wz - 1)));
-                Fill(x, z, Math.Max(Math.Min(lowest, sea - 1), 0), top, Field(warmth, wx, wz, 0.017), Field(damp, wx, wz, 0.019));
+                Fill((x, z), Math.Max(Math.Min(lowest, sea - 1), 0), top, (Field(warmth, wx, wz, 0.017), Field(damp, wx, wz, 0.019)));
             }
         }
 
@@ -420,18 +421,18 @@ public sealed class VoxelExample : Example
     }
 
     // One column, from its lowest block to its top, and the water over it.
-    private void Fill(int x, int z, int from, int top, double t, double h)
+    private void Fill((int X, int Z) at, int from, int top, (double T, double H) climate)
     {
         for (var y = from; y <= top; y++)
         {
-            Put(x, y, z, SurfaceAt(y, top, t, h));
+            Put(at.X, y, at.Z, SurfaceAt(y, top, climate.T, climate.H));
         }
 
         if (_sea)
         {
             for (var y = top + 1; y <= SeaLevel; y++)
             {
-                Put(x, y, z, Water);
+                Put(at.X, y, at.Z, Water);
             }
         }
     }
@@ -489,7 +490,7 @@ public sealed class VoxelExample : Example
     // random, so a forest spreads out rather than clumping.
     private void Plant(NoiseField warmth, NoiseField damp)
     {
-        // Another generator than the Dart one, so the trees match on shape only.
+        // Seeded by the world, so the same world grows the same trees.
         var chance = new Random(_seed * 7717);
         var half = _side / 2;
 

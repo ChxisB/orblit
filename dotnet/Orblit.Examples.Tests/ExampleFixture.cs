@@ -57,10 +57,11 @@ internal static class ExampleFixture
     public static readonly HashSet<string> Grown = ["Blocks"];
 
     /// <summary>
-    /// Every example, with nowhere to keep a picture. The Dart fixture was
-    /// written before any example's pictures were, so its scenes name none.
+    /// Every example, with nowhere to keep a picture and nothing set in the
+    /// environment. The Dart fixture was written before any example's
+    /// pictures were, so its scenes name none.
     /// </summary>
-    public static IReadOnlyList<Example> All() => EngineExamples.All(new NoPictures());
+    public static IReadOnlyList<Example> All() => EngineExamples.All(new NoPictures(), _ => null);
 
     public static TheoryData<string> Names() => [.. All().Select(example => example.Name)];
 
@@ -75,7 +76,7 @@ internal static class ExampleFixture
             : throw new InvalidDataException($"The fixture has no example called {named}.");
     }
 
-    private sealed class NoPictures : IPictureFolder
+    internal sealed class NoPictures : IPictureFolder
     {
         public string? Keep(string example, string name, int size, byte[] rgba) => null;
     }

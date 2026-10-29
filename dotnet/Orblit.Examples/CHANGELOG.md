@@ -70,3 +70,7 @@
   `BistroInterior`. They read `ORBLIT_BISTRO` from the environment they
   are given, or look in `../orblit/assets/bistro`. Each is lit by the
   fixtures the fetch script read out of its model.
+- Every example is ported but two: `Interface in the world` and the
+  Runner.
+- `EngineExamples.All` takes the environment the examples read, so a
+  test can pass an empty one.

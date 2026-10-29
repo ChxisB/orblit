@@ -6,8 +6,11 @@ public static class EngineExamples
     /// <summary>
     /// A fresh set each call, because each example keeps its own settings. The
     /// examples that draw their own textures keep them in <paramref name="pictures"/>.
+    /// The ones that can be pointed at other files look them up in
+    /// <paramref name="environment"/>. The gallery passes the process
+    /// environment, and a test passes an empty one.
     /// </summary>
-    public static IReadOnlyList<Example> All(IPictureFolder pictures) =>
+    public static IReadOnlyList<Example> All(IPictureFolder pictures, Func<string, string?> environment) =>
     [
         new SurfaceExample(),
         new SceneFilesExample(),
@@ -19,7 +22,7 @@ public static class EngineExamples
         new BounceExample(),
         new FieldExample(),
         new MaterialsExample(pictures),
-        new TexturesExample(Environment.GetEnvironmentVariable),
+        new TexturesExample(environment),
         new BlendExample(pictures),
         new DecalsExample(pictures),
         new DayAndNightExample(),
@@ -30,20 +33,20 @@ public static class EngineExamples
         new MotionBlurExample(),
         new DistortionExample(),
         new OutlineExample(),
-        new MeshesExample(Environment.GetEnvironmentVariable),
-        new ImportedExample(Environment.GetEnvironmentVariable, new DiskSamples()),
-        new SplatsExample(Environment.GetEnvironmentVariable),
+        new MeshesExample(environment),
+        new ImportedExample(environment, new DiskSamples()),
+        new SplatsExample(environment),
         new SpritesExample(pictures),
-        new VideoExample(Environment.GetEnvironmentVariable, File.Exists),
+        new VideoExample(environment, File.Exists),
         new ManyExample(),
         new BatchingExample(),
         new CrowdExample(),
         new OverdrawExample(),
-        new PipelineExample(Environment.GetEnvironmentVariable),
+        new PipelineExample(environment),
         new BenchmarkExample(),
         new TerrainExample(),
         new VoxelExample(),
-        new BistroExteriorExample(Environment.GetEnvironmentVariable, File.Exists, File.ReadAllText),
-        new BistroInteriorExample(Environment.GetEnvironmentVariable, File.Exists, File.ReadAllText),
+        new BistroExteriorExample(environment, File.Exists, File.ReadAllText),
+        new BistroInteriorExample(environment, File.Exists, File.ReadAllText),
     ];
 }

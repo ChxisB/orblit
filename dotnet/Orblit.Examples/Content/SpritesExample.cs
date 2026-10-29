@@ -152,7 +152,7 @@ public sealed class SpritesExample : Example
     private List<SpriteLayer> Layers(Texture sheet, double seconds)
     {
         var filter = _sharp ? MaterialFilter.Sharp : MaterialFilter.Smooth;
-        // Scrolled by exactly one tile's width and back, so the wrap is seamless.
+        // Scrolled by exactly one tile's width and back, so the wrap shows no seam.
         // Wrapped twice so it is never negative, not even minus nought.
         var scroll = _scrolling ? ((-(seconds * 1.5) % 2.0) + 2.0) % 2.0 : 0.0;
         PlaceCoins(seconds);

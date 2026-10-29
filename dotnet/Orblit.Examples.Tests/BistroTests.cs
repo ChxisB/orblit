@@ -224,6 +224,15 @@ public sealed class BistroTests
         Assert.Equal(Path.GetFullPath("../orblit/assets/bistro/bistro_ibl.ktx"), scene.Environment.Radiance);
     }
 
+    /// <summary>A developer's own variables never reach the fixture checks.</summary>
+    [Fact]
+    public void TheListReadsTheEnvironmentItIsGiven()
+    {
+        var example = EngineExamples.All(new ExampleFixture.NoPictures(), name => name == "ORBLIT_BISTRO" ? "/elsewhere" : null).OfType<BistroExteriorExample>().Single();
+
+        Assert.Equal("/elsewhere/BistroExterior.gltf", Assert.Single(example.Scene(Camera, 0).Objects).Mesh);
+    }
+
     /// <summary>It is a hundred entries and the scene is rebuilt every frame.</summary>
     [Fact]
     public void TheFixturesAreReadOnce()
