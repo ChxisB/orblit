@@ -100,6 +100,9 @@ public sealed class VoxelExample : Example
     /// </summary>
     public HashSet<string> Held { get; } = [];
 
+    /// <summary>True while the keys and the pointer walk the world, rather than the host orbiting it.</summary>
+    public bool Walking => _walking;
+
     /// <summary>How wide and how tall the world came out.</summary>
     internal (int Side, int Tall) Extent => (_side, _tall);
 

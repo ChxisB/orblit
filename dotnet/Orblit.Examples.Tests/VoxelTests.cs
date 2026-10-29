@@ -410,9 +410,12 @@ public sealed class VoxelTests
         var example = new VoxelExample();
         var walking = example.Scene(Camera, 0).Camera;
         var walkNote = example.Control<Toggle>("Walk").Note;
+        var wasWalking = example.Walking;
 
         example.Control<Toggle>("Walk").Change(false);
 
+        Assert.True(wasWalking);
+        Assert.False(example.Walking);
         Assert.Equal(68, walking.FieldOfView);
         Assert.Equal(Camera, example.Scene(Camera, 1).Camera);
         Assert.Equal("WASD, space, drag to look, click to dig", walkNote);

@@ -65,6 +65,24 @@ public sealed class BenchmarkTests
         Assert.Equal(1000, fewer.Count);
     }
 
+    /// <summary>The readout's last line names the load drawn, not the one a slider is still on.</summary>
+    [Fact]
+    public void TheLoadLineMovesWhenASliderIsLetGo()
+    {
+        var example = new BenchmarkExample();
+        var before = example.Load;
+
+        example.Control<Setting>("Members").Change(1234.5);
+        var dragging = example.Load;
+        example.Control<Setting>("Members").Settle?.Invoke(1234.5);
+        example.Control<Setting>("Objects").Settle?.Invoke(7.4);
+        example.Control<Choice>("Sky").Select?.Invoke("Full");
+
+        Assert.Equal("50000 members · 200 objects · sky fair", before);
+        Assert.Equal(before, dragging);
+        Assert.Equal("1235 members · 7 objects · sky full", example.Load);
+    }
+
     [Fact]
     public void ShadowsOffTakesThemFromEveryLoad()
     {

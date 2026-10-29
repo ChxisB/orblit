@@ -55,6 +55,10 @@ public sealed class BenchmarkExample : Example
 
     public override ViewPoint ViewPoint => new() { Distance = 70, Pitch = 0.36, Height = 4 };
 
+    /// <summary>The load being drawn, for a readout beside the cost. A slider moves it when it is let go.</summary>
+    public string Load =>
+        $"{Math.Round(_members, MidpointRounding.AwayFromZero)} members · {Math.Round(_objects, MidpointRounding.AwayFromZero)} objects · sky {_sky.ToLowerInvariant()}";
+
     public override RenderScene Scene(RenderCamera camera, double seconds)
     {
         var total = (int)Math.Round(_members, MidpointRounding.AwayFromZero);

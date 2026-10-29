@@ -60,6 +60,38 @@ public sealed class CamerasExample : Example
 
     public override ViewPoint ViewPoint => new() { Distance = 22, Pitch = 0.4 };
 
+    /// <summary>
+    /// The width of the frame over its height. A dead zone is a fraction of the
+    /// frame, so the host sets this from the surface it draws on.
+    /// </summary>
+    public double Aspect
+    {
+        get => _brain.Aspect;
+        set => _brain.Aspect = value;
+    }
+
+    /// <summary>
+    /// The live shot's rules and where the subject sits among them, for drawing
+    /// over the frame. Null when the framing is hidden or the shot has no rules,
+    /// as a shot that only follows does not.
+    /// </summary>
+    public CameraFraming? Framing
+    {
+        get
+        {
+            if (!_showGuides || _brain.Live is not { Guides: { } guides } live)
+            {
+                return null;
+            }
+
+            // Where the subject actually is this frame. A marker that sits still
+            // in the dead box while the world slides past is the rule at work.
+            var state = _brain.State;
+            var subject = Orblit.Camera.Framing.Project(state.Position, state.Rotation, _subject.Position, state.Lens, _brain.Aspect);
+            return new CameraFraming(guides, subject, _brain.IsBlending, live.Name);
+        }
+    }
+
     public override RenderScene Scene(RenderCamera camera, double seconds)
     {
         var delta = Math.Clamp(seconds - _lastSeconds, 0.0, 0.1);
@@ -334,3 +366,10 @@ public sealed class CamerasExample : Example
         aim: new HardLookAt(),
         lens: new Lens(FieldOfView: 48));
 }
+
+/// <summary>What the cameras example draws over its frame.</summary>
+/// <param name="Guides">The live shot's dead and soft zones, in fractions of the frame.</param>
+/// <param name="Subject">Where the subject lands, in device coordinates.</param>
+/// <param name="Blending">True while one shot is handing over to another.</param>
+/// <param name="Label">The live shot's name.</param>
+public sealed record CameraFraming(CameraGuides Guides, ScreenPoint Subject, bool Blending, string Label);

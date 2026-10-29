@@ -71,6 +71,58 @@ public sealed class CamerasTests
         Assert.Equal("Orbit", example.Control<Choice>("").Selected);
     }
 
+    /// <summary>
+    /// What the gallery draws over the frame. The Dart worked this out inside a
+    /// painter, so no Dart test reached it.
+    /// </summary>
+    [Fact]
+    public void TheFramingFollowsTheLiveShotAndHidesWhenAsked()
+    {
+        var example = new CamerasExample { Aspect = 2 };
+        Run(example, 1, atOneSecond: () => { });
+
+        var chase = example.Framing;
+        Assert.NotNull(chase);
+        Assert.Equal(("Chase", false, true), (chase.Label, chase.Blending, chase.Subject.InFront));
+        Assert.Equal(0.45, chase.Guides.ScreenY);
+        // The chase shot keeps its subject inside the soft zone.
+        var soft = chase.Guides.Soft;
+        Assert.InRange((chase.Subject.X + 1) / 2, soft.Left, soft.Left + soft.Width);
+        Assert.InRange((1 - chase.Subject.Y) / 2, soft.Top, soft.Top + soft.Height);
+
+        Pick(example, "", "Watchtower");
+        example.Scene(example.ViewPoint.ToRenderCamera(), 61 / 60.0);
+        Assert.Equal(("Watchtower", true), (example.Framing?.Label, example.Framing?.Blending ?? false));
+
+        Pick(example, "", "Orbit");
+        example.Scene(example.ViewPoint.ToRenderCamera(), 62 / 60.0);
+        Assert.Null(example.Framing);
+
+        Pick(example, "", "Watchtower");
+        example.Scene(example.ViewPoint.ToRenderCamera(), 63 / 60.0);
+        example.Control<Toggle>("Show framing").Change(false);
+        Assert.Null(example.Framing);
+    }
+
+    /// <summary>
+    /// A dead zone is a fraction of the frame, so the subject's place across it
+    /// depends on how wide the frame is. A surface not laid out yet is no ratio.
+    /// </summary>
+    [Fact]
+    public void TheAspectIsTheFramesAndOnlyARealRatioIsTaken()
+    {
+        var example = new CamerasExample { Aspect = 2 };
+        Run(example, 1, atOneSecond: () => { });
+        var wide = example.Framing!.Subject.X; // the chase shot has guides, asserted above
+
+        example.Aspect = 0;
+        example.Aspect = double.NaN;
+        Assert.Equal(2, example.Aspect);
+        example.Aspect = 1;
+
+        Assert.Equal(wide * 2, example.Framing!.Subject.X, 9); // the same shot, a squarer frame
+    }
+
     private static void Pick(Example example, string label, string option)
     {
         var select = example.Control<Choice>(label).Select;

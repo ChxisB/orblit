@@ -9,6 +9,7 @@ namespace Orblit.Examples.Tests;
 public sealed class VideoTests
 {
     private const string Typed = "Or a path";
+    private const string NoFilm = "No film yet. Choose one in the panel, and it plays on all four screens.";
 
     private static readonly RenderCamera Camera = new ViewPoint().ToRenderCamera();
 
@@ -64,7 +65,24 @@ public sealed class VideoTests
         example.Note = "stale";
         example.Control<TextEntry>(Typed).Change("  ");
         Assert.Empty(example.Scene(Camera, 0).Videos);
-        Assert.Null(example.Note);
+        Assert.Equal(NoFilm, example.Note);
+    }
+
+    /// <summary>
+    /// With no film the stage says how to get one, and the picker beside the path
+    /// says whether it is the first. The Dart drew both in its overlay.
+    /// </summary>
+    [Fact]
+    public void WithNoFilmTheStageSaysHowToChooseOne()
+    {
+        var none = new VideoExample(_ => null, OnDisk.Contains);
+        var found = new VideoExample(name => name == "ORBLIT_VIDEO" ? "/films/a.mp4" : null, OnDisk.Contains);
+
+        Assert.Equal(NoFilm, none.Note);
+        Assert.Null(found.Note);
+        Assert.Equal("Choose a film…", none.Control<TextEntry>(Typed).Pick?.Button);
+        Assert.Equal(["mp4", "mov", "m4v"], none.Control<TextEntry>(Typed).Pick?.Extensions ?? []);
+        Assert.Equal("Choose another…", found.Control<TextEntry>(Typed).Pick?.Button);
     }
 
     /// <summary>The renderer jumps when the token moves, so a second press of the same button still jumps.</summary>

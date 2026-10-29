@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- What a host draws over the stage is public. `CamerasExample.Framing`
+  gives the live shot's zones and where the subject lands, and `Aspect`
+  takes the frame's ratio. `VoxelExample.Walking` says when the keys
+  walk. `BenchmarkExample.Load` names the load being drawn.
+- `TextEntry.Pick` puts a file picker beside the line. The video example
+  offers one, and with no film its `Note` says how to choose one.
+
 ## 0.1.0
 
 - A port of `orblit_examples` 0.35.0, begun. `Example` is the contract:

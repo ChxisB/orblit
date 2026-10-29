@@ -18,7 +18,10 @@ namespace Orblit.Examples;
 /// </remarks>
 public sealed class VideoExample : Example
 {
+    private const string NoFilm = "No film yet. Choose one in the panel, and it plays on all four screens.";
+
     private static readonly IReadOnlyList<string> Jumps = ["0s", "2s", "4s"];
+    private static readonly IReadOnlyList<string> Films = ["mp4", "mov", "m4v"];
 
     private readonly Func<string, bool> _exists;
 
@@ -48,6 +51,7 @@ public sealed class VideoExample : Example
         }
 
         _typed = _path ?? "";
+        Note = _path is null ? NoFilm : null;
     }
 
     public override string Name => "Video";
@@ -101,7 +105,11 @@ public sealed class VideoExample : Example
 
     public override IReadOnlyList<ExampleSetting> Settings() =>
     [
-        new TextEntry("Or a path", _typed, Type) { Hint = "/path/to/a.mp4" },
+        new TextEntry("Or a path", _typed, Type)
+        {
+            Hint = "/path/to/a.mp4",
+            Pick = new FilePick(_path is null ? "Choose a film…" : "Choose another…", Films),
+        },
         new Toggle("Playing", _playing, value => _playing = value),
         new Toggle("Loop", _loop, value => _loop = value),
         new Setting("Rate", _rate, -2, 3, value => _rate = value),
@@ -151,7 +159,7 @@ public sealed class VideoExample : Example
         }
 
         _path = wanted.Length == 0 ? null : wanted;
-        Note = null;
+        Note = _path is null ? NoFilm : null;
     }
 
     /// <summary>

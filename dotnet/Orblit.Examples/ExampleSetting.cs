@@ -49,7 +49,15 @@ public sealed record TextEntry(string Label, string Value, Action<string> Change
 {
     /// <summary>An example of what goes in, shown while it is empty.</summary>
     public string Hint { get; init; } = "";
+
+    /// <summary>A button beside the line that picks a file. Its path is a change, as typing one is.</summary>
+    public FilePick? Pick { get; init; }
 }
+
+/// <summary>What a file picker says and which files it offers.</summary>
+/// <param name="Button">The button's text.</param>
+/// <param name="Extensions">The extensions it offers, without the dot.</param>
+public sealed record FilePick(string Button, IReadOnlyList<string> Extensions);
 
 /// <summary>A row of buttons. A press is an event rather than a state, so no button stays chosen.</summary>
 public sealed record Buttons(string Label, IReadOnlyList<string> Options, Action<string> Press) : ExampleSetting(Label);
