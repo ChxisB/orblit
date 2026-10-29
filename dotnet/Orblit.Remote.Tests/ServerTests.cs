@@ -156,14 +156,15 @@ public sealed partial class ServerTests
             // The server may close while the client is still writing, so the send can fail too.
             await chat.Send(new string('x', 2 << 20));
             ended = await chat.Read() is null;
+            Assert.NotEqual(WebSocketState.Open, chat.Socket.State);
         }
         catch (WebSocketException)
         {
+            // A send that fails this way leaves the client socket Open.
             ended = true;
         }
 
         Assert.True(ended);
-        Assert.NotEqual(WebSocketState.Open, chat.Socket.State);
     }
 
     [Fact]
