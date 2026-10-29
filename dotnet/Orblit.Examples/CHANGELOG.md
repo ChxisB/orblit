@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.0
+
+- The Runner is ported. `RunnerExample` is the game: three lanes, a
+  jump, a slide, coins, and hurdles, bars and containers to get past.
+  It makes its models and pictures in code and hands them to the
+  renderer once, so `EngineExamples.All` takes `provide` for them.
+- A host draws its own screen over the Runner. `Confirm` is the one
+  press that means go. `Speed`, `NewBest`, `SinceCrash` and `Careful`
+  say what to show. `Popup` gives the "+N" for the coins just taken and
+  where it sits on the view. `Aspect` takes the frame's ratio, and
+  `Autopilot` plays the game by itself.
+
 ## 0.2.0
 
 - What a host draws over the stage is public. `CamerasExample.Framing`
