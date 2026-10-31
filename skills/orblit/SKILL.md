@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter. Covers Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, shaders an author writes as `.oshader` files, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for Flutter and for .NET with Avalonia. Covers C# that uses the Orblit.* packages (RenderScene, RendererViewport, Orblit.Filament.Avalonia, the local NuGet feed and `dotnet` commands), and Dart that uses OrblitScene, OrblitView, OrblitObject, OrblitLight, OrblitCamera, OrblitPopulation, OrblitSprites or any orblit_* package; adding Orblit to a Flutter project on macOS, iOS, Android, Linux, Windows or the web; materials, shaders an author writes as `.oshader` files, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with orblit_motion (.oclip, .oblend, .ocutscene, root motion, retargetClip); terrain with orblit_terrain (heights, sets, brushes, heightAt, terrainFrom, and grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with orblit_physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -94,6 +94,16 @@ with no scene draws the renderer's default placeholder scene.
 
 The plain-Dart packages run anywhere Dart does. When a user is on Windows or
 Linux, tell them plainly how little has been seen to work there.
+
+## Building in C# instead
+
+Orblit also ships as .NET packages with Avalonia for the window. They follow
+the Dart packages one for one, so the rest of this skill still says what each
+package is for. Everything about C# that differs is in
+[references/dotnet.md](references/dotnet.md): setting up the local NuGet feed,
+the Dart to C# names (`OrblitScene` is `RenderScene`, `OrblitView` is
+`RendererViewport`), and the `dotnet` commands and gates. Read it before you
+write C#. The renderer has drawn on Apple silicon Macs only.
 
 ## The model: state the whole scene, every frame
 
@@ -792,6 +802,8 @@ its own repository, as the section above says.
 
 Load these when the task needs them:
 
+- [references/dotnet.md](references/dotnet.md): the C# packages, the local
+  NuGet feed, the Dart to C# names and the `dotnet` commands.
 - [references/scene-api.md](references/scene-api.md): constructors, fields
   and defaults for the scene types, with a population and a sprite layer.
 - [references/game-loop.md](references/game-loop.md): a complete small game.
