@@ -8,6 +8,7 @@
     <Using Include="Orblit.HeadlessSupport" />
     <ProjectReference Include="..\Orblit.HeadlessSupport\Orblit.HeadlessSupport.csproj" />
     <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
+    <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
     <ProjectReference Include="..\Orblit.Stage.Avalonia\Orblit.Stage.Avalonia.csproj" />
   </ItemGroup>
   <ItemGroup>

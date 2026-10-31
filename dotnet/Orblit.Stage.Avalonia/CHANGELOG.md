@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.0
+
+- `PanelHost` and `ControlPanel` put a tree of Avalonia controls on a
+  `WorldPanel`. This settles decision 85 as (c). The host is one hidden
+  window the stage keeps, with no frame, no taskbar entry, full clearness
+  and a place off the screen. `PanelHost.Open` stacks each panel in it.
+- `ControlPanel.Paint` draws the control into a bitmap and returns PNG
+  bytes at the panel's size times its scale. `Send` raises routed pointer
+  events on the control under the pointer, or on the one that captured it,
+  so a button clicks, a slider follows a drag and a drag keeps going off
+  the panel.
+- A panel is out of date after a pointer, after a layout pass, and after
+  `Invalidate`. A colour that changes alone shows in none of these, so say
+  so with `Invalidate`.
+- There is no hover and no keyboard focus. A pointer lands once the host has
+  drawn a frame or two with the panel in it.
+
 ## 0.1.0
 
 - A port of `PointerRay`, `Nameplates` and `WorldPanel` from `orblit_stage`
