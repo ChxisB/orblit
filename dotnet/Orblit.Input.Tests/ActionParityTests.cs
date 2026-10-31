@@ -283,19 +283,45 @@ public class ActionParityTests
         switch (step.GetProperty("op").GetString())
         {
             case "hold":
-                touch.Hold(step.GetProperty("region").GetString()!, Plain(step.GetProperty("payload")));
+                // The fixture also holds payloads of another shape, which the typed method cannot be given.
+                if (Plain(step.GetProperty("payload")) is bool held)
+                {
+                    touch.Hold(step.GetProperty("region").GetString()!, held);
+                }
+
                 break;
             case "moveStick":
-                touch.MoveStick(Find<PadStick>(step.GetProperty("stick").GetString()!), Plain(step.GetProperty("payload")));
+                if (Pair(Plain(step.GetProperty("payload"))) is { } push)
+                {
+                    touch.MoveStick(Find<PadStick>(step.GetProperty("stick").GetString()!), push);
+                }
+
                 break;
             case "swipe":
-                touch.Swipe(Plain(step.GetProperty("payload")));
+                if (Pair(Plain(step.GetProperty("payload"))) is { } by)
+                {
+                    touch.Swipe(by);
+                }
+
                 break;
             default:
                 touch.EndFrame();
                 break;
         }
     }
+
+    private static Vector2? Pair(object? payload) =>
+        payload is IReadOnlyList<object?> { Count: 2 } list && Number(list[0]) is { } x && Number(list[1]) is { } y
+            ? new Vector2(x, y)
+            : null;
+
+    private static double? Number(object? value) => value switch
+    {
+        long whole => whole,
+        int whole => whole,
+        double number => number,
+        _ => null,
+    };
 
     private static JsonObject TouchState(TouchControls touch)
     {

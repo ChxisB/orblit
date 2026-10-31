@@ -21,7 +21,7 @@ public class TouchControlsTests
     }
 
     [Fact]
-    public void ARegionIsHeldFromATruePayloadUntilAFalseOne()
+    public void ARegionIsHeldFromTrueUntilFalse()
     {
         _touch.Hold("jump", true);
         Assert.Equal(["jump"], _touch.Held);
@@ -31,21 +31,9 @@ public class TouchControlsTests
     }
 
     [Fact]
-    public void ARegionIgnoresAPayloadThatIsNotABool()
+    public void AStickIsWhereThePushPutsIt()
     {
-        _touch.Hold("jump", true);
-
-        _touch.Hold("jump", null);
-        _touch.Hold("jump", 0L);
-        _touch.Hold("jump", "false");
-
-        Assert.Equal(["jump"], _touch.Held);
-    }
-
-    [Fact]
-    public void AStickIsWhereThePayloadPutsIt()
-    {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.5, -0.25 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.5, -0.25));
 
         Assert.Equal(new Vector2(0.5, -0.25), _touch.Sticks[PadStick.Left]);
     }
@@ -53,7 +41,7 @@ public class TouchControlsTests
     [Fact]
     public void AStickIsBroughtBackToTheEdgeOfTheCircle()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 3.0, 4.0 });
+        _touch.MoveStick(PadStick.Left, new Vector2(3.0, 4.0));
 
         var stick = _touch.Sticks[PadStick.Left];
         Assert.Equal(1, stick.Length, Tolerance);
@@ -63,48 +51,31 @@ public class TouchControlsTests
     [Fact]
     public void AStickAtRestHasNoEntry()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.4, 0.4 });
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 0.0 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.4, 0.4));
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 0.0));
 
         Assert.Empty(_touch.Sticks);
     }
 
     [Fact]
-    public void AStickKeepsTheLastGoodValueWhenAPayloadIsWrong()
+    public void AStickKeepsTheLastGoodValueWhenAPushIsNotFinite()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.4, 0.2 });
-        object?[] bad =
-        [
-            null,
-            "up",
-            new object?[] { 1.0 },
-            new object?[] { 1.0, 2.0, 3.0 },
-            new object?[] { "a", "b" },
-            new object?[] { double.NaN, 0.0 },
-            new object?[] { double.PositiveInfinity, 0.0 },
-        ];
+        _touch.MoveStick(PadStick.Left, new Vector2(0.4, 0.2));
+        Vector2[] bad = [new(double.NaN, 0.0), new(double.PositiveInfinity, 0.0), new(0.0, double.NegativeInfinity)];
 
-        foreach (var payload in bad)
+        foreach (var push in bad)
         {
-            _touch.MoveStick(PadStick.Left, payload);
+            _touch.MoveStick(PadStick.Left, push);
         }
 
         Assert.Equal(new Vector2(0.4, 0.2), _touch.Sticks[PadStick.Left]);
     }
 
     [Fact]
-    public void AStickTakesWholeNumbersAsWellAsFractions()
-    {
-        _touch.MoveStick(PadStick.Right, new object?[] { 1L, 0L });
-
-        Assert.Equal(new Vector2(1, 0), _touch.Sticks[PadStick.Right]);
-    }
-
-    [Fact]
     public void ASwipeAddsUpUntilTheFrameEnds()
     {
-        _touch.Swipe(new object?[] { 3.0, 1.0 });
-        _touch.Swipe(new object?[] { 2.0, -4.0 });
+        _touch.Swipe(new Vector2(3.0, 1.0));
+        _touch.Swipe(new Vector2(2.0, -4.0));
         Assert.Equal(new Vector2(5, -3), _touch.Swiped);
 
         _touch.EndFrame();
@@ -112,11 +83,10 @@ public class TouchControlsTests
     }
 
     [Fact]
-    public void ASwipeIgnoresAPayloadThatIsNotAPair()
+    public void ASwipeIgnoresAPushThatIsNotFinite()
     {
-        _touch.Swipe(null);
-        _touch.Swipe(new object?[] { 1.0 });
-        _touch.Swipe(new object?[] { double.NaN, 1.0 });
+        _touch.Swipe(new Vector2(double.NaN, 1.0));
+        _touch.Swipe(new Vector2(1.0, double.PositiveInfinity));
 
         Assert.Equal(Vector2.Zero(), _touch.Swiped);
     }
@@ -124,7 +94,7 @@ public class TouchControlsTests
     [Fact]
     public void ASwipeHandsOutACopySoAGameCannotChangeWhatIsHeld()
     {
-        _touch.Swipe(new object?[] { 1.0, 1.0 });
+        _touch.Swipe(new Vector2(1.0, 1.0));
 
         var copy = _touch.Swiped;
         copy.X = 0;
@@ -136,7 +106,7 @@ public class TouchControlsTests
     [Fact]
     public void AScreenIsReadAsAStickWhenThePadIsAtRest()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 0.8 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 0.8));
 
         var now = Controls();
         Assert.Equal(new Vector2(0, 0.8), now.Stick(PadStick.Left));
@@ -147,20 +117,20 @@ public class TouchControlsTests
     [Fact]
     public void AScreenAndAPadSharingAStickReadTheLongerPush()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 0.3 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 0.3));
         Assert.Equal(new Vector2(0.9, 0), Controls(Axes((PadAxis.LeftX, 0.9))).Stick(PadStick.Left));
 
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 1.0 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 1.0));
         Assert.Equal(new Vector2(0, 1), Controls(Axes((PadAxis.LeftX, 0.9))).Stick(PadStick.Left));
     }
 
     [Fact]
     public void AScreenListsAStickPushedPastHalfAsPressed()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 0.2 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 0.2));
         Assert.Empty(Controls().Active);
 
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 0.6 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 0.6));
         Assert.Equal<Control>(
             [new PadStickControl(PadStick.Left), new PadAxisControl(PadAxis.LeftY, AxisSide.Positive)],
             Controls().Active);
@@ -169,7 +139,7 @@ public class TouchControlsTests
     [Fact]
     public void AScreenReadsAStickAxisToo()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { -0.8, 0.0 });
+        _touch.MoveStick(PadStick.Left, new Vector2(-0.8, 0.0));
 
         var now = Controls();
         Assert.Equal(0.8, now.Read(new PadAxisControl(PadAxis.LeftX, AxisSide.Negative)), Tolerance);
@@ -182,7 +152,7 @@ public class TouchControlsTests
     [Fact]
     public void AScreenHandsOutACopySoAGameCanScaleWhatItReads()
     {
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 0.5 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 0.5));
 
         var read = Controls().Stick(PadStick.Left);
         read.X *= 4;
@@ -196,7 +166,7 @@ public class TouchControlsTests
     {
         var now = Controls();
         _touch.Hold("jump", true);
-        _touch.MoveStick(PadStick.Left, new object?[] { 1.0, 0.0 });
+        _touch.MoveStick(PadStick.Left, new Vector2(1.0, 0.0));
 
         Assert.Equal(1, now.Read(new TouchControl("jump")));
         Assert.Equal(new Vector2(1, 0), now.Stick(PadStick.Left));
@@ -222,7 +192,7 @@ public class TouchControlsTests
         input.Update(Now(), Ms(0));
         Assert.False(input.WasPressed("jump"));
 
-        _touch.MoveStick(PadStick.Left, new object?[] { 0.0, 1.0 });
+        _touch.MoveStick(PadStick.Left, new Vector2(0.0, 1.0));
         _touch.Hold("jump", true);
         input.Update(Now(), Ms(16));
         Assert.True(input.WasPressed("jump"));

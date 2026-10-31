@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- `TouchControls` takes typed values. `Hold(string, bool)`,
+  `MoveStick(PadStick, Vector2)` and `Swipe(Vector2)` replace the methods
+  that took an `object?` payload. A game that passed a `Vector` to the old
+  `MoveStick` compiled and the stick never moved. Now it is a compile error.
+  A `Vector2` with a value that is not finite is ignored, as a payload of
+  another shape was.
+
 ## 0.5.0
 
 - A port of `orblit_input` 0.5.0: the pad model, the evdev decoder and

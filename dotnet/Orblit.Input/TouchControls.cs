@@ -5,10 +5,9 @@ namespace Orblit.Input;
 
 /// <summary>
 /// What an on-screen interface says its player is doing. A game fills one from the events of the
-/// <c>stick</c>, <c>touch-button</c> and <c>swipe-pad</c> elements of <c>Orblit.Ui</c>, and gives
-/// what it holds to <see cref="FrameControls"/>. The two packages never reference each other. They
-/// agree on the shape of a payload, and a payload of any other shape is ignored, because it came
-/// from a script that was being edited.
+/// touch controls in <c>Orblit.Ui.Avalonia</c>, and gives what it holds to
+/// <see cref="FrameControls"/>. The two packages never reference each other. A stick or a swipe
+/// arrives as an <see cref="Vector2"/>, and one with a value that is not finite is ignored.
 /// </summary>
 /// <remarks>
 /// Name each element once. Two buttons called <c>jump</c> share one slot, so lifting one finger
@@ -37,28 +36,28 @@ public sealed class TouchControls
     /// <summary>How far fingers have moved across a swipe pad since <see cref="EndFrame"/>. Positive is up and to the right, in logical pixels.</summary>
     public Vector2 Swiped => _swiped.Clone();
 
-    /// <summary>Presses or releases <paramref name="region"/> for a payload of true or false.</summary>
-    public void Hold(string region, object? payload)
+    /// <summary>Presses <paramref name="region"/> when <paramref name="held"/> is true and releases it when it is false.</summary>
+    public void Hold(string region, bool held)
     {
-        switch (payload)
+        if (held)
         {
-            case true:
-                _held.Add(region);
-                break;
-            case false:
-                _held.Remove(region);
-                break;
+            _held.Add(region);
+        }
+        else
+        {
+            _held.Remove(region);
         }
     }
 
-    /// <summary>Puts <paramref name="which"/> where a payload of <c>[x, y]</c> says, each from -1 to 1. A push past the edge of the circle is brought back to it.</summary>
-    public void MoveStick(PadStick which, object? payload)
+    /// <summary>Puts <paramref name="which"/> at <paramref name="push"/>, each from -1 to 1. A push past the edge of the circle is brought back to it.</summary>
+    public void MoveStick(PadStick which, Vector2 push)
     {
-        if (Pair(payload) is not { } point)
+        if (!IsFinite(push))
         {
             return;
         }
 
+        var point = push.Clone();
         if (point.Length2 > 1)
         {
             point.Normalize();
@@ -74,13 +73,13 @@ public sealed class TouchControls
         }
     }
 
-    /// <summary>Adds a payload of <c>[dx, dy]</c> to <see cref="Swiped"/>.</summary>
-    public void Swipe(object? payload)
+    /// <summary>Adds <paramref name="by"/> to <see cref="Swiped"/>.</summary>
+    public void Swipe(Vector2 by)
     {
-        if (Pair(payload) is { } point)
+        if (IsFinite(by))
         {
-            _swiped.X += point.X;
-            _swiped.Y += point.Y;
+            _swiped.X += by.X;
+            _swiped.Y += by.Y;
         }
     }
 
@@ -91,13 +90,5 @@ public sealed class TouchControls
         _swiped.Y = 0;
     }
 
-    /// <summary>The two numbers of a payload, or null for anything else.</summary>
-    private static Vector2? Pair(object? payload) =>
-        payload is IReadOnlyList<object?> { Count: 2 } list
-        && JsonNumber.Of(list[0]) is { } x
-        && JsonNumber.Of(list[1]) is { } y
-        && double.IsFinite(x)
-        && double.IsFinite(y)
-            ? new Vector2(x, y)
-            : null;
+    private static bool IsFinite(Vector2 point) => double.IsFinite(point.X) && double.IsFinite(point.Y);
 }
