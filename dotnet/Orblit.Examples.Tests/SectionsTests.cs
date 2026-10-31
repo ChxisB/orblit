@@ -23,13 +23,14 @@ public sealed class SectionsTests
     }
 
     [Fact]
-    public void EveryHeadingButScriptingHasAnEngineExample()
+    public void EveryHeadingButInterfaceHasAnEngineExample()
     {
         var sections = Example.BySection(ExampleFixture.All()).Select(group => group.Section);
 
-        // The scripting examples live in the gallery, beside the runtime they
-        // need, so a host with only this package has nothing to put there.
-        Assert.Equal(Enum.GetValues<ExampleSection>().Where(section => section != ExampleSection.Scripting), sections);
+        // The interface examples live in the gallery, beside the Avalonia
+        // controls they need, so a host with only this package has nothing to
+        // put there.
+        Assert.Equal(Enum.GetValues<ExampleSection>().Where(section => section != ExampleSection.Interface), sections);
     }
 
     [Fact]

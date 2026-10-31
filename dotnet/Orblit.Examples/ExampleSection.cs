@@ -15,7 +15,7 @@ public enum ExampleSection
     Atmosphere,
     Effects,
     Content,
-    Scripting,
+    Interface,
     Performance,
     Showcases,
 }
@@ -31,7 +31,7 @@ public static class ExampleSectionExtensions
         ExampleSection.Atmosphere => "Sky & atmosphere",
         ExampleSection.Effects => "Effects",
         ExampleSection.Content => "Models & media",
-        ExampleSection.Scripting => "Scripting",
+        ExampleSection.Interface => "Interface",
         ExampleSection.Performance => "Performance",
         ExampleSection.Showcases => "Showcases",
         _ => throw new UnreachableException(),

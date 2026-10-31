@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.0
+
+- `ExampleSection.Scripting` is `ExampleSection.Interface`, labelled
+  "Interface". The heading holds the gallery's interface examples, and
+  nothing under it is scripted. No engine example uses it.
+
 ## 0.3.0
 
 - The Runner is ported. `RunnerExample` is the game: three lanes, a
