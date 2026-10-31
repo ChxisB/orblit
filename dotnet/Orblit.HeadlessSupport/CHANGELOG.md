@@ -2,5 +2,6 @@
 
 ## 0.1.0
 
-Holds the headless test application and its session, which `Orblit.Ui.Avalonia.Tests`,
-`Orblit.Filament.Avalonia.Tests` and `Orblit.Stage.Avalonia.Tests` each kept a copy of.
+Holds the headless test application and its session, which the engine's three Avalonia test
+projects, the editor's and the gallery's each kept a copy of. Adds the helpers that find a
+control by name, click it and wait for a picture to draw.
