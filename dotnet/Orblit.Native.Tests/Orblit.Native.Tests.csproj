@@ -8,8 +8,8 @@
     <ProjectReference Include="..\Orblit.Core\Orblit.Core.csproj" />
     <ProjectReference Include="..\Orblit.Native\Orblit.Native.csproj" />
   </ItemGroup>
-  <!-- The example script a test compiles to show the package's own example builds. -->
+  <!-- The example script a test compiles to show that a script builds. -->
   <ItemGroup>
-    <Content Include="..\..\packages\orblit_native\example\spinner.cpp" Link="example\spinner.cpp" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="example\spinner.cpp" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

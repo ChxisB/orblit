@@ -7,8 +7,8 @@
   <ItemGroup>
     <ProjectReference Include="..\Orblit.AudioDevice\Orblit.AudioDevice.csproj" />
   </ItemGroup>
-  <!-- The one Ogg Vorbis file the Dart tests decode, shared so both decoders hear the same bytes. -->
+  <!-- The Ogg Vorbis file the decoder tests read. -->
   <ItemGroup>
-    <Content Include="..\..\packages\orblit_audio_device\test\support\sine.ogg" Link="support\sine.ogg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="support\sine.ogg" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
