@@ -38,9 +38,9 @@ takes the major.
 ### Why bump per feature rather than per release
 
 Because the version is the only thing a consumer can point at. Once these
-repositories are public, somebody depending on `orblit_filament` at a git
+repositories are public, somebody depending on `Orblit.Filament` at a git
 revision has no way to say "the one before the render graph landed". They can
-say `^0.4.0`. A version that only moves at release time is wrong for most of
+say `0.4.0`. A version that only moves at release time is wrong for most of
 the month.
 
 It also makes a changelog possible to write. A changelog assembled at release
@@ -55,37 +55,31 @@ CI and documentation do not.
 
 ## The check
 
-`tool/check_versions.sh` compares the working branch against `main`. For
-every package with a changed file under `lib/`, it requires:
-
-- the package's `version:` to differ from the one on `main`, and
-- its `CHANGELOG.md` to mention the new version.
-
-The same holds for a .NET project under `dotnet/`. When a `.cs`, `.axaml` or
-`.csproj` file in `dotnet/<Project>/` changed, the check wants the `<Version>`
-in `<Project>.csproj` to differ from `main` and `dotnet/<Project>/CHANGELOG.md`
-to mention it. A project with no `<Version>`, such as a test project, is never
-asked for a bump. The exemption line names a project the same way:
-`Version-exempt: Orblit.Noise - dotnet format only`.
+`tool/check_versions.sh` compares the working branch against `main`. When a
+`.cs`, `.axaml` or `.csproj` file in `dotnet/<Project>/` changed, the check
+wants the `<Version>` in `<Project>.csproj` to differ from `main` and
+`dotnet/<Project>/CHANGELOG.md` to mention it. A change to the native sources
+of `orblit_audio_device`, `orblit_core`, `orblit_filament` or `orblit_native`
+counts for the project that packs them: `Orblit.AudioDevice`, `Orblit.Core`,
+`Orblit.Filament` or `Orblit.Native`. A project with no `<Version>`, such as a
+test project, is never asked for a bump. A project that did not exist on
+`main` is new and needs none.
 
 It runs in CI on every pull request. A branch that only touches tests, docs,
 comments or CI passes without a bump, because those are not features.
 
 ### When library code changed but nothing did
 
-A reformat touches `lib/` and is not a feature, and the check cannot tell the
-difference. When `dart format` joins two lines into one it changes how many
-lines there are, and git's whitespace-blind comparison works within a line
-rather than across two. Rather than guess, say so in a commit message:
+A reformat touches `.cs` files and is not a feature, and the check cannot tell
+the difference. Rather than guess, say so in a commit message:
 
 ```
-Version-exempt: orblit_camera orblit_light - dart format only
-Version-exempt: all - repository-wide reformat
+Version-exempt: Orblit.Camera Orblit.Light - dotnet format only
 ```
 
-It names the packages it covers, and exempts only those. That matters more
+It names the projects it covers, and exempts only those. That matters more
 than it looks. An exemption that covered the whole branch would also excuse
-every package changed in later commits, so one reformat early on would quietly
+every project changed in later commits, so one reformat early on would quietly
 wave through the feature that landed after it. That is the exact failure this
 check exists to prevent, brought back by the escape hatch meant to make it
 usable.

@@ -4,9 +4,9 @@
   </a>
 </p>
 
-<p align="center"><b>A 3D game engine you write in Dart</b></p>
+<p align="center"><b>A 3D game engine you write in C#</b></p>
 
-<p align="center">Game logic and interface in Flutter. An archetype entity-component core in C++. Google&rsquo;s Filament does the rendering. The viewport is a widget, so the menu over it is an ordinary <code>Column</code>.</p>
+<p align="center">Game logic and interface in C# on Avalonia. An archetype entity-component core in C++. Google&rsquo;s Filament does the rendering. The viewport is a control, so the menu over it is an ordinary <code>StackPanel</code>.</p>
 
 <p align="center">
   <a title="CI" href="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml?query=event%3Apush+branch%3Amain"><img src="https://github.com/ChxisB/orblit/actions/workflows/ci.yaml/badge.svg?branch=main&event=push"/></a>
@@ -32,13 +32,13 @@
 ## At a glance
 
 - **Rendering.** Filament's physically based materials, and a tone mapper that behaves like a camera. Image-based lighting from HDR or EXR. Directional, point and spot lights, cascaded shadows, and irradiance fields for bounced light sampled through a volume. A post stack with bloom, volumetric light, motion blur, occlusion, decals and selection outlines. Gaussian splats, instancing and populations.
-- **Simulation.** An archetype entity-component store written in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as a view over the store's own memory rather than a copy, so reading a column costs nothing to translate, and writing to one writes to the store.
-- **The scene is a widget.** `OrblitView` sits in the same widget tree as everything else, takes part in the same layout, and is drawn by the same compositor. On Apple platforms the renderer draws into an IOSurface-backed buffer that Flutter takes as it is: no readback, no copy through the CPU. A panel can overlap the viewport, and the inventory screen has a widget test.
-- **Games.** Steering behaviours and behaviour trees. Armatures with poses and bone constraints. Camera shots that say what to frame, and blend between them. Collision. Sampled time, so the frame rate does not change the simulation. Multiplayer that replicates component columns. And TypeScript scripting on QuickJS, as a peer of Dart over the same core.
+- **Simulation.** An archetype entity-component store written in C++ behind a C ABI, with a transform hierarchy. Component data reaches C# as a view over the store's own memory rather than a copy, so reading a column costs nothing to translate, and writing to one writes to the store.
+- **The scene is a control.** `RendererViewport` sits in the same Avalonia tree as everything else, takes part in the same layout, and is drawn by the same compositor. On macOS the renderer draws into an IOSurface-backed buffer that the compositor reads as a texture: no readback, no copy through the CPU. A panel can overlap the viewport.
+- **Games.** Steering behaviours and behaviour trees. Armatures with poses and bone constraints. Camera shots that say what to frame, and blend between them. Collision. Sampled time, so the frame rate does not change the simulation. Multiplayer that replicates component columns. And native C++ scripts that the engine loads as shared libraries, over the same core.
 - **2D.** Sprites in layers, atlas packing, parallax and tile maps, in the same scene as the 3D.
 - **Tooling.** A desktop editor. A gallery app that shows every technique one at a time, beside the lines that do it. A build-time asset pipeline that cooks KTX2 texture sets per device. And a Claude Code skill, so an assistant writes real API instead of guessing.
 - **Formats.** glTF, with FBX and OBJ converted on the way in. An `.oscene` scene document with migrations and diffs. KTX2 compressed textures, HDR and EXR environments, and `.ply`, `.spz` and `.osplat` splat captures.
-- **Platforms.** macOS, iOS, Android and the web draw today. Linux draws, though not yet on a real GPU. Windows builds on every change, and nothing has drawn on it yet. [Platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about that difference on purpose.
+- **Platforms.** macOS, Windows and Linux first. The renderer has drawn on macOS only. The C# projects build and test on all three on every change, and the native renderer does not build on Linux or Windows in CI yet. [Platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about that difference on purpose.
 
 ## Showcases
 
@@ -53,10 +53,11 @@ lines that do it, lifted from each example's own source.
 | **Bistro exterior** | Somebody else's street, lit by this engine. A hundred lights at night. |
 | **Bistro interior** | The room, and the one place where missing bounced light shows. |
 
-To open the gallery on one:
+To open the gallery on one, from a checkout of
+[`orblit-examples`](https://github.com/ChxisB/orblit-examples):
 
 ```sh
-ORBLIT_EXAMPLE='runner' flutter run -d macos
+ORBLIT_EXAMPLE='runner' dotnet run --project dotnet/Orblit.Gallery -c Release
 ```
 
 [Running the examples](https://orblitengine.com/docs/examples/running-them/)
@@ -64,21 +65,23 @@ covers getting there from a clean checkout.
 
 ## Getting started
 
-The packages are not on pub.dev yet, so they resolve from git:
+The packages are not on NuGet yet. `tool/pack_local.sh` packs them into a
+local feed, `~/.orblit/feed` or the folder `ORBLIT_FEED` names, and a project
+restores from there:
 
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
+```sh
+git clone https://github.com/ChxisB/orblit.git
+orblit/tool/build_native.sh   # the native core and renderer
+orblit/tool/pack_local.sh     # packs the engine into ~/.orblit/feed
+```
 
-  # Vectors and matrices. Orblit takes and returns these types rather than
-  # defining its own, so it is a direct dependency of yours too.
-  vector_math: ^2.1.4
-
-  orblit_filament:
-    git:
-      url: https://github.com/ChxisB/orblit.git
-      path: packages/orblit_filament
+```xml
+<PropertyGroup>
+  <RestoreAdditionalProjectSources>$([System.Environment]::GetFolderPath(SpecialFolder.UserProfile))/.orblit/feed</RestoreAdditionalProjectSources>
+</PropertyGroup>
+<ItemGroup>
+  <PackageReference Include="Orblit.Filament.Avalonia" Version="0.1.0" />
+</ItemGroup>
 ```
 
 The renderer's native side needs one setup step per platform. It downloads
@@ -89,21 +92,21 @@ machine needs, and which machine can build for what.
 shortest path to a frame.
 
 ```sh
-./tool/check.sh    # analyze and test everything that needs no window
+./tool/check_dotnet.sh    # build, test and format-check everything under dotnet/
 ```
 
 ## What is in here
 
 | Package | What it is |
 | --- | --- |
-| `orblit_core` | Archetype entity-component store in C++ behind a C ABI, with a transform hierarchy. Component data reaches Dart as views, not copies. |
-| `orblit_codegen` | Turns annotated component classes into registration code, and a manifest other front ends can read without compiling this package. |
-| `orblit_filament` | Filament rendering composited by Flutter's texture registry. |
+| `Orblit.Core` | Archetype entity-component store in C++ behind a C ABI, with a transform hierarchy. Component data reaches C# as views, not copies. |
+| `Orblit.Codegen` | Turns annotated component classes into registration code, and a manifest other front ends can read without compiling this package. |
+| `Orblit.Filament` | Filament rendering behind a C ABI, with the managed binding over it. |
+| `Orblit.Filament.Avalonia` | A control that shows an Orblit renderer, by the fastest path each system offers. |
 
-Those are the three the rest is built on. The other nineteen cover geometry,
-rigging, animation, agents, cameras, lighting, sprites, scene files, UI and
-weather. They
-are all listed in the
+Those are the four the rest is built on. The others cover geometry, rigging,
+animation, agents, cameras, lighting, sprites, scene files, UI and weather.
+They are all listed in the
 [package reference](https://orblitengine.com/docs/reference/packages/).
 
 ## The rest of Orblit
@@ -111,7 +114,6 @@ are all listed in the
 | Repository | What it is |
 | --- | --- |
 | [`orblit-net`](https://github.com/ChxisB/orblit-net) | Multiplayer. Replicates component columns, with ownership rules and interpolation. |
-| [`orblit-script`](https://github.com/ChxisB/orblit-script) | TypeScript scripting on QuickJS, as a peer of Dart over the same core. |
 | [`orblit-examples`](https://github.com/ChxisB/orblit-examples) | Worked examples of what the engine does, and how. |
 
 Design notes live outside these repositories, as Claude artifacts, so a
@@ -153,6 +155,6 @@ What it asks is that changes to Orblit's own files ship under the same licence,
 with source available to whoever you hand the result to, so engine work stays
 in the open.
 
-Builds link Filament, which carries its own Apache 2.0 licence, and a prebuilt
-Filament.xcframework is committed here, so a full copy of that licence travels
-with it. See [LICENSE](LICENSE) and [NOTICE](NOTICE).
+Builds link Filament, which carries its own Apache 2.0 licence. A full copy
+of it is in [LICENSES](LICENSES). See [LICENSE](LICENSE) and
+[NOTICE](NOTICE).

@@ -3,7 +3,7 @@
   "owner": {
     "name": "Chris Beckett"
   },
-  "description": "Plugins for building with Orblit, the 3D and 2D engine for Flutter.",
+  "description": "Plugins for building with Orblit, the 3D and 2D engine for C# and Avalonia.",
   "plugins": [
     {
       "name": "orblit",
@@ -14,8 +14,9 @@
       "license": "MPL-2.0",
       "keywords": [
         "orblit",
-        "flutter",
-        "dart",
+        "csharp",
+        "dotnet",
+        "avalonia",
         "game-engine",
         "3d",
         "2d",
