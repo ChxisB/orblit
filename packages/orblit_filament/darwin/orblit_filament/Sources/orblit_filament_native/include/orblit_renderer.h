@@ -3,12 +3,11 @@
 
 /* The renderer, as C.
  *
- * Everything a host needs to drive Orblit's renderer without Objective-C,
- * without C++ and without Flutter: create one with a backend and a surface,
+ * Everything a host needs to drive Orblit's renderer without Objective-C
+ * and without C++: create one with a backend and a surface,
  * resize it, publish a scene, draw at a time, and read back what it drew, what
- * it cost and what it could not do. A Kotlin plugin calls this through JNI, a
- * Linux or Windows plugin calls it from C++, and a console host with no
- * Flutter at all calls it from main().
+ * it cost and what it could not do. A Kotlin host calls this through JNI, a
+ * managed host through P/Invoke, and a console host calls it from main().
  *
  * C rather than C++ because a C ABI is the one every language and every
  * compiler agrees on: a C++ class compiled by one toolchain cannot be called
@@ -24,8 +23,8 @@
  *    host that gets a stride wrong is told by a return value, not by a crash.
  *    orblit_renderer_stride says how wide each row is, so a host need not
  *    copy the numbers.
- *  - Scene calls describe the whole of their part of the scene every time,
- *    as the Flutter plugin's do: anything not named has gone. The renderer
+ *  - Scene calls describe the whole of their part of the scene every time:
+ *    anything not named has gone. The renderer
  *    works out what changed.
  *  - Nothing throws across this boundary. If Filament refuses something the
  *    renderer stops, the call returns ORBLIT_ERROR_FAILED, and so does every
@@ -34,8 +33,8 @@
  *    orblit_renderer_resize and orblit_renderer_copy_presented, which are safe
  *    from any thread.
  *
- * The row layouts are the Dart side's — OrblitLight, OrblitMaterial and the
- * rest in package:orblit_filament — and the documentation of each
+ * The row layouts are Orblit.Filament's (RenderLight, RenderMaterial and the
+ * rest), and the documentation of each
  * orblit_renderer_* call is the documentation of the matching method in
  * OrblitRenderer.h, which this mirrors in the same order.
  */
@@ -90,7 +89,7 @@ typedef enum orblit_surface_kind {
    * Apple — whatever Filament's createSwapChain takes on that platform. */
   ORBLIT_SURFACE_WINDOW = 1,
   /* The platform's texture-sharing surface, where it has one: on Apple, the
-   * IOSurface-backed CVPixelBuffers the Flutter plugin hands to Flutter,
+   * IOSurface-backed CVPixelBuffers the host hands to its compositor,
    * reached with orblit_renderer_copy_presented. Refused elsewhere. */
   ORBLIT_SURFACE_PLATFORM = 2
 } orblit_surface_kind;
@@ -170,6 +169,31 @@ int orblit_renderer_provide_resource(const char *name, const uint8_t *bytes,
  * Any thread. */
 int orblit_renderer_release_resource(const char *name);
 
+/* ---- Feeds ---- */
+
+/* Makes a feed: a picture the host draws and a scene shows by its number.
+ * Returns the number, above 0, or 0 where this platform has no feeds or could
+ * not make one, with the reason logged. Like resources, a feed belongs to the
+ * process and not to a renderer.
+ *
+ * `width` and `height` are what a producer is first asked to draw at. They are
+ * not used on Apple, where each buffer has its own size. Any thread. */
+int64_t orblit_renderer_create_feed(int32_t width, int32_t height);
+
+/* Lets go of a feed. A screen still showing it keeps its last picture until
+ * the scene stops naming the feed. Does nothing for a number that is not one.
+ * Any thread. */
+void orblit_renderer_release_feed(int64_t feed);
+
+/* Makes `pixel_buffer` the newest picture of `feed`. It is a CVPixelBufferRef
+ * on Apple, IOSurface-backed and 32BGRA or biplanar 4:2:0. It is retained and
+ * not copied, and the producer may reuse it once the next picture is in.
+ *
+ * ORBLIT_ERROR_NULL for a NULL buffer. ORBLIT_ERROR_FAILED when the feed is
+ * not open, when the buffer is of another kind, and on every platform that
+ * takes no pixel buffers, with the reason logged. Any thread. */
+int orblit_renderer_submit_feed_buffer(int64_t feed, void *pixel_buffer);
+
 typedef struct orblit_renderer orblit_renderer;
 
 /* ---- Lifetime ---- */
@@ -231,7 +255,7 @@ uint64_t orblit_renderer_rendered_frames(const orblit_renderer *renderer);
  * meshes index `paths` — a .gltf, .glb, .fbx or .obj, the last two converted
  * to glTF off the drawing thread before they draw — or are -1 for the
  * built-in cube; flags as
- * OrblitObject packs them; materials index the last apply_materials or are
+ * RenderObject packs them; materials index the last apply_materials or are
  * -1; morph_counts say how many of `morph_weights` each takes, end to end. */
 int orblit_renderer_apply_objects(orblit_renderer *renderer, uint32_t count,
                                  const int64_t *keys,
@@ -282,12 +306,12 @@ int orblit_renderer_apply_poses(orblit_renderer *renderer, uint32_t count,
  * this batches. Pass 0 to turn it off — worth doing for a scene that wants
  * every renderable culled on its own, because a merged group is culled by
  * one box for up to sixty-four members and its shadows are fitted from that
- * same looser box. See OrblitScene.batching in package:orblit_filament for
+ * same looser box. See RenderScene.Batching in Orblit.Filament for
  * what that is measured to cost. */
 int orblit_renderer_set_batching(orblit_renderer *renderer, int enabled);
 
 /* Whether opaque objects are drawn into depth alone before being shaded.
- * Off unless asked for; see OrblitScene.depthPrepass on the Dart side for
+ * Off unless asked for; see RenderScene.DepthPrepass for
  * what it costs and where it pays. Set before apply_objects, which is where
  * the second entity per object is built. */
 int orblit_renderer_set_depth_prepass(orblit_renderer *renderer, int enabled);

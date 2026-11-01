@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Core\Orblit.Core.csproj" />
+    <ProjectReference Include="..\Orblit.Native\Orblit.Native.csproj" />
+  </ItemGroup>
+  <!-- The example script a test compiles to show that a script builds. -->
+  <ItemGroup>
+    <Content Include="example\spinner.cpp" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

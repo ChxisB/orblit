@@ -1,11 +1,16 @@
 # Orblit renderer core — web
 
-Stage one of taking Orblit's real renderer to the web: the portable C++ core
+The web is not a target today, and no script or CI job builds this folder.
+The scripts and the spike this page names, such as
+`examples/gallery/tool/capture_web.sh` and `spike/web_canvas/`, are in the
+commit tagged `dart-final`.
+
+Orblit's real renderer on the web: the portable C++ core
 (`orblit::Renderer`, the C ABI, the portable platform layer) compiled to
 WebAssembly with Emscripten, linked against a Filament built for the web,
 drawing a frame into a `<canvas>` through nothing but `orblit_renderer.h` —
 the same ABI `packages/orblit_filament/native/headless/` drives offscreen on
-macOS. No Flutter anywhere in this directory.
+macOS.
 
 This is the web counterpart of `native/headless/`, and reuses its shape
 deliberately: the same portable `*.cpp` glob, the same "compile the core,
@@ -153,7 +158,7 @@ run against this build. Shows the same scene
 `native/headless/orblit_headless.c` draws — a pale ground plane and five
 cubes in the same five colours and relative sizes (the large green one is
 the 0.9-scale block, the small purple one the 0.25-scale) — composited under
-an on-page status panel built from the same ABI calls a Dart or Kotlin host
+an on-page status panel built from the same ABI calls a managed or Kotlin host
 would use (`orblit_renderer_backend`, `orblit_renderer_notes`,
 `orblit_renderer_note`), not a side channel into Filament:
 
@@ -300,114 +305,19 @@ surface object cleanly and then fails at `allocate()` with a null chain —
 there being nowhere else for it to go on this backend — which is the ABI's
 ordinary "the renderer would not start" path, not a crash.
 
-## What remains for stage two
-
-A Flutter web implementation of the `orblit_filament` plugin:
-
-1. **`dart:ffi` is unconditional today.** `packages/orblit_core/lib/src/
-   world.dart`, `bindings.dart`, `packages/orblit_native/lib/src/host.dart`
-   and `script.dart` all `import 'dart:ffi'` with no conditional import —
-   `dart:ffi` does not exist for the web compiler. Each needs its FFI-backed
-   half split out behind `dart.library.ffi` vs. `dart.library.js_interop`
-   (or a `dart.library.io` default with a web override). `bindings.dart`'s
-   `OrblitTransformsStruct` and `host.dart`'s `OrblitScriptHost` `extends
-   Struct`: there is no memory to lay a `Struct` over on the web, so the web
-   side re-expresses the same rows as encoded bytes, the way
-   `host/main.js`'s `allocF32`/`allocI32`/`allocI64` do here in JavaScript
-   — a Dart equivalent is `dart:js_interop`'s typed-array views over the
-   module's `HEAPU8`.
-2. **An `HtmlElementView` over a real `<canvas>`**, registered with
-   `ui_web.platformViewRegistry.registerViewFactory` — the merged web spike
-   (`spike/web_canvas/lib/filament_canvas.dart`) already proved this shape
-   and its two gotchas: a platform view's element is detached when its
-   factory callback runs (poll with `requestAnimationFrame` until it is
-   actually laid out before creating anything on it), and Flutter resizes
-   the view's CSS box but never the canvas element's backing-store
-   `width`/`height` — something has to match those to
-   `canvas.clientWidth/Height * devicePixelRatio` every frame.
-3. **The scene crossing by `dart:js_interop`, not `dart:ffi`**, into this
-   module's exported `orblit_renderer_*` functions via `ccall`/`cwrap` —
-   `host/main.js`'s `publishScene` is that shape already, minus the Dart
-   side. `orblit_web_create_on_canvas` (`orblit_web_host.cpp`) is there
-   specifically so the Dart side never has to build an `orblit_surface_desc`
-   by hand either.
-4. **Loading `orblit_renderer.js`/`.wasm` from Flutter web's build output.**
-   Untested here: whether they belong under `web/` (copied verbatim into
-   `build/web/` the way the spike copies `filament.js`/`.wasm`) or need
-   something more — bundler interaction, CORS/MIME on whatever serves
-   `build/web` in production, and multi-instance behaviour if a page ever
-   wants more than one renderer (this build assumes one `Module.canvas` per
-   loaded module instance; untested whether loading the module twice for
-   two canvases works or needs a second `<script>` load).
-5. **Trimming `orblit_renderer.wasm`.** 14.7 MiB unstripped, materials
-   compiled for both `metal` and `opengl` in this worktree's local cache (a
-   real web build only needs `opengl`, which alone should noticeably
-   shrink it — `PORTING.md`: 3.32 MiB embedded for OpenGL alone against
-   4.70 for Metal, for comparison, though that is `-a all -p all` across
-   every material this package has, not this specific link's subset).
-   `-O3`, `wasm-opt`, and Closure Compiler on `orblit_renderer.js` (currently
-   plain `-O2`, no `--closure`) are all unexplored.
-
-## Stage two, as built
-
-The five items above, answered. The plugin is `lib/src/web/` in this
-package; the gallery runs it at `examples/gallery` with
-`tool/capture_web.sh` for a screenshot.
-
-1. **`dart:ffi` splits — done where they actually blocked, and narrower
-   than expected.** `orblit_filament/lib` turned out to import neither
-   `dart:ffi` nor `dart:io` and to depend on no other Orblit package, and
-   `orblit_core`/`orblit_native` are not reachable from the gallery at all
-   (`orblit_examples` depends on `orblit_filament`, `orblit_camera`,
-   `orblit_weather`, `orblit_noise`; the gallery's `pubspec.lock` has no
-   `orblit_core` entry). So those two packages were left alone: splitting
-   them is still worth doing for their own sake, but nothing on the way to
-   a drawing web app needs it. What did block, and is done: `Int64List`
-   (`lib/src/key_list.dart`), the seven examples that read a file
-   (`orblit_examples/lib/src/platform/io.dart`) and the gallery's
-   environment reading (`examples/gallery/lib/orblit_env.dart`).
-2. **`HtmlElementView` over a real `<canvas>` — done**, with both gotchas
-   the spike predicted: `OrblitWebViewport._whenLaidOut` polls with
-   `requestAnimationFrame` until the element is attached and measured
-   before creating anything, and `_fitBackingStore` matches the canvas's
-   `width`/`height` to `clientWidth/Height * devicePixelRatio` every frame.
-   The viewport is found through the view's creation params, because a
-   platform view's own id is minted by Flutter and never reaches a plugin.
-3. **The scene crossing by `dart:js_interop` — done.**
-   `orblit_scene_web.dart` makes all twenty-two scene calls in the order
-   `Viewport.write(scene:)` and `OrblitScene.applyTo` use; `OrblitHeap`
-   copies each array into the module's heap, int64 keys as little-endian
-   low/high pairs. No web-specific entry point was added to the core: the
-   only non-`orblit_renderer.h` call is stage one's own
-   `orblit_web_create_on_canvas`.
-4. **Loading from Flutter web's build output — done, and it is just
-   `web/`.** `orblit_renderer.js` and `.wasm` copied beside `index.html` are
-   copied verbatim into `build/web`, with a plain synchronous `<script>`
-   tag so the global exists before any Dart runs. Both are gitignored,
-   like every other build artefact here. No bundler interaction, no MIME
-   or CORS trouble from `python3 -m http.server`. **Untested:** more than
-   one renderer on a page. The plugin loads one module instance per
-   canvas, which is what `Module.canvas` requires, but two at once has
-   never been run.
-5. **Trimming — partly, and not by tuning.** 7.79 MiB (8,164,872 bytes)
-   against stage one's 14.7, purely because these materials carry only the
-   `opengl` backend rather than `metal` and `opengl` both. `-O3`,
-   `wasm-opt` and Closure are still unexplored.
-
-### The one thing that does not look right
+## Lit surfaces draw black
 
 Lit surfaces draw black. Geometry, camera, sky, and the whole message
-arrive correctly — every one of the twenty-two calls returns `ORBLIT_OK`,
-and the values were read back at the boundary and checked against the
-scene that produced them (the floor's colour arrives as its exact
+arrive correctly. Every call returns `ORBLIT_OK`, and the values were read
+back at the boundary and checked against the scene that produced them (the
+floor's colour arrives as its exact
 linearised `0xFF3B424C`, its flags as receive|visible, the sun as 82000 lux
 in the right direction, exposure as 16 / 1/125 / 100). Skipping the render
 graph, pipeline, post, environment, field or sky changes nothing about it,
 and raising a light to 200000 lumens changes nothing either.
 
-So this is not the Dart side mis-marshalling anything, and it is not this
-plugin at all: it reproduces in stage one's own JavaScript host, which has
-no Flutter and no Dart anywhere in it.
+So a host mis-marshalling the scene is not the cause: it reproduces in
+`host/main.js`, which makes the calls in plain JavaScript.
 
 **Direct lights contribute nothing on this build. Only ambient does.**
 Measured by serving `host/main.js` unchanged but for its ambient, against
@@ -420,14 +330,13 @@ this same `orblit_renderer.wasm`:
 
 That scene's sun is 100000 lux and did not move between the two runs, so if
 analytic lighting reached a surface at all the second row could not be
-black. The frame this directory's README calls proof of stage one is lit
+black. The frame this README calls proof is lit
 entirely by its ambient — which is why it looked right and the gallery does
 not: 24000 against bright albedos, where the Surface example has 9000
 against a 0.05 floor, about a thirtieth of correct exposure.
 
 The gap is therefore in the renderer or in the slim surface at feature
-level 1, upstream of everything here; nothing in this directory or in
-`lib/src/web/` can close it. What it wants next is the same scene on
+level 1, upstream of everything here; nothing in this directory can close it. What it wants next is the same scene on
 Android's OpenGL ES — the other feature-level-1 host, and the one place the
 same question can be asked without a browser in the way.
 

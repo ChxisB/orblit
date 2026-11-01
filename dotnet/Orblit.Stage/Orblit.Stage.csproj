@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.5.0</Version>
+    <Description>A scene document staged for the renderer: debug lines, materials, scattered models, terrain, custom surfaces, the merge of models that never move, the armature that drives a model's skin, the view that keeps a whole document drawn as it is edited, the particle view with its cloth sheet and trail ribbon, the sound view, and the cutscenes that play over a staged scene.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Audio\Orblit.Audio.csproj" />
+    <ProjectReference Include="..\Orblit.Filament\Orblit.Filament.csproj" />
+    <ProjectReference Include="..\Orblit.Light\Orblit.Light.csproj" />
+    <ProjectReference Include="..\Orblit.Mesh\Orblit.Mesh.csproj" />
+    <ProjectReference Include="..\Orblit.Motion\Orblit.Motion.csproj" />
+    <ProjectReference Include="..\Orblit.Particles\Orblit.Particles.csproj" />
+    <ProjectReference Include="..\Orblit.Profile\Orblit.Profile.csproj" />
+    <ProjectReference Include="..\Orblit.Rig\Orblit.Rig.csproj" />
+    <ProjectReference Include="..\Orblit.Scene\Orblit.Scene.csproj" />
+    <ProjectReference Include="..\Orblit.Sequence\Orblit.Sequence.csproj" />
+    <ProjectReference Include="..\Orblit.Terrain\Orblit.Terrain.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+    <ProjectReference Include="..\Orblit.Weather\Orblit.Weather.csproj" />
+    <InternalsVisibleTo Include="Orblit.Stage.Tests" />
+  </ItemGroup>
+</Project>

@@ -14,8 +14,8 @@ namespace orblit {
 
 /// How many floats one decal takes on the wire.
 ///
-/// Must match `OrblitDecal.stride` on the Dart side and `decalStride` in the
-/// plugin; native_contract_test reads all three and fails when they drift.
+/// Must match `Decal.Stride` in Orblit.Filament; the native contract tests read both
+/// and fail when they drift.
 ///
 ///   0-2   where the box's centre is
 ///   3-6   how it is turned, as a quaternion x, y, z, w

@@ -15,25 +15,20 @@ ceremony: just open the pull request.
 ## Checking your work
 
 ```sh
-./tool/format.sh   # formatting
-./tool/check.sh    # analyze and test everything that needs no window
+./tool/check_dotnet.sh   # build, test and format-check everything under dotnet/
 ```
 
-Two things to know about `check.sh`. First, it deliberately skips the
-renderer, which needs Flutter, a macOS host and a Filament download. That gets
-checked by being built instead. Second, a green `check.sh` is not a green CI.
-CI also draws frames on real devices and builds the native side for each
-platform, so a change can pass locally and still fail on push. Expect that, and
-watch the run.
+Two things to know about `check_dotnet.sh`. First, it opens no window, so
+what a viewport looks like is checked by running an example. Second, a green
+`check_dotnet.sh` is not a green CI. CI runs the same script on Linux, macOS
+and Windows, so a change can pass locally and still fail on push. Expect that,
+and watch the run.
 
-If you add a package, add it to the `PACKAGES` list in `tool/check.sh` too.
-That list is how four packages once went a long while with three hundred tests
-nobody was running. The script compares what is on disk against the list, so it
-will tell you if you forget.
+The script builds `dotnet/Orblit.sln`, so a project that is not in it is never
+built or tested.
 
-Networking, scripting and the examples live in their own repositories and
-check themselves. See [orblit-net](https://github.com/ChxisB/orblit-net),
-[orblit-script](https://github.com/ChxisB/orblit-script) and
+Networking and the examples live in their own repositories and check
+themselves. See [orblit-net](https://github.com/ChxisB/orblit-net) and
 [orblit-examples](https://github.com/ChxisB/orblit-examples).
 
 ## Setting up

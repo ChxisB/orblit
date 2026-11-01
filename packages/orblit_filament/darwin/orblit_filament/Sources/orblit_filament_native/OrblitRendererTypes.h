@@ -110,8 +110,8 @@ using Notes = std::map<std::string, std::string>;
 /// The start of a note's key that carries what a model file holds rather than
 /// something wrong with the scene: the rest of the key is the file's path and
 /// the note is JSON. Riding on the notes means every host that already hands
-/// them back — five plugins and a browser — hands this back too, unchanged;
-/// the Dart side takes these out before anybody reads the rest as problems.
+/// them back hands this back too, unchanged; the managed side takes these
+/// out before anybody reads the rest as problems.
 constexpr const char *kModelInfoPrefix = "orblit.model:";
 
 
@@ -331,7 +331,7 @@ struct BatchChunk {
 /// shadow and layer flags (already guaranteed identical within a group by
 /// the census's own key), and culling — every chunk is culled as one box,
 /// the union of its members', so one visible member draws every other member
-/// of its chunk too. See the doc comment on OrblitScene.batching (Dart side)
+/// of its chunk too. See the doc comment on RenderScene.Batching
 /// for why that is an acceptable trade rather than a silent one.
 struct BatchGroup {
   std::vector<BatchChunk> chunks;
@@ -496,8 +496,8 @@ struct Drawn {
 };
 
 /// How many floats one material's numbers occupy, and how many maps it has
-/// room for. Both agree with the Dart side by hand; a mismatch is caught in
-/// the plugin, which checks the array lengths before any of this is reached.
+/// room for. Both agree with `RenderMaterial` by hand, and the native contract tests
+/// read them.
 constexpr size_t kMaterialParams = 37;
 constexpr size_t kMaterialMaps = 7;
 
@@ -510,7 +510,7 @@ constexpr size_t kPoseFloats = 5;
 constexpr int32_t kPoseLoops = 1 << 0;
 constexpr int32_t kPoseFromLoops = 1 << 1;
 
-/// The maps a lit surface has, in the order the Dart side packs them.
+/// The maps a lit surface has, in the order Orblit.Filament packs them.
 ///
 /// At file scope because two places need them and a second copy is how the
 /// blend maps came to be missing from one of them: a material that had never
@@ -650,7 +650,7 @@ struct Movie {
 };
 
 /// How many floats one probe takes on the wire. Must match
-/// `OrblitProbe.stride` on the Dart side and `probeStride` in the plugin.
+/// `Probe.Stride` in Orblit.Filament.
 constexpr uint32_t kProbeStride = 8;
 
 /// One reflection probe as the renderer holds it between frames.
@@ -694,7 +694,7 @@ struct Probe {
   uint64_t seen = 0;
 };
 /// How many floats a world-space irradiance field takes on the wire. Must
-/// match `OrblitField.stride` on the Dart side and `fieldStride` in the plugin.
+/// match `IrradianceField.Stride` in Orblit.Filament.
 constexpr uint32_t kFieldStride = 14;
 
 /// A probe's tile in the atlas, and how many of those fit across it.
@@ -732,8 +732,7 @@ constexpr uint32_t kFieldMaxProbes = 1024;
 
 /// How many floats one light takes on the wire.
 ///
-/// Must match `OrblitLight.stride` on the Dart side and `lightStride` in the
-/// plugin. Used for both the offset into the message and the size of the copy
+/// Must match `RenderLight.Stride` in Orblit.Filament. Used for both the offset into the message and the size of the copy
 /// kept per light, so those two cannot drift apart again — they already did
 /// once: the halo fields took a light from sixteen floats to eighteen, the
 /// kept copy followed and the offset did not, and every light after the first
@@ -857,13 +856,13 @@ constexpr float3 kDefaultAmbient = {0.10f, 0.12f, 0.16f};
 constexpr float kDefaultAmbientIntensity = 28000.0f;
 
 
-/// Two surfaces, alternated. Filament finishes writing one while Flutter's
-/// raster thread samples the other, so a frame is never read while it is being
+/// Two surfaces, alternated. Filament finishes writing one while the compositor
+/// samples the other, so a frame is never read while it is being
 /// drawn. Each needs its own swap chain because a Filament swap chain is bound
 /// to one CVPixelBuffer for its lifetime.
 constexpr int kOrblitBufferCount = 2;
 
-/// What an object's flag bits mean. Matches OrblitObject on the Dart side.
+/// What an object's flag bits mean. Matches `RenderObject` in Orblit.Filament.
 constexpr int32_t kCastsShadows = 1;
 constexpr int32_t kReceivesShadows = 2;
 constexpr int32_t kVisible = 4;
@@ -915,7 +914,7 @@ inline uint8_t layerBitOf(int32_t flags) {
 }
 
 /// How many floats a pass and a target take on the wire. Must match
-/// OrblitRenderGraph on the Dart side.
+/// `RenderGraph` in Orblit.Filament.
 constexpr uint32_t kPassStride = 13;
 constexpr uint32_t kTargetStride = 6;
 

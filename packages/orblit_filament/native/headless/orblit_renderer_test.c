@@ -961,7 +961,7 @@ static void custom_surfaces_draw(const char *directory) {
  *
  * build.sh cooks darwin/materials/unlit.oshader and surfaces/pulse.oshader
  * with the project's own cook and names the bundle in ORBLIT_SHADER_DIR.
- * Without Dart or a matc the section says so and is skipped. */
+ * Without dotnet or a matc the section says so and is skipped. */
 
 typedef struct {
   const char *name;
@@ -1215,6 +1215,20 @@ int main(void) {
            "a null renderer can do nothing");
   }
 
+  /* Feeds need no renderer. This build takes no pixel buffers, so it makes no
+     feed and refuses a buffer. The Apple answers are tested from C#. */
+  {
+    int unused = 0;
+    expect(orblit_renderer_create_feed(64, 48) == 0,
+           "a platform with no feeds makes none");
+    expect(orblit_renderer_submit_feed_buffer(1, NULL) == ORBLIT_ERROR_NULL,
+           "a feed needs a buffer");
+    expect(orblit_renderer_submit_feed_buffer(1, &unused) == ORBLIT_ERROR_FAILED,
+           "and a platform with no feeds refuses the buffer");
+    orblit_renderer_release_feed(1);
+    orblit_renderer_release_feed(0);
+  }
+
   orblit_surface_desc headless = {ORBLIT_SURFACE_HEADLESS, NULL};
   orblit_renderer *renderer =
       orblit_renderer_create(ORBLIT_BACKEND_DEFAULT, &headless, 64, 48);
@@ -1389,11 +1403,11 @@ int main(void) {
 
   /* Batching is on for a renderer nobody has told anything.
    *
-   * This is the C ABI's half of the default, and the half no Flutter host
-   * exercises: the Dart side always puts `batching` on the wire, so the
-   * plugins never fall back and the initial state below is only reached by a
-   * host that calls orblit_renderer_set_batching never or late — a console
-   * host, a Linux or Windows plugin. Six placeholder cubes alike in mesh,
+   * This is the C ABI's half of the default, and the half a managed
+   * host does not exercise: Orblit.Filament always puts `batching` on the wire, so
+   * it never falls back and the initial state below is only reached by a
+   * host that calls orblit_renderer_set_batching never or late, such as a
+   * console host. Six placeholder cubes alike in mesh,
    * material, colour and flags are a group by the census's rule of four, so
    * the stats say plainly which way the renderer started. */
   {

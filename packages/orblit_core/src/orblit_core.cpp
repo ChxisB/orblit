@@ -1,8 +1,8 @@
 // The C ABI, over the archetype store in world.h.
 //
 // Thin on purpose: the interesting decisions are in the World, and this file's
-// job is to keep C++ types from leaking across a boundary that Dart, QuickJS
-// and a native console shell all have to speak.
+// job is to keep C++ types from leaking across a boundary that managed code
+// and a native console shell both have to speak.
 
 #include "orblit_core.h"
 

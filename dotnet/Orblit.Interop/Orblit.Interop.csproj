@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Finds the native libraries that ship in a package's runtimes folder.</Description>
+  </PropertyGroup>
+</Project>

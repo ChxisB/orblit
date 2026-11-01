@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Camera\Orblit.Camera.csproj" />
+    <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\fixtures\orblit_camera\*.json" Link="fixtures\orblit_camera\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

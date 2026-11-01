@@ -6,7 +6,7 @@
 # proves the renderer runs with nothing but a C program in front of it; this
 # one gives that C program a window, a clock and a pad, which is what a
 # console front end is. What is left out is still the point: no Objective-C,
-# no Swift, no Dart, no Flutter.
+# no Swift, no managed code.
 #
 # One script for macOS and Linux rather than two, which ../headless has,
 # because SDL3 is what made the difference between them small: a different
@@ -47,7 +47,7 @@ SYSTEM="$(uname -s)"
 # deliberate: it is the half a console toolchain can run on its first day,
 # before there is anything to draw into. Run on every build, not only on
 # `build.sh test`, because they take under a second and the thing they are
-# guarding against is package:orblit_input and this drifting apart quietly.
+# guarding against is Orblit.Input and this drifting apart quietly.
 mkdir -p "$OUT"
 clang -std=c99 -O1 -Wall -Wextra -Werror -pedantic -I . \
   orblit_pad.c orblit_pad_test.c -lm -o "$OUT/orblit_pad_test"

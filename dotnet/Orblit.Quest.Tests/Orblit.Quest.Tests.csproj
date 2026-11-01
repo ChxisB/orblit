@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Quest\Orblit.Quest.csproj" />
+    <ProjectReference Include="..\Orblit.Save\Orblit.Save.csproj" />
+    <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\fixtures\orblit_quest\*.json" Link="fixtures\orblit_quest\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

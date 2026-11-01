@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.2.1</Version>
+    <Description>Saves for a game server: bytes under a key with a reason, written off the tick by a worker, whole after a crash, and staggered autosaves, with a history of versions, restore and offline edit.</Description>
+    <!-- SaveQueue is the name. It is a hand-off point, not a collection. -->
+    <NoWarn>$(NoWarn);CA1711</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Save.Tests" />
+    <InternalsVisibleTo Include="Orblit.Save.History" />
+  </ItemGroup>
+</Project>

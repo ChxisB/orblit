@@ -8,7 +8,7 @@
 ///
 /// One swap chain, lent to every slot the renderer asks for. The renderer
 /// alternates between buffers because on Apple each is a separate image that
-/// Flutter samples while the next is drawn. A window has its own buffering
+/// the compositor samples while the next is drawn. A window has its own buffering
 /// behind one swap chain — and two chains onto one window is an error on
 /// Vulkan — and an offscreen chain is only ever read back, so both are one
 /// chain however many slots there are.

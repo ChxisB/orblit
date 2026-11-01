@@ -1,11 +1,14 @@
 # Porting the renderer off Apple platforms
 
-The renderer is plain C++ now. `orblit::Renderer` is declared in
+The renderer is plain C++. `orblit::Renderer` is declared in
 `OrblitRendererCore.h` and defined across the `OrblitRenderer*.cpp` files, one
-a topic, with no Objective-C and no Apple header. The Objective-C class in `OrblitRenderer.mm` is a thin wrapper:
-the Swift plugin calls it through `include/OrblitRenderer.h`, which has not
-changed, and it forwards every call. Any other host calls the C ABI in
-`include/orblit_renderer.h`.
+a topic, with no Objective-C and no Apple header. Every host calls the C ABI
+in `include/orblit_renderer.h`.
+
+The Objective-C wrapper, the Swift plugin and the Flutter app that used them
+are no longer in this repository. The last commit that has them is tagged
+`dart-final`. The tables below keep the old names, so a change made to the old
+code can still be found.
 
 ## Where everything is
 
@@ -53,8 +56,8 @@ ivar becomes a member in `OrblitRendererCore.h` and a new struct goes in
 top of the one that does, except a compiled material's `…_material.h`, which
 goes in `OrblitMaterialPackages.cpp` as above; the platform build supplies
 the selected `generated/<set>/` directory as an include path; a new method
-in `include/OrblitRenderer.h` becomes a public member of `orblit::Renderer`
-plus a one-line forwarder in `OrblitRenderer.mm`.
+becomes a public member of `orblit::Renderer`, a declaration in
+`include/orblit_renderer.h` and a definition in `OrblitRendererC.cpp`.
 
 The scripts that did the original conversion — and regenerated the core for a
 branch cut before the move, which is how god rays, distortion and motion blur
@@ -65,15 +68,12 @@ needed again.
 
 ## What is still Apple's, and why
 
-- `OrblitRenderer.mm` and `include/OrblitRenderer.h` — the Swift plugin speaks
-  Objective-C.
-- `OrblitSurfaceApple.mm` — IOSurface-backed `CVPixelBuffer`s are how Flutter
-  on Apple adopts a frame without a copy. Every platform presents
+- `OrblitSurfaceApple.mm`: IOSurface-backed `CVPixelBuffer`s are how a
+  compositor on Apple adopts a frame without a copy. Every platform presents
   differently; `OrblitSurface` is the seam, and `OrblitSurfaceHeadless.cpp`
   adds a window surface and an offscreen one for everywhere.
 - `OrblitPlatformApple.mm` — the Apple answers to the platform layer, kept
   so an Apple build does what it did.
-- `OrblitTexture.m`, `OrblitFilamentPlugin.swift` — Flutter's Apple plugin.
 - Video — only AVFoundation is written. MediaCodec, GStreamer or Media
   Foundation are each their own piece of work.
 - Feeds — Apple and Android are written. Linux and Windows have no producer
@@ -104,17 +104,17 @@ serve and the only one that runs without a signing identity:
   source — core, C ABI, platform layer, wrapper and plugin — against the
   xcframework's `ios-arm64_x86_64-simulator` slice.
 - The app launches, the plugin registers, and a Filament Metal engine is
-  created on the simulator's GPU. `flutter build ios --simulator` and a run
-  are now a CI job beside the macOS one.
+  created on the simulator's GPU. This ran as a CI job beside the macOS one,
+  with the app that has since left the repository.
 
 Proven on the iOS simulator, added since:
 
 - A frame. The slim surface (see "Materials and feature levels" below) is
   what let this happen at all: below it, the engine aborted before a
-  triangle was drawn. `tool/ci_draw_frame_ios.sh` boots, installs, launches
-  and waits for the same "written" line the macOS script does, and is a CI
-  job on `iPhone 17 Pro`, `iPhone 16` and whatever else `ORBLIT_SIM_DEVICE`
-  names.
+  triangle was drawn. `tool/ci_draw_frame_ios.sh`, at `dart-final`, booted,
+  installed, launched and waited for the same "written" line the macOS script
+  does. It ran as a CI job on `iPhone 17 Pro`, `iPhone 16` and whatever else
+  `ORBLIT_SIM_DEVICE` named.
 - Along the way, a latent bug the feature level precondition had always
   masked: decalImages, the one sampler read with `textureGrad` rather than
   `texture`, took Filament's default mobile precision, and the derivatives a
@@ -130,20 +130,19 @@ Proven on the iOS simulator, added since:
   temporary logging through `applyObjects` showed it running on every single
   call, building the right number of objects and flipping
   `_sceneIsOwnedByHost` correctly. The scene itself was the same one every
-  time, which is what looked like the startup placeholder: `dart:io`'s
-  `Platform.environment` comes back an empty map on the iOS simulator
-  regardless of how the process was launched — proved by writing its length
-  to a file mid-run (0) while that launch's own `SIMCTL_CHILD_`-prefixed
-  variables were visible to native `getenv` throughout. `examples/gallery`
-  reads `ORBLIT_EXAMPLE` (and every other `ORBLIT_*` switch, `ORBLIT_SECONDS`
-  and `ORBLIT_CIRCLING` included) through `Platform.environment`, so on iOS it
-  always fell back to the gallery's first example, and its clock and camera
-  orbit were never pinned either — which is also the likely explanation for
-  the exposure finding below: the same rotating cube and orbiting camera,
-  caught at whatever unpinned moment frame 60 happened to land on. Fixed in
-  `examples/gallery/lib/main.dart`, which now reads the real environment
-  through `dart:ffi` when `Platform.environment` has nothing, changing
-  nothing on a platform where it already did.
+  time, which is what looked like the startup placeholder: the gallery host
+  read its switches through an environment API that comes back an empty map
+  on the iOS simulator regardless of how the process was launched. A file
+  written mid-run showed its length as 0, while that launch's own
+  `SIMCTL_CHILD_`-prefixed variables were visible to native `getenv`
+  throughout. `ORBLIT_EXAMPLE` (and every other `ORBLIT_*` switch,
+  `ORBLIT_SECONDS` and `ORBLIT_CIRCLING` included) was read that way, so on
+  iOS it always fell back to the gallery's first example, and its clock and
+  camera orbit were never pinned either. That is also the likely
+  explanation for the exposure finding below: the same rotating cube and
+  orbiting camera, caught at whatever unpinned moment frame 60 happened to
+  land on. A host on the simulator reads the process environment through
+  native `getenv`.
 - **A shadow-casting directional light on the simulator, which used to light
   nothing.** The entry that sat here explained the dark frames away — "a few
   parts in 255 where the same content on macOS reads two hundred plus" — as

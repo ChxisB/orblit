@@ -21,13 +21,13 @@ namespace orblit {
 
 /// Floats per splat set in the scene message: a column-major transform, an
 /// opacity multiplier and a brightness multiplier. Must match
-/// OrblitSplats.stride in Dart and splatStride in the plugin.
+/// `SplatCloud.Stride` in Orblit.Filament.
 constexpr size_t kSplatParams = 18;
 
 /// The bits of a cloud's flags in the scene message, low to high: whether it
 /// is sorted; the spherical-harmonic degree, two bits; whether the sort is
 /// coarse; and, from bit eight up, how many splats to keep at most, nought
-/// for all of them. Must match OrblitSplats.flags in Dart.
+/// for all of them. Must match `SplatCloud` in Orblit.Filament.
 constexpr int32_t kSplatFlagSorted = 1 << 0;
 constexpr int kSplatFlagDegreeShift = 1;
 constexpr int32_t kSplatFlagCoarse = 1 << 3;

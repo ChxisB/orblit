@@ -682,7 +682,7 @@ static int many_objects(orblit_renderer *renderer, const char *path, int count,
              &weight, 0, paths, 1) == ORBLIT_OK;
 }
 
-/* The matrices `tool/bake_sample.dart` wrote, sixteen numbers to a line. */
+/* The matrices a bake wrote, sixteen numbers to a line. */
 static int read_placements(const char *path, float *out, int room) {
   FILE *in = fopen(path, "r");
   if (in == NULL) return 0;
@@ -702,7 +702,7 @@ static int read_placements(const char *path, float *out, int room) {
  * into one file by `bakeInstances` and drawn as one object. The pictures have
  * to match, or the merge has changed what the scene looks like.
  *
- *   dart run tool/bake_sample.dart LightsPunctualLamp.glb /some/dir 7 6
+ *   bake a placements file with `bakeInstances` into /some/dir
  *   ORBLIT_BAKED=/some/dir build/orblit_models_check
  *
  * The camera stands well back from the grid of copies.

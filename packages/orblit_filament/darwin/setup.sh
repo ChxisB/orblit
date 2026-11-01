@@ -1,24 +1,19 @@
 #!/bin/bash
 # Fetches the Filament SDK and compiles this package's materials.
 #
-# Runs from the podspec's prepare_command, so `flutter run` needs no manual
-# step, and is idempotent so it costs nothing after the first time. Both
-# outputs are build artefacts and stay out of git.
+# Idempotent, so it costs nothing after the first time. Both outputs are build
+# artefacts and stay out of git.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 FILAMENT_VERSION="v1.77.0"
 SDK_DIR="third_party/filament-mac"
-IOS_SDK_DIR="third_party/filament-ios"
 FILAMENT="$SDK_DIR/filament"
-IOS_FILAMENT="$IOS_SDK_DIR/filament"
 
 # fetch <directory> <sdk name>
 #
-# Two SDKs, because they carry different things. The mac one has the host
-# tools — matc compiles the materials and only runs here — as well as the
-# macOS libraries. The iOS one has only libraries, and ships them as
-# xcframeworks rather than as plain archives.
+# The mac SDK has the host tools, since matc compiles the materials and only
+# runs here, as well as the macOS libraries.
 #
 # The directory is the same whatever the version, so it records the one it
 # holds. Without that, bumping FILAMENT_VERSION found the old SDK present,
@@ -55,12 +50,12 @@ fetch() {
 # nowhere else. So the fork is wired up and the fast path stays the default
 # until something actually requires the slow one.
 #
-# SDK_ID is what the two stamps further down record as the SDK they were made
-# from. A release is named by its version. A source build carries the same
+# SDK_ID is what the materials stamp further down records as the SDK they were
+# made from. A release is named by its version. A source build carries the same
 # version number however often it is rebuilt, so it is named by what was
-# built — matc and every archive, by size and time. Without that, switching to
-# a source build, or rebuilding one with a change, kept the framework and the
-# materials made from the previous SDK, and nothing said so.
+# built: matc and every archive, by size and time. Without that, switching to
+# a source build, or rebuilding one with a change, kept the materials made from
+# the previous SDK, and nothing said so.
 SDK_ID="$FILAMENT_VERSION"
 if [ -n "${ORBLIT_FILAMENT_SRC:-}" ]; then
   BUILT="$ORBLIT_FILAMENT_SRC/out/release/filament"
@@ -75,16 +70,11 @@ if [ -n "${ORBLIT_FILAMENT_SRC:-}" ]; then
   ln -s "$BUILT" "$SDK_DIR/filament"
   SDK_ID="$FILAMENT_VERSION source $(cd "$BUILT" &&
     stat -f '%N %z %m' bin/matc lib/arm64/*.a | shasum | cut -c1-12)"
-  # iOS still comes from the release. A desktop build carries no iOS slices,
-  # and pretending otherwise fails at link time rather than here.
-  fetch "$IOS_SDK_DIR" ios
 else
   # A source build leaves the mac SDK as a link to itself. Back on the
-  # release, that link would pass for a fetched SDK, and the source build's
-  # archives would be packaged under the release's name.
+  # release, that link would pass for a fetched SDK.
   if [ -L "$SDK_DIR/filament" ]; then rm "$SDK_DIR/filament"; fi
   fetch "$SDK_DIR" mac
-  fetch "$IOS_SDK_DIR" ios
 fi
 
 # Materials are compiled to a C array rather than shipped as an asset, so the
@@ -452,115 +442,5 @@ cat > "$GENERATED/material_set.h" <<EOF
 EOF
 
 echo "$MATC_WANT" > "$MATC_STAMP"
-
-# One framework out of the SDKs' own archives.
-#
-# Swift Package Manager has no way to say "these twenty static libraries and
-# that include directory": what it takes is a binary target, which is an
-# xcframework. So the archives are merged into one per platform and packaged
-# with the headers beside them — done here, where the network is allowed,
-# because a Swift package plugin runs sandboxed and could never fetch this
-# itself.
-#
-# Three slices: macOS, an iOS device, and the iOS simulator. The simulator one
-# is not a nicety — it is the only slice that can be built and run without a
-# signing identity, so it is what makes an iOS change checkable at all.
-XCFRAMEWORK="orblit_filament/third_party/Filament.xcframework"
-STAMP="orblit_filament/third_party/.filament-version"
-
-LIBS=(
-    filament backend filabridge filaflat
-    utils geometry smol-v ibl image abseil zstd
-    # Prefilters a captured cubemap into the mip chain a reflection samples.
-    # On the GPU and in-engine, which is what makes a probe something a scene
-    # can capture while it runs rather than something baked by a tool.
-    filament-iblprefilter
-    gltfio_core uberarchive uberzlib dracodec meshoptimizer ktxreader
-    stb basis_transcoder mikktspace
-)
-
-# Only macOS has these, and only macOS needs them: they are the runtime
-# loaders for OpenGL and Vulkan, and iOS is Metal or nothing.
-DESKTOP_ONLY=(bluegl bluevk)
-
-# What the framework was last packaged from — the version *and the list*.
-#
-# The list is in here for the same reason the material stamp carries its
-# compiler flags: a framework is otherwise considered current because it
-# exists, which holds right up until the thing that changed was which
-# libraries went into it. Then the package is silently the old one and the
-# failure arrives as a linker error naming a symbol that is present in the
-# SDK and absent from the framework.
-WANT="$SDK_ID macos+ios+simulator ${LIBS[*]} ${DESKTOP_ONLY[*]}"
-
-if [ "$(cat "$STAMP" 2>/dev/null || true)" != "$WANT" ]; then
-  echo "orblit_filament: packaging Filament as a framework"
-
-  # The dozen the renderer actually needs. The SDK ships thirty.
-  #
-  # `image` is easy to leave out and hard to notice missing: nothing needs it
-  # until something reads a KTX, and then it is not a compile error but a
-  # link error naming a symbol nobody wrote — image::Ktx1Bundle, referenced by
-  # ktxreader, which is in the list and useless without it.
-  # Only macOS has these, and only macOS needs them: they are the runtime
-  # loaders for OpenGL and Vulkan, and iOS is Metal or nothing.
-
-  work="$(mktemp -d)"
-
-  # merge <output> <archive>...
-  #
-  # An array rather than a string of paths, because libtool given a
-  # space-separated string in one argument opens nothing, warns to stderr
-  # about a file whose name is every path joined together, and exits 0 with
-  # an empty archive. The failure then arrives much later as a link error.
-  merge() {
-    local out="$1"; shift
-    libtool -static -o "$out" "$@" 2> /dev/null
-  }
-
-  # --- macOS: plain archives, one directory ---
-  mac_archives=()
-  for name in "${LIBS[@]}" "${DESKTOP_ONLY[@]}"; do
-    mac_archives+=("$FILAMENT/lib/arm64/lib${name}.a")
-  done
-  merge "$work/macos.a" "${mac_archives[@]}"
-
-  # --- iOS: each library is itself an xcframework, so the slice has to be
-  # picked out of each one by identifier ---
-  ios_slice() {
-    local identifier="$1" out="$2"
-    local archives=() path
-    for name in "${LIBS[@]}"; do
-      path="$IOS_FILAMENT/lib/lib${name}.xcframework/$identifier/lib${name}.a"
-      if [ ! -f "$path" ]; then
-        echo "orblit_filament: no $identifier slice for $name"
-        exit 1
-      fi
-      archives+=("$path")
-    done
-    merge "$out" "${archives[@]}"
-  }
-  ios_slice ios-arm64 "$work/ios.a"
-  ios_slice ios-arm64_x86_64-simulator "$work/ios-simulator.a"
-
-  # Moved aside rather than deleted: xcodebuild refuses to write over an
-  # existing framework, and the temporary directory is the OS's to clean up.
-  mkdir -p "$(dirname "$XCFRAMEWORK")"
-  if [ -e "$XCFRAMEWORK" ]; then
-    # An `&&` chain here would end the script the first time the framework is
-    # absent, which is every fresh clone: the test fails, the chain returns
-    # non-zero, and set -e takes that as the script failing.
-    mv "$XCFRAMEWORK" "$work/superseded.xcframework"
-  fi
-
-  xcodebuild -create-xcframework \
-    -library "$work/macos.a" -headers "$FILAMENT/include" \
-    -library "$work/ios.a" -headers "$IOS_FILAMENT/include" \
-    -library "$work/ios-simulator.a" -headers "$IOS_FILAMENT/include" \
-    -output "$XCFRAMEWORK" > /dev/null
-
-  # Written last, so an interrupted run rebuilds rather than being trusted.
-  echo "$WANT" > "$STAMP"
-fi
 
 echo "orblit_filament: setup complete"

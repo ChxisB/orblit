@@ -42,9 +42,8 @@ struct orblit_renderer {
 namespace {
 
 // The blocks the renderer reads a fixed number of floats from, with no count
-// of its own. The Dart side packs them (OrblitFog.stride and the rest) and the
-// Swift plugin checks the same numbers before it calls; they are checked
-// again here because a C host has no Swift in front of it.
+// of its own. Orblit.Filament packs them (`Fog.Stride` and the rest). They are checked
+// here because a C host has nothing in front of it.
 constexpr size_t kFogFloats = 16;
 constexpr size_t kPrecipitationFloats = 12;
 constexpr size_t kSkyFloats = 34;
@@ -255,6 +254,38 @@ int orblit_renderer_provide_resource(const char *name, const uint8_t *bytes,
 int orblit_renderer_release_resource(const char *name) {
   if (name == nullptr) return ORBLIT_ERROR_NULL;
   return orblit::releaseResource(name) ? ORBLIT_OK : ORBLIT_ERROR_RANGE;
+}
+
+// ---- Feeds ----
+
+int64_t orblit_renderer_create_feed(int32_t width, int32_t height) {
+  try {
+    std::string why;
+    const int64_t feed = orblit::createFeed(width, height, why);
+    if (feed == 0) orblit::log("[orblit] no feed was made: %s", why.c_str());
+    return feed;
+  } catch (...) {
+    orblit::log("[orblit] no feed was made: out of memory.");
+    return 0;
+  }
+}
+
+void orblit_renderer_release_feed(int64_t feed) { orblit::releaseFeed(feed); }
+
+int orblit_renderer_submit_feed_buffer(int64_t feed, void *pixel_buffer) {
+  if (pixel_buffer == nullptr) return ORBLIT_ERROR_NULL;
+#if ORBLIT_PLATFORM_APPLE
+  std::string why;
+  if (orblit::submitFeed(feed, static_cast<CVPixelBufferRef>(pixel_buffer),
+                         why)) {
+    return ORBLIT_OK;
+  }
+  orblit::log("[orblit] a feed took no picture: %s", why.c_str());
+#else
+  (void)feed;
+  orblit::log("[orblit] this platform takes no pixel buffers for a feed.");
+#endif
+  return ORBLIT_ERROR_FAILED;
 }
 
 int32_t orblit_renderer_capability(const orblit_renderer *renderer,
@@ -602,7 +633,7 @@ int orblit_renderer_set_render_graph(orblit_renderer *renderer,
     return ORBLIT_ERROR_LENGTH;
   }
   // A pass reads targets by index, and the renderer trusts the index: the
-  // Dart graph that writes one never names a target it does not have. A C
+  // managed graph that writes one never names a target it does not have. A C
   // host is told instead.
   for (uint32_t p = 0; p < pass_count; p++) {
     const float *row = passes + size_t(p) * orblit::kPassStride;

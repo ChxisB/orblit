@@ -116,7 +116,7 @@ uint32_t floorPowerOfTwo(uint32_t value) {
 }
 
 /// The rule, from what the renderer measured about the device when it
-/// started (OrblitDeviceProfile on the Dart side):
+/// started (`DeviceProfile` in Orblit.Filament):
 ///
 ///  * The route. The GPU filter renders into half-float cubes and mipmaps a
 ///    half-float picture, so it runs where ORBLIT_CAPABILITY_HALF_FLOAT_

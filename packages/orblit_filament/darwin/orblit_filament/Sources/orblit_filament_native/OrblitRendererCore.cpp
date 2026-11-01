@@ -115,7 +115,7 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
   ASSERT_PRECONDITION(_engine != nullptr, "%s is unavailable.",
                       orblit::backendName(candidates.front()));
 
-  // Diagnostic only, and unrelated to OrblitScene.batching: Orblit's own
+  // Diagnostic only, and unrelated to RenderScene.Batching: Orblit's own
   // batching draws manually-instanced groups (see reconcileBatchGroups) and
   // never touches this flag. Filament's *automatic* instancing — merging
   // draw commands after the fact, in RenderPass::instanceify() — is broken on
@@ -211,7 +211,7 @@ void Renderer::startWithWidth(uint32_t width, uint32_t height) {
   // scene printed over and over across the sky, which is what a lost backdrop
   // looked like in Bistro. Cleared, the same fault is a black sky: still
   // wrong, but plainly so. Transparent rather than black for a view that
-  // lets Flutter show through; an opaque one resolves it to black anyway.
+  // lets the host show through; an opaque one resolves it to black anyway.
   filament::Renderer::ClearOptions clear;
   clear.clearColor = {0.0, 0.0, 0.0, 0.0};
   clear.clear = true;
@@ -367,8 +367,8 @@ void Renderer::setOutlineKeys(const int64_t *keys, uint32_t count, const float *
 void *Renderer::copyPresentedBuffer() {
   std::lock_guard<std::mutex> lock(_presentLock);
   // Opaque on the way out of the surface, and concrete only in the host that
-  // asked for it: on Apple the plugin hands it straight to Flutter's texture
-  // registry, and the registry wants a CVPixelBuffer.
+  // asked for it: on Apple the host hands it straight to its compositor,
+  // which wants a CVPixelBuffer.
   if (_surface == nullptr) return nullptr;
   return _surface->retainPresented(_presentedIndex);
 }
@@ -433,6 +433,13 @@ void Renderer::dispose() {
     utils::EntityManager::get().destroy(entity);
     _fieldCamera = nullptr;
   }
+  // The entity first. Filament refuses to destroy a material instance while a
+  // renderable still wears it, and the entity carries that renderable.
+  if (!_fieldEntity.isNull()) {
+    _engine->destroy(_fieldEntity);
+    utils::EntityManager::get().destroy(_fieldEntity);
+    _fieldEntity = {};
+  }
   if (_fieldInstance != nullptr) {
     _engine->destroy(_fieldInstance);
     _fieldInstance = nullptr;
@@ -448,11 +455,6 @@ void Renderer::dispose() {
   if (_fieldIndices != nullptr) {
     _engine->destroy(_fieldIndices);
     _fieldIndices = nullptr;
-  }
-  if (!_fieldEntity.isNull()) {
-    _engine->destroy(_fieldEntity);
-    utils::EntityManager::get().destroy(_fieldEntity);
-    _fieldEntity = {};
   }
 
   if (_smaaArea != nullptr) {
@@ -692,7 +694,7 @@ Notes Renderer::notes() {
   for (const auto &entry : _videoNotes) all[entry.first] = entry.second;
   for (const auto &entry : _surfaceNotes) all[entry.first] = entry.second;
   // Not problems, and not about the scene as a whole: what each model built
-  // by the last publish holds, keyed so the Dart side can take them out.
+  // by the last publish holds, keyed so the managed side can take them out.
   for (const auto &entry : _modelInfo) all[entry.first] = entry.second;
   return all;
 }

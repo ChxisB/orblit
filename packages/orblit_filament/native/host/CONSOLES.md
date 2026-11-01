@@ -21,8 +21,8 @@ platform. What changes is one class.
 through the C ABI. That is this directory: 1,300 lines, of which 453 —
 `orblit_host_sdl.c` — are the only ones that know what machine they are on.
 
-**Game logic** has to reach the C ABI. Dart does not run on a console;
-QuickJS and linked C++ already do.
+**Game logic** has to reach the C ABI. Whether .NET runs on a console is not
+settled here. Linked C++ already does.
 
 The three are independent. The first needs an SDK. The second needs an SDK
 for one file. The third needs none at all, and is the largest of the three.
@@ -218,19 +218,15 @@ memory budget; certification. The measurement above is therefore about
 *Filament and Tint and Orblit's materials*, and deliberately makes no claim
 about D3D12 or about the console.
 
-## Game logic, without Dart
+## Game logic, without managed code
 
-Dart is how Orblit is written and it is not going to a console: there is no
-Dart AOT target for either platform, and a JIT is not permitted on either.
+Orblit is written in C#. Nothing in this repository shows that .NET runs on
+either console, and the platform holders' terms decide that, so the plan
+does not depend on it.
 
 What already runs on a console-shaped machine, and is already wired to the C
 ABI in this repository:
 
-- **QuickJS.** `orblit-script` puts game logic in TypeScript on QuickJS,
-  calling the engine's C ABI directly — "the shim is C, the boundary is
-  handles and buffers". QuickJS is C99 with no OS dependency beyond malloc
-  and reading a file, which is the property that makes it portable to a
-  platform whose libc is not glibc.
 - **Linked C++.** `orblit_native`'s `include/orblit_script.h` already defines
   the contract: a script answers four questions — what ABI it was built for,
   start, step, stop — and is handed *a table of function pointers*, not
@@ -242,25 +238,24 @@ ABI in this repository:
   into" — and the table is what makes the second case work too.
 
 So the console binary is: this host, plus the renderer, plus the core, plus
-either a QuickJS interpreter or statically linked C++ scripts. No Dart, no
-Flutter, no dynamic loading.
+statically linked C++ scripts. No managed runtime, no dynamic loading.
 
 **The real gap, and it needs no SDK.** Today the *scene* is described from
-Dart: `packages/orblit_core`, `orblit_mesh`, `orblit_light` and the rest build
-the arrays that `orblit_renderer_apply_*` takes, and the C ABI is deliberately
+C#: `Orblit.Scene`, `Orblit.Mesh`, `Orblit.Light` and the rest build the
+arrays that `orblit_renderer_apply_*` takes, and the C ABI is deliberately
 "describe the whole of your part of the scene every time" so that whoever is
 describing it can be anyone. On a console someone else has to do that
 describing, and nobody does yet. Two answers, neither written:
 
-1. Move the scene layer into the C++ core, or into TypeScript over the C ABI,
-   so a game is authored once and runs in both places.
-2. Bake a scene from Dart into data at build time, and have the C host replay
+1. Move the scene layer into the C++ core, so a game is authored once and
+   runs in both places.
+2. Bake a scene from C# into data at build time, and have the C host replay
    it.
 
 `orblit_host.c` is an existence proof of the second at its smallest: 324 lines
-of C describing a scene through the C ABI with no Dart anywhere. It is also
-an existence proof of how much work the real version is, because those 324
-lines describe eleven boxes.
+of C describing a scene through the C ABI with no managed code anywhere. It is
+also an existence proof of how much work the real version is, because those
+324 lines describe eleven boxes.
 
 This is the largest piece of the three, it is the one with no NDA anywhere
 near it, and it is the one that could be started tomorrow.
@@ -271,7 +266,7 @@ near it, and it is the one that could be started tomorrow.
 |---|---|---|
 | Graphics port | `VulkanPlatform` subclass in the fork; two pure virtuals; shaped like `VulkanPlatformWindows.cpp`'s 73 lines | Dawn onto D3D12 behind Filament's WebGPU backend; nothing written inside Filament; `WebGPUPlatformWindows.cpp`'s 95 lines is the shape |
 | Front end | this host, `orblit_host_sdl.c` rewritten | the same |
-| Game logic | QuickJS or linked C++; the scene layer is the real gap | the same |
+| Game logic | linked C++; the scene layer is the real gap | the same |
 | Measured here | the Vulkan path runs on lavapipe in a container | Dawn draws Orblit's scene on Metal; 25 of 26 materials compile for WebGPU |
 | Biggest unknown | frame pacing and the memory budget | whether Dawn builds for the console at all |
 | Needs no SDK | the scene layer; the shape of both back ends; `lit.mat` vs Tint | the same |

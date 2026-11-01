@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>orblit-cook</ToolCommandName>
+    <Version>0.1.0</Version>
+    <Description>Cooks a project's assets for one or more targets and writes each target's bundle.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Asset\Orblit.Asset.csproj" />
+  </ItemGroup>
+</Project>

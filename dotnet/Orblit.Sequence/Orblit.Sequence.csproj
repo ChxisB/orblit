@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.2.1</Version>
+    <Description>Cutscenes as a function of time. A sequence is tracks of clips over a playhead; sampling it at any moment gives the whole world's worth of values, so scrubbing, replaying and stepping backwards all come out the same.</Description>
+    <!-- Track.End is the natural name. A Visual Basic caller can write [End]. -->
+    <NoWarn>$(NoWarn);CA1716</NoWarn>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>

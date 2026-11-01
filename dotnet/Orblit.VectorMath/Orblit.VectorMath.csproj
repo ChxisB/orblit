@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.20.0</Version>
+    <Description>Double precision vectors, matrices and quaternions, and the places .NET's number rules differ from the file format's.</Description>
+  </PropertyGroup>
+</Project>

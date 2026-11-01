@@ -1,8 +1,8 @@
 // The Orblit engine core: a C ABI over an archetype entity-component store.
 //
-// This header is the whole contract. Dart binds to it over dart:ffi, QuickJS
-// binds to it directly, and a console shell with no Flutter in sight binds to
-// the same functions — which is why nothing here mentions any of them.
+// This header is the whole contract. The managed host binds to it
+// through P/Invoke, and a console shell with no managed code in sight binds to
+// the same functions, which is why nothing here mentions either.
 //
 // Two ideas carry most of the design:
 //
@@ -181,7 +181,7 @@ void orblit_transform_compose(const float *translationRotationScale,
 uint32_t orblit_system_register(OrblitWorld *world, const char *name,
                                OrblitSystemFn function, void *user);
 
-/// Runs every registered system once. The caller owns the frame — Dart drives
+/// Runs every registered system once. The caller owns the frame. A managed host drives
 /// this from its frame callback, a console shell from its own loop.
 void orblit_world_tick(OrblitWorld *world, double delta);
 

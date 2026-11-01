@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.26.0</Version>
+    <Description>What a project calls its assets and what bytes they are: ids, content hashes and stores, sources layered over each other, the manifest, import settings, importers and the cook cache.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+    <ProjectReference Include="..\Orblit.Mesh\Orblit.Mesh.csproj" />
+    <ProjectReference Include="..\Orblit.Sprite\Orblit.Sprite.csproj" />
+    <ProjectReference Include="..\Orblit.Terrain\Orblit.Terrain.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Asset.Tests" />
+    <InternalsVisibleTo Include="Orblit.Cook" />
+    <InternalsVisibleTo Include="Orblit.Kit" />
+    <InternalsVisibleTo Include="Orblit.Pack" />
+  </ItemGroup>
+</Project>

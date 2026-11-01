@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <IsTestProject>true</IsTestProject>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Cells\Orblit.Cells.csproj" />
+    <ProjectReference Include="..\Orblit.Stage\Orblit.Stage.csproj" />
+    <ProjectReference Include="..\Orblit.Parity\Orblit.Parity.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="..\fixtures\orblit_stage\*.json" Link="fixtures\orblit_stage\%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

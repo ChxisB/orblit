@@ -12,7 +12,7 @@ is the part of a console port that can be written, and tested, without one.
 ```
 orblit_host_platform.h   the machine, behind eight calls
 orblit_host_sdl.c        those eight, answered with SDL3 (macOS, Linux, Windows)
-orblit_pad.h / .c        package:orblit_input's vocabulary and decisions, in C
+orblit_pad.h / .c        Orblit.Input's vocabulary and decisions, in C
 orblit_pad_test.c        that they are still the same decisions
 orblit_host.c            the frame loop, the scene, the camera and the walking
 build.sh                macOS and Linux
@@ -45,15 +45,15 @@ routed through `orblit_pad_raw` like everything else so it exercises the same
 shaping, slots and edges rather than a second path that could rot.
 `ORBLIT_HOST_VIRTUAL_PAD=1` attaches one of SDL's virtual gamepads and walks
 its stick in a circle, which is how the pad path is tested on a machine with
-no controller at all. `package:orblit_input` answers the same problem the same
-way, with `tool/virtual_pad.dart`.
+no controller at all. Orblit.Input answers the same problem the same
+way, with a virtual pad.
 
-`build.sh test` builds and runs `orblit_pad_test.c` on its own — no Filament
-SDK, no compiled materials, no SDL, no window, under a second. It is
-`package:orblit_input`'s own `shaping_test.dart` and `pads_test.dart` written
-against the C, and it exists because "the two drifting apart is a bug in
-whichever moved" is not a claim anybody can check by reading. Writing it
-found two places they already had. Every build runs it.
+`build.sh test` builds and runs `orblit_pad_test.c` on its own. It needs no
+Filament SDK, no compiled materials, no SDL and no window, and it takes under
+a second. It repeats the shaping and pad tests of Orblit.Input against the C,
+and it exists because "the two drifting apart is a bug in whichever moved" is
+not a claim anybody can check by reading. Writing it found two places they
+already had. Every build runs it.
 
 One thing worth knowing before blaming the frame loop: SDL ignores pad input
 while the window is not focused, silently, with the pad still enumerated and
@@ -62,20 +62,19 @@ a desktop application and the wrong one for a host shaped like a console
 front end, which has no unfocused window at all, so
 `SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS` is set before `SDL_Init`.
 
-Linux, in the container `tool/linux_container/Dockerfile` builds, with
-`libsdl3-dev` added — Debian trixie has SDL 3.2.10, which is new enough:
+On Linux the host was built on Debian 13 (trixie) with clang, libc++,
+`libsdl3-dev` and Xvfb. Trixie has SDL 3.2.10, which is new enough. Filament's
+Linux release needs its glibc 2.38.
 
 ```sh
-docker run --rm -v "$PWD:/work" -v "<project>/.cache:/cache:ro" \
-  orblit-linux:trixie bash -c '
-    apt-get update && apt-get install -y libsdl3-dev
-    cd /work/packages/orblit_filament/native/host
-    ORBLIT_FILAMENT_SDK=/cache/filament-1.77.0/arm-linux/filament ./build.sh
-    Xvfb :99 -screen 0 1280x800x24 & sleep 2
-    DISPLAY=:99 ./build/orblit_host'
+sudo apt-get install -y libsdl3-dev xvfb
+cd packages/orblit_filament/native/host
+ORBLIT_FILAMENT_SDK=<the Filament release linux/setup.sh unpacked> ./build.sh
+Xvfb :99 -screen 0 1280x800x24 & sleep 2
+DISPLAY=:99 ./build/orblit_host
 ```
 
-with the materials compiled for what it will run first —
+Compile the materials for what it will run first, with
 `ORBLIT_MATC_BACKENDS="vulkan opengl" darwin/setup.sh`.
 
 ## Why SDL3, and what it costs a console later
@@ -94,13 +93,13 @@ submodule. Three reasons, and the third is the one that matters:
   console vendor's redistribution rules, and no build of SDL to port — the
   cost of dropping it is deleting one file and one `pkg-config` line.
 - **SDL3 names buttons by position.** `SDL_GAMEPAD_BUTTON_SOUTH`, not
-  `_A`. That is `package:orblit_input`'s decision, arrived at independently,
+  `_A`. That is `Orblit.Input`'s decision, arrived at independently,
   which is why `orblit_host_sdl.c`'s mapping table is sixteen entries and has
   no table of per-vendor lies in it.
 
 What a system package costs: a machine without it cannot build the host, and
-the two desktops are on different SDL versions (3.4.16 on this Mac, 3.2.10 in
-the container), so anything newer than 3.2.0 is off limits. Nothing here
+the two desktops are on different SDL versions (3.4.16 on this Mac, 3.2.10 on
+Debian 13), so anything newer than 3.2.0 is off limits. Nothing here
 needs anything newer. If the host ever ships to players on a desktop rather
 than serving as a test rig, that calculation changes and vendoring becomes
 the right answer — but it is the wrong answer *for a console port*, which is
@@ -116,7 +115,7 @@ SDL's database.
 
 ## What runs, and on what
 
-| | macOS 15, M4 Pro | Linux container, arm64 |
+| | macOS 15, M4 Pro | Linux (Debian 13), arm64 |
 |---|---|---|
 | Backend | Metal | Vulkan (lavapipe) |
 | Size | 2560x1440 | 1280x720 |

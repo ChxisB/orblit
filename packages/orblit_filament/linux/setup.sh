@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Stages everything the Linux plugin needs that is too big, too generated or
+# Stages everything the Linux renderer needs that is too big, too generated or
 # too machine-specific to commit -- the Linux-shaped counterpart to
-# ../android/setup.sh and ../darwin/setup.sh, which this deliberately mirrors
-# wherever the three platforms want the same thing done.
+# ../darwin/setup.sh and ../windows/setup.sh, which this deliberately mirrors
+# wherever the platforms want the same thing done.
 #
 #   1. third_party/filament
 #        Filament 1.77.0's unpacked Linux release for this machine's
@@ -19,10 +19,9 @@
 #        there. Written into the *same* flat generated/ directory windows's
 #        setup.sh writes into, because the sources include these headers by
 #        bare name -- `#include "lit_opaque_material.h"` -- and every build
-#        puts one directory of them on the include path. CMakeLists.txt here
-#        names generated/ itself, so that flat directory is the only place
-#        this platform's materials can live. (darwin and android instead
-#        select a generated/<set>/ subdirectory: same rule, another
+#        puts one directory of them on the include path. That flat directory
+#        is the only place this platform's materials can live. (darwin
+#        selects a generated/<set>/ subdirectory instead: same rule, another
 #        directory.)
 #
 #        This is safe because each setup.sh stamps what it built the
@@ -32,10 +31,9 @@
 #        more recently". The cost is a recompile of a few seconds the first
 #        time you switch platforms; the materials are never stale. The trap
 #        to know about: after building here, ../darwin/setup.sh must be run
-#        again before building for macOS, and it will be, automatically, by
-#        the podspec's prepare_command.
+#        again before building for macOS.
 #
-#        `-p desktop`, not android's `-p mobile`: a Linux machine has a
+#        `-p desktop`: a Linux machine has a
 #        desktop-class GPU (or llvmpipe/lavapipe pretending to be one), and
 #        the desktop shader variants are what its drivers want. `matc` is a
 #        host tool -- it runs here, not on the target -- so on a Linux host
@@ -46,17 +44,14 @@
 #        same bytes.
 #
 # Re-running is cheap and idempotent. Run it after a fresh clone and any time
-# a .mat file changes. The Flutter build runs it on its own -- see
-# CMakeLists.txt -- for the same reason darwin's prepare_command does: so it
-# is automatic rather than a step somebody has to remember.
+# a .mat file changes.
 set -euo pipefail
 cd "$(dirname "$0")"
 
 FILAMENT_VERSION="v1.77.0"
 
 # packages/orblit_filament/linux -> packages/orblit_filament -> packages ->
-# worktree root -> .worktrees -> the project root .cache/ sits beside. The
-# same walk ../android/setup.sh does, for the same reason.
+# worktree root -> .worktrees -> the project root .cache/ sits beside.
 here="$(pwd)"
 worktree_root="$(cd "$here/../../.." && pwd)"
 project_root="$(cd "$worktree_root/../.." 2>/dev/null && pwd || echo "$worktree_root")"

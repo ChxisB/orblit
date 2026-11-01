@@ -1,6 +1,6 @@
 // A standalone check of the store, so a storage bug is found here rather than
 // through two language bindings. Built by tool/check_native.sh, not by the
-// package — Dart's tests cover the same ground through the ABI.
+// package. The .NET tests cover the same ground through the ABI.
 
 #include <cstdio>
 #include <cstring>

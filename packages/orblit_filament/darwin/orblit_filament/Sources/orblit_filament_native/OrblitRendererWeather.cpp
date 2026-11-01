@@ -328,7 +328,7 @@ void Renderer::setSkyEnabled(bool enabled, const float *params) {
   if (showing) {
     buildClouds();
 
-    // The order here is the order `OrblitSky.packed` writes them. It is one
+    // The order here is the order `Sky.Packed` writes them. It is one
     // array rather than a dozen arguments because the sky is one thing.
     _cloudInstance->setParameter("zenith", float3{params[0], params[1], params[2]});
     _cloudInstance->setParameter("horizon", float3{params[3], params[4], params[5]});

@@ -596,7 +596,7 @@ void Renderer::write(Surfaced &surface, const float *params, const int32_t *maps
         float4{params[22], params[23], params[24], params[25]});
   }
 
-  // kMapNames and kMapFlags are in the order the Dart side packs them. Only
+  // kMapNames and kMapFlags are in the order Orblit.Filament packs them. Only
   // the first is set for an unlit surface, which has nothing to do with the
   // rest.
 

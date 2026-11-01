@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.4.0</Version>
+    <Description>Sprites, sprite sheets and tile maps. An atlas says where each frame sits in a packed image, a tile map is read from Tiled, and the packer builds an atlas from loose images.</Description>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Orblit.Json\Orblit.Json.csproj" />
+    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
+  </ItemGroup>
+</Project>

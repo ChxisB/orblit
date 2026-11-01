@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <Version>0.1.0</Version>
+    <Description>Reads the fixtures a port is checked against and compares what the port gives with what they hold.</Description>
+  </PropertyGroup>
+</Project>

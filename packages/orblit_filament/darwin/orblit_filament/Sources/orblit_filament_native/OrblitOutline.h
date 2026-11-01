@@ -30,13 +30,13 @@ class View;
 namespace orblit {
 
 /// How many floats an outline's settings take on the wire. Agrees by hand
-/// with OrblitOutline.stride in Dart and outlineStride in the plugin; the
-/// native contract test reads all three.
+/// with `Outline.Stride` in Orblit.Filament; the
+/// native contract tests read both.
 constexpr size_t kOutlineParams = 14;
 
 /// What becomes of the parts of a highlighted object something else hides.
 ///
-/// Numbered as OrblitOccluded is in Dart.
+/// Numbered as `Occluded` is in Orblit.Filament.
 enum class Occluded : int {
   /// Drawn exactly like the visible parts. Also the cheapest, because nothing
   /// has to know what is in front of what.

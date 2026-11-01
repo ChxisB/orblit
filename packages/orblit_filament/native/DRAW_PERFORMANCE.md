@@ -1,8 +1,8 @@
 # Batching and the depth prepass
 
-Two switches on `OrblitScene` change how a scene becomes draws: `batching`,
+Two switches on `RenderScene` change how a scene becomes draws: `Batching`,
 which merges repeated objects into one instanced renderable, and
-`depthPrepass`, which draws opaque geometry into depth before shading it.
+`DepthPrepass`, which draws opaque geometry into depth before shading it.
 Neither changes the picture by more than a few pixels; what they change is
 time. This is the record of what was measured and why each one defaults the
 way it does. The doc comments on the two fields say what they do; this says
@@ -22,20 +22,20 @@ rather than drawing each crate on its own. A group past sixty-four members
 becomes more than one such renderable, because that is as many copies as one
 can carry, but it is still a handful of draws rather than one per crate.
 Nothing about the objects themselves changes — each is still its own entry
-in `objects` with its own key, moving one moves only that one, and picking
+in `Objects` with its own key, moving one moves only that one, and picking
 still answers with the one that was clicked, because picking never asks the
 renderer which entity is at a pixel; it works from this list, same as ever.
 
 ### What batches
 
 What batches is decided per publish, by counting. Four or more objects with
-the same `OrblitObject.mesh`, the same `OrblitObject.material` and the same
+the same `RenderObject.Mesh`, the same `RenderObject.Material` and the same
 flags form a group; a placeholder cube on the default surface also needs the
-same `OrblitObject.colour`, because on that surface the colour *is* the
-material. An object with `OrblitObject.morphWeights` never batches, because
+same `RenderObject.Colour`, because on that surface the colour *is* the
+material. An object with `RenderObject.MorphWeights` never batches, because
 its shape is its own, and neither does a model wearing its own file's
 materials, because every copy of a model comes with its own set of them —
-give such a model an `OrblitMaterial` and the census counts it like anything
+give such a model a `RenderMaterial` and the census counts it like anything
 else, though the renderer does not yet build a merged draw for a named mesh,
 only for the placeholder cube; such a model still draws correctly, just as
 its own renderable, unmerged.
@@ -152,7 +152,7 @@ fix for the underlying Filament bug exists, on Orblit's own Filament fork,
 in no release yet; it no longer matters to this switch, because nothing here
 depends on it any more.
 
-Turned off with `batching: false`, per scene and per publish — a scene that
+Turned off with `Batching = false`, per scene and per publish. A scene that
 wants every renderable culled on its own, or one being compared against a
 frame drawn before this was the default, says so and gets exactly the old
 path. Leaving this unset turns it on.
@@ -181,7 +181,7 @@ build a second renderable over the same geometry. A masked surface punches
 its own pixels out by alpha and a blended one never owns its pixels, so
 depth written for either would be depth in the wrong place. Anything not
 covered draws exactly as it always did — it simply gets no help. This is
-also true of objects merged by `batching`: a batched group is one instanced
+also true of objects merged by `Batching`: a batched group is one instanced
 renderable and gets no prepass, so the two switches do not compound.
 
 ### Off by default, and that is a measurement rather than caution
@@ -252,5 +252,5 @@ reject the same fragments and gain nothing, while risking an object
 vanishing outright if the two vertex shaders disagree about a position by
 one unit in the last place.
 
-Turned off with `depthPrepass: false`, which is also what leaving this unset
+Turned off with `DepthPrepass = false`, which is also what leaving this unset
 does.
