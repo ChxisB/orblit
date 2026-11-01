@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from volumes_test.dart.</summary>
 public sealed class VolumesTests
 {
     private const double Tight = 1e-12;

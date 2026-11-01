@@ -2,7 +2,7 @@ namespace Orblit.Examples.Tests;
 
 /// <summary>
 /// Frames of the effects examples that the fixture never reaches, pinned by
-/// digests from a one-off run of the Dart examples. The fixture moves each
+/// digests from a one-off run of the previous examples. The fixture moves each
 /// control at one second and only to the far end of its range.
 /// </summary>
 public sealed class EffectsFramesTests
@@ -11,7 +11,7 @@ public sealed class EffectsFramesTests
     [Theory]
     [InlineData(4.6, "d53c2b5e5cde8e08")]
     [InlineData(5.5, "cb97d067f175b94e")]
-    public void APanThatHasTurnedBackMatchesDart(double seconds, string digest)
+    public void APanThatHasTurnedBackMatchesTheFixture(double seconds, string digest)
     {
         var example = new MotionBlurExample();
         example.Control<Toggle>("Pan").Change(true);
@@ -30,7 +30,7 @@ public sealed class EffectsFramesTests
 
     /// <summary>A negative warp, which pinches rather than bulges.</summary>
     [Fact]
-    public void APincushionLensMatchesDart()
+    public void APincushionLensMatchesTheFixture()
     {
         var example = new DistortionExample();
         example.Control<Setting>("Lens warp").Change(-0.2);

@@ -64,7 +64,7 @@ public class LayoutTests
     }
 
     [Fact]
-    public void ACapitalDottedIAndTheKelvinSignAreFoldedAsDartFoldsThem()
+    public void ACapitalDottedIAndTheKelvinSignAreFoldedAsTheFixtureFoldsThem()
     {
         var dotted = new PadIdentity("N" + (char)0x130 + "NTENDO pad", vendor: 9, product: 9);
         var kelvin = new PadIdentity("DualShoc" + (char)0x212A + " pad", vendor: 9, product: 9);

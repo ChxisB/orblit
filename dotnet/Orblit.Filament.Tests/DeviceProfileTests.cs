@@ -1,7 +1,7 @@
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from device_profile_test.dart. What a device can do, read from the answers the renderer
+/// What a device can do, read from the answers the renderer
 /// sends, and the tier and budgets worked out from them.
 /// </summary>
 public sealed class DeviceProfileTests

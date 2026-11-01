@@ -2,7 +2,7 @@ using System.Text.RegularExpressions;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from motion_blur_test.dart: the motion blur pass, its dials and its native contract.</summary>
+/// <summary>The motion blur pass, its dials and its native contract.</summary>
 public sealed partial class MotionBlurTests
 {
     private static string ReadNative(string name) =>

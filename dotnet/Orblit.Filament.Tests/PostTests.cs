@@ -2,7 +2,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from post_test.dart: the image work as the renderer receives it.</summary>
+/// <summary>The image work as the renderer receives it.</summary>
 public sealed class PostTests
 {
     [Fact]

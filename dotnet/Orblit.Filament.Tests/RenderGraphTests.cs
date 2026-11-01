@@ -1,6 +1,6 @@
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from graph_test.dart: the render graph, its schedule, its faults and its wire form.</summary>
+/// <summary>The render graph, its schedule, its faults and its wire form.</summary>
 public sealed class RenderGraphTests
 {
     private const int Stride = RenderGraph.PassStride;

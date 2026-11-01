@@ -3,7 +3,7 @@ using Orblit.Parity;
 
 namespace Orblit.Examples.Tests;
 
-/// <summary>The Dart examples' ticks and control moves, one case per example.</summary>
+/// <summary>The examples' ticks and control moves, one case per example.</summary>
 internal static class ExampleFixture
 {
     public static readonly Fixture Golden = Fixture.Load("orblit_examples", "ticks");
@@ -15,13 +15,13 @@ internal static class ExampleFixture
     };
 
     /// <summary>
-    /// Examples whose Dart controls were plain widgets, which the exporter does
+    /// Examples whose controls were plain widgets, which the exporter did
     /// not see. Their own tests move them.
     /// </summary>
     public static readonly HashSet<string> Unlisted = ["Scene files"];
 
     /// <summary>
-    /// Controls the Dart examples drew as plain widgets beside listed controls,
+    /// Controls the examples drew as plain widgets beside listed controls,
     /// by example. The exporter did not see them. Their own tests move them.
     /// </summary>
     public static readonly Dictionary<string, HashSet<string>> Plain = new()
@@ -34,7 +34,7 @@ internal static class ExampleFixture
     /// <summary>
     /// The keys each example fills from what the two runtimes do not share, so
     /// they match on shape only. Most are filled from <see cref="Random"/>, and
-    /// decision 77 says why its numbers differ from the Dart generator's. The
+    /// decision 77 says why its numbers differ from the fixture's. The
     /// terrain's population revisions come from a count kept across the whole
     /// process, so they depend on what else ran first. The Bistro's mesh paths
     /// are absolute, so they name the machine that ran the exporter.
@@ -60,7 +60,7 @@ internal static class ExampleFixture
 
     /// <summary>
     /// Every example, with nowhere to keep a picture, nothing set in the
-    /// environment and no renderer. The Dart fixture was written before any
+    /// environment and no renderer. The fixture was written before any
     /// example's pictures were, so its scenes name none. Its runner never had
     /// its models, so it drew none.
     /// </summary>

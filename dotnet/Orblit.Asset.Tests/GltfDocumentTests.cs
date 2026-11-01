@@ -5,7 +5,6 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// Ported from gltf_document_test.dart.
 public sealed class GltfDocumentTests
 {
     private static readonly AssetId Id = AssetId.Parse("models/thing.glb");

@@ -1,9 +1,9 @@
 namespace Orblit.Examples.Tests;
 
 /// <summary>
-/// The controls each example shows, against the fixture. The Dart exporter
+/// The controls each example shows, against the fixture. The exporter
 /// moves every control the way <see cref="Moves(ExampleSetting)"/> does and
-/// digests the scene a second in, so a port is checked away from its
+/// digests the scene a second in, so a build is checked away from its
 /// defaults too.
 /// </summary>
 public sealed class SettingsTests
@@ -71,7 +71,7 @@ public sealed class SettingsTests
     /// <summary>
     /// Each move of a seeded example, on every key but the seeded ones. The
     /// fixture keeps only a seeded scene's shape, so these digests are from a
-    /// one-off run of the Dart exporter with those keys left out.
+    /// one-off run of the previous exporter with those keys left out.
     /// </summary>
     [Theory]
     [InlineData("Gaussian splats", 0, 0, "68f11b059452379b")]
@@ -121,7 +121,7 @@ public sealed class SettingsTests
     [InlineData("Bistro exterior", 1, 0, "9df289cc8c4fe6bf")]
     [InlineData("Bistro exterior", 2, 0, "c568c4da6b63976e")]
     [InlineData("Bistro interior", 0, 0, "1716b06f22fbe851")]
-    public void EachSeededMoveMatchesDartAroundItsSeededKeys(string name, int control, int move, string rest)
+    public void EachSeededMoveMatchesTheFixtureAroundItsSeededKeys(string name, int control, int move, string rest)
     {
         var example = ExampleFixture.Example(name);
         Moves(Controls(example)[control])[move]();

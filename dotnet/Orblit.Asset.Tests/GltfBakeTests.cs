@@ -3,7 +3,6 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// Ported from gltf_bake_test.dart.
 public sealed class GltfBakeTests
 {
     private static readonly Matrix4[] One = [Matrix4.Identity()];

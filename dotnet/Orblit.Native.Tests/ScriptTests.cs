@@ -203,7 +203,7 @@ public sealed class ScriptTests : IDisposable
     }
 
     [Fact]
-    public void TheExampleInThePackageIsAScriptThatBuilds()
+    public void TheExampleScriptBuilds()
     {
         var built = Runner().Add(new FileInfo(Path.Combine(AppContext.BaseDirectory, "example", "spinner.cpp")));
 

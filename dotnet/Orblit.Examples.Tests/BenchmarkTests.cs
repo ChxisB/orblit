@@ -36,7 +36,7 @@ public sealed class BenchmarkTests
 
         Assert.Equal(first.Transforms, second.Transforms);
         Assert.Equal(first.Colours, second.Colours);
-        // Pinned from this port's own run. The Dart field came from another generator.
+        // Pinned from this code's own run. The fixture's field came from another generator.
         Assert.Equal("a0ec9c347745f2eb", SceneDigest.Raw(first.Transforms));
         Assert.Equal("f8c71c72244b7d14", SceneDigest.Raw(first.Colours));
     }

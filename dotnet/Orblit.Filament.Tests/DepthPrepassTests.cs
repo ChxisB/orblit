@@ -1,6 +1,5 @@
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from depth_prepass_test.dart.</summary>
 public sealed class DepthPrepassTests
 {
     private static RenderScene Row(bool? depthPrepass = null) =>

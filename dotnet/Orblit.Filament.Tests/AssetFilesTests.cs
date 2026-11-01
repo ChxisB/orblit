@@ -1,7 +1,7 @@
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from asset_files_test.dart. The lookup belongs to a package source, so these run against
+/// The lookup belongs to a package source, so these run against
 /// a fake one and check what the caller makes of each answer.
 /// </summary>
 public sealed class AssetFilesTests

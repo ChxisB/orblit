@@ -28,7 +28,7 @@ public sealed class PicturesTests
     }
 
     /// <summary>
-    /// The pixels of every picture drawn, pinned by hash. The Dart gallery's
+    /// The pixels of every picture drawn, pinned by hash. The previous gallery's
     /// materials and decals pictures matched these on every opaque pixel and
     /// every alpha, and its sprite sheet on every byte. Blending seeds a
     /// different generator, so its stones are only pinned to stay the same

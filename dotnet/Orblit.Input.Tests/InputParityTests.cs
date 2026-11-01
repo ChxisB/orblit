@@ -27,11 +27,11 @@ public class InputParityTests
     private static JsonArray Triple(Shaping s) => Array([Num(s.Inner), Num(s.Outer), Num(s.Curve)]);
 
     [Fact]
-    public void AScalarIsShapedAsDartShapesIt() =>
+    public void AScalarIsShapedAsTheFixtureShapesIt() =>
         Input.Check("scalar", c => Num(ShapingOf(c.GetProperty("spec")).Scalar(Read(c.GetProperty("spec"), "value"))));
 
     [Fact]
-    public void AStickIsShapedAsDartShapesIt() =>
+    public void AStickIsShapedAsTheFixtureShapesIt() =>
         Input.Check("stick", c =>
         {
             var spec = c.GetProperty("spec");
@@ -40,7 +40,7 @@ public class InputParityTests
         });
 
     [Fact]
-    public void AnAxisRangeReadsAValueAsDartReadsIt() =>
+    public void AnAxisRangeReadsAValueAsTheFixtureReadsIt() =>
         Input.Check("range", c =>
         {
             var spec = c.GetProperty("spec");
@@ -58,14 +58,14 @@ public class InputParityTests
         });
 
     [Fact]
-    public void ACapabilityLineIsReadAsDartReadsIt() =>
+    public void ACapabilityLineIsReadAsTheFixtureReadsIt() =>
         Input.Check("bitmap", c =>
             Array(EvdevCapabilities.ParseBitmap(c.GetProperty("spec").GetProperty("line").GetString()!)
                 .Order()
                 .Select(bit => (JsonNode?)JsonValue.Create(bit))));
 
     [Fact]
-    public void ARecordSplitAnywhereDecodesAsDartDecodesIt() => Input.Check("decode", c => Decode(c.GetProperty("spec")));
+    public void ARecordSplitAnywhereDecodesAsTheFixtureDecodesIt() => Input.Check("decode", c => Decode(c.GetProperty("spec")));
 
     private static JsonArray Decode(JsonElement spec)
     {
@@ -93,7 +93,7 @@ public class InputParityTests
     }
 
     [Fact]
-    public void ALayoutIsChosenAsDartChoosesIt() => Input.Check("layout", c => LayoutOf(c.GetProperty("spec")));
+    public void ALayoutIsChosenAsTheFixtureChoosesIt() => Input.Check("layout", c => LayoutOf(c.GetProperty("spec")));
 
     private static JsonObject LayoutOf(JsonElement spec)
     {
@@ -119,7 +119,7 @@ public class InputParityTests
         new(map.OrderBy(e => e.Key).Select(e => KeyValuePair.Create(e.Key.ToString(System.Globalization.CultureInfo.InvariantCulture), (JsonNode?)e.Value)));
 
     [Fact]
-    public void AScriptedSessionReadsAsDartReadsIt() => Input.Check("pads", c => RunPads(c.GetProperty("spec")));
+    public void AScriptedSessionReadsAsTheFixtureReadsIt() => Input.Check("pads", c => RunPads(c.GetProperty("spec")));
 
     private static RecordedPad DeviceOf(JsonElement spec) =>
         new(

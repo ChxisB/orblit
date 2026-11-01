@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from asset_info_test.dart.</summary>
 public sealed class AssetInfoTests
 {
     // What the renderer said about the fox and a lamp, shortened, in the shape it writes it.

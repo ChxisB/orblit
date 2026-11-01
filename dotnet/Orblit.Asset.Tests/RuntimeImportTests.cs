@@ -3,7 +3,6 @@ using System.Text.Json;
 
 namespace Orblit.Asset.Tests;
 
-// Ported from test/runtime_import_test.dart, test for test.
 public sealed class RuntimeImportTests
 {
     private readonly MemoryCookCache _cache = new();

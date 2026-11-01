@@ -33,13 +33,13 @@ public sealed class VoxelTests
 
         Assert.Equal(first.Transforms, again.Transforms);
         Assert.Equal(first.Colours, again.Colours);
-        // Pinned from this port's own run. The Dart trees came from another generator.
+        // Pinned from this code's own run. The fixture's trees came from another generator.
         Assert.Equal("e1163348d0f14cc1", SceneDigest.Raw(first.Transforms));
         Assert.Equal("a0823583d2126334", SceneDigest.Raw(first.Colours));
     }
 
     /// <summary>
-    /// Each world against Dart's, with its trees off. Nothing else in a world
+    /// Each world against the fixture, with its trees off. Nothing else in a world
     /// is random, so the whole frame matches. With trees, worlds 2 and 3 grow
     /// one in the middle and stand the body on it.
     /// </summary>
@@ -48,7 +48,7 @@ public sealed class VoxelTests
     [InlineData("2", "44ffbfb8e62373ea")]
     [InlineData("3", "2f8f13433930de94")]
     [InlineData("4", "71002fde19133b41")]
-    public void EachWorldWithoutTreesMatchesDart(string world, string frame)
+    public void EachWorldWithoutTreesMatchesTheFixture(string world, string frame)
     {
         var example = new VoxelExample();
         example.Control<Toggle>("Trees").Change(false);
@@ -244,7 +244,7 @@ public sealed class VoxelTests
         Assert.InRange(eye.Y - 1.62, 4, 4.08);
     }
 
-    /// <summary>Half a block rounds away from zero, as Dart's round does.</summary>
+    /// <summary>Half a block rounds away from zero, as the fixture's rounding does.</summary>
     [Fact]
     public void HalfABlockOfReachRoundsUp()
     {

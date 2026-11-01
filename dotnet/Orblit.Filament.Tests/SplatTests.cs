@@ -4,7 +4,7 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from splats_test.dart. Gaussian splats as they cross to the renderer: the compact
+/// Gaussian splats as they cross to the renderer: the compact
 /// records a cloud made in code is packed into, and the message that carries clouds. The records
 /// are read on the far side by the same C++ that reads a <c>.splat</c> file, so the layout here has
 /// to be that file's layout byte for byte.

@@ -6,7 +6,7 @@ using Orblit.Filament;
 namespace Orblit.Examples.Tests;
 
 /// <summary>
-/// The bytes the Dart exporter digests, written the same way. A message value
+/// The bytes the exporter digests, written the same way. A message value
 /// is its type letter, its length and its raw bytes. A digest is FNV-1a over
 /// 64 bits.
 /// </summary>

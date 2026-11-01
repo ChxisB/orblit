@@ -2,7 +2,7 @@ namespace Orblit.Examples.Tests;
 
 /// <summary>
 /// Frames of the atmosphere examples that the fixture never reaches, pinned
-/// by digests from a one-off run of the Dart examples. The fixture covers
+/// by digests from a one-off run of the previous examples. The fixture covers
 /// five seconds and moves each control at one. So a sunset, the walk back out
 /// of the hall and a lightning strike would otherwise go unchecked.
 /// </summary>
@@ -14,7 +14,7 @@ public sealed class AtmosphereFramesTests
     [InlineData(6.3, "a5c458fdeda4b2b3")]
     [InlineData(7.0, "431cfda811712b98")]
     [InlineData(17.8, "a4fc7f291c3e3ee5")]
-    public void TheSkyAtDawnAndDuskMatchesDart(double hour, string digest)
+    public void TheSkyAtDawnAndDuskMatchesTheFixture(double hour, string digest)
     {
         var example = new DayAndNightExample();
         example.Control<Toggle>("Running").Change(false);
@@ -33,12 +33,12 @@ public sealed class AtmosphereFramesTests
     }
 
     [Fact]
-    public void TheWalkBackOutMatchesDart() =>
+    public void TheWalkBackOutMatchesTheFixture() =>
         Assert.Equal("9feeb2a55993499a", SceneDigest.Of(SceneDigest.Message(new VolumesExample(), 18)));
 
     /// <summary>The back of the hall, where the damp corner overlaps the hall and wins.</summary>
     [Fact]
-    public void TheDampCornerMatchesDart()
+    public void TheDampCornerMatchesTheFixture()
     {
         var example = new VolumesExample();
         example.Control<Setting>("Where").Change(0.95);
@@ -48,7 +48,7 @@ public sealed class AtmosphereFramesTests
 
     /// <summary>A storm at a second its lightning is striking.</summary>
     [Fact]
-    public void AStrikeMatchesDart()
+    public void AStrikeMatchesTheFixture()
     {
         var example = new WeatherExample();
         // The condition list always picks.

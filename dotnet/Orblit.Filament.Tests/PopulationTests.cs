@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from population_test.dart.</summary>
 public sealed class PopulationTests
 {
     private static Population Crowd(int count, int revision = 1, int key = 1) =>

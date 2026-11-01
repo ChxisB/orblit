@@ -1,7 +1,7 @@
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from resources_test.dart. The store is native, so these run against it and not against a
+/// The store is native, so these run against it and not against a
 /// recording of the calls.
 /// </summary>
 public sealed class ResourcesTests

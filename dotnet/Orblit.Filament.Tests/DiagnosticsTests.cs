@@ -3,7 +3,7 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from diagnostics_test.dart. The rows that say what a scene submitted: one for each draw,
+/// The rows that say what a scene submitted: one for each draw,
 /// one for each material, and one for each pass of a frame.
 /// </summary>
 public sealed class DiagnosticsTests

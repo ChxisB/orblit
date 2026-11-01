@@ -3,9 +3,8 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from feed_test.dart: a feed as it is made and as it enters the scene message. What the
-/// platform does with a picture is native and is checked there. The test of a platform whose
-/// plugin has no code for feeds has no counterpart, as a library either has the call or does not load.
+/// A feed as it is made and as it enters the scene message. What the
+/// platform does with a picture is native and is checked there.
 /// </summary>
 public sealed class FeedTests
 {

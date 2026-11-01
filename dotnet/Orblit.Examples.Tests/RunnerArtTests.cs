@@ -8,9 +8,9 @@ namespace Orblit.Examples.Tests;
 
 /// <summary>
 /// The runner's models and pictures. Every file made without a random draw is
-/// pinned by hash to the bytes the Dart runner made. The bushes and the two
+/// pinned by hash to the bytes the fixture's runner made. The bushes and the two
 /// pictures draw from <see cref="Random"/>, which gives other numbers than the
-/// Dart's generator, so they are pinned on what no draw changes.
+/// fixture's generator, so they are pinned on what no draw changes.
 /// </summary>
 public sealed class RunnerArtTests
 {
@@ -82,7 +82,7 @@ public sealed class RunnerArtTests
     [InlineData("pine.glb", 14636, "9ecf7b2418bcd22a6897d779a35589618f2317c9030f1496c0b0cb373d1545d1")]
     [InlineData("road.glb", 19476, "4accb3e6358bed4df51b5e7a70c1cc5d4fad6e81927453485587b24ae0699767")]
     [InlineData("rock.glb", 6996, "b2901c4352ac63bd43ccc7cce759ac0c663641b37584c1607e69cddb804d95da")]
-    public void AModelWithNoRandomDrawIsTheBytesTheDartMade(string file, int length, string sha)
+    public void AModelWithNoRandomDrawMatchesTheFixture(string file, int length, string sha)
     {
         var bytes = Files[RunnerArt.Name(file)];
 
@@ -92,13 +92,13 @@ public sealed class RunnerArtTests
 
     /// <summary>
     /// The leaves come first in the binary and draw nothing, so they match the
-    /// Dart's bytes. The flowers fall where the draws put them, but each is the
+    /// fixture's bytes. The flowers fall where the draws put them, but each is the
     /// same ball, so the binary keeps its length.
     /// </summary>
     [Theory]
     [InlineData("bush.glb", "[{\"pbrMetallicRoughness\":{\"baseColorFactor\":[0.04817182422688942,0.33245153634617935,0.04091519690685319,1.0],\"metallicFactor\":0.0,\"roughnessFactor\":0.8}},{\"pbrMetallicRoughness\":{\"baseColorFactor\":[0.7454042095403874,0.052860647023180246,0.04970656598412723,1.0],\"metallicFactor\":0.0,\"roughnessFactor\":0.8}}]")]
     [InlineData("red_bush.glb", "[{\"pbrMetallicRoughness\":{\"baseColorFactor\":[0.5711248294648731,0.0295568344378088,0.02518685962736163,1.0],\"metallicFactor\":0.0,\"roughnessFactor\":0.8}},{\"pbrMetallicRoughness\":{\"baseColorFactor\":[0.8713671191987972,0.25415209433082675,0.042311410620809675,1.0],\"metallicFactor\":0.0,\"roughnessFactor\":0.8}}]")]
-    public void ABushHasTheDartLeavesAndColoursWhereverItsFlowersFall(string file, string materials)
+    public void ABushHasTheFixtureLeavesAndColoursWhereverItsFlowersFall(string file, string materials)
     {
         var bytes = Files[RunnerArt.Name(file)];
         var jsonLength = (int)Word(bytes, 12);
@@ -113,10 +113,10 @@ public sealed class RunnerArtTests
 
     /// <summary>
     /// Each pixel of the asphalt read as paint, kerb or bare road by its red.
-    /// The draws only shade each of those, so the map is the Dart's.
+    /// The draws only shade each of those, so the map is the fixture's.
     /// </summary>
     [Fact]
-    public void TheAsphaltIsPaintedWhereTheDartPaintedIt()
+    public void TheAsphaltIsPaintedWhereTheFixturePaintedIt()
     {
         var picture = PngCodec.Decode(Files[RunnerArt.Asphalt]);
         var map = new StringBuilder();

@@ -3,7 +3,6 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// Ported from gltf_atlas_test.dart.
 public sealed class GltfAtlasTests
 {
     private static readonly int[] Red = [220, 40, 40, 255];

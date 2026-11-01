@@ -14,11 +14,11 @@ public class ActionParityTests
     private static readonly string[] ContextNames = ["play", "vehicle", "menu"];
 
     [Fact]
-    public void AControlIsReadAsDartReadsIt() =>
+    public void AControlIsReadAsTheFixtureReadsIt() =>
         Source.Check("control", c => Run(() => Node(Control.FromJson(Plain(c.GetProperty("json"))).ToJson())));
 
     [Fact]
-    public void AFrameIsReadAsDartReadsIt() =>
+    public void AFrameIsReadAsTheFixtureReadsIt() =>
         Source.Check("frame", c =>
         {
             var frame = FrameOf(c.GetProperty("frame"));
@@ -31,16 +31,16 @@ public class ActionParityTests
         });
 
     [Fact]
-    public void ASessionRunsAsDartRunsIt() => Source.Check("session", RunSession);
+    public void ASessionRunsAsTheFixtureRunsIt() => Source.Check("session", RunSession);
 
     [Fact]
-    public void AProfileLoadsAsDartLoadsIt() => Source.Check("load", RunLoad);
+    public void AProfileLoadsAsTheFixtureLoadsIt() => Source.Check("load", RunLoad);
 
     [Fact]
-    public void TheNextPressIsCapturedAsDartCapturesIt() => Source.Check("next", RunNext);
+    public void TheNextPressIsCapturedAsTheFixtureCapturesIt() => Source.Check("next", RunNext);
 
     [Fact]
-    public void TouchPayloadsAreReadAsDartReadsThem() => Source.Check("touch", RunTouch);
+    public void TouchPayloadsAreReadAsTheFixtureReadsThem() => Source.Check("touch", RunTouch);
 
     private static JsonValue Num(double value) =>
         double.IsFinite(value)

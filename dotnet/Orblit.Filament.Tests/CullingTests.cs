@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from culling_test.dart. The seeded cross-checks draw from a different sequence than the original.</summary>
 public sealed class CullingTests
 {
     private static Bounds CubeAt(double x, double y, double z, double half = 0.5) =>

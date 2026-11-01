@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from layers_test.dart.</summary>
 public sealed class LayersTests
 {
     private static int Flags(int layer)

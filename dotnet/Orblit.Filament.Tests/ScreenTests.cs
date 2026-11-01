@@ -3,7 +3,7 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from screen_test.dart: the god rays and the distortion as they are packed, and the
+/// The god rays and the distortion as they are packed, and the
 /// passes they add to the graph.
 /// </summary>
 public sealed class ScreenTests

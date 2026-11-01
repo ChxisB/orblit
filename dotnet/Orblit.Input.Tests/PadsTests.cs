@@ -10,7 +10,7 @@ public class PadsTests
     private const int AbsHat0X = 0x10;
     private const int AbsHat0Y = 0x11;
 
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     private static RecordedPad Pad(
         string path = "usb-0000:00:14.0-1/input0",
         string uniq = "",

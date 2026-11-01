@@ -33,7 +33,7 @@ public sealed class CrowdTests
 
         Assert.Equal(first.Transforms, second.Transforms);
         Assert.Equal(first.Colours, second.Colours);
-        // Pinned from this port's own run. The Dart crowd came from another generator.
+        // Pinned from this code's own run. The fixture's crowd came from another generator.
         Assert.Equal("32b5478fc350aadd", SceneDigest.Raw(first.Transforms));
         Assert.Equal("024087d05eb68090", SceneDigest.Raw(first.Colours));
     }

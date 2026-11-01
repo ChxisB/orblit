@@ -1,7 +1,7 @@
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from terrain_test.dart. Terrain as it crosses to the renderer: three arrays read in
+/// Terrain as it crosses to the renderer: three arrays read in
 /// step, and which of a terrain's pictures and regions travel at all.
 /// </summary>
 public sealed class TerrainTests

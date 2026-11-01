@@ -2,7 +2,7 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from environment_test.dart: the environment, the probes and the field as they cross.</summary>
+/// <summary>The environment, the probes and the field as they cross.</summary>
 public sealed class EnvironmentTests
 {
     private static RenderScene SceneWith(

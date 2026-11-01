@@ -2,7 +2,6 @@ using static Orblit.Asset.Tests.GltfFixtures;
 
 namespace Orblit.Asset.Tests;
 
-// Ported from gltf_merge_test.dart.
 public sealed class GltfMergeTests
 {
     private static Task<GltfDocument> Open(QuadModel model) =>

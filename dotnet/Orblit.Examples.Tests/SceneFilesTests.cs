@@ -73,9 +73,9 @@ public sealed class SceneFilesTests
         Assert.Equal(0, example.Control<Setting>("Lift the crate").Value);
     }
 
-    /// <summary>The Dart slider ran from 0 to 5 and printed one decimal and a unit.</summary>
+    /// <summary>The slider runs from 0 to 5 and prints one decimal and a unit.</summary>
     [Fact]
-    public void TheLiftReadsAsTheDartOneDid()
+    public void TheLiftReadsAsTheFixtureOneDid()
     {
         var lift = new SceneFilesExample().Control<Setting>("Lift the crate");
 
@@ -115,17 +115,17 @@ public sealed class SceneFilesTests
     }
 
     /// <summary>
-    /// Digests from a one-off run of the Dart example. The fixture only draws
-    /// the solid document at rest. The Dart view handed a sprite's colour to the
+    /// Digests from a one-off run of the previous example. The fixture only draws
+    /// the solid document at rest. The previous view handed a sprite's colour to the
     /// renderer unconverted, where the renderer reads linear light, so the 2D
-    /// run had that one conversion added. Without it Dart gives
+    /// run had that one conversion added. Without it the previous run gives
     /// 6719f33f36393c0b and 9f7a3050f64e634f, and only the sprite colours differ.
     /// </summary>
     [Theory]
     [InlineData("2D scene", null, "7be59899b0d465be")]
     [InlineData("3D scene", 3.0, "48f82629872f03fd")]
     [InlineData("2D scene", 2.0, "d8dcd631bc72ea4e")]
-    public void ADocumentMatchesDart(string document, double? lift, string digest)
+    public void ADocumentMatchesTheFixture(string document, double? lift, string digest)
     {
         var example = new SceneFilesExample();
         Show(example, document);

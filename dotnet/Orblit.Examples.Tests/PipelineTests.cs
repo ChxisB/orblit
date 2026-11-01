@@ -23,7 +23,7 @@ public sealed class PipelineTests
         Assert.Equal(drawn.ToString(), Assert.IsType<Choice>(example.Settings()[0]).Selected);
     }
 
-    // The three below follow Dart's handlers, which the fixture's moves never
+    // The three below follow handlers that the fixture's moves never
     // reach: they start at Medium and go only to the ends of a range.
     [Fact]
     public void ShadowsOffHidesTheirControls()

@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from decal_test.dart.</summary>
 public sealed class DecalTests
 {
     private static RenderScene SceneOf(params Decal[] decals) =>

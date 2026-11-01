@@ -3,7 +3,7 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from outline_test.dart. The outline as it leaves the packer: which keys, in what
+/// The outline as it leaves the packer: which keys, in what
 /// order, and the row of settings the renderer reads by position.
 /// </summary>
 public sealed class OutlineTests

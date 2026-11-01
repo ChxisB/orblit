@@ -3,13 +3,13 @@ namespace Orblit.Examples.Tests;
 /// <summary>
 /// The cameras example away from what the fixture reaches. The fixture never
 /// changes shot part way through a run, so it never sees a blend, and it reads
-/// one frame after each move. The digests come from a one-off run of the Dart
+/// one frame after each move. The digests come from a one-off run of the previous
 /// example over the same frames.
 /// </summary>
 public sealed class CamerasTests
 {
     [Fact]
-    public void ALinearBlendToTheOrbitMatchesDart()
+    public void ALinearBlendToTheOrbitMatchesTheFixture()
     {
         var example = new CamerasExample();
 
@@ -28,7 +28,7 @@ public sealed class CamerasTests
     /// fixture's widest one holds the subject anywhere the chase puts it.
     /// </summary>
     [Fact]
-    public void ANarrowDeadZoneMatchesDart()
+    public void ANarrowDeadZoneMatchesTheFixture()
     {
         var example = new CamerasExample();
         example.Control<Setting>("Dead zone").Change(0.05);
@@ -41,7 +41,7 @@ public sealed class CamerasTests
     /// flat shot stops at it rather than following.
     /// </summary>
     [Fact]
-    public void TheFlatShotStopsAtTheLevelsEdgeAsInDart()
+    public void TheFlatShotStopsAtTheLevelsEdgeAsInTheFixture()
     {
         var example = new CamerasExample();
         Pick(example, "Live", "Flat");
@@ -72,8 +72,8 @@ public sealed class CamerasTests
     }
 
     /// <summary>
-    /// What the gallery draws over the frame. The Dart worked this out inside a
-    /// painter, so no Dart test reached it.
+    /// What the gallery draws over the frame. The previous code worked this out inside a
+    /// painter, so no test reached it.
     /// </summary>
     [Fact]
     public void TheFramingFollowsTheLiveShotAndHidesWhenAsked()

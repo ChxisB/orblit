@@ -3,7 +3,7 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from sprites_test.dart. Sprite layers as they cross to the renderer: the records a
+/// Sprite layers as they cross to the renderer: the records a
 /// sprite is packed into, a layer's settings, and when its sprites travel at all.
 /// </summary>
 public sealed class SpriteTests

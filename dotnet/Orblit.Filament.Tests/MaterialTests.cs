@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from material_test.dart.</summary>
 public sealed class MaterialTests
 {
     private static RenderScene SceneOf(IReadOnlyList<RenderObject> objects, IReadOnlyList<RenderMaterial> materials) =>

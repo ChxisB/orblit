@@ -3,7 +3,7 @@ using Orblit.VectorMath;
 namespace Orblit.Filament.Tests;
 
 /// <summary>
-/// Ported from lighting_test.dart: the lights as they are packed, and the light clustering that
+/// The lights as they are packed, and the light clustering that
 /// rides on the end of the pipeline block.
 /// </summary>
 public sealed class LightingTests

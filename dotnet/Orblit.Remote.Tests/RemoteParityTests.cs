@@ -12,7 +12,7 @@ public class RemoteParityTests
     private static JsonNode? Node(object? value) => JsonNode.Parse(JsonText.Encode(value));
 
     [Fact]
-    public void TwoDocumentsDifferWhereDartSaysTheyDo() =>
+    public void TwoDocumentsDifferWhereTheFixtureSaysTheyDo() =>
         Diff.Check("diff", c =>
         {
             var found = JsonDiff.Find(

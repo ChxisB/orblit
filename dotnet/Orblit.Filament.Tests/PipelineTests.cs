@@ -1,6 +1,6 @@
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from pipeline_test.dart: the quality dials as the renderer receives them.</summary>
+/// <summary>The quality dials as the renderer receives them.</summary>
 public sealed class PipelineTests
 {
     private static readonly Detail[] Details = Enum.GetValues<Detail>();

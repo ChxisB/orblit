@@ -1,6 +1,5 @@
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from batching_test.dart.</summary>
 public sealed class BatchingTests
 {
     private static RenderScene Row(bool? batching = null) =>

@@ -1,6 +1,5 @@
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from surface_test.dart.</summary>
 public sealed class SurfaceTests
 {
     private static readonly Texture Picture = new("/art/noise.png", Srgb: false);

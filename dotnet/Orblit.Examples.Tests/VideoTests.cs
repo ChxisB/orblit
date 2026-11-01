@@ -70,7 +70,7 @@ public sealed class VideoTests
 
     /// <summary>
     /// With no film the stage says how to get one, and the picker beside the path
-    /// says whether it is the first. The Dart drew both in its overlay.
+    /// says whether it is the first. The previous overlay drew both.
     /// </summary>
     [Fact]
     public void WithNoFilmTheStageSaysHowToChooseOne()
@@ -100,9 +100,9 @@ public sealed class VideoTests
         Assert.Equal((2.0, 2L), (video.SeekTo, video.SeekToken));
     }
 
-    /// <summary>The Dart rate ran from -2 to 3, so a film can play backwards, and the field showed an example path.</summary>
+    /// <summary>The rate runs from -2 to 3, so a film can play backwards, and the field shows an example path.</summary>
     [Fact]
-    public void TheControlsReadAsTheDartOnesDid()
+    public void TheControlsMatchTheFixture()
     {
         var example = new VideoExample(_ => null, OnDisk.Contains);
         var rate = example.Control<Setting>("Rate");

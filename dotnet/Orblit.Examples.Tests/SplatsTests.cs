@@ -191,7 +191,7 @@ public sealed class SplatsTests
         }).ToList();
 
         Assert.Equal(clouds[0], clouds[1]);
-        // Pinned from this port's own run. The Dart clouds came from another generator.
+        // Pinned from this code's own run. The fixture's clouds came from another generator.
         Assert.Equal(pinned, SceneDigest.Raw(clouds[0] ?? []));
     }
 

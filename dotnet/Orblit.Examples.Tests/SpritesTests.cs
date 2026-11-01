@@ -3,7 +3,7 @@ using Orblit.Filament;
 namespace Orblit.Examples.Tests;
 
 /// <summary>
-/// The sprites example with its sheet kept. The fixture ran before the Dart
+/// The sprites example with its sheet kept. The fixture ran before the
 /// sheet was painted, so its scenes have no layers.
 /// </summary>
 public sealed class SpritesTests
@@ -11,7 +11,7 @@ public sealed class SpritesTests
     private static readonly RenderCamera Camera = new ViewPoint().ToRenderCamera();
 
     /// <summary>
-    /// Digests from a one-off run of the Dart example with its atlas set at
+    /// Digests from a one-off run of the previous example with its atlas set at
     /// once. The coins are seeded from a different generator, so as decision 77
     /// has it they match on shape only. Everything else matches on value: every
     /// key but the sprite floats, and the backdrop and spark floats on their own.
@@ -21,7 +21,7 @@ public sealed class SpritesTests
     [InlineData("soft", 0.7, "099b2c269dd8f5c7", "a7dd84d3b5080563", "d85fcacbcdbf590d")]
     [InlineData("still", 2.0, "13100fabf783a916", "03de183f8782452a", null)]
     [InlineData("wrap", 2.0, "386769810e16d368", "063eee6505bce163", "6263dde057b7ff29")]
-    public void TheSceneMatchesDart(string setting, double seconds, string rest, string shape, string? sparks)
+    public void TheSceneMatchesTheFixture(string setting, double seconds, string rest, string shape, string? sparks)
     {
         var example = new SpritesExample(new Named());
         Set(example, setting);
@@ -56,7 +56,7 @@ public sealed class SpritesTests
 
         Assert.Equal(first, second);
         Assert.Equal(2000, first.Length / LayerSprite.Stride);
-        // Pinned from this port's own run. The Dart crowd came from another generator.
+        // Pinned from this code's own run. The fixture's crowd came from another generator.
         Assert.Equal("49e6e7f5e83450ab", SceneDigest.Raw(first));
     }
 
@@ -124,7 +124,7 @@ public sealed class SpritesTests
         select(option);
     }
 
-    /// <summary>Names the sheet as the Dart run did, so the layers' paths match its digests.</summary>
+    /// <summary>Names the sheet as the fixture's run did, so the layers' paths match its digests.</summary>
     private sealed class Named : IPictureFolder
     {
         public string? Keep(string example, string name, int size, byte[] rgba) =>

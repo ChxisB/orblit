@@ -55,7 +55,7 @@ public sealed class BistroTests
         Assert.Equal([(100L, 5200.0), (101L, 900.0), (1L, 4.0)], example.Scene(Camera, 0).Lights.Select(light => (light.Key, light.Intensity)));
     }
 
-    /// <summary>The Dart dropped a fitting under the threshold, so one at it stays.</summary>
+    /// <summary>A fitting under the threshold is dropped, so one at it stays.</summary>
     [Fact]
     public void AFittingAtTheThresholdStays()
     {
@@ -179,7 +179,7 @@ public sealed class BistroTests
 
     /// <summary>
     /// The walk through its first cycle and into the second, from a one-off
-    /// run of the Dart example with the mesh path left out. Out to the far
+    /// run of the previous example with the mesh path left out. Out to the far
     /// turn is about forty seconds and home again about eighty-five.
     /// </summary>
     [Theory]
@@ -188,7 +188,7 @@ public sealed class BistroTests
     [InlineData(60, "f0fccff55d2a9b92")]
     [InlineData(82.5, "e9deccea41e76573")]
     [InlineData(100, "f5257487acb649d1")]
-    public void TheWalkMatchesDartThroughACycle(double seconds, string rest)
+    public void TheWalkMatchesTheFixtureThroughACycle(double seconds, string rest)
     {
         var message = SceneDigest.Message(new BistroExteriorExample(_ => null, _ => false, _ => ""), seconds);
         message.Remove("meshPaths");
@@ -293,9 +293,9 @@ public sealed class BistroTests
         Assert.Equal(["tool/fetch_bistro.sh", "interior"], example.Needs?.Command);
     }
 
-    /// <summary>The fixture moved no camera, so these are the Dart's by hand.</summary>
+    /// <summary>The fixture moved no camera, so these are worked out by hand.</summary>
     [Fact]
-    public void EachOpensWhereTheDartOpened()
+    public void EachOpensWhereTheFixtureOpened()
     {
         Assert.Equal(new ViewPoint { Distance = 22, Pitch = 0.20, Height = 3, Yaw = 2.2 }, Exterior(Folder.Fetched()).ViewPoint);
         Assert.Equal(new ViewPoint { Distance = 9, Pitch = 0.06, Height = 1.7, Yaw = 0.4 }, Interior(Folder.Fetched()).ViewPoint);

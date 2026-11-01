@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from detail_test.dart.</summary>
 public sealed class LevelOfDetailTests
 {
     private static readonly LevelOfDetail Tree = new(

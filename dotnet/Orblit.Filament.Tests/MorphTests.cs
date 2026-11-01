@@ -2,7 +2,6 @@ using Orblit.VectorMath;
 
 namespace Orblit.Filament.Tests;
 
-/// <summary>Ported from morph_test.dart.</summary>
 public sealed class MorphTests
 {
     private static RenderObject One(long key, double[]? shapes = null) =>
