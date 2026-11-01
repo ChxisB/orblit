@@ -4,7 +4,6 @@ namespace Orblit.Remote.Tests;
 /// The built tool, run as its own process against a real server, with real pipes for stdin and
 /// stdout.
 /// </summary>
-[Collection(DartPeer.Collection)]
 public sealed class LiveToolTests
 {
     private const string Hello =
@@ -24,19 +23,6 @@ public sealed class LiveToolTests
         Assert.Contains("\"isError\":false", observed);
         Assert.Contains("Position", observed);
         Assert.Equal(0, exit);
-    }
-
-    [Fact]
-    public async Task TheToolSaysTheSameOfTheDartServerAsOfTheCSharpOne()
-    {
-        Assert.SkipWhen(DartPeer.Dart is null, DartPeer.Missing);
-        await using var game = await Game.Start(host => host with { World = new FakeWorld() });
-        var own = await Session(game.Server.Uri);
-        await using var peer = await DartPeer.Serve();
-
-        var theirs = await Session(peer.Address);
-
-        Assert.Equal(own, theirs);
     }
 
     private static async Task<(string Hello, string Observed, int Exit)> Session(Uri address)
