@@ -53,14 +53,17 @@ listed_in "$plugins/common" cc ORBLIT_COMMON_DIR "shared plugin source" \
 
 # 2. No new very long file.
 #
-# A limit with nothing exempted from it. There was a list of files already
-# over, kept as debt; it is empty now, and the point of the limit is that a
-# new one cannot appear quietly the way OrblitRendererCore.cpp reached 7,675.
+# A limit with one exemption. There was a list of files already over, kept as
+# debt; it is empty now, and the point of the limit is that a new one cannot
+# appear quietly the way OrblitRendererCore.cpp reached 7,675.
+#
+# tool/parity is the exception. Its exporters wrote the fixtures the C# tests
+# read, and they go when the Dart goes, so splitting them buys nothing.
 LIMIT=1500
 over=$(
   find . \( -name '*.dart' -o -name '*.cpp' -o -name '*.cc' -o -name '*.mm' \
             -o -name '*.h' \) -print |
-    grep -v '/build/\|/generated/\|third_party\|\.dart_tool\|/example/' |
+    grep -v '/build/\|/generated/\|third_party\|\.dart_tool\|/example/\|^\./tool/parity/' |
     xargs wc -l | awk -v l="$LIMIT" '$1 > l && $2 != "total" {print $1, $2}' |
     sed 's| \./| |'
 )
