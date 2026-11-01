@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.26.0
+
+- `AssetPack.CloseAsync` lets go of the file behind a pack, and a later read
+  opens it again. `IPackBytes.CloseAsync` is the same for a byte source, and
+  does nothing by default. A pack read from a file kept its handle open after
+  every read, so Windows could not delete or replace the file.
+
 ## 0.25.0
 
 - A port of the first two parts of `orblit_asset` 0.25.0. The first holds

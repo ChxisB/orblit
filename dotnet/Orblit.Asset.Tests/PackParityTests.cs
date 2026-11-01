@@ -51,6 +51,9 @@ public class PackParityTests
         Assert.True(patches >= 3, $"only {patches} patches were mounted");
     }
 
+    private static bool NamesAnUpperCasePack(JsonElement c) =>
+        In(c, 1).EnumerateObject().Any(file => file.Name.EndsWith(".OPACK", StringComparison.Ordinal));
+
     private static IEnumerable<JsonElement.ArrayEnumerator> FixturePacks() =>
         Golden.Cases
             .Where(c => c.GetProperty("op").GetString() == "pack" && c.GetProperty("expect").TryGetProperty("value", out _))
@@ -87,8 +90,11 @@ public class PackParityTests
     [Fact]
     public Task MountedPacksMatchTheFixture() => CheckAsync(Golden, "mount", MountOut);
 
+    // The fixture was made on macOS, where a file called {h0}.OPACK is read as a pack. Where file names
+    // are case sensitive it is not one, so that case runs only where names ignore case.
     [Fact]
-    public Task PackFoldersMatchTheFixture() => CheckAsync(Golden, "folder", FolderOut);
+    public Task PackFoldersMatchTheFixture() =>
+        CheckAsync(Golden, "folder", FolderOut, c => FilesIgnoreCase || !NamesAnUpperCasePack(c));
 
     [Fact]
     public void CookTargetsMatchTheFixture() => Golden.Check("target", c => Dump.Attempt(() => TargetOut(Text(c, 0))));

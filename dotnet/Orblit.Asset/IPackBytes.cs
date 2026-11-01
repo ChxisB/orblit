@@ -12,6 +12,12 @@ public interface IPackBytes
 
     /// <summary><paramref name="bytes"/> bytes from <paramref name="at"/>. Throws when fewer than that exist.</summary>
     Task<byte[]> ReadAsync(long at, long bytes);
+
+    /// <summary>
+    /// Lets go of whatever is held open between reads, which a later read takes up again. Nothing for a
+    /// source that holds nothing.
+    /// </summary>
+    Task CloseAsync() => Task.CompletedTask;
 }
 
 /// <summary>

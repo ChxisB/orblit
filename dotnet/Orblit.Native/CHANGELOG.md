@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+`orblit_script.h` marks the five functions the host looks up with
+`ORBLIT_EXPORT`. A script built on Windows exported none of them, so
+the host refused it as having no `orblit_script_abi`.
+
 ## 0.1.0
 
 Port of `orblit_native` 0.2.0. A script's library is opened

@@ -88,6 +88,12 @@ public sealed class AssetPack : IAssetSource
             bytes, PackDirectory.Decode(directoryBytes, header.DirectoryAt), ContentHash.Of(directoryBytes), cache);
     }
 
+    /// <summary>
+    /// Lets go of the file behind the pack, if it has one. A later read opens it again. Windows will not
+    /// delete or replace a file that is open, so a caller that is done with a pack for now closes it.
+    /// </summary>
+    public Task CloseAsync() => _bytes.CloseAsync();
+
     public async Task<byte[]> ReadAsync(AssetId id)
     {
         if (!_directory.Assets.TryGetValue(id, out var hash))

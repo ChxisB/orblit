@@ -37,19 +37,45 @@ internal static class PackCases
         return built;
     }
 
-    /// <summary>Runs <paramref name="run"/> over every case of an op, with each case in a world of its own.</summary>
-    public static async Task CheckAsync(Fixture golden, string op, Func<JsonElement, Task<JsonNode?>> run)
+    /// <summary>Whether a file called <c>PROBE</c> is found by asking for <c>probe</c>, as on macOS and Windows.</summary>
+    public static bool FilesIgnoreCase { get; } = ProbeCase();
+
+    /// <summary>
+    /// Runs <paramref name="run"/> over every case of an op, with each case in a world of its own. A case
+    /// that <paramref name="applies"/> turns away is not run, so the reason belongs beside the call.
+    /// </summary>
+    public static async Task CheckAsync(
+        Fixture golden, string op, Func<JsonElement, Task<JsonNode?>> run, Func<JsonElement, bool>? applies = null)
     {
         var cases = golden.Cases.Where(c => c.GetProperty("op").GetString() == op).ToList();
         Assert.NotEmpty(cases);
         for (var i = 0; i < cases.Count; i++)
         {
+            if (applies is not null && !applies(cases[i]))
+            {
+                continue;
+            }
+
             var (got, error) = await Attempt(cases[i], run);
             var difference = JsonCompare.FirstDifference(
                 cases[i].GetProperty("expect"), JsonSerializer.SerializeToElement(got));
             Assert.True(
                 difference is null,
                 $"{op} case {i}: {difference} {error} (from fixture commit {golden.SourceCommit})");
+        }
+    }
+
+    private static bool ProbeCase()
+    {
+        var folder = Directory.CreateTempSubdirectory("orblit_case_probe_");
+        try
+        {
+            File.WriteAllBytes(Path.Combine(folder.FullName, "probe"), []);
+            return File.Exists(Path.Combine(folder.FullName, "PROBE"));
+        }
+        finally
+        {
+            folder.Delete(recursive: true);
         }
     }
 

@@ -39,7 +39,7 @@ internal static class ExampleFixture
     /// process, so they depend on what else ran first. The Bistro's mesh paths
     /// are absolute, so they name the machine that ran the exporter.
     /// </summary>
-    public static readonly Dictionary<string, HashSet<string>> Seeded = new()
+    public static readonly Dictionary<string, HashSet<string>> Seeded = OnThisSystem(new()
     {
         ["Gaussian splats"] = ["splatData"],
         ["A hundred thousand"] = ["populationTransforms", "populationColours"],
@@ -49,7 +49,20 @@ internal static class ExampleFixture
         ["Runner"] = ["populationTransforms", "populationColours"],
         ["Bistro exterior"] = ["meshPaths"],
         ["Bistro interior"] = ["meshPaths"],
-    };
+    });
+
+    // The fixture was made on macOS. Day and night's lighting comes from Sin, Log and Pow, which another
+    // system's maths library rounds differently in the last bit, so off macOS its ambient light and
+    // aperture match on shape only.
+    private static Dictionary<string, HashSet<string>> OnThisSystem(Dictionary<string, HashSet<string>> seeded)
+    {
+        if (!OperatingSystem.IsMacOS())
+        {
+            seeded["Day and night"] = ["ambient", "aperture"];
+        }
+
+        return seeded;
+    }
 
     /// <summary>
     /// Seeded examples whose seeded keys change length with the generator, so

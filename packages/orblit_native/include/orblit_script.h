@@ -32,6 +32,17 @@
 /// function pointer that means something else now.
 #define ORBLIT_SCRIPT_ABI 2
 
+/// Marks a function the host looks up by name.
+///
+/// Linux and macOS export every global function from a library. Windows
+/// exports none until asked, so a script built there would load and then
+/// answer that it has no orblit_script_abi.
+#if defined(_WIN32)
+#define ORBLIT_EXPORT __declspec(dllexport)
+#else
+#define ORBLIT_EXPORT __attribute__((visibility("default")))
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -142,7 +153,7 @@ typedef struct OrblitScriptHost {
 /// Defined for you by ORBLIT_SCRIPT, which is why it is the one entry point
 /// nobody writes by hand: a number somebody has to remember to update is a
 /// number that will be wrong.
-uint32_t orblit_script_abi(void);
+ORBLIT_EXPORT uint32_t orblit_script_abi(void);
 
 /// sizeof(OrblitScriptHost) as this script was built.
 ///
@@ -150,16 +161,16 @@ uint32_t orblit_script_abi(void);
 /// version and disagree about the struct — one of them compiled against a
 /// header somebody had edited — and the only way to catch that is to compare
 /// the thing itself rather than the number beside it.
-uint32_t orblit_script_host_size(void);
+ORBLIT_EXPORT uint32_t orblit_script_host_size(void);
 
 /// Called once, when the script is loaded. The host outlives the call.
-void orblit_start(const OrblitScriptHost *host);
+ORBLIT_EXPORT void orblit_start(const OrblitScriptHost *host);
 
 /// Called every frame, with the seconds since the last one.
-void orblit_step(double delta);
+ORBLIT_EXPORT void orblit_step(double delta);
 
 /// Called once, before the script is unloaded.
-void orblit_stop(void);
+ORBLIT_EXPORT void orblit_stop(void);
 
 #ifdef __cplusplus
 }
@@ -257,18 +268,19 @@ inline const char *const *text_at(const char *asset, const char *key) {
 /// Declares the ABI answer and stashes the host, then calls a `start` the
 /// script itself defines. Put it once at the top of a script, after the
 /// includes.
-#define ORBLIT_SCRIPT                                       \
-  extern "C" uint32_t orblit_script_abi(void) {             \
-    return ORBLIT_SCRIPT_ABI;                               \
-  }                                                        \
-  extern "C" uint32_t orblit_script_host_size(void) {       \
-    return (uint32_t)sizeof(OrblitScriptHost);              \
-  }                                                        \
-  static void orblit_script_started();                      \
-  extern "C" void orblit_start(const OrblitScriptHost *h) {  \
-    ::orblit::host_slot() = h;                              \
-    orblit_script_started();                                \
-  }                                                        \
+#define ORBLIT_SCRIPT                                              \
+  extern "C" ORBLIT_EXPORT uint32_t orblit_script_abi(void) {      \
+    return ORBLIT_SCRIPT_ABI;                                      \
+  }                                                               \
+  extern "C" ORBLIT_EXPORT uint32_t orblit_script_host_size(void) { \
+    return (uint32_t)sizeof(OrblitScriptHost);                     \
+  }                                                               \
+  static void orblit_script_started();                             \
+  extern "C" ORBLIT_EXPORT void orblit_start(                      \
+      const OrblitScriptHost *h) {                                 \
+    ::orblit::host_slot() = h;                                     \
+    orblit_script_started();                                       \
+  }                                                               \
   static void orblit_script_started()
 
 #endif  // __cplusplus

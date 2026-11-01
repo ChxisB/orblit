@@ -133,12 +133,22 @@ public class SceneParityTests
     private static JsonNode? Exported(JsonElement c) => Attempt(() =>
     {
         var written = WriteScenario(c.GetProperty("in"));
+        var fixture = FixtureBinaries(c);
         return new JsonObject
         {
-            ["files"] = Arr(written.Files, WrittenNode),
+            ["files"] = Arr(written.Files, file => WrittenNode(file, written.First, fixture)),
             ["problems"] = Arr(written.Problems, Text),
         };
     });
+
+    private static Dictionary<string, byte[]> FixtureBinaries(JsonElement c) =>
+        c.GetProperty("expect").TryGetProperty("value", out var value) && value.TryGetProperty("files", out var files)
+            ? files.EnumerateArray()
+                .Where(static file => file.TryGetProperty("binary", out _))
+                .ToDictionary(
+                    static file => file.GetProperty("name").GetString()!,
+                    static file => Convert.FromBase64String(file.GetProperty("binary").GetString()!))
+            : [];
 
     private static SceneWritten WriteScenario(JsonElement input)
     {
@@ -184,19 +194,20 @@ public class SceneParityTests
         };
     });
 
-    // A glb is compared as its header tree and its bytes, as the fixture holds it.
-    private static JsonNode WrittenNode(Written file)
+    // A glb is compared as its header tree and its bytes, as the fixture holds it. A float that differs
+    // from the fixture's only in the last bits of a sine is taken as the fixture's. See ExportedBuffers.
+    private static JsonObject WrittenNode(Written file, Written first, Dictionary<string, byte[]> fixture)
     {
         var node = new JsonObject { ["name"] = Text(file.Name) };
         if (file.Name.EndsWith(".glb", StringComparison.Ordinal))
         {
             var chunks = GltfFiles.GlbChunks(file.Bytes)!.Value;
             node["json"] = Tree(chunks.Json);
-            node["binary"] = Text(Convert.ToBase64String(chunks.Binary));
+            node["binary"] = BinaryNode(chunks.Json, chunks.Binary, fixture.GetValueOrDefault(file.Name));
         }
         else if (file.Name.EndsWith(".bin", StringComparison.Ordinal))
         {
-            node["binary"] = Text(Convert.ToBase64String(file.Bytes));
+            node["binary"] = BinaryNode((JsonMap)JsonText.Decode(first.Text)!, file.Bytes, fixture.GetValueOrDefault(file.Name));
         }
         else
         {
@@ -205,6 +216,9 @@ public class SceneParityTests
 
         return node;
     }
+
+    private static JsonNode BinaryNode(JsonMap header, byte[] written, byte[]? fixture) =>
+        Text(Convert.ToBase64String(ExportedBuffers.ToFixtureWhereClose(header, written, fixture)));
 
     private static Dictionary<string, MaterialLoad> MaterialsOf(JsonElement files) =>
         files.EnumerateObject().ToDictionary(

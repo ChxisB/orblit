@@ -2,9 +2,10 @@ using System.Text;
 
 namespace Orblit.Asset.Tests;
 
-public sealed class PackFolderTests : IDisposable
+public sealed class PackFolderTests : IAsyncDisposable
 {
     private readonly PackFixture _fixture = new();
+    private readonly List<AssetPack> _held = [];
     private readonly string _folderPath;
     private readonly PackFolder _folder;
 
@@ -14,7 +15,16 @@ public sealed class PackFolderTests : IDisposable
         _folder = new PackFolder(_folderPath);
     }
 
-    public void Dispose() => _fixture.Dispose();
+    // A pack read from the folder keeps its file open, and Windows will not delete a folder with an open file.
+    public async ValueTask DisposeAsync()
+    {
+        foreach (var pack in _held)
+        {
+            await pack.CloseAsync();
+        }
+
+        _fixture.Dispose();
+    }
 
     // Long enough that half of it is well inside the blobs.
     private static string Body(string name) => string.Join(' ', Enumerable.Repeat(name, 400));
@@ -132,6 +142,7 @@ public sealed class PackFolderTests : IDisposable
         }
 
         var listing = await _folder.ListAsync();
+        _held.AddRange(listing.Packs);
         var chain = PatchChain.Of(shipped.Pack, listing.Packs);
         var packs = new MountedPacks(CookTargets.Android);
         packs.Start(shipped.Pack);
@@ -161,15 +172,19 @@ public sealed class PackFolderTests : IDisposable
         new(new Dictionary<WebUrl, TransportPage> { [Url] = new TransportPage(bytes, cut: cut, stopAfter: stopAfter, faults: faults) });
 
     // F2: only the pack and the transport are required, and the rest are named at the call.
-    private Task<AssetPack> Download(
+    private async Task<AssetPack> Download(
         BuiltPack built,
         IAssetTransport transport,
         PackFolder? into = null,
         int attempts = 3,
         Action<FetchProgress>? onProgress = null,
-        AssetOrigin? from = null) =>
-        (into ?? _folder).DownloadAsync(
+        AssetOrigin? from = null)
+    {
+        var pack = await (into ?? _folder).DownloadAsync(
             new PackOffer(Url, built.Hash), transport, from ?? Origin, attempts, TimeSpan.Zero, NetWorld.NoNoise, onProgress);
+        _held.Add(pack);
+        return pack;
+    }
 
     private async Task Leave(string file, byte[] bytes)
     {
