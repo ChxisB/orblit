@@ -3,7 +3,7 @@ namespace Orblit.Remote;
 /// <summary>
 /// One entity as a listing shows it: its handle and the names of the components it carries.
 /// The handle is the signed 64 bit number the wire carries, so a handle with its top bit set is
-/// negative, as it is in Dart.
+/// negative.
 /// </summary>
 public sealed record EntityRow(long Id, IReadOnlyList<string> Components);
 

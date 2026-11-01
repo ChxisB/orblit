@@ -83,7 +83,7 @@ public sealed class BindingTable
     /// binding the control the slot had. A swap needs exactly one other binding to trade with.
     /// Throws an <see cref="ArgumentException"/> for a scale that is not a finite number.
     /// </remarks>
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     public void Rebind(
         string action,
         Control control,

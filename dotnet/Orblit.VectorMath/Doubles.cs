@@ -11,12 +11,12 @@ namespace Orblit.VectorMath;
 public static class Doubles
 {
     /// <summary>
-    /// <c>radians</c> from <c>vector_math</c>: the factor is worked out once, so the product rounds
-    /// as it does there, which <c>degrees * Math.PI / 180</c> does not.
+    /// Degrees as radians. The factor is worked out once, so the product rounds the way the fixtures
+    /// hold it, which <c>degrees * Math.PI / 180</c> does not.
     /// </summary>
     public static double Radians(double degrees) => degrees * (Math.PI / 180.0);
 
-    /// <summary><c>degrees</c> from <c>vector_math</c>, as <see cref="Radians"/> is.</summary>
+    /// <summary>Radians as degrees, worked out as <see cref="Radians"/> is.</summary>
     public static double Degrees(double radians) => radians * (180.0 / Math.PI);
 
     /// <summary>Total order on doubles: NaN above every number, <c>-0.0</c> below <c>0.0</c>.</summary>

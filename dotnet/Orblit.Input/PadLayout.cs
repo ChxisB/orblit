@@ -88,7 +88,7 @@ public sealed class PadLayout
         ("nintendo", new(name: "Nintendo Controller", labels: PadLabels.Nintendo)),
     ];
 
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     public PadLayout(
         string name = "Standard",
         PadLabels? labels = null,
@@ -155,7 +155,7 @@ public sealed class PadLayout
     public override string ToString() => $"PadLayout({Name})";
 
     /// <summary>
-    /// Lower-cases as Dart does, which folds the dotted capital I to an i and the Kelvin sign to a
+    /// Lower-cases so that the dotted capital I folds to an i and the Kelvin sign to a
     /// k. Which of those <see cref="string.ToLowerInvariant"/> does depends on the runtime's data.
     /// </summary>
     private static string Lower(string text) =>

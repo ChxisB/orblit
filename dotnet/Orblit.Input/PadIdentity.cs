@@ -5,7 +5,7 @@ namespace Orblit.Input;
 /// <summary>What a device says it is. Two pads of one model can share everything but <see cref="Uniq"/> and <see cref="Path"/>.</summary>
 public sealed class PadIdentity
 {
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     public PadIdentity(string name, int vendor = 0, int product = 0, int version = 0, int bus = 0, string uniq = "", string path = "")
     {
         Name = name;

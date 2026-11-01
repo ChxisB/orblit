@@ -3,7 +3,7 @@ using System.Collections;
 namespace Orblit.Input;
 
 /// <summary>
-/// A set that enumerates in the order things were added, as a Dart set does. A
+/// A set that enumerates in the order things were added. A
 /// <see cref="HashSet{T}"/> forgets the order after a removal, and the order of the held
 /// controls decides which one a rebind captures first.
 /// </summary>

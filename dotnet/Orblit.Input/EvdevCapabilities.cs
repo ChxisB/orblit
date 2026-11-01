@@ -35,8 +35,7 @@ public sealed partial class EvdevCapabilities(IReadOnlySet<int> events, IReadOnl
         return bits;
     }
 
-    // Read as two 32-bit halves, which is how Dart had to read it, so a word with its top bit set
-    // is read the same way here.
+    // Read as two 32-bit halves, so a word with its top bit set keeps that bit.
     private static void AddWord(HashSet<int> bits, int word, string text)
     {
         if (text.Length > 16)
@@ -66,7 +65,7 @@ public sealed partial class EvdevCapabilities(IReadOnlySet<int> events, IReadOnl
         }
     }
 
-    /// <summary>A hexadecimal number with an optional sign, as Dart reads one, or null.</summary>
+    /// <summary>A hexadecimal number with an optional sign, or null.</summary>
     private static long? Hex(string text)
     {
         var match = HexShape().Match(text);

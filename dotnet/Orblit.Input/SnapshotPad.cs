@@ -12,7 +12,7 @@ public sealed class SnapshotPad : IPadDevice
     private readonly RumbleFunction? _onRumble;
     private PadSnapshot _last = new([], new Dictionary<int, int>());
 
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     public SnapshotPad(
         PadIdentity identity,
         Func<PadSnapshot> read,

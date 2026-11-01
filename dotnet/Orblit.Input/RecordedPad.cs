@@ -8,7 +8,7 @@ public sealed class RecordedPad : IPadDevice
     private readonly List<byte> _queued = [];
     private bool _alive = true;
 
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     public RecordedPad(
         PadIdentity identity,
         EvdevCapabilities? capabilities = null,

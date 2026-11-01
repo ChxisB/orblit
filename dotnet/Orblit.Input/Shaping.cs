@@ -55,7 +55,7 @@ public sealed class Shaping : IEquatable<Shaping>
         return value * (shaped / length);
     }
 
-    /// <summary>Value equality stands in for Dart's canonical constants, which are the same object when the fields match.</summary>
+    /// <summary>Two shapings with the same fields are equal.</summary>
     public bool Equals(Shaping? other) =>
         other is not null && Inner == other.Inner && Outer == other.Outer && Curve == other.Curve;
 

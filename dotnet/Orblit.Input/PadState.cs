@@ -12,7 +12,7 @@ public sealed class PadState
     private readonly IReadOnlyDictionary<PadAxis, double> _axes;
     private readonly IReadOnlyDictionary<PadAxis, double> _raw;
 
-    // F2: the Dart named parameters count as the options object.
+    // F2: optional parameters, so a call names only what it sets.
     public PadState(
         int slot,
         PadIdentity identity,

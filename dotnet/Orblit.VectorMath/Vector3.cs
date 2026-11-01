@@ -1,9 +1,8 @@
 namespace Orblit.VectorMath;
 
 /// <summary>
-/// Three doubles. A class and not a struct, as in <c>vector_math_64</c>: a
-/// component is written through the vector (<c>light.Color.X = 0</c>), and a
-/// copy has to be asked for with <see cref="Clone"/>.
+/// Three doubles. A class and not a struct: a component is written through the vector
+/// (<c>light.Color.X = 0</c>), and a copy has to be asked for with <see cref="Clone"/>.
 /// </summary>
 public sealed class Vector3(double x, double y, double z) : IEquatable<Vector3>
 {

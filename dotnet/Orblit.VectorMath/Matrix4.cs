@@ -1,8 +1,7 @@
 namespace Orblit.VectorMath;
 
 /// <summary>
-/// A 4 by 4 matrix of doubles in column major order, as <c>vector_math_64</c>
-/// holds it: the translation is at indices 12 to 14.
+/// A 4 by 4 matrix of doubles in column major order: the translation is at indices 12 to 14.
 /// </summary>
 public sealed class Matrix4
 {

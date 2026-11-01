@@ -1,8 +1,8 @@
 namespace Orblit.VectorMath;
 
 /// <summary>
-/// A 3 by 3 matrix of doubles in column major order, as <c>vector_math_64</c>
-/// holds it: the element at row <c>r</c> and column <c>c</c> is index <c>c * 3 + r</c>.
+/// A 3 by 3 matrix of doubles in column major order: the element at row <c>r</c> and
+/// column <c>c</c> is index <c>c * 3 + r</c>.
 /// </summary>
 public sealed class Matrix3
 {
