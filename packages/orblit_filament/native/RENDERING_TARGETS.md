@@ -28,11 +28,11 @@ milestones.
 
 | Device family | Preferred path to measure | Compatibility / additional path | Current evidence and next gate |
 | --- | --- | --- | --- |
-| macOS | Native Metal | Native WebGPU over Dawn/Metal and OpenGL for backend testing | Apple plugin uses IOSurface buffers. Native Metal, WebGPU and OpenGL headless tests run on the M4 Pro; measure the actual Flutter presentation path. |
-| iOS (iPhone / iPad) | Native Metal | Capability-based quality fallback within Metal | Existing Apple plugin and simulator shadow work; validate on physical devices, background/resume and sustained thermal load. Mac GPU proof is not iOS device proof. |
+| macOS | Native Metal | Native WebGPU over Dawn/Metal and OpenGL for backend testing | The Apple surface uses IOSurface buffers. Native Metal, WebGPU and OpenGL headless tests run on the M4 Pro; measure the actual presentation path in a host. |
+| iOS (iPhone / iPad) | Native Metal | Capability-based quality fallback within Metal | Existing simulator shadow work; validate on physical devices, background/resume and sustained thermal load. Mac GPU proof is not iOS device proof. |
 | Android | Native Vulkan, compared with GLES on each GPU family | GLES fallback | Existing Kotlin/JNI plugin and Android build path. Measure physical Adreno/Mali devices, surface replacement and sustained thermal load before selecting defaults. |
-| Linux / SteamOS / Steam Deck | Native Vulkan | OpenGL where material linking is validated | `feat/linux-plugin` renders through software Vulkan. Flutter presentation uses CPU readback. Validate on Deck and real desktop GPUs; address presentation copies and the OpenGL linker failure. |
-| Windows | Native Vulkan | OpenGL fallback when validated; native WebGPU/Dawn/D3D12 experiment | `feat/windows-plugin` builds in CI; its Flutter path uses CPU readback. Build Dawn with D3D12 on Windows and set `forceBackendType`, then validate on Intel/AMD/NVIDIA hardware; adapter selection ignores backend type otherwise. There is no direct Filament D3D12 backend. |
+| Linux / SteamOS / Steam Deck | Native Vulkan | OpenGL where material linking is validated | The Linux build renders through software Vulkan. Presentation uses CPU readback. Validate on Deck and real desktop GPUs; address presentation copies and the OpenGL linker failure. |
+| Windows | Native Vulkan | OpenGL fallback when validated; native WebGPU/Dawn/D3D12 experiment | Presentation uses CPU readback. Build Dawn with D3D12 on Windows and set `forceBackendType`, then validate on Intel/AMD/NVIDIA hardware; adapter selection ignores backend type otherwise. There is no direct Filament D3D12 backend. |
 | Switch 1 | Vendor-supported native graphics path; evaluate Vulkan against the licensed SDK | SDK-specific adapter/backend if required | Console host groundwork exists on `feat/console-host`; there is no console build here. Confirm device/swapchain, shader and synchronization requirements before promising a Vulkan port. |
 | Switch 2 | Independently validate its SDK's native graphics path | Reuse Switch 1 integration only where verified compatible | Requires Switch 2 SDK access and hardware. Neither a Switch 1 build nor generic Vulkan support establishes a native Switch 2 port. |
 | Xbox | D3D12.x through the Xbox GDK | Dawn bridge and a native Filament D3D12.x backend are now both open options, neither cheap | Requires the GDK with Xbox Extensions, development hardware and shader compilation/cache validation. Source read 14 Sep 2026: vendored Dawn has no Xbox support and four structurally desktop-only subsystems; upstream Dawn lists Xbox as "Not supported". The D3D12.x reference itself is NDA-gated. See the bridge section below. Desktop Dawn/D3D12 success is not Xbox support. |
@@ -196,7 +196,7 @@ timing becomes `null`; this fork's WebGPU timer queries are unimplemented.
 
 The scene is six cubes with a directional light. These results are a small
 regression baseline, not a workload capacity claim. Offscreen throughput
-includes the renderer's current per-frame GPU wait, but excludes Flutter,
+includes the renderer's current per-frame GPU wait, but excludes the host,
 display scanout and input handling. It is not display FPS or input latency.
 The first-frame measurement uses the machine's existing shader cache;
 label a run cold only when the cache state is actually controlled. WebGPU
@@ -262,7 +262,7 @@ no longer reported as a runtime pass.
    native presentation where the embedder permits it. Replace fixed timers
    with the display's frame scheduling before claiming 90/120/144 Hz.
 3. Audit the per-frame `flushAndWait()` in `Renderer::renderAtTime`.
-   It currently ensures Flutter can sample shared Apple buffers safely.
+   It currently keeps the shared Apple buffers safe for a compositor to sample.
    Replace it only with an explicit completion/ownership contract per
    surface, bounded frames in flight and resize/teardown tests. Removing
    the wait alone can produce stale buffers or overwrite one still sampled.
