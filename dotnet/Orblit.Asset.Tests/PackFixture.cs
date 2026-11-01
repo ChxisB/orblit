@@ -13,14 +13,7 @@ internal sealed class PackFixture : IDisposable
 {
     private readonly DirectoryInfo _directory = Directory.CreateTempSubdirectory("orblit_pack_fixture_");
 
-    // A pack opened from a file keeps the file open until it is collected, and Windows will not delete an
-    // open file.
-    public void Dispose()
-    {
-        GC.Collect();
-        GC.WaitForPendingFinalizers();
-        _directory.Delete(recursive: true);
-    }
+    public void Dispose() => _directory.Delete(recursive: true);
 
     public string At(string relative) => Path.Combine([_directory.FullName, .. relative.Split('/')]);
 
