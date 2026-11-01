@@ -102,6 +102,8 @@ public sealed class LabelAtlas
         using var picture = new RenderTargetBitmap(new PixelSize(_options.Width, _height));
         using (var context = picture.CreateDrawingContext())
         {
+            // Subpixel text puts a colour on every edge, and a white label is only tintable if it has none.
+            using var greyscale = context.PushTextOptions(new TextOptions { TextRenderingMode = TextRenderingMode.Antialias });
             foreach (var (place, words) in _labels.Values)
             {
                 context.DrawText(words, place.TopLeft);

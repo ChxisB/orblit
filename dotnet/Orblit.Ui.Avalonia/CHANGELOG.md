@@ -2,6 +2,8 @@
 
 ## 0.3.0
 
+- `LabelAtlas` draws with greyscale antialiasing. Subpixel text left a colour on
+  every edge on Linux and Windows, so a surface could not tint the labels.
 - `UiBuilder`, `UiBuilderOptions`, `UiSurface`, `UiDecorator` and `UiEvent`
   are gone, by decision 95. An interface is made of Avalonia controls, so the
   package no longer depends on `Orblit.Ui`.
