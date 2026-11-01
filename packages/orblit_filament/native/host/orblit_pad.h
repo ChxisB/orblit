@@ -1,13 +1,13 @@
 #ifndef ORBLIT_PAD_H
 #define ORBLIT_PAD_H
 
-/* Gamepads for a host with no Dart in it.
+/* Gamepads for a host with no managed code in it.
  *
- * This is package:orblit_input's vocabulary and its three decisions, written
- * again in C because a console host cannot call Dart. It is deliberately a
- * translation rather than a second design: a game ported from the Dart front
- * end to a native one should find the same names meaning the same things, and
- * the two drifting apart is a bug in whichever moved.
+ * This is Orblit.Input's vocabulary and its three decisions, written
+ * again in C because a console host cannot call managed code. It is
+ * deliberately a translation rather than a second design: a game moved from
+ * the managed front end to a native one should find the same names meaning
+ * the same things, and the two drifting apart is a bug in whichever moved.
  *
  * What is kept, and why each was worth keeping:
  *
@@ -19,7 +19,7 @@
  *  - **Dead zones are radial, and what is left is rescaled.** Per-axis dead
  *    zones square off the middle of the stick and make a slow diagonal
  *    impossible; not rescaling the remainder means the slowest walk available
- *    is fifteen per cent of full speed. Both are in orblit_input's Shaping and
+ *    is fifteen per cent of full speed. Both are in Orblit.Input's Shaping and
  *    both are here, with the same defaults.
  *  - **Positive is up.** The platforms all report +Y downwards because they
  *    inherited it from screens. A stick is not a screen, the rest of Orblit has
@@ -32,7 +32,7 @@
  * (PadFrame.events). A host that draws every frame can see a press in the
  * `pressed` mask; the one thing that mask cannot express — a tap and release
  * inside a single frame — needs a queue, and nothing in this host yet cares.
- * Said out loud because it is the one real gap against the Dart package.
+ * Said out loud because it is the one real gap against Orblit.Input.
  *
  * Nothing in this file talks to a platform. The back end fills in raw axis
  * and button values (orblit_host_platform.h) and everything here — shaping,
@@ -41,7 +41,7 @@
 
 #include <stdint.h>
 
-/* Where a button is. The order is package:orblit_input's PadButton. */
+/* Where a button is. The order is Orblit.Input's PadButton. */
 typedef enum orblit_pad_button {
   ORBLIT_PAD_SOUTH = 0, /* Bottom face. A, cross, B on a Nintendo pad. */
   ORBLIT_PAD_EAST,      /* Right face. B, circle, A on a Nintendo pad. */
@@ -134,7 +134,7 @@ typedef struct orblit_pad_state {
    * with a good reason to shape a stick its own way. Not for ordinary use.
    *
    * "Unshaped" and not "untouched": positive is still up here, because
-   * orblit_input's PadState.rawAxis is also read after the flip — pads.dart
+   * Orblit.Input's PadState raw axes are also read after the flip: it
    * negates Y before it fills `raw`, not after. A raw value that disagreed
    * with the shaped one about which way was up would be a trap rather than a
    * diagnostic. */

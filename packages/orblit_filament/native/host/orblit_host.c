@@ -4,7 +4,7 @@
  * included: it owns a frame loop, a scene, a camera and somebody walking
  * about in it, and it reaches the machine it is on only through the eight
  * calls in orblit_host_platform.h and the renderer only through the C ABI in
- * orblit_renderer.h. No Flutter, no Dart, no Objective-C, no SDL header.
+ * orblit_renderer.h. No managed code, no Objective-C, no SDL header.
  *
  * That is the shape of the claim being made. A port to a console is
  * orblit_host_sdl.c written again against an SDK that cannot be discussed in

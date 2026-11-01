@@ -66,8 +66,8 @@ namespace orblit {
 /// measurements, so a renderer that has not been told a texture size or an
 /// upload budget takes the device's own without any host code.
 ///
-/// native_contract_test reads these constants and checks that Dart's
-/// OrblitDeviceProfile puts devices either side of each one in the same
+/// The native contract tests read these constants and check that
+/// `DeviceProfile` in Orblit.Filament puts devices either side of each one in the same
 /// tier, and that the budgets are the same numbers.
 enum class DeviceTier : uint8_t { low = 0, medium = 1, high = 2 };
 
@@ -105,7 +105,7 @@ constexpr uint32_t kTierUploadLeastKilobytes[3] = {1024, 2048, 4096};
 constexpr uint32_t kTierUploadMostKilobytes[3] = {32768, 131072, 262144};
 
 /// The tier of a device from what its renderer measured. An answer below
-/// nought is one the device would not give, read as Dart reads it.
+/// nought is one the device would not give, read as `DeviceProfile` reads it.
 DeviceTier deviceTier(int32_t featureLevel, int32_t maxTextureSize,
                       int32_t workerThreads, int32_t memoryMegabytes);
 

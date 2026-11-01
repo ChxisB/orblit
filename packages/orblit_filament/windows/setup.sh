@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
-# Stages everything the Windows plugin needs that is too big, too generated or
-# too machine-specific to commit -- the Windows-shaped counterpart to
-# ../android/setup.sh, ../darwin/setup.sh and ../linux/setup.sh, which this
-# deliberately mirrors wherever the platforms want the same thing done.
+# Stages everything the Windows renderer needs that is too big, too generated
+# or too machine-specific to commit -- the Windows-shaped counterpart to
+# ../darwin/setup.sh and ../linux/setup.sh, which this deliberately mirrors
+# wherever the platforms want the same thing done.
 #
 #   1. third_party/filament
 #        Filament 1.77.0's unpacked Windows release: headers once, static
@@ -13,15 +13,14 @@
 #
 #        The one real difference from every other platform's release: this
 #        tarball unpacks *flat* -- bin/, include/, lib/ at its root -- where
-#        the Linux and Android ones unpack under a filament/ directory of
-#        their own. So this extracts it into a directory made here rather
+#        the Linux one unpacks under a filament/ directory of its own. So this extracts it into a directory made here rather
 #        than alongside, and third_party/filament means the same thing
 #        afterwards as it does in the other scripts.
 #
 #        Four runtime flavours ship: md and mdd are the dynamic CRT, release
-#        and debug; mt and mtd the static one. CMakeLists.txt picks between
-#        md and mdd by build configuration, because MSVC's linker refuses to
-#        mix them. Nothing here has to choose.
+#        and debug; mt and mtd the static one. The renderer's CMakeLists.txt
+#        picks between md and mdd by build configuration, because MSVC's
+#        linker refuses to mix them. Nothing here has to choose.
 #
 #   2. ../darwin/orblit_filament/Sources/orblit_filament_native/generated/*.h
 #        The renderer's materials, compiled for the `opengl` and `vulkan`
@@ -29,10 +28,9 @@
 #        there. Written into the *same* flat generated/ directory linux's
 #        setup.sh writes into, because the sources include these headers by
 #        bare name -- `#include "lit_opaque_material.h"` -- and every build
-#        puts one directory of them on the include path. CMakeLists.txt here
-#        names generated/ itself, so that flat directory is the only place
-#        this platform's materials can live. (darwin and android instead
-#        select a generated/<set>/ subdirectory: same rule, another
+#        puts one directory of them on the include path. That flat directory
+#        is the only place this platform's materials can live. (darwin
+#        selects a generated/<set>/ subdirectory instead: same rule, another
 #        directory.)
 #
 #        This is safe because each setup.sh stamps what it built the
@@ -42,14 +40,11 @@
 #        more recently". The cost is a recompile of a few seconds the first
 #        time you switch platforms; the materials are never stale.
 #
-#        `-p desktop`, like Linux and unlike android's `-p mobile`: a Windows
-#        machine has a desktop-class GPU and the desktop shader variants are
-#        what its drivers want.
+#        `-p desktop`, like Linux: a Windows machine has a desktop-class GPU
+#        and the desktop shader variants are what its drivers want.
 #
 # Re-running is cheap and idempotent. Run it after a fresh clone and any time
-# a .mat file changes. The Flutter build runs it on its own -- see
-# CMakeLists.txt -- for the same reason darwin's prepare_command does: so it
-# is automatic rather than a step somebody has to remember.
+# a .mat file changes.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -129,8 +124,7 @@ case "$HOST" in
       "it is a host tool, and a Windows release's own matc will not run here)"
     ;;
   linux)
-    # The same fetch-a-release-for-its-matc-alone that ../android/setup.sh
-    # does on this host, and for the same reason: there is no darwin
+    # Fetch a release for its matc alone, because there is no darwin
     # checkout here to borrow one from.
     MATC_DIR="${ORBLIT_FILAMENT_MATC_DIR:-$project_root/.cache/filament-1.77.0/linux}"
     if [ ! -x "$MATC_DIR/filament/bin/matc" ]; then

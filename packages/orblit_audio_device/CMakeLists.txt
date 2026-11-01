@@ -1,6 +1,4 @@
-# Builds the device wrapper for the .NET packages. The Dart build uses
-# hook/build.dart and does not read this file. Both compile the same two
-# sources with the same definitions.
+# Builds the device wrapper for the .NET packages.
 #
 # Usage: cmake -S packages/orblit_audio_device -B <build dir> -DORBLIT_RID=osx-arm64
 #        cmake --build <build dir> --config Release

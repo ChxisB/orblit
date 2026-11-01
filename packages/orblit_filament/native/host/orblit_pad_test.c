@@ -1,8 +1,8 @@
-/* That orblit_pad.c still agrees with package:orblit_input.
+/* That orblit_pad.c still agrees with Orblit.Input.
  *
  * orblit_pad.h says the two drifting apart is a bug in whichever moved, which
  * is a claim nobody can check by reading. So the cases below are
- * packages/orblit_input/test/shaping_test.dart and pads_test.dart, the same
+ * Orblit.Input's shaping and pad tests, the same
  * assertions against the C: the same defaults, the same continuity at the
  * edge of the dead zone, the same round zone, the same slot memory, the same
  * neutral absence.
@@ -63,7 +63,7 @@ int main(void) {
    *
    * Shaping()'s and Shaping.triggers' fields, which everything else in both
    * implementations is measured against. If these two lines ever disagree
-   * with shaping.dart, nothing below is worth reading. */
+   * with Orblit.Input's Shaping, nothing below is worth reading. */
   group = "defaults";
   near(orblit_shaping_sticks.inner, 0.15f, "a stick's dead zone");
   near(orblit_shaping_sticks.outer, 0.95f, "a stick saturates early");

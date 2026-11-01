@@ -1,4 +1,4 @@
-/* Shaping, slots and edges: package:orblit_input's decisions, in C.
+/* Shaping, slots and edges: Orblit.Input's decisions, in C.
  *
  * Nothing here talks to a platform. A back end (orblit_host_sdl.c on a desktop,
  * something under an NDA on a console) reports what it found this poll as
@@ -6,8 +6,8 @@
  * reads. The split is the whole point: a console port replaces the back end
  * and this file is not touched.
  *
- * The Dart original is packages/orblit_input/lib/src/shaping.dart and
- * pads.dart, and where the two disagree one of them is wrong.
+ * The managed original is Orblit.Input's Shaping and pad code, and where the
+ * two disagree one of them is wrong.
  */
 
 #include "orblit_pad.h"

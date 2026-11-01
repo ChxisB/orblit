@@ -258,7 +258,7 @@ void Renderer::drawAtTime(double time) {
   readBackIfAsked();
   _renderer->endFrame();
 
-  // Flutter may sample the moment this returns, so the frame has to be on the
+  // The compositor may sample the moment this returns, so the frame has to be on the
   // surface before it is advertised as presented.
   const double flushFrom = orblit::now();
   _engine->flushAndWait();
@@ -279,7 +279,7 @@ void Renderer::drawAtTime(double time) {
   _backIndex = (_backIndex + 1) % kOrblitBufferCount;
   _presentLock.unlock();
 
-  // Debug aid: dumps exactly the buffer Flutter samples, which separates a
+  // Debug aid: dumps exactly the buffer the compositor samples, which separates a
   // rendering fault from a handoff fault. Enabled by an environment variable
   // so it costs nothing when unset.
   if (_frameCount == 0) _startedAt = orblit::now();

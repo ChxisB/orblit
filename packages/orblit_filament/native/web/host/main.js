@@ -1,4 +1,4 @@
-// A host for the renderer in a browser tab: no Flutter, no native ABI
+// A host for the renderer in a browser tab: no native ABI
 // binding, only Emscripten's ccall/cwrap over the same orblit_renderer.h
 // every other host drives. Publishes the same scene
 // native/headless/orblit_headless.c does -- a ground, five blocks and a sun
@@ -6,8 +6,7 @@
 //
 // Arrays cross into wasm memory by hand (Module._malloc + HEAPF32/HEAP32),
 // because ccall marshals scalars and strings but not arrays: this is the
-// same shape a Dart host's dart:js_interop crossing will need in stage two,
-// done once here in plain JavaScript first.
+// same shape any other host's crossing needs, done once here in plain JavaScript.
 (() => {
   'use strict';
 
@@ -229,7 +228,7 @@
     log('scene published: ground, five blocks, one sun, camera, exposure');
 
     // What the ABI says about itself, read back through the same calls a
-    // Dart or Kotlin host would use -- not a side channel into Filament.
+    // managed or Kotlin host would use -- not a side channel into Filament.
     const backend = Module.ccall('orblit_renderer_backend', 'number', ['number'], [renderer]);
     const noteCount = Module.ccall('orblit_renderer_notes', 'number', ['number'], [renderer]);
     const notes = [];

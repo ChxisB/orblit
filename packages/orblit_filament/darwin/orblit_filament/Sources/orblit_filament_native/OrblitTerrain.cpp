@@ -705,7 +705,7 @@ class TerrainField {
     uint32_t *at = indices;
     // Two triangles a cell, anticlockwise seen from above, split along the
     // diagonal towards +x and +z — the one Terrain.heightAt interpolates
-    // across, so a height asked of the Dart side is the height drawn.
+    // across, so a height asked of the managed side is the height drawn.
     auto cell = [&](uint32_t i, uint32_t j) {
       const uint32_t a = i + j * row;
       const uint32_t b = a + 1;

@@ -1,4 +1,4 @@
-/* A host for the renderer with no Flutter, no Objective-C and no window.
+/* A host for the renderer with no managed code, no Objective-C and no window.
  *
  * It drives the C ABI and nothing else: makes a renderer on the backend it is
  * told to use, publishes a small scene — a ground, five blocks and a sun —

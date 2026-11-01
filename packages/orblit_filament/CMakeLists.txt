@@ -1,13 +1,11 @@
-# Builds the renderer as one library for the .NET packages. The Flutter plugins
-# have their own builds (darwin, android, linux, windows) and do not read this
-# file. All of them compile the same sources.
+# Builds the renderer as one library for the .NET packages.
 #
 # The Filament release is not in the repository. Point ORBLIT_FILAMENT_SDK at
 # the directory that holds include/ and lib/. On macOS it defaults to the one
 # darwin/setup.sh stages. The compiled materials must exist in
-# ORBLIT_GENERATED_DIR. Only the macOS branch has been run. The Linux and
-# Windows branches follow native/headless/build_linux.sh and
-# windows/CMakeLists.txt and have not been built.
+# ORBLIT_GENERATED_DIR. Only the macOS branch has been run. The Linux branch
+# follows native/headless/build_linux.sh. The Windows branch links the
+# Filament release's MSVC libraries. Neither has been built.
 #
 # Usage: cmake -S packages/orblit_filament -B <build dir> -DORBLIT_RID=osx-arm64
 #        cmake --build <build dir> --config Release
@@ -120,8 +118,8 @@ endif()
 set(ORBLIT_TARGETS orblit_filament)
 if(APPLE)
   # Metal events for the Avalonia viewport. A library of its own, because the
-  # renderer's C API is shared with the Flutter plugins and must not grow Metal
-  # calls only one host uses.
+  # renderer's C API is shared by every host and must not grow Metal calls
+  # only one host uses.
   add_library(orblit_filament_apple SHARED "${CMAKE_CURRENT_SOURCE_DIR}/native/apple/orblit_filament_apple.mm")
   set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/native/apple/orblit_filament_apple.mm"
     PROPERTIES COMPILE_OPTIONS "-fobjc-arc")

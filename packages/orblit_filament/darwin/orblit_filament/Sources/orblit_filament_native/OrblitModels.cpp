@@ -443,7 +443,7 @@ void Renderer::describeModel(Mesh &mesh, gltfio::FilamentInstance *first,
       appendNumber(out, parent);
     }
     // Every joint's rest, twice: where it stands relative to the model's root,
-    // and relative to its own parent node. A rig solved in Dart poses joints
+    // and relative to its own parent node. A rig solved in managed code poses joints
     // in the first, and a joint is set by hand in the second — and a joint
     // whose parent is not a joint has no other way to say where that parent
     // is. As the file left them, from `rest`, not as anything has moved them.
@@ -486,7 +486,7 @@ void Renderer::describeModel(Mesh &mesh, gltfio::FilamentInstance *first,
     if (!firstLight) out.push_back(',');
     firstLight = false;
 
-    // In OrblitLight's own terms: its kinds, and lux for a sun or lumens for
+    // In RenderLight's own terms: its kinds, and lux for a sun or lumens for
     // everything else. Filament answers in candela for a point or a spot, and
     // for a focused spot the lumens depend on the outer cone — the same
     // conversion Filament makes the other way when a light is built.

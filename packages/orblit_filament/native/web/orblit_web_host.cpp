@@ -27,7 +27,7 @@
  *
  * A C ABI itself, same rules as orblit_renderer.h: a NULL handle in is a NULL
  * handle out, not a crash. Exported by build.sh's -sEXPORTED_FUNCTIONS, not
- * declared anywhere a Dart or Kotlin host would see — this is web-only.
+ * declared anywhere a managed or Kotlin host would see — this is web-only.
  */
 
 #include "orblit_renderer.h"

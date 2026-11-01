@@ -26,17 +26,17 @@
 
 namespace orblit {
 
-/// The two effects' numbers, matching OrblitEffect on the Dart side. They
+/// The two effects' numbers, matching the effect numbers in Orblit.Filament. They
 /// continue the renderer's own list — sharpen is nought, copy is five.
 constexpr int kEffectGodRays = 6;
 constexpr int kEffectDistortion = 7;
 
 /// How many floats the god-ray settings take on the wire. Must match
-/// OrblitGodRays.stride on the Dart side and the plugin's own check.
+/// `GodRays.Stride` in Orblit.Filament.
 constexpr size_t kGodRayStride = 12;
 
 /// How many floats one distortion takes on the wire. Must match
-/// OrblitDistortion.stride on the Dart side and the plugin's own check.
+/// `Distortion.Stride` in Orblit.Filament.
 constexpr size_t kDistortionStride = 12;
 
 /// The most distortions one frame draws. The shader's loop is bounded by it,

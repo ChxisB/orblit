@@ -1,11 +1,9 @@
 // The contract a native script is compiled against.
 //
-// A script is not a language. It is a file that answers four questions — what
+// A script is a file that answers four questions — what
 // version of this contract it was built for, what to do when it starts, what
 // to do each frame, and what to do when it stops — and is handed a table of
-// everything it may call back into. TypeScript answers the same four questions
-// through QuickJS and Dart through FFI; this is the C++ front end onto the
-// same boundary, not a second engine.
+// everything it may call back into.
 //
 // Two decisions carry the design:
 //
@@ -17,8 +15,8 @@
 //   makes it possible to say a script is *incompatible* rather than to find
 //   out by crashing.
 //
-//   The table is filled on the Dart side from the same declarations Dart
-//   already binds the core with. There is no hand-maintained mirror of the
+//   The table is filled by the managed host from the same functions it
+//   binds the core with. There is no hand-maintained mirror of the
 //   core's API that could drift from it: if the binding is right, the table
 //   is right.
 

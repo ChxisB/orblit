@@ -1,8 +1,7 @@
 // The Metal calls the Avalonia viewport needs and the renderer's C API does not
 // have. Avalonia 12.1.4 cannot synchronise an imported IOSurface on Metal by
 // itself, so the host hands the compositor two shared events: one says a frame
-// is drawn, the other says the compositor has finished reading it. The Flutter
-// plugins do not build this file.
+// is drawn, the other says the compositor has finished reading it.
 #import <Metal/Metal.h>
 
 // A shared event on the default device, retained once. Free it with release.

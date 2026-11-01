@@ -21,8 +21,8 @@ class SwapChain;
 /// particular operating system — Filament abstracts the graphics backend, so
 /// the scene, the materials, the lights and the passes are the same code
 /// everywhere. What is not the same is how a finished frame is handed to
-/// whoever composites it: an IOSurface-backed CVPixelBuffer that Flutter's
-/// texture registry adopts on Apple platforms, an ANativeWindow from a
+/// whoever composites it: an IOSurface-backed CVPixelBuffer that the
+/// host's compositor adopts on Apple platforms, an ANativeWindow from a
 /// SurfaceProducer on Android, a shared texture on Windows.
 ///
 /// So that question lives here, behind four calls, and the renderer asks them
@@ -67,7 +67,7 @@ class OrblitSurface {
 };
 
 /// The implementation for whichever platform this was built for: the
-/// texture-sharing surface a Flutter plugin hands to Flutter. Only Apple has
+/// texture-sharing surface a host hands to its compositor. Only Apple has
 /// one so far (OrblitSurfaceApple.mm).
 OrblitSurface* OrblitCreateSurface();
 

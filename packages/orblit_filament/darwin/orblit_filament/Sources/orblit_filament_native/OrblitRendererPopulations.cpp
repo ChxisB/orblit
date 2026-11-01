@@ -55,7 +55,7 @@ void Renderer::growPopulation(Grown &grown, uint32_t count, const float *bounds,
     _instancedMaterial = materialFrom(Package::instanced);
   }
 
-  // Dart sends the public minimum/maximum pair. Filament's Box is a
+  // The managed side sends the public minimum/maximum pair. Filament's Box is a
   // centre/half-extent pair, so passing those six values straight through
   // puts the population's box at its minimum instead of around the lot.
   const float3 minimum{bounds[0], bounds[1], bounds[2]};

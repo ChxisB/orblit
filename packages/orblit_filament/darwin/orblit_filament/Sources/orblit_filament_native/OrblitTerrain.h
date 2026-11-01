@@ -34,7 +34,7 @@ namespace orblit {
 /// region size, mesh size, levels, the automatic cover's steep and flat sets,
 /// the set count, the pictures' size, whether the pictures came with this
 /// message, the triplanar sets as a mask, and the region count. Must match
-/// OrblitTerrain.headerInts in Dart.
+/// `RenderTerrain.HeaderInts` in Orblit.Filament.
 constexpr size_t kTerrainInts = 12;
 
 /// Whole numbers a region, after its terrain's head: x, z, and whether its

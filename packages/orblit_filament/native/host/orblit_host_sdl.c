@@ -10,7 +10,7 @@
  * console front end owns are exactly the three SDL owns, it is the only one
  * of the candidates that reads pads at all, and — the part that matters for
  * a port — SDL3 names buttons by position (SDL_GAMEPAD_BUTTON_SOUTH, not
- * SDL_GAMEPAD_BUTTON_A), which is package:orblit_input's decision arrived at
+ * SDL_GAMEPAD_BUTTON_A), which is Orblit.Input's decision arrived at
  * independently. The mapping below is therefore one-to-one and has no table
  * of per-vendor lies in it. See README.md for the dependency argument.
  *
@@ -154,8 +154,8 @@ static void reopen_pads(void) {
  * the slot, the edges and the walking — is the same code a real pad drives,
  * rather than a second path that could quietly rot.
  *
- * package:orblit_input answers the same problem the same way, with
- * tool/virtual_pad.dart writing uinput events on Linux.
+ * Orblit.Input answers the same problem the same way, with
+ * a virtual pad that writes uinput events on Linux.
  */
 static SDL_JoystickID virtual_id;
 

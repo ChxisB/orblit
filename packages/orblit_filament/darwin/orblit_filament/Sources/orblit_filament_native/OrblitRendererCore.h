@@ -6,9 +6,7 @@
 // the materials, lights, sky and weather, the render graph and its passes,
 // probes, the irradiance field, post-processing, decals, splats, the outline
 // and batching. No Objective-C and no Apple header, so the same class runs
-// behind the Swift plugin on macOS and iOS, behind the C ABI in
-// include/orblit_renderer.h anywhere else, and behind a host with no Flutter
-// at all.
+// behind the C ABI in include/orblit_renderer.h on every platform.
 //
 // It was the Objective-C class in OrblitRenderer.mm, and it is laid out as
 // that class was, so that a change made to the old file can be found in this
@@ -386,14 +384,14 @@ class Renderer {
   /// nothing gets: this is the initial state the C ABI documents, so a
   /// console host that never calls orblit_renderer_set_batching batches, and
   /// one that calls it with 0 does not. What it costs against what it saves
-  /// is set out on OrblitScene.batching (Dart side); the short of it is fifty
+  /// is set out on RenderScene.Batching; the short of it is fifty
   /// one renderables where three thousand would do, against a bounded
   /// difference at the edges of shadows.
   bool _batching{true};
   orblit::BatchCensus _census{};
 
   /// Whether opaque objects are drawn twice: once into depth alone, then
-  /// once shaded. Off by default — see OrblitScene.depthPrepass (Dart side)
+  /// once shaded. Off by default — see RenderScene.DepthPrepass
   /// for the measurements that decided that.
   bool _depthPrepass{};
 

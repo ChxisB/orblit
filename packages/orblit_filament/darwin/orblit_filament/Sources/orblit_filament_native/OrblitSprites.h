@@ -32,8 +32,7 @@
 namespace orblit {
 
 /// Floats per layer in the scene message: a column-major transform, then an
-/// RGBA tint. Must match OrblitSprites.layerStride in Dart and
-/// spriteLayerStride in OrblitSpriteMessage.swift.
+/// RGBA tint. Must match `SpriteLayer.Stride` in Orblit.Filament.
 constexpr size_t kSpriteLayerParams = 20;
 
 /// Floats per sprite: x, y, depth, rotation, width, height, pivot x and y,

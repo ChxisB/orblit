@@ -1,6 +1,6 @@
 // A small C ABI over miniaudio's engine: one call per thing a voice does.
 //
-// Everything above this line is decided in Dart. A voice arrives with its
+// Everything above this line is decided in managed code. A voice arrives with its
 // final gain, pitch and pan, so spatial sound is switched off here and the
 // engine only mixes what it is given.
 

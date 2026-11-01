@@ -12,9 +12,9 @@
 ///
 /// The buffer format is not a preference. BGRA in an IOSurface is what
 /// Filament's Apple swap chain requires, and it is also the one thing
-/// Flutter's compositor can adopt as a Metal texture without reading the
-/// pixels back through the CPU — which is the entire reason the 3D content
-/// can take part in Flutter's layout rather than floating over it in a
+/// a compositor can adopt as a Metal texture without reading the
+/// pixels back through the CPU, which is the entire reason the 3D content
+/// can take part in a host's layout rather than floating over it in a
 /// window of its own.
 namespace {
 
@@ -41,7 +41,7 @@ class AppleSurface final : public OrblitSurface {
       // Painted opaque black before anybody can see it.
       //
       // A fresh buffer's contents are whatever the memory held, and a buffer
-      // is handed to Flutter the moment it is presented — so a frame that is
+      // is handed to the compositor the moment it is presented, so a frame that is
       // interrupted, or a resize that reallocates while something is still
       // reading, can put uninitialised memory on screen. It arrives as flat
       // white with magenta through it, which looks exactly like a texture
