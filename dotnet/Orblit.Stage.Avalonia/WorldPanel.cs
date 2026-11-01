@@ -46,6 +46,9 @@ public sealed class WorldPanel : IDisposable
 {
     private const int PointerId = 1;
 
+    // How far from level with the face a ray may run and still count as level, in face space.
+    private const double Level = 1e-9;
+
     private readonly IPanel _panel;
     private readonly WorldPanelOptions _options;
     private Matrix4 _transform = Matrix4.Identity();
@@ -190,7 +193,10 @@ public sealed class WorldPanel : IDisposable
     {
         var from = _inverse.Transformed3(ray.Origin);
         var along = _inverse.Rotated3(ray.Direction);
-        if (along.Z >= 0 || from.Z < 1)
+
+        // A ray level with the face meets its plane only in rounding noise, and which side of zero that
+        // noise lands on differs between platforms.
+        if (along.Z >= -Level || from.Z < 1)
         {
             return null;
         }

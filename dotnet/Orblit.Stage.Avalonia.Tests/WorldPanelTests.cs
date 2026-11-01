@@ -213,6 +213,19 @@ public class WorldPanelTests
     }
 
     [Fact]
+    public void ARayLevelWithTheFaceToWithinRoundingMissesIt()
+    {
+        var (wall, panel, _) = Make();
+
+        // Tilted towards the face by a trillionth, which meets its plane a million million metres away.
+        var level = new PointerRay(Eye, new Vector3(-1e-12, 0, 1).Normalized());
+        wall.Move(level);
+
+        Assert.Null(wall.PixelAt(level));
+        Assert.Empty(panel.Sent);
+    }
+
+    [Fact]
     public void AMoveWithNothingPressedAndNoPlaneSendsNothing()
     {
         var (wall, panel, _) = Make();

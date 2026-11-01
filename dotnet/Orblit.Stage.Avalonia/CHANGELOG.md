@@ -2,6 +2,8 @@
 
 ## 0.2.0
 
+- A ray level with a `WorldPanel`'s face to within rounding is a miss. Before, the
+  side of zero that rounding landed on decided it, and it differed by platform.
 - `PanelHost` and `ControlPanel` put a tree of Avalonia controls on a
   `WorldPanel`. This settles decision 85 as (c). The host is one hidden
   window the stage keeps, with no frame, no taskbar entry, full clearness
