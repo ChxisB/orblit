@@ -4,16 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
-  # Flutter's stable and master disagree often enough that a build breaking on
-  # one is worth being able to check on the other without pushing a commit.
   workflow_dispatch:
-    inputs:
-      channel:
-        description: 'Flutter channel to build against'
-        required: false
-        default: stable
-        type: choice
-        options: [stable, beta, master]
 
 # A second push to a branch makes the first one's answer worthless, and the
 # macOS runners are the expensive part of this file.
@@ -21,65 +12,8 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
-env:
-  FLUTTER_CHANNEL: ${{ inputs.channel || 'stable' }}
-
 jobs:
-  # Everything that needs neither Flutter nor a window: the simulation, the
-  # geometry, the rig, the noise, and the core's own C++ checks.
-  check:
-    name: Dart packages
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: 3.13.0
-      # orblit_core builds its C++ through native_toolchain_c, which looks for
-      # clang and only clang on Linux. The runner ships g++ and not clang, so
-      # without this the build hook fails with "No compiler configured on host
-      # 'linux_x64'" and every package that depends on the core goes with it.
-      - name: Install clang
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq clang
-      - name: Analyze and test
-        run: ./tool/check.sh
-
-  # What the engine exports, read by the reference validator rather than by
-  # us. Its own tests assert what somebody thought to assert; this one knows
-  # the whole specification, and a file only Orblit can open is not an export.
-  gltf:
-    name: glTF exports
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          sdk: 3.13.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - name: Export and validate
-        run: ./tool/check_gltf.sh
-
-  # The packages that resolve against Flutter. None of them draw, so this runs
-  # on Linux: the renderer's tests check the buffers and bindings it builds,
-  # not the picture.
-  flutter:
-    name: Flutter packages
-    runs-on: ubuntu-latest
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-      - name: Analyze and test
-        run: ./tool/check_flutter.sh
-
-  # Every package whose library changed has to say so in its version and its
+  # Every project whose source changed has to say so in its version and its
   # changelog. Only on pull requests: it compares a branch against main, and
   # on main there is nothing to compare to.
   versions:
@@ -90,14 +24,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # The whole history, because the check needs the merge base — and a
+          # The whole history, because the check needs the merge base, and a
           # shallow clone does not have one, which makes this pass by
           # accident rather than on purpose.
           fetch-depth: 0
       - run: ./tool/check_versions.sh origin/${{ github.base_ref }}
 
-  # The Markdown, which is now this repository's front door and which nothing
-  # else looks at. Cheap enough to sit in the format job's shadow.
+  # The Markdown, which is this repository's front door and which nothing
+  # else looks at.
   docs:
     name: Docs
     runs-on: ubuntu-latest
@@ -106,8 +40,9 @@ jobs:
       - uses: actions/checkout@v4
       - run: ./tool/check_docs.sh
 
-  # The C# solution under dotnet/. The same gate on all three desktop systems,
-  # because the port has to build and pass on each of them.
+  # The C# solution under dotnet/ and the native sources it loads. The same
+  # gate on all three desktop systems, because the engine has to build and
+  # pass on each of them.
   dotnet:
     name: .NET (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -138,306 +73,9 @@ jobs:
           bash packages/orblit_filament/darwin/setup.sh
           echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV"
 
-      - name: Build, test and check format
+      - name: Check sources, build, test and check format
         shell: bash
         run: ./tool/check_dotnet.sh
-
-  # Formatting is its own job so a formatting failure never hides a real one.
-  format:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dart-lang/setup-dart@v1
-        with:
-          # Pinned: the formatter changes between releases, and tracking
-          # stable turns an unrelated SDK bump into a red build on every file.
-          sdk: 3.13.0
-      # Flutter as well as Dart, because two of the packages resolve against
-      # it — and the formatter reads a package's language version out of its
-      # resolved package config. Without Flutter here those two stay
-      # unresolved, get formatted as if they were older, and are reported as
-      # needing changes they do not need.
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          cache: true
-      - run: ./tool/format.sh --check
-
-  # Compiles the renderer.
-  #
-  # OrblitRenderer.mm is the largest and least type-checked thing in the
-  # repository, and nothing above touches it: a Dart test can exercise the
-  # bindings without the native side existing at all. Compiling it needs a
-  # macOS host and an application to build it into, so this checks out the
-  # viewport example and builds that — the smallest app that links the whole
-  # renderer.
-  renderer:
-    name: Renderer (macOS)
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: orblit
-      - uses: actions/checkout@v4
-        with:
-          # No token: these repositories are public, so the default
-          # GITHUB_TOKEN reads them. Nothing here needs a secret.
-          repository: ChxisB/orblit-examples
-          path: orblit-examples
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-
-      # The SDK is a 300MB download and a fixed version, so it is worth
-      # keeping between runs. Keyed on the version in setup.sh, so bumping
-      # Filament fetches the new one rather than building against a stale
-      # cache that happens to still be there.
-      - name: Cache Filament SDK
-        uses: actions/cache@v4
-        with:
-          path: orblit/packages/orblit_filament/darwin/third_party
-          key: filament-${{ runner.os }}-${{ hashFiles('orblit/packages/orblit_filament/darwin/setup.sh') }}
-
-      # Written here rather than by the examples repository's link script.
-      # That script comes from *its* main, so this job's behaviour would
-      # depend on a file in another repository that this pull request cannot
-      # change — which is exactly how this job first failed. The viewport
-      # depends on the renderer and nothing else, so the override is two
-      # lines and owning them is cheaper than the coupling.
-      # Fetches the Filament SDK and compiles the materials into the C
-      # arrays the renderer includes. This runs from the podspec's
-      # prepare_command under CocoaPods, and Swift Package Manager has no
-      # equivalent hook — a package plugin runs sandboxed, with no network —
-      # so on the SPM path, which is now Flutter's default for macOS, nothing
-      # runs it and the build fails on a missing generated header. It is
-      # idempotent, so calling it here is free when the cache is warm.
-      - name: Fetch Filament and compile materials
-        run: bash orblit/packages/orblit_filament/darwin/setup.sh
-
-      - name: Point the viewport at this checkout
-        run: |
-          cat > orblit-examples/viewport/pubspec_overrides.yaml <<YAML
-          dependency_overrides:
-            orblit_filament:
-              path: ${{ github.workspace }}/orblit/packages/orblit_filament
-          YAML
-
-      - name: Build the viewport
-        working-directory: orblit-examples/viewport
-        run: flutter build macos --debug
-
-      # A build proves it compiles and links. Running it proves the renderer
-      # reaches the point of handing Flutter a frame, which is a different
-      # claim and the one that has actually broken: a Filament precondition
-      # aborts at runtime, not at link time.
-      - name: Draw a frame
-        working-directory: orblit-examples/viewport
-        env:
-          ORBLIT_DUMP_FRAME: 30
-        run: ../../orblit/tool/ci_draw_frame.sh build/macos/Build/Products/Debug/orblit_viewport.app
-
-  # The same renderer, linked for the other Apple platform.
-  #
-  # iOS shares one implementation with macOS under darwin/, so nothing above
-  # would notice an Apple-only call arriving in the portable core, a framework
-  # that exists on one platform and not the other, or a library missing from
-  # the xcframework's iOS slices — all of which have broken this before and
-  # none of which a macOS build sees. The simulator slice is what makes that
-  # checkable: it is the only one that builds and runs without a signing
-  # identity, so a device build stays out of CI until there is one.
-  #
-  # The gallery rather than the viewport, because it lives in this repository
-  # and carries every worked example, so this job needs no second checkout and
-  # a pull request can change what it builds. It is checked out to the same
-  # path as the job above so both share one Filament cache.
-  renderer-ios:
-    name: Renderer (iOS simulator)
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: orblit
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-
-      # Same path and key as the macOS job, so whichever runs first pays for
-      # the download and the other does not. The SDK the two need is the same
-      # tarball pair: setup.sh fetches both flavours either way, because the
-      # mac one carries matc and matc only runs on the host.
-      - name: Cache Filament SDK
-        uses: actions/cache@v4
-        with:
-          path: orblit/packages/orblit_filament/darwin/third_party
-          key: filament-${{ runner.os }}-${{ hashFiles('orblit/packages/orblit_filament/darwin/setup.sh') }}
-
-      - name: Fetch Filament and compile materials
-        run: bash orblit/packages/orblit_filament/darwin/setup.sh
-
-      - name: Build the gallery for the simulator
-        working-directory: orblit/examples/gallery
-        run: flutter build ios --simulator --debug
-
-      # Running it as well as building it, for the reason the macOS job does:
-      # a Filament precondition aborts at runtime in a build that compiled
-      # perfectly. It cannot reach a frame today — the simulator's GPU is below
-      # the standard surface's feature level, which the script explains and
-      # reports rather than failing on — but it does prove the app launches,
-      # the plugin registers and the engine starts on a Metal device that is
-      # not this host's. That is the part a build cannot claim, and it is what
-      # would silently rot otherwise.
-      - name: Draw a frame on a simulator
-        # Not a gate, deliberately. On GitHub's hosted macOS runners the app
-        # installs, launches and starts the engine on the slim surface, and
-        # then no frame ever arrives: twice, the second time with
-        # Simulator.app shown and 240 s allowed. The same app draws on a
-        # developer's simulator. The build step above is the gate; this one
-        # still runs and still says what happened, and should become one
-        # again once a runner's simulator can draw.
-        continue-on-error: true
-        working-directory: orblit/examples/gallery
-        env:
-          ORBLIT_DUMP_FRAME: 30
-          # A GitHub runner's simulator boots slowly and draws on a virtual
-          # GPU, so thirty frames take far longer than on a developer's Mac.
-          ORBLIT_FRAME_TIMEOUT: 240
-        run: ../../tool/ci_draw_frame_ios.sh build/ios/iphonesimulator/Runner.app
-
-  # The renderer again, linked for Android -- the plugin's Kotlin/JNI bridge
-  # over the same portable core the two jobs above build for Apple. Builds
-  # only, not yet a drawn frame the way those two finish on: that needs a
-  # running device or emulator, which this runner does not have, and is
-  # exercised by hand against the AVD this plugin was developed against (see
-  # the Android section of the top-level report) rather than in CI so far.
-  #
-  # Unverified end to end: GitHub's ubuntu-latest image is assumed to carry
-  # an Android SDK under ANDROID_HOME with cmdline-tools available to install
-  # the pinned NDK, which has not been checked against an actual run of this
-  # job.
-  renderer-android:
-    name: Renderer (Android build)
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: orblit
-
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-
-      # Pinned to match packages/orblit_filament/android/build.gradle.kts's
-      # own ndkVersion -- the two have to agree, which is why that file pins
-      # it rather than inheriting Flutter's own default, and the runner's
-      # preinstalled NDK (whatever version that happens to be) is not
-      # necessarily this one.
-      - name: Install the pinned NDK
-        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;28.2.13676358"
-
-      # Two things live under third_party/ and are both worth caching: the
-      # Android release setup.sh fetches (headers and static libraries for
-      # every ABI, since this runner has no local cache to symlink the way
-      # the dev machine does), and a Linux release fetched for its matc
-      # alone -- see setup.sh's own comment on why a Linux host cannot
-      # borrow darwin/setup.sh's mac matc. Keyed on setup.sh itself, so
-      # changing which Filament version it names fetches fresh copies of
-      # both rather than reusing a stale cache under the same key.
-      - name: Cache Filament SDKs
-        uses: actions/cache@v4
-        with:
-          path: orblit/packages/orblit_filament/android/third_party
-          key: filament-android-${{ runner.os }}-${{ hashFiles('orblit/packages/orblit_filament/android/setup.sh') }}
-
-      - name: Fetch Filament and compile materials
-        run: bash orblit/packages/orblit_filament/android/setup.sh
-
-      - name: Build the gallery APK
-        working-directory: orblit/examples/gallery
-        run: flutter build apk --debug --target-platform=android-arm64
-
-  # The renderer once more, linked for Windows -- the plugin's Win32 bridge
-  # over the same portable core every job above builds for somewhere else.
-  #
-  # This job is not a check on the Windows plugin so much as the only
-  # compiler it has. There is no Windows machine behind this work: every line
-  # under packages/orblit_filament/windows/ was written against the embedder's
-  # own headers and Filament's published release and has never been built
-  # anywhere else. So a green run here claims exactly what it does and no
-  # more -- that the plugin, the portable core and Filament's Windows
-  # archives compile, link and bundle together.
-  #
-  # x64 only, because Google publishes no arm64 Windows release of Filament;
-  # the plugin's CMakeLists refuses that target by name rather than failing
-  # at the link.
-  renderer-windows:
-    name: Renderer (Windows build)
-    runs-on: windows-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          path: orblit
-
-      - uses: subosito/flutter-action@v2
-        with:
-          channel: ${{ env.FLUTTER_CHANNEL }}
-          cache: true
-
-      # The Windows release is a 769 MB download and a fixed version, so it is
-      # well worth keeping between runs -- it is by some way the largest of
-      # the four platforms' SDKs. Keyed on setup.sh, so changing which
-      # Filament version it names fetches a fresh copy rather than building
-      # against a stale cache that happens to still be there.
-      - name: Cache Filament SDK
-        uses: actions/cache@v4
-        with:
-          path: orblit/packages/orblit_filament/windows/third_party
-          key: filament-windows-${{ runner.os }}-${{ hashFiles('orblit/packages/orblit_filament/windows/setup.sh') }}
-
-      # Through bash explicitly. setup.sh is the same shape as the other three
-      # platforms' and is a shell script; the bash Git for Windows installs is
-      # what runs it, both here and from the plugin's own CMakeLists at
-      # configure time, so this step also proves that path works before the
-      # build depends on it.
-      - name: Fetch Filament and compile materials
-        shell: bash
-        run: bash orblit/packages/orblit_filament/windows/setup.sh
-
-      - name: Build the gallery for Windows
-        working-directory: orblit/examples/gallery
-        run: flutter build windows --debug
-
-      # Running it as well as building it, for the reason the macOS job does:
-      # a Filament precondition aborts at runtime in a build that compiled
-      # perfectly.
-      - name: Draw a frame
-        # Not a gate, deliberately, and for a sharper reason than the iOS
-        # job's: GitHub's windows-latest runners have no GPU at all, so there
-        # is no Vulkan driver to answer and the OpenGL behind it is a software
-        # path well below the standard surface's feature level. The expected
-        # outcome here is that the renderer declines to start, which the
-        # script reports rather than fails on. The build step above is the
-        # gate; this one should become one again on a runner that can draw.
-        continue-on-error: true
-        shell: bash
-        working-directory: orblit/examples/gallery
-        env:
-          ORBLIT_DUMP_FRAME: 30
-        run: ../../tool/ci_draw_frame_windows.sh build/windows/x64/runner/Debug
 
   # Checks each commit on a pull request against commitlint.config.mjs.
   # Pull requests only, since a push to main has no range to check. It

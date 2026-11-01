@@ -15,7 +15,7 @@ import sys
 
 # The repository's own Markdown. Anything vendored or generated is somebody
 # else's to keep tidy.
-SKIP = {'.git', 'node_modules', 'build', '.dart_tool', 'third_party', 'quickjs-ng'}
+SKIP = {'.git', 'node_modules', 'build', 'third_party', 'quickjs-ng'}
 
 EMPTY = re.compile(r'\[[^\]]*\]\(\s*\)')
 LINK = re.compile(r'\[[^\]]*\]\(([^)\s]+)\)')
