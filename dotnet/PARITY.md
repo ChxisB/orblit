@@ -1,5 +1,10 @@
 # Parity
 
+The port is finished. The Dart packages are no longer in this repository. The
+last commit that has them is tagged `dart-final`, and the Dart test counts below
+were taken at that tag. The fixtures the Dart tests wrote are in
+`dotnet/fixtures/`, and the C# tests read them from there.
+
 One row per package that has been ported. A row is added when a port starts.
 
 Declared counts the test declarations in the source. Run counts the tests that

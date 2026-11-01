@@ -1,5 +1,10 @@
 # Porting Dart to C#
 
+The port is finished. The Dart packages are no longer in this repository. The
+last commit that has them is tagged `dart-final`. This file is the record of
+the rules the port followed. The idiom table says why the C# looks as it does,
+and where a number in a fixture comes from.
+
 A port keeps the Dart shape and names. Change a design in its own commit, after
 the port passes. A port is done when `PARITY.md` shows the two test counts equal
 and the fixture test is green.
@@ -219,22 +224,23 @@ Each row is a place where a test will not always catch the difference.
 
 ## Fixtures
 
-A package with numbers in it gets an exporter in `tool/parity/bin/<package>.dart`.
-It calls the Dart code and writes `dotnet/fixtures/<package>/<name>.json`, one
-case per line, stamped with the commit that last changed the package.
+A package with numbers in it had an exporter in the Dart code. It wrote
+`dotnet/fixtures/<package>/<name>.json`, one case per line, stamped with the
+commit that last changed the package. The exporters went with the Dart, so
+the files are frozen. The commit that can write them again is tagged
+`dart-final`.
 
-- Run `tool/regen_parity.sh` to rewrite them and see the diff.
-- A fixture changes only when the Dart changes. Review the diff as a change to
-  the contract.
+- A fixture changes only by hand now. Review the diff as a change to the
+  contract.
 - A fixture that is a whole JSON snapshot is compared with `JsonCompare.FirstDifference`, which applies the tolerance to every number.
 - A test project copies its fixtures beside the assembly. Add a `Content` item
   to its csproj, as `Orblit.Noise.Tests` does.
-- A double that may be NaN or infinite is written with `number()` in `tool/parity/lib/fixture.dart`, which turns it into a string JSON can hold, and read with `Fixture.Number`.
+- A double that may be NaN or infinite is written as a string JSON can hold, and read with `Fixture.Number`.
 - Integers and bytes compare with plain equality. Doubles compare with
   `Tolerance.Close` in `Orblit.Parity`.
-- A `flutter test` runs under fake async. Work that awaits real IO, such as
-  writing a file, never finishes inside it. An example that draws its
-  textures in its constructor is recorded with those paths still null. The
+- The Dart tests ran under fake async. Work that awaited real IO, such as
+  writing a file, never finished inside it. An example that draws its
+  textures in its constructor was recorded with those paths still null. The
   C# test passes a picture folder that keeps nothing, to match.
 - The examples' `ticks.json` covers five seconds and moves each control at
   one. A branch that only the clock reaches, such as a sunset, is checked
@@ -258,7 +264,7 @@ The C# build writes to these places.
 | `~/.orblit/feed` | The NuGet folder the other repos restore the engine from | `tool/pack_local.sh`. Its first argument or `ORBLIT_FEED` names another. It also clears each package it packs from the NuGet cache, because a repacked version keeps its number |
 | `dotnet/native/runtimes/<rid>/native` | The native libraries the packages load | `tool/build_native.sh` |
 | `packages/orblit_filament/darwin/third_party/filament-mac/filament` | The Filament release the renderer builds against | `packages/orblit_filament/darwin/setup.sh` fetches it. `ORBLIT_FILAMENT_SDK` names another |
-| `dotnet/fixtures/<package>/` | The parity fixtures | `tool/regen_parity.sh`, and `tool/parity/flutter/regen.sh` for the ones that need Flutter |
+| `dotnet/fixtures/<package>/` | The parity fixtures | Frozen. The Dart exporters that wrote them are at the `dart-final` tag |
 
 `EngineExamples.All` takes an `environment` function. The gallery passes the
 process environment. A test passes an empty table, so a developer's own
