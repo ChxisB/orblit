@@ -16,6 +16,8 @@
   so with `Invalidate`.
 - There is no hover and no keyboard focus. A pointer lands once the host has
   drawn a frame or two with the panel in it.
+- `PanelHost.Open` refuses a width, a height or a scale that is not above
+  zero, because a bitmap of no pixels throws only when the panel paints.
 
 ## 0.1.0
 

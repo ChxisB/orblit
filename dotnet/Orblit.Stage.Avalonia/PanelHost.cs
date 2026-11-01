@@ -49,6 +49,17 @@ public sealed class PanelHost : IDisposable
     /// </summary>
     public ControlPanel Open(Control content, Size size, double scale = 1)
     {
+        // A bitmap of no pixels throws when the panel is painted, far from the call that made it.
+        if (!IsPositive(size.Width) || !IsPositive(size.Height))
+        {
+            throw new ArgumentOutOfRangeException(nameof(size), size, "A panel needs a width and a height above zero.");
+        }
+
+        if (!IsPositive(scale))
+        {
+            throw new ArgumentOutOfRangeException(nameof(scale), scale, "A panel needs a scale above zero.");
+        }
+
         var frame = new Panel
         {
             Width = size.Width,
@@ -63,6 +74,8 @@ public sealed class PanelHost : IDisposable
     }
 
     internal void Remove(Control frame) => _layers.Children.Remove(frame);
+
+    private static bool IsPositive(double value) => value > 0 && double.IsFinite(value);
 
     /// <summary>Closes the window. The panels it opened stop answering.</summary>
     public void Dispose() => _window.Close();

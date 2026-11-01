@@ -223,6 +223,40 @@ public sealed class ControlPanelTests
     });
 
     [Fact]
+    public Task PanelsStopAnsweringWhenTheirHostIsClosed() => Headless.Run(() =>
+    {
+        var clicks = 0;
+        var (host, panel) = Open(Pad(() => clicks++), new Size(100, 50));
+        host.Dispose();
+
+        Tap(panel, 50, 25);
+
+        Assert.Equal(0, clicks);
+    });
+
+    [Fact]
+    public Task APanelWithNoSizeOrNoScaleIsRefused() => Headless.Run(() =>
+    {
+        var host = new PanelHost();
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => host.Open(Pad(), new Size(0, 50)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => host.Open(Pad(), new Size(100, double.NaN)));
+        Assert.Throws<ArgumentOutOfRangeException>(() => host.Open(Pad(), new Size(100, 50), scale: 0));
+        host.Dispose();
+    });
+
+    [Fact]
+    public Task FindNamesTheControlItCouldNotFind() => Headless.Run(() =>
+    {
+        var window = new Window { Content = new Button { Name = "save" } };
+
+        var gone = Assert.Throws<InvalidOperationException>(() => Headless.Find<Button>(window, "discard"));
+
+        Assert.Contains("'discard'", gone.Message);
+        Assert.Contains("Button", gone.Message);
+    });
+
+    [Fact]
     public Task TwoPanelsOnTheSameSpotDoNotShareAPress() => Headless.Run(() =>
     {
         var (first, second) = (0, 0);

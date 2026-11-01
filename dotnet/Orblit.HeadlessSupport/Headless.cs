@@ -82,7 +82,8 @@ public static class Headless
     public static IEnumerable<T> All<T>(Control root) => root.GetLogicalDescendants().OfType<T>();
 
     public static T Find<T>(Control root, string name)
-        where T : Control => All<T>(root).First(one => one.Name == name);
+        where T : Control => All<T>(root).FirstOrDefault(one => one.Name == name)
+            ?? throw new InvalidOperationException($"No {typeof(T).Name} named '{name}' under the {root.GetType().Name}.");
 
     /// <summary>
     /// What is on screen under <paramref name="root"/>. Visual rather than logical, because what opens
