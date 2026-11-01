@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
+using Orblit.Json;
 
 namespace Orblit.Asset.Tests;
 
@@ -185,7 +186,7 @@ public sealed class CookProjectAddedTests : IDisposable
         var project = new CookProject(
             _work.At("missing"), _work.At("out"), CookTargets.Macos, _work.At("cache"), Family());
         var error = await Assert.ThrowsAsync<ArgumentException>(() => project.AssetsAsync());
-        Assert.StartsWith($"Invalid argument (assetsPath): is not a directory: \"{_work.At("missing")}\"", error.Message);
+        Assert.StartsWith($"Invalid argument (assetsPath): is not a directory: {JsonText.Encode(_work.At("missing"))}", error.Message);
         Assert.Equal("assetsPath", error.ParamName);
     }
 

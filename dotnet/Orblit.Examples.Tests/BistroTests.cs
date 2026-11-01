@@ -82,8 +82,8 @@ public sealed class BistroTests
         Assert.Equal((1L, 100000.0, true), (sun.Key, sun.Intensity, sun.CastShadows));
         Assert.Same(RenderEnvironment.None, bare.Environment);
         Assert.Equal((22000.0, true), (bare.Sky.Ambient, bare.Sky.Drawn));
-        Assert.Equal("/bistro/bistro_ibl.ktx", photographed.Environment.Radiance);
-        Assert.Equal("/bistro/bistro_skybox.ktx", photographed.Environment.Skybox);
+        Assert.Equal(Folder.Whole("bistro_ibl.ktx"), photographed.Environment.Radiance);
+        Assert.Equal(Folder.Whole("bistro_skybox.ktx"), photographed.Environment.Skybox);
         Assert.Equal(30000, photographed.Environment.Intensity);
         Assert.Equal((0.0, false), (photographed.Sky.Ambient, photographed.Sky.Drawn));
     }
@@ -204,7 +204,7 @@ public sealed class BistroTests
 
         Assert.Null(fetched.Note);
         Assert.StartsWith("The Bistro is not here yet.", missing.Note);
-        Assert.Equal("/bistro/BistroExterior.gltf", Assert.Single(missing.Scene(Camera, 0).Objects).Mesh);
+        Assert.Equal(Folder.Whole("BistroExterior.gltf"), Assert.Single(missing.Scene(Camera, 0).Objects).Mesh);
         Assert.Equal(["tool/fetch_bistro.sh", "exterior"], missing.Needs?.Command);
         Assert.StartsWith("The Bistro is not here yet.", new BistroInteriorExample(Folder.Environment, _ => false, _ => "").Note);
     }
@@ -230,7 +230,7 @@ public sealed class BistroTests
     {
         var example = EngineExamples.All(new ExampleFixture.NoPictures(), name => name == "ORBLIT_BISTRO" ? "/elsewhere" : null, ExampleFixture.NoRenderer).OfType<BistroExteriorExample>().Single();
 
-        Assert.Equal("/elsewhere/BistroExterior.gltf", Assert.Single(example.Scene(Camera, 0).Objects).Mesh);
+        Assert.Equal(Path.GetFullPath(Path.Combine("/elsewhere", "BistroExterior.gltf")), Assert.Single(example.Scene(Camera, 0).Objects).Mesh);
     }
 
     /// <summary>It is a hundred entries and the scene is rebuilt every frame.</summary>
@@ -286,7 +286,7 @@ public sealed class BistroTests
         ambient.Change(0);
 
         var scene = example.Scene(Camera, 0);
-        Assert.Equal("/bistro/BistroInterior_Wine.gltf", Assert.Single(scene.Objects).Mesh);
+        Assert.Equal(Folder.Whole("BistroInterior_Wine.gltf"), Assert.Single(scene.Objects).Mesh);
         Assert.StartsWith("The Bistro is not here yet.", example.Note);
         Assert.Equal(0, scene.Sky.Ambient);
         Assert.Same(Camera, scene.Camera);
@@ -315,12 +315,18 @@ public sealed class BistroTests
     {
         public static string? Environment(string name) => name == "ORBLIT_BISTRO" ? "/bistro" : null;
 
+        /// <summary>The path the example asks about, joined the way the example joins it.</summary>
+        public static string Under(string name) => Path.Combine("/bistro", name);
+
+        /// <summary>The path the example hands the renderer, which is whole.</summary>
+        public static string Whole(string name) => Path.GetFullPath(Under(name));
+
         public static HashSet<string> Fetched(params string[] also) =>
         [
-            "/bistro/BistroExterior.gltf",
-            "/bistro/BistroExterior.lights.json",
-            "/bistro/BistroInterior.gltf",
-            .. also.Select(name => $"/bistro/{name}"),
+            Under("BistroExterior.gltf"),
+            Under("BistroExterior.lights.json"),
+            Under("BistroInterior.gltf"),
+            .. also.Select(Under),
         ];
 
         public static string Read(string path) => path.EndsWith(".lights.json", StringComparison.Ordinal)

@@ -26,9 +26,11 @@ public sealed class AtomicFileTests : IDisposable
         var temporary = _work.At("target.partial");
         Directory.CreateDirectory(_work.At("target"));
 
-        await Assert.ThrowsAnyAsync<IOException>(
+        // Moving a file over a folder is an IOException on Unix and an UnauthorizedAccessException on Windows.
+        var error = await Record.ExceptionAsync(
             async () => await AtomicFile.WriteAsync(temporary, _work.At("target"), new byte[] { 1 }));
 
+        Assert.True(error is IOException or UnauthorizedAccessException, $"threw {error?.GetType().Name ?? "nothing"}");
         Assert.False(File.Exists(temporary));
     }
 }

@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orblit.Json;
 
 namespace Orblit.Asset.Tests;
 
@@ -202,7 +203,8 @@ public sealed class CookCliAddedTests : IDisposable
 
         Assert.Equal(2, code);
         Assert.StartsWith("cook: ", _err.ToString());
-        Assert.Contains(At("nowhere"), _err.ToString());
+        // The refusal prints the path as JSON text, which doubles a Windows backslash.
+        Assert.Contains(JsonText.Encode(At("nowhere")), _err.ToString());
         Assert.Equal("", _out.ToString());
     }
 
