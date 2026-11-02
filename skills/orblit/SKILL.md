@@ -249,6 +249,8 @@ ambient light, and the default camera exposure is set for daylight.
 
 A small complete game (input, a clamped game loop, spawning and despawning
 with stable keys) is in [references/game-loop.md](references/game-loop.md).
+That file also shows a game written as an `IGame` class, which the editor can
+run when the project names it.
 
 ## Lighting and exposure
 
@@ -879,7 +881,8 @@ Load these when the task needs them:
   renderer's names, the `dotnet` commands and the gates.
 - [references/scene-api.md](references/scene-api.md): constructors, fields
   and defaults for the scene types, with a population and a sprite layer.
-- [references/game-loop.md](references/game-loop.md): a complete small game.
+- [references/game-loop.md](references/game-loop.md): a complete small game,
+  and a game written as a class that runs on its own or in the editor.
 - [references/platforms.md](references/platforms.md): per-platform setup and
   what has actually been seen to work.
 - [references/assets.md](references/assets.md): materials and looks, shaders
