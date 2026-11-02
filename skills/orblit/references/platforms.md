@@ -19,6 +19,13 @@ The packages are not on nuget.org. The engine packs them into a local feed,
 `~/.orblit/feed` or `$ORBLIT_FEED`. The steps are in
 [dotnet.md](dotnet.md#setting-up).
 
+Every CI run also packs a feed that carries the libraries for `osx-arm64`,
+`linux-x64` and `win-x64`, and keeps it as the run's `packages` artifact. It
+is not published anywhere. A machine that restores from it needs no compiler
+for the native libraries, only the run-time libraries named under each system
+below. That list comes from reading what each library depends on. No clean
+machine has loaded them yet.
+
 The first build per platform downloads Filament into `third_party/` and
 compiles the materials into the native library. Both are idempotent and
 neither is in git.
@@ -45,6 +52,9 @@ run anywhere .NET does, Intel Macs included.
 ## macOS
 
 - Needs an Apple silicon Mac and Xcode with its command line tools.
+- The libraries are built for macOS 14 and newer, and `tool/check_native_floor.sh`
+  fails a build that needs more. CI runs macOS 26 only, so no run on macOS 14
+  or 15 has loaded them.
 - Run `packages/orblit_filament/darwin/setup.sh`, then
   `tool/build_native.sh`. It downloads about 74 MB (about 290 MB on disk). Run
   `setup.sh` again after a Filament version bump. Set-up copies are skipped in
@@ -55,20 +65,32 @@ run anywhere .NET does, Intel Macs included.
 - A sandboxed macOS app can't read arbitrary absolute paths, so a model file
   draws as a cube. Hand bytes over with `RenderResources.Provide(name, bytes)`,
   or turn the sandbox off while developing.
-- **State:** macOS is the reference. It is the only platform where the .NET
-  renderer has drawn, and the only one CI sets the renderer up on.
+- **State:** macOS is the reference. CI builds the renderer on an Apple
+  silicon runner and measures a frame drawn on Metal. Everything the renderer
+  does has been seen to draw here, in a window and headless.
 
 ## Linux
 
-- x86_64 or arm64, glibc 2.38 or newer (Debian 13 and Ubuntu 24.04 are new
-  enough, Debian 12 and Ubuntu 22.04 aren't), clang with libc++ (not GCC or
-  libstdc++), and a display (Xvfb works).
+- x86_64 or arm64, and a display (Xvfb works). To build, clang with libc++,
+  not GCC or libstdc++.
+- The packed libraries need glibc 2.38 or newer. CI builds them on Ubuntu
+  24.04, and `tool/check_native_floor.sh` fails a build that needs more.
+  Debian 13 and Ubuntu 24.04 are new enough. Debian 12 and Ubuntu 22.04
+  aren't.
+- To run them, install `libc++1` and `libc++abi1`:
+  `sudo apt install libc++1 libc++abi1`.
 - `packages/orblit_filament/linux/setup.sh` fetches the release for this
   machine's architecture and compiles the materials for `opengl` and `vulkan`.
   Run `darwin/setup.sh` again before a macOS build, because both write the
   same `generated/` folder.
-- **State:** the managed packages build and test in CI on Linux. The renderer
-  library is not built there, and no frame has drawn from C# on Linux.
+- **State:** CI builds the renderer on x64 Ubuntu with clang and libc++, and
+  draws on Mesa's lavapipe, a software Vulkan driver. A test reads a frame back
+  the way the Avalonia viewport does and checks that a red cube stands out from
+  its sky. A runner has no GPU, so no real graphics driver on Linux has drawn
+  a frame. The OpenGL path has not run, and no frame has been shown in a
+  window. Arm64 builds and passes the same tests in a container on a Mac, which
+  CI does not run. 17 renderer tests skip: 10 need a macOS pixel buffer, and 7
+  cook custom surface materials for Metal.
 
 ## Windows
 
@@ -76,11 +98,17 @@ run anywhere .NET does, Intel Macs included.
   development with C++", and Git for Windows with its `bash` on `PATH`. Git's
   installer usually only adds `Git\cmd`. Add `C:\Program Files\Git\bin`, and
   make sure WSL's `bash.exe` isn't first.
+- To run the packed libraries, install the Visual C++ 2015 to 2022 x64
+  redistributable.
 - The first setup downloads about 810 MB.
 - The engine's `.gitattributes` keeps `dotnet/**` on LF, because the tests
   compare bytes and Windows checks out CRLF by default.
-- **State: the managed packages build and test in CI, and no frame has ever
-  been drawn on Windows.** Windows on Arm can't build the renderer at all.
+- **State:** CI builds the renderer on x64 Windows with MSVC, and draws on
+  Mesa's lavapipe through Vulkan. A pinned action installs the driver. The
+  same frame check and the same 17 skips apply as on Linux. A runner has no
+  GPU, so no real graphics driver on Windows has drawn a frame. The OpenGL
+  path has not run, and no frame has been shown in a window. Windows on Arm
+  can't build the renderer at all.
 
 ## iOS, Android and the web
 
@@ -91,6 +119,9 @@ promise a date.
 
 ## Newer features, platform by platform
 
-Everything the renderer does has been seen to draw on macOS only: sprites,
-Gaussian splats, models (clips, skins, variants, FBX, OBJ), textures (cooked
-sets and the queue), and feeds. None has been run on Linux or Windows.
+CI measures the pixels of a plain cube, sprite layers and Gaussian splats on
+all three systems. It also draws custom graphs, populations, terrain and
+volumes on all three and checks that nothing faults, though it does not
+measure those frames. Models (clips, skins, variants, FBX, OBJ), textures
+(cooked sets and the queue) and custom surface materials have been seen to
+draw on macOS only. Feeds exist on macOS only.

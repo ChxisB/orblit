@@ -38,7 +38,7 @@
 - **2D.** Sprites in layers, atlas packing, parallax and tile maps, in the same scene as the 3D.
 - **Tooling.** A desktop editor. A gallery app that shows every technique one at a time, beside the lines that do it. A build-time asset pipeline that cooks KTX2 texture sets per device. And a Claude Code skill, so an assistant writes real API instead of guessing.
 - **Formats.** glTF, with FBX and OBJ converted on the way in. An `.oscene` scene document with migrations and diffs. KTX2 compressed textures, HDR and EXR environments, and `.ply`, `.spz` and `.osplat` splat captures.
-- **Platforms.** macOS, Windows and Linux first. The renderer has drawn on macOS only. The C# projects build and test on all three on every change, and the native renderer does not build on Linux or Windows in CI yet. [Platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about that difference on purpose.
+- **Platforms.** macOS, Windows and Linux first. Every change builds the renderer and measures a drawn frame on Apple silicon, Linux x64 and Windows x64. The Linux and Windows frames come from Mesa's software Vulkan driver, because a CI runner has no GPU, so no real graphics card there has drawn one. [Platform support](https://orblitengine.com/docs/reference/platform-support/) is fussy about that difference on purpose.
 
 ## Showcases
 

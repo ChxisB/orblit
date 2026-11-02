@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.42.1
+
+An effect pass and the selection outline are built when the graph or the
+outline keys are set, not in the first frame that draws them. Filament commits
+a material instance as a frame begins, so one made inside the frame was drawn
+with no descriptor set. Metal tolerated that. On Mesa's software Vulkan driver
+the first frame that drew one ended the process with a segmentation fault.
+Parameters set during a frame still take effect on the next frame.
+
+The libraries are built to load on macOS 14 and Ubuntu 24.04 or newer. A
+library built on a newer image loaded on that image only. The renderer also
+builds with MSVC on Windows and with clang and libc++ on Linux.
+
 ## 0.42.0
 
 The renderer and its Apple helper are packed at `runtimes/<rid>/native`, where NuGet looks
