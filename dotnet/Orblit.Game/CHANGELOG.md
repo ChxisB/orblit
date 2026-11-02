@@ -6,6 +6,8 @@
   `LocalClient` and `OwnerOf(entityId)`. A network package implements it.
 - `GameContext.Net` is the net the game runs on. It is `OfflineNet`, which
   has no role, no client and no owners, until the host is given another.
+  Each host makes its own `OfflineNet`, so two games in one process share
+  nothing a network package keeps against it.
 - `GameHost.UseNet` sets the net and hands it the game's scene. It throws
   once the game has started.
 - A net has `BeforeUpdate` and `AfterUpdate`. The host calls them around each

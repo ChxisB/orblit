@@ -28,6 +28,18 @@ public class GameNetTests
     }
 
     [Fact]
+    public void EachHostHasItsOwnOfflineNetSoTwoGamesShareNothing()
+    {
+        var first = new ScriptedGame();
+        var second = new ScriptedGame();
+        new GameHost(first, new SceneDocument(), "/project", new SilentLog()).Start();
+        new GameHost(second, new SceneDocument(), "/project", new SilentLog()).Start();
+
+        Assert.IsType<OfflineNet>(first.Context!.Net);
+        Assert.NotSame(first.Context.Net, second.Context!.Net);
+    }
+
+    [Fact]
     public void ASetNetIsWhatTheGameSeesInStartAndInUpdate()
     {
         var net = new FakeNet(GameRole.Server, "host", "p1");

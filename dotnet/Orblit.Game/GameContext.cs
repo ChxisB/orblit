@@ -26,7 +26,7 @@ public sealed class GameContext
     public GameInput Input { get; private set; }
 
     /// <summary>The network the game runs on. It is <see cref="OfflineNet"/> unless the host was given another.</summary>
-    public IGameNet Net { get; private set; } = OfflineNet.Instance;
+    public IGameNet Net { get; private set; } = new OfflineNet();
 
     internal void Receive(GameInput input) => Input = input;
 
