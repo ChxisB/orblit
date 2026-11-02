@@ -79,6 +79,7 @@ public static class SceneComponents
     public const string SoundSource = "soundSource";
     public const string SoundListener = "soundListener";
     public const string SoundSurface = "soundSurface";
+    public const string Net = "net";
     public const string Data = "data";
     public const string Prefab = "prefab";
 
@@ -86,8 +87,9 @@ public static class SceneComponents
     /// The order components are written in, so two saves of one scene produce the same bytes and a
     /// diff of a scene file is a diff of what changed. Roughly outside-in: where a thing is, then
     /// what it draws and what it is simulated and animated as, then what it lights or watches with,
-    /// then the flat layers, then what it carries. Anything not on this list is written after it, in
-    /// the order it was read, which keeps an unknown component's position stable too.
+    /// then the flat layers, then whether it is shared over a network, then what it carries.
+    /// Anything not on this list is written after it, in the order it was read, which keeps an
+    /// unknown component's position stable too.
     /// </summary>
     public static readonly IReadOnlyList<string> Order =
     [
@@ -113,6 +115,7 @@ public static class SceneComponents
         SoundSource,
         SoundListener,
         SoundSurface,
+        Net,
         Data,
         Prefab,
     ];
@@ -141,6 +144,7 @@ public static class SceneComponents
         [SoundSource] = SoundSourceComponent.FromJson,
         [SoundListener] = SoundListenerComponent.FromJson,
         [SoundSurface] = SoundSurfaceComponent.FromJson,
+        [Net] = NetComponent.FromJson,
         [Data] = DataComponent.FromJson,
         [Prefab] = PrefabComponent.FromJson,
     }.ToFrozenDictionary();
