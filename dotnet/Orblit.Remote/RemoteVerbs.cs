@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Orblit.Json;
 using Args = System.Collections.Generic.IReadOnlyDictionary<string, object?>;
@@ -17,6 +18,7 @@ public sealed class RemoteVerbs
 {
     private const int DefaultDrawLimit = 100;
     private const int DefaultTailLines = 50;
+    private const int PollMs = 10;
 
     private readonly RemoteHost _host;
     private readonly SnapshotStore _snapshots = new();
@@ -33,6 +35,7 @@ public sealed class RemoteVerbs
             ["time.pause"] = (false, Sync(Pause)),
             ["time.resume"] = (false, Sync(Resume)),
             ["time.step"] = (false, Step),
+            ["world.wait"] = (false, Wait),
             ["world.snapshot"] = (false, Snapshot),
             ["world.diff"] = (false, Sync(Diff)),
             ["input.send"] = (true, Send),
@@ -225,6 +228,33 @@ public sealed class RemoteVerbs
         catch (TimeoutException)
         {
             return false;
+        }
+    }
+
+    // F10: the deadline is real time, because a paused game has no clock of its own to wait by.
+    private async Task<object?> Wait(Args args)
+    {
+        var world = Need(_host.World, "a world");
+        var condition = WaitCondition.From(args);
+        var started = Stopwatch.GetTimestamp();
+        while (true)
+        {
+            var (met, value, seen) = condition.Look(world);
+            var waited = Stopwatch.GetElapsedTime(started);
+            if (met)
+            {
+                return Wire.Map(
+                    ("met", true),
+                    ("value", Wire.Plain(value)),
+                    ("waited_ms", (long)waited.TotalMilliseconds));
+            }
+
+            if (waited.TotalMilliseconds >= condition.TimeoutMs)
+            {
+                throw new RemoteException(RemoteException.TimedOut, $"Not met in {condition.TimeoutMs} ms: {seen}");
+            }
+
+            await Task.Delay(PollMs);
         }
     }
 

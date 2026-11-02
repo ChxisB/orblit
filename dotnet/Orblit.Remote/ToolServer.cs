@@ -20,6 +20,8 @@ public sealed class ToolServer
     // ten frames a second.
     private const int MaxFrames = 300;
 
+    private static readonly string[] WaitKeys = ["id", "component", "field", "op", "value", "gone", "timeout_ms"];
+
     private static readonly string[] ProtocolVersions = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
     private readonly Func<string, Args, Task<object?>> _call;
@@ -153,6 +155,31 @@ public sealed class ToolServer
 
             // Not gated, but it runs game code and holds time, so it does not claim to change nothing.
             ReadOnlyHint = false,
+        },
+        new()
+        {
+            Name = "wait",
+            Description =
+                "Waits until one number field of an entity holds against `value`, or with `gone` "
+                + "until the entity is no longer alive, and answers `met`, the value read and "
+                + $"`waited_ms`. It checks every few milliseconds for `timeout_ms` (default 5000, at most {WaitCondition.MaxTimeoutMs}) "
+                + "and answers a timeout error that names the last value. A paused game moves "
+                + "only when `step` runs, so step or resume it first.",
+            Properties = Wire.Map(
+                ("id", Kind("integer", "The entity to watch")),
+                ("component", Kind("string")),
+                ("field", Kind("string")),
+                (
+                    "op",
+                    Wire.Map(
+                        ("type", "string"),
+                        ("enum", WaitCondition.Operators.Cast<object?>().ToList()),
+                        ("description", "How the field is compared with `value`"))),
+                ("value", Kind("number")),
+                ("gone", Kind("boolean", "Wait for the entity to be gone, and give no component")),
+                ("timeout_ms", Wire.Map(("type", "integer"), ("minimum", 1), ("maximum", WaitCondition.MaxTimeoutMs)))),
+            Run = Wait,
+            Required = ["id"],
         },
         new()
         {
@@ -330,6 +357,10 @@ public sealed class ToolServer
 
         return Text(await _call("time.step", Wire.Map(("n", n))));
     }
+
+    private async Task<List<object?>> Wait(Args args) => Text(await _call(
+        "world.wait",
+        Wire.Map(WaitKeys.Where(args.ContainsKey).Select(key => (key, args[key])).ToArray())));
 
     private async Task<List<object?>> Set(Args args)
     {

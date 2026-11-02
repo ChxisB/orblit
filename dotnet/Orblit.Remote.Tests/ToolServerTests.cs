@@ -121,11 +121,11 @@ public sealed class ToolServerTests
         Assert.Equal(RemoteException.InvalidRequest, Rpc.CodeOf(await Answer("[]")));
 
     [Fact]
-    public async Task TheListHasSixReadToolsAndNoSet()
+    public async Task TheListHasSevenReadToolsAndNoSet()
     {
         var reply = await new FakeGame().Ask("tools/list");
 
-        Assert.Equal(["observe", "step", "snapshot", "diff", "screenshot", "perf"], FakeGame.Names(reply));
+        Assert.Equal(["observe", "step", "wait", "snapshot", "diff", "screenshot", "perf"], FakeGame.Names(reply));
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public sealed class ToolServerTests
     {
         var names = FakeGame.Names(await new FakeGame(allowWrite: true).Ask("tools/list"));
 
-        Assert.Equal(7, names.Count);
+        Assert.Equal(8, names.Count);
         Assert.Contains("set", names);
     }
 
@@ -163,6 +163,7 @@ public sealed class ToolServerTests
 
         Assert.False(hints["step"]);
         Assert.False(hints["set"]);
+        Assert.True(hints["wait"]);
         Assert.True(hints["observe"]);
         Assert.True(hints["snapshot"]);
     }
