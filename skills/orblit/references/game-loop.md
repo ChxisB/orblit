@@ -269,3 +269,107 @@ the engine) is a longer game built the same way, with state in fields and a
 `Scene` method that returns the whole scene each frame. It adds an autopilot,
 sparks and a followed camera, and is worth reading before building anything
 larger.
+
+## A game as a class
+
+The game above owns its window. A game written as a class can also run in the
+editor, so a person builds the scene and presses Play. The class implements
+`IGame` from `Orblit.Game`, which has no interface types, and a host calls it.
+
+- `Start(context)` runs once, before the first frame.
+- `Update(context, seconds)` runs once a frame. `seconds` is never more than
+  0.1, so a stall is one slow step and not a jump.
+- `Stop(context)` runs once at the end, when the window closes or the game
+  threw. Let go of what `Start` took.
+
+What a game can reach:
+
+- **The scene** is a `SceneDocument` in `context.Scene.Document`. It does not
+  change under you. Build the scene you want and apply the difference with
+  `context.Scene.Apply(SceneDiff.Between(before, after))`. An empty diff is
+  ignored. `SceneDocument.WithEntity` and `SceneEntity.WithComponent` make the
+  next scene.
+- **The camera** is an entity with a `camera` component. Move it as you move
+  anything else. There is no camera call.
+- **Keys** are in `context.Input.Controls.Keys`, named by place on the
+  keyboard: `KeyW`, `Space`, `ArrowLeft`, `Digit1`, `ShiftLeft`. A French
+  layout keeps WASD under the same fingers.
+- **The pointer** is `context.Input.Pointer`, null while it is not over the
+  view. `Origin` and `Direction` are a ray into the world. `Pressed` is true
+  for the one update after a primary click. `Drag` is the right-button drag
+  since the last update, and null when that button is up. `Wheel` is the notches
+  since the last update.
+- **The log** is `context.Log`. `ProjectFolder` is what paths in the scene are
+  relative to.
+- **A throw** from any call ends the game. The host logs it, calls `Stop` and
+  shows the throw. It does not reach the editor.
+
+```csharp
+using Orblit.Game;
+using Orblit.Scene;
+using Orblit.VectorMath;
+
+namespace Crate;
+
+/// <summary>A crate that slides left and right on A and D.</summary>
+public sealed class CrateGame : IGame
+{
+    private const double MetresPerSecond = 4;
+    private double _x;
+
+    public void Start(GameContext context) => context.Log.Say("Crate started.");
+
+    public void Update(GameContext context, double seconds)
+    {
+        var keys = context.Input.Controls.Keys;
+        var step = ((keys.Contains("KeyD") ? 1 : 0) - (keys.Contains("KeyA") ? 1 : 0)) * MetresPerSecond * seconds;
+        var before = context.Scene.Document;
+        if (step == 0 || before["crate"] is not { } crate)
+        {
+            return;
+        }
+
+        _x += step;
+        var moved = crate.WithComponent(SceneComponents.Transform, new TransformComponent(position: new Vector3(_x, 1, 0)));
+        context.Scene.Apply(SceneDiff.Between(before, before.WithEntity("crate", moved)));
+    }
+
+    public void Stop(GameContext context)
+    {
+    }
+}
+```
+
+To run it on its own, add a `Program.cs` that hands the class, a scene and the
+project folder to `GameRunner`. The project references `Orblit.Game` and
+`Orblit.Game.Avalonia`, from the feed that [dotnet.md](dotnet.md) sets up.
+
+```csharp
+using Crate;
+using Orblit.Game.Avalonia;
+using Orblit.Scene;
+
+var folder = Path.GetFullPath(args.Length > 0 ? args[0] : ".");
+var load = SceneDocument.Decode(File.ReadAllText(Path.Combine(folder, "scenes/level.oscene")));
+return GameRunner.Run(new CrateGame(), load.Document, folder);
+```
+
+To run it in the editor, name it in `orblit.project.json`. `project` is the
+game's `.csproj`, relative to the project folder with no `..`. `type` is the
+class's full name. It needs a public class with a public constructor that takes
+nothing.
+
+```json
+"game": { "project": "game/Game.csproj", "type": "Crate.CrateGame" }
+```
+
+An editor that reads this entry builds the project when Play is pressed and
+runs the class on a copy of the scene. It asks first the time it meets a
+project's code in a folder. Opening a project never builds or runs anything.
+
+A game with a score, a menu or a bar of buttons implements `IInterfaceGame`
+from `Orblit.Game.Avalonia` instead. It adds `CreateInterface()`, which returns
+an Avalonia `Control`. The host calls it once after `Start`, puts the control
+over the view and removes it when the game stops. A throw from it ends the game
+like any other. `Control` also names a type in `Orblit.Input`, so alias one of
+the two (see [packages.md](packages.md#name-clashes)).
