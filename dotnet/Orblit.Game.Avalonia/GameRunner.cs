@@ -28,15 +28,18 @@ public static class GameRunner
         var view = new DocumentView(scene, projectFolder);
         var host = new GameHost(game, view.Document, projectFolder, new ConsoleGameLog());
         var interfaceOf = game is IInterfaceGame withInterface ? withInterface.CreateInterface : (Func<Control>?)null;
-        var window = new GameWindow(host, view, new RendererScreen(), interfaceOf) { Title = scene.Name, Width = 1100, Height = 760 };
 
-        var code = AppBuilder.Configure(() => new GameApp(window))
+        // A window and a renderer view need the platform, so they are made once the application is up.
+        Window MakeWindow() =>
+            new GameWindow(host, view, new RendererScreen(), interfaceOf) { Title = scene.Name, Width = 1100, Height = 760 };
+
+        var code = AppBuilder.Configure(() => new GameApp(MakeWindow))
             .UsePlatformDetect()
             .StartWithClassicDesktopLifetime([]);
         return code != 0 || host.Fault is not null ? 1 : 0;
     }
 
-    private sealed class GameApp(Window main) : Application
+    internal sealed class GameApp(Func<Window> makeMain) : Application
     {
         public override void Initialize()
         {
@@ -48,7 +51,7 @@ public static class GameRunner
         {
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = main;
+                desktop.MainWindow = makeMain();
             }
 
             base.OnFrameworkInitializationCompleted();
