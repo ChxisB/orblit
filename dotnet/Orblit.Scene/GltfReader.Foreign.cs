@@ -33,7 +33,12 @@ internal sealed partial class GltfReader
             components[SceneComponents.Camera] = camera;
         }
 
-        return new SceneEntity(id, GltfJson.Text(node.GetValueOrDefault("name")) ?? $"Node {at}", ParentId(at), components: components);
+        return new SceneEntity(
+            id,
+            GltfJson.Text(node.GetValueOrDefault("name")) ?? $"Node {at}",
+            ParentId(at),
+            GltfJson.ShownOn(node) ?? true,
+            components);
     }
 
     private static TransformComponent? Transform(JsonMap node)

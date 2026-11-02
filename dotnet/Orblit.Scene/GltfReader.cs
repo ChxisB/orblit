@@ -172,7 +172,7 @@ internal sealed partial class GltfReader
             id,
             GltfJson.Text(node.GetValueOrDefault("name")) ?? id,
             ParentId(at),
-            ours.GetValueOrDefault("visible") is not false,
+            GltfJson.ShownOn(node) ?? ours.GetValueOrDefault("visible") is not false,
             components);
     }
 
