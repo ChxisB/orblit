@@ -19,6 +19,13 @@ The packages are not on nuget.org. The engine packs them into a local feed,
 `~/.orblit/feed` or `$ORBLIT_FEED`. The steps are in
 [dotnet.md](dotnet.md#setting-up).
 
+Every CI run also packs a feed that carries the libraries for `osx-arm64`,
+`linux-x64` and `win-x64`, and keeps it as the run's `packages` artifact. It
+is not published anywhere. A machine that restores from it needs no compiler
+for the native libraries, only the run-time libraries named under each system
+below. That list comes from reading what each library depends on. No clean
+machine has loaded them yet.
+
 The first build per platform downloads Filament into `third_party/` and
 compiles the materials into the native library. Both are idempotent and
 neither is in git.
@@ -45,6 +52,9 @@ run anywhere .NET does, Intel Macs included.
 ## macOS
 
 - Needs an Apple silicon Mac and Xcode with its command line tools.
+- The libraries are built for macOS 14 and newer, and `tool/check_native_floor.sh`
+  fails a build that needs more. CI runs macOS 26 only, so no run on macOS 14
+  or 15 has loaded them.
 - Run `packages/orblit_filament/darwin/setup.sh`, then
   `tool/build_native.sh`. It downloads about 74 MB (about 290 MB on disk). Run
   `setup.sh` again after a Filament version bump. Set-up copies are skipped in
@@ -61,9 +71,14 @@ run anywhere .NET does, Intel Macs included.
 
 ## Linux
 
-- x86_64 or arm64, glibc 2.38 or newer (Debian 13 and Ubuntu 24.04 are new
-  enough, Debian 12 and Ubuntu 22.04 aren't), clang with libc++ (not GCC or
-  libstdc++), and a display (Xvfb works).
+- x86_64 or arm64, and a display (Xvfb works). To build, clang with libc++,
+  not GCC or libstdc++.
+- The packed libraries need glibc 2.38 or newer. CI builds them on Ubuntu
+  24.04, and `tool/check_native_floor.sh` fails a build that needs more.
+  Debian 13 and Ubuntu 24.04 are new enough. Debian 12 and Ubuntu 22.04
+  aren't.
+- To run them, install `libc++1` and `libc++abi1`:
+  `sudo apt install libc++1 libc++abi1`.
 - `packages/orblit_filament/linux/setup.sh` fetches the release for this
   machine's architecture and compiles the materials for `opengl` and `vulkan`.
   Run `darwin/setup.sh` again before a macOS build, because both write the
@@ -83,6 +98,8 @@ run anywhere .NET does, Intel Macs included.
   development with C++", and Git for Windows with its `bash` on `PATH`. Git's
   installer usually only adds `Git\cmd`. Add `C:\Program Files\Git\bin`, and
   make sure WSL's `bash.exe` isn't first.
+- To run the packed libraries, install the Visual C++ 2015 to 2022 x64
+  redistributable.
 - The first setup downloads about 810 MB.
 - The engine's `.gitattributes` keeps `dotnet/**` on LF, because the tests
   compare bytes and Windows checks out CRLF by default.
