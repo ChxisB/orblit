@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.25.0
+
+- A scene can hold a `portrait` and a `landscape` layout, so one scene can
+  suit a phone held either way. `SceneLayouts` holds each as a `SceneDiff`
+  against the base scene and allows only `SetField`, `SetComponent` and
+  `SetVisible`. `SceneDocument.InLayout` returns the scene as it looks in
+  one layout. `LayoutShapes.Of` picks the shape for a window: taller than
+  wide is portrait and anything else is landscape.
+- The format is 6. A scene with layouts is written at 6 and any other scene is
+  written at `SceneDocument.PlainVersion`, 5, so a file with no layouts reads
+  in older tools as it did. Prefab files and glTF extras write 5.
+- `SceneLayouts.CountMissed` counts the edits in a layout that find nothing to
+  change, such as one aimed at a part of a folded prefab instance.
+- A file whose layout is not a list, or holds edits that cannot be read,
+  loads without them and says so in `Problems`.
+
 ## 0.24.0
 
 - A port of `orblit_scene` 0.24.0, parts S1 to S4: the components, the

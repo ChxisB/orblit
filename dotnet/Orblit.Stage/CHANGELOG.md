@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.0
+
+- `LayoutFollower` shows the layout that suits a window. Call `Fit` with the
+  window size at start and on every resize. It hands the `show` callback you
+  give it a `SceneDiff` from the layout last shown to the one that now suits,
+  usually `DocumentView.Apply`, and calls nothing while the shape stays the
+  same. Build the view from the base scene. A turn changes only what the two
+  layouts set, so an object the game added is left alone.
+
 ## 0.5.0
 
 - `SoundView` and `Cutscenes`, a port of `sound_view` and `cutscenes` from

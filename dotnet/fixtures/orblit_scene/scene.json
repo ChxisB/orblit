@@ -1265,7 +1265,7 @@
     {"op":"document","in":["not a scene"],"expect":{"throws":true}},
     {"op":"document","in":["[1, 2, 3]"],"expect":{"throws":true}},
     {"op":"document","in":["{\"entities\": []}"],"expect":{"throws":true}},
-    {"op":"document","in":["{\"formatVersion\":6,\"entities\":[]}"],"expect":{"throws":true}},
+    {"op":"document","in":["{\"formatVersion\":7,\"entities\":[]}"],"expect":{"throws":true}},
     {"op":"document","in":["{\"formatVersion\":5,\"name\":\"No list\"}"],"expect":{"throws":true}},
     {"op":"document","in":["{\"formatVersion\":5,\"entities\":\"not a list\"}"],"expect":{"throws":true}},
     {"op":"document","in":["{\"formatVersion\":5,\"entities\":[{\"id\":\"a\",\"name\":\"A\"},{\"name\":\"no id of its own\"},{\"id\":\"a\",\"name\":\"the second a\"},7,{\"id\":\"b\",\"name\":\"B\"}]}"],"expect":{"value":{"problems":["Entity 1 has no id, and was left out.","Two entities share the id \"a\"; the second was dropped.","Entity 3 is not an object, and was left out."],"text":"{\n  \"formatVersion\": 5,\n  \"name\": \"Scene\",\n  \"sky\": \"#1A2029\",\n  \"ambient\": 28000.0,\n  \"time\": {\n    \"hour\": 10.0,\n    \"cycle\": false,\n    \"hoursPerSecond\": 0.5\n  },\n  \"entities\": [\n    {\n      \"id\": \"a\",\n      \"name\": \"A\",\n      \"components\": {}\n    },\n    {\n      \"id\": \"b\",\n      \"name\": \"B\",\n      \"components\": {}\n    }\n  ]\n}\n"}}},

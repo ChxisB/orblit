@@ -124,7 +124,7 @@ internal sealed class GltfExporter
         {
             ["orblit"] = new OrderedDictionary<string, object?>
             {
-                ["formatVersion"] = (long)SceneDocument.FormatVersion,
+                ["formatVersion"] = (long)SceneDocument.PlainVersion,
                 ["settings"] = _scene.Settings.ToJson(),
             },
         };
