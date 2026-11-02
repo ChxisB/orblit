@@ -528,8 +528,12 @@ What it does not do:
 - After a spawn only the place and the `NetVar` values stay in step. Another
   component changed later stays on the copy that changed it.
 - Owners are given out once. Nobody joins after Play starts.
-- Every offline game in one process shares the handlers `Bind` made, so the last
-  `Bind` wins.
+- A call to a client goes out at the end of the update that made it, after the
+  tick. A client makes an entity from a tick, so a call that names a new entity
+  arrives after it.
+- A handler that throws on a call from the other end is counted in
+  `FaultedCalls` and the game goes on. A call the game makes to itself throws to
+  its caller.
 - A networked world is not saved. Playing in a browser is not tried.
 - It has run headless over `LoopbackLink` and not in a live editor window.
 
