@@ -3,9 +3,9 @@
 # The Filament release is not in the repository. Point ORBLIT_FILAMENT_SDK at
 # the directory that holds include/ and lib/. On macOS it defaults to the one
 # darwin/setup.sh stages. The compiled materials must exist in
-# ORBLIT_GENERATED_DIR. Only the macOS branch has been run. The Linux branch
+# ORBLIT_GENERATED_DIR. CI builds all three branches. The Linux branch
 # follows native/headless/build_linux.sh. The Windows branch links the
-# Filament release's MSVC libraries. Neither has been built.
+# Filament release's MSVC libraries.
 #
 # Usage: cmake -S packages/orblit_filament -B <build dir> -DORBLIT_RID=osx-arm64
 #        cmake --build <build dir> --config Release

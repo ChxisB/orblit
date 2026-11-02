@@ -55,8 +55,9 @@ run anywhere .NET does, Intel Macs included.
 - A sandboxed macOS app can't read arbitrary absolute paths, so a model file
   draws as a cube. Hand bytes over with `RenderResources.Provide(name, bytes)`,
   or turn the sandbox off while developing.
-- **State:** macOS is the reference. It is the only platform where the .NET
-  renderer has drawn, and the only one CI sets the renderer up on.
+- **State:** macOS is the reference. CI builds the renderer on an Apple
+  silicon runner and measures a frame drawn on Metal. Everything the renderer
+  does has been seen to draw here, in a window and headless.
 
 ## Linux
 
@@ -67,8 +68,14 @@ run anywhere .NET does, Intel Macs included.
   machine's architecture and compiles the materials for `opengl` and `vulkan`.
   Run `darwin/setup.sh` again before a macOS build, because both write the
   same `generated/` folder.
-- **State:** the managed packages build and test in CI on Linux. The renderer
-  library is not built there, and no frame has drawn from C# on Linux.
+- **State:** CI builds the renderer on x64 Ubuntu with clang and libc++, and
+  draws on Mesa's lavapipe, a software Vulkan driver. A test reads a frame back
+  the way the Avalonia viewport does and checks that a red cube stands out from
+  its sky. A runner has no GPU, so no real graphics driver on Linux has drawn
+  a frame. The OpenGL path has not run, and no frame has been shown in a
+  window. Arm64 builds and passes the same tests in a container on a Mac, which
+  CI does not run. 17 renderer tests skip: 10 need a macOS pixel buffer, and 7
+  cook custom surface materials for Metal.
 
 ## Windows
 
@@ -79,8 +86,12 @@ run anywhere .NET does, Intel Macs included.
 - The first setup downloads about 810 MB.
 - The engine's `.gitattributes` keeps `dotnet/**` on LF, because the tests
   compare bytes and Windows checks out CRLF by default.
-- **State: the managed packages build and test in CI, and no frame has ever
-  been drawn on Windows.** Windows on Arm can't build the renderer at all.
+- **State:** CI builds the renderer on x64 Windows with MSVC, and draws on
+  Mesa's lavapipe through Vulkan. A pinned action installs the driver. The
+  same frame check and the same 17 skips apply as on Linux. A runner has no
+  GPU, so no real graphics driver on Windows has drawn a frame. The OpenGL
+  path has not run, and no frame has been shown in a window. Windows on Arm
+  can't build the renderer at all.
 
 ## iOS, Android and the web
 
@@ -91,6 +102,9 @@ promise a date.
 
 ## Newer features, platform by platform
 
-Everything the renderer does has been seen to draw on macOS only: sprites,
-Gaussian splats, models (clips, skins, variants, FBX, OBJ), textures (cooked
-sets and the queue), and feeds. None has been run on Linux or Windows.
+CI measures the pixels of a plain cube, sprite layers and Gaussian splats on
+all three systems. It also draws custom graphs, populations, terrain and
+volumes on all three and checks that nothing faults, though it does not
+measure those frames. Models (clips, skins, variants, FBX, OBJ), textures
+(cooked sets and the queue) and custom surface materials have been seen to
+draw on macOS only. Feeds exist on macOS only.
