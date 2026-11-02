@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.0
+
+- `IGameNet` says what role a game plays: `Role`, `IsServer`, `IsClient`,
+  `LocalClient` and `OwnerOf(entityId)`. A network package implements it.
+- `GameContext.Net` is the net the game runs on. It is `OfflineNet`, which
+  has no role, no client and no owners, until the host is given another.
+- `GameHost.UseNet` sets the net and hands it the game's scene. It throws
+  once the game has started.
+- A net has `BeforeUpdate` and `AfterUpdate`. The host calls them around each
+  `Update`, so a game never pumps the network. A throw in either ends the
+  game like one in `Update`.
+
 ## 0.1.0
 
 - `IGame` is a game: a start, an update and a stop, with a `GameContext`.

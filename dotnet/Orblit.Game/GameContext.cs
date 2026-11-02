@@ -25,5 +25,10 @@ public sealed class GameContext
     /// <summary>The input of the frame being updated. Nothing is held before the first update.</summary>
     public GameInput Input { get; private set; }
 
+    /// <summary>The network the game runs on. It is <see cref="OfflineNet"/> unless the host was given another.</summary>
+    public IGameNet Net { get; private set; } = OfflineNet.Instance;
+
     internal void Receive(GameInput input) => Input = input;
+
+    internal void Connect(IGameNet net) => Net = net;
 }

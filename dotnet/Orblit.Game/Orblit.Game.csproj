@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.1.0</Version>
+    <Version>0.2.0</Version>
     <Description>The contract between a game and whatever runs it. A game is one class with a start, an update and a stop. It changes its scene with scene diffs, reads the keys and the pointer for the frame, and cannot take its host down when it throws.</Description>
     <!-- Stop and Error are the natural names. A Visual Basic caller can write [Stop]. Pointer is the input word, not the C type. -->
     <NoWarn>$(NoWarn);CA1716;CA1720</NoWarn>
