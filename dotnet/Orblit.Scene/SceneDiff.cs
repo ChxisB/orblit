@@ -168,7 +168,7 @@ public sealed class RemoveEntity(JsonMap entity, string? after = null) : SceneOp
 }
 
 /// <summary>Renames an entity.</summary>
-public sealed class SetEntityName(string id, string from, string to) : SceneOp
+public sealed class SetEntityName(string id, string from, string to) : SceneOp, IEntityEdit
 {
     public string Id { get; } = id;
 
@@ -196,7 +196,7 @@ public sealed class SetEntityName(string id, string from, string to) : SceneOp
 }
 
 /// <summary>Shows or hides an entity.</summary>
-public sealed class SetVisible(string id, bool from, bool to) : SceneOp
+public sealed class SetVisible(string id, bool from, bool to) : SceneOp, IEntityEdit
 {
     public string Id { get; } = id;
 
@@ -232,7 +232,7 @@ public sealed class SetVisible(string id, bool from, bool to) : SceneOp
 /// are different edits, and a diff that could not tell them apart would undo the first by inventing
 /// a light with default values.
 /// </remarks>
-public sealed class SetComponent(string id, string type, JsonMap? from, JsonMap? to) : SceneOp
+public sealed class SetComponent(string id, string type, JsonMap? from, JsonMap? to) : SceneOp, IEntityEdit
 {
     public string Id { get; } = id;
 
@@ -280,7 +280,7 @@ public sealed class SetComponent(string id, string type, JsonMap? from, JsonMap?
 /// its unset fields is the same thing as not having one.
 /// </remarks>
 // F2: the five things that name one edit, called by name.
-public sealed class SetField(string id, string type, string field, object? from, object? to) : SceneOp
+public sealed class SetField(string id, string type, string field, object? from, object? to) : SceneOp, IEntityEdit
 {
     public string Id { get; } = id;
 
@@ -335,7 +335,7 @@ public sealed class SetField(string id, string type, string field, object? from,
 }
 
 /// <summary>Hangs an entity from a different parent, or from none.</summary>
-public sealed class Reparent(string id, string? from, string? to) : SceneOp
+public sealed class Reparent(string id, string? from, string? to) : SceneOp, IEntityEdit
 {
     public string Id { get; } = id;
 
@@ -467,6 +467,15 @@ public sealed class SetSetting(string field, object? from, object? to) : SceneOp
 }
 
 /// <summary>
+/// An operation that changes the one entity it names, and nothing else of the document: not the
+/// order, not another entity, not the settings.
+/// </summary>
+internal interface IEntityEdit
+{
+    string Id { get; }
+}
+
+/// <summary>
 /// What changed between two documents.
 /// </summary>
 /// <remarks>
@@ -541,9 +550,10 @@ public sealed class SceneDiff(IReadOnlyList<SceneOp> operations)
     /// <summary>
     /// <paramref name="document"/> with every operation applied, in order.
     /// <para>
-    /// A run of adds, or of removes, is applied in one pass over the document. One operation at a
-    /// time copies every entity for each, which is how a hundred entities streamed into a scene of
-    /// three thousand cost a third of a million copies.
+    /// A run of adds, of removes, or of edits to entities is applied in one pass over the document.
+    /// One operation at a time copies every entity for each, which is how a hundred entities
+    /// streamed into a scene of three thousand cost a third of a million copies, and how two hundred
+    /// moves in a frame of a game cost twenty milliseconds.
     /// </para>
     /// </summary>
     public SceneDocument ApplyTo(SceneDocument document)
@@ -555,7 +565,7 @@ public sealed class SceneDiff(IReadOnlyList<SceneOp> operations)
             var first = Operations[at];
             var end = RunEnd(at);
             var run = Operations.Skip(at).Take(end - at);
-            current = end - at < 2 ? first.ApplyTo(current) : first is AddEntity ? AddedAll(current, run) : RemovedAll(current, run);
+            current = end - at < 2 ? first.ApplyTo(current) : AppliedAll(current, first, run);
             at = end;
         }
 
@@ -716,6 +726,37 @@ public sealed class SceneDiff(IReadOnlyList<SceneOp> operations)
         return document.CopyWith(entities: entities);
     }
 
+    private static SceneDocument AppliedAll(SceneDocument document, SceneOp first, IEnumerable<SceneOp> run) => first switch
+    {
+        AddEntity => AddedAll(document, run),
+        RemoveEntity => RemovedAll(document, run),
+        _ => EditedAll(document, run),
+    };
+
+    /// <summary>
+    /// What <paramref name="edits"/> do to <paramref name="document"/> one after another, in one pass.
+    /// <para>
+    /// Each runs on a document of the one entity it names, as the edits before it left that entity,
+    /// so the operations are the ones that apply a single edit and there is no second copy of what
+    /// they do. None of them touches another entity or the order, which is what lets every entity go
+    /// back in a single copy.
+    /// </para>
+    /// </summary>
+    private static SceneDocument EditedAll(SceneDocument document, IEnumerable<SceneOp> edits)
+    {
+        var edited = new Dictionary<string, SceneEntity>();
+        foreach (var edit in edits)
+        {
+            var id = ((IEntityEdit)edit).Id;
+            if ((edited.GetValueOrDefault(id) ?? document[id]) is { } entity)
+            {
+                edited[id] = edit.ApplyTo(new SceneDocument(entities: [entity])).Entities[0];
+            }
+        }
+
+        return document.CopyWith(entities: [.. document.Entities.Select(entity => edited.GetValueOrDefault(entity.Id) ?? entity)]);
+    }
+
     /// <summary>What <paramref name="removes"/> do to <paramref name="document"/> one after another, in one pass.</summary>
     private static SceneDocument RemovedAll(SceneDocument document, IEnumerable<SceneOp> removes)
     {
@@ -723,23 +764,25 @@ public sealed class SceneDiff(IReadOnlyList<SceneOp> operations)
         return document.CopyWith(entities: [.. document.Entities.Where(entity => !gone.Contains(entity.Id))]);
     }
 
-    /// <summary>Where the run of adds or removes that starts at <paramref name="from"/> stops, or the next index for any other operation.</summary>
+    /// <summary>Where the run that starts at <paramref name="from"/> stops, or the next index for an operation that is not in one.</summary>
     private int RunEnd(int from)
     {
-        var kind = Operations[from].GetType();
         var end = from + 1;
-        if (kind != typeof(AddEntity) && kind != typeof(RemoveEntity))
-        {
-            return end;
-        }
-
-        while (end < Operations.Count && Operations[end].GetType() == kind)
+        while (end < Operations.Count && Runs(Operations[from], Operations[end]))
         {
             end++;
         }
 
         return end;
     }
+
+    // Adds run with adds and removes with removes. Edits run with each other, whichever they are.
+    private static bool Runs(SceneOp first, SceneOp next) => first switch
+    {
+        AddEntity or RemoveEntity => first.GetType() == next.GetType(),
+        IEntityEdit => next is IEntityEdit,
+        _ => false,
+    };
 
     private sealed class Link(SceneEntity? entity)
     {
