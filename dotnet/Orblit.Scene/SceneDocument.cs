@@ -171,20 +171,33 @@ public sealed class SceneDocument
     /// Two was a light's power changing units. Three moved the air out of the scene and into an
     /// object. Four replaced an object's kind with the set of components it has. Five made a prefab
     /// instance a link and a diff rather than a copy, which an older reader would open as a lone
-    /// entity with everything under it missing.
+    /// entity with everything under it missing. Six added the layouts, which an older reader would
+    /// open as the base scene with its responsive edits gone.
     /// </para>
     /// </summary>
-    public const int FormatVersion = 5;
+    public const int FormatVersion = 6;
+
+    /// <summary>
+    /// The version a scene with no layouts is written at.
+    /// <para>
+    /// Six only added a key, so a scene without it reads the same under five. Writing it at five
+    /// leaves every existing scene byte for byte as it was, and an older editor refuses only the
+    /// files that need the newer reader.
+    /// </para>
+    /// </summary>
+    public const int PlainVersion = 5;
 
     private readonly Dictionary<string, SceneEntity> _byId = [];
 
     public SceneDocument(
         string name = "Scene",
         SceneSettings? settings = null,
-        IReadOnlyList<SceneEntity>? entities = null)
+        IReadOnlyList<SceneEntity>? entities = null,
+        SceneLayouts? layouts = null)
     {
         Name = name;
         Settings = settings ?? new SceneSettings();
+        Layouts = layouts ?? SceneLayouts.None;
         Entities = new ReadOnlyCollection<SceneEntity>([.. entities ?? []]);
         foreach (var entity in Entities)
         {
@@ -195,6 +208,12 @@ public sealed class SceneDocument
     public string Name { get; }
 
     public SceneSettings Settings { get; }
+
+    /// <summary>
+    /// The edits that turn this scene into how it looks held upright or on its side. The scene
+    /// itself is the base, and holds what both share.
+    /// </summary>
+    public SceneLayouts Layouts { get; }
 
     /// <summary>Every entity, in document order.</summary>
     public IReadOnlyList<SceneEntity> Entities { get; }
@@ -221,8 +240,10 @@ public sealed class SceneDocument
 
         var tree = SceneTree.Rooted(EntitiesOf(raw, problems), problems, folded: true);
 
+        var layouts = SceneLayouts.FromJson(Values.At(json, "layouts"), problems);
+
         return new SceneLoad(
-            new SceneDocument(Values.Text(json, "name") ?? "Scene", SceneSettings.FromJson(json), tree),
+            new SceneDocument(Values.Text(json, "name") ?? "Scene", SceneSettings.FromJson(json), tree, layouts),
             problems);
     }
 
@@ -281,8 +302,15 @@ public sealed class SceneDocument
     public SceneDocument CopyWith(
         string? name = null,
         SceneSettings? settings = null,
-        IReadOnlyList<SceneEntity>? entities = null) =>
-        new(name ?? Name, settings ?? Settings, entities ?? Entities);
+        IReadOnlyList<SceneEntity>? entities = null,
+        SceneLayouts? layouts = null) =>
+        new(name ?? Name, settings ?? Settings, entities ?? Entities, layouts ?? Layouts);
+
+    /// <summary>
+    /// The scene as it looks held this way: the base with that shape's edits applied, and no layouts
+    /// of its own, because it is what is drawn rather than what is saved.
+    /// </summary>
+    public SceneDocument InLayout(LayoutShape shape) => Layouts[shape].ApplyTo(CopyWith(layouts: SceneLayouts.None));
 
     /// <summary>The same document with one entity replaced, or removed when null.</summary>
     public SceneDocument WithEntity(string id, SceneEntity? entity)
@@ -316,7 +344,7 @@ public sealed class SceneDocument
     {
         var json = new OrderedDictionary<string, object?>
         {
-            ["formatVersion"] = (long)FormatVersion,
+            ["formatVersion"] = (long)(Layouts.IsEmpty ? PlainVersion : FormatVersion),
             ["name"] = Name,
         };
         foreach (var (key, value) in Settings.ToJson())
@@ -325,6 +353,14 @@ public sealed class SceneDocument
         }
 
         json["entities"] = Entities.Select(entity => (object?)entity.ToJson()).ToList();
+
+        // Last, and only when there is something in it, so a scene with no layouts is written as it
+        // always was.
+        if (!Layouts.IsEmpty)
+        {
+            json["layouts"] = Layouts.ToJson();
+        }
+
         return json;
     }
 

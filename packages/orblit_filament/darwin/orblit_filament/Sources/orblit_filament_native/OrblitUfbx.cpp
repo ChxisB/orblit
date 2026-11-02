@@ -2,10 +2,9 @@
 //
 // Vendored from https://github.com/ufbx/ufbx at tag v0.23.0, commit
 // fcc5d6ba444cfd3eb80677dba5e37e493941abe5, as third_party/ufbx/ufbx.h and
-// ufbx.c, unmodified. MIT or public domain, at the user's choice; the licence
-// is LICENSES/ufbx.txt at the repository root. To update: fetch both files
-// from a newer tag, change the tag and commit above, and run
-// native/headless/build.sh test, whose import check reads real files.
+// ufbx.c, unmodified. MIT or public domain, at the user's choice. To update:
+// fetch both files from a newer tag, change the tag and commit above, and
+// run native/headless/build.sh test, whose import check reads real files.
 //
 // Why a .cpp that includes a .c. Every build of the renderer core takes the
 // top-level .cpp files beside this one — the headless, host and web scripts

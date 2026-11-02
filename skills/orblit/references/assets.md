@@ -5,8 +5,8 @@ None of it needs a renderer, and `Orblit.Scene` touches no filesystem. That is
 deliberate. The editor, a command-line cook step and a game all have to agree
 about what a material and a scene *are*, and only some of those have a disk.
 
-Names were checked against `Orblit.Scene` 0.24.0, `Orblit.Asset` 0.25.0,
-`Orblit.Mesh` 0.6.0 and `Orblit.Stage` 0.5.0. Orblit is pre-alpha, so check a
+Names were checked against `Orblit.Scene` 0.25.0, `Orblit.Asset` 0.25.0,
+`Orblit.Mesh` 0.6.0 and `Orblit.Stage` 0.6.0. Orblit is pre-alpha, so check a
 name against the source before writing against it. The `///` comments in
 `dotnet/Orblit.Scene/*.cs` and `dotnet/Orblit.Asset/*.cs` are the reference.
 The fences below were compiled, and none was run against real project files
@@ -235,6 +235,52 @@ var saved = Instances.Fold(view.Document, PrefabAt).Encode();
 - A prefab that cannot be read leaves its instance folded, exactly as saved.
   A version-four scene's stamped copies are relinked on expand, with their
   edits kept as overrides.
+
+### Layouts for a phone held either way
+
+A scene can say how it looks upright and how it looks on its side. The scene
+keeps a `portrait` and a `landscape` layout, each a `SceneDiff` against the
+base scene, so a layout holds only what differs. A change to the base reaches
+both.
+
+```csharp
+using Orblit.Scene;
+using Orblit.Stage;
+
+// The change that makes the camera wider when the window is tall.
+var tall = new SceneDiff([new SetField("cam", SceneComponents.Camera, "fieldOfView", 50.0, 70.0)]);
+var scene = document.CopyWith(layouts: document.Layouts.With(LayoutShape.Portrait, tall));
+
+var view = new DocumentView(scene);
+var follower = new LayoutFollower(scene, view.Apply);
+
+// At start and on every resize. Nothing happens while the shape stays the same.
+follower.Fit(width, height);
+```
+
+- **Taller than wide is portrait.** Anything else is landscape, a square and
+  a window with no size yet included. `LayoutShapes.Of(width, height)` is the
+  rule, so there is never a gap between the two.
+- **A layout holds three kinds of edit.** `SetField`, `SetComponent` and
+  `SetVisible`. Anything else throws `ArgumentException` from the
+  constructor, because an object that exists in one orientation and not the
+  other breaks code that looks it up by id. A file that holds one anyway
+  loses that edit and reports it in `Problems`.
+- **`InLayout(shape)` returns the scene as it looks there**, with no layouts
+  of its own. The base scene is unchanged. Hand it to a `DocumentView`.
+- **`LayoutFollower.Fit` is safe to call on every size change.** It calls
+  `show` only when the shape changes. It hands over a `SceneDiff` between the
+  two layouts, so pass `view.Apply`. What both layouts share is not rebuilt,
+  and an object the game added is left alone. Build the view from the base
+  scene.
+- **An edit is addressed by id.** One aimed at an object that is not there
+  does nothing. The parts of a folded prefab instance are not in the scene as
+  stored, so an edit on one is skipped until the instance is opened.
+  `layouts.CountMissed(document, shape)` counts the edits that find nothing.
+- **The file is version 6 only when it needs to be.** A scene with layouts is
+  written at `SceneDocument.FormatVersion` and any other scene at
+  `SceneDocument.PlainVersion`, 5. An older tool reads the second as it
+  always did and refuses the first.
 
 ### Writing a scene out
 

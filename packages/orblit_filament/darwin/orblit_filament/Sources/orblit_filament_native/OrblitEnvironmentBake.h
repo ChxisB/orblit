@@ -8,7 +8,7 @@
 // the reflections.
 //
 // Ported, step for step, from Filament's libibl (Apache 2.0, the same
-// licence as Filament; see LICENSES/Apache-2.0.txt) as cmgen calls it:
+// licence as Filament) as cmgen calls it:
 // CubemapUtils::equirectangularToCubemap, mirrorCubemap and
 // downsampleCubemapLevelBoxFilter, Cubemap::makeSeamless and its filtering,
 // CubemapSH::computeSH, windowSH and preprocessSHForShader, and

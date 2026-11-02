@@ -492,6 +492,12 @@ else is interpreted instead and says so. Neither the writer nor the reader
 throws over one thing it could not carry: both return a list of `Problems`, and
 code that does not show them makes a lossy export look successful.
 
+A scene can also hold a `portrait` and a `landscape` layout, each a
+`SceneDiff` of field, component and visibility edits against the base scene.
+`LayoutFollower.Fit(width, height)` shows the one that suits the window, and
+`document.InLayout(shape)` gives the scene as it looks in one. Build the view
+from the base scene and give the follower `view.Apply`.
+
 `Orblit.Asset` cooks assets for a device and fetches them over a network. The
 policy is checked before any connection is made, a 404 is distinguished from
 an unreachable server, and a staged fetch draws a texture's own coarse mip

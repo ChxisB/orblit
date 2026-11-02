@@ -231,9 +231,9 @@ public class SceneDocumentTests
         Assert.Empty(load.Document.Settings.LayerNames);
     }
 
-    /// <summary>A version-four scene, written the way the encoder writes one.</summary>
+    /// <summary>A scene with no layouts, written the way the encoder writes one.</summary>
     private static string SceneOf(params object?[] entities) => JsonText.Encode(Map(
-        ("formatVersion", (long)SceneDocument.FormatVersion),
+        ("formatVersion", (long)SceneDocument.PlainVersion),
         ("name", "Scene"),
         ("entities", entities)));
 

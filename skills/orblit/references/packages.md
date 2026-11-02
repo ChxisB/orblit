@@ -29,8 +29,8 @@ in the table, and none of them has been run in a window.
 | `Orblit.Ui` | 0.3.0 | A game's words in each language: strings tables, language files and plural rules | `UiStrings` |
 | `Orblit.Ui.Avalonia` | 0.3.0 | Avalonia controls for a game interface: a flex layout, the image loader, touch controls and the label atlas | `FlexPanel`, `PanelHost`, `TouchStick`, `LabelAtlas` |
 | `Orblit.Cells` | 0.1.0 | A world cut into square cells: which cells to load and drop around a moving point | `Grid`, `CellPlan` |
-| `Orblit.Scene` | 0.24.0 | A scene as a document: entities with stable ids, components, migrations and diffs | `SceneDocument`, `SceneDiff`, `TransformComponent` |
-| `Orblit.Stage` | 0.5.0 | Stages a scene document for the renderer, and a terrain and its scatter. Plays cutscenes and sounds over it, draws a scene's particle emitters, a grid of particles such as a cloth and a trail ribbon, swaps still copies of one model for one baked mesh, and draws debug segments | `DocumentView`, `TerrainView`, `ScatterView`, `Cutscenes`, `ParticleSheet`, `ParticleView`, `TrailRibbon`, `StaticMerge`, `SoundView`, `DebugLines` |
+| `Orblit.Scene` | 0.25.0 | A scene as a document: entities with stable ids, components, migrations, diffs and portrait and landscape layouts | `SceneDocument`, `SceneDiff`, `TransformComponent` |
+| `Orblit.Stage` | 0.6.0 | Stages a scene document for the renderer, and a terrain and its scatter. Follows the window's shape with a scene's layouts. Plays cutscenes and sounds over it, draws a scene's particle emitters, a grid of particles such as a cloth and a trail ribbon, swaps still copies of one model for one baked mesh, and draws debug segments | `DocumentView`, `TerrainView`, `ScatterView`, `Cutscenes`, `ParticleSheet`, `ParticleView`, `TrailRibbon`, `StaticMerge`, `SoundView`, `DebugLines` |
 | `Orblit.Stage.Avalonia` | 0.2.0 | Interface in a staged scene: a panel's picture on a quad in the world, the line from a point on the screen into the world, and name labels | `WorldPanel`, `PointerRay`, `Nameplates` |
 | `Orblit.Light` | 0.3.0 | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `Orblit.Mesh` | 0.6.0 | Building and editing geometry, writing it out and reading it back as OBJ, STL, PLY and glTF, with limits for untrusted files | `Mesh`, `MeshExport`, `ReadLimits` |
@@ -722,6 +722,11 @@ look: ...)` stages it. Draw `view.Scene` and change it with
 `view.Apply(SceneDiff.Between(before, after))`, or `view.Replace(next)` to do
 both. A `TransformComponent` built with only `position` resets rotation and
 scale, so pass the ones you aren't changing. Guide: `/guides/scene-files/`.
+
+A scene can hold a portrait and a landscape layout. `LayoutFollower` shows
+the one that suits the window: build the view from the base scene, give the
+follower `view.Apply`, and call `Fit(width, height)` at start and on every
+resize. See "Layouts for a phone held either way" in [assets.md](assets.md).
 
 ```csharp
 using Orblit.Scene;

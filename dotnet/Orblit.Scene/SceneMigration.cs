@@ -94,7 +94,9 @@ public static class SceneMigrations
     /// </summary>
     public static JsonMap? Entity(JsonMap source, long version, List<string>? notes = null)
     {
-        if (version >= SceneDocument.FormatVersion)
+        // Version six added a scene key and no step, so an object at five is already as current as
+        // one at six.
+        if (version >= SceneDocument.PlainVersion)
         {
             return source;
         }
