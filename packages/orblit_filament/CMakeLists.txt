@@ -85,6 +85,10 @@ if(APPLE)
     "-framework CoreFoundation" "-framework ImageIO" "-framework AVFoundation"
     "-framework CoreMedia" "-framework CoreGraphics" "-framework IOKit")
 elseif(WIN32)
+  # Filament publishes a Windows release for x64 only.
+  if(ORBLIT_ARCH STREQUAL "arm64")
+    message(FATAL_ERROR "Filament has no Windows arm64 release, so the renderer cannot be built for ${ORBLIT_RID}.")
+  endif()
   # The header has no export macro, so the exports are the functions it
   # declares. Exporting every symbol would pass the 65,535 limit.
   file(STRINGS "${ORBLIT_SOURCES_DIR}/include/orblit_renderer.h" ORBLIT_DECLS REGEX "orblit_renderer_[a-z_]+\\(")
@@ -107,9 +111,15 @@ else()
   # both ways round, hence the group.
   target_compile_definitions(orblit_filament PRIVATE ORBLIT_PLATFORM_PORTABLE)
   target_compile_options(orblit_filament PRIVATE -stdlib=libc++)
+  # Google unpacks its arm64 Linux release to lib/aarch64, where the macOS
+  # release uses lib/arm64.
+  set(ORBLIT_LIB_ARCH ${ORBLIT_ARCH})
+  if(ORBLIT_ARCH STREQUAL "arm64")
+    set(ORBLIT_LIB_ARCH aarch64)
+  endif()
   set(ORBLIT_ARCHIVES "")
   foreach(lib IN LISTS ORBLIT_LIBS)
-    list(APPEND ORBLIT_ARCHIVES "${ORBLIT_FILAMENT_SDK}/lib/${ORBLIT_ARCH}/lib${lib}.a")
+    list(APPEND ORBLIT_ARCHIVES "${ORBLIT_FILAMENT_SDK}/lib/${ORBLIT_LIB_ARCH}/lib${lib}.a")
   endforeach()
   target_link_libraries(orblit_filament PRIVATE
     -stdlib=libc++ -Wl,--start-group ${ORBLIT_ARCHIVES} -Wl,--end-group pthread dl m)

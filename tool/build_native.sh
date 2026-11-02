@@ -33,10 +33,25 @@ build() {
 build orblit_core
 build orblit_audio_device
 
-# The renderer needs a Filament release, which is not in the repository.
-sdk=${ORBLIT_FILAMENT_SDK:-$root/packages/orblit_filament/darwin/third_party/filament-mac/filament}
+# The renderer needs a Filament release and its compiled materials, which are
+# not in the repository. Each system's setup.sh stages its own pair. Linux and
+# Windows write the materials to the flat generated/ folder.
+filament=$root/packages/orblit_filament
+generated=$filament/darwin/orblit_filament/Sources/orblit_filament_native/generated
+case "$os" in
+  osx)
+    default_sdk=$filament/darwin/third_party/filament-mac/filament
+    materials=$generated/darwin-release ;;
+  linux)
+    default_sdk=$filament/linux/third_party/filament
+    materials=$generated ;;
+  win)
+    default_sdk=$filament/windows/third_party/filament
+    materials=$generated ;;
+esac
+sdk=${ORBLIT_FILAMENT_SDK:-$default_sdk}
 if [ -f "$sdk/include/filament/Engine.h" ]; then
-  build orblit_filament -DORBLIT_FILAMENT_SDK="$sdk"
+  build orblit_filament -DORBLIT_FILAMENT_SDK="$sdk" -DORBLIT_GENERATED_DIR="$materials"
 else
   echo "  skip  orblit_filament (no Filament release at $sdk, set ORBLIT_FILAMENT_SDK)"
 fi
