@@ -9,6 +9,10 @@ with no descriptor set. Metal tolerated that. On Mesa's software Vulkan driver
 the first frame that drew one ended the process with a segmentation fault.
 Parameters set during a frame still take effect on the next frame.
 
+The libraries are built to load on macOS 14 and Ubuntu 24.04 or newer. A
+library built on a newer image loaded on that image only. The renderer also
+builds with MSVC on Windows and with clang and libc++ on Linux.
+
 ## 0.42.0
 
 The renderer and its Apple helper are packed at `runtimes/<rid>/native`, where NuGet looks

@@ -20,6 +20,11 @@ case "$(uname -m)" in
 esac
 rid=$os-$arch
 
+# A dylib built on a new macOS refuses to load on an older one. CMake takes its
+# deployment target from this variable. tool/check_native_floor.sh holds the
+# same number.
+[ "$os" = osx ] && export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-14.0}
+
 # Silent when the command works. When it fails, prints the lines that name the
 # error, once each, because MSVC writes them to stdout and repeats a header's
 # error for every file that includes it.
