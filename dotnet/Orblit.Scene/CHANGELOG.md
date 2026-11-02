@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.26.0
+
+- `KHR_node_visibility` is read from every node. A node the file hides comes
+  in hidden. Its children keep their own flag, because the view already hides
+  what sits under a hidden parent.
+- In a file this editor wrote, the standard flag wins over Orblit's own
+  record of the node. Another tool may have toggled it since the scene was
+  saved.
+- A hidden object is written with the standard flag and the file lists the
+  extension in `extensionsUsed`. Orblit's record stays, so an older reader
+  of the package gets the same answer. A shown object is written as before.
+- A model grafted into an export keeps its animation pointers true. A
+  pointer into `nodes`, `materials`, `cameras`, `meshes` or the lights moves
+  with the entries it names. Before, the second copy of an animated model
+  kept the first copy's numbers and moved the first copy's parts. A pointer
+  that names anything else is kept as written.
+- A camera on a hidden object is hidden here. The extension leaves cameras
+  alone, so another tool may still show it.
+
 ## 0.24.0
 
 - A port of `orblit_scene` 0.24.0, parts S1 to S4: the components, the
