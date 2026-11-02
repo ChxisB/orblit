@@ -45,8 +45,9 @@ A project that restores from several sources can pin a package to one with
 `RestoreAdditionalProjectSources` in `Directory.Build.props`, which is how the
 sibling repositories find the engine feed.
 
-The renderer has drawn on Apple silicon Macs only. Windows and Linux build the
-packages, but no frame has drawn there. The packages that do not draw run
+The renderer is built and checked in CI on Apple silicon, Linux x64 and
+Windows x64. The Linux and Windows frames come from a software Vulkan driver,
+so no real GPU there has drawn one. The packages that do not draw run
 anywhere .NET does. Say so plainly when a user is on Windows or Linux.
 [platforms.md](platforms.md) has the per-system setup.
 

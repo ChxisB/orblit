@@ -10,9 +10,10 @@ namespace Orblit.Core.Tests;
 /// </summary>
 public sealed class CoreParityTests : IDisposable
 {
-    // The core works in float32 and the fixture was made on macOS. Windows rounds a float32 matrix product
-    // differently, which moves a world matrix by a few parts in a million.
-    private const double WindowsRelative = 1e-5;
+    // The core works in float32 and the fixture was made on macOS. Windows and Linux round a float32 matrix
+    // product differently, which moves a world matrix by a few parts in a million. Ubuntu 24.04's compiler
+    // moves one element by one float step.
+    private const double OffMacRelative = 1e-5;
 
     private readonly World _world = new();
 
@@ -65,7 +66,7 @@ public sealed class CoreParityTests : IDisposable
 
     private static bool CloseHere(double expected, double actual) =>
         Tolerance.Close(expected, actual)
-        || (OperatingSystem.IsWindows() && Math.Abs(expected - actual) <= WindowsRelative * Math.Max(1, Math.Abs(expected)));
+        || (!OperatingSystem.IsMacOS() && Math.Abs(expected - actual) <= OffMacRelative * Math.Max(1, Math.Abs(expected)));
 
     private (List<ulong> Handles, ComponentType Position, ComponentType Velocity, TransformComponents T, int Propagated) Build()
     {

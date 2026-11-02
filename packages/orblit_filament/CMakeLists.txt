@@ -3,9 +3,9 @@
 # The Filament release is not in the repository. Point ORBLIT_FILAMENT_SDK at
 # the directory that holds include/ and lib/. On macOS it defaults to the one
 # darwin/setup.sh stages. The compiled materials must exist in
-# ORBLIT_GENERATED_DIR. Only the macOS branch has been run. The Linux branch
+# ORBLIT_GENERATED_DIR. CI builds all three branches. The Linux branch
 # follows native/headless/build_linux.sh. The Windows branch links the
-# Filament release's MSVC libraries. Neither has been built.
+# Filament release's MSVC libraries.
 #
 # Usage: cmake -S packages/orblit_filament -B <build dir> -DORBLIT_RID=osx-arm64
 #        cmake --build <build dir> --config Release
@@ -85,6 +85,10 @@ if(APPLE)
     "-framework CoreFoundation" "-framework ImageIO" "-framework AVFoundation"
     "-framework CoreMedia" "-framework CoreGraphics" "-framework IOKit")
 elseif(WIN32)
+  # Filament publishes a Windows release for x64 only.
+  if(ORBLIT_ARCH STREQUAL "arm64")
+    message(FATAL_ERROR "Filament has no Windows arm64 release, so the renderer cannot be built for ${ORBLIT_RID}.")
+  endif()
   # The header has no export macro, so the exports are the functions it
   # declares. Exporting every symbol would pass the 65,535 limit.
   file(STRINGS "${ORBLIT_SOURCES_DIR}/include/orblit_renderer.h" ORBLIT_DECLS REGEX "orblit_renderer_[a-z_]+\\(")
@@ -97,19 +101,34 @@ elseif(WIN32)
   file(WRITE "${ORBLIT_DEF}" "${ORBLIT_DEF_TEXT}")
   target_sources(orblit_filament PRIVATE "${ORBLIT_DEF}")
   target_compile_definitions(orblit_filament PRIVATE ORBLIT_PLATFORM_PORTABLE)
+  # Filament's headers use designated initializers. Clang takes them in C++17
+  # as an extension, and MSVC only in C++20.
+  set_property(TARGET orblit_filament PROPERTY CXX_STANDARD 20)
   foreach(lib IN LISTS ORBLIT_LIBS)
     target_link_libraries(orblit_filament PRIVATE
       "${ORBLIT_FILAMENT_SDK}/lib/x86_64/$<IF:$<CONFIG:Debug>,mdd,md>/${lib}.lib")
   endforeach()
+  # Filament's archives call WGL and a shell path helper, and the compiler's
+  # default libraries have neither.
+  target_link_libraries(orblit_filament PRIVATE opengl32 shlwapi)
 else()
   # Filament's Linux release is built against LLVM's standard library, so the
   # compile and the link both take libc++. The archives refer to each other
   # both ways round, hence the group.
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "The renderer links Filament's libc++ archives, so it needs clang. Install clang and libc++-dev, then set CXX=clang++.")
+  endif()
   target_compile_definitions(orblit_filament PRIVATE ORBLIT_PLATFORM_PORTABLE)
   target_compile_options(orblit_filament PRIVATE -stdlib=libc++)
+  # Google unpacks its arm64 Linux release to lib/aarch64, where the macOS
+  # release uses lib/arm64.
+  set(ORBLIT_LIB_ARCH ${ORBLIT_ARCH})
+  if(ORBLIT_ARCH STREQUAL "arm64")
+    set(ORBLIT_LIB_ARCH aarch64)
+  endif()
   set(ORBLIT_ARCHIVES "")
   foreach(lib IN LISTS ORBLIT_LIBS)
-    list(APPEND ORBLIT_ARCHIVES "${ORBLIT_FILAMENT_SDK}/lib/${ORBLIT_ARCH}/lib${lib}.a")
+    list(APPEND ORBLIT_ARCHIVES "${ORBLIT_FILAMENT_SDK}/lib/${ORBLIT_LIB_ARCH}/lib${lib}.a")
   endforeach()
   target_link_libraries(orblit_filament PRIVATE
     -stdlib=libc++ -Wl,--start-group ${ORBLIT_ARCHIVES} -Wl,--end-group pthread dl m)

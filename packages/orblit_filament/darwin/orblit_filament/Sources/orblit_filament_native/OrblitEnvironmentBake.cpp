@@ -329,7 +329,9 @@ Vec3 rotateBand1(Vec3 band1, const Mat3 &m) {
 
 /// CubemapSH::rotateShericalHarmonicBand2.
 Float5 rotateBand2(const Float5 &band2, const Mat3 &m) {
-  constexpr float kSqrt3 = 1.7320508076f;
+  // Static, because MSVC reads a plain constexpr local from a lambda as a
+  // capture it was not given.
+  static constexpr float kSqrt3 = 1.7320508076f;
   const float n = float(kSqrtHalf);
   const Float5 invATimesK[5] = {{0, 1, 2, 0, 0},
                                 {-1, 0, 0, 0, -2},
@@ -748,8 +750,9 @@ CpuCubemap halvedCubemap(const CpuCubemap &cube) {
 /// CubemapSH::computeSH(3 bands, irradiance), windowSH(auto) and
 /// preprocessSHForShader, as cmgen's sphericalHarmonics runs them for a KTX.
 Harmonics irradianceHarmonics(const CpuCubemap &cube, const ForEach &forEach) {
-  constexpr size_t bands = 3;
-  constexpr size_t coefficients = bands * bands;
+  // Static for the same reason as kSqrt3 in rotateBand2.
+  static constexpr size_t bands = 3;
+  static constexpr size_t coefficients = bands * bands;
   const uint32_t size = cube.size;
   const float scale = 2.0f / size;
 

@@ -202,6 +202,8 @@ bool frameAreaShadow(const float3 &centre, float3 normal, float width,
   // two-metre softbox came out at a hundred and seventy degrees, very nearly
   // a hemisphere squeezed into a square.
   constexpr float kFov = 120.0f;
+  // Not M_PI, which MSVC defines only when asked to.
+  constexpr float kPi = 3.14159265358979323846f;
 
   // A panel emits along its normal, so that is where it looks. Any up will do
   // as long as it is not the direction of travel.
@@ -211,7 +213,7 @@ bool frameAreaShadow(const float3 &centre, float3 normal, float width,
   out.near = near;
   out.far = reach;
   out.fovDegrees = kFov;
-  out.tanHalf = std::tan(kFov * 0.5f * float(M_PI) / 180.0f);
+  out.tanHalf = std::tan(kFov * 0.5f * kPi / 180.0f);
   return true;
 }
 

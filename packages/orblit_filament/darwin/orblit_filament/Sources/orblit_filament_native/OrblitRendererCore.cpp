@@ -362,6 +362,10 @@ void Renderer::setOutlineKeys(const int64_t *keys, uint32_t count, const float *
   const float primary = std::isfinite(params[12]) ? params[12] : 0.0f;
   _outlinePrimaryCount =
       std::min(count, static_cast<uint32_t>(std::max(0.0f, primary)));
+  if (count > 0 && !_outline && _engine != nullptr) {
+    _outline = std::make_unique<orblit::Outline>(*_engine);
+    _outline->build();
+  }
 }
 
 void *Renderer::copyPresentedBuffer() {

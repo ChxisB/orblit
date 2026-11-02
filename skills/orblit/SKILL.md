@@ -81,11 +81,12 @@ https://orblitengine.com/docs/start/installing-dotnet/. It builds and runs.
 | Platform | State |
 | --- | --- |
 | macOS | The reference. Apple silicon only. The renderer has drawn here, in a window and headless |
-| Windows | The packages build. **No frame has ever been drawn on Windows** |
-| Linux | The packages build. **No frame has ever been drawn on Linux** |
+| Windows | CI builds the renderer and measures a frame on x64, drawn on a software Vulkan driver. **No real GPU and no window has been tried** |
+| Linux | CI builds the renderer and measures a frame on x64, drawn on a software Vulkan driver. **No real GPU and no window has been tried** |
 
 The packages that do not draw run anywhere .NET does. When a user is on
 Windows or Linux, tell them plainly how little has been seen to work there.
+Models, textures and custom surface materials have drawn on macOS only.
 Per-platform setup is in [references/platforms.md](references/platforms.md).
 
 ## The model: state the whole scene, every frame

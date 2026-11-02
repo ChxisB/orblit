@@ -36,6 +36,7 @@ case "$(uname -s)" in
     ;;
 esac
 step "native build" ../tool/build_native.sh || exit "$failures"
+step "native floor" ../tool/check_native_floor.sh
 step "dotnet build" dotnet build --nologo || exit "$failures"
 step "dotnet test" dotnet test --no-build
 step "dotnet format" dotnet format --verify-no-changes --no-restore

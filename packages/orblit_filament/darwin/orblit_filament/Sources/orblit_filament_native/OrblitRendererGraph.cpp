@@ -87,8 +87,13 @@ void Renderer::setRenderGraph(const float *passes, uint32_t count, const float *
   // frame is being timed.
   {
     bool warmed = false;
-    for (const GraphPass &pass : _passes) {
+    for (GraphPass &pass : _passes) {
       if (pass.kind != kPassEffect) continue;
+      // Built here and not on the first frame that draws it. Filament commits
+      // a surface material instance once, as a frame begins. One made inside
+      // the frame is drawn with no descriptor set, which Vulkan reads as
+      // unbound memory.
+      buildEffect(pass);
       if (!_effectsWarmed.insert(pass.effect).second) continue;
       warmUp(materialForEffect(pass.effect));
       warmed = true;

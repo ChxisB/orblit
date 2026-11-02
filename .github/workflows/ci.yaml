@@ -42,7 +42,8 @@ jobs:
 
   # The C# solution under dotnet/ and the native sources it loads. The same
   # gate on all three desktop systems, because the engine has to build and
-  # pass on each of them.
+  # pass on each of them. Linux builds on the oldest image the packages
+  # promise, because a library needs at least the glibc it was built against.
   dotnet:
     name: .NET (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -50,16 +51,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-24.04, macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 10.0.x
 
-      # Only macOS has the renderer path written and run. Windows and Linux
-      # build the managed code and skip the tests that draw. The cache key is
-      # the macOS job's, so one download serves both.
+      # Every leg builds the renderer and runs the tests that draw. A runner
+      # has no GPU, so Linux and Windows draw on Mesa's software Vulkan driver,
+      # lavapipe. A frame drawn there exercises the Vulkan path and the readback
+      # the Avalonia viewport uses. It says nothing about a real GPU.
       - name: Cache Filament SDK
         if: runner.os == 'macOS'
         uses: actions/cache@v4
@@ -67,15 +69,111 @@ jobs:
           path: packages/orblit_filament/darwin/third_party
           key: filament-${{ runner.os }}-${{ hashFiles('packages/orblit_filament/darwin/setup.sh') }}
 
-      - name: Fetch Filament
-        if: runner.os == 'macOS'
+      - name: Cache Filament SDK
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: packages/orblit_filament/linux/third_party
+          key: filament-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/orblit_filament/linux/setup.sh') }}
+
+      - name: Cache Filament SDK
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: packages/orblit_filament/windows/third_party
+          key: filament-${{ runner.os }}-${{ hashFiles('packages/orblit_filament/windows/setup.sh') }}
+
+      - name: Install clang, libc++ and a software Vulkan driver
+        if: runner.os == 'Linux'
         run: |
-          bash packages/orblit_filament/darwin/setup.sh
-          echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang libc++-dev libc++abi-dev mesa-vulkan-drivers libvulkan1 vulkan-tools
+          vulkaninfo --summary
+
+      # The runtime puts vulkan-1.dll in System32 and the action registers
+      # lavapipe with it. The step may fail without stopping the leg, so a
+      # missing driver shows as failing draw tests next to the build result.
+      - name: Install a software Vulkan driver
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        uses: jakoch/install-vulkan-sdk-action@d17de7e2f5e50efb5d2123efed18497d3c58c533 # v1.7.0
+        with:
+          install_runtime: true
+          install_runtime_only: true
+          install_lavapipe: true
+          cache: false
+
+      - name: Show the graphics drivers
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Get-ChildItem C:\Windows\System32\vulkan-1.dll, C:\Windows\System32\opengl32.dll -ErrorAction Continue | Format-Table Name, Length
+          Get-CimInstance Win32_VideoController | Format-List Name, DriverVersion
+          reg query HKLM\SOFTWARE\Khronos\Vulkan\Drivers
+          if (Get-Command vulkaninfo -ErrorAction SilentlyContinue) { vulkaninfo --summary }
+
+      - name: Fetch Filament
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS)
+              bash packages/orblit_filament/darwin/setup.sh
+              echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV" ;;
+            Windows) bash packages/orblit_filament/windows/setup.sh ;;
+            *) bash packages/orblit_filament/linux/setup.sh ;;
+          esac
+          # A leg that builds the renderer fails when the library is missing,
+          # where it would otherwise skip every test that draws.
+          echo "ORBLIT_REQUIRE_RENDERER=1" >> "$GITHUB_ENV"
+          echo "ORBLIT_FRAME_OUT=$RUNNER_TEMP/frames" >> "$GITHUB_ENV"
 
       - name: Check sources, build, test and check format
         shell: bash
         run: ./tool/check_dotnet.sh
+
+      # The frame each leg measured, so a person can look at it.
+      - name: Keep the drawn frame
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-${{ matrix.os }}
+          path: ${{ runner.temp }}/frames
+          if-no-files-found: ignore
+
+      # What this leg built, for the Pack job. One machine builds only its own
+      # runtime id, so the packages need all three legs' libraries.
+      - name: Keep the native libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: natives-${{ matrix.os }}
+          path: dotnet/native/runtimes
+          if-no-files-found: error
+
+  # The packages a reader restores. It gathers the libraries every .NET leg
+  # built and fails when one runtime id is missing, because a package packed
+  # without it restores fine and then cannot load on that system.
+  pack:
+    name: Pack
+    needs: dotnet
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: natives-*
+          merge-multiple: true
+          path: dotnet/native/runtimes
+      - run: ./tool/pack_local.sh "$RUNNER_TEMP/packages"
+      - run: ./tool/check_pack_layout.sh "$RUNNER_TEMP/packages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packages/*.nupkg
 
   # Checks each commit on a pull request against commitlint.config.mjs.
   # Pull requests only, since a push to main has no range to check. It
