@@ -340,7 +340,7 @@ fragment {
     //
     // Heitz, Dupuy, Hill and Neubelt, "Real-Time Polygonal-Light Shading with
     // Linearly Transformed Cosines", ACM TOG (Proc. SIGGRAPH 2016) 35(4).
-    // See LICENSES/LTC.txt. Tables fetched by setup.sh.
+    // Tables fetched by setup.sh.
 
     // Each fitted table is 64 square, and the two sit side by side in one
     // texture. The half-texel inset is not decoration: without it the

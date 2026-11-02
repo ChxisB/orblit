@@ -29,7 +29,7 @@ namespace {
 #include "irradiance_material.h"
 #include "copy_material.h"
 // SMAA's precomputed tables, fetched by setup.sh from the reference
-// implementation. MIT, Jorge Jimenez et al. — see LICENSES/SMAA.txt.
+// implementation. MIT, Jorge Jimenez et al.
 #include "AreaTex.h"
 #include "SearchTex.h"
 #include "LtcTables.h"
