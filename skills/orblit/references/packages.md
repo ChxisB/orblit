@@ -27,7 +27,7 @@ in the table, and none of them has been run in a window.
 | `Orblit.Terrain` | 0.5.0 | Ground as data: regions of height, cover and colour kept as `.oterrain` and `.oregion` files, with the height and slope anywhere, the brushes that shape it, and what is scattered over it. No physics | `Terrain`, `TerrainSet`, `Cover`, `TerrainStroke`, `Brush`, `ScatterLayer`, `ScatterPlacer`, `TerrainStreamer` |
 | `Orblit.Sprite` | 0.4.0 | 2D data: atlases and a packer, sprite animation, parallax, tile maps. Draws nothing, and `SpriteLayer` in the scene draws | `Atlas`, `Region`, `SpriteAnimation`, `Parallax`, `TileMap` |
 | `Orblit.Ui` | 0.3.0 | A game's words in each language: strings tables, language files and plural rules | `UiStrings` |
-| `Orblit.Ui.Avalonia` | 0.3.0 | Avalonia controls for a game interface: a flex layout, the image loader, touch controls and the label atlas | `FlexPanel`, `PanelHost`, `TouchStick`, `LabelAtlas` |
+| `Orblit.Ui.Avalonia` | 0.4.0 | Avalonia controls for a game interface: a flex layout, the image loader, touch controls and the label atlas | `FlexPanel`, `PanelHost`, `TouchStick`, `LabelAtlas` |
 | `Orblit.Cells` | 0.1.0 | A world cut into square cells: which cells to load and drop around a moving point | `Grid`, `CellPlan` |
 | `Orblit.Scene` | 0.24.0 | A scene as a document: entities with stable ids, components, migrations and diffs | `SceneDocument`, `SceneDiff`, `TransformComponent` |
 | `Orblit.Stage` | 0.5.0 | Stages a scene document for the renderer, and a terrain and its scatter. Plays cutscenes and sounds over it, draws a scene's particle emitters, a grid of particles such as a cloth and a trail ribbon, swaps still copies of one model for one baked mesh, and draws debug segments | `DocumentView`, `TerrainView`, `ScatterView`, `Cutscenes`, `ParticleSheet`, `ParticleView`, `TrailRibbon`, `StaticMerge`, `SoundView`, `DebugLines` |
@@ -580,6 +580,10 @@ to the right positive. A swipe is in logical pixels, and a touch with no
 movement is not a swipe. `TouchControls` in `Orblit.Input` takes them and
 gives `FrameControls` its `touch` and `sticks`. The two packages never
 reference each other.
+
+Give each touch control a name with `AutomationProperties.Name`. A screen
+reader finds it by that name, and the role is Custom because a touch control
+takes a finger only. It cannot be pressed from a keyboard.
 
 ```csharp
 using Avalonia.Controls;
