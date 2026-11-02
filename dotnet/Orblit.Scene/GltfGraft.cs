@@ -1,3 +1,4 @@
+using System.Globalization;
 using Orblit.Mesh;
 
 namespace Orblit.Scene;
@@ -53,6 +54,7 @@ public static class GltfGraft
 {
     private const string Lights = "KHR_lights_punctual";
     private const string Variants = "KHR_materials_variants";
+    private const string AnimationPointer = "KHR_animation_pointer";
 
     // The top-level arrays that are copied wholesale. The order does not matter, because every base
     // was taken before any of them moved.
@@ -71,7 +73,8 @@ public static class GltfGraft
         ("accessors", "sparse.values.bufferView", "bufferViews"),
 
         // A channel's sampler counts into the animation's own samplers, not a document-level array,
-        // so it is deliberately not here.
+        // so it is deliberately not here. A pointer channel names its target by path, which a row
+        // cannot say, so ShiftPointers moves those.
         ("animations", "samplers.*.input", "accessors"),
         ("animations", "samplers.*.output", "accessors"),
         ("animations", "channels.*.target.node", "nodes"),
@@ -102,6 +105,17 @@ public static class GltfGraft
         // Every texture extension that supplies an image (basis, webp, ddsn) spells it source, so
         // one row covers all of them and the ones to come.
         ("textures", "extensions.*.source", "images"),
+    ];
+
+    // Where an animation pointer may start, and the array whose count moves the index after it.
+    // Only what the glTF object model lets a pointer animate is here.
+    private static readonly (string[] Start, string Target)[] PointerRoots =
+    [
+        (["nodes"], "nodes"),
+        (["materials"], "materials"),
+        (["cameras"], "cameras"),
+        (["meshes"], "meshes"),
+        (["extensions", Lights, "lights"], "lights"),
     ];
 
     // Everything a texture info may hold besides its index. The list is what makes recognising one
@@ -238,6 +252,11 @@ public static class GltfGraft
             if (name == "materials")
             {
                 ShiftTextures(item, bases["textures"]);
+            }
+
+            if (name == "animations")
+            {
+                ShiftPointers(item, bases);
             }
 
             if (name == "accessors")
@@ -406,6 +425,50 @@ public static class GltfGraft
             default:
                 break;
         }
+    }
+
+    // Moves each pointer channel of an animation to the same part in its new numbering. A pointer the
+    // table does not know is the file's own business and is kept as it was written.
+    private static void ShiftPointers(object animation, Dictionary<string, long> bases)
+    {
+        foreach (var found in Found(animation, ["channels", "*", "target", "extensions", AnimationPointer]))
+        {
+            if (found is OrderedDictionary<string, object?> map && map.GetValueOrDefault("pointer") is string pointer)
+            {
+                map["pointer"] = PointerMoved(pointer, bases);
+            }
+        }
+    }
+
+    private static string PointerMoved(string pointer, Dictionary<string, long> bases)
+    {
+        var tokens = pointer.Split('/');
+        foreach (var (start, target) in PointerRoots)
+        {
+            var at = start.Length + 1;
+            if (tokens.Length > at
+                && tokens[0].Length == 0
+                && tokens.AsSpan(1, start.Length).SequenceEqual(start)
+                && long.TryParse(tokens[at], NumberStyles.None, CultureInfo.InvariantCulture, out var index))
+            {
+                tokens[at] = (index + bases[target]).ToString(CultureInfo.InvariantCulture);
+                return string.Join('/', tokens);
+            }
+        }
+
+        return pointer;
+    }
+
+    // Everything at steps inside node, with * for every item of a list or every value of a map.
+    private static List<object?> Found(object node, string[] steps)
+    {
+        List<object?> here = [node];
+        foreach (var step in steps)
+        {
+            here = [.. here.OfType<object>().SelectMany(one => Reached(one, step))];
+        }
+
+        return here;
     }
 
     // Moves every texture info found anywhere inside a material.
