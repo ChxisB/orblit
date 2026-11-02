@@ -140,6 +140,40 @@ jobs:
           path: ${{ runner.temp }}/frames
           if-no-files-found: ignore
 
+      # What this leg built, for the Pack job. One machine builds only its own
+      # runtime id, so the packages need all three legs' libraries.
+      - name: Keep the native libraries
+        uses: actions/upload-artifact@v4
+        with:
+          name: natives-${{ matrix.os }}
+          path: dotnet/native/runtimes
+          if-no-files-found: error
+
+  # The packages a reader restores. It gathers the libraries every .NET leg
+  # built and fails when one runtime id is missing, because a package packed
+  # without it restores fine and then cannot load on that system.
+  pack:
+    name: Pack
+    needs: dotnet
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: natives-*
+          merge-multiple: true
+          path: dotnet/native/runtimes
+      - run: ./tool/pack_local.sh "$RUNNER_TEMP/packages"
+      - run: ./tool/check_pack_layout.sh "$RUNNER_TEMP/packages"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: ${{ runner.temp }}/packages/*.nupkg
+
   # Checks each commit on a pull request against commitlint.config.mjs.
   # Pull requests only, since a push to main has no range to check. It
   # checks out the branch head, not the merge commit GitHub makes, so the
