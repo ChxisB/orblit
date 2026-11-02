@@ -12,6 +12,7 @@ internal sealed class GltfClipReader
     private static readonly Carrying<Vector3> Moves = new(ChannelKind.Vector, 3, static n => new Vector3(n[0], n[1], n[2]), static value => value);
     private static readonly double[] Rates = [30, 24, 25, 60, 50, 48];
     private static readonly string[] LoopWords = ["loop", "cycle"];
+    private static readonly string[] NodeProperties = ["translation", "rotation", "scale", "weights"];
 
     private readonly GltfNodes _nodes;
     private readonly GltfAccessors _accessors;
@@ -99,7 +100,14 @@ internal sealed class GltfClipReader
             return null;
         }
 
-        if (Within(target.GetValueOrDefault("node"), _nodes.Nodes.Count) is not { } node)
+        var (aimed, path) = Aimed(target);
+        if (IsPointer(path))
+        {
+            Note($"A channel of \"{clip}\" moves \"{path}\", which is not read.");
+            return null;
+        }
+
+        if (Within(aimed, _nodes.Nodes.Count) is not { } node)
         {
             Note($"A channel of \"{clip}\" moves something that is not a node.");
             return null;
@@ -111,15 +119,13 @@ internal sealed class GltfClipReader
             return null;
         }
 
-        var path = PathOf(channel);
         if (path is "weights")
         {
             Note($"Morph target weights in \"{clip}\" were not carried across; clips do not move them yet.");
             return null;
         }
 
-        var property = path switch { "translation" => "position", "rotation" => "rotation", "scale" => "scale", _ => null };
-        if (property is null)
+        if (PropertyOf(path) is not { } property)
         {
             Note($"A channel of \"{clip}\" moves \"{Spoken(path)}\", which is not read.");
             return null;
@@ -127,6 +133,45 @@ internal sealed class GltfClipReader
 
         return new Moved(node, samplers[(int)at], property);
     }
+
+    /// <summary>
+    /// The node a channel is aimed at and what it moves there. A pointer into a node's own transform names
+    /// the same two things the plain form does, so it reads the same. A pointer anywhere else has no node,
+    /// and its text stands as the path.
+    /// </summary>
+    private static (object? Node, object? Path) Aimed(JsonMap target)
+    {
+        var path = target.GetValueOrDefault("path");
+        if (path is not "pointer" || PointerOf(target) is not { } pointer)
+        {
+            return (target.GetValueOrDefault("node"), path);
+        }
+
+        if (pointer.Split('/') is not ["", "nodes", var index, var property] || !NodeProperties.Contains(property))
+        {
+            return (null, pointer);
+        }
+
+        // A number too long to hold is past the end of any list too, so it stays out of range.
+        return (long.TryParse(index, NumberStyles.None, CultureInfo.InvariantCulture, out var at) ? at : long.MaxValue, property);
+    }
+
+    private static string? PointerOf(JsonMap target) =>
+        target.GetValueOrDefault("extensions") is JsonMap extensions
+        && extensions.GetValueOrDefault("KHR_animation_pointer") is JsonMap held
+            ? held.GetValueOrDefault("pointer") as string
+            : null;
+
+    /// <summary>A path that is a pointer's text, which always begins with a slash, rather than a name.</summary>
+    private static bool IsPointer(object? path) => path is string text && text.StartsWith('/');
+
+    private static string? PropertyOf(object? path) => path switch
+    {
+        "translation" => "position",
+        "rotation" => "rotation",
+        "scale" => "scale",
+        _ => null,
+    };
 
     private ClipChannel<T>? Channel<T>(ChannelAddress address, Carrying<T> carrying, JsonMap sampler, string clip)
         where T : notnull
@@ -175,7 +220,8 @@ internal sealed class GltfClipReader
 
     private void Note(string problem) => _accessors.Problems.Add(problem);
 
-    private static object? PathOf(JsonMap channel) => (channel.GetValueOrDefault("target") as JsonMap)?.GetValueOrDefault("path");
+    private static object? PathOf(JsonMap channel) =>
+        channel.GetValueOrDefault("target") is JsonMap target ? Aimed(target).Path : null;
 
     /// <summary>A whole number that is at least nought and below <paramref name="count"/>, or null.</summary>
     private static long? Within(object? raw, int count) => raw is long at && at >= 0 && at < count ? at : null;
