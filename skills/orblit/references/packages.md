@@ -47,7 +47,7 @@ in the table, and none of them has been run in a window.
 | `Orblit.Core` | 0.1.0 | An entity-component world over a native core. Components are views onto native memory | `World`, `ComponentKind` |
 | `Orblit.Native` | 0.1.0 | Compiling and loading C++ scripts. A script is handed a table of what it may call and answers start, step and stop | `NativeScript` |
 | `Orblit.Remote` | 0.4.0 | A control surface in a debug game: a loopback WebSocket that lists entities, reads and sets components, pauses and steps time, waits for a field to hold, and compares snapshots | `RemoteServer`, `RemoteHost`, `CoreWorldInspector`, `TimeGate`, `LogTail` |
-| `Orblit.Remote.Tool` | 0.3.0 | A .NET tool that serves that control surface to an assistant, as tools | `orblit-remote` |
+| `Orblit.Remote.Tool` | 0.4.0 | A .NET tool that serves that control surface to an assistant, as tools | `orblit-remote` |
 | `Orblit.Cook`, `Orblit.Pack`, `Orblit.Kit` | 0.1.0 | .NET tools that cook a project's assets for a target, pack a bundle into one `.opack` file, and pack, check and install kits. See [assets.md](assets.md) | `orblit-cook` |
 | `Orblit.VectorMath` | 0.20.0 | Double precision vectors, matrices and quaternions | `Vector3`, `Matrix4`, `Quaternion` |
 | `Orblit.Json` | 0.4.0 | JSON read and written the way Orblit files hold it. Whole numbers are `long`, the rest `double`, and a map keeps its keys in order | `JsonText` |
