@@ -80,6 +80,20 @@ public sealed class GameHost
         End(Call("Update", () => _game.Update(_context, seconds)));
     }
 
+    /// <summary>
+    /// Runs code of the game's that is not Start, Update or Stop, such as asking an interface game for
+    /// its control, while the game runs. A throw ends the game as one from Update would, so the caller
+    /// has one rule for everything the game does.
+    /// </summary>
+    public void Guard(string name, Action call)
+    {
+        ArgumentNullException.ThrowIfNull(call);
+        if (_phase == Phase.Running)
+        {
+            End(Call(name, call));
+        }
+    }
+
     /// <summary>Stops the game if it is running. Stopping twice, or before starting, does nothing.</summary>
     public void Stop()
     {

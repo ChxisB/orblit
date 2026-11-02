@@ -207,6 +207,49 @@ public class GameHostTests
     }
 
     [Fact]
+    public void GuardedCodeOfTheGameRunsWhileTheGameRuns()
+    {
+        var host = Started(new ScriptedGame());
+        var ran = false;
+
+        host.Guard("CreateInterface", () => ran = true);
+
+        Assert.True(ran);
+        Assert.True(host.Running);
+    }
+
+    [Fact]
+    public void AThrowInGuardedCodeFaultsAsAThrowInUpdateDoes()
+    {
+        var failure = new InvalidOperationException("no");
+        var game = new ScriptedGame();
+        var log = new RecordingLog();
+        var host = Started(game, log);
+
+        host.Guard("CreateInterface", () => throw failure);
+
+        Assert.Same(failure, host.Fault);
+        Assert.False(host.Running);
+        Assert.Equal(1, game.Stops);
+        Assert.Contains("CreateInterface", Assert.Single(log.Errors).Message);
+    }
+
+    [Fact]
+    public void GuardedCodeDoesNotRunBeforeStartOrAfterTheEnd()
+    {
+        var game = new ScriptedGame();
+        var host = new GameHost(game, World(), "/project", new RecordingLog());
+        var runs = 0;
+
+        host.Guard("early", () => runs++);
+        host.Start();
+        host.Stop();
+        host.Guard("late", () => runs++);
+
+        Assert.Equal(0, runs);
+    }
+
+    [Fact]
     public void RefusesNothingToRun()
     {
         var game = new ScriptedGame();

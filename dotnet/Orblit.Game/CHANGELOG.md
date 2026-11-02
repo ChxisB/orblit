@@ -11,3 +11,5 @@
 - `GameHost` runs one game once. It catches a throw from `Start` or `Update`,
   logs it, stops the game and keeps the exception in `Fault`. A throw from
   `Stop` is logged. A diff that arrives after the stop is dropped.
+- `GameHost.Guard` runs other code of the game's, such as asking for its
+  interface, with the same rule: a throw ends the game.
