@@ -38,8 +38,10 @@ The package id is the namespace. `dotnet add package Orblit.Pathing` gives
 
 - Physics is in `orblit-physics`, with its own `tool/pack_local.sh` into the
   same feed. Run its `tool/build_native.sh` first, for the same reason.
-- `Orblit.Net` is in `orblit-net`, which has no pack script. Reference its
-  project with a `ProjectReference`.
+- `Orblit.Net` and `Orblit.Net.Game` are in `orblit-net`, which has no pack
+  script. Pack each into the feed with `dotnet pack orblit-net/dotnet/Orblit.Net
+  -c Release -o ~/.orblit/feed`, then the same for `Orblit.Net.Game`. Or
+  reference a project with a `ProjectReference`.
 
 A project that restores from several sources can pin a package to one with
 `RestoreAdditionalProjectSources` in `Directory.Build.props`, which is how the

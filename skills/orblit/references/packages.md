@@ -29,10 +29,10 @@ in the table, and none of them has been run in a window.
 | `Orblit.Ui` | 0.3.0 | A game's words in each language: strings tables, language files and plural rules | `UiStrings` |
 | `Orblit.Ui.Avalonia` | 0.4.0 | Avalonia controls for a game interface: a flex layout, the image loader, touch controls and the label atlas | `FlexPanel`, `PanelHost`, `TouchStick`, `LabelAtlas` |
 | `Orblit.Cells` | 0.1.0 | A world cut into square cells: which cells to load and drop around a moving point | `Grid`, `CellPlan` |
-| `Orblit.Scene` | 0.25.0 | A scene as a document: entities with stable ids, components, migrations, diffs and portrait and landscape layouts | `SceneDocument`, `SceneDiff`, `TransformComponent` |
+| `Orblit.Scene` | 0.28.0 | A scene as a document: entities with stable ids, components, migrations, diffs and portrait and landscape layouts. A `net` component tags an entity as shared in a networked game | `SceneDocument`, `SceneDiff`, `TransformComponent`, `NetComponent` |
 | `Orblit.Stage` | 0.6.0 | Stages a scene document for the renderer, and a terrain and its scatter. Follows the window's shape with a scene's layouts. Plays cutscenes and sounds over it, draws a scene's particle emitters, a grid of particles such as a cloth and a trail ribbon, swaps still copies of one model for one baked mesh, and draws debug segments | `DocumentView`, `TerrainView`, `ScatterView`, `Cutscenes`, `ParticleSheet`, `ParticleView`, `TrailRibbon`, `StaticMerge`, `SoundView`, `DebugLines` |
 | `Orblit.Stage.Avalonia` | 0.2.0 | Interface in a staged scene: a panel's picture on a quad in the world, the line from a point on the screen into the world, and name labels | `WorldPanel`, `PointerRay`, `Nameplates` |
-| `Orblit.Game` | 0.1.0 | A game as a class a host runs: a start, an update with the frame's keys and pointer, and a stop. It reads the scene and changes it with diffs. A throw from it ends it and does not reach the host. See [game-loop.md](game-loop.md#a-game-as-a-class) | `IGame`, `GameContext`, `GameScene`, `GameInput`, `GamePointer`, `GameHost` |
+| `Orblit.Game` | 0.2.0 | A game as a class a host runs: a start, an update with the frame's keys and pointer, and a stop. It reads the scene and changes it with diffs. A throw from it ends it and does not reach the host. `GameContext.Net` says which copy of a networked game this is. See [game-loop.md](game-loop.md#a-game-as-a-class) | `IGame`, `GameContext`, `GameScene`, `GameInput`, `GamePointer`, `GameHost`, `IGameNet` |
 | `Orblit.Game.Avalonia` | 0.1.0 | Plays a game in a window of its own, and reads one control as a game's input. A game with a control of its own has it put over the view | `GameRunner`, `IInterfaceGame`, `GameInputSource` |
 | `Orblit.Light` | 0.3.0 | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `Orblit.Mesh` | 0.6.0 | Building and editing geometry, writing it out and reading it back as OBJ, STL, PLY and glTF, with limits for untrusted files | `Mesh`, `MeshExport`, `ReadLimits` |
@@ -62,7 +62,9 @@ fixtures a port is checked against. `Orblit.Examples` holds the gallery's
 scenes.
 
 Other repositories hold more. `orblit-net` is multiplayer: replication,
-ownership and interpolation. `orblit-physics` simulates the bodies and joints
+ownership and interpolation in `Orblit.Net`, and `Orblit.Net.Game` 0.1.0, which
+runs a game on a network from the `net` tags in its scene. See
+[game-loop.md](game-loop.md#tag-a-thing-as-multiplayer). `orblit-physics` simulates the bodies and joints
 of a scene document and lays a terrain as ground. [physics.md](physics.md)
 covers it. `orblit-editor` is the editor app, and `orblit-examples` is the
 gallery app.
@@ -757,6 +759,12 @@ see [assets.md](assets.md)) and the scene writers and readers:
 `document.WriteAs(SceneFormat.Glb, ...)` and `SceneImport.ReadSceneFrom(...)`
 for glTF, GLB and OBJ. Both report what they could not carry rather than
 throwing. Details and the traps: [assets.md](assets.md).
+
+`NetComponent` (`SceneComponents.Net`, JSON key `net`) tags an entity as shared
+in a networked game. `authority` is `server` or `owner` and `sync` lists
+`transform` and the names of `NetVar` values. An entity with no `net` component
+is local, and a game run offline ignores the tag. See
+[game-loop.md](game-loop.md#tag-a-thing-as-multiplayer).
 
 `new DocumentView(document, profiler: profiler)` times its work as the spans
 `scene build` and `diff`. It defaults to `Profiler.Off`, which records nothing.
