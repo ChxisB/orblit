@@ -119,6 +119,19 @@ public class GltfVisibilityTests
         Assert.True(read.Document["lamp"]!.Visible);
     }
 
+    [Fact]
+    public void AFileWithNoFlagKeepsOurRecordBecauseEarlierVersionsWroteNone()
+    {
+        var node = Recorded("lamp");
+        var extras = Assert.IsType<OrderedDictionary<string, object?>>(node["extras"]);
+        var ours = Assert.IsType<OrderedDictionary<string, object?>>(extras["orblit"]);
+        ours["visible"] = false;
+
+        var read = SceneImport.ReadSceneFrom(Document(("scenes", List(WrittenHere())), ("nodes", List(node))));
+
+        Assert.False(read.Document["lamp"]!.Visible);
+    }
+
     // a file this editor writes
 
     [Fact]

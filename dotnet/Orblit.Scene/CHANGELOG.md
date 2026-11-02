@@ -5,9 +5,10 @@
 - `KHR_node_visibility` is read from every node. A node the file hides comes
   in hidden. Its children keep their own flag, because the view already hides
   what sits under a hidden parent.
-- In a file this editor wrote, the standard flag wins over Orblit's own
-  record of the node. Another tool may have toggled it since the scene was
-  saved.
+- In a file this editor wrote, a standard flag that is present wins over
+  Orblit's own record of the node. Another tool may have toggled it since the
+  scene was saved. A node with no flag keeps the record, because earlier
+  versions wrote none.
 - A hidden object is written with the standard flag and the file lists the
   extension in `extensionsUsed`. Orblit's record stays, so an older reader
   of the package gets the same answer. A shown object is written as before.
