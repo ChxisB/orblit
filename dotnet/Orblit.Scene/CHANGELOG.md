@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.28.0
+
+- New `net` component, `NetComponent`, marks an entity as shared between
+  the players of a game. It holds an `authority`, `server` or `owner`, and a
+  `sync` list of the state that travels. A tag with no fields means the
+  server holds the entity and sends its `transform`.
+- An authority this version does not know reads as `server`, so a typo
+  never hands a client the entity. A blank or repeated name in `sync` is
+  dropped when a scene is read. The constructor refuses both.
+- `net` is written after the sound components and before `data`. The scene
+  format version stays as it is, and an older editor keeps the tag whole as
+  an unknown component.
+- A prefab whose root carries `net` makes every instance of it networked.
+
 ## 0.26.0
 
 - `KHR_node_visibility` is read from every node. A node the file hides comes
