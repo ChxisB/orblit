@@ -20,13 +20,29 @@ case "$(uname -m)" in
 esac
 rid=$os-$arch
 
+# Silent when the command works. When it fails, prints the lines that name the
+# error, because MSVC writes them to stdout and a CI log with none of them says
+# only that the build failed.
+quietly() {
+  local log
+  log=$(mktemp)
+  if "$@" > "$log" 2>&1; then
+    rm -f "$log"
+    return 0
+  fi
+  grep -E 'error|Error|FAILED' "$log" | head -n 40 >&2 || true
+  tail -n 5 "$log" >&2
+  rm -f "$log"
+  return 1
+}
+
 build() {
   local package=$1
   shift
   local dir="$root/dotnet/native/build/$package"
-  cmake -S "$root/packages/$package" -B "$dir" -DORBLIT_RID="$rid" -DCMAKE_BUILD_TYPE=Release "$@" > /dev/null
-  cmake --build "$dir" --config Release > /dev/null
-  cmake --install "$dir" --config Release --prefix "$root/dotnet/native" > /dev/null
+  quietly cmake -S "$root/packages/$package" -B "$dir" -DORBLIT_RID="$rid" -DCMAKE_BUILD_TYPE=Release "$@"
+  quietly cmake --build "$dir" --config Release
+  quietly cmake --install "$dir" --config Release --prefix "$root/dotnet/native"
   echo "  ok    $package -> runtimes/$rid/native"
 }
 
