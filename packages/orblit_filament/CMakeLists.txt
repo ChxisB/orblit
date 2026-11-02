@@ -109,6 +109,9 @@ else()
   # Filament's Linux release is built against LLVM's standard library, so the
   # compile and the link both take libc++. The archives refer to each other
   # both ways round, hence the group.
+  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    message(FATAL_ERROR "The renderer links Filament's libc++ archives, so it needs clang. Install clang and libc++-dev, then set CXX=clang++.")
+  endif()
   target_compile_definitions(orblit_filament PRIVATE ORBLIT_PLATFORM_PORTABLE)
   target_compile_options(orblit_filament PRIVATE -stdlib=libc++)
   # Google unpacks its arm64 Linux release to lib/aarch64, where the macOS

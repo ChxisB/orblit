@@ -20,6 +20,12 @@ case "$(uname -m)" in
 esac
 rid=$os-$arch
 
+# The Linux renderer links Filament's libc++ archives, which only clang builds
+# against. A machine whose default compiler is gcc would fail in the link.
+if [ "$os" = linux ] && command -v clang++ > /dev/null; then
+  export CC=${CC:-clang} CXX=${CXX:-clang++}
+fi
+
 build() {
   local package=$1
   shift

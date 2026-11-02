@@ -57,9 +57,11 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # Only macOS has the renderer path written and run. Windows and Linux
-      # build the managed code and skip the tests that draw. The cache key is
-      # the macOS job's, so one download serves both.
+      # macOS and Linux build the renderer and draw with it. Windows builds
+      # the managed code and skips the tests that draw, until its own leg
+      # builds the renderer too. A runner has no GPU, so Linux draws on Mesa's
+      # software Vulkan driver, lavapipe. That proves the Vulkan path and the
+      # readback the Avalonia viewport uses. It says nothing about a real GPU.
       - name: Cache Filament SDK
         if: runner.os == 'macOS'
         uses: actions/cache@v4
@@ -67,15 +69,46 @@ jobs:
           path: packages/orblit_filament/darwin/third_party
           key: filament-${{ runner.os }}-${{ hashFiles('packages/orblit_filament/darwin/setup.sh') }}
 
-      - name: Fetch Filament
-        if: runner.os == 'macOS'
+      - name: Cache Filament SDK
+        if: runner.os == 'Linux'
+        uses: actions/cache@v4
+        with:
+          path: packages/orblit_filament/linux/third_party
+          key: filament-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/orblit_filament/linux/setup.sh') }}
+
+      - name: Install clang, libc++ and a software Vulkan driver
+        if: runner.os == 'Linux'
         run: |
-          bash packages/orblit_filament/darwin/setup.sh
-          echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang libc++-dev libc++abi-dev mesa-vulkan-drivers libvulkan1 vulkan-tools
+          vulkaninfo --summary
+
+      - name: Fetch Filament
+        if: runner.os != 'Windows'
+        run: |
+          if [ "$RUNNER_OS" = macOS ]; then
+            bash packages/orblit_filament/darwin/setup.sh
+            echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV"
+          else
+            bash packages/orblit_filament/linux/setup.sh
+          fi
+          # A leg that builds the renderer fails when the library is missing,
+          # where it would otherwise skip every test that draws.
+          echo "ORBLIT_REQUIRE_RENDERER=1" >> "$GITHUB_ENV"
+          echo "ORBLIT_FRAME_OUT=$RUNNER_TEMP/frames" >> "$GITHUB_ENV"
 
       - name: Check sources, build, test and check format
         shell: bash
         run: ./tool/check_dotnet.sh
+
+      # The frame each leg measured, so a person can look at it.
+      - name: Keep the drawn frame
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frame-${{ matrix.os }}
+          path: ${{ runner.temp }}/frames
+          if-no-files-found: ignore
 
   # Checks each commit on a pull request against commitlint.config.mjs.
   # Pull requests only, since a push to main has no range to check. It
