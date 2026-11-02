@@ -383,3 +383,159 @@ In the editor the game view takes the keys when Play starts. While it has the
 focus every key is the game's, Escape and the editor's tool keys included, so
 stop with the Stop button. The keys go back to the editor when the focus leaves
 the view. A scene with no camera gives the game its keys and a null pointer.
+
+## Tag a thing as multiplayer
+
+A networked game is the same `IGame` class on every copy, and the scene says
+what is shared. It needs `Orblit.Game` 0.2.0 and `Orblit.Net.Game` 0.1.0.
+Neither is on a public feed, so pack them as [dotnet.md](dotnet.md) says. A
+game built for `Orblit.Game` 0.1.x is refused by 0.2.0.
+
+**The tag** is a `net` component on an entity in the scene file.
+
+```json
+"net": { "authority": "owner", "sync": [ "transform" ] }
+```
+
+- `authority` is `server` or `owner`. The server's game moves a `server`
+  entity. An `owner` entity is moved by the client the server names, and by the
+  server until it names one. A write from any other client is refused.
+- `sync` lists what travels. `transform` is the entity's place. Any other name
+  is a `NetVar` value.
+- No `net` component means local. The server reads the tag when the entity
+  appears, so a change on a live entity does nothing until the entity is removed
+  and added again.
+- In code the tag is `new NetComponent(NetAuthority.Owner, ["transform"])` under
+  `SceneComponents.Net`. The editor's inspector adds, removes and edits it.
+
+**The role** is `context.Net`, an `IGameNet`.
+
+| Copy | `Role` | `LocalClient` | `IsServer` |
+| --- | --- | --- | --- |
+| Offline, one player | `Offline` | `null` | `false` |
+| Host | `Server` | `null` | `true` |
+| Guest | `Client` | the guest's id | `false` |
+
+`OwnerOf(id)` is the client that owns an entity, or `null`. A game that never
+reads `Net` runs offline.
+
+**A call** asks the server to act. Call `Bind(this)` from `Start`, mark the
+method `[ServerRpc]`, and call it by name from any copy. Arguments are `bool`,
+`int`, `float`, `string`, `Vector3` or `NetEntity`, at most 16. A server call
+runs at once. A guest's call runs on the server at the start of its next
+update. Offline it runs at once. `[ClientRpc]` marks a method the server calls
+with `CallClient(clientId, name, ...)` or `CallAll(name, ...)`.
+
+```csharp
+using Orblit.Game;
+using Orblit.Net.Game;
+using Orblit.VectorMath;
+
+public sealed class CrateGame : IGame
+{
+    private static readonly string[] Crates = ["crate", "crate2"];
+
+    public bool Marked { get; private set; }
+
+    public void Start(GameContext context)
+    {
+        context.Net.Bind(this);
+    }
+
+    public void Update(GameContext context, double seconds)
+    {
+        if (Mine(context.Net) is not null && context.Input.Pointer is { Pressed: true })
+        {
+            context.Net.Call(nameof(PlaceMarker), new Vector3(2.5, 0, -1.5));
+        }
+    }
+
+    // Runs on the server. The arguments come from a client, so check them as input.
+    [ServerRpc]
+    public void PlaceMarker(Vector3 at)
+    {
+        Marked = Math.Abs(at.X) < 6 && Math.Abs(at.Z) < 6;
+    }
+
+    public void Stop(GameContext context)
+    {
+    }
+
+    // The crate this copy plays, or null while it owns none. Nobody owns the host's crate, so
+    // offline and on the host it is the first one. A guest plays the one the server gave it.
+    private static string? Mine(IGameNet net) => Crates.FirstOrDefault(id => net.OwnerOf(id) == net.LocalClient);
+}
+```
+
+Write a check as "inside" and not as "outside". A `NaN` fails every
+comparison, so a check that asks whether a place is outside lets it through.
+
+**Owners** are given out in document order. In the editor the host keeps the
+earliest `owner` entity and each later one goes to the next guest in join order,
+once, when Play starts. A host you build calls
+`NetworkedServer.Assign(entityId, clientId)`. When the server adds an entity,
+use `document.WithEntity(id, entity)`, which appends. A raw `AddEntity` inserts
+at the head unless it is given `after`, and the new entity would take the
+host's place.
+
+**A value** that is not a place is a `NetVar<T>`: a `bool`, `int`, `float` or
+`Vector3` on an entity. Declare its name and type in an `INetGame`, list the
+name in the entity's `sync`, and ask for a handle with `Net.Var<T>(id, name)`.
+The server writes it, or the owner of an `owner` entity. A client write throws
+`InvalidOperationException`. Offline the handle keeps its own value. The editor
+reads `NetVars` before it makes any net, so the schema cannot depend on `Start`.
+A schema holds at most 63 names, and a mismatch between ends is not detected.
+
+```json
+"net": { "authority": "server", "sync": [ "health" ] }
+```
+
+```csharp
+using Orblit.Game;
+using Orblit.Net.Game;
+
+public sealed class TowerGame : IGame, INetGame
+{
+    public NetVarSchema NetVars { get; } = NetVarSchema.Empty.With<int>("health");
+
+    public void Start(GameContext context)
+    {
+        var health = context.Net.Var<int>("tower", "health");
+        if (!context.Net.IsClient)
+        {
+            health.Value = 100;
+        }
+    }
+
+    public void Update(GameContext context, double seconds)
+    {
+    }
+
+    public void Stop(GameContext context)
+    {
+    }
+}
+```
+
+In the editor, a count beside Play chooses 1 to 4 players. One player runs the
+game offline. More start a host and one guest each over `LoopbackLink`, with a
+game view per player. The keys go to the player shown.
+
+What it does not do:
+
+- No prediction or rollback, and no interest radius.
+- No dedicated server, lobby or relay.
+- After a spawn only the place and the `NetVar` values stay in step. Another
+  component changed later stays on the copy that changed it.
+- Owners are given out once. Nobody joins after Play starts.
+- A call to a client goes out at the end of the update that made it, after the
+  tick. A client makes an entity from a tick, so a call that names a new entity
+  arrives after it.
+- A handler that throws on a call from the other end is counted in
+  `FaultedCalls` and the game goes on. A call the game makes to itself throws to
+  its caller.
+- A networked world is not saved. Playing in a browser is not tried.
+- It has run headless over `LoopbackLink` and not in a live editor window.
+
+The crate in `orblit-examples` is the worked example, and
+`/guides/multiplayer-game/` walks it.

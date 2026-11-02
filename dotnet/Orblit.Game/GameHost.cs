@@ -52,6 +52,22 @@ public sealed class GameHost
 
     public bool Running => _phase == Phase.Running;
 
+    /// <summary>
+    /// Gives the game a network to ask about its role. It is set before <see cref="Start"/> and never
+    /// after, so a game reads one answer for the whole run.
+    /// </summary>
+    public void UseNet(IGameNet net)
+    {
+        ArgumentNullException.ThrowIfNull(net);
+        if (_phase != Phase.Ready)
+        {
+            throw new InvalidOperationException("Give the host its net before the game starts.");
+        }
+
+        _context.Connect(net);
+        net.Attach(_context.Scene);
+    }
+
     public void Start()
     {
         if (_phase != Phase.Ready)
@@ -77,7 +93,7 @@ public sealed class GameHost
         }
 
         _context.Receive(input);
-        End(Call("Update", () => _game.Update(_context, seconds)));
+        End(Call("Update", () => Step(seconds)));
     }
 
     /// <summary>
@@ -118,6 +134,13 @@ public sealed class GameHost
 
         _phase = Phase.Done;
         Call("Stop", () => _game.Stop(_context));
+    }
+
+    private void Step(double seconds)
+    {
+        _context.Net.BeforeUpdate();
+        _game.Update(_context, seconds);
+        _context.Net.AfterUpdate();
     }
 
     // A diff that arrives after the stop comes from something the game left running. It is dropped

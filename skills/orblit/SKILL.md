@@ -1,6 +1,6 @@
 ---
 name: orblit
-description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for .NET with Avalonia. Covers C# that uses the Orblit.* packages (RenderScene, RenderObject, RenderLight, RenderCamera, Population, SpriteLayer, RendererViewport, Orblit.Filament.Avalonia, the local NuGet feed and `dotnet` commands); adding Orblit to a .NET project on macOS, Windows or Linux; materials, shaders an author writes as `.oshader` files, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with Orblit.Motion (.oclip, .oblend, .ocutscene, root motion, retargeting); terrain with Orblit.Terrain (heights, sets, brushes, HeightAt, grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with Orblit.Physics; and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
+description: Use when building a game, app or scene with Orblit, the 3D and 2D engine for .NET with Avalonia. Covers C# that uses the Orblit.* packages (RenderScene, RenderObject, RenderLight, RenderCamera, Population, SpriteLayer, RendererViewport, Orblit.Filament.Avalonia, the local NuGet feed and `dotnet` commands); adding Orblit to a .NET project on macOS, Windows or Linux; materials, shaders an author writes as `.oshader` files, scene documents, glTF, GLB and OBJ import and export, Gaussian splats, cooked and networked assets; clips, blend graphs, cutscenes and retargeting with Orblit.Motion (.oclip, .oblend, .ocutscene, root motion, retargeting); terrain with Orblit.Terrain (heights, sets, brushes, HeightAt, grass, stones and trees scattered by rule); physics, cylinders, convex hulls, compound and scaled shapes, static mesh collision, triggers, zones, belts, shape queries, joints, cars with wheels and an engine, walking characters, smooth display at any frame rate, snapshots to roll back to and terrain collision with Orblit.Physics; tagging a game's entities as multiplayer with Orblit.Net.Game (the `net` scene component, `[ServerRpc]` calls, `NetVar` values and Play with players); and questions about the API, lighting units, platforms, or why a scene is black or missing something. Orblit is pre-alpha and its names change between commits, so this skill says how to check the real API first. It is for building with Orblit, not for working on the engine itself.
 ---
 
 # Building with Orblit
@@ -251,7 +251,7 @@ ambient light, and the default camera exposure is set for daylight.
 A small complete game (input, a clamped game loop, spawning and despawning
 with stable keys) is in [references/game-loop.md](references/game-loop.md).
 That file also shows a game written as an `IGame` class, which the editor can
-run when the project names it.
+run when the project names it, and how to tag a thing in it as multiplayer.
 
 ## Lighting and exposure
 
@@ -865,14 +865,16 @@ a target), `Orblit.Pack` (one `.opack` file for a cooked bundle), `Orblit.Kit`
 (packs, checks and installs kits), `Orblit.Native` (C++ scripts),
 `Orblit.VectorMath` (the double precision `Vector3`, `Matrix4` and
 `Quaternion`), `Orblit.Json`, `Orblit.Core` (the entity-component world over a
-native core), `Orblit.Net` (multiplayer, in the `orblit-net` repository) and
-`Orblit.Remote` (a socket to drive a debug game, and `Orblit.Remote.Tool`, a
-tool server so an assistant can). What each does and the entry points worth
+native core), `Orblit.Net` (multiplayer, in the `orblit-net` repository),
+`Orblit.Net.Game` (tags a game's entities as shared, in the same repository)
+and `Orblit.Remote` (a socket to drive a debug game, and `Orblit.Remote.Tool`,
+a tool server so an assistant can). What each does and the entry points worth
 knowing are in [references/packages.md](references/packages.md). Add each the
 same way as `Orblit.Filament.Avalonia`, with `dotnet add package`. Physics and
-`Orblit.Net` are the exceptions: they are in their own repositories. Physics
-packs into the same feed with its own `tool/pack_local.sh`. `orblit-net` has no
-pack script, so reference its project with a `ProjectReference`.
+the two net packages are the exceptions: they are in their own repositories.
+Physics packs into the same feed with its own `tool/pack_local.sh`. `orblit-net`
+has no pack script, so run `dotnet pack` on `Orblit.Net` and `Orblit.Net.Game`
+into the feed, or reference a project with a `ProjectReference`.
 
 ## Reference files
 
