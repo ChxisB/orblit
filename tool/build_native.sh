@@ -20,12 +20,6 @@ case "$(uname -m)" in
 esac
 rid=$os-$arch
 
-# The Linux renderer links Filament's libc++ archives, which only clang builds
-# against. A machine whose default compiler is gcc would fail in the link.
-if [ "$os" = linux ] && command -v clang++ > /dev/null; then
-  export CC=${CC:-clang} CXX=${CXX:-clang++}
-fi
-
 build() {
   local package=$1
   shift
@@ -57,6 +51,12 @@ case "$os" in
 esac
 sdk=${ORBLIT_FILAMENT_SDK:-$default_sdk}
 if [ -f "$sdk/include/filament/Engine.h" ]; then
+  # Filament's Linux archives are built against libc++, which only clang links.
+  # Core and the audio device keep the system compiler, because the parity
+  # tests compare core's floats with a reference built by it.
+  if [ "$os" = linux ] && command -v clang++ > /dev/null; then
+    export CC=${CC:-clang} CXX=${CXX:-clang++}
+  fi
   build orblit_filament -DORBLIT_FILAMENT_SDK="$sdk" -DORBLIT_GENERATED_DIR="$materials"
 else
   echo "  skip  orblit_filament (no Filament release at $sdk, set ORBLIT_FILAMENT_SDK)"
