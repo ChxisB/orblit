@@ -373,3 +373,13 @@ an Avalonia `Control`. The host calls it once after `Start`, puts the control
 over the view and removes it when the game stops. A throw from it ends the game
 like any other. `Control` also names a type in `Orblit.Input`, so alias one of
 the two (see [packages.md](packages.md#name-clashes)).
+
+The control can be XAML. An `avares://` address inside it reaches the game's own
+assembly, so a style file shipped with the game loads. The editor asks for the
+control once for the whole play, so keep its state in the game and not in a
+second call. A view closed and opened again shows the same control.
+
+In the editor the game view takes the keys when Play starts. While it has the
+focus every key is the game's, Escape and the editor's tool keys included, so
+stop with the Stop button. The keys go back to the editor when the focus leaves
+the view. A scene with no camera gives the game its keys and a null pointer.
