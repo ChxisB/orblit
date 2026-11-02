@@ -31,7 +31,7 @@ public class LayoutFollowerTests
     [Fact]
     public void NothingIsShownUntilTheWindowHasASize()
     {
-        var shown = new List<SceneDocument>();
+        var shown = new List<SceneDiff>();
 
         var follower = new LayoutFollower(Scene(), shown.Add);
 
@@ -68,7 +68,7 @@ public class LayoutFollowerTests
     [Fact]
     public void AResizeThatKeepsTheShapeShowsNothingAgain()
     {
-        var shown = new List<SceneDocument>();
+        var shown = new List<SceneDiff>();
         var follower = new LayoutFollower(Scene(), shown.Add);
 
         follower.Fit(390, 844);
@@ -80,14 +80,62 @@ public class LayoutFollowerTests
     }
 
     [Fact]
-    public void AnythingShownIsTheSceneAsDrawnWithNoLayoutsOfItsOwn()
+    public void TheFirstFitHandsOverWhatTurnsTheBaseSceneIntoTheLayout()
     {
-        var shown = new List<SceneDocument>();
-        var follower = new LayoutFollower(Scene(), shown.Add);
+        var scene = Scene();
+        var shown = new List<SceneDiff>();
+        var follower = new LayoutFollower(scene, shown.Add);
 
         follower.Fit(390, 844);
 
-        Assert.True(Assert.Single(shown).Layouts.IsEmpty);
+        Assert.True(SceneDiff.Between(scene.InLayout(LayoutShape.Portrait), Assert.Single(shown).ApplyTo(scene)).IsEmpty);
+    }
+
+    [Fact]
+    public void ATurnLeavesAloneWhatTheGameAddedToTheView()
+    {
+        var (follower, view) = Follow(Scene());
+        follower.Fit(390, 844);
+        view.Apply(new SceneDiff([new AddEntity(Crate("spawned").ToJson(), null)]));
+
+        follower.Fit(844, 390);
+
+        Assert.True(view.Document.Contains("spawned"));
+        Assert.Equal(40, view.Camera.FieldOfView);
+    }
+
+    [Fact]
+    public void ATurnPutsBackAFieldOnlyTheLayoutItLeftHadSet()
+    {
+        var scene = new SceneDocument(
+            entities: [Crate("crate"), Camera(50)],
+            layouts: SceneLayouts.None.With(LayoutShape.Portrait, FieldOfViewOf(70)));
+        var (follower, view) = Follow(scene);
+        follower.Fit(390, 844);
+
+        follower.Fit(844, 390);
+
+        Assert.Equal(50, view.Camera.FieldOfView);
+    }
+
+    [Fact]
+    public void ALayoutThatFailsToShowIsNotRecordedAsShown()
+    {
+        var attempts = 0;
+        var follower = new LayoutFollower(Scene(), _ =>
+        {
+            if (attempts++ == 0)
+            {
+                throw new InvalidOperationException("The view was not ready.");
+            }
+        });
+
+        Assert.Throws<InvalidOperationException>(() => follower.Fit(390, 844));
+        Assert.Null(follower.Shape);
+
+        follower.Fit(390, 844);
+        Assert.Equal(LayoutShape.Portrait, follower.Shape);
+        Assert.Equal(2, attempts);
     }
 
     [Fact]
@@ -107,7 +155,7 @@ public class LayoutFollowerTests
     private static (LayoutFollower Follower, DocumentView View) Follow(SceneDocument scene)
     {
         var view = new DocumentView(scene);
-        return (new LayoutFollower(scene, view.Replace), view);
+        return (new LayoutFollower(scene, view.Apply), view);
     }
 
     private static SceneEntity Camera(double fieldOfView) => Thing(

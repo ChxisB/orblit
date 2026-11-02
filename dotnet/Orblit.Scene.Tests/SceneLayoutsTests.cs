@@ -229,6 +229,27 @@ public class SceneLayoutsTests
     }
 
     [Fact]
+    public void AShapeThatIsNotAListOrHoldsAnEditNobodyCanReadIsReported()
+    {
+        var file = JsonText.Encode(Map(
+            ("formatVersion", (long)SceneDocument.FormatVersion),
+            ("name", "Scene"),
+            ("entities", List()),
+            ("layouts", Map(
+                ("portrait", Map(("op", "visible"))),
+                ("landscape", List(
+                    Map(("op", "visible"), ("id", "hud"), ("from", true), ("to", false)),
+                    Map(("op", "unheard-of"))))))));
+
+        var load = SceneDocument.Decode(file);
+
+        Assert.Equal(2, load.Problems.Count);
+        Assert.Contains("portrait", load.Problems[0]);
+        Assert.Contains("1 of the landscape", load.Problems[1]);
+        Assert.IsType<SetVisible>(Assert.Single(load.Document.Layouts[LayoutShape.Landscape].Operations));
+    }
+
+    [Fact]
     public void LayoutsThatAreNotAnObjectAreIgnored()
     {
         var file = JsonText.Encode(Map(

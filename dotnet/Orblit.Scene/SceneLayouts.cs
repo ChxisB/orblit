@@ -140,7 +140,17 @@ public sealed class SceneLayouts
 
     private static SceneDiff ShapeFrom(JsonMap map, string key, List<string> problems)
     {
-        var read = SceneDiff.FromJson(Values.At(map, key));
+        var raw = Values.At(map, key);
+        var read = SceneDiff.FromJson(raw);
+        if (raw is not null and not JsonList)
+        {
+            problems.Add($"The {key} layout is not a list of edits, and was left out.");
+        }
+        else if (raw is JsonList list && list.Count > read.Operations.Count)
+        {
+            problems.Add($"{list.Count - read.Operations.Count} of the {key} layout's edits could not be read, and were left out.");
+        }
+
         foreach (var op in read.Operations.Where(op => !Allows(op)))
         {
             problems.Add($"The {key} layout has a \"{NameOf(op)}\" edit, which a layout cannot hold, and it was left out.");

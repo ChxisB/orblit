@@ -13,6 +13,8 @@
   in older tools as it did. Prefab files and glTF extras write 5.
 - `SceneLayouts.CountMissed` counts the edits in a layout that find nothing to
   change, such as one aimed at a part of a folded prefab instance.
+- A file whose layout is not a list, or holds edits that cannot be read,
+  loads without them and says so in `Problems`.
 
 ## 0.24.0
 

@@ -251,8 +251,8 @@ using Orblit.Stage;
 var tall = new SceneDiff([new SetField("cam", SceneComponents.Camera, "fieldOfView", 50.0, 70.0)]);
 var scene = document.CopyWith(layouts: document.Layouts.With(LayoutShape.Portrait, tall));
 
-var view = new DocumentView(scene.InLayout(LayoutShape.Landscape));
-var follower = new LayoutFollower(scene, view.Replace);
+var view = new DocumentView(scene);
+var follower = new LayoutFollower(scene, view.Apply);
 
 // At start and on every resize. Nothing happens while the shape stays the same.
 follower.Fit(width, height);
@@ -269,8 +269,10 @@ follower.Fit(width, height);
 - **`InLayout(shape)` returns the scene as it looks there**, with no layouts
   of its own. The base scene is unchanged. Hand it to a `DocumentView`.
 - **`LayoutFollower.Fit` is safe to call on every size change.** It calls
-  `show` only when the shape changes. Pass `view.Replace`, which turns the
-  switch into a diff, so what both layouts share is not rebuilt.
+  `show` only when the shape changes. It hands over a `SceneDiff` between the
+  two layouts, so pass `view.Apply`. What both layouts share is not rebuilt,
+  and an object the game added is left alone. Build the view from the base
+  scene.
 - **An edit is addressed by id.** One aimed at an object that is not there
   does nothing. The parts of a folded prefab instance are not in the scene as
   stored, so an edit on one is skipped until the instance is opened.

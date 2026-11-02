@@ -724,7 +724,8 @@ both. A `TransformComponent` built with only `position` resets rotation and
 scale, so pass the ones you aren't changing. Guide: `/guides/scene-files/`.
 
 A scene can hold a portrait and a landscape layout. `LayoutFollower` shows
-the one that suits the window: call `Fit(width, height)` at start and on every
+the one that suits the window: build the view from the base scene, give the
+follower `view.Apply`, and call `Fit(width, height)` at start and on every
 resize. See "Layouts for a phone held either way" in [assets.md](assets.md).
 
 ```csharp

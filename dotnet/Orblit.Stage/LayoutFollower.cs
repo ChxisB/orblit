@@ -3,18 +3,19 @@ using Orblit.Scene;
 namespace Orblit.Stage;
 
 /// <summary>
-/// Picks the layout that suits a window and hands it to whatever shows the scene.
+/// Picks the layout that suits a window and hands what changes to whatever shows the scene.
 /// </summary>
 /// <remarks>
-/// Holds the scene as it is stored, layouts and all, because what shows it only holds the layout it
-/// is showing. Pass <see cref="DocumentView.Replace"/> as <c>show</c>: a turn then swaps one layout
-/// for the other as a diff, so what both share is not rebuilt.
+/// Hands over the difference between the layout last shown and the one that now suits, and not the
+/// whole scene. Pass <see cref="DocumentView.Apply"/> as <c>show</c>: a turn then changes only what
+/// the two layouts set, so an object the game added, or one a cutscene is posing, is left as it is.
+/// Build the view from the base scene, because the first call starts from there.
 /// <para>
 /// A resize that keeps the shape calls nothing, which is what makes it fine to call <see cref="Fit"/>
 /// on every size change.
 /// </para>
 /// </remarks>
-public sealed class LayoutFollower(SceneDocument scene, Action<SceneDocument> show)
+public sealed class LayoutFollower(SceneDocument scene, Action<SceneDiff> show)
 {
     /// <summary>The layout last shown, or null until <see cref="Fit"/> has been called.</summary>
     public LayoutShape? Shape { get; private set; }
@@ -28,7 +29,10 @@ public sealed class LayoutFollower(SceneDocument scene, Action<SceneDocument> sh
             return;
         }
 
+        var shown = Shape is { } last ? scene.InLayout(last) : scene;
+        show(SceneDiff.Between(shown, scene.InLayout(shape)));
+
+        // After the call, so a view that was not ready is asked again by the next Fit.
         Shape = shape;
-        show(scene.InLayout(shape));
     }
 }
