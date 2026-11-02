@@ -13,6 +13,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <memory>
 #include <string>
 #include <vector>
@@ -217,7 +218,7 @@ void packSplatHarmonicTexels(const SplatCloud &cloud,
 inline uint32_t sortableBits(float value) {
   uint32_t bits;
   static_assert(sizeof(bits) == sizeof(value), "a float is four bytes");
-  __builtin_memcpy(&bits, &value, sizeof(bits));
+  std::memcpy(&bits, &value, sizeof(bits));
   // Negative floats sort backwards and below the positive ones, so their
   // bits are all flipped; positive ones only need the sign bit set.
   return (bits & 0x80000000u) ? ~bits : (bits | 0x80000000u);

@@ -101,6 +101,9 @@ elseif(WIN32)
   file(WRITE "${ORBLIT_DEF}" "${ORBLIT_DEF_TEXT}")
   target_sources(orblit_filament PRIVATE "${ORBLIT_DEF}")
   target_compile_definitions(orblit_filament PRIVATE ORBLIT_PLATFORM_PORTABLE)
+  # Filament's headers use designated initializers. Clang takes them in C++17
+  # as an extension, and MSVC only in C++20.
+  set_property(TARGET orblit_filament PROPERTY CXX_STANDARD 20)
   foreach(lib IN LISTS ORBLIT_LIBS)
     target_link_libraries(orblit_filament PRIVATE
       "${ORBLIT_FILAMENT_SDK}/lib/x86_64/$<IF:$<CONFIG:Debug>,mdd,md>/${lib}.lib")
