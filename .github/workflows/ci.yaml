@@ -57,11 +57,10 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
-      # macOS and Linux build the renderer and draw with it. Windows builds
-      # the managed code and skips the tests that draw, until its own leg
-      # builds the renderer too. A runner has no GPU, so Linux draws on Mesa's
-      # software Vulkan driver, lavapipe. That proves the Vulkan path and the
-      # readback the Avalonia viewport uses. It says nothing about a real GPU.
+      # Every leg builds the renderer and runs the tests that draw. A runner
+      # has no GPU, so Linux and Windows draw on Mesa's software Vulkan driver,
+      # lavapipe. A frame drawn there exercises the Vulkan path and the readback
+      # the Avalonia viewport uses. It says nothing about a real GPU.
       - name: Cache Filament SDK
         if: runner.os == 'macOS'
         uses: actions/cache@v4
@@ -76,6 +75,13 @@ jobs:
           path: packages/orblit_filament/linux/third_party
           key: filament-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('packages/orblit_filament/linux/setup.sh') }}
 
+      - name: Cache Filament SDK
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: packages/orblit_filament/windows/third_party
+          key: filament-${{ runner.os }}-${{ hashFiles('packages/orblit_filament/windows/setup.sh') }}
+
       - name: Install clang, libc++ and a software Vulkan driver
         if: runner.os == 'Linux'
         run: |
@@ -83,15 +89,39 @@ jobs:
           sudo apt-get install -y --no-install-recommends clang libc++-dev libc++abi-dev mesa-vulkan-drivers libvulkan1 vulkan-tools
           vulkaninfo --summary
 
-      - name: Fetch Filament
-        if: runner.os != 'Windows'
+      # The runtime puts vulkan-1.dll in System32 and the action registers
+      # lavapipe with it. The step may fail without stopping the leg, so a
+      # missing driver shows as failing draw tests next to the build result.
+      - name: Install a software Vulkan driver
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        uses: jakoch/install-vulkan-sdk-action@d17de7e2f5e50efb5d2123efed18497d3c58c533 # v1.7.0
+        with:
+          install_runtime: true
+          install_runtime_only: true
+          install_lavapipe: true
+          cache: false
+
+      - name: Show the graphics drivers
+        if: runner.os == 'Windows'
+        continue-on-error: true
+        shell: pwsh
         run: |
-          if [ "$RUNNER_OS" = macOS ]; then
-            bash packages/orblit_filament/darwin/setup.sh
-            echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV"
-          else
-            bash packages/orblit_filament/linux/setup.sh
-          fi
+          Get-ChildItem C:\Windows\System32\vulkan-1.dll, C:\Windows\System32\opengl32.dll -ErrorAction Continue | Format-Table Name, Length
+          Get-CimInstance Win32_VideoController | Format-List Name, DriverVersion
+          reg query HKLM\SOFTWARE\Khronos\Vulkan\Drivers
+          if (Get-Command vulkaninfo -ErrorAction SilentlyContinue) { vulkaninfo --summary }
+
+      - name: Fetch Filament
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            macOS)
+              bash packages/orblit_filament/darwin/setup.sh
+              echo "ORBLIT_FILAMENT_SDK=$PWD/packages/orblit_filament/darwin/third_party/filament-mac/filament" >> "$GITHUB_ENV" ;;
+            Windows) bash packages/orblit_filament/windows/setup.sh ;;
+            *) bash packages/orblit_filament/linux/setup.sh ;;
+          esac
           # A leg that builds the renderer fails when the library is missing,
           # where it would otherwise skip every test that draws.
           echo "ORBLIT_REQUIRE_RENDERER=1" >> "$GITHUB_ENV"
