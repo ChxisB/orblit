@@ -21,8 +21,8 @@ esac
 rid=$os-$arch
 
 # Silent when the command works. When it fails, prints the lines that name the
-# error, because MSVC writes them to stdout and a CI log with none of them says
-# only that the build failed.
+# error, once each, because MSVC writes them to stdout and repeats a header's
+# error for every file that includes it.
 quietly() {
   local log
   log=$(mktemp)
@@ -30,7 +30,7 @@ quietly() {
     rm -f "$log"
     return 0
   fi
-  grep -E 'error|Error|FAILED' "$log" | head -n 40 >&2 || true
+  grep -E 'error|Error|FAILED' "$log" | awk '!seen[$0]++' | head -n 60 >&2 || true
   tail -n 5 "$log" >&2
   rm -f "$log"
   return 1
