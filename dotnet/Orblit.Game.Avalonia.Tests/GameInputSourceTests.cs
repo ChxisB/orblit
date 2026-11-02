@@ -128,6 +128,36 @@ public sealed class GameInputSourceTests
     });
 
     [Fact]
+    public Task AFlickReleasedWithinOneFrameStillTurnsTheView() => Headless.Run(() =>
+    {
+        var (window, _, source) = Shown();
+
+        window.MouseDown(new Point(10, 10), MouseButton.Right);
+        window.MouseMove(new Point(40, 10));
+        window.MouseUp(new Point(40, 10), MouseButton.Right);
+        var flicked = source.Read(Camera).Pointer!.Drag;
+        source.EndFrame();
+        var after = source.Read(Camera).Pointer!.Drag;
+
+        Assert.Equal(30, flicked!.X, 1e-9);
+        Assert.Null(after);
+    });
+
+    [Fact]
+    public Task ALostCaptureEndsTheDrag() => Headless.Run(() =>
+    {
+        // The system takes the capture on a task switch, and the release then never reaches the surface.
+        var (window, surface, source) = Shown();
+        window.MouseDown(new Point(10, 10), MouseButton.Right);
+        source.EndFrame();
+
+        surface.RaiseEvent(new PointerCaptureLostEventArgs(surface, new Pointer(Pointer.GetNextFreeId(), PointerType.Mouse, true)));
+        window.MouseMove(new Point(60, 40));
+
+        Assert.Null(source.Read(Camera).Pointer!.Drag);
+    });
+
+    [Fact]
     public Task TheWheelSumsNotchesUntilTheFrameEnds() => Headless.Run(() =>
     {
         var (window, _, source) = Shown();

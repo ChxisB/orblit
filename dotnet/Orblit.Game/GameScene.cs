@@ -23,7 +23,11 @@ public sealed class GameScene
     /// <summary>The scene now, with every diff so far applied.</summary>
     public SceneDocument Document { get; private set; }
 
-    /// <summary>Makes the change and tells the host. An empty diff is not a change.</summary>
+    /// <summary>
+    /// Makes the change and tells the host. An empty diff is not a change. Call it from the game's own
+    /// calls only. The scene is not locked, so a timer or thread the game starts must leave its change
+    /// for the next update.
+    /// </summary>
     public void Apply(SceneDiff diff)
     {
         ArgumentNullException.ThrowIfNull(diff);

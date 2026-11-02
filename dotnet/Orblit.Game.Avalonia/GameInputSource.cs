@@ -43,6 +43,7 @@ public sealed class GameInputSource
         surface.PointerPressed += OnPressed;
         surface.PointerMoved += OnMoved;
         surface.PointerReleased += OnReleased;
+        surface.PointerCaptureLost += OnCaptureLost;
         surface.PointerExited += OnExited;
         surface.PointerWheelChanged += OnWheel;
     }
@@ -60,7 +61,8 @@ public sealed class GameInputSource
         }
 
         var ray = PointerRay.FromCamera(camera, at, size);
-        var drag = _dragFrom is null ? null : new Vector2(_dragged.X, _dragged.Y);
+        // A drag released before the frame was read still moved the view, so the sum is reported once.
+        var drag = _dragFrom is null && _dragged == default ? null : new Vector2(_dragged.X, _dragged.Y);
         return new GameInput(new FrameControls([.. _keys]), new GamePointer(ray.Origin, ray.Direction, _pressed, drag, _wheel));
     }
 
@@ -81,6 +83,7 @@ public sealed class GameInputSource
         _surface.PointerPressed -= OnPressed;
         _surface.PointerMoved -= OnMoved;
         _surface.PointerReleased -= OnReleased;
+        _surface.PointerCaptureLost -= OnCaptureLost;
         _surface.PointerExited -= OnExited;
         _surface.PointerWheelChanged -= OnWheel;
         _keys.Clear();
@@ -143,6 +146,9 @@ public sealed class GameInputSource
             e.Pointer.Capture(null);
         }
     }
+
+    // The system can take the capture, as it does on a task switch, and then no release arrives.
+    private void OnCaptureLost(object? sender, PointerCaptureLostEventArgs e) => _dragFrom = null;
 
     // A captured drag can run off the view with the pointer still ours.
     private void OnExited(object? sender, PointerEventArgs e)
