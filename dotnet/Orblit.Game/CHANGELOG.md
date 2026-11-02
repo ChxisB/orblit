@@ -13,3 +13,6 @@
   `Stop` is logged. A diff that arrives after the stop is dropped.
 - `GameHost.Guard` runs other code of the game's, such as asking for its
   interface, with the same rule: a throw ends the game.
+- `GameHost.ApplyEdit` puts a change made outside the game into its scene,
+  such as an edit in the editor while the game plays. The game reads it on
+  its next call. It is not raised as `SceneChanged`.

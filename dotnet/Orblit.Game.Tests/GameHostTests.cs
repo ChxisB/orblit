@@ -250,6 +250,68 @@ public class GameHostTests
     }
 
     [Fact]
+    public void AnEditFromOutsideIsInTheGamesSceneAndIsNotHeardAsAChange()
+    {
+        var host = Started(new ScriptedGame());
+        var heard = new List<SceneDiff>();
+        host.SceneChanged += heard.Add;
+
+        host.ApplyEdit(Add("b"));
+
+        Assert.True(host.Scene.Contains("b"));
+        Assert.Empty(heard);
+    }
+
+    [Fact]
+    public void TheGameReadsAnEditFromOutsideOnItsNextUpdate()
+    {
+        var seen = new List<string>();
+        var game = new ScriptedGame { OnUpdate = context => seen.AddRange(context.Scene.Document.Entities.Select(one => one.Id)) };
+        var host = Started(game);
+
+        host.ApplyEdit(Add("b"));
+        host.Update(Idle, 0.1);
+
+        Assert.Equal(["b"], seen);
+    }
+
+    [Fact]
+    public void AnEditBeforeStartIsInTheSceneTheGameStartsWith()
+    {
+        var seen = new List<string>();
+        var game = new ScriptedGame { OnStart = context => seen.AddRange(context.Scene.Document.Entities.Select(one => one.Id)) };
+        var host = new GameHost(game, World(), "/project", new RecordingLog());
+
+        host.ApplyEdit(Add("b"));
+        host.Start();
+
+        Assert.Equal(["b"], seen);
+    }
+
+    [Fact]
+    public void AnEditAfterTheEndIsDropped()
+    {
+        var host = Started(new ScriptedGame());
+        host.Stop();
+
+        host.ApplyEdit(Add("late"));
+
+        Assert.False(host.Scene.Contains("late"));
+    }
+
+    [Fact]
+    public void AnEditThatNamesWhatTheGameDeletedChangesNothingAndDoesNotThrow()
+    {
+        var game = new ScriptedGame { OnStart = context => context.Scene.Apply(new SceneDiff([new RemoveEntity(new SceneEntity("a", "a").ToJson())])) };
+        var host = new GameHost(game, World("a"), "/project", new RecordingLog());
+        host.Start();
+
+        host.ApplyEdit(new SceneDiff([new SetEntityName("a", "a", "door")]));
+
+        Assert.False(host.Scene.Contains("a"));
+    }
+
+    [Fact]
     public void RefusesNothingToRun()
     {
         var game = new ScriptedGame();
@@ -259,6 +321,7 @@ public class GameHostTests
         Assert.Throws<ArgumentNullException>(() => new GameHost(game, null!, "/project", log));
         Assert.Throws<ArgumentNullException>(() => new GameHost(game, World(), "/project", null!));
         Assert.Throws<ArgumentException>(() => new GameHost(game, World(), "", log));
+        Assert.Throws<ArgumentNullException>(() => new GameHost(game, World(), "/project", log).ApplyEdit(null!));
     }
 
     private static GameHost Started(ScriptedGame game, RecordingLog? log = null)

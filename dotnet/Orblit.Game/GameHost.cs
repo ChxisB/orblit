@@ -94,6 +94,20 @@ public sealed class GameHost
         }
     }
 
+    /// <summary>
+    /// Puts a change made outside the game, such as an edit in the editor while the game plays, into the
+    /// game's scene. The game reads it on its next call. It is not raised as <see cref="SceneChanged"/>,
+    /// because whoever made it already has it. A change after the end is dropped.
+    /// </summary>
+    public void ApplyEdit(SceneDiff diff)
+    {
+        ArgumentNullException.ThrowIfNull(diff);
+        if (_phase != Phase.Done)
+        {
+            _context.Scene.Take(diff);
+        }
+    }
+
     /// <summary>Stops the game if it is running. Stopping twice, or before starting, does nothing.</summary>
     public void Stop()
     {

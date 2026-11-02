@@ -35,4 +35,14 @@ public sealed class GameScene
         Document = diff.ApplyTo(Document);
         _changed(diff);
     }
+
+    // A change made by whoever hosts the game, such as an edit in the editor while the game plays. The
+    // host made it, so it is not heard back as a change the game made.
+    internal void Take(SceneDiff diff)
+    {
+        if (!diff.IsEmpty)
+        {
+            Document = diff.ApplyTo(Document);
+        }
+    }
 }
