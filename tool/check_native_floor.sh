@@ -38,7 +38,9 @@ report() {
 
 for lib in "$runtimes"/linux-*/native/*.so; do
   [ -e "$lib" ] || continue
-  needs=$(readelf --dyn-syms --wide "$lib" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -V | tail -n 1)
+  # A library that asks for no glibc symbol makes grep exit 1, which pipefail
+  # would turn into a silent stop.
+  needs=$( { readelf --dyn-syms --wide "$lib" | grep -o 'GLIBC_[0-9.]*' || true; } | sed 's/GLIBC_//' | sort -V | tail -n 1)
   report "$lib" "${needs:-0}" "$glibc_floor" "glibc"
 done
 
