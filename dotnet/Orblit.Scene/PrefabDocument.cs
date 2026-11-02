@@ -98,7 +98,7 @@ public sealed class PrefabDocument(string name, string root, SceneDocument docum
     {
         ["kind"] = Marker,
         ["formatVersion"] = (long)FormatVersion,
-        ["sceneFormatVersion"] = (long)SceneDocument.FormatVersion,
+        ["sceneFormatVersion"] = (long)SceneDocument.PlainVersion,
         ["name"] = Name,
         ["root"] = Root,
         ["objects"] = Document.Entities.Select(entity => (object?)entity.ToJson()).ToList(),

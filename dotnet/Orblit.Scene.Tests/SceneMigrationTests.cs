@@ -302,6 +302,7 @@ public class SceneMigrationTests
             ("components", Map(("mesh", new MeshComponent().ToJson()))));
 
         Assert.Same(already, SceneMigrations.Entity(already, SceneDocument.FormatVersion));
+        Assert.Same(already, SceneMigrations.Entity(already, SceneDocument.PlainVersion));
     }
 
     [Fact]
@@ -367,14 +368,14 @@ public class SceneMigrationTests
     }
 
     [Fact]
-    public void AConvertedSceneSavesAtTheCurrentVersionAndReloadsUnchanged()
+    public void AConvertedSceneSavesAtThePlainVersionAndReloadsUnchanged()
     {
         var load = SceneDocument.Decode(OldScene(3, ("objects", List(
             Map(("id", "crate"), ("kind", "mesh"), ("position", List(1.0, 2.0, 3.0)))))));
 
         var saved = load.Document.Encode();
         var parsed = Assert.IsAssignableFrom<JsonMap>(JsonText.Decode(saved));
-        Assert.Equal((long)SceneDocument.FormatVersion, parsed["formatVersion"]);
+        Assert.Equal((long)SceneDocument.PlainVersion, parsed["formatVersion"]);
 
         var again = SceneDocument.Decode(saved);
         Assert.Empty(again.Problems);
