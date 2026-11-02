@@ -14,6 +14,15 @@
   an unknown component.
 - A prefab whose root carries `net` makes every instance of it networked.
 
+## 0.27.0
+
+- `SceneDiff.ApplyTo` applies a run of `SetField`, `SetComponent`,
+  `SetEntityName`, `SetVisible` and `Reparent` in one pass, as it already did
+  for a run of adds or removes. The result is the same document that one
+  operation at a time gives. Two hundred moves in a scene of 507 entities
+  take 0.4 ms in a release build where they took 9.6 ms, so a game can send
+  every change of a frame as one diff.
+
 ## 0.26.0
 
 - `KHR_node_visibility` is read from every node. A node the file hides comes

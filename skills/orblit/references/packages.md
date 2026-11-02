@@ -32,6 +32,8 @@ in the table, and none of them has been run in a window.
 | `Orblit.Scene` | 0.25.0 | A scene as a document: entities with stable ids, components, migrations, diffs and portrait and landscape layouts | `SceneDocument`, `SceneDiff`, `TransformComponent` |
 | `Orblit.Stage` | 0.6.0 | Stages a scene document for the renderer, and a terrain and its scatter. Follows the window's shape with a scene's layouts. Plays cutscenes and sounds over it, draws a scene's particle emitters, a grid of particles such as a cloth and a trail ribbon, swaps still copies of one model for one baked mesh, and draws debug segments | `DocumentView`, `TerrainView`, `ScatterView`, `Cutscenes`, `ParticleSheet`, `ParticleView`, `TrailRibbon`, `StaticMerge`, `SoundView`, `DebugLines` |
 | `Orblit.Stage.Avalonia` | 0.2.0 | Interface in a staged scene: a panel's picture on a quad in the world, the line from a point on the screen into the world, and name labels | `WorldPanel`, `PointerRay`, `Nameplates` |
+| `Orblit.Game` | 0.1.0 | A game as a class a host runs: a start, an update with the frame's keys and pointer, and a stop. It reads the scene and changes it with diffs. A throw from it ends it and does not reach the host. See [game-loop.md](game-loop.md#a-game-as-a-class) | `IGame`, `GameContext`, `GameScene`, `GameInput`, `GamePointer`, `GameHost` |
+| `Orblit.Game.Avalonia` | 0.1.0 | Plays a game in a window of its own, and reads one control as a game's input. A game with a control of its own has it put over the view | `GameRunner`, `IInterfaceGame`, `GameInputSource` |
 | `Orblit.Light` | 0.3.0 | Lights stated in watts, metres and degrees, converted to photometric units | `Light`, `Photometry` |
 | `Orblit.Mesh` | 0.6.0 | Building and editing geometry, writing it out and reading it back as OBJ, STL, PLY and glTF, with limits for untrusted files | `Mesh`, `MeshExport`, `ReadLimits` |
 | `Orblit.Rig` | 0.3.0 | Armatures, poses, bone constraints, IK, and a modifier stack that adjusts a pose after playback: reaching, looking, joint limits, springs, foot placement | `Armature`, `Pose`, `ModifierStack`, `TwoBoneIk`, `LookAt`, `SpringBones`, `FootPlacement` |
@@ -84,6 +86,7 @@ every public type name that more than one package defines:
 | `TerrainRegion`, `TerrainSet` | `Orblit.Filament` (what the renderer draws) and `Orblit.Terrain` (the ground as data) | Alias one, or write the full name |
 | `Frame` | `Orblit.Sprite` and `Orblit.Test` | Alias one, or write the full name |
 | `Grid` | `Orblit.Cells` and Avalonia's `Grid` | Alias one, or write the full name |
+| `Control` | `Orblit.Input` (a bound control) and Avalonia's `Control` | Alias one, or write the full name. A game with an interface hits it |
 
 Some type names are also namespace names, which matters only inside a
 namespace that starts `Orblit.`: `Orblit.Agent.Sequence` and the namespace
