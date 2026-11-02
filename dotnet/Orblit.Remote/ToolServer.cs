@@ -202,8 +202,10 @@ public sealed class ToolServer
             Name = "snapshot",
             Description =
                 "Records every entity and the host extras under a new id, and answers the id with "
-                + "counts, not the content. The last eight are kept.",
-            Properties = Wire.Map(),
+                + "counts, not the content. With `label` the id is that text, and a label used "
+                + "again replaces the older snapshot. The last eight are kept.",
+            Properties = Wire.Map(
+                ("label", Kind("string", "A name for the snapshot, such as `before the jump`, instead of an id like s3"))),
             Run = Snapshot,
         },
         new()
@@ -383,7 +385,8 @@ public sealed class ToolServer
 
     private async Task<List<object?>> Snapshot(Args args)
     {
-        var kept = (Args)(await _call("world.snapshot", Wire.Map()))!;
+        var label = args.GetValueOrDefault("label");
+        var kept = (Args)(await _call("world.snapshot", label is null ? Wire.Map() : Wire.Map(("label", label))))!;
         return Text(Wire.Map(
             ("id", kept["id"]),
             ("entities", ((Args)kept["entities"]!).Count),

@@ -190,6 +190,18 @@ public sealed class ToolServerToolsTests
     }
 
     [Fact]
+    public async Task SnapshotPassesALabelOnAndAsksForNoneWhenThereIsNone()
+    {
+        var game = With("world.snapshot", Wire.Map(("id", "mark"), ("entities", Wire.Map()), ("extras", Wire.Map())));
+
+        await game.Tool("snapshot", Wire.Map(("label", "mark")));
+        await game.Tool("snapshot");
+
+        Assert.Equal("""{"label":"mark"}""", JsonText.Encode(game.Seen[0].Params));
+        Assert.Equal("{}", JsonText.Encode(game.Seen[1].Params));
+    }
+
+    [Fact]
     public async Task DiffCutsALongListOfChanges()
     {
         var game = With(

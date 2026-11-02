@@ -262,6 +262,7 @@ public sealed class RemoteVerbs
     // client needs its id back with the content.
     private async Task<object?> Snapshot(Args args)
     {
+        var label = args.GetValueOrDefault("label") is null ? null : Wire.Text(args, "label");
         var world = Need(_host.World, "a world");
         var entities = new OrderedDictionary<string, object?>();
         foreach (var row in world.Entities([]))
@@ -280,7 +281,7 @@ public sealed class RemoteVerbs
 
         // Plain copies the snapshot, and fails here, before anything is kept.
         var snapshot = (OrderedDictionary<string, object?>)Wire.Plain(Wire.Map(("entities", entities), ("extras", extras)))!;
-        _snapshots.Add(snapshot);
+        _snapshots.Add(snapshot, label);
         var kept = Wire.Map(("id", _snapshots.LastId));
         foreach (var (key, value) in snapshot)
         {
