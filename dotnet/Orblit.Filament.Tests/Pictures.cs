@@ -36,9 +36,12 @@ internal static class Pictures
     /// The mean red, green and blue of the square of side <c>2 * reach + 1</c> centred on a point
     /// given as a fraction of the width and of the height.
     /// </summary>
-    internal static double[] ColourAt(Renderer renderer, double seconds, double across, double down, int reach)
+    internal static double[] ColourAt(Renderer renderer, double seconds, double across, double down, int reach) =>
+        ColourIn(Frame(renderer, seconds), across, down, reach);
+
+    /// <summary>The same mean, read from a frame already in hand.</summary>
+    internal static double[] ColourIn(Capture capture, double across, double down, int reach)
     {
-        var capture = Frame(renderer, seconds);
         var centreX = (int)(across * capture.Width);
         var centreY = (int)(down * capture.Height);
         var sum = new double[3];
