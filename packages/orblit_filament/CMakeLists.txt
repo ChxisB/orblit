@@ -108,6 +108,9 @@ elseif(WIN32)
     target_link_libraries(orblit_filament PRIVATE
       "${ORBLIT_FILAMENT_SDK}/lib/x86_64/$<IF:$<CONFIG:Debug>,mdd,md>/${lib}.lib")
   endforeach()
+  # Filament's archives call WGL and a shell path helper, and the compiler's
+  # default libraries have neither.
+  target_link_libraries(orblit_filament PRIVATE opengl32 shlwapi)
 else()
   # Filament's Linux release is built against LLVM's standard library, so the
   # compile and the link both take libc++. The archives refer to each other
