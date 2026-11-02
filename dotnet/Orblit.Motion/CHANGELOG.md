@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.11.0
+
+- `GltfImport.Clips` reads a `KHR_animation_pointer` channel that aims at a
+  node's translation, rotation or scale. It gives the same channel as the
+  plain form does. A bone is still found by its name.
+- A pointer at anything else, such as a material, a light, a camera or a
+  node's visibility, is named in the import notes and not read. Clips have no
+  track for those yet.
+- A pointer at a node the file does not have is noted as not a node.
+- Two channels that meet on one node and one property, one plain and one
+  pointed, give one channel and a note.
+
 ## 0.10.0
 
 - A port of `orblit_motion` 0.10.0, part M1: the clip file, its channels and

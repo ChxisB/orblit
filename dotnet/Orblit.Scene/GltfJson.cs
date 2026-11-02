@@ -6,6 +6,9 @@ namespace Orblit.Scene;
 /// </summary>
 internal static class GltfJson
 {
+    /// <summary>The standard extension for a node that is switched off. Written and read here, so the name sits in one place.</summary>
+    public const string NodeVisibility = "KHR_node_visibility";
+
     /// <summary>Where this package writes its own record, and where it looks for it.</summary>
     private const string Mark = "orblit";
 
@@ -30,4 +33,12 @@ internal static class GltfJson
     /// <summary>The record this package left on <paramref name="holder"/>, or null when there is none.</summary>
     public static JsonMap? OursOn(JsonMap holder) =>
         holder.GetValueOrDefault("extras") is JsonMap extras && extras.GetValueOrDefault(Mark) is JsonMap ours ? ours : null;
+
+    /// <summary>
+    /// Whether the standard extension shows or hides <paramref name="node"/>, or null when it says
+    /// nothing. A value that is not a flag says nothing, because a file may hold anything.
+    /// </summary>
+    public static bool? ShownOn(JsonMap node) =>
+        Values.Object(Values.Object(node.GetValueOrDefault("extensions")).GetValueOrDefault(NodeVisibility))
+            .GetValueOrDefault("visible") as bool?;
 }

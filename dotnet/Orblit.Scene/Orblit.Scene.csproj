@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.25.0</Version>
+    <Version>0.26.0</Version>
     <Description>A scene as a document: entities with stable ids, a parent and an order, components that describe what each one is, migrations from every older format, and diffs between two documents that can be applied and inverted.</Description>
     <!-- Values.Object is the natural name. -->
     <NoWarn>$(NoWarn);CA1720</NoWarn>

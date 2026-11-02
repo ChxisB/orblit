@@ -185,7 +185,25 @@ internal sealed class GltfExporter
             node["children"] = new List<object?>([.. children.Select(static c => (object?)c), .. extra.Select(static c => (object?)c)]);
         }
 
+        if (!entity.Visible)
+        {
+            // The standard flag is what other tools read. The record below stays, so an older
+            // reader of this package still finds the same answer.
+            ExtensionsOf(node)[GltfJson.NodeVisibility] = new OrderedDictionary<string, object?> { ["visible"] = false };
+            _output.Used.Add(GltfJson.NodeVisibility);
+        }
+
         node["extras"] = ExtrasOf(entity);
+    }
+
+    private static OrderedDictionary<string, object?> ExtensionsOf(OrderedDictionary<string, object?> node)
+    {
+        if (!node.TryGetValue("extensions", out var extensions))
+        {
+            extensions = node["extensions"] = new OrderedDictionary<string, object?>();
+        }
+
+        return (OrderedDictionary<string, object?>)extensions!; // made just above, or by an earlier part, as a map
     }
 
     /// <summary>
@@ -441,12 +459,7 @@ internal sealed class GltfExporter
         var lights = (List<object?>)held!; // made just above or by a graft, as a list
         lights.Add(LightEntry(light));
 
-        if (!node.TryGetValue("extensions", out var extensions))
-        {
-            extensions = node["extensions"] = new OrderedDictionary<string, object?>();
-        }
-
-        ((OrderedDictionary<string, object?>)extensions!)["KHR_lights_punctual"] = // made just above as a map
+        ExtensionsOf(node)["KHR_lights_punctual"] =
             new OrderedDictionary<string, object?> { ["light"] = (long)lights.Count - 1 };
         _output.Used.Add("KHR_lights_punctual");
     }
