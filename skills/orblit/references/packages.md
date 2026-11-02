@@ -46,8 +46,8 @@ in the table, and none of them has been run in a window.
 | `Orblit.Asset` | 0.25.0 | Asset ids, content hashes, sources layered over each other, the manifest, import settings, importers and the cook cache. See [assets.md](assets.md) | `AssetId`, `IAssetSource`, `AssetManifest`, `GltfBake`, `KitExtraction` |
 | `Orblit.Core` | 0.1.0 | An entity-component world over a native core. Components are views onto native memory | `World`, `ComponentKind` |
 | `Orblit.Native` | 0.1.0 | Compiling and loading C++ scripts. A script is handed a table of what it may call and answers start, step and stop | `NativeScript` |
-| `Orblit.Remote` | 0.3.0 | A control surface in a debug game: a loopback WebSocket that lists entities, reads and sets components, pauses and steps time, and compares snapshots | `RemoteServer`, `RemoteHost`, `CoreWorldInspector`, `TimeGate`, `LogTail` |
-| `Orblit.Remote.Tool` | 0.3.0 | A .NET tool that serves that control surface to an assistant, as tools | `orblit-remote` |
+| `Orblit.Remote` | 0.4.0 | A control surface in a debug game: a loopback WebSocket that lists entities, reads and sets components, pauses and steps time, waits for a field to hold, and compares snapshots | `RemoteServer`, `RemoteHost`, `CoreWorldInspector`, `TimeGate`, `LogTail` |
+| `Orblit.Remote.Tool` | 0.4.0 | A .NET tool that serves that control surface to an assistant, as tools | `orblit-remote` |
 | `Orblit.Cook`, `Orblit.Pack`, `Orblit.Kit` | 0.1.0 | .NET tools that cook a project's assets for a target, pack a bundle into one `.opack` file, and pack, check and install kits. See [assets.md](assets.md) | `orblit-cook` |
 | `Orblit.VectorMath` | 0.20.0 | Double precision vectors, matrices and quaternions | `Vector3`, `Matrix4`, `Quaternion` |
 | `Orblit.Json` | 0.4.0 | JSON read and written the way Orblit files hold it. Whole numbers are `long`, the rest `double`, and a map keeps its keys in order | `JsonText` |
@@ -1828,7 +1828,8 @@ its `Code`. `deadline` bounds each call and is 30 seconds unless set.
 | `entity.set` | `id`, `component`, `field`, `value` | nothing |
 | `time.pause`, `time.resume` | none | `paused` |
 | `time.step` | `n` | `paused` and `stepped`, once the loop passed `n` frames |
-| `world.snapshot` | none | an `id` with the `entities` and `extras` |
+| `world.wait` | `id`, then `component`, `field`, `op` and `value`, or `gone`; `timeout_ms` | `met`, `value` and `waited_ms` |
+| `world.snapshot` | `label`, optional | an `id` with the `entities` and `extras` |
 | `world.diff` | `a`, `b`: snapshot ids | each path that differs, as `path`, `from` and `to` |
 | `input.send` | `event`: an object | nothing |
 | `view.screenshot` | none | `png` as base64 |
@@ -1838,6 +1839,17 @@ its `Code`. `deadline` bounds each call and is 30 seconds unless set.
 | `view.draws` | `limit`, default 100 | `count`, the first `limit` rows as `draws`, and `truncated` |
 | `view.draw` | `id`: `object:<key>` or `population:<key>` | one draw row |
 | `view.material` | `key`: a whole number | the material's `values` by name, its `maps` and `usedBy` |
+
+`world.wait` checks every ten milliseconds, inside the game, so a script need
+not step and read in a loop. `op` is one of `==`, `!=`, `<`, `<=`, `>`, `>=`
+and the field must hold a number. `timeout_ms` is 5000 unless given and 20000
+at most. A wait that runs out answers `TimedOut` and names the last value
+read. A game held by the time gate does not move on its own, so step it or
+resume it first.
+
+A `label` on `world.snapshot` becomes the snapshot's `id`, so `world.diff`
+can be asked for `before the jump` and `after`. A label used again replaces
+the older snapshot. A label is 1 to 40 characters and cannot look like `s3`.
 
 The five `view.` verbs need a renderer. The surface does not depend on one,
 so the game hands `RemoteHost` a function for each. `Orblit.Filament` has the

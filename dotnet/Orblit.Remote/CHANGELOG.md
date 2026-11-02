@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.4.0
+
+- `world.wait` waits inside the game until one number field of an entity
+  holds against a value, or until an entity is gone. It checks every ten
+  milliseconds for `timeout_ms`, 5000 unless given and 20000 at most, and
+  answers `met`, the value read and `waited_ms`. A wait that runs out answers
+  `TimedOut` and names the last value read. The deadline is real time, so a
+  game held by the time gate times out and is not resumed. It is not a write,
+  so a read only session may wait.
+- A component or field that the entity does not hold is `InvalidParams`, as
+  for `entity.set`. An entity that is not alive is `NotFound`, unless `gone`
+  is what was asked for.
+- The `wait` tool passes the same arguments to `world.wait`. The list holds
+  eight tools with writes allowed and seven without.
+- `world.snapshot` and the `snapshot` tool take an optional `label`, which
+  becomes the snapshot's id, so a diff can be asked for by name. A label used
+  again replaces the older snapshot and counts as the newest. Labelled and
+  automatic snapshots share the cap of eight, and a label does not move the
+  automatic count. A blank label, one over 40 characters and one shaped like
+  `s3` are refused with `InvalidParams`, and nothing is kept.
+- `SnapshotStore.Add` takes the label as a second, optional argument. A
+  caller built against 0.3.0 must be rebuilt.
+
 ## 0.3.0
 
 - The start of a port of `orblit_remote` 0.3.0, the control surface for a

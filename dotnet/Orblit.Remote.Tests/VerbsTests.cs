@@ -74,6 +74,30 @@ public sealed class VerbsTests
     }
 
     [Fact]
+    public async Task ALabelNamesASnapshotAndADiffFindsItByThatName()
+    {
+        var before = ResultOf(await Call(_verbs, "world.snapshot", """{"label":"before"}"""));
+        _world.Held[2]["Position"]["y"] = 40L;
+        await Call(_verbs, "world.snapshot", """{"label":"after"}""");
+
+        var diff = await Call(_verbs, "world.diff", """{"a":"before","b":"after"}""");
+
+        Assert.Equal("before", before["id"]);
+        Assert.Equal("""[{"path":"entities/2/Position/y","from":4,"to":40}]""", Result(diff));
+    }
+
+    [Theory]
+    [InlineData("""{"label":5}""")]
+    [InlineData("""{"label":""}""")]
+    [InlineData("""{"label":"s4"}""")]
+    public async Task ALabelThatCannotNameASnapshotIsRefusedAndNothingIsKept(string @params)
+    {
+        Assert.Equal(RemoteException.InvalidParams, CodeOf(await Call(_verbs, "world.snapshot", @params)));
+
+        Assert.Equal("s1", ResultOf(await Call(_verbs, "world.snapshot"))["id"]);
+    }
+
+    [Fact]
     public async Task ASnapshotCarriesTheExtrasTheHostGave()
     {
         var host = new RemoteHost

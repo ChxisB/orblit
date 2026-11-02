@@ -25,6 +25,29 @@ public sealed class LiveToolTests
         Assert.Equal(0, exit);
     }
 
+    [Fact]
+    public async Task AWaitAndALabelledSnapshotGoThroughTheToolAndTheServer()
+    {
+        await using var game = await Game.Start(host => host with { World = new FakeWorld() });
+        await using var tool = ToolProcess.Start(game.Server.Uri);
+        await tool.Ask(Hello);
+
+        var held = await tool.Ask(Call(3, "wait", """{"id":1,"component":"Position","field":"x","op":"==","value":1}"""));
+        var never = await tool.Ask(Call(4, "wait", """{"id":1,"component":"Position","field":"x","op":">","value":5,"timeout_ms":50}"""));
+        var named = await tool.Ask(Call(5, "snapshot", """{"label":"before"}"""));
+
+        Assert.Contains("\"isError\":false", held);
+        Assert.Contains("waited_ms", held);
+        Assert.Contains("\"isError\":true", never);
+        Assert.Contains("Not met in 50 ms", never);
+        Assert.Contains("\"isError\":false", named);
+        Assert.Contains("before", named);
+        Assert.Equal(0, await tool.Finish());
+    }
+
+    private static string Call(int id, string name, string arguments) =>
+        $$$"""{"jsonrpc":"2.0","id":{{{id}}},"method":"tools/call","params":{"name":"{{{name}}}","arguments":{{{arguments}}}}}""";
+
     private static async Task<(string Hello, string Observed, int Exit)> Session(Uri address)
     {
         await using var tool = ToolProcess.Start(address);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Orblit.Json;
 using Args = System.Collections.Generic.IReadOnlyDictionary<string, object?>;
@@ -17,6 +18,7 @@ public sealed class RemoteVerbs
 {
     private const int DefaultDrawLimit = 100;
     private const int DefaultTailLines = 50;
+    private const int PollMs = 10;
 
     private readonly RemoteHost _host;
     private readonly SnapshotStore _snapshots = new();
@@ -33,6 +35,7 @@ public sealed class RemoteVerbs
             ["time.pause"] = (false, Sync(Pause)),
             ["time.resume"] = (false, Sync(Resume)),
             ["time.step"] = (false, Step),
+            ["world.wait"] = (false, Wait),
             ["world.snapshot"] = (false, Snapshot),
             ["world.diff"] = (false, Sync(Diff)),
             ["input.send"] = (true, Send),
@@ -228,10 +231,38 @@ public sealed class RemoteVerbs
         }
     }
 
+    // F10: the deadline is real time, because a paused game has no clock of its own to wait by.
+    private async Task<object?> Wait(Args args)
+    {
+        var world = Need(_host.World, "a world");
+        var condition = WaitCondition.From(args);
+        var started = Stopwatch.GetTimestamp();
+        while (true)
+        {
+            var (met, value, seen) = condition.Look(world);
+            var waited = Stopwatch.GetElapsedTime(started);
+            if (met)
+            {
+                return Wire.Map(
+                    ("met", true),
+                    ("value", Wire.Plain(value)),
+                    ("waited_ms", (long)waited.TotalMilliseconds));
+            }
+
+            if (waited.TotalMilliseconds >= condition.TimeoutMs)
+            {
+                throw new RemoteException(RemoteException.TimedOut, $"Not met in {condition.TimeoutMs} ms: {seen}");
+            }
+
+            await Task.Delay(PollMs);
+        }
+    }
+
     // F5 is broken on purpose: a snapshot is kept so that a later diff can name it, and the
     // client needs its id back with the content.
     private async Task<object?> Snapshot(Args args)
     {
+        var label = args.GetValueOrDefault("label") is null ? null : Wire.Text(args, "label");
         var world = Need(_host.World, "a world");
         var entities = new OrderedDictionary<string, object?>();
         foreach (var row in world.Entities([]))
@@ -250,7 +281,7 @@ public sealed class RemoteVerbs
 
         // Plain copies the snapshot, and fails here, before anything is kept.
         var snapshot = (OrderedDictionary<string, object?>)Wire.Plain(Wire.Map(("entities", entities), ("extras", extras)))!;
-        _snapshots.Add(snapshot);
+        _snapshots.Add(snapshot, label);
         var kept = Wire.Map(("id", _snapshots.LastId));
         foreach (var (key, value) in snapshot)
         {

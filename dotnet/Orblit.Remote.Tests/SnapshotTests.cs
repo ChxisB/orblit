@@ -91,6 +91,89 @@ public class SnapshotTests
     public void AStoreAnswersNullForAnIdItNeverGave() => Assert.Null(new SnapshotStore().Find("s99"));
 
     [Fact]
+    public void ALabelIsTheIdOfItsSnapshot()
+    {
+        var store = new SnapshotStore();
+        store.Add(Map("""{"n":1}"""), "before the jump");
+
+        Assert.Equal("before the jump", store.LastId);
+        Assert.Equal(1L, store.Find("before the jump")!["n"]);
+    }
+
+    [Fact]
+    public void ALabelledSnapshotDoesNotMoveTheAutomaticCount()
+    {
+        var store = new SnapshotStore();
+        store.Add(Map("""{"n":1}"""));
+        store.Add(Map("""{"n":2}"""), "mark");
+        store.Add(Map("""{"n":3}"""));
+
+        Assert.Equal(3L, store.Find("s2")!["n"]);
+        Assert.Equal(2L, store.Find("mark")!["n"]);
+    }
+
+    [Fact]
+    public void ALabelTakenAgainReplacesTheOlderSnapshotAndCountsAsTheNewest()
+    {
+        var store = new SnapshotStore(capacity: 2);
+        store.Add(Map("""{"n":1}"""), "mark");
+        store.Add(Map("""{"n":2}"""));
+        store.Add(Map("""{"n":3}"""), "mark");
+
+        Assert.Equal(3L, store.Find("mark")!["n"]);
+        Assert.Equal("mark", store.LastId);
+
+        // The older automatic one goes first, so the label was not left in the oldest place.
+        store.Add(Map("""{"n":4}"""));
+        Assert.Null(store.Find("s1"));
+        Assert.Equal(3L, store.Find("mark")!["n"]);
+    }
+
+    [Fact]
+    public void ALabelledSnapshotSharesTheCapWithTheAutomaticOnes()
+    {
+        var store = new SnapshotStore(capacity: 2);
+        store.Add(Map("""{"n":1}"""), "first");
+        store.Add(Map("""{"n":2}"""));
+        store.Add(Map("""{"n":3}"""));
+
+        Assert.Null(store.Find("first"));
+        Assert.Equal(2L, store.Find("s1")!["n"]);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("s1")]
+    [InlineData("s0")]
+    [InlineData("s9876")]
+    [InlineData("a very long label that goes on and on and on")]
+    public void ALabelThatIsBlankLongOrLooksAutomaticIsRefusedAndNothingIsKept(string label)
+    {
+        var store = new SnapshotStore();
+
+        Assert.Throws<ArgumentException>(() => store.Add(Map("""{"n":1}"""), label));
+
+        Assert.Throws<InvalidOperationException>(() => store.LastId);
+        store.Add(Map("""{"n":2}"""));
+        Assert.Equal("s1", store.LastId);
+    }
+
+    [Theory]
+    [InlineData("s")]
+    [InlineData("s1a")]
+    [InlineData("S1")]
+    [InlineData("start")]
+    public void AWordThatOnlyStartsLikeAnAutomaticIdIsAllowed(string label)
+    {
+        var store = new SnapshotStore();
+
+        store.Add(Map("""{"n":1}"""), label);
+
+        Assert.Equal(label, store.LastId);
+    }
+
+    [Fact]
     public void AStoreHasNoLastIdBeforeTheFirstSnapshot()
     {
         Assert.Throws<InvalidOperationException>(() => new SnapshotStore().LastId);

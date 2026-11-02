@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Description>A control surface for a running debug game: a loopback socket that lists entities, reads and sets components, pauses and steps time, and compares snapshots.</Description>
   </PropertyGroup>
   <ItemGroup>

@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>orblit-remote</ToolCommandName>
-    <Version>0.3.0</Version>
+    <Version>0.4.0</Version>
     <Description>Serves a running debug game's control surface to an assistant over stdin and stdout, as tools.</Description>
   </PropertyGroup>
   <ItemGroup>

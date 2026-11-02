@@ -70,6 +70,41 @@ public sealed class ToolServerToolsTests
     }
 
     [Fact]
+    public async Task WaitPassesItsArgumentsOnAndAnswersWhatTheGameSaid()
+    {
+        var game = With("world.wait", Wire.Map(("met", true), ("value", 5), ("waited_ms", 40)));
+        var asked = Wire.Map(
+            ("id", 3), ("component", "Position"), ("field", "x"), ("op", ">"), ("value", 4), ("timeout_ms", 900));
+
+        var body = (Args)FakeGame.Text(await game.Tool("wait", asked))!;
+
+        Assert.Equal(true, body["met"]);
+        Assert.Equal("world.wait", game.Seen.Single().Method);
+        Assert.Equal(JsonText.Encode(asked), JsonText.Encode(game.Seen.Single().Params));
+    }
+
+    [Fact]
+    public async Task WaitTellsTheAssistantWhyTheGameGaveUp()
+    {
+        var game = With("world.wait", new RemoteException(RemoteException.TimedOut, "Not met in 900 ms: Position.x of entity 3 was 1"));
+
+        var reply = await game.Tool("wait", Wire.Map(("id", 3), ("gone", true)));
+
+        Assert.True(FakeGame.IsError(reply));
+        Assert.Contains("Position.x of entity 3 was 1", FakeGame.Written(reply));
+    }
+
+    [Fact]
+    public async Task WaitLeavesOutWhatTheAssistantDidNotSay()
+    {
+        var game = With("world.wait", Wire.Map(("met", true), ("value", null), ("waited_ms", 0)));
+
+        await game.Tool("wait", Wire.Map(("id", 3), ("gone", true), ("surprise", 1)));
+
+        Assert.Equal("""{"id":3,"gone":true}""", JsonText.Encode(game.Seen.Single().Params));
+    }
+
+    [Fact]
     public async Task AToolThatTakesNoArgumentsWorksWithoutTheField()
     {
         var game = With("perf.summary", Wire.Map(("frame", 1)));
@@ -152,6 +187,18 @@ public sealed class ToolServerToolsTests
         var reply = await game.Tool("snapshot");
 
         Assert.Equal("""{"id":"s1","entities":2,"extras":["physics"]}""", FakeGame.Written(reply));
+    }
+
+    [Fact]
+    public async Task SnapshotPassesALabelOnAndAsksForNoneWhenThereIsNone()
+    {
+        var game = With("world.snapshot", Wire.Map(("id", "mark"), ("entities", Wire.Map()), ("extras", Wire.Map())));
+
+        await game.Tool("snapshot", Wire.Map(("label", "mark")));
+        await game.Tool("snapshot");
+
+        Assert.Equal("""{"label":"mark"}""", JsonText.Encode(game.Seen[0].Params));
+        Assert.Equal("{}", JsonText.Encode(game.Seen[1].Params));
     }
 
     [Fact]
