@@ -117,6 +117,12 @@ class Outline {
   /// with nothing highlighted costs nothing.
   bool active() const { return !mPrimary.empty() || !mOthers.empty(); }
 
+  /// Makes the materials, views and scenes the outline draws with. Call it
+  /// outside a frame. Filament commits a material instance as a frame begins,
+  /// and one made inside the frame is drawn with no descriptor set. Returns
+  /// false when a material did not build.
+  bool build();
+
   /// Draws the outline over whatever the swap chain already holds.
   ///
   /// Call inside the frame, after everything else has been rendered into
@@ -146,7 +152,6 @@ class Outline {
     filament::MaterialInstance *instance = nullptr;
   };
 
-  bool build();
   void buildScreen(Screen &screen, filament::Material *material);
   void prepareTargets(uint32_t width, uint32_t height);
   void releaseTargets();

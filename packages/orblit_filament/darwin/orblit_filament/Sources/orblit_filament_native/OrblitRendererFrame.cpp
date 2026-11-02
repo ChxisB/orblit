@@ -40,7 +40,7 @@ void Renderer::drawOutline() {
     }
   }
 
-  if (!_outline) _outline = std::make_unique<orblit::Outline>(*_engine);
+  if (!_outline) return;
   _outline->setStyle(_outlineStyle);
   _outline->setEntities(primary, others);
   _outline->render(*_renderer, *_scene, *_camera, _width, _height,
