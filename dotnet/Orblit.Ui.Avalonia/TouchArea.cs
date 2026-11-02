@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation.Peers;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
@@ -23,6 +24,8 @@ public abstract class TouchArea : Panel
         Background = Brushes.Transparent;
         Children.Add(face);
     }
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new TouchAreaPeer(this);
 
     protected virtual void Landed(Point at)
     {
@@ -90,5 +93,16 @@ public abstract class TouchArea : Panel
     {
         _finger = null;
         Lifted();
+    }
+
+    // A panel has no peer, so a reader could not find the control at all. The role is Custom because a
+    // button promises a key press and this takes a finger only. The game names it with AutomationProperties.Name.
+    private sealed class TouchAreaPeer(TouchArea owner) : ControlAutomationPeer(owner)
+    {
+        protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Custom;
+
+        protected override bool IsControlElementCore() => true;
+
+        protected override bool IsContentElementCore() => true;
     }
 }
