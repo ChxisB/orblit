@@ -5,10 +5,9 @@
 //  * tinyexr 3.2.0 — third_party/tinyexr/tinyexr.h, exr_reader.hh and
 //    streamreader.hh — as Filament's own third_party/tinyexr carries it
 //    (google/filament commit dfbe0a3f7, "tinyexr: update to 3.2.0"). BSD
-//    3-clause, with OpenEXR's BSD-style notice for the code it contains;
-//    LICENSES/tinyexr.txt.
+//    3-clause, with OpenEXR's BSD-style notice for the code it contains.
 //  * miniz 3.0.0 — third_party/miniz/miniz.h and miniz.c — the deflate
-//    tinyexr ships with, from the same place. MIT; LICENSES/miniz.txt. One
+//    tinyexr ships with, from the same place. MIT. One
 //    change: miniz.c declared s_tdefl_num_probes ahead of its use with no
 //    initialiser, a tentative definition C allows and C++ does not, so the
 //    table's definition is moved up to where that declaration was. Nothing

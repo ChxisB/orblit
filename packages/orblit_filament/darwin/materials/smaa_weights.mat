@@ -13,7 +13,7 @@
 //
 // Adapted from the reference implementation, MIT licensed:
 //   Copyright (C) 2013 Jorge Jimenez, Jose I. Echevarria, Belen Masia,
-//   Fernando Navarro and Diego Gutierrez. See LICENSES/SMAA.txt.
+//   Fernando Navarro and Diego Gutierrez.
 material {
     name : orblitSmaaWeights,
     shadingModel : unlit,

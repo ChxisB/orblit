@@ -7,8 +7,7 @@ file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 This notice covers every file in this repository except those that
 carry their own licence notice. Third-party components bundled or
-linked here keep their own terms — see the LICENSES/ directory.
+linked here keep their own terms.
 
 The .NET projects under dotnet/ use Avalonia, SkiaSharp and the .NET
-runtime. All three are MIT licensed. Their licences are in
-LICENSES/avalonia.txt, LICENSES/skiasharp.txt and LICENSES/dotnet.txt.
+runtime. All three are MIT licensed.

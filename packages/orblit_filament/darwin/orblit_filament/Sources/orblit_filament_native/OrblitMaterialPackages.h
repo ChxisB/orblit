@@ -50,7 +50,7 @@ bool hasSlimSurface();
 const char *materialTiers();
 
 /// One of SMAA's two precomputed tables: the bytes, and the shape to upload
-/// them with. MIT, Jorge Jimenez et al. — see LICENSES/SMAA.txt.
+/// them with. MIT, Jorge Jimenez et al.
 struct SmaaTable {
   const uint8_t *bytes;
   size_t size;

@@ -155,6 +155,5 @@ What it asks is that changes to Orblit's own files ship under the same licence,
 with source available to whoever you hand the result to, so engine work stays
 in the open.
 
-Builds link Filament, which carries its own Apache 2.0 licence. A full copy
-of it is in [LICENSES](LICENSES). See [LICENSE](LICENSE) and
-[NOTICE](NOTICE).
+Builds link Filament, which carries its own Apache 2.0 licence. See
+[LICENSE](LICENSE) and [NOTICE](NOTICE).
