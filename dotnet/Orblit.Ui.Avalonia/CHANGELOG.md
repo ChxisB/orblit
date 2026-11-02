@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.0
+
+- `TouchStick`, `TouchHold` and `TouchSwipe` report an automation peer, so a
+  screen reader and a test driver can find them. Before, a panel had none and
+  they were invisible. The name is the game's `AutomationProperties.Name`. The
+  role is Custom, because they take a finger and nothing else. Keyboard
+  operation is not built.
+- `FlexPanel` was checked and is unchanged. It adds no peer of its own, and
+  its children stay reachable. `LabelAtlas` is not a control and has nothing
+  to expose.
+
 ## 0.3.0
 
 - `LabelAtlas` draws with greyscale antialiasing. Subpixel text left a colour on
