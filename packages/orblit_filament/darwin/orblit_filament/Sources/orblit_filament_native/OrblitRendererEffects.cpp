@@ -307,7 +307,7 @@ void Renderer::aimPass(GraphPass &pass, uint32_t wide, uint32_t tall) {
 
   pass.camera->setModelMatrix(mat4f(model));
   pass.camera->setProjection(_fieldOfView > 0 ? _fieldOfView : 50.0, aspect,
-                             0.1, 1000.0, fovAxisFor(aspect));
+                             nearPlane(), farPlane(false), fovAxisFor(aspect));
   pass.camera->setExposure(_camera->getAperture(), _camera->getShutterSpeed(),
                            _camera->getSensitivity());
 }

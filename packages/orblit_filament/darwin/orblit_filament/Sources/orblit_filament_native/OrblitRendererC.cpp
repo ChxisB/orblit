@@ -834,6 +834,17 @@ int orblit_renderer_set_camera(orblit_renderer *renderer,
   });
 }
 
+int orblit_renderer_set_planes(orblit_renderer *renderer, float near_plane,
+                              float far_plane) {
+  const float nearest = near_plane > 0 ? near_plane : 0.1f;
+  const bool bad = near_plane < 0 || far_plane < 0 ||
+                   (far_plane > 0 && far_plane <= nearest);
+  if (bad) return ORBLIT_ERROR_RANGE;
+  return guarded(renderer, [&](orblit::Renderer &core) {
+    core.setCameraPlanes(near_plane, far_plane);
+  });
+}
+
 int orblit_renderer_set_exposure(orblit_renderer *renderer, float aperture,
                                 float shutter, float sensitivity) {
   return guarded(renderer, [&](orblit::Renderer &core) {

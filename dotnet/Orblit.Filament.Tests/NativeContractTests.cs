@@ -31,7 +31,7 @@ public sealed class NativeContractTests
         var header = RendererHeader.Functions().Select(function => function.Entry).Order(StringComparer.Ordinal);
         var declared = Declarations().Select(EntryPoint).Order(StringComparer.Ordinal);
 
-        Assert.Equal(49, header.Count());
+        Assert.Equal(50, header.Count());
         Assert.Equal(header, declared);
     }
 

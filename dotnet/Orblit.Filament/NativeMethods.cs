@@ -348,6 +348,9 @@ internal static partial class NativeMethods
         float viewHeight,
         double at);
 
+    [LibraryImport(Library, EntryPoint = "orblit_renderer_set_planes")]
+    internal static partial int SetPlanes(nint renderer, float nearPlane, float farPlane);
+
     [LibraryImport(Library, EntryPoint = "orblit_renderer_set_exposure")]
     internal static partial int SetExposure(nint renderer, float aperture, float shutter, float sensitivity);
 

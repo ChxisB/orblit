@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.43.0
+
+`RenderCamera` has `Near` and `Far`, the nearest and furthest distance the
+camera draws, in metres. Left null they are 0.1 and 1000, or 4000 for a flat
+view, as before. A far plane that is not past the near plane is refused with
+`RendererException`. The renderer takes them through `orblit_renderer_set_planes`,
+the 50th call of its C API.
+
 ## 0.42.1
 
 An effect pass and the selection outline are built when the graph or the
