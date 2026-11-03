@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Version>0.42.1</Version>
+    <Version>0.43.0</Version>
     <Description>The Orblit renderer over its C API. A scene is described in whole batches and drawn by Filament.</Description>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>

@@ -527,12 +527,28 @@ void Renderer::projectWith(float fieldOfView, bool orthographic, float tall) {
     // geometry: a range spanning zero maps depths onto each other, and then
     // the sky wins against the ground and the whole frame is sky.
     _camera->setProjection(Camera::Projection::ORTHO, -wide, wide, -half, half,
-                           0.1, 4000.0);
+                           nearPlane(), farPlane(true));
     return;
   }
 
-  _camera->setProjection(fieldOfView > 0 ? fieldOfView : 50.0, aspect, 0.1,
-                         1000.0, fovAxisFor(aspect));
+  _camera->setProjection(fieldOfView > 0 ? fieldOfView : 50.0, aspect,
+                         nearPlane(), farPlane(false), fovAxisFor(aspect));
+}
+
+double Renderer::nearPlane() const {
+  const float set = _near.load();
+  return set > 0 ? set : 0.1;
+}
+
+double Renderer::farPlane(bool orthographic) const {
+  const float set = _far.load();
+  return set > 0 ? set : (orthographic ? 4000.0 : 1000.0);
+}
+
+void Renderer::setCameraPlanes(float nearPlane, float farPlane) {
+  if (_disposed) return;
+  _near.store(nearPlane);
+  _far.store(farPlane);
 }
 
 void Renderer::setExposure(float aperture, float shutter, float sensitivity) {

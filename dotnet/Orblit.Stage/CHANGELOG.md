@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+
+- `DocumentStaging.CameraAt` and `DocumentView.CameraOf` carry the camera
+  component's near and far planes. They were left out, so a scene camera with a
+  far plane of 250 still drew to 1000.
+
 ## 0.6.0
 
 - `LayoutFollower` shows the layout that suits a window. Call `Fit` with the

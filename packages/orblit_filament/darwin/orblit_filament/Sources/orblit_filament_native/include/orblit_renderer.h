@@ -513,6 +513,14 @@ int orblit_renderer_set_camera(orblit_renderer *renderer,
                               float field_of_view, int orthographic,
                               float view_height, double at);
 
+/* How far the camera sees: the nearest and the furthest distance it draws, in
+ * metres. Zero for either keeps the built-in value, 0.1 for the near plane and
+ * 1000 for the far one (4000 for a flat view). ORBLIT_ERROR_RANGE for a
+ * negative number, or a far plane that is not past the near plane, built-in or
+ * set. Any thread. */
+int orblit_renderer_set_planes(orblit_renderer *renderer, float near_plane,
+                              float far_plane);
+
 int orblit_renderer_set_exposure(orblit_renderer *renderer, float aperture,
                                 float shutter, float sensitivity);
 

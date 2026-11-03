@@ -19,6 +19,8 @@
 // OrblitPlatform.h, and where a frame is presented is OrblitSurface's
 // business, as it was before.
 
+#include <atomic>
+
 #include "OrblitRendererTypes.h"
 
 namespace orblit {
@@ -118,6 +120,7 @@ class Renderer {
                          float fieldOfView, bool orthographic,
                          float viewHeight, double at);
   void setExposure(float aperture, float shutter, float sensitivity);
+  void setCameraPlanes(float nearPlane, float farPlane);
   void setOutlineKeys(const int64_t *keys, uint32_t count,
                       const float *params);
   void resizeToWidth(uint32_t width, uint32_t height);
@@ -313,6 +316,8 @@ class Renderer {
   void applyGrading(bool enabled, int toneMapper, float exposure, float contrast, float saturation, float vibrance, float temperature, float tint, const float *shadows, const float *midtones, const float *highlights);
   void placeCamera();
   void projectWith(float fieldOfView, bool orthographic, float tall);
+  double nearPlane() const;
+  double farPlane(bool orthographic) const;
   void allocateBuffers();
   void releaseBuffers();
   void applyViewportSize();
@@ -929,6 +934,11 @@ class Renderer {
   float _fieldOfView{};
   bool _orthographic{};
   float _viewHeight{};
+
+  /// The camera's planes. Zero is the built-in value. They are set from any
+  /// thread and read by the one that draws.
+  std::atomic<float> _near{0.0f};
+  std::atomic<float> _far{0.0f};
 
   /// The last two things the camera was told, and the lock between the thread
   /// that says them and the thread that draws.

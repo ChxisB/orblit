@@ -25,7 +25,14 @@ internal static class DocumentStaging
     public static RenderCamera CameraAt(Matrix4 world, CameraComponent camera)
     {
         var position = world.GetTranslation();
-        return new RenderCamera { Position = position, Target = position + Facing(world), FieldOfView = camera.FieldOfView };
+        return new RenderCamera
+        {
+            Position = position,
+            Target = position + Facing(world),
+            FieldOfView = camera.FieldOfView,
+            Near = camera.Near,
+            Far = camera.Far,
+        };
     }
 
     public static RenderCamera DefaultCamera() =>

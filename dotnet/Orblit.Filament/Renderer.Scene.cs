@@ -431,6 +431,7 @@ public sealed partial class Renderer
             camera.Orthographic,
             (float)camera.ViewHeight,
             at);
+        Check(NativeMethods.SetPlanes(Alive, (float)(camera.Near ?? 0), (float)(camera.Far ?? 0)), "set_planes");
         Check(NativeMethods.SetExposure(Alive, (float)camera.Aperture, (float)camera.ShutterSpeed, (float)camera.Sensitivity), "set_exposure");
     }
 }
