@@ -35,7 +35,7 @@ if os.path.isfile(ac_archive):
 
 print(f"Downloading AccessKit {ac_filename} ...")
 urllib.request.urlretrieve(
-    f"https://github.com/ChxisB/orblit-accesskit-c-static/releases/download/{ac_version}/{ac_filename}",
+    f"https://github.com/godotengine/godot-accesskit-c-static/releases/download/{ac_version}/{ac_filename}",
     ac_archive,
 )
 if os.path.exists(ac_folder):

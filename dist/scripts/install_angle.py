@@ -19,7 +19,7 @@ else:
     deps_folder = os.path.join("bin", "build_deps")
 
 # ANGLE
-# Check for latest version: https://github.com/ChxisB/orblit-angle-static/releases/latest
+# Check for latest version: https://github.com/godotengine/godot-angle-static/releases/latest
 angle_version = "chromium/8118"
 angle_folder = os.path.join(deps_folder, "angle")
 
@@ -49,7 +49,7 @@ elif platform.system() == "Darwin":
     archs.append("x86_64-macos")
 
 for arch in archs:
-    angle_filename = f"orblit-angle-static-{arch}-release.zip"
+    angle_filename = f"godot-angle-static-{arch}-release.zip"
     angle_archive = os.path.join(deps_folder, angle_filename)
     angle_folder = os.path.join(deps_folder, f"angle-{arch}")
 
@@ -57,7 +57,7 @@ for arch in archs:
         os.remove(angle_archive)
     print(f"Downloading ANGLE {angle_filename} ...")
     urllib.request.urlretrieve(
-        f"https://github.com/ChxisB/orblit-angle-static/releases/download/{angle_version}/{angle_filename}",
+        f"https://github.com/godotengine/godot-angle-static/releases/download/{angle_version}/{angle_filename}",
         angle_archive,
     )
     if os.path.exists(angle_folder):
