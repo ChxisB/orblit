@@ -1,0 +1,9 @@
+[orb_scene format=3]
+
+[node name="CubeField" type="Entity3D"]
+
+[node name="Lamp" type="Entity3D" parent="."]
+
+[node name="Cubes" type="Entity3D" parent="."]
+
+[node name="Cube" type="Entity3D" parent="Cubes"]

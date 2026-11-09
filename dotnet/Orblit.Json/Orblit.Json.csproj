@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Version>0.4.0</Version>
-    <Description>JSON read and written the way Orblit files hold it, with the same bytes from every writer. Whole numbers are long, the rest double, and a map keeps its keys in the order they came.</Description>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
-  </ItemGroup>
-</Project>

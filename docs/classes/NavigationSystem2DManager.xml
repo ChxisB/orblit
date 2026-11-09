@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="NavigationSystem2DManager" inherits="Object" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		A singleton for managing [NavigationSystem2D] implementations.
+	</brief_description>
+	<description>
+		[NavigationSystem2DManager] is the API for registering [NavigationSystem2D] implementations and setting the default implementation.
+		[b]Note:[/b] It is not possible to switch servers at runtime. This class is only used on startup at the server initialization level.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="register_system">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="create_callback" type="Callable" />
+			<description>
+				Registers a [NavigationSystem2D] implementation by passing a [param name] and a [Callable] that returns a [NavigationSystem2D] object.
+			</description>
+		</method>
+		<method name="set_default_system">
+			<return type="void" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="priority" type="int" />
+			<description>
+				Sets the default [NavigationSystem2D] implementation to the one identified by [param name], if [param priority] is greater than the priority of the current default implementation.
+			</description>
+		</method>
+	</methods>
+</class>

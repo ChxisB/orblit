@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <RootNamespace>Orblit.Editor.Bridge</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../../scene/avalonia/Orblit.Ui/Orblit.Ui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orblit.Editor.Bridge.Checks" />
+  </ItemGroup>
+
+</Project>

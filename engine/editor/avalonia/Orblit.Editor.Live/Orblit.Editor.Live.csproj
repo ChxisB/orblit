@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Orblit.Editor.Live</RootNamespace>
+    <!-- The raw input callback of a window is a private API. It is how a real mouse reaches Avalonia. -->
+    <AvaloniaAccessUnstablePrivateApis>true</AvaloniaAccessUnstablePrivateApis>
+    <NoWarn>$(NoWarn);AVA3001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Orblit.Editor.App/Orblit.Editor.App.csproj" />
+    <ProjectReference Include="../../../scene/avalonia/samples/Orblit.Ui.Sample/Orblit.Ui.Sample.csproj" />
+  </ItemGroup>
+
+</Project>

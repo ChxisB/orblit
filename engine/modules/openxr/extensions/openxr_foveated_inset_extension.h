@@ -1,0 +1,97 @@
+/**************************************************************************/
+/*  openxr_foveated_inset_extension.h                                     */
+
+#pragma once
+
+#include "../openxr_api.h"
+#include "openxr_extension_wrapper.h"
+
+#include "systems/xr/xr_positional_tracker.h"
+
+// Foveated inset is a core feature in OpenXR 1.1 but we'll encapsulate
+// the functionality in this "extension".
+//
+// When used we render 4 views instead of 2.
+// The first two views are our context view and rendered by our default logic.
+// The second two views are our focus view (inset) and handled by the
+// implementation here.
+// This order is guaranteed by the OpenXR specification.
+//
+// In OpenXR 1.0 XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO_WITH_FOVEATED_INSET
+// was a Varjo only extension implementing this functionality equal to how
+// the core support in OpenXR 1.1 defines this.
+// We enable it as a fallback if supported.
+//
+// For more detail on how this works, Varjo has an excellent information page:
+// https://varjo.com/blog/make-the-best-out-of-your-varjo-experience-update-on-varjo-quad-view-eye-tracked-foveation-and-varjo-base-settings
+
+#define XR_TRACKER_INSET SNAME("foveated_inset")
+
+class OpenXRFoveatedInsetViewport;
+
+class OpenXRFoveatedInsetExtension : public OpenXRExtensionWrapper {
+	ORBLIT_CLASS(OpenXRFoveatedInsetExtension, OpenXRExtensionWrapper);
+
+protected:
+	static void register_members() {}
+
+public:
+	static OpenXRFoveatedInsetExtension *get_singleton();
+
+	OpenXRFoveatedInsetExtension();
+	virtual ~OpenXRFoveatedInsetExtension() override;
+
+	virtual HashMap<String, bool *> get_requested_extensions(XrVersion p_version) override;
+
+	virtual void on_session_created(const XrSession p_session) override;
+	virtual void on_session_destroyed() override;
+	virtual void on_state_ready() override;
+	virtual void on_process() override;
+
+	// Note, call `OpenXR::is_view_configuration_supported(XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO_WITH_FOVEATED_INSET)`
+	// to check if our foveated inset is supported.
+	// Even if OpenXR 1.1 is initialized or the Varjo extension is available,
+	// this does not guarantee the current hardware configuration actually makes foveated inset available.
+	// Hence we do not expose an `is_available` function here.
+
+	virtual TypedArray<Projection> get_camera_projections(const StringName &p_tracker_name, double p_aspect, double p_z_near, double p_z_far) override;
+	virtual TypedArray<Transform3D> get_camera_offsets(const StringName &p_tracker_name) override;
+
+	Size2i get_render_size();
+
+	void register_viewport(RID p_viewport);
+	void unregister_viewport(RID p_viewport);
+	virtual void on_pre_render() override;
+	virtual void on_post_render() override;
+
+private:
+	static OpenXRFoveatedInsetExtension *singleton;
+	OpenXRFoveatedInsetViewport *inset_viewport = nullptr;
+
+	bool varjo_ext_available = false;
+	bool varjo_foveated_rendering_ext_available = false;
+
+	Ref<XRPositionalTracker> foveated_inset;
+	Transform3D head_transform;
+	Vector3 head_linear_velocity;
+	Vector3 head_angular_velocity;
+	XRPose::TrackingConfidence head_confidence = XRPose::XR_TRACKING_CONFIDENCE_NONE;
+
+	enum SwapChainTypes {
+		SWAPCHAIN_COLOR,
+		SWAPCHAIN_DEPTH,
+		SWAPCHAIN_MAX
+	};
+
+	// Render state, Only accessible in rendering thread
+	struct RenderState {
+		LocalVector<RID> viewports;
+		Size2i size;
+		OpenXRAPI::OpenXRSwapChainInfo swapchains[SWAPCHAIN_MAX];
+	} render_state;
+
+	void _register_viewport_rt(RID p_viewport);
+	void _unregister_viewport_rt(RID p_viewport);
+
+	void _free_swapchains();
+};

@@ -1,0 +1,39 @@
+<Project>
+  <!-- Generate C# file with the version of all the nupkgs bundled with Orblit -->
+
+  <Target Name="SetPropertiesForGenerateOrblitNupkgsVersions">
+    <PropertyGroup>
+      <GeneratedOrblitNupkgsVersionsFile>$(IntermediateOutputPath)OrblitNupkgsVersions.g.cs</GeneratedOrblitNupkgsVersionsFile>
+    </PropertyGroup>
+  </Target>
+
+  <Target Name="GenerateOrblitNupkgsVersionsFile"
+          DependsOnTargets="_GenerateOrblitNupkgsVersionsFile"
+          BeforeTargets="PrepareForBuild;CompileDesignTime;BeforeCompile;CoreCompile">
+    <ItemGroup>
+      <Compile Include="$(GeneratedOrblitNupkgsVersionsFile)" />
+      <FileWrites Include="$(GeneratedOrblitNupkgsVersionsFile)" />
+    </ItemGroup>
+  </Target>
+  <Target Name="_GenerateOrblitNupkgsVersionsFile"
+          DependsOnTargets="SetPropertiesForGenerateOrblitNupkgsVersions"
+          Inputs="$(MSBuildProjectFile);$(MSBuildThisFileDirectory);$(MSBuildProjectFile)\..\..\..\SdkPackageVersions.props"
+          Outputs="$(GeneratedOrblitNupkgsVersionsFile)">
+    <PropertyGroup>
+      <GenerateOrblitNupkgsVersionsCode><![CDATA[
+namespace $(RootNamespace)
+{
+    public class GeneratedOrblitNupkgsVersions
+    {
+        public const string OrblitNETSdk = "$(PackageVersion_Orblit_NET_Sdk)"%3b
+        public const string OrblitSourceGenerators = "$(PackageVersion_Orblit_SourceGenerators)"%3b
+        public const string OrblitSharp = "$(PackageVersion_OrblitSharp)"%3b
+    }
+}
+]]></GenerateOrblitNupkgsVersionsCode>
+    </PropertyGroup>
+    <WriteLinesToFile Lines="$(GenerateOrblitNupkgsVersionsCode)"
+                      File="$(GeneratedOrblitNupkgsVersionsFile)"
+                      Overwrite="True" WriteOnlyWhenDifferent="True" />
+  </Target>
+</Project>

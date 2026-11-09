@@ -1,0 +1,5 @@
+[orb_scene format=3]
+
+[node name="ProbeScene" type="Entity"]
+
+[node name="Holder" type="Entity" parent="."]

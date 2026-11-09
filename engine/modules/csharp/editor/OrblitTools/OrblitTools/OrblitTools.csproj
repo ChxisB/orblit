@@ -1,0 +1,64 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <ProjectGuid>{27B00618-A6F2-4828-B922-05CAEB08C286}</ProjectGuid>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <Nullable>enable</Nullable>
+    <!-- The Orblit editor uses the Debug Orblit API assemblies -->
+    <OrblitApiConfiguration>Debug</OrblitApiConfiguration>
+    <OrblitSourceRootPath>$(SolutionDir)/../../../../../</OrblitSourceRootPath>
+    <OrblitOutputDataDir>$(OrblitSourceRootPath)/bin/OrblitSharp</OrblitOutputDataDir>
+    <OrblitApiAssembliesDir>$(OrblitOutputDataDir)/Api/$(OrblitApiConfiguration)</OrblitApiAssembliesDir>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <!-- Needed for our source generators to work despite this not being a Orblit game project -->
+  <PropertyGroup>
+    <IsOrblitToolsProject>true</IsOrblitToolsProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <CompilerVisibleProperty Include="IsOrblitToolsProject" />
+  </ItemGroup>
+
+  <PropertyGroup Condition=" Exists('$(OrblitApiAssembliesDir)/OrblitSharp.dll') ">
+    <!-- The project is part of the Orblit source tree -->
+    <!-- Use the Orblit source tree output folder instead of '$(ProjectDir)/bin' -->
+    <OutputPath>$(OrblitOutputDataDir)/Tools</OutputPath>
+    <!-- Must not append '$(TargetFramework)' to the output path in this case -->
+    <AppendTargetFrameworkToOutputPath>False</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="JetBrains.Annotations" Version="2019.1.3.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" />
+    <PackageReference Include="JetBrains.Rider.PathLocator" Version="1.0.12" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.0" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.VisualStudio.SolutionPersistence" Version="1.0.52" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
+    <Reference Include="OrblitSharp">
+      <HintPath>$(OrblitApiAssembliesDir)/OrblitSharp.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="OrblitSharpEditor">
+      <HintPath>$(OrblitApiAssembliesDir)/OrblitSharpEditor.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\Orblit.NET.Sdk\Orblit.SourceGenerators\Orblit.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\..\..\glue\OrblitSharp\Orblit.SourceGenerators.Internal\Orblit.SourceGenerators.Internal.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OrblitTools.BuildLogger\OrblitTools.BuildLogger.csproj" />
+    <ProjectReference Include="..\OrblitTools.IdeMessaging\OrblitTools.IdeMessaging.csproj" />
+    <ProjectReference Include="..\OrblitTools.ProjectEditor\OrblitTools.ProjectEditor.csproj" />
+    <ProjectReference Include="..\OrblitTools.Core\OrblitTools.Core.csproj" />
+  </ItemGroup>
+
+</Project>

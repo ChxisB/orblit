@@ -1,0 +1,7 @@
+config_version=5
+
+[application]
+
+config/name="CI test project"
+run/main_scene="res://main.oscn"
+config/features=PackedStringArray("1.0")

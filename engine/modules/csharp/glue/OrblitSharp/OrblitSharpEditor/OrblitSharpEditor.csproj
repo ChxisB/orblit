@@ -1,0 +1,46 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ProjectGuid>{8FBEC238-D944-4074-8548-B3B524305905}</ProjectGuid>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>14</LangVersion>
+    <OutputPath>bin/$(Configuration)</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <RootNamespace>Orblit</RootNamespace>
+    <DocumentationFile>$(OutputPath)/$(AssemblyName).xml</DocumentationFile>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Description>Orblit C# Editor API.</Description>
+    <Authors>Orblit contributors</Authors>
+
+    <PackageId>OrblitSharpEditor</PackageId>
+    <Version>1.0.0</Version>
+    <PackageVersion>$(PackageVersion_OrblitSharp)</PackageVersion>
+    <RepositoryUrl>https://github.com/ChxisB/orblit</RepositoryUrl>
+    <PackageProjectUrl>$(RepositoryUrl)</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Copyright>Copyright (c) Orblit contributors.</Copyright>
+
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+  </PropertyGroup>
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);ORBLIT</DefineConstants>
+    <DefineConstants Condition=" '$(OrblitFloat64)' == 'true' ">REAL_T_IS_DOUBLE;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OrblitSharp\OrblitSharp.csproj">
+      <Private>false</Private>
+    </ProjectReference>
+  </ItemGroup>
+  <!--
+  We import a props file with auto-generated includes. This works well with Rider.
+  However, Visual Studio and MonoDevelop won't list them in the solution explorer.
+  We can't use wildcards as there may be undesired old files still hanging around.
+  Fortunately code completion, go to definition and such still work.
+  -->
+  <Import Condition=" '$(OrblitSkipGenerated)' == '' " Project="Generated\GeneratedIncludes.props" />
+</Project>

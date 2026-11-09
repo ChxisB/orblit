@@ -1,0 +1,11 @@
+config_version=5
+
+[application]
+
+config/name="cube_field"
+run/main_scene="res://main.oscn"
+
+[rendering]
+
+environment/defaults/default_clear_color=Color(1, 0.5, 0, 1)
+rendering_device/driver.macos="metal"

@@ -1,0 +1,9 @@
+short_name = "orblit"
+name = "Orblit Engine"
+major = 1
+minor = 0
+patch = 0
+status = "stable"
+module_config = ""
+website = "https://orblitengine.com"
+docs = "latest"

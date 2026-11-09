@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<style name="OrblitEditorTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar.Fullscreen">
+	</style>
+
+	<style name="OrblitGameTheme" parent="OrblitEditorTheme">
+		<item name="android:windowIsTranslucent">true</item>
+	</style>
+
+	<style name="OrblitEditorSplashScreenTheme" parent="Theme.SplashScreen.IconBackground">
+		<!-- Set the theme of the Activity that directly follows your splash
+		screen. This is required. -->
+		<item name="postSplashScreenTheme">@style/OrblitEditorTheme</item>
+	</style>
+
+	<style name="OrblitEmbeddedGameTheme" parent="@android:style/Theme.DeviceDefault.Panel">
+	</style>
+</resources>

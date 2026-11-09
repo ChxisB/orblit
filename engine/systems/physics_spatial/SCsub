@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+Import("env")
+
+if not env["disable_physics_spatial"]:
+    env.add_source_files(env.systems_sources, "*.cpp")
+
+    SConscript("direct_states/SCsub")
+    SConscript("queries/SCsub")

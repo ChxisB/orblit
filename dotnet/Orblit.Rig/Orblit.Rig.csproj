@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Version>0.3.0</Version>
-    <Description>Armatures, poses and bone constraints. The skeleton layer a control rig is generated on top of.</Description>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
-  </ItemGroup>
-</Project>

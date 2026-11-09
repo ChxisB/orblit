@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Version>0.1.0</Version>
-    <Description>Named small integers for a game's progress, with bit-range slices, deltas for the owning client and bytes for a save.</Description>
-  </PropertyGroup>
-</Project>

@@ -1,0 +1,54 @@
+<Project>
+  <Import Sdk="Microsoft.NET.Sdk" Project="Sdk.targets" Condition="'$(OrblitSdkImportsMicrosoftNetSdk)' == 'true'" />
+
+  <PropertyGroup>
+    <!--
+    Define constant to determine whether the real_t type in Orblit is double precision or not.
+    By default this is false, like the official Orblit builds. If someone is using a custom
+    Orblit build where real_t is double, they can override the OrblitFloat64 property.
+    -->
+    <DefineConstants Condition=" '$(OrblitFloat64)' == 'true' ">ORBLIT_REAL_T_IS_DOUBLE;$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
+
+  <!--
+  We are defining ExportDebug and Debug in Sdk.targets to ensure that the user cannot
+  override the DefineConstants property in their csproj file and break the editor functionality.
+  -->
+  <PropertyGroup>
+    <!-- ExportDebug also defines DEBUG like Debug does. -->
+    <DefineConstants Condition=" '$(Configuration)' == 'ExportDebug' ">$(DefineConstants);DEBUG</DefineConstants>
+    <!-- Debug defines TOOLS to differentiate between Debug and ExportDebug configurations. -->
+    <DefineConstants Condition=" '$(Configuration)' == 'Debug' ">$(DefineConstants);TOOLS</DefineConstants>
+
+    <DefineConstants>$(_OrblitDefineConstants);$(DefineConstants)</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(EnableOrblitDotNetPreview)' == 'true'">
+    <DisableImplicitOrblitGeneratorReferences>true</DisableImplicitOrblitGeneratorReferences>
+    <DisableImplicitOrblitSharpReferences>true</DisableImplicitOrblitSharpReferences>
+  </PropertyGroup>
+
+  <!-- OrblitSharp references -->
+  <ItemGroup Condition=" '$(DisableImplicitOrblitGeneratorReferences)' != 'true' ">
+    <PackageReference Include="Orblit.SourceGenerators" IsImplicitlyDefined="true" Version="$(PackageVersion_Orblit_SourceGenerators)" ReferenceOutputAssembly="false" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(DisableImplicitOrblitSharpReferences)' != 'true' ">
+    <PackageReference Include="OrblitSharp" IsImplicitlyDefined="true" Version="$(PackageVersion_OrblitSharp)" />
+    <PackageReference Include="OrblitSharpEditor" IsImplicitlyDefined="true" Version="$(PackageVersion_OrblitSharp)" Condition=" '$(Configuration)' == 'Debug' " />
+  </ItemGroup>
+  <Target Name="CheckOrblitDotNetReferences" BeforeTargets="Build" Condition=" '$(EnableOrblitDotNetPreview)' != 'true' ">
+    <Error Text="The project or one of its dependencies references Orblit .NET packages which are incompatible with the active Orblit C# bindings. The active C# bindings is OrblitSharp." Condition="$([System.String]::Copy('%(Reference.Identity)').Contains('Orblit.Bindings.dll'))" />
+  </Target>
+
+  <!-- Orblit .NET references -->
+  <ItemGroup Condition=" '$(EnableOrblitDotNetPreview)' == 'true' ">
+    <PackageReference Include="Orblit" IsImplicitlyDefined="true" Version="$(PackageVersion_OrblitDotNet)" />
+  </ItemGroup>
+  <Target Name="CheckOrblitSharpReferences" BeforeTargets="Build" Condition=" '$(EnableOrblitDotNetPreview)' == 'true' ">
+    <Error Text="The project or one of its dependencies references OrblitSharp packages which is incompatible with the active Orblit C# bindings. The active C# bindings is Orblit .NET." Condition="$([System.String]::Copy('%(Reference.Identity)').Contains('OrblitSharp.dll'))" />
+  </Target>
+
+  <!-- iOS-specific build targets -->
+  <Import Project="$(MSBuildThisFileDirectory)\iOS.targets" Condition=" '$(OrblitTargetPlatform)' == 'ios' " />
+
+</Project>

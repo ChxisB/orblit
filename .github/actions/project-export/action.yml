@@ -1,0 +1,53 @@
+name: Export Orblit project
+description: Export a test Orblit project.
+
+inputs:
+  bin:
+    description: The path to the Orblit executable
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Import resources and export project
+      shell: sh
+      run: |
+        echo "Exporting project for Linux (PCK)"
+        ${{ inputs.bin }} --headless --path tests/project --export-pack "Linux" /tmp/test_project.opack 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+        echo "Exporting project for Linux (ZIP)"
+        ${{ inputs.bin }} --headless --path tests/project --export-pack "Linux" /tmp/test_project.zip 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+        echo "Exporting project for Linux as dedicated server (PCK)"
+        ${{ inputs.bin }} --headless --path tests/project --export-pack "Linux Server" /tmp/test_project_server.opack 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+    - name: Run project files from folder
+      shell: sh
+      run: |
+        xvfb-run ${{ inputs.bin }} --path tests/project --resolution 64x64 --write-movie /tmp/test_project_folder.png --quit 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+        ${{ inputs.bin }} --headless --path tests/project --quit 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+    - name: Run exported project PCK/ZIP
+      shell: sh
+      run: |
+        xvfb-run ${{ inputs.bin }} --main-pack /tmp/test_project.opack --resolution 64x64 --write-movie /tmp/test_project_pck.png --quit 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+        xvfb-run ${{ inputs.bin }} --main-pack /tmp/test_project.zip --resolution 64x64 --write-movie /tmp/test_project_zip.png --quit 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+        # Headless mode is implied for dedicated server PCKs.
+        ${{ inputs.bin }} --main-pack /tmp/test_project_server.opack --quit 2>&1 | tee log.txt || true
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS=1 dist/scripts/check_ci_log.py log.txt
+
+        echo "Checking whether video output from project folder and exported project match..."
+        md5sum /tmp/test_project*.png | md5sum --check
+
+        echo "Checking whether audio output from project folder and exported project match..."
+        md5sum /tmp/test_project*.wav | md5sum --check

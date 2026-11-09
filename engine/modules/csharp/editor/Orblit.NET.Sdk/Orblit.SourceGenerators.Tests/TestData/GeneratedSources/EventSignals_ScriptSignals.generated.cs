@@ -1,0 +1,55 @@
+using Orblit;
+using Orblit.NativeInterop;
+
+partial class EventSignals
+{
+#pragma warning disable CS0109 // Disable warning about redundant 'new' keyword
+    /// <summary>
+    /// Cached StringNames for the signals contained in this class, for fast lookup.
+    /// </summary>
+    public new class SignalName : global::Orblit.OrblitObject.SignalName {
+        /// <summary>
+        /// Cached name for the 'MySignal' signal.
+        /// </summary>
+        public new static readonly global::Orblit.StringName @MySignal = "MySignal";
+    }
+    /// <summary>
+    /// Get the signal information for all the signals declared in this class.
+    /// This method is used by Orblit to register the available signals in the editor.
+    /// Do not call this method.
+    /// </summary>
+    [global::System.ComponentModel.EditorBrowsable(global::System.ComponentModel.EditorBrowsableState.Never)]
+    internal new static global::System.Collections.Generic.List<global::Orblit.Bridge.MethodInfo> GetOrblitSignalList()
+    {
+        var signals = new global::System.Collections.Generic.List<global::Orblit.Bridge.MethodInfo>(1);
+        signals.Add(new(name: SignalName.@MySignal, returnVal: new(type: (global::Orblit.Variant.Type)0, name: "", hint: (global::Orblit.PropertyHint)0, hintString: "", usage: (global::Orblit.PropertyUsageFlags)6, exported: false), flags: (global::Orblit.MethodFlags)1, arguments: new() { new(type: (global::Orblit.Variant.Type)4, name: "str", hint: (global::Orblit.PropertyHint)0, hintString: "", usage: (global::Orblit.PropertyUsageFlags)6, exported: false), new(type: (global::Orblit.Variant.Type)2, name: "num", hint: (global::Orblit.PropertyHint)0, hintString: "", usage: (global::Orblit.PropertyUsageFlags)6, exported: false),  }, defaultArguments: null));
+        return signals;
+    }
+    protected internal new static partial class OrblitInternal
+    {
+        public static void GetOrblitRaiseSignalTrampolines(global::Orblit.Bridge.RaiseSignalTrampolineCollector collector)
+        {
+            static void trampoline_2_MySignal(object orblitObject, NativeVariantPtrArgs args, ref orblit_variant_call_error callError)
+            {
+                if (args.Count != 2) {
+                    callError = orblit_variant_call_error.CreateInvalidArgumentCountError(expected: 2, provided: args.Count);
+                    return;
+                }
+                ((global::EventSignals)orblitObject).backing_MySignal?.Invoke(global::Orblit.NativeInterop.VariantUtils.ConvertTo<string>(args[0]), global::Orblit.NativeInterop.VariantUtils.ConvertTo<int>(args[1]));
+            }
+            var aux_delegate_2_MySignal = trampoline_2_MySignal;
+            collector.TryAdd(new(SignalName.@MySignal, 2), new(aux_delegate_2_MySignal.Method.MethodHandle.GetFunctionPointer()));
+        }
+    }
+#pragma warning restore CS0109
+    private global::EventSignals.MySignalEventHandler backing_MySignal;
+    /// <inheritdoc cref="global::EventSignals.MySignalEventHandler"/>
+    public event global::EventSignals.MySignalEventHandler @MySignal {
+        add => backing_MySignal += value;
+        remove => backing_MySignal -= value;
+    }
+    protected void EmitSignalMySignal(string @str, int @num)
+    {
+        EmitSignal(SignalName.MySignal, [@str, @num]);
+    }
+}

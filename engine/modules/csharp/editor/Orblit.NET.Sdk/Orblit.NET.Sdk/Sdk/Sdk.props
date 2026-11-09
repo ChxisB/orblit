@@ -1,0 +1,108 @@
+<Project>
+  <Import Project="$(MSBuildThisFileDirectory)\SdkPackageVersions.props" />
+
+  <PropertyGroup>
+    <UsingOrblitNETSdk>true</UsingOrblitNETSdk>
+
+    <!-- Determines if we should import Microsoft.NET.Sdk, if it wasn't already imported. -->
+    <OrblitSdkImportsMicrosoftNetSdk Condition=" '$(UsingMicrosoftNETSdk)' != 'true' ">true</OrblitSdkImportsMicrosoftNetSdk>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Configurations>Debug;ExportDebug;ExportRelease</Configurations>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+
+    <OrblitProjectDir Condition=" '$(OrblitProjectDir)' == '' ">$(MSBuildProjectDirectory)</OrblitProjectDir>
+    <OrblitProjectDir>$([MSBuild]::EnsureTrailingSlash('$(OrblitProjectDir)'))</OrblitProjectDir>
+    <OrblitProjectDirBase64 Condition=" $([MSBuild]::VersionGreaterThanOrEquals($(MSBuildAssemblyVersion), '17.3')) ">$([MSBuild]::ConvertToBase64('$(OrblitProjectDir)'))</OrblitProjectDirBase64>
+
+    <!-- Custom output paths for Orblit projects. In brief, 'bin\' and 'obj\' are moved to '$(OrblitProjectDir)\.orblit\dotnet\temp\'. -->
+    <BaseOutputPath>$(OrblitProjectDir).orblit\dotnet\temp\bin\</BaseOutputPath>
+    <OutputPath>$(OrblitProjectDir).orblit\dotnet\temp\bin\$(Configuration)\</OutputPath>
+    <!--
+    Use custom IntermediateOutputPath and BaseIntermediateOutputPath only if it wasn't already set.
+    Otherwise the old values may have already been changed by MSBuild which can cause problems with NuGet.
+    -->
+    <IntermediateOutputPath Condition=" '$(IntermediateOutputPath)' == '' ">$(OrblitProjectDir).orblit\dotnet\temp\obj\$(Configuration)\</IntermediateOutputPath>
+    <BaseIntermediateOutputPath Condition=" '$(BaseIntermediateOutputPath)' == '' ">$(OrblitProjectDir).orblit\dotnet\temp\obj\</BaseIntermediateOutputPath>
+
+    <!-- Do not append the target framework name to the output path. -->
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+
+  <Target Condition=" $([MSBuild]::VersionLessThan($(MSBuildAssemblyVersion), '17.3')) " Name="OrblitProjectDir" BeforeTargets="Build">
+    <Error Text="Cannot build from path containing '%23', move your project or update dotnet to the latest version." Condition="$(OrblitProjectDir.Contains('%23'))" /> <!-- # -->
+    <Error Text="Cannot build from path containing '%3B', move your project or update dotnet to the latest version." Condition="$(OrblitProjectDir.Contains('%3B'))" /> <!-- ; -->
+    <Error Text="Cannot build from path containing newlines, move your project or update dotnet to the latest version." Condition="$(OrblitProjectDir.Contains('%0A'))" /> <!-- \n -->
+    <Error Text="Cannot build from path containing newlines, move your project or update dotnet to the latest version." Condition="$(OrblitProjectDir.Contains('%0D'))" /> <!-- \r -->
+  </Target>
+
+  <Import Sdk="Microsoft.NET.Sdk" Project="Sdk.props" Condition=" '$(OrblitSdkImportsMicrosoftNetSdk)' == 'true' " />
+
+  <PropertyGroup>
+    <EnableDefaultNoneItems>false</EnableDefaultNoneItems>
+  </PropertyGroup>
+
+  <!--
+  The Microsoft.NET.Sdk only understands of the Debug and Release configurations.
+  We need to set the following properties manually for ExportDebug and ExportRelease.
+  -->
+  <PropertyGroup Condition=" '$(Configuration)' == 'Debug' or '$(Configuration)' == 'ExportDebug' ">
+    <DebugSymbols Condition=" '$(DebugSymbols)' == '' ">true</DebugSymbols>
+    <Optimize Condition=" '$(Optimize)' == '' ">false</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)' == 'ExportRelease' ">
+    <Optimize Condition=" '$(Optimize)' == '' ">true</Optimize>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OrblitApiConfiguration Condition=" '$(Configuration)' != 'ExportRelease' ">Debug</OrblitApiConfiguration>
+    <OrblitApiConfiguration Condition=" '$(Configuration)' == 'ExportRelease' ">Release</OrblitApiConfiguration>
+  </PropertyGroup>
+
+  <!-- Auto-detect the target Orblit platform if it was not specified. -->
+  <PropertyGroup Condition=" '$(OrblitTargetPlatform)' == '' ">
+    <OrblitTargetPlatform Condition=" $(RuntimeIdentifier.StartsWith('ios')) ">ios</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$(OrblitTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('android')) ">android</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$(OrblitTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('browser')) ">web</OrblitTargetPlatform>
+
+    <OrblitTargetPlatform Condition=" '$(OrblitTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('linux')) ">linuxbsd</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$(OrblitTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('freebsd')) ">linuxbsd</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$(OrblitTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('osx')) ">macos</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$(OrblitTargetPlatform)' == '' and $(RuntimeIdentifier.StartsWith('win')) ">windows</OrblitTargetPlatform>
+  </PropertyGroup>
+
+  <!-- Auto-detect the target Orblit platform if it was not specified and there's no runtime identifier information. -->
+  <PropertyGroup Condition=" '$(OrblitTargetPlatform)' == '' ">
+    <OrblitTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(Linux))' ">linuxbsd</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(FreeBSD))' ">linuxbsd</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(OSX))' ">macos</OrblitTargetPlatform>
+    <OrblitTargetPlatform Condition=" '$([MSBuild]::IsOsPlatform(Windows))' ">windows</OrblitTargetPlatform>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <OrblitFloat64 Condition=" '$(OrblitFloat64)' == '' ">false</OrblitFloat64>
+  </PropertyGroup>
+
+  <!-- Orblit DefineConstants. -->
+  <PropertyGroup>
+    <!-- Define constants to identify Orblit builds. -->
+    <_OrblitDefineConstants>ORBLIT</_OrblitDefineConstants>
+
+    <!--
+    Define constant to determine the target Orblit platform. This includes the
+    recognized platform names and the platform category (PC, MOBILE or WEB).
+    -->
+    <_OrblitPlatformConstants Condition=" '$(OrblitTargetPlatform)' == 'windows' ">ORBLIT_WINDOWS;ORBLIT_PC</_OrblitPlatformConstants>
+    <_OrblitPlatformConstants Condition=" '$(OrblitTargetPlatform)' == 'linuxbsd' ">ORBLIT_LINUXBSD;ORBLIT_PC</_OrblitPlatformConstants>
+    <_OrblitPlatformConstants Condition=" '$(OrblitTargetPlatform)' == 'macos' ">ORBLIT_OSX;ORBLIT_MACOS;ORBLIT_PC</_OrblitPlatformConstants>
+    <_OrblitPlatformConstants Condition=" '$(OrblitTargetPlatform)' == 'android' ">ORBLIT_ANDROID;ORBLIT_MOBILE</_OrblitPlatformConstants>
+    <_OrblitPlatformConstants Condition=" '$(OrblitTargetPlatform)' == 'ios' ">ORBLIT_IPHONE;ORBLIT_IOS;ORBLIT_MOBILE</_OrblitPlatformConstants>
+    <_OrblitPlatformConstants Condition=" '$(OrblitTargetPlatform)' == 'web' ">ORBLIT_JAVASCRIPT;ORBLIT_HTML5;ORBLIT_WASM;ORBLIT_WEB</_OrblitPlatformConstants>
+
+    <_OrblitDefineConstants>$(_OrblitDefineConstants);$(_OrblitPlatformConstants);$(_OrblitVersionConstants)</_OrblitDefineConstants>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)\Android.props" Condition=" '$(OrblitTargetPlatform)' == 'android' " />
+  <Import Project="$(MSBuildThisFileDirectory)\iOS.props" Condition=" '$(OrblitTargetPlatform)' == 'ios' " />
+</Project>

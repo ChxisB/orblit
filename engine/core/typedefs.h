@@ -1,0 +1,333 @@
+/**************************************************************************/
+/*  typedefs.h                                                            */
+
+#pragma once
+
+/**
+ * Basic definitions and simple functions to be used everywhere.
+ */
+
+// IWYU pragma: always_keep
+
+// Ensure that C++ standard is at least C++17.
+// If on MSVC, also ensures that the `Zc:__cplusplus` flag is present.
+static_assert(__cplusplus >= 201703L, "Minimum of C++17 required.");
+
+// IWYU pragma: begin_exports
+
+// Include first in case the platform needs to pre-define/include some things.
+#include "platform_config.h"
+
+// Should be available everywhere.
+#include "core/error/error_list.h"
+
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <type_traits>
+#include <utility>
+
+// IWYU pragma: end_exports
+
+#if defined(__has_feature)
+#define ORBLIT_HAS_FEATURE(m_feature) __has_feature(m_feature)
+#else
+#define ORBLIT_HAS_FEATURE(m_feature) 0
+#endif
+
+#if defined(__has_cpp_attribute)
+#define ORBLIT_HAS_CPP_ATTRIBUTE(m_feature) __has_cpp_attribute(m_feature)
+#else
+#define ORBLIT_HAS_CPP_ATTRIBUTE(m_feature) 0
+#endif
+
+#if (ORBLIT_HAS_FEATURE(address_sanitizer) || defined(__SANITIZE_ADDRESS__)) && !defined(ASAN_ENABLED)
+#error Address sanitizer was enabled without defining `ASAN_ENABLED`
+#endif
+
+#if (ORBLIT_HAS_FEATURE(leak_sanitizer) || defined(__SANITIZE_LEAKS__)) && !defined(LSAN_ENABLED)
+#error Leak sanitizer was enabled without defining `LSAN_ENABLED`
+#endif
+
+#if (ORBLIT_HAS_FEATURE(memory_sanitizer) || defined(__SANITIZE_MEMORY__)) && !defined(MSAN_ENABLED)
+#error Memory sanitizer was enabled without defining `MSAN_ENABLED`
+#endif
+
+#if (ORBLIT_HAS_FEATURE(thread_sanitizer) || defined(__SANITIZE_THREAD__)) && !defined(TSAN_ENABLED)
+#error Thread sanitizer was enabled without defining `TSAN_ENABLED`
+#endif
+
+#if (ORBLIT_HAS_FEATURE(undefined_behavior_sanitizer) || defined(__UNDEFINED_SANITIZER__)) && !defined(UBSAN_ENABLED)
+#error Undefined behavior sanitizer was enabled without defining `UBSAN_ENABLED`
+#endif
+
+// Turn argument to string constant:
+// https://gcc.gnu.org/onlinedocs/cpp/Stringizing.html#Stringizing
+#ifndef _STR
+#define _STR(m_x) #m_x
+#define _MKSTR(m_x) _STR(m_x)
+#endif
+
+// Should always inline no matter what.
+#ifndef _ALWAYS_INLINE_
+#if defined(__GNUC__)
+#define _ALWAYS_INLINE_ __attribute__((always_inline)) inline
+#elif defined(_MSC_VER)
+#define _ALWAYS_INLINE_ __forceinline
+#else
+#define _ALWAYS_INLINE_ inline
+#endif
+#endif
+
+// Should always inline, except in dev builds because it makes debugging harder,
+// or `size_enabled` builds where inlining is actively avoided.
+#ifndef _FORCE_INLINE_
+#if defined(DEV_ENABLED) || defined(SIZE_EXTRA)
+#define _FORCE_INLINE_ inline
+#else
+#define _FORCE_INLINE_ _ALWAYS_INLINE_
+#endif
+#endif
+
+// Should never inline.
+#ifndef _NO_INLINE_
+#if defined(__GNUC__)
+#define _NO_INLINE_ __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define _NO_INLINE_ __declspec(noinline)
+#else
+#define _NO_INLINE_
+#endif
+#endif
+
+// In some cases [[nodiscard]] will get false positives,
+// we can prevent the warning in specific cases by preceding the call with a cast.
+#ifndef _ALLOW_DISCARD_
+#define _ALLOW_DISCARD_ (void)
+#endif
+
+#if ORBLIT_HAS_CPP_ATTRIBUTE(clang::lifetimebound)
+#define _LIFETIME_BOUND_ [[clang::lifetimebound]]
+#elif ORBLIT_HAS_CPP_ATTRIBUTE(gnu::lifetimebound)
+#define _LIFETIME_BOUND_ [[gnu::lifetimebound]]
+#elif ORBLIT_HAS_CPP_ATTRIBUTE(msvc::lifetimebound)
+#define _LIFETIME_BOUND_ [[msvc::lifetimebound]]
+#elif ORBLIT_HAS_CPP_ATTRIBUTE(lifetimebound)
+#define _LIFETIME_BOUND_ [[lifetimebound]]
+#else
+#define _LIFETIME_BOUND_
+#endif
+
+// Make room for our constexpr's below by overriding potential system-specific macros.
+#undef SIGN
+#undef MIN
+#undef MAX
+#undef CLAMP
+
+template <typename T>
+constexpr const T SIGN(const T p_value) {
+	return p_value > 0 ? +1.0f : (p_value < 0 ? -1.0f : 0.0f);
+}
+
+template <typename T, typename T2>
+constexpr auto MIN(const T p_left, const T2 p_right) {
+	return p_left < p_right ? p_left : p_right;
+}
+
+template <typename T, typename T2>
+constexpr auto MAX(const T p_left, const T2 p_right) {
+	return p_left > p_right ? p_left : p_right;
+}
+
+template <typename T, typename T2, typename T3>
+constexpr auto CLAMP(const T p_value, const T2 p_min, const T3 p_max) {
+	return p_value < p_min ? p_min : (p_value > p_max ? p_max : p_value);
+}
+
+// Like std::size, but without requiring any additional includes.
+template <typename T, size_t SIZE>
+constexpr size_t std_size(const T (&)[SIZE]) {
+	return SIZE;
+}
+
+// Generic swap template.
+#ifndef SWAP
+#define SWAP(m_x, m_y) std::swap((m_x), (m_y))
+#endif // SWAP
+
+// Swap 16, 32 and 64 bits value for endianness.
+#if defined(__GNUC__)
+#define BSWAP16(x) __builtin_bswap16(x)
+#define BSWAP32(x) __builtin_bswap32(x)
+#define BSWAP64(x) __builtin_bswap64(x)
+#elif defined(_MSC_VER)
+#define BSWAP16(x) _byteswap_ushort(x)
+#define BSWAP32(x) _byteswap_ulong(x)
+#define BSWAP64(x) _byteswap_uint64(x)
+#else
+static inline uint16_t BSWAP16(uint16_t x) {
+	return (x >> 8) | (x << 8);
+}
+
+static inline uint32_t BSWAP32(uint32_t x) {
+	return ((x << 24) | ((x << 8) & 0x00FF0000) | ((x >> 8) & 0x0000FF00) | (x >> 24));
+}
+
+static inline uint64_t BSWAP64(uint64_t x) {
+	x = (x & 0x00000000FFFFFFFF) << 32 | (x & 0xFFFFFFFF00000000) >> 32;
+	x = (x & 0x0000FFFF0000FFFF) << 16 | (x & 0xFFFF0000FFFF0000) >> 16;
+	x = (x & 0x00FF00FF00FF00FF) << 8 | (x & 0xFF00FF00FF00FF00) >> 8;
+	return x;
+}
+#endif
+
+// Generic comparator used in Map, List, etc.
+template <typename T>
+struct Comparator {
+	_ALWAYS_INLINE_ bool operator()(const T &p_a, const T &p_b) const { return (p_a < p_b); }
+};
+
+// Global lock macro, relies on the static Mutex::_global_mutex.
+void _global_lock();
+void _global_unlock();
+
+struct _GlobalLock {
+	_GlobalLock() { _global_lock(); }
+	~_GlobalLock() { _global_unlock(); }
+};
+
+#define GLOBAL_LOCK_FUNCTION _GlobalLock _global_lock_;
+
+#if defined(__GNUC__)
+#define likely(x) __builtin_expect(!!(x), 1)
+#define unlikely(x) __builtin_expect(!!(x), 0)
+#else
+#define likely(x) x
+#define unlikely(x) x
+#endif
+
+#if defined(__GNUC__)
+#define _PRINTF_FORMAT_ATTRIBUTE_2_0 __attribute__((format(printf, 2, 0)))
+#define _PRINTF_FORMAT_ATTRIBUTE_2_3 __attribute__((format(printf, 2, 3)))
+#else
+#define _PRINTF_FORMAT_ATTRIBUTE_2_0
+#define _PRINTF_FORMAT_ATTRIBUTE_2_3
+#endif
+
+// This is needed due to a strange OpenGL API that expects a pointer
+// type for an argument that is actually an offset.
+#define CAST_INT_TO_UCHAR_PTR(ptr) ((uint8_t *)(uintptr_t)(ptr))
+
+// Home-made index sequence trick, so it can be used everywhere without the costly include of std::tuple.
+// https://stackoverflow.com/questions/15014096/c-index-of-type-during-variadic-template-expansion
+template <size_t... Is>
+struct IndexSequence {};
+
+template <size_t N, size_t... Is>
+struct BuildIndexSequence : BuildIndexSequence<N - 1, N - 1, Is...> {};
+
+template <size_t... Is>
+struct BuildIndexSequence<0, Is...> : IndexSequence<Is...> {};
+
+// Limit the depth of recursive algorithms when dealing with Array/Dictionary
+#define MAX_RECURSION 100
+
+// Macro ORBLIT_IS_DEFINED() allows to check if a macro is defined. It needs to be defined to anything (say 1) to work.
+#define __ORBLIT_ARG_PLACEHOLDER_1 false,
+#define __orblit_take_second_arg(__ignored, val, ...) val
+#define ____orblit_is_defined(arg1_or_junk) __orblit_take_second_arg(arg1_or_junk true, false)
+#define ___orblit_is_defined(val) ____orblit_is_defined(__ORBLIT_ARG_PLACEHOLDER_##val)
+#define ORBLIT_IS_DEFINED(x) ___orblit_is_defined(x)
+
+// Whether the default value of a type is just all-0 bytes.
+// This can most commonly be exploited by using memset for these types instead of loop-construct.
+// Trivially constructible types are also zero-constructible.
+template <typename T>
+struct is_zero_constructible : std::is_trivially_constructible<T> {};
+
+template <typename T>
+struct is_zero_constructible<const T> : is_zero_constructible<T> {};
+
+template <typename T>
+struct is_zero_constructible<volatile T> : is_zero_constructible<T> {};
+
+template <typename T>
+struct is_zero_constructible<const volatile T> : is_zero_constructible<T> {};
+
+template <typename T>
+inline constexpr bool is_zero_constructible_v = is_zero_constructible<T>::value;
+
+#if ORBLIT_HAS_CPP_ATTRIBUTE(gnu::warn_unused)
+// https://gcc.gnu.org/onlinedocs/gcc/C_002b_002b-Attributes.html#index-warn_005funused
+#define _WARN_UNUSED_ [[gnu::warn_unused]]
+#else
+#define _WARN_UNUSED_
+#endif
+
+// Warning suppression helper macros.
+#if defined(__clang__)
+#define ORBLIT_CLANG_PRAGMA(m_content) _Pragma(#m_content)
+#define ORBLIT_CLANG_WARNING_PUSH ORBLIT_CLANG_PRAGMA(clang diagnostic push)
+#define ORBLIT_CLANG_WARNING_IGNORE(m_warning) ORBLIT_CLANG_PRAGMA(clang diagnostic ignored m_warning)
+#define ORBLIT_CLANG_WARNING_POP ORBLIT_CLANG_PRAGMA(clang diagnostic pop)
+#define ORBLIT_CLANG_WARNING_PUSH_AND_IGNORE(m_warning) ORBLIT_CLANG_WARNING_PUSH ORBLIT_CLANG_WARNING_IGNORE(m_warning)
+#else
+#define ORBLIT_CLANG_PRAGMA(m_content)
+#define ORBLIT_CLANG_WARNING_PUSH
+#define ORBLIT_CLANG_WARNING_IGNORE(m_warning)
+#define ORBLIT_CLANG_WARNING_POP
+#define ORBLIT_CLANG_WARNING_PUSH_AND_IGNORE(m_warning)
+#endif
+
+#if defined(__GNUC__) && !defined(__clang__)
+#define ORBLIT_GCC_PRAGMA(m_content) _Pragma(#m_content)
+#define ORBLIT_GCC_WARNING_PUSH ORBLIT_GCC_PRAGMA(GCC diagnostic push)
+#define ORBLIT_GCC_WARNING_IGNORE(m_warning) ORBLIT_GCC_PRAGMA(GCC diagnostic ignored m_warning)
+#define ORBLIT_GCC_WARNING_POP ORBLIT_GCC_PRAGMA(GCC diagnostic pop)
+#define ORBLIT_GCC_WARNING_PUSH_AND_IGNORE(m_warning) ORBLIT_GCC_WARNING_PUSH ORBLIT_GCC_WARNING_IGNORE(m_warning)
+#else
+#define ORBLIT_GCC_PRAGMA(m_content)
+#define ORBLIT_GCC_WARNING_PUSH
+#define ORBLIT_GCC_WARNING_IGNORE(m_warning)
+#define ORBLIT_GCC_WARNING_POP
+#define ORBLIT_GCC_WARNING_PUSH_AND_IGNORE(m_warning)
+#endif
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#define ORBLIT_MSVC_PRAGMA(m_command) __pragma(m_command)
+#define ORBLIT_MSVC_WARNING_PUSH ORBLIT_MSVC_PRAGMA(warning(push))
+#define ORBLIT_MSVC_WARNING_IGNORE(m_warning) ORBLIT_MSVC_PRAGMA(warning(disable : m_warning))
+#define ORBLIT_MSVC_WARNING_POP ORBLIT_MSVC_PRAGMA(warning(pop))
+#define ORBLIT_MSVC_WARNING_PUSH_AND_IGNORE(m_warning) ORBLIT_MSVC_WARNING_PUSH ORBLIT_MSVC_WARNING_IGNORE(m_warning)
+#else
+#define ORBLIT_MSVC_PRAGMA(m_command)
+#define ORBLIT_MSVC_WARNING_PUSH
+#define ORBLIT_MSVC_WARNING_IGNORE(m_warning)
+#define ORBLIT_MSVC_WARNING_POP
+#define ORBLIT_MSVC_WARNING_PUSH_AND_IGNORE(m_warning)
+#endif
+
+template <typename T, typename = void>
+struct is_fully_defined : std::false_type {};
+
+template <typename T>
+struct is_fully_defined<T, std::void_t<decltype(sizeof(T))>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_fully_defined_v = is_fully_defined<T>::value;
+
+#ifndef SCU_BUILD_ENABLED
+/// Enforces the requirement that a class is not fully defined.
+/// This can be used to reduce include coupling and keep compile times low.
+/// The check must be made at the top of the corresponding .cpp file of a header.
+#define STATIC_ASSERT_INCOMPLETE_TYPE(m_keyword, m_type) \
+	m_keyword m_type; \
+	static_assert(!is_fully_defined_v<m_type>, #m_type " was unexpectedly fully defined. Please check the include hierarchy of '" __FILE__ "' and remove includes that resolve the " #m_keyword ".");
+#else
+#define STATIC_ASSERT_INCOMPLETE_TYPE(m_keyword, m_type)
+#endif
+
+#define _ORBLIT_VARNAME_CONCAT_B_(m_ignore, m_name) m_name
+#define _ORBLIT_VARNAME_CONCAT_A_(m_a, m_b, m_c) _ORBLIT_VARNAME_CONCAT_B_(hello there, m_a##m_b##m_c)
+#define _ORBLIT_VARNAME_CONCAT_(m_a, m_b, m_c) _ORBLIT_VARNAME_CONCAT_A_(m_a, m_b, m_c)
+#define ORBLIT_UNIQUE_NAME(m_name) _ORBLIT_VARNAME_CONCAT_(m_name, _, __COUNTER__)

@@ -1,0 +1,92 @@
+/**************************************************************************/
+/*  egl_manager.h                                                         */
+
+#pragma once
+
+#ifdef EGL_ENABLED
+
+#include "core/containers/local_vector.h"
+#include "systems/display/display_system_enums.h"
+
+#include <platform_egl.h>
+
+class EGLManager {
+private:
+	// An EGL-side representation of a display with its own rendering
+	// context.
+	struct GLDisplay {
+		void *display = nullptr;
+
+		EGLDisplay egl_display = EGL_NO_DISPLAY;
+		EGLContext egl_context = EGL_NO_CONTEXT;
+		EGLConfig egl_config = nullptr;
+
+#ifdef WINDOWS_ENABLED
+		bool has_EGL_ANGLE_surface_orientation = false;
+#endif
+	};
+
+	// EGL specific window data.
+	struct GLWindow {
+		bool initialized = false;
+#ifdef WINDOWS_ENABLED
+		bool flipped_y = false;
+#endif
+
+		// An handle to the GLDisplay associated with this window.
+		int gldisplay_id = -1;
+
+		EGLSurface egl_surface = EGL_NO_SURFACE;
+	};
+
+	LocalVector<GLDisplay> displays;
+	LocalVector<GLWindow> windows;
+
+	GLWindow *current_window = nullptr;
+
+	// On EGL the default swap interval is 1 and thus vsync is on by default.
+	bool use_vsync = true;
+
+	virtual const char *_get_platform_extension_name() const = 0;
+	virtual EGLenum _get_platform_extension_enum() const = 0;
+	virtual EGLenum _get_platform_api_enum() const = 0;
+	virtual Vector<EGLAttrib> _get_platform_display_attributes() const = 0;
+	virtual Vector<EGLint> _get_platform_context_attribs() const = 0;
+
+#ifdef EGL_ANDROID_blob_cache
+	static String shader_cache_dir;
+
+	static void _set_cache(const void *p_key, EGLsizeiANDROID p_key_size, const void *p_value, EGLsizeiANDROID p_value_size);
+	static EGLsizeiANDROID _get_cache(const void *p_key, EGLsizeiANDROID p_key_size, void *p_value, EGLsizeiANDROID p_value_size);
+#endif
+
+	int _get_gldisplay_id(void *p_display);
+	Error _gldisplay_create_context(GLDisplay &p_gldisplay);
+
+public:
+	int display_get_native_visual_id(void *p_display);
+
+	Error open_display(void *p_display);
+	Error window_create(DisplaySystemEnums::WindowID p_window_id, void *p_display, void *p_native_window, int p_width, int p_height);
+
+	void window_destroy(DisplaySystemEnums::WindowID p_window_id);
+
+	void release_current();
+	void swap_buffers();
+
+	void window_make_current(DisplaySystemEnums::WindowID p_window_id);
+
+	void set_use_vsync(bool p_use);
+	bool is_using_vsync() const;
+
+	EGLContext get_context(DisplaySystemEnums::WindowID p_window_id);
+	EGLDisplay get_display(DisplaySystemEnums::WindowID p_window_id);
+	EGLConfig get_config(DisplaySystemEnums::WindowID p_window_id);
+
+	Error initialize(void *p_native_display = nullptr);
+
+	EGLManager();
+	virtual ~EGLManager();
+};
+
+#endif // EGL_ENABLED
