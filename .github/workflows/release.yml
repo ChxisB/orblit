@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 env:
-  # production=yes builds a static, optimised binary with no debug symbols. Release builds
+  # production=yes builds a static, optimized binary with no debug symbols. Release builds
   # run no unit tests, so the tests option stays off.
   SCONS_FLAGS: >-
     production=yes
