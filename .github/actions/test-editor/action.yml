@@ -1,0 +1,43 @@
+name: Test editor on project
+description: Open the editor on tests/project with each renderer, then run the project.
+
+inputs:
+  bin:
+    description: Path to the editor binary.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    # The editor is large, so these runs catch crashes and sanitizer reports on start up.
+    - name: Import with the headless driver
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+      run: |
+        xvfb-run "$BIN" --headless --import --path tests/project 2>&1 | tee sanitizers_log.txt || true
+        dist/scripts/check_ci_log.py sanitizers_log.txt
+
+    - name: Import with Vulkan
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+      run: |
+        xvfb-run "$BIN" --audio-driver Dummy --import --path tests/project 2>&1 | tee sanitizers_log.txt || true
+        dist/scripts/check_ci_log.py sanitizers_log.txt
+
+    - name: Import with GLES3
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+      run: |
+        DRI_PRIME=0 xvfb-run "$BIN" --audio-driver Dummy --rendering-driver opengl3 --import --path tests/project 2>&1 | tee sanitizers_log.txt || true
+        dist/scripts/check_ci_log.py sanitizers_log.txt
+
+    - name: Run the project for 40 frames
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+      run: |
+        xvfb-run "$BIN" --quit-after 40 --audio-driver Dummy --path tests/project 2>&1 | tee sanitizers_log.txt || true
+        dist/scripts/check_ci_log.py sanitizers_log.txt

@@ -1,0 +1,76 @@
+name: Web
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SCONS_FLAGS: >-
+    dev_mode=yes
+    debug_symbols=no
+    use_closure_compiler=yes
+  EMSCRIPTEN_VERSION: 6.0.12
+
+jobs:
+  template:
+    runs-on: ubuntu-26.04
+    name: ${{ matrix.name }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Release template with threads
+            id: web-template
+            scons-flags: threads=yes
+
+          - name: Release template without threads
+            id: web-template-nothreads
+            scons-flags: threads=no
+
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install Emscripten
+        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: ${{ env.EMSCRIPTEN_VERSION }}
+          no-cache: true
+
+      - name: Show the Emscripten version
+        run: emcc -v
+
+      - name: Restore SCons cache
+        uses: ./.github/actions/scons-cache-restore
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: web
+          target: template_release
+          scons-flags: ${{ env.SCONS_FLAGS }} ${{ matrix.scons-flags }}
+
+      - name: Save SCons cache
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/scons-cache-save
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Upload binaries
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}

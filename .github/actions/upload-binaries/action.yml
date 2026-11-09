@@ -1,22 +1,21 @@
-name: Upload Orblit artifact
-description: Upload the Orblit artifact.
+name: Upload binaries
+description: Upload build output as a workflow artifact.
 
 inputs:
   name:
-    description: The artifact name.
+    description: Artifact name.
     default: ${{ github.job }}
   path:
-    description: The path to upload.
-    required: true
+    description: Files to upload.
     default: bin/*
 
 runs:
   using: composite
   steps:
-    - name: Upload Orblit Artifact
+    - name: Upload artifact
       uses: actions/upload-artifact@v7
       with:
         name: ${{ inputs.name }}
         path: ${{ inputs.path }}
-        # Default is 90 days.
+        # Shorter than the 90 day default, to save storage.
         retention-days: 60

@@ -1,0 +1,70 @@
+name: Test project export
+description: Export tests/project, run the exports, and compare the output with a run from the folder.
+
+inputs:
+  bin:
+    description: Path to the editor binary.
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Export packs
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS: "1"
+      run: |
+        echo "Export a Linux opack"
+        "$BIN" --headless --path tests/project --export-pack "Linux" /tmp/test_project.opack 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+        echo "Export a Linux zip"
+        "$BIN" --headless --path tests/project --export-pack "Linux" /tmp/test_project.zip 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+        echo "Export a Linux Server opack"
+        "$BIN" --headless --path tests/project --export-pack "Linux Server" /tmp/test_project_server.opack 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+    - name: Run the project from its folder
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS: "1"
+      run: |
+        xvfb-run "$BIN" --path tests/project --resolution 64x64 --write-movie /tmp/test_project_folder.png --quit 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+        "$BIN" --headless --path tests/project --quit 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+    - name: Run the exported packs
+      shell: bash
+      env:
+        BIN: ${{ inputs.bin }}
+        ORBLIT_CHECK_CI_LOG_ALL_ERRORS: "1"
+      run: |
+        xvfb-run "$BIN" --main-pack /tmp/test_project.opack --resolution 64x64 --write-movie /tmp/test_project_pck.png --quit 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+        xvfb-run "$BIN" --main-pack /tmp/test_project.zip --resolution 64x64 --write-movie /tmp/test_project_zip.png --quit 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+        # A server pack runs headless without a flag.
+        "$BIN" --main-pack /tmp/test_project_server.opack --quit 2>&1 | tee log.txt || true
+        dist/scripts/check_ci_log.py log.txt
+
+    # Each file list must collapse to one distinct hash. Hashing a list and then checking it
+    # against itself passes for any input.
+    - name: Compare video and audio output
+      shell: bash
+      run: |
+        for kind in png wav; do
+          echo "Compare $kind output of the folder run and the exported runs"
+          if [ "$(md5sum /tmp/test_project*."$kind" | cut -c1-32 | sort -u | wc -l)" -ne 1 ]; then
+            echo "::error::The $kind output differs between the folder run and an exported run."
+            md5sum /tmp/test_project*."$kind"
+            exit 1
+          fi
+        done

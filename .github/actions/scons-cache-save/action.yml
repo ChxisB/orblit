@@ -1,0 +1,36 @@
+name: Save SCons cache
+description: Remove stale objects, then save the SCons cache under this branch.
+
+inputs:
+  cache-name:
+    description: Key prefix. Use the same value as the restore step.
+    default: ${{ github.job }}
+  scons-cache:
+    description: Folder that holds the SCons cache.
+    default: ${{ github.workspace }}/.scons_cache/
+
+runs:
+  using: composite
+  steps:
+    - name: Remove objects this build did not use
+      shell: bash
+      env:
+        SCONS_CACHE: ${{ inputs.scons-cache }}
+      run: python dist/scripts/purge_cache.py "$CACHE_TIMESTAMP" "$SCONS_CACHE"
+
+    - name: Save branch cache
+      uses: actions/cache/save@v6
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: ${{ inputs.cache-name }}|${{ github.ref_name }}|${{ github.sha }}
+
+    # A lookup keeps the default branch cache recent. It runs after the save, so a burst of
+    # large pushes is less likely to evict the cache that every branch starts from.
+    - name: Keep default branch cache recent
+      if: github.ref_name != github.event.repository.default_branch
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: ${{ inputs.cache-name }}|${{ github.event.repository.default_branch }}|${{ github.sha }}
+        restore-keys: ${{ inputs.cache-name }}|${{ github.event.repository.default_branch }}
+        lookup-only: true

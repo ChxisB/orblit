@@ -1,0 +1,44 @@
+name: Build with SCons
+description: Run one SCons build for a platform and target.
+
+inputs:
+  platform:
+    description: SCons platform name, for example linuxbsd or windows.
+    required: true
+  target:
+    description: One of editor, template_debug or template_release.
+    default: editor
+  scons-flags:
+    description: Extra SCons arguments.
+    default: ""
+  scons-cache:
+    description: Folder that holds the SCons cache.
+    default: ${{ github.workspace }}/.scons_cache/
+
+runs:
+  using: composite
+  steps:
+    - name: Run SCons
+      shell: bash
+      env:
+        PLATFORM: ${{ inputs.platform }}
+        TARGET: ${{ inputs.target }}
+        SCONS_FLAGS: ${{ inputs.scons-flags }}
+        SCONS_CACHE: ${{ inputs.scons-cache }}
+        PR_NUMBER: ${{ github.event.number }}
+      run: |
+        # Export templates must not contain editor code.
+        if [ "$TARGET" != "editor" ]; then
+          rm -rf engine/editor
+        fi
+
+        # The build name shows in the editor, so a pull request build names its number.
+        if [ -n "$PR_NUMBER" ]; then
+          export BUILD_NAME="gh-$PR_NUMBER"
+        else
+          export BUILD_NAME="gh"
+        fi
+
+        # shellcheck disable=SC2086 # SCONS_FLAGS holds several arguments.
+        scons platform="$PLATFORM" target="$TARGET" $SCONS_FLAGS "cache_path=$SCONS_CACHE" redirect_build_objects=no
+        ls -l bin/

@@ -1,0 +1,112 @@
+name: macOS
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SCONS_FLAGS: >-
+    dev_mode=yes
+    module_text_system_fallback_enabled=yes
+
+jobs:
+  build:
+    runs-on: macos-26
+    name: ${{ matrix.name }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Editor
+            id: macos-editor
+            target: editor
+            bin: ./bin/orblit.macos.editor.universal
+
+          - name: Release template
+            id: macos-template
+            target: template_release
+            scons-flags: debug_symbols=no
+            bin: ./bin/orblit.macos.template_release.universal
+
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Restore SCons cache
+        uses: ./.github/actions/scons-cache-restore
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Fetch ANGLE
+        id: angle
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: ANGLE
+          command: python ./dist/scripts/install_angle.py
+
+      - name: Fetch AccessKit
+        id: accesskit
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: AccessKit
+          command: python ./dist/scripts/install_accesskit.py
+
+      - name: Install the Vulkan SDK
+        id: vulkan
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: Vulkan SDK
+          command: sh ./dist/scripts/install_vulkan_sdk_macos.sh
+
+      - name: Build for x86_64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: ${{ matrix.target }}
+          # metal=no stops the warning that x86_64 builds do not support Metal.
+          scons-flags: ${{ env.SCONS_FLAGS }} ${{ matrix.scons-flags }} arch=x86_64 vulkan=${{ steps.vulkan.outputs.enabled }} accesskit=${{ steps.accesskit.outputs.enabled }} angle=${{ steps.angle.outputs.enabled }} metal=no
+
+      - name: Build for arm64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} ${{ matrix.scons-flags }} arch=arm64 vulkan=${{ steps.vulkan.outputs.enabled }} accesskit=${{ steps.accesskit.outputs.enabled }} angle=${{ steps.angle.outputs.enabled }}
+
+      - name: Save SCons cache
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/scons-cache-save
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Merge architectures and strip
+        run: |
+          out=./bin/orblit.macos.${{ matrix.target }}
+          lipo -create "$out.x86_64" "$out.arm64" -output "$out.universal"
+          rm "$out.x86_64" "$out.arm64"
+          rm -rf ./bin/build_deps
+          strip bin/orblit.*
+          chmod +x bin/orblit.*
+
+      - name: Upload binaries
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}
+
+      - name: Run unit tests
+        run: |
+          ${{ matrix.bin }} --version
+          ${{ matrix.bin }} --help
+          ${{ matrix.bin }} --test --force-colors

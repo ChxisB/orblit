@@ -1,0 +1,35 @@
+name: Set up SCons
+description: Install Python and a pinned SCons from pip.
+
+inputs:
+  python-version:
+    description: Python version or version range.
+    default: 3.x
+  python-arch:
+    description: Python architecture, x64 or x86.
+    default: x64
+  scons-version:
+    description: SCons version to install.
+    default: 4.11.1
+
+runs:
+  using: composite
+  steps:
+    - name: Install Python
+      uses: actions/setup-python@v7
+      with:
+        python-version: ${{ inputs.python-version }}
+        architecture: ${{ inputs.python-arch }}
+
+    - name: Install SCons
+      shell: bash
+      env:
+        SCONS_VERSION: ${{ inputs.scons-version }}
+      run: |
+        python --version
+        python -m pip install "scons==$SCONS_VERSION" zstandard
+        scons --version
+
+    - name: Show compiler errors inline
+      shell: bash
+      run: echo "::add-matcher::dist/utility/problem-matchers.json"

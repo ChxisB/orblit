@@ -1,0 +1,92 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A new push cancels the older run of a pull request. A run on main always finishes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    name: Commit messages
+    # Dependabot bodies have lines over the length limit.
+    if: github.event_name == 'pull_request' && github.actor != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out the pull request commits
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+
+      - name: Run commitlint
+        env:
+          BASE_BRANCH: ${{ github.base_ref }}
+        run: npx --yes @commitlint/cli@21 --from "origin/$BASE_BRANCH" --to HEAD
+
+  checks:
+    name: Checks
+    # Set the repository variable DISABLE_ORBLIT_CI to pause CI. A re-run or a manual start still goes ahead.
+    if: ${{ !vars.DISABLE_ORBLIT_CI || github.run_attempt > 1 || github.event_name == 'workflow_dispatch' }}
+    uses: ./.github/workflows/checks.yml
+
+  # The builds wait for the checks, so a style error does not cost a full build.
+
+  linux:
+    name: Linux
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/linux.yml
+    with:
+      cpp-files: ${{ needs.checks.outputs.cpp-files }}
+
+  macos:
+    name: macOS
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/macos.yml
+
+  windows:
+    name: Windows
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/windows.yml
+
+  android:
+    name: Android
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/android.yml
+
+  ios:
+    name: iOS
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/ios.yml
+
+  visionos:
+    name: visionOS
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/visionos.yml
+
+  web:
+    name: Web
+    needs: checks
+    if: needs.checks.outputs.build-needed == 'true' || github.event_name != 'pull_request'
+    uses: ./.github/workflows/web.yml

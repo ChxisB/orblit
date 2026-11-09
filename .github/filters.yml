@@ -1,7 +1,8 @@
-# Determines if build actions should occur after static checks are ran. Broadly speaking, these
-#  files changing would result in SCons rebuilding the engine, or are otherwise pertinent to the
-#  buildsystem itself.
-sources:
+# Input for the changed-files step in checks.yml.
+
+# A pull request that touches none of these paths skips the platform builds.
+# They cover anything that makes SCons rebuild, and the build setup itself.
+build:
   - .github/{actions/*,workflows}/*.yml
   - "**/{SConstruct,SCsub,*.py}"
   - "**/*.{h,hpp,hh,hxx,c,cpp,cc,cxx,m,mm,inc,glsl}"
@@ -13,9 +14,9 @@ sources:
   - engine/platform/web/{package{,-lock}.json,js/**/*.js}
   - tests/**
 
-# Determines which files are appropriate for running clangd-tidy checks on. This is a subset out
-#  of necessity, as we're only evaluating a Linux runner.
-clangd:
+# C++ files that clangd-tidy can check. Only the Linux build runs the check, so code that
+# Linux cannot compile is left out. The platform api and export folders are the exception.
+cpp:
   - "**/*.{h,hpp,hxx,hh,c,cpp,cxx,cc}"
   - "!**/thirdparty/**"
   - "!**/*-so_wrap.{h,c}"

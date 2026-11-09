@@ -1,0 +1,43 @@
+name: Restore SCons cache
+description: Restore the SCons object cache from the default branch, then from this branch.
+
+inputs:
+  cache-name:
+    description: Key prefix. Use one name for each build leg.
+    default: ${{ github.job }}
+  scons-cache:
+    description: Folder that holds the SCons cache.
+    default: ${{ github.workspace }}/.scons_cache/
+
+runs:
+  using: composite
+  steps:
+    - name: Restore default branch cache
+      id: default-cache
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: ${{ inputs.cache-name }}|${{ github.event.repository.default_branch }}|${{ github.sha }}
+        restore-keys: ${{ inputs.cache-name }}|${{ github.event.repository.default_branch }}
+
+    # The save step deletes these files from the branch cache. The default branch already holds them.
+    - name: List files from the default branch cache
+      if: steps.default-cache.outputs.cache-matched-key && github.ref_name != github.event.repository.default_branch
+      shell: bash
+      env:
+        SCONS_CACHE: ${{ inputs.scons-cache }}
+      run: find "$SCONS_CACHE" >> redundant.txt
+
+    # Restored second, so objects from this branch win over older ones from the default branch.
+    - name: Restore branch cache
+      if: github.ref_name != github.event.repository.default_branch
+      uses: actions/cache/restore@v6
+      with:
+        path: ${{ inputs.scons-cache }}
+        key: ${{ inputs.cache-name }}|${{ github.ref_name }}|${{ github.sha }}
+        restore-keys: ${{ inputs.cache-name }}|${{ github.ref_name }}
+
+    # The save step removes every file older than this time, which are the ones the build did not use.
+    - name: Record restore time
+      shell: bash
+      run: echo "CACHE_TIMESTAMP=$(date +%s)" >> "$GITHUB_ENV"
