@@ -4,9 +4,9 @@
 #include "add_metadata_dialog.h"
 
 #include "core/object/callable_mp.h"
+#include "editor/themes/editor_scale.h"
 #include "editor/widgets/editor_validation_panel.h"
 #include "editor/widgets/editor_variant_type_selectors.h"
-#include "editor/themes/editor_scale.h"
 #include "scene/ui/line_edit.h"
 
 AddMetadataDialog::AddMetadataDialog() {

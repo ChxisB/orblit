@@ -7,10 +7,10 @@
 
 #include "core/config/project_settings.h"
 #include "scene/planar/entity_planar.h"
-#include "scene/stage/entity.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/planar/navigation_mesh_source_geometry_data_planar.h"
 #include "scene/resources/planar/navigation_polygon.h"
+#include "scene/stage/entity.h"
+#include "scene/stage/stage.h"
 
 #include <thirdparty/clipper2/include/clipper2/clipper.h>
 #include <thirdparty/misc/polypartition.h>

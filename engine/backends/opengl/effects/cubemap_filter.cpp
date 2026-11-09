@@ -5,8 +5,8 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/config/project_settings.h"
 #include "backends/opengl/storage/texture_storage.h"
+#include "core/config/project_settings.h"
 
 using namespace GLES3;
 

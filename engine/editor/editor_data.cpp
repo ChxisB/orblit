@@ -4,9 +4,9 @@
 #include "editor_data.h"
 
 #include "core/config/project_settings.h"
-#include "core/native_extension/native_extension_manager.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
+#include "core/native_extension/native_extension_manager.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/os/time.h"
@@ -15,9 +15,9 @@
 #include "editor/inspector/editor_context_menu_plugin.h"
 #include "editor/inspector/multi_entity_edit.h"
 #include "editor/plugins/editor_plugin.h"
-#include "scene/stage/stage.h"
 #include "scene/property_utils.h"
 #include "scene/resources/prefab.h"
+#include "scene/stage/stage.h"
 
 void EditorSelectionHistory::cleanup_history() {
 	for (int i = 0; i < history.size(); i++) {

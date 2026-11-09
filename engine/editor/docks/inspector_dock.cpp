@@ -13,13 +13,13 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
-#include "editor/widgets/editor_object_selector.h"
-#include "editor/widgets/editor_toaster.h"
 #include "editor/script/script_editor_plugin.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "editor/widgets/editor_object_selector.h"
+#include "editor/widgets/editor_toaster.h"
 #include "scene/ui/box_container.h"
 
 void InspectorDock::_prepare_menu() {

@@ -3,8 +3,8 @@
 
 #include "collision_solver_spatial.h"
 
-#include "gjk_epa.h"
 #include "collision_solver_spatial_sat.h"
+#include "gjk_epa.h"
 #include "soft_body_spatial.h"
 
 #define collision_solver sat_calculate_penetration

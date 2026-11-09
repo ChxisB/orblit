@@ -5,7 +5,6 @@
 
 #include "core/math/convex_hull.h"
 #include "core/object/class_registry.h"
-#include "scene/spatial/physics/area_spatial.h"
 #include "scene/resources/spatial/box_shape_spatial.h"
 #include "scene/resources/spatial/capsule_shape_spatial.h"
 #include "scene/resources/spatial/concave_polygon_shape_spatial.h"
@@ -13,6 +12,7 @@
 #include "scene/resources/spatial/cylinder_shape_spatial.h"
 #include "scene/resources/spatial/importer_mesh.h"
 #include "scene/resources/spatial/sphere_shape_spatial.h"
+#include "scene/spatial/physics/area_spatial.h"
 
 void GLTFPhysicsShape::register_members() {
 	ClassRegistry::bind_static_method("GLTFPhysicsShape", D_METHOD("from_node", "shape_node"), &GLTFPhysicsShape::from_node);

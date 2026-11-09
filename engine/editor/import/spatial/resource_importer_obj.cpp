@@ -6,11 +6,11 @@
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "scene/spatial/importer_mesh_instance_spatial.h"
-#include "scene/spatial/entity_spatial.h"
-#include "scene/resources/spatial/importer_mesh.h"
 #include "scene/resources/mesh.h"
+#include "scene/resources/spatial/importer_mesh.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/spatial/entity_spatial.h"
+#include "scene/spatial/importer_mesh_instance_spatial.h"
 
 static Error _parse_material_library(const String &p_path, HashMap<String, Ref<StandardMaterial3D>> &material_map, List<String> *r_missing_deps) {
 	Ref<FileAccess> f = FileAccess::open(p_path, FileAccess::READ);

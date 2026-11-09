@@ -11,11 +11,11 @@
 // to a simpler tree.
 // Note that MAX_CHILDREN should be fixed at 2 for now.
 
+#include "core/containers/local_vector.h"
+#include "core/containers/pooled_list.h"
 #include "core/math/aabb.h"
 #include "core/math/bvh_abb.h"
 #include "core/math/vector3.h"
-#include "core/containers/local_vector.h"
-#include "core/containers/pooled_list.h"
 
 #define BVHABB_CLASS BVH_ABB<BOUNDS, POINT>
 

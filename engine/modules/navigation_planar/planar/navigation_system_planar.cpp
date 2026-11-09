@@ -4,8 +4,8 @@
 #include "navigation_system_planar.h"
 
 #include "core/os/mutex.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/planar/navigation_mesh_source_geometry_data_planar.h"
+#include "scene/stage/entity.h"
 
 #include <cstdint>
 

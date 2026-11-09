@@ -3,13 +3,13 @@
 
 #include "variant_utility.h"
 
-#include "core/script_api.h"
-#include "core/io/marshalls.h"
-#include "core/object/ref_counted.h"
-#include "core/os/os.h"
 #include "core/containers/a_hash_map.h"
 #include "core/containers/rid.h"
 #include "core/containers/rid_owner.h"
+#include "core/io/marshalls.h"
+#include "core/object/ref_counted.h"
+#include "core/os/os.h"
+#include "core/script_api.h"
 #include "core/variant/binder_common.h"
 #include "core/variant/variant_parser.h"
 

@@ -6,10 +6,10 @@
 TEST_FORCE_LINK(test_command_queue)
 
 #include "core/config/project_settings.h"
+#include "core/containers/command_queue_mt.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/os.h"
 #include "core/os/thread.h"
-#include "core/containers/command_queue_mt.h"
 
 namespace TestCommandQueue {
 

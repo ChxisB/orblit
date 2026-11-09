@@ -3,14 +3,14 @@
 
 #pragma once
 
-#include "core/math/aabb.h"
-#include "core/math/projection.h"
-#include "core/math/vector3.h"
-#include "core/math/vector3i.h"
 #include "core/containers/a_hash_map.h"
 #include "core/containers/list.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/vector.h"
+#include "core/math/aabb.h"
+#include "core/math/projection.h"
+#include "core/math/vector3.h"
+#include "core/math/vector3i.h"
 
 #include <thirdparty/misc/r128.h>
 

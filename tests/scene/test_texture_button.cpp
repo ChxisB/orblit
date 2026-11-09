@@ -6,11 +6,11 @@
 TEST_FORCE_LINK(test_texture_button)
 
 #include "core/io/image.h"
-#include "scene/ui/texture_button.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
 #include "scene/resources/bit_map.h"
 #include "scene/resources/image_texture.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
+#include "scene/ui/texture_button.h"
 
 namespace TestTextureButton {
 

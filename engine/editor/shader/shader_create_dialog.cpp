@@ -11,13 +11,13 @@
 #include "core/object/class_registry.h"
 #include "editor/editor_node.h"
 #include "editor/file_system/editor_file_system.h"
-#include "editor/widgets/editor_file_dialog.h"
-#include "editor/widgets/editor_validation_panel.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/shader/editor_shader_language_plugin.h"
 #include "editor/themes/editor_scale.h"
-#include "scene/stage/stage.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "editor/widgets/editor_validation_panel.h"
 #include "scene/resources/shader_include.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/shader_types.h"
 
 void ShaderCreateDialog::_notification(int p_what) {

@@ -15,10 +15,6 @@
 #include "editor/docks/stage_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/create_dialog.h"
-#include "editor/widgets/editor_file_dialog.h"
-#include "editor/widgets/editor_spin_slider.h"
-#include "editor/widgets/editor_variant_type_selectors.h"
 #include "editor/inspector/editor_properties_array_dict.h"
 #include "editor/inspector/editor_properties_vector.h"
 #include "editor/inspector/editor_resource_picker.h"
@@ -28,18 +24,22 @@
 #include "editor/settings/editor_settings.h"
 #include "editor/settings/project_settings_editor.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/create_dialog.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "editor/widgets/editor_spin_slider.h"
+#include "editor/widgets/editor_variant_type_selectors.h"
 #include "scene/planar/gpu_particles_planar.h"
+#include "scene/resources/font.h"
+#include "scene/resources/mesh.h"
+#include "scene/resources/sky.h"
 #include "scene/spatial/fog_volume.h"
 #include "scene/spatial/gpu_particles_spatial.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
 #include "scene/ui/color_picker.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/text_edit.h"
 #include "scene/ui/texture_button.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
-#include "scene/resources/font.h"
-#include "scene/resources/mesh.h"
-#include "scene/resources/sky.h"
 #include "systems/audio/audio_system.h"
 #include "systems/display/display_system.h"
 
@@ -3911,8 +3911,7 @@ static EditorPropertyRangeHint _parse_range_hint(PropertyHint p_hint, const Stri
 	bool degrees = false;
 	for (int i = 0; i < slices.size(); i++) {
 		String slice = slices[i].strip_edges();
-		if (slice == "radians_as_degrees"
-		) {
+		if (slice == "radians_as_degrees") {
 			hint.radians_as_degrees = true;
 		} else if (slice == "degrees") {
 			degrees = true;

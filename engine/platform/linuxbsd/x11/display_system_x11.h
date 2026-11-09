@@ -5,12 +5,12 @@
 
 #ifdef X11_ENABLED
 
+#include "core/containers/local_vector.h"
 #include "core/input/input_enums.h"
 #include "core/os/mutex.h"
 #include "core/os/process_id.h"
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
-#include "core/containers/local_vector.h"
 #include "systems/display/display_system.h"
 
 #ifdef SOWRAP_ENABLED

@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "core/containers/vector.h"
 #include "core/math/aabb.h"
 #include "core/math/transform_spatial.h"
 #include "core/math/vector2.h"
 #include "core/math/vector3.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/vector.h"
 #include "scene/resources/material.h"
 
 struct CSGBrush {

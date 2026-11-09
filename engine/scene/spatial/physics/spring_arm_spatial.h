@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/entity_spatial.h"
 #include "scene/resources/spatial/shape_spatial.h"
+#include "scene/spatial/entity_spatial.h"
 
 class SpringArm3D : public Entity3D {
 	ORBLIT_CLASS(SpringArm3D, Entity3D);

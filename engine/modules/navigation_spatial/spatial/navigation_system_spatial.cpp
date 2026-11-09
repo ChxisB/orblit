@@ -6,8 +6,8 @@
 #include "nav_mesh_generator_spatial.h"
 
 #include "core/os/mutex.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
+#include "scene/stage/entity.h"
 
 using namespace NavigationDefaults3D;
 

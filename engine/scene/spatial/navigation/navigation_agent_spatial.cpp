@@ -6,9 +6,9 @@
 #include "core/math/geometry_spatial.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/resources/mesh.h"
 #include "scene/spatial/navigation/navigation_link_spatial.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/mesh.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
 #include "systems/rendering/rendering_system.h"
 

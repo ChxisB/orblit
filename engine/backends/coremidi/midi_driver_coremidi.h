@@ -5,9 +5,9 @@
 
 #ifdef COREMIDI_ENABLED
 
+#include "core/containers/vector.h"
 #include "core/os/midi_driver.h"
 #include "core/os/mutex.h"
-#include "core/containers/vector.h"
 
 #import <CoreMIDI/CoreMIDI.h>
 

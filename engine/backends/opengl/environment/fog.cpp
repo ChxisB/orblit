@@ -5,8 +5,8 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/math/aabb.h"
 #include "core/containers/rid.h"
+#include "core/math/aabb.h"
 
 using namespace GLES3;
 

@@ -517,7 +517,6 @@ class VisualShaderNodeTexture2DArray : public VisualShaderNodeSample3D {
 	Ref<TextureLayered> texture_array;
 
 protected:
-
 	static void register_members();
 
 public:
@@ -578,7 +577,6 @@ private:
 	TextureType texture_type = TYPE_DATA;
 
 protected:
-
 	static void register_members();
 
 public:

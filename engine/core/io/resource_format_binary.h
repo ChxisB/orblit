@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/rb_map.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
-#include "core/containers/rb_map.h"
 
 class ResourceLoaderBinary {
 	bool translation_remapped = false;

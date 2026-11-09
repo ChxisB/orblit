@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "core/containers/safe_refcount.h"
 #include "core/debugger/engine_profiler.h"
 #include "core/io/logger.h"
 #include "core/io/resource_loader.h"
@@ -11,7 +12,6 @@
 #include "core/object/script_backtrace.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
-#include "core/containers/safe_refcount.h"
 #include "core/variant/typed_array.h"
 
 class MainLoop;
@@ -139,7 +139,6 @@ protected:
 	static inline OS *singleton = nullptr;
 
 public:
-
 	PackedByteArray get_entropy(int p_bytes);
 	String get_system_ca_certificates();
 

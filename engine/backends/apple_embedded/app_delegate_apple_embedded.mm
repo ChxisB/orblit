@@ -3,8 +3,8 @@
 
 #import "app_delegate_apple_embedded.h"
 
-#include "core/typedefs.h"
 #import "backends/apple_embedded/app_delegate_service_apple_embedded.h"
+#include "core/typedefs.h"
 
 @implementation GDTAppDelegate
 

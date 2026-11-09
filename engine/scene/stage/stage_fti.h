@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/mutex.h"
 #include "core/containers/local_vector.h"
+#include "core/os/mutex.h"
 
 class Entity3D;
 class Entity;

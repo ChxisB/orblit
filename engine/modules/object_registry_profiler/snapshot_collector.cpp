@@ -3,10 +3,10 @@
 
 #include "snapshot_collector.h"
 
-#include "core/script_api.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/io/compression.h"
 #include "core/os/time.h"
+#include "core/script_api.h"
 #include "core/version.h"
 #include "scene/stage/entity.h"
 #include "scene/stage/stage.h"

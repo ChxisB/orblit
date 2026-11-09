@@ -5,6 +5,11 @@
 
 #ifdef APPLE_EMBEDDED_ENABLED
 
+#import "backends/apple/os_log_logger.h"
+#import "backends/apple_embedded/app_delegate_service_apple_embedded.h"
+#import "backends/apple_embedded/display_system_apple_embedded.h"
+#import "backends/apple_embedded/view_apple_embedded.h"
+#import "backends/apple_embedded/view_controller.h"
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
@@ -12,11 +17,6 @@
 #include "core/os/main_loop.h"
 #include "core/os/os.h"
 #include "core/profiling/profiling.h"
-#import "backends/apple/os_log_logger.h"
-#import "backends/apple_embedded/display_system_apple_embedded.h"
-#import "backends/apple_embedded/app_delegate_service_apple_embedded.h"
-#import "backends/apple_embedded/view_apple_embedded.h"
-#import "backends/apple_embedded/view_controller.h"
 #ifdef SDL_ENABLED
 #include "backends/sdl/joypad_sdl.h"
 #endif

@@ -4,9 +4,9 @@
 #include "post_import_plugin_skeleton_track_organizer.h"
 
 #include "core/io/resource_importer.h"
-#include "scene/spatial/skeleton_spatial.h"
 #include "scene/animation/animation_player.h"
 #include "scene/resources/bone_map.h"
+#include "scene/spatial/skeleton_spatial.h"
 
 void PostImportPluginSkeletonTrackOrganizer::get_internal_import_options(InternalImportCategory p_category, List<ResourceImporter::ImportOption> *r_options) {
 	if (p_category == INTERNAL_IMPORT_CATEGORY_SKELETON_3D_NODE) {

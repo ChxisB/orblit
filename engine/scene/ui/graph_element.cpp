@@ -5,8 +5,8 @@
 
 #include "core/config/engine.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/graph_edit.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/graph_edit.h"
 
 #ifdef TOOLS_ENABLED
 void GraphElement::_edit_set_position(const Point2 &p_position) {

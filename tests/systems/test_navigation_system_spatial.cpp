@@ -10,12 +10,12 @@ TEST_FORCE_LINK(test_navigation_system_spatial)
 #ifdef MODULE_NAVIGATION_SPATIAL_ENABLED
 
 #include "core/object/callable_mp.h"
+#include "scene/resources/navigation_mesh.h"
+#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
-#include "scene/resources/spatial/primitive_meshes.h"
-#include "scene/resources/navigation_mesh.h"
 #include "systems/navigation_spatial/navigation_path_query_parameters_spatial.h"
 #include "systems/navigation_spatial/navigation_path_query_result_spatial.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"

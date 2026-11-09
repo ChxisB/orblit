@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "scene/resources/spatial/skin.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/spatial/visual_instance_spatial.h"
-#include "scene/resources/spatial/skin.h"
 
 class ImporterMesh;
 

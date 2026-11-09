@@ -7,10 +7,10 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/style_box_flat.h"
 #include "scene/ui/label.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/menu_button.h"
-#include "scene/resources/style_box_flat.h"
 
 SpanningHeader::SpanningHeader(const String &p_text) {
 	Ref<StyleBoxFlat> title_sbf;

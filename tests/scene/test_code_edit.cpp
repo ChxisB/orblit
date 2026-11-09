@@ -8,8 +8,8 @@ TEST_FORCE_LINK(test_code_edit)
 #ifndef ADVANCED_GUI_DISABLED
 
 #include "core/input/input_map.h"
-#include "scene/ui/code_edit.h"
 #include "scene/stage/stage.h"
+#include "scene/ui/code_edit.h"
 #include "tests/display_system_mock.h"
 #include "tests/signal_watcher.h"
 

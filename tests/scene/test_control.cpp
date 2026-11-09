@@ -7,9 +7,9 @@ TEST_FORCE_LINK(test_control)
 
 #include "core/input/input_map.h" // IWYU pragma: keep // Used by `SEND_GUI_ACTION` macro.
 #include "scene/planar/entity_planar.h"
-#include "scene/ui/control.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/control.h"
 #include "tests/display_system_mock.h"
 #include "tests/signal_watcher.h"
 

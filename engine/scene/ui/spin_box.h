@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "scene/stage/timer.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/range.h"
-#include "scene/stage/timer.h"
 
 class SpinBoxLineEdit : public LineEdit {
 	ORBLIT_CLASS(SpinBoxLineEdit, LineEdit);

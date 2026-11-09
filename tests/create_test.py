@@ -68,9 +68,7 @@ TEST_CASE("[{name_pascal_case}] Example test case") {{
     # Print an absolute path so it can be Ctrl + clicked in some IDEs and terminal emulators.
     print("Test file created:")
     print(os.path.abspath(file_path))
-    print(
-        "Don't forget to add special tags to the test case if needed."
-    )
+    print("Don't forget to add special tags to the test case if needed.")
 
 
 if __name__ == "__main__":

@@ -7,8 +7,8 @@
 #include "js.h"
 #include "webmidi_driver.h"
 
-#include "core/input/input_event.h"
 #include "backends/unix/os_unix.h"
+#include "core/input/input_event.h"
 
 #include <emscripten/html5.h>
 

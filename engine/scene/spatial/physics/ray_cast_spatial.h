@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/entity_spatial.h"
 #include "scene/resources/material.h"
+#include "scene/spatial/entity_spatial.h"
 
 class ArrayMesh;
 class CollisionObject3D;

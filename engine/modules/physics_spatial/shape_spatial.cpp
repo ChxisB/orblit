@@ -3,10 +3,10 @@
 
 #include "shape_spatial.h"
 
+#include "core/containers/sort_array.h"
 #include "core/io/image.h"
 #include "core/math/convex_hull.h"
 #include "core/math/geometry_spatial.h"
-#include "core/containers/sort_array.h"
 
 // OrblitHeightMapShape3D is based on Bullet btHeightfieldTerrainShape.
 

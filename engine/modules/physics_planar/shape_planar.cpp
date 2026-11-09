@@ -3,8 +3,8 @@
 
 #include "shape_planar.h"
 
-#include "core/math/geometry_planar.h"
 #include "core/containers/sort_array.h"
+#include "core/math/geometry_planar.h"
 #include "core/variant/variant.h"
 
 void OrblitShape2D::configure(const Rect2 &p_aabb) {

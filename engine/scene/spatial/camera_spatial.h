@@ -4,11 +4,11 @@
 #pragma once
 
 #include "core/containers/interpolated_property.h"
-#include "scene/spatial/entity_spatial.h"
-#include "scene/spatial/velocity_tracker_spatial.h"
 #include "scene/resources/camera_attributes.h"
 #include "scene/resources/compositor.h"
 #include "scene/resources/environment.h"
+#include "scene/spatial/entity_spatial.h"
+#include "scene/spatial/velocity_tracker_spatial.h"
 
 class Camera3D : public Entity3D {
 	ORBLIT_CLASS(Camera3D, Entity3D);

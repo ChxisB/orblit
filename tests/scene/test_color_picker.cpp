@@ -7,8 +7,8 @@ TEST_FORCE_LINK(test_color_picker)
 
 #ifndef ADVANCED_GUI_DISABLED
 
-#include "scene/ui/color_picker.h"
 #include "scene/stage/stage.h"
+#include "scene/ui/color_picker.h"
 #include "tests/display_system_mock.h"
 
 namespace TestColorPicker {

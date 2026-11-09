@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/debugger/engine_debugger.h"
 #include "core/containers/list.h"
+#include "core/debugger/engine_debugger.h"
 
 class LocalDebugger : public EngineDebugger {
 private:

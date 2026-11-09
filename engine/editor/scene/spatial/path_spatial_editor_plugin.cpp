@@ -15,10 +15,10 @@
 #include "editor/scene/spatial/entity_spatial_editor_viewport.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/debugger/view_spatial_controller.h"
+#include "scene/resources/curve.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/menu_button.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/curve.h"
 
 #ifndef PHYSICS_SPATIAL_DISABLED
 #include "systems/physics_spatial/direct_states/physics_direct_space_state_spatial.h"

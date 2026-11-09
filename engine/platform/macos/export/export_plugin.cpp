@@ -6,6 +6,7 @@
 #include "logo_svg.gen.h"
 #include "run_icon_svg.gen.h"
 
+#include "backends/png/png_driver_common.h"
 #include "core/config/project_settings.h"
 #include "core/io/marshalls.h"
 #include "core/io/plist.h"
@@ -13,7 +14,6 @@
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
 #include "core/string/translation_system.h"
-#include "backends/png/png_driver_common.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/export/codesign.h"

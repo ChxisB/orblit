@@ -5,10 +5,10 @@
 
 TEST_FORCE_LINK(test_nine_patch_rect)
 
-#include "scene/ui/nine_patch_rect.h"
+#include "scene/resources/texture.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/texture.h"
+#include "scene/ui/nine_patch_rect.h"
 #include "tests/signal_watcher.h"
 
 namespace TestNinePatchRect {

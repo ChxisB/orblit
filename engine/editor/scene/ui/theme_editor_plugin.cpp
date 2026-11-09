@@ -14,15 +14,16 @@
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
+#include "editor/inspector/editor_resource_picker.h"
+#include "editor/settings/editor_command_palette.h"
+#include "editor/settings/editor_settings.h"
+#include "editor/themes/editor_scale.h"
 #include "editor/widgets/editor_bottom_panel.h"
 #include "editor/widgets/editor_file_dialog.h"
 #include "editor/widgets/editor_spin_slider.h"
 #include "editor/widgets/filter_line_edit.h"
 #include "editor/widgets/progress_dialog.h"
-#include "editor/inspector/editor_resource_picker.h"
-#include "editor/settings/editor_command_palette.h"
-#include "editor/settings/editor_settings.h"
-#include "editor/themes/editor_scale.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/check_button.h"
 #include "scene/ui/color_picker.h"
 #include "scene/ui/item_list.h"
@@ -34,7 +35,6 @@
 #include "scene/ui/tab_bar.h"
 #include "scene/ui/tab_container.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/theme/theme_db.h"
 
 static void _rename_theme_type(EditorUndoRedoManager *p_ur, Theme *p_theme, const String &p_old_theme_type, const String &p_new_theme_type) {
 	p_ur->add_do_method(p_theme, "rename_type", p_old_theme_type, p_new_theme_type);

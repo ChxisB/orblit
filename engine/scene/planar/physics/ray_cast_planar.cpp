@@ -7,8 +7,8 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "scene/planar/physics/collision_object_planar.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/stage.h"
 #include "systems/physics_planar/direct_states/physics_direct_space_state_planar.h"
 #include "systems/physics_planar/physics_system_planar.h"
 

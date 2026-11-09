@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/native_extension/native_extension_loader.h"
 #include "core/io/config_file.h"
+#include "core/native_extension/native_extension_loader.h"
 #include "core/os/shared_object.h"
 
 #include <functional>

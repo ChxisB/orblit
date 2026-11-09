@@ -5,8 +5,8 @@
 
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
-#include "scene/stage/viewport.h"
 #include "scene/resources/environment.h"
+#include "scene/stage/viewport.h"
 #include "systems/rendering/rendering_system.h"
 
 ///////////////////////////

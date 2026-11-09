@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/fixed_vector.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/pair.h"
+#include "core/io/resource.h"
 
 #define ANIM_MIN_LENGTH 0.001
 

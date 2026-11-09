@@ -5,10 +5,10 @@
 
 TEST_FORCE_LINK(test_flow_container)
 
-#include "scene/ui/control.h"
-#include "scene/ui/flow_container.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/control.h"
+#include "scene/ui/flow_container.h"
 #include "tests/scene/mock_control.h"
 
 namespace TestFlowContainer {

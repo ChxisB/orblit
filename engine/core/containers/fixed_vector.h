@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/memory.h"
 #include "core/containers/span.h"
+#include "core/os/memory.h"
 
 ORBLIT_GCC_WARNING_PUSH_AND_IGNORE("-Warray-bounds")
 

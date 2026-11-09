@@ -10,11 +10,11 @@
 #include "editor/run/editor_run_bar.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/image_texture.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/color_rect.h"
 #include "scene/ui/flow_container.h"
 #include "scene/ui/label.h"
-#include "scene/resources/image_texture.h"
 
 void EditorProfiler::_make_metric_ptrs(Metric &m) {
 	for (int i = 0; i < m.categories.size(); i++) {

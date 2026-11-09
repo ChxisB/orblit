@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/font.h"
 #include "scene/resources/material.h"
+#include "scene/spatial/visual_instance_spatial.h"
 #include "systems/text/text_system.h"
 
 class Label3D : public GeometryInstance3D {

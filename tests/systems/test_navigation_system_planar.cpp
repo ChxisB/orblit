@@ -11,10 +11,10 @@ TEST_FORCE_LINK(test_navigation_system_planar)
 
 #include "core/object/callable_mp.h"
 #include "scene/planar/polygon_planar.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
 #include "scene/resources/planar/navigation_mesh_source_geometry_data_planar.h"
 #include "scene/resources/planar/navigation_polygon.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
 #include "systems/navigation_planar/navigation_path_query_parameters_planar.h"
 #include "systems/navigation_planar/navigation_path_query_result_planar.h"
 #include "systems/navigation_planar/navigation_system_planar.h"

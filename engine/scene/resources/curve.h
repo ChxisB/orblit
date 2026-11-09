@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/rb_map.h"
+#include "core/io/resource.h"
 #include "scene/property_list_helper.h"
 
 // y(x) curve

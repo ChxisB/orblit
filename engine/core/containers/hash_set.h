@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hashfuncs.h"
 #include "core/os/memory.h"
 #include "core/string/print_string.h" // IWYU pragma: keep. `WARN_VERBOSE` macro.
-#include "core/containers/hashfuncs.h"
 
 /**
  * Set container using robin hood hashing.

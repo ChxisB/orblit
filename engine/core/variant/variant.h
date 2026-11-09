@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include "core/containers/bit_field.h"
+#include "core/containers/hashfuncs.h"
+#include "core/containers/list.h"
+#include "core/containers/rid.h"
 #include "core/core_string_names.h" // IWYU pragma: export. Make available everywhere.
 #include "core/error/error_macros.h"
 #include "core/io/ip_address.h"
@@ -26,10 +30,6 @@
 #include "core/object/object_id.h"
 #include "core/string/entity_path.h"
 #include "core/string/ustring.h"
-#include "core/containers/bit_field.h"
-#include "core/containers/hashfuncs.h"
-#include "core/containers/list.h"
-#include "core/containers/rid.h"
 #include "core/typedefs.h"
 #include "core/variant/array.h"
 #include "core/variant/callable.h"

@@ -3,8 +3,8 @@
 
 #include "surface_tool.h"
 
-#include "core/object/class_registry.h"
 #include "core/containers/a_hash_map.h"
+#include "core/object/class_registry.h"
 
 #define EQ_VERTEX_DIST 0.00001
 

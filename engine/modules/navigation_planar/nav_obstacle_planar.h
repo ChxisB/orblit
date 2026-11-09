@@ -5,9 +5,9 @@
 
 #include "nav_rid_planar.h"
 
-#include "core/math/vector2.h"
 #include "core/containers/self_list.h"
 #include "core/containers/vector.h"
+#include "core/math/vector2.h"
 
 class NavAgent2D;
 class NavMap2D;

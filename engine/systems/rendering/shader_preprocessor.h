@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include "core/string/ustring.h"
 #include "core/containers/list.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/rb_set.h"
+#include "core/string/ustring.h"
 #include "scene/resources/shader_include.h"
 
 #ifdef TOOLS_ENABLED

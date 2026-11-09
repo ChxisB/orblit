@@ -7,6 +7,7 @@
 
 #include "visionos_simd_helpers.h"
 
+#include "backends/metal/metal3_objects.h"
 #include "core/config/project_settings.h"
 #include "core/error/error_macros.h"
 #include "core/input/input.h"
@@ -17,7 +18,6 @@
 #include "core/os/os.h"
 #include "core/os/thread.h"
 #include "core/string/print_string.h"
-#include "backends/metal/metal3_objects.h"
 #include "systems/rendering/rendering_device.h"
 #include "systems/rendering/rendering_system.h" // ERR_NOT_ON_RENDER_THREAD_V
 #include "systems/rendering/rendering_system_globals.h"

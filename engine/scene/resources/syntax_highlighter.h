@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/rb_map.h"
 #include "core/io/resource.h"
 #include "core/object/orblit_virtual.gen.h"
-#include "core/containers/rb_map.h"
 
 class TextEdit;
 

@@ -25,7 +25,6 @@ protected:
 	virtual bool can_switch_dock() const override;
 
 public:
-
 	void select_next();
 	void select_prev();
 

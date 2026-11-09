@@ -10,14 +10,14 @@
 #include "editor/editor_interface.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
-#include "editor/widgets/filter_line_edit.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "editor/widgets/filter_line_edit.h"
+#include "scene/stage/resource_preloader.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/tree.h"
-#include "scene/stage/resource_preloader.h"
 
 void ResourcePreloaderEditor::_notification(int p_what) {
 	switch (p_what) {

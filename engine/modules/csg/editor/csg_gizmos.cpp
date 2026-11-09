@@ -7,15 +7,15 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
+#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/physics/collision_shape_spatial.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/menu_button.h"
-#include "scene/stage/stage.h"
 
 void CSGShapeEditor::_node_removed(Entity *p_node) {
 	if (p_node == node) {

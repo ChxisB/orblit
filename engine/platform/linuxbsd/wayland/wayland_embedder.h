@@ -16,11 +16,11 @@
 #include "protocol/cursor_shape.gen.h"
 #include "protocol/fifo_v1.gen.h"
 #include "protocol/fractional_scale.gen.h"
-#include "protocol/orblit_embedding_compositor.gen.h"
 #include "protocol/idle_inhibit.gen.h"
 #include "protocol/linux_dmabuf_v1.gen.h"
 #include "protocol/linux_drm_syncobj_v1.gen.h"
 #include "protocol/linux_explicit_synchronization_unstable_v1.gen.h"
+#include "protocol/orblit_embedding_compositor.gen.h"
 #include "protocol/pointer_constraints.gen.h"
 #include "protocol/pointer_gestures.gen.h"
 #include "protocol/pointer_warp.gen.h"
@@ -40,10 +40,10 @@
 #include "protocol/xdg_system_bell.gen.h"
 #include "protocol/xdg_toplevel_icon.gen.h"
 
-#include "core/io/dir_access.h"
-#include "core/os/thread.h"
 #include "core/containers/a_hash_map.h"
 #include "core/containers/pooled_list.h"
+#include "core/io/dir_access.h"
+#include "core/os/thread.h"
 
 #include <poll.h>
 #include <sys/socket.h>

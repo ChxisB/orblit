@@ -16,18 +16,18 @@ public sealed class GizmoModesTests
     // Hit zones, in control pixels. The pivot is at (100, 50). The X handle runs right to (160, 50) and the Y handle
     // up to (100, 10). The Z axis points at the camera and shows as a dot. The rings are circles of radius 28, 24 and
     // 20 for X, Y and Z, and the outer ring is a circle of radius 60.
-    static readonly Vector2 Centre = new(100, 50);
+    static readonly Vector2 Center = new(100, 50);
 
-    static readonly GizmoHandles Handles = new(Centre, new Vector2(160, 50), new Vector2(100, 10), Centre);
+    static readonly GizmoHandles Handles = new(Center, new Vector2(160, 50), new Vector2(100, 10), Center);
 
-    static readonly GizmoRings Rings = new(Centre, Circle(Centre, 28), Circle(Centre, 24), Circle(Centre, 20)) { Outer = Circle(Centre, 60) };
+    static readonly GizmoRings Rings = new(Center, Circle(Center, 28), Circle(Center, 24), Circle(Center, 20)) { Outer = Circle(Center, 60) };
 
-    static readonly GizmoRings RingsWithoutOuter = new(Centre, Circle(Centre, 28), Circle(Centre, 24), Circle(Centre, 20));
+    static readonly GizmoRings RingsWithoutOuter = new(Center, Circle(Center, 28), Circle(Center, 24), Circle(Center, 20));
 
-    static Vector2[] Circle(Vector2 centre, float radius) =>
+    static Vector2[] Circle(Vector2 center, float radius) =>
     [
         .. Enumerable.Range(0, GizmoMath.RingPoints).Select(i =>
-            centre + radius * new Vector2(MathF.Cos(MathF.Tau * i / GizmoMath.RingPoints), MathF.Sin(MathF.Tau * i / GizmoMath.RingPoints))),
+            center + radius * new Vector2(MathF.Cos(MathF.Tau * i / GizmoMath.RingPoints), MathF.Sin(MathF.Tau * i / GizmoMath.RingPoints))),
     ];
 
     static GizmoHit? Hit(GizmoMode mode, Vector2 at, bool trackball = false, GizmoRings? rings = null) =>
@@ -95,7 +95,7 @@ public sealed class GizmoModesTests
     public void Where_parts_overlap_a_tip_wins_over_a_shaft_and_a_shaft_over_a_ring()
     {
         // The X ring passes through the X tip and the Z ring through the shaft of X.
-        var rings = new GizmoRings(Centre, Circle(Centre, 60), Circle(Centre, 24), Circle(Centre, 30));
+        var rings = new GizmoRings(Center, Circle(Center, 60), Circle(Center, 24), Circle(Center, 30));
 
         Assert.Equal(new GizmoHit(GizmoPart.Stretch, GizmoAxis.X), Hit(GizmoMode.Transform, new Vector2(160, 50), rings: rings));
         Assert.Equal(new GizmoHit(GizmoPart.Move, GizmoAxis.X), Hit(GizmoMode.Transform, new Vector2(130, 50), rings: rings));
@@ -105,7 +105,7 @@ public sealed class GizmoModesTests
     [Fact]
     public void Where_the_outer_ring_meets_an_axis_ring_the_axis_ring_wins()
     {
-        var rings = new GizmoRings(Centre, Circle(Centre, 28), Circle(Centre, 24), Circle(Centre, 20)) { Outer = Circle(Centre, 28) };
+        var rings = new GizmoRings(Center, Circle(Center, 28), Circle(Center, 24), Circle(Center, 20)) { Outer = Circle(Center, 28) };
 
         Assert.Equal(new GizmoHit(GizmoPart.Turn, GizmoAxis.X), Hit(GizmoMode.Rotate, new Vector2(128, 50), rings: rings));
     }
@@ -113,7 +113,7 @@ public sealed class GizmoModesTests
     [Fact]
     public void A_press_near_the_pivot_takes_no_ring_even_when_the_outer_ring_is_small()
     {
-        var rings = new GizmoRings(Centre, Circle(Centre, 3), Circle(Centre, 3), Circle(Centre, 3)) { Outer = Circle(Centre, 12) };
+        var rings = new GizmoRings(Center, Circle(Center, 3), Circle(Center, 3), Circle(Center, 3)) { Outer = Circle(Center, 12) };
 
         Assert.Null(Hit(GizmoMode.Rotate, new Vector2(105, 50), rings: rings));
         Assert.Equal(new GizmoHit(GizmoPart.Spin, GizmoAxis.X), Hit(GizmoMode.Rotate, new Vector2(112, 50), rings: rings));

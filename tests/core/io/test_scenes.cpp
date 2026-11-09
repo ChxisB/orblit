@@ -15,8 +15,8 @@ TEST_FORCE_LINK(test_scenes)
 #include "core/os/memory.h"
 #include "core/string/string_name.h"
 #include "core/variant/variant.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/prefab.h"
+#include "scene/stage/entity.h"
 #include "tests/test_utils.h"
 
 namespace TestScenes {

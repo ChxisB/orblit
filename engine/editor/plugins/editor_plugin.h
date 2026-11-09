@@ -6,8 +6,8 @@
 #include "core/io/config_file.h"
 #include "editor/inspector/editor_context_menu_plugin.h"
 #include "scene/spatial/camera_spatial.h"
-#include "scene/ui/control.h"
 #include "scene/stage/entity.h"
+#include "scene/ui/control.h"
 
 class Entity3D;
 class Button;

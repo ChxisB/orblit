@@ -43,7 +43,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("a click on an outline row selects the entity", SelectsOnAClick);
         await Step("View, then Focus Selection, puts the pivot in the middle of the frame", FocusesFromTheMenu);
         await Step("a drag along the Move arrow moves the entity along that axis only", MovesAlongAnArrow);
-        await Step("a drag on the Scale centre handle scales all three axes together", ScalesFromTheCentre);
+        await Step("a drag on the Scale center handle scales all three axes together", ScalesFromTheCentre);
         await Step("the E key lights Rotate, and a drag on a ring turns the entity about that axis only", TurnsOnARing);
         await Step("Local and Snap by click, then a drag moves the entity by whole steps", SnapsInLocalSpace);
         await Step("Command and S write the live transform to the scene file", SaveWritesTheTransform);
@@ -98,9 +98,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         await ChooseMode(window.Toolbar.ScaleButton, GizmoMode.Scale);
         var before = engine.ScaleOf(_box);
-        var centre = Local(Handles().Origin);
-        Expect(HitAt(centre)?.Part == GizmoPart.StretchAll, $"a press on the pivot takes {HitAt(centre)}");
-        await DragFrom(centre, new Vector2(60, 0));
+        var center = Local(Handles().Origin);
+        Expect(HitAt(center)?.Part == GizmoPart.StretchAll, $"a press on the pivot takes {HitAt(center)}");
+        await DragFrom(center, new Vector2(60, 0));
         var factor = engine.ScaleOf(_box) / before;
         Expect(MathF.Abs(factor.X - 1) > 0.05f, $"the scale did not change, factor {factor}");
         Expect(MathF.Abs(factor.X - factor.Y) < Close && MathF.Abs(factor.X - factor.Z) < Close, $"the axes scaled apart, factor {factor}");

@@ -17,17 +17,17 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/file_system/editor_paths.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/project_manager/project_manager.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/settings/project_settings_editor.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "scene/resources/image_texture.h"
+#include "scene/resources/style_box_flat.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/color_rect.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/separator.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/image_texture.h"
-#include "scene/resources/style_box_flat.h"
 
 static inline void setup_http_request(HTTPRequest *request) {
 	request->set_use_threads(EDITOR_GET("asset_store/use_threads"));

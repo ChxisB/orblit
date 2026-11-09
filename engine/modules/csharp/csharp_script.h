@@ -6,10 +6,10 @@
 #include "dotnet_gc_handle.h"
 #include "host/dotnet_host.h"
 
-#include "core/doc_data.h"
-#include "core/object/script_language.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/self_list.h"
+#include "core/doc_data.h"
+#include "core/object/script_language.h"
 
 #ifdef TOOLS_ENABLED
 #include "core/object/editor_language.h"

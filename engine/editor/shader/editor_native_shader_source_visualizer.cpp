@@ -7,9 +7,9 @@
 #include "editor/editor_string_names.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/syntax_highlighter.h"
 #include "scene/ui/code_edit.h"
 #include "scene/ui/tab_container.h"
-#include "scene/resources/syntax_highlighter.h"
 #include "systems/rendering/rendering_system.h"
 #include "systems/rendering/shader_language.h"
 

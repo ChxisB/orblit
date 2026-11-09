@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/math/color.h"
-#include "core/string/string_name.h"
 #include "core/containers/hash_map.h"
 #include "core/containers/hash_set.h"
+#include "core/math/color.h"
+#include "core/string/string_name.h"
 
 // The default icon theme is designed to be used for a dark theme. This map stores
 // Color values to convert to other colors for better readability on a light theme.

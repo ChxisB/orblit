@@ -6,9 +6,9 @@
 #include "core/config/project_settings.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/label.h"
 #include "scene/stage/timer.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/label.h"
 #include "systems/display/accessibility_system.h"
 
 void BaseButton::_unpress_group() {

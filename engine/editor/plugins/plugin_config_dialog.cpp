@@ -10,10 +10,10 @@
 #include "core/object/script_language.h"
 #include "editor/editor_node.h"
 #include "editor/file_system/editor_file_system.h"
-#include "editor/widgets/editor_validation_panel.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/settings/project_settings_editor.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_validation_panel.h"
 #include "scene/ui/grid_container.h"
 
 void PluginConfigDialog::_clear_fields() {

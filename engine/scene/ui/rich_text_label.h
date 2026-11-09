@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/object/worker_thread_pool.h"
 #include "core/containers/rid_owner.h"
-#include "scene/ui/control.h"
+#include "core/object/worker_thread_pool.h"
 #include "scene/resources/text_paragraph.h"
+#include "scene/ui/control.h"
 
 #ifdef TOOLS_ENABLED
 #include "editor/themes/editor_scale.h"

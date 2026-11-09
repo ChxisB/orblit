@@ -8,9 +8,9 @@
 #include "editor/doc/editor_help.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/filter_line_edit.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/filter_line_edit.h"
 #include "scene/ui/margin_container.h"
 #include "scene/ui/tree.h"
 

@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/self_list.h"
 #include "core/io/resource_uid.h" // IWYU pragma: export. Make available to all resources.
 #include "core/object/orblit_virtual.gen.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/self_list.h"
 
 class Entity;
 class RWLock;

@@ -15,20 +15,20 @@
 #include "editor/docks/stage_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
-#include "editor/widgets/editor_validation_panel.h"
-#include "editor/scene/spatial/entity_spatial_editor_plugin.h" // For onion skinning.
 #include "editor/scene/canvas_item_editor_plugin.h" // For onion skinning.
+#include "editor/scene/spatial/entity_spatial_editor_plugin.h" // For onion skinning.
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
 #include "editor/themes/editor_theme_manager.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "editor/widgets/editor_validation_panel.h"
 #include "scene/animation/animation_tree.h"
-#include "scene/ui/separator.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/image_texture.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
+#include "scene/ui/separator.h"
 #include "systems/display/display_system.h"
 #include "systems/rendering/rendering_system.h"
 

@@ -5,12 +5,12 @@
 
 #include "core/object/callable_mp.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/editor_spin_slider.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_theme_manager.h"
+#include "editor/widgets/editor_spin_slider.h"
+#include "scene/resources/particle_process_material.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
-#include "scene/resources/particle_process_material.h"
 
 void ParticleProcessMaterialMinMaxPropertyEditor::_update_sizing() {
 	edit_size = range_edit_widget->get_size();

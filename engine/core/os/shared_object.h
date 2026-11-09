@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/string/ustring.h"
 #include "core/containers/vector.h"
+#include "core/string/ustring.h"
 
 struct SharedObject {
 	String path;

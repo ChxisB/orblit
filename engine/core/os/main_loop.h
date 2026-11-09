@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/object/orblit_virtual.gen.h"
 #include "core/object/object.h"
+#include "core/object/orblit_virtual.gen.h"
 
 class MainLoop : public Object {
 	ORBLIT_CLASS(MainLoop, Object);

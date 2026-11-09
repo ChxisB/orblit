@@ -8,9 +8,9 @@ TEST_FORCE_LINK(test_spin_box)
 #ifndef ADVANCED_GUI_DISABLED
 
 #include "core/math/math_defs.h"
-#include "scene/ui/spin_box.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/spin_box.h"
 
 namespace TestSpinBox {
 

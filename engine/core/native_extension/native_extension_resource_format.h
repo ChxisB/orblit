@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/native_extension/native_extension.h"
 #include "core/io/resource_loader.h"
+#include "core/native_extension/native_extension.h"
 
 class NativeExtensionResourceLoader : public ResourceFormatLoader {
 	ORBLIT_SOFTCLASS(NativeExtensionResourceLoader, ResourceFormatLoader);

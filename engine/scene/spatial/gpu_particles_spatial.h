@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/spatial/skin.h"
+#include "scene/spatial/visual_instance_spatial.h"
 
 class Mesh;
 

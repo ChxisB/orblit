@@ -7,6 +7,8 @@
 
 #include "x11/key_mapping_x11.h"
 
+#include "backends/png/png_driver_common.h"
+#include "backends/unix/os_unix.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
 #include "core/io/file_access.h"
@@ -16,8 +18,6 @@
 #include "core/os/os.h"
 #include "core/string/print_string.h"
 #include "core/string/ustring.h"
-#include "backends/png/png_driver_common.h"
-#include "backends/unix/os_unix.h"
 #include "startup/main.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/display/native_menu.h"

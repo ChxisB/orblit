@@ -5,10 +5,10 @@
 
 #include "core/config/project_settings.h"
 #include "core/os/thread.h"
+#include "scene/resources/navigation_mesh.h"
+#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
-#include "scene/resources/navigation_mesh.h"
 
 #include <Recast.h>
 

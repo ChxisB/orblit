@@ -7,11 +7,11 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "scene/resources/image_texture.h"
 #include "scene/ui/control.h"
 #include "scene/ui/split_container.h"
-#include "scene/resources/image_texture.h"
 
 void AtlasMergingDialog::_property_changed(const StringName &p_property, const Variant &p_value, const String &p_field, bool p_changing) {
 	_set(p_property, p_value);

@@ -9,6 +9,10 @@ env.add_source_files(env.systems_sources, "*.cpp")
 
 env.CommandNoCache(
     "ltc_lut.gen.h",
-    ["make_ltc_lut.py", "#engine/systems/rendering/storage/ltc/ltc_lut1.dds", "#engine/systems/rendering/storage/ltc/ltc_lut2.dds"],
+    [
+        "make_ltc_lut.py",
+        "#engine/systems/rendering/storage/ltc/ltc_lut1.dds",
+        "#engine/systems/rendering/storage/ltc/ltc_lut2.dds",
+    ],
     env.Run(make_ltc_lut.run),
 )

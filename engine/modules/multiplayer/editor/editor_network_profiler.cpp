@@ -9,11 +9,11 @@
 #include "editor/run/editor_run_bar.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/flow_container.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/split_container.h"
-#include "scene/stage/timer.h"
 
 void EditorNetworkProfiler::register_members() {
 	ADD_SIGNAL(MethodInfo("enable_profiling", PropertyInfo(Variant::BOOL, "enable")));

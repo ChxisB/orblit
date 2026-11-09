@@ -19,12 +19,12 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, Engine);
 #include "core/object/script_language.h"
 #include "core/string/print_string.h"
 #include "scene/animation/tween.h"
+#include "scene/resources/prefab.h"
 #include "scene/stage/instance_placeholder.h"
 #include "scene/stage/multiplayer_api.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/viewport.h"
 #include "scene/stage/window.h"
-#include "scene/resources/prefab.h"
 #include "systems/display/accessibility_system.h"
 
 #ifdef DEBUG_ENABLED

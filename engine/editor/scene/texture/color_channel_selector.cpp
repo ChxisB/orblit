@@ -5,10 +5,10 @@
 
 #include "core/object/callable_mp.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/style_box.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/panel_container.h"
-#include "scene/resources/style_box.h"
 
 ColorChannelSelector::ColorChannelSelector() {
 	toggle_button = memnew(Button);

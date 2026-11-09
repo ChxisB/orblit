@@ -5,12 +5,12 @@
 
 #include "../action_map/openxr_interaction_profile_metadata.h"
 
+#include "core/containers/hash_map.h"
+#include "core/containers/rid.h"
 #include "core/error/error_macros.h"
 #include "core/math/projection.h"
 #include "core/object/orblit_virtual.gen.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/hash_map.h"
-#include "core/containers/rid.h"
 #include "core/variant/native_ptr.h"
 #include "core/variant/typed_array.h"
 #include "core/variant/variant.h"

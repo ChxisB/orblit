@@ -16,16 +16,16 @@
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/skeleton_profile.h"
+#include "scene/resources/spatial/capsule_shape_spatial.h"
+#include "scene/resources/surface_tool.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/physics/collision_shape_spatial.h"
-#include "scene/spatial/physics/physical_bone_spatial.h"
 #include "scene/spatial/physics/physical_bone_simulator_spatial.h"
+#include "scene/spatial/physics/physical_bone_spatial.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/spatial/capsule_shape_spatial.h"
-#include "scene/resources/skeleton_profile.h"
-#include "scene/resources/surface_tool.h"
 
 void BonePropertiesEditor::create_editors() {
 	section = memnew(EditorInspectorSection);

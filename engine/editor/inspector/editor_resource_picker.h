@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/ui/box_container.h"
 #include "scene/resources/material.h"
+#include "scene/ui/box_container.h"
 
 class Button;
 class ConfirmationDialog;

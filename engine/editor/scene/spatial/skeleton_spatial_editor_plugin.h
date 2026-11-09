@@ -3,15 +3,15 @@
 
 #pragma once
 
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/inspector/add_metadata_dialog.h"
 #include "editor/inspector/editor_properties.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "scene/resources/immediate_mesh.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/skeleton_spatial.h"
-#include "scene/resources/immediate_mesh.h"
 
 class EditorInspectorPluginSkeleton;
 class EditorPropertyVector3;

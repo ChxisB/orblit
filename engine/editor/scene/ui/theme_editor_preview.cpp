@@ -9,6 +9,8 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/prefab.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/button.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/check_button.h"
@@ -27,8 +29,6 @@
 #include "scene/ui/tab_container.h"
 #include "scene/ui/text_edit.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/prefab.h"
-#include "scene/theme/theme_db.h"
 
 void ScalableContainer::_notification(int p_what) {
 	if (EDSCALE == 1 || p_what != NOTIFICATION_SORT_CHILDREN) {

@@ -6,8 +6,8 @@
 #include "core/input/shortcut.h"
 #include "core/object/class_registry.h"
 #include "editor/editor_string_names.h"
-#include "scene/ui/popup_menu.h"
 #include "scene/resources/texture.h"
+#include "scene/ui/popup_menu.h"
 
 void EditorContextMenuPlugin::get_options(const OptionsData &p_data) {
 	context_data = p_data;

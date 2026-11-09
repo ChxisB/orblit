@@ -8,8 +8,8 @@
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/planar/navigation/navigation_region_planar.h"
-#include "scene/ui/dialogs.h"
 #include "scene/stage/timer.h"
+#include "scene/ui/dialogs.h"
 
 Ref<NavigationPolygon> NavigationRegion2DEditor::_ensure_navpoly() const {
 	Ref<NavigationPolygon> navpoly = node->get_navigation_polygon();

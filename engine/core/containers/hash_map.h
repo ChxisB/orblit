@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include "core/os/memory.h"
-#include "core/string/print_string.h" // IWYU pragma: keep. `WARN_VERBOSE` macro.
 #include "core/containers/hashfuncs.h"
 #include "core/containers/pair.h"
 #include "core/containers/sort_list.h"
+#include "core/os/memory.h"
+#include "core/string/print_string.h" // IWYU pragma: keep. `WARN_VERBOSE` macro.
 
 #include <initializer_list>
 

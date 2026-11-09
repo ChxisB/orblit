@@ -3,11 +3,11 @@
 
 #include "rendering_shader_container_metal.h"
 
+#include "backends/metal/metal_utils.h"
+#include "core/containers/fixed_vector.h"
 #include "core/io/file_access.h"
 #include "core/io/marshalls.h"
 #include "core/os/os.h"
-#include "core/containers/fixed_vector.h"
-#include "backends/metal/metal_utils.h"
 
 #include <thirdparty/spirv-reflect/spirv_reflect.h>
 

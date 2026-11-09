@@ -18,7 +18,7 @@ internal sealed class AxisGizmo : Control
 {
     internal const double Size = 100;
 
-    // The distance from the middle to the centre of an end dot that faces straight across.
+    // The distance from the middle to the center of an end dot that faces straight across.
     internal const double Reach = 29;
 
     const double Radius = 8.5;
@@ -38,7 +38,7 @@ internal sealed class AxisGizmo : Control
 
     OrbitView _view = OrbitView.Start;
 
-    /// <summary>Where an end dot's centre lands in the control, and how far it is toward the viewer.</summary>
+    /// <summary>Where an end dot's center lands in the control, and how far it is toward the viewer.</summary>
     internal readonly record struct End(string Name, Point At, float Depth);
 
     public AxisGizmo()

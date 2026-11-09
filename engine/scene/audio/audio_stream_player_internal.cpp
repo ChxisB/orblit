@@ -5,9 +5,9 @@
 
 #include "core/config/engine.h"
 #include "core/object/callable_mp.h"
+#include "scene/resources/audio/audio_stream.h"
 #include "scene/stage/entity.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/audio/audio_stream.h"
 #include "systems/audio/audio_system.h"
 
 void AudioStreamPlayerInternal::_set_process(bool p_enabled) {

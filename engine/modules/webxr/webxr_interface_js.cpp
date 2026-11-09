@@ -7,12 +7,12 @@
 
 #include "webxr.h"
 
+#include "backends/opengl/storage/texture_storage.h"
 #include "core/input/input.h"
 #include "core/os/os.h"
-#include "backends/opengl/storage/texture_storage.h"
+#include "scene/scene_string_names.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/scene_string_names.h"
 #include "systems/display/display_system.h"
 #include "systems/xr/xr_hand_tracker.h"
 

@@ -16,6 +16,7 @@
 #include "editor/project_manager/project_tag.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/image_texture.h"
 #include "scene/ui/button.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/flow_container.h"
@@ -25,7 +26,6 @@
 #include "scene/ui/progress_bar.h"
 #include "scene/ui/texture_button.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/resources/image_texture.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/display/display_system.h"
 

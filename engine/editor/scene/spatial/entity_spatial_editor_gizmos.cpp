@@ -11,8 +11,8 @@
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "editor/scene/spatial/entity_spatial_editor_viewport.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/spatial/primitive_meshes.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 #define HANDLE_HALF_SIZE 9.5

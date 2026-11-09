@@ -5,11 +5,11 @@
 
 #include "editor/inspector/editor_inspector.h"
 #include "editor/plugins/editor_plugin.h"
+#include "scene/resources/camera_attributes.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/light_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/ui/subviewport_container.h"
-#include "scene/resources/camera_attributes.h"
 
 class SubViewport;
 class Button;

@@ -7,10 +7,10 @@
 #include "core/math/transform_interpolator.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/property_utils.h"
 #include "scene/spatial/visual_instance_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/viewport.h"
-#include "scene/property_utils.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/rendering/rendering_system.h"
 

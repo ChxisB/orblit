@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "scene/ui/control.h"
-#include "scene/ui/scroll_bar.h"
 #include "scene/property_list_helper.h"
 #include "scene/resources/text_paragraph.h"
+#include "scene/ui/control.h"
+#include "scene/ui/scroll_bar.h"
 
 class ItemList : public Control {
 	ORBLIT_CLASS(ItemList, Control);

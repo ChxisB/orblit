@@ -3,11 +3,11 @@
 
 #include "rendering_device_driver_vulkan.h"
 
+#include "backends/vulkan/vulkan_hooks.h"
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
-#include "core/os/os.h"
 #include "core/containers/fixed_vector.h"
-#include "backends/vulkan/vulkan_hooks.h"
+#include "core/os/os.h"
 
 #include <thirdparty/misc/smolv.h>
 

@@ -15,10 +15,10 @@ subject to the following restrictions:
 3. This notice may not be removed or altered from any source distribution.
 */
 
-#include "core/math/geometry_spatial.h"
-#include "core/math/vector3.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/vector.h"
+#include "core/math/geometry_spatial.h"
+#include "core/math/vector3.h"
 
 /// Convex hull implementation based on Preparata and Hong
 /// See https://code.google.com/archive/p/bullet/issues/275

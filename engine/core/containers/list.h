@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/sort_list.h"
 #include "core/error/error_macros.h"
 #include "core/os/memory.h"
-#include "core/containers/sort_list.h"
 
 #include <initializer_list>
 

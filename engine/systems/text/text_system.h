@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/rid.h"
 #include "core/io/image.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/rid.h"
 #include "core/variant/native_ptr.h"
 #include "core/variant/variant.h"
 
@@ -81,7 +81,7 @@ public:
 		BREAK_WORD_BOUND = 1 << 1,
 		BREAK_GRAPHEME_BOUND = 1 << 2,
 		BREAK_ADAPTIVE = 1 << 3,
-	// RESERVED = 1 << 4,
+		// RESERVED = 1 << 4,
 		BREAK_TRIM_INDENT = 1 << 5,
 		BREAK_TRIM_START_EDGE_SPACES = 1 << 6,
 		BREAK_TRIM_END_EDGE_SPACES = 1 << 7,

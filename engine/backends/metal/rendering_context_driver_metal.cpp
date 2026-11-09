@@ -3,11 +3,11 @@
 
 #include "rendering_context_driver_metal.h"
 
-#include "core/os/os.h"
-#include "core/containers/sort_array.h"
 #include "backends/metal/metal3_objects.h"
 #include "backends/metal/metal_objects_shared.h"
 #include "backends/metal/rendering_device_driver_metal3.h"
+#include "core/containers/sort_array.h"
+#include "core/os/os.h"
 
 #include "modules/modules_enabled.gen.h"
 

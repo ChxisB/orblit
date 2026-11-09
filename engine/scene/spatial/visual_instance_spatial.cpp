@@ -8,8 +8,8 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingSystem);
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/material.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 AABB VisualInstance3D::get_aabb() const {

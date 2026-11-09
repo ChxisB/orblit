@@ -81,13 +81,13 @@ public sealed class RotateGizmoTests
     public void A_ring_is_48_points_of_a_circle_across_its_axis(float x, float y, float z)
     {
         var axis = Vector3.Normalize(new Vector3(x, y, z));
-        var centre = new Vector3(1, 2, 3);
+        var center = new Vector3(1, 2, 3);
 
-        var ring = GizmoMath.Ring(centre, axis, 5);
+        var ring = GizmoMath.Ring(center, axis, 5);
 
         Assert.Equal(48, ring.Length);
-        Assert.All(ring, point => Assert.Equal(5f, Vector3.Distance(point, centre), 3));
-        Assert.All(ring, point => Assert.Equal(0f, Vector3.Dot(point - centre, axis), 3));
+        Assert.All(ring, point => Assert.Equal(5f, Vector3.Distance(point, center), 3));
+        Assert.All(ring, point => Assert.Equal(0f, Vector3.Dot(point - center, axis), 3));
         Assert.Equal(48, ring.Select(point => point.ToString()).Distinct().Count());
     }
 

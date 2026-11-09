@@ -5,8 +5,8 @@
 
 #if defined(MACOS_ENABLED) && defined(GLES3_ENABLED)
 
-#include "core/containers/vector.h"
 #include "backends/egl/egl_manager.h"
+#include "core/containers/vector.h"
 #include "systems/display/display_system_enums.h"
 
 // Suppress redefinition conflicts

@@ -13,7 +13,7 @@ Every figure is a median of several runs with the low and high beside it.
 | --- | --- |
 | Machine | Apple M4 Pro, 12 CPUs, 24 GB, macOS 27.0.1 |
 | Build | `scons platform=macos arch=arm64 target=editor tests=yes module_csharp_enabled=no vulkan=no` |
-| Optimisation | the default for an editor target, `optimize=speed_trace`, which is `-O2`, with no LTO |
+| Optimization | the default for an editor target, `optimize=speed_trace`, which is `-O2`, with no LTO |
 | Run mode | `--headless`, no GPU, so no frame time or render cost is measured |
 | Tree | `3aff913d` for the baseline, `f4246869` for the after column |
 
@@ -66,7 +66,7 @@ cause is unknown. It now counts non-zero exits.
   RSS is about 886 MB for an empty project. A dev-build sample puts the most
   time in `Stage::initialize`, which enters and readies the editor UI tree,
   and then in `Stage::finalize`. Task 17 removes that C++ editor UI, so it is
-  not optimised here.
+  not optimized here.
 - **A Finder launch adds about 0.6 s.** With `TERM` unset, the editor reads
   the user's shell environment on start. The zsh profile alone takes 0.6 s
   here, and the editor takes 0.6 to 0.7 s longer without `TERM`. See decision 194.

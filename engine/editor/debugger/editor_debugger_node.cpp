@@ -23,9 +23,9 @@
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_theme_manager.h"
+#include "scene/resources/prefab.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/tab_container.h"
-#include "scene/resources/prefab.h"
 #include "systems/display/display_system.h"
 
 template <typename Func>

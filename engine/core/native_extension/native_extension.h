@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/io/resource.h"
 #include "core/native_extension/native_extension_interface.gen.h"
 #include "core/native_extension/native_extension_loader.h"
-#include "core/io/resource.h"
 
 class NativeExtensionMethodBind;
 
@@ -99,7 +99,6 @@ public:
 	};
 
 protected:
-
 public:
 #ifdef TOOLS_ENABLED
 	bool is_reloadable() const { return reloadable; }

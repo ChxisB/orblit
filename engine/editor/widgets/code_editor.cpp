@@ -16,14 +16,14 @@
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
 #include "editor/themes/editor_theme_manager.h"
+#include "scene/resources/font.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/label.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/separator.h"
-#include "scene/stage/timer.h"
-#include "scene/resources/font.h"
 
 void GotoLinePopup::popup_find_line(CodeTextEditor *p_text_editor) {
 	text_editor = p_text_editor;

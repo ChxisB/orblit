@@ -9,6 +9,7 @@ TEST_FORCE_LINK(test_placeholder_script_instance)
 // Placeholder instances should only be used for editor purposes anyway.
 #ifdef TOOLS_ENABLED
 
+#include "core/containers/pair.h"
 #include "core/object/method_info.h"
 #include "core/object/object.h"
 #include "core/object/property_info.h"
@@ -16,7 +17,6 @@ TEST_FORCE_LINK(test_placeholder_script_instance)
 #include "core/object/script_language.h"
 #include "core/os/memory.h"
 #include "core/string/string_name.h"
-#include "core/containers/pair.h"
 #include "core/variant/variant.h"
 
 namespace TestPlaceholderScriptInstance {

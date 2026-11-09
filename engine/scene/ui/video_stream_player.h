@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/ui/control.h"
 #include "scene/resources/video_stream.h"
+#include "scene/ui/control.h"
 #include "systems/audio/audio_rb_resampler.h"
 
 class VideoStreamPlayer : public Control {

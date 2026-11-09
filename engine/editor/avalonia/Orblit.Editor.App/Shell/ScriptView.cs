@@ -29,7 +29,7 @@ internal sealed class ScriptView : Border
 {
     static readonly FontFamily s_mono = new("Menlo, Consolas, DejaVu Sans Mono");
 
-    // shortcut: one text box holds the whole file, so a file of many thousands of lines types slowly. Use a virtualised editor then.
+    // shortcut: one text box holds the whole file, so a file of many thousands of lines types slowly. Use a virtualized editor then.
     readonly TextBox _editor = new()
     {
         AcceptsReturn = true,

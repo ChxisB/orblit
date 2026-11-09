@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/rid_owner.h"
 #include "core/object/ref_counted.h"
 #include "core/os/rw_lock.h"
-#include "core/containers/rid_owner.h"
 #include "scene/resources/material.h"
 
 class Entity;
@@ -305,7 +305,6 @@ public:
 	bool get_debug_enabled() const;
 
 protected:
-
 private:
 	bool debug_enabled = false;
 

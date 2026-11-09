@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/semaphore.h"
 #include "core/containers/safe_refcount.h"
+#include "core/os/semaphore.h"
 #include "systems/camera/camera_feed.h"
 #include "systems/camera/camera_system.h"
 

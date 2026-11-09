@@ -4,11 +4,11 @@
 #include "extension_api_dump.h"
 
 #include "core/config/engine.h"
+#include "core/containers/pair.h"
 #include "core/core_constants.h"
 #include "core/io/file_access.h"
 #include "core/io/json.h"
 #include "core/object/class_registry.h"
-#include "core/containers/pair.h"
 #include "core/version.h"
 
 #ifdef TOOLS_ENABLED

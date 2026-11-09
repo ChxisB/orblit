@@ -7,19 +7,19 @@ public sealed class Spinner : WebScript
 {
     private const float Radius = 1.0f;
 
-    private Vector3 centre;
+    private Vector3 center;
     private double time;
 
     public override void OnStart()
     {
-        centre = Position;
-        Console.WriteLine($"spinner started, handle {Handle}, at {centre}");
+        center = Position;
+        Console.WriteLine($"spinner started, handle {Handle}, at {center}");
     }
 
     public override void OnFrame(double delta)
     {
         time += delta;
-        Position = centre + new Vector3((float)Math.Cos(time * 2.0), 0.0f, (float)Math.Sin(time * 2.0)) * Radius;
+        Position = center + new Vector3((float)Math.Cos(time * 2.0), 0.0f, (float)Math.Sin(time * 2.0)) * Radius;
     }
 
     public override void OnExit() => Console.WriteLine("spinner exited");

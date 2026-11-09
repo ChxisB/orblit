@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/object/object.h"
 #include "core/containers/safe_refcount.h"
+#include "core/object/object.h"
 
 class RefCounted : public Object {
 	ORBLIT_CLASS(RefCounted, Object);

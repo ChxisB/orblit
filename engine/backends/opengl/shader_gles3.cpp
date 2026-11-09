@@ -5,11 +5,11 @@
 
 #ifdef GLES3_ENABLED
 
+#include "backends/opengl/rasterizer_util_gles3.h"
+#include "backends/opengl/storage/config.h"
 #include "core/io/compression.h"
 #include "core/io/dir_access.h"
 #include "core/string/string_builder.h"
-#include "backends/opengl/rasterizer_util_gles3.h"
-#include "backends/opengl/storage/config.h"
 
 #ifndef WEB_ENABLED
 #include "core/io/file_access.h"

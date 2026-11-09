@@ -5,11 +5,11 @@
 
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/stage/stage.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/graph_edit.h"
 #include "scene/ui/label.h"
-#include "scene/stage/stage.h"
-#include "scene/theme/theme_db.h"
 #include "systems/display/accessibility_system.h"
 
 bool GraphNode::_set(const StringName &p_name, const Variant &p_value) {

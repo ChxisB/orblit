@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/rb_map.h"
 #include "core/object/object.h"
 #include "core/os/thread_safe.h"
-#include "core/containers/rb_map.h"
 
 template <typename T>
 class TypedArray;

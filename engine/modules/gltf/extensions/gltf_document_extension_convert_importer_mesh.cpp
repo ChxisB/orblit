@@ -3,9 +3,9 @@
 
 #include "gltf_document_extension_convert_importer_mesh.h"
 
+#include "scene/resources/spatial/importer_mesh.h"
 #include "scene/spatial/importer_mesh_instance_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
-#include "scene/resources/spatial/importer_mesh.h"
 
 void GLTFDocumentExtensionConvertImporterMesh::_copy_meta(Object *p_src_object, Object *p_dst_object) {
 	List<StringName> meta_list;

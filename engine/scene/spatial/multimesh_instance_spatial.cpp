@@ -7,8 +7,8 @@
 #include "core/object/class_registry.h"
 
 #ifndef NAVIGATION_SPATIAL_DISABLED
-#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
 #include "scene/resources/navigation_mesh.h"
+#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
 
 Callable MultiMeshInstance3D::_navmesh_source_geometry_parsing_callback;

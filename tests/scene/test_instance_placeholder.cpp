@@ -9,10 +9,10 @@ TEST_FORCE_LINK(test_instance_placeholder)
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/object/class_registry.h"
+#include "scene/resources/prefab.h"
 #include "scene/stage/instance_placeholder.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/prefab.h"
 #include "tests/test_utils.h"
 
 namespace TestInstancePlaceholder {

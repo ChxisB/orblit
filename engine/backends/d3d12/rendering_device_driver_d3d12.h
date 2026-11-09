@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "backends/d3d12/rendering_shader_container_d3d12.h"
 #include "core/containers/a_hash_map.h"
 #include "core/containers/hash_map.h"
 #include "core/containers/paged_allocator.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/self_list.h"
-#include "backends/d3d12/rendering_shader_container_d3d12.h"
 #include "systems/rendering/rendering_device_driver.h"
 
 #include <backends/d3d12/d3dx12.h>

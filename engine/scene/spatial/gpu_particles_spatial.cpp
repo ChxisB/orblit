@@ -7,11 +7,11 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
-#include "scene/spatial/cpu_particles_spatial.h"
 #include "scene/resources/curve_texture.h"
 #include "scene/resources/gradient_texture.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/particle_process_material.h"
+#include "scene/spatial/cpu_particles_spatial.h"
 #include "systems/rendering/rendering_system.h"
 
 AABB GPUParticles3D::get_aabb() const {

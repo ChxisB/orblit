@@ -7,8 +7,8 @@ TEST_FORCE_LINK(test_arraymesh)
 
 #ifndef SPATIAL_DISABLED
 
-#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/resources/mesh.h"
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "systems/rendering/rendering_system.h"
 
 namespace TestArrayMesh {

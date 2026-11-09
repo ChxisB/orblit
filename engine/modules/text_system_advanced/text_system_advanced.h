@@ -10,10 +10,10 @@
 
 #include "script_iterator.h"
 
-#include "core/native_extension/ext_wrappers.gen.h"
 #include "core/containers/hash_map.h"
 #include "core/containers/rid_owner.h"
 #include "core/containers/safe_refcount.h"
+#include "core/native_extension/ext_wrappers.gen.h"
 #include "scene/resources/image_texture.h"
 #include "systems/text/text_system_extension.h"
 

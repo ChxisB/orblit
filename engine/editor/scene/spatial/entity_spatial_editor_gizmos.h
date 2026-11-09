@@ -3,12 +3,12 @@
 
 #pragma once
 
-#include "core/math/dynamic_bvh.h"
 #include "core/containers/hash_map.h"
+#include "core/math/dynamic_bvh.h"
+#include "scene/resources/mesh.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/spatial/skeleton_spatial.h"
-#include "scene/resources/mesh.h"
 
 class Timer;
 class EditorEntity3DGizmoPlugin;

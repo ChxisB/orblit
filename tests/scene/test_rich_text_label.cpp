@@ -7,9 +7,9 @@ TEST_FORCE_LINK(test_rich_text_label)
 
 #ifndef ADVANCED_GUI_DISABLED
 
-#include "scene/ui/rich_text_label.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/rich_text_label.h"
 
 namespace TestRichTextLabel {
 

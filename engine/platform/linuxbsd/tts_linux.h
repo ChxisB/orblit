@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "core/containers/hash_map.h"
+#include "core/containers/list.h"
 #include "core/object/object.h"
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
 #include "core/string/ustring.h"
-#include "core/containers/hash_map.h"
-#include "core/containers/list.h"
 #include "core/variant/array.h"
 
 #ifdef SOWRAP_ENABLED

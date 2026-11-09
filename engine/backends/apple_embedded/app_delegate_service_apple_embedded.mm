@@ -3,13 +3,13 @@
 
 #import "app_delegate_service_apple_embedded.h"
 
+#import "backends/apple_embedded/os_apple_embedded.h"
+#import "backends/apple_embedded/view_apple_embedded.h"
+#import "backends/apple_embedded/view_controller.h"
+#import "backends/coreaudio/audio_driver_coreaudio.h"
 #include "core/config/project_settings.h"
 #include "core/os/main_loop.h"
 #include "core/os/os.h"
-#import "backends/apple_embedded/view_apple_embedded.h"
-#import "backends/apple_embedded/view_controller.h"
-#import "backends/apple_embedded/os_apple_embedded.h"
-#import "backends/coreaudio/audio_driver_coreaudio.h"
 #include "startup/main.h"
 
 #import <AVFoundation/AVFoundation.h>

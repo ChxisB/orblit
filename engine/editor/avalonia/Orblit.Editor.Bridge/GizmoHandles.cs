@@ -141,10 +141,10 @@ public static class GizmoMath
     }
 
     /// <summary>
-    /// A circle around a centre in the plane across an axis, as <see cref="RingPoints"/> world points. It
+    /// A circle around a center in the plane across an axis, as <see cref="RingPoints"/> world points. It
     /// runs the way a turn about the axis takes a point, by the right hand rule.
     /// </summary>
-    public static Vector3[] Ring(Vector3 centre, Vector3 axis, float radius)
+    public static Vector3[] Ring(Vector3 center, Vector3 axis, float radius)
     {
         var across = Vector3.Normalize(Vector3.Cross(axis, MathF.Abs(axis.X) < 0.9f ? Vector3.UnitX : Vector3.UnitY));
         var other = Vector3.Cross(axis, across);
@@ -152,7 +152,7 @@ public static class GizmoMath
         for (var i = 0; i < RingPoints; i++)
         {
             var angle = MathF.Tau * i / RingPoints;
-            points[i] = centre + radius * (MathF.Cos(angle) * across + MathF.Sin(angle) * other);
+            points[i] = center + radius * (MathF.Cos(angle) * across + MathF.Sin(angle) * other);
         }
         return points;
     }
@@ -291,18 +291,18 @@ public static class GizmoMath
     }
 
     /// <summary>
-    /// The world radius for the three rings round a centre so that their points are, on average,
-    /// <see cref="HandleLength"/> pixels from the centre on screen. A probe radius starts it, and perspective
+    /// The world radius for the three rings round a center so that their points are, on average,
+    /// <see cref="HandleLength"/> pixels from the center on screen. A probe radius starts it, and perspective
     /// is settled in a few passes.
     /// </summary>
-    public static float RingRadius(Func<Vector3, Vector2> project, Vector3 centre, Vector3[] axes, float probe)
+    public static float RingRadius(Func<Vector3, Vector2> project, Vector3 center, Vector3[] axes, float probe)
     {
-        var origin = project(centre);
+        var origin = project(center);
         var radius = probe;
         for (var pass = 0; pass < RadiusPasses; pass++)
         {
             var reach = axes
-                .SelectMany(axis => Ring(centre, axis, radius).Where((_, i) => i % RadiusStride == 0))
+                .SelectMany(axis => Ring(center, axis, radius).Where((_, i) => i % RadiusStride == 0))
                 .Average(point => Vector2.Distance(project(point), origin));
             radius *= HandleLength / reach;
         }

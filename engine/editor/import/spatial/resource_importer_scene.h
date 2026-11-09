@@ -6,14 +6,14 @@
 #include "core/error/error_macros.h"
 #include "core/io/resource_importer.h"
 #include "core/variant/dictionary.h"
-#include "scene/spatial/importer_mesh_instance_spatial.h"
+#include "scene/resources/animation.h"
+#include "scene/resources/mesh.h"
 #include "scene/resources/spatial/box_shape_spatial.h"
 #include "scene/resources/spatial/capsule_shape_spatial.h"
 #include "scene/resources/spatial/cylinder_shape_spatial.h"
 #include "scene/resources/spatial/importer_mesh.h"
 #include "scene/resources/spatial/sphere_shape_spatial.h"
-#include "scene/resources/animation.h"
-#include "scene/resources/mesh.h"
+#include "scene/spatial/importer_mesh_instance_spatial.h"
 
 class AnimationPlayer;
 class ImporterMesh;

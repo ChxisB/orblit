@@ -5,11 +5,11 @@
 
 TEST_FORCE_LINK(test_panel_container)
 
-#include "scene/ui/control.h"
-#include "scene/ui/panel_container.h"
+#include "scene/resources/style_box.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/style_box.h"
+#include "scene/ui/control.h"
+#include "scene/ui/panel_container.h"
 
 namespace TestPanelContainer {
 

@@ -4,10 +4,10 @@
 #include "native_extension_interface.gen.h"
 
 #include "core/config/engine.h"
-#include "core/native_extension/native_extension.h"
 #include "core/io/file_access.h"
 #include "core/io/image.h"
 #include "core/io/xml_parser.h"
+#include "core/native_extension/native_extension.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language_extension.h"
 #include "core/object/worker_thread_pool.h"

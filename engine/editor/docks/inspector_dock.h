@@ -5,8 +5,8 @@
 
 #include "editor/docks/editor_dock.h"
 #include "editor/editor_data.h"
-#include "editor/widgets/create_dialog.h"
 #include "editor/inspector/editor_inspector.h"
+#include "editor/widgets/create_dialog.h"
 #include "scene/ui/button.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/line_edit.h"

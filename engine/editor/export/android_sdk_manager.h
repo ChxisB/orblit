@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/ui/dialogs.h"
 #include "scene/stage/http_request.h"
+#include "scene/ui/dialogs.h"
 
 class Label;
 class ProgressBar;

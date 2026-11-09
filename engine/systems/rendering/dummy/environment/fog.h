@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/math/aabb.h"
 #include "core/containers/rid.h"
+#include "core/math/aabb.h"
 #include "systems/rendering/environment/renderer_fog.h"
 
 namespace RendererDummy {

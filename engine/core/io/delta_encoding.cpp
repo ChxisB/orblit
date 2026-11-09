@@ -3,8 +3,8 @@
 
 #include "delta_encoding.h"
 
-#include "core/error/error_list.h"
 #include "core/containers/vector.h"
+#include "core/error/error_list.h"
 #include "core/variant/variant.h" // vformat
 
 #include <zstd.h>

@@ -20,8 +20,8 @@
 #include "systems/rendering/renderer_rd/storage_rd/render_scene_buffers_rd.h"
 #include "systems/rendering/renderer_scene_render.h"
 #include "systems/rendering/rendering_device.h"
-#include "systems/rendering/rendering_system_types.h"
 #include "systems/rendering/rendering_shader_library.h"
+#include "systems/rendering/rendering_system_types.h"
 
 #ifdef METAL_ENABLED
 #include "systems/rendering/renderer_rd/effects/metal_fx.h"

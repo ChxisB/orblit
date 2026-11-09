@@ -5,11 +5,11 @@
 
 #include "crash_handler_macos.h"
 
-#include "core/input/input_event.h"
-#include "core/containers/rb_map.h"
 #import "backends/coreaudio/audio_driver_coreaudio.h"
 #import "backends/coremidi/midi_driver_coremidi.h"
 #include "backends/unix/os_unix.h"
+#include "core/containers/rb_map.h"
+#include "core/input/input_event.h"
 #include "systems/audio/audio_system.h"
 
 class JoypadSDL;

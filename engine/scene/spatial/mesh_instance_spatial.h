@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/containers/local_vector.h"
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/mesh.h"
+#include "scene/spatial/visual_instance_spatial.h"
 
 #ifndef NAVIGATION_SPATIAL_DISABLED
 class NavigationMesh;

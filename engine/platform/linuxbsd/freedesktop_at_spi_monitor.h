@@ -5,8 +5,8 @@
 
 #ifdef DBUS_ENABLED
 
-#include "core/os/thread.h"
 #include "core/containers/safe_refcount.h"
+#include "core/os/thread.h"
 
 class FreeDesktopAtSPIMonitor {
 private:

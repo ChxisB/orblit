@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/math/vector2.h"
 #include "core/containers/vector.h"
+#include "core/math/vector2.h"
 
 /*
 https://www.flipcode.com/archives/Efficient_Polygon_Triangulation.shtml

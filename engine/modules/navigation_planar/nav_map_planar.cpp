@@ -3,13 +3,13 @@
 
 #include "nav_map_planar.h"
 
-#include "planar/nav_map_builder_planar.h"
-#include "planar/nav_mesh_queries_planar.h"
-#include "planar/nav_region_iteration_planar.h"
 #include "nav_agent_planar.h"
 #include "nav_link_planar.h"
 #include "nav_obstacle_planar.h"
 #include "nav_region_planar.h"
+#include "planar/nav_map_builder_planar.h"
+#include "planar/nav_mesh_queries_planar.h"
+#include "planar/nav_region_iteration_planar.h"
 
 #include "core/config/project_settings.h"
 #include "core/object/worker_thread_pool.h"

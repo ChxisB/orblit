@@ -5,11 +5,11 @@
 
 #ifdef GLES3_ENABLED
 
+#include "core/containers/rid.h"
+#include "core/containers/vector.h"
 #include "core/math/aabb.h"
 #include "core/math/transform_spatial.h"
 #include "core/math/vector3i.h"
-#include "core/containers/rid.h"
-#include "core/containers/vector.h"
 
 using namespace GLES3;
 

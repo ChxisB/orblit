@@ -16,8 +16,8 @@
 #include "structures/gltf_texture.h"
 #include "structures/gltf_texture_sampler.h"
 
-#include "scene/spatial/importer_mesh_instance_spatial.h"
 #include "scene/animation/animation_player.h"
+#include "scene/spatial/importer_mesh_instance_spatial.h"
 
 class GLTFState : public Resource {
 	ORBLIT_CLASS(GLTFState, Resource);

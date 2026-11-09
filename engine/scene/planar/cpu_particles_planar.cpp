@@ -9,12 +9,12 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "scene/planar/gpu_particles_planar.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/atlas_texture.h"
 #include "scene/resources/canvas_item_material.h"
 #include "scene/resources/curve_texture.h"
 #include "scene/resources/gradient_texture.h"
 #include "scene/resources/particle_process_material.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 void CPUParticles2D::set_emitting(bool p_emitting) {

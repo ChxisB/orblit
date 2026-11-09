@@ -8,9 +8,9 @@
 #include "core/object/callable_mp.h"
 #include "core/os/os.h"
 #include "editor/editor_string_names.h"
+#include "scene/resources/style_box_flat.h"
 #include "scene/stage/timer.h"
 #include "scene/stage/window.h"
-#include "scene/resources/style_box_flat.h"
 #include "scene/theme/theme_db.h"
 #include "systems/display/display_system.h"
 

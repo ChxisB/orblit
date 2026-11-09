@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "scene/property_list_helper.h"
 #include "scene/ui/button.h"
 #include "scene/ui/popup_menu.h"
-#include "scene/property_list_helper.h"
 
 class MenuButton : public Button {
 	ORBLIT_CLASS(MenuButton, Button);

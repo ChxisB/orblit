@@ -10,7 +10,7 @@ public sealed class GameUiTests
     static readonly PixelSize s_size = new(640, 360);
     static readonly Vector2 s_empty = new(600, 330);
 
-    static Vector2 Centre(Control control, GameUi ui)
+    static Vector2 Center(Control control, GameUi ui)
     {
         var point = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), ui.Root)!.Value;
         return new Vector2((float)point.X, (float)point.Y);
@@ -77,7 +77,7 @@ public sealed class GameUiTests
         using var layer = new UiLayer(ui.Root, s_size, new FakeSurface());
         layer.Render();
         var router = new UiInputRouter(layer, scene);
-        var on = Centre(ui.Resume, ui);
+        var on = Center(ui.Resume, ui);
 
         router.MouseMove(on, Vector2.Zero);
         router.MouseButton(1, on, true);
@@ -113,7 +113,7 @@ public sealed class GameUiTests
         var ui = new GameUi();
         using var layer = new UiLayer(ui.Root, s_size, new FakeSurface());
         layer.Render();
-        var on = Centre(ui.Resume, ui);
+        var on = Center(ui.Resume, ui);
         Assert.True(layer.WantsPointer(new Point(on.X, on.Y)));
 
         ui.Menu.IsVisible = false;

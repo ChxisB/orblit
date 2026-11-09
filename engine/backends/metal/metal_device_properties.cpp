@@ -23,8 +23,8 @@
 
 #include "metal_device_properties.h"
 
-#include "core/os/os.h"
 #include "backends/metal/metal_utils.h"
+#include "core/os/os.h"
 #include "systems/rendering/renderer_rd/effects/metal_fx.h"
 
 #include <MetalFX/MetalFX.hpp>

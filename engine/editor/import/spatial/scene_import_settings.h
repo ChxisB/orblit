@@ -4,6 +4,8 @@
 #pragma once
 
 #include "editor/import/spatial/resource_importer_scene.h"
+#include "scene/resources/spatial/primitive_meshes.h"
+#include "scene/resources/spatial/sky_material.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/light_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
@@ -16,8 +18,6 @@
 #include "scene/ui/split_container.h"
 #include "scene/ui/tab_container.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/spatial/primitive_meshes.h"
-#include "scene/resources/spatial/sky_material.h"
 
 class EditorFileDialog;
 class EditorInspector;

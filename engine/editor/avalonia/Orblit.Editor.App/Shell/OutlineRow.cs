@@ -17,7 +17,7 @@ internal sealed class OutlineRow : Grid
     const double EyePadding = 2;
     const double EyeMargin = 6;
 
-    // A hidden row is dimmed, not greyed out, so the name stays readable.
+    // A hidden row is dimmed, not grayed out, so the name stays readable.
     const double HiddenOpacity = 0.5;
 
     public OutlineRow(OutlineNode entity, Action<OutlineNode> eyeClicked)

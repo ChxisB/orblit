@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include "core/containers/rid.h"
+#include "core/containers/vector.h"
 #include "core/io/image.h"
 #include "core/math/aabb.h"
 #include "core/math/rect2.h"
@@ -11,8 +13,6 @@
 #include "core/math/vector2.h"
 #include "core/math/vector4.h"
 #include "core/string/ustring.h"
-#include "core/containers/rid.h"
-#include "core/containers/vector.h"
 #include "systems/rendering/rendering_system_enums.h"
 
 #include <cstdint>

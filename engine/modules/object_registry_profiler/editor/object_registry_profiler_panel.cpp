@@ -20,12 +20,12 @@
 #include "editor/editor_node.h"
 #include "editor/inspector/editor_inspector.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/button.h"
 #include "scene/ui/label.h"
 #include "scene/ui/option_button.h"
 #include "scene/ui/split_container.h"
 #include "scene/ui/tab_container.h"
-#include "scene/stage/stage.h"
 
 // ObjectRegistry snapshots are very large. In remote_debugger_peer.cpp, the max in_buf and out_buf size is 8mb.
 // Snapshots are typically larger than that, so we send them 6mb at a time. Leaving 2mb for other data.

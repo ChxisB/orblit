@@ -5,8 +5,8 @@
 
 #include "core/math/geometry_spatial.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
+#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/spatial/gpu_particles_collision_spatial.h"
 

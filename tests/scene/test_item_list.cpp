@@ -7,9 +7,9 @@ TEST_FORCE_LINK(test_item_list)
 
 #ifndef ADVANCED_GUI_DISABLED
 
-#include "scene/ui/item_list.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/item_list.h"
 #include "tests/display_system_mock.h"
 
 namespace TestItemList {

@@ -12,17 +12,17 @@
 #include "editor/docks/editor_dock_manager.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/editor_bottom_panel.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_bottom_panel.h"
 #include "scene/animation/animation_blend_tree.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/button.h"
 #include "scene/ui/margin_container.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/scroll_container.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/stage/stage.h"
 
 void AnimationTreeEditor::_meta_clicked(Variant p_meta) {
 	if (p_meta.get_type() != Variant::STRING) {

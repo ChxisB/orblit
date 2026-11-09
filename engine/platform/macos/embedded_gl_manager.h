@@ -5,9 +5,9 @@
 
 #if defined(MACOS_ENABLED) && defined(GLES3_ENABLED)
 
+#include "core/containers/rb_map.h"
 #include "core/error/error_list.h"
 #include "core/math/vector2i.h"
-#include "core/containers/rb_map.h"
 #include "systems/display/display_system_enums.h"
 
 #import <AppKit/AppKit.h>

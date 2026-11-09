@@ -51,7 +51,7 @@ internal readonly record struct GizmoShown(GizmoMode Mode, bool Trackball, Gizmo
 internal static class GizmoZones
 {
     // A line takes a press this near, in control pixels. A press this near the pivot takes none, so a press
-    // on the pivot still picks. Scale mode puts its centre handle there.
+    // on the pivot still picks. Scale mode puts its center handle there.
     const float GrabRadius = 8;
     const float PivotRadius = 10;
     const float TipGrab = 10;

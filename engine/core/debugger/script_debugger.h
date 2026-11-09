@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/object/script_language.h"
-#include "core/string/string_name.h"
 #include "core/containers/hash_set.h"
 #include "core/containers/vector.h"
+#include "core/object/script_language.h"
+#include "core/string/string_name.h"
 
 class ScriptDebugger {
 	typedef ScriptLanguage::StackInfo StackInfo;

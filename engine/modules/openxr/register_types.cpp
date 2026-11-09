@@ -9,16 +9,6 @@
 #include "action_map/openxr_haptic_feedback.h"
 #include "action_map/openxr_interaction_profile.h"
 #include "action_map/openxr_interaction_profile_metadata.h"
-#include "openxr_api_extension.h"
-#include "openxr_interface.h"
-
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
-#include "core/object/class_registry.h"
-#include "core/os/os.h"
-
-#include "modules/modules_enabled.gen.h"
-
 #include "extensions/openxr_android_thread_settings_extension.h"
 #include "extensions/openxr_composition_layer_depth_extension.h"
 #include "extensions/openxr_composition_layer_extension.h"
@@ -54,13 +44,21 @@
 #include "extensions/spatial_entities/openxr_spatial_entity_extension.h"
 #include "extensions/spatial_entities/openxr_spatial_marker_tracking.h"
 #include "extensions/spatial_entities/openxr_spatial_plane_tracking.h"
+#include "openxr_api_extension.h"
+#include "openxr_interface.h"
 
+#include "core/config/engine.h"
+#include "core/config/project_settings.h"
+#include "core/object/class_registry.h"
+#include "core/os/os.h"
 #include "scene/openxr_composition_layer.h"
 #include "scene/openxr_composition_layer_cylinder.h"
 #include "scene/openxr_composition_layer_equirect.h"
 #include "scene/openxr_composition_layer_quad.h"
 #include "scene/openxr_foveated_inset_viewport.h"
 #include "scene/openxr_visibility_mask.h"
+
+#include "modules/modules_enabled.gen.h"
 
 #ifdef MODULE_GLTF_ENABLED
 #include "extensions/openxr_render_model_extension.h"

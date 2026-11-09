@@ -5,6 +5,8 @@
 
 #include "editor/docks/editor_dock.h"
 #include "editor/plugins/editor_plugin.h"
+#include "scene/resources/image_texture.h"
+#include "scene/resources/sprite_frames.h"
 #include "scene/ui/button.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/item_list.h"
@@ -13,8 +15,6 @@
 #include "scene/ui/spin_box.h"
 #include "scene/ui/texture_rect.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/image_texture.h"
-#include "scene/resources/sprite_frames.h"
 
 class OptionButton;
 class EditorFileDialog;

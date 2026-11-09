@@ -2,7 +2,7 @@ using Avalonia.Media;
 
 namespace Orblit.Editor.App.Theme;
 
-/// <summary>The editor's colours. Each value was measured on the reference editor, see editor-parity REFERENCE.md.</summary>
+/// <summary>The editor's colors. Each value was measured on the reference editor, see editor-parity REFERENCE.md.</summary>
 internal static class EditorColors
 {
     public static readonly Color Window = Color.Parse("#141414");

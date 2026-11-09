@@ -15,12 +15,12 @@ internal static class Parts
 
     public static ToggleButton IconToggle(string icon, string tip) => Flat(new ToggleButton(), icon, tip);
 
-    /// <summary>The magnifier at the right of a filter box. Centred, because a stretched icon draws squashed.</summary>
+    /// <summary>The magnifier at the right of a filter box. Centered, because a stretched icon draws squashed.</summary>
     public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
 
     /// <summary>
     /// The icon of a tree row: pale, 7 pixels clear of the name, and a tint where the row has one. It is
-    /// centred, because a row with an eye button is taller than the icon and a stretched icon draws squashed.
+    /// centered, because a row with an eye button is taller than the icon and a stretched icon draws squashed.
     /// </summary>
     public static EditorIcon RowIcon(string name, IBrush? tint = null)
     {

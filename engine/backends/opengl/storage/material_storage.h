@@ -5,13 +5,13 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/containers/rid_owner.h"
-#include "core/containers/self_list.h"
 #include "backends/opengl/shaders/canvas.glsl.gen.h"
 #include "backends/opengl/shaders/particles.glsl.gen.h"
 #include "backends/opengl/shaders/scene.glsl.gen.h"
 #include "backends/opengl/shaders/sky.glsl.gen.h"
 #include "backends/opengl/shaders/tex_blit.glsl.gen.h"
+#include "core/containers/rid_owner.h"
+#include "core/containers/self_list.h"
 #include "systems/rendering/rendering_system_types.h"
 #include "systems/rendering/shader_compiler.h"
 #include "systems/rendering/shader_language.h"

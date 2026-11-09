@@ -3,10 +3,10 @@
 
 #include "string_name.h"
 
+#include "core/containers/paged_allocator.h"
 #include "core/os/mutex.h"
 #include "core/os/os.h"
 #include "core/string/print_string.h"
-#include "core/containers/paged_allocator.h"
 
 const StringName StringName::EMPTY;
 

@@ -4,8 +4,8 @@
 #pragma once
 
 #include "scene/planar/entity_planar.h"
-#include "scene/resources/planar/rectangle_shape_planar.h"
 #include "scene/resources/bit_map.h"
+#include "scene/resources/planar/rectangle_shape_planar.h"
 #include "scene/resources/texture.h"
 
 class TouchScreenButton : public Entity2D {

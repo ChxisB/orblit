@@ -10,9 +10,6 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingSystem);
 #ifndef PLANAR_DISABLED
 #include "scene/planar/canvas_group.h"
 #endif // PLANAR_DISABLED
-#include "scene/stage/canvas_layer.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
 #include "scene/resources/atlas_texture.h"
 #include "scene/resources/dpi_texture.h"
 #include "scene/resources/font.h"
@@ -21,6 +18,9 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingSystem);
 #include "scene/resources/multimesh.h"
 #include "scene/resources/style_box.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/canvas_layer.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/rendering/rendering_system.h"
 

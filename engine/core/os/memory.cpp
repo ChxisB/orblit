@@ -3,8 +3,8 @@
 
 #include "memory.h"
 
-#include "core/profiling/profiling.h"
 #include "core/containers/safe_refcount.h"
+#include "core/profiling/profiling.h"
 
 #ifdef DEV_ENABLED
 #include "core/math/math_funcs_binary.h"

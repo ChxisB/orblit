@@ -4,13 +4,13 @@
 #include "image.h"
 
 #include "core/config/project_settings.h"
+#include "core/containers/hash_map.h"
 #include "core/error/error_macros.h"
 #include "core/io/image_loader.h"
 #include "core/io/resource_loader.h"
 #include "core/math/math_funcs.h"
 #include "core/object/class_registry.h"
 #include "core/object/worker_thread_pool.h"
-#include "core/containers/hash_map.h"
 #include "core/variant/dictionary.h"
 
 const char *Image::format_names[Image::FORMAT_MAX] = {

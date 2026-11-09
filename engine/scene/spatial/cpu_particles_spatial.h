@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/curve.h"
 #include "scene/resources/gradient.h"
+#include "scene/spatial/visual_instance_spatial.h"
 
 class Mesh;
 class RandomNumberGenerator;

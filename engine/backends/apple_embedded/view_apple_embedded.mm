@@ -3,12 +3,12 @@
 
 #import "view_apple_embedded.h"
 
-#include "core/config/project_settings.h"
-#include "core/os/keyboard.h"
-#include "core/string/ustring.h"
 #import "backends/apple_embedded/display_layer_apple_embedded.h"
 #import "backends/apple_embedded/display_system_apple_embedded.h"
 #import "backends/apple_embedded/view_renderer.h"
+#include "core/config/project_settings.h"
+#include "core/os/keyboard.h"
+#include "core/string/ustring.h"
 
 #import <CoreMotion/CoreMotion.h>
 

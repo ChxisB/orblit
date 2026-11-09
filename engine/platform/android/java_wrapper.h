@@ -5,9 +5,9 @@
 
 #include "java_view_wrapper.h"
 
-#include "core/math/color.h"
 #include "core/containers/list.h"
 #include "core/containers/vector.h"
+#include "core/math/color.h"
 #include "core/variant/callable.h"
 
 #include <jni.h>

@@ -6,11 +6,11 @@
 #include "core/config/project_settings.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/planar/audio_listener_planar.h"
 #include "scene/audio/audio_stream_player_internal.h"
-#include "scene/stage/viewport.h"
+#include "scene/planar/audio_listener_planar.h"
 #include "scene/resources/audio/audio_stream.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/viewport.h"
 #include "systems/audio/audio_system.h"
 
 #ifndef PHYSICS_PLANAR_DISABLED

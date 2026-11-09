@@ -5,8 +5,8 @@
 
 #if defined(X11_ENABLED) && defined(GLES3_ENABLED)
 
-#include "core/math/vector2i.h"
 #include "core/containers/local_vector.h"
+#include "core/math/vector2i.h"
 #include "systems/display/display_system_enums.h"
 
 #ifdef SOWRAP_ENABLED

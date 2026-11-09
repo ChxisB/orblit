@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "core/containers/local_vector.h"
+#include "core/containers/safe_refcount.h"
 #include "core/os/memory.h"
 #include "core/os/mutex.h"
 #include "core/string/print_string.h"
-#include "core/containers/local_vector.h"
-#include "core/containers/safe_refcount.h"
 #include "core/variant/variant.h"
 
 #include <cstdio>

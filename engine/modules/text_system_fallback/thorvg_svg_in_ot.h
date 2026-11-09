@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hash_map.h"
 #include "core/os/mutex.h"
 #include "core/string/ustring.h"
-#include "core/containers/hash_map.h"
 #include "core/typedefs.h"
 
 #include "modules/modules_enabled.gen.h" // For svg, freetype.

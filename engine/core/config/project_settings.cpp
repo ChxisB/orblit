@@ -3,6 +3,7 @@
 
 #include "project_settings.h"
 
+#include "core/containers/rb_set.h"
 #include "core/input/input_map.h"
 #include "core/io/compression.h"
 #include "core/io/config_file.h"
@@ -16,7 +17,6 @@
 #include "core/object/message_queue.h"
 #include "core/object/script_language.h"
 #include "core/os/os.h"
-#include "core/containers/rb_set.h"
 #include "core/variant/typed_array.h"
 #include "core/variant/variant_parser.h"
 #include "core/version.h"

@@ -10,8 +10,6 @@
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/scene/canvas_item_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/viewport.h"
 #include "scene/resources/planar/capsule_shape_planar.h"
 #include "scene/resources/planar/circle_shape_planar.h"
 #include "scene/resources/planar/concave_polygon_shape_planar.h"
@@ -20,6 +18,8 @@
 #include "scene/resources/planar/segment_shape_planar.h"
 #include "scene/resources/planar/separation_ray_shape_planar.h"
 #include "scene/resources/planar/world_boundary_shape_planar.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/viewport.h"
 
 CollisionShape2DEditor::CollisionShape2DEditor() {
 	grab_threshold = EDITOR_GET("editors/polygon_editor/point_grab_radius");

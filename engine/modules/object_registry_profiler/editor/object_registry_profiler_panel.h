@@ -6,8 +6,8 @@
 #include "data_viewers/snapshot_view.h"
 #include "snapshot_data.h"
 
-#include "core/io/dir_access.h"
 #include "core/containers/lru.h"
+#include "core/io/dir_access.h"
 
 class TabContainer;
 class Tree;

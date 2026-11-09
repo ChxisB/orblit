@@ -5,10 +5,10 @@
 
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/popup.h"
-#include "scene/theme/theme_db.h"
 #include "systems/display/accessibility_system.h"
 
 bool TabContainer::_is_tab_bar_owned() const {

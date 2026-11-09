@@ -6,11 +6,11 @@
 #include "core/input/input.h"
 #include "core/object/callable_mp.h"
 #include "editor/settings/editor_settings.h"
+#include "scene/resources/style_box_flat.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/color_rect.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/resources/style_box_flat.h"
 #include "systems/display/display_system.h"
 
 void TouchActionsPanel::_notification(int p_what) {

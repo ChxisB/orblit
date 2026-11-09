@@ -5,14 +5,14 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/config/project_settings.h"
-#include "core/math/geometry_spatial.h"
-#include "core/os/os.h"
 #include "backends/opengl/effects/cubemap_filter.h"
 #include "backends/opengl/rasterizer_scene_gles3.h"
 #include "backends/opengl/rasterizer_util_gles3.h"
 #include "backends/opengl/storage/render_scene_buffers_gles3.h"
 #include "backends/opengl/storage/utilities.h"
+#include "core/config/project_settings.h"
+#include "core/math/geometry_spatial.h"
+#include "core/os/os.h"
 
 using namespace GLES3;
 

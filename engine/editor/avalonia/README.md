@@ -14,7 +14,7 @@ scene. It runs on macOS. Nothing else has run it.
   pivot lands nearest. The editor camera is never saved. Frame keeps the
   angles and the distance.
 - The gizmo has Transform, Move, Rotate and Scale modes. Move and Scale
-  drag along an axis, and Scale has a centre handle for all three axes.
+  drag along an axis, and Scale has a center handle for all three axes.
   Rotate has rings, an outer ring about the view and a trackball. Snap, local
   space, Lock, Group, hide and Keep child transforms are on the toolbar.
 - The inspector edits the transform of an `Entity3D`, the metadata of any
@@ -116,7 +116,7 @@ engine window, then runs the sample game UI in a second engine window. Run it
 with no other engine process open.
 
 - The editor run has 17 steps. It selects, frames, drags the Move arrow,
-  drags the Scale centre handle, turns a ring, drags with snap in local space,
+  drags the Scale center handle, turns a ring, drags with snap in local space,
   opens the other workspaces and saves with Command+S. Each step reads the
   result back from the engine.
 - The game run has eight steps. The engine draws the UI layer over the scene.

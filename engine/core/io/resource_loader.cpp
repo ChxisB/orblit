@@ -5,7 +5,7 @@
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
-#include "core/script_api.h"
+#include "core/containers/rb_set.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_importer.h"
@@ -16,9 +16,9 @@
 #include "core/os/condition_variable.h"
 #include "core/os/os.h"
 #include "core/os/safe_binary_mutex.h"
+#include "core/script_api.h"
 #include "core/string/print_string.h"
 #include "core/string/translation_system.h"
-#include "core/containers/rb_set.h"
 #include "core/variant/variant_parser.h"
 #include "systems/rendering/rendering_system.h"
 

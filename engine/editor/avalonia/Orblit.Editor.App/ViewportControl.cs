@@ -49,7 +49,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     static readonly IBrush BallBrush = new ImmutableSolidColorBrush(Color.Parse("#26ffffff"));
     static readonly IPen MarkPen = new Pen(new ImmutableSolidColorBrush(Color.Parse("#ff8000")), HandleWidth).ToImmutable();
 
-    // In the order of GizmoAxis, with the colours of the axis gizmo.
+    // In the order of GizmoAxis, with the colors of the axis gizmo.
     static readonly IBrush[] AxisBrushes =
     [
         new ImmutableSolidColorBrush(Color.Parse("#f63252")),
@@ -170,7 +170,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         SizeWanted?.Invoke(want.Width, want.Height);
     }
 
-    /// <summary>Where a frame is drawn inside the control: centred, scaled to fit, shape kept.</summary>
+    /// <summary>Where a frame is drawn inside the control: centered, scaled to fit, shape kept.</summary>
     internal static Rect FitRect(Size frame, Size bounds)
     {
         if (frame.Width <= 0 || frame.Height <= 0)
@@ -253,8 +253,8 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
 
     static void DrawMark(DrawingContext context, Vector2 at)
     {
-        var centre = new Point(at.X, at.Y);
-        context.DrawEllipse(null, MarkPen, centre, MarkRadius, MarkRadius);
+        var center = new Point(at.X, at.Y);
+        context.DrawEllipse(null, MarkPen, center, MarkRadius, MarkRadius);
         context.DrawLine(MarkPen, new Point(at.X - MarkArm, at.Y), new Point(at.X + MarkArm, at.Y));
         context.DrawLine(MarkPen, new Point(at.X, at.Y - MarkArm), new Point(at.X, at.Y + MarkArm));
     }
@@ -312,7 +312,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         }
     }
 
-    static Rect Box(Point centre, double half) => new(centre.X - half, centre.Y - half, half * 2, half * 2);
+    static Rect Box(Point center, double half) => new(center.X - half, center.Y - half, half * 2, half * 2);
 
     protected override void OnPointerPressed(PointerPressedEventArgs e)
     {

@@ -8,9 +8,9 @@
 #include "core/variant/callable.h"
 
 #ifdef ORBLIT_CSHARP_HOT_RELOAD
-#include "core/os/mutex.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/self_list.h"
+#include "core/os/mutex.h"
 #endif
 
 class ManagedCallable : public CallableCustom {

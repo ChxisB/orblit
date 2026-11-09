@@ -3,8 +3,8 @@
 
 #import "foundation_helpers.h"
 
-#import "core/string/ustring.h"
 #import "core/containers/span.h"
+#import "core/string/ustring.h"
 
 #import <CoreFoundation/CFString.h>
 

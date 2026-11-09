@@ -5,8 +5,8 @@
 
 #include "editor/scene/spatial/gizmos/physics/joint_spatial_gizmo_plugin.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/spatial/physics/physical_bone_spatial.h"
 #include "scene/spatial/physics/physical_bone_simulator_spatial.h"
+#include "scene/spatial/physics/physical_bone_spatial.h"
 
 PhysicalBone3DGizmoPlugin::PhysicalBone3DGizmoPlugin() {
 	create_material("joint_material", EDITOR_GET("editors/spatial_gizmos/gizmo_colors/joint"));

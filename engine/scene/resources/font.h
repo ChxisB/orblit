@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/lru.h"
+#include "core/io/resource.h"
 #include "core/variant/typed_array.h"
 #include "systems/text/text_system.h"
 

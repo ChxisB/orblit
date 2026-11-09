@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/object/ref_counted.h"
 #include "core/containers/safe_refcount.h"
+#include "core/object/ref_counted.h"
 #include "systems/audio/audio_system_enums.h"
 
 class AudioStream;

@@ -5,13 +5,13 @@
 
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/resources/spatial/concave_polygon_shape_spatial.h"
+#include "scene/resources/spatial/convex_polygon_shape_spatial.h"
+#include "scene/resources/spatial/world_boundary_shape_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/physics/character_body_spatial.h"
 #include "scene/spatial/physics/vehicle_body_spatial.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/spatial/concave_polygon_shape_spatial.h"
-#include "scene/resources/spatial/convex_polygon_shape_spatial.h"
-#include "scene/resources/spatial/world_boundary_shape_spatial.h"
 
 void CollisionShape3D::make_convex_from_siblings() {
 	Entity *p = get_parent();

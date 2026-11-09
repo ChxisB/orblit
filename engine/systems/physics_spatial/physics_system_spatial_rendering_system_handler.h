@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/object/orblit_virtual.gen.h"
 #include "core/object/object.h"
+#include "core/object/orblit_virtual.gen.h"
 
 struct AABB;
 struct Vector3;

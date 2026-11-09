@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/skeleton_modifier_spatial.h"
 #include "scene/resources/curve.h"
+#include "scene/spatial/skeleton_modifier_spatial.h"
 
 class SpringBoneSimulator3D : public SkeletonModifier3D {
 	ORBLIT_CLASS(SpringBoneSimulator3D, SkeletonModifier3D);

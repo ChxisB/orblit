@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hashfuncs.h"
 #include "core/error/error_macros.h"
 #include "core/math/math_funcs.h"
-#include "core/containers/hashfuncs.h"
 
 class String;
 struct Vector2;

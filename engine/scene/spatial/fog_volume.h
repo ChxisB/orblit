@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/containers/rid.h"
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/material.h"
+#include "scene/spatial/visual_instance_spatial.h"
 
 class FogVolume : public VisualInstance3D {
 	ORBLIT_CLASS(FogVolume, VisualInstance3D);

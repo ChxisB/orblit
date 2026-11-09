@@ -3,8 +3,8 @@
 
 #import "application.h"
 
-#import "display_system_macos.h"
 #import "application_delegate.h"
+#import "display_system_macos.h"
 #import "os_macos.h"
 
 OrblitApplication *OrblitApp = nil;

@@ -11,6 +11,7 @@
 #include "wgl_detect_version.h"
 #include "winrt_utils.h"
 
+#include "backends/png/png_driver_common.h"
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
@@ -22,9 +23,8 @@
 #include "core/os/main_loop.h"
 #include "core/os/os.h"
 #include "core/version.h"
-#include "backends/png/png_driver_common.h"
-#include "startup/main.h"
 #include "scene/resources/texture.h"
+#include "startup/main.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/rendering/dummy/rasterizer_dummy.h"
 #include "systems/rendering/renderer_rd/renderer_compositor_rd.h"

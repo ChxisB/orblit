@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "core/containers/pair.h"
 #include "core/doc_data.h"
 #include "core/io/resource.h"
 #include "core/object/script_backtrace.h"
 #include "core/object/script_instance.h"
-#include "core/containers/pair.h"
 #include "core/variant/typed_array.h"
 
 class ScriptLanguage;

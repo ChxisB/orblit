@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/keyboard.h"
 #include "core/containers/hash_map.h"
+#include "core/os/keyboard.h"
 
 #include <X11/XF86keysym.h>
 #include <X11/Xlib.h>

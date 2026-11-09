@@ -6,7 +6,7 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The rounded bar that names a class in the inspector, with that class's icon, centred.</summary>
+/// <summary>The rounded bar that names a class in the inspector, with that class's icon, centered.</summary>
 internal sealed class ClassBar : Border
 {
     const double BarHeight = 30;

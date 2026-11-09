@@ -250,7 +250,6 @@ void NavigationRegion3D::register_members() {
 	ClassRegistry::bind_method(D_METHOD("set_navigation_layer_value", "layer_number", "value"), &NavigationRegion3D::set_navigation_layer_value);
 	ClassRegistry::bind_method(D_METHOD("get_navigation_layer_value", "layer_number"), &NavigationRegion3D::get_navigation_layer_value);
 
-
 	ClassRegistry::bind_method(D_METHOD("set_enter_cost", "enter_cost"), &NavigationRegion3D::set_enter_cost);
 	ClassRegistry::bind_method(D_METHOD("get_enter_cost"), &NavigationRegion3D::get_enter_cost);
 

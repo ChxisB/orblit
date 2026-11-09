@@ -9,10 +9,10 @@
 #include "editor/editor_string_names.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/style_box_flat.h"
 #include "scene/ui/button.h"
 #include "scene/ui/label.h"
 #include "scene/ui/panel_container.h"
-#include "scene/resources/style_box_flat.h"
 #include "systems/display/display_system.h"
 
 EditorToaster *EditorToaster::singleton = nullptr;

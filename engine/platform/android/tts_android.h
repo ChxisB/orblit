@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/os/thread.h"
-#include "core/string/ustring.h"
 #include "core/containers/hash_map.h"
 #include "core/containers/safe_refcount.h"
+#include "core/os/thread.h"
+#include "core/string/ustring.h"
 #include "core/variant/array.h"
 
 #include <jni.h>

@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/containers/list.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/texture.h"
+#include "scene/stage/entity.h"
 
 class ConfigFile;
 class EditorPlugin;

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/math/geometry_spatial.h"
 #include "core/containers/list.h"
+#include "core/math/geometry_spatial.h"
 
 class QuickHull {
 public:

@@ -10,6 +10,7 @@
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/script/script_editor_plugin.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/check_button.h"
 #include "scene/ui/control.h"
@@ -19,7 +20,6 @@
 #include "scene/ui/separator.h"
 #include "scene/ui/spin_box.h"
 #include "scene/ui/tab_container.h"
-#include "scene/stage/stage.h"
 
 RenameDialog::RenameDialog(StageEditor *p_scene_tree_editor) {
 	scene_tree_editor = p_scene_tree_editor;

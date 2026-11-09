@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "core/containers/sort_array.h"
+#include "core/containers/vector.h"
 #include "core/error/error_macros.h"
 #include "core/os/memory.h"
 #include "core/string/print_string.h" // IWYU pragma: keep. `WARN_VERBOSE` macro.
-#include "core/containers/sort_array.h"
-#include "core/containers/vector.h"
 
 #include <initializer_list>
 #include <type_traits>

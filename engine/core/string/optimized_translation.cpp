@@ -3,8 +3,8 @@
 
 #include "optimized_translation.h"
 
-#include "core/object/class_registry.h"
 #include "core/containers/pair.h"
+#include "core/object/class_registry.h"
 
 extern "C" {
 #include <thirdparty/misc/smaz.h>

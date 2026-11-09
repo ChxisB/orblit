@@ -6,12 +6,12 @@
 #include "editor/editor_node.h"
 #include "editor/inspector/editor_properties.h"
 #include "editor/plugins/editor_plugin.h"
+#include "scene/resources/bone_map.h"
 #include "scene/spatial/skeleton_spatial.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/color_rect.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/texture_button.h"
-#include "scene/resources/bone_map.h"
 
 class AspectRatioContainer;
 

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "planar/nav_region_iteration_planar.h"
 #include "nav_base_planar.h"
 #include "nav_utils_planar.h"
+#include "planar/nav_region_iteration_planar.h"
 
 #include "core/object/worker_thread_pool.h"
 #include "core/os/rw_lock.h"

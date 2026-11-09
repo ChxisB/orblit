@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/spin_lock.h"
 #include "core/containers/hash_map.h"
+#include "core/os/spin_lock.h"
 
 #include <Jolt/Jolt.h>
 

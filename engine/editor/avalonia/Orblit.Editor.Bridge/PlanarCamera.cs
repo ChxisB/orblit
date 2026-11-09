@@ -102,7 +102,7 @@ public sealed class PlanarCamera
 
     void Place()
     {
-        _host.Entity2DSetPosition(_camera, _view.Centre);
+        _host.Entity2DSetPosition(_camera, _view.Center);
         _host.Camera2DSetZoom(_camera, new Vector2(_view.Zoom, _view.Zoom));
     }
 }

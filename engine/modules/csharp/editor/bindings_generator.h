@@ -20,7 +20,6 @@ class BindingsGenerator {
 		int64_t value = 0;
 		const DocData::ConstantDoc *const_doc = nullptr;
 
-
 		ConstantInterface() {}
 
 		ConstantInterface(const String &p_name, const String &p_proxy_name, int64_t p_value) {
@@ -66,7 +65,6 @@ class BindingsGenerator {
 		bool is_hidden = false;
 
 		const DocData::PropertyDoc *prop_doc;
-
 	};
 
 	struct TypeReference {
@@ -165,7 +163,6 @@ class BindingsGenerator {
 
 		const DocData::MethodDoc *method_doc = nullptr;
 
-
 		void add_argument(const ArgumentInterface &argument) {
 			arguments.push_back(argument);
 		}
@@ -185,7 +182,6 @@ class BindingsGenerator {
 		List<ArgumentInterface> arguments;
 
 		const DocData::MethodDoc *method_doc = nullptr;
-
 
 		void add_argument(const ArgumentInterface &argument) {
 			arguments.push_back(argument);
@@ -406,7 +402,6 @@ class BindingsGenerator {
 		String cs_managed_to_variant;
 
 		const DocData::ClassDoc *class_doc = nullptr;
-
 
 		List<ConstantInterface> constants;
 		List<EnumInterface> enums;

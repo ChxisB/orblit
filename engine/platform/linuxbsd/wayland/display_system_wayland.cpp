@@ -35,9 +35,9 @@
 #include "wayland/egl_manager_wayland.h"
 #include "wayland/egl_manager_wayland_gles.h"
 
-#include "core/io/file_access.h"
 #include "backends/egl/egl_manager.h"
 #include "backends/opengl/rasterizer_gles3.h"
+#include "core/io/file_access.h"
 #endif
 
 #ifdef DBUS_ENABLED

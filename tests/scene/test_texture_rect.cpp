@@ -6,11 +6,11 @@
 TEST_FORCE_LINK(test_texture_rect)
 
 #include "core/io/image.h"
-#include "scene/ui/texture_rect.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
 #include "scene/resources/atlas_texture.h"
 #include "scene/resources/image_texture.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
+#include "scene/ui/texture_rect.h"
 
 namespace TestTextureRect {
 

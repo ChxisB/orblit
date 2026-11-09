@@ -12,9 +12,9 @@
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/spatial/navigation/navigation_obstacle_spatial.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/button.h"
 #include "scene/ui/dialogs.h"
-#include "scene/stage/stage.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
 #include "systems/rendering/rendering_system.h"
 

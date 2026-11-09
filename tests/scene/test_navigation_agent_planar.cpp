@@ -9,11 +9,11 @@ TEST_FORCE_LINK(test_navigation_agent_planar)
 
 #ifdef MODULE_NAVIGATION_PLANAR_ENABLED
 
-#include "scene/planar/navigation/navigation_agent_planar.h"
 #include "scene/planar/entity_planar.h"
+#include "scene/planar/navigation/navigation_agent_planar.h"
+#include "scene/resources/world_planar.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/world_planar.h"
 
 namespace TestNavigationAgent2D {
 

@@ -9,8 +9,8 @@
 #include "editor/docks/editor_dock.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/script/script_editor_base.h"
-#include "scene/ui/margin_container.h"
 #include "scene/resources/text_file.h"
+#include "scene/ui/margin_container.h"
 
 class CodeTextEditor;
 class EditorFileDialog;

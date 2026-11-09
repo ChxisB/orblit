@@ -5,9 +5,9 @@
 
 #include "core/io/config_file.h"
 #include "core/object/callable_mp.h"
-#include "editor/widgets/editor_validation_panel.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_validation_panel.h"
 #include "scene/ui/item_list.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/margin_container.h"

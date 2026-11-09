@@ -10,11 +10,11 @@
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/inspector/editor_resource_preview.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/animation/animation_player.h"
 #include "scene/planar/animated_sprite_planar.h"
 #include "scene/planar/sprite_planar.h"
-#include "scene/spatial/sprite_spatial.h"
-#include "scene/animation/animation_player.h"
 #include "scene/resources/audio/audio_stream.h"
+#include "scene/spatial/sprite_spatial.h"
 #include "systems/rendering/rendering_system.h"
 
 /// BOOL ///

@@ -8,17 +8,17 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/string/string_name.h"
-#include "scene/planar/audio_stream_player_planar.h"
 #include "scene/animation/animation_player.h"
 #include "scene/audio/audio_stream_player.h"
+#include "scene/planar/audio_stream_player_planar.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/audio/audio_stream.h"
 #include "systems/audio/audio_system.h"
 
 #ifndef SPATIAL_DISABLED
 #include "scene/spatial/audio_stream_player_spatial.h"
-#include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/entity_spatial.h"
+#include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/skeleton_spatial.h"
 #endif // SPATIAL_DISABLED
 

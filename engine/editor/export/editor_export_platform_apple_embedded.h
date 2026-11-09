@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/config/project_settings.h"
-#include "core/io/dir_access.h"
 #include "core/containers/safe_refcount.h"
+#include "core/io/dir_access.h"
 #include "editor/export/editor_export_platform.h"
 #include "editor/export/plugin_config_apple_embedded.h"
 #include "scene/resources/image_texture.h"

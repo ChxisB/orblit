@@ -3,9 +3,9 @@
 
 #import "gc_keyboard_handler.h"
 
-#include "core/os/keyboard.h"
 #import "backends/apple_embedded/display_system_apple_embedded.h"
 #import "backends/apple_embedded/key_mapping_apple_embedded.h"
+#include "core/os/keyboard.h"
 
 #import <GameController/GameController.h>
 

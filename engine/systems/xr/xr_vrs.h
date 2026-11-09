@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/math/vector2i.h"
-#include "core/object/object.h"
 #include "core/containers/rid.h"
 #include "core/containers/vector.h"
+#include "core/math/vector2i.h"
+#include "core/object/object.h"
 
 /* This is a helper class for generating stereoscopic VRS images */
 

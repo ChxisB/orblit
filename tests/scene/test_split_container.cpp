@@ -7,9 +7,9 @@ TEST_FORCE_LINK(test_split_container)
 
 #ifndef ADVANCED_GUI_DISABLED
 
-#include "scene/ui/split_container.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/split_container.h"
 #include "tests/display_system_mock.h"
 #include "tests/signal_watcher.h"
 

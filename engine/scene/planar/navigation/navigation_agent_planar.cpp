@@ -7,8 +7,8 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "scene/planar/navigation/navigation_link_planar.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/stage.h"
 #include "systems/navigation_planar/navigation_system_planar.h"
 #include "systems/rendering/rendering_system.h"
 

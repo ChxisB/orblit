@@ -5,10 +5,10 @@
 
 #include "crash_handler_windows.h"
 
-#include "core/input/input_event.h"
-#include "core/os/os.h"
 #include "backends/wasapi/audio_driver_wasapi.h"
 #include "backends/winmidi/midi_driver_winmidi.h"
+#include "core/input/input_event.h"
+#include "core/os/os.h"
 
 #ifdef XAUDIO2_ENABLED
 #include "backends/xaudio2/audio_driver_xaudio2.h"

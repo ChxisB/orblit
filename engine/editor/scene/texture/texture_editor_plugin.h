@@ -5,8 +5,8 @@
 
 #include "editor/inspector/editor_inspector.h"
 #include "editor/plugins/editor_plugin.h"
-#include "scene/ui/margin_container.h"
 #include "scene/resources/texture.h"
+#include "scene/ui/margin_container.h"
 
 class AspectRatioContainer;
 class ColorRect;

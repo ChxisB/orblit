@@ -4,8 +4,8 @@
 #import "native_menu_macos.h"
 
 #import "display_system_macos.h"
-#import "menu_item.h"
 #import "key_mapping_macos.h"
+#import "menu_item.h"
 
 #include "core/object/callable_mp.h"
 #include "scene/resources/image_texture.h"

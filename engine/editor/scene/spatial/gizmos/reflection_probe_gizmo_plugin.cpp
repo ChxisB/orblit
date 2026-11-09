@@ -7,8 +7,8 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
+#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/settings/editor_settings.h"
 #include "scene/spatial/reflection_probe.h"
 

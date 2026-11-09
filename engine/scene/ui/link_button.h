@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/ui/base_button.h"
 #include "scene/resources/text_line.h"
+#include "scene/ui/base_button.h"
 
 class LinkButton : public BaseButton {
 	ORBLIT_CLASS(LinkButton, BaseButton);

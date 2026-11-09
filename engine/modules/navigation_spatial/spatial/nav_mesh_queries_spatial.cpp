@@ -7,8 +7,8 @@
 #include "../nav_map_spatial.h"
 #include "nav_region_iteration_spatial.h"
 
-#include "core/math/geometry_spatial.h"
 #include "core/containers/rb_map.h"
+#include "core/math/geometry_spatial.h"
 
 using namespace Nav3D;
 

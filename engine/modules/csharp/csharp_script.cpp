@@ -3,10 +3,10 @@
 
 #include "csharp_script.h"
 
-#include "orblitsharp_defs.h"
-#include "orblitsharp_dirs.h"
 #include "host/dotnet_host_cache.h"
 #include "host/dotnet_runtime.h"
+#include "orblitsharp_defs.h"
+#include "orblitsharp_dirs.h"
 #include "signal_awaiter_utils.h"
 #include "utils/macros.h"
 #include "utils/naming_utils.h"

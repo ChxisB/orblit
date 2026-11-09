@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "scene/spatial/line_base_spatial.h"
 #include "scene/resources/curve.h"
 #include "scene/resources/gradient.h"
 #include "scene/resources/mesh.h"
+#include "scene/spatial/line_base_spatial.h"
 
 class Trail3D : public LineBase3D {
 	ORBLIT_CLASS(Trail3D, LineBase3D);

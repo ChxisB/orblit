@@ -580,8 +580,8 @@ public sealed class EditorWindowTests
         return true;
     }
 
-    // A viewport with a frame in the middle column, and the point at its centre in window coordinates.
-    static (EditorWindow Window, Point Centre) OpenWithViewport(FakeScene scene)
+    // A viewport with a frame in the middle column, and the point at its center in window coordinates.
+    static (EditorWindow Window, Point Center) OpenWithViewport(FakeScene scene)
     {
         var window = Open(scene);
         var viewport = new ViewportControl(() => false, SmallFrame);
@@ -605,9 +605,9 @@ public sealed class EditorWindowTests
         UiThread.Run(() =>
         {
             var scene = new FakeScene { PickResult = FakeScene.Lamp.Handle };
-            var (window, centre) = OpenWithViewport(scene);
+            var (window, center) = OpenWithViewport(scene);
 
-            ClickAt(window, centre);
+            ClickAt(window, center);
 
             Assert.Same(FakeScene.Lamp, window.Outline.SelectedItem);
             Assert.Equal(["1", "2", "3"], window.Inspector.Position.Axes.Select(box => box.Text));
@@ -622,10 +622,10 @@ public sealed class EditorWindowTests
         UiThread.Run(() =>
         {
             var scene = new FakeScene();
-            var (window, centre) = OpenWithViewport(scene);
+            var (window, center) = OpenWithViewport(scene);
             window.Outline.SelectedItem = FakeScene.Lamp;
 
-            ClickAt(window, centre);
+            ClickAt(window, center);
 
             Assert.Null(window.Outline.SelectedItem);
             Assert.Equal(["", "", ""], window.Inspector.Position.Axes.Select(box => box.Text));

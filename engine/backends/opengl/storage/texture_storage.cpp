@@ -5,13 +5,13 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/config/engine.h"
-#include "core/variant/typed_array.h"
 #include "backends/opengl/effects/copy_effects.h"
 #include "backends/opengl/rasterizer_gles3.h"
 #include "backends/opengl/rasterizer_util_gles3.h"
 #include "backends/opengl/storage/material_storage.h"
 #include "backends/opengl/storage/utilities.h"
+#include "core/config/engine.h"
+#include "core/variant/typed_array.h"
 
 using namespace GLES3;
 

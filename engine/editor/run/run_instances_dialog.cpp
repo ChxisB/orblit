@@ -8,6 +8,7 @@
 #include "core/os/os.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/label.h"
@@ -17,7 +18,6 @@
 #include "scene/ui/separator.h"
 #include "scene/ui/spin_box.h"
 #include "scene/ui/tree.h"
-#include "scene/stage/timer.h"
 
 void RunInstancesDialog::_fetch_main_args() {
 	if (!main_args_edit->has_focus()) { // Only set the text if the user is not currently editing it.

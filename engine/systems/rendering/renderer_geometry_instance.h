@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/rid.h"
 #include "core/math/color.h"
 #include "core/math/rect2.h"
 #include "core/math/transform_spatial.h"
-#include "core/containers/rid.h"
 #include "systems/rendering/storage/utilities.h"
 
 // API definition for our RenderGeometryInstance class so we can expose this through NativeExtension in the near future

@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/rb_set.h"
 #include "core/object/object.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/condition_variable.h"
-#include "core/containers/rb_set.h"
 #include "editor/export/editor_export_plugin.h"
 
 class ShaderRD;

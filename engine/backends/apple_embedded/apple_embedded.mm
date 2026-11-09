@@ -3,9 +3,9 @@
 
 #import "apple_embedded.h"
 
-#include "core/object/class_registry.h"
 #import "backends/apple_embedded/app_delegate_service_apple_embedded.h"
 #import "backends/apple_embedded/view_controller.h"
+#include "core/object/class_registry.h"
 
 #import <CoreHaptics/CoreHaptics.h>
 #import <UIKit/UIKit.h>

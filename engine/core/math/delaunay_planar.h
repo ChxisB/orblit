@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/math/rect2.h"
 #include "core/containers/vector.h"
+#include "core/math/rect2.h"
 
 class Delaunay2D {
 public:

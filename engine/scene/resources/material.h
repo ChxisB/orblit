@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/self_list.h"
+#include "core/io/resource.h"
 #include "scene/resources/shader.h"
 #include "systems/rendering/rendering_system_enums.h"
 
@@ -886,7 +886,6 @@ VARIANT_ENUM_CAST(BaseMaterial3D::StencilCompare)
 class StandardMaterial3D : public BaseMaterial3D {
 	ORBLIT_CLASS(StandardMaterial3D, BaseMaterial3D)
 protected:
-
 public:
 	StandardMaterial3D() :
 			BaseMaterial3D(false) {}

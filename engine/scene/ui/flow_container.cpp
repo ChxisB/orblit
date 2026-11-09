@@ -4,8 +4,8 @@
 #include "flow_container.h"
 
 #include "core/object/class_registry.h"
-#include "scene/ui/texture_rect.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/texture_rect.h"
 
 struct _ChildData {
 	Size2i min_size;

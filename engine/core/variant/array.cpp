@@ -7,10 +7,10 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, Dictionary);
 STATIC_ASSERT_INCOMPLETE_TYPE(class, Object);
 STATIC_ASSERT_INCOMPLETE_TYPE(class, String);
 
-#include "core/math/math_funcs.h"
-#include "core/object/script_language.h"
 #include "core/containers/hashfuncs.h"
 #include "core/containers/vector.h"
+#include "core/math/math_funcs.h"
+#include "core/object/script_language.h"
 #include "core/variant/callable.h"
 #include "core/variant/container_type_validate.h"
 #include "core/variant/dictionary.h"

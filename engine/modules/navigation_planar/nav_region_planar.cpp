@@ -3,10 +3,10 @@
 
 #include "nav_region_planar.h"
 
+#include "nav_map_planar.h"
 #include "planar/nav_mesh_queries_planar.h"
 #include "planar/nav_region_builder_planar.h"
 #include "planar/nav_region_iteration_planar.h"
-#include "nav_map_planar.h"
 
 #include "core/config/project_settings.h"
 

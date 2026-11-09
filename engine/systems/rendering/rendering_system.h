@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/image.h"
 #include "core/containers/rid.h"
+#include "core/io/image.h"
 #include "core/variant/typed_array.h"
 #include "core/variant/variant.h"
 #include "systems/display/display_system_enums.h"
@@ -636,7 +636,6 @@ public:
 	virtual void environment_set_ssr(RID p_env, bool p_enable, int p_max_steps, float p_fade_in, float p_fade_out, float p_depth_tolerance) = 0;
 
 	virtual void environment_set_ssr_half_size(bool p_half_size) = 0;
-
 
 	virtual void environment_set_ssao(RID p_env, bool p_enable, float p_radius, float p_intensity, float p_power, float p_detail, float p_horizon, float p_sharpness, float p_light_affect, float p_ao_channel_affect) = 0;
 

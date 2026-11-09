@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include "core/os/mutex.h"
 #include "core/containers/hash_set.h"
 #include "core/containers/hashfuncs.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/self_list.h"
+#include "core/os/mutex.h"
 #include "core/variant/variant.h"
 
 #include <Jolt/Jolt.h>

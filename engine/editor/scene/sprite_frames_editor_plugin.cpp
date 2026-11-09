@@ -16,12 +16,14 @@
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_file_system.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
 #include "scene/planar/animated_sprite_planar.h"
+#include "scene/resources/atlas_texture.h"
 #include "scene/spatial/sprite_spatial.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/center_container.h"
 #include "scene/ui/flow_container.h"
 #include "scene/ui/margin_container.h"
@@ -29,8 +31,6 @@
 #include "scene/ui/panel_container.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/split_container.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/atlas_texture.h"
 
 static void _draw_shadowed_line(Control *p_control, const Point2 &p_from, const Size2 &p_size, const Size2 &p_shadow_offset, Color p_color, Color p_shadow_color) {
 	p_control->draw_line(p_from, p_from + p_size, p_color);

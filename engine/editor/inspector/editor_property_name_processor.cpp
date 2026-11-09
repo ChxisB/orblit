@@ -32,7 +32,7 @@ EditorPropertyNameProcessor::Style EditorPropertyNameProcessor::get_tooltip_styl
 }
 
 bool EditorPropertyNameProcessor::is_localization_available() {
-	// Only English ships, so there is no language to localise into.
+	// Only English ships, so there is no language to localize into.
 	return false;
 }
 

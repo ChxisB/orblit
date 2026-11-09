@@ -3,10 +3,10 @@
 
 #include "image_compress_cvtt.h"
 
+#include "core/containers/safe_refcount.h"
 #include "core/object/worker_thread_pool.h"
 #include "core/os/os.h"
 #include "core/string/print_string.h"
-#include "core/containers/safe_refcount.h"
 
 #include <ConvectionKernels.h>
 

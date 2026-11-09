@@ -3,25 +3,25 @@
 
 #include "animation_library_editor.h"
 
+#include "core/containers/vector.h"
 #include "core/io/config_file.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/string/ustring.h"
-#include "core/containers/vector.h"
 #include "core/variant/variant.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/file_system/editor_paths.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
 #include "scene/animation/animation_mixer.h"
+#include "scene/resources/prefab.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/margin_container.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/prefab.h"
 
 void AnimationLibraryEditor::set_animation_mixer(Object *p_mixer) {
 	mixer = Object::cast_to<AnimationMixer>(p_mixer);

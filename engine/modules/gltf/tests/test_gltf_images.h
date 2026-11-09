@@ -9,10 +9,10 @@
 
 #include "editor/file_system/editor_file_system.h"
 #include "editor/inspector/editor_resource_preview.h"
+#include "scene/resources/image_texture.h"
+#include "scene/resources/spatial/primitive_meshes.cpp"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/spatial/primitive_meshes.cpp"
-#include "scene/resources/image_texture.h"
 
 namespace TestGltf {
 Ref<Texture2D> _check_texture(Entity *p_node) {

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "spatial/nav_base_iteration_spatial.h"
 #include "nav_base_spatial.h"
 #include "nav_utils_spatial.h"
+#include "spatial/nav_base_iteration_spatial.h"
 
 #include "core/os/rw_lock.h"
 

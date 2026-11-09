@@ -7,12 +7,12 @@
 #include "editor/editor_data.h"
 #include "editor/inspector/editor_properties.h"
 #include "editor/inspector/property_selector.h"
+#include "scene/resources/animation.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/ui/control.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/scroll_bar.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/animation.h"
 
 #include <cfloat> // FLT_MAX
 

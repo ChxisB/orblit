@@ -5,10 +5,10 @@
 
 TEST_FORCE_LINK(test_aspect_ratio_container)
 
-#include "scene/ui/aspect_ratio_container.h"
-#include "scene/ui/control.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/aspect_ratio_container.h"
+#include "scene/ui/control.h"
 
 namespace TestAspectRatioContainer {
 

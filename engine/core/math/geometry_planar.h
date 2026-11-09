@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "core/containers/vector.h"
 #include "core/math/delaunay_planar.h"
 #include "core/math/math_funcs.h"
 #include "core/math/triangulate.h"
@@ -10,7 +11,6 @@
 #include "core/math/vector2i.h"
 #include "core/math/vector3.h"
 #include "core/math/vector3i.h"
-#include "core/containers/vector.h"
 
 class Geometry2D {
 public:

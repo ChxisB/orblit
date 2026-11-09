@@ -3,16 +3,16 @@
 
 #pragma once
 
-#include "core/io/resource.h"
-#include "core/object/object.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/rb_set.h"
+#include "core/io/resource.h"
+#include "core/object/object.h"
 #include "scene/planar/light_occluder_planar.h"
-#include "scene/stage/canvas_item.h"
 #include "scene/resources/image_texture.h"
-#include "scene/resources/prefab.h"
 #include "scene/resources/physics_material.h"
+#include "scene/resources/prefab.h"
+#include "scene/stage/canvas_item.h"
 
 #ifndef PHYSICS_PLANAR_DISABLED
 #include "scene/resources/planar/convex_polygon_shape_planar.h"

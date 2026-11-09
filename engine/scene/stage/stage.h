@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "core/containers/paged_allocator.h"
+#include "core/containers/self_list.h"
 #include "core/object/message_queue.h"
 #include "core/object/ref_counted.h"
 #include "core/os/main_loop.h"
 #include "core/os/thread_safe.h"
-#include "core/containers/paged_allocator.h"
-#include "core/containers/self_list.h"
 #include "scene/stage/stage_fti.h"
 
 #include <cstdlib>

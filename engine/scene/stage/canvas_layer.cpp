@@ -5,9 +5,9 @@
 
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/resources/world_planar.h"
 #include "scene/stage/canvas_item.h"
 #include "scene/stage/viewport.h"
-#include "scene/resources/world_planar.h"
 #include "systems/rendering/rendering_system.h"
 
 void CanvasLayer::set_layer(int p_xform) {

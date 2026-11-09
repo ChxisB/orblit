@@ -12,12 +12,12 @@
 #include "editor/docks/stage_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
+#include "editor/settings/editor_settings.h"
 #include "editor/widgets/editor_file_dialog.h"
 #include "editor/widgets/editor_toaster.h"
-#include "editor/settings/editor_settings.h"
 #include "scene/debugger/scene_debugger_object.h"
-#include "scene/ui/texture_rect.h"
 #include "scene/resources/prefab.h"
+#include "scene/ui/texture_rect.h"
 #include "systems/display/display_system.h"
 
 EditorDebuggerTree::EditorDebuggerTree() {

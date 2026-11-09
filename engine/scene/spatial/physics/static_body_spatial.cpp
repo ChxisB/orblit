@@ -9,6 +9,7 @@
 
 #ifndef NAVIGATION_SPATIAL_DISABLED
 #include "core/math/convex_hull.h"
+#include "scene/resources/navigation_mesh.h"
 #include "scene/resources/spatial/box_shape_spatial.h"
 #include "scene/resources/spatial/capsule_shape_spatial.h"
 #include "scene/resources/spatial/concave_polygon_shape_spatial.h"
@@ -19,7 +20,6 @@
 #include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/resources/spatial/shape_spatial.h"
 #include "scene/resources/spatial/sphere_shape_spatial.h"
-#include "scene/resources/navigation_mesh.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
 
 Callable StaticBody3D::_navmesh_source_geometry_parsing_callback;

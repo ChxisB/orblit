@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/ui/control.h"
 #include "scene/resources/text_paragraph.h"
+#include "scene/ui/control.h"
 #include "systems/display/accessibility_system.h"
 
 class VBoxContainer;

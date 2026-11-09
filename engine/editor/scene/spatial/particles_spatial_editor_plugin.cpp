@@ -8,14 +8,14 @@
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/scene/stage_editor.h"
+#include "scene/resources/image_texture.h"
+#include "scene/resources/particle_process_material.h"
 #include "scene/spatial/cpu_particles_spatial.h"
 #include "scene/spatial/gpu_particles_spatial.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/option_button.h"
 #include "scene/ui/spin_box.h"
-#include "scene/resources/image_texture.h"
-#include "scene/resources/particle_process_material.h"
 
 void Particles3DEditorPlugin::_generate_aabb() {
 	double time = generate_seconds->get_value();

@@ -7,24 +7,24 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingSystem);
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
+#include "core/containers/pair.h"
+#include "core/containers/sort_array.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/input/input.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "core/containers/pair.h"
-#include "core/containers/sort_array.h"
 #include "scene/audio/audio_stream_player.h"
-#include "scene/ui/control.h"
-#include "scene/ui/label.h"
-#include "scene/ui/popup.h"
-#include "scene/ui/subviewport_container.h"
-#include "scene/stage/canvas_layer.h"
-#include "scene/stage/stage.h"
-#include "scene/stage/window.h"
 #include "scene/resources/dpi_texture.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/text_line.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/canvas_layer.h"
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
+#include "scene/ui/control.h"
+#include "scene/ui/label.h"
+#include "scene/ui/popup.h"
+#include "scene/ui/subviewport_container.h"
 #include "systems/audio/audio_system.h"
 #include "systems/display/display_system.h"
 #include "systems/rendering/rendering_system.h"
@@ -37,10 +37,10 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingSystem);
 #endif // PLANAR_DISABLED
 
 #ifndef SPATIAL_DISABLED
+#include "scene/resources/spatial/world_spatial.h"
 #include "scene/spatial/audio_listener_spatial.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/world_environment.h"
-#include "scene/resources/spatial/world_spatial.h"
 #endif // SPATIAL_DISABLED
 
 #ifndef PHYSICS_PLANAR_DISABLED

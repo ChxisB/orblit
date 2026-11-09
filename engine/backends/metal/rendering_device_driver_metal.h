@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/containers/paged_allocator.h"
 #include "backends/metal/metal_allocator.h"
 #include "backends/metal/metal_device_profile.h"
 #include "backends/metal/metal_objects_shared.h"
+#include "core/containers/paged_allocator.h"
 #include "systems/rendering/rendering_device_driver.h"
 
 #include <Metal/Metal.hpp>

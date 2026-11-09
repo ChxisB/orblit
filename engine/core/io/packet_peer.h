@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/native_extension/ext_wrappers.gen.h"
-#include "core/io/stream_peer.h"
-#include "core/object/orblit_virtual.gen.h"
 #include "core/containers/ring_buffer.h"
+#include "core/io/stream_peer.h"
+#include "core/native_extension/ext_wrappers.gen.h"
+#include "core/object/orblit_virtual.gen.h"
 #include "core/variant/native_ptr.h"
 
 class PacketPeer : public RefCounted {

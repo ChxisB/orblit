@@ -7,8 +7,8 @@
 
 #include "platform_gl.h"
 
-#include "core/error/error_list.h"
 #include "core/containers/rb_map.h"
+#include "core/error/error_list.h"
 #include "systems/display/display_system_enums.h"
 
 #import <AppKit/AppKit.h>

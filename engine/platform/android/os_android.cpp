@@ -14,17 +14,17 @@
 #include "file_access_android.h"
 #endif
 
+#include "backends/unix/dir_access_unix.h"
+#include "backends/unix/file_access_unix.h"
 #include "core/config/engine.h"
-#include "core/native_extension/native_extension_manager.h"
 #include "core/input/input.h"
 #include "core/io/xml_parser.h"
+#include "core/native_extension/native_extension_manager.h"
 #include "core/os/main_loop.h"
 #include "core/os/os.h"
 #include "core/profiling/profiling.h"
-#include "backends/unix/dir_access_unix.h"
-#include "backends/unix/file_access_unix.h"
-#include "startup/main.h"
 #include "scene/stage/stage.h"
+#include "startup/main.h"
 #include "systems/rendering/rendering_system.h"
 
 #ifdef TOOLS_ENABLED

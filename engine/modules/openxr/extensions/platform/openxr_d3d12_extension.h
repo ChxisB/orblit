@@ -9,8 +9,8 @@
 #include "../../util.h"
 #include "../openxr_extension_wrapper.h"
 
-#include "core/containers/vector.h"
 #include "backends/d3d12/d3d12_hooks.h"
+#include "core/containers/vector.h"
 
 // Always include this as late as possible.
 #include "../../openxr_platform_inc.h"

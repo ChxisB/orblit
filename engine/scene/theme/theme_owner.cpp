@@ -4,9 +4,9 @@
 #include "theme_owner.h"
 
 #include "core/object/callable_mp.h"
-#include "scene/ui/control.h"
 #include "scene/stage/window.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/control.h"
 
 // Theme owner node.
 

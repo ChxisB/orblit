@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include "core/containers/hash_map.h"
+#include "core/containers/hash_set.h"
+#include "core/containers/list.h"
+#include "core/containers/safe_refcount.h"
 #include "core/native_extension/native_extension_interface.gen.h"
 #include "core/object/class_descriptor.h"
 #include "core/object/method_info.h"
@@ -10,10 +14,6 @@
 #include "core/object/property_info.h"
 #include "core/os/mutex.h"
 #include "core/os/spin_lock.h"
-#include "core/containers/hash_map.h"
-#include "core/containers/hash_set.h"
-#include "core/containers/list.h"
-#include "core/containers/safe_refcount.h"
 #include "core/variant/variant.h"
 
 #define ADD_SIGNAL(m_signal) get_class_descriptor_static_mutable().add_signal(m_signal)

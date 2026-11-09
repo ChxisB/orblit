@@ -6,8 +6,8 @@
 #include "core/config/engine.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/mesh.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 Path3D::Path3D() {

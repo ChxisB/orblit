@@ -8,8 +8,8 @@
 #include "../triangle2.h"
 #include "nav_region_iteration_planar.h"
 
-#include "core/math/geometry_planar.h"
 #include "core/containers/rb_map.h"
+#include "core/math/geometry_planar.h"
 
 using namespace Nav2D;
 

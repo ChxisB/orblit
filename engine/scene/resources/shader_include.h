@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/hash_set.h"
+#include "core/io/resource.h"
 
 class ShaderInclude : public Resource {
 	ORBLIT_CLASS(ShaderInclude, Resource);

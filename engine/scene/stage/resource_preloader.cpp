@@ -3,8 +3,8 @@
 
 #include "resource_preloader.h"
 
-#include "core/object/class_registry.h"
 #include "core/containers/rb_set.h"
+#include "core/object/class_registry.h"
 
 void ResourcePreloader::_set_resources(const Array &p_data) {
 	resources.clear();

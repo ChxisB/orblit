@@ -10,12 +10,12 @@
 #include "../editor/editor_scene_importer_gltf.h"
 
 #include "editor/import/spatial/resource_importer_scene.h"
+#include "scene/resources/material.h"
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/skeleton_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/spatial/primitive_meshes.h"
-#include "scene/resources/material.h"
 #include "tests/test_macros.h"
 
 namespace TestGltf {

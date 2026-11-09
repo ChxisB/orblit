@@ -18,6 +18,5 @@ protected:
 	ORBLIT_VIRTUAL0_REQUIRED(_run)
 
 public:
-
 	virtual void run();
 };

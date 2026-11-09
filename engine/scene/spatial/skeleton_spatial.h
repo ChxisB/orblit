@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/containers/a_hash_map.h"
-#include "scene/spatial/entity_spatial.h"
 #include "scene/resources/spatial/skin.h"
+#include "scene/spatial/entity_spatial.h"
 
 typedef int BoneId;
 

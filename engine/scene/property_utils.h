@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/stage/entity.h"
 #include "scene/resources/prefab.h"
+#include "scene/stage/entity.h"
 
 class PropertyUtils {
 public:

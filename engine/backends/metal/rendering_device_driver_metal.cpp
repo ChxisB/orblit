@@ -23,16 +23,16 @@
 
 #include "rendering_device_driver_metal.h"
 
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
-#include "core/io/marshalls.h"
-#include "core/os/os.h"
-#include "core/string/ustring.h"
-#include "core/containers/hash_map.h"
 #include "backends/apple/foundation_helpers.h"
 #include "backends/metal/pixel_formats.h"
 #include "backends/metal/rendering_context_driver_metal.h"
 #include "backends/metal/rendering_shader_container_metal.h"
+#include "core/config/engine.h"
+#include "core/config/project_settings.h"
+#include "core/containers/hash_map.h"
+#include "core/io/marshalls.h"
+#include "core/os/os.h"
+#include "core/string/ustring.h"
 
 #include <Metal/Metal.hpp>
 #include <objc/message.h>

@@ -97,7 +97,7 @@ internal sealed class GameRun : IDisposable
 
     void MoveReachesTheButton()
     {
-        var at = Centre(_ui.Resume);
+        var at = Center(_ui.Resume);
         OnUi(() => _router.MouseMove(at, Vector2.Zero));
         Expect(OnUi(() => _ui.Resume.IsPointerOver), "the button is not under the pointer");
         Expect(_scene.Moves == 0, $"the scene saw {_scene.Moves} moves");
@@ -105,7 +105,7 @@ internal sealed class GameRun : IDisposable
 
     void ClickPressesTheButton()
     {
-        var at = Centre(_ui.Resume);
+        var at = Center(_ui.Resume);
         Click(at);
         Expect(_resumed == 1, $"the button was clicked {_resumed} times");
         Expect(_scene.Events == 0, $"the scene saw {_scene.Events} events");
@@ -122,7 +122,7 @@ internal sealed class GameRun : IDisposable
     void DragOffAButtonStaysWithTheUi()
     {
         var seen = _scene.Events;
-        var on = Centre(_ui.Quit);
+        var on = Center(_ui.Quit);
         var off = new Vector2(10, _scenePicture.Height / 2);
         OnUi(() => _router.MouseMove(on, Vector2.Zero));
         OnUi(() => _router.MouseButton(Left, on, true));
@@ -134,7 +134,7 @@ internal sealed class GameRun : IDisposable
 
     void ClickOnQuit()
     {
-        Click(Centre(_ui.Quit));
+        Click(Center(_ui.Quit));
         Expect(_quit == 1, $"the button was clicked {_quit} times");
     }
 
@@ -170,10 +170,10 @@ internal sealed class GameRun : IDisposable
         return new Picture(width, height, rgba);
     }
 
-    Vector2 Centre(Control control) => OnUi(() =>
+    Vector2 Center(Control control) => OnUi(() =>
     {
-        var centre = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), _ui.Root)!.Value;
-        return new Vector2((float)centre.X, (float)centre.Y);
+        var center = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), _ui.Root)!.Value;
+        return new Vector2((float)center.X, (float)center.Y);
     });
 
     T OnUi<T>(Func<T> work) => _session.Dispatch(work, CancellationToken.None).GetAwaiter().GetResult();

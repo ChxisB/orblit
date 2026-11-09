@@ -7,10 +7,9 @@
 #include "core/math/geometry_spatial.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
+#include "editor/scene/spatial/gizmos/gizmo_spatial_helper.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/spatial/physics/collision_shape_spatial.h"
 #include "scene/resources/spatial/box_shape_spatial.h"
 #include "scene/resources/spatial/capsule_shape_spatial.h"
 #include "scene/resources/spatial/concave_polygon_shape_spatial.h"
@@ -20,6 +19,7 @@
 #include "scene/resources/spatial/separation_ray_shape_spatial.h"
 #include "scene/resources/spatial/sphere_shape_spatial.h"
 #include "scene/resources/spatial/world_boundary_shape_spatial.h"
+#include "scene/spatial/physics/collision_shape_spatial.h"
 
 CollisionShape3DGizmoPlugin::CollisionShape3DGizmoPlugin() {
 	helper.instantiate();

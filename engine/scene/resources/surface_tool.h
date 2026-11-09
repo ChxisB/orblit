@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/math/vector4.h"
 #include "core/containers/local_vector.h"
+#include "core/math/vector4.h"
 #include "scene/resources/mesh.h"
 #include "systems/rendering/rendering_system_enums.h"
 

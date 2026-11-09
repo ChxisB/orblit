@@ -55,9 +55,9 @@ internal static class ReferenceWindow
     // A real press and release, so the control runs its own click code and not only the handlers on the event.
     public static void ClickOn(Control control, EditorWindow window)
     {
-        var centre = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
-        window.MouseDown(centre, MouseButton.Left);
-        window.MouseUp(centre, MouseButton.Left);
+        var center = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(center, MouseButton.Left);
+        window.MouseUp(center, MouseButton.Left);
     }
 
     // Every row of the file tree, parents before their children, including the rows of closed folders.

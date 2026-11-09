@@ -5,14 +5,14 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/config/engine.h"
-#include "core/config/project_settings.h"
-#include "core/io/resource_loader.h"
 #include "backends/opengl/rasterizer_canvas_gles3.h"
 #include "backends/opengl/rasterizer_gles3.h"
 #include "backends/opengl/storage/config.h"
 #include "backends/opengl/storage/texture_storage.h"
 #include "backends/opengl/storage/utilities.h"
+#include "core/config/engine.h"
+#include "core/config/project_settings.h"
+#include "core/io/resource_loader.h"
 #include "systems/rendering/rendering_system_types.h"
 #include "systems/rendering/storage/variant_converters.h"
 

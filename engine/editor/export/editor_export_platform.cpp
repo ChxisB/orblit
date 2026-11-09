@@ -5,7 +5,6 @@
 
 #include "core/config/project_settings.h"
 #include "core/crypto/crypto_core.h"
-#include "core/native_extension/native_extension.h"
 #include "core/io/delta_encoding.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access_encrypted.h"
@@ -17,6 +16,7 @@
 #include "core/io/resource_uid.h"
 #include "core/io/zip_io.h"
 #include "core/math/random_pcg.h"
+#include "core/native_extension/native_extension.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
 #include "core/os/shared_object.h"
@@ -31,10 +31,10 @@
 #include "editor/script/script_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
-#include "scene/ui/rich_text_label.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/prefab.h"
 #include "scene/resources/texture.h"
+#include "scene/stage/entity.h"
+#include "scene/ui/rich_text_label.h"
 
 class EditorExportSaveProxy {
 	HashSet<String> saved_paths;

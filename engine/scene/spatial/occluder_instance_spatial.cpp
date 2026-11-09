@@ -11,10 +11,10 @@
 #include "core/math/triangulate.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/spatial/importer_mesh_instance_spatial.h"
-#include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/resources/spatial/importer_mesh.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/spatial/importer_mesh_instance_spatial.h"
+#include "scene/spatial/mesh_instance_spatial.h"
 #include "systems/rendering/rendering_system.h"
 
 #ifdef TOOLS_ENABLED

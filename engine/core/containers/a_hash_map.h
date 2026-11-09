@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "core/containers/hashfuncs.h"
+#include "core/containers/pair.h"
 #include "core/math/math_funcs_binary.h"
 #include "core/os/memory.h"
 #include "core/string/print_string.h"
-#include "core/containers/hashfuncs.h"
-#include "core/containers/pair.h"
 
 #include <initializer_list>
 

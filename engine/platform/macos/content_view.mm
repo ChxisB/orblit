@@ -4,8 +4,8 @@
 #import "content_view.h"
 
 #import "display_system_macos.h"
-#import "window.h"
 #import "key_mapping_macos.h"
+#import "window.h"
 
 #include "core/input/input.h"
 #include "core/input/input_event.h"

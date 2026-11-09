@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/a_hash_map.h"
 #include "core/object/orblit_virtual.gen.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/a_hash_map.h"
 
 /**
 	A* pathfinding algorithm.

@@ -7,10 +7,10 @@
 #import "key_mapping_macos.h"
 #import "tts_macos.h"
 
+#include "backends/png/png_driver_common.h"
 #include "core/config/project_settings.h"
 #include "core/os/main_loop.h"
 #include "core/os/os.h"
-#include "backends/png/png_driver_common.h"
 
 #if defined(RD_ENABLED)
 #include "systems/rendering/rendering_context_driver.h"

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/math/math_funcs.h"
 #include "core/containers/hashfuncs.h"
+#include "core/math/math_funcs.h"
 
 class String;
 

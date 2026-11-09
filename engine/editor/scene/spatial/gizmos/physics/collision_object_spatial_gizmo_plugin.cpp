@@ -3,11 +3,11 @@
 
 #include "collision_object_spatial_gizmo_plugin.h"
 
+#include "scene/resources/surface_tool.h"
 #include "scene/spatial/physics/collision_object_spatial.h"
 #include "scene/spatial/physics/collision_polygon_spatial.h"
 #include "scene/spatial/physics/collision_shape_spatial.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/surface_tool.h"
 
 CollisionObject3DGizmoPlugin::CollisionObject3DGizmoPlugin() {
 	const Color gizmo_color = Stage::get_singleton()->get_debug_collisions_color();

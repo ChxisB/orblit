@@ -8,9 +8,9 @@
 #include "core/object/class_registry.h"
 #include "scene/planar/physics/area_planar.h"
 #include "scene/planar/physics/collision_object_planar.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/planar/concave_polygon_shape_planar.h"
 #include "scene/resources/planar/convex_polygon_shape_planar.h"
+#include "scene/stage/stage.h"
 #include "systems/physics_planar/physics_system_planar.h"
 
 void CollisionShape2D::_shape_changed() {

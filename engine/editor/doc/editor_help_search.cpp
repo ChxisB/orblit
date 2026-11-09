@@ -8,12 +8,12 @@
 #include "core/os/os.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/filter_line_edit.h"
 #include "editor/script/script_editor_plugin.h"
 #include "editor/settings/editor_feature_profile.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
 #include "editor/themes/editor_theme_manager.h"
+#include "editor/widgets/filter_line_edit.h"
 #include "scene/ui/margin_container.h"
 #include "systems/display/display_system.h"
 

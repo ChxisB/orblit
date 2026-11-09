@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "scene/stage/entity.h"
 #include "scene/resources/camera_attributes.h"
 #include "scene/resources/compositor.h"
 #include "scene/resources/environment.h"
+#include "scene/stage/entity.h"
 
 class WorldEnvironment : public Entity {
 	ORBLIT_CLASS(WorldEnvironment, Entity);

@@ -3,13 +3,13 @@
 
 #pragma once
 
+#include "core/containers/hash_set.h"
+#include "core/containers/safe_refcount.h"
 #include "core/io/dir_access.h"
 #include "core/io/resource_loader_constants.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
 #include "core/os/thread_safe.h"
-#include "core/containers/hash_set.h"
-#include "core/containers/safe_refcount.h"
 #include "scene/stage/entity.h"
 
 class ResourceFormatImporter;

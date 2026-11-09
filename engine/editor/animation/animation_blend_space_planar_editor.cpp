@@ -11,10 +11,12 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
 #include "scene/animation/animation_blend_tree.h"
+#include "scene/stage/timer.h"
+#include "scene/stage/window.h"
 #include "scene/ui/button.h"
 #include "scene/ui/flow_container.h"
 #include "scene/ui/grid_container.h"
@@ -24,8 +26,6 @@
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/spin_box.h"
-#include "scene/stage/timer.h"
-#include "scene/stage/window.h"
 
 bool AnimationNodeBlendSpace2DEditor::can_edit(const Ref<AnimationNode> &p_node) {
 	Ref<AnimationNodeBlendSpace2D> bs2d = p_node;

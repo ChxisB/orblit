@@ -5,11 +5,11 @@
 
 #ifdef ALSAMIDI_ENABLED
 
+#include "core/containers/safe_refcount.h"
+#include "core/containers/vector.h"
 #include "core/os/midi_driver.h"
 #include "core/os/mutex.h"
 #include "core/os/thread.h"
-#include "core/containers/safe_refcount.h"
-#include "core/containers/vector.h"
 
 typedef struct _snd_rawmidi snd_rawmidi_t;
 

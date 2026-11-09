@@ -3,8 +3,8 @@
 
 #include "editor_internal_calls.h"
 
-#include "../orblitsharp_dirs.h"
 #include "../interop_types.h"
+#include "../orblitsharp_dirs.h"
 #include "../utils/path_utils.h"
 #include "code_completion.h"
 

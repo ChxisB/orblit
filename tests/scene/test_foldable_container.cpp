@@ -7,10 +7,10 @@ TEST_FORCE_LINK(test_foldable_container)
 
 #ifndef ADVANCED_GUI_DISABLED
 
-#include "scene/ui/control.h"
-#include "scene/ui/foldable_container.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/control.h"
+#include "scene/ui/foldable_container.h"
 
 namespace TestFoldableContainer {
 

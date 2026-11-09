@@ -5,8 +5,8 @@
 
 #include "core/containers/rb_map.h"
 #include "scene/planar/entity_planar.h"
-#include "scene/stage/viewport.h"
 #include "scene/resources/planar/shape_planar.h"
+#include "scene/stage/viewport.h"
 #include "systems/physics_planar/physics_system_planar_enums.h"
 
 class CollisionObject2D : public Entity2D {

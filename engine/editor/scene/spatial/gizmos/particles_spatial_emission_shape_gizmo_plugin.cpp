@@ -4,10 +4,10 @@
 #include "particles_spatial_emission_shape_gizmo_plugin.h"
 
 #include "editor/settings/editor_settings.h"
+#include "scene/resources/particle_process_material.h"
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/spatial/cpu_particles_spatial.h"
 #include "scene/spatial/gpu_particles_spatial.h"
-#include "scene/resources/spatial/primitive_meshes.h"
-#include "scene/resources/particle_process_material.h"
 
 Particles3DEmissionShapeGizmoPlugin::Particles3DEmissionShapeGizmoPlugin() {
 	helper.instantiate();

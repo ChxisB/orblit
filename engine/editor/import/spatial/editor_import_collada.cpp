@@ -4,19 +4,19 @@
 #include "editor_import_collada.h"
 
 #include "core/config/project_settings.h"
-#include "core/io/resource_loader.h"
 #include "core/containers/rb_set.h"
+#include "core/io/resource_loader.h"
 #include "editor/import/spatial/collada.h"
+#include "scene/animation/animation_player.h"
+#include "scene/resources/animation.h"
+#include "scene/resources/spatial/importer_mesh.h"
+#include "scene/resources/surface_tool.h"
 #include "scene/spatial/camera_spatial.h"
+#include "scene/spatial/entity_spatial.h"
 #include "scene/spatial/importer_mesh_instance_spatial.h"
 #include "scene/spatial/light_spatial.h"
-#include "scene/spatial/entity_spatial.h"
 #include "scene/spatial/path_spatial.h"
 #include "scene/spatial/skeleton_spatial.h"
-#include "scene/animation/animation_player.h"
-#include "scene/resources/spatial/importer_mesh.h"
-#include "scene/resources/animation.h"
-#include "scene/resources/surface_tool.h"
 
 struct ColladaImport {
 	Collada collada;

@@ -3,10 +3,10 @@
 
 #include "nav_region_spatial.h"
 
+#include "nav_map_spatial.h"
 #include "spatial/nav_mesh_queries_spatial.h"
 #include "spatial/nav_region_builder_spatial.h"
 #include "spatial/nav_region_iteration_spatial.h"
-#include "nav_map_spatial.h"
 
 #include "core/config/project_settings.h"
 

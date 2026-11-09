@@ -137,9 +137,9 @@ public final class OrblitPluginRegistry {
 							// Attempt to create the plugin init class via reflection.
 							@SuppressWarnings("unchecked")
 							Class<OrblitPlugin> pluginClass = (Class<OrblitPlugin>)Class
-																	 .forName(pluginHandleClassFullName);
+																	  .forName(pluginHandleClassFullName);
 							Constructor<OrblitPlugin> pluginConstructor = pluginClass
-																				 .getConstructor(Orblit.class);
+																				  .getConstructor(Orblit.class);
 							OrblitPlugin pluginHandle = pluginConstructor.newInstance(orblit);
 
 							// Load the plugin initializer into the registry using the plugin name as key.

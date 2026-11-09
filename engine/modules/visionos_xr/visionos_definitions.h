@@ -5,11 +5,11 @@
 
 #ifdef VISIONOS_ENABLED
 
-#include "core/os/mutex.h"
-#include "core/containers/safe_refcount.h"
 #include "backends/metal/metal_objects_shared.h"
 #include "backends/metal/rendering_context_driver_metal.h"
 #include "backends/metal/rendering_device_driver_metal.h"
+#include "core/containers/safe_refcount.h"
+#include "core/os/mutex.h"
 #include "systems/rendering/renderer_compositor.h"
 #include "systems/rendering/rendering_device.h"
 #include "systems/rendering/rendering_system.h"

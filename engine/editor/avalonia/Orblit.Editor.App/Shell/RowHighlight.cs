@@ -10,7 +10,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The rounded block behind a selected or hovered tree row. The theme paints the whole line, so its own row
-/// colours are clear and a row lays this under its content instead.
+/// colors are clear and a row lays this under its content instead.
 /// </summary>
 internal sealed class RowHighlight : Control
 {

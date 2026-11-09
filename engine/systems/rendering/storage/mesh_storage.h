@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/local_vector.h"
 #include "core/math/color.h"
 #include "core/math/transform_planar.h"
-#include "core/containers/local_vector.h"
 #include "systems/rendering/rendering_system_enums.h"
 #include "systems/rendering/rendering_system_types.h"
 #include "systems/rendering/storage/utilities.h"

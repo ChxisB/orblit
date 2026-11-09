@@ -7,10 +7,10 @@
 #include "web_script_proxy.h"
 
 #include "core/config/engine.h"
+#include "core/containers/local_vector.h"
 #include "core/object/callable_mp.h"
 #include "core/object/object.h"
 #include "core/string/entity_path.h"
-#include "core/containers/local_vector.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h" // Stage only forward declares it.

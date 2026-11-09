@@ -5,8 +5,8 @@
 
 #ifdef WINMIDI_ENABLED
 
-#include "core/os/midi_driver.h"
 #include "core/containers/vector.h"
+#include "core/os/midi_driver.h"
 
 #include <windows.h>
 

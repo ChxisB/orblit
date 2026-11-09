@@ -5,8 +5,6 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/config/project_settings.h"
-#include "core/containers/sort_array.h"
 #include "backends/opengl/effects/copy_effects.h"
 #include "backends/opengl/effects/cubemap_filter.h"
 #include "backends/opengl/effects/feed_effects.h"
@@ -18,6 +16,8 @@
 #include "backends/opengl/storage/render_scene_buffers_gles3.h"
 #include "backends/opengl/storage/texture_storage.h"
 #include "backends/opengl/storage/utilities.h"
+#include "core/config/project_settings.h"
+#include "core/containers/sort_array.h"
 #include "systems/camera/camera_feed.h"
 #include "systems/camera/camera_system.h"
 #include "systems/rendering/rendering_system_default.h"

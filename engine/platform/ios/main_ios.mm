@@ -3,9 +3,9 @@
 
 #import "os_ios.h"
 
-#include "core/profiling/profiling.h"
 #import "backends/apple_embedded/app_delegate_apple_embedded.h"
 #import "backends/apple_embedded/main_utilities.h"
+#include "core/profiling/profiling.h"
 #include "startup/main.h"
 
 #import <UIKit/UIKit.h>

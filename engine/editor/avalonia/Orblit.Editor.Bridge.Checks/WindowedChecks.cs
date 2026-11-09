@@ -66,7 +66,7 @@ internal sealed class WindowedChecks : IChecks
         ("a collision shape is made under a mesh, owned by the scene so a save keeps it, and a mesh with no mesh or a plain entity is refused", CollisionShapesAreSaved),
         ("a collision shape under a mesh that is the scene root is saved too", CollisionUnderTheRootIsSaved),
         ("the planar camera draws the level over a flat backdrop, pans and zooms it, and goes off again", PlanarCameraDrawsTheLevelOverABackdrop),
-        ("a planar pick chooses the nearest pivot of an Entity2D, and honours locks and groups", PlanarPickChoosesTheNearestPivot),
+        ("a planar pick chooses the nearest pivot of an Entity2D, and honors locks and groups", PlanarPickChoosesTheNearestPivot),
         ("a planar move drag lands the pivot where the pointer ends, at any zoom", PlanarMoveFollowsThePointerAtAnyZoom),
         ("the planar camera and its backdrop stay out of the outline and the saved scene", PlanarCameraStaysOutOfTheScene),
         ("a line the engine logs reaches the output log, and a clear drops the lines read so far", EngineLogReachesTheOutputLog),
@@ -103,7 +103,7 @@ internal sealed class WindowedChecks : IChecks
 
         var (cr, cg, cb, _) = frame.At(frame.Width / 2, frame.Height / 2);
 
-        Assert.False(IsClearColour(cr, cg, cb), $"the centre is still the clear colour: {cr}, {cg}, {cb}");
+        Assert.False(IsClearColour(cr, cg, cb), $"the center is still the clear colour: {cr}, {cg}, {cb}");
         Assert.True(IsClearColour(frame.At(0, 0)), "the corner lost the clear colour");
     }
 
@@ -162,7 +162,7 @@ internal sealed class WindowedChecks : IChecks
 
         Assert.Equal("Second", root.Name);
         Assert.Equal(["Light", "Cube"], root.Children.Select(c => c.Name));
-        Assert.False(IsClearColour(r, g, b), $"the centre is the clear colour: {r}, {g}, {b}");
+        Assert.False(IsClearColour(r, g, b), $"the center is the clear colour: {r}, {g}, {b}");
     }
 
     // A fresh camera starts at OrbitView.Start, so the check can ask where a point lands. The root is lifted
@@ -188,7 +188,7 @@ internal sealed class WindowedChecks : IChecks
         Assert.Equal(spawn, _editor.Pick(camera, spawnPoint));
         Assert.Equal(spawn, _editor.Pick(camera, spawnPoint + new Vector2(20, 0)));
         Assert.Equal(0, _editor.Pick(camera, spawnPoint + new Vector2(30, 0)));
-        // The root, the light and the box are equally near the centre, so the first in outline order wins.
+        // The root, the light and the box are equally near the center, so the first in outline order wins.
         Assert.Equal(root.Handle, _editor.Pick(camera, camera.Project(lift)));
         Assert.Equal(0, _editor.Pick(camera, Vector2.Zero));
         Assert.True(camera.IsBehind(behindAt));
@@ -696,7 +696,7 @@ internal sealed class WindowedChecks : IChecks
         _host.Pump(1);
         var frame = Frame();
         var middle = new Vector2(frame.Width / 2f, frame.Height / 2f);
-        Assert.True(Vector2.Distance(camera.Project(spawnAt), middle) > 50f, "the start view already centres Spawn");
+        Assert.True(Vector2.Distance(camera.Project(spawnAt), middle) > 50f, "the start view already centers Spawn");
 
         camera.Frame(spawn);
         _host.Pump(1);
@@ -776,10 +776,10 @@ internal sealed class WindowedChecks : IChecks
 
         Assert.Equal(0, none.Count);
         Assert.Equal(0, hidden.Count);
-        Assert.True(Vector2.Distance(round.Centre, camera.Project(Origin(mesh))) < 12, $"the box is at {round.Centre}, the Box at {camera.Project(Origin(mesh))}");
+        Assert.True(Vector2.Distance(round.Center, camera.Project(Origin(mesh))) < 12, $"the box is at {round.Center}, the Box at {camera.Project(Origin(mesh))}");
         Assert.True(round.Width > 20, $"the box is {round.Width} pixels wide");
         Assert.True(small.Count > 20, $"the stand-in box drew {small.Count} pixels");
-        Assert.True(Vector2.Distance(small.Centre, camera.Project(Origin(eye))) < 8, $"the stand-in is at {small.Centre}, the camera at {camera.Project(Origin(eye))}");
+        Assert.True(Vector2.Distance(small.Center, camera.Project(Origin(eye))) < 8, $"the stand-in is at {small.Center}, the camera at {camera.Project(Origin(eye))}");
         Assert.Equal(["Camera", "Light", "Box", "Spawn"], _editor.Outline()!.Children.Select(c => c.Name));
         _editor.Save();
         Assert.DoesNotContain("EditorSelection", SavedScene());
@@ -846,7 +846,7 @@ internal sealed class WindowedChecks : IChecks
     Vector3 Origin(nint entity) => _host.Entity3DGetGlobalTransform(entity).Origin;
 
     // How many orange pixels the frame has, where their middle is and how wide they spread.
-    static (int Count, Vector2 Centre, int Width) Orange(Snapshot frame)
+    static (int Count, Vector2 Center, int Width) Orange(Snapshot frame)
     {
         var hits = Enumerable.Range(0, frame.Width * frame.Height)
             .Where(i => frame.Pixels[i * 4] > 200 && frame.Pixels[i * 4 + 1] is > 90 and < 170 && frame.Pixels[i * 4 + 2] < 60)
@@ -1048,7 +1048,7 @@ internal sealed class WindowedChecks : IChecks
     }
 
     // Left and Right sit 80 units to either side of the middle of the window at the start view. Each pivot is
-    // the middle of a coloured box 20 units square. Child hangs 40 units below Right.
+    // the middle of a colored box 20 units square. Child hangs 40 units below Right.
     const string PlanarScene = """
         [orb_scene format=3]
 
@@ -1124,7 +1124,7 @@ internal sealed class WindowedChecks : IChecks
     static void AssertBox(Vector2 middle, Vector2 size, (Vector2 Middle, Vector2 Size)? drawn, string what)
     {
         Assert.True(drawn is not null, $"{what} is not in the frame");
-        Assert.True(Vector2.Distance(middle, drawn.Value.Middle) < 1f, $"{what} is centred at {drawn.Value.Middle}, not {middle}");
+        Assert.True(Vector2.Distance(middle, drawn.Value.Middle) < 1f, $"{what} is centered at {drawn.Value.Middle}, not {middle}");
         Assert.True(Vector2.Distance(size, drawn.Value.Size) < 2f, $"{what} is {drawn.Value.Size} pixels, not {size}");
     }
 

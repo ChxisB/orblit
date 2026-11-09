@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/local_vector.h"
 #include "core/object/orblit_virtual.gen.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/local_vector.h"
 
 class AStarGrid2D : public RefCounted {
 	ORBLIT_CLASS(AStarGrid2D, RefCounted);

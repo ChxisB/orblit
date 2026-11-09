@@ -5,9 +5,9 @@
 
 #include "core/config/engine.h"
 #include "core/object/callable_mp.h"
-#include "scene/ui/panel.h"
 #include "scene/resources/style_box_flat.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/panel.h"
 #include "systems/display/display_system.h"
 
 #ifdef TOOLS_ENABLED

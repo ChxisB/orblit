@@ -5,9 +5,9 @@
 
 #include "core/object/class_registry.h"
 #include "scene/animation/easing_equations.h"
+#include "scene/resources/animation.h"
 #include "scene/stage/entity.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/animation.h"
 
 #define CHECK_VALID() \
 	ERR_FAIL_COND_V_MSG(!valid, nullptr, "Tween invalid. Either finished or created outside scene tree."); \

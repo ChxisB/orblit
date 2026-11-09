@@ -13,14 +13,14 @@
 #include "editor/editor_string_names.h"
 #include "editor/file_system/editor_file_system.h"
 #include "editor/file_system/editor_paths.h"
+#include "editor/settings/editor_settings.h"
+#include "editor/themes/editor_scale.h"
 #include "editor/widgets/create_dialog.h"
 #include "editor/widgets/editor_file_dialog.h"
 #include "editor/widgets/editor_validation_panel.h"
-#include "editor/settings/editor_settings.h"
-#include "editor/themes/editor_scale.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/line_edit.h"
-#include "scene/theme/theme_db.h"
 
 static String _get_parent_class_of_script(const String &p_path) {
 	if (!ResourceLoader::exists(p_path, "Script")) {

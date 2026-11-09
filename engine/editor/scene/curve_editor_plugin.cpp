@@ -12,15 +12,15 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_spin_slider.h"
 #include "editor/scene/canvas_item_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_spin_slider.h"
+#include "scene/resources/image_texture.h"
 #include "scene/ui/flow_container.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/popup_menu.h"
 #include "scene/ui/separator.h"
-#include "scene/resources/image_texture.h"
 
 CurveEdit::CurveEdit() {
 	set_focus_mode(FOCUS_ALL);

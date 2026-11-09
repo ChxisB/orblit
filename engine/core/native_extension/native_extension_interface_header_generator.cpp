@@ -5,8 +5,8 @@
 
 #include "native_extension_interface_header_generator.h"
 
-#include "core/native_extension/native_extension_interface_dump.gen.h"
 #include "core/io/json.h"
+#include "core/native_extension/native_extension_interface_dump.gen.h"
 
 static const char *FILE_HEADER =
 		"/**************************************************************************/\n"

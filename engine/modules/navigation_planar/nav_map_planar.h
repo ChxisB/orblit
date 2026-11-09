@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "planar/nav_map_iteration_planar.h"
-#include "planar/nav_mesh_queries_planar.h"
 #include "nav_rid_planar.h"
 #include "nav_utils_planar.h"
+#include "planar/nav_map_iteration_planar.h"
+#include "planar/nav_mesh_queries_planar.h"
 
 #include "core/math/math_defs.h"
 #include "core/object/worker_thread_pool.h"

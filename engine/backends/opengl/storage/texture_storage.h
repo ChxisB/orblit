@@ -5,13 +5,13 @@
 
 #ifdef GLES3_ENABLED
 
-#include "core/io/image.h"
-#include "core/math/transform_spatial.h"
+#include "backends/opengl/shaders/canvas_sdf.glsl.gen.h"
+#include "backends/opengl/storage/config.h"
 #include "core/containers/paged_array.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/rid_owner.h"
-#include "backends/opengl/shaders/canvas_sdf.glsl.gen.h"
-#include "backends/opengl/storage/config.h"
+#include "core/io/image.h"
+#include "core/math/transform_spatial.h"
 #include "systems/rendering/rendering_system_enums.h"
 #include "systems/rendering/rendering_system_types.h"
 #include "systems/rendering/storage/texture_storage.h"

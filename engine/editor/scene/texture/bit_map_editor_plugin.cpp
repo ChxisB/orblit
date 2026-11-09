@@ -6,11 +6,11 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_string_names.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/image_texture.h"
 #include "scene/ui/aspect_ratio_container.h"
 #include "scene/ui/label.h"
 #include "scene/ui/margin_container.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/resources/image_texture.h"
 
 void BitMapEditor::setup(const Ref<BitMap> &p_bitmap) {
 	Ref<ImageTexture> bitmap_texture = ImageTexture::create_from_image(p_bitmap->convert_to_image());

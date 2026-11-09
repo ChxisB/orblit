@@ -12,8 +12,8 @@
 #include "core/object/property_info.h"
 #include "core/os/os.h"
 #include "core/version.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/texture.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 #include "modules/modules_enabled.gen.h" // IWYU pragma: keep. For texture_streaming.

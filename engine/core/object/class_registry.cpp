@@ -4,8 +4,8 @@
 #include "class_registry.h"
 
 #include "core/config/engine.h"
-#include "core/object/ref_counted.h"
 #include "core/containers/sort_array.h"
+#include "core/object/ref_counted.h"
 #include "core/version.h"
 
 #define ERR_FAIL_NO_CLASS(m_type, m_class) ERR_FAIL_NULL_MSG(m_type, vformat("Cannot get class \"%s\".", m_class))
@@ -540,8 +540,7 @@ Object *ClassRegistry::_instantiate_internal(const StringName &p_class, bool p_r
 	if (ti->native_extension && ti->native_extension->create_instance3) {
 		ObjectNativeExtension *extension = ti->native_extension;
 		return _instantiate_from_native_extension(extension, p_notify_postinitialize, p_with_refcount);
-	}
-	else {
+	} else {
 		Object *object = ti->creation_func(p_notify_postinitialize);
 		if (p_with_refcount && object != nullptr && object->is_ref_counted()) {
 			// creation_func creates the object with an (effective) refcount of 1,

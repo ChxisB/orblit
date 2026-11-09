@@ -7,11 +7,11 @@ TEST_FORCE_LINK(test_viewport)
 
 #include "core/object/callable_mp.h"
 #include "scene/planar/entity_planar.h"
-#include "scene/ui/control.h"
-#include "scene/ui/subviewport_container.h"
 #include "scene/stage/canvas_layer.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/control.h"
+#include "scene/ui/subviewport_container.h"
 #include "tests/display_system_mock.h"
 #include "tests/signal_watcher.h"
 

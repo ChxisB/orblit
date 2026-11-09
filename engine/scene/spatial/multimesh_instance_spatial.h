@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/multimesh.h"
+#include "scene/spatial/visual_instance_spatial.h"
 
 #ifndef NAVIGATION_SPATIAL_DISABLED
 class NavigationMesh;

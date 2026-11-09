@@ -12,11 +12,11 @@
 #include "editor/script/script_editor_plugin.h"
 #include "editor/script/syntax_highlighters.h"
 #include "editor/settings/editor_settings.h"
+#include "scene/resources/shader.h"
+#include "scene/resources/shader_include.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/split_container.h"
-#include "scene/resources/shader.h"
-#include "scene/resources/shader_include.h"
 #include "systems/display/display_system.h"
 
 void ScriptEditorBase::register_members() {

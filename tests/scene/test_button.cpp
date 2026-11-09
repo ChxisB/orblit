@@ -5,9 +5,9 @@
 
 TEST_FORCE_LINK(test_button)
 
-#include "scene/ui/button.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/button.h"
 #include "tests/display_system_mock.h"
 
 namespace TestButton {

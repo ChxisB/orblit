@@ -4,9 +4,9 @@
 #pragma once
 
 #include "core/object/editor_language.h"
-#include "editor/widgets/code_editor.h"
 #include "editor/script/script_editor_base.h"
 #include "editor/script/script_editor_plugin.h"
+#include "editor/widgets/code_editor.h"
 #include "scene/ui/color_picker.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/option_button.h"

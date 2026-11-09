@@ -9,10 +9,10 @@
 #include "core/object/script_language.h"
 #include "editor/file_system/editor_file_system.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/ui/control.h"
 #include "scene/stage/entity.h"
 #include "scene/stage/stage.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/control.h"
 
 namespace dotnet_host {
 

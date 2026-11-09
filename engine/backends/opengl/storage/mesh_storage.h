@@ -5,10 +5,10 @@
 
 #ifdef GLES3_ENABLED
 
+#include "backends/opengl/shaders/skeleton.glsl.gen.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rid_owner.h"
 #include "core/containers/self_list.h"
-#include "backends/opengl/shaders/skeleton.glsl.gen.h"
 #include "systems/rendering/renderer_compositor.h"
 #include "systems/rendering/rendering_system_enums.h"
 #include "systems/rendering/rendering_system_globals.h"

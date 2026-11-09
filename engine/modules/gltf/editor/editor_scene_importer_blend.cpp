@@ -13,11 +13,11 @@
 #include "core/os/os.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
-#include "startup/main.h"
+#include "editor/widgets/editor_file_dialog.h"
 #include "scene/ui/line_edit.h"
+#include "startup/main.h"
 #include "systems/display/display_system.h"
 
 #ifdef WINDOWS_ENABLED

@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/safe_refcount.h"
 #include "core/object/script_language.h"
 #include "core/os/process_id.h"
-#include "core/containers/safe_refcount.h"
 #include "editor/editor_data.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/settings/editor_folding.h"

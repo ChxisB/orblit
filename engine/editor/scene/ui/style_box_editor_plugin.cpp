@@ -5,8 +5,8 @@
 
 #include "core/object/callable_mp.h"
 #include "editor/themes/editor_scale.h"
-#include "scene/ui/button.h"
 #include "scene/resources/style_box_texture.h"
+#include "scene/ui/button.h"
 
 bool StyleBoxPreview::grid_preview_enabled = true;
 

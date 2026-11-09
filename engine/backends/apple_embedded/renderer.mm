@@ -3,9 +3,9 @@
 
 #import "renderer.h"
 
-#include "core/config/project_settings.h"
 #import "backends/apple_embedded/display_system_apple_embedded.h"
 #import "backends/apple_embedded/os_apple_embedded.h"
+#include "core/config/project_settings.h"
 #include "startup/main.h"
 
 @interface GDTRenderer ()

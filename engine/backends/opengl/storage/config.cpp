@@ -5,10 +5,10 @@
 
 #ifdef GLES3_ENABLED
 
+#include "backends/opengl/rasterizer_util_gles3.h"
 #include "core/config/project_settings.h"
 #include "core/os/os.h"
 #include "core/string/ustring.h"
-#include "backends/opengl/rasterizer_util_gles3.h"
 
 #ifdef ANDROID_ENABLED
 #include <platform_egl.h>

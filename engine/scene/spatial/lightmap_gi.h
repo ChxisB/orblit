@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/local_vector.h"
+#include "core/io/resource.h"
 #include "scene/spatial/lightmapper.h"
 #include "scene/spatial/visual_instance_spatial.h"
 

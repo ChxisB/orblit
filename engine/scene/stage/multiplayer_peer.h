@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/native_extension/ext_wrappers.gen.h"
 #include "core/io/packet_peer.h"
+#include "core/native_extension/ext_wrappers.gen.h"
 #include "core/object/orblit_virtual.gen.h"
 #include "core/variant/native_ptr.h"
 

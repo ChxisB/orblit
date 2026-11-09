@@ -6,11 +6,11 @@
 #include "core/os/thread.h"
 #include "editor/doc/doc_tools.h"
 #include "editor/plugins/editor_plugin.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/popup.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/text_edit.h"
-#include "scene/stage/timer.h"
 
 class FindBar : public HBoxContainer {
 	ORBLIT_CLASS(FindBar, HBoxContainer);

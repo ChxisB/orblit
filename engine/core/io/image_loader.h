@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "core/containers/list.h"
 #include "core/io/file_access.h"
 #include "core/io/image.h"
 #include "core/object/orblit_virtual.gen.h"
 #include "core/string/ustring.h"
-#include "core/containers/list.h"
 #include "core/variant/type_info.h"
 
 class ImageLoader;

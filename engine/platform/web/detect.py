@@ -53,7 +53,9 @@ def get_opts():
         # eval() can be a security concern, so it can be disabled.
         BoolVariable("javascript_eval", "Enable JavaScript eval interface", True),
         BoolVariable(
-            "dlink_enabled", "Enable WebAssembly dynamic linking (NativeExtension support). Produces bigger binaries", False
+            "dlink_enabled",
+            "Enable WebAssembly dynamic linking (NativeExtension support). Produces bigger binaries",
+            False,
         ),
         BoolVariable("use_closure_compiler", "Use closure compiler to minimize JavaScript code", False),
         BoolVariable(
@@ -324,4 +326,3 @@ def configure(env: "SConsEnvironment"):
     # This workaround creates a closure that prevents the garbage collector from freeing the WebGL context.
     # We also only use WebGL2, and changing context version is not widely supported anyway.
     env.Append(LINKFLAGS=["-sGL_WORKAROUND_SAFARI_GETCONTEXT_BUG=0"])
-

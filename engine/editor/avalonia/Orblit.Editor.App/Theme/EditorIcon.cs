@@ -27,7 +27,7 @@ internal sealed class EditorIcon : Control
 
     internal string IconName { get; }
 
-    /// <summary>The icon drawn into a square bitmap, for a window icon. Only icons with fixed colours suit it.</summary>
+    /// <summary>The icon drawn into a square bitmap, for a window icon. Only icons with fixed colors suit it.</summary>
     public static WindowIcon ToWindowIcon(string name, int side)
     {
         var icon = new EditorIcon(name);

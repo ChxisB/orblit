@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/vector.h"
 #include "core/math/vector2.h"
 #include "core/math/vector2i.h"
-#include "core/containers/vector.h"
 
 class EditorAtlasPacker {
 public:

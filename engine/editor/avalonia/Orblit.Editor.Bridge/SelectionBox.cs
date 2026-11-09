@@ -51,17 +51,17 @@ public sealed class SelectionBox
     }
 
     /// <summary>
-    /// The placement of a box of size 1 centred on its own origin that covers the bounds of an entity placed at
-    /// <paramref name="place"/>. The basis columns are stretched by the size and the origin moves to the centre.
+    /// The placement of a box of size 1 centered on its own origin that covers the bounds of an entity placed at
+    /// <paramref name="place"/>. The basis columns are stretched by the size and the origin moves to the center.
     /// </summary>
     public static Transform3D Around(Transform3D place, Aabb bounds)
     {
-        var centre = bounds.Position + bounds.Size / 2;
+        var center = bounds.Position + bounds.Size / 2;
         return new Transform3D(
             place.Row0 * bounds.Size,
             place.Row1 * bounds.Size,
             place.Row2 * bounds.Size,
-            new Vector3(Vector3.Dot(place.Row0, centre), Vector3.Dot(place.Row1, centre), Vector3.Dot(place.Row2, centre)) + place.Origin);
+            new Vector3(Vector3.Dot(place.Row0, center), Vector3.Dot(place.Row1, center), Vector3.Dot(place.Row2, center)) + place.Origin);
     }
 
     static nint Make(EngineHost host, nint root, string name, string code)

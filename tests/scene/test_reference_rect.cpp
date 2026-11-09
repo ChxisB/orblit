@@ -5,9 +5,9 @@
 
 TEST_FORCE_LINK(test_reference_rect)
 
-#include "scene/ui/reference_rect.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/reference_rect.h"
 
 namespace TestReferenceRect {
 

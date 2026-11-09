@@ -6,8 +6,8 @@
 #include "multiplayer_spawner.h"
 #include "multiplayer_synchronizer.h"
 
-#include "core/object/ref_counted.h"
 #include "core/containers/rb_set.h"
+#include "core/object/ref_counted.h"
 
 class SceneMultiplayer;
 class SceneCacheInterface;

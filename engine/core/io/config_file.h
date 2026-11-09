@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hash_map.h"
 #include "core/io/file_access.h"
 #include "core/object/ref_counted.h"
-#include "core/containers/hash_map.h"
 #include "core/variant/variant_parser.h"
 
 class ConfigFile : public RefCounted {

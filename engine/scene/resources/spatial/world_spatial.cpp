@@ -5,9 +5,9 @@
 
 #include "core/config/project_settings.h"
 #include "core/object/class_registry.h"
-#include "scene/spatial/camera_spatial.h"
 #include "scene/resources/camera_attributes.h"
 #include "scene/resources/environment.h"
+#include "scene/spatial/camera_spatial.h"
 #include "systems/rendering/rendering_system.h"
 
 #ifndef NAVIGATION_SPATIAL_DISABLED

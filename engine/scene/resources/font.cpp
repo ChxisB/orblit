@@ -4,11 +4,11 @@
 #include "font.h"
 
 #include "core/config/engine.h"
+#include "core/containers/hash_map.h"
 #include "core/io/image_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
-#include "core/containers/hash_map.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/text_line.h"
 #include "scene/resources/text_paragraph.h"

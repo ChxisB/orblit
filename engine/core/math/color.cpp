@@ -3,10 +3,10 @@
 
 #include "color.h"
 
+#include "core/containers/hash_map.h"
 #include "core/math/color_names.inc"
 #include "core/math/math_funcs.h"
 #include "core/string/ustring.h"
-#include "core/containers/hash_map.h"
 
 #include <thirdparty/misc/ok_color.h>
 

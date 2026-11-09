@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/thread_safe.h"
 #include "core/containers/local_vector.h"
+#include "core/os/thread_safe.h"
 #include "scene/resources/font.h"
 #include "systems/text/text_system.h"
 

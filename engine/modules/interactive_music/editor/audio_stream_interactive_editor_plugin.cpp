@@ -12,12 +12,12 @@
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/style_box_flat.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/option_button.h"
 #include "scene/ui/spin_box.h"
 #include "scene/ui/split_container.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/style_box_flat.h"
 
 void AudioStreamInteractiveTransitionEditor::_notification(int p_what) {
 	if (p_what == NOTIFICATION_START || p_what == NOTIFICATION_THEME_CHANGED) {

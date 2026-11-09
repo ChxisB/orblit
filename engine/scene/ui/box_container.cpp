@@ -4,9 +4,9 @@
 #include "box_container.h"
 
 #include "core/object/class_registry.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/label.h"
 #include "scene/ui/margin_container.h"
-#include "scene/theme/theme_db.h"
 
 struct _MinSizeCache {
 	int min_size = 0;

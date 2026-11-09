@@ -9,11 +9,11 @@ TEST_FORCE_LINK(test_navigation_region_spatial)
 
 #ifdef MODULE_NAVIGATION_SPATIAL_ENABLED
 
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/navigation/navigation_region_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/spatial/primitive_meshes.h"
 
 namespace TestNavigationRegion3D {
 

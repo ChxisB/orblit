@@ -5,10 +5,10 @@
 
 TEST_FORCE_LINK(test_margin_container)
 
-#include "scene/ui/control.h"
-#include "scene/ui/margin_container.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/control.h"
+#include "scene/ui/margin_container.h"
 
 namespace TestMarginContainer {
 

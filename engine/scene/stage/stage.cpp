@@ -18,24 +18,24 @@ STATIC_ASSERT_INCOMPLETE_TYPE(class, RenderingSystem);
 #include "scene/animation/tween.h"
 #include "scene/audio/audio_stream_player.h"
 #include "scene/debugger/scene_debugger.h"
-#include "scene/ui/control.h"
-#include "scene/stage/multiplayer_api.h"
-#include "scene/stage/entity.h"
-#include "scene/stage/viewport.h"
-#include "scene/stage/window.h"
 #include "scene/resources/environment.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/material.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/prefab.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/entity.h"
+#include "scene/stage/multiplayer_api.h"
+#include "scene/stage/viewport.h"
+#include "scene/stage/window.h"
+#include "scene/ui/control.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/display/display_system.h"
 #include "systems/rendering/rendering_system.h"
 
 #ifndef SPATIAL_DISABLED
-#include "scene/spatial/entity_spatial.h"
 #include "scene/resources/spatial/world_spatial.h"
+#include "scene/spatial/entity_spatial.h"
 #endif // SPATIAL_DISABLED
 
 #ifndef PHYSICS_PLANAR_DISABLED

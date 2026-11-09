@@ -5,9 +5,9 @@
 
 #include "core/object/callable_mp.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/editor_spin_slider.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_spin_slider.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/texture_button.h"
 

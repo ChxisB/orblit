@@ -5,10 +5,10 @@
 
 TEST_FORCE_LINK(test_center_container)
 
-#include "scene/ui/center_container.h"
-#include "scene/ui/control.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/center_container.h"
+#include "scene/ui/control.h"
 
 namespace TestCenterContainer {
 

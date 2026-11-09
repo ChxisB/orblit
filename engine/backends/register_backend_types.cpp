@@ -3,9 +3,9 @@
 
 #include "register_backend_types.h"
 
-#include "core/io/resource_saver.h"
 #include "backends/png/image_loader_png.h"
 #include "backends/png/resource_saver_png.h"
+#include "core/io/resource_saver.h"
 
 #ifdef ACCESSKIT_ENABLED
 #include "backends/accesskit/accessibility_system_accesskit.h"

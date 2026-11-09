@@ -4,10 +4,10 @@
 #include "property_utils.h"
 
 #include "core/config/engine.h"
+#include "core/containers/local_vector.h"
 #include "core/io/resource_loader.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language.h"
-#include "core/containers/local_vector.h"
 #include "scene/resources/prefab.h"
 
 #ifdef TOOLS_ENABLED

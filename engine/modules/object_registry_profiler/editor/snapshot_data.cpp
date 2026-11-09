@@ -3,11 +3,11 @@
 
 #include "snapshot_data.h"
 
-#include "core/script_api.h"
 #include "core/io/compression.h"
 #include "core/io/resource_loader.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language.h"
+#include "core/script_api.h"
 #include "scene/debugger/scene_debugger_object.h"
 
 #include <zlib.h>

@@ -3,15 +3,16 @@
 
 #import "os_macos.h"
 
-#import "dir_access_macos.h"
-#import "display_system_macos.h"
 #import "application.h"
 #import "application_delegate.h"
+#import "dir_access_macos.h"
+#import "display_system_macos.h"
 
 #ifdef TOOLS_ENABLED
 #import "display_system_macos_embedded.h"
 #endif
 
+#include "backends/apple/os_log_logger.h"
 #include "core/config/engine.h"
 #include "core/crypto/crypto_core.h"
 #include "core/debugger/engine_debugger.h"
@@ -21,7 +22,6 @@
 #include "core/os/os.h"
 #include "core/profiling/profiling.h"
 #include "core/version_generated.gen.h"
-#include "backends/apple/os_log_logger.h"
 #include "startup/main.h"
 
 #ifdef SDL_ENABLED

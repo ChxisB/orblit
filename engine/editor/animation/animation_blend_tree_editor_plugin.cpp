@@ -4,18 +4,19 @@
 #include "animation_blend_tree_editor_plugin.h"
 
 #include "core/config/project_settings.h"
+#include "core/containers/rb_set.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "core/containers/rb_set.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/inspector/editor_inspector.h"
 #include "editor/inspector/editor_properties.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
 #include "scene/spatial/skeleton_spatial.h"
+#include "scene/stage/window.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/line_edit.h"
@@ -25,7 +26,6 @@
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/view_panner.h"
-#include "scene/stage/window.h"
 
 void AnimationNodeBlendTreeEditor::add_custom_type(const String &p_name, const Ref<Script> &p_script) {
 	for (int i = 0; i < add_options.size(); i++) {

@@ -3,10 +3,10 @@
 
 #include "editor_translation_parser.h"
 
+#include "core/containers/hash_set.h"
 #include "core/error/error_macros.h"
 #include "core/object/class_registry.h" // IWYU pragma: keep. `ORBLIT_VIRTUAL_BIND` macro.
 #include "core/object/script_language.h"
-#include "core/containers/hash_set.h"
 
 EditorTranslationParser *EditorTranslationParser::singleton = nullptr;
 

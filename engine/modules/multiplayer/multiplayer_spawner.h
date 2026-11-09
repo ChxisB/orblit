@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/containers/local_vector.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/prefab.h"
+#include "scene/stage/entity.h"
 
 class MultiplayerSpawner : public Entity {
 	ORBLIT_CLASS(MultiplayerSpawner, Entity);

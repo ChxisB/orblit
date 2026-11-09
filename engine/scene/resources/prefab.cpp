@@ -4,19 +4,19 @@
 #include "prefab.h"
 
 #include "core/config/engine.h"
+#include "core/containers/local_vector.h"
 #include "core/io/file_access.h"
 #include "core/io/missing_resource.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language.h"
-#include "core/containers/local_vector.h"
 #include "core/variant/callable_bind.h"
 #include "core/variant/container_type_validate.h"
-#include "scene/ui/control.h"
+#include "scene/property_utils.h"
 #include "scene/stage/instance_placeholder.h"
 #include "scene/stage/missing_node.h"
-#include "scene/property_utils.h"
+#include "scene/ui/control.h"
 
 #ifndef PLANAR_DISABLED
 #include "scene/planar/entity_planar.h"

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/stage/entity.h"
 #include "scene/resources/spatial/world_spatial.h"
+#include "scene/stage/entity.h"
 
 class Entity3DGizmo : public RefCounted {
 	ORBLIT_CLASS(Entity3DGizmo, RefCounted);

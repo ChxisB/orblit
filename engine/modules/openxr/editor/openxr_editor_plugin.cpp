@@ -103,7 +103,7 @@ String OpenXRExportPlugin::get_android_manifest_element_contents(const Ref<Edito
     </queries>
 )n";
 
-		contents += "    <uses-feature android:name=\"android.hardware.vr.headtracking\" android:required=\"false\" android:version=\"1\" />\n";
+	contents += "    <uses-feature android:name=\"android.hardware.vr.headtracking\" android:required=\"false\" android:version=\"1\" />\n";
 
 	return contents;
 }

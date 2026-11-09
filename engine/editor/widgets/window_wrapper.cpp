@@ -6,14 +6,14 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/progress_dialog.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/progress_dialog.h"
+#include "scene/stage/window.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/label.h"
 #include "scene/ui/panel.h"
 #include "scene/ui/popup.h"
-#include "scene/stage/window.h"
 #include "systems/display/display_system.h"
 
 // WindowWrapper

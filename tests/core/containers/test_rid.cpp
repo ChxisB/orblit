@@ -5,11 +5,11 @@
 
 TEST_FORCE_LINK(test_rid)
 
-#include "core/os/os.h"
-#include "core/os/thread.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rid.h"
 #include "core/containers/rid_owner.h"
+#include "core/os/os.h"
+#include "core/os/thread.h"
 
 #ifdef TSAN_ENABLED
 #include <sanitizer/tsan_interface.h>

@@ -101,6 +101,7 @@ def glob_to_regex(glob: str) -> re.Pattern[str]:
 
 RE_CODEOWNERS = re.compile(r"^(?P<code>[^#\s](?:\\ |[^\s])*) +(?P<owners>(?:[^#][^\s]+ ?)+)")
 
+
 def parse_codeowners() -> list[tuple[re.Pattern[str], list[str]]]:
     codeowners = []
     with open(".github/CODEOWNERS", encoding="utf-8", newline="\n") as file:

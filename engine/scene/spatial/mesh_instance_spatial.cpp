@@ -10,15 +10,15 @@
 #include "systems/rendering/rendering_system.h"
 
 #ifndef PHYSICS_SPATIAL_DISABLED
-#include "scene/spatial/physics/collision_shape_spatial.h"
-#include "scene/spatial/physics/static_body_spatial.h"
 #include "scene/resources/spatial/concave_polygon_shape_spatial.h"
 #include "scene/resources/spatial/convex_polygon_shape_spatial.h"
+#include "scene/spatial/physics/collision_shape_spatial.h"
+#include "scene/spatial/physics/static_body_spatial.h"
 #endif // PHYSICS_SPATIAL_DISABLED
 
 #ifndef NAVIGATION_SPATIAL_DISABLED
-#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
 #include "scene/resources/navigation_mesh.h"
+#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
 #endif // NAVIGATION_SPATIAL_DISABLED
 

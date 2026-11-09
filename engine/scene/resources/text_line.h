@@ -25,7 +25,6 @@ private:
 	Vector<float> tab_stops;
 
 protected:
-
 	static void register_members();
 
 	void _shape() const;

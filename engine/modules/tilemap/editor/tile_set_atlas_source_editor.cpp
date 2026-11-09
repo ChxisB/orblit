@@ -14,14 +14,14 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_toaster.h"
 #include "editor/inspector/editor_inspector.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_toaster.h"
+#include "scene/resources/planar/navigation_mesh_source_geometry_data_planar.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/control.h"
-#include "scene/resources/planar/navigation_mesh_source_geometry_data_planar.h"
 #include "systems/navigation_planar/navigation_system_planar.h"
 
 void TileSetAtlasSourceEditor::TileSetAtlasSourceProxyObject::set_id(int p_id) {

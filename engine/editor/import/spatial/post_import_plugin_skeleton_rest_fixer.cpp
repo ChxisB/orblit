@@ -4,12 +4,12 @@
 #include "post_import_plugin_skeleton_rest_fixer.h"
 
 #include "core/io/resource_importer.h"
+#include "scene/animation/animation_player.h"
+#include "scene/resources/bone_map.h"
 #include "scene/spatial/bone_attachment_spatial.h"
 #include "scene/spatial/importer_mesh_instance_spatial.h"
 #include "scene/spatial/retarget_modifier_spatial.h"
 #include "scene/spatial/skeleton_spatial.h"
-#include "scene/animation/animation_player.h"
-#include "scene/resources/bone_map.h"
 
 void PostImportPluginSkeletonRestFixer::get_internal_import_options(InternalImportCategory p_category, List<ResourceImporter::ImportOption> *r_options) {
 	if (p_category == INTERNAL_IMPORT_CATEGORY_SKELETON_3D_NODE) {

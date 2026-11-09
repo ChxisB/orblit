@@ -5,9 +5,9 @@
 
 #ifdef PULSEAUDIO_ENABLED
 
+#include "core/containers/safe_refcount.h"
 #include "core/os/mutex.h"
 #include "core/os/thread.h"
-#include "core/containers/safe_refcount.h"
 #include "systems/audio/audio_driver.h"
 
 #ifdef SOWRAP_ENABLED

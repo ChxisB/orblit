@@ -3,11 +3,11 @@
 
 #include "rendering_device_driver_metal3.h"
 
+#include "backends/metal/pixel_formats.h"
+#include "backends/metal/rendering_context_driver_metal.h"
 #include "core/config/project_settings.h"
 #include "core/os/os.h"
 #include "core/string/ustring.h"
-#include "backends/metal/pixel_formats.h"
-#include "backends/metal/rendering_context_driver_metal.h"
 
 namespace MTL3 {
 

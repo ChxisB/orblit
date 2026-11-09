@@ -48,7 +48,7 @@ public sealed class PlanarViewTests
         var zoomed = view.Zoomed(3);
 
         Assert.True(zoomed.Zoom > 1.3f && zoomed.Zoom < 1.4f);
-        Assert.Equal(view.Centre, zoomed.Centre);
+        Assert.Equal(view.Center, zoomed.Center);
     }
 
     [Fact]

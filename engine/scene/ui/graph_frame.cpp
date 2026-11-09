@@ -5,11 +5,11 @@
 
 #include "core/config/engine.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/box_container.h"
-#include "scene/ui/label.h"
 #include "scene/resources/style_box_flat.h"
 #include "scene/resources/style_box_texture.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/box_container.h"
+#include "scene/ui/label.h"
 
 void GraphFrame::gui_input(const Ref<InputEvent> &p_ev) {
 	ERR_FAIL_COND(p_ev.is_null());

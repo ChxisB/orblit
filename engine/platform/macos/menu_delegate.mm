@@ -4,8 +4,8 @@
 #import "menu_delegate.h"
 
 #import "display_system_macos.h"
-#import "menu_item.h"
 #import "key_mapping_macos.h"
+#import "menu_item.h"
 #import "native_menu_macos.h"
 
 @implementation OrblitMenuDelegate

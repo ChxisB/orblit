@@ -11,7 +11,7 @@ using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.Live;
 
-// The 2D workspace step. Its scene holds two coloured boxes, so the frame shows that the scene is drawn flat.
+// The 2D workspace step. Its scene holds two colored boxes, so the frame shows that the scene is drawn flat.
 internal sealed partial class EditorRun
 {
     const string PlanarResource = "res://planar.oscn";

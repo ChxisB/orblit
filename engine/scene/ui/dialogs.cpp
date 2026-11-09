@@ -6,8 +6,8 @@
 #include "core/config/engine.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/line_edit.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/line_edit.h"
 #include "systems/display/accessibility_system.h"
 
 // AcceptDialog

@@ -5,8 +5,8 @@
 
 #include "nav_rid_spatial.h"
 
-#include "core/math/vector3.h"
 #include "core/containers/self_list.h"
+#include "core/math/vector3.h"
 
 class NavAgent3D;
 class NavMap3D;

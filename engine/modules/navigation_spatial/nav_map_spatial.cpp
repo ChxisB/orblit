@@ -3,13 +3,13 @@
 
 #include "nav_map_spatial.h"
 
-#include "spatial/nav_map_builder_spatial.h"
-#include "spatial/nav_mesh_queries_spatial.h"
-#include "spatial/nav_region_iteration_spatial.h"
 #include "nav_agent_spatial.h"
 #include "nav_link_spatial.h"
 #include "nav_obstacle_spatial.h"
 #include "nav_region_spatial.h"
+#include "spatial/nav_map_builder_spatial.h"
+#include "spatial/nav_mesh_queries_spatial.h"
+#include "spatial/nav_region_iteration_spatial.h"
 
 #include "core/config/project_settings.h"
 #include "core/object/worker_thread_pool.h"

@@ -5,8 +5,8 @@
 
 #include "core/config/project_settings.h"
 #include "core/object/class_registry.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/mesh.h"
+#include "scene/stage/stage.h"
 #include "systems/physics_spatial/physics_system_spatial.h"
 #include "systems/physics_spatial/physics_system_spatial_manager.h"
 

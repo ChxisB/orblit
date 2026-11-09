@@ -3,10 +3,10 @@
 
 #include "ip.h"
 
+#include "core/containers/hash_map.h"
 #include "core/object/class_registry.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
-#include "core/containers/hash_map.h"
 #include "core/variant/typed_array.h"
 
 /************* RESOLVER ******************/

@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/math/vector3.h"
-#include "core/object/object.h"
 #include "core/containers/hash_set.h"
 #include "core/containers/rid.h"
+#include "core/math/vector3.h"
+#include "core/object/object.h"
 
 namespace PhysicsSystem3DTypes {
 

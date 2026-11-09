@@ -5,10 +5,10 @@
 
 #import "orblit_swift_module-Swift.gen.h"
 
+#import "backends/apple_embedded/os_apple_embedded.h"
+#include "core/containers/vector.h"
 #include "core/math/transform_spatial.h"
 #include "core/math/vector3.h"
-#include "core/containers/vector.h"
-#import "backends/apple_embedded/os_apple_embedded.h"
 
 #include "modules/modules_enabled.gen.h"
 #if defined(MODULE_VISIONOS_XR_ENABLED)

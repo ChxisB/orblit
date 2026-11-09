@@ -5,18 +5,18 @@
 
 #include "api/javascript_bridge_singleton.h"
 #include "display_system_web.h"
-#include "js.h"
 #include "ip_web.h"
+#include "js.h"
 #include "net_socket_web.h"
 #include "remote_debugger_peer_messageport.h"
 
+#include "backends/unix/dir_access_unix.h"
+#include "backends/unix/file_access_unix.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/io/file_access.h"
 #include "core/os/main_loop.h"
 #include "core/os/os.h"
 #include "core/profiling/profiling.h"
-#include "backends/unix/dir_access_unix.h"
-#include "backends/unix/file_access_unix.h"
 #include "startup/main.h"
 
 #include <dlfcn.h>

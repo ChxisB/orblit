@@ -97,7 +97,6 @@ public:
 	virtual void set_sample_playback(const Ref<AudioSamplePlayback> &p_playback) override;
 
 private:
-
 public:
 	AudioStreamPlaybackPolyphonic();
 };

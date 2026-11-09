@@ -44,7 +44,6 @@ private:
 	Array _get_shader_uniform_list(bool p_get_groups = false);
 
 protected:
-
 	static void register_members();
 
 public:

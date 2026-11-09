@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/os/keyboard.h"
 #include "core/containers/hash_map.h"
+#include "core/os/keyboard.h"
 
 typedef uint32_t xkb_keycode_t;
 typedef uint32_t xkb_keysym_t;

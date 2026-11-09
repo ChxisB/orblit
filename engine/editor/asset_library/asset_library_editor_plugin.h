@@ -6,6 +6,8 @@
 #include "editor/asset_library/editor_asset_installer.h"
 #include "editor/docks/editor_dock.h"
 #include "editor/plugins/editor_plugin.h"
+#include "scene/stage/canvas_layer.h"
+#include "scene/stage/http_request.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/line_edit.h"
@@ -18,8 +20,6 @@
 #include "scene/ui/scroll_container.h"
 #include "scene/ui/texture_button.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/stage/canvas_layer.h"
-#include "scene/stage/http_request.h"
 
 class EditorFileDialog;
 class HSeparator;

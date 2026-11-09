@@ -7,10 +7,10 @@
 #include "editor/docks/editor_dock.h"
 #include "editor/plugins/editor_plugin.h"
 #include "editor/scene/ui/theme_editor_preview.h"
+#include "scene/resources/theme.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/margin_container.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/theme.h"
 
 class Button;
 class CheckButton;

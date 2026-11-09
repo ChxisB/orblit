@@ -5,11 +5,11 @@
 
 #include "crash_handler_linuxbsd.h"
 
-#include "core/input/input_event.h"
 #include "backends/alsa/audio_driver_alsa.h"
 #include "backends/alsamidi/midi_driver_alsamidi.h"
 #include "backends/pulseaudio/audio_driver_pulseaudio.h"
 #include "backends/unix/os_unix.h"
+#include "core/input/input_event.h"
 
 class JoypadSDL;
 

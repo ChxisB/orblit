@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/math/vector3.h"
 #include "core/containers/hashfuncs.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rid.h"
+#include "core/math/vector3.h"
 
 #include <cfloat> // FLT_MAX
 

@@ -6,12 +6,12 @@
 #include "area_spatial.h"
 #include "collision_object_spatial.h"
 
-#include "core/math/aabb.h"
-#include "core/math/dynamic_bvh.h"
-#include "core/math/vector3.h"
 #include "core/containers/hash_set.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/vset.h"
+#include "core/math/aabb.h"
+#include "core/math/dynamic_bvh.h"
+#include "core/math/vector3.h"
 
 class OrblitConstraint3D;
 class PhysicsSystem3DRenderingSystemHandler;

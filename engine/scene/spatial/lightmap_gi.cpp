@@ -12,13 +12,13 @@
 #include "core/math/geometry_spatial.h"
 #include "core/object/class_registry.h"
 #include "core/object/object.h"
-#include "scene/spatial/light_spatial.h"
-#include "scene/spatial/lightmap_probe.h"
-#include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/resources/camera_attributes.h"
 #include "scene/resources/environment.h"
 #include "scene/resources/image_texture.h"
 #include "scene/resources/sky.h"
+#include "scene/spatial/light_spatial.h"
+#include "scene/spatial/lightmap_probe.h"
+#include "scene/spatial/mesh_instance_spatial.h"
 #include "systems/rendering/rendering_system.h"
 
 #include "modules/modules_enabled.gen.h" // IWYU pragma: keep. For lightmapper_rd.

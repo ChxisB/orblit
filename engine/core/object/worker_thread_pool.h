@@ -3,15 +3,15 @@
 
 #pragma once
 
+#include "core/containers/local_vector.h"
+#include "core/containers/paged_allocator.h"
+#include "core/containers/safe_refcount.h"
+#include "core/containers/self_list.h"
 #include "core/object/object.h"
 #include "core/os/condition_variable.h"
 #include "core/os/memory.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
-#include "core/containers/local_vector.h"
-#include "core/containers/paged_allocator.h"
-#include "core/containers/safe_refcount.h"
-#include "core/containers/self_list.h"
 #include "core/variant/callable.h"
 
 class WorkerThreadPool : public Object {

@@ -3,10 +3,10 @@
 
 #include "undo_redo.h"
 
+#include "core/containers/local_vector.h"
 #include "core/io/resource.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
-#include "core/containers/local_vector.h"
 #include "core/variant/callable_bind.h"
 
 void UndoRedo::Operation::delete_reference() {

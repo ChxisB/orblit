@@ -3,15 +3,14 @@
 
 #include "web_script_proxy.h"
 
+#include "js.h"
 #include "web_game_bridge.h"
 
-#include "js.h"
-
+#include "core/containers/hash_map.h"
 #include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language.h"
-#include "core/containers/hash_map.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h" // Stage only forward declares it.

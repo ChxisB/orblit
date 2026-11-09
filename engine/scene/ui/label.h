@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/ui/control.h"
 #include "scene/resources/label_settings.h"
+#include "scene/ui/control.h"
 
 class Label : public Control {
 	ORBLIT_CLASS(Label, Control);

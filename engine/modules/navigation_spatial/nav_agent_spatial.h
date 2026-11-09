@@ -5,8 +5,8 @@
 
 #include "nav_rid_spatial.h"
 
-#include "core/math/vector3.h"
 #include "core/containers/self_list.h"
+#include "core/math/vector3.h"
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
 #include "systems/navigation_spatial/navigation_constants_spatial.h"

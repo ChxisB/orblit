@@ -3,8 +3,6 @@
 
 #pragma once
 
-#include "core/math/dynamic_bvh.h"
-#include "core/math/transform_interpolator.h"
 #include "core/containers/bin_sorted_array.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/paged_allocator.h"
@@ -12,6 +10,8 @@
 #include "core/containers/pass_func.h"
 #include "core/containers/rid_owner.h"
 #include "core/containers/self_list.h"
+#include "core/math/dynamic_bvh.h"
+#include "core/math/transform_interpolator.h"
 #include "systems/rendering/instance_uniforms.h"
 #include "systems/rendering/renderer_scene_occlusion_cull.h"
 #include "systems/rendering/renderer_scene_render.h"

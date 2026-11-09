@@ -7,9 +7,9 @@
 #include "core/config/project_settings.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/stage/entity.h" // IWYU pragma: keep. Needed to bind `Entity *` arg.
-#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h" // IWYU pragma: keep. Bind `NavigationMeshSourceGeometryData3D`.
 #include "scene/resources/navigation_mesh.h" // IWYU pragma: keep. Bind `NavigationMesh`.
+#include "scene/resources/spatial/navigation_mesh_source_geometry_data_spatial.h" // IWYU pragma: keep. Bind `NavigationMeshSourceGeometryData3D`.
+#include "scene/stage/entity.h" // IWYU pragma: keep. Needed to bind `Entity *` arg.
 #include "systems/navigation_spatial/navigation_path_query_parameters_spatial.h" // IWYU pragma: keep. Bind `NavigationPathQueryParameters3D`.
 #include "systems/navigation_spatial/navigation_path_query_result_spatial.h" // IWYU pragma: keep. Bind `NavigationPathQueryResult3D`.
 

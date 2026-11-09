@@ -14,8 +14,8 @@
 #include "editor/editor_node.h"
 #include "editor/run/game_view_plugin.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/ui/control.h"
 #include "scene/stage/window.h"
+#include "scene/ui/control.h"
 
 void EmbeddedProcessMacOS::_notification(int p_what) {
 	switch (p_what) {

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/stage/entity.h"
 #include "scene/resources/texture.h"
+#include "scene/stage/entity.h"
 #include "systems/display/display_system_enums.h"
 
 class StatusIndicator : public Entity {

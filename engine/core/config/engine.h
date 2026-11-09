@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "core/string/string_name.h"
 #include "core/containers/hash_map.h"
 #include "core/containers/list.h"
+#include "core/string/string_name.h"
 
 class Object;
 class Dictionary;

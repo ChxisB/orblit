@@ -5,8 +5,8 @@
 
 #include "audio_driver_opensl.h"
 
-#include "core/os/main_loop.h"
 #include "backends/unix/os_unix.h"
+#include "core/os/main_loop.h"
 
 class OrblitJavaWrapper;
 class OrblitIOJavaWrapper;

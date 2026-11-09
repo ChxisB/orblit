@@ -5,12 +5,12 @@
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
-#include "core/script_api.h"
+#include "core/containers/sort_array.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/debugger/script_debugger.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "core/containers/sort_array.h"
+#include "core/script_api.h"
 
 ScriptLanguage *ScriptSystem::_languages[MAX_LANGUAGES];
 int ScriptSystem::_language_count = 0;

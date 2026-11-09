@@ -11,12 +11,12 @@
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/export/editor_export.h"
-#include "editor/widgets/editor_variant_type_selectors.h"
 #include "editor/inspector/editor_inspector.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/settings/editor_settings_dialog.h"
 #include "editor/settings/native_extension/project_settings_native_extension.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_variant_type_selectors.h"
 #include "scene/ui/check_button.h"
 #include "systems/movie_writer/movie_writer.h"
 

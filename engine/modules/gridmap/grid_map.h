@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/entity_spatial.h"
 #include "scene/resources/spatial/mesh_library.h"
+#include "scene/spatial/entity_spatial.h"
 
 class NavigationMesh;
 class NavigationMeshSourceGeometryData3D;

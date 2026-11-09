@@ -17,10 +17,10 @@
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/font.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/flow_container.h"
-#include "scene/stage/timer.h"
-#include "scene/resources/font.h"
 #include "systems/display/display_system.h"
 
 void EditorLog::_error_handler(void *p_self, const char *p_func, const char *p_file, int p_line, const char *p_error, const char *p_errorexp, bool p_editor_notify, ErrorHandlerType p_type) {

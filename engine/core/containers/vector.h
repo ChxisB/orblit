@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "core/error/error_macros.h"
 #include "core/containers/cowdata.h"
 #include "core/containers/sort_array.h"
+#include "core/error/error_macros.h"
 #include "core/typedefs.h"
 
 #include <initializer_list>

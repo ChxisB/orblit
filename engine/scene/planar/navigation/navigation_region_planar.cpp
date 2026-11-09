@@ -7,9 +7,9 @@
 #include "core/math/random_pcg.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/planar/navigation_mesh_source_geometry_data_planar.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/stage.h"
 #include "systems/navigation_planar/navigation_system_planar.h"
 #include "systems/rendering/rendering_system.h"
 
@@ -298,7 +298,6 @@ void NavigationRegion2D::register_members() {
 
 	ClassRegistry::bind_method(D_METHOD("set_navigation_layer_value", "layer_number", "value"), &NavigationRegion2D::set_navigation_layer_value);
 	ClassRegistry::bind_method(D_METHOD("get_navigation_layer_value", "layer_number"), &NavigationRegion2D::get_navigation_layer_value);
-
 
 	ClassRegistry::bind_method(D_METHOD("set_enter_cost", "enter_cost"), &NavigationRegion2D::set_enter_cost);
 	ClassRegistry::bind_method(D_METHOD("get_enter_cost"), &NavigationRegion2D::get_enter_cost);

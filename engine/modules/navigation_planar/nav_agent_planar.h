@@ -5,8 +5,8 @@
 
 #include "nav_rid_planar.h"
 
-#include "core/math/vector2.h"
 #include "core/containers/self_list.h"
+#include "core/math/vector2.h"
 #include "core/variant/callable.h"
 #include "core/variant/dictionary.h"
 #include "systems/navigation_planar/navigation_constants_planar.h"

@@ -4,10 +4,10 @@
 #include "native_extension_manager.h"
 
 #include "core/config/engine.h"
-#include "core/native_extension/native_extension_function_loader.h"
-#include "core/native_extension/native_extension_library_loader.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
+#include "core/native_extension/native_extension_function_loader.h"
+#include "core/native_extension/native_extension_library_loader.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language.h"

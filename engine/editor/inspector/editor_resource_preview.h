@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/safe_refcount.h"
 #include "core/os/semaphore.h"
 #include "core/os/thread.h"
-#include "core/containers/safe_refcount.h"
 #include "scene/stage/entity.h"
 
 class ImageTexture;

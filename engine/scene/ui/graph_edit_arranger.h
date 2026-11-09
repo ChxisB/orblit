@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "core/object/ref_counted.h"
 #include "core/containers/hash_map.h"
 #include "core/containers/hash_set.h"
+#include "core/object/ref_counted.h"
 
 class GraphEdit;
 

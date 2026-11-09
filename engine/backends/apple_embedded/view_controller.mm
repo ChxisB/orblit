@@ -3,13 +3,13 @@
 
 #import "view_controller.h"
 
-#include "core/config/project_settings.h"
 #import "backends/apple_embedded/display_system_apple_embedded.h"
+#import "backends/apple_embedded/key_mapping_apple_embedded.h"
 #import "backends/apple_embedded/keyboard_input_view.h"
+#import "backends/apple_embedded/os_apple_embedded.h"
 #import "backends/apple_embedded/view_apple_embedded.h"
 #import "backends/apple_embedded/view_renderer.h"
-#import "backends/apple_embedded/key_mapping_apple_embedded.h"
-#import "backends/apple_embedded/os_apple_embedded.h"
+#include "core/config/project_settings.h"
 #include "systems/camera/camera_system.h"
 
 #import <AVFoundation/AVFoundation.h>

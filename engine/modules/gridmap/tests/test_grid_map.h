@@ -5,9 +5,9 @@
 
 #include "../grid_map.h"
 
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
-#include "scene/resources/spatial/primitive_meshes.h"
 #include "tests/test_macros.h"
 
 namespace TestGridMap {

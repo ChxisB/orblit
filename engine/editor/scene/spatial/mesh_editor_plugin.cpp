@@ -7,8 +7,8 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_node.h"
 #include "editor/themes/editor_scale.h"
-#include "scene/ui/button.h"
 #include "scene/stage/viewport.h"
+#include "scene/ui/button.h"
 
 void MeshEditor::gui_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());

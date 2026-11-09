@@ -4,12 +4,12 @@
 #include "editor_file_system.h"
 
 #include "core/config/project_settings.h"
-#include "core/native_extension/native_extension_manager.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_importer.h"
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
+#include "core/native_extension/native_extension_manager.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/object/worker_thread_pool.h"
@@ -22,8 +22,8 @@
 #include "editor/script/script_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/settings/project_settings_editor.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/prefab.h"
+#include "scene/stage/stage.h"
 #include "systems/display/display_system.h"
 
 EditorFileSystem *EditorFileSystem::singleton = nullptr;

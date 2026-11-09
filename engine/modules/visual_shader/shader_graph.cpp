@@ -7,10 +7,10 @@
 #include "visual_shader_group.h"
 #include "vs_nodes/visual_shader_nodes.h"
 
+#include "core/containers/rb_map.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/object/script_language.h"
-#include "core/containers/rb_map.h"
 
 void ShaderGraph::_node_changed() {
 	emit_signal(SNAME("graph_changed"));

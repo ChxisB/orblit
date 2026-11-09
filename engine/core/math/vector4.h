@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hashfuncs.h"
 #include "core/error/error_macros.h"
 #include "core/math/math_defs.h"
-#include "core/containers/hashfuncs.h"
 #include "core/typedefs.h"
 
 class String;

@@ -4,9 +4,9 @@
 #pragma once
 
 #include "core/containers/rb_map.h"
+#include "scene/resources/spatial/shape_spatial.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/entity_spatial.h"
-#include "scene/resources/spatial/shape_spatial.h"
 #include "systems/physics_spatial/physics_system_spatial_enums.h"
 
 class CollisionObject3D : public Entity3D {

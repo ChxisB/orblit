@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/object/orblit_virtual.gen.h"
-#include "scene/stage/canvas_item.h"
 #include "scene/resources/theme.h"
+#include "scene/stage/canvas_item.h"
 #include "systems/display/accessibility_system_enums.h"
 
 class Label;

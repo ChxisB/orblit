@@ -5,8 +5,8 @@
 
 #ifdef DEBUG_ENABLED
 
-#include "core/string/string_name.h"
 #include "core/containers/hash_map.h"
+#include "core/string/string_name.h"
 #include "core/variant/variant.h"
 
 class ShaderWarning {

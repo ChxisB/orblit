@@ -12,13 +12,13 @@
 #include "editor/widgets/editor_file_dialog.h"
 #include "scene/planar/cpu_particles_planar.h"
 #include "scene/planar/gpu_particles_planar.h"
+#include "scene/resources/image_texture.h"
+#include "scene/resources/particle_process_material.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/option_button.h"
 #include "scene/ui/popup_menu.h"
 #include "scene/ui/spin_box.h"
-#include "scene/resources/image_texture.h"
-#include "scene/resources/particle_process_material.h"
 
 void GPUParticles2DEditorPlugin::_menu_callback(int p_idx) {
 	if (p_idx == MENU_GENERATE_VISIBILITY_RECT) {

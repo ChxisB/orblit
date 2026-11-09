@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/local_vector.h"
 #include "core/io/image.h"
 #include "core/math/projection.h"
-#include "core/containers/local_vector.h"
 #include "systems/rendering/rendering_system_enums.h"
 
 #include <cfloat> // FLT_MIN, FLT_MAX

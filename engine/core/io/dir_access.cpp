@@ -4,11 +4,11 @@
 #include "dir_access.h"
 
 #include "core/config/project_settings.h"
+#include "core/containers/local_vector.h"
 #include "core/io/file_access.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
 #include "core/os/time.h"
-#include "core/containers/local_vector.h"
 
 String DirAccess::_get_root_path() const {
 	switch (_access_type) {

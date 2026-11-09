@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/os/mutex.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rid.h"
 #include "core/containers/self_list.h"
+#include "core/os/mutex.h"
 #include "core/variant/variant.h"
 #include "systems/physics_spatial/physics_system_spatial_enums.h"
 

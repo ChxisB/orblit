@@ -5,9 +5,9 @@
 
 #ifdef GLES3_ENABLED
 
+#include "backends/opengl/shaders/particles_copy.glsl.gen.h"
 #include "core/containers/rid_owner.h"
 #include "core/containers/self_list.h"
-#include "backends/opengl/shaders/particles_copy.glsl.gen.h"
 #include "systems/rendering/storage/particles_storage.h"
 #include "systems/rendering/storage/utilities.h"
 

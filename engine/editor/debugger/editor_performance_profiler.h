@@ -4,11 +4,11 @@
 #pragma once
 
 #include "core/containers/hash_map.h"
-#include "startup/performance.h"
 #include "scene/ui/control.h"
 #include "scene/ui/label.h"
 #include "scene/ui/split_container.h"
 #include "scene/ui/tree.h"
+#include "startup/performance.h"
 
 class EditorPerformanceProfiler : public HSplitContainer {
 	ORBLIT_CLASS(EditorPerformanceProfiler, HSplitContainer);

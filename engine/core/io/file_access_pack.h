@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "core/containers/hash_set.h"
+#include "core/containers/list.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/io/resource_uid.h"
 #include "core/string/print_string.h"
-#include "core/containers/hash_set.h"
-#include "core/containers/list.h"
 
 // Orblit's packed file magic header ("OPCK" in ASCII).
 #define PACK_HEADER_MAGIC 0x4B43504F

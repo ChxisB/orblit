@@ -8,10 +8,10 @@
 #include "editor/editor_node.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/stage/viewport.h"
 #include "scene/ui/aspect_ratio_container.h"
 #include "scene/ui/foldable_container.h"
 #include "scene/ui/subviewport_container.h"
-#include "scene/stage/viewport.h"
 #include "systems/rendering/rendering_system.h"
 
 void Camera3DEditor::_node_removed(Entity *p_node) {

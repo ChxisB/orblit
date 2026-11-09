@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/string/ustring.h"
 #include "core/containers/local_vector.h"
+#include "core/string/ustring.h"
 
 class StringBuilder {
 	uint32_t string_length = 0;

@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/string/char_utils.h" // IWYU pragma: export
 #include "core/containers/cowdata.h"
 #include "core/containers/hashfuncs.h"
 #include "core/containers/vector.h"
+#include "core/string/char_utils.h" // IWYU pragma: export
 #include "core/typedefs.h"
 
 class String;

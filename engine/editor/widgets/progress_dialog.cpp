@@ -7,10 +7,10 @@
 #include "core/os/os.h"
 #include "editor/editor_node.h"
 #include "editor/themes/editor_scale.h"
-#include "startup/main.h"
-#include "scene/ui/panel_container.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/panel_container.h"
+#include "startup/main.h"
 #include "systems/display/display_system.h"
 
 void BackgroundProgress::_add_task(const String &p_task, const String &p_label, int p_steps) {

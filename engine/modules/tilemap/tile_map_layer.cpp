@@ -3,18 +3,17 @@
 
 #include "tile_map_layer.h"
 
-
 #include "core/config/engine.h"
+#include "core/containers/a_hash_map.h"
 #include "core/io/marshalls.h"
 #include "core/math/geometry_planar.h"
 #include "core/math/random_pcg.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "core/containers/a_hash_map.h"
-#include "scene/ui/control.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/material.h"
 #include "scene/resources/world_planar.h"
+#include "scene/stage/stage.h"
+#include "scene/ui/control.h"
 #include "systems/rendering/rendering_system.h"
 
 #ifndef PHYSICS_PLANAR_DISABLED

@@ -3,9 +3,9 @@
 
 #include "grid_container.h"
 
-#include "core/object/class_registry.h"
 #include "core/containers/rb_map.h"
 #include "core/containers/rb_set.h"
+#include "core/object/class_registry.h"
 #include "scene/theme/theme_db.h"
 
 void GridContainer::_resort() {

@@ -6,9 +6,9 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_node.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/split_container.h"
-#include "scene/stage/stage.h"
 
 SnapshotRefCountedView::SnapshotRefCountedView() {
 	set_name(TTRC("RefCounted"));

@@ -5,12 +5,12 @@
 
 #ifdef GLES3_ENABLED
 
+#include "backends/opengl/rasterizer_util_gles3.h"
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/io/dir_access.h"
 #include "core/io/image.h"
 #include "core/os/os.h"
-#include "backends/opengl/rasterizer_util_gles3.h"
 #include "systems/display/display_system.h"
 #include "systems/rendering/rendering_system.h"
 #include "systems/rendering/rendering_system_types.h"

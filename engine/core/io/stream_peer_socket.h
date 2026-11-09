@@ -18,7 +18,6 @@ public:
 	};
 
 protected:
-
 	Ref<NetSocket> _sock;
 	uint64_t timeout = 0;
 	Status status = STATUS_NONE;

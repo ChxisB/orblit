@@ -9,16 +9,16 @@
 #include "editor/editor_main_screen.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/window_wrapper.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/window_wrapper.h"
+#include "scene/stage/window.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/label.h"
 #include "scene/ui/popup_menu.h"
 #include "scene/ui/split_container.h"
 #include "scene/ui/tab_container.h"
-#include "scene/stage/window.h"
 #include "systems/display/display_system.h"
 
 ////////////////////////////////////////////////

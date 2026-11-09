@@ -3,8 +3,8 @@
 
 #include "rendering_shader_container_d3d12.h"
 
-#include "core/containers/sort_array.h"
 #include "backends/d3d12/dxil_hash.h"
+#include "core/containers/sort_array.h"
 
 #include <backends/d3d12/d3d12ma.h>
 #include <backends/d3d12/d3dx12.h>

@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/vector.h"
 #include "core/math/aabb.h"
 #include "core/math/basis.h"
 #include "core/math/plane.h"
-#include "core/containers/vector.h"
 
 struct [[nodiscard]] Transform3D {
 	static const Transform3D FLIP_X;

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/resource.h"
 #include "core/containers/rid.h"
+#include "core/io/resource.h"
 
 class CameraAttributes : public Resource {
 	ORBLIT_CLASS(CameraAttributes, Resource);

@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "core/object/worker_thread_pool.h"
 #include "core/containers/safe_refcount.h"
-#include "scene/stage/entity.h"
+#include "core/object/worker_thread_pool.h"
 #include "scene/resources/audio/audio_stream.h"
+#include "scene/stage/entity.h"
 
 class AudioStreamPreview : public RefCounted {
 	ORBLIT_CLASS(AudioStreamPreview, RefCounted);

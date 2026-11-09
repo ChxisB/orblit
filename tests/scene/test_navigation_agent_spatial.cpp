@@ -9,8 +9,8 @@ TEST_FORCE_LINK(test_navigation_agent_spatial)
 
 #ifdef MODULE_NAVIGATION_SPATIAL_ENABLED
 
-#include "scene/spatial/navigation/navigation_agent_spatial.h"
 #include "scene/spatial/entity_spatial.h"
+#include "scene/spatial/navigation/navigation_agent_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
 

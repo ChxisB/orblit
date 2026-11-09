@@ -5,9 +5,9 @@
 
 #include "core/config/engine.h"
 #include "core/object/class_registry.h"
+#include "scene/resources/spatial/shape_spatial.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/spatial/shape_spatial.h"
 #include "systems/physics_spatial/direct_states/physics_direct_space_state_spatial.h"
 #include "systems/physics_spatial/physics_system_spatial.h"
 

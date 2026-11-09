@@ -5,11 +5,11 @@
 
 #include "rendering_context_driver_vulkan.h"
 
+#include "backends/vulkan/rendering_device_driver_vulkan.h"
+#include "backends/vulkan/vulkan_hooks.h"
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/version.h"
-#include "backends/vulkan/rendering_device_driver_vulkan.h"
-#include "backends/vulkan/vulkan_hooks.h"
 
 #ifndef DEV_ENABLED
 #include "core/os/os.h"

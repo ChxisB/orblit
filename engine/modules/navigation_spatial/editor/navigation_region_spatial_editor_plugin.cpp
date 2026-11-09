@@ -10,11 +10,11 @@
 #include "editor/inspector/multi_entity_edit.h"
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "scene/spatial/navigation/navigation_region_spatial.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/label.h"
-#include "scene/stage/stage.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
 
 void NavigationRegion3DEditor::_node_removed(Entity *p_node) {

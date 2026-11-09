@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include "core/containers/hash_map.h"
+#include "core/containers/vector.h"
 #include "core/object/ref_counted.h"
 #include "core/string/string_name.h"
 #include "core/string/ustring.h"
-#include "core/containers/hash_map.h"
-#include "core/containers/vector.h"
 #include "core/variant/array.h"
 
 class RemoteDebuggerPeer;

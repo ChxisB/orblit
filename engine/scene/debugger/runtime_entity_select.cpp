@@ -13,14 +13,14 @@
 #include "core/input/input_event.h"
 #include "core/math/geometry_spatial.h"
 #include "core/object/callable_mp.h"
-#include "scene/planar/camera_planar.h"
 #include "scene/debugger/scene_debugger_object.h"
-#include "scene/ui/popup_menu.h"
-#include "scene/ui/view_panner.h"
+#include "scene/planar/camera_planar.h"
+#include "scene/resources/mesh.h"
 #include "scene/stage/canvas_layer.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/mesh.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/popup_menu.h"
+#include "scene/ui/view_panner.h"
 #include "systems/display/display_system.h"
 #include "systems/rendering/rendering_system.h"
 
@@ -39,9 +39,9 @@
 #include "scene/spatial/physics/collision_shape_spatial.h"
 #include "systems/physics_spatial/direct_states/physics_direct_space_state_spatial.h"
 #endif // PHYSICS_SPATIAL_DISABLED
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/spatial/convex_polygon_shape_spatial.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/spatial/visual_instance_spatial.h"
 #endif // SPATIAL_DISABLED
 
 RuntimeEntitySelect *RuntimeEntitySelect::get_singleton() {

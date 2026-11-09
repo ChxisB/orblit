@@ -4,11 +4,11 @@
 #pragma once
 
 #include "core/io/resource_importer.h"
+#include "scene/resources/font.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/tab_container.h"
 #include "scene/ui/text_edit.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/font.h"
 
 class DynamicFontImportSettingsDialog;
 

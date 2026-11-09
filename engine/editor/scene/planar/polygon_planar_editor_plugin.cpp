@@ -11,12 +11,13 @@
 #include "editor/docks/editor_dock_manager.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_zoom_widget.h"
 #include "editor/scene/canvas_item_editor_plugin.h"
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_zoom_widget.h"
 #include "scene/planar/skeleton_planar.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/label.h"
@@ -28,7 +29,6 @@
 #include "scene/ui/spin_box.h"
 #include "scene/ui/split_container.h"
 #include "scene/ui/view_panner.h"
-#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 Entity2D *Polygon2DEditor::_get_node() const {

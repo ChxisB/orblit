@@ -7,13 +7,13 @@
 #include "core/math/random_number_generator.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/spatial/camera_spatial.h"
-#include "scene/spatial/gpu_particles_spatial.h"
-#include "scene/stage/viewport.h"
 #include "scene/resources/curve_texture.h"
 #include "scene/resources/gradient_texture.h"
 #include "scene/resources/mesh.h"
 #include "scene/resources/particle_process_material.h"
+#include "scene/spatial/camera_spatial.h"
+#include "scene/spatial/gpu_particles_spatial.h"
+#include "scene/stage/viewport.h"
 #include "systems/rendering/rendering_system.h"
 
 AABB CPUParticles3D::get_aabb() const {

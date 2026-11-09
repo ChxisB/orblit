@@ -25,8 +25,8 @@
 
 #include "openxr_action.h"
 
-#include "core/object/object.h"
 #include "core/containers/hash_map.h"
+#include "core/object/object.h"
 
 #define XR_PATH_UNSUPPORTED_NAME "unsupported"
 

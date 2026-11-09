@@ -5,10 +5,10 @@
 
 #include "core/containers/a_hash_map.h"
 #include "scene/animation/tween.h"
-#include "scene/stage/entity.h"
 #include "scene/resources/animation.h"
 #include "scene/resources/animation_library.h"
 #include "scene/resources/audio/audio_stream_polyphonic.h"
+#include "scene/stage/entity.h"
 
 class AnimatedValuesBackup;
 

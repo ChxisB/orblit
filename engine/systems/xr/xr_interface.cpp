@@ -44,7 +44,6 @@ void XRInterface::register_members() {
 	ClassRegistry::bind_method(D_METHOD("set_anchor_detection_is_enabled", "enable"), &XRInterface::set_anchor_detection_is_enabled);
 	ClassRegistry::bind_method(D_METHOD("get_camera_feed_id"), &XRInterface::get_camera_feed_id);
 
-
 	ClassRegistry::bind_method(D_METHOD("get_camera_projections", "tracker_name", "aspect", "near", "far"), &XRInterface::get_camera_projections);
 	ClassRegistry::bind_method(D_METHOD("get_camera_offsets", "tracker_name"), &XRInterface::get_camera_offsets);
 

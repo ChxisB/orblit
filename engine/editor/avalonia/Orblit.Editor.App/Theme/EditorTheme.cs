@@ -10,7 +10,7 @@ using Avalonia.Themes.Fluent;
 namespace Orblit.Editor.App.Theme;
 
 /// <summary>
-/// The base theme with the editor's colours, font and shape laid over it. Every control in the shell takes
+/// The base theme with the editor's colors, font and shape laid over it. Every control in the shell takes
 /// its look from here, so none of them sets a colour of its own.
 /// </summary>
 internal sealed class EditorTheme : Styles

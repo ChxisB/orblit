@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/rid.h"
 #include "core/object/object.h"
 #include "core/object/ref_counted.h"
 #include "core/os/thread_safe.h"
-#include "core/containers/rid.h"
 #include "core/variant/type_info.h"
 
 /**

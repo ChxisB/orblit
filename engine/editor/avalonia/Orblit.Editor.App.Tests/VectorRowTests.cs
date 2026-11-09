@@ -63,10 +63,10 @@ public sealed class VectorRowTests
             var window = OpenAtReferenceSize();
             var row = Selected(window);
 
-            var colours = Texts(row).Where(text => text.Text is "x" or "y" or "z").Select(text => ((ISolidColorBrush)text.Foreground!).Color).ToArray();
+            var colors = Texts(row).Where(text => text.Text is "x" or "y" or "z").Select(text => ((ISolidColorBrush)text.Foreground!).Color).ToArray();
             var unit = Texts(row).First(text => text.Text == "m");
 
-            Assert.Equal([Color.Parse("#7b3d49"), Color.Parse("#6f8341"), Color.Parse("#436488")], colours);
+            Assert.Equal([Color.Parse("#7b3d49"), Color.Parse("#6f8341"), Color.Parse("#436488")], colors);
             Assert.Equal(Color.Parse("#606060"), ((ISolidColorBrush)unit.Foreground!).Color);
         });
     }

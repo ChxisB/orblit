@@ -1,12 +1,12 @@
 /**************************************************************************/
 /*  variant_call.cpp                                                      */
 
+#include "core/containers/a_hash_map.h"
+#include "core/containers/local_vector.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/io/compression.h"
 #include "core/io/marshalls.h"
 #include "core/os/os.h"
-#include "core/containers/a_hash_map.h"
-#include "core/containers/local_vector.h"
 #include "core/variant/binder_common.h"
 #include "core/variant/method_ptrcall.h"
 #include "core/variant/variant.h"

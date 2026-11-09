@@ -6,10 +6,10 @@
 #include "core/config/project_settings.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/panel_container.h"
-#include "scene/ui/texture_rect.h"
 #include "scene/stage/window.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/panel_container.h"
+#include "scene/ui/texture_rect.h"
 #include "systems/display/accessibility_system.h"
 #include "systems/display/display_system.h"
 

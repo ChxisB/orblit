@@ -3,9 +3,9 @@
 
 #import "window_delegate.h"
 
-#import "display_system_macos.h"
 #import "button_view.h"
 #import "content_view.h"
+#import "display_system_macos.h"
 #import "window.h"
 
 #include "systems/display/accessibility_system.h"

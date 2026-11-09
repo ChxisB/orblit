@@ -4,8 +4,8 @@
 #pragma once
 
 #include "core/containers/rb_map.h"
-#include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/entity_spatial.h"
+#include "scene/spatial/mesh_instance_spatial.h"
 
 /**
 	The XRFaceModifier3D node drives the blend shapes of a MeshInstance3D

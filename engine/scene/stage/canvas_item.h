@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/stage/entity.h"
 #include "scene/resources/texture.h"
+#include "scene/stage/entity.h"
 #include "systems/rendering/rendering_system_enums.h"
 #include "systems/text/text_system.h"
 

@@ -7,13 +7,13 @@
 #include "extensions/openxr_extension_wrapper.h"
 #include "util.h"
 
+#include "core/containers/rid_owner.h"
+#include "core/containers/vector.h"
 #include "core/error/error_macros.h"
 #include "core/math/projection.h"
 #include "core/math/transform_spatial.h"
 #include "core/math/vector2.h"
 #include "core/string/ustring.h"
-#include "core/containers/rid_owner.h"
-#include "core/containers/vector.h"
 #include "systems/xr/xr_pose.h"
 
 #include <openxr/openxr.h>

@@ -5,10 +5,10 @@
 
 TEST_FORCE_LINK(test_box_container)
 
-#include "scene/ui/box_container.h"
-#include "scene/ui/control.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/box_container.h"
+#include "scene/ui/control.h"
 #include "tests/scene/mock_control.h"
 
 namespace TestBoxContainer {

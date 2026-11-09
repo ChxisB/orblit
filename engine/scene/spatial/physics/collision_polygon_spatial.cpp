@@ -5,9 +5,9 @@
 
 #include "core/math/geometry_planar.h"
 #include "core/object/class_registry.h"
+#include "scene/resources/spatial/convex_polygon_shape_spatial.h"
 #include "scene/spatial/physics/collision_object_spatial.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/spatial/convex_polygon_shape_spatial.h"
 
 void CollisionPolygon3D::_build_polygon() {
 	if (!collision_object) {

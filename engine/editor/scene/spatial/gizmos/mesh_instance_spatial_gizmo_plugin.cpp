@@ -4,9 +4,9 @@
 #include "mesh_instance_spatial_gizmo_plugin.h"
 
 #include "editor/scene/spatial/entity_spatial_editor_plugin.h"
+#include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/physics/soft_body_spatial.h"
-#include "scene/resources/spatial/primitive_meshes.h"
 
 bool MeshInstance3DGizmoPlugin::has_gizmo(Entity3D *p_spatial) {
 	return Object::cast_to<MeshInstance3D>(p_spatial) != nullptr && Object::cast_to<SoftBody3D>(p_spatial) == nullptr;

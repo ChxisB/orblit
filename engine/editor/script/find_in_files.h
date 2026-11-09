@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/object/editor_language.h"
 #include "core/containers/hash_map.h"
+#include "core/object/editor_language.h"
 #include "editor/docks/editor_dock.h"
 #include "scene/ui/scroll_container.h"
 

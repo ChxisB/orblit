@@ -5,6 +5,7 @@
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
+#include "core/containers/rb_set.h"
 #include "core/input/input_event.h"
 #include "core/input/input_map.h"
 #include "core/input/shortcut.h"
@@ -20,7 +21,6 @@
 #include "core/os/os.h"
 #include "core/string/regex.h"
 #include "core/string/translation_system.h"
-#include "core/containers/rb_set.h"
 #include "core/version.h"
 #include "editor/docks/dock_tab_container.h"
 #include "editor/editor_node.h"
@@ -28,11 +28,11 @@
 #include "editor/inspector/editor_property_name_processor.h"
 #include "editor/project_manager/engine_update_label.h"
 #include "editor/themes/editor_theme_manager.h"
-#include "scene/ui/color_picker.h"
-#include "scene/ui/file_dialog.h"
+#include "scene/resources/animation.h"
 #include "scene/stage/entity.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/animation.h"
+#include "scene/ui/color_picker.h"
+#include "scene/ui/file_dialog.h"
 #include "systems/display/display_system.h"
 
 // PRIVATE METHODS

@@ -6,10 +6,10 @@
 
 #include "core/config/engine.h"
 #include "core/input/shortcut.h"
-#include "scene/ui/container.h"
 #include "scene/stage/canvas_layer.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/container.h"
 
 #ifdef TOOLS_ENABLED
 #include "scene/planar/entity_planar.h"

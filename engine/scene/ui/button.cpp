@@ -5,8 +5,8 @@
 
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/dialogs.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/dialogs.h"
 #include "systems/display/accessibility_system.h"
 
 Size2 Button::get_minimum_size() const {

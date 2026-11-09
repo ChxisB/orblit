@@ -4,12 +4,12 @@
 #include "spring_bone_spatial_gizmo_plugin.h"
 
 #include "editor/settings/editor_settings.h"
-#include "scene/spatial/spring_bone_collision_spatial.h"
+#include "scene/resources/surface_tool.h"
 #include "scene/spatial/spring_bone_collision_capsule_spatial.h"
 #include "scene/spatial/spring_bone_collision_plane_spatial.h"
+#include "scene/spatial/spring_bone_collision_spatial.h"
 #include "scene/spatial/spring_bone_collision_sphere_spatial.h"
 #include "scene/spatial/spring_bone_simulator_spatial.h"
-#include "scene/resources/surface_tool.h"
 
 // SpringBoneSimulator3D
 

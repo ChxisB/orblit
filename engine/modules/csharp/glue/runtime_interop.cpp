@@ -4,14 +4,13 @@
 #include "runtime_interop.h"
 
 #include "../csharp_script.h"
+#include "../host/dotnet_host_cache.h"
 #include "../interop_types.h"
 #include "../managed_callable.h"
-#include "../host/dotnet_host_cache.h"
 #include "../signal_awaiter_utils.h"
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
-#include "core/script_api.h"
 #include "core/debugger/engine_debugger.h"
 #include "core/debugger/script_debugger.h"
 #include "core/io/compression.h"
@@ -20,6 +19,7 @@
 #include "core/object/class_registry.h"
 #include "core/object/method_bind.h"
 #include "core/os/os.h"
+#include "core/script_api.h"
 #include "core/string/string_name.h"
 #include "core/variant/variant_parser.h"
 

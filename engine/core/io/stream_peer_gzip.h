@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/stream_peer.h"
 #include "core/containers/ring_buffer.h"
+#include "core/io/stream_peer.h"
 
 class StreamPeerGZIP : public StreamPeer {
 	ORBLIT_CLASS(StreamPeerGZIP, StreamPeer);

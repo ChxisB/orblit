@@ -18,8 +18,8 @@
 //   There's no backwards communication from the driver to query data from RenderingDevice.
 // ***********************************************************************************
 
-#include "core/object/object.h"
 #include "core/containers/paged_allocator.h"
+#include "core/object/object.h"
 #include "systems/rendering/rendering_context_driver.h"
 #include "systems/rendering/rendering_device_commons.h"
 

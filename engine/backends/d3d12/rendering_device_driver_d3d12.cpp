@@ -3,11 +3,11 @@
 
 #include "rendering_device_driver_d3d12.h"
 
+#include "backends/d3d12/d3d12_hooks.h"
+#include "backends/d3d12/rendering_context_driver_d3d12.h"
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/os/os.h"
-#include "backends/d3d12/d3d12_hooks.h"
-#include "backends/d3d12/rendering_context_driver_d3d12.h"
 
 #include <backends/d3d12/d3d12ma.h>
 #include <backends/d3d12/nir.h>

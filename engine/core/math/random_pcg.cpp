@@ -3,8 +3,8 @@
 
 #include "random_pcg.h"
 
-#include "core/os/os.h"
 #include "core/containers/vector.h"
+#include "core/os/os.h"
 
 RandomPCG::RandomPCG(uint64_t p_seed, uint64_t p_inc) :
 		pcg(),

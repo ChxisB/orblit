@@ -11,6 +11,9 @@
 #include "core/object/class_registry.h"
 #include "core/os/keyboard.h"
 #include "scene/planar/line_planar.h"
+#include "scene/resources/material.h"
+#include "scene/resources/style_box_flat.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/graph_edit_arranger.h"
@@ -19,9 +22,6 @@
 #include "scene/ui/scroll_bar.h"
 #include "scene/ui/spin_box.h"
 #include "scene/ui/view_panner.h"
-#include "scene/resources/material.h"
-#include "scene/resources/style_box_flat.h"
-#include "scene/theme/theme_db.h"
 
 constexpr int MINIMAP_OFFSET = 12;
 constexpr int MINIMAP_PADDING = 5;

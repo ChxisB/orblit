@@ -8,10 +8,10 @@
 #include "editor/docks/editor_dock.h"
 #include "editor/plugins/editor_plugin.h"
 #include "scene/animation/animation_player.h"
+#include "scene/resources/material.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/spin_box.h"
 #include "scene/ui/tree.h"
-#include "scene/resources/material.h"
 
 class AnimationPlayerEditorPlugin;
 class ImageTexture;

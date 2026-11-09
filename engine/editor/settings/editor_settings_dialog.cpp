@@ -25,12 +25,12 @@
 #include "editor/themes/editor_scale.h"
 #include "editor/themes/editor_theme_manager.h"
 #include "scene/debugger/view_spatial_controller.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/check_button.h"
 #include "scene/ui/panel_container.h"
 #include "scene/ui/tab_container.h"
 #include "scene/ui/texture_rect.h"
 #include "scene/ui/tree.h"
-#include "scene/stage/timer.h"
 
 void EditorSettingsDialog::ok_pressed() {
 	if (!EditorSettings::get_singleton()) {

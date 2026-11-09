@@ -13,10 +13,10 @@
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
 #include "editor/themes/editor_theme_manager.h"
+#include "scene/resources/texture.h"
 #include "scene/ui/aspect_ratio_container.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/texture_rect.h"
-#include "scene/resources/texture.h"
 
 void BoneMapperButton::fetch_textures() {
 	if (selected) {

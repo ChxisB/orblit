@@ -7,9 +7,9 @@
 #include "core/input/input.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "scene/ui/texture_rect.h"
 #include "scene/stage/viewport.h"
 #include "scene/theme/theme_db.h"
+#include "scene/ui/texture_rect.h"
 #include "systems/display/accessibility_system.h"
 
 void SplitContainerMultiDragger::_notification(int p_what) {

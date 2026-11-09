@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/object/object.h"
 #include "core/containers/hash_map.h"
+#include "core/object/object.h"
 #include "core/variant/type_info.h"
 
 #include "modules/modules_enabled.gen.h"

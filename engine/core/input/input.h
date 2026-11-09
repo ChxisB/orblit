@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "core/containers/rb_map.h"
+#include "core/containers/rb_set.h"
 #include "core/input/input_event.h"
 #include "core/object/object.h"
 #include "core/os/keyboard.h"
 #include "core/os/thread_safe.h"
-#include "core/containers/rb_map.h"
-#include "core/containers/rb_set.h"
 #include "core/variant/typed_array.h"
 
 class GamepadMotion;

@@ -213,7 +213,7 @@ const engine = new Engine(ORBLIT_CONFIG);
 			if (ORBLIT_GAME_GLUE === '') {
 				return null;
 			}
-			return import('./' + ORBLIT_GAME_GLUE).then((glue) => glue.attachDotnetGame(engine.rtenv));
+			return import(`./${ORBLIT_GAME_GLUE}`).then((glue) => glue.attachDotnetGame(engine.rtenv));
 		}).then(() => {
 			setStatusMode('hidden');
 		}, displayFailureNotice);

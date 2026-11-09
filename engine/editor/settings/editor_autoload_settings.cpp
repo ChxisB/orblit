@@ -12,17 +12,17 @@
 #include "editor/docks/filesystem_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_file_dialog.h"
-#include "editor/widgets/editor_validation_panel.h"
 #include "editor/scene/scene_create_dialog.h"
 #include "editor/settings/project_settings_editor.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_file_dialog.h"
+#include "editor/widgets/editor_validation_panel.h"
+#include "scene/resources/prefab.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/button.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/tree.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/prefab.h"
 
 #define PREVIEW_LIST_MAX_SIZE 10
 

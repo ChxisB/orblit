@@ -4,8 +4,8 @@
 #include "two_bone_ik_spatial_gizmo_plugin.h"
 
 #include "editor/settings/editor_settings.h"
-#include "scene/spatial/two_bone_ik_spatial.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/spatial/two_bone_ik_spatial.h"
 
 TwoBoneIK3DGizmoPlugin::SelectionMaterials TwoBoneIK3DGizmoPlugin::selection_materials;
 

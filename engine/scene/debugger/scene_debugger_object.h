@@ -5,10 +5,10 @@
 
 #ifdef DEBUG_ENABLED
 
-#include "core/object/object.h"
-#include "core/string/ustring.h"
 #include "core/containers/list.h"
 #include "core/containers/pair.h"
+#include "core/object/object.h"
+#include "core/string/ustring.h"
 
 class Entity;
 class Script;

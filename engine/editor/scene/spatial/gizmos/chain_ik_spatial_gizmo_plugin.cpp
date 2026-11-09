@@ -4,8 +4,8 @@
 #include "chain_ik_spatial_gizmo_plugin.h"
 
 #include "editor/settings/editor_settings.h"
-#include "scene/spatial/iterate_ik_spatial.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/spatial/iterate_ik_spatial.h"
 
 ChainIK3DGizmoPlugin::SelectionMaterials ChainIK3DGizmoPlugin::selection_materials;
 

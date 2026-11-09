@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "scene/spatial/entity_spatial.h"
 #include "scene/resources/navigation_mesh.h"
+#include "scene/spatial/entity_spatial.h"
 
 class NavigationRegion3D : public Entity3D {
 	ORBLIT_CLASS(NavigationRegion3D, Entity3D);
@@ -57,7 +57,6 @@ public:
 
 	void set_navigation_layer_value(int p_layer_number, bool p_value);
 	bool get_navigation_layer_value(int p_layer_number) const;
-
 
 	void set_enter_cost(real_t p_enter_cost);
 	real_t get_enter_cost() const;

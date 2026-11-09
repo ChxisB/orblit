@@ -427,7 +427,7 @@ public sealed class ViewportAreaTests
             var icon = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
             var text = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
-            // The widths follow the font, so the distances are measured from the neighbour.
+            // The widths follow the font, so the distances are measured from the neighbor.
             Assert.Equal([79.0, 32.0, 83.0, 24.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
             Assert.Equal(view.Right + 7, bar.X);
             Assert.Equal(bar.Right + 8, chip.X);

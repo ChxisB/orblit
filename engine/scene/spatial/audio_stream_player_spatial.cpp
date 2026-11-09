@@ -6,12 +6,12 @@
 #include "core/config/project_settings.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
+#include "scene/audio/audio_stream_player_internal.h"
+#include "scene/resources/audio/audio_stream.h"
 #include "scene/spatial/audio_listener_spatial.h"
 #include "scene/spatial/camera_spatial.h"
 #include "scene/spatial/velocity_tracker_spatial.h"
-#include "scene/audio/audio_stream_player_internal.h"
 #include "scene/stage/viewport.h"
-#include "scene/resources/audio/audio_stream.h"
 #include "systems/audio/audio_system.h"
 
 #ifndef PHYSICS_SPATIAL_DISABLED

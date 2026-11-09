@@ -6,8 +6,8 @@
 #if defined(ORBLIT_USE_TRACY)
 // Use the tracy profiler.
 
-#include "core/os/mutex.h"
 #include "core/containers/paged_allocator.h"
+#include "core/os/mutex.h"
 
 namespace tracy {
 static bool configured = false;

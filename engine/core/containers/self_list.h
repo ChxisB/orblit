@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/error/error_macros.h"
 #include "core/containers/sort_list.h"
+#include "core/error/error_macros.h"
 #include "core/typedefs.h"
 
 /**

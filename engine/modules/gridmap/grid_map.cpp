@@ -4,18 +4,19 @@
 #include "grid_map.h"
 
 #include "core/config/engine.h"
+#include "core/containers/a_hash_map.h"
 #include "core/io/marshalls.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
-#include "core/containers/a_hash_map.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/spatial/mesh_library.h"
 #include "scene/resources/spatial/primitive_meshes.h"
 #include "scene/resources/surface_tool.h"
+#include "scene/stage/stage.h"
 #include "systems/rendering/rendering_system.h"
 
 #ifndef PHYSICS_SPATIAL_DISABLED
 #include "core/math/convex_hull.h"
+#include "scene/resources/physics_material.h"
 #include "scene/resources/spatial/capsule_shape_spatial.h"
 #include "scene/resources/spatial/concave_polygon_shape_spatial.h"
 #include "scene/resources/spatial/convex_polygon_shape_spatial.h"
@@ -23,7 +24,6 @@
 #include "scene/resources/spatial/height_map_shape_spatial.h"
 #include "scene/resources/spatial/shape_spatial.h"
 #include "scene/resources/spatial/sphere_shape_spatial.h"
-#include "scene/resources/physics_material.h"
 #include "systems/physics_spatial/physics_system_spatial.h"
 #endif // PHYSICS_SPATIAL_DISABLED
 

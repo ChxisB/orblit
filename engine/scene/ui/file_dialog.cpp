@@ -10,6 +10,7 @@
 #include "core/object/class_registry.h"
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
+#include "scene/theme/theme_db.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/flow_container.h"
@@ -21,7 +22,6 @@
 #include "scene/ui/option_button.h"
 #include "scene/ui/separator.h"
 #include "scene/ui/split_container.h"
-#include "scene/theme/theme_db.h"
 #include "systems/display/display_system.h"
 
 void FileDialog::popup_file_dialog() {

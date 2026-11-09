@@ -4,8 +4,8 @@
 #include "object.h"
 
 #include "core/config/engine.h"
-#include "core/native_extension/native_extension_manager.h"
 #include "core/io/resource.h"
+#include "core/native_extension/native_extension_manager.h"
 #include "core/object/class_registry.h"
 #include "core/object/message_queue.h"
 #include "core/object/script_language.h"

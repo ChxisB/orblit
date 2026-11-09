@@ -11,16 +11,16 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "editor/scene/canvas_item_editor_plugin.h"
+#include "editor/scene/spatial/entity_spatial_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
-#include "scene/spatial/camera_spatial.h"
-#include "scene/spatial/mesh_instance_spatial.h"
-#include "scene/ui/button.h"
-#include "scene/stage/stage.h"
 #include "scene/resources/immediate_mesh.h"
 #include "scene/resources/material.h"
 #include "scene/resources/mesh.h"
+#include "scene/spatial/camera_spatial.h"
+#include "scene/spatial/mesh_instance_spatial.h"
+#include "scene/stage/stage.h"
+#include "scene/ui/button.h"
 
 void Polygon3DEditor::_notification(int p_what) {
 	switch (p_what) {

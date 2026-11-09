@@ -10,10 +10,10 @@
 #include "editor/run/editor_run_bar.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/resources/image_texture.h"
 #include "scene/ui/color_rect.h"
 #include "scene/ui/flow_container.h"
 #include "scene/ui/label.h"
-#include "scene/resources/image_texture.h"
 
 void EditorVisualProfiler::set_hardware_info(const String &p_cpu_name, const String &p_gpu_name) {
 	cpu_name = p_cpu_name;

@@ -284,9 +284,9 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             window.Scenes.Tree.ExpandSubTree(Items(window)[1]);
 
-            var colours = Items(window).Select(item => ((ISolidColorBrush)TextElement.GetForeground(RowIconOf(item))!).Color).ToArray();
+            var colors = Items(window).Select(item => ((ISolidColorBrush)TextElement.GetForeground(RowIconOf(item))!).Color).ToArray();
 
-            Assert.Equal([EditorColors.TreeIcon, EditorColors.FolderIcon, EditorColors.FolderIcon, EditorColors.TreeIcon, EditorColors.TreeIcon], colours);
+            Assert.Equal([EditorColors.TreeIcon, EditorColors.FolderIcon, EditorColors.FolderIcon, EditorColors.TreeIcon, EditorColors.TreeIcon], colors);
         });
     }
 

@@ -20,9 +20,9 @@
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/split_container.h"
-#include "scene/stage/stage.h"
 
 void SwitchSeparator::set_vertical(bool p_vertical) {
 	h_separator->set_visible(p_vertical);

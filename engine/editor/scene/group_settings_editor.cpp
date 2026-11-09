@@ -12,10 +12,10 @@
 #include "editor/docks/stage_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_validation_panel.h"
 #include "editor/themes/editor_scale.h"
-#include "scene/ui/line_edit.h"
+#include "editor/widgets/editor_validation_panel.h"
 #include "scene/resources/prefab.h"
+#include "scene/ui/line_edit.h"
 
 void GroupSettingsEditor::_notification(int p_what) {
 	switch (p_what) {

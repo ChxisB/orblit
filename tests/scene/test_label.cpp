@@ -9,9 +9,9 @@ TEST_FORCE_LINK(test_label)
 
 #if defined(MODULE_TEXT_SYSTEM_FALLBACK_ENABLED) || defined(MODULE_TEXT_SYSTEM_ADVANCED_ENABLED)
 
-#include "scene/ui/label.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/label.h"
 
 namespace TestLabel {
 

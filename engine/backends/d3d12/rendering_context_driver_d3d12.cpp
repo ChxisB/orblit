@@ -5,8 +5,8 @@
 
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
-#include "core/string/ustring.h"
 #include "core/containers/local_vector.h"
+#include "core/string/ustring.h"
 
 ORBLIT_GCC_WARNING_PUSH_AND_IGNORE("-Wnon-virtual-dtor")
 ORBLIT_CLANG_WARNING_PUSH_AND_IGNORE("-Wnon-virtual-dtor")

@@ -5,9 +5,9 @@
 
 #if defined(UNIX_ENABLED)
 
+#include "core/containers/list.h"
 #include "core/os/os.h"
 #include "core/string/print_string.h"
-#include "core/containers/list.h"
 
 #include <fcntl.h>
 #include <sys/ioctl.h>

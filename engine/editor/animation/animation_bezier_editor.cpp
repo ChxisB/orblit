@@ -10,12 +10,12 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/editor_undo_redo_manager.h"
-#include "editor/widgets/editor_spin_slider.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_spin_slider.h"
+#include "scene/resources/text_line.h"
 #include "scene/ui/option_button.h"
 #include "scene/ui/view_panner.h"
-#include "scene/resources/text_line.h"
 
 #include <climits>
 

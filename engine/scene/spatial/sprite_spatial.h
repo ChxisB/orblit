@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "scene/spatial/visual_instance_spatial.h"
 #include "scene/resources/material.h"
 #include "scene/resources/sprite_frames.h"
+#include "scene/spatial/visual_instance_spatial.h"
 
 class SpriteBase3D : public GeometryInstance3D {
 	ORBLIT_CLASS(SpriteBase3D, GeometryInstance3D);

@@ -8,18 +8,18 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/create_dialog.h"
-#include "editor/widgets/editor_validation_panel.h"
 #include "editor/settings/editor_feature_profile.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/create_dialog.h"
+#include "editor/widgets/editor_validation_panel.h"
 #include "scene/planar/entity_planar.h"
+#include "scene/resources/prefab.h"
 #include "scene/spatial/entity_spatial.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/check_box.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/line_edit.h"
 #include "scene/ui/option_button.h"
-#include "scene/resources/prefab.h"
 
 void SceneCreateDialog::_notification(int p_what) {
 	switch (p_what) {

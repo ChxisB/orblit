@@ -5,10 +5,10 @@
 
 #ifdef DBUS_ENABLED
 
+#include "core/containers/safe_refcount.h"
 #include "core/object/object.h"
 #include "core/os/mutex.h"
 #include "core/os/thread.h"
-#include "core/containers/safe_refcount.h"
 #include "systems/display/display_system_enums.h"
 
 struct DBusMessage;

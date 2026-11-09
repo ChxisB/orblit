@@ -7,11 +7,11 @@
 
 #ifdef MODULE_TEXTURE_STREAMING_ENABLED
 
+#include "core/containers/rid_owner.h"
+#include "core/containers/tuple.h"
 #include "core/io/image.h"
 #include "core/os/condition_variable.h"
 #include "core/os/thread.h"
-#include "core/containers/rid_owner.h"
-#include "core/containers/tuple.h"
 
 // TextureStreaming singleton.
 // Thread safety notes:

@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/string/fuzzy_search.h"
 #include "core/containers/a_hash_map.h"
+#include "core/string/fuzzy_search.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/margin_container.h"
 

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "scene/spatial/entity_spatial.h"
-#include "scene/resources/spatial/shape_spatial.h"
 #include "scene/resources/material.h"
+#include "scene/resources/spatial/shape_spatial.h"
+#include "scene/spatial/entity_spatial.h"
 #include "systems/physics_spatial/physics_system_spatial_types.h"
 
 class CollisionObject3D;

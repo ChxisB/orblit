@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/io/image.h"
 #include "core/containers/local_vector.h"
+#include "core/io/image.h"
 #include "systems/audio/audio_system.h" // IWYU pragma: keep. Bind ORBLIT_VIRTUAL0RC_REQUIRED.
 #include "systems/audio/audio_system_enums.h"
 

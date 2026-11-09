@@ -12,16 +12,16 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/file_system/editor_file_system.h"
-#include "editor/widgets/editor_icon_manager.h"
-#include "editor/widgets/editor_spin_slider.h"
-#include "editor/widgets/editor_variant_type_selectors.h"
 #include "editor/inspector/editor_properties.h"
 #include "editor/inspector/editor_properties_vector.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_icon_manager.h"
+#include "editor/widgets/editor_spin_slider.h"
+#include "editor/widgets/editor_variant_type_selectors.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/button.h"
 #include "scene/ui/margin_container.h"
-#include "scene/stage/stage.h"
 
 bool EditorPropertyArrayObject::_set(const StringName &p_name, const Variant &p_value) {
 	String name = p_name;

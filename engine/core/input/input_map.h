@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hash_map.h"
 #include "core/input/input_event.h"
 #include "core/object/object.h"
-#include "core/containers/hash_map.h"
 
 template <typename T>
 class TypedArray;

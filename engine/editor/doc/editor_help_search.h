@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "core/doc_data.h"
 #include "core/containers/rb_set.h"
+#include "core/doc_data.h"
 #include "editor/plugins/editor_plugin.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/option_button.h"

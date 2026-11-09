@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "scene/stage/window.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/button.h"
 #include "scene/ui/label.h"
 #include "scene/ui/panel.h"
 #include "scene/ui/popup.h"
-#include "scene/stage/window.h"
 
 class LineEdit;
 

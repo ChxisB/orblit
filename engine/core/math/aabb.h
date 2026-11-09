@@ -3,9 +3,9 @@
 
 #pragma once
 
+#include "core/containers/hashfuncs.h"
 #include "core/math/plane.h"
 #include "core/math/vector3.h"
-#include "core/containers/hashfuncs.h"
 
 /**
  * AABB (Axis Aligned Bounding Box)

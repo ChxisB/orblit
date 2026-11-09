@@ -19,7 +19,6 @@
 #include "editor/editor_interface.h"
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
-#include "editor/widgets/editor_toaster.h"
 #include "editor/inspector/editor_context_menu_plugin.h"
 #include "editor/inspector/editor_inspector.h"
 #include "editor/inspector/multi_entity_edit.h"
@@ -29,12 +28,13 @@
 #include "editor/settings/editor_command_palette.h"
 #include "editor/settings/editor_settings.h"
 #include "editor/themes/editor_scale.h"
+#include "editor/widgets/editor_toaster.h"
+#include "scene/resources/style_box_flat.h"
+#include "scene/stage/stage.h"
 #include "scene/ui/grid_container.h"
 #include "scene/ui/menu_button.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/split_container.h"
-#include "scene/stage/stage.h"
-#include "scene/resources/style_box_flat.h"
 #include "systems/rendering/rendering_system.h"
 
 void ConnectionInfoDialog::ok_pressed() {

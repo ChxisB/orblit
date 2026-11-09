@@ -5,9 +5,9 @@
 
 #ifdef GLES3_ENABLED
 
+#include "backends/opengl/storage/texture_storage.h"
 #include "core/containers/local_vector.h"
 #include "core/containers/rid_owner.h"
-#include "backends/opengl/storage/texture_storage.h"
 #include "systems/rendering/storage/light_storage.h"
 #include "systems/rendering/storage/utilities.h"
 

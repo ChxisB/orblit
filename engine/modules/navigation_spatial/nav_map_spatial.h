@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include "spatial/nav_map_iteration_spatial.h"
-#include "spatial/nav_mesh_queries_spatial.h"
 #include "nav_rid_spatial.h"
 #include "nav_utils_spatial.h"
+#include "spatial/nav_map_iteration_spatial.h"
+#include "spatial/nav_mesh_queries_spatial.h"
 
 #include "core/math/math_defs.h"
 #include "core/object/worker_thread_pool.h"

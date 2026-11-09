@@ -6,11 +6,11 @@
 #include "core/config/project_settings.h"
 #include "core/object/class_registry.h"
 #include "core/os/os.h"
+#include "scene/resources/camera_attributes.h"
 #include "scene/spatial/mesh_instance_spatial.h"
 #include "scene/spatial/multimesh_instance_spatial.h"
 #include "scene/spatial/voxelizer.h"
 #include "scene/stage/stage.h"
-#include "scene/resources/camera_attributes.h"
 #include "systems/rendering/rendering_system.h"
 
 void VoxelGIData::_set_data(const Dictionary &p_data) {

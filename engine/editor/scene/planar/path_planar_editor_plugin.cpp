@@ -10,9 +10,9 @@
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/scene/canvas_item_editor_plugin.h"
 #include "editor/settings/editor_settings.h"
+#include "scene/resources/mesh.h"
 #include "scene/ui/dialogs.h"
 #include "scene/ui/menu_button.h"
-#include "scene/resources/mesh.h"
 #include "systems/rendering/rendering_system.h"
 
 void Path2DEditor::_notification(int p_what) {

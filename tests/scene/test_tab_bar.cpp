@@ -7,9 +7,9 @@ TEST_FORCE_LINK(test_tab_bar)
 
 #ifndef ADVANCED_GUI_DISABLED
 
-#include "scene/ui/tab_bar.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "scene/ui/tab_bar.h"
 #include "tests/display_system_mock.h"
 #include "tests/signal_watcher.h"
 

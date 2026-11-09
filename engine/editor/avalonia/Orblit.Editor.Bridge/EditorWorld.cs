@@ -74,13 +74,13 @@ public static class EditorWorld
         }
     }
 
-    // The sky colours are the old editor's preview. The horizon is halfway between sky and ground, pulled
-    // halfway to a grey three times as bright, so it reads as haze.
+    // The sky colors are the old editor's preview. The horizon is halfway between sky and ground, pulled
+    // halfway to a gray three times as bright, so it reads as haze.
     static void AddSky(EngineHost host, nint root)
     {
         var mid = Vector4.Lerp(SkyTop, SkyGround, 0.5f);
-        var grey = (0.2126f * mid.X + 0.7152f * mid.Y + 0.0722f * mid.Z) * 3.333f;
-        var horizon = Vector4.Lerp(mid, new Vector4(grey, grey, grey, 1), 0.5f);
+        var gray = (0.2126f * mid.X + 0.7152f * mid.Y + 0.0722f * mid.Z) * 3.333f;
+        var horizon = Vector4.Lerp(mid, new Vector4(gray, gray, gray, 1), 0.5f);
 
         var material = host.Construct("ProceduralSkyMaterial");
         host.ProceduralSkyMaterialSetSkyTopColor(material, SkyTop);
@@ -142,7 +142,7 @@ public static class EditorWorld
     // Both shaders draw flat colour over the scene and take no light.
     internal const string Header = "shader_type spatial;\nrender_mode unshaded, fog_disabled, cull_disabled;\n\n";
 
-    // Colours are written as they look. A renderer that outputs linear light takes them as sRGB.
+    // Colors are written as they look. A renderer that outputs linear light takes them as sRGB.
     internal const string ToLinear = """
         vec3 to_linear(vec3 c) {
             return mix(pow((c + vec3(0.055)) * (1.0 / 1.055), vec3(2.4)), c * (1.0 / 12.92), lessThan(c, vec3(0.04045)));
@@ -150,7 +150,7 @@ public static class EditorWorld
 
         """;
 
-    // The levels, colours and fades are the old editor's. Lines are found per pixel, a pixel wide, so the
+    // The levels, colors and fades are the old editor's. Lines are found per pixel, a pixel wide, so the
     // grid needs no mesh. The origin has no grid line because an axis is drawn there.
     const string GridShader = Header + ToLinear + """
         const float STEPS = 8.0;

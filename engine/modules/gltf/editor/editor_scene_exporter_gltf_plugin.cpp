@@ -8,12 +8,12 @@
 #include "core/object/callable_mp.h"
 #include "editor/editor_node.h"
 #include "editor/file_system/editor_file_system.h"
-#include "editor/widgets/editor_file_dialog.h"
 #include "editor/import/spatial/scene_import_settings.h"
 #include "editor/inspector/editor_inspector.h"
 #include "editor/themes/editor_scale.h"
-#include "scene/ui/dialogs.h"
+#include "editor/widgets/editor_file_dialog.h"
 #include "scene/stage/stage.h"
+#include "scene/ui/dialogs.h"
 
 String SceneExporterGLTFPlugin::get_plugin_name() const {
 	return "ConvertGLTF2";

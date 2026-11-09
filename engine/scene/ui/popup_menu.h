@@ -4,10 +4,10 @@
 #pragma once
 
 #include "core/input/shortcut.h"
-#include "scene/ui/popup.h"
-#include "scene/ui/scroll_container.h"
 #include "scene/property_list_helper.h"
 #include "scene/resources/text_line.h"
+#include "scene/ui/popup.h"
+#include "scene/ui/scroll_container.h"
 #include "systems/display/native_menu.h"
 
 class PanelContainer;

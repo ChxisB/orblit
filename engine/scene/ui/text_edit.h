@@ -3,12 +3,12 @@
 
 #pragma once
 
+#include "scene/resources/syntax_highlighter.h"
+#include "scene/resources/text_paragraph.h"
+#include "scene/stage/timer.h"
 #include "scene/ui/control.h"
 #include "scene/ui/popup_menu.h"
 #include "scene/ui/scroll_bar.h"
-#include "scene/stage/timer.h"
-#include "scene/resources/syntax_highlighter.h"
-#include "scene/resources/text_paragraph.h"
 
 class TextEdit : public Control {
 	ORBLIT_CLASS(TextEdit, Control);

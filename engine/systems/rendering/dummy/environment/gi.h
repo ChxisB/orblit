@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "core/containers/rid.h"
 #include "core/math/aabb.h"
 #include "core/math/transform_spatial.h"
 #include "core/math/vector3i.h"
-#include "core/containers/rid.h"
 #include "systems/rendering/environment/renderer_gi.h"
 
 namespace RendererDummy {

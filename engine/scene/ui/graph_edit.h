@@ -3,10 +3,10 @@
 
 #pragma once
 
+#include "scene/resources/shader.h"
 #include "scene/ui/box_container.h"
 #include "scene/ui/graph_frame.h"
 #include "scene/ui/graph_node.h"
-#include "scene/resources/shader.h"
 
 class Button;
 class GraphEdit;

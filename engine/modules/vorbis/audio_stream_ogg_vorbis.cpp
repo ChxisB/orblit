@@ -3,9 +3,9 @@
 
 #include "audio_stream_ogg_vorbis.h"
 
+#include "core/containers/rb_map.h"
 #include "core/io/file_access.h"
 #include "core/object/class_registry.h"
-#include "core/containers/rb_map.h"
 #include "systems/audio/audio_system.h"
 
 #include <ogg/ogg.h>

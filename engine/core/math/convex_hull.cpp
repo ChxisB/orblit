@@ -31,11 +31,11 @@ subject to the following restrictions:
 
 #include "convex_hull.h"
 
+#include "core/containers/a_hash_map.h"
+#include "core/containers/paged_allocator.h"
 #include "core/error/error_macros.h"
 #include "core/math/aabb.h"
 #include "core/math/math_defs.h"
-#include "core/containers/a_hash_map.h"
-#include "core/containers/paged_allocator.h"
 
 #include <cfloat> // FLT_MAX
 

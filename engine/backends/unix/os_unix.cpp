@@ -5,13 +5,13 @@
 
 #ifdef UNIX_ENABLED
 
-#include "core/debugger/engine_debugger.h"
-#include "core/debugger/script_debugger.h"
-#include "core/string/char_utils.h"
 #include "backends/unix/dir_access_unix.h"
 #include "backends/unix/file_access_unix.h"
 #include "backends/unix/file_access_unix_pipe.h"
 #include "backends/unix/thread_posix.h"
+#include "core/debugger/engine_debugger.h"
+#include "core/debugger/script_debugger.h"
+#include "core/string/char_utils.h"
 
 #ifndef UNIX_SOCKET_UNAVAILABLE
 #include "backends/unix/ip_unix.h"
