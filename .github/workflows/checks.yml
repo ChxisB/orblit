@@ -39,8 +39,11 @@ jobs:
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
         with:
           # Later steps read the lists from environment variables, never from run scripts.
+          # The lint action is the one exception. It reads the list through a quoted heredoc.
           safe_output: false
           json: true
+          # The default escapes each quote, which jq cannot parse.
+          escape_json: false
           skip_initial_fetch: true
           files_yaml_from_source_file: .github/filters.yml
 
