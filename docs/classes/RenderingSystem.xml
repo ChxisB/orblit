@@ -4052,7 +4052,7 @@
 			<param index="0" name="texture" type="RID" />
 			<param index="1" name="enable" type="bool" />
 			<description>
-				Sets whether the texture RID should force redrawing when it's visible on screen when [member OS.low_processor_usage_mode] is [code]true[/code]. This is used by [AnimatedTexture] to force redrawing.
+				Sets whether the texture RID should force redrawing when it's visible on screen when [member OS.low_processor_usage_mode] is [code]true[/code].
 			</description>
 		</method>
 		<method name="texture_set_path">

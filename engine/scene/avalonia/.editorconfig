@@ -1,0 +1,3 @@
+# The C# in this folder uses four spaces, the .NET default. The repository default is tabs.
+[*.cs]
+indent_style = space

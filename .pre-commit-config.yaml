@@ -90,7 +90,7 @@ repos:
         name: make-rst
         language: python
         entry: python docs/tools/make_rst.py
-        args: [docs/classes, modules, platform, --dry-run, --color]
+        args: [docs/classes, engine/modules, engine/platform, --dry-run, --color]
         pass_filenames: false
         files: ^(docs/classes|.*/doc_classes)/.*\.xml$
 

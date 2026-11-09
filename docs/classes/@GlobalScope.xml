@@ -1523,9 +1523,6 @@
 			The [NativeMenu] singleton.
 			[b]Note:[/b] Only implemented on macOS.
 		</member>
-		<member name="NavigationMeshGenerator" type="NavigationMeshGenerator" setter="" getter="">
-			The [NavigationMeshGenerator] singleton.
-		</member>
 		<member name="NavigationSystem2D" type="NavigationSystem2D" setter="" getter="">
 			The [NavigationSystem2D] singleton.
 		</member>
