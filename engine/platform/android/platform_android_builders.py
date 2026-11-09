@@ -30,5 +30,5 @@ def generate_android_binaries(target, source, env):
 
     subprocess.run(
         gradle_process,
-        cwd="platform/android/java",
+        cwd="engine/platform/android/java",
     )

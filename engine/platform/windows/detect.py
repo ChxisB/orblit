@@ -310,7 +310,7 @@ def configure_msvc(env: "SConsEnvironment"):
         from tempfile import mkstemp
 
         # Ensure we have a location to write captured output to, in case of false positives.
-        capture_path = methods.base_folder / "platform" / "windows" / "msvc_capture.log"
+        capture_path = methods.base_folder / "engine" / "platform" / "windows" / "msvc_capture.log"
         with open(capture_path, "wt", encoding="utf-8"):
             pass
 
@@ -863,7 +863,7 @@ def configure_mingw(env: "SConsEnvironment"):
                         env.Append(LIBPATH=[env["accesskit_sdk_path"] + "/lib/windows/x86_64/mingw/static/"])
                     elif env["arch"] == "x86_32":
                         env.Append(LIBPATH=[env["accesskit_sdk_path"] + "/lib/windows/x86/mingw/static/"])
-                env.Append(LIBPATH=["#bin/obj/platform/windows"])
+                env.Append(LIBPATH=["#bin/obj/engine/platform/windows"])
                 env.Append(
                     LIBS=[
                         "accesskit",
