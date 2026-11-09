@@ -321,7 +321,12 @@ Error NativeExtensionLibraryLoader::parse_native_extension_file(const String &p_
 	if (ORBLIT_VERSION_MAJOR != compatibility_minimum[0]) {
 		compatible = ORBLIT_VERSION_MAJOR > compatibility_minimum[0];
 	} else if (ORBLIT_VERSION_MINOR != compatibility_minimum[1]) {
+#if ORBLIT_VERSION_MINOR
 		compatible = ORBLIT_VERSION_MINOR > compatibility_minimum[1];
+#else
+		// An unsigned minimum is never below zero. This avoids a -Wtype-limits warning.
+		compatible = false;
+#endif
 	} else {
 		compatible = ORBLIT_VERSION_PATCH >= compatibility_minimum[2];
 	}
