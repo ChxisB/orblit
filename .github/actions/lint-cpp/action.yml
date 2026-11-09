@@ -23,12 +23,22 @@ runs:
 
     - name: Run clangd-tidy
       shell: bash
-      env:
-        FILES: ${{ inputs.files }}
       run: |
-        printf '%s' "${FILES:-[]}" | jq -r '.[]' > files.txt
-        if [ ! -s files.txt ]; then
+        # A file keeps a long list out of the environment, which holds 128 KiB per variable. The
+        # quoted delimiter stops the shell from reading the JSON, and a one-line array never equals it.
+        cat > files.json <<'FILES_JSON'
+        ${{ inputs.files }}
+        FILES_JSON
+        jq -r '.[]' files.json > files.txt
+        count=$(wc -l < files.txt)
+        if [ "$count" -eq 0 ]; then
           echo "No changed C++ files."
+          exit 0
+        fi
+        # A change this wide is a rename or a sync. Checking every file would pass the job time limit.
+        max_files=400
+        if [ "$count" -gt "$max_files" ]; then
+          echo "::notice::Skipped clangd-tidy. $count files changed and the limit is $max_files."
           exit 0
         fi
         # xargs splits the list, so a long list stays under the argument limit.
