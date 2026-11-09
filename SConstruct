@@ -98,11 +98,9 @@ for x in sorted(glob.glob("engine/platform/*")):
     if os.path.exists(x + "/api/api.cpp"):
         platform_apis.append(platform_name)
     if detect.can_build():
-        x = x.replace("engine/platform/", "")  # rest of world
-        x = x.replace("platform\\", "")  # win32
-        platform_list += [x]
-        platform_opts[x] = detect.get_opts()
-        platform_flags[x] = detect.get_flags()
+        platform_list += [platform_name]
+        platform_opts[platform_name] = detect.get_opts()
+        platform_flags[platform_name] = detect.get_flags()
     sys.path.remove(tmppath)
     sys.modules.pop("detect")
 
