@@ -68,6 +68,13 @@ void get_log_files(Vector<String> &log_files) {
 TEST_CASE("[Logger][RotatedFileLogger] Rotates logs files") {
 	initialize_logs();
 
+	// A log left by an earlier test, as on Windows where an open log cannot be deleted. Its backup is
+	// removed before the last rotation, which frees the oldest name of the second.
+	{
+		Ref<FileAccess> stale_log = FileAccess::open("user://logs/orblit.log", FileAccess::WRITE);
+		stale_log->store_string("Stale log");
+	}
+
 	Vector<String> all_waiting_for_orblit;
 
 	const int number_of_files = 3;

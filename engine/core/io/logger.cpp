@@ -75,36 +75,40 @@ void Logger::logf_error(const char *p_format, ...) {
 	va_end(argp);
 }
 
-void RotatedFileLogger::clear_old_backups() {
-	int max_backups = max_files - 1; // -1 for the current file
+// The result is a RBSet because iterating on it is done in sorted order.
+// RotatedFileLogger depends on this behavior to delete the oldest log file first.
+static RBSet<String> list_backups(const String &p_base_path) {
+	String basename = p_base_path.get_file().get_basename();
+	String extension = p_base_path.get_extension();
 
-	String basename = base_path.get_file().get_basename();
-	String extension = base_path.get_extension();
-
-	Ref<DirAccess> da = DirAccess::open(base_path.get_base_dir());
+	RBSet<String> backups;
+	Ref<DirAccess> da = DirAccess::open(p_base_path.get_base_dir());
 	if (da.is_null()) {
-		return;
+		return backups;
 	}
 
 	da->list_dir_begin();
 	String f = da->get_next();
-	// backups is a RBSet because it guarantees that iterating on it is done in sorted order.
-	// RotatedFileLogger depends on this behavior to delete the oldest log file first.
-	RBSet<String> backups;
 	while (!f.is_empty()) {
-		if (!da->current_is_dir() && f.begins_with(basename) && f.get_extension() == extension && f != base_path.get_file()) {
+		if (!da->current_is_dir() && f.begins_with(basename) && f.get_extension() == extension && f != p_base_path.get_file()) {
 			backups.insert(f);
 		}
 		f = da->get_next();
 	}
 	da->list_dir_end();
+	return backups;
+}
 
+void RotatedFileLogger::clear_old_backups() {
+	int max_backups = max_files - 1; // -1 for the current file
+
+	RBSet<String> backups = list_backups(base_path);
 	if (backups.size() > max_backups) {
 		// since backups are appended with timestamp and Set iterates them in sorted order,
 		// first backups are the oldest
 		int to_delete = backups.size() - max_backups;
 		for (RBSet<String>::Element *E = backups.front(); E && to_delete > 0; E = E->next(), --to_delete) {
-			da->remove(E->get());
+			DirAccess::remove_absolute(base_path.get_base_dir().path_join(E->get()));
 		}
 	}
 }
@@ -118,9 +122,12 @@ void RotatedFileLogger::rotate_file() {
 			String backup_stem = base_path.get_basename() + timestamp;
 			String backup_suffix = base_path.get_extension().is_empty() ? String() : "." + base_path.get_extension();
 			String backup_name = backup_stem + backup_suffix;
-			// The timestamp has one second of resolution. A second rotation inside that second would overwrite
-			// the first backup, and the padded counter sorts after the plain name so the oldest is still deleted first.
-			for (int repeat = 1; FileAccess::exists(backup_name); repeat++) {
+			// The timestamp has one second of resolution. A backup must sort after every kept one, or the next
+			// clear deletes it first. Deleting the oldest backup of a second frees its name, so the counter
+			// skips to the first name past the newest kept backup.
+			RBSet<String> kept = list_backups(base_path);
+			String newest = kept.is_empty() ? String() : kept.back()->get();
+			for (int repeat = 1; repeat < 1000 && !(newest < backup_name.get_file()); repeat++) {
 				backup_name = backup_stem + "_" + itos(repeat).pad_zeros(3) + backup_suffix;
 			}
 
