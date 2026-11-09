@@ -376,7 +376,6 @@ namespace Orblit
         /// Performs a case-sensitive comparison to another string and returns an integer that indicates their relative position in the sort order.
         /// </summary>
         /// <seealso cref="NocasecmpTo(string, string)"/>
-        /// <seealso cref="CompareTo(string, string, bool)"/>
         /// <param name="instance">The string to compare.</param>
         /// <param name="to">The other string to compare.</param>
         /// <returns>An integer that indicates the lexical relationship between the two comparands.</returns>
@@ -1196,7 +1195,6 @@ namespace Orblit
         /// Performs a case-insensitive comparison to another string and returns an integer that indicates their relative position in the sort order.
         /// </summary>
         /// <seealso cref="CasecmpTo(string, string)"/>
-        /// <seealso cref="CompareTo(string, string, bool)"/>
         /// <param name="instance">The string to compare.</param>
         /// <param name="to">The other string to compare.</param>
         /// <returns>An integer that indicates the lexical relationship between the two comparands.</returns>
