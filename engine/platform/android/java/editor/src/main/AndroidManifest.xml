@@ -208,10 +208,12 @@
 
         This needs to be removed once we start implementing the immersive version of the project
         manager and editor windows.
+
+        The name and value must match the vendors library manifest, so they keep its published names.
          -->
         <meta-data
-            android:name="org.orblitengine.plugin.v2.OrblitOpenXR"
-            android:value="org.orblitengine.openxr.vendors.OrblitOpenXR"
+            android:name="org.godotengine.plugin.v2.GodotOpenXR"
+            android:value="org.godotengine.openxr.vendors.GodotOpenXR"
             tools:node="remove" />
     </application>
 
