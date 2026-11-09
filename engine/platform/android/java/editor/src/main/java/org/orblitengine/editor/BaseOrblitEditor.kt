@@ -46,7 +46,7 @@ import org.orblitengine.orblit.error.Error
 import org.orblitengine.orblit.utils.DialogUtils
 import org.orblitengine.orblit.utils.PermissionsUtil
 import org.orblitengine.orblit.utils.ProcessPhoenix
-import org.orblitengine.openxr.vendors.utils.*
+import org.godotengine.openxr.vendors.utils.*
 import java.io.File
 import kotlin.math.min
 import kotlin.text.indexOf

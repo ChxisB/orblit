@@ -11,7 +11,7 @@ import org.orblitengine.orblit.OrblitLib
 import org.orblitengine.orblit.editor.utils.GameMenuUtils
 import org.orblitengine.orblit.utils.PermissionsUtil
 import org.orblitengine.orblit.utils.ProcessPhoenix
-import org.orblitengine.openxr.vendors.utils.*
+import org.godotengine.openxr.vendors.utils.*
 
 /**
  * Base class for the Orblit play windows.

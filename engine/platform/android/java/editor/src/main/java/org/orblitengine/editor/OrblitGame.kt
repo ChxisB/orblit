@@ -12,7 +12,7 @@ import org.orblitengine.orblit.OrblitLib
 import org.orblitengine.orblit.editor.utils.GameMenuUtils
 import org.orblitengine.orblit.utils.ProcessPhoenix
 import org.orblitengine.orblit.xr.XRMode
-import org.orblitengine.openxr.vendors.utils.*
+import org.godotengine.openxr.vendors.utils.*
 
 /**
  * Drives the 'run project' window of the Orblit Editor.

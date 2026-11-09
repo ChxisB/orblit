@@ -7,8 +7,8 @@ package org.orblitengine.editor
 import androidx.annotation.CallSuper
 import org.orblitengine.orblit.OrblitLib
 import org.orblitengine.orblit.xr.XRMode
-import org.orblitengine.openxr.vendors.utils.HYBRID_APP_SPATIAL_FEATURE
-import org.orblitengine.openxr.vendors.utils.isHybridAppEnabled
+import org.godotengine.openxr.vendors.utils.HYBRID_APP_SPATIAL_FEATURE
+import org.godotengine.openxr.vendors.utils.isHybridAppEnabled
 
 /**
  * Provide support for running XR apps / games from the editor window.
