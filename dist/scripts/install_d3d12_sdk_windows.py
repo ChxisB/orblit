@@ -80,6 +80,8 @@ for arch in [
     print(f"Extracting Mesa NIR {mesa_filename} to {mesa_folder} ...")
     shutil.unpack_archive(mesa_archive, mesa_folder)
     os.remove(mesa_archive)
+    # The archive names its folder after the upstream project. The build looks for orblit-mesa.
+    os.rename(os.path.join(mesa_folder, "godot-mesa"), os.path.join(mesa_folder, "orblit-mesa"))
 print("Mesa NIR installed successfully.\n")
 
 # WinPixEventRuntime
