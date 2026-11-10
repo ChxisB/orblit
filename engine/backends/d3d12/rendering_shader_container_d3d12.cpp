@@ -8,7 +8,7 @@
 
 #include <backends/d3d12/d3d12ma.h>
 #include <backends/d3d12/d3dx12.h>
-#include <backends/d3d12/nir.h>
+#include <backends/d3d12/mesa_nir.h>
 #include <wrl/client.h>
 #include <zlib.h>
 
