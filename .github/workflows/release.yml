@@ -77,7 +77,9 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      # A hung apt-get once held a job for the full four hours. The limit fails it early.
       - name: Install system packages
+        timeout-minutes: 10
         run: |
           sudo apt-get update
           # wayland-scanner generates the Wayland protocol sources.
