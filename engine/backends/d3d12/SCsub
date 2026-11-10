@@ -10,7 +10,7 @@ import methods
 from methods import print_error
 
 # Sync with `dist/scripts/install_d3d12_sdk_windows.py` when updating Mesa.
-# Check for latest version: https://github.com/ChxisB/orblit-nir-static/releases/latest
+# The archives are the releases of https://github.com/ChxisB/orblit-build-deps
 req_version_major = 25
 req_version_minor = 3
 

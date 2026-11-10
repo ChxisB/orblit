@@ -32,8 +32,8 @@ else:
 
 # Mesa NIR
 # Sync with `engine/backends/d3d12/SCsub` when updating Mesa.
-# Check for latest version: https://github.com/ChxisB/orblit-nir-static/releases/latest
-mesa_version = "25.3.1-3"
+# The archives are the releases of https://github.com/ChxisB/orblit-build-deps
+mesa_version = "25.3.1-2"
 # WinPixEventRuntime
 # Check for latest version: https://www.nuget.org/api/v2/package/WinPixEventRuntime (check downloaded filename)
 pix_version = "1.0.240308001"
@@ -63,7 +63,7 @@ for arch in [
     "x86_64-llvm",
     "x86_64-msvc",
 ]:
-    mesa_filename = "orblit-nir-static-" + arch + "-release.zip"
+    mesa_filename = "nir-" + arch + "-release.zip"
     mesa_archive = os.path.join(deps_folder, mesa_filename)
     mesa_folder = os.path.join(deps_folder, "mesa-" + arch)
 
@@ -71,7 +71,7 @@ for arch in [
         os.remove(mesa_archive)
     print(f"Downloading Mesa NIR {mesa_filename} ...")
     urllib.request.urlretrieve(
-        f"https://github.com/ChxisB/orblit-nir-static/releases/download/{mesa_version}/{mesa_filename}",
+        f"https://github.com/ChxisB/orblit-build-deps/releases/download/nir-{mesa_version}/{mesa_filename}",
         mesa_archive,
     )
     if os.path.exists(mesa_folder):

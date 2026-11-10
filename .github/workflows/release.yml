@@ -1,0 +1,339 @@
+name: Release
+
+# A tag such as v1.0.0 builds the editor for Linux, Windows and macOS and attaches one zip
+# file for each to a GitHub Release. A pull request that edits this workflow runs the same
+# builds and publishes nothing. The tag must match version.py.
+
+on:
+  push:
+    tags: ["v*"]
+  pull_request:
+    paths:
+      - .github/workflows/release.yml
+      - .github/actions/scons-build/action.yml
+      - dist/scripts/install_*.py
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+env:
+  # production=yes builds a static, optimized binary with no debug symbols. Release builds
+  # run no unit tests, so the tests option stays off.
+  SCONS_FLAGS: >-
+    production=yes
+    module_csharp_enabled=yes
+    module_text_system_fallback_enabled=yes
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  DOTNET_VERSION: 10.0.100
+  # Only a tag build calls itself official. A dry run keeps the gh name.
+  BUILD_NAME_INPUT: ${{ startsWith(github.ref, 'refs/tags/v') && 'official' || '' }}
+
+jobs:
+  prepare:
+    name: Check the version
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Read version.py and compare it with the tag
+        id: version
+        run: |
+          version=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}.{v.patch}' + ('' if v.status == 'stable' else '-' + v.status))")
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "v$version" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match version.py, which says v$version."
+            exit 1
+          fi
+          prerelease=true
+          case "$version" in *-*) ;; *) prerelease=false ;; esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  linux:
+    name: Linux editor
+    needs: prepare
+    # One LTS behind the newest image, so the binary runs on more distributions.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    env:
+      BIN: ./bin/orblit.linuxbsd.editor.x86_64.csharp
+      PACKAGE: orblit-${{ needs.prepare.outputs.version }}-linux-x86_64
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      # A hung apt-get once held a job for the full four hours. The limit fails it early.
+      - name: Install system packages
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          # wayland-scanner generates the Wayland protocol sources.
+          sudo apt-get install -y libwayland-bin
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      # A failed download stops the job. A release must not drop a feature in silence.
+      - name: Fetch AccessKit
+        run: python ./dist/scripts/install_accesskit.py
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: linuxbsd
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} accesskit=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Generate C# glue
+        run: ${{ env.BIN }} --headless --generate-csharp-glue ./engine/modules/csharp/glue
+
+      - name: Build .NET solutions
+        run: ./engine/modules/csharp/build_scripts/build_assemblies.py --orblit-output-dir=./bin --orblit-platform=linuxbsd
+
+      - name: Check the binary
+        run: |
+          test -d ./bin/OrblitSharp
+          ${{ env.BIN }} --version
+          ${{ env.BIN }} --help > /dev/null
+
+      - name: Package
+        run: |
+          rm -rf ./bin/build_deps
+          strip ./bin/orblit.*
+          chmod +x ./bin/orblit.*
+          mv bin "$PACKAGE"
+          cp LICENSE.md "$PACKAGE/"
+          zip -qr "$PACKAGE.zip" "$PACKAGE"
+          ls -l "$PACKAGE.zip"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-linux
+          path: ${{ env.PACKAGE }}.zip
+          retention-days: 14
+
+  windows:
+    name: Windows editor
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 240
+    defaults:
+      run:
+        shell: bash
+    env:
+      # The console wrapper prints to a terminal. The glue step and the checks run it.
+      BIN: ./bin/orblit.windows.editor.x86_64.csharp.console.exe
+      PACKAGE: orblit-${{ needs.prepare.outputs.version }}-windows-x86_64
+      PYTHONIOENCODING: utf8
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Fetch the Direct3D 12 SDK
+        run: python ./dist/scripts/install_d3d12_sdk_windows.py
+
+      - name: Fetch ANGLE
+        run: python ./dist/scripts/install_angle.py
+
+      - name: Fetch AccessKit
+        run: python ./dist/scripts/install_accesskit.py
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: windows
+          target: editor
+          # The gui subsystem opens no console window. A console wrapper is built beside it.
+          scons-flags: ${{ env.SCONS_FLAGS }} windows_subsystem=gui d3d12=yes accesskit=yes angle=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Generate C# glue
+        run: ${{ env.BIN }} --headless --generate-csharp-glue ./engine/modules/csharp/glue
+
+      - name: Build .NET solutions
+        run: python ./engine/modules/csharp/build_scripts/build_assemblies.py --orblit-output-dir=./bin --orblit-platform=windows
+
+      - name: Check the binary
+        run: |
+          test -d ./bin/OrblitSharp
+          ${{ env.BIN }} --version
+          ${{ env.BIN }} --help > /dev/null
+
+      - name: Package
+        run: |
+          rm -rf ./bin/build_deps
+          rm -f ./bin/*.exp ./bin/*.lib ./bin/*.pdb
+          mv bin "$PACKAGE"
+          cp LICENSE.md "$PACKAGE/"
+          7z a -tzip -bso0 "$PACKAGE.zip" "$PACKAGE"
+          ls -l "$PACKAGE.zip"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-windows
+          path: ${{ env.PACKAGE }}.zip
+          retention-days: 14
+
+  macos:
+    name: macOS editor
+    needs: prepare
+    runs-on: macos-26
+    timeout-minutes: 300
+    env:
+      BIN: ./bin/orblit.macos.editor.arm64.csharp
+      PACKAGE: orblit-${{ needs.prepare.outputs.version }}-macos-universal
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Install the .NET SDK
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Fetch ANGLE
+        run: python ./dist/scripts/install_angle.py
+
+      - name: Fetch AccessKit
+        run: python ./dist/scripts/install_accesskit.py
+
+      - name: Install the Vulkan SDK
+        run: sh ./dist/scripts/install_vulkan_sdk_macos.sh
+
+      - name: Build for x86_64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: editor
+          # metal=no stops the warning that x86_64 builds do not support Metal.
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=x86_64 vulkan=yes accesskit=yes angle=yes metal=no
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Build for arm64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=arm64 vulkan=yes accesskit=yes angle=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      # The runner is an arm64 machine, so the arm64 build runs here.
+      - name: Generate C# glue
+        run: ${{ env.BIN }} --headless --generate-csharp-glue ./engine/modules/csharp/glue
+
+      - name: Build .NET solutions
+        run: ./engine/modules/csharp/build_scripts/build_assemblies.py --orblit-output-dir=./bin --orblit-platform=macos
+
+      # The same flags as the arm64 build leave the objects up to date. generate_bundle then
+      # merges both architectures, copies OrblitSharp into the bundle and signs it ad hoc.
+      - name: Assemble the app bundle
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=arm64 vulkan=yes accesskit=yes angle=yes generate_bundle=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      # Stripping breaks the signature, so the bundle is signed again afterwards.
+      - name: Strip, sign and check the app
+        run: |
+          app=$(ls -d bin/*.app)
+          test -d "$app/Contents/Resources/OrblitSharp"
+          strip -x "$app/Contents/MacOS/Orblit"
+          codesign --force --deep --sign - --options runtime --entitlements dist/macos/editor.entitlements "$app"
+          codesign --verify --deep --strict "$app"
+          mv "$app" Orblit.app
+          lipo -info Orblit.app/Contents/MacOS/Orblit
+          Orblit.app/Contents/MacOS/Orblit --version
+          Orblit.app/Contents/MacOS/Orblit --help > /dev/null
+
+      - name: Package
+        run: |
+          mkdir "$PACKAGE"
+          mv Orblit.app "$PACKAGE/"
+          cp LICENSE.md "$PACKAGE/"
+          ditto -c -k --keepParent "$PACKAGE" "$PACKAGE.zip"
+          ls -l "$PACKAGE.zip"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-macos
+          path: ${{ env.PACKAGE }}.zip
+          retention-days: 14
+
+  publish:
+    name: Publish the release
+    needs: [prepare, linux, windows, macos]
+    # Only a pushed tag publishes. A pull request or a manual run stops after the builds.
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      VERSION: ${{ needs.prepare.outputs.version }}
+      PRERELEASE: ${{ needs.prepare.outputs.prerelease }}
+    steps:
+      - name: Download the packages
+        uses: actions/download-artifact@v8
+        with:
+          pattern: package-*
+          path: packages
+          merge-multiple: true
+
+      - name: Write checksums
+        working-directory: packages
+        run: sha256sum ./*.zip | tee SHA256SUMS.txt
+
+      - name: Create the release
+        run: |
+          flags=()
+          if [ "$PRERELEASE" = true ]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" packages/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --verify-tag \
+            --title "Orblit $VERSION" \
+            --generate-notes \
+            "${flags[@]}"

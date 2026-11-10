@@ -14,6 +14,9 @@ inputs:
   scons-cache:
     description: Folder that holds the SCons cache.
     default: ${{ github.workspace }}/.scons_cache/
+  build-name:
+    description: Build name shown in the editor. Empty uses gh, or gh-N on a pull request.
+    default: ""
 
 runs:
   using: composite
@@ -26,6 +29,7 @@ runs:
         SCONS_FLAGS: ${{ inputs.scons-flags }}
         SCONS_CACHE: ${{ inputs.scons-cache }}
         PR_NUMBER: ${{ github.event.number }}
+        NAME_INPUT: ${{ inputs.build-name }}
       run: |
         # Export templates must not contain editor code.
         if [ "$TARGET" != "editor" ]; then
@@ -33,7 +37,9 @@ runs:
         fi
 
         # The build name shows in the editor, so a pull request build names its number.
-        if [ -n "$PR_NUMBER" ]; then
+        if [ -n "$NAME_INPUT" ]; then
+          export BUILD_NAME="$NAME_INPUT"
+        elif [ -n "$PR_NUMBER" ]; then
           export BUILD_NAME="gh-$PR_NUMBER"
         else
           export BUILD_NAME="gh"
