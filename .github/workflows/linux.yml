@@ -123,7 +123,9 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
+      # apt-get has hung on hosted runners until the job limit, so each apt step has its own limit.
       - name: Install system packages
+        timeout-minutes: 10
         run: |
           sudo apt-get update
           # wayland-scanner generates the Wayland protocol sources.
@@ -131,6 +133,7 @@ jobs:
 
       - name: Install a software Vulkan driver
         if: matrix.editor-test || matrix.export-test
+        timeout-minutes: 10
         run: sudo apt-get install -y mesa-vulkan-drivers
 
       - name: Free disk space
