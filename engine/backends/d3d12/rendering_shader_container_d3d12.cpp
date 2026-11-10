@@ -108,21 +108,6 @@ void orblit_nir_free(void *p_block) {
 
 #endif
 
-// The prebuilt Mesa libraries import their allocator under the upstream names.
-extern "C" {
-void *godot_nir_malloc(size_t p_size) {
-	return orblit_nir_malloc(p_size);
-}
-
-void *godot_nir_realloc(void *p_block, size_t p_size) {
-	return orblit_nir_realloc(p_block, p_size);
-}
-
-void godot_nir_free(void *p_block) {
-	orblit_nir_free(p_block);
-}
-}
-
 static D3D12_SHADER_VISIBILITY stages_to_d3d12_visibility(uint32_t p_stages_mask) {
 	switch (p_stages_mask) {
 		case RenderingDeviceCommons::SHADER_STAGE_VERTEX_BIT:

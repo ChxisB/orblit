@@ -33,7 +33,7 @@ else:
 # Mesa NIR
 # Sync with `engine/backends/d3d12/SCsub` when updating Mesa.
 # The archives are the releases of https://github.com/ChxisB/orblit-build-deps
-mesa_version = "25.3.1-3"
+mesa_version = "25.3.1-2"
 # WinPixEventRuntime
 # Check for latest version: https://www.nuget.org/api/v2/package/WinPixEventRuntime (check downloaded filename)
 pix_version = "1.0.240308001"
