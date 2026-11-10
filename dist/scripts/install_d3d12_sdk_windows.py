@@ -52,6 +52,12 @@ if not os.path.exists(deps_folder):
     os.makedirs(deps_folder)
 
 # Mesa NIR
+mesa_callback_headers = [
+    "src/microsoft/compiler/dxil_module.h",
+    "src/microsoft/compiler/nir_to_dxil.h",
+    "src/microsoft/spirv_to_dxil/spirv_to_dxil.h",
+]
+
 color_print(f"{Ansi.BOLD}[1/3] Mesa NIR")
 for arch in [
     "arm64-llvm",
@@ -82,6 +88,15 @@ for arch in [
     os.remove(mesa_archive)
     # The archive names its folder after the upstream project. The build looks for orblit-mesa.
     os.rename(os.path.join(mesa_folder, "godot-mesa"), os.path.join(mesa_folder, "orblit-mesa"))
+    for header in mesa_callback_headers:
+        header_path = os.path.join(mesa_folder, "orblit-mesa", header)
+        with open(header_path, "rb") as f:
+            text = f.read()
+        # The engine spells the callback type and member with the Orblit name.
+        text = text.replace(b"GodotNirCallbacks", b"OrblitNirCallbacks")
+        text = text.replace(b"godot_nir_callbacks", b"orblit_nir_callbacks")
+        with open(header_path, "wb") as f:
+            f.write(text)
 print("Mesa NIR installed successfully.\n")
 
 # WinPixEventRuntime
