@@ -1,0 +1,14 @@
+# Linux/*BSD platform port
+
+This folder contains the C++ code for the Linux/*BSD platform port.
+
+See also [`dist/linux`](/dist/linux) folder for additional files
+used by this platform.
+
+## Artwork license
+
+[`logo.svg`](export/logo.svg) is derived from the [Linux logo](https://isc.tamu.edu/~lewing/linux/):
+
+> Permission to use and/or modify this image is granted provided you acknowledge me
+> <lewing@isc.tamu.edu> and [The GIMP](https://isc.tamu.edu/~lewing/gimp/)
+> if someone asks.

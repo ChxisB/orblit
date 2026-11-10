@@ -1,0 +1,9 @@
+# See the below link for an explanation of this file's format
+# https://github.com/google/sanitizers/wiki/ThreadSanitizerSuppressions
+
+deadlock:modules/text_system_advanced/text_system_advanced.cpp
+deadlock:modules/text_system_fallback/text_system_fallback.cpp
+deadlock:tests/core/containers/test_command_queue.cpp
+race:modules/navigation_planar/nav_map_planar.cpp
+race:modules/navigation_spatial/nav_map_spatial.cpp
+race:thirdparty/thorvg/src/loaders/external_jpg/tvgJpgLoader.cpp

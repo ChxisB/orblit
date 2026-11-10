@@ -1,0 +1,2 @@
+# Ignore both the Orblit executable and generated installers.
+*.exe

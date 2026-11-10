@@ -1,0 +1,15 @@
+config_version=5
+
+[application]
+
+config/name="csharp_probe"
+run/main_scene="res://main.oscn"
+config/features=PackedStringArray("1.0", "C#")
+
+[dotnet]
+
+project/assembly_name="CsharpProbe"
+
+[rendering]
+
+rendering_device/driver.macos="metal"

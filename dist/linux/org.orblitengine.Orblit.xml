@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="application/x-orblit-project">
+    <comment>Orblit Engine project</comment>
+    <sub-class-of type="text/plain"/>
+    <icon name="x-orblit-project"/>
+    <glob pattern="project.orblit"/>
+  </mime-type>
+
+  <mime-type type="application/x-orblit-resource">
+    <comment>Orblit Engine resource</comment>
+    <icon name="x-orblit-resource"/>
+    <glob pattern="*.oresb"/>
+    <glob pattern="*.ores"/>
+  </mime-type>
+
+  <mime-type type="application/x-orblit-scene">
+    <comment>Orblit Engine scene</comment>
+    <icon name="x-orblit-scene"/>
+    <glob pattern="*.oscnb"/>
+    <glob pattern="*.oscn"/>
+  </mime-type>
+
+  <mime-type type="application/x-orblit-shader">
+    <comment>Orblit Engine shader</comment>
+    <sub-class-of type="text/plain"/>
+    <icon name="x-orblit-shader"/>
+    <glob pattern="*.oshader"/>
+  </mime-type>
+</mime-info>

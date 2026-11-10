@@ -1,0 +1,94 @@
+/**************************************************************************/
+/*  editor_utils_jni.cpp                                                  */
+
+#include "editor_utils_jni.h"
+
+#ifdef TOOLS_ENABLED
+#include "jni_utils.h"
+
+#include "core/os/os.h"
+#include "editor/debugger/editor_debugger_node.h"
+#include "editor/debugger/script_editor_debugger.h"
+#include "editor/editor_node.h"
+#include "editor/run/editor_run_bar.h"
+#include "editor/script/script_editor_plugin.h"
+#include "editor/settings/editor_settings.h"
+#include "editor/widgets/editor_title_bar.h"
+#include "startup/main.h"
+#endif
+
+extern "C" {
+JNIEXPORT void JNICALL Java_org_orblitengine_orblit_editor_utils_EditorUtils_runScene(JNIEnv *p_env, jclass, jstring p_scene, jobjectArray p_scene_args) {
+#ifdef TOOLS_ENABLED
+	Vector<String> scene_args;
+	jint length = p_env->GetArrayLength(p_scene_args);
+	for (jint i = 0; i < length; ++i) {
+		jstring j_arg = (jstring)p_env->GetObjectArrayElement(p_scene_args, i);
+		String arg = jstring_to_string(j_arg, p_env);
+		scene_args.push_back(arg);
+		p_env->DeleteLocalRef(j_arg);
+	}
+
+	String scene = jstring_to_string(p_scene, p_env);
+
+	EditorRunBar *editor_run_bar = EditorRunBar::get_singleton();
+	if (editor_run_bar != nullptr) {
+		editor_run_bar->stop_playing();
+		// Ensure that all ScriptEditorDebugger instances are explicitly stopped.
+		// If not, a closing instance from the previous run session will trigger `_stop_and_notify()`, in turn causing
+		// the closure of the ScriptEditorDebugger instances of the run session we're about to launch.
+		EditorDebuggerNode *dbg_node = EditorDebuggerNode::get_singleton();
+		if (dbg_node != nullptr) {
+			for (int i = 0; ScriptEditorDebugger *dbg = dbg_node->get_debugger(i); i++) {
+				dbg->stop();
+			}
+		}
+
+		if (scene.is_empty()) {
+			editor_run_bar->play_main_scene(false);
+		} else {
+			editor_run_bar->play_custom_scene(scene, scene_args);
+		}
+	} else {
+		List<String> args;
+
+		for (const String &a : Main::get_forwardable_cli_arguments(Main::CLI_SCOPE_PROJECT)) {
+			args.push_back(a);
+		}
+
+		for (const String &arg : scene_args) {
+			args.push_back(arg);
+		}
+
+		if (!scene.is_empty()) {
+			args.push_back("--scene");
+			args.push_back(scene);
+		}
+
+		Error err = OS::get_singleton()->create_instance(args);
+		ERR_FAIL_COND(err);
+	}
+#endif
+}
+
+JNIEXPORT void JNICALL Java_org_orblitengine_orblit_editor_utils_EditorUtils_orientationChanged(JNIEnv *p_env, jclass, jboolean p_portrait) {
+#ifdef TOOLS_ENABLED
+	if (EditorNode::get_singleton() != nullptr) {
+		if (EditorRunBar::get_singleton() != nullptr) {
+			// TODO: Enable for portrait once the title bar width is optimized.
+			EditorRunBar::get_singleton()->set_visible(!p_portrait);
+		}
+
+		if (ScriptEditor::get_singleton() != nullptr && EDITOR_GET("text_editor/appearance/minimap/show_minimap")) {
+			if (TextEditorBase *editor = Object::cast_to<TextEditorBase>(ScriptEditor::get_singleton()->get_current_editor())) {
+				if (CodeTextEditor *code_editor = editor->get_code_editor()) {
+					if (CodeEdit *text_editor = code_editor->get_text_editor()) {
+						text_editor->set_draw_minimap(!p_portrait);
+					}
+				}
+			}
+		}
+	}
+#endif
+}
+}

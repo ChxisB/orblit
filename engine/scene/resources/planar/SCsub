@@ -1,0 +1,23 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+Import("env")
+
+env.add_source_files(env.scene_sources, "tile_set.cpp")
+
+if not env["disable_physics_planar"]:
+    env.add_source_files(env.scene_sources, "capsule_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "circle_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "concave_polygon_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "convex_polygon_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "rectangle_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "segment_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "separation_ray_shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "shape_planar.cpp")
+    env.add_source_files(env.scene_sources, "world_boundary_shape_planar.cpp")
+if not env["disable_navigation_planar"]:
+    env.add_source_files(env.scene_sources, "navigation_mesh_source_geometry_data_planar.cpp")
+    env.add_source_files(env.scene_sources, "navigation_polygon.cpp")
+    env.add_source_files(env.scene_sources, "polygon_path_finder.cpp")
+
+SConscript("skeleton/SCsub")

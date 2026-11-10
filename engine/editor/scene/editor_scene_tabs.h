@@ -1,0 +1,90 @@
+/**************************************************************************/
+/*  editor_scene_tabs.h                                                   */
+
+#pragma once
+
+#include "scene/ui/margin_container.h"
+
+class Button;
+class HBoxContainer;
+class MenuButton;
+class Panel;
+class PanelContainer;
+class PopupMenu;
+class TabBar;
+class TextureRect;
+
+class EditorSceneTabs : public MarginContainer {
+	ORBLIT_CLASS(EditorSceneTabs, MarginContainer);
+
+	inline static EditorSceneTabs *singleton = nullptr;
+
+public:
+	enum {
+		SCENE_SAVE_SCENE = 1000, // Prevents conflicts with EditorNode options.
+		SCENE_SAVE_AS_SCENE,
+		SCENE_SHOW_IN_FILESYSTEM,
+		SCENE_RUN,
+		SCENE_SET_AS_MAIN_SCENE,
+		SCENE_CLOSE,
+		SCENE_CLOSE_OTHERS,
+		SCENE_CLOSE_RIGHT,
+	};
+
+private:
+	PanelContainer *tabbar_panel = nullptr;
+	HBoxContainer *tabbar_container = nullptr;
+
+	TabBar *scene_tabs = nullptr;
+	PopupMenu *scene_tabs_context_menu = nullptr;
+	MenuButton *scene_list = nullptr;
+	Button *scene_tab_add = nullptr;
+	Control *scene_tab_add_ph = nullptr;
+
+	Panel *tab_preview_panel = nullptr;
+	TextureRect *tab_preview = nullptr;
+
+	int last_hovered_tab = -1;
+
+	void _scene_tab_changed(int p_tab);
+	void _scene_tab_script_edited(int p_tab);
+	void _scene_tab_closed(int p_tab);
+	void _scene_tab_hovered(int p_tab);
+	void _scene_tab_exit();
+	void _scene_tab_input(const Ref<InputEvent> &p_input);
+	void _scene_tabs_resized();
+
+	void _update_tab_titles();
+	void _reposition_active_tab(int p_to_index);
+	void _update_context_menu(int p_index);
+	void _custom_menu_option(int p_option);
+	void _update_scene_list();
+
+	void _tab_preview_done(const String &p_path, const Ref<Texture2D> &p_preview, const Ref<Texture2D> &p_small_preview, int p_tab);
+	static Dictionary _get_context_data(int p_current_tab);
+
+	void _global_menu_scene(const Variant &p_tag);
+	void _global_menu_new_window(const Variant &p_tag);
+
+	void _project_settings_changed();
+
+	virtual void shortcut_input(const Ref<InputEvent> &p_event) override;
+
+protected:
+	void _notification(int p_what);
+	virtual void unhandled_key_input(const Ref<InputEvent> &p_event) override;
+	static void register_members();
+
+public:
+	static EditorSceneTabs *get_singleton() { return singleton; }
+
+	void add_extra_button(Button *p_button);
+
+	void set_current_tab(int p_tab);
+	int get_current_tab() const;
+	int get_option_tab() const;
+
+	void update_scene_tabs();
+
+	EditorSceneTabs();
+};

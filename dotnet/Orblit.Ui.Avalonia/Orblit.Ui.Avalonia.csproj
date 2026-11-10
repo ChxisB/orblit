@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Version>0.4.0</Version>
-    <Description>Avalonia controls for a game's interface: the flex layout, the image loader, the touch controls and the label atlas.</Description>
-  </PropertyGroup>
-  <ItemGroup>
-    <PackageReference Include="Avalonia" />
-  </ItemGroup>
-</Project>

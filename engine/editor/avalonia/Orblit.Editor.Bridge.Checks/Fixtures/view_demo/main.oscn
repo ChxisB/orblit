@@ -1,0 +1,13 @@
+[orb_scene load_steps=2 format=3]
+
+[sub_resource type="BoxMesh" id="BoxMesh_demo"]
+
+[node name="ViewDemo" type="Entity3D"]
+
+[node name="Camera" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 4)
+
+[node name="Light" type="DirectionalLight3D" parent="."]
+
+[node name="Box" type="MeshInstance3D" parent="."]
+mesh = SubResource("BoxMesh_demo")

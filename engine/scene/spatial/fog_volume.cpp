@@ -1,0 +1,103 @@
+/**************************************************************************/
+/*  fog_volume.cpp                                                        */
+
+#include "fog_volume.h"
+
+#include "core/object/class_registry.h"
+#include "core/os/os.h"
+#include "scene/resources/environment.h"
+#include "scene/stage/viewport.h"
+#include "systems/rendering/rendering_system.h"
+
+///////////////////////////
+
+void FogVolume::register_members() {
+	ClassRegistry::bind_method(D_METHOD("set_size", "size"), &FogVolume::set_size);
+	ClassRegistry::bind_method(D_METHOD("get_size"), &FogVolume::get_size);
+	ClassRegistry::bind_method(D_METHOD("set_shape", "shape"), &FogVolume::set_shape);
+	ClassRegistry::bind_method(D_METHOD("get_shape"), &FogVolume::get_shape);
+	ClassRegistry::bind_method(D_METHOD("set_material", "material"), &FogVolume::set_material);
+	ClassRegistry::bind_method(D_METHOD("get_material"), &FogVolume::get_material);
+
+	ADD_PROPERTY(PropertyInfo(Variant::VECTOR3, "size", PROPERTY_HINT_RANGE, "0.01,1024,0.01,or_greater,suffix:m"), "set_size", "get_size");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "shape", PROPERTY_HINT_ENUM, "Ellipsoid (Local),Cone (Local),Cylinder (Local),Box (Local),World (Global)"), "set_shape", "get_shape");
+	ADD_PROPERTY(PropertyInfo(Variant::OBJECT, "material", PROPERTY_HINT_RESOURCE_TYPE, "FogMaterial,ShaderMaterial", PROPERTY_USAGE_DEFAULT | PROPERTY_USAGE_EDITOR_INSTANTIATE_OBJECT), "set_material", "get_material");
+}
+
+void FogVolume::_validate_property(PropertyInfo &p_property) const {
+	if (p_property.name == "size" && shape == RSE::FOG_VOLUME_SHAPE_WORLD) {
+		p_property.usage = PROPERTY_USAGE_NONE;
+	}
+}
+
+void FogVolume::set_size(const Vector3 &p_size) {
+	size = p_size;
+	size = size.maxf(0);
+	RS::get_singleton()->fog_volume_set_size(_get_volume(), size);
+	update_gizmos();
+}
+
+Vector3 FogVolume::get_size() const {
+	return size;
+}
+
+void FogVolume::set_shape(RSE::FogVolumeShape p_type) {
+	shape = p_type;
+	RS::get_singleton()->fog_volume_set_shape(_get_volume(), shape);
+	RS::get_singleton()->instance_set_ignore_culling(get_instance(), shape == RSE::FOG_VOLUME_SHAPE_WORLD);
+	update_gizmos();
+	notify_property_list_changed();
+}
+
+RSE::FogVolumeShape FogVolume::get_shape() const {
+	return shape;
+}
+
+void FogVolume::set_material(const Ref<Material> &p_material) {
+	material = p_material;
+	RID material_rid;
+	if (material.is_valid()) {
+		material_rid = material->get_rid();
+	}
+	RS::get_singleton()->fog_volume_set_material(_get_volume(), material_rid);
+	update_gizmos();
+}
+
+Ref<Material> FogVolume::get_material() const {
+	return material;
+}
+
+AABB FogVolume::get_aabb() const {
+	if (shape != RSE::FOG_VOLUME_SHAPE_WORLD) {
+		return AABB(-size / 2, size);
+	}
+	return AABB();
+}
+
+PackedStringArray FogVolume::get_configuration_warnings() const {
+	PackedStringArray warnings = VisualInstance3D::get_configuration_warnings();
+
+	Ref<Environment> environment = get_viewport()->find_world_3d()->get_environment();
+
+	if (OS::get_singleton()->get_current_rendering_method() != "forward_plus") {
+		warnings.push_back(RTR("Fog Volumes are only visible when using the Forward+ renderer."));
+		return warnings;
+	}
+
+	if (environment.is_valid() && !environment->is_volumetric_fog_enabled()) {
+		warnings.push_back(RTR("Fog Volumes need volumetric fog to be enabled in the scene's Environment in order to be visible."));
+	}
+
+	return warnings;
+}
+
+FogVolume::FogVolume() {
+	volume = RS::get_singleton()->fog_volume_create();
+	RS::get_singleton()->fog_volume_set_shape(volume, RSE::FOG_VOLUME_SHAPE_BOX);
+	set_base(volume);
+}
+
+FogVolume::~FogVolume() {
+	ERR_FAIL_NULL(RenderingSystem::get_singleton());
+	RS::get_singleton()->free_rid(volume);
+}

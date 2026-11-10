@@ -1,0 +1,31 @@
+name: Fetch optional SDK
+description: Run an SDK install command. A failure turns the feature off and the build goes on.
+
+inputs:
+  name:
+    description: Feature name for the warning message.
+    required: true
+  command:
+    description: Command that installs the SDK.
+    required: true
+
+outputs:
+  enabled:
+    description: yes when the install worked, otherwise no.
+    value: ${{ steps.install.outputs.enabled }}
+
+runs:
+  using: composite
+  steps:
+    - id: install
+      shell: bash
+      env:
+        NAME: ${{ inputs.name }}
+        COMMAND: ${{ inputs.command }}
+      run: |
+        if $COMMAND; then
+          echo "enabled=yes" >> "$GITHUB_OUTPUT"
+        else
+          echo "::warning::$NAME install failed. Building without $NAME."
+          echo "enabled=no" >> "$GITHUB_OUTPUT"
+        fi

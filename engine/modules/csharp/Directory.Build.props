@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <OrblitSdkPackageVersionsFilePath>$(MSBuildThisFileDirectory)\SdkPackageVersions.props</OrblitSdkPackageVersionsFilePath>
+  </PropertyGroup>
+  <Import Project="$(OrblitSdkPackageVersionsFilePath)" />
+</Project>

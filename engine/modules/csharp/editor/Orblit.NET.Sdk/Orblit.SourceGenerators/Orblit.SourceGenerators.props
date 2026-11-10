@@ -1,0 +1,10 @@
+<Project>
+  <ItemGroup>
+    <!-- $(OrblitProjectDir) is defined by Orblit.NET.Sdk -->
+    <CompilerVisibleProperty Include="OrblitDisabledSourceGenerators" />
+    <CompilerVisibleProperty Include="OrblitProjectDir" />
+    <CompilerVisibleProperty Include="OrblitProjectDirBase64" />
+    <CompilerVisibleProperty Include="OrblitSourceGenerators" />
+    <CompilerVisibleProperty Include="IsOrblitToolsProject" />
+  </ItemGroup>
+</Project>

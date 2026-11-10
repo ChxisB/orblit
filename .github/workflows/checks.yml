@@ -1,0 +1,69 @@
+name: Checks
+
+on:
+  workflow_call:
+    outputs:
+      build-needed:
+        description: true when a changed file affects the build.
+        value: ${{ jobs.checks.outputs.build-needed }}
+      cpp-files:
+        description: JSON array of changed C++ files that clangd-tidy can check.
+        value: ${{ jobs.checks.outputs.cpp-files }}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Style, formatting and docs
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    outputs:
+      build-needed: ${{ steps.changes.outputs.build_any_changed }}
+      cpp-files: ${{ steps.changes.outputs.cpp_all_changed_files }}
+    steps:
+      - name: Check out the full history
+        uses: actions/checkout@v7
+        with:
+          # Full history without file contents. A diff against the base commit stays cheap.
+          fetch-depth: 0
+          filter: tree:0
+
+      # Runs first. Later steps write files that this check would report.
+      - name: Check .gitignore
+        run: bash ./dist/scripts/gitignore_check.sh
+
+      - name: List changed files
+        id: changes
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
+        with:
+          # Later steps read the lists from environment variables, never from run scripts.
+          # The lint action is the one exception. It reads the list through a quoted heredoc.
+          safe_output: false
+          json: true
+          # The default escapes each quote, which jq cannot parse.
+          escape_json: false
+          skip_initial_fetch: true
+          files_yaml_from_source_file: .github/filters.yml
+
+      - name: Find the commit to compare against
+        id: base
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          if [ "$EVENT" = pull_request ]; then
+            ref="$PR_BASE"
+          elif [ -n "$PUSH_BEFORE" ] && [ "$PUSH_BEFORE" != 0000000000000000000000000000000000000000 ]; then
+            ref="$PUSH_BEFORE"
+          else
+            ref="HEAD~1"
+          fi
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+
+      - name: Run pre-commit hooks
+        uses: j178/prek-action@4e14d07f9231acabce116ccfca13b13dd9755ece # v3.0.0
+        with:
+          extra-args: --from-ref ${{ steps.base.outputs.ref }}

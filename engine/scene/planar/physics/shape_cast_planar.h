@@ -1,0 +1,96 @@
+/**************************************************************************/
+/*  shape_cast_planar.h                                                       */
+
+#pragma once
+
+#include "scene/planar/entity_planar.h"
+#include "scene/resources/planar/shape_planar.h"
+#include "systems/physics_planar/physics_system_planar_types.h"
+
+class CollisionObject2D;
+
+class ShapeCast2D : public Entity2D {
+	ORBLIT_CLASS(ShapeCast2D, Entity2D);
+
+	bool enabled = true;
+
+	Ref<Shape2D> shape;
+	RID shape_rid;
+	Vector2 target_position = Vector2(0, 50);
+
+	HashSet<RID> exclude;
+	real_t margin = 0.0;
+	uint32_t collision_mask = 1;
+	bool exclude_parent_body = true;
+	bool collide_with_areas = false;
+	bool collide_with_bodies = true;
+
+	// Result
+	int max_results = 32;
+	Vector<PS2DT::ShapeRestInfo> result;
+	bool collided = false;
+	real_t collision_safe_fraction = 1.0;
+	real_t collision_unsafe_fraction = 1.0;
+
+	void _shape_changed();
+
+protected:
+	void _notification(int p_what);
+	void _update_shapecast_state();
+	static void register_members();
+
+public:
+	void set_collide_with_areas(bool p_clip);
+	bool is_collide_with_areas_enabled() const;
+
+	void set_collide_with_bodies(bool p_clip);
+	bool is_collide_with_bodies_enabled() const;
+
+	void set_enabled(bool p_enabled);
+	bool is_enabled() const;
+
+	void set_shape(const Ref<Shape2D> &p_shape);
+	Ref<Shape2D> get_shape() const;
+
+	void set_target_position(const Vector2 &p_point);
+	Vector2 get_target_position() const;
+
+	void set_margin(real_t p_margin);
+	real_t get_margin() const;
+
+	void set_max_results(int p_max_results);
+	int get_max_results() const;
+
+	void set_collision_mask(uint32_t p_mask);
+	uint32_t get_collision_mask() const;
+
+	void set_collision_mask_value(int p_layer_number, bool p_value);
+	bool get_collision_mask_value(int p_layer_number) const;
+
+	void set_exclude_parent_body(bool p_exclude_parent_body);
+	bool get_exclude_parent_body() const;
+
+	void force_shapecast_update();
+	bool is_colliding() const;
+
+	Array get_collision_result() const;
+	int get_collision_count() const;
+	Object *get_collider(int p_idx) const;
+	RID get_collider_rid(int p_idx) const;
+	int get_collider_shape(int p_idx) const;
+	Vector2 get_collision_point(int p_idx) const;
+	Vector2 get_collision_normal(int p_idx) const;
+
+	real_t get_closest_collision_safe_fraction() const;
+	real_t get_closest_collision_unsafe_fraction() const;
+
+	void add_exception_rid(const RID &p_rid);
+	void add_exception(RequiredParam<const CollisionObject2D> p_node);
+	void remove_exception_rid(const RID &p_rid);
+	void remove_exception(RequiredParam<const CollisionObject2D> p_node);
+	void clear_exceptions();
+
+	PackedStringArray get_configuration_warnings() const override;
+
+	ShapeCast2D();
+};

@@ -1,0 +1,91 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+import os
+
+import editor_builders
+
+Import("env")
+
+env.editor_sources = []
+
+if env.editor_build:
+    # Generate doc data paths
+    env.CommandNoCache(
+        "doc/doc_data_class_path.gen.h",
+        env.Value(env.doc_class_path),
+        env.Run(editor_builders.doc_data_class_path_builder),
+    )
+
+    # Register exporters
+    gen_exporters = env.CommandNoCache(
+        "export/register_exporters.gen.cpp",
+        env.Value(env.platform_exporters),
+        env.Run(editor_builders.register_exporters_builder),
+    )
+    for e in env.platform_exporters:
+        # Add all .cpp files in export folder
+        env.add_source_files(env.editor_sources, f"../platform/{e}/export/*.cpp")
+
+    # Core API documentation.
+    docs = []
+    docs += Glob("#docs/classes/*.xml")
+
+    # Module API documentation.
+    module_dirs = []
+    for d in env.doc_class_path.values():
+        if d not in module_dirs:
+            module_dirs.append(d)
+
+    for d in module_dirs:
+        if not os.path.isabs(d):
+            docs += Glob("#" + d + "/*.xml")  # Built-in.
+        else:
+            docs += Glob(d + "/*.xml")  # Custom.
+
+    docs = sorted(docs)
+    env.CommandNoCache(
+        "#engine/editor/doc/doc_data_compressed.gen.h",
+        docs,
+        env.Run(editor_builders.make_doc_header),
+    )
+
+    # Only English ships. The extractable list holds the built-in strings that
+    # the game translation template generator adds to a project's template.
+    extractable_cpp = "#engine/editor/translations/extractable_translations.gen.cpp"
+    env.CommandNoCache(
+        [os.path.splitext(extractable_cpp)[0] + ".h", extractable_cpp],
+        Glob("#engine/editor/translations/extractable/*"),
+        env.Run(editor_builders.make_translations),
+    )
+
+    env.add_source_files(env.editor_sources, "*.cpp")
+    env.add_source_files(env.editor_sources, gen_exporters)
+    env.add_source_files(env.editor_sources, extractable_cpp)
+
+    SConscript("animation/SCsub")
+    SConscript("asset_library/SCsub")
+    SConscript("audio/SCsub")
+    SConscript("debugger/SCsub")
+    SConscript("doc/SCsub")
+    SConscript("docks/SCsub")
+    SConscript("export/SCsub")
+    SConscript("file_system/SCsub")
+    SConscript("widgets/SCsub")
+    SConscript("icons/SCsub")
+    SConscript("inspector/SCsub")
+    SConscript("import/SCsub")
+    SConscript("plugins/SCsub")
+    SConscript("project_manager/SCsub")
+    SConscript("project_upgrade/SCsub")
+    SConscript("run/SCsub")
+    SConscript("settings/SCsub")
+    SConscript("scene/SCsub")
+    SConscript("script/SCsub")
+    SConscript("shader/SCsub")
+    SConscript("themes/SCsub")
+    SConscript("translations/SCsub")
+    SConscript("version_control/SCsub")
+
+    lib = env.add_library("editor", env.editor_sources)
+    env.Prepend(LIBS=[lib])

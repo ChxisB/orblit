@@ -1,0 +1,13 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+Import("env")
+Import("env_modules")
+
+env_gltf = env_modules.Clone()
+
+# Orblit source files
+
+env_gltf.add_source_files(env.modules_sources, "*.cpp")
+if not env["disable_physics_spatial"]:
+    env_gltf.add_source_files(env.modules_sources, "physics/*.cpp")

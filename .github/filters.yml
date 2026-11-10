@@ -1,0 +1,28 @@
+# Input for the changed-files step in checks.yml.
+
+# A pull request that touches none of these paths skips the platform builds.
+# They cover anything that makes SCons rebuild, and the build setup itself.
+build:
+  - .github/{actions/*,workflows}/*.yml
+  - "**/{SConstruct,SCsub,*.py}"
+  - "**/*.{h,hpp,hh,hxx,c,cpp,cc,cxx,m,mm,inc,glsl}"
+  - engine/core/native_extension/native_extension_interface.json
+  - dist/extension_api_validation/**
+  - engine/modules/*/tests/**
+  - engine/modules/csharp/**/*.{cs,csproj,sln,props,targets}
+  - engine/platform/android/java/{gradle*,**/*.{jar,java,kt,gradle}}
+  - engine/platform/web/{package{,-lock}.json,js/**/*.js}
+  - tests/**
+
+# C++ files that clangd-tidy can check. Only the Linux build runs the check, so code that
+# Linux cannot compile is left out. The platform api and export folders are the exception.
+cpp:
+  - "**/*.{h,hpp,hxx,hh,c,cpp,cxx,cc}"
+  - "!**/thirdparty/**"
+  - "!**/*-so_wrap.{h,c}"
+  - "!engine/backends/{apple*,core*,d3d12,metal,wasapi,windows,winmidi,xaudio2}/**"
+  - "!engine/editor/shader/shader_baker/shader_baker_export_plugin_platform_{d3d12,metal}.{h,cpp}"
+  - "!engine/modules/camera/camera_{android,macos,win}.{h,cpp}"
+  - "!engine/modules/openxr/extensions/platform/openxr_{android,metal}_extension.{h,cpp}"
+  - "!engine/platform/{android,ios,macos,visionos,web,windows}/**"
+  - "engine/platform/{android,ios,macos,visionos,web,windows}/{api,export}/*.{h,hpp,hxx,hh,c,cpp,cxx,cc}"

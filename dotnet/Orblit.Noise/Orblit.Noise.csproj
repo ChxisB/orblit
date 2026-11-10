@@ -1,6 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Version>0.1.0</Version>
-    <Description>Value and gradient noise, tiling and deterministic. The same field every run, on every machine.</Description>
-  </PropertyGroup>
-</Project>

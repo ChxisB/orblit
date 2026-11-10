@@ -1,0 +1,266 @@
+name: Linux
+
+on:
+  workflow_call:
+    inputs:
+      cpp-files:
+        description: JSON array of changed C++ files for clangd-tidy.
+        type: string
+        default: "[]"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SCONS_FLAGS: >-
+    dev_mode=yes
+    module_text_system_fallback_enabled=yes
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  ASAN_OPTIONS: color=always:print_suppressions=1:suppressions=${{ github.workspace }}/dist/error_suppressions/asan.txt:alloc_dealloc_mismatch=0
+  LSAN_OPTIONS: color=always:print_suppressions=1:suppressions=${{ github.workspace }}/dist/error_suppressions/lsan.txt
+  TSAN_OPTIONS: color=always:print_suppressions=1:suppressions=${{ github.workspace }}/dist/error_suppressions/tsan.txt
+  UBSAN_OPTIONS: color=always:print_suppressions=1:suppressions=${{ github.workspace }}/dist/error_suppressions/ubsan.txt
+
+jobs:
+  build:
+    # One LTS behind the newest image, so the binaries run on more distributions.
+    runs-on: ubuntu-24.04
+    name: ${{ matrix.name }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Editor with C#
+            id: linux-editor-csharp
+            target: editor
+            scons-flags: module_csharp_enabled=yes compiledb=yes
+            bin: ./bin/orblit.linuxbsd.editor.x86_64.csharp
+            dotnet: true
+            doc-check: true
+            export-test: true
+            api-check: true
+            upload: true
+            lint: true
+
+          - name: Editor with double precision and GCC sanitizers
+            id: linux-editor-double-sanitizers
+            target: editor
+            # Debug symbols are off because they fill the 14 GB runner disk on this build.
+            scons-flags: >-
+              dev_build=yes
+              scu_build=yes
+              debug_symbols=no
+              precision=double
+              use_asan=yes
+              use_ubsan=yes
+              linker=mold
+            bin: ./bin/orblit.linuxbsd.editor.dev.double.x86_64.san
+            mold: true
+            editor-test: true
+            free-space: true
+
+          - name: Editor with clang sanitizers
+            id: linux-editor-llvm-sanitizers
+            target: editor
+            scons-flags: >-
+              dev_build=yes
+              use_asan=yes
+              use_ubsan=yes
+              use_llvm=yes
+              linker=lld
+            bin: ./bin/orblit.linuxbsd.editor.dev.x86_64.llvm.san
+            # One arbitrary build uses the oldest Python and SCons that the project supports.
+            legacy-scons: true
+            free-space: true
+
+          - name: Editor with thread sanitizer
+            id: linux-editor-thread-sanitizer
+            target: editor
+            scons-flags: >-
+              dev_build=yes
+              use_tsan=yes
+              use_llvm=yes
+              linker=lld
+            bin: ./bin/orblit.linuxbsd.editor.dev.x86_64.llvm.san
+            free-space: true
+
+          - name: Release template with C#
+            id: linux-template-csharp
+            target: template_release
+            scons-flags: module_csharp_enabled=yes
+            bin: ./bin/orblit.linuxbsd.template_release.x86_64.csharp
+            upload: true
+
+          - name: Debug template with C#
+            id: linux-template-csharp-debug
+            target: template_debug
+            scons-flags: module_csharp_enabled=yes
+            bin: ./bin/orblit.linuxbsd.template_debug.x86_64.csharp
+            upload: true
+
+          - name: Minimal release template
+            id: linux-template-minimal
+            target: template_release
+            scons-flags: >-
+              modules_enabled_by_default=no
+              module_text_system_fallback_enabled=no
+              disable_spatial=yes
+              disable_advanced_gui=yes
+              disable_physics_planar=yes
+              disable_physics_spatial=yes
+              minizip=no
+              brotli=no
+            bin: ./bin/orblit.linuxbsd.template_release.x86_64
+            upload: true
+
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          # wayland-scanner generates the Wayland protocol sources.
+          sudo apt-get install -y libwayland-bin
+
+      - name: Install a software Vulkan driver
+        if: matrix.editor-test || matrix.export-test
+        run: sudo apt-get install -y mesa-vulkan-drivers
+
+      - name: Free disk space
+        if: matrix.free-space
+        run: |
+          df -h
+          sudo rm -rf /usr/local/lib/android
+          df -h
+
+      - name: Restore SCons cache
+        uses: ./.github/actions/scons-cache-restore
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Set up SCons
+        if: "!matrix.legacy-scons"
+        uses: ./.github/actions/setup-scons
+
+      - name: Set up SCons, oldest supported versions
+        if: matrix.legacy-scons
+        uses: ./.github/actions/setup-scons
+        with:
+          # Keep in step with the Ensure*Version calls in SConstruct.
+          python-version: "3.10"
+          scons-version: "4.4"
+
+      # The runner ships newer SDKs. Removing them proves that the oldest supported SDK builds.
+      - name: Remove preinstalled .NET SDKs
+        if: matrix.dotnet
+        run: sudo rm -rf /usr/share/dotnet/sdk/*
+
+      - name: Install the oldest supported .NET SDK
+        if: matrix.dotnet
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: 10.0.100
+
+      - name: Fetch AccessKit
+        id: accesskit
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: AccessKit
+          command: python ./dist/scripts/install_accesskit.py
+
+      - name: Install the mold linker
+        if: matrix.mold
+        uses: rui314/setup-mold@339e96b4ff1f3bd865856ba4cbbe8818a7acb038 # v1
+        with:
+          make-default: false
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: linuxbsd
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} ${{ matrix.scons-flags }} accesskit=${{ steps.accesskit.outputs.enabled }}
+
+      # Saved before the checks so that a failed check keeps the compiled objects.
+      - name: Save SCons cache
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/scons-cache-save
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Lint changed C++ files
+        if: matrix.lint
+        uses: ./.github/actions/lint-cpp
+        with:
+          files: ${{ inputs.cpp-files }}
+
+      - name: Generate C# glue
+        if: matrix.dotnet
+        run: ${{ matrix.bin }} --headless --generate-csharp-glue ./engine/modules/csharp/glue
+
+      - name: Build .NET solutions
+        if: matrix.dotnet
+        run: |
+          dotnet --info
+          ./engine/modules/csharp/build_scripts/build_assemblies.py --orblit-output-dir=./bin --orblit-platform=linuxbsd --werror
+
+      - name: Strip binaries
+        if: matrix.upload
+        run: |
+          rm -rf ./bin/build_deps
+          strip bin/orblit.*
+          chmod +x bin/orblit.*
+
+      - name: Upload binaries
+        if: matrix.upload
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}
+
+      - name: Run unit tests
+        run: |
+          ${{ matrix.bin }} --version
+          ${{ matrix.bin }} --help
+          ${{ matrix.bin }} --headless --test --force-colors
+
+      - name: Run .NET source generator tests
+        if: matrix.dotnet
+        run: dotnet test engine/modules/csharp/editor/Orblit.NET.Sdk/Orblit.SourceGenerators.Tests
+
+      # A diff here means a code change that left the class reference out of date.
+      - name: Check the class reference
+        if: matrix.doc-check
+        run: |
+          ${{ matrix.bin }} --doctool --headless > /dev/null || true
+          git diff --color --exit-code
+          missing=$(git ls-files --others --exclude-standard | grep 'xml$' || true)
+          if [ -n "$missing" ]; then
+            echo "Class reference files not added:"
+            echo "$missing"
+            exit 1
+          fi
+
+      - name: Check the extension API against released versions
+        if: matrix.api-check
+        run: ./dist/scripts/validate_extension_api.sh "${{ matrix.bin }}"
+
+      - name: Test the editor on the test project
+        if: matrix.editor-test
+        uses: ./.github/actions/test-editor
+        with:
+          bin: ${{ matrix.bin }}
+
+      - name: Test project export
+        if: matrix.export-test
+        uses: ./.github/actions/test-export
+        with:
+          bin: ${{ matrix.bin }}

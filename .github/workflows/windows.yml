@@ -1,0 +1,127 @@
+name: Windows
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SCONS_FLAGS: >-
+    dev_mode=yes
+    module_text_system_fallback_enabled=yes
+    debug_symbols=no
+  SCONS_CACHE_MSVC_CONFIG: true
+  PYTHONIOENCODING: utf8
+
+jobs:
+  build:
+    runs-on: windows-latest
+    name: ${{ matrix.name }}
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Editor with MSVC
+            id: windows-editor
+            target: editor
+            scons-flags: >-
+              windows_subsystem=console
+              vsproj=yes
+              vsproj_gen_only=no
+            bin: ./bin/orblit.windows.editor.x86_64.exe
+            compiler: msvc
+
+          - name: Editor with clang-cl
+            id: windows-editor-clang
+            target: editor
+            scons-flags: >-
+              windows_subsystem=console
+              use_llvm=yes
+            bin: ./bin/orblit.windows.editor.x86_64.llvm.exe
+            compiler: clang
+
+          - name: Release template with MSVC
+            id: windows-template
+            target: template_release
+            bin: ./bin/orblit.windows.template_release.x86_64.console.exe
+            compiler: msvc
+
+          # MinGW compiles much more slowly, so only the template is built with it.
+          - name: Release template with MinGW
+            id: windows-template-mingw
+            target: template_release
+            scons-flags: use_mingw=yes
+            bin: ./bin/orblit.windows.template_release.x86_64.console.exe
+            compiler: gcc
+
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Restore SCons cache
+        uses: ./.github/actions/scons-cache-restore
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Fetch the Direct3D 12 SDK
+        id: d3d12
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: Direct3D 12
+          command: python ./dist/scripts/install_d3d12_sdk_windows.py
+
+      - name: Fetch ANGLE
+        id: angle
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: ANGLE
+          command: python ./dist/scripts/install_angle.py
+
+      - name: Fetch AccessKit
+        id: accesskit
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: AccessKit
+          command: python ./dist/scripts/install_accesskit.py
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: windows
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} ${{ matrix.scons-flags }} d3d12=${{ steps.d3d12.outputs.enabled }} accesskit=${{ steps.accesskit.outputs.enabled }} angle=${{ steps.angle.outputs.enabled }}
+
+      - name: Save SCons cache
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/scons-cache-save
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Remove build files that are not binaries
+        if: matrix.compiler == 'msvc'
+        run: |
+          Remove-Item bin/build_deps -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item bin/* -Include *.exp,*.lib,*.pdb -Force
+
+      - name: Upload binaries
+        if: matrix.compiler == 'msvc'
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}
+
+      - name: Run unit tests
+        run: |
+          ${{ matrix.bin }} --version
+          ${{ matrix.bin }} --help
+          ${{ matrix.bin }} --test --force-colors

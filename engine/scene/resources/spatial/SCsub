@@ -1,0 +1,30 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+Import("env")
+
+env.add_source_files(env.scene_sources, "fog_material.cpp")
+env.add_source_files(env.scene_sources, "importer_mesh.cpp")
+env.add_source_files(env.scene_sources, "joint_limitation_spatial.cpp")
+env.add_source_files(env.scene_sources, "joint_limitation_cone_spatial.cpp")
+env.add_source_files(env.scene_sources, "mesh_library.cpp")
+env.add_source_files(env.scene_sources, "primitive_meshes.cpp")
+env.add_source_files(env.scene_sources, "skin.cpp")
+env.add_source_files(env.scene_sources, "sky_material.cpp")
+env.add_source_files(env.scene_sources, "world_spatial.cpp")
+env.add_source_files(env.scene_sources, "skeleton/*.cpp")
+
+if not env["disable_physics_spatial"]:
+    env.add_source_files(env.scene_sources, "box_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "capsule_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "circle_shape_3d.cpp")
+    env.add_source_files(env.scene_sources, "concave_polygon_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "convex_polygon_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "cylinder_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "height_map_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "separation_ray_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "sphere_shape_spatial.cpp")
+    env.add_source_files(env.scene_sources, "world_boundary_shape_spatial.cpp")
+if not env["disable_navigation_spatial"]:
+    env.add_source_files(env.scene_sources, "navigation_mesh_source_geometry_data_spatial.cpp")

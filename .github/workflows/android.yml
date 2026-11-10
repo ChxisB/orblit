@@ -1,0 +1,139 @@
+name: Android
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SCONS_FLAGS: >-
+    dev_mode=yes
+    module_text_system_fallback_enabled=yes
+
+jobs:
+  build:
+    runs-on: ubuntu-26.04
+    name: ${{ matrix.name }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Editor for arm64
+            id: android-editor
+            target: editor
+            scons-flags: >-
+              arch=arm64
+              production=yes
+
+          - name: Debug template for arm32
+            id: android-template-arm32
+            target: template_debug
+            scons-flags: arch=arm32
+
+          - name: Debug template for arm64
+            id: android-template-arm64
+            target: template_debug
+            scons-flags: arch=arm64
+
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Restore SCons cache
+        uses: ./.github/actions/scons-cache-restore
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Fetch AccessKit
+        id: accesskit
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: AccessKit
+          command: python ./dist/scripts/install_accesskit.py
+
+      - name: Fetch Swappy
+        id: swappy
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: Swappy
+          command: python ./dist/scripts/install_swappy_android.py
+
+      - name: Fetch Perfetto
+        id: perfetto
+        uses: ./.github/actions/fetch-sdk
+        with:
+          name: Perfetto
+          command: python ./dist/scripts/install_perfetto.py
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: android
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} ${{ matrix.scons-flags }} profiler=${{ steps.perfetto.outputs.enabled == 'yes' && 'perfetto' || 'none' }} swappy=${{ steps.swappy.outputs.enabled }} accesskit=${{ steps.accesskit.outputs.enabled }}
+
+      - name: Save SCons cache
+        if: ${{ !cancelled() }}
+        uses: ./.github/actions/scons-cache-save
+        with:
+          cache-name: ${{ matrix.id }}
+        continue-on-error: true
+
+      # Gradle writes to bin/ in the repository root, not in the Gradle project folder.
+      - name: Package export templates
+        if: matrix.target == 'template_debug'
+        working-directory: engine/platform/android/java
+        run: |
+          ./gradlew generateOrblitTemplates
+          ls -l "$GITHUB_WORKSPACE/bin/"
+
+      - name: Package editors
+        if: matrix.target == 'editor'
+        working-directory: engine/platform/android/java
+        run: |
+          ./gradlew generateOrblitEditor
+          ./gradlew generateOrblitHorizonOSEditor
+          ./gradlew generateOrblitPicoOSEditor
+
+      - name: Sort editors by device
+        if: matrix.target == 'editor'
+        run: |
+          ls -l bin/android_editor_builds/
+          mkdir horizonos picoos
+          mv bin/android_editor_builds/*-horizonos-* horizonos
+          mv bin/android_editor_builds/*-picoos-* picoos
+
+      - name: Upload binaries
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}
+
+      - name: Upload binaries for Horizon OS
+        if: matrix.target == 'editor'
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}-horizonos
+          path: horizonos
+
+      - name: Upload binaries for PICO OS
+        if: matrix.target == 'editor'
+        uses: ./.github/actions/upload-binaries
+        with:
+          name: ${{ matrix.id }}-picoos
+          path: picoos

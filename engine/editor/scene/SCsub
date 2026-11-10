@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+Import("env")
+
+env.add_source_files(env.editor_sources, "*.cpp")
+
+SConscript("planar/SCsub")
+SConscript("spatial/SCsub")
+SConscript("ui/SCsub")
+SConscript("texture/SCsub")

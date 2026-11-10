@@ -1,0 +1,88 @@
+/**************************************************************************/
+/*  openxr_android_extension.cpp                                          */
+
+#include "openxr_android_extension.h"
+
+#include "../../openxr_api.h" // IWYU pragma: keep. `XR_FAILED` macro.
+#include "java_wrapper.h"
+#include "os_android.h"
+#include "thread_jandroid.h"
+
+#include "core/os/os.h"
+
+#include <openxr/openxr.h>
+#include <openxr/openxr_platform.h>
+
+OpenXRAndroidExtension *OpenXRAndroidExtension::singleton = nullptr;
+
+OpenXRAndroidExtension *OpenXRAndroidExtension::get_singleton() {
+	return singleton;
+}
+
+OpenXRAndroidExtension::OpenXRAndroidExtension() {
+	singleton = this;
+
+	JNIEnv *env = get_jni_env();
+	ERR_FAIL_NULL(env);
+
+	env->GetJavaVM(&vm);
+	activity_object = env->NewGlobalRef(static_cast<OS_Android *>(OS::get_singleton())->get_orblit_java()->get_activity());
+}
+
+HashMap<String, bool *> OpenXRAndroidExtension::get_requested_extensions(XrVersion p_version) {
+	HashMap<String, bool *> request_extensions;
+
+	// XR_KHR_LOADER_INIT_EXTENSION_NAME is a dependency of XR_KHR_LOADER_INIT_ANDROID_EXTENSION_NAME
+	request_extensions[XR_KHR_LOADER_INIT_EXTENSION_NAME] = &loader_init_extension_available;
+	request_extensions[XR_KHR_LOADER_INIT_ANDROID_EXTENSION_NAME] = &loader_init_android_extension_available;
+	request_extensions[XR_KHR_ANDROID_CREATE_INSTANCE_EXTENSION_NAME] = &create_instance_extension_available;
+
+	return request_extensions;
+}
+
+void OpenXRAndroidExtension::on_before_instance_created() {
+	if (XR_FAILED(EXT_TRY_INIT_XR_FUNC(xrInitializeLoaderKHR))) {
+		// XR_KHR_loader_init not supported on this platform
+		return;
+	}
+	loader_init_android_extension_available = true;
+
+	XrLoaderInitInfoAndroidKHR loader_init_info_android = {
+		.type = XR_TYPE_LOADER_INIT_INFO_ANDROID_KHR,
+		.next = nullptr,
+		.applicationVM = vm,
+		.applicationContext = activity_object
+	};
+	XrResult result = xrInitializeLoaderKHR((const XrLoaderInitInfoBaseHeaderKHR *)&loader_init_info_android);
+	ERR_FAIL_COND_MSG(XR_FAILED(result), "Failed to call xrInitializeLoaderKHR");
+}
+
+// We're keeping the Android create info struct here to avoid including openxr_platform.h in a header, which would break other extensions.
+// This is reasonably safe as the struct is only used during initialization and the extension is a singleton.
+static XrInstanceCreateInfoAndroidKHR instance_create_info;
+
+void *OpenXRAndroidExtension::set_instance_create_info_and_get_next_pointer(XrVersion p_xr_version, void *p_next_pointer) {
+	if (!create_instance_extension_available) {
+		if (!loader_init_android_extension_available) {
+			WARN_PRINT("No Android extensions available, couldn't pass JVM and Activity to OpenXR");
+		}
+		return nullptr;
+	}
+
+	instance_create_info = {
+		.type = XR_TYPE_INSTANCE_CREATE_INFO_ANDROID_KHR,
+		.next = p_next_pointer,
+		.applicationVM = vm,
+		.applicationActivity = activity_object
+	};
+	return &instance_create_info;
+}
+
+OpenXRAndroidExtension::~OpenXRAndroidExtension() {
+	singleton = nullptr;
+
+	JNIEnv *env = get_jni_env();
+	ERR_FAIL_NULL(env);
+
+	env->DeleteGlobalRef(activity_object);
+}

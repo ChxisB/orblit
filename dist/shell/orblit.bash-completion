@@ -1,0 +1,125 @@
+# Bash completion for the Orblit editor
+# To use it, install this file in `/etc/bash_completion.d` then restart your shell.
+# You can also `source` this file directly in your shell startup file.
+
+_complete_orblit_options() {
+  # Since Bash doesn't support option descriptions in autocompletion,
+  # only display long options to be more descriptive.
+  # shellcheck disable=SC2207
+  COMPREPLY=($(compgen -W " \
+--help
+--version
+--verbose
+--quiet
+--editor
+--project-manager
+--debug-server
+--quit
+--language
+--path
+--main-pack
+--render-thread
+--remote-fs
+--remote-fs-password
+--audio-driver
+--audio-output-latency
+--display-driver
+--rendering-method
+--rendering-driver
+--gpu-index
+--text-driver
+--tablet-driver
+--headless
+--log-file
+--write-movie
+--fullscreen
+--maximized
+--windowed
+--always-on-top
+--resolution
+--position
+--single-window
+--xr-mode
+--debug
+--breakpoints
+--profiling
+--gpu-profile
+--gpu-validation
+--gpu-abort
+--remote-debug
+--debug-collisions
+--debug-navigation
+--debug-stringnames
+--max-fps
+--frame-delay
+--time-scale
+--disable-vsync
+--disable-render-loop
+--disable-crash-handler
+--fixed-fps
+--print-fps
+--script
+--check-only
+--export-release
+--export-debug
+--export-pack
+--doctool
+--no-docbase
+--build-solutions
+--dump-native-extension-interface
+--dump-extension-api
+--benchmark
+--benchmark-file
+--test
+" -- "$1"))
+}
+
+_complete_orblit_bash() {
+  local cur="${COMP_WORDS[$COMP_CWORD]}" prev
+
+  # Complete options or the positional argument.
+  if [[ $cur == -* ]]; then
+    _complete_orblit_options "$cur"
+  else
+    local IFS=$'\n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -f -X "!*.@(oscnb|oscn|orblit)" -- "$cur"))
+  fi
+
+  # If the array is accessed out of bounds (which will happen for the first argument),
+  # `$prev` will be an empty string and won't match any of the conditions below.
+  prev="${COMP_WORDS[$((COMP_CWORD-1))]}"
+
+  # Complete option values.
+  if [[ $prev == "--render-thread" ]]; then
+    local IFS=$' \n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "unsafe safe separate" -- "$cur"))
+  elif [[ $prev == "--rendering-method" ]]; then
+    local IFS=$' \n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "forward_plus mobile gl_compatibility" -- "$cur"))
+  elif [[ $prev == "--rendering-driver" ]]; then
+    local IFS=$' \n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "vulkan opengl3 dummy" -- "$cur"))
+	elif [[ $prev == "--xr-mode" ]]; then
+    local IFS=$' \n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -W "default off on" -- "$cur"))
+  elif [[ $prev == "--path" || $prev == "--doctool" ]]; then
+    local IFS=$'\n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -d -- "$cur"))
+  elif [[ $prev == "--main-pack" ]]; then
+    local IFS=$'\n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -f -X "!*.@(pck|zip)" -- "$cur"))
+  elif [[ $prev == "-s" || $prev == "--script" ]]; then
+    local IFS=$'\n\t'
+    # shellcheck disable=SC2207
+    COMPREPLY=($(compgen -f -X "!*.gd" -- "$cur"))
+  fi
+}
+
+complete -o filenames -F _complete_orblit_bash orblit

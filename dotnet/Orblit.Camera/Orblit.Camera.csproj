@@ -1,9 +1,0 @@
-<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <Version>0.2.0</Version>
-    <Description>Cameras as shots rather than as objects. A camera describes what it wants to frame; the engine works out where to be and blends between them.</Description>
-  </PropertyGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\Orblit.VectorMath\Orblit.VectorMath.csproj" />
-  </ItemGroup>
-</Project>

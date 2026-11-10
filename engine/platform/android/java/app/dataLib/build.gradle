@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.library'
+    id 'org.jetbrains.kotlin.android'
+}
+
+dependencies {
+    implementation "androidx.fragment:fragment:$versions.fragmentVersion"
+    implementation "androidx.core:core-splashscreen:$versions.splashscreenVersion"
+
+    if (rootProject.findProject(":lib")) {
+        compileOnly project(":lib")
+    } else if (rootProject.findProject(":orblit:lib")) {
+        compileOnly project(":orblit:lib")
+    } else {
+        // Orblit gradle build mode. In this scenario this project is the only one around and the Orblit
+        // library is available through the pre-generated orblit-lib.*.aar android archive files.
+        debugCompileOnly fileTree(dir: '../libs/debug', include: ['**/*.jar', '**/*.aar'])
+        releaseCompileOnly fileTree(dir: '../libs/release', include: ['**/*.jar', '**/*.aar'])
+    }
+}
+
+android {
+    namespace = 'com.orblit.game'
+    compileSdk = versions.compileSdk
+
+    defaultConfig {
+        // The default ignore pattern for the 'assets' directory includes hidden files and directories which are used by Orblit projects.
+        aaptOptions {
+            ignoreAssetsPattern = "!.svn:!.git:!.gitignore:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~"
+        }
+
+        minSdk = versions.minSdk
+
+        missingDimensionStrategy 'products', 'template'
+    }
+    compileOptions {
+        sourceCompatibility versions.javaVersion
+        targetCompatibility versions.javaVersion
+    }
+    kotlinOptions {
+        jvmTarget = versions.javaVersion
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+
+}

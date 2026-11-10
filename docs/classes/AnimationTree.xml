@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="AnimationTree" inherits="AnimationMixer" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../class.xsd">
+	<brief_description>
+		A node used for advanced animation transitions in an [AnimationPlayer].
+	</brief_description>
+	<description>
+		A node used for advanced animation transitions in an [AnimationPlayer].
+		[b]Note:[/b] When linked with an [AnimationPlayer], several properties and methods of the corresponding [AnimationPlayer] will not function as expected. Playback and transitions should be handled using only the [AnimationTree] and its constituent [AnimationNode](s). The [AnimationPlayer] node should be used solely for adding, deleting, and editing animations.
+	</description>
+	<tutorials>
+		<link title="Using AnimationTree">$DOCS_URL/tutorials/animation/animation_tree.html</link>
+	</tutorials>
+	<members>
+		<member name="advance_expression_base_node" type="EntityPath" setter="set_advance_expression_base_node" getter="get_advance_expression_base_node" default="EntityPath(&quot;.&quot;)">
+			The path to the [Entity] used to evaluate the [AnimationNode] [Expression] if one is not explicitly specified internally.
+		</member>
+		<member name="anim_player" type="EntityPath" setter="set_animation_player" getter="get_animation_player" default="EntityPath(&quot;&quot;)">
+			The path to the [AnimationPlayer] used for animating.
+		</member>
+		<member name="callback_mode_discrete" type="int" setter="set_callback_mode_discrete" getter="get_callback_mode_discrete" overrides="AnimationMixer" enum="AnimationMixer.AnimationCallbackModeDiscrete" default="2" />
+		<member name="deterministic" type="bool" setter="set_deterministic" getter="is_deterministic" overrides="AnimationMixer" default="true" />
+		<member name="tree_root" type="AnimationRootNode" setter="set_tree_root" getter="get_tree_root">
+			The root animation node of this [AnimationTree]. See [AnimationRootNode].
+		</member>
+	</members>
+	<signals>
+		<signal name="animation_player_changed">
+			<description>
+				Emitted when the [member anim_player] is changed.
+			</description>
+		</signal>
+	</signals>
+</class>

@@ -1,0 +1,24 @@
+#!/usr/bin/env python
+from dist.utility.scons_hints import *
+
+import build_scripts.csharp_configure as csharp_configure
+
+Import("env")
+Import("env_modules")
+
+env_csharp = env_modules.Clone()
+
+# Configure the .NET build
+
+csharp_configure.configure(env, env_csharp)
+
+# Add sources
+
+env_csharp.add_source_files(env.modules_sources, "*.cpp")
+env_csharp.add_source_files(env.modules_sources, "glue/*.cpp")
+env_csharp.add_source_files(env.modules_sources, "host/*.cpp")
+env_csharp.add_source_files(env.modules_sources, "utils/*.cpp")
+
+if env.editor_build:
+    env_csharp.add_source_files(env.modules_sources, "editor/*.cpp")
+    SConscript("editor/script_templates/SCsub")
