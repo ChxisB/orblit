@@ -12,9 +12,9 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "../
 from dist.utility.color import Ansi, color_print
 
 # Swappy
-# Check for latest version: https://github.com/godotengine/godot-swappy/releases/latest
-swappy_tag = "from-source-2025-01-31"
-swappy_filename = "godot-swappy.zip"
+# The archive is a release of https://github.com/ChxisB/orblit-build-deps
+swappy_tag = "swappy-2025-01-31"
+swappy_filename = "swappy.zip"
 swappy_folder = "thirdparty/swappy-frame-pacing"
 swappy_archs = [
     "arm64-v8a",
@@ -30,7 +30,7 @@ if os.path.isfile(swappy_archive_destination):
 
 print(f"Downloading Swappy {swappy_tag} ...")
 urllib.request.urlretrieve(
-    f"https://github.com/godotengine/godot-swappy/releases/download/{swappy_tag}/{swappy_filename}",
+    f"https://github.com/ChxisB/orblit-build-deps/releases/download/{swappy_tag}/{swappy_filename}",
     swappy_archive_destination,
 )
 

@@ -32,7 +32,7 @@ else:
 
 # Mesa NIR
 # Sync with `engine/backends/d3d12/SCsub` when updating Mesa.
-# Check for latest version: https://github.com/godotengine/godot-nir-static/releases/latest
+# The archives are the releases of https://github.com/ChxisB/orblit-build-deps
 mesa_version = "25.3.1-3"
 # WinPixEventRuntime
 # Check for latest version: https://www.nuget.org/api/v2/package/WinPixEventRuntime (check downloaded filename)
@@ -52,12 +52,6 @@ if not os.path.exists(deps_folder):
     os.makedirs(deps_folder)
 
 # Mesa NIR
-mesa_callback_headers = [
-    "src/microsoft/compiler/dxil_module.h",
-    "src/microsoft/compiler/nir_to_dxil.h",
-    "src/microsoft/spirv_to_dxil/spirv_to_dxil.h",
-]
-
 color_print(f"{Ansi.BOLD}[1/3] Mesa NIR")
 for arch in [
     "arm64-llvm",
@@ -69,7 +63,7 @@ for arch in [
     "x86_64-llvm",
     "x86_64-msvc",
 ]:
-    mesa_filename = "godot-nir-static-" + arch + "-release.zip"
+    mesa_filename = "nir-" + arch + "-release.zip"
     mesa_archive = os.path.join(deps_folder, mesa_filename)
     mesa_folder = os.path.join(deps_folder, "mesa-" + arch)
 
@@ -77,7 +71,7 @@ for arch in [
         os.remove(mesa_archive)
     print(f"Downloading Mesa NIR {mesa_filename} ...")
     urllib.request.urlretrieve(
-        f"https://github.com/godotengine/godot-nir-static/releases/download/{mesa_version}/{mesa_filename}",
+        f"https://github.com/ChxisB/orblit-build-deps/releases/download/nir-{mesa_version}/{mesa_filename}",
         mesa_archive,
     )
     if os.path.exists(mesa_folder):
@@ -86,17 +80,6 @@ for arch in [
     print(f"Extracting Mesa NIR {mesa_filename} to {mesa_folder} ...")
     shutil.unpack_archive(mesa_archive, mesa_folder)
     os.remove(mesa_archive)
-    # The archive names its folder after the upstream project. The build looks for orblit-mesa.
-    os.rename(os.path.join(mesa_folder, "godot-mesa"), os.path.join(mesa_folder, "orblit-mesa"))
-    for header in mesa_callback_headers:
-        header_path = os.path.join(mesa_folder, "orblit-mesa", header)
-        with open(header_path, "rb") as f:
-            text = f.read()
-        # The engine spells the callback type and member with the Orblit name.
-        text = text.replace(b"GodotNirCallbacks", b"OrblitNirCallbacks")
-        text = text.replace(b"godot_nir_callbacks", b"orblit_nir_callbacks")
-        with open(header_path, "wb") as f:
-            f.write(text)
 print("Mesa NIR installed successfully.\n")
 
 # WinPixEventRuntime
