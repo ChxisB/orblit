@@ -50,6 +50,8 @@ class RayCast3D : public Entity3D {
 	Ref<ArrayMesh> debug_mesh;
 
 protected:
+	virtual void fti_update_systems_xform() override;
+
 	void _notification(int p_what);
 	void _update_raycast_state();
 	static void register_members();
