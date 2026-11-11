@@ -964,4 +964,28 @@ TEST_CASE("[Prefab] A root that parents itself in its constructor is renamed in 
 	memdelete(adopter);
 }
 
+TEST_CASE("[Entity] find_children lists nested matches in tree order") {
+	Entity *root = memnew(Entity);
+	Entity *first = memnew(Entity);
+	Entity *nested = memnew(Entity);
+	Entity *second = memnew(Entity);
+	first->set_name("First");
+	nested->set_name("Nested");
+	second->set_name("Second");
+	root->add_child(first);
+	first->add_child(nested);
+	root->add_child(second);
+
+	TypedArray<Entity> found = root->find_children("*", "", true, false);
+	REQUIRE_EQ(found.size(), 3);
+	CHECK(found[0] == Variant(first));
+	CHECK(found[1] == Variant(nested));
+	CHECK(found[2] == Variant(second));
+
+	found = root->find_children("*", "", false, false);
+	CHECK_EQ(found.size(), 2);
+
+	memdelete(root);
+}
+
 } // namespace TestNode

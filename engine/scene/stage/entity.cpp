@@ -2009,6 +2009,12 @@ TypedArray<Entity> Entity::find_children(const String &p_pattern, const String &
 	ERR_THREAD_GUARD_V(TypedArray<Entity>());
 	TypedArray<Entity> ret;
 	ERR_FAIL_COND_V(p_pattern.is_empty() && p_type.is_empty(), ret);
+	_find_children_into(p_pattern, p_type, p_recursive, p_owned, ret);
+	return ret;
+}
+
+void Entity::_find_children_into(const String &p_pattern, const String &p_type, bool p_recursive, bool p_owned, TypedArray<Entity> &r_found) const {
+	ERR_THREAD_GUARD
 	_update_children_cache();
 	Entity *const *cptr = data.children_cache.ptr();
 	int ccount = data.children_cache.size();
@@ -2019,12 +2025,12 @@ TypedArray<Entity> Entity::find_children(const String &p_pattern, const String &
 
 		if (p_pattern.is_empty() || cptr[i]->data.name.string().match(p_pattern)) {
 			if (p_type.is_empty() || cptr[i]->is_class(p_type)) {
-				ret.append(cptr[i]);
+				r_found.append(cptr[i]);
 			} else if (cptr[i]->get_script_instance()) {
 				Ref<Script> scr = cptr[i]->get_script_instance()->get_script();
 				while (scr.is_valid()) {
 					if ((ScriptSystem::is_global_class(p_type) && ScriptSystem::get_global_class_path(p_type) == scr->get_path()) || p_type == scr->get_path()) {
-						ret.append(cptr[i]);
+						r_found.append(cptr[i]);
 						break;
 					}
 
@@ -2034,11 +2040,9 @@ TypedArray<Entity> Entity::find_children(const String &p_pattern, const String &
 		}
 
 		if (p_recursive) {
-			ret.append_array(cptr[i]->find_children(p_pattern, p_type, true, p_owned));
+			cptr[i]->_find_children_into(p_pattern, p_type, true, p_owned, r_found);
 		}
 	}
-
-	return ret;
 }
 
 void Entity::reparent(RequiredParam<Entity> p_parent, bool p_keep_global_transform) {
