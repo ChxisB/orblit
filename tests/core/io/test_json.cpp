@@ -168,6 +168,22 @@ TEST_CASE("[JSON] Parsing single data types") {
 			(int)(json.get_data()) == 123456,
 			"Parsing an integer number as JSON should return the expected value.");
 
+	json.parse("[1, -2, 1.0, 2e3, 12345678901234567890]");
+	{
+		const Array numbers = json.get_data();
+		CHECK(numbers[0].get_type() == Variant::INT);
+		CHECK(numbers[1].get_type() == Variant::INT);
+		CHECK(int64_t(numbers[1]) == -2);
+		CHECK(numbers[2].get_type() == Variant::FLOAT);
+		CHECK(numbers[3].get_type() == Variant::FLOAT);
+		CHECK(numbers[4].get_type() == Variant::FLOAT);
+	}
+
+	// A double holds integers exactly only up to 2^53.
+	json.parse("9007199254740993");
+	CHECK(int64_t(json.get_data()) == 9007199254740993);
+	CHECK(JSON::stringify(json.get_data()) == "9007199254740993");
+
 	json.parse("0.123456");
 	CHECK_MESSAGE(
 			json.get_error_line() == 0,
