@@ -135,7 +135,7 @@ void Trail3D::_notification(int p_what) {
 	switch (p_what) {
 		case NOTIFICATION_ENTER_STAGE: {
 			clear();
-			RS::get_singleton()->connect("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail));
+			_connect_frame_pre_draw(false);
 			RS::get_singleton()->instance_geometry_set_flag(get_instance(), RSE::INSTANCE_FLAG_DRAW_NEXT_FRAME_IF_VISIBLE, true);
 		} break;
 		case NOTIFICATION_EXIT_STAGE: {
@@ -155,8 +155,8 @@ void Trail3D::_notification(int p_what) {
 
 void Trail3D::set_width(float p_width) {
 	width = p_width;
-	if (limit_mode == LIMIT_MODE_MAX_LENGTH && !RS::get_singleton()->is_connected("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail))) {
-		RS::get_singleton()->connect("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail), CONNECT_ONE_SHOT);
+	if (limit_mode == LIMIT_MODE_MAX_LENGTH) {
+		_connect_frame_pre_draw(true);
 	}
 }
 
@@ -195,9 +195,7 @@ Ref<Curve> Trail3D::get_width_curve() const {
 
 void Trail3D::set_color(const Color &p_color) {
 	if (p_color != color && limit_mode == LIMIT_MODE_MAX_LENGTH) {
-		if (!RS::get_singleton()->is_connected("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail))) {
-			RS::get_singleton()->connect("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail), CONNECT_ONE_SHOT);
-		}
+		_connect_frame_pre_draw(true);
 	}
 	color = p_color;
 }
@@ -326,7 +324,7 @@ void Trail3D::set_limit_mode(LimitMode p_limit_mode) {
 	}
 	limit_mode = p_limit_mode;
 	if (p_limit_mode == LIMIT_MODE_LIFETIME) {
-		RS::get_singleton()->connect("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail));
+		_connect_frame_pre_draw(false);
 	} else {
 		if (RS::get_singleton()->is_connected("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail))) {
 			RS::get_singleton()->disconnect("frame_pre_draw", callable_mp(this, &Trail3D::_process_trail));
@@ -624,6 +622,19 @@ void Trail3D::_do_rebuild() {
 	RS::get_singleton()->mesh_surface_update_index_region(rid, 0, 0, index_buffer);
 
 	set_custom_aabb(AABB(min_bounds, (max_bounds - min_bounds)));
+}
+
+void Trail3D::_connect_frame_pre_draw(bool p_one_shot) {
+	const Callable process = callable_mp(this, &Trail3D::_process_trail);
+	RenderingSystem *rs = RS::get_singleton();
+	if (rs->is_connected("frame_pre_draw", process)) {
+		// A queued call already covers the next frame. A standing call replaces a queued one so it is not lost after that frame.
+		if (p_one_shot) {
+			return;
+		}
+		rs->disconnect("frame_pre_draw", process);
+	}
+	rs->connect("frame_pre_draw", process, p_one_shot ? CONNECT_ONE_SHOT : 0);
 }
 
 void Trail3D::_process_trail() {
