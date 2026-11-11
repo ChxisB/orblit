@@ -9,6 +9,8 @@ TEST_FORCE_LINK(test_resource)
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/object/class_registry.h"
+#include "core/object/worker_thread_pool.h"
+#include "core/os/os.h"
 #include "scene/stage/entity.h"
 #include "tests/test_utils.h"
 
@@ -621,6 +623,40 @@ TEST_CASE("[Resource] An uncached resource takes a raw path") {
 	resource->set_path_cache("res://test_raw_path.tres");
 	CHECK(resource->get_path() == "res://test_raw_path.tres");
 	CHECK_FALSE(ResourceCache::has("res://test_raw_path.tres"));
+}
+
+struct PoolLoadJob {
+	Vector<String> paths;
+};
+
+static void load_from_pool_task(void *p_userdata) {
+	const PoolLoadJob &job = *static_cast<const PoolLoadJob *>(p_userdata);
+	for (const String &path : job.paths) {
+		// A load started inside a pool task spawns a second task and completes inline.
+		ResourceLoader::load(path, "", ResourceLoader::CACHE_MODE_IGNORE);
+	}
+}
+
+TEST_CASE("[ResourceLoader] Loads started from a pool task release their tokens") {
+	PoolLoadJob job;
+	for (int i = 0; i < 32; i++) {
+		Ref<Resource> resource;
+		resource.instantiate();
+		const String path = TestUtils::get_temp_path(vformat("pool_load_%d.ores", i));
+		ResourceSaver::save(resource, path);
+		job.paths.push_back(path);
+	}
+	const int baseline = ObjectRegistry::get_object_count();
+
+	const WorkerThreadPool::TaskID task = WorkerThreadPool::get_singleton()->add_native_task(&load_from_pool_task, &job);
+	WorkerThreadPool::get_singleton()->wait_for_task_completion(task);
+
+	// The spawned tasks finish on their own, so give them time to let go of their tokens.
+	const uint64_t deadline = OS::get_singleton()->get_ticks_msec() + 5000;
+	while (ObjectRegistry::get_object_count() > baseline && OS::get_singleton()->get_ticks_msec() < deadline) {
+		OS::get_singleton()->delay_usec(10000);
+	}
+	CHECK(ObjectRegistry::get_object_count() == baseline);
 }
 
 } // namespace TestResource
