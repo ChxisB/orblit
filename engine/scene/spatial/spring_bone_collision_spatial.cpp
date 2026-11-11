@@ -133,8 +133,8 @@ Transform3D SpringBoneCollision3D::get_transform_from_skeleton(const Transform3D
 	Transform3D gtr = get_global_transform();
 	Skeleton3D *sk = get_skeleton();
 	if (sk) {
-		Transform3D tr = sk->get_global_transform();
-		gtr = tr.affine_inverse() * p_center * gtr;
+		// The center maps skeleton space to its own space, so it is applied after the skeleton inverse.
+		gtr = p_center * sk->get_global_transform().affine_inverse() * gtr;
 	}
 	return gtr;
 }
