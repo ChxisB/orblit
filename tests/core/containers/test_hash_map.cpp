@@ -165,4 +165,20 @@ TEST_CASE("[HashMap] Sort") {
 	}
 }
 
+TEST_CASE("[HashMap] C string keys accept a null pointer") {
+	HashMap<const char *, int> hashmap;
+	const char *name = "name";
+
+	hashmap[nullptr] = 1;
+	hashmap[name] = 2;
+	CHECK(hashmap.has(nullptr));
+	CHECK(hashmap[nullptr] == 1);
+	CHECK(hashmap[name] == 2);
+	CHECK(hashmap.size() == 2);
+
+	CHECK(hashmap.erase(nullptr));
+	CHECK(!hashmap.has(nullptr));
+	CHECK(hashmap.has(name));
+}
+
 } // namespace TestHashMap
