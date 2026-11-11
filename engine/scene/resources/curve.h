@@ -84,6 +84,7 @@ public:
 	real_t get_max_domain() const { return _max_domain; }
 	void set_max_domain(real_t p_max);
 	real_t get_domain_range() const { return _max_domain - _min_domain; }
+	real_t get_sample_offset(int p_index, int p_count) const;
 
 	Array get_limits() const;
 	void set_limits(const Array &p_input);

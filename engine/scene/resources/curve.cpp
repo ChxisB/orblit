@@ -361,6 +361,14 @@ void Curve::set_max_domain(real_t p_max) {
 	emit_signal(SNAME(SIGNAL_DOMAIN_CHANGED));
 }
 
+real_t Curve::get_sample_offset(int p_index, int p_count) const {
+	// Both ends of the domain are samples, so the last one reads the last point.
+	if (p_count < 2) {
+		return _min_domain;
+	}
+	return _min_domain + get_domain_range() * p_index / (p_count - 1);
+}
+
 real_t Curve::sample(real_t p_offset) const {
 	if (_points.is_empty()) {
 		return 0;

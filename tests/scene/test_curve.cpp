@@ -27,6 +27,22 @@ TEST_CASE("[Curve] Default curve") {
 			"Default curve should return the expected value at offset 1.0.");
 }
 
+TEST_CASE("[Curve] Sample offsets span the whole domain") {
+	const Ref<Curve> curve = memnew(Curve);
+
+	CHECK(curve->get_sample_offset(0, 5) == doctest::Approx(0.0));
+	CHECK(curve->get_sample_offset(4, 5) == doctest::Approx(1.0));
+
+	curve->set_max_domain(6);
+	curve->set_min_domain(2);
+	CHECK(curve->get_sample_offset(0, 5) == doctest::Approx(2.0));
+	CHECK(curve->get_sample_offset(2, 5) == doctest::Approx(4.0));
+	CHECK(curve->get_sample_offset(4, 5) == doctest::Approx(6.0));
+
+	// One sample has no span to cover.
+	CHECK(curve->get_sample_offset(0, 1) == doctest::Approx(2.0));
+}
+
 TEST_CASE("[Curve] Custom unit curve with free tangents") {
 	Ref<Curve> curve = memnew(Curve);
 	// "Sawtooth" curve with an open ending towards the 1.0 offset.
