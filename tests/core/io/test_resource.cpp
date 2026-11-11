@@ -599,4 +599,28 @@ TEST_CASE("[Resource] Breaking circular references on save") {
 	resource_c->remove_meta("next");
 }
 
+TEST_CASE("[Resource] A cached resource keeps its cache path") {
+	const String cached_path = "res://test_cached_resource.tres";
+	Ref<Resource> resource;
+	resource.instantiate();
+	resource->set_path(cached_path);
+
+	ERR_PRINT_OFF;
+	resource->set_path_cache("res://another_path.tres");
+	ERR_PRINT_ON;
+	CHECK(resource->get_path() == cached_path);
+	CHECK(ResourceCache::get_ref(cached_path) == resource);
+
+	resource.unref();
+	CHECK_FALSE(ResourceCache::has(cached_path));
+}
+
+TEST_CASE("[Resource] An uncached resource takes a raw path") {
+	Ref<Resource> resource;
+	resource.instantiate();
+	resource->set_path_cache("res://test_raw_path.tres");
+	CHECK(resource->get_path() == "res://test_raw_path.tres");
+	CHECK_FALSE(ResourceCache::has("res://test_raw_path.tres"));
+}
+
 } // namespace TestResource
