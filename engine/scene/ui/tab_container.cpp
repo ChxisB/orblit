@@ -536,7 +536,7 @@ void TabContainer::_on_tab_visibility_changed(Control *p_child) {
 	bool made_visible = p_child->is_visible();
 	updating_visibility = true;
 
-	if (!made_visible && get_current_tab() == tab_index) {
+	if (!made_visible && tab_bar->get_current_tab() == tab_index) {
 		if (get_deselect_enabled() || get_tab_count() == 0) {
 			// Deselect.
 			set_current_tab(-1);
@@ -554,7 +554,7 @@ void TabContainer::_on_tab_visibility_changed(Control *p_child) {
 				set_current_tab(-1);
 			}
 		}
-	} else if (made_visible && get_current_tab() != tab_index) {
+	} else if (made_visible && tab_bar->get_current_tab() != tab_index) {
 		set_current_tab(tab_index);
 	}
 
@@ -705,7 +705,8 @@ void TabContainer::set_current_tab(int p_current) {
 }
 
 int TabContainer::get_current_tab() const {
-	return tab_bar->get_current_tab();
+	// A tab chosen before entering the stage waits in the queue. Saving a scene reads it here.
+	return setup_current_tab >= -1 ? setup_current_tab : tab_bar->get_current_tab();
 }
 
 int TabContainer::get_previous_tab() const {
