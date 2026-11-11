@@ -6338,18 +6338,7 @@ void Tree::ensure_cursor_is_visible() {
 		const int tbh = _get_title_button_height();
 		y_offset -= tbh;
 
-		bool selected_is_sticky = false;
-		for (TreeItem *item : sticky_list) {
-			if (selected_item == item) {
-				y_offset -= item->sticky_offset.y;
-				selected_is_sticky = true;
-				break;
-			}
-		}
-
-		if (!selected_is_sticky) {
-			y_offset -= sticky_stack_end;
-		}
+		y_offset = _get_offset_below_sticky(selected_item, y_offset);
 
 		const int cell_h = compute_item_height(selected_item) + theme_cache.v_separation;
 		int screen_h = area_size.height - tbh - sticky_stack_end;
@@ -6591,6 +6580,16 @@ Point2 Tree::get_scroll() const {
 	return ofs;
 }
 
+int Tree::_get_offset_below_sticky(const TreeItem *p_item, int p_y_offset) const {
+	// Sticky rows cover the top of the view, so a row must stop below them. A sticky row is drawn at its own offset.
+	for (const TreeItem *item : sticky_list) {
+		if (item == p_item) {
+			return p_y_offset - item->sticky_offset.y;
+		}
+	}
+	return p_y_offset - sticky_stack_end;
+}
+
 void Tree::scroll_to_item(TreeItem *p_item, bool p_center_on_item) {
 	ERR_FAIL_NULL(p_item);
 
@@ -6602,10 +6601,10 @@ void Tree::scroll_to_item(TreeItem *p_item, bool p_center_on_item) {
 	int y_offset = get_item_offset(p_item);
 	if (y_offset != -1) {
 		const int title_button_height = _get_title_button_height();
-		y_offset -= title_button_height;
+		y_offset = _get_offset_below_sticky(p_item, y_offset - title_button_height);
 
 		const int cell_h = compute_item_height(p_item) + theme_cache.v_separation;
-		int screen_h = area_size.height - title_button_height;
+		int screen_h = area_size.height - title_button_height - sticky_stack_end;
 
 		if (p_center_on_item) {
 			// This makes sure that centering the offset doesn't overflow.

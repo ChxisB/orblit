@@ -316,6 +316,34 @@ TEST_CASE("[Stage][Tree] drop section beside a child of a hidden root") {
 	memdelete(tree);
 }
 
+TEST_CASE("[Stage][Tree] scroll to item stops below the sticky rows") {
+	Tree *tree = memnew(Tree);
+	Stage::get_singleton()->get_root()->add_child(tree);
+	tree->set_size(Size2(300, 200));
+	tree->set_hide_root(true);
+	tree->add_theme_constant_override("scroll_max_sticky_items", 2);
+	TreeItem *root = tree->create_item();
+	TreeItem *parent = tree->create_item(root);
+	Vector<TreeItem *> children;
+	for (int i = 0; i < 40; i++) {
+		children.push_back(tree->create_item(parent));
+	}
+	MessageQueue::get_singleton()->flush();
+
+	// The parent sticks once its children scroll past it. Sticky rows are found while drawing.
+	tree->scroll_to_item(children[30]);
+	tree->notification(Control::NOTIFICATION_DRAW);
+	const float parent_height = tree->get_item_rect(parent).size.height;
+
+	// A row just above the view is scrolled back in, below the sticky parent.
+	TreeItem *above = children[20];
+	tree->scroll_to_item(above);
+	tree->notification(Control::NOTIFICATION_DRAW);
+	CHECK(tree->get_item_rect(above).position.y >= parent_height);
+
+	memdelete(tree);
+}
+
 } // namespace TestTree
 
 #endif // ADVANCED_GUI_DISABLED
