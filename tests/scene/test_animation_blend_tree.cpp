@@ -2,6 +2,7 @@
 /*  test_animation_blend_tree.cpp                                         */
 
 #include "tests/test_macros.h"
+#include "tests/test_tools.h"
 
 TEST_FORCE_LINK(test_animation_blend_tree)
 
@@ -91,6 +92,28 @@ TEST_CASE("[Stage][AnimationNodeAnimation] The delta stops at the end of a clip 
 	CHECK(delta == doctest::Approx(0.2));
 
 	memdelete(tree);
+}
+
+TEST_CASE("[AnimationBlendTree] A renamed node still follows changes to its own inputs") {
+	Ref<AnimationNodeTransition> transition;
+	transition.instantiate();
+	transition->set_input_count(2);
+
+	Ref<AnimationNodeAnimation> clip;
+	clip.instantiate();
+
+	Ref<AnimationNodeBlendTree> blend_tree;
+	blend_tree.instantiate();
+	blend_tree->add_node("Transition", transition);
+	blend_tree->add_node("Clip", clip);
+	blend_tree->rename_node("Transition", "Switch");
+
+	ErrorDetector errors;
+	transition->set_input_count(4);
+	blend_tree->connect_node("Switch", 3, "Clip");
+
+	CHECK_FALSE(errors.has_error);
+	CHECK(blend_tree->has_node("Switch"));
 }
 
 } // namespace TestAnimationBlendTree
