@@ -85,6 +85,58 @@ TEST_CASE("[FontFile] A bitmap font block that runs past the end of the file is 
 	DirAccess::remove_absolute(path);
 }
 
+TEST_CASE("[FontFile] A bitmap font ignores characters past the Unicode range") {
+	const String path = TestUtils::get_temp_path("wide_chars.fnt");
+	{
+		Ref<FileAccess> f = FileAccess::open(path, FileAccess::WRITE);
+		REQUIRE(f.is_valid());
+		f->store_buffer((const uint8_t *)"BMF\x03", 4);
+		f->store_8(4); // Chars block, two entries of 20 bytes.
+		f->store_32(40);
+		for (const uint32_t id : { 0x41u, 0x110000u }) {
+			f->store_32(id);
+			for (int i = 0; i < 16; i++) {
+				f->store_8(0);
+			}
+		}
+		f->store_8(5); // Kerning block, two entries of 10 bytes.
+		f->store_32(20);
+		for (const uint32_t second : { 0x41u, 0x110000u }) {
+			f->store_32(0x41);
+			f->store_32(second);
+			f->store_16(1);
+		}
+	}
+
+	Ref<FontFile> ff;
+	ff.instantiate();
+	CHECK(ff->load_bitmap_font(path) == OK);
+	CHECK(ff->get_glyph_list(0, Vector2i(16, 0)).size() == 1);
+	CHECK(ff->get_kerning_list(0, 16).size() == 1);
+
+	DirAccess::remove_absolute(path);
+}
+
+TEST_CASE("[FontFile] A text bitmap font ignores characters past the Unicode range") {
+	const String path = TestUtils::get_temp_path("wide_chars_text.fnt");
+	{
+		Ref<FileAccess> f = FileAccess::open(path, FileAccess::WRITE);
+		REQUIRE(f.is_valid());
+		f->store_line("char id=65 x=0 y=0 width=1 height=1 xoffset=0 yoffset=0 xadvance=1 page=0 chnl=15");
+		f->store_line("char id=1114112 x=0 y=0 width=1 height=1 xoffset=0 yoffset=0 xadvance=1 page=0 chnl=15");
+		f->store_line("kerning first=65 second=65 amount=1");
+		f->store_line("kerning first=65 second=1114112 amount=1");
+	}
+
+	Ref<FontFile> ff;
+	ff.instantiate();
+	CHECK(ff->load_bitmap_font(path) == OK);
+	CHECK(ff->get_glyph_list(0, Vector2i(16, 0)).size() == 1);
+	CHECK(ff->get_kerning_list(0, 16).size() == 1);
+
+	DirAccess::remove_absolute(path);
+}
+
 TEST_CASE("[FontFile] Create font file and check data") {
 	// Create test instance.
 	Ref<FontFile> font_file;

@@ -1369,6 +1369,8 @@ Error FontFile::load_bitmap_font(const String &p_path) {
 	return _load_bitmap_font(p_path, nullptr);
 }
 
+static constexpr int32_t BITMAP_FONT_MAX_CODE_POINT = 0x10FFFF;
+
 Error FontFile::_load_bitmap_font(const String &p_path, List<String> *r_image_files) {
 	reset_state();
 
@@ -1594,6 +1596,10 @@ Error FontFile::_load_bitmap_font(const String &p_path, List<String> *r_image_fi
 
 						int texture_idx = f->get_8();
 						uint8_t channel = f->get_8();
+						if (idx > BITMAP_FONT_MAX_CODE_POINT) {
+							WARN_PRINT(vformat("Invalid BMFont character %x (should be at most %x).", (uint32_t)idx, BITMAP_FONT_MAX_CODE_POINT));
+							continue;
+						}
 
 						int ch_off = 0;
 						if (packed) {
@@ -1648,7 +1654,12 @@ Error FontFile::_load_bitmap_font(const String &p_path, List<String> *r_image_fi
 								kpk.y = 0x00;
 							}
 						}
-						set_kerning(0, base_size, kpk, Vector2((int16_t)f->get_16(), 0));
+						const int16_t amount = f->get_16();
+						if (kpk.x < 0 || kpk.x > BITMAP_FONT_MAX_CODE_POINT || kpk.y < 0 || kpk.y > BITMAP_FONT_MAX_CODE_POINT) {
+							WARN_PRINT(vformat("Invalid BMFont kerning pair %x, %x.", (uint32_t)kpk.x, (uint32_t)kpk.y));
+							continue;
+						}
+						set_kerning(0, base_size, kpk, Vector2(amount, 0));
 					}
 				} break;
 				default: {
@@ -1907,6 +1918,10 @@ Error FontFile::_load_bitmap_font(const String &p_path, List<String> *r_image_fi
 				if (keys.has("chnl")) {
 					channel = keys["chnl"].to_int();
 				}
+				if (idx > BITMAP_FONT_MAX_CODE_POINT) {
+					WARN_PRINT(vformat("Invalid BMFont character %x (should be at most %x).", (uint32_t)idx, BITMAP_FONT_MAX_CODE_POINT));
+					continue;
+				}
 
 				int ch_off = 0;
 				if (packed) {
@@ -1961,7 +1976,9 @@ Error FontFile::_load_bitmap_font(const String &p_path, List<String> *r_image_fi
 						kpk.y = 0x00;
 					}
 				}
-				if (keys.has("amount")) {
+				if (kpk.x < 0 || kpk.x > BITMAP_FONT_MAX_CODE_POINT || kpk.y < 0 || kpk.y > BITMAP_FONT_MAX_CODE_POINT) {
+					WARN_PRINT(vformat("Invalid BMFont kerning pair %x, %x.", (uint32_t)kpk.x, (uint32_t)kpk.y));
+				} else if (keys.has("amount")) {
 					set_kerning(0, base_size, kpk, Vector2(keys["amount"].to_int(), 0));
 				}
 			}
