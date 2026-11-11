@@ -83,6 +83,19 @@ public:
 	}
 };
 
+class AdoptedRoot : public Entity {
+	ORBLIT_CLASS(AdoptedRoot, Entity);
+
+public:
+	static inline Entity *adopter = nullptr;
+
+	AdoptedRoot() {
+		if (adopter) {
+			adopter->add_child(this);
+		}
+	}
+};
+
 TEST_CASE("[Stage][Entity] Testing node operations with a very simple scene tree") {
 	Entity *node = memnew(Entity);
 
@@ -922,6 +935,33 @@ TEST_CASE("[Entity] A freed entity is refused as an argument") {
 
 	memdelete(reused);
 	memdelete(parent);
+}
+
+TEST_CASE("[Prefab] A root that parents itself in its constructor is renamed in the parent's table") {
+	ORBLIT_REGISTER_CLASS(AdoptedRoot);
+
+	AdoptedRoot *source = memnew(AdoptedRoot);
+	source->set_name("Saved");
+	Ref<Prefab> prefab;
+	prefab.instantiate();
+	prefab->pack(source);
+	memdelete(source);
+
+	Entity *adopter = memnew(Entity);
+	AdoptedRoot::adopter = adopter;
+	Entity *instance = prefab->instantiate();
+	AdoptedRoot::adopter = nullptr;
+
+	CHECK_EQ(instance->get_name(), StringName("Saved"));
+	CHECK_EQ(adopter->get_entity_or_null(EntityPath("Saved")), instance);
+
+	ERR_PRINT_OFF;
+	adopter->remove_child(instance);
+	ERR_PRINT_ON;
+	CHECK_EQ(adopter->get_child_count(), 0);
+
+	memdelete(instance);
+	memdelete(adopter);
 }
 
 } // namespace TestNode
