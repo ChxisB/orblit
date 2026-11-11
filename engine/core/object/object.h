@@ -1070,10 +1070,10 @@ public:
 
 	template <typename U = T, std::enable_if_t<!std::is_base_of_v<RefCounted, U>, int> = 0>
 	_FORCE_INLINE_ RequiredParam(const Variant &p_variant) :
-			_value(Object::cast_to<T>(p_variant.operator Object *())) {}
+			_value(Object::cast_to<T>(p_variant.get_validated_object())) {}
 	template <typename U = T, std::enable_if_t<!std::is_base_of_v<RefCounted, U>, int> = 0>
 	_FORCE_INLINE_ RequiredParam &operator=(const Variant &p_variant) {
-		_value = Object::cast_to<T>(p_variant.operator Object *());
+		_value = Object::cast_to<T>(p_variant.get_validated_object());
 		return *this;
 	}
 };

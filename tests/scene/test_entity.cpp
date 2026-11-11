@@ -900,4 +900,28 @@ TEST_CASE("[Stage][Entity] Test the process priority") {
 	memdelete(node4);
 }
 
+TEST_CASE("[Entity] A freed entity is refused as an argument") {
+	Entity *parent = memnew(Entity);
+	Entity *child = memnew(Entity);
+	const Variant stale = child;
+	memdelete(child);
+	// A new entity often takes the freed address. The stale pointer then looks like a live entity.
+	Entity *reused = memnew(Entity);
+	const Variant *args[] = { &stale };
+
+	ERR_PRINT_OFF;
+	// A plain pointer parameter reports the freed object.
+	Callable::CallError error;
+	parent->callp("set_owner", args, 1, error);
+	CHECK_EQ(error.error, Callable::CallError::CALL_ERROR_INVALID_ARGUMENT);
+
+	// A required parameter reads the freed object as null, and the method refuses it.
+	parent->callp("add_child", args, 1, error);
+	ERR_PRINT_ON;
+	CHECK_EQ(parent->get_child_count(), 0);
+
+	memdelete(reused);
+	memdelete(parent);
+}
+
 } // namespace TestNode
