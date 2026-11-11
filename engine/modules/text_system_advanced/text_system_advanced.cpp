@@ -5938,8 +5938,33 @@ double TextSystemAdvanced::_shaped_text_fit_to_width(const RID &p_shaped, double
 	if (!p_jst_flags.has_flag(JUSTIFICATION_CONSTRAIN_ELLIPSIS)) {
 		sd->width = justification_width;
 	}
+	_update_object_offsets(sd);
 
 	return Math::ceil(justification_width);
+}
+
+// Justification changes the advances after the shaper placed the objects, so each offset is summed again.
+void TextSystemAdvanced::_update_object_offsets(ShapedTextDataAdvanced *p_sd) const {
+	if (p_sd->objects.is_empty()) {
+		return;
+	}
+	const ShapedTextDataAdvanced *span_sd = p_sd->parent != RID() ? shaped_owner.get_or_null(p_sd->parent) : p_sd;
+	ERR_FAIL_NULL(span_sd);
+
+	const int span_size = span_sd->spans.size();
+	double offset = 0.0;
+	for (const Glyph &gl : p_sd->glyphs) {
+		const int span_index = gl.span_index + p_sd->first_span;
+		if ((gl.flags & GRAPHEME_IS_EMBEDDED_OBJECT) == GRAPHEME_IS_EMBEDDED_OBJECT && span_index >= 0 && span_index < span_size) {
+			ShapedTextDataAdvanced::EmbeddedObject *object = p_sd->objects.getptr(span_sd->spans[span_index].embedded_key);
+			if (object) {
+				(p_sd->orientation == ORIENTATION_HORIZONTAL ? object->rect.position.x : object->rect.position.y) = offset;
+			}
+			offset += gl.advance;
+		} else {
+			offset += gl.advance * gl.repeat;
+		}
+	}
 }
 
 double TextSystemAdvanced::_shaped_text_tab_align(const RID &p_shaped, const PackedFloat32Array &p_tab_stops) {
@@ -5994,6 +6019,7 @@ double TextSystemAdvanced::_shaped_text_tab_align(const RID &p_shaped, const Pac
 		}
 		off += gl[i].advance * gl[i].repeat;
 	}
+	_update_object_offsets(sd);
 
 	return 0.0;
 }
