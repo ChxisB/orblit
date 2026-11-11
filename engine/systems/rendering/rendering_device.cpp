@@ -6787,6 +6787,14 @@ void RenderingDevice::compute_list_bind_compute_pipeline(ComputeListID p_list, R
 			} break;
 		}
 
+		if (pipeline->push_constant_size != compute_list.state.pipeline_push_constant_size) {
+			// A different push constant range makes the pipeline layouts incompatible, so no bound set carries over.
+			// The old constants belong to the old range, so a barrier must not replay them.
+			compute_list.state.pipeline_push_constant_size = pipeline->push_constant_size;
+			compute_list.state.push_constant_size = 0;
+			first_invalid_set = 0;
+		}
+
 		for (uint32_t i = 0; i < pcount; i++) {
 			compute_list.state.sets[i].bound = compute_list.state.sets[i].bound && i < first_invalid_set;
 			compute_list.state.sets[i].pipeline_expected_format = pformats[i];
