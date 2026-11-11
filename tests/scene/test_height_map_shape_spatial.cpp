@@ -9,6 +9,13 @@ TEST_FORCE_LINK(test_height_map_shape_spatial)
 
 #include "core/io/image.h"
 #include "scene/resources/spatial/height_map_shape_spatial.h"
+#include "tests/test_tools.h"
+
+#include "modules/modules_enabled.gen.h" // For the physics_spatial module.
+
+#ifdef MODULE_PHYSICS_SPATIAL_ENABLED
+#include "modules/physics_spatial/shape_spatial.h"
+#endif
 
 namespace TestHeightMapShape3D {
 
@@ -89,6 +96,57 @@ TEST_CASE("[Stage][HeightMapShape3D] update_map_data_from_image") {
 	CHECK(height_map_shape->get_min_height() == 0.0);
 	CHECK(height_map_shape->get_max_height() == 10.0);
 }
+
+#ifdef MODULE_PHYSICS_SPATIAL_ENABLED
+namespace {
+struct CullCount {
+	int faces = 0;
+	int non_finite = 0;
+};
+
+bool count_face(void *p_userdata, OrblitShape3D *p_face) {
+	CullCount *count = static_cast<CullCount *>(p_userdata);
+	const OrblitFaceShape3D *face = static_cast<const OrblitFaceShape3D *>(p_face);
+	count->faces++;
+	if (!face->normal.is_finite()) {
+		count->non_finite++;
+	}
+	for (int i = 0; i < 3; i++) {
+		if (!face->get_vertex(i).is_finite()) {
+			count->non_finite++;
+		}
+	}
+	return false;
+}
+} // namespace
+
+TEST_CASE("[Stage][HeightMapShape3D] A NaN hole is skipped when culling") {
+	Vector<real_t> heights;
+	heights.resize(9);
+	heights.fill(0.0);
+	heights.write[4] = Math::NaN; // The centre vertex is a hole.
+
+	Dictionary data;
+	data["width"] = 3;
+	data["depth"] = 3;
+	data["heights"] = heights;
+	data["min_height"] = 0.0;
+	data["max_height"] = 0.0;
+
+	OrblitHeightMapShape3D shape;
+	shape.set_data(data);
+
+	ErrorDetector detector;
+	CullCount count;
+	shape.cull(AABB(Vector3(-2, -1, -2), Vector3(4, 2, 4)), count_face, &count, false);
+
+	CHECK_FALSE(detector.has_error);
+	CHECK(count.non_finite == 0);
+	// Four cells, two triangles each. The centre vertex touches all four cells.
+	// Cells (0,0) and (1,1) lose one triangle. Cells (1,0) and (0,1) lose both.
+	CHECK(count.faces == 2);
+}
+#endif // MODULE_PHYSICS_SPATIAL_ENABLED
 
 } // namespace TestHeightMapShape3D
 
