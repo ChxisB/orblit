@@ -243,7 +243,21 @@ bool ParticlesStorage::particles_get_emitting(RID p_particles) {
 	return particles->emitting;
 }
 
+void ParticlesStorage::_particles_free_emission_buffer(Particles *particles) {
+	if (particles->emission_buffer != nullptr) {
+		particles->emission_buffer = nullptr;
+		particles->emission_buffer_data.clear();
+		RD::get_singleton()->free_rid(particles->emission_storage_buffer);
+		particles->emission_storage_buffer = RID();
+	}
+}
+
 void ParticlesStorage::_particles_free_data(Particles *particles) {
+	_particles_free_render_data(particles);
+	_particles_free_emission_buffer(particles);
+}
+
+void ParticlesStorage::_particles_free_render_data(Particles *particles) {
 	if (particles->particle_buffer.is_valid()) {
 		RD::get_singleton()->free_rid(particles->particle_buffer);
 		particles->particle_buffer = RID();
@@ -277,13 +291,6 @@ void ParticlesStorage::_particles_free_data(Particles *particles) {
 		RD::get_singleton()->free_rid(particles->particles_sort_buffer);
 		particles->particles_sort_buffer = RID();
 		particles->particles_sort_uniform_set = RID();
-	}
-
-	if (particles->emission_buffer != nullptr) {
-		particles->emission_buffer = nullptr;
-		particles->emission_buffer_data.clear();
-		RD::get_singleton()->free_rid(particles->emission_storage_buffer);
-		particles->emission_storage_buffer = RID();
 	}
 
 	if (particles->unused_emission_storage_buffer.is_valid()) {
@@ -1341,8 +1348,8 @@ void ParticlesStorage::_particles_update_buffers(Particles *particles) {
 	bool only_instances_changed = false;
 
 	if (userdata_count != particles->userdata_count) {
-		// Mismatch userdata, re-create all buffers.
-		_particles_free_data(particles);
+		// Mismatch userdata, re-create all buffers. Emitted particles that are still queued survive.
+		_particles_free_render_data(particles);
 	} else if (enable_motion_vectors) {
 		// Only motion vectors are required, release the transforms buffer and uniform set.
 		if (particles->particle_instance_buffer.is_valid()) {
