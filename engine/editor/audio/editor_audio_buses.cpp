@@ -1432,6 +1432,19 @@ void EditorAudioBuses::_file_moved(const String &p_old_path, const String &p_new
 	}
 }
 
+void EditorAudioBuses::_file_removed(const String &p_file) {
+	if (edited_path.is_empty()) {
+		return;
+	}
+	// The removed file may have lost its UID already, so an unknown UID counts as removed.
+	const String current = ResourceUID::ensure_path_nocheck(edited_path);
+	if (!current.is_empty() && current != p_file) {
+		return;
+	}
+	edited_path = String();
+	_update_file_label();
+}
+
 void EditorAudioBuses::_select_layout() {
 	FileSystemDock::get_singleton()->navigate_to_path(ResourceUID::ensure_path(edited_path));
 }
@@ -1600,6 +1613,7 @@ EditorAudioBuses::EditorAudioBuses() {
 	AudioSystem::get_singleton()->connect("bus_layout_changed", callable_mp(this, &EditorAudioBuses::_rebuild_buses));
 	AudioSystem::get_singleton()->connect("bus_renamed", callable_mp(this, &EditorAudioBuses::_rebuild_buses).unbind(3));
 	FileSystemDock::get_singleton()->connect("files_moved", callable_mp(this, &EditorAudioBuses::_file_moved));
+	FileSystemDock::get_singleton()->connect("file_removed", callable_mp(this, &EditorAudioBuses::_file_removed));
 }
 
 void EditorAudioBuses::open_layout(const String &p_path) {
