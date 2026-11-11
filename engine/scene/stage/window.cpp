@@ -1705,6 +1705,10 @@ void Window::_notification(int p_what) {
 					visible = true; // Always visible.
 					window_id = DisplaySystemEnums::MAIN_WINDOW_ID;
 					fullscreen_shortcut_enabled = GLOBAL_GET("display/window/size/enable_toggle_fullscreen_shortcut");
+					// A project set to exclusive fullscreen expects the shortcut to return to it.
+					if (Mode(GLOBAL_GET("display/window/size/mode").operator int()) == MODE_EXCLUSIVE_FULLSCREEN) {
+						toggle_fullscreen_mode = MODE_EXCLUSIVE_FULLSCREEN;
+					}
 					focused_window = this;
 					DisplaySystem::get_singleton()->window_attach_instance_id(get_instance_id(), window_id);
 					AccessibilitySystem::get_singleton()->set_window_callbacks(window_id, callable_mp(this, &Window::_accessibility_activate), callable_mp(this, &Window::_accessibility_deactivate));
@@ -2052,10 +2056,11 @@ void Window::_window_input(const Ref<InputEvent> &p_ev) {
 
 	if (fullscreen_shortcut_enabled && p_ev->is_action_pressed("ui_toggle_fullscreen")) {
 		if (mode == MODE_FULLSCREEN || mode == MODE_EXCLUSIVE_FULLSCREEN) {
-			set_mode(toggle_fullscreen_previous_mode);
+			toggle_fullscreen_mode = mode;
+			set_mode(toggle_fullscreen_windowed_mode);
 		} else {
-			toggle_fullscreen_previous_mode = mode;
-			set_mode(MODE_FULLSCREEN);
+			toggle_fullscreen_windowed_mode = mode;
+			set_mode(toggle_fullscreen_mode);
 		}
 	}
 
