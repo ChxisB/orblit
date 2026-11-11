@@ -63,4 +63,44 @@ TEST_CASE("[Stage][Button] A touch on a button in a shifted viewport presses it"
 	memdelete(button);
 }
 
+TEST_CASE("[Stage][Button] A long press notification does not press a button again") {
+	Button *button = memnew(Button);
+	Window *root = Stage::get_singleton()->get_root();
+	root->add_child(button);
+	button->set_size(Size2i(50, 50));
+	button->set_position(Size2i(10, 10));
+	button->set_action_mode(BaseButton::ACTION_MODE_BUTTON_PRESS);
+
+	SIGNAL_WATCH(button, "pressed");
+
+	SEND_GUI_TOUCH_EVENT(Point2i(35, 35), true, false);
+	SIGNAL_CHECK("pressed", { {} });
+
+	// The platform cancels the touch, then reports the same hold as a long press.
+	{
+		_CREATE_GUI_TOUCH_EVENT(Point2i(35, 35), false, false);
+		event->set_canceled(true);
+		_SEND_DISPLAYSYSTEM_EVENT(event);
+		MessageQueue::get_singleton()->flush();
+	}
+	{
+		_CREATE_GUI_TOUCH_EVENT(Point2i(35, 35), true, false);
+		event->set_long_press(true);
+		_SEND_DISPLAYSYSTEM_EVENT(event);
+		MessageQueue::get_singleton()->flush();
+	}
+	SIGNAL_CHECK_FALSE("pressed");
+
+	{
+		_CREATE_GUI_TOUCH_EVENT(Point2i(35, 35), false, false);
+		event->set_long_press(true);
+		_SEND_DISPLAYSYSTEM_EVENT(event);
+		MessageQueue::get_singleton()->flush();
+	}
+	SIGNAL_CHECK_FALSE("pressed");
+
+	SIGNAL_UNWATCH(button, "pressed");
+	memdelete(button);
+}
+
 } // namespace TestButton

@@ -45,7 +45,9 @@ void BaseButton::gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventScreenTouch> touch = p_event;
 	if (touch.is_valid()) {
 		if (status.touch_index == -1) {
-			if (touch->is_pressed()) {
+			// The platform cancels the first touch and then reports a hold as a second press. In press mode that would fire the action twice.
+			const bool repeats_press = touch->is_long_press() && action_mode == ACTION_MODE_BUTTON_PRESS;
+			if (touch->is_pressed() && !repeats_press) {
 				status.touch_index = touch->get_index();
 				status.press_attempt = true;
 				status.pressing_inside = _is_touch_inside(touch->get_position());
