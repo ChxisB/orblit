@@ -111,6 +111,7 @@ void OrblitBody2D::set_active(bool p_active) {
 	active = p_active;
 
 	if (active) {
+		sleep_requested = false;
 		if (mode == PS2DE::BODY_MODE_STATIC) {
 			// Static bodies can't be active.
 			active = false;
@@ -267,7 +268,9 @@ PS2DE::BodyMode OrblitBody2D::get_mode() const {
 
 void OrblitBody2D::_shapes_changed() {
 	_mass_properties_changed();
-	wakeup();
+	if (!sleep_requested) {
+		wakeup();
+	}
 	wakeup_neighbours();
 }
 
@@ -323,6 +326,7 @@ void OrblitBody2D::set_state(PS2DE::BodyState p_state, const Variant &p_variant)
 				//biased_linear_velocity=Vector3();
 				angular_velocity = 0;
 				//biased_angular_velocity=Vector3();
+				sleep_requested = true;
 				set_active(false);
 			} else {
 				if (mode != PS2DE::BODY_MODE_STATIC) {

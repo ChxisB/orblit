@@ -75,6 +75,8 @@ class OrblitBody2D : public OrblitCollisionObject2D {
 	bool omit_force_integration = false;
 	bool active = true;
 	bool can_sleep = true;
+	// Set by an explicit sleep request and cleared by any wake. Shape changes must not wake such a body.
+	bool sleep_requested = false;
 	bool first_time_kinematic = false;
 	void _mass_properties_changed();
 	virtual void _shapes_changed() override;
