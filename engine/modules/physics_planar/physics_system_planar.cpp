@@ -253,6 +253,8 @@ PhysicsDirectSpaceState2D *OrblitPhysicsSystem2D::space_get_direct_state(RID p_s
 	ERR_FAIL_NULL_V(space, nullptr);
 	ERR_FAIL_COND_V_MSG((using_threads && !doing_sync) || space->is_locked(), nullptr, "Space state is inaccessible right now, wait for iteration or physics process notification.");
 
+	// Shape edits reach the broadphase on the next step. A query before that would miss them.
+	_update_shapes();
 	return space->get_direct_state();
 }
 
