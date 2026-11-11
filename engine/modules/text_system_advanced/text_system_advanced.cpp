@@ -1492,7 +1492,8 @@ bool TextSystemAdvanced::_ensure_glyph(FontAdvanced *p_font_data, const Vector2i
 				ERR_FAIL_V_MSG(false, "FreeType: Failed to load glyph stroker.");
 			}
 
-			FT_Stroker_Set(stroker, (int)(fd->size.y * 16.0), FT_STROKER_LINECAP_BUTT, FT_STROKER_LINEJOIN_ROUND, 0);
+			// The bitmap is drawn scaled by fd->scale, so the radius is divided by it to reach the requested outline size.
+			FT_Stroker_Set(stroker, (int)(fd->size.y * 16.0 / fd->scale), FT_STROKER_LINECAP_BUTT, FT_STROKER_LINEJOIN_ROUND, 0);
 			FT_Glyph glyph;
 			FT_BitmapGlyph glyph_bitmap;
 
