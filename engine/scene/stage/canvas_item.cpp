@@ -780,6 +780,8 @@ void CanvasItem::draw_dashed_line(const Point2 &p_from, const Point2 &p_to, cons
 	ERR_THREAD_GUARD;
 	ERR_DRAW_GUARD;
 	ERR_FAIL_COND(p_dash <= 0.0);
+	// The dash count below is cast to int, which is undefined for an infinite or NaN length.
+	ERR_FAIL_COND_MSG(!p_from.is_finite() || !p_to.is_finite() || !Math::is_finite(p_dash), "Dashed line endpoints and dash length must be finite.");
 
 	float length = (p_to - p_from).length();
 	Vector2 step = p_dash * (p_to - p_from).normalized();
