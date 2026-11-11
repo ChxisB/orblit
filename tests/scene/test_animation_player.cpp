@@ -81,4 +81,25 @@ TEST_CASE("[Stage][AnimationPlayer] A capture track with a missing target is ski
 	memdelete(animation_player);
 }
 
+TEST_CASE("[Stage][AnimationPlayer] Removing the library of the current animation stops it") {
+	Ref<Animation> animation;
+	animation.instantiate();
+	animation->set_length(1.0);
+	Ref<AnimationLibrary> library;
+	library.instantiate();
+	library->add_animation("clip", animation);
+
+	AnimationPlayer *animation_player = memnew(AnimationPlayer);
+	Stage::get_singleton()->get_root()->add_child(animation_player);
+	animation_player->add_animation_library("named", library);
+	animation_player->play("named/clip");
+
+	animation_player->remove_animation_library("named");
+	animation_player->advance(0.1);
+
+	CHECK_FALSE(animation_player->is_playing());
+
+	memdelete(animation_player);
+}
+
 } // namespace TestAnimationPlayer

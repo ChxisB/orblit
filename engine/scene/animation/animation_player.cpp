@@ -266,6 +266,12 @@ bool AnimationPlayer::_blend_pre_process(double p_delta, int p_track_count, cons
 		return false;
 	}
 
+	if (!animation_set.has(playback.current.animation_name)) {
+		// Removing its library takes the current animation away without a signal for it.
+		_stop_internal(true, true);
+		return false;
+	}
+
 	AnimationData *p_from = &animation_set[playback.current.animation_name];
 	tmp_from = p_from->animation->get_instance_id();
 	end_reached = false;
