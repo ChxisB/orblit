@@ -6841,6 +6841,8 @@ TreeItem *Tree::_find_item_at_pos(TreeItem *p_item, const Point2 &p_pos, int &r_
 
 				bool item_allows_drop = p_item->is_accepting_children();
 				bool parent_allows_drop = p_item->get_parent() && p_item->get_parent()->is_accepting_children();
+				// A hidden root has no row, so its children can take a sibling above.
+				bool item_can_have_siblings = (p_item != root) && (current_item_depth > 0 || hide_root);
 
 				if (drop_mode_flags == DROP_MODE_ON_ITEM) {
 					// When only on item drops are allowed.
@@ -6856,14 +6858,13 @@ TreeItem *Tree::_find_item_at_pos(TreeItem *p_item, const Point2 &p_pos, int &r_
 					// When either are allowed, section is determined by cursor position.
 					if (!over_content_area) {
 						// In indent space.
-						if (pos.y < r_height / 2 && current_item_depth > 0) {
+						if (pos.y < r_height / 2 && item_can_have_siblings) {
 							r_section = parent_allows_drop ? -1 : COLUMN_NOT_FOUND; // Sibling above.
 						} else {
 							r_section = parent_allows_drop ? 1 : COLUMN_NOT_FOUND; // Sibling below.
 						}
 					} else if (pos.y < r_height / 4) {
 						// Near top edge.
-						bool item_can_have_siblings = (p_item != root) && (current_item_depth > 0 || hide_root); // Disqualify root.
 						if (item_can_have_siblings) {
 							r_section = parent_allows_drop ? -1 : COLUMN_NOT_FOUND; // Sibling above.
 						} else {

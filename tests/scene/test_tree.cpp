@@ -7,6 +7,8 @@ TEST_FORCE_LINK(test_tree)
 
 #ifndef ADVANCED_GUI_DISABLED
 
+#include "scene/stage/stage.h"
+#include "scene/stage/window.h"
 #include "scene/ui/tree.h"
 
 namespace TestTree {
@@ -289,6 +291,29 @@ TEST_CASE("[Stage][Tree]") {
 
 		memdelete(tree);
 	}
+}
+
+TEST_CASE("[Stage][Tree] drop section beside a child of a hidden root") {
+	Tree *tree = memnew(Tree);
+	Stage::get_singleton()->get_root()->add_child(tree);
+	tree->set_size(Size2(300, 300));
+	tree->set_hide_root(true);
+	tree->set_drop_mode_flags(Tree::DROP_MODE_ON_ITEM | Tree::DROP_MODE_INBETWEEN);
+	TreeItem *root = tree->create_item();
+	TreeItem *first = tree->create_item(root);
+	tree->create_item(root);
+	MessageQueue::get_singleton()->flush();
+
+	// A point in the indent space, left of the first item content.
+	const Rect2 rect = tree->get_item_rect(first);
+	const Point2 top_half = rect.position + Point2(1, 2);
+	const Point2 bottom_half = rect.position + Point2(1, rect.size.height - 2);
+
+	// The hidden root has no row, so its children can take a sibling above.
+	CHECK(tree->get_drop_section_at_position(top_half) == -1);
+	CHECK(tree->get_drop_section_at_position(bottom_half) == 1);
+
+	memdelete(tree);
 }
 
 } // namespace TestTree
