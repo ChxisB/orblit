@@ -1507,6 +1507,11 @@ void RendererSceneCull::_update_instance_visibility_dependencies(Instance *p_ins
 			}
 		}
 
+		if (p_instance->visibility_index == -1) {
+			// Only entries in instance_visibility refresh this flag. A stale one sends children to a missing entry.
+			idata.flags &= ~InstanceData::FLAG_VISIBILITY_DEPENDENCY_FADE_CHILDREN;
+		}
+
 		if ((has_visibility_range || p_instance->visibility_parent) && (p_instance->visibility_index == -1 || p_instance->visibility_dependencies_depth == 0)) {
 			idata.flags |= InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK;
 		} else {
