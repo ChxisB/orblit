@@ -32,6 +32,7 @@ class Range : public Control {
 
 	void _value_changed_notify();
 	void _changed_notify();
+	void _set_value(double p_val, double p_step);
 	void _set_value_no_signal(double p_val);
 	double _get_exp_ratio_shift() const;
 

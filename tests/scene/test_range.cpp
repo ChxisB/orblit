@@ -52,4 +52,24 @@ TEST_CASE("[Stage][Range] exponential ratio with a zero minimum") {
 	memdelete(slider);
 }
 
+TEST_CASE("[Stage][Range] changing a bound keeps the value off the old step grid") {
+	HSlider *slider = memnew(HSlider);
+
+	// A scene sets the bounds before the step, while the step is still 1.
+	slider->set_min(-0.5);
+	slider->set_max(0.5);
+	slider->set_step(0.01);
+	CHECK(slider->get_value() == doctest::Approx(0.0));
+
+	SUBCASE("A bound still clamps the value") {
+		slider->set_value(0.25);
+		slider->set_max(0.1);
+		CHECK(slider->get_value() == doctest::Approx(0.1));
+		slider->set_min(0.2);
+		CHECK(slider->get_value() == doctest::Approx(0.2));
+	}
+
+	memdelete(slider);
+}
+
 } // namespace TestRange

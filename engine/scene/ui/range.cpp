@@ -143,8 +143,12 @@ void Range::Shared::redraw_owners() {
 }
 
 void Range::set_value(double p_val) {
+	_set_value(p_val, shared->step);
+}
+
+void Range::_set_value(double p_val, double p_step) {
 	double prev_val = shared->val;
-	_set_value_no_signal(p_val);
+	shared->val = _calc_value(p_val, p_step);
 
 	if (shared->val != prev_val && !(Math::is_nan(shared->val) && Math::is_nan(prev_val))) {
 		shared->emit_value_changed();
@@ -202,7 +206,9 @@ void Range::set_min(double p_min) {
 	shared->min = p_min;
 	shared->max = MAX(shared->max, shared->min);
 	shared->page = CLAMP(shared->page, 0, shared->max - shared->min);
-	set_value(shared->val);
+	// A step of 0 clamps without snapping. A scene sets the bounds before the
+	// step, and snapping to the default step would move the saved value.
+	_set_value(shared->val, 0);
 
 	shared->emit_changed();
 
@@ -219,7 +225,9 @@ void Range::set_max(double p_max) {
 
 	shared->max = max_validated;
 	shared->page = CLAMP(shared->page, 0, shared->max - shared->min);
-	set_value(shared->val);
+	// A step of 0 clamps without snapping. A scene sets the bounds before the
+	// step, and snapping to the default step would move the saved value.
+	_set_value(shared->val, 0);
 
 	shared->emit_changed();
 
@@ -244,7 +252,9 @@ void Range::set_page(double p_page) {
 	}
 
 	shared->page = page_validated;
-	set_value(shared->val);
+	// A step of 0 clamps without snapping. A scene sets the bounds before the
+	// step, and snapping to the default step would move the saved value.
+	_set_value(shared->val, 0);
 
 	shared->emit_changed();
 
