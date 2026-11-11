@@ -235,6 +235,7 @@ void ShaderRD::_initialize_version(Version *p_version) {
 	_clear_version(p_version);
 
 	p_version->valid = false;
+	p_version->compile_failed = false;
 	p_version->dirty = false;
 
 	p_version->variants.resize_initialized(variant_defines.size());
@@ -724,6 +725,10 @@ void ShaderRD::_compile_version_end(Version *p_version, int p_group) {
 	WorkerThreadPool::get_singleton()->wait_for_group_task_completion(group_task);
 	p_version->group_compilation_tasks.write[p_group] = 0;
 
+	if (p_version->compile_failed) {
+		return; // An earlier group failed, so the version stays invalid.
+	}
+
 	bool all_valid = true;
 
 	for (uint32_t i = 0; i < group_to_variant_map[p_group].size(); i++) {
@@ -738,18 +743,18 @@ void ShaderRD::_compile_version_end(Version *p_version, int p_group) {
 	}
 
 	if (!all_valid) {
-		// Clear versions if they exist.
-		for (int i = 0; i < variant_defines.size(); i++) {
-			if (!variants_enabled[i] || !group_enabled[variant_defines[i].group]) {
-				continue; // Disabled.
-			}
-			if (!p_version->variants[i].is_null()) {
-				RD::get_singleton()->free_rid(p_version->variants[i]);
+		// Free only this group. Other groups may still be compiling into their own shaders, and the vectors keep
+		// their size so those tasks and later lookups stay in range. _clear_version frees the rest.
+		for (uint32_t i = 0; i < group_to_variant_map[p_group].size(); i++) {
+			int variant_id = group_to_variant_map[p_group][i];
+			if (p_version->variants[variant_id].is_valid()) {
+				RD::get_singleton()->free_rid(p_version->variants[variant_id]);
+				p_version->variants.write[variant_id] = RID();
 			}
 		}
 
-		p_version->variants.clear();
-		p_version->variant_data.clear();
+		p_version->valid = false;
+		p_version->compile_failed = true;
 		return;
 	}
 #if ENABLE_SHADER_CACHE
