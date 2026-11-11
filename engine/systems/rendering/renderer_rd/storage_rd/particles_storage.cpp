@@ -13,6 +13,14 @@ using namespace RendererRD;
 
 ParticlesStorage *ParticlesStorage::singleton = nullptr;
 
+// A node scaled to zero has no inverse. Everything it draws collapses to a point, so identity is as good as any answer.
+static Transform3D emission_inverse(const Transform3D &p_emission_transform) {
+	if (p_emission_transform.basis.determinant() == 0) {
+		return Transform3D();
+	}
+	return p_emission_transform.affine_inverse();
+}
+
 ParticlesStorage *ParticlesStorage::get_singleton() {
 	return singleton;
 }
@@ -647,7 +655,7 @@ AABB ParticlesStorage::particles_get_current_aabb(RID p_particles) {
 	Vector<uint8_t> buffer = RD::get_singleton()->buffer_get_data(particles->particle_buffer);
 	ERR_FAIL_COND_V(buffer.size() != (int)(total_amount * particle_data_size), AABB());
 
-	Transform3D inv = particles->emission_transform.affine_inverse();
+	Transform3D inv = emission_inverse(particles->emission_transform);
 
 	AABB aabb;
 	if (buffer.size()) {
@@ -874,7 +882,7 @@ void ParticlesStorage::_particles_process(Particles *p_particles, double p_delta
 
 		Transform3D to_particles;
 		if (p_particles->use_local_coords) {
-			to_particles = p_particles->emission_transform.affine_inverse();
+			to_particles = emission_inverse(p_particles->emission_transform);
 		}
 
 		if (p_particles->has_sdf_collision && RD::get_singleton()->texture_is_valid(p_particles->sdf_collision_texture)) {
@@ -1648,7 +1656,7 @@ void ParticlesStorage::update_particles() {
 				// but they're drawn locally.
 				// So, we need to pass the inverse of the emission transform to bring the
 				// particles to local coordinates before drawing.
-				Transform3D inv = particles->emission_transform.affine_inverse();
+				Transform3D inv = emission_inverse(particles->emission_transform);
 				copy_push_constant.inv_emission_transform[0] = inv.basis.rows[0][0];
 				copy_push_constant.inv_emission_transform[1] = inv.basis.rows[1][0];
 				copy_push_constant.inv_emission_transform[2] = inv.basis.rows[2][0];
