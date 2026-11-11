@@ -1168,6 +1168,8 @@ void ClassRegistry::add_property(const StringName &p_class, const PropertyInfo &
 }
 
 void ClassRegistry::set_property_default_value(const StringName &p_class, const StringName &p_name, const Variant &p_default) {
+	Locker::Lock lock(Locker::STATE_WRITE);
+
 	if (!default_values.has(p_class)) {
 		default_values[p_class] = HashMap<StringName, Variant>();
 	}
@@ -1727,7 +1729,8 @@ Variant ClassRegistry::class_get_default_property_value(const StringName &p_clas
 }
 
 void ClassRegistry::register_extension_class(ObjectNativeExtension *p_extension) {
-	GLOBAL_LOCK_FUNCTION;
+	// The global lock does not stop readers of the registry, so take its own write lock.
+	Locker::Lock lock(Locker::STATE_WRITE);
 
 	ERR_FAIL_COND_MSG(classes.has(p_extension->class_name), vformat("Class already registered: '%s'.", String(p_extension->class_name)));
 	ERR_FAIL_COND_MSG(!classes.has(p_extension->parent_class_name), vformat("Parent class name for extension class not found: '%s'.", String(p_extension->parent_class_name)));
@@ -1779,6 +1782,8 @@ void ClassRegistry::register_extension_class(ObjectNativeExtension *p_extension)
 static LocalVector<ClassDescriptor *> class_descriptor_leaked_autorelease_pool;
 
 void ClassRegistry::unregister_extension_class(const StringName &p_class) {
+	Locker::Lock lock(Locker::STATE_WRITE);
+
 	ClassInfo *c = classes.getptr(p_class);
 	ERR_FAIL_NULL_MSG(c, vformat("Class '%s' does not exist.", String(p_class)));
 	// Leak the ClassDescriptor until exit so potential consumers don't have dangling pointers.
