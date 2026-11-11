@@ -1908,13 +1908,19 @@ void ItemList::force_update_list_size() {
 			}
 		}
 
-		float scroll_bar_v_page = MAX(0, size.height - theme_cache.panel_style->get_minimum_size().height);
-		float scroll_bar_v_max = MAX(scroll_bar_v_page, ofs.y + max_h);
 		float scroll_bar_h_page = MAX(0, size.width - theme_cache.panel_style->get_minimum_size().width);
 		float scroll_bar_h_max = 0;
 		if (!wraparound_items) {
 			scroll_bar_h_max = MAX(scroll_bar_h_page, max_w);
 		}
+
+		// The horizontal bar covers the bottom of the view, so the last row
+		// would sit under it at full scroll if the page ignored the bar.
+		float scroll_bar_v_page = MAX(0, size.height - theme_cache.panel_style->get_minimum_size().height);
+		if (scroll_bar_h_max > scroll_bar_h_page) {
+			scroll_bar_v_page = MAX(0, scroll_bar_v_page - scroll_bar_h->get_bound_minimum_size().height);
+		}
+		float scroll_bar_v_max = MAX(scroll_bar_v_page, ofs.y + max_h);
 
 		if (scroll_bar_v_page >= scroll_bar_v_max || is_layout_rtl()) {
 			fit_size -= scroll_bar_v_minwidth;
