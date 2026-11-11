@@ -66,4 +66,17 @@ TEST_CASE("[Stage][Window]") {
 	}
 }
 
+TEST_CASE("[Stage][Window] a flag set to its current value does not reach the display system") {
+	DisplaySystemMock *display = (DisplaySystemMock *)(DisplaySystem::get_singleton());
+	Window *root = Stage::get_singleton()->get_root();
+
+	const int before = display->window_flag_set_count;
+	root->set_flag(Window::FLAG_BORDERLESS, root->get_flag(Window::FLAG_BORDERLESS));
+	CHECK(display->window_flag_set_count == before);
+
+	root->set_flag(Window::FLAG_BORDERLESS, !root->get_flag(Window::FLAG_BORDERLESS));
+	CHECK(display->window_flag_set_count == before + 1);
+	root->set_flag(Window::FLAG_BORDERLESS, false);
+}
+
 } // namespace TestWindow

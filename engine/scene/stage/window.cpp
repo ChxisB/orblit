@@ -579,6 +579,10 @@ bool Window::is_fullscreen_shortcut_enabled() const {
 void Window::set_flag(Flags p_flag, bool p_enabled) {
 	ERR_MAIN_THREAD_GUARD;
 	ERR_FAIL_INDEX(p_flag, FLAG_MAX);
+	if (get_flag(p_flag) == p_enabled) {
+		// Some platforms restyle the window on every set, even when nothing changes.
+		return;
+	}
 	flags[p_flag] = p_enabled;
 
 	if (p_flag == FLAG_TRANSPARENT) {

@@ -55,6 +55,12 @@ public:
 		return Size2i(1920, 1080);
 	}
 
+	int window_flag_set_count = 0;
+
+	virtual void window_set_flag(DisplaySystemEnums::WindowFlags p_flag, bool p_enabled, DisplaySystemEnums::WindowID p_window = DisplaySystemEnums::MAIN_WINDOW_ID) override {
+		window_flag_set_count++;
+	}
+
 	virtual void cursor_set_shape(DisplaySystemEnums::CursorShape p_shape) override {
 		cursor_shape = p_shape;
 	}
