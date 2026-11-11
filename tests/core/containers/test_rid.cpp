@@ -78,6 +78,18 @@ TEST_CASE("[RID] 'get_local_index'") {
 	CHECK(RID::from_uint64(4'294'967'297).get_local_index() == 1);
 }
 
+TEST_CASE("[RID_Owner] A validator never looks like a free slot") {
+	struct Probe : RID_AllocBase {
+		using RID_AllocBase::_validator_from_id;
+	};
+	for (uint64_t id : { 1ull, 0x7FFFFFFDull, 0x7FFFFFFEull, 0x7FFFFFFFull, 0xFFFFFFFDull, 0xFFFFFFFFFFFFFFFFull }) {
+		const uint32_t validator = Probe::_validator_from_id(id);
+		CHECK(validator >= 1);
+		// An uninitialized slot stores the validator with the top bit set.
+		CHECK((validator | 0x80000000) != 0xFFFFFFFF);
+	}
+}
+
 #ifdef THREADS_ENABLED
 // This case would let sanitizers realize data races.
 // Additionally, on purely weakly ordered architectures, it would detect synchronization issues

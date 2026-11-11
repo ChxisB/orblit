@@ -57,6 +57,11 @@ protected:
 		return base_id.increment();
 	}
 
+	// Never 0x7FFFFFFF. With the uninitialized bit set, that reads as 0xFFFFFFFF, the mark of a free slot.
+	static constexpr uint32_t _validator_from_id(uint64_t p_id) {
+		return 1 + uint32_t(p_id % 0x7FFFFFFE);
+	}
+
 public:
 	virtual ~RID_AllocBase() {}
 };
@@ -127,7 +132,7 @@ class RID_Alloc : public RID_AllocBase {
 		uint32_t free_chunk = free_index / elements_in_chunk;
 		uint32_t free_element = free_index % elements_in_chunk;
 
-		uint32_t validator = 1 + (uint32_t)(_gen_id() % 0x7FFFFFFF);
+		uint32_t validator = _validator_from_id(_gen_id());
 		uint64_t id = validator;
 		id <<= 32;
 		id |= free_index;
