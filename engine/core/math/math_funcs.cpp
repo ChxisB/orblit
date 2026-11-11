@@ -31,6 +31,20 @@ double Math::randfn(double p_mean, double p_deviation) {
 	return default_rand.randfn(p_mean, p_deviation);
 }
 
+// Finds the fewest decimals that write p_decs exactly, or -1 if there are none within maxn.
+// The tolerance covers float32 rounding, and is capped so a long fraction is not taken as whole.
+static int _exact_decimals(double p_decs, int p_maxn) {
+	double scaled = p_decs;
+	for (int i = 0; i < p_maxn; i++) {
+		double tolerance = MIN(scaled * 1e-7, 1e-3);
+		if (Math::abs(scaled - Math::round(scaled)) <= tolerance) {
+			return i;
+		}
+		scaled *= 10.0;
+	}
+	return -1;
+}
+
 int Math::step_decimals(double p_step) {
 	static const int maxn = 10;
 	static const double sd[maxn] = {
@@ -48,6 +62,10 @@ int Math::step_decimals(double p_step) {
 
 	double abs = Math::abs(p_step);
 	double decs = abs - (int)abs; // Strip away integer part
+	int exact = _exact_decimals(decs, maxn);
+	if (exact >= 0) {
+		return exact;
+	}
 	for (int i = 0; i < maxn; i++) {
 		if (decs >= sd[i]) {
 			return i;

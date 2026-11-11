@@ -84,6 +84,19 @@ TEST_CASE("[Stage][SpinBox] Plural format with a string placeholder") {
 	memdelete(spin);
 }
 
+TEST_CASE("[Stage][SpinBox] Step with two decimals shows both") {
+	SpinBox *spin = memnew(SpinBox);
+	spin->set_step(0.25);
+	spin->set_value(0.25);
+
+	Stage::get_singleton()->get_root()->add_child(spin);
+	Stage::get_singleton()->process(0);
+
+	CHECK(spin->get_line_edit()->get_text() == "0.25");
+
+	memdelete(spin);
+}
+
 TEST_CASE("[Stage][SpinBox] Formats that disagree on the string placeholder") {
 	SpinBox *spin = memnew(SpinBox);
 	spin->set_format_with_plural("%s px", "%d px");
