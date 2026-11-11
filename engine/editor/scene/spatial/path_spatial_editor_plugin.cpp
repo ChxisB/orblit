@@ -770,6 +770,8 @@ void Path3DEditorPlugin::edit(Object *p_object) {
 	}
 
 	path = Object::cast_to<Path3D>(p_object);
+	// The gizmo points at the previous path, which can be freed with its scene. A click would use it after that.
+	_edit.gizmo.unref();
 
 	if (path) {
 		path->connect("curve_changed", callable_mp(this, &Path3DEditorPlugin::_update_toolbar));
