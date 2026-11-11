@@ -4244,6 +4244,10 @@ bool TileSetAtlasSource::_set(const StringName &p_name, const Variant &p_value) 
 		if (!has_tile(coords)) {
 			create_tile(coords);
 		}
+		// A tile saved for a larger texture has no room now. Writing its properties would add a tile with no alternatives.
+		if (!has_tile(coords)) {
+			return false;
+		}
 		if (components.size() >= 2) {
 			// Properties.
 			if (components[1] == "size_in_atlas") {
