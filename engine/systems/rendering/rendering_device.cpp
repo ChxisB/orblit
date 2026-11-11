@@ -9063,6 +9063,11 @@ uint64_t RenderingDevice::limit_get(Limit p_limit) const {
 void RenderingDevice::finalize() {
 	ERR_RENDER_THREAD_GUARD();
 
+	if (local_device_processing) {
+		// Submitted work is still in flight and its frame has already been ended, so finish it before the stall below.
+		sync();
+	}
+
 	if (!frames.is_empty()) {
 		// Wait for all frames to have finished rendering.
 		_flush_and_stall_for_all_frames(false);
