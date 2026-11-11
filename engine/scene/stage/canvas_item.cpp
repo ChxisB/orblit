@@ -1137,7 +1137,9 @@ void CanvasItem::_notify_transform(CanvasItem *p_node) {
 
 	_update_oversampling(false);
 
-	if (/*p_node->xform_change.in_list() &&*/ p_node->_is_global_invalid()) {
+	// A dirty node is skipped only when its notification is already queued, or never wanted.
+	// A node that blocked its notification is dirty and not queued, and must still hear about a parent move.
+	if (p_node->_is_global_invalid() && (p_node->xform_change.in_list() || !p_node->notify_transform)) {
 		return; //nothing to do
 	}
 
