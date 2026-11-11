@@ -771,6 +771,16 @@ Vector<Quaternion> GLTFAccessor::decode_as_quaternions(const Ref<GLTFState> &p_g
 	return ret;
 }
 
+template <typename PackedType>
+static PackedType _read_packed_array(const PackedFloat64Array &p_numbers, int64_t p_start, int64_t p_count) {
+	PackedType packed_array;
+	packed_array.resize(p_count);
+	for (int64_t j = 0; j < p_count; j++) {
+		packed_array.set(j, p_numbers[p_start + j]);
+	}
+	return packed_array;
+}
+
 Array GLTFAccessor::decode_as_variants(const Ref<GLTFState> &p_gltf_state, Variant::Type p_variant_type) const {
 	const int64_t numbers_per_variant = _get_numbers_per_variant_for_gltf(p_variant_type);
 	Array ret;
@@ -970,39 +980,19 @@ Array GLTFAccessor::decode_as_variants(const Ref<GLTFState> &p_gltf_state, Varia
 				ret[value_index] = p;
 			} break;
 			case Variant::PACKED_BYTE_ARRAY: {
-				PackedByteArray packed_array;
-				packed_array.resize(numbers_to_read);
-				for (int64_t j = 0; j < numbers_to_read; j++) {
-					packed_array.set(value_index, numbers[number_index + j]);
-				}
+				ret[value_index] = _read_packed_array<PackedByteArray>(numbers, number_index, numbers_to_read);
 			} break;
 			case Variant::PACKED_INT32_ARRAY: {
-				PackedInt32Array packed_array;
-				packed_array.resize(numbers_to_read);
-				for (int64_t j = 0; j < numbers_to_read; j++) {
-					packed_array.set(value_index, numbers[number_index + j]);
-				}
+				ret[value_index] = _read_packed_array<PackedInt32Array>(numbers, number_index, numbers_to_read);
 			} break;
 			case Variant::PACKED_INT64_ARRAY: {
-				PackedInt64Array packed_array;
-				packed_array.resize(numbers_to_read);
-				for (int64_t j = 0; j < numbers_to_read; j++) {
-					packed_array.set(value_index, numbers[number_index + j]);
-				}
+				ret[value_index] = _read_packed_array<PackedInt64Array>(numbers, number_index, numbers_to_read);
 			} break;
 			case Variant::PACKED_FLOAT32_ARRAY: {
-				PackedFloat32Array packed_array;
-				packed_array.resize(numbers_to_read);
-				for (int64_t j = 0; j < numbers_to_read; j++) {
-					packed_array.set(value_index, numbers[number_index + j]);
-				}
+				ret[value_index] = _read_packed_array<PackedFloat32Array>(numbers, number_index, numbers_to_read);
 			} break;
 			case Variant::PACKED_FLOAT64_ARRAY: {
-				PackedFloat64Array packed_array;
-				packed_array.resize(numbers_to_read);
-				for (int64_t j = 0; j < numbers_to_read; j++) {
-					packed_array.set(value_index, numbers[number_index + j]);
-				}
+				ret[value_index] = _read_packed_array<PackedFloat64Array>(numbers, number_index, numbers_to_read);
 			} break;
 			default: {
 				ERR_FAIL_V_MSG(ret, "glTF: Cannot decode accessor as Variant of type " + Variant::get_type_name(p_variant_type) + ".");
