@@ -2808,7 +2808,8 @@ RDD::SamplerID RenderingDeviceDriverVulkan::sampler_create(const SamplerState &p
 	sampler_create_info.addressModeV = (VkSamplerAddressMode)p_state.repeat_v;
 	sampler_create_info.addressModeW = (VkSamplerAddressMode)p_state.repeat_w;
 	sampler_create_info.mipLodBias = p_state.lod_bias;
-	sampler_create_info.anisotropyEnable = p_state.use_anisotropy && (physical_device_features.samplerAnisotropy == VK_TRUE);
+	// Some drivers keep filtering anisotropically when the limit is 1, so leave it disabled in that case.
+	sampler_create_info.anisotropyEnable = p_state.use_anisotropy && p_state.anisotropy_max > 1.0f && (physical_device_features.samplerAnisotropy == VK_TRUE);
 	sampler_create_info.maxAnisotropy = p_state.anisotropy_max;
 	sampler_create_info.compareEnable = p_state.enable_compare;
 	sampler_create_info.compareOp = (VkCompareOp)p_state.compare_op;
