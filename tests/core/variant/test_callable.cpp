@@ -122,6 +122,25 @@ TEST_CASE("[Callable] Method pointers to the same method match") {
 	memdelete(my_test);
 }
 
+TEST_CASE("[Callable] Variant callables tell equal containers apart") {
+	Array first;
+	Array second;
+	const Callable on_first = Callable::create(first, "push_back");
+	const Callable on_first_again = Callable::create(first, "push_back");
+	const Callable on_second = Callable::create(second, "push_back");
+	const Callable other_method = Callable::create(first, "push_front");
+
+	CHECK(on_first.hash() == on_second.hash());
+	CHECK(on_first == on_first_again);
+	CHECK(on_first != on_second);
+	CHECK(on_first != other_method);
+
+	// A value type has no identity, so equal values match.
+	const Callable on_text = Callable::create(String("a"), "to_upper");
+	CHECK(on_text == Callable::create(String("a"), "to_upper"));
+	CHECK(on_text != Callable::create(String("b"), "to_upper"));
+}
+
 class TestBoundUnboundArgumentCount : public Object {
 	ORBLIT_CLASS(TestBoundUnboundArgumentCount, Object);
 

@@ -6,7 +6,12 @@
 #include "core/containers/hashfuncs.h"
 
 bool VariantCallable::compare_equal(const CallableCustom *p_a, const CallableCustom *p_b) {
-	return p_a->hash() == p_b->hash();
+	const VariantCallable *a = static_cast<const VariantCallable *>(p_a);
+	const VariantCallable *b = static_cast<const VariantCallable *>(p_b);
+	// The hash covers an array or dictionary by its items, so two separate ones with the same items
+	// share a hash. A callable belongs to one container, so identity decides. This stays out of
+	// compare_less, which has no order that tells two such containers apart.
+	return a->hash() == b->hash() && a->method == b->method && a->variant.identity_compare(b->variant);
 }
 
 bool VariantCallable::compare_less(const CallableCustom *p_a, const CallableCustom *p_b) {
