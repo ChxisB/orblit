@@ -138,10 +138,8 @@ void RotatedFileLogger::rotate_file() {
 			clear_old_backups();
 		}
 	} else {
-		Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_USERDATA);
-		if (da.is_valid()) {
-			da->make_dir_recursive(base_path.get_base_dir());
-		}
+		// The path picks the access type, so a relative path is made where the file will open.
+		DirAccess::make_dir_recursive_absolute(base_path.get_base_dir());
 	}
 
 	file = FileAccess::open(base_path, FileAccess::WRITE);
