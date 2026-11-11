@@ -214,4 +214,28 @@ TEST_CASE("[ProjectSettings] The globals key registers a global and the autoload
 	CHECK_FALSE(settings->has_autoload("TestGlobal"));
 }
 
+TEST_CASE("[ProjectSettings] Merging class lists keeps known classes") {
+	Dictionary base_class;
+	base_class["class"] = "Base";
+	base_class["path"] = "res://base.cs";
+	Dictionary extra_class;
+	extra_class["class"] = "Extra";
+	extra_class["path"] = "res://extra.cs";
+	Dictionary newer_base;
+	newer_base["class"] = "Base";
+	newer_base["path"] = "res://base_v2.cs";
+
+	const Array known = { base_class };
+	const Array added = { newer_base, extra_class };
+	const Array merged = ProjectSettings::merge_global_class_lists(known, added);
+
+	REQUIRE(merged.size() == 2);
+	CHECK(Dictionary(merged[0])["path"] == "res://base_v2.cs");
+	CHECK(Dictionary(merged[1])["class"] == "Extra");
+	CHECK_MESSAGE(Dictionary(known[0])["path"] == "res://base.cs", "The known list is left as it was.");
+
+	const Array only_added = ProjectSettings::merge_global_class_lists(Array(), added);
+	CHECK(only_added.size() == 2);
+}
+
 } // namespace TestProjectSettings

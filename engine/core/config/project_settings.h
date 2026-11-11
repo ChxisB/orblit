@@ -141,6 +141,7 @@ public:
 	Variant get_setting(const String &p_setting, const Variant &p_default_value = Variant()) const;
 	TypedArray<Dictionary> get_global_class_list();
 	void refresh_global_class_list();
+	static Array merge_global_class_lists(const Array &p_known, const Array &p_added);
 	void store_global_class_list(const Array &p_classes);
 	String get_global_class_list_path() const;
 
