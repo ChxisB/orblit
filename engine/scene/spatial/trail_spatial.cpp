@@ -3,6 +3,7 @@
 
 #include "trail_spatial.h"
 
+#include "core/config/engine.h"
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "scene/resources/material.h"
@@ -226,7 +227,8 @@ void Trail3D::set_material_mode(MaterialMode p_material_mode) {
 	if (material_mode == p_material_mode) {
 		return;
 	}
-	if (material.is_null()) {
+	// The copy exists so the editor can offer the default shader for editing. At runtime it only costs a deep copy per trail.
+	if (material.is_null() && p_material_mode == MATERIAL_MODE_CUSTOM && Engine::get_singleton()->is_editor_hint()) {
 		if (material_mode == MATERIAL_MODE_ADD) {
 			if (alignment == MESH_ALIGNMENT_LOCAL) {
 				material = local_additive_material->duplicate_deep();

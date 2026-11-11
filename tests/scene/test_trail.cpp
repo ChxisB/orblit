@@ -6,6 +6,7 @@
 TEST_FORCE_LINK(test_trail)
 
 #include "core/object/class_registry.h"
+#include "scene/resources/material.h"
 #include "scene/spatial/trail_spatial.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
@@ -35,6 +36,16 @@ TEST_CASE("[Stage][Trail3D] A lifetime trail set before it enters the stage conn
 	ErrorDetector errors;
 	Stage::get_singleton()->get_root()->add_child(trail);
 	CHECK_FALSE(errors.has_error);
+	memdelete(trail);
+}
+
+TEST_CASE("[Trail3D] Choosing a default material mode does not copy a material") {
+	Trail3D *trail = Object::cast_to<Trail3D>(ClassRegistry::instantiate("Trail3D"));
+	REQUIRE(trail != nullptr);
+	trail->set_material_mode(Trail3D::MATERIAL_MODE_ADD);
+	CHECK(trail->get_material().is_null());
+	trail->set_material_mode(Trail3D::MATERIAL_MODE_MIX);
+	CHECK(trail->get_material().is_null());
 	memdelete(trail);
 }
 
