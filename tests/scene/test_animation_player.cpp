@@ -58,4 +58,27 @@ TEST_CASE("[Stage][AnimationPlayer] The current length follows an animation in a
 	memdelete(animation_player);
 }
 
+TEST_CASE("[Stage][AnimationPlayer] A capture track with a missing target is skipped") {
+	Ref<Animation> animation;
+	animation.instantiate();
+	animation->set_length(1.0);
+	const int track = animation->add_track(Animation::TYPE_VALUE);
+	animation->track_set_path(track, EntityPath("Missing:position"));
+	animation->value_track_set_update_mode(track, Animation::UPDATE_CAPTURE);
+	animation->track_insert_key(track, 0.0, Vector2());
+	Ref<AnimationLibrary> library;
+	library.instantiate();
+	library->add_animation("clip", animation);
+
+	AnimationPlayer *animation_player = memnew(AnimationPlayer);
+	Stage::get_singleton()->get_root()->add_child(animation_player);
+	animation_player->add_animation_library("", library);
+
+	ERR_PRINT_OFF
+	animation_player->capture("clip", 1.0);
+	ERR_PRINT_ON
+
+	memdelete(animation_player);
+}
+
 } // namespace TestAnimationPlayer
