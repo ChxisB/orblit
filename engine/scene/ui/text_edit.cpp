@@ -7154,6 +7154,8 @@ void TextEdit::set_scroll_past_end_of_file_enabled(bool p_enabled) {
 	}
 
 	scroll_past_end_of_file_enabled = p_enabled;
+	// The scroll range depends on this flag, so the clamp has to run now.
+	_update_scrollbars();
 	queue_redraw();
 }
 
@@ -9424,10 +9426,15 @@ void TextEdit::_update_scrollbars() {
 		double visible_rows_exact = (double)_get_control_height() / (double)get_line_height();
 		double fractional_visible_rows = visible_rows_exact - (double)visible_rows;
 		fractional_visible_rows = CLAMP(fractional_visible_rows, 0.0, 1.0);
+		const double scroll_before = get_v_scroll();
 		v_scroll->show();
 		v_scroll->set_max(total_rows);
 		v_scroll->set_page(visible_rows + fractional_visible_rows);
 		set_v_scroll(get_v_scroll());
+		if (get_v_scroll() != scroll_before) {
+			// The range clamped the value while its signal was muted.
+			_update_first_visible_from_scroll();
+		}
 	} else {
 		first_visible_line = 0;
 		first_visible_line_wrap_ofs = 0;
@@ -9478,6 +9485,12 @@ void TextEdit::_scroll_moved(double p_to_val) {
 	if (h_scroll->is_visible_in_stage()) {
 		first_visible_col = h_scroll->get_value();
 	}
+	_update_first_visible_from_scroll();
+	queue_accessibility_update();
+	queue_redraw();
+}
+
+void TextEdit::_update_first_visible_from_scroll() {
 	if (v_scroll->is_visible_in_stage()) {
 		// Set line ofs and wrap ofs.
 		bool draw_placeholder = _using_placeholder();
@@ -9502,8 +9515,6 @@ void TextEdit::_scroll_moved(double p_to_val) {
 		first_visible_line = n_line;
 		first_visible_line_wrap_ofs = wi;
 	}
-	queue_accessibility_update();
-	queue_redraw();
 }
 
 double TextEdit::_get_visible_lines_offset() const {

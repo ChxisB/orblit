@@ -577,6 +577,7 @@ private:
 
 	void _v_scroll_input();
 	void _scroll_moved(double p_to_val);
+	void _update_first_visible_from_scroll();
 
 	double _get_visible_lines_offset() const;
 	double _get_v_scroll_offset() const;
