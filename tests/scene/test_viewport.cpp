@@ -1970,4 +1970,53 @@ TEST_CASE("[Stage][Viewport] Embedded Windows") {
 	memdelete(w);
 }
 
+class ShortcutCounter : public Entity {
+	ORBLIT_CLASS(ShortcutCounter, Entity);
+
+public:
+	int count = 0;
+
+	void shortcut_input(const Ref<InputEvent> &p_event) override {
+		count++;
+	}
+};
+
+TEST_CASE("[Stage][Viewport] Shortcut propagation to the parent") {
+	Window *root = Stage::get_singleton()->get_root();
+	const bool was_embedding = root->is_embedding_subwindows();
+	root->set_embedding_subwindows(false);
+
+	ShortcutCounter *counter = memnew(ShortcutCounter);
+	root->add_child(counter);
+	counter->set_shortcut_input_enabled(true);
+	SubViewport *child = memnew(SubViewport);
+	child->set_propagate_shortcuts_to_parent(true);
+	root->add_child(child);
+
+	SUBCASE("A key event from one window goes up once") {
+		Ref<InputEventKey> key;
+		key.instantiate();
+		key->set_keycode(Key::Z);
+		key->set_pressed(true);
+		child->push_input(key);
+		CHECK(counter->count == 1);
+	}
+
+	SUBCASE("An event with no window stays in the child") {
+		// Every window receives it directly, the parent included.
+		Ref<InputEventShortcut> shortcut;
+		shortcut.instantiate();
+		child->push_input(shortcut);
+		Ref<InputEventJoypadButton> button;
+		button.instantiate();
+		button->set_pressed(true);
+		child->push_input(button);
+		CHECK(counter->count == 0);
+	}
+
+	memdelete(child);
+	memdelete(counter);
+	root->set_embedding_subwindows(was_embedding);
+}
+
 } // namespace TestViewport
