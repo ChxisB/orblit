@@ -108,7 +108,7 @@ Vector2 AbstractPolygon2DEditor::_get_geometric_center() const {
 
 	double cx = 0.0;
 	double cy = 0.0;
-	int n_subs = 0;
+	double total_area = 0.0;
 	for (int i = 0; i < n_polygons; i++) {
 		const Vector<Vector2> &vertices = _get_polygon(i);
 		Vector<Vector<Point2>> decomp = ::Geometry2D::decompose_polygon_in_convex(vertices);
@@ -126,18 +126,24 @@ Vector2 AbstractPolygon2DEditor::_get_geometric_center() const {
 				sub_cx += (sub[n].x + sub[next].x) * (sub[n].x * sub[next].y - sub[next].x * sub[n].y);
 				sub_cy += (sub[n].y + sub[next].y) * (sub[n].x * sub[next].y - sub[next].x * sub[n].y);
 			}
+			if (Math::is_zero_approx(sub_area2x)) {
+				continue;
+			}
 			sub_cx /= (sub_area2x * 3);
 			sub_cy /= (sub_area2x * 3);
 
-			cx += sub_cx;
-			cy += sub_cy;
+			// A large part pulls the centre more than a small one.
+			const double sub_area = Math::abs(sub_area2x) / 2.0;
+			cx += sub_cx * sub_area;
+			cy += sub_cy * sub_area;
+			total_area += sub_area;
 		}
-		n_subs += decomp.size();
 	}
-	cx /= n_subs;
-	cy /= n_subs;
+	if (total_area == 0.0) {
+		return Vector2();
+	}
 
-	return Vector2(cx, cy);
+	return Vector2(cx / total_area, cy / total_area);
 }
 
 void AbstractPolygon2DEditor::_menu_option(int p_option) {
