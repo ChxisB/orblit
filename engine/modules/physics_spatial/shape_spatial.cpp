@@ -2198,14 +2198,19 @@ void OrblitHeightMapShape3D::set_data(const Variant &p_data) {
 		min_height = d["min_height"];
 		max_height = d["max_height"];
 	} else {
-		int heights_size = heights.size();
-		for (int i = 0; i < heights_size; ++i) {
-			real_t h = heights[i];
-			if (h < min_height) {
-				min_height = h;
-			} else if (h > max_height) {
-				max_height = h;
+		// Read the new heights. The member still holds the previous ones. Holes are NaN and do not count.
+		min_height = Math::INF;
+		max_height = -Math::INF;
+		for (int i = 0; i < heights_buffer.size(); ++i) {
+			const real_t h = heights_buffer[i];
+			if (Math::is_finite(h)) {
+				min_height = MIN(min_height, h);
+				max_height = MAX(max_height, h);
 			}
+		}
+		if (min_height > max_height) {
+			min_height = 0.0;
+			max_height = 0.0;
 		}
 	}
 

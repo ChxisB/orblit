@@ -146,6 +146,26 @@ TEST_CASE("[Stage][HeightMapShape3D] A NaN hole is skipped when culling") {
 	// Cells (0,0) and (1,1) lose one triangle. Cells (1,0) and (0,1) lose both.
 	CHECK(count.faces == 2);
 }
+
+TEST_CASE("[Stage][HeightMapShape3D] Heights bound the shape when no range is given") {
+	Vector<real_t> heights;
+	heights.push_back(1.0);
+	heights.push_back(2.0);
+	heights.push_back(Math::NaN); // A hole does not count.
+	heights.push_back(4.0);
+
+	Dictionary data;
+	data["width"] = 2;
+	data["depth"] = 2;
+	data["heights"] = heights;
+
+	OrblitHeightMapShape3D shape;
+	shape.set_data(data);
+
+	const AABB aabb = shape.get_aabb();
+	CHECK(aabb.position.y == doctest::Approx(1.0));
+	CHECK(aabb.size.y == doctest::Approx(3.0));
+}
 #endif // MODULE_PHYSICS_SPATIAL_ENABLED
 
 } // namespace TestHeightMapShape3D
