@@ -26,6 +26,7 @@ class InputEvent : public Resource {
 	ORBLIT_CLASS(InputEvent, Resource);
 
 	int device = 0;
+	ObjectID origin_id;
 
 protected:
 	bool canceled = false;
@@ -41,6 +42,10 @@ public:
 
 	void set_device(int p_device);
 	int get_device() const;
+
+	// A copy made while the event travels (see xformed_by) keeps the identity of the event it came from.
+	void set_origin_from(const InputEvent *p_event);
+	ObjectID get_origin_id() const;
 
 	bool is_action(const StringName &p_action, bool p_exact_match = false) const;
 	bool is_action_pressed(const StringName &p_action, bool p_allow_echo = false, bool p_exact_match = false) const;
