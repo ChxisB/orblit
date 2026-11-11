@@ -50,6 +50,7 @@ private:
 
 	SelfList<OrblitCollisionObject3D> pending_shape_update_list;
 
+	AABB _get_shape_broadphase_aabb(const Shape &p_shape) const;
 	void _update_shapes();
 
 protected:
