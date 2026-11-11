@@ -398,7 +398,7 @@ Transform3D Entity3D::get_transform() const {
 
 // Visible nodes - get_global_transform_interpolated is cheap.
 // Invisible nodes - get_global_transform_interpolated is expensive, try to avoid.
-Transform3D Entity3D::get_global_transform_interpolated() {
+Transform3D Entity3D::get_global_transform_interpolated() const {
 	// Pass through if physics interpolation is switched off.
 	// This is a convenience, as it allows you to easy turn off interpolation
 	// without changing any code.

@@ -241,7 +241,7 @@ public:
 	Quaternion get_quaternion() const;
 	Transform3D get_global_transform() const;
 
-	Transform3D get_global_transform_interpolated();
+	Transform3D get_global_transform_interpolated() const;
 
 #ifdef TOOLS_ENABLED
 	virtual Transform3D get_global_gizmo_transform() const;
