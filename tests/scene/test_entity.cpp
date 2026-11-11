@@ -988,4 +988,38 @@ TEST_CASE("[Entity] find_children lists nested matches in tree order") {
 	memdelete(root);
 }
 
+TEST_CASE("[Entity] Paths and common parents between entities") {
+	Entity *root = memnew(Entity);
+	Entity *left = memnew(Entity);
+	Entity *left_leaf = memnew(Entity);
+	Entity *right = memnew(Entity);
+	Entity *loner = memnew(Entity);
+	left->set_name("Left");
+	left_leaf->set_name("Leaf");
+	right->set_name("Right");
+	root->add_child(left);
+	left->add_child(left_leaf);
+	root->add_child(right);
+
+	CHECK_EQ(left_leaf->get_path_to(right), EntityPath("../../Right"));
+	CHECK_EQ(right->get_path_to(left_leaf), EntityPath("../Left/Leaf"));
+	CHECK_EQ(root->get_path_to(left_leaf), EntityPath("Left/Leaf"));
+	CHECK_EQ(left_leaf->get_path_to(root), EntityPath("../.."));
+	CHECK_EQ(left->get_path_to(left), EntityPath("."));
+
+	CHECK_EQ(left_leaf->find_common_parent_with(right), root);
+	CHECK_EQ(left_leaf->find_common_parent_with(left), left);
+	CHECK_EQ(left->find_common_parent_with(left_leaf), left);
+	CHECK_EQ(left->find_common_parent_with(left), left);
+	CHECK_EQ(left_leaf->find_common_parent_with(loner), nullptr);
+	CHECK_EQ(left_leaf->find_common_parent_with(nullptr), nullptr);
+
+	ERR_PRINT_OFF;
+	CHECK_EQ(left_leaf->get_path_to(loner), EntityPath());
+	ERR_PRINT_ON;
+
+	memdelete(loner);
+	memdelete(root);
+}
+
 } // namespace TestNode
