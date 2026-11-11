@@ -1836,6 +1836,10 @@ void TextEdit::_notification(int p_what) {
 							combined_rect = j == 0 ? rect : combined_rect.merge(rect);
 						}
 
+						// A tight line spacing leaves less room under the baseline, so the squiggle moves up to stay in its own row.
+						const float row_bottom_y = ofs_y + ldata->get_line_descent(line_wrap_index) + theme_cache.line_spacing / 2.0f;
+						combined_rect.position.y -= MAX(combined_rect.get_end().y - row_bottom_y, 0.0f);
+
 						PackedVector2Array points;
 						PackedColorArray colors;
 
