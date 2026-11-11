@@ -109,6 +109,19 @@ TEST_CASE("[Callable] Argument count") {
 	memdelete(my_test);
 }
 
+TEST_CASE("[Callable] Method pointers to the same method match") {
+	TestClass *my_test = memnew(TestClass);
+
+	const Callable first = callable_mp(my_test, &TestClass::test_func_1);
+	const Callable second = callable_mp(my_test, &TestClass::test_func_1);
+	const Callable other = callable_mp(my_test, &TestClass::test_func_2);
+	CHECK(first == second);
+	CHECK(first.hash() == second.hash());
+	CHECK(first != other);
+
+	memdelete(my_test);
+}
+
 class TestBoundUnboundArgumentCount : public Object {
 	ORBLIT_CLASS(TestBoundUnboundArgumentCount, Object);
 
