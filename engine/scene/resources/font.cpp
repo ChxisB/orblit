@@ -1409,6 +1409,8 @@ Error FontFile::_load_bitmap_font(const String &p_path, List<String> *r_image_fi
 		uint8_t encoding = 9;
 		while (!f->eof_reached()) {
 			uint64_t off = f->get_position();
+			// A size taken from the file decides how much each block reads and allocates, so it must fit the file first.
+			ERR_FAIL_COND_V_MSG(off + block_size > f->get_length(), ERR_FILE_CORRUPT, "Invalid BMFont block size.");
 			switch (block_type) {
 				case 1: /* info */ {
 					ERR_FAIL_COND_V_MSG(block_size < 15, ERR_CANT_CREATE, "Invalid BMFont info block size.");

@@ -5,7 +5,10 @@
 
 TEST_FORCE_LINK(test_fontfile)
 
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "scene/resources/font.h"
+#include "tests/test_utils.h"
 
 #include "modules/modules_enabled.gen.h" // For freetype.
 
@@ -57,6 +60,29 @@ TEST_CASE("[FontFile] Load Dynamic Font - getters") {
 	CHECK(ff->get_underline_position(100) == doctest::Approx((real_t)12.5));
 	CHECK(ff->get_underline_thickness(100) == doctest::Approx((real_t)5));
 #endif
+}
+
+TEST_CASE("[FontFile] A bitmap font block that runs past the end of the file is rejected") {
+	const String path = TestUtils::get_temp_path("short_block.fnt");
+	{
+		Ref<FileAccess> f = FileAccess::open(path, FileAccess::WRITE);
+		REQUIRE(f.is_valid());
+		f->store_buffer((const uint8_t *)"BMF\x03", 4);
+		f->store_8(1); // Info block.
+		f->store_32(100); // Claims 100 bytes, 15 follow.
+		for (int i = 0; i < 15; i++) {
+			f->store_8(0);
+		}
+	}
+
+	Ref<FontFile> ff;
+	ff.instantiate();
+	ERR_PRINT_OFF;
+	const Error err = ff->load_bitmap_font(path);
+	ERR_PRINT_ON;
+	CHECK(err == ERR_FILE_CORRUPT);
+
+	DirAccess::remove_absolute(path);
 }
 
 TEST_CASE("[FontFile] Create font file and check data") {
