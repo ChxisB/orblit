@@ -36,6 +36,18 @@ ClassDescriptor::~ClassDescriptor() {
 	}
 }
 
+void ClassDescriptor::release_default_arguments() {
+	for (MethodBind *bind : owned_method_map) {
+		bind->set_default_arguments(Vector<Variant>());
+	}
+	for (KeyValue<StringName, Member> &kv : _self_members) {
+		if (kv.value.type == Member::Type::SIGNAL) {
+			// This descriptor created the signal info, as the destructor shows.
+			const_cast<MethodInfo *>(kv.value.payload.signal)->default_arguments.clear();
+		}
+	}
+}
+
 void ClassDescriptor::initialize() {
 	ERR_FAIL_COND(init_state != InitState::UNINITIALIZED);
 	owning_thread_id = Thread::get_caller_id();

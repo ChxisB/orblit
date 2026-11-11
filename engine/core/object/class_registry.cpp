@@ -1782,6 +1782,8 @@ void ClassRegistry::unregister_extension_class(const StringName &p_class) {
 	ClassInfo *c = classes.getptr(p_class);
 	ERR_FAIL_NULL_MSG(c, vformat("Class '%s' does not exist.", String(p_class)));
 	// Leak the ClassDescriptor until exit so potential consumers don't have dangling pointers.
+	// Its default arguments go now, while the extension can still free the objects in them.
+	c->class_descriptor->release_default_arguments();
 	class_descriptor_leaked_autorelease_pool.push_back(c->class_descriptor);
 	classes.erase(p_class);
 	default_values_cached.erase(p_class);
