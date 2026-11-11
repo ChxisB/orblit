@@ -1364,6 +1364,9 @@ void Object::_reset_class_descriptor() const {
 }
 
 void Object::autorelease_class_descriptor(ClassDescriptor **r_type) {
+	// Two classes can create their descriptors on two threads at once.
+	static BinaryMutex pool_mutex;
+	MutexLock lock(pool_mutex);
 	ClassRegistry::class_descriptor_autorelease_pool.push_back(r_type);
 }
 
@@ -1721,21 +1724,13 @@ Variant Object::_get_indexed_bind(const EntityPath &p_name) const {
 }
 
 void Object::initialize_class() {
-	static bool initialized = false;
-	if (likely(initialized)) {
-		return;
-	}
-
-	static BinaryMutex __init_mutex;
-	MutexLock lock(__init_mutex);
-	if (initialized) {
-		// Initialized on another thread while we were waiting.
-		return;
-	}
-	_add_class_to_registry(get_class_descriptor_static_mutable(), nullptr);
-	get_class_descriptor_static_mutable().initialize();
-	register_members();
-	initialized = true;
+	// A local static runs its initializer once and makes other threads wait for it.
+	[[maybe_unused]] static const bool initialized = [] {
+		_add_class_to_registry(get_class_descriptor_static_mutable(), nullptr);
+		get_class_descriptor_static_mutable().initialize();
+		register_members();
+		return true;
+	}();
 }
 
 StringName Object::get_translation_domain() const {
