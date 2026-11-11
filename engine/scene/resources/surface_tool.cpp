@@ -111,9 +111,15 @@ uint32_t SurfaceTool::VertexHasher::hash(const Vertex &p_vtx) {
 	uint32_t h = hash_djb2_buffer((const uint8_t *)p_vtx.bones.ptr(), p_vtx.bones.size() * sizeof(int));
 	h = hash_djb2_buffer((const uint8_t *)p_vtx.weights.ptr(), p_vtx.weights.size() * sizeof(float), h);
 
-	const int64_t length = (int64_t)&p_vtx.vertex - (int64_t)&p_vtx.smooth_group + sizeof(p_vtx.vertex);
-	const void *key = &p_vtx.smooth_group;
-	h = hash_murmur3_buffer(key, length, h);
+	// Each member is hashed alone. With double precision the members leave padding between them, and its bytes are not set.
+	h = hash_murmur3_one_32(p_vtx.smooth_group, h);
+	h = hash_murmur3_buffer(&p_vtx.color, sizeof(p_vtx.color), h);
+	h = hash_murmur3_buffer(&p_vtx.normal, sizeof(p_vtx.normal), h);
+	h = hash_murmur3_buffer(&p_vtx.tangent, sizeof(p_vtx.tangent), h);
+	h = hash_murmur3_buffer(&p_vtx.uv, sizeof(p_vtx.uv), h);
+	h = hash_murmur3_buffer(&p_vtx.uv2, sizeof(p_vtx.uv2), h);
+	h = hash_murmur3_buffer(p_vtx.custom, sizeof(p_vtx.custom), h);
+	h = hash_murmur3_buffer(&p_vtx.vertex, sizeof(p_vtx.vertex), h);
 	return h;
 }
 
