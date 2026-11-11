@@ -70,6 +70,42 @@ TEST_CASE("[Stage][SpinBox] Prefix and suffix in line edit text") {
 	memdelete(spin);
 }
 
+TEST_CASE("[Stage][SpinBox] Plural format with a string placeholder") {
+	SpinBox *spin = memnew(SpinBox);
+	spin->set_format_with_plural("%s px", "%s px");
+	spin->set_value(3.0);
+
+	Stage::get_singleton()->get_root()->add_child(spin);
+	Stage::get_singleton()->process(0);
+
+	// The number prints as the box shows it, not as a float.
+	CHECK(spin->get_line_edit()->get_text() == "3 px");
+
+	memdelete(spin);
+}
+
+TEST_CASE("[Stage][SpinBox] Formats that disagree on the string placeholder") {
+	SpinBox *spin = memnew(SpinBox);
+	spin->set_format_with_plural("%s px", "%d px");
+	spin->set_value(2.0);
+
+	Stage::get_singleton()->get_root()->add_child(spin);
+	Stage::get_singleton()->process(0);
+
+	CHECK(spin->get_line_edit()->get_text() == "<Invalid>");
+
+	bool warned = false;
+	for (const String &warning : static_cast<Entity *>(spin)->get_configuration_warnings()) {
+		warned = warned || warning.contains("%s");
+	}
+	CHECK(warned);
+
+	spin->set_format_with_plural("%s px", "%s px");
+	CHECK(spin->get_line_edit()->get_text() == "2 px");
+
+	memdelete(spin);
+}
+
 TEST_CASE("[Stage][SpinBox] Delegation to inner line edit") {
 	SpinBox *spin = memnew(SpinBox);
 
