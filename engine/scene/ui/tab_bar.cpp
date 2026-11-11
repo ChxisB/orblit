@@ -746,10 +746,8 @@ void TabBar::_notification(int p_what) {
 			Vector2 size = get_size();
 
 			if (tabs.is_empty()) {
-				// Draw the drop indicator where the first tab would be if there are no tabs.
 				if (dragging_valid_tab) {
-					int x = rtl ? size.x : 0;
-					theme_cache.drop_mark_icon->draw(get_canvas_item(), Point2(x - (theme_cache.drop_mark_icon->get_width() / 2), (size.height - theme_cache.drop_mark_icon->get_height()) / 2), theme_cache.drop_mark_color);
+					_draw_tab_drop(get_canvas_item());
 				}
 
 				return;
@@ -837,7 +835,10 @@ void TabBar::_draw_tab_drop(RID p_canvas_item) {
 	bool rtl = is_layout_rtl();
 
 	int closest_tab = get_closest_tab_idx_to_point(get_local_mouse_position());
-	if (closest_tab != -1) {
+	if (tabs.is_empty()) {
+		// The mark sits where the first tab would be.
+		x = rtl ? size.x : 0;
+	} else if (closest_tab != -1) {
 		Rect2 tab_rect = get_tab_rect(closest_tab);
 		x = tab_rect.position.x;
 
