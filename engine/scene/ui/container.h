@@ -8,6 +8,9 @@
 class Container : public Control {
 	ORBLIT_CLASS(Container, Control);
 
+	// A control tells its container when it stops or starts being top level.
+	friend class Control;
+
 	bool pending_sort = false;
 	bool accessibility_region = false;
 	void _sort_children();

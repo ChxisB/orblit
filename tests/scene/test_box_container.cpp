@@ -848,4 +848,30 @@ TEST_CASE("[Stage][BoxContainer] VBoxContainer") {
 	memdelete(vbox_container);
 }
 
+TEST_CASE("[Stage][BoxContainer] sorts again when a child becomes top level") {
+	HBoxContainer *hbox_container = memnew(HBoxContainer);
+	Stage::get_singleton()->get_root()->add_child(hbox_container);
+	hbox_container->set_size(Size2(100, 100));
+
+	Control *first = memnew(Control);
+	Control *second = memnew(Control);
+	first->set_custom_minimum_size(Size2(20, 20));
+	second->set_custom_minimum_size(Size2(20, 20));
+	hbox_container->add_child(first);
+	hbox_container->add_child(second);
+	Stage::get_singleton()->process(0);
+	REQUIRE(second->get_position().x > 0);
+
+	// The container skips a top level child, so the second child takes its place.
+	first->set_as_top_level(true);
+	Stage::get_singleton()->process(0);
+	CHECK(second->get_position().x == 0);
+
+	first->set_as_top_level(false);
+	Stage::get_singleton()->process(0);
+	CHECK(second->get_position().x > 0);
+
+	memdelete(hbox_container);
+}
+
 } // namespace TestBoxContainer

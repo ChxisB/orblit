@@ -817,6 +817,14 @@ Transform2D Control::get_transform() const {
 	return xform;
 }
 
+void Control::_top_level_changed() {
+	// A container sorts only the children that are not top level, so it sorts again to close or open the gap.
+	Container *parent_container = Object::cast_to<Container>(get_parent());
+	if (parent_container) {
+		parent_container->queue_sort();
+	}
+}
+
 void Control::_top_level_changed_on_parent() {
 	// Update root control status.
 	_notification(NOTIFICATION_EXIT_CANVAS);
