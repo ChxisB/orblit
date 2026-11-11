@@ -568,7 +568,9 @@ void RendererSceneRenderRD::_render_buffers_post_process_and_tonemap(const Rende
 			}
 		}
 
-		max_glow_index = MIN(max_glow_index, mipmaps - 1);
+		// The raster path writes level i + 1 of the blur textures and reads level i + 3 of the larger one, so it
+		// runs out of mip levels one step before the compute path does.
+		max_glow_index = MIN(max_glow_index, can_use_storage ? mipmaps - 1 : mipmaps - 2);
 
 		float luminance_multiplier = rb->get_luminance_multiplier();
 		if (can_use_storage) {
