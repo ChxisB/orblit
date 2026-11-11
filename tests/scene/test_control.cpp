@@ -6,6 +6,7 @@
 TEST_FORCE_LINK(test_control)
 
 #include "core/input/input_map.h" // IWYU pragma: keep // Used by `SEND_GUI_ACTION` macro.
+#include "core/object/callable_mp.h"
 #include "scene/planar/entity_planar.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
@@ -1256,6 +1257,38 @@ TEST_CASE("[Stage][Control] Grow direction") {
 	}
 
 	memdelete(test_control);
+}
+
+class ReparentingControl : public Control {
+	ORBLIT_CLASS(ReparentingControl, Control);
+
+public:
+	Entity *target = nullptr;
+
+	void move_to_target(Entity *p_child) {
+		p_child->reparent(target);
+	}
+};
+
+TEST_CASE("[Stage][Control] reparent a child with a control child on entry") {
+	ReparentingControl *source = memnew(ReparentingControl);
+	Control *target = memnew(Control);
+	Stage::get_singleton()->get_root()->add_child(source);
+	Stage::get_singleton()->get_root()->add_child(target);
+	source->target = target;
+	source->connect("child_entered_stage", callable_mp(source, &ReparentingControl::move_to_target));
+
+	Control *child = memnew(Control);
+	Control *grandchild = memnew(Control);
+	child->add_child(grandchild);
+	source->add_child(child);
+
+	CHECK(child->get_parent() == target);
+	CHECK(grandchild->get_parent() == child);
+	CHECK(grandchild->is_inside_stage());
+
+	memdelete(source);
+	memdelete(target);
 }
 
 } // namespace TestControl

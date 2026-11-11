@@ -391,7 +391,10 @@ void Entity::_propagate_exit_tree() {
 	data.blocked++;
 
 	for (HashMap<StringName, Entity *>::Iterator I = data.children.last(); I; --I) {
-		I->value->_propagate_exit_tree();
+		// A child still waiting to enter has nothing to exit. A `child_entered_stage` handler can move its parent before the children enter.
+		if (I->value->is_inside_stage()) {
+			I->value->_propagate_exit_tree();
+		}
 	}
 
 	data.blocked--;
