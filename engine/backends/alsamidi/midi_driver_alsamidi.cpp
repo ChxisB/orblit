@@ -52,6 +52,12 @@ void MIDIDriverALSAMidi::thread_func(void *p_udata) {
 }
 
 Error MIDIDriverALSAMidi::open() {
+#ifdef SOWRAP_ENABLED
+	// The wrapped functions stay null until the library loads. The audio drivers load it, and the dummy driver does not.
+	if (initialize_asound(0)) {
+		return ERR_CANT_OPEN;
+	}
+#endif
 	void **hints;
 
 	if (snd_device_name_hint(-1, "rawmidi", &hints) < 0) {
