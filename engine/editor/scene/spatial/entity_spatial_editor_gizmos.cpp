@@ -226,6 +226,7 @@ void EditorEntity3DGizmo::add_mesh(const Ref<Mesh> &p_mesh, const Ref<Material> 
 
 void EditorEntity3DGizmo::_update_bvh() {
 	ERR_FAIL_NULL(spatial_node);
+	ERR_FAIL_NULL(gizmo_plugin);
 
 	if (hidden && !gizmo_plugin->is_selectable_when_hidden()) {
 		return;
@@ -477,6 +478,7 @@ void EditorEntity3DGizmo::add_solid_box(const Ref<Material> &p_material, Vector3
 
 bool EditorEntity3DGizmo::intersect_frustum(const Camera3D *p_camera, const Vector<Plane> &p_frustum) {
 	ERR_FAIL_NULL_V(spatial_node, false);
+	ERR_FAIL_NULL_V(gizmo_plugin, false);
 	ERR_FAIL_COND_V(!valid, false);
 
 	if (hidden && !gizmo_plugin->is_selectable_when_hidden()) {
@@ -622,6 +624,7 @@ void EditorEntity3DGizmo::handles_intersect_ray(Camera3D *p_camera, const Vector
 
 bool EditorEntity3DGizmo::intersect_ray(Camera3D *p_camera, const Point2 &p_point, Vector3 &r_pos, Vector3 &r_normal) {
 	ERR_FAIL_NULL_V(spatial_node, false);
+	ERR_FAIL_NULL_V(gizmo_plugin, false);
 	ERR_FAIL_COND_V(!valid, false);
 
 	if (hidden && !gizmo_plugin->is_selectable_when_hidden()) {
