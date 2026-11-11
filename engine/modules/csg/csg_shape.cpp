@@ -2615,7 +2615,12 @@ void CSGPolygon3D::_notification(int p_what) {
 			path = nullptr;
 		}
 	} else if (p_what == NOTIFICATION_ENTER_STAGE) {
-		if (mode == MODE_PATH && !is_using_collision()) {
+#ifndef PHYSICS_SPATIAL_DISABLED
+		const bool has_collision = is_using_collision();
+#else
+		const bool has_collision = false;
+#endif // PHYSICS_SPATIAL_DISABLED
+		if (mode == MODE_PATH && !has_collision) {
 			// Force an update when the CSGPolygon3D re-enters the tree to make sure it still follows the Path3D's current state.
 			// This is not needed when collision is enabled, as having collision
 			// enabled will automatically trigger an update.
