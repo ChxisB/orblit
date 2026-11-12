@@ -1430,6 +1430,10 @@ void ResourceFormatLoaderText::get_recognized_extensions_for_type(const String &
 		p_extensions->push_back("oscn");
 	}
 
+	if (ClassRegistry::is_parent_class("GraphScript", p_type)) {
+		p_extensions->push_back("ograph");
+	}
+
 	// Don't allow .ores for Prefabs or NativeExtension.
 	if (p_type != "Prefab" && p_type != "NativeExtension") {
 		p_extensions->push_back("ores");
@@ -1439,6 +1443,7 @@ void ResourceFormatLoaderText::get_recognized_extensions_for_type(const String &
 void ResourceFormatLoaderText::get_recognized_extensions(List<String> *p_extensions) const {
 	p_extensions->push_back("oscn");
 	p_extensions->push_back("ores");
+	p_extensions->push_back("ograph");
 }
 
 bool ResourceFormatLoaderText::handles_type(const String &p_type) const {
@@ -1469,6 +1474,8 @@ String ResourceFormatLoaderText::get_resource_type(const String &p_path) const {
 	const String ext = p_path.get_extension().to_lower();
 	if (ext == "oscn") {
 		return "Prefab";
+	} else if (ext == "ograph") {
+		return "GraphScript";
 	} else if (ext != "ores") {
 		return String();
 	}
@@ -1507,7 +1514,7 @@ String ResourceFormatLoaderText::get_resource_script_class(const String &p_path)
 
 ResourceUID::ID ResourceFormatLoaderText::get_resource_uid(const String &p_path) const {
 	const String ext = p_path.get_extension().to_lower();
-	if (ext != "oscn" && ext != "ores") {
+	if (ext != "oscn" && ext != "ores" && ext != "ograph") {
 		return ResourceUID::INVALID_ID;
 	}
 
@@ -2170,6 +2177,9 @@ Error ResourceFormatSaverText::save(const Ref<Resource> &p_resource, const Strin
 	if (p_path.ends_with(".oscn") && Ref<Prefab>(p_resource).is_null()) {
 		return ERR_FILE_UNRECOGNIZED;
 	}
+	if (p_path.ends_with(".ograph") && !p_resource->is_class("GraphScript")) {
+		return ERR_FILE_UNRECOGNIZED;
+	}
 
 	ResourceFormatSaverTextInstance saver;
 	return saver.save(p_path, p_resource, p_flags);
@@ -2177,7 +2187,7 @@ Error ResourceFormatSaverText::save(const Ref<Resource> &p_resource, const Strin
 
 Error ResourceFormatSaverText::set_uid(const String &p_path, ResourceUID::ID p_uid) {
 	String lc = p_path.to_lower();
-	if (!lc.ends_with(".oscn") && !lc.ends_with(".ores")) {
+	if (!lc.ends_with(".oscn") && !lc.ends_with(".ores") && !lc.ends_with(".ograph")) {
 		return ERR_FILE_UNRECOGNIZED;
 	}
 
@@ -2211,6 +2221,8 @@ bool ResourceFormatSaverText::recognize(const Ref<Resource> &p_resource) const {
 void ResourceFormatSaverText::get_recognized_extensions(const Ref<Resource> &p_resource, List<String> *p_extensions) const {
 	if (Ref<Prefab>(p_resource).is_valid()) {
 		p_extensions->push_back("oscn"); // Text scene.
+	} else if (p_resource.is_valid() && p_resource->is_class("GraphScript")) {
+		p_extensions->push_back("ograph"); // Text graph script.
 	} else {
 		p_extensions->push_back("ores"); // Text resource.
 	}
