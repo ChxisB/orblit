@@ -26,6 +26,8 @@ public:
 
 	// Keeps the text for debug_get_error and prints it.
 	void report_error(const String &p_text);
+	// Keeps the text for debug_get_error without printing it. A stop at a breakpoint is no error.
+	void set_break_reason(const String &p_reason) { last_error = p_reason; }
 
 	virtual String get_name() const override { return "GraphScript"; }
 	virtual void init() override {}
@@ -52,12 +54,13 @@ public:
 	virtual void add_global_constant(const StringName &p_variable, const Variant &p_value) override {}
 
 	virtual String debug_get_error() const override { return last_error; }
-	virtual int debug_get_stack_level_count() const override { return 0; }
-	virtual int debug_get_stack_level_line(int p_level) const override { return 0; }
-	virtual String debug_get_stack_level_function(int p_level) const override { return String(); }
-	virtual String debug_get_stack_level_source(int p_level) const override { return String(); }
-	virtual void debug_get_stack_level_locals(int p_level, List<String> *r_locals, List<Variant> *r_values, int p_max_subitems = -1, int p_max_depth = -1) override {}
-	virtual void debug_get_stack_level_members(int p_level, List<String> *r_members, List<Variant> *r_values, int p_max_subitems = -1, int p_max_depth = -1) override {}
+	virtual int debug_get_stack_level_count() const override;
+	virtual int debug_get_stack_level_line(int p_level) const override;
+	virtual String debug_get_stack_level_function(int p_level) const override;
+	virtual String debug_get_stack_level_source(int p_level) const override;
+	virtual void debug_get_stack_level_locals(int p_level, List<String> *r_locals, List<Variant> *r_values, int p_max_subitems = -1, int p_max_depth = -1) override;
+	virtual void debug_get_stack_level_members(int p_level, List<String> *r_members, List<Variant> *r_values, int p_max_subitems = -1, int p_max_depth = -1) override;
+	virtual ScriptInstance *debug_get_stack_level_instance(int p_level) override;
 	virtual void debug_get_globals(List<String> *r_globals, List<Variant> *r_values, int p_max_subitems = -1, int p_max_depth = -1) override {}
 	virtual String debug_parse_stack_level_expression(int p_level, const String &p_expression, int p_max_subitems = -1, int p_max_depth = -1) override { return String(); }
 

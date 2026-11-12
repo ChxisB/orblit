@@ -47,6 +47,9 @@ public:
 	// log says how many.
 	void drop_waiting_calls();
 
+	// What the debugger shows of an instance: each variable and its value.
+	void list_members(List<String> *r_names, List<Variant> *r_values) const;
+
 	virtual bool set(const StringName &p_name, const Variant &p_value) override;
 	virtual bool get(const StringName &p_name, Variant &r_ret) const override;
 	virtual void get_property_list(List<PropertyInfo> *r_properties) const override;

@@ -3,6 +3,7 @@
 
 #include "graph_call.h"
 
+#include "graph_debug.h"
 #include "graph_script_language.h"
 
 #include "core/object/class_registry.h"
@@ -63,10 +64,14 @@ Variant GraphCall::run(const Vector<Variant> &p_arguments) {
 // The step budget counts from each resume, so a loop that waits on every round is not cut off
 // by the rounds before it.
 void GraphCall::_loop() {
+	const GraphDebug::Scope listed(*this);
 	ran = 0;
 	while (!suspended && !returned && !failed && (current >= 0 || !stack.is_empty())) {
-		// With no step to run, the step on top of the stack is the one that resumes.
-		const GraphCompiledStep &at = get_step(current >= 0 ? current : stack[stack.size() - 1].step);
+		// A resume has no step of its own to stop at, so only a step the call moves to can stop.
+		if (current >= 0) {
+			GraphDebug::before_step(*this);
+		}
+		const GraphCompiledStep &at = get_running_step();
 		if (++ran > limit) {
 			fail(at, vformat("stopped after %d steps. A loop may never end.", limit));
 			break;
@@ -181,6 +186,22 @@ void GraphCall::fail(const GraphCompiledStep &p_step, const String &p_message) {
 	}
 	failed = true;
 	GraphScriptLanguage::get_singleton()->report_error(vformat("Function '%s', step %d: %s", function->name, p_step.id, p_message));
+	GraphDebug::on_error();
+}
+
+void GraphCall::list_locals(List<String> *r_names, List<Variant> *r_values) const {
+	if (function->start >= 0) {
+		const int first = get_step(function->start).slot + 1;
+		for (int i = 0; i < function->signature.arguments.size(); i++) {
+			r_names->push_back(function->signature.arguments[i].name);
+			r_values->push_back(slots[first + i]);
+		}
+	}
+	for (const GraphTyped &local : function->signature.locals) {
+		const HashMap<StringName, Variant>::ConstIterator found = locals.find(local.name);
+		r_names->push_back(local.name);
+		r_values->push_back(found ? found->value : Variant());
+	}
 }
 
 Variant GraphCall::read_variable(const GraphCompiledStep &p_step) {

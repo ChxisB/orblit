@@ -90,6 +90,15 @@ void GraphScriptInstance::refresh() {
 	values = kept;
 }
 
+void GraphScriptInstance::list_members(List<String> *r_names, List<Variant> *r_values) const {
+	for (const GraphVariable &variable : script->get_declared_variables()) {
+		Variant value;
+		get(variable.name, value);
+		r_names->push_back(variable.name);
+		r_values->push_back(value);
+	}
+}
+
 bool GraphScriptInstance::set(const StringName &p_name, const Variant &p_value) {
 	const GraphVariable *variable = script->get_variable(p_name);
 	Variant converted;

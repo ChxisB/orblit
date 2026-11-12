@@ -80,6 +80,13 @@ public:
 	void drop();
 
 	const GraphCompiledStep &get_step(int p_index) const { return function->steps[p_index]; }
+	const GraphCompiledFunction &get_function() const { return *function; }
+	// The step the call runs, or is about to run. When none is due, it is the step of the frame
+	// that resumes.
+	const GraphCompiledStep &get_running_step() const { return get_step(current >= 0 ? current : stack[stack.size() - 1].step); }
+	// What the debugger shows of a call: the arguments, then the locals, each in the order the
+	// function declares them.
+	void list_locals(List<String> *r_names, List<Variant> *r_values) const;
 	GraphScriptInstance &get_instance() const { return *instance; }
 	Object *get_owner() const { return instance->get_owner(); }
 	RandomNumberGenerator &get_random() const { return *instance->get_random().ptr(); }
