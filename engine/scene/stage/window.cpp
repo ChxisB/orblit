@@ -1327,8 +1327,12 @@ void Window::_update_viewport_size() {
 	//update the viewport part
 
 #ifndef XR_DISABLED
-	// If `use_xr` set, we should skip this logic.
+	// The headset decides the render size, so content scaling and the size change are skipped.
+	// The desktop mirror still has to follow the window.
 	if (is_using_xr()) {
+		if (window_id != DisplaySystemEnums::INVALID_WINDOW_ID) {
+			RenderingSystem::get_singleton()->viewport_attach_to_screen(get_viewport_rid(), Rect2i(Point2i(), size), window_id);
+		}
 		return;
 	}
 #endif // XR_DISABLED
