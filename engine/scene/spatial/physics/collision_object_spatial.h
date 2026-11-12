@@ -68,6 +68,7 @@ private:
 	void _shape_changed(const Ref<Shape3D> &p_shape);
 	void _update_debug_shapes();
 	void _clear_debug_shapes();
+	void _set_debug_shapes_transform(const Transform3D &p_body_transform);
 	void _physics_debug_changed();
 
 	void _apply_disabled();
@@ -81,6 +82,8 @@ protected:
 		ERR_FAIL_COND(callback_lock == 0);
 		callback_lock--;
 	}
+
+	virtual void fti_update_systems_xform() override;
 
 	void _notification(int p_what);
 	static void register_members();

@@ -36,4 +36,5 @@ public:
 
 private:
 	void process_spring();
+	real_t _get_delta_with_margin(real_t p_motion_delta) const;
 };

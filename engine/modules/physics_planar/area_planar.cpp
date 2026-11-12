@@ -175,90 +175,62 @@ void OrblitArea2D::set_monitorable(bool p_monitorable) {
 	_shapes_changed();
 }
 
+void OrblitArea2D::_send_monitor_event(const Callable &p_callback, PS2DE::AreaBodyStatus p_status, const BodyKey &p_key) {
+	Variant res[5];
+	Variant *resptr[5];
+	for (int i = 0; i < 5; i++) {
+		resptr[i] = &res[i];
+	}
+	res[0] = p_status;
+	res[1] = p_key.rid;
+	res[2] = p_key.instance_id;
+	res[3] = p_key.body_shape;
+	res[4] = p_key.area_shape;
+
+	Callable::CallError ce;
+	Variant ret;
+	p_callback.callp((const Variant **)resptr, 5, ret, ce);
+
+	if (ce.error != Callable::CallError::CALL_OK) {
+		ERR_PRINT_ONCE("Error calling event callback method " + Variant::get_callable_error_text(p_callback, (const Variant **)resptr, 5, ce));
+	}
+}
+
+void OrblitArea2D::_flush_monitor_events(HashMap<BodyKey, BodyState, BodyKey> &p_events, Callable &p_callback) {
+	if (p_callback.is_null() || p_events.is_empty()) {
+		return;
+	}
+	if (!p_callback.is_valid()) {
+		p_events.clear();
+		p_callback = Callable();
+		return;
+	}
+
+	// Added events go first. The stage counts the shapes a body touches, so a body
+	// that moves between two shapes of one area would otherwise leave and enter again.
+	for (int pass = 0; pass < 2; pass++) {
+		const bool added_pass = pass == 0;
+		for (HashMap<BodyKey, BodyState, BodyKey>::Iterator E = p_events.begin(); E;) {
+			HashMap<BodyKey, BodyState, BodyKey>::Iterator next = E;
+			++next;
+			const int state = E->value.state;
+			if (state != 0 && (state > 0) != added_pass) {
+				E = next;
+				continue;
+			}
+			const BodyKey key = E->key;
+			p_events.remove(E);
+			E = next;
+			if (state != 0) {
+				_send_monitor_event(p_callback, state > 0 ? PS2DE::AREA_BODY_ADDED : PS2DE::AREA_BODY_REMOVED, key);
+			}
+		}
+	}
+}
+
 void OrblitArea2D::call_queries() {
-	if (!monitor_callback.is_null() && !monitored_bodies.is_empty()) {
-		if (monitor_callback.is_valid()) {
-			Variant res[5];
-			Variant *resptr[5];
-			for (int i = 0; i < 5; i++) {
-				resptr[i] = &res[i];
-			}
-
-			for (HashMap<BodyKey, BodyState, BodyKey>::Iterator E = monitored_bodies.begin(); E;) {
-				if (E->value.state == 0) { // Nothing happened
-					HashMap<BodyKey, BodyState, BodyKey>::Iterator next = E;
-					++next;
-					monitored_bodies.remove(E);
-					E = next;
-					continue;
-				}
-
-				res[0] = E->value.state > 0 ? PS2DE::AREA_BODY_ADDED : PS2DE::AREA_BODY_REMOVED;
-				res[1] = E->key.rid;
-				res[2] = E->key.instance_id;
-				res[3] = E->key.body_shape;
-				res[4] = E->key.area_shape;
-
-				HashMap<BodyKey, BodyState, BodyKey>::Iterator next = E;
-				++next;
-				monitored_bodies.remove(E);
-				E = next;
-
-				Callable::CallError ce;
-				Variant ret;
-				monitor_callback.callp((const Variant **)resptr, 5, ret, ce);
-
-				if (ce.error != Callable::CallError::CALL_OK) {
-					ERR_PRINT_ONCE("Error calling event callback method " + Variant::get_callable_error_text(monitor_callback, (const Variant **)resptr, 5, ce));
-				}
-			}
-		} else {
-			monitored_bodies.clear();
-			monitor_callback = Callable();
-		}
-	}
-
-	if (!area_monitor_callback.is_null() && !monitored_areas.is_empty()) {
-		if (area_monitor_callback.is_valid()) {
-			Variant res[5];
-			Variant *resptr[5];
-			for (int i = 0; i < 5; i++) {
-				resptr[i] = &res[i];
-			}
-
-			for (HashMap<BodyKey, BodyState, BodyKey>::Iterator E = monitored_areas.begin(); E;) {
-				if (E->value.state == 0) { // Nothing happened
-					HashMap<BodyKey, BodyState, BodyKey>::Iterator next = E;
-					++next;
-					monitored_areas.remove(E);
-					E = next;
-					continue;
-				}
-
-				res[0] = E->value.state > 0 ? PS2DE::AREA_BODY_ADDED : PS2DE::AREA_BODY_REMOVED;
-				res[1] = E->key.rid;
-				res[2] = E->key.instance_id;
-				res[3] = E->key.body_shape;
-				res[4] = E->key.area_shape;
-
-				HashMap<BodyKey, BodyState, BodyKey>::Iterator next = E;
-				++next;
-				monitored_areas.remove(E);
-				E = next;
-
-				Callable::CallError ce;
-				Variant ret;
-				area_monitor_callback.callp((const Variant **)resptr, 5, ret, ce);
-
-				if (ce.error != Callable::CallError::CALL_OK) {
-					ERR_PRINT_ONCE("Error calling event callback method " + Variant::get_callable_error_text(area_monitor_callback, (const Variant **)resptr, 5, ce));
-				}
-			}
-		} else {
-			monitored_areas.clear();
-			area_monitor_callback = Callable();
-		}
-	}
+	_flush_monitor_events(monitored_bodies, monitor_callback);
+	_flush_monitor_events(monitored_areas, area_monitor_callback);
 }
 
 void OrblitArea2D::compute_gravity(const Vector2 &p_position, Vector2 &r_gravity) const {

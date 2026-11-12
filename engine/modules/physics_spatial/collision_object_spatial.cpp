@@ -125,6 +125,13 @@ void OrblitCollisionObject3D::_unregister_shapes() {
 	}
 }
 
+AABB OrblitCollisionObject3D::_get_shape_broadphase_aabb(const Shape &p_shape) const {
+	AABB aabb = (transform * p_shape.xform).xform(p_shape.shape->get_aabb());
+	// The margin comes from the box itself. Taking it from the cached box grew the result on each update.
+	aabb.grow_by((aabb.size.x + aabb.size.y) * 0.5 * 0.05);
+	return aabb;
+}
+
 void OrblitCollisionObject3D::_update_shapes() {
 	if (!space) {
 		return;
@@ -137,13 +144,10 @@ void OrblitCollisionObject3D::_update_shapes() {
 		}
 
 		//not quite correct, should compute the next matrix..
-		AABB shape_aabb = s.shape->get_aabb();
-		Transform3D xform = transform * s.xform;
-		shape_aabb = xform.xform(shape_aabb);
-		shape_aabb.grow_by((s.aabb_cache.size.x + s.aabb_cache.size.y) * 0.5 * 0.05);
+		const AABB shape_aabb = _get_shape_broadphase_aabb(s);
 		s.aabb_cache = shape_aabb;
 
-		Vector3 scale = xform.get_basis().get_scale();
+		Vector3 scale = (transform * s.xform).get_basis().get_scale();
 		s.area_cache = s.shape->get_volume() * scale.x * scale.y * scale.z;
 
 		if (s.bpid == 0) {
@@ -167,9 +171,7 @@ void OrblitCollisionObject3D::_update_shapes_with_motion(const Vector3 &p_motion
 		}
 
 		//not quite correct, should compute the next matrix..
-		AABB shape_aabb = s.shape->get_aabb();
-		Transform3D xform = transform * s.xform;
-		shape_aabb = xform.xform(shape_aabb);
+		AABB shape_aabb = _get_shape_broadphase_aabb(s);
 		shape_aabb.merge_with(AABB(shape_aabb.position + p_motion, shape_aabb.size)); //use motion
 		s.aabb_cache = shape_aabb;
 

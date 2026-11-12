@@ -108,6 +108,14 @@ real_t SpringArm3D::get_hit_length() {
 	return current_spring_length;
 }
 
+// The arm stops short of what it hit by the margin, however it was cast.
+real_t SpringArm3D::_get_delta_with_margin(real_t p_motion_delta) const {
+	if (p_motion_delta >= 1 || spring_length <= 0) {
+		return p_motion_delta;
+	}
+	return MAX(real_t(0), p_motion_delta - margin / spring_length);
+}
+
 void SpringArm3D::process_spring() {
 	// From
 	real_t motion_delta(1);
@@ -151,7 +159,6 @@ void SpringArm3D::process_spring() {
 			bool intersected = get_world_3d()->get_direct_space_state()->intersect_ray(ray_params, r);
 			if (intersected) {
 				real_t dist = get_global_transform().origin.distance_to(r.position);
-				dist -= margin;
 				motion_delta = dist / (spring_length);
 			}
 		}
@@ -166,6 +173,7 @@ void SpringArm3D::process_spring() {
 		get_world_3d()->get_direct_space_state()->cast_motion(shape_params, motion_delta, motion_delta_unsafe);
 	}
 
+	motion_delta = _get_delta_with_margin(motion_delta);
 	current_spring_length = spring_length * motion_delta;
 	Transform3D child_transform;
 	child_transform.origin = get_global_transform().origin + cast_direction * (spring_length * motion_delta);

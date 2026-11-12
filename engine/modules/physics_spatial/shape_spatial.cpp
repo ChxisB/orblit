@@ -1985,6 +1985,18 @@ void OrblitHeightMapShape3D::_get_cell(const Vector3 &p_point, int &r_x, int &r_
 	r_z = (clamped_point.z < 0.0) ? (clamped_point.z - 0.5) : (clamped_point.z + 0.5);
 }
 
+// A hole in the map is stored as a NaN height. Its triangles have no surface to test.
+static bool _cull_height_map_triangle(OrblitFaceShape3D &r_face, const Vector3 &p_a, const Vector3 &p_b, const Vector3 &p_c, OrblitConcaveShape3D::QueryCallback p_callback, void *p_userdata) {
+	if (!p_a.is_finite() || !p_b.is_finite() || !p_c.is_finite()) {
+		return false;
+	}
+	r_face.vertex[0] = p_a;
+	r_face.vertex[1] = p_b;
+	r_face.vertex[2] = p_c;
+	r_face.normal = Plane(p_a, p_b, p_c).normal;
+	return p_callback(p_userdata, &r_face);
+}
+
 void OrblitHeightMapShape3D::cull(const AABB &p_local_aabb, QueryCallback p_callback, void *p_userdata, bool p_invert_backface_collision) const {
 	if (heights.is_empty()) {
 		return;
@@ -2017,20 +2029,16 @@ void OrblitHeightMapShape3D::cull(const AABB &p_local_aabb, QueryCallback p_call
 
 	for (int z = start_z; z < end_z; z++) {
 		for (int x = start_x; x < end_x; x++) {
-			// First triangle.
-			_get_point(x, z, face.vertex[0]);
-			_get_point(x + 1, z, face.vertex[1]);
-			_get_point(x, z + 1, face.vertex[2]);
-			face.normal = Plane(face.vertex[0], face.vertex[1], face.vertex[2]).normal;
-			if (p_callback(p_userdata, &face)) {
-				return;
-			}
-
-			// Second triangle.
-			face.vertex[0] = face.vertex[1];
-			_get_point(x + 1, z + 1, face.vertex[1]);
-			face.normal = Plane(face.vertex[0], face.vertex[1], face.vertex[2]).normal;
-			if (p_callback(p_userdata, &face)) {
+			Vector3 p00;
+			Vector3 p10;
+			Vector3 p01;
+			Vector3 p11;
+			_get_point(x, z, p00);
+			_get_point(x + 1, z, p10);
+			_get_point(x, z + 1, p01);
+			_get_point(x + 1, z + 1, p11);
+			if (_cull_height_map_triangle(face, p00, p10, p01, p_callback, p_userdata) ||
+					_cull_height_map_triangle(face, p10, p11, p01, p_callback, p_userdata)) {
 				return;
 			}
 		}
@@ -2190,14 +2198,19 @@ void OrblitHeightMapShape3D::set_data(const Variant &p_data) {
 		min_height = d["min_height"];
 		max_height = d["max_height"];
 	} else {
-		int heights_size = heights.size();
-		for (int i = 0; i < heights_size; ++i) {
-			real_t h = heights[i];
-			if (h < min_height) {
-				min_height = h;
-			} else if (h > max_height) {
-				max_height = h;
+		// Read the new heights. The member still holds the previous ones. Holes are NaN and do not count.
+		min_height = Math::INF;
+		max_height = -Math::INF;
+		for (int i = 0; i < heights_buffer.size(); ++i) {
+			const real_t h = heights_buffer[i];
+			if (Math::is_finite(h)) {
+				min_height = MIN(min_height, h);
+				max_height = MAX(max_height, h);
 			}
+		}
+		if (min_height > max_height) {
+			min_height = 0.0;
+			max_height = 0.0;
 		}
 	}
 
