@@ -59,6 +59,7 @@ private:
 	Timer *shortcut_feedback_timer = nullptr;
 	bool in_shortcut_feedback = false;
 	void _shortcut_feedback_timeout();
+	bool _is_touch_inside(const Point2 &p_local_position) const;
 
 protected:
 	virtual void pressed();

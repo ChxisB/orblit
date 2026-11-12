@@ -5,6 +5,7 @@
 
 TEST_FORCE_LINK(test_input_event)
 
+#include "core/input/input.h"
 #include "core/input/input_event.h"
 #include "core/input/input_map.h"
 #include "core/math/rect2.h"
@@ -68,6 +69,35 @@ TEST_CASE("[InputEvent][Stage] Test methods that interact with the InputMap") {
 	CHECK(iejm->is_action_pressed(mock_action));
 
 	InputMap::get_singleton()->erase_action(mock_action);
+}
+
+TEST_CASE("[InputEvent][Stage] A transformed mouse button still matches its action by event") {
+	const StringName action = "mock_click_action";
+	Ref<InputEventMouseButton> click;
+	click.instantiate();
+	click->set_button_index(MouseButton::LEFT);
+	click->set_pressed(true);
+
+	InputMap::get_singleton()->add_action(action);
+	InputMap::get_singleton()->action_add_event(action, click);
+
+	Ref<InputEventMouseButton> sent = click->duplicate();
+	Input::get_singleton()->parse_input_event(sent);
+	Input::get_singleton()->flush_buffered_events();
+
+	Transform2D shift;
+	shift = shift.translated(Vector2(2.0f, 3.0f));
+	Ref<InputEvent> copy = sent->xformed_by(shift);
+
+	CHECK(copy != sent);
+	CHECK(Input::get_singleton()->is_action_just_pressed_by_event(action, sent));
+	CHECK(Input::get_singleton()->is_action_just_pressed_by_event(action, copy));
+
+	Ref<InputEventMouseButton> other = sent->duplicate();
+	CHECK_FALSE(Input::get_singleton()->is_action_just_pressed_by_event(action, other));
+
+	Input::get_singleton()->action_release(action);
+	InputMap::get_singleton()->erase_action(action);
 }
 
 TEST_CASE("[InputEvent] Test xformed_by") {
