@@ -5,6 +5,8 @@
 
 TEST_FORCE_LINK(test_connections_dialog)
 
+#ifdef TOOLS_ENABLED
+
 #include "core/config/project_settings.h"
 #include "core/string/char_utils.h"
 #include "editor/scene/connections_dialog.h"
@@ -42,3 +44,5 @@ TEST_CASE("[Editor][ConnectDialog] A name template that starts with the node giv
 }
 
 } // namespace TestConnectionsDialog
+
+#endif // TOOLS_ENABLED
