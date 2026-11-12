@@ -117,5 +117,17 @@
   "Object.remove_meta",
   "Object.get_script",
   "Object.set_script",
-  "Resource.get_path"
+  "Resource.get_path",
+  "GraphScript.add_function",
+  "GraphScript.remove_function",
+  "GraphScript.get_valid_step_id",
+  "GraphScript.add_step",
+  "GraphScript.remove_step",
+  "GraphScript.move_step",
+  "GraphScript.set_step_parameter",
+  "GraphScript.set_step_pins",
+  "GraphScript.connect_steps",
+  "GraphScript.disconnect_steps",
+  "GraphScript.get_document",
+  "GraphScript.find_steps"
 ]

@@ -76,6 +76,8 @@ public:
 	const GraphCompiledFunction *get_compiled(const StringName &p_function) const;
 	const Vector<GraphCompiledFunction> &get_compiled_functions() const { return compiled; }
 	const Vector<GraphVariable> &get_declared_variables() const { return variables; }
+	const Vector<GraphSignal> &get_declared_signals() const { return signals; }
+	const Vector<GraphFunction> &get_declared_functions() const { return functions; }
 	// The instance list is kept by the instances themselves.
 	void add_instance(GraphScriptInstance *p_instance) { instances.insert(p_instance); }
 	void remove_instance(GraphScriptInstance *p_instance) { instances.erase(p_instance); }
@@ -119,6 +121,14 @@ public:
 
 	// One entry per warning: kind, function, step, name and text. Answers only, changes nothing.
 	Array get_warnings() const;
+
+	// The whole script as JSON text for an editor to draw. See graph_document.h.
+	String get_document() const;
+	// The steps a palette offers, as JSON text. The side is "", "input" or "output", the side of
+	// the port a wire is dragged from, and the sort is "flow" or "data". The type is the type a
+	// dragged data wire carries. This asks about the engine and not about this script, and it sits
+	// here because the editor bridge calls methods on an object.
+	String find_steps(const String &p_text, const String &p_dragged_side, int p_type, const String &p_sort) const;
 
 	virtual void reload_from_file() override;
 	virtual bool can_instantiate() const override;

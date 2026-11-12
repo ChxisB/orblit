@@ -132,6 +132,18 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ObjectGetScriptMethod = new("Object", "get_script", 1214101251);
     static readonly EngineMethod ObjectSetScriptMethod = new("Object", "set_script", 1114965689);
     static readonly EngineMethod ResourceGetPathMethod = new("Resource", "get_path", 201670096);
+    static readonly EngineMethod GraphScriptAddFunctionMethod = new("GraphScript", "add_function", 166001499);
+    static readonly EngineMethod GraphScriptRemoveFunctionMethod = new("GraphScript", "remove_function", 166001499);
+    static readonly EngineMethod GraphScriptGetValidStepIdMethod = new("GraphScript", "get_valid_step_id", 1321353865);
+    static readonly EngineMethod GraphScriptAddStepMethod = new("GraphScript", "add_step", 3958950400);
+    static readonly EngineMethod GraphScriptRemoveStepMethod = new("GraphScript", "remove_step", 993915709);
+    static readonly EngineMethod GraphScriptMoveStepMethod = new("GraphScript", "move_step", 2144347463);
+    static readonly EngineMethod GraphScriptSetStepParameterMethod = new("GraphScript", "set_step_parameter", 2962379334);
+    static readonly EngineMethod GraphScriptSetStepPinsMethod = new("GraphScript", "set_step_pins", 2468526429);
+    static readonly EngineMethod GraphScriptConnectStepsMethod = new("GraphScript", "connect_steps", 3272164336);
+    static readonly EngineMethod GraphScriptDisconnectStepsMethod = new("GraphScript", "disconnect_steps", 3272164336);
+    static readonly EngineMethod GraphScriptGetDocumentMethod = new("GraphScript", "get_document", 201670096);
+    static readonly EngineMethod GraphScriptFindStepsMethod = new("GraphScript", "find_steps", 1541712278);
 
     public static bool OrblitInstanceStart(this EngineHost host, nint target)
     {
@@ -1037,6 +1049,146 @@ public static unsafe class EngineCalls
         using var scope = new NativeScope();
         void* result = scope.Result(VariantType.String);
         host.Call(ResourceGetPathMethod, target, null, result);
+        return NativeText.ReadString(result);
+    }
+
+    public static long GraphScriptAddFunction(this EngineHost host, nint target, string name)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptAddFunctionMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRemoveFunction(this EngineHost host, nint target, string name)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptRemoveFunctionMethod, target, args, &result);
+        return result;
+    }
+
+    public static int GraphScriptGetValidStepId(this EngineHost host, nint target, string function)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptGetValidStepIdMethod, target, args, &result);
+        return (int)result;
+    }
+
+    public static long GraphScriptAddStep(this EngineHost host, nint target, string function, long id, string kind)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = id;
+        void* a2 = scope.String(kind);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, a2 };
+        host.Call(GraphScriptAddStepMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRemoveStep(this EngineHost host, nint target, string function, long id)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = id;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(GraphScriptRemoveStepMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptMoveStep(this EngineHost host, nint target, string function, long id, double x, double y)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = id;
+        double a2 = x;
+        double a3 = y;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, &a2, &a3 };
+        host.Call(GraphScriptMoveStepMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetStepParameter(this EngineHost host, nint target, string function, long id, string parameter, string valueText)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = id;
+        void* a2 = scope.String(parameter);
+        void* a3 = scope.String(valueText);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, a2, a3 };
+        host.Call(GraphScriptSetStepParameterMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetStepPins(this EngineHost host, nint target, string function, long id, long count)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = id;
+        long a2 = count;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, &a2 };
+        host.Call(GraphScriptSetStepPinsMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptConnectSteps(this EngineHost host, nint target, string function, long fromStep, long fromPort, long toStep, long toPort)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = fromStep;
+        long a2 = fromPort;
+        long a3 = toStep;
+        long a4 = toPort;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, &a2, &a3, &a4 };
+        host.Call(GraphScriptConnectStepsMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptDisconnectSteps(this EngineHost host, nint target, string function, long fromStep, long fromPort, long toStep, long toPort)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = fromStep;
+        long a2 = fromPort;
+        long a3 = toStep;
+        long a4 = toPort;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, &a2, &a3, &a4 };
+        host.Call(GraphScriptDisconnectStepsMethod, target, args, &result);
+        return result;
+    }
+
+    public static string GraphScriptGetDocument(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.String);
+        host.Call(GraphScriptGetDocumentMethod, target, null, result);
+        return NativeText.ReadString(result);
+    }
+
+    public static string GraphScriptFindSteps(this EngineHost host, nint target, string text, string draggedSide, long type, string sort)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(text);
+        void* a1 = scope.String(draggedSide);
+        long a2 = type;
+        void* a3 = scope.String(sort);
+        void* result = scope.Result(VariantType.String);
+        void** args = stackalloc void*[] { a0, a1, &a2, a3 };
+        host.Call(GraphScriptFindStepsMethod, target, args, result);
         return NativeText.ReadString(result);
     }
 }

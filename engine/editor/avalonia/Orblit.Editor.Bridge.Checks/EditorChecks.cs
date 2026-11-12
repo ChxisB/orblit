@@ -50,6 +50,9 @@ internal sealed class EditorChecks : IChecks
         ("metadata keeps its type through a save and a reopen, an engine name is not listed and a bad name is refused", MetadataIsSaved),
         ("an object value reads back as the same object, and a Variant of another kind reads as nothing", ObjectVariantRoundTrips),
         ("a script that cannot load is refused and leaves the entity as it was, and clearing no script changes nothing", ScriptRefusals),
+        ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
+        ("a refused graph edit gives the engine's reason and changes nothing, and a bad path or file is refused", GraphScriptRefusals),
+        ("the palette lists what fits a dragged wire", GraphScriptPalette),
     ];
 
     void SecondHostThrows()
@@ -545,6 +548,110 @@ internal sealed class EditorChecks : IChecks
         // A script is kept only through an instance, so an attach is proved only where a language module runs.
         _editor.ClearScript(holder);
         Assert.Null(_editor.ScriptOf(holder));
+    }
+
+    void GraphScriptEditsAreSaved()
+    {
+        var path = MakeGraphFile("edited");
+        var changes = 0;
+        var session = GraphScriptSession.Open(_host, path);
+        session.Changed += () => changes++;
+        var main = Assert.Single(session.Document.Functions);
+        Assert.Equal(2, main.Steps.Count);
+
+        var id = session.GetNextStepId("main");
+        Assert.True(session.AddStep("main", id, "constant").Ok);
+        Assert.True(session.SetStepParameter("main", id, "value", "\"hello\"").Ok);
+        Assert.True(session.MoveStep("main", id, 120.5, -30).Ok);
+        Assert.True(session.Connect("main", new GraphWire(1, 0, 2, 0)).Ok);
+        Assert.True(session.Connect("main", new GraphWire(id, 0, 2, 1)).Ok);
+        Assert.Equal(5, changes);
+
+        var added = Assert.Single(session.Document.Functions[0].Steps, step => step.Id == id);
+        Assert.Equal("\"hello\"", added.Parameters["value"]);
+        Assert.Equal(120.5, added.X);
+        Assert.Equal(-30, added.Y);
+        Assert.Equal(2, session.Document.Functions[0].Wires.Count);
+
+        Assert.True(session.Disconnect("main", new GraphWire(id, 0, 2, 1)).Ok);
+        Assert.Single(session.Document.Functions[0].Wires);
+        session.Save();
+        session.Dispose();
+        Assert.Throws<ObjectDisposedException>(() => session.GetNextStepId("main"));
+
+        // The first session freed the script, so the next one reads the file.
+        using var reopened = GraphScriptSession.Open(_host, path);
+        var kept = Assert.Single(reopened.Document.Functions);
+        Assert.Equal(3, kept.Steps.Count);
+        Assert.Equal(new GraphWire(1, 0, 2, 0), Assert.Single(kept.Wires));
+        Assert.Equal(120.5, Assert.Single(kept.Steps, step => step.Id == id).X);
+        Assert.Equal("main", reopened.Document.Functions[0].Name);
+    }
+
+    void GraphScriptRefusals()
+    {
+        var path = MakeGraphFile("refused");
+        using var session = GraphScriptSession.Open(_host, path);
+        var before = session.Document;
+        var changes = 0;
+        session.Changed += () => changes++;
+
+        var toSelf = session.Connect("main", new GraphWire(1, 0, 1, 0));
+        Assert.False(toSelf.Ok);
+        Assert.Contains("does not fit", toSelf.Reason);
+        Assert.Contains("not there", session.Connect("main", new GraphWire(1, 0, 99, 0)).Reason);
+        Assert.Contains("not there", session.AddStep("missing", 7, "constant").Reason);
+        Assert.False(session.AddStep("main", 5, "no_such_kind").Ok);
+        Assert.Contains("already there", session.AddStep("main", 1, "constant").Reason);
+        Assert.Contains("already there", session.AddFunction("main").Reason);
+        Assert.Contains("Variant text", session.SetStepParameter("main", 2, "text", "not (valid").Reason);
+        // A refused edit leaves the script alone, so the document is the one read before and nothing was raised.
+        Assert.Same(before, session.Document);
+        Assert.Equal(0, changes);
+
+        // A data input takes one wire, so the second is refused for that.
+        Assert.True(session.AddStep("main", 3, "constant").Ok);
+        Assert.True(session.AddStep("main", 4, "constant").Ok);
+        Assert.True(session.Connect("main", new GraphWire(3, 0, 2, 1)).Ok);
+        Assert.Contains("already has a wire", session.Connect("main", new GraphWire(4, 0, 2, 1)).Reason);
+        Assert.Equal(3, changes);
+
+        Assert.Throws<ArgumentException>(() => GraphScriptSession.Open(_host, "res://refused.txt"));
+        Assert.Throws<ArgumentException>(() => GraphScriptSession.Open(_host, "refused.ograph"));
+        Assert.Throws<ArgumentException>(() => GraphScriptSession.Open(_host, "res://../refused.ograph"));
+        Assert.Throws<IOException>(() => GraphScriptSession.Open(_host, "res://missing.ograph"));
+        File.WriteAllText(Path.Combine(_folder, "broken.ograph"), "this is not a graph script\n");
+        Assert.Throws<IOException>(() => GraphScriptSession.Open(_host, "res://broken.ograph"));
+    }
+
+    void GraphScriptPalette()
+    {
+        using var session = GraphScriptSession.Open(_host, MakeGraphFile("palette"));
+
+        var fromFlow = session.FindSteps("", GraphDraggedSide.Output, 0, GraphPortSort.Flow);
+        Assert.Contains(fromFlow, entry => entry.Kind == "branch");
+        Assert.DoesNotContain(fromFlow, entry => entry.Kind == "constant");
+        Assert.Contains(session.FindSteps("", GraphDraggedSide.None, 0, GraphPortSort.Flow), entry => entry.Kind == "constant");
+        Assert.Throws<InvalidDataException>(() => session.FindSteps("", GraphDraggedSide.None, 999, GraphPortSort.Flow));
+    }
+
+    // Builds a graph script in the engine and saves it to the project: an entry and a print step, not wired.
+    string MakeGraphFile(string name)
+    {
+        var path = $"res://{name}.ograph";
+        var script = _host.Construct("GraphScript");
+        try
+        {
+            Assert.Equal(0, _host.GraphScriptAddFunction(script, "main"));
+            Assert.Equal(0, _host.GraphScriptAddStep(script, "main", 1, "entry"));
+            Assert.Equal(0, _host.GraphScriptAddStep(script, "main", 2, "print"));
+            Assert.Equal(0, _host.ResourceSaverSave(_host.Singleton("ResourceSaver"), script, path, 0));
+        }
+        finally
+        {
+            _host.Release(script);
+        }
+        return path;
     }
 
     string SavedScene() => File.ReadAllText(Path.Combine(_folder, "main.oscn"));

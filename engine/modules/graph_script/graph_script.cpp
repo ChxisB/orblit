@@ -4,8 +4,10 @@
 #include "graph_script.h"
 
 #include "graph_compiler.h"
+#include "graph_document.h"
 #include "graph_script_instance.h"
 #include "graph_script_language.h"
+#include "graph_step_catalogue.h"
 #include "graph_warnings.h"
 
 #include "core/object/class_registry.h"
@@ -23,6 +25,28 @@ bool is_valid_type(int p_type) {
 
 bool is_valid_hint(int p_hint) {
 	return p_hint >= PROPERTY_HINT_NONE && p_hint < PROPERTY_HINT_MAX;
+}
+
+bool parse_side(const String &p_text, GraphPinSide &r_side) {
+	static const struct {
+		const char *text;
+		GraphPinSide side;
+	} SIDES[] = { { "", GraphPinSide::NONE }, { "input", GraphPinSide::INPUT }, { "output", GraphPinSide::OUTPUT } };
+	for (const auto &entry : SIDES) {
+		if (p_text == entry.text) {
+			r_side = entry.side;
+			return true;
+		}
+	}
+	return false;
+}
+
+bool parse_sort(const String &p_text, GraphPortSort &r_sort) {
+	if (p_text != "flow" && p_text != "data") {
+		return false;
+	}
+	r_sort = p_text == "flow" ? GraphPortSort::FLOW : GraphPortSort::DATA;
+	return true;
 }
 
 // The text fields of a variable that a file stores only when they are not empty.
@@ -525,6 +549,19 @@ Array GraphScript::get_warnings() const {
 	return result;
 }
 
+String GraphScript::get_document() const {
+	return GraphDocument::write(*this);
+}
+
+String GraphScript::find_steps(const String &p_text, const String &p_dragged_side, int p_type, const String &p_sort) const {
+	GraphWireFilter filter;
+	ERR_FAIL_COND_V_MSG(!parse_side(p_dragged_side, filter.dragged_from), String(), vformat("A dragged side is \"\", \"input\" or \"output\", not \"%s\".", p_dragged_side));
+	ERR_FAIL_COND_V_MSG(!parse_sort(p_sort, filter.sort), String(), vformat("A port sort is \"flow\" or \"data\", not \"%s\".", p_sort));
+	ERR_FAIL_COND_V_MSG(!is_valid_type(p_type), String(), vformat("%d is not a type.", p_type));
+	filter.type = Variant::Type(p_type);
+	return GraphDocument::write_entries(GraphStepCatalogue::find(p_text, filter));
+}
+
 void GraphScript::reload_from_file() {
 	// The language reloads a script by calling this, so it must not call back into the language.
 	Resource::reload_from_file();
@@ -739,6 +776,8 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("set_base_type", "base_type"), &GraphScript::set_base_type);
 	ClassRegistry::bind_method(D_METHOD("get_base_type"), &GraphScript::get_base_type);
 	ClassRegistry::bind_method(D_METHOD("get_warnings"), &GraphScript::get_warnings);
+	ClassRegistry::bind_method(D_METHOD("get_document"), &GraphScript::get_document);
+	ClassRegistry::bind_method(D_METHOD("find_steps", "text", "dragged_side", "type", "sort"), &GraphScript::find_steps);
 
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "functions", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_functions", "get_functions");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "variables", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_variables", "get_variables");
