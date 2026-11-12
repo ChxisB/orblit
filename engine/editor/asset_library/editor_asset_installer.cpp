@@ -30,6 +30,16 @@ static bool _is_zip_entry_symlink(const unz_file_info &p_info) {
 	return (unix_mode & UNIX_FILE_TYPE_MASK) == UNIX_FILE_TYPE_SYMLINK;
 }
 
+// An archive made on Windows has no mode bits, and a zero mode would make the file unreadable.
+static void _apply_zip_entry_mode(const String &p_path, const unz_file_info &p_info) {
+#ifndef WINDOWS_ENABLED
+	const uint32_t mode = (p_info.external_fa >> 16) & 0x01FF;
+	if (mode != 0) {
+		FileAccess::set_unix_permissions(p_path, mode);
+	}
+#endif
+}
+
 void EditorAssetInstaller::_item_checked_cbk() {
 	if (updating_source || !source_tree->get_edited()) {
 		return;
@@ -558,6 +568,8 @@ void EditorAssetInstaller::_install_asset() {
 				Ref<FileAccess> f = FileAccess::open(target_path, FileAccess::WRITE);
 				if (f.is_valid()) {
 					f->store_buffer(uncomp_data.ptr(), uncomp_data.size());
+					f.unref(); // The file must be closed before its mode changes.
+					_apply_zip_entry_mode(target_path, info);
 				} else {
 					failed_files.push_back(target_path);
 				}
