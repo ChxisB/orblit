@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "graph_compiled.h"
 #include "graph_function.h"
 
 #include "core/object/script_language.h"
@@ -23,10 +24,17 @@ class GraphScript : public Script {
 	Vector<GraphFunction> functions;
 	Vector<GraphVariable> variables;
 	Vector<StringName> signals;
+	// One per function, rebuilt by every change.
+	Vector<GraphCompiledFunction> compiled;
+	// The first compile error, or empty.
+	String error;
 
 	int _find_function_index(const String &p_name) const;
 	int _find_variable_index(const StringName &p_name) const;
 	int _find_signal_index(const StringName &p_name) const;
+	// shortcut: every change recompiles every function. Compile only the changed one when a
+	// script grows large enough for editing to lag.
+	void _compile();
 	Error _commit(Error p_error);
 
 	template <typename Edit>
@@ -45,6 +53,9 @@ public:
 	const GraphFunction *get_function(const String &p_name) const;
 	const GraphVariable *get_variable(const StringName &p_name) const;
 	int get_valid_step_id(const String &p_function) const;
+	// Null when the script has no function of that name.
+	const GraphCompiledFunction *get_compiled(const StringName &p_function) const;
+	String get_error() const { return error; }
 
 	Error add_function(const String &p_name);
 	Error remove_function(const String &p_name);

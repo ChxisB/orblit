@@ -12,7 +12,7 @@
 
 struct GraphStep {
 	int id = 0;
-	// Kept as read from a file when this build does not know it. See has_missing_steps.
+	// Kept as read from a file when this build does not know it. The compile reports it.
 	StringName kind;
 	Vector2 position;
 	Dictionary parameters;
@@ -58,9 +58,10 @@ public:
 	int get_step_count() const { return steps.size(); }
 	int get_wire_count() const { return wires.size(); }
 	const GraphStep *get_step(int p_id) const;
+	const GraphStep &get_step_at(int p_index) const { return steps[p_index]; }
+	const GraphWire &get_wire_at(int p_index) const { return wires[p_index]; }
 	int get_valid_step_id() const;
 	bool has_wire(const GraphWire &p_wire) const;
-	bool has_missing_steps() const;
 
 	Error add_step(int p_id, const StringName &p_kind);
 	Error remove_step(int p_id);

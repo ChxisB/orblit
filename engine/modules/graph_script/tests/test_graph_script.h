@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../graph_script.h"
+#include "../graph_script_language.h"
 
 #include "core/io/file_access.h"
 #include "core/io/resource_loader.h"
@@ -177,9 +178,13 @@ TEST_CASE("[Stage][GraphScript] The data answers the script queries") {
 	CHECK(value == Variant(3.0));
 	CHECK_FALSE(script->get_property_default_value("other", value));
 
+	// The Set step has no variable yet, so the script does not compile.
+	CHECK_FALSE(script->is_script_valid());
+	CHECK(script->set_step_parameter("main", 2, "name", "\"speed\"") == OK);
+	CHECK(script->set_step_parameter("main", 3, "value", "1.0") == OK);
 	CHECK(script->is_script_valid());
-	CHECK_FALSE(script->can_instantiate());
-	CHECK(script->get_language() == nullptr);
+	CHECK(script->can_instantiate());
+	CHECK(script->get_language() == GraphScriptLanguage::get_singleton());
 }
 
 TEST_CASE("[Stage][GraphScript] A script saves and loads as text") {
@@ -220,7 +225,7 @@ TEST_CASE("[Stage][GraphScript] A step of an unknown kind survives a round trip"
 	Ref<GraphScript> loaded = ResourceLoader::load(path, "", ResourceLoader::CACHE_MODE_IGNORE);
 	REQUIRE(loaded.is_valid());
 	CHECK_FALSE(loaded->is_script_valid());
-	CHECK(loaded->get_function("main")->has_missing_steps());
+	CHECK(loaded->get_error().contains("future_kind"));
 	CHECK(loaded->get_function("main")->get_step(4)->kind == "future_kind");
 	CHECK(loaded->get_function("main")->get_step(4)->parameters["note"] == Variant("kept"));
 

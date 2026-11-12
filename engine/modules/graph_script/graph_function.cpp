@@ -57,15 +57,6 @@ bool GraphFunction::has_wire(const GraphWire &p_wire) const {
 	return _find_wire_index(p_wire) >= 0;
 }
 
-bool GraphFunction::has_missing_steps() const {
-	for (const GraphStep &step : steps) {
-		if (!GraphStepKinds::find(step.kind)) {
-			return true;
-		}
-	}
-	return false;
-}
-
 Error GraphFunction::add_step(int p_id, const StringName &p_kind) {
 	if (p_id < 1 || !GraphStepKinds::find(p_kind)) {
 		return ERR_INVALID_PARAMETER;

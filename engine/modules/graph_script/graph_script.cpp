@@ -3,6 +3,10 @@
 
 #include "graph_script.h"
 
+#include "graph_compiler.h"
+#include "graph_script_instance.h"
+#include "graph_script_language.h"
+
 #include "core/object/class_registry.h"
 #include "core/variant/variant_parser.h"
 
@@ -85,11 +89,36 @@ int GraphScript::_find_signal_index(const StringName &p_name) const {
 	return signals.find(p_name);
 }
 
+void GraphScript::_compile() {
+	Vector<StringName> names;
+	for (const GraphVariable &variable : variables) {
+		names.push_back(variable.name);
+	}
+	compiled.clear();
+	error = String();
+	for (const GraphFunction &function : functions) {
+		compiled.push_back(GraphCompiler::compile(function, names));
+		if (error.is_empty()) {
+			error = compiled[compiled.size() - 1].error;
+		}
+	}
+}
+
 Error GraphScript::_commit(Error p_error) {
 	if (p_error == OK) {
+		_compile();
 		emit_changed();
 	}
 	return p_error;
+}
+
+const GraphCompiledFunction *GraphScript::get_compiled(const StringName &p_function) const {
+	for (const GraphCompiledFunction &function : compiled) {
+		if (function.name == p_function) {
+			return &function;
+		}
+	}
+	return nullptr;
 }
 
 const GraphFunction *GraphScript::get_function(const String &p_name) const {
@@ -239,7 +268,7 @@ void GraphScript::set_functions(const Array &p_functions) {
 		loaded.push_back(function);
 	}
 	functions = loaded;
-	emit_changed();
+	_commit(OK);
 }
 
 Array GraphScript::get_functions() const {
@@ -261,7 +290,7 @@ void GraphScript::set_variables(const Array &p_variables) {
 		loaded.push_back(variable);
 	}
 	variables = loaded;
-	emit_changed();
+	_commit(OK);
 }
 
 Array GraphScript::get_variables() const {
@@ -279,7 +308,7 @@ void GraphScript::set_signals(const Array &p_signals) {
 		loaded.push_back(StringName(String(value)));
 	}
 	signals = loaded;
-	emit_changed();
+	_commit(OK);
 }
 
 Array GraphScript::get_signals() const {
@@ -291,12 +320,13 @@ Array GraphScript::get_signals() const {
 }
 
 void GraphScript::reload_from_file() {
-	// A graph script has no language yet to reload through, so reload it as a plain resource.
+	// The language reloads a script by calling this, so it must not call back into the language.
 	Resource::reload_from_file();
 }
 
 bool GraphScript::can_instantiate() const {
-	return false;
+	// A function that does not compile reports at its call, so the others still run.
+	return true;
 }
 
 Ref<Script> GraphScript::get_base_script() const {
@@ -316,7 +346,7 @@ StringName GraphScript::get_instance_base_type() const {
 }
 
 ScriptInstance *GraphScript::instance_create(Object *p_this) {
-	return nullptr;
+	return memnew(GraphScriptInstance(Ref<GraphScript>(this), p_this));
 }
 
 bool GraphScript::has_source_code() const {
@@ -330,7 +360,8 @@ String GraphScript::get_source_code() const {
 void GraphScript::set_source_code(const String &p_code) {}
 
 Error GraphScript::reload(bool p_keep_state) {
-	return OK;
+	_compile();
+	return error.is_empty() ? OK : ERR_COMPILATION_FAILED;
 }
 
 #ifdef TOOLS_ENABLED
@@ -360,12 +391,7 @@ bool GraphScript::is_tool() const {
 }
 
 bool GraphScript::is_script_valid() const {
-	for (const GraphFunction &function : functions) {
-		if (function.has_missing_steps()) {
-			return false;
-		}
-	}
-	return true;
+	return error.is_empty();
 }
 
 bool GraphScript::is_abstract() const {
@@ -373,7 +399,7 @@ bool GraphScript::is_abstract() const {
 }
 
 ScriptLanguage *GraphScript::get_language() const {
-	return nullptr;
+	return GraphScriptLanguage::get_singleton();
 }
 
 bool GraphScript::has_script_signal(const StringName &p_signal) const {
@@ -422,6 +448,7 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("add_function", "name"), &GraphScript::add_function);
 	ClassRegistry::bind_method(D_METHOD("remove_function", "name"), &GraphScript::remove_function);
 	ClassRegistry::bind_method(D_METHOD("get_valid_step_id", "function"), &GraphScript::get_valid_step_id);
+	ClassRegistry::bind_method(D_METHOD("get_error"), &GraphScript::get_error);
 	ClassRegistry::bind_method(D_METHOD("add_step", "function", "id", "kind"), &GraphScript::add_step);
 	ClassRegistry::bind_method(D_METHOD("remove_step", "function", "id"), &GraphScript::remove_step);
 	ClassRegistry::bind_method(D_METHOD("move_step", "function", "id", "x", "y"), &GraphScript::move_step);
