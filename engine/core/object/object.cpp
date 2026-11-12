@@ -2463,7 +2463,10 @@ ObjectRegistry::ObjectSlot *ObjectRegistry::object_slots = nullptr;
 uint64_t ObjectRegistry::validator_counter = 0;
 
 int ObjectRegistry::get_object_count() {
-	return slot_count;
+	spin_lock.lock();
+	const int count = slot_count;
+	spin_lock.unlock();
+	return count;
 }
 
 ObjectID ObjectRegistry::add_instance(Object *p_object) {
