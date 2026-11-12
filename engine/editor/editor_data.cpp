@@ -10,6 +10,7 @@
 #include "core/object/callable_mp.h"
 #include "core/object/class_registry.h"
 #include "core/os/time.h"
+#include "editor/docks/stage_dock.h"
 #include "editor/editor_node.h"
 #include "editor/editor_undo_redo_manager.h"
 #include "editor/inspector/editor_context_menu_plugin.h"
@@ -770,6 +771,8 @@ bool EditorData::reload_scene_from_memory(int p_idx, bool p_mark_unsaved) {
 
 	new_scene->set_scene_file_path(edited_scene[p_idx].root->get_scene_file_path());
 	Entity *old_root = edited_scene[p_idx].root;
+	// No editor may hold the old root when it is freed.
+	EditorNode::get_singleton()->hide_unused_editors(StageDock::get_singleton());
 	EditorNode::get_singleton()->set_edited_scene(new_scene);
 	memdelete(old_root);
 	edited_scene.write[p_idx].selection = new_selection;
