@@ -53,6 +53,9 @@ public:
 
 	void test_func_7(const Variant **p_args, int p_argcount, Callable::CallError &r_error) {}
 	void test_func_8(const Variant **p_args, int p_argcount, Callable::CallError &r_error) {}
+
+	// A body no other method has, so the linker cannot fold it into one.
+	int test_func_9(int p_foo, int p_bar) const { return p_foo * p_bar + 1; }
 };
 
 TEST_CASE("[Callable] Argument count") {
@@ -114,7 +117,7 @@ TEST_CASE("[Callable] Method pointers to the same method match") {
 
 	const Callable first = callable_mp(my_test, &TestClass::test_func_1);
 	const Callable second = callable_mp(my_test, &TestClass::test_func_1);
-	const Callable other = callable_mp(my_test, &TestClass::test_func_2);
+	const Callable other = callable_mp(my_test, &TestClass::test_func_9);
 	CHECK(first == second);
 	CHECK(first.hash() == second.hash());
 	CHECK(first != other);
