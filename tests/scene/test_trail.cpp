@@ -5,6 +5,8 @@
 
 TEST_FORCE_LINK(test_trail)
 
+#ifndef SPATIAL_DISABLED
+
 #include "core/object/class_registry.h"
 #include "scene/resources/material.h"
 #include "scene/spatial/trail_spatial.h"
@@ -50,3 +52,5 @@ TEST_CASE("[Trail3D] Choosing a default material mode does not copy a material")
 }
 
 } // namespace TestTrail
+
+#endif // SPATIAL_DISABLED
