@@ -5371,6 +5371,12 @@ void EditorInspector::update_properties_recursive() {
 	}
 }
 
+void EditorInspector::cleanup_object() {
+	if (edited_object_id.is_valid() && !ObjectRegistry::get_instance(edited_object_id)) {
+		_clear();
+	}
+}
+
 void EditorInspector::_clear(bool p_hide_plugins) {
 	begin_vbox->hide();
 	while (begin_vbox->get_child_count()) {
