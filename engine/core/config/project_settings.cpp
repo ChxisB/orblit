@@ -1368,8 +1368,20 @@ bool ProjectSettings::check_changed_settings_in_group(const String &p_setting_pr
 
 void ProjectSettings::refresh_global_class_list() {
 	// This is called after mounting a new PCK file to pick up class changes.
+	// A pack lists only its own classes, so the classes known before it stay in the list.
+	const Array known_classes = global_class_list;
 	is_global_class_list_loaded = false; // Make sure we read from the freshly mounted PCK.
 	Array script_classes = get_global_class_list();
+	HashSet<StringName> listed;
+	for (const Dictionary c : script_classes) {
+		listed.insert(c.get("class", StringName()));
+	}
+	for (const Dictionary c : known_classes) {
+		if (!listed.has(c.get("class", StringName()))) {
+			script_classes.push_back(c);
+		}
+	}
+	global_class_list = script_classes;
 	for (int i = 0; i < script_classes.size(); i++) {
 		Dictionary c = script_classes[i];
 		if (!c.has("class") || !c.has("language") || !c.has("path") || !c.has("base") || !c.has("is_abstract") || !c.has("is_tool")) {

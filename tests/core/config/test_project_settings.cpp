@@ -6,8 +6,12 @@
 TEST_FORCE_LINK(test_project_settings)
 
 #include "core/config/project_settings.h"
+#include "core/io/config_file.h"
 #include "core/io/dir_access.h"
+#include "core/io/file_access_pack.h"
+#include "core/io/pck_packer.h"
 #include "core/object/message_queue.h"
+#include "core/object/script_language.h"
 #include "core/variant/variant.h"
 #include "tests/signal_watcher.h"
 #include "tests/test_utils.h"
@@ -212,6 +216,48 @@ TEST_CASE("[ProjectSettings] The globals key registers a global and the autoload
 	settings->set_setting("globals/TestGlobal", Variant());
 	settings->set_setting("autoload/TestOldGlobal", Variant());
 	CHECK_FALSE(settings->has_autoload("TestGlobal"));
+}
+
+static void _mount_class_pack(const String &p_name, const String &p_class) {
+	Dictionary entry;
+	entry["base"] = StringName("RefCounted");
+	entry["class"] = StringName(p_class);
+	entry["icon"] = "";
+	entry["is_abstract"] = false;
+	entry["is_tool"] = false;
+	entry["language"] = StringName("TestLanguage");
+	entry["path"] = "res://" + p_class + ".txt";
+	Array list = { entry };
+
+	Ref<ConfigFile> cf;
+	cf.instantiate();
+	cf->set_value("", "list", list);
+	const String cache_path = TestUtils::get_temp_path(p_name + ".cfg");
+	REQUIRE(cf->save(cache_path) == OK);
+
+	PCKPacker packer;
+	const String pack_path = TestUtils::get_temp_path(p_name + ".opack");
+	REQUIRE(packer.pck_start(pack_path) == OK);
+	REQUIRE(packer.add_file(ProjectSettings::get_singleton()->get_global_class_list_path(), cache_path) == OK);
+	REQUIRE(packer.flush() == OK);
+	REQUIRE(PackedData::get_singleton()->add_pack(pack_path, true, 0) == OK);
+	ProjectSettings::get_singleton()->refresh_global_class_list();
+}
+
+TEST_CASE("[ProjectSettings] A mounted pack adds to the global class list") {
+	ProjectSettings *settings = ProjectSettings::get_singleton();
+	_mount_class_pack("class_pack_a", "TestPackClassA");
+	_mount_class_pack("class_pack_b", "TestPackClassB");
+
+	HashSet<StringName> names;
+	for (const Dictionary c : settings->get_global_class_list()) {
+		names.insert(c["class"]);
+	}
+	CHECK(names.has("TestPackClassA"));
+	CHECK(names.has("TestPackClassB"));
+
+	ScriptSystem::remove_global_class("TestPackClassA");
+	ScriptSystem::remove_global_class("TestPackClassB");
 }
 
 } // namespace TestProjectSettings
