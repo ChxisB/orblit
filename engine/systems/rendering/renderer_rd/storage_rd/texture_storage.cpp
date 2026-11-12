@@ -4122,6 +4122,13 @@ void TextureStorage::update_decal_atlas() {
 }
 
 void TextureStorage::texture_add_to_decal_atlas(RID p_texture, bool p_panorama_to_dp) {
+#ifdef TOOLS_ENABLED
+	// Decals and light projectors are 3D uses that no material reports.
+	Texture *tex = get_texture(p_texture);
+	if (tex && tex->detect_3d_callback) {
+		tex->detect_3d_callback(tex->detect_3d_callback_ud);
+	}
+#endif
 	if (!decal_atlas.textures.has(p_texture)) {
 		DecalAtlas::Texture t;
 		t.users = 1;
