@@ -5,7 +5,6 @@
 
 TEST_FORCE_LINK(test_range)
 
-#include "scene/ui/progress_bar.h"
 #include "scene/ui/slider.h"
 
 namespace TestRange {
