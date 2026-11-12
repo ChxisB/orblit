@@ -1291,7 +1291,11 @@ Error EditorExportPlatform::export_project_files(const Ref<EditorExportPreset> &
 				autoload_path = autoload_path.substr(1);
 			}
 
-			_export_find_dependencies(autoload_path, paths);
+			// The setting can hold a UID. Plugins and the dependency lookup need the file path.
+			autoload_path = ResourceUID::ensure_path(autoload_path);
+			if (!autoload_path.is_empty()) {
+				_export_find_dependencies(autoload_path, paths);
+			}
 		}
 	}
 
