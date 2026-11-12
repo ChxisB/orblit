@@ -231,9 +231,10 @@ void ConnectDialog::_remove_bind(const String &p_bind) {
 StringName ConnectDialog::generate_method_callback_name(Object *p_source, const String &p_signal_name, Object *p_target) {
 	String node_name = p_source->call("get_name");
 
+	// A digit may open the node name because the template usually puts text before it.
 	for (int i = 0; i < node_name.length(); i++) { // TODO: Regex filter may be cleaner.
 		char32_t c = node_name[i];
-		if ((i == 0 && !is_unicode_identifier_start(c)) || (i > 0 && !is_unicode_identifier_continue(c))) {
+		if (!is_unicode_identifier_continue(c)) {
 			if (c == ' ') {
 				// Replace spaces with underlines.
 				c = '_';
@@ -265,7 +266,12 @@ StringName ConnectDialog::generate_method_callback_name(Object *p_source, const 
 		dst_method = String(GLOBAL_GET("editor/naming/default_signal_callback_name")).format(subst);
 	}
 
-	return dst_method;
+	// A template that starts with the node name can still begin with a digit.
+	int first = 0;
+	while (first < dst_method.length() && !is_unicode_identifier_start(dst_method[first])) {
+		first++;
+	}
+	return dst_method.substr(first);
 }
 
 void ConnectDialog::_create_method_tree_items(const List<MethodInfo> &p_methods, TreeItem *p_parent_item) {

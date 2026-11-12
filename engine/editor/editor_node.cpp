@@ -5067,13 +5067,22 @@ Error EditorNode::open_scene(const String &p_scene, bool p_ignore_broken_deps, b
 
 	bool ignore_state = !editor_data.get_edited_scene_root();
 
+	const int scene_count = editor_data.get_edited_scene_count();
 	RETURN_IF_ERROR(load_scene(p_scene, p_ignore_broken_deps, p_set_inherited, p_force_open_imported));
+	if (editor_data.get_edited_scene_count() == scene_count) {
+		// An automatically imported scene waits for the dialog, so no tab changes.
+		return OK;
+	}
 
 	int current_scene_idx = editor_data.get_edited_scene_count() - 1;
 	Entity *new_scene = editor_data.get_edited_scene_root(current_scene_idx);
 	ERR_FAIL_NULL_V(new_scene, ERR_BUG);
 
 	_set_current_scene_nocheck(current_scene_idx, ignore_state);
+	if (editor_data.get_edited_scene_count() == 1) {
+		// Opening the first scene discards the empty scene history, which can free the inspected object.
+		InspectorDock::get_inspector_singleton()->cleanup_object();
+	}
 
 	// When editor plugins load in, they might use node transforms during their own setup, so make sure they're up to date.
 	get_stage()->flush_transform_notifications();

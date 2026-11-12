@@ -4043,8 +4043,9 @@ void Entity::register_members() {
 
 	ADD_GROUP("Run", "run_");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_mode", PROPERTY_HINT_ENUM, "Inherit,Pausable,When Paused,Always,Disabled"), "set_run_mode", "get_run_mode");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_priority"), "set_run_priority", "get_run_priority");
-	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_physics_priority"), "set_run_physics_priority", "get_run_physics_priority");
+	// The priority is a 32-bit integer, so the inspector must not accept more.
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_priority", PROPERTY_HINT_RANGE, "-2147483648,2147483647,1"), "set_run_priority", "get_run_priority");
+	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_physics_priority", PROPERTY_HINT_RANGE, "-2147483648,2147483647,1"), "set_run_physics_priority", "get_run_physics_priority");
 
 	ADD_SUBGROUP("Thread Group", "run_thread");
 	ADD_PROPERTY(PropertyInfo(Variant::INT, "run_thread_group", PROPERTY_HINT_ENUM, "Inherit,Main Thread,Sub Thread"), "set_run_thread_group", "get_run_thread_group");
