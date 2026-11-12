@@ -30,6 +30,11 @@ void BaseButton::_unpress_group() {
 	}
 }
 
+bool BaseButton::_is_touch_inside(const Point2 &p_local_position) const {
+	// The position is local to the button, so it goes to screen space before the visible rect check.
+	return has_point(p_local_position) && get_viewport_rect().has_point(get_global_transform_with_canvas().xform(p_local_position));
+}
+
 void BaseButton::gui_input(const Ref<InputEvent> &p_event) {
 	ERR_FAIL_COND(p_event.is_null());
 
@@ -40,10 +45,12 @@ void BaseButton::gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventScreenTouch> touch = p_event;
 	if (touch.is_valid()) {
 		if (status.touch_index == -1) {
-			if (touch->is_pressed()) {
+			// The platform cancels the first touch and then reports a hold as a second press. In press mode that would fire the action twice.
+			const bool repeats_press = touch->is_long_press() && action_mode == ACTION_MODE_BUTTON_PRESS;
+			if (touch->is_pressed() && !repeats_press) {
 				status.touch_index = touch->get_index();
 				status.press_attempt = true;
-				status.pressing_inside = has_point(touch->get_position()) && get_viewport_transform().xform(get_viewport_rect()).has_point(touch->get_position());
+				status.pressing_inside = _is_touch_inside(touch->get_position());
 				on_action_event(p_event);
 			}
 		} else if (touch->get_index() == status.touch_index) {
@@ -57,7 +64,7 @@ void BaseButton::gui_input(const Ref<InputEvent> &p_event) {
 	Ref<InputEventScreenDrag> drag = p_event;
 	if (drag.is_valid() && drag->get_index() == status.touch_index && status.press_attempt) {
 		bool last_press_inside = status.pressing_inside;
-		status.pressing_inside = has_point(drag->get_position()) && get_viewport_transform().xform(get_viewport_rect()).has_point(drag->get_position());
+		status.pressing_inside = _is_touch_inside(drag->get_position());
 
 		if (last_press_inside != status.pressing_inside) {
 			queue_redraw();

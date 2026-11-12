@@ -149,6 +149,7 @@ private:
 	void _ensure_material();
 	void _init_clear_mesh();
 	void _process_trail();
+	void _connect_frame_pre_draw(bool p_one_shot);
 	void _encode_vertex(const Vector3 &p_vertex, int p_index, uint8_t *buffer);
 	uint32_t _encode_normal(const Vector3 &p_normal);
 	void _write_normal(const uint32_t p_normal, int p_index, uint8_t *buffer);

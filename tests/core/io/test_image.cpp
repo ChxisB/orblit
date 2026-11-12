@@ -517,4 +517,43 @@ TEST_CASE("[Image] Convert image") {
 	CHECK_MESSAGE(image2->get_data() == image_data, "Image conversion to invalid type (Image::FORMAT_MAX + 1) should not alter image.");
 }
 
+TEST_CASE("[Image] Detect alpha in every uncompressed format with an alpha channel") {
+	const Image::Format formats[] = {
+		Image::FORMAT_LA8,
+		Image::FORMAT_RGBA8,
+		Image::FORMAT_RGBA4444,
+		Image::FORMAT_RGBAH,
+		Image::FORMAT_RGBAF,
+		Image::FORMAT_RGBA16,
+		Image::FORMAT_RGBA16I,
+	};
+
+	for (const Image::Format format : formats) {
+		const String name = Image::format_names[format];
+		Ref<Image> image = Image::create_empty(2, 2, false, format);
+
+		image->fill(Color(1, 1, 1, 1));
+		CHECK_MESSAGE(image->detect_alpha() == Image::ALPHA_NONE, name);
+
+		image->set_pixel(1, 1, Color(1, 1, 1, 0));
+		CHECK_MESSAGE(image->detect_alpha() == Image::ALPHA_BIT, name);
+
+		// An integer format has no fractions, so it can't hold a partial alpha.
+		if (format != Image::FORMAT_RGBA16I) {
+			image->set_pixel(0, 1, Color(1, 1, 1, 0.5));
+			CHECK_MESSAGE(image->detect_alpha() == Image::ALPHA_BLEND, name);
+		}
+	}
+}
+
+TEST_CASE("[Image] Detect alpha in formats without an alpha channel") {
+	const Image::Format formats[] = { Image::FORMAT_L8, Image::FORMAT_RGB8, Image::FORMAT_RGBF, Image::FORMAT_RGB16 };
+
+	for (const Image::Format format : formats) {
+		Ref<Image> image = Image::create_empty(2, 2, false, format);
+		image->fill(Color(1, 1, 1, 0));
+		CHECK_MESSAGE(image->detect_alpha() == Image::ALPHA_NONE, Image::format_names[format]);
+	}
+}
+
 } // namespace TestImage

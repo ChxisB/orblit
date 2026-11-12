@@ -134,6 +134,8 @@ public:
 	void add_signal(MethodInfo p_signal);
 
 	bool bind_method(MethodBind *p_method, bool p_take_ownership = true);
+	// Drops the values that can hold objects. An unloaded extension cannot free them later.
+	void release_default_arguments();
 
 	void set_method_flags(const StringName &p_method, int p_flags);
 

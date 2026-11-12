@@ -93,7 +93,13 @@ String Resource::get_path() const {
 }
 
 void Resource::set_path_cache(const String &p_path) {
-	path_cache = p_path;
+	if (path_cache != p_path) {
+		MutexLock lock(ResourceCache::lock);
+		// A cache entry left under the old path would point at this resource after it is freed.
+		const HashMap<String, Resource *>::Iterator E = ResourceCache::resources.find(path_cache);
+		ERR_FAIL_COND_MSG(E && E->value == this, vformat("This resource is in the cache under '%s'. Use set_path() to change its path.", path_cache));
+		path_cache = p_path;
+	}
 	ORBLIT_VIRTUAL_CALL(_set_path_cache, p_path);
 }
 

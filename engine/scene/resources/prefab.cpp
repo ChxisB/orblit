@@ -596,7 +596,9 @@ Entity *SceneState::_instantiate(GenEditState p_edit_state, LocalVector<Deferred
 						stray_instances.push_back(node); //can't be added, go to stray list
 					}
 				} else {
-					if (Engine::get_singleton()->is_editor_hint()) {
+					// A root that parented itself in its constructor is already in its parent's child table
+					// under another name. Only a full rename updates that table.
+					if (Engine::get_singleton()->is_editor_hint() || node->get_parent()) {
 						//validate name if using editor, to avoid broken
 						node->set_name(snames[n.name]);
 					} else {

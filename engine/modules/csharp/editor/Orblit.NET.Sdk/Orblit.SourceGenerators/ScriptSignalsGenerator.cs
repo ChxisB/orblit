@@ -292,8 +292,10 @@ namespace Orblit.SourceGenerators
                     .Append(signalName)
                     .Append(";\n");
 
-                source.Append(
-                    $"    /// <inheritdoc cref=\"{signalDelegate.DelegateSymbol.FullQualifiedNameIncludeGlobal()}\"/>\n");
+                // A doc reference spells generic arguments with braces. Angle brackets break the XML.
+                string docReference = signalDelegate.DelegateSymbol.FullQualifiedNameIncludeGlobal()
+                    .Replace('<', '{').Replace('>', '}');
+                source.Append($"    /// <inheritdoc cref=\"{docReference}\"/>\n");
 
                 source.Append($"    {signalDelegate.DelegateSymbol.GetAccessibilityKeyword()} event ")
                     .Append(signalDelegate.DelegateSymbol.FullQualifiedNameIncludeGlobal())

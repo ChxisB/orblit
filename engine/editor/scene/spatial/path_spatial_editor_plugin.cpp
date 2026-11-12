@@ -339,7 +339,8 @@ void Path3DGizmo::redraw() {
 		debug_material->set_flag(StandardMaterial3D::FLAG_DISABLE_FOG, true);
 	}
 
-	real_t interval = 0.1;
+	// The baked points are spaced by the bake interval, so a finer step adds no detail. The floor keeps a script value of zero from dividing the length.
+	real_t interval = MAX(c->get_bake_interval(), 0.01);
 	const real_t length = c->get_baked_length();
 
 	// 1. Draw curve and bones if it is visible (alpha > 0.0).
@@ -770,6 +771,8 @@ void Path3DEditorPlugin::edit(Object *p_object) {
 	}
 
 	path = Object::cast_to<Path3D>(p_object);
+	// The gizmo points at the previous path, which can be freed with its scene. A click would use it after that.
+	_edit.gizmo.unref();
 
 	if (path) {
 		path->connect("curve_changed", callable_mp(this, &Path3DEditorPlugin::_update_toolbar));

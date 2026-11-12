@@ -652,6 +652,17 @@ CGFloat OS_MacOS::_stretch_to_ct(int p_stretch) const {
 	}
 }
 
+// Some legacy fonts keep their data only in the resource fork.
+static String _font_file_path(CFURLRef p_url) {
+	NSString *font_path = [NSString stringWithString:[(__bridge NSURL *)p_url path]];
+	String path = String::utf8([font_path UTF8String]);
+	const String fork = path + "/..namedfork/rsrc";
+	if (FileAccess::get_size(path) == 0 && FileAccess::get_size(fork) > 0) {
+		return fork;
+	}
+	return path;
+}
+
 Vector<String> OS_MacOS::get_system_font_path_for_text(const String &p_font_name, const String &p_text, const String &p_locale, const String &p_script, int p_weight, int p_stretch, bool p_italic) const {
 	Vector<String> ret;
 	String font_name = _get_default_fontname(p_font_name);
@@ -698,8 +709,7 @@ Vector<String> OS_MacOS::get_system_font_path_for_text(const String &p_font_name
 				if (fallback_font) {
 					CFURLRef url = (CFURLRef)CTFontDescriptorCopyAttribute(fallback_font, kCTFontURLAttribute);
 					if (url) {
-						NSString *font_path = [NSString stringWithString:[(__bridge NSURL *)url path]];
-						ret.push_back(String::utf8([font_path UTF8String]));
+						ret.push_back(_font_file_path(url));
 						CFRelease(url);
 					}
 					CFRelease(fallback_font);
@@ -761,8 +771,7 @@ String OS_MacOS::get_system_font_path(const String &p_font_name, int p_weight, i
 	if (font) {
 		CFURLRef url = (CFURLRef)CTFontDescriptorCopyAttribute(font, kCTFontURLAttribute);
 		if (url) {
-			NSString *font_path = [NSString stringWithString:[(__bridge NSURL *)url path]];
-			ret = String::utf8([font_path UTF8String]);
+			ret = _font_file_path(url);
 			CFRelease(url);
 		}
 		CFRelease(font);

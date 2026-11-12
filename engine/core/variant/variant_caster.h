@@ -22,12 +22,22 @@ enum class KeyLocation;
 // Variant cannot define an implicit cast operator for every Object subclass, so the
 // casting is done here, to allow binding methods with parameters more specific than Object *
 
+// The Variant of a freed object keeps a stale pointer. Debug builds look the object up by its id,
+// so a freed object reads as null and is never dereferenced.
+_FORCE_INLINE_ Object *variant_object_pointer(const Variant &p_variant) {
+#ifdef DEBUG_ENABLED
+	return p_variant.get_validated_object();
+#else
+	return p_variant;
+#endif
+}
+
 template <typename T>
 struct VariantCaster {
 	static _FORCE_INLINE_ T cast(const Variant &p_variant) {
 		using TStripped = std::remove_pointer_t<T>;
 		if constexpr (std::is_base_of_v<Object, TStripped>) {
-			return Object::cast_to<TStripped>(p_variant);
+			return Object::cast_to<TStripped>(variant_object_pointer(p_variant));
 		} else {
 			return p_variant.to<T>();
 		}
@@ -39,7 +49,7 @@ struct VariantCaster<T &> {
 	static _FORCE_INLINE_ T cast(const Variant &p_variant) {
 		using TStripped = std::remove_pointer_t<T>;
 		if constexpr (std::is_base_of_v<Object, TStripped>) {
-			return Object::cast_to<TStripped>(p_variant);
+			return Object::cast_to<TStripped>(variant_object_pointer(p_variant));
 		} else {
 			return p_variant.to<T>();
 		}
@@ -51,7 +61,7 @@ struct VariantCaster<const T &> {
 	static _FORCE_INLINE_ T cast(const Variant &p_variant) {
 		using TStripped = std::remove_pointer_t<T>;
 		if constexpr (std::is_base_of_v<Object, TStripped>) {
-			return Object::cast_to<TStripped>(p_variant);
+			return Object::cast_to<TStripped>(variant_object_pointer(p_variant));
 		} else {
 			return p_variant.to<T>();
 		}
@@ -109,8 +119,9 @@ struct VariantObjectClassChecker {
 	static _FORCE_INLINE_ bool check(const Variant &p_variant) {
 		using TStripped = std::remove_pointer_t<T>;
 		if constexpr (std::is_base_of_v<Object, TStripped>) {
-			Object *obj = p_variant;
-			return Object::cast_to<TStripped>(p_variant) || !obj;
+			bool previously_freed = false;
+			Object *obj = p_variant.get_validated_object_with_check(previously_freed);
+			return !previously_freed && (Object::cast_to<TStripped>(obj) || !obj);
 		} else {
 			return true;
 		}

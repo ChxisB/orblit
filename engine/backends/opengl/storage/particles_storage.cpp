@@ -16,6 +16,14 @@ using namespace GLES3;
 
 ParticlesStorage *ParticlesStorage::singleton = nullptr;
 
+// A node scaled to zero has no inverse. Everything it draws collapses to a point, so identity is as good as any answer.
+static Transform3D emission_inverse(const Transform3D &p_emission_transform) {
+	if (p_emission_transform.basis.determinant() == 0) {
+		return Transform3D();
+	}
+	return p_emission_transform.affine_inverse();
+}
+
 ParticlesStorage *ParticlesStorage::get_singleton() {
 	return singleton;
 }
@@ -391,7 +399,7 @@ AABB ParticlesStorage::particles_get_current_aabb(RID p_particles) {
 	Vector<uint8_t> buffer = Utilities::buffer_get_data(GL_ARRAY_BUFFER, read_buffer, total_amount * sizeof(ParticleInstanceData3D));
 	ERR_FAIL_COND_V(buffer.size() != (int)(total_amount * sizeof(ParticleInstanceData3D)), AABB());
 
-	Transform3D inv = particles->emission_transform.affine_inverse();
+	Transform3D inv = emission_inverse(particles->emission_transform);
 
 	AABB aabb;
 	if (buffer.size()) {
@@ -552,7 +560,7 @@ void ParticlesStorage::_particles_process(Particles *p_particles, double p_delta
 
 		Transform3D to_particles;
 		if (p_particles->use_local_coords) {
-			to_particles = p_particles->emission_transform.affine_inverse();
+			to_particles = emission_inverse(p_particles->emission_transform);
 		}
 
 		if (p_particles->has_sdf_collision && p_particles->sdf_collision_texture != 0) {
@@ -941,7 +949,7 @@ void ParticlesStorage::_particles_update_instance_buffer(Particles *particles, c
 		// but they're drawn locally.
 		// So, we need to pass the inverse of the emission transform to bring the
 		// particles to local coordinates before drawing.
-		Transform3D inv = particles->emission_transform.affine_inverse();
+		Transform3D inv = emission_inverse(particles->emission_transform);
 		particles_shader.copy_shader.version_set_uniform(ParticlesCopyShaderGLES3::INV_EMISSION_TRANSFORM, inv, particles_shader.copy_shader_version, variant, specialization);
 	}
 

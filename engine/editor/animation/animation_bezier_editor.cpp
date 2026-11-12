@@ -357,7 +357,9 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 				}
 			}
 
+			// The map sorts its keys, so the order the paths first appear in is kept next to it.
 			RBMap<String, Vector<int>> track_indices;
+			Vector<String> base_path_order;
 			int track_count = animation->get_track_count();
 			for (int i = 0; i < track_count; ++i) {
 				if (!_is_track_displayed(i)) {
@@ -369,9 +371,10 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 				if (end != -1) {
 					base_path = base_path.substr(0, end + 1);
 				}
-				Vector<int> indices = track_indices.has(base_path) ? track_indices[base_path] : Vector<int>();
-				indices.push_back(i);
-				track_indices[base_path] = indices;
+				if (!track_indices.has(base_path)) {
+					base_path_order.push_back(base_path);
+				}
+				track_indices[base_path].push_back(i);
 			}
 
 			const Color dc = get_theme_color(SNAME("font_disabled_color"), EditorStringName(Editor));
@@ -383,10 +386,8 @@ void AnimationBezierTrackEdit::_notification(int p_what) {
 			Ref<Texture2D> unlock = get_editor_theme_icon(SNAME("Unlock"));
 			Ref<Texture2D> solo = get_editor_theme_icon(SNAME("AudioBusSolo"));
 
-			for (const KeyValue<String, Vector<int>> &E : track_indices) {
-				String base_path = E.key;
-
-				Vector<int> tracks = E.value;
+			for (const String &base_path : base_path_order) {
+				const Vector<int> &tracks = track_indices[base_path];
 
 				// Names and icon.
 				{

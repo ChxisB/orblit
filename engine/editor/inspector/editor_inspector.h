@@ -912,6 +912,7 @@ public:
 	void update_property(const String &p_prop);
 	void update_properties_recursive();
 	void edit(Object *p_object);
+	void cleanup_object();
 	Object *get_edited_object();
 	Object *get_next_edited_object();
 

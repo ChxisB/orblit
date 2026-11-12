@@ -1168,6 +1168,8 @@ void ClassRegistry::add_property(const StringName &p_class, const PropertyInfo &
 }
 
 void ClassRegistry::set_property_default_value(const StringName &p_class, const StringName &p_name, const Variant &p_default) {
+	Locker::Lock lock(Locker::STATE_WRITE);
+
 	if (!default_values.has(p_class)) {
 		default_values[p_class] = HashMap<StringName, Variant>();
 	}
@@ -1635,45 +1637,60 @@ void ClassRegistry::get_extensions_for_type(const StringName &p_class, List<Stri
 HashMap<StringName, HashMap<StringName, Variant>> ClassRegistry::default_values;
 HashSet<StringName> ClassRegistry::default_values_cached;
 
-Variant ClassRegistry::class_get_default_property_value(const StringName &p_class, const StringName &p_property, bool *r_valid) {
-	Locker::Lock lock(Locker::STATE_WRITE);
+// Building the object and reading its properties runs arbitrary code. That code
+// can wait on a thread that wants the registry lock, so the caller holds no lock.
+static HashMap<StringName, Variant> _read_default_values(const StringName &p_class) {
+	HashMap<StringName, Variant> values;
+	Object *c = nullptr;
+	bool cleanup_c = false;
 
-	if (!default_values_cached.has(p_class)) {
-		if (!default_values.has(p_class)) {
-			default_values[p_class] = HashMap<StringName, Variant>();
-		}
-
-		Object *c = nullptr;
-		bool cleanup_c = false;
-
-		if (Engine::get_singleton()->has_singleton(p_class)) {
-			c = Engine::get_singleton()->get_singleton_object(p_class);
-			cleanup_c = false;
-		} else if (ClassRegistry::can_instantiate(p_class) && !ClassRegistry::is_virtual(p_class)) { // Keep this condition in sync with doc_tools.cpp get_documentation_default_value.
-			c = ClassRegistry::instantiate_no_placeholders(p_class);
-			cleanup_c = true;
-		}
-
-		if (c) {
-			List<PropertyInfo> plist;
-			c->get_property_list(&plist);
-			for (const PropertyInfo &E : plist) {
-				if (E.usage & (PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_EDITOR)) {
-					if (!default_values[p_class].has(E.name)) {
-						Variant v = c->get(E.name);
-						default_values[p_class][E.name] = v;
-					}
-				}
-			}
-
-			if (cleanup_c) {
-				memdelete(c);
-			}
-		}
-
-		default_values_cached.insert(p_class);
+	if (Engine::get_singleton()->has_singleton(p_class)) {
+		c = Engine::get_singleton()->get_singleton_object(p_class);
+	} else if (ClassRegistry::can_instantiate(p_class) && !ClassRegistry::is_virtual(p_class)) { // Keep this condition in sync with doc_tools.cpp get_documentation_default_value.
+		c = ClassRegistry::instantiate_no_placeholders(p_class);
+		cleanup_c = true;
+	}
+	if (!c) {
+		return values;
 	}
 
+	List<PropertyInfo> plist;
+	c->get_property_list(&plist);
+	for (const PropertyInfo &E : plist) {
+		if ((E.usage & (PROPERTY_USAGE_STORAGE | PROPERTY_USAGE_EDITOR)) && !values.has(E.name)) {
+			values[E.name] = c->get(E.name);
+		}
+	}
+
+	if (cleanup_c) {
+		memdelete(c);
+	}
+	return values;
+}
+
+Variant ClassRegistry::class_get_default_property_value(const StringName &p_class, const StringName &p_property, bool *r_valid) {
+	bool cached;
+	{
+		Locker::Lock lock(Locker::STATE_READ);
+		cached = default_values_cached.has(p_class);
+	}
+
+	if (!cached) {
+		const HashMap<StringName, Variant> values = _read_default_values(p_class);
+		Locker::Lock lock(Locker::STATE_WRITE);
+		// Another thread may have filled the cache while this one read the values.
+		if (!default_values_cached.has(p_class)) {
+			HashMap<StringName, Variant> &stored = default_values[p_class];
+			for (const KeyValue<StringName, Variant> &E : values) {
+				if (!stored.has(E.key)) {
+					stored[E.key] = E.value;
+				}
+			}
+			default_values_cached.insert(p_class);
+		}
+	}
+
+	Locker::Lock lock(Locker::STATE_READ);
 	if (!default_values.has(p_class)) {
 		if (r_valid != nullptr) {
 			*r_valid = false;
@@ -1712,7 +1729,8 @@ Variant ClassRegistry::class_get_default_property_value(const StringName &p_clas
 }
 
 void ClassRegistry::register_extension_class(ObjectNativeExtension *p_extension) {
-	GLOBAL_LOCK_FUNCTION;
+	// The global lock does not stop readers of the registry, so take its own write lock.
+	Locker::Lock lock(Locker::STATE_WRITE);
 
 	ERR_FAIL_COND_MSG(classes.has(p_extension->class_name), vformat("Class already registered: '%s'.", String(p_extension->class_name)));
 	ERR_FAIL_COND_MSG(!classes.has(p_extension->parent_class_name), vformat("Parent class name for extension class not found: '%s'.", String(p_extension->parent_class_name)));
@@ -1764,9 +1782,13 @@ void ClassRegistry::register_extension_class(ObjectNativeExtension *p_extension)
 static LocalVector<ClassDescriptor *> class_descriptor_leaked_autorelease_pool;
 
 void ClassRegistry::unregister_extension_class(const StringName &p_class) {
+	Locker::Lock lock(Locker::STATE_WRITE);
+
 	ClassInfo *c = classes.getptr(p_class);
 	ERR_FAIL_NULL_MSG(c, vformat("Class '%s' does not exist.", String(p_class)));
 	// Leak the ClassDescriptor until exit so potential consumers don't have dangling pointers.
+	// Its default arguments go now, while the extension can still free the objects in them.
+	c->class_descriptor->release_default_arguments();
 	class_descriptor_leaked_autorelease_pool.push_back(c->class_descriptor);
 	classes.erase(p_class);
 	default_values_cached.erase(p_class);

@@ -13,6 +13,14 @@ using namespace RendererRD;
 
 ParticlesStorage *ParticlesStorage::singleton = nullptr;
 
+// A node scaled to zero has no inverse. Everything it draws collapses to a point, so identity is as good as any answer.
+static Transform3D emission_inverse(const Transform3D &p_emission_transform) {
+	if (p_emission_transform.basis.determinant() == 0) {
+		return Transform3D();
+	}
+	return p_emission_transform.affine_inverse();
+}
+
 ParticlesStorage *ParticlesStorage::get_singleton() {
 	return singleton;
 }
@@ -243,7 +251,21 @@ bool ParticlesStorage::particles_get_emitting(RID p_particles) {
 	return particles->emitting;
 }
 
+void ParticlesStorage::_particles_free_emission_buffer(Particles *particles) {
+	if (particles->emission_buffer != nullptr) {
+		particles->emission_buffer = nullptr;
+		particles->emission_buffer_data.clear();
+		RD::get_singleton()->free_rid(particles->emission_storage_buffer);
+		particles->emission_storage_buffer = RID();
+	}
+}
+
 void ParticlesStorage::_particles_free_data(Particles *particles) {
+	_particles_free_render_data(particles);
+	_particles_free_emission_buffer(particles);
+}
+
+void ParticlesStorage::_particles_free_render_data(Particles *particles) {
 	if (particles->particle_buffer.is_valid()) {
 		RD::get_singleton()->free_rid(particles->particle_buffer);
 		particles->particle_buffer = RID();
@@ -277,13 +299,6 @@ void ParticlesStorage::_particles_free_data(Particles *particles) {
 		RD::get_singleton()->free_rid(particles->particles_sort_buffer);
 		particles->particles_sort_buffer = RID();
 		particles->particles_sort_uniform_set = RID();
-	}
-
-	if (particles->emission_buffer != nullptr) {
-		particles->emission_buffer = nullptr;
-		particles->emission_buffer_data.clear();
-		RD::get_singleton()->free_rid(particles->emission_storage_buffer);
-		particles->emission_storage_buffer = RID();
 	}
 
 	if (particles->unused_emission_storage_buffer.is_valid()) {
@@ -640,7 +655,7 @@ AABB ParticlesStorage::particles_get_current_aabb(RID p_particles) {
 	Vector<uint8_t> buffer = RD::get_singleton()->buffer_get_data(particles->particle_buffer);
 	ERR_FAIL_COND_V(buffer.size() != (int)(total_amount * particle_data_size), AABB());
 
-	Transform3D inv = particles->emission_transform.affine_inverse();
+	Transform3D inv = emission_inverse(particles->emission_transform);
 
 	AABB aabb;
 	if (buffer.size()) {
@@ -867,7 +882,7 @@ void ParticlesStorage::_particles_process(Particles *p_particles, double p_delta
 
 		Transform3D to_particles;
 		if (p_particles->use_local_coords) {
-			to_particles = p_particles->emission_transform.affine_inverse();
+			to_particles = emission_inverse(p_particles->emission_transform);
 		}
 
 		if (p_particles->has_sdf_collision && RD::get_singleton()->texture_is_valid(p_particles->sdf_collision_texture)) {
@@ -1341,8 +1356,8 @@ void ParticlesStorage::_particles_update_buffers(Particles *particles) {
 	bool only_instances_changed = false;
 
 	if (userdata_count != particles->userdata_count) {
-		// Mismatch userdata, re-create all buffers.
-		_particles_free_data(particles);
+		// Mismatch userdata, re-create all buffers. Emitted particles that are still queued survive.
+		_particles_free_render_data(particles);
 	} else if (enable_motion_vectors) {
 		// Only motion vectors are required, release the transforms buffer and uniform set.
 		if (particles->particle_instance_buffer.is_valid()) {
@@ -1641,7 +1656,7 @@ void ParticlesStorage::update_particles() {
 				// but they're drawn locally.
 				// So, we need to pass the inverse of the emission transform to bring the
 				// particles to local coordinates before drawing.
-				Transform3D inv = particles->emission_transform.affine_inverse();
+				Transform3D inv = emission_inverse(particles->emission_transform);
 				copy_push_constant.inv_emission_transform[0] = inv.basis.rows[0][0];
 				copy_push_constant.inv_emission_transform[1] = inv.basis.rows[1][0];
 				copy_push_constant.inv_emission_transform[2] = inv.basis.rows[2][0];

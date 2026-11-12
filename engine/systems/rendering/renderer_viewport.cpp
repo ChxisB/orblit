@@ -889,9 +889,11 @@ void RendererViewport::draw_viewports(bool p_swap_buffers) {
 				}
 
 				// Sometimes the openxr swapchain has been recreated but the viewport has not been
-				// reconfigured yet, though they should be by the next frame.
-				ERR_CONTINUE(region.position.x + region.size.width > vp->internal_size.width ||
-						region.position.y + region.size.height > vp->internal_size.height);
+				// reconfigured yet, though they should be by the next frame. The region itself can
+				// lie outside the viewport when the platform draws with a rasterization rate map,
+				// so compare the sizes instead.
+				ERR_CONTINUE_MSG(Size2i(xr_interface->get_render_target_size()) != vp->size,
+						"XR viewport has not been resized to the render target yet, skipping this frame.");
 
 				RSG::texture_storage->render_target_set_render_region(vp->render_target, region);
 

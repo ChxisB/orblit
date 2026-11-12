@@ -329,8 +329,12 @@ void KeyMappingXKB::initialize() {
 	scancode_map[0xD5] = Key::F35;
 
 	// Orblit to scancode map.
+	// Keypad scancodes share a key with the main one. The lowest scancode is the main key, so it wins whatever the iteration order.
 	for (const KeyValue<unsigned int, Key> &E : scancode_map) {
-		scancode_map_inv[E.value] = E.key;
+		const unsigned int *known = scancode_map_inv.getptr(E.value);
+		if (known == nullptr || E.key < *known) {
+			scancode_map_inv[E.value] = E.key;
+		}
 	}
 
 	// Scancode to physical location map.

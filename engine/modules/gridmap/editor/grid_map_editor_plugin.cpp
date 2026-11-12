@@ -693,7 +693,8 @@ void GridMapEditor::_set_clipboard_data() {
 					continue;
 				}
 
-				Ref<Mesh> mesh = meshLibrary->get_item_mesh(itm);
+				// The library can be cleared while cells still hold item ids. Those cells are copied without a preview.
+				Ref<Mesh> mesh = meshLibrary.is_valid() ? meshLibrary->get_item_mesh(itm) : Ref<Mesh>();
 
 				ClipboardItem item;
 				item.cell_item = itm;

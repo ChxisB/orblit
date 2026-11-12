@@ -207,19 +207,12 @@ private: \
 \
 	static ClassDescriptor &get_class_descriptor_static_mutable() { \
 		static ClassDescriptor *class_descriptor = nullptr; \
-		static bool initialized = false; \
-		if (likely(initialized)) { \
-			return *class_descriptor; \
-		} \
-\
-		static BinaryMutex __init_mutex; \
-		MutexLock lock(__init_mutex); \
-		if (initialized) { \
-			return *class_descriptor; \
-		} \
-		class_descriptor = memnew(ClassDescriptor(&super_type::get_class_descriptor_static(), StringName(#m_class))); \
-		m_class::autorelease_class_descriptor(&class_descriptor); \
-		initialized = true; \
+		/* A local static runs its initializer once and makes other threads wait for it. */ \
+		[[maybe_unused]] static const bool created = [] { \
+			class_descriptor = memnew(ClassDescriptor(&super_type::get_class_descriptor_static(), StringName(#m_class))); \
+			m_class::autorelease_class_descriptor(&class_descriptor); \
+			return true; \
+		}(); \
 		return *class_descriptor; \
 	} \
 \
@@ -241,23 +234,16 @@ protected: \
 \
 public: \
 	static void initialize_class() { \
-		static bool initialized = false; \
-		if (likely(initialized)) { \
-			return; \
-		} \
-\
-		static BinaryMutex __init_mutex; \
-		MutexLock lock(__init_mutex); \
-		if (initialized) { \
-			return; \
-		} \
-		m_inherits::initialize_class(); \
-		_add_class_to_registry(get_class_descriptor_static_mutable(), &super_type::get_class_descriptor_static()); \
-		get_class_descriptor_static_mutable().initialize(); \
-		if (m_class::_get_register_members() != m_inherits::_get_register_members()) { \
-			register_members(); \
-		} \
-		initialized = true; \
+		/* A local static runs its initializer once and makes other threads wait for it. */ \
+		[[maybe_unused]] static const bool initialized = [] { \
+			m_inherits::initialize_class(); \
+			_add_class_to_registry(get_class_descriptor_static_mutable(), &super_type::get_class_descriptor_static()); \
+			get_class_descriptor_static_mutable().initialize(); \
+			if (m_class::_get_register_members() != m_inherits::_get_register_members()) { \
+				register_members(); \
+			} \
+			return true; \
+		}(); \
 	} \
 \
 protected: \
@@ -403,19 +389,12 @@ private:
 
 	static ClassDescriptor &get_class_descriptor_static_mutable() {
 		static ClassDescriptor *class_descriptor = nullptr;
-		static bool initialized = false;
-		if (likely(initialized)) {
-			return *class_descriptor;
-		}
-
-		static BinaryMutex __init_mutex;
-		MutexLock lock(__init_mutex);
-		if (initialized) {
-			return *class_descriptor;
-		}
-		class_descriptor = memnew(ClassDescriptor(nullptr, StringName("Object")));
-		autorelease_class_descriptor(&class_descriptor);
-		initialized = true;
+		// A local static runs its initializer once and makes other threads wait for it.
+		[[maybe_unused]] static const bool created = [] {
+			class_descriptor = memnew(ClassDescriptor(nullptr, StringName("Object")));
+			autorelease_class_descriptor(&class_descriptor);
+			return true;
+		}();
 		return *class_descriptor;
 	}
 
@@ -1091,10 +1070,10 @@ public:
 
 	template <typename U = T, std::enable_if_t<!std::is_base_of_v<RefCounted, U>, int> = 0>
 	_FORCE_INLINE_ RequiredParam(const Variant &p_variant) :
-			_value(Object::cast_to<T>(p_variant.operator Object *())) {}
+			_value(Object::cast_to<T>(p_variant.get_validated_object())) {}
 	template <typename U = T, std::enable_if_t<!std::is_base_of_v<RefCounted, U>, int> = 0>
 	_FORCE_INLINE_ RequiredParam &operator=(const Variant &p_variant) {
-		_value = Object::cast_to<T>(p_variant.operator Object *());
+		_value = Object::cast_to<T>(p_variant.get_validated_object());
 		return *this;
 	}
 };

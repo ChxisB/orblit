@@ -4273,8 +4273,8 @@ bool Animation::_vector2_track_optimize_key(const TKey<Vector2> t0, const TKey<V
 	Vector2 vc1 = (t2.value - t1.value) / (t2.time - t1.time);
 	double v0 = vc0.length();
 	double v1 = vc1.length();
-	// Avoid zero div but check equality.
-	if (std::abs(v0 - v1) < p_allowed_precision_error) {
+	// Avoid zero div but check equality. The vectors are compared so a turn at the same speed keeps its key.
+	if ((vc0 - vc1).length() < p_allowed_precision_error) {
 		return true;
 	} else if (std::abs(v0) < p_allowed_precision_error || std::abs(v1) < p_allowed_precision_error) {
 		return false;
@@ -4308,8 +4308,8 @@ bool Animation::_vector3_track_optimize_key(const TKey<Vector3> t0, const TKey<V
 	Vector3 vc1 = (t2.value - t1.value) / (t2.time - t1.time);
 	double v0 = vc0.length();
 	double v1 = vc1.length();
-	// Avoid zero div but check equality.
-	if (std::abs(v0 - v1) < p_allowed_precision_error) {
+	// Avoid zero div but check equality. The vectors are compared so a turn at the same speed keeps its key.
+	if ((vc0 - vc1).length() < p_allowed_precision_error) {
 		return true;
 	} else if (std::abs(v0) < p_allowed_precision_error || std::abs(v1) < p_allowed_precision_error) {
 		return false;

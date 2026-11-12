@@ -48,6 +48,7 @@ private:
 
 	SelfList<OrblitCollisionObject2D> pending_shape_update_list;
 
+	Rect2 _get_shape_broadphase_aabb(const Shape &p_shape) const;
 	void _update_shapes();
 
 protected:

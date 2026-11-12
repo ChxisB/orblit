@@ -132,6 +132,13 @@ void OrblitCollisionObject2D::_unregister_shapes() {
 	}
 }
 
+Rect2 OrblitCollisionObject2D::_get_shape_broadphase_aabb(const Shape &p_shape) const {
+	Rect2 aabb = (transform * p_shape.xform).xform(p_shape.shape->get_aabb());
+	// The margin comes from the box itself. Taking it from the cached box grew the result on each update.
+	aabb.grow_by((aabb.size.x + aabb.size.y) * 0.5 * 0.05);
+	return aabb;
+}
+
 void OrblitCollisionObject2D::_update_shapes() {
 	if (!space) {
 		return;
@@ -144,10 +151,7 @@ void OrblitCollisionObject2D::_update_shapes() {
 		}
 
 		//not quite correct, should compute the next matrix..
-		Rect2 shape_aabb = s.shape->get_aabb();
-		Transform2D xform = transform * s.xform;
-		shape_aabb = xform.xform(shape_aabb);
-		shape_aabb.grow_by((s.aabb_cache.size.x + s.aabb_cache.size.y) * 0.5 * 0.05);
+		const Rect2 shape_aabb = _get_shape_broadphase_aabb(s);
 		s.aabb_cache = shape_aabb;
 
 		if (s.bpid == 0) {
@@ -171,9 +175,7 @@ void OrblitCollisionObject2D::_update_shapes_with_motion(const Vector2 &p_motion
 		}
 
 		//not quite correct, should compute the next matrix..
-		Rect2 shape_aabb = s.shape->get_aabb();
-		Transform2D xform = transform * s.xform;
-		shape_aabb = xform.xform(shape_aabb);
+		Rect2 shape_aabb = _get_shape_broadphase_aabb(s);
 		shape_aabb = shape_aabb.merge(Rect2(shape_aabb.position + p_motion, shape_aabb.size)); //use motion
 		s.aabb_cache = shape_aabb;
 

@@ -420,23 +420,37 @@ void CollisionObject3D::_physics_debug_changed() {
 	}
 }
 
+void CollisionObject3D::_set_debug_shapes_transform(const Transform3D &p_body_transform) {
+	for (const KeyValue<uint32_t, ShapeData> &E : shapes) {
+		const ShapeData &shapedata = E.value;
+		if (shapedata.disabled) {
+			continue; // If disabled then there are no debug shapes to update.
+		}
+		const ShapeData::ShapeBase *shape_bases = shapedata.shapes.ptr();
+		for (int i = 0; i < shapedata.shapes.size(); i++) {
+			if (shape_bases[i].debug_shape.is_null()) {
+				continue;
+			}
+			RS::get_singleton()->instance_set_transform(shape_bases[i].debug_shape, p_body_transform * shapedata.xform);
+		}
+	}
+}
+
 void CollisionObject3D::_on_transform_changed() {
 	if (debug_shapes_count > 0 && !debug_shape_old_transform.is_equal_approx(get_global_transform())) {
 		debug_shape_old_transform = get_global_transform();
-		for (KeyValue<uint32_t, ShapeData> &E : shapes) {
-			ShapeData &shapedata = E.value;
-			if (shapedata.disabled) {
-				continue; // If disabled then there are no debug shapes to update.
-			}
-			const ShapeData::ShapeBase *shape_bases = shapedata.shapes.ptr();
-			for (int i = 0; i < shapedata.shapes.size(); i++) {
-				if (shape_bases[i].debug_shape.is_null()) {
-					continue;
-				}
-				RS::get_singleton()->instance_set_transform(shape_bases[i].debug_shape, debug_shape_old_transform * shapedata.xform);
-			}
+		// With interpolation on, fti_update_systems_xform sends the transform each frame.
+		if (!get_stage()->is_physics_interpolation_enabled()) {
+			_set_debug_shapes_transform(debug_shape_old_transform);
 		}
 	}
+}
+
+void CollisionObject3D::fti_update_systems_xform() {
+	if (debug_shapes_count > 0) {
+		_set_debug_shapes_transform(_get_cached_global_transform_interpolated());
+	}
+	Entity3D::fti_update_systems_xform();
 }
 
 void CollisionObject3D::set_ray_pickable(bool p_ray_pickable) {

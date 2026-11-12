@@ -1108,6 +1108,12 @@ void LightStorage::lightmap_set_textures(RID p_lightmap, RID p_light, bool p_use
 	lightmap->light_texture = p_light;
 	lightmap->uses_spherical_harmonics = p_uses_spherical_haromics;
 
+	if (p_light.is_null()) {
+		// The data holds no texture while it is being replaced, so there is nothing to set up.
+		lightmap->light_texture_size = Vector2i();
+		return;
+	}
+
 	Vector3i light_texture_size = GLES3::TextureStorage::get_singleton()->texture_get_size(lightmap->light_texture);
 	lightmap->light_texture_size = Vector2i(light_texture_size.x, light_texture_size.y);
 

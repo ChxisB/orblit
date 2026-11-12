@@ -780,6 +780,8 @@ void CanvasItem::draw_dashed_line(const Point2 &p_from, const Point2 &p_to, cons
 	ERR_THREAD_GUARD;
 	ERR_DRAW_GUARD;
 	ERR_FAIL_COND(p_dash <= 0.0);
+	// The dash count below is cast to int, which is undefined for an infinite or NaN length.
+	ERR_FAIL_COND_MSG(!p_from.is_finite() || !p_to.is_finite() || !Math::is_finite(p_dash), "Dashed line endpoints and dash length must be finite.");
 
 	float length = (p_to - p_from).length();
 	Vector2 step = p_dash * (p_to - p_from).normalized();
@@ -1135,7 +1137,9 @@ void CanvasItem::_notify_transform(CanvasItem *p_node) {
 	 * notification anyway).
 	 */
 
-	if (/*p_node->xform_change.in_list() &&*/ p_node->_is_global_invalid()) {
+	// A dirty node is skipped only when its notification is already queued, or never wanted.
+	// A node that blocked its notification is dirty and not queued, and must still hear about a parent move.
+	if (p_node->_is_global_invalid() && (p_node->xform_change.in_list() || !p_node->notify_transform)) {
 		return; //nothing to do
 	}
 

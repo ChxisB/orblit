@@ -48,6 +48,37 @@ TEST_CASE("[Logger][RotatedFileLogger] Creates the first log file and logs on it
 	cleanup_logs();
 }
 
+TEST_CASE("[Logger][RotatedFileLogger] Creates the folders of a relative log path") {
+	initialize_logs();
+
+	// The path is relative on purpose. The folders must appear where the file opens, not in the user data folder.
+	const String file_path = "orblit_test_logs/nested/orblit.log";
+	const String folders[] = { "orblit_test_logs/nested", "orblit_test_logs" };
+	DirAccess::remove_absolute(file_path);
+	for (const String &folder : folders) {
+		DirAccess::remove_absolute(folder);
+	}
+
+	{
+		RotatedFileLogger logger(file_path);
+		logger.logf("%s", "Waiting for Orblit");
+	}
+
+	Error err = Error::OK;
+	Ref<FileAccess> log = FileAccess::open(file_path, FileAccess::READ, &err);
+	CHECK_EQ(err, Error::OK);
+	if (log.is_valid()) {
+		CHECK_EQ(log->get_as_text(), "Waiting for Orblit");
+		log.unref();
+	}
+
+	DirAccess::remove_absolute(file_path);
+	for (const String &folder : folders) {
+		DirAccess::remove_absolute(folder);
+	}
+	cleanup_logs();
+}
+
 void get_log_files(Vector<String> &log_files) {
 	Ref<DirAccess> dir = DirAccess::open("user://logs");
 	dir->list_dir_begin();

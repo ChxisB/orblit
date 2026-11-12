@@ -836,6 +836,38 @@ TEST_CASE("[Stage][Primitive][Text] Text Primitive") {
 	}
 }
 
+TEST_CASE("[Primitive] A zero size gives finite vertices and normals") {
+	SUBCASE("Cylinder with no height") {
+		Array arrays{};
+		arrays.resize(RSE::ARRAY_MAX);
+		CylinderMesh::create_mesh_array(arrays, 1.0f, 2.0f, 0.0f, 8, 2);
+		const Vector<Vector3> vertices = arrays[RSE::ARRAY_VERTEX];
+		const Vector<Vector3> normals = arrays[RSE::ARRAY_NORMAL];
+		REQUIRE(!normals.is_empty());
+		for (const Vector3 &v : vertices) {
+			CHECK(v.is_finite());
+		}
+		for (const Vector3 &n : normals) {
+			CHECK(n.is_finite());
+		}
+	}
+
+	SUBCASE("Sphere with no radius") {
+		Array arrays{};
+		arrays.resize(RSE::ARRAY_MAX);
+		SphereMesh::create_mesh_array(arrays, 0.0f, 1.0f, 8, 4);
+		const Vector<Vector3> vertices = arrays[RSE::ARRAY_VERTEX];
+		const Vector<Vector3> normals = arrays[RSE::ARRAY_NORMAL];
+		REQUIRE(!normals.is_empty());
+		for (const Vector3 &v : vertices) {
+			CHECK(v.is_finite());
+		}
+		for (const Vector3 &n : normals) {
+			CHECK(n.is_finite());
+		}
+	}
+}
+
 } // namespace TestPrimitives
 
 #endif // SPATIAL_DISABLED

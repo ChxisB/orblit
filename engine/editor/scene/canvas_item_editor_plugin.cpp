@@ -783,6 +783,19 @@ void CanvasItemEditor::_selection_menu_hide() {
 	selection_menu->reset_size();
 }
 
+Transform2D CanvasItemEditor::_get_paste_parent_inverse() const {
+	// A paste adds its nodes when the action commits, so the parent is found the way the paste picks it.
+	const List<Entity *> selection = EditorNode::get_singleton()->get_editor_selection()->get_top_selected_node_list();
+	Entity *parent = selection.is_empty() ? EditorNode::get_singleton()->get_edited_scene() : selection.back()->get();
+	for (; parent; parent = parent->get_parent()) {
+		const CanvasItem *item = Object::cast_to<CanvasItem>(parent);
+		if (item) {
+			return item->get_global_transform_with_canvas().affine_inverse();
+		}
+	}
+	return Transform2D();
+}
+
 void CanvasItemEditor::_add_node_pressed(int p_result) {
 	switch (p_result) {
 		case ADD_NODE: {
@@ -795,6 +808,7 @@ void CanvasItemEditor::_add_node_pressed(int p_result) {
 			EditorUndoRedoManager *undo_redo = EditorUndoRedoManager::get_singleton();
 			undo_redo->create_action_for_history(TTR("Paste Node(s) at Position"), EditorNode::get_editor_data().get_current_edited_scene_history_id());
 
+			const Transform2D parent_inverse = _get_paste_parent_inverse();
 			List<Entity *> pasted_nodes = StageDock::get_singleton()->paste_nodes();
 			if (pasted_nodes.is_empty()) {
 				return;
@@ -803,8 +817,7 @@ void CanvasItemEditor::_add_node_pressed(int p_result) {
 			for (Entity *node : pasted_nodes) {
 				CanvasItem *ci = Object::cast_to<CanvasItem>(node);
 				if (ci) {
-					Transform2D xform = ci->get_transform() * ci->get_global_transform_with_canvas().affine_inverse();
-					undo_redo->add_do_method(ci, "_edit_set_position", xform.xform(node_create_position));
+					undo_redo->add_do_method(ci, "_edit_set_position", parent_inverse.xform(node_create_position));
 					undo_redo->add_undo_method(ci, "_edit_set_position", ci->_edit_get_position());
 				}
 			}
@@ -4026,6 +4039,8 @@ CanvasItemEditor::CanvasItemEditor() {
 
 	ci_manipulator.instantiate();
 	ci_manipulator->set_editor_mode_enabled(true);
+	// The toolbar button starts pressed, so the manipulator must start in local space too.
+	ci_manipulator->set_local_space_enabled(true);
 	ci_manipulator->set_scale(EDSCALE);
 	// Enable pixel snapping even if pixel snap rendering is disabled in the Project Settings.
 	// This results in crisper visuals by preventing 2D nodes from being placed at subpixel coordinates.

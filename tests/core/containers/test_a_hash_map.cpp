@@ -141,6 +141,15 @@ TEST_CASE("[AHashMap] Replace key") {
 	CHECK(map[1] == 12934);
 }
 
+TEST_CASE("[AHashMap] Replace key with a key the map treats as equal") {
+	// NaN != NaN, but the map's comparison counts it as one key.
+	AHashMap<float, int> map;
+	map.insert(Math::NaN, 7);
+	CHECK(map.replace_key(Math::NaN, Math::NaN));
+	CHECK(map.size() == 1);
+	CHECK(map[Math::NaN] == 7);
+}
+
 TEST_CASE("[AHashMap] Clear") {
 	AHashMap<int, int> map;
 	map.insert(42, 84);

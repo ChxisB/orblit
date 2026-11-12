@@ -5,8 +5,12 @@
 
 TEST_FORCE_LINK(test_prefab)
 
+#include "core/io/file_access.h"
+#include "core/io/resource_loader.h"
 #include "core/object/callable_mp.h"
+#include "core/variant/variant_parser.h"
 #include "scene/resources/prefab.h"
+#include "tests/test_utils.h"
 
 namespace TestPrefab {
 
@@ -253,6 +257,43 @@ TEST_CASE("[Prefab] Recreate State") {
 	CHECK(state->get_entity_count() == 0); // Since the state was recreated, it should be empty.
 
 	memdelete(scene);
+}
+
+TEST_CASE("[Prefab] A bundled sub prefab does not take the nodes of its file") {
+	Entity *sub_root = memnew(Entity);
+	sub_root->set_name("Sub");
+	Ref<Prefab> sub_prefab;
+	sub_prefab.instantiate();
+	REQUIRE(sub_prefab->pack(sub_root) == OK);
+	memdelete(sub_root);
+
+	// Older files keep the nodes of an embedded prefab in `_bundled`.
+	String bundled_text;
+	REQUIRE(VariantWriter::write_to_string(sub_prefab->get("_bundled"), bundled_text) == OK);
+	const String text = "[orb_scene format=3]\n\n[sub_resource type=\"Prefab\" id=\"Prefab_a\"]\n_bundled = " + bundled_text + "\n\n[node name=\"Root\" type=\"Entity\"]\nmetadata/embedded = SubResource(\"Prefab_a\")\n";
+
+	const String path = TestUtils::get_temp_path("prefab_bundled_sub.oscn");
+	Ref<FileAccess> file = FileAccess::open(path, FileAccess::WRITE);
+	REQUIRE(file.is_valid());
+	file->store_string(text);
+	file.unref();
+
+	Error err = OK;
+	Ref<Prefab> loaded = ResourceLoader::load(path, "Prefab", ResourceFormatLoader::CACHE_MODE_IGNORE, &err);
+	REQUIRE(err == OK);
+	REQUIRE(loaded.is_valid());
+
+	Ref<SceneState> state = loaded->get_state();
+	REQUIRE(state->get_entity_count() == 1);
+	CHECK(state->get_entity_name(0) == "Root");
+
+	Entity *root = loaded->instantiate();
+	REQUIRE(root != nullptr);
+	Ref<Prefab> embedded = root->get_meta("embedded");
+	REQUIRE(embedded.is_valid());
+	CHECK(embedded->get_state()->get_entity_count() == 1);
+	CHECK(embedded->get_state()->get_entity_name(0) == "Sub");
+	memdelete(root);
 }
 
 } // namespace TestPrefab

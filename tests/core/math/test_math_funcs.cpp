@@ -288,7 +288,10 @@ TEST_CASE_TEMPLATE("[Math] linear_to_db", T, float, double) {
 	CHECK(Math::linear_to_db((T)1.0) == doctest::Approx((T)0.0));
 	CHECK(Math::linear_to_db((T)20.0) == doctest::Approx((T)26.0206));
 	CHECK(Math::is_inf(Math::linear_to_db((T)0.0)));
-	CHECK(Math::is_nan(Math::linear_to_db((T)-20.0)));
+	const T below_zero = Math::linear_to_db((T)-20.0);
+	CHECK(Math::is_inf(below_zero));
+	CHECK(below_zero < 0);
+	CHECK(Math::is_nan(Math::linear_to_db((T)Math::NaN)));
 }
 
 TEST_CASE_TEMPLATE("[Math] db_to_linear", T, float, double) {

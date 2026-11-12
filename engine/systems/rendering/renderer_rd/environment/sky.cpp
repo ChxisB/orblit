@@ -315,7 +315,8 @@ void SkyRD::ReflectionData::update_reflection_data(int p_size, int p_mipmaps, bo
 	tf.format = p_texture_format;
 	tf.width = p_low_quality ? 160 : p_size >> 1; // Always 160x160 when using REALTIME.
 	tf.height = p_low_quality ? 160 : p_size >> 1;
-	tf.mipmaps = p_low_quality ? 5 : mipmaps - 1;
+	// A single roughness layer leaves no mipmaps to drop, but a texture needs at least one.
+	tf.mipmaps = p_low_quality ? 5 : MAX(mipmaps - 1, 1);
 	tf.usage_bits = RD::TEXTURE_USAGE_SAMPLING_BIT | RD::TEXTURE_USAGE_COLOR_ATTACHMENT_BIT;
 	if (!use_raster_effect) {
 		tf.usage_bits |= RD::TEXTURE_USAGE_STORAGE_BIT;

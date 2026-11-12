@@ -5,12 +5,27 @@
 
 #include "core/variant/variant.h"
 
-void EntityPath::_update_hash_cache() const {
-	StringName path = get_concatenated_names();
-	StringName subpath = get_concatenated_subnames();
+// Joins names without writing to the data, so two threads can hash a shared path.
+static StringName join_names(const Vector<StringName> &p_names, const char *p_separator) {
+	String joined;
+	for (int i = 0; i < p_names.size(); i++) {
+		if (i > 0) {
+			joined += p_separator;
+		}
+		joined += p_names[i].string();
+	}
+	return joined;
+}
+
+uint32_t EntityPath::_compute_hash() const {
+	const StringName path = join_names(data->path, "/");
+	const StringName subpath = join_names(data->subpath, ":");
 	uint32_t hash = HashMapHasherDefault::hash(Pair<const StringName &, const StringName &>(path, subpath));
-	data->hash_cache = is_absolute() ? hash : ~hash;
-	data->hash_cache_valid = true;
+	hash = is_absolute() ? hash : ~hash;
+	// Zero marks an empty cache, so a computed zero is stored as one.
+	hash = hash ? hash : 1;
+	data->hash_cache.set(hash);
+	return hash;
 }
 
 void EntityPath::prepend_period() {
@@ -18,7 +33,7 @@ void EntityPath::prepend_period() {
 		_copy_on_write();
 		data->path.insert(0, ".");
 		data->concatenated_path = StringName();
-		data->hash_cache_valid = false;
+		data->hash_cache.set(0);
 	}
 }
 
@@ -82,10 +97,10 @@ bool EntityPath::operator==(const EntityPath &p_path) const {
 		return false;
 	}
 
-	if (data->hash_cache_valid && p_path.data->hash_cache_valid) {
-		if (data->hash_cache != p_path.data->hash_cache) {
-			return false;
-		}
+	const uint32_t hash = data->hash_cache.get();
+	const uint32_t other_hash = p_path.data->hash_cache.get();
+	if (hash && other_hash && hash != other_hash) {
+		return false;
 	}
 
 	if (data->absolute != p_path.data->absolute) {
@@ -158,8 +173,7 @@ void EntityPath::_copy_on_write() {
 	new_data->concatenated_path = data->concatenated_path;
 	new_data->concatenated_subpath = data->concatenated_subpath;
 	new_data->absolute = data->absolute;
-	new_data->hash_cache_valid = data->hash_cache_valid;
-	new_data->hash_cache = data->hash_cache;
+	new_data->hash_cache.set(data->hash_cache.get());
 	unref();
 	data = new_data;
 }
@@ -202,16 +216,7 @@ StringName EntityPath::get_concatenated_names() const {
 	ERR_FAIL_NULL_V(data, StringName());
 
 	if (!data->concatenated_path) {
-		int pc = data->path.size();
-		String concatenated;
-		const StringName *sn = data->path.ptr();
-		for (int i = 0; i < pc; i++) {
-			if (i > 0) {
-				concatenated += "/";
-			}
-			concatenated += sn[i].string();
-		}
-		data->concatenated_path = concatenated;
+		data->concatenated_path = join_names(data->path, "/");
 	}
 	return data->concatenated_path;
 }
@@ -220,16 +225,7 @@ StringName EntityPath::get_concatenated_subnames() const {
 	ERR_FAIL_NULL_V(data, StringName());
 
 	if (!data->concatenated_subpath) {
-		int spc = data->subpath.size();
-		String concatenated;
-		const StringName *ssn = data->subpath.ptr();
-		for (int i = 0; i < spc; i++) {
-			if (i > 0) {
-				concatenated += ":";
-			}
-			concatenated += ssn[i].string();
-		}
-		data->concatenated_subpath = concatenated;
+		data->concatenated_subpath = join_names(data->subpath, ":");
 	}
 	return data->concatenated_subpath;
 }
@@ -349,7 +345,7 @@ void EntityPath::simplify() {
 		}
 	}
 	data->concatenated_path = StringName();
-	data->hash_cache_valid = false;
+	data->hash_cache.set(0);
 }
 
 EntityPath EntityPath::simplified() const {
@@ -367,7 +363,7 @@ EntityPath::EntityPath(const Vector<StringName> &p_path, bool p_absolute) {
 	data->refcount.init();
 	data->absolute = p_absolute;
 	data->path = p_path;
-	data->hash_cache_valid = false;
+	data->hash_cache.set(0);
 }
 
 EntityPath::EntityPath(const Vector<StringName> &p_path, const Vector<StringName> &p_subpath, bool p_absolute) {
@@ -380,7 +376,7 @@ EntityPath::EntityPath(const Vector<StringName> &p_path, const Vector<StringName
 	data->absolute = p_absolute;
 	data->path = p_path;
 	data->subpath = p_subpath;
-	data->hash_cache_valid = false;
+	data->hash_cache.set(0);
 }
 
 EntityPath::EntityPath(const EntityPath &p_path) {
@@ -444,7 +440,7 @@ EntityPath::EntityPath(const String &p_path) {
 	data->refcount.init();
 	data->absolute = absolute;
 	data->subpath = subpath;
-	data->hash_cache_valid = false;
+	data->hash_cache.set(0);
 
 	if (slices == 0) {
 		return;

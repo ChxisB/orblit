@@ -604,11 +604,12 @@ _ALWAYS_INLINE_ float rotate_toward(float p_from, float p_to, float p_delta) {
 	return p_from + CLAMP(p_delta, abs_difference - (float)PI, abs_difference) * (difference >= 0.0f ? 1.0f : -1.0f);
 }
 
+// A level below zero is as silent as zero, so it maps to negative infinity and not to NaN.
 _ALWAYS_INLINE_ double linear_to_db(double p_linear) {
-	return log(p_linear) * 8.6858896380650365530225783783321;
+	return p_linear < 0.0 ? -INF : log(p_linear) * 8.6858896380650365530225783783321;
 }
 _ALWAYS_INLINE_ float linear_to_db(float p_linear) {
-	return log(p_linear) * (float)8.6858896380650365530225783783321;
+	return p_linear < 0.0f ? -(float)INF : log(p_linear) * (float)8.6858896380650365530225783783321;
 }
 
 _ALWAYS_INLINE_ double db_to_linear(double p_db) {
