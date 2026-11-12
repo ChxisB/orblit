@@ -21,9 +21,9 @@ void RemoteTransform2D::_track_remote_scale(const Transform2D &p_remote) {
 	if (update_remote_scale) {
 		return;
 	}
-	const Size2 scale = p_remote.get_scale();
-	if (!kept_remote_scale.is_equal_approx(scale)) {
-		kept_remote_scale = scale;
+	const Size2 remote_scale = p_remote.get_scale();
+	if (!kept_remote_scale.is_equal_approx(remote_scale)) {
+		kept_remote_scale = remote_scale;
 	}
 }
 
