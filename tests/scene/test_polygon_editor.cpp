@@ -34,7 +34,7 @@ static Vector<Vector2> square(const Vector2 &p_origin, real_t p_side) {
 	return points;
 }
 
-TEST_CASE("[Stage][PolygonEditor] The centre is weighted by the area of each polygon") {
+TEST_CASE("[Stage][PolygonEditor] The center is weighted by the area of each polygon") {
 	CenterProbe *probe = memnew(CenterProbe);
 	probe->add_polygon(square(Vector2(0, 0), 4));
 	probe->add_polygon(square(Vector2(10, 0), 1));
@@ -45,7 +45,7 @@ TEST_CASE("[Stage][PolygonEditor] The centre is weighted by the area of each pol
 	memdelete(probe);
 }
 
-TEST_CASE("[Stage][PolygonEditor] The centre of no polygon is the origin") {
+TEST_CASE("[Stage][PolygonEditor] The center of no polygon is the origin") {
 	CenterProbe *probe = memnew(CenterProbe);
 
 	CHECK(probe->get_center() == Vector2());

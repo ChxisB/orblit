@@ -132,7 +132,7 @@ Vector2 AbstractPolygon2DEditor::_get_geometric_center() const {
 			sub_cx /= (sub_area2x * 3);
 			sub_cy /= (sub_area2x * 3);
 
-			// A large part pulls the centre more than a small one.
+			// A large part pulls the center more than a small one.
 			const double sub_area = Math::abs(sub_area2x) / 2.0;
 			cx += sub_cx * sub_area;
 			cy += sub_cy * sub_area;
