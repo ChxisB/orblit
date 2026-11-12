@@ -8,8 +8,6 @@ TEST_FORCE_LINK(test_rigid_body_sleep)
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
 
-#include "modules/modules_enabled.gen.h" // For physics.
-
 #ifndef PHYSICS_PLANAR_DISABLED
 #include "scene/planar/physics/collision_shape_planar.h"
 #include "scene/planar/physics/rigid_body_planar.h"
