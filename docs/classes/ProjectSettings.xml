@@ -2338,7 +2338,7 @@
 			Maximum size (in kiB) for the [WebRTCDataChannel] input buffer.
 		</member>
 		<member name="network/tls/certificate_bundle_override" type="String" setter="" getter="" default="&quot;&quot;">
-			The CA certificates bundle to use for TLS connections. If this is set to a non-empty value, this will [i]override[/i] Orblit's default Mozilla certificate bundle. If left empty, the default certificate bundle will be used.
+			The CA certificates bundle to use for TLS connections. If this is set to a non-empty value, this will [i]override[/i] the default bundles. If left empty, the certificate bundle of the operating system will be used. If the system has none, the included Mozilla certificate bundle is used instead.
 			If in doubt, leave this setting empty.
 		</member>
 		<member name="network/tls/enable_tls_v1.3" type="bool" setter="" getter="" default="true">
