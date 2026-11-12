@@ -177,12 +177,6 @@ Object *live_object(GraphCall &p_call, const GraphCompiledStep &p_step, const Va
 	return object;
 }
 
-// A target with nothing wired is the owner of the script.
-Object *read_target(GraphCall &p_call, const GraphCompiledStep &p_step, int p_port) {
-	const Variant target = p_call.input(p_step, p_port);
-	return target.get_type() == Variant::NIL ? p_call.get_owner() : live_object(p_call, p_step, target);
-}
-
 // The values on the argument ports of one call, as the array of pointers a call needs.
 class Invocation {
 	GraphCall &call;
@@ -219,12 +213,22 @@ public:
 };
 
 // A flow step keeps the result of its call on the port after "then", when it has one.
-int run_with_result(GraphEvalFn p_call_it, GraphCall &p_call, const GraphCompiledStep &p_step) {
-	const Variant result = p_call_it(p_call, p_step);
+int keep_result(GraphCall &p_call, const GraphCompiledStep &p_step, const Variant &p_result) {
 	if (p_step.next.size() > 1) {
-		p_call.store(p_step, RESULT, result);
+		p_call.store(p_step, RESULT, p_result);
 	}
 	return THEN;
+}
+
+int run_with_result(GraphEvalFn p_call_it, GraphCall &p_call, const GraphCompiledStep &p_step) {
+	return keep_result(p_call, p_step, p_call_it(p_call, p_step));
+}
+
+// The callee gave its value with the "completed" signal, as the only argument.
+int resume_call_result(GraphCall &p_call, GraphPending &p_frame) {
+	const Array heard = p_frame.container;
+	p_frame.done = true;
+	return keep_result(p_call, p_call.get_step(p_frame.step), heard.is_empty() ? Variant() : heard[0]);
 }
 
 Variant call_static(GraphCall &p_call, const GraphCompiledStep &p_step) {
@@ -239,7 +243,7 @@ Variant call_static(GraphCall &p_call, const GraphCompiledStep &p_step) {
 
 // A function of this script or of another one. The target is the owner when nothing is wired.
 Variant call_function(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	Object *target = read_target(p_call, p_step, p_step.operation - 1);
+	Object *target = GraphStepReflect::read_target(p_call, p_step, p_step.operation - 1);
 	if (!target) {
 		return Variant();
 	}
@@ -288,6 +292,11 @@ String free_problem(const Object *p_object, const Object *p_owner) {
 } // namespace
 
 namespace GraphStepReflect {
+
+Object *read_target(GraphCall &p_call, const GraphCompiledStep &p_step, int p_port) {
+	const Variant target = p_call.input(p_step, p_port);
+	return target.get_type() == Variant::NIL ? p_call.get_owner() : live_object(p_call, p_step, target);
+}
 
 bool returns_value(const MethodInfo &p_info) {
 	return p_info.return_val.type != Variant::NIL || (p_info.return_val.usage & PROPERTY_USAGE_NIL_IS_VARIANT);
@@ -459,7 +468,10 @@ String resolve_connect(GraphCompiledStep &p_step, const Vector<StringName> &p_va
 
 String resolve_call_function(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
 	StringName function;
-	const String problem = read_text(p_step.parameters, "function", function);
+	String problem = read_text(p_step.parameters, "function", function);
+	if (problem.is_empty() && p_step.parameters.get("wait", false).get_type() != Variant::BOOL) {
+		problem = "the 'wait' parameter must be true or false.";
+	}
 	if (problem.is_empty()) {
 		// shortcut: the callee is looked up when the step runs, because it may be in another script.
 		// Check a call to this script's own functions at compile time when that costs someone a run.
@@ -533,8 +545,19 @@ int run_call_utility(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return run_with_result(eval_call_utility, p_call, p_step);
 }
 
+// A step marked to wait carries on when the function it called has finished. A function that
+// does not wait has finished already, so the step carries on at once.
 int run_call_function(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	return run_with_result(call_function, p_call, p_step);
+	const Variant result = call_function(p_call, p_step);
+	const Ref<GraphCall> callee = result;
+	if (callee.is_null() || !callee->is_waiting() || !bool(p_step.parameters.get("wait", false))) {
+		return keep_result(p_call, p_step, result);
+	}
+	GraphPending frame;
+	frame.step = p_step.index;
+	frame.resume = resume_call_result;
+	p_call.wait_for(callee.ptr(), SNAME("completed"), frame);
+	return GraphFlow::END;
 }
 
 int run_set_property(GraphCall &p_call, const GraphCompiledStep &p_step) {

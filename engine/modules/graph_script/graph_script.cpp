@@ -193,6 +193,10 @@ int GraphScript::_find_signal_index(const StringName &p_name) const {
 }
 
 void GraphScript::_compile() {
+	// A waiting call points into the compiled functions, which are about to be replaced.
+	for (GraphScriptInstance *instance : instances) {
+		instance->drop_waiting_calls();
+	}
 	Vector<StringName> names;
 	for (const GraphVariable &variable : variables) {
 		names.push_back(variable.name);

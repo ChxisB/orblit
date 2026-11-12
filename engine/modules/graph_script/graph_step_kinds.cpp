@@ -5,6 +5,7 @@
 
 #include "graph_signature.h"
 #include "graph_step_flow.h"
+#include "graph_step_latent.h"
 #include "graph_step_reflect.h"
 #include "graph_step_run.h"
 #include "graph_step_scene.h"
@@ -66,6 +67,8 @@ constexpr GraphPortSpec TARGET_IN[] = { optional_object("target") };
 constexpr GraphPortSpec TARGET_RUN_IN[] = { flow("run"), optional_object("target") };
 constexpr GraphPortSpec FREE_IN[] = { flow("run"), data("object", Variant::OBJECT) };
 constexpr GraphPortSpec CALL_FUNCTION_OUT[] = { flow("then"), data("result") };
+constexpr GraphPortSpec WAIT_IN[] = { flow("run"), data("seconds", Variant::FLOAT) };
+constexpr GraphPortSpec AWAIT_OUT[] = { flow("then"), data("arguments", Variant::ARRAY) };
 
 constexpr GraphPinGrowth THEN_PINS = { GraphPinSide::OUTPUT, "then", nullptr, GraphPortSort::FLOW, Variant::NIL, 2 };
 constexpr GraphPinGrowth CASE_PINS = { GraphPinSide::OUTPUT, "case", nullptr, GraphPortSort::FLOW, Variant::NIL, 1 };
@@ -92,6 +95,8 @@ constexpr GraphStepKind KINDS[] = {
 	{ "select", "Flow", list(SELECT_IN), list(VALUE_OUT), GraphStepFlow::eval_select, nullptr, nullptr, false },
 	{ "switch", "Flow", list(SWITCH_IN), list(DEFAULT_OUT), nullptr, GraphStepFlow::run_switch, GraphStepFlow::resolve_switch, false, CASE_PINS },
 	{ "break", "Flow", list(RUN_IN), NO_PORTS, nullptr, GraphStepRun::run_break, nullptr, false },
+	{ "wait", "Flow", list(WAIT_IN), list(THEN_OUT), nullptr, GraphStepLatent::run_wait, nullptr, false },
+	{ "await_signal", "Flow", list(TARGET_RUN_IN), list(AWAIT_OUT), nullptr, GraphStepLatent::run_await_signal, GraphStepLatent::resolve_await_signal, false },
 	{ "get", "Variables", NO_PORTS, list(VALUE_OUT), GraphStepRun::eval_variable, nullptr, GraphStepRun::resolve_variable, false },
 	{ "set", "Variables", list(SET_IN), list(THEN_OUT), nullptr, GraphStepRun::run_set_variable, GraphStepRun::resolve_variable, false },
 	{ "local", "Variables", NO_PORTS, list(VALUE_OUT), GraphStepRun::eval_local, nullptr, GraphStepRun::resolve_local, false },

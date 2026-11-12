@@ -46,7 +46,37 @@ GraphScriptInstance::GraphScriptInstance(const Ref<GraphScript> &p_script, Objec
 }
 
 GraphScriptInstance::~GraphScriptInstance() {
+	_drop_waiting();
 	script->remove_instance(this);
+}
+
+void GraphScriptInstance::_drop_waiting() {
+	// A drop never touches the list, so it is safe to walk it.
+	for (const Ref<GraphCall> &call : waiting) {
+		call->drop();
+	}
+	waiting.clear();
+}
+
+void GraphScriptInstance::add_waiting(const Ref<GraphCall> &p_call) {
+	waiting.push_back(p_call);
+}
+
+void GraphScriptInstance::remove_waiting(const GraphCall *p_call) {
+	for (int i = 0; i < waiting.size(); i++) {
+		if (waiting[i].ptr() == p_call) {
+			waiting.remove_at(i);
+			return;
+		}
+	}
+}
+
+void GraphScriptInstance::drop_waiting_calls() {
+	if (waiting.is_empty()) {
+		return;
+	}
+	GraphScriptLanguage::get_singleton()->report_error(vformat("The script changed while %d calls were waiting. The calls are dropped.", waiting.size()));
+	_drop_waiting();
 }
 
 void GraphScriptInstance::refresh() {
@@ -131,11 +161,13 @@ Variant GraphScriptInstance::callp(const StringName &p_method, const Variant **p
 		return Variant();
 	}
 	depth++;
-	GraphCall call(*this, *function, GLOBAL_GET_CACHED(int64_t, "graph_script/runtime/step_budget"));
-	const Variant result = call.run(arguments);
+	Ref<GraphCall> call;
+	call.instantiate(this, function, GLOBAL_GET_CACHED(int64_t, "graph_script/runtime/step_budget"));
+	const Variant result = call->run(arguments);
 	depth--;
 	too_deep = too_deep && depth > 0;
-	return result;
+	// A call that waits goes to its caller. The caller may await it, and the instance keeps it.
+	return call->is_waiting() ? Variant(call) : result;
 }
 
 // A function that starts at a signal received step listens from the moment the entity starts.

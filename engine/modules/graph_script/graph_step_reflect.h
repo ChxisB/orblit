@@ -13,6 +13,10 @@
 
 namespace GraphStepReflect {
 
+// The object on a target port. A target with nothing wired is the owner of the script, and a
+// target that is gone fails the call.
+Object *read_target(GraphCall &p_call, const GraphCompiledStep &p_step, int p_port);
+
 // A method with no declared return type may still give a value, if it says so.
 bool returns_value(const MethodInfo &p_info);
 

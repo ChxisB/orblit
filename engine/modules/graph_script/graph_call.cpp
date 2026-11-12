@@ -5,13 +5,20 @@
 
 #include "graph_script_language.h"
 
-GraphCall::GraphCall(GraphScriptInstance &p_instance, const GraphCompiledFunction &p_function, int64_t p_step_limit) :
+#include "core/object/class_registry.h"
+
+GraphCall::GraphCall(GraphScriptInstance *p_instance, const GraphCompiledFunction *p_function, int64_t p_step_limit) :
 		instance(p_instance), function(p_function), limit(p_step_limit) {
-	slots.resize(function.slot_count);
+	slots.resize(function->slot_count);
+}
+
+void GraphCall::register_members() {
+	ClassRegistry::bind_vararg_method(METHOD_FLAGS_DEFAULT, "_woken", &GraphCall::_woken, MethodInfo("_woken"));
+	ADD_SIGNAL(MethodInfo("completed", PropertyInfo(Variant::NIL, "result", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NIL_IS_VARIANT)));
 }
 
 int GraphCall::_target(int p_step, int p_port) const {
-	return p_port == GraphFlow::END ? -1 : function.steps[p_step].next[p_port];
+	return p_port == GraphFlow::END ? -1 : function->steps[p_step].next[p_port];
 }
 
 int GraphCall::_resume() {
@@ -35,21 +42,29 @@ int GraphCall::_advance(int p_current) {
 // An argument fills the output after "then" that its name sits on. A declared local starts as
 // the default of its type.
 void GraphCall::_begin(const Vector<Variant> &p_arguments) {
-	if (function.start >= 0) {
-		const int first = get_step(function.start).slot + 1;
+	if (function->start >= 0) {
+		const int first = get_step(function->start).slot + 1;
 		for (int i = 0; i < p_arguments.size(); i++) {
 			slots.write[first + i] = p_arguments[i];
 		}
 	}
-	for (const GraphTyped &local : function.signature.locals) {
+	for (const GraphTyped &local : function->signature.locals) {
 		locals[local.name] = GraphSignatures::make_default(local.type);
 	}
 }
 
 Variant GraphCall::run(const Vector<Variant> &p_arguments) {
 	_begin(p_arguments);
-	int current = function.start < 0 ? -1 : _target(function.start, 0);
-	while (!returned && !failed && (current >= 0 || !stack.is_empty())) {
+	current = function->start < 0 ? -1 : _target(function->start, 0);
+	_loop();
+	return result;
+}
+
+// The step budget counts from each resume, so a loop that waits on every round is not cut off
+// by the rounds before it.
+void GraphCall::_loop() {
+	ran = 0;
+	while (!suspended && !returned && !failed && (current >= 0 || !stack.is_empty())) {
 		// With no step to run, the step on top of the stack is the one that resumes.
 		const GraphCompiledStep &at = get_step(current >= 0 ? current : stack[stack.size() - 1].step);
 		if (++ran > limit) {
@@ -58,7 +73,52 @@ Variant GraphCall::run(const Vector<Variant> &p_arguments) {
 		}
 		current = _advance(current);
 	}
-	return result;
+}
+
+void GraphCall::wait_for(Object *p_emitter, const StringName &p_signal, const GraphPending &p_frame) {
+	stack.push_back(p_frame);
+	emitter = p_emitter->get_instance_id();
+	wake_signal = p_signal;
+	suspended = true;
+	instance->add_waiting(Ref<GraphCall>(this));
+	p_emitter->connect(p_signal, Callable(this, "_woken"), CONNECT_ONE_SHOT);
+}
+
+// What the signal sent goes to the frame on top, which is the step that waited.
+void GraphCall::_woken(const Variant **p_args, int p_argcount, Callable::CallError &r_error) {
+	// The instance held the last reference, and it lets go of it here.
+	const Ref<GraphCall> keep(this);
+	emitter = ObjectID();
+	if (!suspended) {
+		return;
+	}
+	Array heard;
+	for (int i = 0; i < p_argcount; i++) {
+		heard.push_back(*p_args[i]);
+	}
+	stack.write[stack.size() - 1].container = heard;
+	instance->remove_waiting(this);
+	suspended = false;
+	_loop();
+	if (!suspended) {
+		emit_signal("completed", result);
+	}
+}
+
+void GraphCall::drop() {
+	if (Object *source = ObjectRegistry::get_instance(emitter)) {
+		const Callable wake(this, "_woken");
+		if (source->is_connected(wake_signal, wake)) {
+			source->disconnect(wake_signal, wake);
+		}
+	}
+	emitter = ObjectID();
+	suspended = false;
+	instance = nullptr;
+	function = nullptr;
+	slots.clear();
+	locals.clear();
+	stack.clear();
 }
 
 Variant GraphCall::_read_pure(const GraphCompiledStep &p_step, int p_port) {
@@ -110,8 +170,8 @@ void GraphCall::stop_loop() {
 
 void GraphCall::finish(const GraphCompiledStep &p_step, const Variant &p_value) {
 	returned = true;
-	if (!GraphSignatures::convert(function.signature.returns, p_value, result)) {
-		fail(p_step, vformat("cannot return a %s from a function that gives a %s.", Variant::get_type_name(p_value.get_type()), Variant::get_type_name(function.signature.returns)));
+	if (!GraphSignatures::convert(function->signature.returns, p_value, result)) {
+		fail(p_step, vformat("cannot return a %s from a function that gives a %s.", Variant::get_type_name(p_value.get_type()), Variant::get_type_name(function->signature.returns)));
 	}
 }
 
@@ -120,17 +180,17 @@ void GraphCall::fail(const GraphCompiledStep &p_step, const String &p_message) {
 		return;
 	}
 	failed = true;
-	GraphScriptLanguage::get_singleton()->report_error(vformat("Function '%s', step %d: %s", function.name, p_step.id, p_message));
+	GraphScriptLanguage::get_singleton()->report_error(vformat("Function '%s', step %d: %s", function->name, p_step.id, p_message));
 }
 
 Variant GraphCall::read_variable(const GraphCompiledStep &p_step) {
 	Variant value;
-	instance.get(p_step.parameters["name"], value);
+	instance->get(p_step.parameters["name"], value);
 	return value;
 }
 
 void GraphCall::write_variable(const GraphCompiledStep &p_step, const Variant &p_value) {
-	if (!instance.set(p_step.parameters["name"], p_value)) {
+	if (!instance->set(p_step.parameters["name"], p_value)) {
 		fail(p_step, vformat("cannot store a %s in the variable '%s'.", Variant::get_type_name(p_value.get_type()), String(p_step.parameters["name"])));
 	}
 }
@@ -147,7 +207,7 @@ Variant GraphCall::read_local(const GraphCompiledStep &p_step) {
 
 void GraphCall::write_local(const GraphCompiledStep &p_step, const Variant &p_value) {
 	const StringName name = p_step.parameters["name"];
-	const GraphTyped *declared = function.signature.find_local(name);
+	const GraphTyped *declared = function->signature.find_local(name);
 	Variant stored = p_value;
 	if (declared && !GraphSignatures::convert(declared->type, p_value, stored)) {
 		fail(p_step, vformat("cannot store a %s in the local '%s', which holds a %s.", Variant::get_type_name(p_value.get_type()), name, Variant::get_type_name(declared->type)));

@@ -11,6 +11,7 @@
 
 // The variables of one entity and the way to call its graph functions.
 class Entity;
+class GraphCall;
 
 class GraphScriptInstance final : public ScriptInstance {
 	Ref<GraphScript> script;
@@ -23,7 +24,10 @@ class GraphScriptInstance final : public ScriptInstance {
 	// Set when a call went past the limit. Every open call then gives up, so a graph that
 	// branches into two recursive calls ends at once.
 	bool too_deep = false;
+	// The calls set aside by a latent step. This list is what keeps each of them alive.
+	Vector<Ref<GraphCall>> waiting;
 
+	void _drop_waiting();
 	void _connect_receiver(Entity *p_owner, const GraphCompiledFunction &p_function);
 
 	// Each open call holds a C++ frame, so the limit keeps a runaway graph off the stack.
@@ -36,6 +40,12 @@ public:
 	// Keeps the value of each variable that still has its name and type. The script calls this
 	// after a change.
 	void refresh();
+
+	void add_waiting(const Ref<GraphCall> &p_call);
+	void remove_waiting(const GraphCall *p_call);
+	// A change to the script voids the frames of its waiting calls, so they end here and the
+	// log says how many.
+	void drop_waiting_calls();
 
 	virtual bool set(const StringName &p_name, const Variant &p_value) override;
 	virtual bool get(const StringName &p_name, Variant &r_ret) const override;
