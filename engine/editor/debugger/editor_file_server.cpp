@@ -3,6 +3,7 @@
 
 #include "editor_file_server.h"
 
+#include "core/io/resource_uid.h"
 #include "editor/editor_node.h"
 #include "editor/export/editor_export_platform.h"
 #include "editor/settings/editor_settings.h"
@@ -179,6 +180,8 @@ void EditorFileServer::poll() {
 	}
 
 	_add_custom_file("res://project.orblit", files_to_send, cached_files);
+	// The client resolves resource ids through this file. Without it the main scene id has no path.
+	_add_custom_file(ResourceUID::get_cache_file(), files_to_send, cached_files);
 	// Check which files were removed and also add them
 	for (KeyValue<String, uint64_t> K : cached_files) {
 		if (!files_to_send.has(K.key)) {

@@ -7,9 +7,12 @@ TEST_FORCE_LINK(test_text_system)
 
 #ifdef TOOLS_ENABLED
 
+#include "core/io/file_access.h"
 #include "core/variant/typed_array.h"
+#include "editor/import/resource_importer_dynamic_font.h"
 #include "editor/themes/builtin_fonts.gen.h"
 #include "systems/text/text_system.h"
+#include "tests/test_utils.h"
 
 namespace TestTextSystem {
 
@@ -1056,6 +1059,29 @@ TEST_SUITE("[TextSystem]") {
 			}
 		}
 	}
+}
+
+TEST_CASE("[TextSystem][Editor] Dynamic font import rejects invalid data") {
+	Ref<ResourceImporterDynamicFont> importer;
+	importer.instantiate();
+
+	List<ResourceImporter::ImportOption> option_list;
+	importer->get_import_options("", &option_list);
+	HashMap<StringName, Variant> options;
+	for (const ResourceImporter::ImportOption &option : option_list) {
+		options[option.option.name] = option.default_value;
+	}
+
+	const String source = TestUtils::get_temp_path("not_a_font.ttf");
+	Ref<FileAccess> file = FileAccess::open(source, FileAccess::WRITE);
+	REQUIRE(file.is_valid());
+	file->store_string("this is not a font file");
+	file.unref();
+
+	ERR_PRINT_OFF;
+	const Error err = importer->import(ResourceUID::INVALID_ID, source, TestUtils::get_temp_path("not_a_font"), options, nullptr, nullptr, nullptr);
+	ERR_PRINT_ON;
+	CHECK(err != OK);
 }
 
 } // namespace TestTextSystem

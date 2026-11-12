@@ -92,26 +92,30 @@ Error ImageLoaderTinyEXR::load_image(Ref<Image> p_image, Ref<FileAccess> f, BitF
 	int output_channels = 0;
 
 	int channel_size = use_float16 ? 2 : 4;
+	const int64_t pixel_count = (int64_t)exr_image.width * exr_image.height;
 	if (idxA != -1) {
-		imgdata.resize(exr_image.width * exr_image.height * 4 * channel_size); //RGBA
 		format = use_float16 ? Image::FORMAT_RGBAH : Image::FORMAT_RGBAF;
 		output_channels = 4;
 	} else if (idxB != -1) {
 		ERR_FAIL_COND_V(idxG == -1, ERR_FILE_CORRUPT);
 		ERR_FAIL_COND_V(idxR == -1, ERR_FILE_CORRUPT);
-		imgdata.resize(exr_image.width * exr_image.height * 3 * channel_size); //RGB
 		format = use_float16 ? Image::FORMAT_RGBH : Image::FORMAT_RGBF;
 		output_channels = 3;
 	} else if (idxG != -1) {
 		ERR_FAIL_COND_V(idxR == -1, ERR_FILE_CORRUPT);
-		imgdata.resize(exr_image.width * exr_image.height * 2 * channel_size); //RG
 		format = use_float16 ? Image::FORMAT_RGH : Image::FORMAT_RGF;
 		output_channels = 2;
 	} else {
 		ERR_FAIL_COND_V(idxR == -1, ERR_FILE_CORRUPT);
-		imgdata.resize(exr_image.width * exr_image.height * 1 * channel_size); //R
 		format = use_float16 ? Image::FORMAT_RH : Image::FORMAT_RF;
 		output_channels = 1;
+	}
+
+	// The byte count is 64 bit. Four float channels at 16384 by 16384 pixels are 4 GiB, which wraps a 32 bit product to a negative size.
+	if (pixel_count <= 0 || pixel_count > Image::MAX_PIXELS || imgdata.resize(pixel_count * output_channels * channel_size) != OK) {
+		FreeEXRHeader(&exr_header);
+		FreeEXRImage(&exr_image);
+		ERR_FAIL_V_MSG(ERR_OUT_OF_MEMORY, "The EXR image has no pixels or is too large to load.");
 	}
 
 	EXRTile single_image_tile;

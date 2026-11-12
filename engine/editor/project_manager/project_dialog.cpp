@@ -674,6 +674,7 @@ void ProjectDialog::ok_pressed() {
 			ret = unzGoToFirstFile(pkg);
 
 			Vector<String> failed_files;
+			Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
 			while (ret == UNZ_OK) {
 				//get filename
 				unz_file_info info;
@@ -692,9 +693,11 @@ void ProjectDialog::ok_pressed() {
 				String rel_path = name.trim_prefix(zip_root);
 				if (rel_path.is_empty()) { // Root.
 				} else if (rel_path.ends_with("/")) { // Directory.
-					Ref<DirAccess> da = DirAccess::create(DirAccess::ACCESS_FILESYSTEM);
-					da->make_dir(path.path_join(rel_path));
+					da->make_dir_recursive(path.path_join(rel_path));
 				} else { // File.
+					// A zip may hold a file without listing its directories. Create them first.
+					da->make_dir_recursive(path.path_join(rel_path).get_base_dir());
+
 					Vector<uint8_t> uncomp_data;
 					uncomp_data.resize(info.uncompressed_size);
 
