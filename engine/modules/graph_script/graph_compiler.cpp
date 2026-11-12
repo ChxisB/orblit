@@ -79,6 +79,7 @@ class Compiler {
 	String _add_steps();
 	String _add_wires();
 	String _check_wire_types();
+	String _fill_default(GraphCompiledStep &p_step, int p_port, const GraphPort &p_spec);
 	String _fill_defaults();
 	String _resolve_steps();
 	String _find_start();
@@ -119,6 +120,10 @@ String Compiler::_add_steps() {
 		const GraphStepKind *kind = GraphStepKinds::find(step.kind);
 		if (!kind) {
 			return _fail(step.id, vformat("this build does not know the step kind '%s'.", step.kind));
+		}
+		const String problem = GraphStepKinds::get_ports_problem(*kind, step.parameters);
+		if (!problem.is_empty()) {
+			return _fail(step.id, problem);
 		}
 		GraphCompiledStep compiled;
 		compiled.index = i;
@@ -170,7 +175,22 @@ String Compiler::_check_wire_types() {
 	return String();
 }
 
-// A data input with no wire takes the step parameter that has the name of the port.
+// A data input with no wire takes the step parameter its port names. An optional port with no
+// value reads its fallback.
+String Compiler::_fill_default(GraphCompiledStep &p_step, int p_port, const GraphPort &p_spec) {
+	GraphCompiledInput &input = p_step.inputs.write[p_port];
+	if (!p_step.parameters.has(p_spec.parameter)) {
+		input.value = p_spec.fallback;
+		return p_spec.optional ? String() : _fail(p_step.id, vformat("the input '%s' has no wire and no value.", p_spec.name));
+	}
+	input.value = p_step.parameters[p_spec.parameter];
+	const Variant::Type given = input.value.get_type();
+	if (given != Variant::NIL && p_spec.type != Variant::NIL && !Variant::can_convert_strict(given, p_spec.type)) {
+		return _fail(p_step.id, vformat("the input '%s' needs a %s, and the value is a %s.", p_spec.name, Variant::get_type_name(p_spec.type), Variant::get_type_name(given)));
+	}
+	return String();
+}
+
 String Compiler::_fill_defaults() {
 	for (GraphCompiledStep &step : out.steps) {
 		for (int port = 0; port < step.inputs.size(); port++) {
@@ -178,10 +198,10 @@ String Compiler::_fill_defaults() {
 			if (spec.sort == GraphPortSort::FLOW || step.inputs[port].step >= 0) {
 				continue;
 			}
-			if (!step.parameters.has(spec.name)) {
-				return _fail(step.id, vformat("the input '%s' has no wire and no value.", spec.name));
+			const String problem = _fill_default(step, port, spec);
+			if (!problem.is_empty()) {
+				return problem;
 			}
-			step.inputs.write[port].value = step.parameters[spec.name];
 		}
 	}
 	return String();

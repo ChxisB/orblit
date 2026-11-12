@@ -29,6 +29,8 @@ struct GraphPortSpec {
 	GraphPortSort sort;
 	// Variant::NIL on a data port accepts any type.
 	Variant::Type type;
+	// An optional input may stay unwired and without a value. It then reads nil.
+	bool optional = false;
 };
 
 struct GraphPortList {
@@ -54,11 +56,24 @@ struct GraphPinGrowth {
 	int minimum = 0;
 };
 
-// One port of a step, fixed or grown.
+// One port of a step, fixed, derived or grown.
 struct GraphPort {
 	String name;
 	GraphPortSort sort = GraphPortSort::DATA;
 	Variant::Type type = Variant::NIL;
+	// The step parameter that holds the value of an input with no wire. It is not always the name,
+	// because the name of an argument may be one of the parameters the step already has.
+	String parameter;
+	// An optional input with no wire and no value reads the fallback.
+	bool optional = false;
+	Variant fallback;
+};
+
+// The ports a step gets from what its parameters name, such as the arguments of a method.
+// They follow the fixed ports and come before the pins.
+struct GraphDerivedPorts {
+	Vector<GraphPort> inputs;
+	Vector<GraphPort> outputs;
 };
 
 // A pure kind gives its output when a wire asks for it. A kind with several outputs gives an
@@ -69,6 +84,9 @@ using GraphRunFn = int (*)(GraphCall &p_call, const GraphCompiledStep &p_step);
 // Reads the parameters of a step when its function compiles. Returns the problem, or an
 // empty string when the step is fine.
 using GraphResolveFn = String (*)(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
+// Works out the derived ports from the parameters. Returns the problem, such as an unknown
+// class, or an empty string. A step with a problem has no ports of this kind.
+using GraphDeriveFn = String (*)(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
 
 struct GraphStepKind {
 	const char *name;
@@ -81,6 +99,9 @@ struct GraphStepKind {
 	// A cycle of flow wires is allowed when it passes through a loop.
 	bool loop;
 	GraphPinGrowth growth = {};
+	// A kind with this column mirrors something the engine registers, and the catalogue lists it
+	// once per method, property or signal.
+	GraphDeriveFn derive = nullptr;
 
 	bool is_pure() const { return eval != nullptr; }
 	// Starts a function. It has no input to run from and nothing to run itself.
@@ -95,9 +116,15 @@ const GraphStepKind *find(const StringName &p_name);
 // The most pins one step may have.
 constexpr int MAX_PINS = 64;
 
+// The table, so the catalogue can list it.
+int get_kind_count();
+const GraphStepKind &get_kind(int p_index);
+
 // How many pins a step of this kind has when it holds these parameters. Never below the minimum.
 int get_pin_count(const GraphStepKind &p_kind, const Dictionary &p_parameters);
-// The fixed ports plus the pins, on one side.
+// What is wrong with the derived ports of a step, or an empty string.
+String get_ports_problem(const GraphStepKind &p_kind, const Dictionary &p_parameters);
+// The fixed ports, then the derived ones, then the pins, on one side.
 int get_port_count(const GraphStepKind &p_kind, const Dictionary &p_parameters, GraphPinSide p_side);
 GraphPort get_port(const GraphStepKind &p_kind, const Dictionary &p_parameters, GraphPinSide p_side, int p_index);
 

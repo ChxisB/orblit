@@ -105,8 +105,19 @@ Variant GraphScriptInstance::callp(const StringName &p_method, const Variant **p
 		GraphScriptLanguage::get_singleton()->report_error(function->error);
 		return Variant();
 	}
+	if (too_deep || depth >= MAX_CALL_DEPTH) {
+		if (!too_deep) {
+			GraphScriptLanguage::get_singleton()->report_error(vformat("Function '%s' calls itself deeper than %d levels. The call is dropped.", p_method, MAX_CALL_DEPTH));
+		}
+		too_deep = true;
+		return Variant();
+	}
+	depth++;
 	GraphCall call(*this, *function, GLOBAL_GET_CACHED(int64_t, "graph_script/runtime/step_budget"));
-	return call.run();
+	const Variant result = call.run();
+	depth--;
+	too_deep = too_deep && depth > 0;
+	return result;
 }
 
 ScriptLanguage *GraphScriptInstance::get_language() {

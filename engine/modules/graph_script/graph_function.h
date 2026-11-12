@@ -41,6 +41,9 @@ class GraphFunction {
 	bool _is_input_wired(int p_step, int p_port) const;
 	void _remove_wires_from_output(int p_step, int p_port);
 	Error _check_wire(const GraphWire &p_wire) const;
+	bool _has_complete_ports(const GraphStep &p_step) const;
+	bool _ports_fit(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const;
+	void _remove_broken_wires(int p_step);
 	Error _check_ports(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const;
 	void _remove_wires_beyond(int p_step, GraphPinSide p_side, int p_port_count);
 

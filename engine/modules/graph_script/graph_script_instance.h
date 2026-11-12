@@ -16,6 +16,14 @@ class GraphScriptInstance final : public ScriptInstance {
 	Ref<RandomNumberGenerator> random;
 	// A variable the script gained after this instance was made reads as its default.
 	HashMap<StringName, Variant> values;
+	// How many calls are open on this instance. A call step may call the function it sits in.
+	int depth = 0;
+	// Set when a call went past the limit. Every open call then gives up, so a graph that
+	// branches into two recursive calls ends at once.
+	bool too_deep = false;
+
+	// Each open call holds a C++ frame, so the limit keeps a runaway graph off the stack.
+	static constexpr int MAX_CALL_DEPTH = 64;
 
 public:
 	GraphScriptInstance(const Ref<GraphScript> &p_script, Object *p_owner);

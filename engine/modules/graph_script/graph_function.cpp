@@ -103,6 +103,7 @@ Error GraphFunction::set_step_parameter(int p_id, const StringName &p_parameter,
 		return ERR_INVALID_PARAMETER;
 	}
 	steps.write[index].parameters[p_parameter] = p_value;
+	_remove_broken_wires(p_id);
 	return OK;
 }
 
@@ -133,23 +134,47 @@ Error GraphFunction::set_pin_count(int p_id, int p_count) {
 	return OK;
 }
 
-Error GraphFunction::_check_ports(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const {
+// A step whose kind is unknown or whose parameters name nothing real has an incomplete port list,
+// so a wire that does not fit it may still fit once the step is fixed.
+bool GraphFunction::_has_complete_ports(const GraphStep &p_step) const {
+	const GraphStepKind *kind = GraphStepKinds::find(p_step.kind);
+	return kind && GraphStepKinds::get_ports_problem(*kind, p_step.parameters).is_empty();
+}
+
+bool GraphFunction::_ports_fit(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const {
 	const GraphStepKind &from_kind = *GraphStepKinds::find(p_from.kind);
 	const GraphStepKind &to_kind = *GraphStepKinds::find(p_to.kind);
 	const int outputs = GraphStepKinds::get_port_count(from_kind, p_from.parameters, GraphPinSide::OUTPUT);
 	const int inputs = GraphStepKinds::get_port_count(to_kind, p_to.parameters, GraphPinSide::INPUT);
 	if (p_wire.from_port < 0 || p_wire.from_port >= outputs || p_wire.to_port < 0 || p_wire.to_port >= inputs) {
-		return ERR_INVALID_PARAMETER;
+		return false;
 	}
 	const GraphPort output = GraphStepKinds::get_port(from_kind, p_from.parameters, GraphPinSide::OUTPUT, p_wire.from_port);
 	const GraphPort input = GraphStepKinds::get_port(to_kind, p_to.parameters, GraphPinSide::INPUT, p_wire.to_port);
-	if (output.sort != input.sort) {
-		return ERR_INVALID_PARAMETER;
+	return output.sort == input.sort;
+}
+
+// A parameter may change the ports of its step, such as the method a call step names.
+void GraphFunction::_remove_broken_wires(int p_step) {
+	for (int i = wires.size() - 1; i >= 0; i--) {
+		const GraphStep *from = get_step(wires[i].from_step);
+		const GraphStep *to = get_step(wires[i].to_step);
+		const bool touches = wires[i].from_step == p_step || wires[i].to_step == p_step;
+		if (touches && from && to && _has_complete_ports(*from) && _has_complete_ports(*to) && !_ports_fit(*from, *to, wires[i])) {
+			wires.remove_at(i);
+		}
 	}
+}
+
+Error GraphFunction::_check_ports(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const {
+	if (!_ports_fit(p_from, p_to, p_wire)) {
+		return _has_complete_ports(p_from) && _has_complete_ports(p_to) ? ERR_INVALID_PARAMETER : ERR_UNAVAILABLE;
+	}
+	const GraphStepKind &to_kind = *GraphStepKinds::find(p_to.kind);
 	if (has_wire(p_wire)) {
 		return ERR_ALREADY_EXISTS;
 	}
-	if (input.sort == GraphPortSort::DATA && _is_input_wired(p_wire.to_step, p_wire.to_port)) {
+	if (GraphStepKinds::get_port(to_kind, p_to.parameters, GraphPinSide::INPUT, p_wire.to_port).sort == GraphPortSort::DATA && _is_input_wired(p_wire.to_step, p_wire.to_port)) {
 		return ERR_ALREADY_IN_USE;
 	}
 	return OK;

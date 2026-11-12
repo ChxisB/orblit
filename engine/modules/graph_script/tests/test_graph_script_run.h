@@ -44,6 +44,12 @@ struct Graph {
 		CHECK(script->add_function(function) == OK);
 	}
 
+	// Adds another function to a script a test has made.
+	Graph(const Ref<GraphScript> &p_script, const String &p_function) :
+			script(p_script), function(p_function) {
+		CHECK(script->add_function(function) == OK);
+	}
+
 	void variable(const String &p_name, Variant::Type p_type, const String &p_default_text = String()) {
 		CHECK(script->add_variable(p_name, p_type) == OK);
 		if (!p_default_text.is_empty()) {

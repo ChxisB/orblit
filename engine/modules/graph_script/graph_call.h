@@ -53,6 +53,7 @@ public:
 	Variant run();
 
 	const GraphCompiledStep &get_step(int p_index) const { return function.steps[p_index]; }
+	GraphScriptInstance &get_instance() const { return instance; }
 	Object *get_owner() const { return instance.get_owner(); }
 	RandomNumberGenerator &get_random() const { return *instance.get_random().ptr(); }
 	// The value on a data input. A pure step behind a wire runs now, each time.

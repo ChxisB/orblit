@@ -4,6 +4,7 @@
 #include "graph_step_kinds.h"
 
 #include "graph_step_flow.h"
+#include "graph_step_reflect.h"
 #include "graph_step_run.h"
 #include "graph_step_scene.h"
 #include "graph_step_values.h"
@@ -16,6 +17,10 @@ constexpr GraphPortSpec flow(const char *p_name) {
 
 constexpr GraphPortSpec data(const char *p_name, Variant::Type p_type = Variant::NIL) {
 	return { p_name, GraphPortSort::DATA, p_type };
+}
+
+constexpr GraphPortSpec optional_object(const char *p_name) {
+	return { p_name, GraphPortSort::DATA, Variant::OBJECT, true };
 }
 
 template <int N>
@@ -55,6 +60,11 @@ constexpr GraphPortSpec BOOL_OUT[] = { data("value", Variant::BOOL) };
 constexpr GraphPortSpec INSTANTIATE_IN[] = { flow("run"), data("prefab", Variant::OBJECT) };
 constexpr GraphPortSpec INSTANTIATE_OUT[] = { flow("then"), data("entity", Variant::OBJECT) };
 constexpr GraphPortSpec PRINT_IN[] = { flow("run"), data("text") };
+// A call with no target wired runs on the owner of the script.
+constexpr GraphPortSpec TARGET_IN[] = { optional_object("target") };
+constexpr GraphPortSpec TARGET_RUN_IN[] = { flow("run"), optional_object("target") };
+constexpr GraphPortSpec FREE_IN[] = { flow("run"), data("object", Variant::OBJECT) };
+constexpr GraphPortSpec CALL_FUNCTION_OUT[] = { flow("then"), data("result") };
 
 constexpr GraphPinGrowth THEN_PINS = { GraphPinSide::OUTPUT, "then", nullptr, GraphPortSort::FLOW, Variant::NIL, 2 };
 constexpr GraphPinGrowth CASE_PINS = { GraphPinSide::OUTPUT, "case", nullptr, GraphPortSort::FLOW, Variant::NIL, 1 };
@@ -62,8 +72,10 @@ constexpr GraphPinGrowth ITEM_PINS = { GraphPinSide::INPUT, "item", nullptr, Gra
 constexpr GraphPinGrowth ENTRY_PINS = { GraphPinSide::INPUT, "key", "value", GraphPortSort::DATA, Variant::NIL, 0 };
 constexpr GraphPinGrowth ARGUMENT_PINS = { GraphPinSide::INPUT, "argument", nullptr, GraphPortSort::DATA, Variant::NIL, 0 };
 constexpr GraphPinGrowth PART_PINS = { GraphPinSide::OUTPUT, "part", nullptr, GraphPortSort::DATA, Variant::NIL, 1 };
+// The arguments a vararg method takes past its named ones.
+constexpr GraphPinGrowth EXTRA_PINS = { GraphPinSide::INPUT, "extra", nullptr, GraphPortSort::DATA, Variant::NIL, 0 };
 
-// Columns: name, category, inputs, outputs, eval, run, resolve, loop, growth.
+// Columns: name, category, inputs, outputs, eval, run, resolve, loop, growth, derive.
 constexpr GraphStepKind KINDS[] = {
 	{ "entry", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false },
 	{ "event", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false },
@@ -100,6 +112,21 @@ constexpr GraphStepKind KINDS[] = {
 	{ "input_action", "Input", NO_PORTS, list(BOOL_OUT), GraphStepScene::eval_input_action, nullptr, GraphStepScene::resolve_input_action, false },
 	{ "print", "Debug", list(PRINT_IN), list(THEN_OUT), nullptr, GraphStepScene::run_print, nullptr, false },
 	{ "operator", "Operators", list(OPERATOR_IN), list(RESULT_OUT), GraphStepRun::eval_operator, nullptr, GraphStepRun::resolve_operator, false },
+	{ "call_method", "Calls", list(TARGET_RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_method, GraphStepReflect::resolve_method, false, EXTRA_PINS, GraphStepReflect::derive_method },
+	{ "query_method", "Calls", list(TARGET_IN), NO_PORTS, GraphStepReflect::eval_call_method, nullptr, GraphStepReflect::resolve_method, false, EXTRA_PINS, GraphStepReflect::derive_method },
+	{ "call_static", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_static, GraphStepReflect::resolve_static, false, EXTRA_PINS, GraphStepReflect::derive_static },
+	{ "call_builtin", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_builtin, GraphStepReflect::resolve_builtin, false, EXTRA_PINS, GraphStepReflect::derive_builtin },
+	{ "query_builtin", "Calls", NO_PORTS, NO_PORTS, GraphStepReflect::eval_call_builtin, nullptr, GraphStepReflect::resolve_builtin, false, EXTRA_PINS, GraphStepReflect::derive_builtin },
+	{ "call_utility", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_utility, GraphStepReflect::resolve_utility, false, EXTRA_PINS, GraphStepReflect::derive_utility },
+	{ "query_utility", "Calls", NO_PORTS, NO_PORTS, GraphStepReflect::eval_call_utility, nullptr, GraphStepReflect::resolve_utility, false, EXTRA_PINS, GraphStepReflect::derive_utility },
+	{ "call_function", "Calls", list(RUN_IN), list(CALL_FUNCTION_OUT), nullptr, GraphStepReflect::run_call_function, GraphStepReflect::resolve_call_function, false },
+	{ "get_property", "Properties", list(TARGET_IN), NO_PORTS, GraphStepReflect::eval_get_property, nullptr, nullptr, false, {}, GraphStepReflect::derive_get_property },
+	{ "set_property", "Properties", list(TARGET_RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_set_property, nullptr, false, {}, GraphStepReflect::derive_set_property },
+	{ "emit", "Signals", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_emit, GraphStepReflect::resolve_emit, false, ARGUMENT_PINS },
+	{ "emit_on", "Signals", list(TARGET_RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_emit_on, nullptr, false, {}, GraphStepReflect::derive_emit_on },
+	{ "connect", "Signals", list(TARGET_RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_connect, GraphStepReflect::resolve_connect, false },
+	{ "new", "Objects", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_new, nullptr, false, {}, GraphStepReflect::derive_new },
+	{ "free", "Objects", list(FREE_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_free, nullptr, false },
 };
 
 } // namespace
@@ -114,6 +141,20 @@ int ports_per_pin(const GraphStepKind &p_kind) {
 	return p_kind.growth.second_name ? 2 : 1;
 }
 
+// A step with a problem has no derived ports, so a half-edited step still has its fixed ones.
+// shortcut: derive runs on every port query, cache it on the step when the editor profile shows it.
+GraphDerivedPorts derived_ports(const GraphStepKind &p_kind, const Dictionary &p_parameters) {
+	GraphDerivedPorts ports;
+	if (p_kind.derive && !p_kind.derive(p_parameters, ports).is_empty()) {
+		return GraphDerivedPorts();
+	}
+	return ports;
+}
+
+const Vector<GraphPort> &derived_side(const GraphDerivedPorts &p_ports, GraphPinSide p_side) {
+	return p_side == GraphPinSide::INPUT ? p_ports.inputs : p_ports.outputs;
+}
+
 } // namespace
 
 const GraphStepKind *GraphStepKinds::find(const StringName &p_name) {
@@ -125,6 +166,14 @@ const GraphStepKind *GraphStepKinds::find(const StringName &p_name) {
 	return nullptr;
 }
 
+int GraphStepKinds::get_kind_count() {
+	return sizeof(KINDS) / sizeof(KINDS[0]);
+}
+
+const GraphStepKind &GraphStepKinds::get_kind(int p_index) {
+	return KINDS[p_index];
+}
+
 int GraphStepKinds::get_pin_count(const GraphStepKind &p_kind, const Dictionary &p_parameters) {
 	if (p_kind.growth.side == GraphPinSide::NONE) {
 		return 0;
@@ -134,8 +183,13 @@ int GraphStepKinds::get_pin_count(const GraphStepKind &p_kind, const Dictionary 
 	return CLAMP(count, p_kind.growth.minimum, MAX_PINS);
 }
 
+String GraphStepKinds::get_ports_problem(const GraphStepKind &p_kind, const Dictionary &p_parameters) {
+	GraphDerivedPorts ports;
+	return p_kind.derive ? p_kind.derive(p_parameters, ports) : String();
+}
+
 int GraphStepKinds::get_port_count(const GraphStepKind &p_kind, const Dictionary &p_parameters, GraphPinSide p_side) {
-	const int fixed = fixed_ports(p_kind, p_side).count;
+	const int fixed = fixed_ports(p_kind, p_side).count + derived_side(derived_ports(p_kind, p_parameters), p_side).size();
 	return p_kind.growth.side == p_side ? fixed + get_pin_count(p_kind, p_parameters) * ports_per_pin(p_kind) : fixed;
 }
 
@@ -143,10 +197,15 @@ GraphPort GraphStepKinds::get_port(const GraphStepKind &p_kind, const Dictionary
 	const GraphPortList &fixed = fixed_ports(p_kind, p_side);
 	if (p_index < fixed.count) {
 		const GraphPortSpec &spec = fixed.items[p_index];
-		return { spec.name, spec.sort, spec.type };
+		return { spec.name, spec.sort, spec.type, spec.name, spec.optional };
 	}
-	const int grown = p_index - fixed.count;
+	const Vector<GraphPort> derived = derived_side(derived_ports(p_kind, p_parameters), p_side);
+	if (p_index - fixed.count < derived.size()) {
+		return derived[p_index - fixed.count];
+	}
+	const int grown = p_index - fixed.count - derived.size();
 	const int stride = ports_per_pin(p_kind);
 	const char *name = grown % stride == 1 ? p_kind.growth.second_name : p_kind.growth.name;
-	return { vformat("%s%d", name, grown / stride), p_kind.growth.sort, p_kind.growth.type };
+	const String port_name = vformat("%s%d", name, grown / stride);
+	return { port_name, p_kind.growth.sort, p_kind.growth.type, port_name };
 }
