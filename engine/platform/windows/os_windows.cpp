@@ -2082,6 +2082,8 @@ PackedByteArray OS_Windows::get_stdin_buffer(int64_t p_buffer_size) {
 	data.resize(p_buffer_size);
 	DWORD count = 0;
 	if (ReadFile(GetStdHandle(STD_INPUT_HANDLE), data.ptrw(), data.size(), &count, nullptr)) {
+		// The read fills only part of the buffer. Keep the bytes it wrote.
+		data.resize(count);
 		return data;
 	}
 
