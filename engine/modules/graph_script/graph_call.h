@@ -7,7 +7,6 @@
 #include "graph_script_instance.h"
 
 #include "core/containers/hash_map.h"
-#include "core/variant/array.h"
 
 // One place a call comes back to: the next output of a sequence, or the next round of a loop.
 struct GraphPending {
@@ -15,7 +14,10 @@ struct GraphPending {
 	int step = -1;
 	int64_t position = 0;
 	int64_t end = 0;
-	Array items;
+	// What an Each goes through, and where it stands in it.
+	Variant container;
+	Variant cursor;
+	bool more = false;
 	bool loop = false;
 	// Set by a break. The next resume then ends the loop.
 	bool stopped = false;
@@ -39,6 +41,7 @@ class GraphCall {
 	bool returned = false;
 	bool failed = false;
 
+	Variant _read_pure(const GraphCompiledStep &p_step, int p_port);
 	int _target(int p_step, int p_port) const;
 	int _resume();
 	int _advance(int p_current);
@@ -50,6 +53,8 @@ public:
 	Variant run();
 
 	const GraphCompiledStep &get_step(int p_index) const { return function.steps[p_index]; }
+	Object *get_owner() const { return instance.get_owner(); }
+	RandomNumberGenerator &get_random() const { return *instance.get_random().ptr(); }
 	// The value on a data input. A pure step behind a wire runs now, each time.
 	Variant input(const GraphCompiledStep &p_step, int p_port);
 	void store(const GraphCompiledStep &p_step, int p_port, const Variant &p_value);

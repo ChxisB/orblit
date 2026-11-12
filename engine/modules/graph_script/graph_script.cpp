@@ -176,6 +176,10 @@ Error GraphScript::set_step_parameter(const String &p_function, int p_id, const 
 	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.set_step_parameter(p_id, StringName(p_parameter), value); });
 }
 
+Error GraphScript::set_step_pins(const String &p_function, int p_id, int p_count) {
+	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.set_pin_count(p_id, p_count); });
+}
+
 Error GraphScript::connect_steps(const String &p_function, int p_from_step, int p_from_port, int p_to_step, int p_to_port) {
 	const GraphWire wire = { p_from_step, p_from_port, p_to_step, p_to_port };
 	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.connect_steps(wire); });
@@ -453,6 +457,7 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("remove_step", "function", "id"), &GraphScript::remove_step);
 	ClassRegistry::bind_method(D_METHOD("move_step", "function", "id", "x", "y"), &GraphScript::move_step);
 	ClassRegistry::bind_method(D_METHOD("set_step_parameter", "function", "id", "parameter", "value_text"), &GraphScript::set_step_parameter);
+	ClassRegistry::bind_method(D_METHOD("set_step_pins", "function", "id", "count"), &GraphScript::set_step_pins);
 	ClassRegistry::bind_method(D_METHOD("connect_steps", "function", "from_step", "from_port", "to_step", "to_port"), &GraphScript::connect_steps);
 	ClassRegistry::bind_method(D_METHOD("disconnect_steps", "function", "from_step", "from_port", "to_step", "to_port"), &GraphScript::disconnect_steps);
 	ClassRegistry::bind_method(D_METHOD("add_variable", "name", "type"), &GraphScript::add_variable);

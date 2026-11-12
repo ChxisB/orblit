@@ -64,6 +64,7 @@ public:
 	Error move_step(const String &p_function, int p_id, float p_x, float p_y);
 	// The value is Variant text, because the editor bridge marshals strings and not variants.
 	Error set_step_parameter(const String &p_function, int p_id, const String &p_parameter, const String &p_value_text);
+	Error set_step_pins(const String &p_function, int p_id, int p_count);
 	// Five parameters, because the editor bridge cannot marshal a struct.
 	Error connect_steps(const String &p_function, int p_from_step, int p_from_port, int p_to_step, int p_to_port);
 	// Five parameters, because the editor bridge cannot marshal a struct.

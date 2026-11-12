@@ -25,6 +25,7 @@ struct GraphCompiledStep {
 	Dictionary parameters;
 	// What the kind's resolve function worked out from the parameters.
 	int operation = 0;
+	Vector<Variant> values;
 	// One per input port. A flow port has an empty entry.
 	Vector<GraphCompiledInput> inputs;
 	// One per output port: the step a flow wire leads to, or -1. A data port holds -1.

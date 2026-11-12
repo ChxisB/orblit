@@ -29,6 +29,7 @@ bool convert_to(Variant::Type p_type, const Variant &p_value, Variant &r_convert
 
 GraphScriptInstance::GraphScriptInstance(const Ref<GraphScript> &p_script, Object *p_owner) :
 		script(p_script), owner(p_owner) {
+	random.instantiate();
 	List<PropertyInfo> properties;
 	script->get_script_property_list(&properties);
 	for (const PropertyInfo &property : properties) {

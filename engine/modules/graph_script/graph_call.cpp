@@ -46,6 +46,15 @@ Variant GraphCall::run() {
 	return result;
 }
 
+Variant GraphCall::_read_pure(const GraphCompiledStep &p_step, int p_port) {
+	const Variant value = p_step.kind->eval(*this, p_step);
+	if (p_step.next.size() <= 1) {
+		return value;
+	}
+	const Array outputs = value;
+	return p_port < outputs.size() ? outputs[p_port] : Variant();
+}
+
 Variant GraphCall::input(const GraphCompiledStep &p_step, int p_port) {
 	const GraphCompiledInput &source = p_step.inputs[p_port];
 	if (source.step < 0) {
@@ -54,7 +63,7 @@ Variant GraphCall::input(const GraphCompiledStep &p_step, int p_port) {
 	const GraphCompiledStep &from = get_step(source.step);
 	// shortcut: a pure step is not cached, so a value read twice runs twice. Cache per call if
 	// a graph shows it costs time.
-	return from.kind->is_pure() ? from.kind->eval(*this, from) : slots[from.slot + source.port];
+	return from.kind->is_pure() ? _read_pure(from, source.port) : slots[from.slot + source.port];
 }
 
 void GraphCall::store(const GraphCompiledStep &p_step, int p_port, const Variant &p_value) {

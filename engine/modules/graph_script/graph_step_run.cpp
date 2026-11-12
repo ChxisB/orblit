@@ -53,12 +53,14 @@ int resume_count(GraphCall &p_call, GraphPending &p_frame) {
 }
 
 int resume_each(GraphCall &p_call, GraphPending &p_frame) {
-	if (p_frame.stopped || p_frame.position >= p_frame.end) {
+	if (p_frame.stopped || !p_frame.more) {
 		return end_loop(p_frame);
 	}
 	const GraphCompiledStep &step = p_call.get_step(p_frame.step);
-	p_call.store(step, ITEM, p_frame.items[int(p_frame.position)]);
+	bool valid = true;
+	p_call.store(step, ITEM, p_frame.container.iter_get(p_frame.cursor, valid));
 	p_call.store(step, EACH_INDEX, p_frame.position++);
+	p_frame.more = p_frame.container.iter_next(p_frame.cursor, valid);
 	return BODY;
 }
 
@@ -87,10 +89,6 @@ Variant eval_variable(GraphCall &p_call, const GraphCompiledStep &p_step) {
 
 Variant eval_local(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return p_call.read_local(p_step);
-}
-
-Variant eval_constant(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	return p_step.parameters["value"];
 }
 
 Variant eval_operator(GraphCall &p_call, const GraphCompiledStep &p_step) {
@@ -129,14 +127,14 @@ int run_count_loop(GraphCall &p_call, const GraphCompiledStep &p_step) {
 }
 
 int run_each(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	const Variant items = p_call.input(p_step, ITEMS);
-	if (items.get_type() != Variant::ARRAY) {
-		p_call.fail(p_step, vformat("cannot go through a %s. Give it an array.", Variant::get_type_name(items.get_type())));
+	GraphPending frame = loop_frame(p_step, resume_each);
+	frame.container = p_call.input(p_step, ITEMS);
+	bool valid = true;
+	frame.more = frame.container.iter_init(frame.cursor, valid);
+	if (!valid) {
+		p_call.fail(p_step, vformat("cannot go through a %s. Give it an array, a dictionary, a packed array, a string or a number.", Variant::get_type_name(frame.container.get_type())));
 		return GraphFlow::END;
 	}
-	GraphPending frame = loop_frame(p_step, resume_each);
-	frame.items = items;
-	frame.end = frame.items.size();
 	p_call.push(frame);
 	return GraphFlow::END;
 }
@@ -145,7 +143,7 @@ int run_sequence(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	GraphPending frame;
 	frame.step = p_step.index;
 	frame.position = 1;
-	frame.end = p_step.kind->outputs.count;
+	frame.end = p_step.next.size();
 	frame.resume = resume_sequence;
 	p_call.push(frame);
 	return 0;
@@ -181,10 +179,6 @@ String resolve_variable(GraphCompiledStep &p_step, const Vector<StringName> &p_v
 
 String resolve_local(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
 	return missing_name(p_step);
-}
-
-String resolve_constant(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
-	return p_step.parameters.has("value") ? String() : String("the constant has no 'value' parameter.");
 }
 
 String resolve_operator(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {

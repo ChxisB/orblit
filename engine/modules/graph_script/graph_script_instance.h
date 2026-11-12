@@ -6,12 +6,14 @@
 #include "graph_script.h"
 
 #include "core/containers/hash_map.h"
+#include "core/math/random_number_generator.h"
 #include "core/object/script_instance.h"
 
 // The variables of one entity and the way to call its graph functions.
 class GraphScriptInstance final : public ScriptInstance {
 	Ref<GraphScript> script;
 	Object *owner = nullptr;
+	Ref<RandomNumberGenerator> random;
 	// A variable the script gained after this instance was made reads as its default.
 	HashMap<StringName, Variant> values;
 
@@ -28,6 +30,10 @@ public:
 	virtual bool property_get_revert(const StringName &p_name, Variant &r_ret) const override;
 
 	virtual Object *get_owner() override { return owner; }
+
+	// The steps that draw a random number use this. A test passes one with a seed.
+	void set_random(const Ref<RandomNumberGenerator> &p_random) { random = p_random; }
+	const Ref<RandomNumberGenerator> &get_random() const { return random; }
 
 	virtual void get_method_list(List<MethodInfo> *r_list) const override;
 	virtual bool has_method(const StringName &p_method) const override;

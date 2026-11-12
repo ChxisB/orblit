@@ -99,19 +99,50 @@ Error GraphFunction::set_step_parameter(int p_id, const StringName &p_parameter,
 	if (index < 0) {
 		return ERR_DOES_NOT_EXIST;
 	}
-	if (p_parameter == StringName()) {
+	if (p_parameter == StringName() || p_parameter == StringName("pins")) {
 		return ERR_INVALID_PARAMETER;
 	}
 	steps.write[index].parameters[p_parameter] = p_value;
 	return OK;
 }
 
-Error GraphFunction::_check_ports(const GraphStepKind &p_from, const GraphStepKind &p_to, const GraphWire &p_wire) const {
-	if (p_wire.from_port < 0 || p_wire.from_port >= p_from.outputs.count || p_wire.to_port < 0 || p_wire.to_port >= p_to.inputs.count) {
+void GraphFunction::_remove_wires_beyond(int p_step, GraphPinSide p_side, int p_port_count) {
+	for (int i = wires.size() - 1; i >= 0; i--) {
+		const GraphWire &wire = wires[i];
+		const bool beyond = p_side == GraphPinSide::INPUT ? (wire.to_step == p_step && wire.to_port >= p_port_count) : (wire.from_step == p_step && wire.from_port >= p_port_count);
+		if (beyond) {
+			wires.remove_at(i);
+		}
+	}
+}
+
+Error GraphFunction::set_pin_count(int p_id, int p_count) {
+	const int index = _find_step_index(p_id);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	const GraphStepKind *kind = GraphStepKinds::find(steps[index].kind);
+	if (!kind) {
+		return ERR_UNAVAILABLE;
+	}
+	if (kind->growth.side == GraphPinSide::NONE || p_count < kind->growth.minimum || p_count > GraphStepKinds::MAX_PINS) {
 		return ERR_INVALID_PARAMETER;
 	}
-	const GraphPortSpec &output = p_from.outputs.items[p_wire.from_port];
-	const GraphPortSpec &input = p_to.inputs.items[p_wire.to_port];
+	steps.write[index].parameters["pins"] = p_count;
+	_remove_wires_beyond(p_id, kind->growth.side, GraphStepKinds::get_port_count(*kind, steps[index].parameters, kind->growth.side));
+	return OK;
+}
+
+Error GraphFunction::_check_ports(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const {
+	const GraphStepKind &from_kind = *GraphStepKinds::find(p_from.kind);
+	const GraphStepKind &to_kind = *GraphStepKinds::find(p_to.kind);
+	const int outputs = GraphStepKinds::get_port_count(from_kind, p_from.parameters, GraphPinSide::OUTPUT);
+	const int inputs = GraphStepKinds::get_port_count(to_kind, p_to.parameters, GraphPinSide::INPUT);
+	if (p_wire.from_port < 0 || p_wire.from_port >= outputs || p_wire.to_port < 0 || p_wire.to_port >= inputs) {
+		return ERR_INVALID_PARAMETER;
+	}
+	const GraphPort output = GraphStepKinds::get_port(from_kind, p_from.parameters, GraphPinSide::OUTPUT, p_wire.from_port);
+	const GraphPort input = GraphStepKinds::get_port(to_kind, p_to.parameters, GraphPinSide::INPUT, p_wire.to_port);
 	if (output.sort != input.sort) {
 		return ERR_INVALID_PARAMETER;
 	}
@@ -134,12 +165,10 @@ Error GraphFunction::_check_wire(const GraphWire &p_wire) const {
 	if (p_wire.from_step == p_wire.to_step) {
 		return ERR_INVALID_PARAMETER;
 	}
-	const GraphStepKind *from_kind = GraphStepKinds::find(from->kind);
-	const GraphStepKind *to_kind = GraphStepKinds::find(to->kind);
-	if (!from_kind || !to_kind) {
+	if (!GraphStepKinds::find(from->kind) || !GraphStepKinds::find(to->kind)) {
 		return ERR_UNAVAILABLE;
 	}
-	return _check_ports(*from_kind, *to_kind, p_wire);
+	return _check_ports(*from, *to, p_wire);
 }
 
 Error GraphFunction::connect_steps(const GraphWire &p_wire) {
@@ -148,8 +177,8 @@ Error GraphFunction::connect_steps(const GraphWire &p_wire) {
 		return err;
 	}
 	// A flow output has one wire. A new one replaces it.
-	const GraphStepKind *from_kind = GraphStepKinds::find(get_step(p_wire.from_step)->kind);
-	if (from_kind->outputs.items[p_wire.from_port].sort == GraphPortSort::FLOW) {
+	const GraphStep &from = *get_step(p_wire.from_step);
+	if (GraphStepKinds::get_port(*GraphStepKinds::find(from.kind), from.parameters, GraphPinSide::OUTPUT, p_wire.from_port).sort == GraphPortSort::FLOW) {
 		_remove_wires_from_output(p_wire.from_step, p_wire.from_port);
 	}
 	wires.push_back(p_wire);

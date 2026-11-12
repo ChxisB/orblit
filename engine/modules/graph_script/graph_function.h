@@ -41,7 +41,8 @@ class GraphFunction {
 	bool _is_input_wired(int p_step, int p_port) const;
 	void _remove_wires_from_output(int p_step, int p_port);
 	Error _check_wire(const GraphWire &p_wire) const;
-	Error _check_ports(const GraphStepKind &p_from, const GraphStepKind &p_to, const GraphWire &p_wire) const;
+	Error _check_ports(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const;
+	void _remove_wires_beyond(int p_step, GraphPinSide p_side, int p_port_count);
 
 	Error _load_steps(const Array &p_steps);
 	Error _load_wires(const Array &p_wires);
@@ -66,7 +67,9 @@ public:
 	Error add_step(int p_id, const StringName &p_kind);
 	Error remove_step(int p_id);
 	Error move_step(int p_id, const Vector2 &p_position);
+	// The "pins" parameter changes only here, because wires on a removed pin go with it.
 	Error set_step_parameter(int p_id, const StringName &p_parameter, const Variant &p_value);
+	Error set_pin_count(int p_id, int p_count);
 	Error connect_steps(const GraphWire &p_wire);
 	Error disconnect_steps(const GraphWire &p_wire);
 
