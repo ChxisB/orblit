@@ -164,6 +164,9 @@ Error ResourceImporterDynamicFont::import(ResourceUID::ID p_source_id, const Str
 	font->set_oversampling(oversampling);
 	font->set_fallbacks(fallbacks);
 
+	// A file the font library cannot open has no faces. Saving it would report an error on every draw that uses it.
+	ERR_FAIL_COND_V_MSG(font->get_face_count() == 0, ERR_FILE_CORRUPT, vformat("%s: The file is not a valid font.", p_source_file));
+
 	if (subpixel_positioning == 4 || hinting == 3 || hinting == 4) /* Dected Pixel Fonts */ {
 		Array rids = font->get_rids();
 		if (!rids.is_empty()) {
