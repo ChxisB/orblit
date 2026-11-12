@@ -13,4 +13,13 @@ public class ScriptSignalsGeneratorTests
             "EventSignals_ScriptSignals.generated.cs"
         );
     }
+
+    [Fact]
+    public async Task EventSignalsInGenericClass()
+    {
+        await CSharpSourceGeneratorVerifier<ScriptSignalsGenerator>.Verify(
+            "GenericSignals.cs",
+            "GenericSignals(Of T)_ScriptSignals.generated.cs"
+        );
+    }
 }
