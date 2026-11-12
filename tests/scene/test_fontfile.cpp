@@ -10,7 +10,7 @@ TEST_FORCE_LINK(test_fontfile)
 #include "scene/resources/font.h"
 #include "tests/test_utils.h"
 
-#include "modules/modules_enabled.gen.h" // For freetype.
+#include "modules/modules_enabled.gen.h" // For freetype and the text servers.
 
 namespace TestFontFile {
 
@@ -85,6 +85,9 @@ TEST_CASE("[FontFile] A bitmap font block that runs past the end of the file is 
 	DirAccess::remove_absolute(path);
 }
 
+// The dummy text server keeps no glyphs, so these need a real one.
+#if defined(MODULE_TEXT_SYSTEM_FALLBACK_ENABLED) || defined(MODULE_TEXT_SYSTEM_ADVANCED_ENABLED)
+
 TEST_CASE("[FontFile] A bitmap font ignores characters past the Unicode range") {
 	const String path = TestUtils::get_temp_path("wide_chars.fnt");
 	{
@@ -136,6 +139,8 @@ TEST_CASE("[FontFile] A text bitmap font ignores characters past the Unicode ran
 
 	DirAccess::remove_absolute(path);
 }
+
+#endif // MODULE_TEXT_SYSTEM_FALLBACK_ENABLED || MODULE_TEXT_SYSTEM_ADVANCED_ENABLED
 
 TEST_CASE("[FontFile] Create font file and check data") {
 	// Create test instance.
