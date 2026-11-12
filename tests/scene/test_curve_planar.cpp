@@ -269,4 +269,19 @@ TEST_CASE("[Curve2D] Even length tessellation") {
 	CHECK(curve->tessellate_even_length().size() > default_size + 5);
 }
 
+TEST_CASE("[Curve2D] A repeated control point adds no tessellation points") {
+	Ref<Curve2D> curve = memnew(Curve2D);
+	curve->add_point(Vector2(0, 0));
+	curve->add_point(Vector2(100, 0));
+	curve->add_point(Vector2(100, 100));
+	const int plain_size = curve->tessellate().size();
+
+	Ref<Curve2D> repeated = memnew(Curve2D);
+	repeated->add_point(Vector2(0, 0));
+	repeated->add_point(Vector2(100, 0));
+	repeated->add_point(Vector2(100, 0));
+	repeated->add_point(Vector2(100, 100));
+	CHECK(repeated->tessellate().size() == plain_size + 1);
+}
+
 } // namespace TestCurve2D

@@ -316,6 +316,7 @@ private:
 	void _selection_result_pressed(int);
 	void _selection_menu_hide();
 	void _add_node_pressed(int p_result);
+	Transform2D _get_paste_parent_inverse() const;
 	void _create_node();
 	void _instantiate_scene(const String &p_path);
 	void _update_editor_settings();

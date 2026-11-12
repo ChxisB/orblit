@@ -16,9 +16,7 @@ class SurfaceTool : public RefCounted {
 
 public:
 	struct Vertex {
-		// Trivial data for which the hash is computed using hash_buffer.
-		// ----------------------------------------------------------------
-		uint32_t smooth_group = 0; // Must be first.
+		uint32_t smooth_group = 0;
 
 		Color color;
 		Vector3 normal;
@@ -27,8 +25,7 @@ public:
 		Vector2 uv2;
 		Color custom[RSE::ARRAY_CUSTOM_COUNT];
 
-		Vector3 vertex; // Must be last.
-		// ----------------------------------------------------------------
+		Vector3 vertex;
 
 		Vector<int> bones;
 		Vector<float> weights;

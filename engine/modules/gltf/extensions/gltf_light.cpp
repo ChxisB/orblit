@@ -40,6 +40,10 @@ void GLTFLight::register_members() {
 	ADD_PROPERTY(PropertyInfo(Variant::FLOAT, "outer_cone_angle"), "set_outer_cone_angle", "get_outer_cone_angle"); // float
 }
 
+// A ratio of 1 makes the attenuation infinite on import and rounds the two angles equal on export.
+// The nearest ratio below 1 gives a hard edged spot and keeps the angles apart as glTF requires.
+static constexpr float MAX_CONE_ANGLE_RATIO = 0.99999f;
+
 void GLTFLight::set_cone_inner_attenuation_conversion_expressions(Ref<GLTFObjectModelProperty> &r_obj_model_prop) {
 	// Expression to convert glTF innerConeAngle to Orblit spot_angle_attenuation.
 	Ref<Expression> gltf_to_orblit_expr;
@@ -126,7 +130,7 @@ Ref<GLTFLight> GLTFLight::from_node(const Light3D *p_light) {
 		l->outer_cone_angle = Math::deg_to_rad(light->get_param(SpotLight3D::PARAM_SPOT_ANGLE));
 		// This equation is the inverse of the import equation (which has a desmos link).
 		float angle_ratio = 1 - (0.2 / (0.1 + light->get_param(SpotLight3D::PARAM_SPOT_ATTENUATION)));
-		angle_ratio = MAX(0, angle_ratio);
+		angle_ratio = CLAMP(angle_ratio, 0.0f, MAX_CONE_ANGLE_RATIO);
 		l->inner_cone_angle = l->outer_cone_angle * angle_ratio;
 	}
 	return l;
@@ -150,7 +154,7 @@ Light3D *GLTFLight::to_node() const {
 		spot_light->set_param(SpotLight3D::PARAM_SPOT_ANGLE, Math::rad_to_deg(outer_cone_angle));
 		// Line of best fit derived from guessing, see https://www.desmos.com/calculator/biiflubp8b
 		// The points in desmos are not exact, except for (1, infinity).
-		float angle_ratio = inner_cone_angle / outer_cone_angle;
+		float angle_ratio = outer_cone_angle > 0.0f ? MIN(inner_cone_angle / outer_cone_angle, MAX_CONE_ANGLE_RATIO) : 0.0f;
 		float angle_attenuation = 0.2 / (1 - angle_ratio) - 0.1;
 		spot_light->set_param(SpotLight3D::PARAM_SPOT_ATTENUATION, angle_attenuation);
 		light = spot_light;

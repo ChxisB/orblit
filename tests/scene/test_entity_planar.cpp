@@ -6,6 +6,7 @@
 TEST_FORCE_LINK(test_entity_planar)
 
 #include "scene/planar/entity_planar.h"
+#include "scene/planar/remote_transform_planar.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
 
@@ -182,6 +183,41 @@ TEST_CASE("[Stage][Entity2D] Utility methods") {
 	memdelete(test_node3);
 	memdelete(test_node2);
 	memdelete(test_node1);
+}
+
+TEST_CASE("[Stage][RemoteTransform2D] A scale that is not updated does not drift") {
+	Entity2D *parent = memnew(Entity2D);
+	RemoteTransform2D *remote = memnew(RemoteTransform2D);
+	Entity2D *target = memnew(Entity2D);
+	Stage::get_singleton()->get_root()->add_child(parent);
+	Stage::get_singleton()->get_root()->add_child(target);
+	parent->add_child(remote);
+	parent->set_scale(Size2(0.9, 1.1));
+	parent->set_rotation(0.37);
+	parent->set_skew(0.05);
+	remote->set_update_scale(false);
+	remote->set_remote_node(remote->get_path_to(target));
+
+	for (int i = 0; i < 5000; i++) {
+		remote->set_rotation(0.0137 * i);
+		remote->set_position(Point2(i, 2 * i));
+		Stage::get_singleton()->flush_transform_notifications();
+	}
+
+	Size2 scale = target->get_global_scale();
+	CHECK(Math::abs(scale.x - 1) < 1e-6);
+	CHECK(Math::abs(scale.y - 1) < 1e-6);
+
+	// A scale set from outside is a new value to hold, not an error to correct.
+	target->set_global_scale(Size2(2, 3));
+	remote->set_position(Point2(1, 1));
+	Stage::get_singleton()->flush_transform_notifications();
+	scale = target->get_global_scale();
+	CHECK(Math::abs(scale.x - 2) < 1e-5);
+	CHECK(Math::abs(scale.y - 3) < 1e-5);
+
+	memdelete(target);
+	memdelete(parent);
 }
 
 } // namespace TestEntity2D

@@ -1089,7 +1089,8 @@ void CylinderMesh::create_mesh_array(Array &p_arr, float top_radius, float botto
 
 	thisrow = 0;
 	prevrow = 0;
-	const real_t side_normal_y = (bottom_radius - top_radius) / height;
+	// A flat cylinder has no slope to divide by. Its side normals stay horizontal.
+	const real_t side_normal_y = Math::is_zero_approx(height) ? 0 : (bottom_radius - top_radius) / height;
 	for (j = 0; j <= (rings + 1); j++) {
 		v = j;
 		v /= (rings + 1);
@@ -1962,14 +1963,16 @@ void SphereMesh::create_mesh_array(Array &p_arr, float radius, float height, int
 	int i, j, prevrow, thisrow, point;
 	float x, y, z;
 
-	float scale = height / radius * (is_hemisphere ? 1.0 : 0.5);
+	// A sphere with no radius collapses to a point. A unit radius here keeps the normals finite.
+	const float safe_radius = Math::is_zero_approx(radius) ? 1.0f : radius;
+	float scale = height / safe_radius * (is_hemisphere ? 1.0 : 0.5);
 
 	// Only used if we calculate UV2
 	float circumference = radius * Math::TAU;
 	float horizontal_length = circumference + p_uv2_padding;
 	float center_h = 0.5 * circumference / horizontal_length;
 
-	float height_v = scale * Math::PI / ((scale * Math::PI) + p_uv2_padding / radius);
+	float height_v = scale * Math::PI / ((scale * Math::PI) + p_uv2_padding / safe_radius);
 
 	// Use LocalVector for operations and copy to Vector at the end to save the cost of CoW semantics which aren't
 	// needed here and are very expensive in such a hot loop. Use reserve to avoid repeated memory allocations.
