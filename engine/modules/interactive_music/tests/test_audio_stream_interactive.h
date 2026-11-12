@@ -23,7 +23,7 @@ static Ref<AudioStreamWAV> make_clip(bool p_loop) {
 	clip->set_data(data);
 	if (p_loop) {
 		clip->set_loop_mode(AudioStreamWAV::LOOP_FORWARD);
-		clip->set_loop_end(data.size());
+		clip->set_loop_end(data.size() - 1);
 	}
 	return clip;
 }
@@ -43,7 +43,7 @@ TEST_CASE("[Audio][AudioStreamInteractive] A clip reached through a filler still
 	stream->set_clip_stream(FILLER, make_clip(false));
 	stream->set_clip_auto_advance(CHORUS, AudioStreamInteractive::AUTO_ADVANCE_ENABLED);
 	stream->set_clip_auto_advance_next_clip(CHORUS, MAIN);
-	stream->add_transition(MAIN, CHORUS, AudioStreamInteractive::TRANSITION_FROM_TIME_IMMEDIATE, AudioStreamInteractive::TRANSITION_TO_TIME_START, AudioStreamInteractive::FADE_DISABLED, 0.0, true, FILLER);
+	stream->add_transition(MAIN, CHORUS, AudioStreamInteractive::TRANSITION_FROM_TIME_IMMEDIATE, AudioStreamInteractive::TRANSITION_TO_TIME_START, AudioStreamInteractive::FADE_DISABLED, 1.0, true, FILLER);
 
 	Ref<AudioStreamPlayback> base_playback = stream->instantiate_playback();
 	Ref<AudioStreamPlaybackInteractive> playback = base_playback;
