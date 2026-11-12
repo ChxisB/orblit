@@ -711,6 +711,7 @@ private:
 	} cache;
 
 	int _get_title_button_height() const;
+	int _get_offset_below_sticky(const TreeItem *p_item, int p_y_offset) const;
 	Size2 _get_cell_icon_size(const TreeItem::Cell &p_cell) const;
 
 	void _scroll_moved(float p_value);

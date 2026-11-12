@@ -1181,6 +1181,9 @@ void TextEdit::_notification(int p_what) {
 				int minimap_line_height = (minimap_char_size.y + minimap_line_spacing);
 				int tab_size = text.get_tab_size();
 
+				// The minimap starts below the top margin, as `get_minimap_line_at_pos` expects.
+				RS::get_singleton()->canvas_item_add_set_transform(text_ci, Transform2D(0, Point2(0, style->get_margin(SIDE_TOP))));
+
 				// Calculate viewport size and y offset.
 				int viewport_height = (draw_amount - 1) * minimap_line_height;
 				int control_height = _get_control_height() - viewport_height;
@@ -1273,15 +1276,15 @@ void TextEdit::_notification(int p_what) {
 
 						if (highlight_current_line && highlighted_lines.has(Pair<int, int>(minimap_line, line_wrap_index))) {
 							if (rtl) {
-								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2(size.width - (xmargin_end + 2) - minimap_width, i * 3, minimap_width, 2), theme_cache.current_line_color);
+								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2(size.width - (xmargin_end + 2) - minimap_width, i * minimap_line_height, minimap_width, 2), theme_cache.current_line_color);
 							} else {
-								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2((xmargin_end + 2), i * 3, minimap_width, 2), theme_cache.current_line_color);
+								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2((xmargin_end + 2), i * minimap_line_height, minimap_width, 2), theme_cache.current_line_color);
 							}
 						} else if (line_background_color.a > 0) {
 							if (rtl) {
-								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2(size.width - (xmargin_end + 2) - minimap_width, i * 3, minimap_width, 2), line_background_color);
+								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2(size.width - (xmargin_end + 2) - minimap_width, i * minimap_line_height, minimap_width, 2), line_background_color);
 							} else {
-								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2((xmargin_end + 2), i * 3, minimap_width, 2), line_background_color);
+								RS::get_singleton()->canvas_item_add_rect(text_ci, Rect2((xmargin_end + 2), i * minimap_line_height, minimap_width, 2), line_background_color);
 							}
 						}
 
@@ -1362,6 +1365,8 @@ void TextEdit::_notification(int p_what) {
 						}
 					}
 				}
+
+				RS::get_singleton()->canvas_item_add_set_transform(text_ci, Transform2D());
 			}
 
 			int top_limit_y = style->get_margin(SIDE_TOP);
@@ -1830,6 +1835,10 @@ void TextEdit::_notification(int p_what) {
 
 							combined_rect = j == 0 ? rect : combined_rect.merge(rect);
 						}
+
+						// A tight line spacing leaves less room under the baseline, so the squiggle moves up to stay in its own row.
+						const float row_bottom_y = ofs_y + ldata->get_line_descent(line_wrap_index) + theme_cache.line_spacing / 2.0f;
+						combined_rect.position.y -= MAX(combined_rect.get_end().y - row_bottom_y, 0.0f);
 
 						PackedVector2Array points;
 						PackedColorArray colors;
@@ -7145,6 +7154,8 @@ void TextEdit::set_scroll_past_end_of_file_enabled(bool p_enabled) {
 	}
 
 	scroll_past_end_of_file_enabled = p_enabled;
+	// The scroll range depends on this flag, so the clamp has to run now.
+	_update_scrollbars();
 	queue_redraw();
 }
 
@@ -9415,10 +9426,15 @@ void TextEdit::_update_scrollbars() {
 		double visible_rows_exact = (double)_get_control_height() / (double)get_line_height();
 		double fractional_visible_rows = visible_rows_exact - (double)visible_rows;
 		fractional_visible_rows = CLAMP(fractional_visible_rows, 0.0, 1.0);
+		const double scroll_before = get_v_scroll();
 		v_scroll->show();
 		v_scroll->set_max(total_rows);
 		v_scroll->set_page(visible_rows + fractional_visible_rows);
 		set_v_scroll(get_v_scroll());
+		if (get_v_scroll() != scroll_before) {
+			// The range clamped the value while its signal was muted.
+			_update_first_visible_from_scroll();
+		}
 	} else {
 		first_visible_line = 0;
 		first_visible_line_wrap_ofs = 0;
@@ -9469,6 +9485,12 @@ void TextEdit::_scroll_moved(double p_to_val) {
 	if (h_scroll->is_visible_in_stage()) {
 		first_visible_col = h_scroll->get_value();
 	}
+	_update_first_visible_from_scroll();
+	queue_accessibility_update();
+	queue_redraw();
+}
+
+void TextEdit::_update_first_visible_from_scroll() {
 	if (v_scroll->is_visible_in_stage()) {
 		// Set line ofs and wrap ofs.
 		bool draw_placeholder = _using_placeholder();
@@ -9493,8 +9515,6 @@ void TextEdit::_scroll_moved(double p_to_val) {
 		first_visible_line = n_line;
 		first_visible_line_wrap_ofs = wi;
 	}
-	queue_accessibility_update();
-	queue_redraw();
 }
 
 double TextEdit::_get_visible_lines_offset() const {

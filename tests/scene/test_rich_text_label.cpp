@@ -130,6 +130,23 @@ TEST_CASE("[Stage][RichTextLabel] Font size wrapping paragraph does not add empt
 	memdelete(test_label);
 }
 
+TEST_CASE("[Stage][RichTextLabel] Bidi control tags insert their own character") {
+	RichTextLabel *test_label = memnew(RichTextLabel);
+	Stage::get_singleton()->get_root()->add_child(test_label);
+	test_label->set_use_bbcode(true);
+
+	test_label->set_text("[lri][rli][fsi][pdi]");
+	Stage::get_singleton()->process(0);
+	const String parsed = test_label->get_parsed_text();
+	REQUIRE(parsed.length() == 4);
+	CHECK(parsed[0] == 0x2066);
+	CHECK(parsed[1] == 0x2067);
+	CHECK(parsed[2] == 0x2068);
+	CHECK(parsed[3] == 0x2069);
+
+	memdelete(test_label);
+}
+
 } // namespace TestRichTextLabel
 
 #endif // ADVANCED_GUI_DISABLED

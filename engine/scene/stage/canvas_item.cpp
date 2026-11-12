@@ -1137,8 +1137,6 @@ void CanvasItem::_notify_transform(CanvasItem *p_node) {
 	 * notification anyway).
 	 */
 
-	_update_oversampling(false);
-
 	// A dirty node is skipped only when its notification is already queued, or never wanted.
 	// A node that blocked its notification is dirty and not queued, and must still hear about a parent move.
 	if (p_node->_is_global_invalid() && (p_node->xform_change.in_list() || !p_node->notify_transform)) {
@@ -1146,6 +1144,13 @@ void CanvasItem::_notify_transform(CanvasItem *p_node) {
 	}
 
 	p_node->_set_global_invalid(true);
+
+	// Oversampling reads the global scale, so it runs once the cached transform is stale.
+	// A descendant is refreshed too, because a parent scale change reaches it.
+	// Descendants that do not oversample skip the walk up their parents.
+	if (p_node == this || p_node->is_oversampling_with_scale_cache) {
+		p_node->_update_oversampling(false);
+	}
 
 	if (p_node->notify_transform && !p_node->xform_change.in_list()) {
 		if (!p_node->block_transform_notify) {

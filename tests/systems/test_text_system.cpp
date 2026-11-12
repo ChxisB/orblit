@@ -987,6 +987,74 @@ TEST_SUITE("[TextSystem]") {
 				font.clear();
 			}
 		}
+
+		SUBCASE("[TextSystem] Object offset follows justification") {
+			for (int i = 0; i < TextSystemManager::get_singleton()->get_interface_count(); i++) {
+				Ref<TextSystem> ts = TextSystemManager::get_singleton()->get_interface(i);
+				CHECK_FALSE_MESSAGE(ts.is_null(), "Invalid TS interface.");
+
+				if (!ts->has_feature(TextSystem::FEATURE_SIMPLE_LAYOUT)) {
+					continue;
+				}
+
+				RID font1 = ts->create_font();
+				ts->font_set_data_ptr(font1, _font_Inter_Regular, _font_Inter_Regular_size);
+
+				Array font = { font1 };
+				RID ctx = ts->create_shaped_text();
+				CHECK_FALSE_MESSAGE(ctx == RID(), "Creating text buffer failed.");
+				ts->shaped_text_add_string(ctx, "one two ", font, 16);
+				ts->shaped_text_add_object(ctx, "key", Size2(20, 20), INLINE_ALIGNMENT_CENTER, 1, 0.0);
+				ts->shaped_text_add_string(ctx, " three four", font, 16);
+
+				double natural = ts->shaped_text_get_width(ctx);
+				ts->shaped_text_fit_to_width(ctx, natural + 60.0, TextSystem::JUSTIFICATION_WORD_BOUND);
+
+				// The object sits after every glyph before it, at the widths the justified run has now.
+				const Glyph *glyphs = ts->shaped_text_get_glyphs(ctx);
+				int64_t object_glyph = ts->shaped_text_get_object_glyph(ctx, "key");
+				double expected = 0.0;
+				for (int64_t g = 0; g < object_glyph; g++) {
+					expected += glyphs[g].advance * glyphs[g].repeat;
+				}
+				CHECK(expected > natural * 0.3);
+				CHECK(ts->shaped_text_get_object_rect(ctx, "key").position.x == doctest::Approx(expected));
+
+				ts->free_rid(ctx);
+
+				for (int j = 0; j < font.size(); j++) {
+					ts->free_rid(font[j]);
+				}
+				font.clear();
+			}
+		}
+
+		SUBCASE("[TextSystem] Outline keeps its size when the font size is clamped") {
+			for (int i = 0; i < TextSystemManager::get_singleton()->get_interface_count(); i++) {
+				Ref<TextSystem> ts = TextSystemManager::get_singleton()->get_interface(i);
+				CHECK_FALSE_MESSAGE(ts.is_null(), "Invalid TS interface.");
+
+				if (!ts->has_feature(TextSystem::FEATURE_FONT_DYNAMIC)) {
+					continue;
+				}
+
+				RID font = ts->create_font();
+				ts->font_set_data_ptr(font, _font_Inter_Regular, _font_Inter_Regular_size);
+				int64_t glyph = ts->font_get_glyph_index(font, 16, 'O', 0);
+
+				// Glyphs are rasterized at 2048 px at most. A 4096 px font is drawn at twice that size.
+				double plain = ts->font_get_glyph_size(font, Vector2i(2048, 0), glyph).x;
+				double outlined = ts->font_get_glyph_size(font, Vector2i(2048, 64), glyph).x;
+				double clamped_plain = ts->font_get_glyph_size(font, Vector2i(4096, 0), glyph).x;
+				double clamped_outlined = ts->font_get_glyph_size(font, Vector2i(4096, 128), glyph).x;
+
+				// Glyph rects are in drawn size. Twice the font size and twice the outline grows the rect twice as much.
+				CHECK(outlined - plain > 0.0);
+				CHECK(clamped_outlined - clamped_plain == doctest::Approx(2.0 * (outlined - plain)).epsilon(0.05));
+
+				ts->free_rid(font);
+			}
+		}
 	}
 }
 

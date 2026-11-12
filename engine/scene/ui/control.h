@@ -361,7 +361,7 @@ private:
 	void _grow_to_desired_size();
 	void _size_changed();
 
-	void _top_level_changed() override {} // Controls don't need to do anything, only other CanvasItems.
+	void _top_level_changed() override;
 	void _top_level_changed_on_parent() override;
 
 	void _clear_size_warning();

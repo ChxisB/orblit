@@ -316,6 +316,13 @@ TEST_CASE_TEMPLATE("[Math] step_decimals", T, float, double) {
 	CHECK(Math::step_decimals((T)0.000000001) == 9);
 	// Too many decimals to handle.
 	CHECK(Math::step_decimals((T)0.0000000001) == 0);
+	// A step with more than one significant digit needs all of them.
+	CHECK(Math::step_decimals((T)0.25) == 2);
+	CHECK(Math::step_decimals((T)0.33) == 2);
+	CHECK(Math::step_decimals((T)0.125) == 3);
+	CHECK(Math::step_decimals((T)-2.25) == 2);
+	// A step that never ends keeps the size of its first digit.
+	CHECK(Math::step_decimals((T)0.3333333333333) == 1);
 }
 
 TEST_CASE_TEMPLATE("[Math] range_step_decimals", T, float, double) {

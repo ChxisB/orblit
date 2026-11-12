@@ -6,9 +6,13 @@
 TEST_FORCE_LINK(test_window)
 
 #include "core/input/input_map.h" // IWYU pragma: keep // Used by `SEND_GUI_MOUSE_MOTION_EVENT` macro.
+#include "core/object/message_queue.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
 #include "scene/ui/control.h"
+#include "scene/ui/dialogs.h"
+#include "scene/ui/label.h"
+#include "scene/ui/panel_container.h"
 #include "tests/display_system_mock.h"
 
 namespace TestWindow {
@@ -64,6 +68,42 @@ TEST_CASE("[Stage][Window]") {
 		memdelete(c);
 		memdelete(w);
 	}
+}
+
+TEST_CASE("[Stage][Window] a flag set to its current value does not reach the display system") {
+	DisplaySystemMock *display = (DisplaySystemMock *)(DisplaySystem::get_singleton());
+	Window *root = Stage::get_singleton()->get_root();
+
+	const int before = display->window_flag_set_count;
+	root->set_flag(Window::FLAG_BORDERLESS, root->get_flag(Window::FLAG_BORDERLESS));
+	CHECK(display->window_flag_set_count == before);
+
+	root->set_flag(Window::FLAG_BORDERLESS, !root->get_flag(Window::FLAG_BORDERLESS));
+	CHECK(display->window_flag_set_count == before + 1);
+	root->set_flag(Window::FLAG_BORDERLESS, false);
+}
+
+TEST_CASE("[Stage][Window] a wrapping label does not inflate a dialog on first popup") {
+	AcceptDialog *dialog = memnew(AcceptDialog);
+	Stage::get_singleton()->get_root()->add_child(dialog);
+	PanelContainer *container = memnew(PanelContainer);
+	container->set_custom_minimum_size(Size2(200, 0));
+	dialog->add_child(container);
+	Label *label = memnew(Label);
+	label->set_autowrap_mode(TextSystem::AUTOWRAP_WORD_SMART);
+	label->set_text("a b c d e f");
+	container->add_child(label);
+
+	dialog->popup_centered();
+	MessageQueue::get_singleton()->flush();
+	const Size2i first_size = dialog->get_size();
+	dialog->hide();
+	dialog->popup_centered();
+	MessageQueue::get_singleton()->flush();
+
+	CHECK(first_size == dialog->get_size());
+
+	memdelete(dialog);
 }
 
 } // namespace TestWindow

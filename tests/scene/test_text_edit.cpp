@@ -7650,12 +7650,13 @@ TEST_CASE("[Stage][TextEdit] viewport") {
 	CHECK(text_edit->get_last_full_visible_line() == (visible_lines * 2) + 8);
 	CHECK(text_edit->get_last_full_visible_line_wrap_index() == 0);
 
+	// Turning it off scrolls back to the last page.
 	text_edit->set_scroll_past_end_of_file_enabled(false);
 	MessageQueue::get_singleton()->flush();
-	CHECK(text_edit->get_first_visible_line() == (visible_lines * 2) + 3);
-	CHECK(Math::is_equal_approx(text_edit->get_v_scroll(), double((visible_lines * 4))) - 4);
-	CHECK(text_edit->get_last_full_visible_line() == (visible_lines * 2) + 8);
-	CHECK(text_edit->get_last_full_visible_line_wrap_index() == 0);
+	CHECK(text_edit->get_first_visible_line() == (visible_lines * 2) - 3);
+	CHECK(Math::is_equal_approx(text_edit->get_v_scroll(), text_edit->get_v_scroll_bar()->get_max() - text_edit->get_v_scroll_bar()->get_page()));
+	CHECK(text_edit->get_last_full_visible_line() == line_count - 2);
+	CHECK(text_edit->get_last_full_visible_line_wrap_index() == 1);
 
 	// Reset.
 	text_edit->set_line_wrapping_mode(TextEdit::LineWrappingMode::LINE_WRAPPING_NONE);
@@ -7998,6 +7999,32 @@ TEST_CASE("[Stage][TextEdit] viewport") {
 	text_edit->redo();
 	MessageQueue::get_singleton()->flush();
 	CHECK(text_edit->get_first_visible_line() == 0);
+
+	memdelete(text_edit);
+}
+
+TEST_CASE("[Stage][TextEdit] scroll past end of file off clamps the scroll") {
+	TextEdit *text_edit = memnew(TextEdit);
+	Stage::get_singleton()->get_root()->add_child(text_edit);
+
+	text_edit->set_size(Size2(400, 200));
+	String content;
+	for (int i = 0; i < 40; i++) {
+		content += (i > 0 ? "\nline " : "line ") + itos(i);
+	}
+	text_edit->set_text(content);
+	text_edit->set_scroll_past_end_of_file_enabled(true);
+	MessageQueue::get_singleton()->flush();
+
+	const int line_count = text_edit->get_line_count();
+	text_edit->set_line_as_first_visible(line_count - 1);
+	MessageQueue::get_singleton()->flush();
+	const int last_page_start = line_count - text_edit->get_visible_line_count();
+	CHECK(text_edit->get_first_visible_line() > last_page_start);
+
+	text_edit->set_scroll_past_end_of_file_enabled(false);
+	// The scrollbar range shrinks at once, with no frame in between.
+	CHECK(text_edit->get_first_visible_line() <= last_page_start);
 
 	memdelete(text_edit);
 }

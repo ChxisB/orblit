@@ -5,12 +5,26 @@
 
 TEST_FORCE_LINK(test_entity_planar)
 
+#include "core/object/callable_mp.h"
+#include "core/object/message_queue.h"
 #include "scene/planar/entity_planar.h"
 #include "scene/planar/remote_transform_planar.h"
 #include "scene/stage/stage.h"
 #include "scene/stage/window.h"
+#include "systems/text/text_system.h"
 
 namespace TestEntity2D {
+
+class OversamplingProbe : public Entity2D {
+	ORBLIT_CLASS(OversamplingProbe, Entity2D);
+
+public:
+	double seen = -1.0;
+
+	void record() {
+		seen = TextSystem::get_current_drawn_item_oversampling();
+	}
+};
 
 TEST_CASE("[Stage][Entity2D]") {
 	SUBCASE("[Entity2D][Global Transform] Global Transform should be accessible while not in Stage.") { // GH-79453
@@ -183,6 +197,29 @@ TEST_CASE("[Stage][Entity2D] Utility methods") {
 	memdelete(test_node3);
 	memdelete(test_node2);
 	memdelete(test_node1);
+}
+
+TEST_CASE("[Stage][Entity2D] oversampling follows a scale change of the parent") {
+	OversamplingProbe *parent = memnew(OversamplingProbe);
+	OversamplingProbe *child = memnew(OversamplingProbe);
+	parent->add_child(child);
+	Stage::get_singleton()->get_root()->add_child(parent);
+	parent->connect("draw", callable_mp(parent, &OversamplingProbe::record));
+	child->connect("draw", callable_mp(child, &OversamplingProbe::record));
+	parent->set_oversampling_with_scale(CanvasItem::OVERSAMPLING_WITH_SCALE_ENABLED);
+	MessageQueue::get_singleton()->flush();
+	const double parent_before = parent->seen;
+	const double child_before = child->seen;
+	REQUIRE(parent_before > 0.0);
+	REQUIRE(child_before > 0.0);
+
+	parent->set_scale(Size2(3, 3));
+	MessageQueue::get_singleton()->flush();
+
+	CHECK(parent->seen == doctest::Approx(3.0 * parent_before));
+	CHECK(child->seen == doctest::Approx(3.0 * child_before));
+
+	memdelete(parent);
 }
 
 TEST_CASE("[Stage][RemoteTransform2D] A scale that is not updated does not drift") {

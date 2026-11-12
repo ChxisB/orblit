@@ -12,6 +12,7 @@ TEST_FORCE_LINK(test_tab_bar)
 #include "scene/ui/tab_bar.h"
 #include "tests/display_system_mock.h"
 #include "tests/signal_watcher.h"
+#include "tests/test_tools.h"
 
 namespace TestTabBar {
 
@@ -1406,6 +1407,18 @@ TEST_CASE("[Stage][TabBar] Mouse interaction") {
 	SIGNAL_UNWATCH(tab_bar, "tab_close_pressed");
 	SIGNAL_UNWATCH(tab_bar, "tab_hovered");
 	SIGNAL_UNWATCH(tab_bar, "tab_selected");
+
+	memdelete(tab_bar);
+}
+
+TEST_CASE("[Stage][TabBar] Drop mark on an empty bar") {
+	TabBar *tab_bar = memnew(TabBar);
+	Stage::get_singleton()->get_root()->add_child(tab_bar);
+
+	// A dock hint draws the mark with no tabs to anchor it.
+	ErrorDetector errors;
+	tab_bar->_draw_tab_drop(tab_bar->get_canvas_item());
+	CHECK_FALSE(errors.has_error);
 
 	memdelete(tab_bar);
 }

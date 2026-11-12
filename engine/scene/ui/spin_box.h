@@ -53,6 +53,7 @@ class SpinBox : public Range {
 	String plural_format;
 	AutoTranslateMode format_auto_translate_mode = AUTO_TRANSLATE_MODE_DISABLED;
 	String _get_xl_format() const;
+	bool _is_plural_format_mismatched() const;
 
 	bool use_default_format = false;
 	String last_text_value;

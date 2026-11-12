@@ -655,6 +655,7 @@ class TextSystemAdvanced : public TextSystemExtension {
 	void _update_chars(ShapedTextDataAdvanced *p_sd) const;
 	void _generate_runs(ShapedTextDataAdvanced *p_sd) const;
 	void _realign(ShapedTextDataAdvanced *p_sd) const;
+	void _update_object_offsets(ShapedTextDataAdvanced *p_sd) const;
 	int64_t _convert_pos(const String &p_utf32, const Char16String &p_utf16, int64_t p_pos) const;
 	int64_t _convert_pos(const ShapedTextDataAdvanced *p_sd, int64_t p_pos) const;
 	int64_t _convert_pos_inv(const ShapedTextDataAdvanced *p_sd, int64_t p_pos) const;

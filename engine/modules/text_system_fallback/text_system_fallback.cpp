@@ -760,7 +760,8 @@ bool TextSystemFallback::_ensure_glyph(FontFallback *p_font_data, const Vector2i
 				ERR_FAIL_V_MSG(false, "FreeType: Failed to load glyph stroker.");
 			}
 
-			FT_Stroker_Set(stroker, (int)(fd->size.y * 16.0), FT_STROKER_LINECAP_BUTT, FT_STROKER_LINEJOIN_ROUND, 0);
+			// The bitmap is drawn scaled by fd->scale, so the radius is divided by it to reach the requested outline size.
+			FT_Stroker_Set(stroker, (int)(fd->size.y * 16.0 / fd->scale), FT_STROKER_LINECAP_BUTT, FT_STROKER_LINEJOIN_ROUND, 0);
 			FT_Glyph glyph;
 			FT_BitmapGlyph glyph_bitmap;
 
@@ -4311,8 +4312,35 @@ double TextSystemFallback::_shaped_text_fit_to_width(const RID &p_shaped, double
 	if (!p_jst_flags.has_flag(JUSTIFICATION_CONSTRAIN_ELLIPSIS)) {
 		sd->width = justification_width;
 	}
+	_update_object_offsets(sd);
 
 	return Math::ceil(justification_width);
+}
+
+// Justification changes the advances after the shaper placed the objects, so each offset is summed again.
+void TextSystemFallback::_update_object_offsets(ShapedTextDataFallback *p_sd) const {
+	if (p_sd->objects.is_empty()) {
+		return;
+	}
+	const ShapedTextDataFallback *span_sd = p_sd->parent != RID() ? shaped_owner.get_or_null(p_sd->parent) : p_sd;
+	ERR_FAIL_NULL(span_sd);
+
+	const int span_size = span_sd->spans.size();
+	const Glyph *glyphs = p_sd->glyphs.ptr();
+	double offset = 0.0;
+	for (int i = 0; i < p_sd->glyphs.size(); i++) {
+		const Glyph &gl = glyphs[i];
+		const int span_index = gl.span_index + p_sd->first_span;
+		if ((gl.flags & GRAPHEME_IS_EMBEDDED_OBJECT) == GRAPHEME_IS_EMBEDDED_OBJECT && span_index >= 0 && span_index < span_size) {
+			ShapedTextDataFallback::EmbeddedObject *object = p_sd->objects.getptr(span_sd->spans[span_index].embedded_key);
+			if (object) {
+				(p_sd->orientation == ORIENTATION_HORIZONTAL ? object->rect.position.x : object->rect.position.y) = offset;
+			}
+			offset += gl.advance;
+		} else {
+			offset += gl.advance * gl.repeat;
+		}
+	}
 }
 
 double TextSystemFallback::_shaped_text_tab_align(const RID &p_shaped, const PackedFloat32Array &p_tab_stops) {
@@ -4367,6 +4395,7 @@ double TextSystemFallback::_shaped_text_tab_align(const RID &p_shaped, const Pac
 		}
 		off += gl[i].advance * gl[i].repeat;
 	}
+	_update_object_offsets(sd);
 
 	return 0.0;
 }

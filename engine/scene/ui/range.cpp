@@ -140,8 +140,12 @@ void Range::Shared::redraw_owners() {
 }
 
 void Range::set_value(double p_val) {
+	_set_value(p_val, shared->step);
+}
+
+void Range::_set_value(double p_val, double p_step) {
 	double prev_val = shared->val;
-	_set_value_no_signal(p_val);
+	shared->val = _calc_value(p_val, p_step);
 
 	if (shared->val != prev_val && !(Math::is_nan(shared->val) && Math::is_nan(prev_val))) {
 		shared->emit_value_changed();
@@ -199,7 +203,9 @@ void Range::set_min(double p_min) {
 	shared->min = p_min;
 	shared->max = MAX(shared->max, shared->min);
 	shared->page = CLAMP(shared->page, 0, shared->max - shared->min);
-	set_value(shared->val);
+	// A step of 0 clamps without snapping. A scene sets the bounds before the
+	// step, and snapping to the default step would move the saved value.
+	_set_value(shared->val, 0);
 
 	shared->emit_changed();
 
@@ -216,7 +222,9 @@ void Range::set_max(double p_max) {
 
 	shared->max = max_validated;
 	shared->page = CLAMP(shared->page, 0, shared->max - shared->min);
-	set_value(shared->val);
+	// A step of 0 clamps without snapping. A scene sets the bounds before the
+	// step, and snapping to the default step would move the saved value.
+	_set_value(shared->val, 0);
 
 	shared->emit_changed();
 
@@ -241,7 +249,9 @@ void Range::set_page(double p_page) {
 	}
 
 	shared->page = page_validated;
-	set_value(shared->val);
+	// A step of 0 clamps without snapping. A scene sets the bounds before the
+	// step, and snapping to the default step would move the saved value.
+	_set_value(shared->val, 0);
 
 	shared->emit_changed();
 
@@ -272,9 +282,10 @@ void Range::set_as_ratio(double p_value) {
 	double v;
 
 	if (shared->exp_ratio && get_min() >= 0) {
-		double exp_min = get_min() == 0 ? 0.0 : Math::log(get_min()) / Math::log((double)2);
-		double exp_max = Math::log(get_max()) / Math::log((double)2);
-		v = Math::pow(2, exp_min + (exp_max - exp_min) * p_value);
+		const double shift = _get_exp_ratio_shift();
+		const double exp_min = Math::log2(get_min() + shift);
+		const double exp_max = Math::log2(get_max() + shift);
+		v = Math::pow(2.0, exp_min + (exp_max - exp_min) * p_value) - shift;
 	} else {
 		double percent = (get_max() - get_min()) * p_value;
 		if (get_step() > 0) {
@@ -289,22 +300,27 @@ void Range::set_as_ratio(double p_value) {
 }
 
 double Range::get_as_ratio() const {
+	return CLAMP(_get_as_ratio_unclamped(), 0, 1);
+}
+
+double Range::_get_as_ratio_unclamped() const {
 	if (Math::is_equal_approx(get_max(), get_min())) {
 		// Avoid division by zero.
 		return 1.0;
 	}
 
-	if (shared->exp_ratio && get_min() >= 0) {
-		double exp_min = get_min() == 0 ? 0.0 : Math::log(get_min()) / Math::log((double)2);
-		double exp_max = Math::log(get_max()) / Math::log((double)2);
-		double value = CLAMP(get_value(), shared->min, shared->max);
-		double v = Math::log(value) / Math::log((double)2);
-
-		return CLAMP((v - exp_min) / (exp_max - exp_min), 0, 1);
-	} else {
-		double value = CLAMP(get_value(), shared->min, shared->max);
-		return CLAMP((value - get_min()) / (get_max() - get_min()), 0, 1);
+	const double shift = _get_exp_ratio_shift();
+	if (shared->exp_ratio && get_min() >= 0 && get_value() + shift > 0) {
+		const double exp_min = Math::log2(get_min() + shift);
+		const double exp_max = Math::log2(get_max() + shift);
+		return (Math::log2(get_value() + shift) - exp_min) / (exp_max - exp_min);
 	}
+	return (get_value() - get_min()) / (get_max() - get_min());
+}
+
+double Range::_get_exp_ratio_shift() const {
+	// A zero minimum has no logarithm, so the curve starts at one and the shift is taken back out.
+	return get_min() == 0 ? 1.0 : 0.0;
 }
 
 void Range::_share(Entity *p_range) {

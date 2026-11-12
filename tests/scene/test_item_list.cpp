@@ -74,6 +74,28 @@ TEST_CASE("[Stage][ItemList] Arrow keys after incremental search") {
 	memdelete(list);
 }
 
+TEST_CASE("[Stage][ItemList] Vertical page leaves room for the horizontal bar") {
+	ItemList *list = memnew(ItemList);
+	list->set_wraparound_items(false);
+	list->set_size(Size2(100, 100));
+	for (int i = 0; i < 20; i++) {
+		list->add_item("An item whose text is much wider than the list");
+	}
+	Stage::get_singleton()->get_root()->add_child(list);
+	list->force_update_list_size();
+
+	VScrollBar *v_bar = list->get_v_scroll_bar();
+	HScrollBar *h_bar = list->get_h_scroll_bar();
+	REQUIRE(v_bar->is_visible());
+	REQUIRE(h_bar->is_visible());
+
+	// The last row must stay above the horizontal bar at full scroll.
+	const float panel_height = list->get_theme_stylebox(SNAME("panel"))->get_minimum_size().height;
+	CHECK(v_bar->get_page() == doctest::Approx(100 - panel_height - h_bar->get_bound_minimum_size().height));
+
+	memdelete(list);
+}
+
 } // namespace TestItemList
 
 #endif // ADVANCED_GUI_DISABLED

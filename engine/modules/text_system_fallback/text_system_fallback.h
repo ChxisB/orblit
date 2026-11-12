@@ -530,6 +530,7 @@ class TextSystemFallback : public TextSystemExtension {
 
 	void _generate_runs(ShapedTextDataFallback *p_sd) const;
 	void _realign(ShapedTextDataFallback *p_sd) const;
+	void _update_object_offsets(ShapedTextDataFallback *p_sd) const;
 	_FORCE_INLINE_ RID _find_sys_font_for_text(const RID &p_fdef, const String &p_script_code, const String &p_language, const String &p_text);
 
 	Mutex ft_mutex;

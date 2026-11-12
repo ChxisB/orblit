@@ -211,6 +211,9 @@ void Label::_shape_internal() const {
 		}
 	}
 
+	// A control is clamped to its minimum width of 1 before its first layout. That is not a column to wrap in.
+	const int break_width = (wrap_with_max_width || width > 1) ? width : 0;
+
 	total_line_count = 0;
 	for (Paragraph &para : paragraphs) {
 		if (para.dirty || font_dirty) {
@@ -264,7 +267,7 @@ void Label::_shape_internal() const {
 			}
 			autowrap_flags = autowrap_flags | autowrap_flags_trim;
 
-			PackedInt32Array line_breaks = TS->shaped_text_get_line_breaks(para.text_rid, width, 0, autowrap_flags);
+			PackedInt32Array line_breaks = TS->shaped_text_get_line_breaks(para.text_rid, break_width, 0, autowrap_flags);
 			for (int i = 0; i < line_breaks.size(); i = i + 2) {
 				RID line = TS->shaped_text_substr(para.text_rid, line_breaks[i], line_breaks[i + 1] - line_breaks[i]);
 				if (!tab_stops.is_empty()) {
