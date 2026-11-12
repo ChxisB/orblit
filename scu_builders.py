@@ -430,6 +430,7 @@ def generate_scu_files(max_includes_per_scu):
             "/core/containers",
             "/core/threads",
             "/core/variant",
+            "/editor",
             "/scene",
             "/systems",
             "/systems/rendering",
