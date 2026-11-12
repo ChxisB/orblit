@@ -152,6 +152,7 @@ void OrblitBody3D::set_active(bool p_active) {
 	active = p_active;
 
 	if (active) {
+		sleep_requested = false;
 		if (mode == PS3DE::BODY_MODE_STATIC) {
 			// Static bodies can't be active.
 			active = false;
@@ -318,7 +319,9 @@ PS3DE::BodyMode OrblitBody3D::get_mode() const {
 
 void OrblitBody3D::_shapes_changed() {
 	_mass_properties_changed();
-	wakeup();
+	if (!sleep_requested) {
+		wakeup();
+	}
 	wakeup_neighbours();
 }
 
@@ -374,6 +377,7 @@ void OrblitBody3D::set_state(PS3DE::BodyState p_state, const Variant &p_variant)
 				//biased_linear_velocity=Vector3();
 				angular_velocity = Vector3();
 				//biased_angular_velocity=Vector3();
+				sleep_requested = true;
 				set_active(false);
 			} else {
 				set_active(true);

@@ -8,6 +8,8 @@
 #include "scene/resources/font.h"
 #include "systems/text/text_system.h"
 
+static constexpr int32_t MAX_CODE_POINT = 0x10FFFF;
+
 String ResourceImporterImageFont::get_importer_name() const {
 	return "font_data_image";
 }
@@ -258,13 +260,13 @@ Error ResourceImporterImageFont::import(ResourceUID::ID p_source_id, const Strin
 			if (end == -1) {
 				end = start;
 			}
-			if (!list.is_empty() && end != list[list.size() - 1]) {
-				list.push_back(end);
-			}
-
-			if (start == -1) {
+			// The loop below steps an int32 from start to end, so a value outside the code point range can wrap and never finish.
+			if (start < 0 || start > MAX_CODE_POINT || end < 0 || end > MAX_CODE_POINT) {
 				WARN_PRINT(vformat("Invalid range: \"%s\"", range));
 				continue;
+			}
+			if (!list.is_empty() && end != list[list.size() - 1]) {
+				list.push_back(end);
 			}
 		}
 

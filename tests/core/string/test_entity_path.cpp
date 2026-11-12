@@ -195,4 +195,37 @@ TEST_CASE("[EntityPath] Slice") {
 			"Slice of an empty absolute path should be an empty absolute path.");
 }
 
+TEST_CASE("[EntityPath] Hash follows the contents") {
+	const EntityPath a = EntityPath("Parent/Child:prop");
+	const EntityPath b = EntityPath("Parent/Child:prop");
+	CHECK_MESSAGE(a.hash() == b.hash(), "Equal paths should hash alike.");
+	CHECK_MESSAGE(a.hash() != 0, "A cached hash is never zero.");
+	CHECK_MESSAGE(a.hash() != EntityPath("Parent/Child:other").hash(), "A different subpath should change the hash.");
+	CHECK_MESSAGE(a.hash() != EntityPath("/Parent/Child:prop").hash(), "An absolute path should hash apart from a relative one.");
+	CHECK_MESSAGE(EntityPath().hash() == 0, "An empty path hashes to zero.");
+
+	EntityPath mutated = EntityPath("Child");
+	const uint32_t before = mutated.hash();
+	CHECK(mutated.get_concatenated_names() == "Child");
+	mutated.prepend_period();
+	CHECK_MESSAGE(mutated.get_concatenated_names() == "./Child", "Mutating a path should drop its joined names.");
+	CHECK_MESSAGE(mutated.hash() != before, "Mutating a path should drop its cached hash.");
+	CHECK_MESSAGE(mutated.hash() == EntityPath("./Child").hash(), "A mutated path should hash like a fresh one with the same names.");
+
+	EntityPath original = EntityPath("A/B");
+	const uint32_t original_hash = original.hash();
+	const EntityPath copy = original;
+	original.prepend_period();
+	CHECK_MESSAGE(copy.hash() == original_hash, "A copy should keep the hash of the contents it shares.");
+	CHECK_MESSAGE(copy != original, "Copy on write should leave the copy unchanged.");
+}
+
+TEST_CASE("[EntityPath] Hashing leaves the shared name caches alone") {
+	const EntityPath path = EntityPath("A/B:c");
+	const EntityPath shared = path;
+	CHECK(shared.hash() == path.hash());
+	CHECK(path.get_concatenated_names() == "A/B");
+	CHECK(path.get_concatenated_subnames() == "c");
+}
+
 } // namespace TestEntityPath

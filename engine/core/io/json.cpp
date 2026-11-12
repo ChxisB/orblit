@@ -171,6 +171,20 @@ void JSON::_stringify(String &r_result, const Variant &p_var, const String &p_in
 	}
 }
 
+// A number with no fraction or exponent stays an integer, so it is written back as it was read.
+// Up to 18 digits always fit in 64 bits. A longer one stays a double rather than overflow.
+static bool _is_whole_number(const char32_t *p_text, int p_length) {
+	int digits = 0;
+	for (int i = 0; i < p_length; i++) {
+		if (is_digit(p_text[i])) {
+			digits++;
+		} else if (i != 0 || p_text[i] != '-') {
+			return false;
+		}
+	}
+	return digits > 0 && digits <= 18;
+}
+
 Error JSON::_get_token(const char32_t *p_str, int &r_index, int p_len, Token &r_token, int &r_line, String &r_err_str) {
 	while (p_len > 0) {
 		switch (p_str[r_index]) {
@@ -363,10 +377,16 @@ Error JSON::_get_token(const char32_t *p_str, int &r_index, int p_len, Token &r_
 				if (p_str[r_index] == '-' || is_digit(p_str[r_index])) {
 					//a number
 					const char32_t *rptr;
-					double number = String::to_float(&p_str[r_index], &rptr);
-					r_index += (rptr - &p_str[r_index]);
+					const char32_t *start = &p_str[r_index];
+					const double number = String::to_float(start, &rptr);
+					const int length = int(rptr - start);
+					r_index += length;
 					r_token.type = TK_NUMBER;
-					r_token.value = number;
+					if (_is_whole_number(start, length)) {
+						r_token.value = String::to_int(start, length);
+					} else {
+						r_token.value = number;
+					}
 					return OK;
 
 				} else if (is_ascii_alphabet_char(p_str[r_index])) {

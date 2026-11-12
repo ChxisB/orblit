@@ -457,7 +457,10 @@ void RaycastOcclusionCull::Scenario::_raycast(uint32_t p_idx, const RaycastThrea
 	rtcInitIntersectArguments(&args);
 	args.flags = RTC_RAY_QUERY_FLAG_COHERENT;
 	args.context = &context;
-	rtcIntersect16((const int *)&p_raycast_data->masks[p_idx * TILE_RAYS], ebr_scene[current_scene_idx], &p_raycast_data->rays[p_idx], &args);
+	// A 512 bit kernel loads the mask with an aligned load, and the shared mask buffer only has 4 byte alignment.
+	alignas(64) int valid[TILE_RAYS];
+	memcpy(valid, &p_raycast_data->masks[p_idx * TILE_RAYS], sizeof(valid));
+	rtcIntersect16(valid, ebr_scene[current_scene_idx], &p_raycast_data->rays[p_idx], &args);
 }
 
 void RaycastOcclusionCull::Scenario::raycast(CameraRayTile *r_rays, const uint32_t *p_valid_masks, uint32_t p_tile_count) const {

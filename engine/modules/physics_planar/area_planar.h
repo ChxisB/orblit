@@ -69,6 +69,8 @@ class OrblitArea2D : public OrblitCollisionObject2D {
 
 	virtual void _shapes_changed() override;
 	void _queue_monitor_update();
+	static void _send_monitor_event(const Callable &p_callback, PS2DE::AreaBodyStatus p_status, const BodyKey &p_key);
+	static void _flush_monitor_events(HashMap<BodyKey, BodyState, BodyKey> &p_events, Callable &p_callback);
 
 	void _set_space_override_mode(PS2DE::AreaSpaceOverrideMode &r_mode, PS2DE::AreaSpaceOverrideMode p_new_mode);
 

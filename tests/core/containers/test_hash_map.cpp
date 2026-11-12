@@ -63,6 +63,24 @@ TEST_CASE("[HashMap] Erase via key") {
 	CHECK(!map.find(42));
 }
 
+TEST_CASE("[HashMap] Replace key") {
+	HashMap<int, int> map;
+	map.insert(42, 84);
+	map.insert(0, 12934);
+	CHECK(map.replace_key(0, 1));
+	CHECK(!map.has(0));
+	CHECK(map[1] == 12934);
+}
+
+TEST_CASE("[HashMap] Replace key with a key the map treats as equal") {
+	// NaN != NaN, but the map's comparison counts it as one key.
+	HashMap<float, int> map;
+	map.insert(Math::NaN, 7);
+	CHECK(map.replace_key(Math::NaN, Math::NaN));
+	CHECK(map.size() == 1);
+	CHECK(map[Math::NaN] == 7);
+}
+
 TEST_CASE("[HashMap] Size") {
 	HashMap<int, int> map;
 	map.insert(42, 84);
@@ -145,6 +163,22 @@ TEST_CASE("[HashMap] Sort") {
 		i--;
 		CHECK_EQ(kv.key, i);
 	}
+}
+
+TEST_CASE("[HashMap] C string keys accept a null pointer") {
+	HashMap<const char *, int> hashmap;
+	const char *name = "name";
+
+	hashmap[nullptr] = 1;
+	hashmap[name] = 2;
+	CHECK(hashmap.has(nullptr));
+	CHECK(hashmap[nullptr] == 1);
+	CHECK(hashmap[name] == 2);
+	CHECK(hashmap.size() == 2);
+
+	CHECK(hashmap.erase(nullptr));
+	CHECK(!hashmap.has(nullptr));
+	CHECK(hashmap.has(name));
 }
 
 } // namespace TestHashMap

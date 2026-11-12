@@ -3565,6 +3565,12 @@ void Viewport::_push_shortcut_input_internal(const Ref<InputEvent> &p_event) {
 	if (!propagate_shortcuts_to_parent || is_input_handled()) {
 		return;
 	}
+	// The display system sends an event with no window to every window. The parent
+	// has seen it already, so passing it up would run it twice.
+	const Ref<InputEventFromWindow> from_window = p_event;
+	if (from_window.is_null() || from_window->get_window_id() == DisplaySystemEnums::INVALID_WINDOW_ID) {
+		return;
+	}
 
 	Viewport *parent_viewport = get_parent_viewport();
 	if (!parent_viewport) {

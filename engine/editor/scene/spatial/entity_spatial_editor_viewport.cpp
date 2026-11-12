@@ -3560,7 +3560,9 @@ void Entity3DEditorViewport::_notification(int p_what) {
 				_disable_follow_mode();
 			}
 
-			if (focused_node_id.is_valid() && get_selected_count() > 0 && times_focused_consecutively >= 2 && times_focused_consecutively % 2 == 0) {
+			// Piloting moves the camera the view follows, so the view would chase its own motion. Following resumes when the preview ends.
+			const bool piloting_followed = previewing && focused_node_id == previewing->get_instance_id();
+			if (focused_node_id.is_valid() && !piloting_followed && get_selected_count() > 0 && times_focused_consecutively >= 2 && times_focused_consecutively % 2 == 0) {
 				Entity *focused_node = ObjectRegistry::get_instance<Entity>(focused_node_id);
 				if (focused_node) {
 					follow_mode->set_text(vformat(TTR("Following %s"), focused_node->get_name()));
@@ -6251,7 +6253,7 @@ bool Entity3DEditorViewport::can_drop_data_fw(const Point2 &p_point, const Varia
 		desc = "[ul]";
 		desc += vformat(TTR("[b]Default:[/b] Place in Geometry's Material Override slot.") +
 						"\n" + TTR("[b]Hold %s:[/b] Place in Mesh's Surface Material Override slot."),
-				keycode_get_string((Key)KeyModifierMask::CMD_OR_CTRL));
+				keycode_get_string(Key::CTRL));
 	} else if (instantiate_type & SCRIPT) {
 		title = vformat(TTR("Dropping a Script as a %s node..."), script_node_type);
 	}

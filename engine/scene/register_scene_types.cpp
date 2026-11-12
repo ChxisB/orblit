@@ -1016,10 +1016,6 @@ void register_scene_types() {
 	ORBLIT_REGISTER_CLASS(ConcavePolygonShape2D);
 #endif // PHYSICS_PLANAR_DISABLED
 
-#if !defined(NAVIGATION_PLANAR_DISABLED) || !defined(NAVIGATION_SPATIAL_DISABLED)
-	ORBLIT_REGISTER_CLASS(NavigationMesh);
-#endif // !defined(NAVIGATION_PLANAR_DISABLED) || !defined(NAVIGATION_SPATIAL_DISABLED)
-
 #ifndef NAVIGATION_PLANAR_DISABLED
 	ORBLIT_REGISTER_CLASS(NavigationMeshSourceGeometryData2D);
 	ORBLIT_REGISTER_CLASS(NavigationPolygon);
@@ -1041,6 +1037,11 @@ void register_scene_types() {
 #endif // PHYSICS_PLANAR_DISABLED
 #endif // NAVIGATION_PLANAR_DISABLED
 #endif // PLANAR_DISABLED
+
+// Outside the planar block, so a build without planar nodes still registers it.
+#if !defined(NAVIGATION_PLANAR_DISABLED) || !defined(NAVIGATION_SPATIAL_DISABLED)
+	ORBLIT_REGISTER_CLASS(NavigationMesh);
+#endif // !defined(NAVIGATION_PLANAR_DISABLED) || !defined(NAVIGATION_SPATIAL_DISABLED)
 
 #ifndef NAVIGATION_SPATIAL_DISABLED
 	// 3D nodes that support navmesh baking need to server register their source geometry parsers.

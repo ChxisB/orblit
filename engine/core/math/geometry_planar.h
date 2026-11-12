@@ -333,40 +333,33 @@ public:
 		return sum > 0.0f;
 	}
 
-	// Alternate implementation that should be faster.
+	static bool is_point_in_segment_bounds(const Vector2 &p_point, const Vector2 &p_from, const Vector2 &p_to) {
+		return p_point.x >= MIN(p_from.x, p_to.x) && p_point.x <= MAX(p_from.x, p_to.x) &&
+				p_point.y >= MIN(p_from.y, p_to.y) && p_point.y <= MAX(p_from.y, p_to.y);
+	}
+
+	// Counts the polygon edges that cross a ray from the point towards +x.
+	// A point exactly on an edge counts as inside. Slanted edges only match when the arithmetic is exact.
 	static bool is_point_in_polygon(const Vector2 &p_point, const Vector<Vector2> &p_polygon) {
-		int c = p_polygon.size();
+		const int c = p_polygon.size();
 		if (c < 3) {
 			return false;
 		}
 		const Vector2 *p = p_polygon.ptr();
-		Vector2 further_away(-1e20, -1e20);
-		Vector2 further_away_opposite(1e20, 1e20);
-
-		for (int i = 0; i < c; i++) {
-			further_away = further_away.max(p[i]);
-			further_away_opposite = further_away_opposite.min(p[i]);
-		}
-
-		// Make point outside that won't intersect with points in segment from p_point.
-		further_away += (further_away - further_away_opposite) * Vector2(1.221313, 1.512312);
-
-		int intersections = 0;
-		for (int i = 0; i < c; i++) {
-			const Vector2 &v1 = p[i];
-			const Vector2 &v2 = p[(i + 1) % c];
-
-			Vector2 res;
-			if (segment_intersects_segment(v1, v2, p_point, further_away, &res)) {
-				intersections++;
-				if (res.is_equal_approx(p_point)) {
-					// Point is in one of the polygon edges.
-					return true;
-				}
+		bool inside = false;
+		for (int i = 0, j = c - 1; i < c; j = i++) {
+			const Vector2 &from = p[j];
+			const Vector2 &to = p[i];
+			// Positive when the point is left of the edge, zero when it is on the edge's line.
+			const real_t side = (to.x - from.x) * (p_point.y - from.y) - (to.y - from.y) * (p_point.x - from.x);
+			if (side == 0 && is_point_in_segment_bounds(p_point, from, to)) {
+				return true;
+			}
+			if ((from.y > p_point.y) != (to.y > p_point.y) && (side > 0) == (to.y > from.y)) {
+				inside = !inside;
 			}
 		}
-
-		return (intersections & 1);
+		return inside;
 	}
 
 	static bool is_segment_intersecting_polygon(const Vector2 &p_from, const Vector2 &p_to, const Vector<Vector2> &p_polygon) {

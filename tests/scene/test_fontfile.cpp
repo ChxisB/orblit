@@ -5,9 +5,12 @@
 
 TEST_FORCE_LINK(test_fontfile)
 
+#include "core/io/dir_access.h"
+#include "core/io/file_access.h"
 #include "scene/resources/font.h"
+#include "tests/test_utils.h"
 
-#include "modules/modules_enabled.gen.h" // For freetype.
+#include "modules/modules_enabled.gen.h" // For freetype and the text servers.
 
 namespace TestFontFile {
 
@@ -58,6 +61,86 @@ TEST_CASE("[FontFile] Load Dynamic Font - getters") {
 	CHECK(ff->get_underline_thickness(100) == doctest::Approx((real_t)5));
 #endif
 }
+
+TEST_CASE("[FontFile] A bitmap font block that runs past the end of the file is rejected") {
+	const String path = TestUtils::get_temp_path("short_block.fnt");
+	{
+		Ref<FileAccess> f = FileAccess::open(path, FileAccess::WRITE);
+		REQUIRE(f.is_valid());
+		f->store_buffer((const uint8_t *)"BMF\x03", 4);
+		f->store_8(1); // Info block.
+		f->store_32(100); // Claims 100 bytes, 15 follow.
+		for (int i = 0; i < 15; i++) {
+			f->store_8(0);
+		}
+	}
+
+	Ref<FontFile> ff;
+	ff.instantiate();
+	ERR_PRINT_OFF;
+	const Error err = ff->load_bitmap_font(path);
+	ERR_PRINT_ON;
+	CHECK(err == ERR_FILE_CORRUPT);
+
+	DirAccess::remove_absolute(path);
+}
+
+// The dummy text server keeps no glyphs, so these need a real one.
+#if defined(MODULE_TEXT_SYSTEM_FALLBACK_ENABLED) || defined(MODULE_TEXT_SYSTEM_ADVANCED_ENABLED)
+
+TEST_CASE("[FontFile] A bitmap font ignores characters past the Unicode range") {
+	const String path = TestUtils::get_temp_path("wide_chars.fnt");
+	{
+		Ref<FileAccess> f = FileAccess::open(path, FileAccess::WRITE);
+		REQUIRE(f.is_valid());
+		f->store_buffer((const uint8_t *)"BMF\x03", 4);
+		f->store_8(4); // Chars block, two entries of 20 bytes.
+		f->store_32(40);
+		for (const uint32_t id : { 0x41u, 0x110000u }) {
+			f->store_32(id);
+			for (int i = 0; i < 16; i++) {
+				f->store_8(0);
+			}
+		}
+		f->store_8(5); // Kerning block, two entries of 10 bytes.
+		f->store_32(20);
+		for (const uint32_t second : { 0x41u, 0x110000u }) {
+			f->store_32(0x41);
+			f->store_32(second);
+			f->store_16(1);
+		}
+	}
+
+	Ref<FontFile> ff;
+	ff.instantiate();
+	CHECK(ff->load_bitmap_font(path) == OK);
+	CHECK(ff->get_glyph_list(0, Vector2i(16, 0)).size() == 1);
+	CHECK(ff->get_kerning_list(0, 16).size() == 1);
+
+	DirAccess::remove_absolute(path);
+}
+
+TEST_CASE("[FontFile] A text bitmap font ignores characters past the Unicode range") {
+	const String path = TestUtils::get_temp_path("wide_chars_text.fnt");
+	{
+		Ref<FileAccess> f = FileAccess::open(path, FileAccess::WRITE);
+		REQUIRE(f.is_valid());
+		f->store_line("char id=65 x=0 y=0 width=1 height=1 xoffset=0 yoffset=0 xadvance=1 page=0 chnl=15");
+		f->store_line("char id=1114112 x=0 y=0 width=1 height=1 xoffset=0 yoffset=0 xadvance=1 page=0 chnl=15");
+		f->store_line("kerning first=65 second=65 amount=1");
+		f->store_line("kerning first=65 second=1114112 amount=1");
+	}
+
+	Ref<FontFile> ff;
+	ff.instantiate();
+	CHECK(ff->load_bitmap_font(path) == OK);
+	CHECK(ff->get_glyph_list(0, Vector2i(16, 0)).size() == 1);
+	CHECK(ff->get_kerning_list(0, 16).size() == 1);
+
+	DirAccess::remove_absolute(path);
+}
+
+#endif // MODULE_TEXT_SYSTEM_FALLBACK_ENABLED || MODULE_TEXT_SYSTEM_ADVANCED_ENABLED
 
 TEST_CASE("[FontFile] Create font file and check data") {
 	// Create test instance.

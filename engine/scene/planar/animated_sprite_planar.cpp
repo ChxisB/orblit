@@ -173,9 +173,12 @@ void AnimatedSprite2D::_notification(int p_what) {
 
 			double remaining = get_frame_delta();
 			int i = 0;
+			const auto get_speed = [&]() {
+				return frames->get_animation_speed(animation) * speed_scale * custom_speed_scale * frame_speed_scale;
+			};
 			while (remaining) {
 				// Animation speed may be changed by animation_finished or frame_changed signals.
-				double speed = frames->get_animation_speed(animation) * speed_scale * custom_speed_scale * frame_speed_scale;
+				double speed = get_speed();
 				double abs_speed = Math::abs(speed);
 
 				if (speed == 0) {
@@ -214,6 +217,8 @@ void AnimatedSprite2D::_notification(int p_what) {
 						queue_redraw();
 						emit_signal(SceneStringName(frame_changed));
 					}
+					// A new frame has its own length, so the speed is read again.
+					abs_speed = Math::abs(get_speed());
 					double to_process = MIN((1.0 - frame_progress) / abs_speed, remaining);
 					frame_progress += to_process * abs_speed;
 					remaining -= to_process;
@@ -245,6 +250,7 @@ void AnimatedSprite2D::_notification(int p_what) {
 						queue_redraw();
 						emit_signal(SceneStringName(frame_changed));
 					}
+					abs_speed = Math::abs(get_speed());
 					double to_process = MIN(frame_progress / abs_speed, remaining);
 					frame_progress -= to_process * abs_speed;
 					remaining -= to_process;

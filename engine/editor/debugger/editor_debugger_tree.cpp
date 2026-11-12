@@ -379,8 +379,13 @@ void EditorDebuggerTree::update_scene_tree(const SceneDebuggerTree *p_tree, int 
 void EditorDebuggerTree::select_nodes(const TypedArray<int64_t> &p_ids) {
 	// Manually select, as the tree control may be out-of-date for some reason (e.g. not shown yet).
 	// IDs that weren't found will be excluded in the next update (either removed or not nodes).
+	bool selection_changed = inspected_object_ids.size() != p_ids.size();
+	for (int i = 0; !selection_changed && i < p_ids.size(); i++) {
+		selection_changed = !inspected_object_ids.has(p_ids[i]);
+	}
 	inspected_object_ids = p_ids;
-	scrolling_to_item = true;
+	// A click on an item selects it again through the inspector, and scrolling then would move the tree under the pointer.
+	scrolling_to_item = scrolling_to_item || selection_changed;
 
 	// If we have not previously selected any of these items, expand the inspector's properties for this item.
 	for (ObjectID id : p_ids) {

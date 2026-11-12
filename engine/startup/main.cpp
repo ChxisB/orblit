@@ -283,6 +283,24 @@ static String get_full_version_string() {
 	return String(ORBLIT_VERSION_FULL_BUILD) + hash;
 }
 
+// The method to run when the command line names a driver and no method.
+static String get_rendering_method_for_driver(const String &p_driver) {
+	if (p_driver == "dummy") {
+		return "dummy";
+	}
+	if (p_driver == "opengl3" || p_driver == "opengl3_angle" || p_driver == "opengl3_es") {
+		return "gl_compatibility";
+	}
+	// The project's own choice stands when this driver can run it.
+	if (ProjectSettings::get_singleton()->has_setting("rendering/renderer/rendering_method")) {
+		const String project_method = GLOBAL_GET("rendering/renderer/rendering_method");
+		if (project_method == "forward_plus" || project_method == "mobile") {
+			return project_method;
+		}
+	}
+	return "forward_plus";
+}
+
 void finalize_display() {
 	if (rendering_system) {
 		rendering_system->finish();
@@ -870,6 +888,16 @@ int Main::test_entrypoint(int argc, char *argv[], bool &tests_need_run) {
 	}
 	tests_need_run = false;
 	return EXIT_SUCCESS;
+}
+
+// Checks every display system, because the drivers on offer depend on the display driver chosen later.
+static bool is_rendering_driver_available(const String &p_driver) {
+	for (int i = 0; i < DisplaySystem::get_create_function_count(); i++) {
+		if (DisplaySystem::get_create_function_rendering_drivers(i).has(p_driver)) {
+			return true;
+		}
+	}
+	return false;
 }
 
 /* Engine initialization
@@ -2390,19 +2418,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 		// selected, we can't do an exhaustive check here, but we can look through all
 		// the options in all the display drivers for a match.
 
-		bool found = false;
-		for (int i = 0; i < DisplaySystem::get_create_function_count(); i++) {
-			Vector<String> r_drivers = DisplaySystem::get_create_function_rendering_drivers(i);
-
-			for (int d = 0; d < r_drivers.size(); d++) {
-				if (rendering_driver == r_drivers[d]) {
-					found = true;
-					break;
-				}
-			}
-		}
-
-		if (!found) {
+		if (!is_rendering_driver_available(rendering_driver)) {
 			OS::get_singleton()->print("Unknown rendering driver '%s', aborting.\nValid options are ",
 					rendering_driver.utf8().get_data());
 
@@ -2434,13 +2450,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 		// Set a default renderer if none selected. Try to choose one that matches the driver.
 		if (rendering_method.is_empty()) {
-			if (rendering_driver == "dummy") {
-				rendering_method = "dummy";
-			} else if (rendering_driver == "opengl3" || rendering_driver == "opengl3_angle" || rendering_driver == "opengl3_es") {
-				rendering_method = "gl_compatibility";
-			} else {
-				rendering_method = "forward_plus";
-			}
+			rendering_method = get_rendering_method_for_driver(rendering_driver);
 		}
 
 		// Now validate whether the selected driver matches with the renderer.
@@ -2520,6 +2530,12 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 	// always convert to lower case for consistency in the code
 	rendering_driver = rendering_driver.to_lower();
+
+	if (rendering_driver_source == OS::RenderingSource::RENDERING_SOURCE_PROJECT_SETTING && !is_rendering_driver_available(rendering_driver)) {
+		// Without this check a driver this build lacks leaves the renderer with no create function.
+		OS::get_singleton()->print("The rendering driver '%s' set in the project settings is not available in this build, aborting. Change the setting or pass --rendering-driver.\n", rendering_driver.utf8().get_data());
+		goto error;
+	}
 
 	OS::get_singleton()->set_current_rendering_driver_name(rendering_driver, rendering_driver_source);
 	OS::get_singleton()->set_current_rendering_method(rendering_method, rendering_method_source);

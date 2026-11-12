@@ -1162,7 +1162,12 @@ Entity *ResourceImporterScene::_post_fix_animations(Entity *p_node, Entity *p_ro
 					}
 					AnimationImportTracks track_mode = import_tracks_mode[track_channel_type];
 					EntityPath path = anim->track_get_path(track_i);
-					Entity *n = p_root->get_entity(path);
+					Entity *n = p_root->get_entity_or_null(path);
+					if (!n) {
+						// A skip import setting removed the node, so nothing is left for the track to drive.
+						tracks_to_keep.remove_at(tracks_to_keep.size() - 1);
+						continue;
+					}
 					Entity3D *n3d = Object::cast_to<Entity3D>(n);
 					Skeleton3D *skel = Object::cast_to<Skeleton3D>(n);
 					bool keep_track = false;

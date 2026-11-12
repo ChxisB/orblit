@@ -82,6 +82,7 @@ class MenuBar : public Control {
 	Vector<PopupMenu *> _get_popups() const;
 	int get_menu_idx_from_control(PopupMenu *p_child) const;
 
+	void _place_popup(int p_index);
 	void _open_popup(int p_index, bool p_focus_item = false);
 	void _popup_visibility_changed(bool p_visible);
 

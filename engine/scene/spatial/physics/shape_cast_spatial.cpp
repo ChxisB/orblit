@@ -71,12 +71,20 @@ void ShapeCast3D::_notification(int p_what) {
 				if (prev_collision_state == collided && !collided) {
 					_update_debug_shape();
 				}
-				if (is_inside_stage() && debug_instance.is_valid()) {
+				// With interpolation on, fti_update_systems_xform sends the transform each frame.
+				if (is_inside_stage() && debug_instance.is_valid() && !get_stage()->is_physics_interpolation_enabled()) {
 					RenderingSystem::get_singleton()->instance_set_transform(debug_instance, get_global_transform());
 				}
 			}
 		} break;
 	}
+}
+
+void ShapeCast3D::fti_update_systems_xform() {
+	if (debug_instance.is_valid()) {
+		RenderingSystem::get_singleton()->instance_set_transform(debug_instance, _get_cached_global_transform_interpolated());
+	}
+	Entity3D::fti_update_systems_xform();
 }
 
 void ShapeCast3D::register_members() {

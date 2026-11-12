@@ -1105,10 +1105,12 @@ bool AnimationNodeStateMachinePlayback::_check_advance_condition(AnimationNode::
 
 	StringName advance_condition_name = transition->get_advance_condition_name();
 
-	ERR_FAIL_COND_V(p_instance.resource != state_machine, false);
-
-	if (advance_condition_name != StringName() && !bool(p_instance.get_parameter(advance_condition_name))) {
-		return false;
+	if (advance_condition_name != StringName()) {
+		// A group transition belongs to the parent machine, but the instance passed in is the group's. Only a named condition reads the instance.
+		ERR_FAIL_COND_V(p_instance.resource != state_machine, false);
+		if (!bool(p_instance.get_parameter(advance_condition_name))) {
+			return false;
+		}
 	}
 
 	if (transition->expression.is_valid()) {

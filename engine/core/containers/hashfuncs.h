@@ -177,7 +177,8 @@ struct HashMapHasherDefaultImpl<T, std::enable_if_t<std::is_enum_v<T>>> {
 
 template <>
 struct HashMapHasherDefaultImpl<char *> {
-	static _FORCE_INLINE_ uint32_t hash(const char *p_cstr) { return hash_djb2(p_cstr); }
+	// A null pointer is a valid key, because the comparator only compares addresses.
+	static _FORCE_INLINE_ uint32_t hash(const char *p_cstr) { return p_cstr ? hash_djb2(p_cstr) : 0; }
 };
 
 template <>

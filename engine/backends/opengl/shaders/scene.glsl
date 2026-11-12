@@ -2885,8 +2885,7 @@ void main() {
 				clearcoat, clearcoat_roughness, geo_normal,
 #endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
-				tangent,
-				binormal, anisotropy,
+				binormal, tangent, anisotropy,
 #endif
 				diffuse_light, specular_light);
 	}
@@ -2910,8 +2909,7 @@ void main() {
 				clearcoat, clearcoat_roughness, geo_normal,
 #endif // LIGHT_CLEARCOAT_USED
 #ifdef LIGHT_ANISOTROPY_USED
-				tangent,
-				binormal, anisotropy,
+				binormal, tangent, anisotropy,
 #endif
 				diffuse_light, specular_light);
 	}
@@ -3246,8 +3244,7 @@ void main() {
 			clearcoat, clearcoat_roughness, geo_normal,
 #endif // LIGHT_RIM_USED
 #ifdef LIGHT_ANISOTROPY_USED
-			tangent,
-			binormal, anisotropy,
+			binormal, tangent, anisotropy,
 #endif
 			diffuse_light, specular_light);
 #else

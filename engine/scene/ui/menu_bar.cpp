@@ -106,14 +106,8 @@ void MenuBar::gui_input(const Ref<InputEvent> &p_event) {
 	}
 }
 
-void MenuBar::_open_popup(int p_index, bool p_focus_item) {
-	ERR_FAIL_INDEX(p_index, menu_cache.size());
-
+void MenuBar::_place_popup(int p_index) {
 	PopupMenu *pm = get_menu_popup(p_index);
-	if (pm->is_visible()) {
-		pm->hide();
-		return;
-	}
 
 	Rect2 item_rect = _get_menu_item_rect(p_index);
 	item_rect.position *= get_screen_transform().get_scale();
@@ -127,13 +121,25 @@ void MenuBar::_open_popup(int p_index, bool p_focus_item) {
 		rect = xform.xform(rect);
 	}
 
-	active_menu = p_index;
-
 	pm->set_size(Size2(item_rect.size.x, 0));
 	if (is_layout_rtl()) {
 		rect.position.x += item_rect.size.x - pm->get_size().width;
 	}
 	pm->set_position(rect.position);
+}
+
+void MenuBar::_open_popup(int p_index, bool p_focus_item) {
+	ERR_FAIL_INDEX(p_index, menu_cache.size());
+
+	PopupMenu *pm = get_menu_popup(p_index);
+	if (pm->is_visible()) {
+		pm->hide();
+		return;
+	}
+
+	active_menu = p_index;
+
+	_place_popup(p_index);
 	pm->popup();
 
 	if (p_focus_item) {
@@ -331,6 +337,13 @@ void MenuBar::_notification(int p_what) {
 			}
 			if (global_menu_tag.is_empty()) {
 				update_minimum_size();
+			}
+		} break;
+		case NOTIFICATION_WM_POSITION_CHANGED: {
+			// A popup that stays open must keep following its menu item.
+			PopupMenu *open_popup = active_menu >= 0 ? get_menu_popup(active_menu) : nullptr;
+			if (open_popup && open_popup->is_visible()) {
+				_place_popup(active_menu);
 			}
 		} break;
 		case NOTIFICATION_VISIBILITY_CHANGED: {

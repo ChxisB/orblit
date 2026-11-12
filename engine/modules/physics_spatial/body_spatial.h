@@ -79,6 +79,8 @@ class OrblitBody3D : public OrblitCollisionObject3D {
 
 	bool continuous_cd = false;
 	bool can_sleep = true;
+	// Set by an explicit sleep request and cleared by any wake. Shape changes must not wake such a body.
+	bool sleep_requested = false;
 	bool first_time_kinematic = false;
 
 	void _mass_properties_changed();

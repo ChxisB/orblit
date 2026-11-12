@@ -51,6 +51,7 @@ class EditorEntity3DGizmo : public Entity3DGizmo {
 	void _set_node_3d(Entity *p_node) { set_entity_3d(Object::cast_to<Entity3D>(p_node)); }
 
 	void _update_bvh();
+	bool _is_selectable() const;
 
 protected:
 	static void register_members();

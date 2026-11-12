@@ -1507,6 +1507,11 @@ void RendererSceneCull::_update_instance_visibility_dependencies(Instance *p_ins
 			}
 		}
 
+		if (p_instance->visibility_index == -1) {
+			// Only entries in instance_visibility refresh this flag. A stale one sends children to a missing entry.
+			idata.flags &= ~InstanceData::FLAG_VISIBILITY_DEPENDENCY_FADE_CHILDREN;
+		}
+
 		if ((has_visibility_range || p_instance->visibility_parent) && (p_instance->visibility_index == -1 || p_instance->visibility_dependencies_depth == 0)) {
 			idata.flags |= InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK;
 		} else {
@@ -2372,7 +2377,7 @@ void RendererSceneCull::_light_instance_setup_directional_shadow(int p_shadow_in
 	}
 }
 
-bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers) {
+bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, const Transform3D p_cam_transform, const Projection &p_cam_projection, bool p_cam_orthogonal, bool p_cam_vaspect, RID p_shadow_atlas, Scenario *p_scenario, float p_screen_mesh_lod_threshold, uint32_t p_visible_layers, uint64_t p_visibility_viewport_mask) {
 	InstanceLightData *light = static_cast<InstanceLightData *>(p_instance->base_data);
 
 	Transform3D light_transform = p_instance->transform;
@@ -2433,7 +2438,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 					for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 						Instance *instance = instance_shadow_cull_result[j];
 						const bool is_inactive_particle = (instance->base_type == RSE::INSTANCE_PARTICLES) && RSG::particles_storage->particles_is_inactive(instance->base);
-						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle) {
+						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle || _is_hidden_by_visibility(instance, p_scenario, p_cam_transform.origin, p_visibility_viewport_mask)) {
 							continue;
 						} else {
 							if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2517,7 +2522,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 					for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 						Instance *instance = instance_shadow_cull_result[j];
 						const bool is_inactive_particle = (instance->base_type == RSE::INSTANCE_PARTICLES) && RSG::particles_storage->particles_is_inactive(instance->base);
-						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle) {
+						if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle || _is_hidden_by_visibility(instance, p_scenario, p_cam_transform.origin, p_visibility_viewport_mask)) {
 							continue;
 						} else {
 							if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2586,7 +2591,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 			for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 				Instance *instance = instance_shadow_cull_result[j];
 				const bool is_inactive_particle = (instance->base_type == RSE::INSTANCE_PARTICLES) && RSG::particles_storage->particles_is_inactive(instance->base);
-				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle) {
+				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle || _is_hidden_by_visibility(instance, p_scenario, p_cam_transform.origin, p_visibility_viewport_mask)) {
 					continue;
 				} else {
 					if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2653,7 +2658,7 @@ bool RendererSceneCull::_light_instance_update_shadow(Instance *p_instance, cons
 			for (int j = 0; j < (int)instance_shadow_cull_result.size(); j++) {
 				Instance *instance = instance_shadow_cull_result[j];
 				const bool is_inactive_particle = (instance->base_type == RSE::INSTANCE_PARTICLES) && RSG::particles_storage->particles_is_inactive(instance->base);
-				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle) {
+				if (!instance->visible || !((1 << instance->base_type) & RSE::INSTANCE_GEOMETRY_MASK) || !static_cast<InstanceGeometryData *>(instance->base_data)->can_cast_shadows || !(p_visible_layers & instance->layer_mask & RSG::light_storage->light_get_shadow_caster_mask(p_instance->base)) || is_inactive_particle || _is_hidden_by_visibility(instance, p_scenario, p_cam_transform.origin, p_visibility_viewport_mask)) {
 					continue;
 				} else {
 					if (static_cast<InstanceGeometryData *>(instance->base_data)->material_is_animated) {
@@ -2872,12 +2877,31 @@ int RendererSceneCull::_visibility_range_check(InstanceVisibilityData &r_vis_dat
 	}
 }
 
-bool RendererSceneCull::_visibility_parent_check(const CullData &p_cull_data, const InstanceData &p_instance_data) {
+bool RendererSceneCull::_visibility_parent_check(const Scenario *p_scenario, const InstanceData &p_instance_data) {
 	if (p_instance_data.parent_array_index == -1) {
 		return true;
 	}
-	const uint32_t &parent_flags = p_cull_data.scenario->instance_data[p_instance_data.parent_array_index].flags;
+	const uint32_t &parent_flags = p_scenario->instance_data[p_instance_data.parent_array_index].flags;
 	return ((parent_flags & InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK) == InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN_CLOSE_RANGE) || (parent_flags & InstanceData::FLAG_VISIBILITY_DEPENDENCY_FADE_CHILDREN);
+}
+
+// Shadow casters skip the main camera cull, so they need the same visibility test as the objects it keeps.
+bool RendererSceneCull::_is_hidden_by_visibility(const Instance *p_instance, Scenario *p_scenario, const Vector3 &p_camera_origin, uint64_t p_viewport_mask) {
+	if (p_instance->array_index == -1) {
+		return false;
+	}
+	const InstanceData &idata = p_scenario->instance_data[p_instance->array_index];
+	const uint32_t visibility_flags = idata.flags & (InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN_CLOSE_RANGE | InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN | InstanceData::FLAG_VISIBILITY_DEPENDENCY_FADE_CHILDREN);
+	if (visibility_flags == InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN_CLOSE_RANGE || visibility_flags == InstanceData::FLAG_VISIBILITY_DEPENDENCY_HIDDEN) {
+		return true;
+	}
+	if (visibility_flags != InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK) {
+		return false;
+	}
+	if (idata.visibility_index != -1 && _visibility_range_check<false>(p_scenario->instance_visibility[idata.visibility_index], p_camera_origin, p_viewport_mask) != 0) {
+		return true;
+	}
+	return !_visibility_parent_check(p_scenario, idata);
 }
 
 void RendererSceneCull::_scene_cull_threaded(uint32_t p_thread, CullData *cull_data) {
@@ -2922,7 +2946,7 @@ void RendererSceneCull::_scene_cull(CullData &cull_data, InstanceCullResult &cul
 #define LAYER_CHECK (cull_data.visible_layers & idata.layer_mask)
 #define IN_FRUSTUM(f) (cull_data.scenario->instance_aabbs[i].in_frustum(f))
 #define VIS_RANGE_CHECK ((idata.visibility_index == -1) || _visibility_range_check<false>(cull_data.scenario->instance_visibility[idata.visibility_index], cull_data.cam_transform.origin, cull_data.visibility_viewport_mask) == 0)
-#define VIS_PARENT_CHECK (_visibility_parent_check(cull_data, idata))
+#define VIS_PARENT_CHECK (_visibility_parent_check(cull_data.scenario, idata))
 #define VIS_CHECK (visibility_check < 0 ? (visibility_check = (visibility_flags != InstanceData::FLAG_VISIBILITY_DEPENDENCY_NEEDS_CHECK || (VIS_RANGE_CHECK && VIS_PARENT_CHECK))) : visibility_check)
 #define OCCLUSION_CULLED (cull_data.occlusion_buffer != nullptr && (cull_data.scenario->instance_data[i].flags & InstanceData::FLAG_IGNORE_OCCLUSION_CULLING) == 0 && cull_data.occlusion_buffer->is_occluded(cull_data.scenario->instance_aabbs[i].bounds, cull_data.cam_transform.origin, inv_cam_transform, *cull_data.camera_matrix, z_near, is_orthogonal, cull_data.scenario->instance_data[i].occlusion_timeout))
 
@@ -3633,7 +3657,7 @@ void RendererSceneCull::_render_scene(const RendererSceneRender::CameraData *p_c
 			if (redraw && max_shadows_used < MAX_UPDATE_SHADOWS) {
 				//must redraw!
 				RENDER_TIMESTAMP("> Render Light3D " + itos(i));
-				if (_light_instance_update_shadow(ins, p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect, p_shadow_atlas, scenario, p_screen_mesh_lod_threshold, p_visible_layers)) {
+				if (_light_instance_update_shadow(ins, p_camera_data->main_transform, p_camera_data->main_projection, p_camera_data->is_orthogonal, p_camera_data->vaspect, p_shadow_atlas, scenario, p_screen_mesh_lod_threshold, p_visible_layers, scenario->viewport_visibility_masks.has(p_viewport) ? scenario->viewport_visibility_masks[p_viewport] : 0)) {
 					light->make_shadow_dirty();
 				}
 				RENDER_TIMESTAMP("< Render Light3D " + itos(i));

@@ -61,6 +61,7 @@ private:
 		Vector<RID> variants;
 
 		bool valid;
+		bool compile_failed = false;
 		bool dirty;
 		bool initialize_needed;
 		bool embedded;

@@ -150,11 +150,12 @@ AnimationNode::NodeTimeInfo AnimationNodeAnimation::_process(ProcessState &p_pro
 			}
 		}
 	} else {
+		// The delta is cut by the distance past the edge, so it is the time moved.
 		if (Animation::is_less_approx(cur_time, 0)) {
-			cur_delta += cur_time;
+			cur_delta -= cur_time;
 			cur_time = 0;
 		} else if (Animation::is_greater_approx(cur_time, cur_len)) {
-			cur_delta += cur_time - cur_len;
+			cur_delta -= cur_time - cur_len;
 			cur_time = cur_len;
 		}
 		cur_backward = false;

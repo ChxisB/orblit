@@ -17,6 +17,12 @@ class RemoteTransform2D : public Entity2D {
 	bool update_remote_rotation = true;
 	bool update_remote_scale = true;
 
+	// Each write of a matrix adds rounding error to the scale read back from it.
+	// The scale is held until the node's own scale moves by more than that error.
+	Size2 kept_remote_scale;
+
+	void _track_remote_scale(const Transform2D &p_remote);
+	Transform2D _compose_remote_transform(const Transform2D &p_remote, const Transform2D &p_ours) const;
 	void _update_remote();
 	void _update_cache();
 	//void _node_exited_scene();

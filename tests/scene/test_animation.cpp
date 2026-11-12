@@ -281,4 +281,37 @@ TEST_CASE("[Animation] Create Bezier track") {
 	ERR_PRINT_ON;
 }
 
+TEST_CASE("[Animation] Optimizing keeps a key where the direction turns at the same speed") {
+	Ref<Animation> animation = memnew(Animation);
+	const int position_track = animation->add_track(Animation::TYPE_POSITION_3D);
+	animation->track_set_path(position_track, EntityPath("Enemy:position"));
+	animation->position_track_insert_key(position_track, 0.0, Vector3(0, 0, 0));
+	animation->position_track_insert_key(position_track, 1.0, Vector3(1, 0, 0));
+	animation->position_track_insert_key(position_track, 2.0, Vector3(1, 1, 0));
+
+	const int value_track = animation->add_track(Animation::TYPE_VALUE);
+	animation->track_set_path(value_track, EntityPath("Enemy:offset"));
+	animation->track_insert_key(value_track, 0.0, Vector2(0, 0));
+	animation->track_insert_key(value_track, 1.0, Vector2(1, 0));
+	animation->track_insert_key(value_track, 2.0, Vector2(1, 1));
+
+	animation->optimize();
+
+	CHECK(animation->track_get_key_count(position_track) == 3);
+	CHECK(animation->track_get_key_count(value_track) == 3);
+}
+
+TEST_CASE("[Animation] Optimizing still drops a key on a straight line at a steady speed") {
+	Ref<Animation> animation = memnew(Animation);
+	const int position_track = animation->add_track(Animation::TYPE_POSITION_3D);
+	animation->track_set_path(position_track, EntityPath("Enemy:position"));
+	animation->position_track_insert_key(position_track, 0.0, Vector3(0, 0, 0));
+	animation->position_track_insert_key(position_track, 1.0, Vector3(1, 0, 0));
+	animation->position_track_insert_key(position_track, 2.0, Vector3(2, 0, 0));
+
+	animation->optimize();
+
+	CHECK(animation->track_get_key_count(position_track) == 2);
+}
+
 } // namespace TestAnimation

@@ -21,6 +21,14 @@ int InputEvent::get_device() const {
 	return device;
 }
 
+void InputEvent::set_origin_from(const InputEvent *p_event) {
+	origin_id = p_event->get_origin_id();
+}
+
+ObjectID InputEvent::get_origin_id() const {
+	return origin_id.is_valid() ? origin_id : get_instance_id();
+}
+
 bool InputEvent::is_action(const StringName &p_action, bool p_exact_match) const {
 	return InputMap::get_singleton()->event_is_action(Ref<InputEvent>(const_cast<InputEvent *>(this)), p_action, p_exact_match);
 }
@@ -737,6 +745,7 @@ RequiredResult<InputEvent> InputEventMouseButton::xformed_by(const Transform2D &
 	mb.instantiate();
 
 	mb->set_device(get_device());
+	mb->set_origin_from(this);
 	mb->set_window_id(get_window_id());
 	mb->set_modifiers_from_event(this);
 

@@ -266,6 +266,12 @@ bool AnimationPlayer::_blend_pre_process(double p_delta, int p_track_count, cons
 		return false;
 	}
 
+	if (!animation_set.has(playback.current.animation_name)) {
+		// Removing its library takes the current animation away without a signal for it.
+		_stop_internal(true, true);
+		return false;
+	}
+
 	AnimationData *p_from = &animation_set[playback.current.animation_name];
 	tmp_from = p_from->animation->get_instance_id();
 	end_reached = false;
@@ -767,8 +773,9 @@ bool AnimationPlayer::is_clear_cache_on_stop_enabled() const {
 
 void AnimationPlayer::_animation_changed(const StringName &p_name) {
 	AnimationMixer::_animation_changed(p_name);
-	if (playback.current.is_enabled && playback.current.animation_name == p_name && animation_set.has(p_name)) {
-		playback.current.animation_length = animation_set[p_name].animation->get_length();
+	// The name from the library has no library prefix, so it cannot be matched with the current name. Read the current animation again.
+	if (playback.current.is_enabled && animation_set.has(playback.current.animation_name)) {
+		playback.current.animation_length = animation_set[playback.current.animation_name].animation->get_length();
 	}
 }
 
