@@ -124,7 +124,7 @@ TEST_CASE("[Stage][HeightMapShape3D] A NaN hole is skipped when culling") {
 	Vector<real_t> heights;
 	heights.resize(9);
 	heights.fill(0.0);
-	heights.write[4] = Math::NaN; // The centre vertex is a hole.
+	heights.write[4] = Math::NaN; // The center vertex is a hole.
 
 	Dictionary data;
 	data["width"] = 3;
@@ -142,7 +142,7 @@ TEST_CASE("[Stage][HeightMapShape3D] A NaN hole is skipped when culling") {
 
 	CHECK_FALSE(detector.has_error);
 	CHECK(count.non_finite == 0);
-	// Four cells, two triangles each. The centre vertex touches all four cells.
+	// Four cells, two triangles each. The center vertex touches all four cells.
 	// Cells (0,0) and (1,1) lose one triangle. Cells (1,0) and (0,1) lose both.
 	CHECK(count.faces == 2);
 }
