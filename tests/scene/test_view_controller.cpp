@@ -9,8 +9,6 @@ TEST_FORCE_LINK(test_view_controller)
 
 #include "scene/debugger/view_spatial_controller.h"
 
-#include <new>
-
 namespace TestViewController {
 
 TEST_CASE("[ViewController] A new cursor starts at the origin") {
