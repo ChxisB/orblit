@@ -993,7 +993,7 @@ TEST_CASE("[Entity] Paths and common parents between entities") {
 	Entity *left = memnew(Entity);
 	Entity *left_leaf = memnew(Entity);
 	Entity *right = memnew(Entity);
-	Entity *loner = memnew(Entity);
+	Entity *outsider = memnew(Entity);
 	left->set_name("Left");
 	left_leaf->set_name("Leaf");
 	right->set_name("Right");
@@ -1011,14 +1011,14 @@ TEST_CASE("[Entity] Paths and common parents between entities") {
 	CHECK_EQ(left_leaf->find_common_parent_with(left), left);
 	CHECK_EQ(left->find_common_parent_with(left_leaf), left);
 	CHECK_EQ(left->find_common_parent_with(left), left);
-	CHECK_EQ(left_leaf->find_common_parent_with(loner), nullptr);
+	CHECK_EQ(left_leaf->find_common_parent_with(outsider), nullptr);
 	CHECK_EQ(left_leaf->find_common_parent_with(nullptr), nullptr);
 
 	ERR_PRINT_OFF;
-	CHECK_EQ(left_leaf->get_path_to(loner), EntityPath());
+	CHECK_EQ(left_leaf->get_path_to(outsider), EntityPath());
 	ERR_PRINT_ON;
 
-	memdelete(loner);
+	memdelete(outsider);
 	memdelete(root);
 }
 
