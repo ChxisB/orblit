@@ -1340,7 +1340,8 @@ void SpriteFramesEditor::_animation_search_text_changed(const String &p_text) {
 }
 
 void SpriteFramesEditor::_animation_loop_pressed() {
-	if (updating) {
+	// Nothing is edited once the last animation is removed.
+	if (updating || frames.is_null() || !frames->has_animation(edited_anim)) {
 		return;
 	}
 
@@ -1375,11 +1376,8 @@ void SpriteFramesEditor::_animation_speed_resized() {
 }
 
 void SpriteFramesEditor::_animation_speed_changed(double p_value) {
-	if (frames.is_null()) {
-		return;
-	}
-
-	if (updating) {
+	// Nothing is edited once the last animation is removed.
+	if (updating || frames.is_null() || !frames->has_animation(edited_anim)) {
 		return;
 	}
 

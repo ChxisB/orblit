@@ -534,7 +534,8 @@ void AnimationNodeStateMachineEditor::_state_machine_gui_input(const Ref<InputEv
 
 	// Pan window
 	if (mm.is_valid() && mm->get_button_mask().has_flag(MouseButtonMask::MIDDLE)) {
-		Vector2 relative = mm->get_relative();
+		// The scroll values are in unscaled units and the mouse moves in pixels.
+		Vector2 relative = mm->get_relative() / EDSCALE;
 		h_scroll->set_value(h_scroll->get_value() - relative.x);
 		v_scroll->set_value(v_scroll->get_value() - relative.y);
 	}

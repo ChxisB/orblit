@@ -130,11 +130,12 @@ void SpringBoneCollision3D::sync_pose() {
 }
 
 Transform3D SpringBoneCollision3D::get_transform_from_skeleton(const Transform3D &p_center) const {
-	Transform3D gtr = get_global_transform();
+	Transform3D gtr = get_global_transform_interpolated();
 	Skeleton3D *sk = get_skeleton();
 	if (sk) {
-		Transform3D tr = sk->get_global_transform();
-		gtr = tr.affine_inverse() * p_center * gtr;
+		// The center maps skeleton space to its own space, so it is applied after the skeleton inverse.
+		// The simulator builds the center from the interpolated skeleton, so both sides match it here.
+		gtr = p_center * sk->get_global_transform_interpolated().affine_inverse() * gtr;
 	}
 	return gtr;
 }
