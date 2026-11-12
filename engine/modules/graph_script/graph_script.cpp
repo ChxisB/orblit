@@ -6,6 +6,7 @@
 #include "graph_compiler.h"
 #include "graph_script_instance.h"
 #include "graph_script_language.h"
+#include "graph_warnings.h"
 
 #include "core/object/class_registry.h"
 #include "core/variant/variant_parser.h"
@@ -19,6 +20,22 @@ bool is_valid_name(const String &p_name) {
 bool is_valid_type(int p_type) {
 	return p_type >= Variant::NIL && p_type < Variant::VARIANT_MAX;
 }
+
+bool is_valid_hint(int p_hint) {
+	return p_hint >= PROPERTY_HINT_NONE && p_hint < PROPERTY_HINT_MAX;
+}
+
+// The text fields of a variable that a file stores only when they are not empty.
+struct TextKey {
+	const char *key;
+	String GraphVariable::*field;
+};
+
+constexpr TextKey TEXT_KEYS[] = {
+	{ "hint_string", &GraphVariable::hint_string },
+	{ "category", &GraphVariable::category },
+	{ "description", &GraphVariable::description },
+};
 
 // Returns false when the text is not a Variant. Text of "null" parses to nil and is fine.
 bool parse_variant(const String &p_text, Variant &r_value) {
@@ -34,6 +51,23 @@ Variant default_for_type(Variant::Type p_type) {
 	Callable::CallError call_error;
 	Variant::construct(p_type, value, nullptr, 0, call_error);
 	return value;
+}
+
+// A file from before exports had hints has none of these keys, and each then keeps its default.
+Error parse_variable_info(const Dictionary &p_entry, GraphVariable &r_variable) {
+	const Variant hint = p_entry.get("hint", int(PROPERTY_HINT_NONE));
+	if (hint.get_type() != Variant::INT || !is_valid_hint(hint)) {
+		return ERR_INVALID_DATA;
+	}
+	r_variable.hint = PropertyHint(int(hint));
+	for (const TextKey &text : TEXT_KEYS) {
+		const Variant value = p_entry.get(text.key, String());
+		if (value.get_type() != Variant::STRING) {
+			return ERR_INVALID_DATA;
+		}
+		r_variable.*text.field = value;
+	}
+	return OK;
 }
 
 Error parse_variable(const Variant &p_value, GraphVariable &r_variable) {
@@ -53,7 +87,7 @@ Error parse_variable(const Variant &p_value, GraphVariable &r_variable) {
 	r_variable.type = Variant::Type(type);
 	r_variable.default_value = entry["default"];
 	r_variable.exported = entry["exported"];
-	return OK;
+	return parse_variable_info(entry, r_variable);
 }
 
 Dictionary variable_to_dictionary(const GraphVariable &p_variable) {
@@ -62,8 +96,72 @@ Dictionary variable_to_dictionary(const GraphVariable &p_variable) {
 	entry["type"] = int(p_variable.type);
 	entry["default"] = p_variable.default_value;
 	entry["exported"] = p_variable.exported;
+	if (p_variable.hint != PROPERTY_HINT_NONE) {
+		entry["hint"] = int(p_variable.hint);
+	}
+	for (const TextKey &text : TEXT_KEYS) {
+		if (!(p_variable.*text.field).is_empty()) {
+			entry[text.key] = p_variable.*text.field;
+		}
+	}
 	return entry;
 }
+
+// A signal with no arguments is stored as its name, and one with arguments as a dictionary.
+Error parse_signal(const Variant &p_value, GraphSignal &r_signal) {
+	Variant name = p_value;
+	if (p_value.get_type() == Variant::DICTIONARY) {
+		const Dictionary entry = p_value;
+		name = entry.get("name", Variant());
+		if (!GraphSignatures::parse_typed_list(entry.get("arguments", Variant()), r_signal.arguments).is_empty()) {
+			return ERR_INVALID_DATA;
+		}
+	}
+	if (name.get_type() != Variant::STRING || !is_valid_name(name)) {
+		return ERR_INVALID_DATA;
+	}
+	r_signal.name = String(name);
+	return OK;
+}
+
+// The arguments and the return type come from the start step, so a function that did not
+// compile far enough to find one lists none.
+MethodInfo method_info_of(const GraphCompiledFunction &p_function) {
+	MethodInfo info(p_function.name);
+	for (const GraphTyped &argument : p_function.signature.arguments) {
+		info.arguments.push_back(PropertyInfo(argument.type, argument.name));
+	}
+	info.return_val = PropertyInfo(p_function.signature.returns, "");
+	if (p_function.signature.returns == Variant::NIL) {
+		info.return_val.usage |= PROPERTY_USAGE_NIL_IS_VARIANT;
+	}
+	return info;
+}
+
+#ifdef TOOLS_ENABLED
+DocData::PropertyDoc property_doc(const GraphVariable &p_variable) {
+	DocData::PropertyDoc doc;
+	doc.name = p_variable.name;
+	doc.type = Variant::get_type_name(p_variable.type);
+	doc.description = p_variable.description;
+	doc.default_value = String(p_variable.default_value);
+	return doc;
+}
+
+DocData::MethodDoc method_doc(const GraphCompiledFunction &p_function) {
+	DocData::MethodDoc doc;
+	doc.name = p_function.name;
+	doc.return_type = Variant::get_type_name(p_function.signature.returns);
+	doc.description = p_function.signature.description;
+	for (const GraphTyped &argument : p_function.signature.arguments) {
+		DocData::ArgumentDoc argument_doc;
+		argument_doc.name = argument.name;
+		argument_doc.type = Variant::get_type_name(argument.type);
+		doc.arguments.push_back(argument_doc);
+	}
+	return doc;
+}
+#endif // TOOLS_ENABLED
 
 } // namespace
 
@@ -86,7 +184,12 @@ int GraphScript::_find_variable_index(const StringName &p_name) const {
 }
 
 int GraphScript::_find_signal_index(const StringName &p_name) const {
-	return signals.find(p_name);
+	for (int i = 0; i < signals.size(); i++) {
+		if (signals[i].name == p_name) {
+			return i;
+		}
+	}
+	return -1;
 }
 
 void GraphScript::_compile() {
@@ -104,13 +207,38 @@ void GraphScript::_compile() {
 	}
 }
 
+// An instance keeps the value of every variable that still has its name and type.
+void GraphScript::_update_instances() {
+	for (GraphScriptInstance *instance : instances) {
+		instance->refresh();
+	}
+#ifdef TOOLS_ENABLED
+	for (PlaceHolderScriptInstance *placeholder : placeholders) {
+		_update_placeholder(placeholder);
+	}
+#endif
+}
+
 Error GraphScript::_commit(Error p_error) {
 	if (p_error == OK) {
 		_compile();
+		_update_instances();
 		emit_changed();
 	}
 	return p_error;
 }
+
+#ifdef TOOLS_ENABLED
+void GraphScript::_update_placeholder(PlaceHolderScriptInstance *p_placeholder) const {
+	List<PropertyInfo> properties;
+	get_script_property_list(&properties);
+	HashMap<StringName, Variant> defaults;
+	for (const GraphVariable &variable : variables) {
+		defaults[variable.name] = variable.default_value;
+	}
+	p_placeholder->update(properties, defaults);
+}
+#endif // TOOLS_ENABLED
 
 const GraphCompiledFunction *GraphScript::get_compiled(const StringName &p_function) const {
 	for (const GraphCompiledFunction &function : compiled) {
@@ -240,6 +368,29 @@ Error GraphScript::set_variable_exported(const String &p_name, bool p_exported) 
 	return _commit(OK);
 }
 
+Error GraphScript::set_variable_hint(const String &p_name, int p_hint, const String &p_hint_string) {
+	const int index = _find_variable_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	if (!is_valid_hint(p_hint)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	variables.write[index].hint = PropertyHint(p_hint);
+	variables.write[index].hint_string = p_hint_string;
+	return _commit(OK);
+}
+
+Error GraphScript::set_variable_info(const String &p_name, const String &p_category, const String &p_description) {
+	const int index = _find_variable_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	variables.write[index].category = p_category;
+	variables.write[index].description = p_description;
+	return _commit(OK);
+}
+
 Error GraphScript::add_signal(const String &p_name) {
 	if (!is_valid_name(p_name)) {
 		return ERR_INVALID_PARAMETER;
@@ -247,7 +398,7 @@ Error GraphScript::add_signal(const String &p_name) {
 	if (_find_signal_index(p_name) >= 0) {
 		return ERR_ALREADY_EXISTS;
 	}
-	signals.push_back(p_name);
+	signals.push_back({ p_name, Vector<GraphTyped>() });
 	return _commit(OK);
 }
 
@@ -257,6 +408,23 @@ Error GraphScript::remove_signal(const String &p_name) {
 		return ERR_DOES_NOT_EXIST;
 	}
 	signals.remove_at(index);
+	return _commit(OK);
+}
+
+Error GraphScript::set_signal_arguments(const String &p_name, const String &p_arguments_text) {
+	const int index = _find_signal_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	Variant list;
+	if (!parse_variant(p_arguments_text, list)) {
+		return ERR_PARSE_ERROR;
+	}
+	Vector<GraphTyped> arguments;
+	if (!GraphSignatures::parse_typed_list(list, arguments).is_empty()) {
+		return ERR_INVALID_DATA;
+	}
+	signals.write[index].arguments = arguments;
 	return _commit(OK);
 }
 
@@ -306,10 +474,14 @@ Array GraphScript::get_variables() const {
 }
 
 void GraphScript::set_signals(const Array &p_signals) {
-	Vector<StringName> loaded;
+	Vector<GraphSignal> loaded;
 	for (const Variant &value : p_signals) {
-		ERR_FAIL_COND_MSG(value.get_type() != Variant::STRING || !is_valid_name(value) || loaded.has(StringName(String(value))), "Graph script signals are malformed.");
-		loaded.push_back(StringName(String(value)));
+		GraphSignal loaded_signal;
+		ERR_FAIL_COND_MSG(parse_signal(value, loaded_signal) != OK, "Graph script signals are malformed.");
+		for (const GraphSignal &other : loaded) {
+			ERR_FAIL_COND_MSG(other.name == loaded_signal.name, "Graph script signals are malformed.");
+		}
+		loaded.push_back(loaded_signal);
 	}
 	signals = loaded;
 	_commit(OK);
@@ -317,8 +489,34 @@ void GraphScript::set_signals(const Array &p_signals) {
 
 Array GraphScript::get_signals() const {
 	Array result;
-	for (const StringName &signal_name : signals) {
-		result.push_back(String(signal_name));
+	for (const GraphSignal &declared : signals) {
+		if (declared.arguments.is_empty()) {
+			result.push_back(String(declared.name));
+			continue;
+		}
+		Dictionary entry;
+		entry["name"] = String(declared.name);
+		entry["arguments"] = GraphSignatures::typed_list_to_array(declared.arguments);
+		result.push_back(entry);
+	}
+	return result;
+}
+
+void GraphScript::set_base_type(const StringName &p_base_type) {
+	ERR_FAIL_COND_MSG(p_base_type != StringName() && !ClassRegistry::class_exists(p_base_type), vformat("Graph script base type '%s' is not a class.", p_base_type));
+	base_type = p_base_type;
+}
+
+Array GraphScript::get_warnings() const {
+	Array result;
+	for (const GraphWarning &warning : GraphWarnings::find(*this)) {
+		Dictionary entry;
+		entry["kind"] = warning.kind;
+		entry["function"] = warning.function;
+		entry["step"] = warning.step;
+		entry["name"] = warning.name;
+		entry["text"] = warning.text;
+		result.push_back(entry);
 	}
 	return result;
 }
@@ -329,8 +527,9 @@ void GraphScript::reload_from_file() {
 }
 
 bool GraphScript::can_instantiate() const {
+	// The editor turns scripting off, and then a script that is not a tool is only a placeholder.
 	// A function that does not compile reports at its call, so the others still run.
-	return true;
+	return ScriptSystem::is_scripting_enabled() || is_tool();
 }
 
 Ref<Script> GraphScript::get_base_script() const {
@@ -346,12 +545,32 @@ bool GraphScript::inherits_script(const Ref<Script> &p_script) const {
 }
 
 StringName GraphScript::get_instance_base_type() const {
-	return StringName();
+	return base_type;
 }
 
 ScriptInstance *GraphScript::instance_create(Object *p_this) {
+	ERR_FAIL_COND_V_MSG(base_type != StringName() && !p_this->is_class(String(base_type)), nullptr, vformat("A graph script for '%s' cannot go on an object of the class '%s'.", base_type, p_this->get_class()));
 	return memnew(GraphScriptInstance(Ref<GraphScript>(this), p_this));
 }
+
+#ifdef TOOLS_ENABLED
+PlaceHolderScriptInstance *GraphScript::placeholder_instance_create(Object *p_this) {
+	PlaceHolderScriptInstance *placeholder = memnew(PlaceHolderScriptInstance(GraphScriptLanguage::get_singleton(), Ref<Script>(this), p_this));
+	placeholders.insert(placeholder);
+	_update_placeholder(placeholder);
+	return placeholder;
+}
+
+void GraphScript::update_exports() {
+	for (PlaceHolderScriptInstance *placeholder : placeholders) {
+		_update_placeholder(placeholder);
+	}
+}
+
+void GraphScript::_placeholder_erased(PlaceHolderScriptInstance *p_placeholder) {
+	placeholders.erase(p_placeholder);
+}
+#endif // TOOLS_ENABLED
 
 bool GraphScript::has_source_code() const {
 	return false;
@@ -369,12 +588,32 @@ Error GraphScript::reload(bool p_keep_state) {
 }
 
 #ifdef TOOLS_ENABLED
+// A script with no file has no name to be documented under.
 StringName GraphScript::get_doc_class_name() const {
-	return StringName();
+	return get_path().is_empty() || is_built_in() ? StringName() : StringName(get_path().get_file().get_basename());
 }
 
 Vector<DocData::ClassDoc> GraphScript::get_documentation() const {
-	return Vector<DocData::ClassDoc>();
+	Vector<DocData::ClassDoc> docs;
+	const StringName name = get_doc_class_name();
+	if (name == StringName()) {
+		return docs;
+	}
+	DocData::ClassDoc doc;
+	doc.name = name;
+	doc.inherits = base_type == StringName() ? String("Object") : String(base_type);
+	doc.is_script_doc = true;
+	doc.script_path = get_path();
+	for (const GraphVariable &variable : variables) {
+		if (variable.exported) {
+			doc.properties.push_back(property_doc(variable));
+		}
+	}
+	for (const GraphCompiledFunction &function : compiled) {
+		doc.methods.push_back(method_doc(function));
+	}
+	docs.push_back(doc);
+	return docs;
 }
 
 String GraphScript::get_class_icon_path() const {
@@ -387,7 +626,8 @@ bool GraphScript::has_method(const StringName &p_method) const {
 }
 
 MethodInfo GraphScript::get_method_info(const StringName &p_method) const {
-	return has_method(p_method) ? MethodInfo(p_method) : MethodInfo();
+	const GraphCompiledFunction *function = get_compiled(p_method);
+	return function ? method_info_of(*function) : MethodInfo();
 }
 
 bool GraphScript::is_tool() const {
@@ -411,8 +651,12 @@ bool GraphScript::has_script_signal(const StringName &p_signal) const {
 }
 
 void GraphScript::get_script_signal_list(List<MethodInfo> *r_signals) const {
-	for (const StringName &signal_name : signals) {
-		r_signals->push_back(MethodInfo(signal_name));
+	for (const GraphSignal &declared : signals) {
+		MethodInfo info(declared.name);
+		for (const GraphTyped &argument : declared.arguments) {
+			info.arguments.push_back(PropertyInfo(argument.type, argument.name));
+		}
+		r_signals->push_back(info);
 	}
 }
 
@@ -426,26 +670,38 @@ bool GraphScript::get_property_default_value(const StringName &p_property, Varia
 }
 
 void GraphScript::get_script_method_list(List<MethodInfo> *r_list) const {
-	for (const GraphFunction &function : functions) {
-		r_list->push_back(MethodInfo(function.get_name()));
+	for (const GraphCompiledFunction &function : compiled) {
+		r_list->push_back(method_info_of(function));
 	}
 }
 
+// A group entry comes before a run of exported variables with one category. An empty one ends the run.
 void GraphScript::get_script_property_list(List<PropertyInfo> *r_list) const {
+	String group;
 	for (const GraphVariable &variable : variables) {
 		uint32_t usage = PROPERTY_USAGE_SCRIPT_VARIABLE;
 		if (variable.exported) {
 			usage |= PROPERTY_USAGE_DEFAULT;
+			if (variable.category != group) {
+				group = variable.category;
+				r_list->push_back(PropertyInfo(Variant::NIL, group, PROPERTY_HINT_NONE, String(), PROPERTY_USAGE_GROUP));
+			}
 		}
 		if (variable.type == Variant::NIL) {
 			usage |= PROPERTY_USAGE_NIL_IS_VARIANT;
 		}
-		r_list->push_back(PropertyInfo(variable.type, variable.name, PROPERTY_HINT_NONE, String(), usage));
+		r_list->push_back(PropertyInfo(variable.type, variable.name, variable.hint, variable.hint_string, usage));
 	}
 }
 
 const Variant GraphScript::get_rpc_config() const {
-	return Variant();
+	Dictionary config;
+	for (const GraphCompiledFunction &function : compiled) {
+		if (!function.signature.rpc.is_empty()) {
+			config[function.name] = function.signature.rpc;
+		}
+	}
+	return config.is_empty() ? Variant() : Variant(config);
 }
 
 void GraphScript::register_members() {
@@ -464,8 +720,11 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("remove_variable", "name"), &GraphScript::remove_variable);
 	ClassRegistry::bind_method(D_METHOD("set_variable_default", "name", "value_text"), &GraphScript::set_variable_default);
 	ClassRegistry::bind_method(D_METHOD("set_variable_exported", "name", "exported"), &GraphScript::set_variable_exported);
+	ClassRegistry::bind_method(D_METHOD("set_variable_hint", "name", "hint", "hint_string"), &GraphScript::set_variable_hint);
+	ClassRegistry::bind_method(D_METHOD("set_variable_info", "name", "category", "description"), &GraphScript::set_variable_info);
 	ClassRegistry::bind_method(D_METHOD("add_signal", "name"), &GraphScript::add_signal);
 	ClassRegistry::bind_method(D_METHOD("remove_signal", "name"), &GraphScript::remove_signal);
+	ClassRegistry::bind_method(D_METHOD("set_signal_arguments", "name", "arguments_text"), &GraphScript::set_signal_arguments);
 
 	ClassRegistry::bind_method(D_METHOD("set_functions", "functions"), &GraphScript::set_functions);
 	ClassRegistry::bind_method(D_METHOD("get_functions"), &GraphScript::get_functions);
@@ -473,8 +732,12 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("get_variables"), &GraphScript::get_variables);
 	ClassRegistry::bind_method(D_METHOD("set_signals", "signals"), &GraphScript::set_signals);
 	ClassRegistry::bind_method(D_METHOD("get_signals"), &GraphScript::get_signals);
+	ClassRegistry::bind_method(D_METHOD("set_base_type", "base_type"), &GraphScript::set_base_type);
+	ClassRegistry::bind_method(D_METHOD("get_base_type"), &GraphScript::get_base_type);
+	ClassRegistry::bind_method(D_METHOD("get_warnings"), &GraphScript::get_warnings);
 
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "functions", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_functions", "get_functions");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "variables", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_variables", "get_variables");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "signals", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_signals", "get_signals");
+	ADD_PROPERTY(PropertyInfo(Variant::STRING_NAME, "base_type", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_base_type", "get_base_type");
 }

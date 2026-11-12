@@ -6,6 +6,7 @@
 #include "graph_compiled.h"
 #include "graph_function.h"
 
+#include "core/containers/hash_set.h"
 #include "core/object/script_language.h"
 
 struct GraphVariable {
@@ -13,7 +14,14 @@ struct GraphVariable {
 	Variant::Type type = Variant::NIL;
 	Variant default_value;
 	bool exported = false;
+	PropertyHint hint = PROPERTY_HINT_NONE;
+	String hint_string;
+	// The inspector groups exported variables of one category under a heading.
+	String category;
+	String description;
 };
+
+class GraphScriptInstance;
 
 // A script made of functions, each a graph of steps. Every change goes through a method
 // here and returns an Error. A failed change leaves the script as it was.
@@ -23,11 +31,18 @@ class GraphScript : public Script {
 
 	Vector<GraphFunction> functions;
 	Vector<GraphVariable> variables;
-	Vector<StringName> signals;
+	Vector<GraphSignal> signals;
 	// One per function, rebuilt by every change.
 	Vector<GraphCompiledFunction> compiled;
 	// The first compile error, or empty.
 	String error;
+	// Empty means the script goes on any object.
+	StringName base_type;
+	// Every live instance, so a change to the variables reaches them.
+	HashSet<GraphScriptInstance *> instances;
+#ifdef TOOLS_ENABLED
+	HashSet<PlaceHolderScriptInstance *> placeholders;
+#endif
 
 	int _find_function_index(const String &p_name) const;
 	int _find_variable_index(const StringName &p_name) const;
@@ -36,6 +51,10 @@ class GraphScript : public Script {
 	// script grows large enough for editing to lag.
 	void _compile();
 	Error _commit(Error p_error);
+	void _update_instances();
+#ifdef TOOLS_ENABLED
+	void _update_placeholder(PlaceHolderScriptInstance *p_placeholder) const;
+#endif
 
 	template <typename Edit>
 	Error _edit_function(const String &p_function, Edit p_edit) {
@@ -55,6 +74,11 @@ public:
 	int get_valid_step_id(const String &p_function) const;
 	// Null when the script has no function of that name.
 	const GraphCompiledFunction *get_compiled(const StringName &p_function) const;
+	const Vector<GraphCompiledFunction> &get_compiled_functions() const { return compiled; }
+	const Vector<GraphVariable> &get_declared_variables() const { return variables; }
+	// The instance list is kept by the instances themselves.
+	void add_instance(GraphScriptInstance *p_instance) { instances.insert(p_instance); }
+	void remove_instance(GraphScriptInstance *p_instance) { instances.erase(p_instance); }
 	String get_error() const { return error; }
 
 	Error add_function(const String &p_name);
@@ -74,8 +98,13 @@ public:
 	Error remove_variable(const String &p_name);
 	Error set_variable_default(const String &p_name, const String &p_value_text);
 	Error set_variable_exported(const String &p_name, bool p_exported);
+	// The hint is a PropertyHint number, because the editor bridge marshals numbers and strings.
+	Error set_variable_hint(const String &p_name, int p_hint, const String &p_hint_string);
+	Error set_variable_info(const String &p_name, const String &p_category, const String &p_description);
 	Error add_signal(const String &p_name);
 	Error remove_signal(const String &p_name);
+	// The text is a list of {name, type} entries, as Variant text.
+	Error set_signal_arguments(const String &p_name, const String &p_arguments_text);
 
 	// The three lists below are what a file stores.
 	void set_functions(const Array &p_functions);
@@ -84,6 +113,12 @@ public:
 	Array get_variables() const;
 	void set_signals(const Array &p_signals);
 	Array get_signals() const;
+	// An empty name lets the script go on any object. A name that is not a class is refused.
+	void set_base_type(const StringName &p_base_type);
+	StringName get_base_type() const { return base_type; }
+
+	// One entry per warning: kind, function, step, name and text. Answers only, changes nothing.
+	Array get_warnings() const;
 
 	virtual void reload_from_file() override;
 	virtual bool can_instantiate() const override;
@@ -92,12 +127,17 @@ public:
 	virtual bool inherits_script(const Ref<Script> &p_script) const override;
 	virtual StringName get_instance_base_type() const override;
 	virtual ScriptInstance *instance_create(Object *p_this) override;
+#ifdef TOOLS_ENABLED
+	virtual PlaceHolderScriptInstance *placeholder_instance_create(Object *p_this) override;
+	virtual void update_exports() override;
+#endif
 	virtual bool has_source_code() const override;
 	virtual String get_source_code() const override;
 	virtual void set_source_code(const String &p_code) override;
 	virtual Error reload(bool p_keep_state = false) override;
 
 #ifdef TOOLS_ENABLED
+	virtual void _placeholder_erased(PlaceHolderScriptInstance *p_placeholder) override;
 	virtual StringName get_doc_class_name() const override;
 	virtual Vector<DocData::ClassDoc> get_documentation() const override;
 	virtual String get_class_icon_path() const override;

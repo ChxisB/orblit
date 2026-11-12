@@ -43,6 +43,10 @@ public:
 	virtual Vector<String> get_doc_comment_delimiters() const override { return Vector<String>(); }
 	virtual Vector<String> get_string_delimiters() const override { return Vector<String>(); }
 	virtual bool supports_builtin_mode() const override { return true; }
+	virtual bool supports_documentation() const override { return true; }
+	virtual bool is_using_templates() override { return true; }
+	virtual Vector<ScriptTemplate> get_built_in_templates(const StringName &p_object) override;
+	virtual Ref<Script> make_template(const String &p_template, const String &p_class_name, const String &p_base_class_name) const override;
 	virtual bool can_make_function() const override { return false; }
 	virtual String make_function(const String &p_class, const String &p_name, const PackedStringArray &p_args) const override { return String(); }
 	virtual void add_global_constant(const StringName &p_variable, const Variant &p_value) override {}

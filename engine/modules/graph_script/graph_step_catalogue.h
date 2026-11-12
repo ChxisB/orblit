@@ -33,4 +33,8 @@ namespace GraphStepCatalogue {
 // then every method, property, signal and class of the engine that matches.
 Vector<GraphStepEntry> find(const String &p_text, const GraphWireFilter &p_filter);
 
+// The functions a script can override on a class and the classes above it, as entries of the
+// event kind. A build without debug features registers no virtual methods, so this is empty there.
+Vector<GraphStepEntry> find_overrides(const StringName &p_class);
+
 } // namespace GraphStepCatalogue

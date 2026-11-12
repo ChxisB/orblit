@@ -43,14 +43,16 @@ class GraphCall {
 
 	Variant _read_pure(const GraphCompiledStep &p_step, int p_port);
 	int _target(int p_step, int p_port) const;
+	void _begin(const Vector<Variant> &p_arguments);
 	int _resume();
 	int _advance(int p_current);
 
 public:
 	GraphCall(GraphScriptInstance &p_instance, const GraphCompiledFunction &p_function, int64_t p_step_limit);
 
-	// Follows the flow wires from the start step until the end, a return or a failure.
-	Variant run();
+	// Follows the flow wires from the start step until the end, a return or a failure. The
+	// caller has checked the arguments against the signature.
+	Variant run(const Vector<Variant> &p_arguments);
 
 	const GraphCompiledStep &get_step(int p_index) const { return function.steps[p_index]; }
 	GraphScriptInstance &get_instance() const { return instance; }
@@ -63,7 +65,8 @@ public:
 	void push(const GraphPending &p_frame);
 	bool has_loop() const;
 	void stop_loop();
-	void finish(const Variant &p_value);
+	// Converts the value to the type the function declares, and fails the call when it cannot.
+	void finish(const GraphCompiledStep &p_step, const Variant &p_value);
 	void fail(const GraphCompiledStep &p_step, const String &p_message);
 
 	// These four name the variable or local in the "name" parameter of the step.

@@ -237,15 +237,16 @@ Variant call_static(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return result;
 }
 
+// A function of this script or of another one. The target is the owner when nothing is wired.
 Variant call_function(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	GraphScriptInstance &instance = p_call.get_instance();
-	const StringName function = p_step.parameters["function"];
-	if (!instance.has_method(function)) {
-		p_call.fail(p_step, vformat("this script has no function named '%s'.", function));
+	Object *target = read_target(p_call, p_step, p_step.operation - 1);
+	if (!target) {
 		return Variant();
 	}
-	Callable::CallError error;
-	return instance.callp(function, nullptr, 0, error);
+	Invocation invocation(p_call, p_step, p_step.operation);
+	const Variant result = target->callp(p_step.values[NAME], invocation.arguments(), invocation.count(), invocation.error);
+	invocation.report(target);
+	return result;
 }
 
 int emit_from(GraphCall &p_call, const GraphCompiledStep &p_step, Object *p_emitter, int p_first_argument) {
@@ -458,7 +459,13 @@ String resolve_connect(GraphCompiledStep &p_step, const Vector<StringName> &p_va
 
 String resolve_call_function(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
 	StringName function;
-	return read_text(p_step.parameters, "function", function);
+	const String problem = read_text(p_step.parameters, "function", function);
+	if (problem.is_empty()) {
+		// shortcut: the callee is looked up when the step runs, because it may be in another script.
+		// Check a call to this script's own functions at compile time when that costs someone a run.
+		keep_call(p_step, function, Variant(), p_step.kind->inputs.count);
+	}
+	return problem;
 }
 
 Variant eval_call_method(GraphCall &p_call, const GraphCompiledStep &p_step) {

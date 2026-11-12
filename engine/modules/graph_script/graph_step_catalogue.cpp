@@ -4,6 +4,7 @@
 #include "graph_step_catalogue.h"
 
 #include "graph_compiled.h"
+#include "graph_signature.h"
 #include "graph_step_reflect.h"
 
 #include "core/containers/local_vector.h"
@@ -283,6 +284,16 @@ public:
 	}
 };
 
+// The engine does not always name the arguments of a virtual method.
+Vector<GraphTyped> override_arguments(const MethodInfo &p_info) {
+	Vector<GraphTyped> arguments;
+	for (const PropertyInfo &argument : p_info.arguments) {
+		const String name = argument.name;
+		arguments.push_back({ name.is_valid_unicode_identifier() ? name : vformat("argument%d", arguments.size()), argument.type });
+	}
+	return arguments;
+}
+
 Vector<GraphStepEntry> table_entries(const Matcher &p_matcher) {
 	Vector<GraphStepEntry> found;
 	for (int i = 0; i < GraphStepKinds::get_kind_count(); i++) {
@@ -306,6 +317,26 @@ Vector<GraphStepEntry> GraphStepCatalogue::find(const String &p_text, const Grap
 	Vector<GraphStepEntry> found = table_entries(matcher);
 	if (matcher.has_text()) {
 		found.append_array(Scan(matcher).run());
+	}
+	return found;
+}
+
+Vector<GraphStepEntry> GraphStepCatalogue::find_overrides(const StringName &p_class) {
+	Vector<GraphStepEntry> found;
+	for (StringName name = p_class; name != StringName(); name = ClassRegistry::get_parent_class(name)) {
+		List<MethodInfo> methods;
+		ClassRegistry::get_method_list(name, &methods, true);
+		for (const MethodInfo &info : methods) {
+			if (!(info.flags & METHOD_FLAG_VIRTUAL) || !info.name.begins_with("_")) {
+				continue;
+			}
+			Dictionary parameters;
+			parameters["arguments"] = GraphSignatures::typed_list_to_array(override_arguments(info));
+			if (info.return_val.type != Variant::NIL) {
+				parameters["returns"] = int(info.return_val.type);
+			}
+			found.push_back({ "event", name, String(info.name), parameters });
+		}
 	}
 	return found;
 }

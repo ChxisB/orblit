@@ -105,7 +105,7 @@ Variant eval_operator(GraphCall &p_call, const GraphCompiledStep &p_step) {
 }
 
 int run_return(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	p_call.finish(p_call.input(p_step, VALUE));
+	p_call.finish(p_step, p_call.input(p_step, VALUE));
 	return GraphFlow::END;
 }
 

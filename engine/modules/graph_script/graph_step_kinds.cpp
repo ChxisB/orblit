@@ -3,6 +3,7 @@
 
 #include "graph_step_kinds.h"
 
+#include "graph_signature.h"
 #include "graph_step_flow.h"
 #include "graph_step_reflect.h"
 #include "graph_step_run.h"
@@ -77,8 +78,9 @@ constexpr GraphPinGrowth EXTRA_PINS = { GraphPinSide::INPUT, "extra", nullptr, G
 
 // Columns: name, category, inputs, outputs, eval, run, resolve, loop, growth, derive.
 constexpr GraphStepKind KINDS[] = {
-	{ "entry", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false },
-	{ "event", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false },
+	{ "entry", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false, {}, GraphSignatures::derive_start },
+	{ "event", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false, {}, GraphSignatures::derive_start },
+	{ "signal_received", "Events", NO_PORTS, list(THEN_OUT), nullptr, nullptr, nullptr, false, {}, GraphSignatures::derive_start },
 	{ "return", "Flow", list(RETURN_IN), NO_PORTS, nullptr, GraphStepRun::run_return, nullptr, false },
 	{ "branch", "Flow", list(CONDITION_IN), list(BRANCH_OUT), nullptr, GraphStepRun::run_branch, nullptr, false },
 	{ "while", "Flow", list(CONDITION_IN), list(WHILE_OUT), nullptr, GraphStepRun::run_while, nullptr, true },
@@ -119,7 +121,7 @@ constexpr GraphStepKind KINDS[] = {
 	{ "query_builtin", "Calls", NO_PORTS, NO_PORTS, GraphStepReflect::eval_call_builtin, nullptr, GraphStepReflect::resolve_builtin, false, EXTRA_PINS, GraphStepReflect::derive_builtin },
 	{ "call_utility", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_utility, GraphStepReflect::resolve_utility, false, EXTRA_PINS, GraphStepReflect::derive_utility },
 	{ "query_utility", "Calls", NO_PORTS, NO_PORTS, GraphStepReflect::eval_call_utility, nullptr, GraphStepReflect::resolve_utility, false, EXTRA_PINS, GraphStepReflect::derive_utility },
-	{ "call_function", "Calls", list(RUN_IN), list(CALL_FUNCTION_OUT), nullptr, GraphStepReflect::run_call_function, GraphStepReflect::resolve_call_function, false },
+	{ "call_function", "Calls", list(TARGET_RUN_IN), list(CALL_FUNCTION_OUT), nullptr, GraphStepReflect::run_call_function, GraphStepReflect::resolve_call_function, false, ARGUMENT_PINS },
 	{ "get_property", "Properties", list(TARGET_IN), NO_PORTS, GraphStepReflect::eval_get_property, nullptr, nullptr, false, {}, GraphStepReflect::derive_get_property },
 	{ "set_property", "Properties", list(TARGET_RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_set_property, nullptr, false, {}, GraphStepReflect::derive_set_property },
 	{ "emit", "Signals", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_emit, GraphStepReflect::resolve_emit, false, ARGUMENT_PINS },

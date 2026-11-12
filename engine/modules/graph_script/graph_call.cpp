@@ -32,7 +32,22 @@ int GraphCall::_advance(int p_current) {
 	return _target(p_current, step.kind->run(*this, step));
 }
 
-Variant GraphCall::run() {
+// An argument fills the output after "then" that its name sits on. A declared local starts as
+// the default of its type.
+void GraphCall::_begin(const Vector<Variant> &p_arguments) {
+	if (function.start >= 0) {
+		const int first = get_step(function.start).slot + 1;
+		for (int i = 0; i < p_arguments.size(); i++) {
+			slots.write[first + i] = p_arguments[i];
+		}
+	}
+	for (const GraphTyped &local : function.signature.locals) {
+		locals[local.name] = GraphSignatures::make_default(local.type);
+	}
+}
+
+Variant GraphCall::run(const Vector<Variant> &p_arguments) {
+	_begin(p_arguments);
 	int current = function.start < 0 ? -1 : _target(function.start, 0);
 	while (!returned && !failed && (current >= 0 || !stack.is_empty())) {
 		// With no step to run, the step on top of the stack is the one that resumes.
@@ -93,9 +108,11 @@ void GraphCall::stop_loop() {
 	}
 }
 
-void GraphCall::finish(const Variant &p_value) {
-	result = p_value;
+void GraphCall::finish(const GraphCompiledStep &p_step, const Variant &p_value) {
 	returned = true;
+	if (!GraphSignatures::convert(function.signature.returns, p_value, result)) {
+		fail(p_step, vformat("cannot return a %s from a function that gives a %s.", Variant::get_type_name(p_value.get_type()), Variant::get_type_name(function.signature.returns)));
+	}
 }
 
 void GraphCall::fail(const GraphCompiledStep &p_step, const String &p_message) {
@@ -129,5 +146,12 @@ Variant GraphCall::read_local(const GraphCompiledStep &p_step) {
 }
 
 void GraphCall::write_local(const GraphCompiledStep &p_step, const Variant &p_value) {
-	locals[p_step.parameters["name"]] = p_value;
+	const StringName name = p_step.parameters["name"];
+	const GraphTyped *declared = function.signature.find_local(name);
+	Variant stored = p_value;
+	if (declared && !GraphSignatures::convert(declared->type, p_value, stored)) {
+		fail(p_step, vformat("cannot store a %s in the local '%s', which holds a %s.", Variant::get_type_name(p_value.get_type()), name, Variant::get_type_name(declared->type)));
+		return;
+	}
+	locals[name] = stored;
 }

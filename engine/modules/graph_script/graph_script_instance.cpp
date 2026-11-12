@@ -7,22 +7,30 @@
 #include "graph_script_language.h"
 
 #include "core/config/project_settings.h"
+#include "scene/stage/entity.h"
 
 namespace {
 
-// A float may go into an int variable, a string may not. A variable of type nil holds anything.
-bool convert_to(Variant::Type p_type, const Variant &p_value, Variant &r_converted) {
-	if (p_type == Variant::NIL || p_value.get_type() == p_type) {
-		r_converted = p_value;
-		return true;
-	}
-	if (!Variant::can_convert_strict(p_value.get_type(), p_type)) {
+// Converts the arguments of a call to the types the function declares. Returns false and sets
+// the error when the count or a type is wrong.
+bool convert_arguments(const GraphSignature &p_signature, const Variant **p_args, int p_argcount, Vector<Variant> &r_arguments, Callable::CallError &r_error) {
+	const int expected = p_signature.arguments.size();
+	if (p_argcount != expected) {
+		r_error.error = p_argcount < expected ? Callable::CallError::CALL_ERROR_TOO_FEW_ARGUMENTS : Callable::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
+		r_error.expected = expected;
 		return false;
 	}
-	const Variant *args[1] = { &p_value };
-	Callable::CallError error;
-	Variant::construct(p_type, r_converted, args, 1, error);
-	return error.error == Callable::CallError::CALL_OK;
+	for (int i = 0; i < expected; i++) {
+		Variant converted;
+		if (!GraphSignatures::convert(p_signature.arguments[i].type, *p_args[i], converted)) {
+			r_error.error = Callable::CallError::CALL_ERROR_INVALID_ARGUMENT;
+			r_error.argument = i;
+			r_error.expected = p_signature.arguments[i].type;
+			return false;
+		}
+		r_arguments.push_back(converted);
+	}
+	return true;
 }
 
 } // namespace
@@ -30,20 +38,32 @@ bool convert_to(Variant::Type p_type, const Variant &p_value, Variant &r_convert
 GraphScriptInstance::GraphScriptInstance(const Ref<GraphScript> &p_script, Object *p_owner) :
 		script(p_script), owner(p_owner) {
 	random.instantiate();
-	List<PropertyInfo> properties;
-	script->get_script_property_list(&properties);
-	for (const PropertyInfo &property : properties) {
-		Variant default_value;
-		script->get_property_default_value(property.name, default_value);
+	for (const GraphVariable &variable : script->get_declared_variables()) {
 		// An array or dictionary default must not be shared between instances.
-		values[property.name] = default_value.duplicate(true);
+		values[variable.name] = variable.default_value.duplicate(true);
 	}
+	script->add_instance(this);
+}
+
+GraphScriptInstance::~GraphScriptInstance() {
+	script->remove_instance(this);
+}
+
+void GraphScriptInstance::refresh() {
+	HashMap<StringName, Variant> kept;
+	for (const GraphVariable &variable : script->get_declared_variables()) {
+		const HashMap<StringName, Variant>::ConstIterator found = values.find(variable.name);
+		// The type nil holds any value.
+		const bool keeps = found && (variable.type == Variant::NIL || found->value.get_type() == variable.type);
+		kept[variable.name] = keeps ? found->value : variable.default_value.duplicate(true);
+	}
+	values = kept;
 }
 
 bool GraphScriptInstance::set(const StringName &p_name, const Variant &p_value) {
 	const GraphVariable *variable = script->get_variable(p_name);
 	Variant converted;
-	if (!variable || !convert_to(variable->type, p_value, converted)) {
+	if (!variable || !GraphSignatures::convert(variable->type, p_value, converted)) {
 		return false;
 	}
 	values[p_name] = converted;
@@ -94,15 +114,13 @@ Variant GraphScriptInstance::callp(const StringName &p_method, const Variant **p
 		r_error.error = Callable::CallError::CALL_ERROR_INVALID_METHOD;
 		return Variant();
 	}
-	// A function takes no arguments yet, so a call that passes one is refused.
-	if (p_argcount > 0) {
-		r_error.error = Callable::CallError::CALL_ERROR_TOO_MANY_ARGUMENTS;
-		r_error.expected = 0;
-		return Variant();
-	}
 	r_error.error = Callable::CallError::CALL_OK;
 	if (!function->error.is_empty()) {
 		GraphScriptLanguage::get_singleton()->report_error(function->error);
+		return Variant();
+	}
+	Vector<Variant> arguments;
+	if (!convert_arguments(function->signature, p_args, p_argcount, arguments, r_error)) {
 		return Variant();
 	}
 	if (too_deep || depth >= MAX_CALL_DEPTH) {
@@ -114,10 +132,41 @@ Variant GraphScriptInstance::callp(const StringName &p_method, const Variant **p
 	}
 	depth++;
 	GraphCall call(*this, *function, GLOBAL_GET_CACHED(int64_t, "graph_script/runtime/step_budget"));
-	const Variant result = call.run();
+	const Variant result = call.run(arguments);
 	depth--;
 	too_deep = too_deep && depth > 0;
 	return result;
+}
+
+// A function that starts at a signal received step listens from the moment the entity starts.
+// shortcut: it connects once and never again, so an emitter that appears later is not heard.
+// Add a retry when the entity enters the stage again, if someone needs a late emitter.
+void GraphScriptInstance::_connect_receiver(Entity *p_owner, const GraphCompiledFunction &p_function) {
+	const GraphSignature &signature = p_function.signature;
+	Object *emitter = p_owner;
+	if (!signature.target.is_empty()) {
+		emitter = p_owner->get_entity_or_null(EntityPath(signature.target));
+	}
+	if (!emitter || !emitter->has_signal(signature.signal)) {
+		GraphScriptLanguage::get_singleton()->report_error(vformat("Function '%s' listens to the signal '%s', which its emitter does not have.", p_function.name, signature.signal));
+		return;
+	}
+	const Callable receiver(p_owner, p_function.name);
+	if (!emitter->is_connected(signature.signal, receiver)) {
+		emitter->connect(signature.signal, receiver);
+	}
+}
+
+void GraphScriptInstance::notification(int p_notification, bool p_reversed) {
+	Entity *entity = Object::cast_to<Entity>(owner);
+	if (p_notification != Entity::NOTIFICATION_START || !entity) {
+		return;
+	}
+	for (const GraphCompiledFunction &function : script->get_compiled_functions()) {
+		if (!function.signature.signal.is_empty()) {
+			_connect_receiver(entity, function);
+		}
+	}
 }
 
 ScriptLanguage *GraphScriptInstance::get_language() {

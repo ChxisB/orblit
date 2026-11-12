@@ -94,11 +94,11 @@ public:
 		out.name = source.get_name();
 		String (Compiler::*phases[])() = {
 			&Compiler::_add_steps,
+			&Compiler::_find_start,
 			&Compiler::_add_wires,
 			&Compiler::_check_wire_types,
 			&Compiler::_resolve_steps,
 			&Compiler::_fill_defaults,
-			&Compiler::_find_start,
 			&Compiler::_check_flow_cycles,
 			&Compiler::_check_data_cycles,
 		};
@@ -220,6 +220,7 @@ String Compiler::_resolve_steps() {
 	return String();
 }
 
+// Runs before the wires, so a function that fails later still lists its arguments.
 String Compiler::_find_start() {
 	for (const GraphCompiledStep &step : out.steps) {
 		if (!step.kind->is_start()) {
@@ -229,6 +230,10 @@ String Compiler::_find_start() {
 			return _fail(step.id, vformat("the function has a second start step. The first is step %d.", out.steps[out.start].id));
 		}
 		out.start = step.index;
+		const String problem = GraphSignatures::read(*step.kind, step.parameters, out.signature);
+		if (!problem.is_empty()) {
+			return _fail(step.id, problem);
+		}
 	}
 	return String();
 }

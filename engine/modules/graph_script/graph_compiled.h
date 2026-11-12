@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "graph_signature.h"
 #include "graph_step_kinds.h"
 
 #include "core/containers/vector.h"
@@ -42,4 +43,6 @@ struct GraphCompiledFunction {
 	// Index of the start step, or -1 for a function that has none and does nothing.
 	int start = -1;
 	int slot_count = 0;
+	// What the start step declares. Empty when the function has no start step or a bad one.
+	GraphSignature signature;
 };
