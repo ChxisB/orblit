@@ -1042,7 +1042,7 @@ TEST_SUITE("[TextSystem]") {
 				ts->font_set_data_ptr(font, _font_Inter_Regular, _font_Inter_Regular_size);
 				int64_t glyph = ts->font_get_glyph_index(font, 16, 'O', 0);
 
-				// Glyphs are rasterised at 2048 px at most. A 4096 px font is drawn at twice that size.
+				// Glyphs are rasterized at 2048 px at most. A 4096 px font is drawn at twice that size.
 				double plain = ts->font_get_glyph_size(font, Vector2i(2048, 0), glyph).x;
 				double outlined = ts->font_get_glyph_size(font, Vector2i(2048, 64), glyph).x;
 				double clamped_plain = ts->font_get_glyph_size(font, Vector2i(4096, 0), glyph).x;
