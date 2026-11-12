@@ -1366,17 +1366,47 @@ bool ProjectSettings::check_changed_settings_in_group(const String &p_setting_pr
 	return false;
 }
 
+static int _find_class_entry(const Array &p_list, const Variant &p_class) {
+	for (int i = 0; i < p_list.size(); i++) {
+		const Dictionary entry = p_list[i];
+		if (entry.get("class", Variant()) == p_class) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+Array ProjectSettings::merge_global_class_lists(const Array &p_known, const Array &p_added) {
+	Array merged = p_known.duplicate();
+	for (const Variant &added : p_added) {
+		const Dictionary entry = added;
+		if (!entry.has("class")) {
+			continue;
+		}
+		const int known_at = _find_class_entry(merged, entry["class"]);
+		if (known_at >= 0) {
+			merged[known_at] = entry;
+		} else {
+			merged.push_back(entry);
+		}
+	}
+	return merged;
+}
+
 void ProjectSettings::refresh_global_class_list() {
-	// This is called after mounting a new PCK file to pick up class changes.
+	// Called after mounting a PCK file. The mounted list holds only that file's classes,
+	// so merge it into the classes already known instead of replacing them.
+	const Array known = global_class_list;
 	is_global_class_list_loaded = false; // Make sure we read from the freshly mounted PCK.
-	Array script_classes = get_global_class_list();
-	for (int i = 0; i < script_classes.size(); i++) {
-		Dictionary c = script_classes[i];
+	const Array mounted = get_global_class_list();
+	for (int i = 0; i < mounted.size(); i++) {
+		const Dictionary c = mounted[i];
 		if (!c.has("class") || !c.has("language") || !c.has("path") || !c.has("base") || !c.has("is_abstract") || !c.has("is_tool")) {
 			continue;
 		}
 		ScriptSystem::add_global_class(c["class"], c["base"], c["language"], c["path"], c["is_abstract"], c["is_tool"]);
 	}
+	global_class_list = merge_global_class_lists(known, mounted);
 }
 
 TypedArray<Dictionary> ProjectSettings::get_global_class_list() {

@@ -283,6 +283,24 @@ static String get_full_version_string() {
 	return String(ORBLIT_VERSION_FULL_BUILD) + hash;
 }
 
+// The method to run when the command line names a driver and no method.
+static String get_rendering_method_for_driver(const String &p_driver) {
+	if (p_driver == "dummy") {
+		return "dummy";
+	}
+	if (p_driver == "opengl3" || p_driver == "opengl3_angle" || p_driver == "opengl3_es") {
+		return "gl_compatibility";
+	}
+	// The project's own choice stands when this driver can run it.
+	if (ProjectSettings::get_singleton()->has_setting("rendering/renderer/rendering_method")) {
+		const String project_method = GLOBAL_GET("rendering/renderer/rendering_method");
+		if (project_method == "forward_plus" || project_method == "mobile") {
+			return project_method;
+		}
+	}
+	return "forward_plus";
+}
+
 void finalize_display() {
 	if (rendering_system) {
 		rendering_system->finish();
@@ -2434,13 +2452,7 @@ Error Main::setup(const char *execpath, int argc, char *argv[], bool p_second_ph
 
 		// Set a default renderer if none selected. Try to choose one that matches the driver.
 		if (rendering_method.is_empty()) {
-			if (rendering_driver == "dummy") {
-				rendering_method = "dummy";
-			} else if (rendering_driver == "opengl3" || rendering_driver == "opengl3_angle" || rendering_driver == "opengl3_es") {
-				rendering_method = "gl_compatibility";
-			} else {
-				rendering_method = "forward_plus";
-			}
+			rendering_method = get_rendering_method_for_driver(rendering_driver);
 		}
 
 		// Now validate whether the selected driver matches with the renderer.

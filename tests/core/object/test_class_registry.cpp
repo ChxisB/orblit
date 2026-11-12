@@ -7,7 +7,10 @@ TEST_FORCE_LINK(test_class_registry)
 
 #include "core/config/engine.h"
 #include "core/core_constants.h"
+#include "core/object/class_descriptor.h"
 #include "core/object/class_registry.h"
+#include "core/object/method_bind_common.h"
+#include "core/object/ref_counted.h"
 
 namespace TestClassRegistry {
 
@@ -863,6 +866,26 @@ TEST_SUITE("[ClassRegistry]") {
 			}
 		}
 	}
+}
+
+TEST_CASE("[ClassDescriptor] Releasing default arguments lets go of their objects") {
+	Ref<RefCounted> held;
+	held.instantiate();
+	ClassDescriptor descriptor(nullptr, StringName("DefaultArgumentProbe"));
+	descriptor.initialize();
+
+	MethodInfo signal("probed");
+	signal.default_arguments.push_back(held);
+	descriptor.add_signal(std::move(signal));
+	MethodBind *bind = create_method_bind(&Object::set_meta);
+	bind->set_name(StringName("probe"));
+	bind->set_default_arguments(Vector<Variant>{ held });
+	descriptor.bind_method(bind);
+	CHECK(held->get_reference_count() == 3);
+
+	descriptor.release_default_arguments();
+	CHECK(held->get_reference_count() == 1);
+	CHECK(bind->get_default_argument_count() == 0);
 }
 
 } // namespace TestClassRegistry

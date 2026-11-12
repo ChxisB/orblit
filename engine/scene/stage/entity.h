@@ -268,6 +268,7 @@ private:
 	String _get_entity_tree_string(const Entity *p_node);
 
 	Entity *_get_child_by_name(const StringName &p_name) const;
+	void _find_children_into(const String &p_pattern, const String &p_type, bool p_recursive, bool p_owned, TypedArray<Entity> &r_found) const;
 
 	void _replace_connections_target(Entity *p_new_target);
 

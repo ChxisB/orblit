@@ -53,6 +53,9 @@ public:
 
 	void test_func_7(const Variant **p_args, int p_argcount, Callable::CallError &r_error) {}
 	void test_func_8(const Variant **p_args, int p_argcount, Callable::CallError &r_error) {}
+
+	// A body no other method has, so the linker cannot fold it into one.
+	int test_func_9(int p_foo, int p_bar) const { return p_foo * p_bar + 1; }
 };
 
 TEST_CASE("[Callable] Argument count") {
@@ -107,6 +110,38 @@ TEST_CASE("[Callable] Argument count") {
 	CHECK_MESSAGE(callable_mp_unbind_2.get_argument_count() == 5, "unbind should add to the argument count");
 
 	memdelete(my_test);
+}
+
+TEST_CASE("[Callable] Method pointers to the same method match") {
+	TestClass *my_test = memnew(TestClass);
+
+	const Callable first = callable_mp(my_test, &TestClass::test_func_1);
+	const Callable second = callable_mp(my_test, &TestClass::test_func_1);
+	const Callable other = callable_mp(my_test, &TestClass::test_func_9);
+	CHECK(first == second);
+	CHECK(first.hash() == second.hash());
+	CHECK(first != other);
+
+	memdelete(my_test);
+}
+
+TEST_CASE("[Callable] Variant callables tell equal containers apart") {
+	Array first;
+	Array second;
+	const Callable on_first = Callable::create(first, "push_back");
+	const Callable on_first_again = Callable::create(first, "push_back");
+	const Callable on_second = Callable::create(second, "push_back");
+	const Callable other_method = Callable::create(first, "push_front");
+
+	CHECK(on_first.hash() == on_second.hash());
+	CHECK(on_first == on_first_again);
+	CHECK(on_first != on_second);
+	CHECK(on_first != other_method);
+
+	// A value type has no identity, so equal values match.
+	const Callable on_text = Callable::create(String("a"), "to_upper");
+	CHECK(on_text == Callable::create(String("a"), "to_upper"));
+	CHECK(on_text != Callable::create(String("b"), "to_upper"));
 }
 
 class TestBoundUnboundArgumentCount : public Object {

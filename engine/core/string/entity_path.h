@@ -20,14 +20,14 @@ class [[nodiscard]] _WARN_UNUSED_ EntityPath {
 		StringName concatenated_path;
 		StringName concatenated_subpath;
 		bool absolute;
-		mutable bool hash_cache_valid;
-		mutable uint32_t hash_cache;
+		// One word so a reader never sees a flag without its value. Zero means not computed.
+		mutable SafeNumeric<uint32_t> hash_cache;
 	};
 
 	mutable Data *data = nullptr;
 	void unref();
 
-	void _update_hash_cache() const;
+	uint32_t _compute_hash() const;
 
 	// Copies the underlying data.
 	// Every non-const function must call this before starting to mutate data.
@@ -55,10 +55,8 @@ public:
 		if (!data) {
 			return 0;
 		}
-		if (!data->hash_cache_valid) {
-			_update_hash_cache();
-		}
-		return data->hash_cache;
+		const uint32_t cached = data->hash_cache.get();
+		return cached ? cached : _compute_hash();
 	}
 
 	explicit operator String() const;

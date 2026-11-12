@@ -2009,6 +2009,12 @@ TypedArray<Entity> Entity::find_children(const String &p_pattern, const String &
 	ERR_THREAD_GUARD_V(TypedArray<Entity>());
 	TypedArray<Entity> ret;
 	ERR_FAIL_COND_V(p_pattern.is_empty() && p_type.is_empty(), ret);
+	_find_children_into(p_pattern, p_type, p_recursive, p_owned, ret);
+	return ret;
+}
+
+void Entity::_find_children_into(const String &p_pattern, const String &p_type, bool p_recursive, bool p_owned, TypedArray<Entity> &r_found) const {
+	ERR_THREAD_GUARD
 	_update_children_cache();
 	Entity *const *cptr = data.children_cache.ptr();
 	int ccount = data.children_cache.size();
@@ -2019,12 +2025,12 @@ TypedArray<Entity> Entity::find_children(const String &p_pattern, const String &
 
 		if (p_pattern.is_empty() || cptr[i]->data.name.string().match(p_pattern)) {
 			if (p_type.is_empty() || cptr[i]->is_class(p_type)) {
-				ret.append(cptr[i]);
+				r_found.append(cptr[i]);
 			} else if (cptr[i]->get_script_instance()) {
 				Ref<Script> scr = cptr[i]->get_script_instance()->get_script();
 				while (scr.is_valid()) {
 					if ((ScriptSystem::is_global_class(p_type) && ScriptSystem::get_global_class_path(p_type) == scr->get_path()) || p_type == scr->get_path()) {
-						ret.append(cptr[i]);
+						r_found.append(cptr[i]);
 						break;
 					}
 
@@ -2034,11 +2040,9 @@ TypedArray<Entity> Entity::find_children(const String &p_pattern, const String &
 		}
 
 		if (p_recursive) {
-			ret.append_array(cptr[i]->find_children(p_pattern, p_type, true, p_owned));
+			cptr[i]->_find_children_into(p_pattern, p_type, true, p_owned, r_found);
 		}
 	}
-
-	return ret;
 }
 
 void Entity::reparent(RequiredParam<Entity> p_parent, bool p_keep_global_transform) {
@@ -2312,34 +2316,34 @@ void Entity::_clean_up_owner() {
 	data.OW = nullptr;
 }
 
+static int ancestor_count(const Entity *p_entity) {
+	int count = 0;
+	for (const Entity *n = p_entity; n; n = n->get_parent()) {
+		count++;
+	}
+	return count;
+}
+
+// An entity counts as its own ancestor. Walking both sides to the same depth finds the meeting
+// point without allocating a set of visited entities. Returns null when the two share no ancestor.
+static const Entity *lowest_common_ancestor(const Entity *p_a, const Entity *p_b) {
+	int depth_a = ancestor_count(p_a);
+	int depth_b = ancestor_count(p_b);
+	for (; depth_a > depth_b; depth_a--) {
+		p_a = p_a->get_parent();
+	}
+	for (; depth_b > depth_a; depth_b--) {
+		p_b = p_b->get_parent();
+	}
+	while (p_a != p_b) {
+		p_a = p_a->get_parent();
+		p_b = p_b->get_parent();
+	}
+	return p_a;
+}
+
 Entity *Entity::find_common_parent_with(const Entity *p_node) const {
-	if (this == p_node) {
-		return const_cast<Entity *>(p_node);
-	}
-
-	HashSet<const Entity *> visited;
-
-	const Entity *n = this;
-
-	while (n) {
-		visited.insert(n);
-		n = n->data.parent;
-	}
-
-	const Entity *common_parent = p_node;
-
-	while (common_parent) {
-		if (visited.has(common_parent)) {
-			break;
-		}
-		common_parent = common_parent->data.parent;
-	}
-
-	if (!common_parent) {
-		return nullptr;
-	}
-
-	return const_cast<Entity *>(common_parent);
+	return const_cast<Entity *>(lowest_common_ancestor(this, p_node));
 }
 
 EntityPath Entity::get_path_to(RequiredParam<const Entity> p_node, bool p_use_unique_path) const {
@@ -2349,28 +2353,10 @@ EntityPath Entity::get_path_to(RequiredParam<const Entity> p_node, bool p_use_un
 		return EntityPath(".");
 	}
 
-	HashSet<const Entity *> visited;
-
-	const Entity *n = this;
-
-	while (n) {
-		visited.insert(n);
-		n = n->data.parent;
-	}
-
-	const Entity *common_parent = node;
-
-	while (common_parent) {
-		if (visited.has(common_parent)) {
-			break;
-		}
-		common_parent = common_parent->data.parent;
-	}
-
+	const Entity *common_parent = lowest_common_ancestor(this, node);
 	ERR_FAIL_NULL_V_MSG(common_parent, EntityPath(), vformat("No path can be resolved between the nodes %s and %s as they share no common ancestor.", get_description(true), node->get_description(true)));
 
-	visited.clear();
-
+	const Entity *n = this;
 	Vector<StringName> path;
 	StringName up = String("..");
 

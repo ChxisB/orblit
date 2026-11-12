@@ -38,12 +38,9 @@ double Range::_snapped_r128(double p_value, double p_step) {
 	r128Add(&value_r128, &value_r128, &half_r128);
 	r128Floor(&value_r128, &value_r128);
 	r128Mul(&value_r128, &value_r128, &step_r128);
-	if (scale != 1.0) {
-		const R128 scale_r128 = R128(scale);
-		r128Div(&value_r128, &value_r128, &scale_r128);
-	}
+	// Unscale in double. R128 is fixed point, so dividing there drops the low digits of a small value.
 	p_value = (double)value_r128;
-	return p_value;
+	return decimals >= 0 ? p_value / scale : p_value * Math::pow(10.0, -decimals);
 }
 
 PackedStringArray Range::get_configuration_warnings() const {

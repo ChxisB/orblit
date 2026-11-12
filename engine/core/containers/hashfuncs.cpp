@@ -49,10 +49,10 @@ uint32_t hash_murmur3_buffer(const void *p_key, int p_length, const uint32_t p_s
 	const uint32_t c1 = 0xcc9e2d51;
 	const uint32_t c2 = 0x1b873593;
 
-	const uint32_t *blocks = (const uint32_t *)(data + nblocks * 4);
-
-	for (int i = -nblocks; i; i++) {
-		uint32_t k1 = blocks[i];
+	for (int i = 0; i < nblocks; i++) {
+		// The key can be any type, so reading it through a uint32_t pointer breaks strict aliasing.
+		uint32_t k1;
+		memcpy(&k1, data + i * 4, 4);
 
 		k1 *= c1;
 		k1 = hash_rotl32(k1, 15);
@@ -63,7 +63,7 @@ uint32_t hash_murmur3_buffer(const void *p_key, int p_length, const uint32_t p_s
 		h1 = h1 * 5 + 0xe6546b64;
 	}
 
-	const uint8_t *tail = (const uint8_t *)(data + nblocks * 4);
+	const uint8_t *tail = data + nblocks * 4;
 
 	uint32_t k1 = 0;
 

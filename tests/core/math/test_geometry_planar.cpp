@@ -76,6 +76,37 @@ TEST_CASE("[Geometry2D] Point in polygon") {
 	}
 }
 
+TEST_CASE("[Geometry2D] Point in polygon on the boundary") {
+	// Every side of a square holds its edge points, whatever the square's size.
+	for (int i = 1; i < 200; i++) {
+		Vector<Vector2> square;
+		square.push_back(Vector2(-i, -i));
+		square.push_back(Vector2(i, -i));
+		square.push_back(Vector2(i, i));
+		square.push_back(Vector2(-i, i));
+		CHECK(Geometry2D::is_point_in_polygon(Vector2(-i, 0), square));
+		CHECK(Geometry2D::is_point_in_polygon(Vector2(i, 0), square));
+		CHECK(Geometry2D::is_point_in_polygon(Vector2(0, -i), square));
+		CHECK(Geometry2D::is_point_in_polygon(Vector2(0, i), square));
+		CHECK(Geometry2D::is_point_in_polygon(Vector2(-i, -i), square));
+		CHECK_FALSE(Geometry2D::is_point_in_polygon(Vector2(-i - 1, 0), square));
+		CHECK_FALSE(Geometry2D::is_point_in_polygon(Vector2(0, i + 1), square));
+	}
+
+	// A point level with an edge, but past its end, is outside.
+	Vector<Vector2> notch;
+	notch.push_back(Vector2(0, 0));
+	notch.push_back(Vector2(4, 0));
+	notch.push_back(Vector2(4, 4));
+	notch.push_back(Vector2(2, 4));
+	notch.push_back(Vector2(2, 2));
+	notch.push_back(Vector2(0, 2));
+	CHECK_FALSE(Geometry2D::is_point_in_polygon(Vector2(-1, 2), notch));
+	CHECK_FALSE(Geometry2D::is_point_in_polygon(Vector2(1, 3), notch));
+	CHECK(Geometry2D::is_point_in_polygon(Vector2(3, 3), notch));
+	CHECK(Geometry2D::is_point_in_polygon(Vector2(1, 2), notch));
+}
+
 TEST_CASE("[Geometry2D] Polygon clockwise") {
 	Vector<Vector2> p;
 	CHECK_FALSE(Geometry2D::is_polygon_clockwise(p));

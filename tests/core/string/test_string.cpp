@@ -851,6 +851,17 @@ TEST_CASE("[String] Splitting") {
 			CHECK(mk[i] == slices[i]);
 		}
 	}
+
+	{
+		const String empty;
+		const Vector<String> keys = { ";", " " };
+
+		CHECK(empty.split_floats(",").is_empty());
+		CHECK(empty.split_floats(",", false).is_empty());
+		CHECK(empty.split_floats_mk(keys).is_empty());
+		CHECK(empty.split_ints(",").is_empty());
+		CHECK(empty.split_ints_mk(keys).is_empty());
+	}
 }
 
 TEST_CASE("[String] format") {

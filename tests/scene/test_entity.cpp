@@ -83,6 +83,19 @@ public:
 	}
 };
 
+class AdoptedRoot : public Entity {
+	ORBLIT_CLASS(AdoptedRoot, Entity);
+
+public:
+	static inline Entity *adopter = nullptr;
+
+	AdoptedRoot() {
+		if (adopter) {
+			adopter->add_child(this);
+		}
+	}
+};
+
 TEST_CASE("[Stage][Entity] Testing node operations with a very simple scene tree") {
 	Entity *node = memnew(Entity);
 
@@ -898,6 +911,117 @@ TEST_CASE("[Stage][Entity] Test the process priority") {
 	memdelete(node2);
 	memdelete(node3);
 	memdelete(node4);
+}
+
+TEST_CASE("[Entity] A freed entity is refused as an argument") {
+	Entity *parent = memnew(Entity);
+	Entity *child = memnew(Entity);
+	const Variant stale = child;
+	memdelete(child);
+	// A new entity often takes the freed address. The stale pointer then looks like a live entity.
+	Entity *reused = memnew(Entity);
+	const Variant *args[] = { &stale };
+
+	ERR_PRINT_OFF;
+	Callable::CallError error;
+#ifdef DEBUG_ENABLED
+	// Only debug builds check a plain pointer parameter against the registry.
+	parent->callp("set_owner", args, 1, error);
+	CHECK_EQ(error.error, Callable::CallError::CALL_ERROR_INVALID_ARGUMENT);
+#endif // DEBUG_ENABLED
+
+	// A required parameter reads the freed object as null, and the method refuses it.
+	parent->callp("add_child", args, 1, error);
+	ERR_PRINT_ON;
+	CHECK_EQ(parent->get_child_count(), 0);
+
+	memdelete(reused);
+	memdelete(parent);
+}
+
+TEST_CASE("[Prefab] A root that parents itself in its constructor is renamed in the parent's table") {
+	ORBLIT_REGISTER_CLASS(AdoptedRoot);
+
+	AdoptedRoot *source = memnew(AdoptedRoot);
+	source->set_name("Saved");
+	Ref<Prefab> prefab;
+	prefab.instantiate();
+	prefab->pack(source);
+	memdelete(source);
+
+	Entity *adopter = memnew(Entity);
+	AdoptedRoot::adopter = adopter;
+	Entity *instance = prefab->instantiate();
+	AdoptedRoot::adopter = nullptr;
+
+	CHECK_EQ(instance->get_name(), StringName("Saved"));
+	CHECK_EQ(adopter->get_entity_or_null(EntityPath("Saved")), instance);
+
+	ERR_PRINT_OFF;
+	adopter->remove_child(instance);
+	ERR_PRINT_ON;
+	CHECK_EQ(adopter->get_child_count(), 0);
+
+	memdelete(instance);
+	memdelete(adopter);
+}
+
+TEST_CASE("[Entity] find_children lists nested matches in tree order") {
+	Entity *root = memnew(Entity);
+	Entity *first = memnew(Entity);
+	Entity *nested = memnew(Entity);
+	Entity *second = memnew(Entity);
+	first->set_name("First");
+	nested->set_name("Nested");
+	second->set_name("Second");
+	root->add_child(first);
+	first->add_child(nested);
+	root->add_child(second);
+
+	TypedArray<Entity> found = root->find_children("*", "", true, false);
+	REQUIRE_EQ(found.size(), 3);
+	CHECK(found[0] == Variant(first));
+	CHECK(found[1] == Variant(nested));
+	CHECK(found[2] == Variant(second));
+
+	found = root->find_children("*", "", false, false);
+	CHECK_EQ(found.size(), 2);
+
+	memdelete(root);
+}
+
+TEST_CASE("[Entity] Paths and common parents between entities") {
+	Entity *root = memnew(Entity);
+	Entity *left = memnew(Entity);
+	Entity *left_leaf = memnew(Entity);
+	Entity *right = memnew(Entity);
+	Entity *outsider = memnew(Entity);
+	left->set_name("Left");
+	left_leaf->set_name("Leaf");
+	right->set_name("Right");
+	root->add_child(left);
+	left->add_child(left_leaf);
+	root->add_child(right);
+
+	CHECK_EQ(left_leaf->get_path_to(right), EntityPath("../../Right"));
+	CHECK_EQ(right->get_path_to(left_leaf), EntityPath("../Left/Leaf"));
+	CHECK_EQ(root->get_path_to(left_leaf), EntityPath("Left/Leaf"));
+	CHECK_EQ(left_leaf->get_path_to(root), EntityPath("../.."));
+	CHECK_EQ(left->get_path_to(left), EntityPath("."));
+
+	CHECK_EQ(left_leaf->find_common_parent_with(right), root);
+	CHECK_EQ(left_leaf->find_common_parent_with(left), left);
+	CHECK_EQ(left->find_common_parent_with(left_leaf), left);
+	CHECK_EQ(left->find_common_parent_with(left), left);
+	CHECK_EQ(left_leaf->find_common_parent_with(outsider), nullptr);
+	CHECK_EQ(left_leaf->find_common_parent_with(nullptr), nullptr);
+
+	ERR_PRINT_OFF;
+	CHECK_EQ(left_leaf->get_path_to(outsider), EntityPath());
+	ERR_PRINT_ON;
+
+	memdelete(outsider);
+	memdelete(root);
 }
 
 } // namespace TestNode

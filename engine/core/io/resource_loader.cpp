@@ -195,6 +195,13 @@ void ResourceFormatLoader::register_members() {
 	ORBLIT_VIRTUAL_BIND(_load, "path", "original_path", "use_sub_threads", "cache_mode");
 }
 
+// Whoever drops the last reference deletes the token, including a worker thread finishing its task.
+static void release_token(ResourceLoader::LoadToken *p_token) {
+	if (p_token->unreference()) {
+		memdelete(p_token);
+	}
+}
+
 // This should be robust enough to be called redundantly without issues.
 void ResourceLoader::LoadToken::clear() {
 	WorkerThreadPool::TaskID task_to_await = 0;
@@ -479,7 +486,7 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 		}
 
 		if (status != THREAD_LOAD_IN_PROGRESS) {
-			load_task.load_token->unreference();
+			release_token(load_task.load_token);
 			thread_load_mutex.lock();
 			if (thread_waiting_on_backup.is_empty()) {
 				thread_waiting_on.erase(thread_index);
@@ -644,9 +651,6 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 
 	thread_load_mutex.unlock();
 
-	// It's safe now to let the task go in case no one else was grabbing the token.
-	load_task.load_token->unreference();
-
 	if (load_nesting == 0) {
 		if (own_mq_override) {
 			MessageQueue::set_thread_singleton_override(nullptr);
@@ -657,6 +661,10 @@ void ResourceLoader::_run_load_task(void *p_userdata) {
 	curr_load_task = curr_load_task_backup;
 
 	print_verbose(vformat("Completed load for: '%s' remapped '%s' at thread %d", load_task.local_path, remapped_path, thread_index));
+
+	// It's safe now to let the task go in case no one else was grabbing the token.
+	// This may delete the token and with it the task, so nothing may touch the task after this.
+	release_token(load_task.load_token);
 }
 
 String ResourceLoader::_validate_local_path(const String &p_path) {
@@ -961,10 +969,7 @@ Ref<Resource> ResourceLoader::load_threaded_get(const String &p_path, Error *r_e
 		if (load_token->user_rc == 0) {
 			load_token->user_path.clear();
 			user_load_tokens.erase(p_path);
-			if (load_token->unreference()) {
-				memdelete(load_token);
-				load_token = nullptr;
-			}
+			release_token(load_token);
 		}
 	}
 

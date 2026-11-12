@@ -2832,6 +2832,18 @@ Image::AlphaMode Image::detect_alpha() const {
 			}
 
 		} break;
+		case FORMAT_RGBA4444:
+		case FORMAT_RGBAH:
+		case FORMAT_RGBAF:
+		case FORMAT_RGBA16:
+		case FORMAT_RGBA16I: {
+			// These keep alpha in other widths, so read it back as a color and scale it to the 8-bit thresholds.
+			const int pixel_count = len / get_format_pixel_size(format);
+			for (int i = 0; i < pixel_count; i++) {
+				DETECT_ALPHA(uint8_t(Math::round(CLAMP(_get_color_at_ofs(data_ptr, i).a, 0.0f, 1.0f) * 255.0f)))
+			}
+
+		} break;
 		case FORMAT_DXT3:
 		case FORMAT_DXT5: {
 			detected = true;
