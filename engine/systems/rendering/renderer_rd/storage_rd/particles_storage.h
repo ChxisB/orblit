@@ -250,6 +250,8 @@ private:
 	void _particles_ensure_unused_emission_buffer(Particles *particles);
 	void _particles_ensure_unused_trail_buffer(Particles *particles);
 	void _particles_free_data(Particles *particles);
+	void _particles_free_render_data(Particles *particles);
+	void _particles_free_emission_buffer(Particles *particles);
 	void _particles_update_buffers(Particles *particles);
 
 	struct ParticlesShader {
