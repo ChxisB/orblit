@@ -1,11 +1,11 @@
+using System.Text.Json;
+
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
 /// The steps a person wants the game to stop on, for every script of the editor. A breakpoint is named the way
 /// the engine names the place it stops: a source, which is the script path and the function, and a step id.
 /// </summary>
-// shortcut: breakpoints live in memory and are lost when the editor closes. Save them in the project's editor
-// data when the editor has such a file (decision 278).
 internal sealed class GraphBreakpoints
 {
     readonly Dictionary<string, HashSet<int>> _steps = [];
@@ -29,6 +29,30 @@ internal sealed class GraphBreakpoints
     public bool Has(string source, int step) => _steps.TryGetValue(source, out var set) && set.Contains(step);
 
     public IReadOnlySet<int> Steps(string source) => _steps.GetValueOrDefault(source) ?? [];
+
+    /// <summary>The breakpoints as text, each source with its step ids. The same breakpoints give the same text.</summary>
+    public string ToJson() => JsonSerializer.Serialize(new SortedDictionary<string, int[]>(
+        _steps.Where(pair => pair.Value.Count > 0).ToDictionary(pair => pair.Key, pair => pair.Value.Order().ToArray()),
+        StringComparer.Ordinal));
+
+    /// <summary>
+    /// Replaces every breakpoint with the ones in the text, where null is none. Raises no change, since a person set
+    /// none. Throws <see cref="JsonException"/> for text that is not breakpoints, and leaves none.
+    /// </summary>
+    public void Load(string? json)
+    {
+        _steps.Clear();
+        if (json is null)
+        {
+            return;
+        }
+
+        var saved = JsonSerializer.Deserialize<Dictionary<string, int[]?>>(json) ?? throw new JsonException("The text holds no breakpoints.");
+        foreach (var (source, steps) in saved.Where(pair => pair.Value is not null))
+        {
+            _steps[source] = [.. steps!];
+        }
+    }
 
     /// <summary>Sets the breakpoint or takes it off. True when it is set after the call.</summary>
     public bool Toggle(string source, int step)

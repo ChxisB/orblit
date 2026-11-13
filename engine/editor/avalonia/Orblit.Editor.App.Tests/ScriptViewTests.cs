@@ -31,6 +31,15 @@ public sealed class ScriptViewTests
 
         public Dictionary<string, FakeGraphSource> Graphs { get; } = [];
 
+        // The text of the breakpoint file, or null when the project has none.
+        public string? BreakpointText { get; set; }
+
+        public bool BreakpointReadFails { get; set; }
+
+        public bool BreakpointWriteFails { get; set; }
+
+        public int BreakpointWrites { get; private set; }
+
         public FakeDebugChannel Channel { get; } = new();
 
         public IDebugChannel Debug => Channel;
@@ -41,6 +50,19 @@ public sealed class ScriptViewTests
             Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 
         public IReadOnlyList<string> Scripts() => Gone is null ? [.. Text.Keys] : [.. Text.Keys, Gone];
+
+        public string? ReadBreakpoints() => BreakpointReadFails ? throw new IOException("The file is locked.") : BreakpointText;
+
+        public void WriteBreakpoints(string text)
+        {
+            if (BreakpointWriteFails)
+            {
+                throw new IOException("The disk is full.");
+            }
+
+            BreakpointWrites++;
+            BreakpointText = text;
+        }
 
         public string ReadScript(string resourcePath) =>
             Text.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.");
@@ -732,6 +754,93 @@ public sealed class ScriptViewTests
             view.Breakpoints.Toggle($"{Logic}#main", 2);
 
             Assert.Equal([$"breakpoint {Logic}#main 2 True"], files.Channel.Sent);
+        });
+    }
+
+    [Fact]
+    public void Breakpoints_saved_in_the_project_are_set_when_the_files_are_shown()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files { BreakpointText = $"{{\"{Logic}#main\":[2]}}" };
+            files.Graphs[Logic] = FakeGraphSource.Sample();
+
+            var view = Open(files);
+            Pick(view, Logic);
+
+            Assert.True(view.Breakpoints.Has($"{Logic}#main", 2));
+            Assert.Equal([2], view.Canvas!.Scene.Breakpointed);
+            Assert.Equal("", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void A_breakpoint_that_is_set_or_taken_off_is_written_to_the_project()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+
+            view.Breakpoints.Toggle($"{Logic}#main", 2);
+            Assert.Equal($"{{\"{Logic}#main\":[2]}}", files.BreakpointText);
+
+            view.Breakpoints.Toggle($"{Logic}#main", 2);
+            Assert.Equal("{}", files.BreakpointText);
+        });
+    }
+
+    [Fact]
+    public void Showing_the_files_again_writes_each_change_once()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            view.Show(files);
+
+            view.Breakpoints.Toggle($"{Logic}#main", 2);
+
+            Assert.Equal(1, files.BreakpointWrites);
+        });
+    }
+
+    [Fact]
+    public void A_breakpoint_file_that_is_not_breakpoints_gives_none_and_a_status()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files { BreakpointText = "not json" };
+
+            var view = Open(files);
+
+            Assert.Empty(view.Breakpoints.All);
+            Assert.Equal("The saved breakpoints could not be read.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void A_breakpoint_file_that_cannot_be_read_gives_none_and_the_reason()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files { BreakpointReadFails = true });
+
+            Assert.Empty(view.Breakpoints.All);
+            Assert.Equal("The file is locked.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void A_breakpoint_that_cannot_be_written_stays_set_and_the_status_says_so()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            files.BreakpointWriteFails = true;
+
+            view.Breakpoints.Toggle($"{Logic}#main", 2);
+
+            Assert.True(view.Breakpoints.Has($"{Logic}#main", 2));
+            Assert.Equal("The breakpoints were not saved. The disk is full.", view.Status.Text);
         });
     }
 }

@@ -292,6 +292,10 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void WriteScript(string resourcePath, string text) => File.WriteAllText(ProjectScripts.FileOf(_project, resourcePath), text);
 
+    public string? ReadBreakpoints() => BreakpointFile.Read(_project);
+
+    public void WriteBreakpoints(string text) => BreakpointFile.Write(_project, text);
+
     public void AttachScript(nint entity, string resourcePath) => _session.AttachScript(entity, resourcePath);
 
     public void ClearScript(nint entity) => _session.ClearScript(entity);

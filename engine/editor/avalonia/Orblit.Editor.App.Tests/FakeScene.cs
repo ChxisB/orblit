@@ -162,6 +162,13 @@ internal sealed class FakeScene : IEditorScene
 
     public bool ScriptWriteFails { get; set; }
 
+    /// <summary>The text of the breakpoint file, or null when the project has none.</summary>
+    public string? BreakpointText { get; set; }
+
+    public string? ReadBreakpoints() => BreakpointText;
+
+    public void WriteBreakpoints(string text) => BreakpointText = text;
+
     public string ReadScript(string resourcePath) =>
         ScriptText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.");
 

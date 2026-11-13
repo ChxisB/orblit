@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -45,6 +46,12 @@ internal interface IScriptFiles
 
     /// <summary>Replaces the text of a script. Throws <see cref="IOException"/> when it cannot be written.</summary>
     void WriteScript(string resourcePath, string text);
+
+    /// <summary>The saved breakpoints of the project's graph scripts, or null when it has none. Throws <see cref="IOException"/> when it cannot be read.</summary>
+    string? ReadBreakpoints();
+
+    /// <summary>Replaces the saved breakpoints. Throws <see cref="IOException"/> when it cannot be written.</summary>
+    void WriteBreakpoints(string text);
 }
 
 /// <summary>
@@ -134,10 +141,10 @@ internal sealed class ScriptView : Border
 
     internal Button SaveButton => _save;
 
-    /// <summary>The canvas of the open graph script, or null when a C# file or nothing is open.</summary>
-    /// <summary>The breakpoints of every graph script opened here. They outlive the canvas that shows them.</summary>
+    /// <summary>The breakpoints of every graph script opened here. They outlive the canvas that shows them, and the project keeps them.</summary>
     internal GraphBreakpoints Breakpoints { get; } = new();
 
+    /// <summary>The canvas of the open graph script, or null when a C# file or nothing is open.</summary>
     internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
 
     /// <summary>The panel of the debug session, or null before the files are shown.</summary>
@@ -164,7 +171,40 @@ internal sealed class ScriptView : Border
         _editor.IsEnabled = false;
         _name.Text = "Pick a script.";
         _status.Text = "";
+        LoadBreakpoints(files);
         Refresh();
+    }
+
+    // The project keeps the breakpoints, so a person's stops are still there when the editor opens again. A file that
+    // cannot be read leaves none and says why. Showing the files again must not write each change twice.
+    void LoadBreakpoints(IScriptFiles files)
+    {
+        Breakpoints.Changed -= SaveBreakpoints;
+        Breakpoints.Changed += SaveBreakpoints;
+        try
+        {
+            Breakpoints.Load(files.ReadBreakpoints());
+        }
+        catch (JsonException)
+        {
+            _status.Text = "The saved breakpoints could not be read.";
+        }
+        catch (Exception error) when (Failed(error))
+        {
+            _status.Text = error.Message;
+        }
+    }
+
+    void SaveBreakpoints(string source, int step, bool isSet)
+    {
+        try
+        {
+            _files!.WriteBreakpoints(Breakpoints.ToJson());
+        }
+        catch (Exception error) when (Failed(error))
+        {
+            _status.Text = $"The breakpoints were not saved. {error.Message}";
+        }
     }
 
     /// <summary>Takes in what the running game said. A stop on a step of a graph script opens the script and shows the step.</summary>
