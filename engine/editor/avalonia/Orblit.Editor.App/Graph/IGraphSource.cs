@@ -37,4 +37,10 @@ internal interface IGraphSource
     GraphEditResult SetFrame(GraphFrame frame);
 
     GraphEditResult RemoveFrame(int id);
+
+    /// <summary>
+    /// The steps that fit a wire dragged from the given side, matched on the text. The engine does the matching,
+    /// so a type of 0 and no side list every step.
+    /// </summary>
+    IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort);
 }

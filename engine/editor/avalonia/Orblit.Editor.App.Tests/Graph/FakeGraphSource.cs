@@ -6,14 +6,24 @@ namespace Orblit.Editor.App.Tests.Graph;
 
 /// <summary>
 /// A graph source that holds a function in memory and keeps a log of the calls it got. It refuses what the engine
-/// refuses in the cases the tests use: a wire between ports of unlike sorts, a second wire into an input, and
-/// a step or wire that is not there.
+/// refuses in the cases the tests use: a wire between ports of unlike sorts or unlike data types, a second wire
+/// into an input, and a step or wire that is not there. It offers a small catalogue of steps to search.
 /// </summary>
 internal sealed class FakeGraphSource : IGraphFile
 {
     const int Unfit = 31;
     const int InUse = 22;
     const int Missing = 33;
+
+    sealed record Template(GraphStepEntry Entry, GraphPort[] Inputs, GraphPort[] Outputs);
+
+    static readonly Template[] s_catalogue =
+    [
+        new(new GraphStepEntry("branch", "Flow", "Branch", new Dictionary<string, string>()), [Flow("run"), Data("condition", 1, "condition")], [Flow("true"), Flow("false")]),
+        new(new GraphStepEntry("translate", "Spatial", "Translate", new Dictionary<string, string>()), [Flow("run"), Data("offset", 5, "offset")], [Flow("then")]),
+        new(new GraphStepEntry("print", "Output", "Print", new Dictionary<string, string> { ["text"] = "\"\"" }), [Flow("run"), Data("text", 4, "text")], [Flow("then")]),
+        new(new GraphStepEntry("constant", "Values", "Constant", new Dictionary<string, string> { ["value"] = "0" }), [], [Data("value", 0)]),
+    ];
 
     readonly List<GraphStep> _steps = [];
     readonly List<GraphWire> _wires = [];
@@ -40,6 +50,9 @@ internal sealed class FakeGraphSource : IGraphFile
     public void Dispose() => Disposed = true;
 
     public bool Empty { get; set; }
+
+    /// <summary>One line for each search the palette made: the text, the side, the type and the sort.</summary>
+    public List<string> Searches { get; } = [];
 
     public GraphFunction? Function => Empty ? null : new GraphFunction("main", "", [.. _steps], [.. _wires], [.. _frames]);
 
@@ -77,9 +90,16 @@ internal sealed class FakeGraphSource : IGraphFile
 
     public GraphEditResult AddStep(int id, string kind)
     {
-        GraphPort[] inputs = kind == "reroute" ? [Data("value", 0)] : [Flow("run")];
-        GraphPort[] outputs = kind == "reroute" ? [Data("value", 0)] : [Flow("then")];
+        var template = Array.Find(s_catalogue, found => found.Entry.Kind == kind);
+        GraphPort[] inputs = kind == "reroute" ? [Data("value", 0)] : template?.Inputs ?? [Flow("run")];
+        GraphPort[] outputs = kind == "reroute" ? [Data("value", 0)] : template?.Outputs ?? [Flow("then")];
         return Take($"AddStep {id} {kind}", () => _steps.Add(MakeStep(id, kind, 0, 0, inputs, outputs)));
+    }
+
+    public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)
+    {
+        Searches.Add($"{text}|{side}|{type}|{sort}");
+        return [.. s_catalogue.Where(template => template.Entry.Label.Contains(text, StringComparison.OrdinalIgnoreCase) && Fits(template, side, type, sort)).Select(template => template.Entry)];
     }
 
     public GraphEditResult RemoveStep(int id)
@@ -131,7 +151,7 @@ internal sealed class FakeGraphSource : IGraphFile
         {
             return Refuse(call, Missing, "The step or port is not there.");
         }
-        if (from.Sort != to.Sort)
+        if (from.Sort != to.Sort || (from.Type != 0 && to.Type != 0 && from.Type != to.Type))
         {
             return Refuse(call, Unfit, "That does not fit. The ports do not match, or the engine does not take that value.");
         }
@@ -162,6 +182,12 @@ internal sealed class FakeGraphSource : IGraphFile
 
     public GraphEditResult RemoveFrame(int id) =>
         _frames.Exists(frame => frame.Id == id) ? Take($"RemoveFrame {id}", () => _frames.RemoveAll(frame => frame.Id == id)) : Refuse($"RemoveFrame {id}", Missing, "The frame is not there.");
+
+    // A wire dragged from an output needs an input on the step, and the other way round. Flow wires ignore the type.
+    static bool Fits(Template template, GraphDraggedSide side, int type, GraphPortSort sort) =>
+        side == GraphDraggedSide.None
+        || (side == GraphDraggedSide.Output ? template.Inputs : template.Outputs)
+            .Any(port => port.Sort == sort && (sort == GraphPortSort.Flow || type == 0 || port.Type == 0 || port.Type == type));
 
     GraphEditResult Take(string call, Action change)
     {

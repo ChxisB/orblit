@@ -35,6 +35,7 @@ internal sealed class GraphGestures
     List<int> _members = [];
     FrameView? _frame;
     PinRef _wireFrom;
+    MouseButton _button;
 
     public GraphGestures(GraphScene scene, GraphViewport viewport, GraphEdits edits)
     {
@@ -43,11 +44,17 @@ internal sealed class GraphGestures
         _edits = edits;
     }
 
-    /// <summary>Raised when a press lands on a value box. The canvas puts a text box over it.</summary>
     /// <summary>Raised when a press starts, before it does anything. A refusal shown for the last gesture can go.</summary>
     public event Action? Pressing;
 
+    /// <summary>Raised when a press lands on a value box. The canvas puts a text box over it.</summary>
     public event Action<StepView, string>? ValueEditRequested;
+
+    /// <summary>
+    /// Raised with a screen point when a step is asked for there. The pin is the one a wire was dragged from, or
+    /// null when there was no wire.
+    /// </summary>
+    public event Action<Point, PinRef?>? PaletteRequested;
 
     /// <summary>Raised when a frame title is pressed twice. The canvas puts a text box over it.</summary>
     public event Action<FrameView>? TitleEditRequested;
@@ -66,6 +73,7 @@ internal sealed class GraphGestures
         _pressScreen = _lastScreen = screen;
         _pressGraph = _viewport.ToGraph(screen);
         _moved = false;
+        _button = button;
         if (button != MouseButton.Left)
         {
             _mode = Mode.Pan;
@@ -146,8 +154,13 @@ internal sealed class GraphGestures
             case Mode.Band:
                 _scene.SelectWithin(Normalized(_pressGraph, _viewport.ToGraph(screen)), additive: _bandAdditive);
                 break;
+            default:
+                AskForStep(mode, moved, wireFrom, screen);
+                break;
         }
     }
+
+    public void RequestPalette(Point screen, PinRef? from = null) => PaletteRequested?.Invoke(screen, from);
 
     /// <summary>Drops the gesture and puts what it moved back, as Escape does.</summary>
     public void Cancel()
@@ -164,6 +177,20 @@ internal sealed class GraphGestures
         {
             frame.Offset = default;
             frame.Growth = default;
+        }
+    }
+
+    // A wire let go over empty space, or a right click that did not drag, asks for a step to put there. A press
+    // keeps its button until the next press, so the release can still read it.
+    void AskForStep(Mode mode, bool moved, PinRef wireFrom, Point screen)
+    {
+        if (mode == Mode.Wire && moved && _scene.HitStep(_viewport.ToGraph(screen)) is null)
+        {
+            RequestPalette(screen, wireFrom);
+        }
+        else if (mode == Mode.Pan && !moved && _button == MouseButton.Right)
+        {
+            RequestPalette(screen);
         }
     }
 

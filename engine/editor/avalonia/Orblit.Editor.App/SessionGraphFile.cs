@@ -39,6 +39,8 @@ internal sealed class SessionGraphFile(GraphScriptSession session) : IGraphFile
 
     public GraphEditResult RemoveFrame(int id) => InFunction(name => session.RemoveFrame(name, id));
 
+    public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort) => session.FindSteps(text, side, type, sort);
+
     public void Save() => session.Save();
 
     public void Dispose() => session.Dispose();

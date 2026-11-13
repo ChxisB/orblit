@@ -95,6 +95,28 @@ internal sealed class GraphEdits
         Array.ForEach(steps, result => Report(result));
     });
 
+    /// <summary>
+    /// Adds a step where the point is, with the values the entry starts it with. When a wire was dragged out to
+    /// ask for it, the first port of the new step that carries the same sort of wire is joined to the pin.
+    /// </summary>
+    public void AddStep(GraphStepEntry entry, Point at, PinRef? from) => Batch(() =>
+    {
+        var id = _source.NextStepId();
+        if (!Report(_source.AddStep(id, entry.Kind)))
+        {
+            return;
+        }
+        foreach (var (parameter, text) in entry.Parameters)
+        {
+            Report(_source.SetStepParameter(id, parameter, text));
+        }
+        Report(_source.MoveStep(id, Math.Round(at.X), Math.Round(at.Y)));
+        if (from is { } pin)
+        {
+            JoinAdded(id, pin);
+        }
+    });
+
     /// <summary>Puts a frame around the selected steps.</summary>
     public bool FrameSelection()
     {
@@ -124,6 +146,38 @@ internal sealed class GraphEdits
     public bool ToggleFrame(FrameView frame) => Report(_source.SetFrame(frame.Frame with { Collapsed = !frame.Frame.Collapsed }));
 
     public bool RenameFrame(FrameView frame, string title) => Report(_source.SetFrame(frame.Frame with { Title = title }));
+
+    // The palette already lists steps that fit the pin, so the first port of the same sort nearly always takes the
+    // wire. A port the engine refuses is passed over, and the first refusal is shown if none takes it.
+    void JoinAdded(int id, PinRef pin)
+    {
+        var added = _source.Function?.Steps.FirstOrDefault(step => step.Id == id);
+        var dragged = _scene.Find(pin.Step)?.Step;
+        if (added is null || dragged is null)
+        {
+            return;
+        }
+        var sort = (pin.IsInput ? dragged.Inputs : dragged.Outputs)[pin.Port].Sort;
+        var ports = pin.IsInput ? added.Outputs : added.Inputs;
+        GraphEditResult? refused = null;
+        for (var port = 0; port < ports.Count; port++)
+        {
+            if (ports[port].Sort != sort)
+            {
+                continue;
+            }
+            var result = _source.Connect(pin.WireTo(new PinRef(id, port, !pin.IsInput)));
+            if (result.Ok)
+            {
+                return;
+            }
+            refused ??= result;
+        }
+        if (refused is not null)
+        {
+            Report(refused);
+        }
+    }
 
     // A wire that carries the order of steps takes a flow reroute, and any other wire takes a data reroute.
     string RerouteKindFor(GraphWire wire) =>

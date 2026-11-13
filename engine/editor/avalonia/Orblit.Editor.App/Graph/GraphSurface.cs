@@ -25,6 +25,7 @@ internal sealed class GraphSurface : Control
     readonly GraphViewport _viewport;
     readonly GraphGestures _gestures;
     readonly GraphEdits _edits;
+    Point _pointer;
 
     public GraphSurface(GraphScene scene, GraphViewport viewport, GraphGestures gestures, GraphEdits edits)
     {
@@ -34,6 +35,8 @@ internal sealed class GraphSurface : Control
         _edits = edits;
         Focusable = true;
         ClipToBounds = true;
+        DragDrop.SetAllowDrop(this, true);
+        AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
     /// <summary>Raised after the pointer or the keys changed what shows, so a minimap can follow.</summary>
@@ -66,9 +69,10 @@ internal sealed class GraphSurface : Control
 
     protected override void OnPointerMoved(PointerEventArgs e)
     {
+        _pointer = e.GetPosition(this);
         if (_gestures.IsActive)
         {
-            _gestures.Move(e.GetPosition(this));
+            _gestures.Move(_pointer);
             Changed();
         }
     }
@@ -105,12 +109,26 @@ internal sealed class GraphSurface : Control
         {
             _edits.FrameSelection();
         }
+        else if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
+        {
+            _gestures.RequestPalette(_pointer);
+        }
         else
         {
             handled = false;
         }
         e.Handled = handled;
         Changed();
+    }
+
+    // A drop carries something from another panel: a file, an entity, a variable. It becomes the step that reads it.
+    void OnDrop(object? sender, DragEventArgs e)
+    {
+        if (GraphDrop.TryParse(e.DataTransfer.TryGetValue(GraphDrop.Format), out var drop))
+        {
+            _edits.AddStep(drop.ToEntry(), _viewport.ToGraph(e.GetPosition(this)), null);
+            Changed();
+        }
     }
 
     void Changed()

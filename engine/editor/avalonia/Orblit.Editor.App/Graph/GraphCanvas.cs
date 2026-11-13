@@ -5,6 +5,7 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
+using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
 
@@ -26,6 +27,7 @@ internal sealed class GraphCanvas : Grid
     readonly GraphGestures _gestures;
     readonly GraphSurface _surface;
     readonly GraphMinimap _minimap;
+    readonly PalettePopup _palette = new();
     readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     readonly TextBlock _notice = new() { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _noticeBar;
@@ -62,6 +64,8 @@ internal sealed class GraphCanvas : Grid
     internal GraphSurface Surface => _surface;
 
     internal GraphMinimap Minimap => _minimap;
+
+    internal PalettePopup Palette => _palette;
 
     internal TextBox Editor => _editor;
 
@@ -131,7 +135,7 @@ internal sealed class GraphCanvas : Grid
         {
             tools.Children.Add(control);
         }
-        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _noticeBar, _editor })
+        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _noticeBar, _palette, _editor })
         {
             Children.Add(control);
         }
@@ -153,7 +157,13 @@ internal sealed class GraphCanvas : Grid
             _noticeBar.IsVisible = true;
         };
         _surface.Interacted += OnInteracted;
-        _gestures.Pressing += () => _noticeBar.IsVisible = false;
+        _gestures.Pressing += () =>
+        {
+            _noticeBar.IsVisible = false;
+            _palette.Close();
+        };
+        _gestures.PaletteRequested += OpenPalette;
+        _palette.Closed += () => _surface.Focus();
         _surface.SizeChanged += (_, _) => FitOnce();
         _minimap.Moved += _surface.InvalidateVisual;
         _gestures.ValueEditRequested += (step, parameter) => BeginEdit(step.ValueRect(parameter), step.ValueOf(parameter), text => _edits.SetValue(step.Id, parameter, text));
@@ -164,6 +174,24 @@ internal sealed class GraphCanvas : Grid
         _fit.Click += (_, _) => FitView();
         _curved.Click += (_, _) => ChooseStyle(_curved.IsChecked == true);
         _map.Click += (_, _) => _minimap.IsVisible = _map.IsChecked == true;
+    }
+
+    /// <summary>Opens the palette at a screen point. A step picked there is added at the point and joined to the pin when there is one.</summary>
+    internal void OpenPalette(Point screen, PinRef? from)
+    {
+        var (side, type, sort) = DraggedKind(from);
+        _palette.Open(screen, _surface.Bounds.Size, text => _source.FindSteps(text, side, type, sort), entry => _edits.AddStep(entry, _viewport.ToGraph(screen), from));
+    }
+
+    // The palette lists steps with a port that fits the pin, and every step when no wire was dragged.
+    (GraphDraggedSide Side, int Type, GraphPortSort Sort) DraggedKind(PinRef? from)
+    {
+        if (from is not { } pin || _scene.Find(pin.Step) is not { } view)
+        {
+            return (GraphDraggedSide.None, 0, GraphPortSort.Flow);
+        }
+        var port = (pin.IsInput ? view.Step.Inputs : view.Step.Outputs)[pin.Port];
+        return (pin.IsInput ? GraphDraggedSide.Input : GraphDraggedSide.Output, port.Type, port.Sort);
     }
 
     void OnInteracted()
