@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "test_graph_document.h"
+#include "test_graph_script_run.h"
 
 namespace TestGraphSnapshot {
 

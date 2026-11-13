@@ -460,7 +460,11 @@ TEST_CASE("[GraphScript] A value typed in by hand must convert to the type of it
 
 	const String error = graph.script->get_error();
 	CHECK(error.contains("step 2"));
+	CHECK(error.contains("needs a StringName"));
+#ifdef DEBUG_ENABLED
+	// Method argument names are compiled out without DEBUG_ENABLED.
 	CHECK(error.contains("'name'"));
+#endif // DEBUG_ENABLED
 }
 
 TEST_CASE("[GraphScript] A query step refuses a method that changes something") {
