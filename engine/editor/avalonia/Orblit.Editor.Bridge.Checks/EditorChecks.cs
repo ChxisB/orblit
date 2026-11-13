@@ -53,6 +53,7 @@ internal sealed class EditorChecks : IChecks
         ("an object value reads back as the same object, and a Variant of another kind reads as nothing", ObjectVariantRoundTrips),
         ("a script that cannot load is refused and leaves the entity as it was, and clearing no script changes nothing", ScriptRefusals),
         ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
+        ("a new graph script is saved with its base type and opens empty, and a base that is no class or a path that is no graph file is refused", GraphScriptCreation),
         ("a refused graph edit gives the engine's reason and changes nothing, and a bad path or file is refused", GraphScriptRefusals),
         ("the palette lists what fits a dragged wire", GraphScriptPalette),
         ("a frame is set, replaced, removed and saved, and a frame with no area is refused", GraphScriptFrames),
@@ -599,6 +600,21 @@ internal sealed class EditorChecks : IChecks
         Assert.Equal(new GraphWire(1, 0, 2, 0), Assert.Single(kept.Wires));
         Assert.Equal(120.5, Assert.Single(kept.Steps, step => step.Id == id).X);
         Assert.Equal("main", reopened.Document.Functions[0].Name);
+    }
+
+    void GraphScriptCreation()
+    {
+        GraphScriptSession.Create(_host, "res://made.ograph", "Entity");
+
+        Assert.True(File.Exists(Path.Combine(_folder, "made.ograph")));
+        using var reopened = GraphScriptSession.Open(_host, "res://made.ograph");
+        Assert.Equal("Entity", reopened.Document.BaseType);
+        Assert.Empty(reopened.Document.Functions);
+
+        Assert.Throws<ArgumentException>(() => GraphScriptSession.Create(_host, "res://bad_base.ograph", "NoSuchClass"));
+        Assert.False(File.Exists(Path.Combine(_folder, "bad_base.ograph")));
+        Assert.Throws<ArgumentException>(() => GraphScriptSession.Create(_host, "res://bad.txt", "Entity"));
+        Assert.Throws<IOException>(() => GraphScriptSession.Create(_host, "res://no_such_folder/made.ograph", "Entity"));
     }
 
     void GraphScriptRefusals()

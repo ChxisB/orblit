@@ -134,6 +134,8 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ResourceGetPathMethod = new("Resource", "get_path", 201670096);
     static readonly EngineMethod GraphScriptAddFunctionMethod = new("GraphScript", "add_function", 166001499);
     static readonly EngineMethod GraphScriptRemoveFunctionMethod = new("GraphScript", "remove_function", 166001499);
+    static readonly EngineMethod GraphScriptSetBaseTypeMethod = new("GraphScript", "set_base_type", 3304788590);
+    static readonly EngineMethod GraphScriptGetBaseTypeMethod = new("GraphScript", "get_base_type", 2002593661);
     static readonly EngineMethod GraphScriptGetValidStepIdMethod = new("GraphScript", "get_valid_step_id", 1321353865);
     static readonly EngineMethod GraphScriptAddStepMethod = new("GraphScript", "add_step", 3958950400);
     static readonly EngineMethod GraphScriptRemoveStepMethod = new("GraphScript", "remove_step", 993915709);
@@ -1088,6 +1090,22 @@ public static unsafe class EngineCalls
         void** args = stackalloc void*[] { a0 };
         host.Call(GraphScriptAddFunctionMethod, target, args, &result);
         return result;
+    }
+
+    public static void GraphScriptSetBaseType(this EngineHost host, nint target, string baseType)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(baseType);
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptSetBaseTypeMethod, target, args, null);
+    }
+
+    public static string GraphScriptGetBaseType(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.StringName);
+        host.Call(GraphScriptGetBaseTypeMethod, target, null, result);
+        return NativeText.ReadStringName(result);
     }
 
     public static long GraphScriptRemoveFunction(this EngineHost host, nint target, string name)

@@ -103,6 +103,34 @@ public sealed partial class GraphScriptSession : IDisposable
         return new GraphScriptSession(host, script, resourcePath);
     }
 
+    /// <summary>Makes an empty graph script that extends a class and saves it to the path. Open it to edit it.</summary>
+    /// <exception cref="ArgumentException">The path is no graph script file, or the base type is no class.</exception>
+    /// <exception cref="IOException">The engine could not save the file.</exception>
+    public static void Create(EngineHost host, string resourcePath, string baseType)
+    {
+        ResourcePath.RequireFile(resourcePath, ".ograph", "a graph script file");
+        var script = host.Construct("GraphScript");
+        try
+        {
+            host.GraphScriptSetBaseType(script, baseType);
+            // The engine keeps the old base and logs an error for a name that is no class, so the answer says whether it took.
+            if (host.GraphScriptGetBaseType(script) != baseType)
+            {
+                throw new ArgumentException($"{baseType} is not a class.", nameof(baseType));
+            }
+
+            var code = host.ResourceSaverSave(host.Singleton("ResourceSaver"), script, resourcePath, 0);
+            if (code != 0)
+            {
+                throw new IOException($"The engine could not save {resourcePath}. Error code {code}.");
+            }
+        }
+        finally
+        {
+            host.Release(script);
+        }
+    }
+
     public GraphEditResult AddFunction(string name) => Edit(_host.GraphScriptAddFunction(Script, name));
 
     public GraphEditResult RemoveFunction(string name) => Edit(_host.GraphScriptRemoveFunction(Script, name));

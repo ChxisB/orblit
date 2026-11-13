@@ -157,5 +157,7 @@
   "GraphDebugLink.request_wire",
   "GraphDebugLink.get_state",
   "GraphScript.get_payload",
-  "GraphScript.paste_payload"
+  "GraphScript.paste_payload",
+  "GraphScript.set_base_type",
+  "GraphScript.get_base_type"
 ]
