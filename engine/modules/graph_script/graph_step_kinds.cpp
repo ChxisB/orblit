@@ -124,6 +124,7 @@ constexpr GraphStepKind KINDS[] = {
 	{ "call_method", "Calls", list(TARGET_RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_method, GraphStepReflect::resolve_method, false, EXTRA_PINS, GraphStepReflect::derive_method },
 	{ "query_method", "Calls", list(TARGET_IN), NO_PORTS, GraphStepReflect::eval_call_method, nullptr, GraphStepReflect::resolve_method, false, EXTRA_PINS, GraphStepReflect::derive_method },
 	{ "call_static", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_static, GraphStepReflect::resolve_static, false, EXTRA_PINS, GraphStepReflect::derive_static },
+	{ "call_parent", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_parent, GraphStepReflect::resolve_parent, false, {}, GraphStepReflect::derive_parent },
 	{ "call_builtin", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_builtin, GraphStepReflect::resolve_builtin, false, EXTRA_PINS, GraphStepReflect::derive_builtin },
 	{ "query_builtin", "Calls", NO_PORTS, NO_PORTS, GraphStepReflect::eval_call_builtin, nullptr, GraphStepReflect::resolve_builtin, false, EXTRA_PINS, GraphStepReflect::derive_builtin },
 	{ "call_utility", "Calls", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepReflect::run_call_utility, GraphStepReflect::resolve_utility, false, EXTRA_PINS, GraphStepReflect::derive_utility },

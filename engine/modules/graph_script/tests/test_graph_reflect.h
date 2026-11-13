@@ -22,6 +22,7 @@ constexpr int OUT = 0;
 constexpr int VALUE = 1;
 constexpr int FLOW_TARGET = 1;
 constexpr int FLOW_ARGUMENT = 2;
+constexpr int PARENT_ARGUMENT = 1;
 constexpr int FLOW_RESULT = 1;
 constexpr int PURE_TARGET = 0;
 constexpr int NEW_OBJECT = 1;
@@ -556,6 +557,70 @@ TEST_CASE("[GraphScript] A label row gives a builtin method a plain name") {
 	CHECK(found[0].label == "Add to array");
 	CHECK(String(found[0].parameters["type"]) == "Array");
 	CHECK(String(found[0].parameters["method"]) == "append");
+}
+
+TEST_CASE("[Stage][GraphScript] Call parent runs the engine's method and skips the function of the script") {
+	// The function is named like the method it calls. A plain call would run itself again.
+	Graph graph("set_name");
+	graph.add(1, "entry");
+	add_method(graph, 2, "call_parent", "Entity", "set_name");
+	graph.set(2, "argument_0", quoted("Renamed"));
+	graph.wire(1, THEN, 2, RUN);
+
+	Entity *entity = attach(graph.script);
+	entity->call("set_name");
+	CHECK(entity->get_name() == StringName("Renamed"));
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] Call parent on a class the owner is not fails the call") {
+	Graph graph("go");
+	graph.add(1, "entry");
+	add_method(graph, 2, "call_parent", "Resource", "set_name");
+	graph.set(2, "argument_0", quoted("Renamed"));
+	graph.wire(1, THEN, 2, RUN);
+
+	Entity *entity = attach(graph.script);
+	{
+		ErrorDetector errors;
+		ERR_PRINT_OFF;
+		entity->call("go");
+		ERR_PRINT_ON;
+		CHECK(errors.has_error);
+	}
+	CHECK(entity->get_name() == StringName());
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] Call parent of a virtual method keeps the arguments it was given and does nothing") {
+	Graph graph("go");
+	graph.add(1, "entry");
+	add_method(graph, 2, "call_parent", "Entity", "_process");
+	graph.set(2, "arguments", "[{\"name\": \"delta\", \"type\": 3}]");
+	graph.add(3, "constant");
+	graph.set(3, "value", "0.5");
+	graph.add(4, "constant");
+	graph.set(4, "value", "7");
+	add_return(graph, 5, 4, OUT);
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(3, OUT, 2, PARENT_ARGUMENT);
+	graph.wire(2, THEN, 5, RUN);
+	CHECK(graph.script->get_error().is_empty());
+
+	Entity *entity = attach(graph.script);
+	CHECK(entity->call("go") == Variant(7));
+	memdelete(entity);
+}
+
+TEST_CASE("[GraphScript] Call parent needs a method the class has, or the arguments of a virtual one") {
+	Graph graph("go");
+	graph.add(1, "entry");
+	add_method(graph, 2, "call_parent", "Entity", "no_such_method");
+	CHECK(graph.script->get_error().contains("no_such_method"));
+
+	graph.set(2, "method", quoted("_no_such_virtual"));
+	graph.set(2, "arguments", "[]");
+	CHECK(graph.script->get_error().is_empty());
 }
 
 } // namespace TestGraphReflect

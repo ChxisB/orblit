@@ -73,7 +73,13 @@ internal sealed class SessionGraphFile : IGraphFile
 
     public GraphEditResult RemoveFrame(int id) => InFunction(name => _session.RemoveFrame(name, id));
 
-    public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort) => _session.FindSteps(text, side, type, sort);
+    // A virtual method starts with an underscore, so only such a function asks the engine what it overrides.
+    public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)
+    {
+        var found = _session.FindSteps(text, side, type, sort);
+        var parent = Function is { Name: ['_', ..] and var name } ? ParentCall.EntryFor(name, _session.FindOverrides(), text, side, sort) : null;
+        return parent is null ? found : [parent, .. found];
+    }
 
     public GraphEditResult AddVariable(string name, int type) => _session.AddVariable(name, type);
 

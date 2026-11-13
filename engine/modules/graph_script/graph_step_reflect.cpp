@@ -4,6 +4,7 @@
 #include "graph_step_reflect.h"
 
 #include "graph_call.h"
+#include "graph_signature.h"
 
 #include "core/config/engine.h"
 #include "core/containers/local_vector.h"
@@ -139,6 +140,27 @@ void add_signature(const MethodInfo &p_info, GraphDerivedPorts &r_ports) {
 	}
 }
 
+// A release build does not list virtual methods, so the entry that offers a step for one keeps
+// its arguments. The ports then do not depend on the build. Every argument may stay unwired,
+// because the engine's own virtual method has no body to read them.
+String derive_virtual_arguments(const Dictionary &p_parameters, GraphDerivedPorts &r_ports) {
+	Vector<GraphTyped> arguments;
+	const String problem = GraphSignatures::parse_typed_list(p_parameters["arguments"], arguments);
+	if (!problem.is_empty()) {
+		return "arguments: " + problem;
+	}
+	for (int i = 0; i < arguments.size(); i++) {
+		GraphPort port;
+		port.name = String(arguments[i].name);
+		port.type = arguments[i].type;
+		port.parameter = vformat("argument_%d", i);
+		port.optional = true;
+		port.fallback = GraphSignatures::make_default(arguments[i].type);
+		r_ports.inputs.push_back(port);
+	}
+	return String();
+}
+
 // A value type is copied into the step, so a method that changes it would change nothing the
 // graph can see. These types share their data between copies.
 bool shares_data(Variant::Type p_type) {
@@ -241,6 +263,26 @@ Variant call_static(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return result;
 }
 
+// The method the engine gave the class of the owner, called without going through the script, so
+// a function of the same name does not answer. A virtual method has no body to call, and the
+// result is then empty.
+Variant call_parent(GraphCall &p_call, const GraphCompiledStep &p_step) {
+	Object *owner = p_call.get_owner();
+	const StringName owner_class = p_step.values[OWNER];
+	if (!owner || !owner->is_class(owner_class)) {
+		p_call.fail(p_step, vformat("the owner is not a '%s'.", owner_class));
+		return Variant();
+	}
+	const MethodBind *method = ClassRegistry::get_method(owner_class, p_step.values[NAME]);
+	if (!method) {
+		return Variant();
+	}
+	Invocation invocation(p_call, p_step, p_step.operation);
+	const Variant result = method->call(owner, invocation.arguments(), invocation.count(), invocation.error);
+	invocation.report(owner);
+	return result;
+}
+
 // A function of this script or of another one. The target is the owner when nothing is wired.
 Variant call_function(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	Object *target = GraphStepReflect::read_target(p_call, p_step, p_step.operation - 1);
@@ -326,6 +368,15 @@ String derive_static(const Dictionary &p_parameters, GraphDerivedPorts &r_ports)
 		add_signature(info, r_ports);
 	}
 	return problem;
+}
+
+String derive_parent(const Dictionary &p_parameters, GraphDerivedPorts &r_ports) {
+	if (!p_parameters.has("arguments")) {
+		return derive_method(p_parameters, r_ports);
+	}
+	Member member;
+	const String problem = read_class_member(p_parameters, "method", member);
+	return problem.is_empty() ? derive_virtual_arguments(p_parameters, r_ports) : problem;
 }
 
 String derive_builtin(const Dictionary &p_parameters, GraphDerivedPorts &r_ports) {
@@ -420,6 +471,15 @@ String resolve_static(GraphCompiledStep &p_step, const Vector<StringName> &p_var
 	if (problem.is_empty()) {
 		problem = check_shape(p_step, info, false);
 	}
+	if (problem.is_empty()) {
+		keep_call(p_step, member.name, member.owner, p_step.kind->inputs.count);
+	}
+	return problem;
+}
+
+String resolve_parent(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {
+	Member member;
+	const String problem = read_class_member(p_step.parameters, "method", member);
 	if (problem.is_empty()) {
 		keep_call(p_step, member.name, member.owner, p_step.kind->inputs.count);
 	}
@@ -538,6 +598,10 @@ int run_call_method(GraphCall &p_call, const GraphCompiledStep &p_step) {
 
 int run_call_static(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return run_with_result(call_static, p_call, p_step);
+}
+
+int run_call_parent(GraphCall &p_call, const GraphCompiledStep &p_step) {
+	return run_with_result(call_parent, p_call, p_step);
 }
 
 int run_call_builtin(GraphCall &p_call, const GraphCompiledStep &p_step) {

@@ -881,6 +881,17 @@ internal sealed class EditorChecks : IChecks
             {
                 Assert.True(script.SetStepParameter(entry.Label, 1, parameter, text).Ok);
             }
+
+            // Each override can call the engine's own version, so every virtual of the base type must make a step that compiles.
+            var parent = ParentCall.EntryFor(entry.Label, virtuals, "", GraphDraggedSide.None, GraphPortSort.Flow);
+            Assert.NotNull(parent);
+            Assert.True(script.AddStep(entry.Label, 2, parent.Kind).Ok);
+            foreach (var (parameter, text) in parent.Parameters)
+            {
+                Assert.True(script.SetStepParameter(entry.Label, 2, parameter, text).Ok);
+            }
+
+            Assert.True(script.Connect(entry.Label, new GraphWire(1, 0, 2, 0)).Ok);
         }
 
         var made = script.Document.Functions.Where(function => virtuals.Any(entry => entry.Label == function.Name)).ToList();

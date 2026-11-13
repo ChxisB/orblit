@@ -22,6 +22,7 @@ bool returns_value(const MethodInfo &p_info);
 
 String derive_method(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
 String derive_static(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
+String derive_parent(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
 String derive_builtin(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
 String derive_utility(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
 String derive_get_property(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
@@ -31,6 +32,7 @@ String derive_new(const Dictionary &p_parameters, GraphDerivedPorts &r_ports);
 
 String resolve_method(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 String resolve_static(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
+String resolve_parent(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 String resolve_builtin(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 String resolve_utility(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
 String resolve_emit(GraphCompiledStep &p_step, const Vector<StringName> &p_variables);
@@ -44,6 +46,7 @@ Variant eval_get_property(GraphCall &p_call, const GraphCompiledStep &p_step);
 
 int run_call_method(GraphCall &p_call, const GraphCompiledStep &p_step);
 int run_call_static(GraphCall &p_call, const GraphCompiledStep &p_step);
+int run_call_parent(GraphCall &p_call, const GraphCompiledStep &p_step);
 int run_call_builtin(GraphCall &p_call, const GraphCompiledStep &p_step);
 int run_call_utility(GraphCall &p_call, const GraphCompiledStep &p_step);
 int run_call_function(GraphCall &p_call, const GraphCompiledStep &p_step);
