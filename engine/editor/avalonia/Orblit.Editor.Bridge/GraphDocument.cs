@@ -50,11 +50,38 @@ public sealed record GraphFrame(int Id, string Title, double X, double Y, double
 /// <summary>A function with the error the engine found when it compiled it. The error is empty when it compiles.</summary>
 public sealed record GraphFunction(string Name, string Error, IReadOnlyList<GraphStep> Steps, IReadOnlyList<GraphWire> Wires, IReadOnlyList<GraphFrame> Frames);
 
-public sealed record GraphVariable(string Name, int Type, string Default, bool Exported, string Hint, string HintString, string Category, string Description);
+/// <summary>A variable. Type is a Variant type number, Hint a PropertyHint number, and Default Variant text.</summary>
+public sealed record GraphVariable(string Name, int Type, string Default, bool Exported, int Hint, string HintString, string Category, string Description);
 
-public sealed record GraphSignalArgument(string Name, int Type);
+/// <summary>A name with a Variant type number: an argument, a local, or a field of a signal.</summary>
+public sealed record GraphTyped(string Name, int Type)
+{
+    /// <summary>The Variant text the engine takes for a list of these, such as <c>[{"name":"x","type":3}]</c>.</summary>
+    public static string WriteList(IReadOnlyList<GraphTyped> list) => GraphJson.Write(list);
 
-public sealed record GraphSignal(string Name, IReadOnlyList<GraphSignalArgument> Arguments);
+    /// <summary>
+    /// Reads the text the engine stores for a list of these. Text that is not a list of names and types reads as
+    /// an empty list, because a step the engine refuses is shown as it is and not fixed here.
+    /// </summary>
+    public static IReadOnlyList<GraphTyped> ReadList(string? text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return [];
+        }
+
+        try
+        {
+            return GraphJson.Read<List<GraphTyped>>(text);
+        }
+        catch (InvalidDataException)
+        {
+            return [];
+        }
+    }
+}
+
+public sealed record GraphSignal(string Name, IReadOnlyList<GraphTyped> Arguments);
 
 /// <summary>Something the engine found that is not an error, such as a variable nothing reads.</summary>
 public sealed record GraphWarning(string Kind, string Function, int Step, string Name, string Text);

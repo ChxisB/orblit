@@ -146,6 +146,19 @@ public static unsafe class EngineCalls
     static readonly EngineMethod GraphScriptRemoveFrameMethod = new("GraphScript", "remove_frame", 993915709);
     static readonly EngineMethod GraphScriptGetDocumentMethod = new("GraphScript", "get_document", 201670096);
     static readonly EngineMethod GraphScriptFindStepsMethod = new("GraphScript", "find_steps", 1541712278);
+    static readonly EngineMethod GraphScriptRenameFunctionMethod = new("GraphScript", "rename_function", 852856452);
+    static readonly EngineMethod GraphScriptRenameVariableMethod = new("GraphScript", "rename_variable", 852856452);
+    static readonly EngineMethod GraphScriptRenameSignalMethod = new("GraphScript", "rename_signal", 852856452);
+    static readonly EngineMethod GraphScriptAddVariableMethod = new("GraphScript", "add_variable", 993915709);
+    static readonly EngineMethod GraphScriptRemoveVariableMethod = new("GraphScript", "remove_variable", 166001499);
+    static readonly EngineMethod GraphScriptSetVariableTypeMethod = new("GraphScript", "set_variable_type", 993915709);
+    static readonly EngineMethod GraphScriptSetVariableDefaultMethod = new("GraphScript", "set_variable_default", 852856452);
+    static readonly EngineMethod GraphScriptSetVariableExportedMethod = new("GraphScript", "set_variable_exported", 2892558115);
+    static readonly EngineMethod GraphScriptSetVariableHintMethod = new("GraphScript", "set_variable_hint", 3958950400);
+    static readonly EngineMethod GraphScriptSetVariableInfoMethod = new("GraphScript", "set_variable_info", 699024349);
+    static readonly EngineMethod GraphScriptAddSignalMethod = new("GraphScript", "add_signal", 166001499);
+    static readonly EngineMethod GraphScriptRemoveSignalMethod = new("GraphScript", "remove_signal", 166001499);
+    static readonly EngineMethod GraphScriptSetSignalArgumentsMethod = new("GraphScript", "set_signal_arguments", 852856452);
 
     public static bool OrblitInstanceStart(this EngineHost host, nint target)
     {
@@ -1192,6 +1205,148 @@ public static unsafe class EngineCalls
         long result = 0;
         void** args = stackalloc void*[] { a0, &a1 };
         host.Call(GraphScriptRemoveFrameMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRenameFunction(this EngineHost host, nint target, string name, string newName)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        void* a1 = scope.String(newName);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptRenameFunctionMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRenameVariable(this EngineHost host, nint target, string name, string newName)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        void* a1 = scope.String(newName);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptRenameVariableMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRenameSignal(this EngineHost host, nint target, string name, string newName)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        void* a1 = scope.String(newName);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptRenameSignalMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptAddVariable(this EngineHost host, nint target, string name, long type)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long a1 = type;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(GraphScriptAddVariableMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRemoveVariable(this EngineHost host, nint target, string name)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptRemoveVariableMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetVariableType(this EngineHost host, nint target, string name, long type)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long a1 = type;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(GraphScriptSetVariableTypeMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetVariableDefault(this EngineHost host, nint target, string name, string valueText)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        void* a1 = scope.String(valueText);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptSetVariableDefaultMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetVariableExported(this EngineHost host, nint target, string name, bool exported)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        byte a1 = (byte)(exported ? 1 : 0);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(GraphScriptSetVariableExportedMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetVariableHint(this EngineHost host, nint target, string name, long hint, string hintString)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long a1 = hint;
+        void* a2 = scope.String(hintString);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1, a2 };
+        host.Call(GraphScriptSetVariableHintMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetVariableInfo(this EngineHost host, nint target, string name, string category, string description)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        void* a1 = scope.String(category);
+        void* a2 = scope.String(description);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1, a2 };
+        host.Call(GraphScriptSetVariableInfoMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptAddSignal(this EngineHost host, nint target, string name)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptAddSignalMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRemoveSignal(this EngineHost host, nint target, string name)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptRemoveSignalMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetSignalArguments(this EngineHost host, nint target, string name, string argumentsText)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(name);
+        void* a1 = scope.String(argumentsText);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptSetSignalArgumentsMethod, target, args, &result);
         return result;
     }
 

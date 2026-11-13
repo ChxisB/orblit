@@ -131,5 +131,18 @@
   "GraphScript.set_frame",
   "GraphScript.remove_frame",
   "GraphScript.get_document",
-  "GraphScript.find_steps"
+  "GraphScript.find_steps",
+  "GraphScript.rename_function",
+  "GraphScript.rename_variable",
+  "GraphScript.rename_signal",
+  "GraphScript.add_variable",
+  "GraphScript.remove_variable",
+  "GraphScript.set_variable_type",
+  "GraphScript.set_variable_default",
+  "GraphScript.set_variable_exported",
+  "GraphScript.set_variable_hint",
+  "GraphScript.set_variable_info",
+  "GraphScript.add_signal",
+  "GraphScript.remove_signal",
+  "GraphScript.set_signal_arguments"
 ]

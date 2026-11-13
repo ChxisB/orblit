@@ -110,6 +110,38 @@ public sealed class GraphScriptSession : IDisposable
 
     public GraphEditResult RemoveFrame(string function, int id) => Edit(_host.GraphScriptRemoveFrame(Script, function, id));
 
+    public GraphEditResult RenameFunction(string name, string newName) => Edit(_host.GraphScriptRenameFunction(Script, name, newName));
+
+    public GraphEditResult RenameVariable(string name, string newName) => Edit(_host.GraphScriptRenameVariable(Script, name, newName));
+
+    public GraphEditResult RenameSignal(string name, string newName) => Edit(_host.GraphScriptRenameSignal(Script, name, newName));
+
+    /// <summary>Adds a variable. The type is a Variant type number, and 0 is a variable that holds any value.</summary>
+    public GraphEditResult AddVariable(string name, int type) => Edit(_host.GraphScriptAddVariable(Script, name, type));
+
+    public GraphEditResult RemoveVariable(string name) => Edit(_host.GraphScriptRemoveVariable(Script, name));
+
+    /// <summary>Changes the type. A default that does not fit the new type goes back to the default of that type.</summary>
+    public GraphEditResult SetVariableType(string name, int type) => Edit(_host.GraphScriptSetVariableType(Script, name, type));
+
+    /// <summary>Sets the default from Variant text, such as <c>2.5</c>. It must be of the variable's type.</summary>
+    public GraphEditResult SetVariableDefault(string name, string valueText) => Edit(_host.GraphScriptSetVariableDefault(Script, name, valueText));
+
+    public GraphEditResult SetVariableExported(string name, bool exported) => Edit(_host.GraphScriptSetVariableExported(Script, name, exported));
+
+    /// <summary>Sets the inspector hint. The hint is a PropertyHint number.</summary>
+    public GraphEditResult SetVariableHint(string name, int hint, string hintString) => Edit(_host.GraphScriptSetVariableHint(Script, name, hint, hintString));
+
+    public GraphEditResult SetVariableInfo(string name, string category, string description) =>
+        Edit(_host.GraphScriptSetVariableInfo(Script, name, category, description));
+
+    public GraphEditResult AddSignal(string name) => Edit(_host.GraphScriptAddSignal(Script, name));
+
+    public GraphEditResult RemoveSignal(string name) => Edit(_host.GraphScriptRemoveSignal(Script, name));
+
+    public GraphEditResult SetSignalArguments(string name, IReadOnlyList<GraphTyped> arguments) =>
+        Edit(_host.GraphScriptSetSignalArguments(Script, name, GraphTyped.WriteList(arguments)));
+
     /// <summary>The steps that fit a wire dragged from the given side. A type of 0 and no side list every step.</summary>
     /// <exception cref="InvalidDataException">The engine refused the question, for example for a type that is not a Variant type.</exception>
     public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)

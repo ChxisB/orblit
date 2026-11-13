@@ -9,7 +9,7 @@ public sealed class GraphDocumentTests
           "base_type": "Entity",
           "error": "",
           "variables": [
-            {"name": "speed", "type": 3, "default": "2.5", "exported": true, "hint": "", "hint_string": "", "category": "Movement", "description": "How fast it goes"}
+            {"name": "speed", "type": 3, "default": "2.5", "exported": true, "hint": 0, "hint_string": "", "category": "Movement", "description": "How fast it goes"}
           ],
           "signals": [
             {"name": "hit", "arguments": []},
@@ -61,7 +61,7 @@ public sealed class GraphDocumentTests
         Assert.Equal("2.5", speed.Default);
         Assert.True(speed.Exported);
         Assert.Empty(document.Signals[0].Arguments);
-        Assert.Equal(new GraphSignalArgument("amount", 2), Assert.Single(document.Signals[1].Arguments));
+        Assert.Equal(new GraphTyped("amount", 2), Assert.Single(document.Signals[1].Arguments));
         Assert.Equal("unused_variable", Assert.Single(document.Warnings).Kind);
     }
 

@@ -54,6 +54,7 @@ internal sealed class EditorChecks : IChecks
         ("a refused graph edit gives the engine's reason and changes nothing, and a bad path or file is refused", GraphScriptRefusals),
         ("the palette lists what fits a dragged wire", GraphScriptPalette),
         ("a frame is set, replaced, removed and saved, and a frame with no area is refused", GraphScriptFrames),
+        ("variables and signals are declared, retyped and renamed, steps that name them follow, and the file keeps them", GraphScriptDeclarations),
     ];
 
     void SecondHostThrows()
@@ -660,6 +661,57 @@ internal sealed class EditorChecks : IChecks
         Assert.Equal(frame with { Title = "Moved", Collapsed = true }, kept);
         Assert.True(reopened.SetFrame("main", frame).Ok);
         Assert.Equal(frame, Assert.Single(reopened.Document.Functions[0].Frames));
+    }
+
+    void GraphScriptDeclarations()
+    {
+        var path = MakeGraphFile("declared");
+        var session = GraphScriptSession.Open(_host, path);
+        Assert.True(session.AddVariable("total", 2).Ok);
+        Assert.True(session.SetVariableDefault("total", "4").Ok);
+        Assert.True(session.SetVariableExported("total", true).Ok);
+        Assert.True(session.SetVariableInfo("total", "Score", "What was scored").Ok);
+        Assert.True(session.AddStep("main", 3, "get").Ok);
+        Assert.True(session.SetStepParameter("main", 3, "name", "\"total\"").Ok);
+
+        Assert.True(session.RenameVariable("total", "sum").Ok);
+        var sum = Assert.Single(session.Document.Variables);
+        Assert.Equal(new GraphVariable("sum", 2, "4", true, 0, "", "Score", "What was scored"), sum);
+        Assert.Equal("\"sum\"", Assert.Single(session.Document.Functions[0].Steps, step => step.Id == 3).Parameters["name"]);
+
+        // A new type resets a default that no longer fits, and a hint is kept as set.
+        Assert.True(session.SetVariableType("sum", 3).Ok);
+        Assert.Equal("0.0", Assert.Single(session.Document.Variables).Default);
+        Assert.True(session.SetVariableHint("sum", 1, "0,10").Ok);
+        Assert.Equal("0,10", Assert.Single(session.Document.Variables).HintString);
+
+        Assert.True(session.AddSignal("scored").Ok);
+        Assert.True(session.SetSignalArguments("scored", [new GraphTyped("amount", 2)]).Ok);
+        Assert.True(session.RenameSignal("scored", "points").Ok);
+        var points = Assert.Single(session.Document.Signals);
+        Assert.Equal("points", points.Name);
+        Assert.Equal(new GraphTyped("amount", 2), Assert.Single(points.Arguments));
+
+        Assert.True(session.RenameFunction("main", "start").Ok);
+        Assert.Equal("start", Assert.Single(session.Document.Functions).Name);
+
+        var before = session.Document;
+        Assert.Contains("already", session.RenameVariable("sum", "sum").Reason);
+        Assert.False(session.RenameVariable("nowhere", "other").Ok);
+        Assert.False(session.RenameSignal("points", "not valid").Ok);
+        Assert.False(session.SetVariableType("sum", -1).Ok);
+        Assert.False(session.SetSignalArguments("nowhere", []).Ok);
+        Assert.Same(before, session.Document);
+
+        session.Save();
+        session.Dispose();
+        using var reopened = GraphScriptSession.Open(_host, path);
+        Assert.Equal("sum", Assert.Single(reopened.Document.Variables).Name);
+        Assert.Equal("points", Assert.Single(reopened.Document.Signals).Name);
+        Assert.True(reopened.RemoveSignal("points").Ok);
+        Assert.True(reopened.RemoveVariable("sum").Ok);
+        Assert.Empty(reopened.Document.Signals);
+        Assert.Empty(reopened.Document.Variables);
     }
 
     // Builds a graph script in the engine and saves it to the project: an entry and a print step, not wired.
