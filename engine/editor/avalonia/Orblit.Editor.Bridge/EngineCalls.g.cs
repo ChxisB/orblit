@@ -162,6 +162,14 @@ public static unsafe class EngineCalls
     static readonly EngineMethod GraphScriptFindOverridesMethod = new("GraphScript", "find_overrides", 201670096);
     static readonly EngineMethod GraphScriptGetSnapshotMethod = new("GraphScript", "get_snapshot", 201670096);
     static readonly EngineMethod GraphScriptRestoreSnapshotMethod = new("GraphScript", "restore_snapshot", 166001499);
+    static readonly EngineMethod GraphDebugLinkListenMethod = new("GraphDebugLink", "listen", 844576869);
+    static readonly EngineMethod GraphDebugLinkGetPortMethod = new("GraphDebugLink", "get_port", 3905245786);
+    static readonly EngineMethod GraphDebugLinkPollMethod = new("GraphDebugLink", "poll", 3218959716);
+    static readonly EngineMethod GraphDebugLinkSendCommandMethod = new("GraphDebugLink", "send_command", 83702148);
+    static readonly EngineMethod GraphDebugLinkSetBreakpointMethod = new("GraphDebugLink", "set_breakpoint", 4108344793);
+    static readonly EngineMethod GraphDebugLinkRequestVariablesMethod = new("GraphDebugLink", "request_variables", 1286410249);
+    static readonly EngineMethod GraphDebugLinkRequestWireMethod = new("GraphDebugLink", "request_wire", 1649997291);
+    static readonly EngineMethod GraphDebugLinkGetStateMethod = new("GraphDebugLink", "get_state", 201670096);
     static readonly EngineMethod GraphScriptGetPayloadMethod = new("GraphScript", "get_payload", 315676799);
     static readonly EngineMethod GraphScriptPastePayloadMethod = new("GraphScript", "paste_payload", 1897090913);
 
@@ -1360,6 +1368,69 @@ public static unsafe class EngineCalls
         using var scope = new NativeScope();
         void* result = scope.Result(VariantType.String);
         host.Call(GraphScriptFindOverridesMethod, target, null, result);
+        return NativeText.ReadString(result);
+    }
+
+    public static long GraphDebugLinkListen(this EngineHost host, nint target, long port)
+    {
+        long a0 = port;
+        long result = 0;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(GraphDebugLinkListenMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphDebugLinkGetPort(this EngineHost host, nint target)
+    {
+        long result = 0;
+        host.Call(GraphDebugLinkGetPortMethod, target, null, &result);
+        return result;
+    }
+
+    public static void GraphDebugLinkPoll(this EngineHost host, nint target)
+    {
+        host.Call(GraphDebugLinkPollMethod, target, null, null);
+    }
+
+    public static void GraphDebugLinkSendCommand(this EngineHost host, nint target, string command)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(command);
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphDebugLinkSendCommandMethod, target, args, null);
+    }
+
+    public static void GraphDebugLinkSetBreakpoint(this EngineHost host, nint target, string source, long step, bool set)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(source);
+        long a1 = step;
+        byte a2 = (byte)(set ? 1 : 0);
+        void** args = stackalloc void*[] { a0, &a1, &a2 };
+        host.Call(GraphDebugLinkSetBreakpointMethod, target, args, null);
+    }
+
+    public static void GraphDebugLinkRequestVariables(this EngineHost host, nint target, long level)
+    {
+        long a0 = level;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(GraphDebugLinkRequestVariablesMethod, target, args, null);
+    }
+
+    public static void GraphDebugLinkRequestWire(this EngineHost host, nint target, long level, long step, long port)
+    {
+        long a0 = level;
+        long a1 = step;
+        long a2 = port;
+        void** args = stackalloc void*[] { &a0, &a1, &a2 };
+        host.Call(GraphDebugLinkRequestWireMethod, target, args, null);
+    }
+
+    public static string GraphDebugLinkGetState(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.String);
+        host.Call(GraphDebugLinkGetStateMethod, target, null, result);
         return NativeText.ReadString(result);
     }
 

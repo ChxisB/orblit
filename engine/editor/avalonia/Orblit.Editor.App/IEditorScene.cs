@@ -177,8 +177,11 @@ internal interface IEditorScene : IScriptFiles
     /// <summary>Whether the game <see cref="Play"/> started is still running.</summary>
     bool IsPlaying { get; }
 
-    /// <summary>Runs the project in its own process. A game already running is stopped first.</summary>
-    void Play();
+    /// <summary>
+    /// Runs the project in its own process, linked to <see cref="IScriptFiles.Debug"/>, and stopping on the breakpoints given,
+    /// each a source and a step id. A game already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
+    /// </summary>
+    void Play(IEnumerable<(string Source, int Step)> breakpoints);
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();

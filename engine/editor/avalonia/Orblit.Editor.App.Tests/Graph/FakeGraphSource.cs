@@ -375,7 +375,23 @@ internal sealed class FakeGraphSource : IGraphFile
     public GraphEditResult RemoveFrame(int id) =>
         _frames.Exists(frame => frame.Id == id) ? Take($"RemoveFrame {id}", () => _frames.RemoveAll(frame => frame.Id == id)) : Refuse($"RemoveFrame {id}", Missing, "The frame is not there.");
 
-    public void OpenFunction(string name) => Calls.Add($"OpenFunction {name}");
+    // The open function swaps with the one asked for, so the canvas shows its steps. Wires and frames do not follow, because the fake keeps them for the open function only.
+    public void OpenFunction(string name)
+    {
+        Calls.Add($"OpenFunction {name}");
+        if (name == _openName || !_otherFunctions.Remove(name))
+        {
+            return;
+        }
+
+        _otherSteps[_openName] = [.. _steps];
+        _otherFunctions.Add(_openName);
+        _steps.Clear();
+        _steps.AddRange(_otherSteps.GetValueOrDefault(name) ?? []);
+        _wires.Clear();
+        _frames.Clear();
+        _openName = name;
+    }
 
     public GraphEditResult AddVariable(string name, int type) =>
         Declare($"AddVariable {name} {type}", name, _variables.Exists(v => v.Name == name), () => _variables.Add(new GraphVariable(name, type, "null", false, 0, "", "", "")));

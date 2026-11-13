@@ -232,7 +232,8 @@ internal sealed class ScriptPanels : Border
         _body.Children.Add(new ConnectionsList(_script.Document, Reveal));
     }
 
-    void Reveal(string function, int step)
+    /// <summary>Opens the function when another is on show, then asks the canvas to show the step.</summary>
+    internal void Reveal(string function, int step)
     {
         if (function != _script.Function?.Name)
         {

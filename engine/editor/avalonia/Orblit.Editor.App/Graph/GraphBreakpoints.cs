@@ -16,6 +16,16 @@ internal sealed class GraphBreakpoints
     /// <summary>The source of a function, as the engine names it in a stop.</summary>
     public static string SourceOf(string script, string function) => $"{script}#{function}";
 
+    /// <summary>The script and the function of a source, or null for a source that is not a graph function.</summary>
+    public static (string Script, string Function)? Split(string source)
+    {
+        var at = source.LastIndexOf('#');
+        return at < 0 ? null : (source[..at], source[(at + 1)..]);
+    }
+
+    /// <summary>Every breakpoint of every script, for a game that starts with them set.</summary>
+    public IEnumerable<(string Source, int Step)> All => _steps.SelectMany(pair => pair.Value.Select(step => (pair.Key, step)));
+
     public bool Has(string source, int step) => _steps.TryGetValue(source, out var set) && set.Contains(step);
 
     public IReadOnlySet<int> Steps(string source) => _steps.GetValueOrDefault(source) ?? [];

@@ -27,6 +27,7 @@ internal enum StepMarks
     Bookmarked = 2,
     Breakpoint = 4,
     Warning = 8,
+    Current = 16,
 }
 
 /// <summary>What a point lands on in a step. A pin hit says which pin and a value hit says which parameter.</summary>
@@ -59,6 +60,7 @@ internal sealed class StepView
     const double BreakpointRadius = 6;
     const double WarningInset = 36;
     const double WarningRadius = 5;
+    const double CurrentOutset = 3;
     // shortcut: a value box beside an input is a fixed 52 pixels, so a long output name on the same row can
     // touch it. Measure the names and place the box from that when a step needs it.
     const double InputValueLeft = Width * 0.28;
@@ -73,6 +75,7 @@ internal sealed class StepView
     static readonly IBrush s_problem = Fill("#e0605a");
     static readonly IBrush s_breakpoint = Fill("#d93a3a");
     static readonly IBrush s_warning = Fill("#e0b050");
+    static readonly IPen s_current = new Pen(Fill("#f2d34f"), 3).ToImmutable();
     static readonly IPen s_border = new Pen(Fill("#444444"), 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
     static readonly IPen s_broken = new Pen(s_problem, 2).ToImmutable();
@@ -216,6 +219,10 @@ internal sealed class StepView
         if (marks.HasFlag(StepMarks.Breakpoint))
         {
             context.DrawEllipse(s_breakpoint, null, MarginRect.Center, BreakpointRadius, BreakpointRadius);
+        }
+        if (marks.HasFlag(StepMarks.Current))
+        {
+            context.DrawRectangle(null, s_current, new RoundedRect(bounds.Inflate(CurrentOutset), Corner + CurrentOutset));
         }
     }
 

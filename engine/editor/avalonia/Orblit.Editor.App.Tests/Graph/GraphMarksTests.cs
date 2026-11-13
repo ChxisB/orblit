@@ -163,4 +163,55 @@ public sealed class GraphMarksTests
             Assert.Equal([2], canvas.Scene.Warned);
         });
     }
+
+    [Fact]
+    public void The_step_the_game_stopped_on_is_marked_in_its_own_script_and_function_only()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, canvas) = Open();
+            Assert.False(Marks(canvas, 2).HasFlag(StepMarks.Current));
+
+            canvas.Scene.StoppedAt = new DebugPlace(Script, "main", 2);
+            Assert.True(Marks(canvas, 2).HasFlag(StepMarks.Current));
+            Assert.False(Marks(canvas, 3).HasFlag(StepMarks.Current));
+
+            canvas.Scene.StoppedAt = new DebugPlace(Script, "other", 2);
+            Assert.False(Marks(canvas, 2).HasFlag(StepMarks.Current));
+
+            canvas.Scene.StoppedAt = new DebugPlace("res://other.ograph", "main", 2);
+            Assert.False(Marks(canvas, 2).HasFlag(StepMarks.Current));
+
+            canvas.Scene.StoppedAt = null;
+            Assert.Equal(StepMarks.None, Marks(canvas, 2));
+        });
+    }
+
+    [Fact]
+    public void The_breakpoints_of_every_script_are_listed_with_their_sources()
+    {
+        var marks = new GraphBreakpoints();
+        marks.Toggle(Main, 2);
+        marks.Toggle(Main, 3);
+        marks.Toggle("res://other.ograph#_start", 1);
+        marks.Toggle(Main, 3);
+
+        Assert.Equal([("res://other.ograph#_start", 1), (Main, 2)], marks.All.OrderBy(pair => pair.Source, StringComparer.Ordinal));
+    }
+
+    [Theory]
+    [InlineData("res://sum.ograph#main", "res://sum.ograph", "main")]
+    [InlineData("res://a#b.ograph#_start", "res://a#b.ograph", "_start")]
+    public void A_source_splits_at_its_last_hash_into_the_script_and_the_function(string source, string script, string function)
+    {
+        Assert.Equal((script, function), GraphBreakpoints.Split(source));
+    }
+
+    [Fact]
+    public void A_source_without_a_hash_is_not_a_graph_function()
+    {
+        Assert.Null(GraphBreakpoints.Split("res://tool.cs"));
+    }
+
+    static StepMarks Marks(GraphCanvas canvas, int step) => canvas.Scene.MarksOf(canvas.Scene.Find(step)!);
 }

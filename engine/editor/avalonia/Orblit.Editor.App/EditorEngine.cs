@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Numerics;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 
@@ -20,11 +21,13 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     readonly EditorSession _session;
     readonly ViewportParts? _viewport;
     readonly string _project;
+    readonly EngineDebugChannel _debug;
     Process? _game;
 
     EditorEngine(EngineHost host, EditorSession session, ViewportParts? viewport, EditorOptions options)
     {
         _host = host;
+        _debug = new EngineDebugChannel(host);
         _session = session;
         _viewport = viewport;
         _project = options.Project;
@@ -303,12 +306,33 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public bool IsPlaying => _game is { HasExited: false };
 
+    public IDebugChannel Debug => _debug;
+
     /// <summary>Runs the project in its own process, because one process holds one engine.</summary>
-    public void Play()
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
     {
         Stop();
-        var player = new ProcessStartInfo(PlayerPath(EngineLibrary.Find())) { ArgumentList = { "--path", _project, "--log-file", Log.NewFile() } };
+        var port = _debug.Listen();
+        var player = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
+        foreach (var argument in GameArguments(_project, Log.NewFile(), port, breakpoints))
+        {
+            player.ArgumentList.Add(argument);
+        }
+
         _game = Process.Start(player);
+    }
+
+    /// <summary>The arguments of a game that links to the editor on this port and stops on these steps, each a source and a step id.</summary>
+    internal static IReadOnlyList<string> GameArguments(string project, string logFile, int port, IEnumerable<(string Source, int Step)> breakpoints)
+    {
+        List<string> arguments = ["--path", project, "--log-file", logFile, "--remote-debug", $"tcp://127.0.0.1:{port}"];
+        var list = string.Join(',', breakpoints.Select(point => $"{point.Source}:{point.Step}"));
+        if (list.Length > 0)
+        {
+            arguments.AddRange(["--breakpoints", list]);
+        }
+
+        return arguments;
     }
 
     public void Stop()
@@ -336,6 +360,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public void Dispose()
     {
         _game?.Dispose();
+        _debug.Dispose();
         _viewport?.Readback.Dispose();
         _host.Dispose();
         Log.Dispose();

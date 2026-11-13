@@ -449,8 +449,8 @@ public sealed class ScriptPanelsTests
             Click(panels, "problem:helper:5");
             Click(panels, "problem:main:3");
 
-            Assert.Equal(["OpenFunction helper"], source.Calls);
-            Assert.Equal(["opened helper", "revealed 5", "revealed 3"], events);
+            Assert.Equal(["OpenFunction helper", "OpenFunction main"], source.Calls);
+            Assert.Equal(["opened helper", "revealed 5", "opened main", "revealed 3"], events);
         });
     }
 }

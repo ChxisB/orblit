@@ -37,6 +37,9 @@ internal interface IScriptFiles
     /// <summary>Opens a graph script. Throws <see cref="IOException"/> when the engine cannot load it.</summary>
     IGraphFile OpenGraph(string resourcePath);
 
+    /// <summary>The link to the game Play runs, which reports where it stopped and takes the commands that go on.</summary>
+    IDebugChannel Debug { get; }
+
     /// <summary>The text of a script. Throws <see cref="IOException"/> when it cannot be read.</summary>
     string ReadScript(string resourcePath);
 
@@ -72,7 +75,10 @@ internal sealed class ScriptView : Border
     readonly ScrollViewer _text;
     readonly Border _graphHost = new() { IsVisible = false };
     readonly Border _panelsHost = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TabInactive };
+    readonly ScrollViewer _debugHost = new() { MaxHeight = 240, Padding = new Thickness(10, 6), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     IScriptFiles? _files;
+    GraphDebugger? _debugger;
+    DebugPlace? _shownStop;
     IGraphFile? _graphFile;
     ScriptPanels? _panels;
     StepInspector? _inspector;
@@ -134,6 +140,9 @@ internal sealed class ScriptView : Border
 
     internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
 
+    /// <summary>The panel of the debug session, or null before the files are shown.</summary>
+    internal DebuggerPanel? DebugPanel => _debugHost.Content as DebuggerPanel;
+
     /// <summary>The panels of the open graph script, or null when a C# file or nothing is open.</summary>
     internal ScriptPanels? Panels => _panels;
 
@@ -147,6 +156,7 @@ internal sealed class ScriptView : Border
     public void Show(IScriptFiles files)
     {
         _files = files;
+        StartDebugger(files);
         CloseGraph();
         _open = null;
         _saved = "";
@@ -156,6 +166,9 @@ internal sealed class ScriptView : Border
         _status.Text = "";
         Refresh();
     }
+
+    /// <summary>Takes in what the running game said. A stop on a step of a graph script opens the script and shows the step.</summary>
+    public void PollDebugger() => _debugger?.Poll();
 
     /// <summary>Writes the open script when it has edits. Answers whether the file holds the text now.</summary>
     public bool Save()
@@ -265,9 +278,13 @@ internal sealed class ScriptView : Border
             // The canvas shows the function it is given when it is made, so another function needs a new canvas.
             _panels.FunctionOpened += _ => ShowCanvas(file, path, _inspector);
             _panels.StepRevealed += id => Canvas?.Reveal(id);
-            var side = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
-            Grid.SetRow(_inspector, 1);
+            // A control has one parent, and the debug panel outlives the side column of the script before this one.
+            (_debugHost.Parent as Panel)?.Children.Remove(_debugHost);
+            var side = new Grid { RowDefinitions = new RowDefinitions("*,Auto,Auto") };
+            Grid.SetRow(_debugHost, 1);
+            Grid.SetRow(_inspector, 2);
             side.Children.Add(_panels);
+            side.Children.Add(_debugHost);
             side.Children.Add(_inspector);
             _panelsHost.Child = side;
             _graphHost.IsVisible = true;
@@ -294,9 +311,47 @@ internal sealed class ScriptView : Border
         canvas.Scene.Script = path;
         canvas.Scene.Breakpoints = Breakpoints;
         canvas.Reload();
+        canvas.Probe(_debugger);
+        canvas.ShowStop(_debugger?.Current);
         canvas.SelectionChanged += inspector.Show;
         _graphHost.Child = canvas;
         inspector.Show(null);
+    }
+
+    void StartDebugger(IScriptFiles files)
+    {
+        _debugger?.Dispose();
+        _shownStop = null;
+        _debugger = new GraphDebugger(files.Debug, Breakpoints);
+        _debugger.Changed += ShowStop;
+        _debugHost.Content = new DebuggerPanel(_debugger);
+    }
+
+    // The view moves to a stop once. A poll that only brings values leaves the view where the person put it.
+    void ShowStop()
+    {
+        var place = _debugger!.Current;
+        if (place != _shownStop && place is { } at)
+        {
+            Reveal(at);
+        }
+
+        _shownStop = place;
+        Canvas?.ShowStop(place);
+    }
+
+    void Reveal(DebugPlace at)
+    {
+        if (_files is null || !_files.GraphScripts().Contains(at.Script))
+        {
+            return;
+        }
+
+        _list.SelectedItem = at.Script;
+        if (_open == at.Script)
+        {
+            _panels!.Reveal(at.Function, at.Step);
+        }
     }
 
     void CloseGraph()

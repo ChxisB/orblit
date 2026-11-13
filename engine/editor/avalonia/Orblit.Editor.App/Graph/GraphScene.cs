@@ -52,6 +52,9 @@ internal sealed class GraphScene
     /// <summary>The steps of the function on show that carry a breakpoint.</summary>
     public IReadOnlySet<int> Breakpointed => Breakpoints.Steps(BreakpointSource);
 
+    /// <summary>The step a running game stopped on, or null when none did. It is marked when its script and function are on show.</summary>
+    public DebugPlace? StoppedAt { get; set; }
+
     /// <summary>The steps of the function on show that a warning names.</summary>
     public IReadOnlySet<int> Warned => _warned;
 
@@ -95,7 +98,10 @@ internal sealed class GraphScene
         (SelectedSteps.Contains(step.Id) ? StepMarks.Selected : StepMarks.None)
         | (Bookmarked.Contains(step.Id) ? StepMarks.Bookmarked : StepMarks.None)
         | (Breakpointed.Contains(step.Id) ? StepMarks.Breakpoint : StepMarks.None)
-        | (Warned.Contains(step.Id) ? StepMarks.Warning : StepMarks.None);
+        | (Warned.Contains(step.Id) ? StepMarks.Warning : StepMarks.None)
+        | (IsStoppedAt(step) ? StepMarks.Current : StepMarks.None);
+
+    bool IsStoppedAt(StepView step) => StoppedAt is { } at && at.Script == Script && at.Function == _function && at.Step == step.Id;
 
     /// <summary>Sets a breakpoint on the step or takes it off. True when it is set after the call.</summary>
     public bool ToggleBreakpoint(int id) => Breakpoints.Toggle(BreakpointSource, id);

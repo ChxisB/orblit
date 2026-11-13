@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.Bridge;
@@ -29,6 +30,10 @@ public sealed class ScriptViewTests
         public string? Gone { get; set; }
 
         public Dictionary<string, FakeGraphSource> Graphs { get; } = [];
+
+        public FakeDebugChannel Channel { get; } = new();
+
+        public IDebugChannel Debug => Channel;
 
         public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
 
@@ -600,6 +605,133 @@ public sealed class ScriptViewTests
             Pick(view, "res://logic.ograph");
 
             Assert.Equal([2], view.Canvas!.Scene.Breakpointed);
+        });
+    }
+
+    const string Logic = "res://logic.ograph";
+
+    static StepMarks MarksOf(ScriptView view, int step) => view.Canvas!.Scene.MarksOf(view.Canvas.Scene.Find(step)!);
+
+    static void Hear(Files files, ScriptView view, DebugState state)
+    {
+        files.Channel.Next = state;
+        view.PollDebugger();
+    }
+
+    static DebugState StoppedAt(string script, string function, int step) =>
+        FakeDebugChannel.Stopped("breakpoint", FakeDebugChannel.Frame(script, function, step));
+
+    [Fact]
+    public void A_stop_opens_the_script_and_marks_and_selects_the_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Assert.Null(view.Canvas);
+
+            Hear(files, view, StoppedAt(Logic, "main", 2));
+
+            Assert.Equal(Logic, view.Heading.Text);
+            Assert.Equal(new DebugPlace(Logic, "main", 2), view.Canvas!.Scene.StoppedAt);
+            Assert.True(MarksOf(view, 2).HasFlag(StepMarks.Current));
+            Assert.Equal([2], view.Canvas.Scene.SelectedSteps);
+        });
+    }
+
+    [Fact]
+    public void A_stop_in_another_function_opens_that_function_and_marks_the_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, graph, view) = OpenWithGraph();
+            graph.PutFunction("helper", FakeGraphSource.MakeStep(5, "print", 0, 0, [], []));
+
+            Hear(files, view, StoppedAt(Logic, "helper", 5));
+
+            Assert.Contains("OpenFunction helper", graph.Calls);
+            Assert.True(MarksOf(view, 5).HasFlag(StepMarks.Current));
+            Assert.Equal([5], view.Canvas!.Scene.SelectedSteps);
+        });
+    }
+
+    [Fact]
+    public void Going_on_takes_the_mark_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Hear(files, view, StoppedAt(Logic, "main", 2));
+
+            Hear(files, view, FakeDebugChannel.Running());
+
+            Assert.Null(view.Canvas!.Scene.StoppedAt);
+            Assert.Equal(StepMarks.Selected, MarksOf(view, 2));
+        });
+    }
+
+    [Fact]
+    public void A_stop_the_view_cannot_show_opens_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+
+            Hear(files, view, StoppedAt("res://gone.ograph", "main", 2));
+            Hear(files, view, FakeDebugChannel.Stopped("step", new DebugFrame("res://spin.cs", 3, "Spin")));
+
+            Assert.Null(view.Canvas);
+            Assert.Equal("Pick a script.", view.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void A_stop_in_the_open_script_does_not_move_a_view_the_person_changed_until_the_place_changes()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Hear(files, view, StoppedAt(Logic, "main", 2));
+            view.Canvas!.Reveal(3);
+
+            Hear(files, view, StoppedAt(Logic, "main", 2) with { Locals = [new DebugValue("total", "5")] });
+            Assert.Equal([3], view.Canvas.Scene.SelectedSteps);
+
+            Hear(files, view, FakeDebugChannel.Running());
+            Hear(files, view, StoppedAt(Logic, "main", 2));
+            Assert.Equal([2], view.Canvas.Scene.SelectedSteps);
+        });
+    }
+
+    [Fact]
+    public void The_debugger_panel_follows_the_game_and_survives_opening_scripts_again()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+            Pick(view, "res://spin.cs");
+            Pick(view, Logic);
+
+            Hear(files, view, StoppedAt(Logic, "main", 2));
+
+            Assert.NotNull(view.DebugPanel);
+            Assert.True(view.DebugPanel!.Find<Button>("debugger:continue")!.IsEnabled);
+            Assert.NotNull(view.DebugPanel.Parent);
+        });
+    }
+
+    [Fact]
+    public void Showing_the_files_again_hands_the_breakpoints_to_one_debugger_only()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Hear(files, view, FakeDebugChannel.Running());
+            view.Show(files);
+
+            view.Breakpoints.Toggle($"{Logic}#main", 2);
+
+            Assert.Equal([$"breakpoint {Logic}#main 2 True"], files.Channel.Sent);
         });
     }
 }

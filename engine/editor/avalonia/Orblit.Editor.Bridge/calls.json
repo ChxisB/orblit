@@ -148,6 +148,14 @@
   "GraphScript.set_signal_arguments",
   "GraphScript.get_snapshot",
   "GraphScript.restore_snapshot",
+  "GraphDebugLink.listen",
+  "GraphDebugLink.get_port",
+  "GraphDebugLink.poll",
+  "GraphDebugLink.send_command",
+  "GraphDebugLink.set_breakpoint",
+  "GraphDebugLink.request_variables",
+  "GraphDebugLink.request_wire",
+  "GraphDebugLink.get_state",
   "GraphScript.get_payload",
   "GraphScript.paste_payload"
 ]

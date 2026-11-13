@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using System.Numerics;
 
 namespace Orblit.Editor.Bridge.Checks;
@@ -60,6 +62,7 @@ internal sealed class EditorChecks : IChecks
         ("a snapshot takes a graph script back in one edit, and a copy of steps pastes into another script and asks before a clash", GraphScriptSnapshotsAndPaste),
         ("steps collapse into a Call of a new function and expand back with the same wires, and a selection with a value across its edge is refused", GraphScriptCollapseAndExpand),
         ("every virtual the engine lists for a script's base type makes a function with the signature it names and no error", GraphScriptOverrides),
+        ("a debug link listens on a loopback port, takes a game that connects, lets go when it closes, and drops commands while no game is there", DebugLinkAcceptsAGame),
     ];
 
     void SecondHostThrows()
@@ -926,6 +929,46 @@ internal sealed class EditorChecks : IChecks
         var made = script.Document.Functions.Where(function => virtuals.Any(entry => entry.Label == function.Name)).ToList();
         Assert.Equal(virtuals.Select(entry => entry.Label).Order(), made.Select(function => function.Name).Order());
         Assert.All(made, function => Assert.Equal("", function.Error));
+    }
+
+    void DebugLinkAcceptsAGame()
+    {
+        using var link = DebugLink.Listen(_host);
+        Assert.True(link.Port > 0);
+        link.Poll();
+        Assert.False(link.State.Connected);
+        Assert.False(link.State.Stopped);
+        Assert.Empty(link.State.Stack);
+
+        // With no game attached each call has nowhere to go and must not fail.
+        link.Send("continue");
+        link.SetBreakpoint("res://none.ograph#main", 1, true);
+        link.RequestVariables(0);
+        link.RequestWire(0, 1, 0);
+
+        using (var client = new TcpClient())
+        {
+            client.Connect(IPAddress.Loopback, link.Port);
+            Assert.True(PollUntil(link, connected: true));
+        }
+
+        Assert.True(PollUntil(link, connected: false));
+    }
+
+    static bool PollUntil(DebugLink link, bool connected)
+    {
+        for (var attempt = 0; attempt < 100; attempt++)
+        {
+            link.Poll();
+            if (link.State.Connected == connected)
+            {
+                return true;
+            }
+
+            Thread.Sleep(20);
+        }
+
+        return false;
     }
 
     string MakeGraphFile(string name)

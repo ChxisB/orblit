@@ -266,6 +266,53 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
+    public void Play_starts_the_game_with_the_breakpoints_of_every_script()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = Open(scene);
+            window.Script.Breakpoints.Toggle("res://a.ograph#main", 2);
+            window.Script.Breakpoints.Toggle("res://b.ograph#_start", 5);
+
+            window.PlayButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal([("res://a.ograph#main", 2), ("res://b.ograph#_start", 5)], scene.PlayedWith.Order());
+        });
+    }
+
+    [Fact]
+    public void A_game_the_editor_cannot_link_to_is_not_started_and_the_reason_shows()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { PlayError = new IOException("The debug port could not be opened.") };
+            var window = Open(scene);
+
+            window.PlayButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal("The debug port could not be opened.", window.Status);
+            Assert.False(scene.IsPlaying);
+        });
+    }
+
+    [Fact]
+    public void Each_poll_takes_in_what_the_game_said()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = Open(scene);
+            var before = scene.Channel.Polls;
+
+            window.Poll();
+            window.Poll();
+
+            Assert.Equal(before + 2, scene.Channel.Polls);
+        });
+    }
+
+    [Fact]
     public void A_failed_save_blocks_play_and_says_why()
     {
         UiThread.Run(() =>

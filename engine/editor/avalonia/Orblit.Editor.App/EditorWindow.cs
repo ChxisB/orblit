@@ -214,6 +214,7 @@ internal sealed class EditorWindow : Window
     internal void Poll()
     {
         _scene?.PollOutput();
+        _script.PollDebugger();
         ShowGame();
     }
 
@@ -529,13 +530,24 @@ internal sealed class EditorWindow : Window
     // because its scripts run while it is open and a save would write what they changed.
     void Play()
     {
-        if (SaveEdits())
+        if (!SaveEdits())
         {
-            _scene!.Play();
-            ShowGame();
-            _bottomBar.OpenOutputUnlessPinned();
-            _status.Text = "Playing in a second window.";
+            return;
         }
+
+        try
+        {
+            _scene!.Play(_script.Breakpoints.All);
+        }
+        catch (IOException error)
+        {
+            _status.Text = error.Message;
+            return;
+        }
+
+        ShowGame();
+        _bottomBar.OpenOutputUnlessPinned();
+        _status.Text = "Playing in a second window.";
     }
 
     void Stop()

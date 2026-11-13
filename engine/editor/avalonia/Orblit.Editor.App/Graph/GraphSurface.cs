@@ -1,3 +1,4 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -16,10 +17,15 @@ internal sealed class GraphSurface : Control
     const double GridStep = 20;
     const double MinGridZoom = 0.4;
     const double WheelZoom = 1.1;
+    const double LabelSize = 12;
+    const double LabelPad = 4;
+    const double LabelGap = 14;
+    const int LabelChars = 60;
 
     static readonly IPen s_grid = new Pen(new ImmutableSolidColorBrush(Color.Parse("#26ffffff")), 1).ToImmutable();
     static readonly IPen s_band = new Pen(EditorBrushes.Accent, 1, new DashStyle([4, 3], 0)).ToImmutable();
     static readonly IBrush s_bandFill = new ImmutableSolidColorBrush(Color.Parse("#2a3d8fff"));
+    static readonly IPen s_labelEdge = new Pen(EditorBrushes.Accent, 1).ToImmutable();
 
     readonly GraphScene _scene;
     readonly GraphViewport _viewport;
@@ -38,6 +44,9 @@ internal sealed class GraphSurface : Control
         DragDrop.SetAllowDrop(this, true);
         AddHandler(DragDrop.DropEvent, OnDrop);
     }
+
+    /// <summary>The hover that shows the value of a wire while a game is stopped, given by the canvas that owns the surface.</summary>
+    internal WireHover? Hover { get; set; }
 
     /// <summary>The commands of the keyboard, given by the canvas that owns the surface.</summary>
     internal GraphShortcuts? Shortcuts { get; set; }
@@ -77,6 +86,15 @@ internal sealed class GraphSurface : Control
         {
             _gestures.Move(_pointer);
             Changed();
+        }
+        else if (Hover is { } hover)
+        {
+            var before = hover.Label;
+            hover.Move(_viewport.ToGraph(_pointer));
+            if (hover.Label != before)
+            {
+                InvalidateVisual();
+            }
         }
     }
 
@@ -175,10 +193,23 @@ internal sealed class GraphSurface : Control
             step.Draw(context, _scene.MarksOf(step));
         }
         DrawPendingWire(context);
+        if (Hover?.Label is { } label)
+        {
+            DrawLabel(context, label);
+        }
         if (_gestures.Band is { } band)
         {
             context.DrawRectangle(s_bandFill, s_band, band);
         }
+    }
+
+    static void DrawLabel(DrawingContext context, HoverLabel label)
+    {
+        var shown = label.Text.Length > LabelChars ? label.Text[..LabelChars] + "..." : label.Text;
+        var text = new FormattedText(shown, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Default), LabelSize, EditorBrushes.Text);
+        var box = new Rect(label.At.X - text.Width - (2 * LabelPad) - LabelGap, label.At.Y - text.Height - (2 * LabelPad) - LabelPad, text.Width + (2 * LabelPad), text.Height + (2 * LabelPad));
+        context.DrawRectangle(EditorBrushes.Panel, s_labelEdge, box, 3, 3);
+        context.DrawText(text, box.TopLeft + new Point(LabelPad, LabelPad));
     }
 
     void DrawPendingWire(DrawingContext context)

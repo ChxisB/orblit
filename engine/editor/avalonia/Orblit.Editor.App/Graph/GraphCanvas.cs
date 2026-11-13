@@ -154,6 +154,29 @@ internal sealed class GraphCanvas : Grid
         NotifySelection();
     }
 
+    /// <summary>Marks the step a running game stopped on, or takes the mark off when the place is null.</summary>
+    internal void ShowStop(DebugPlace? place)
+    {
+        var moved = place != _scene.StoppedAt;
+        _scene.StoppedAt = place;
+        if (moved && place is not null)
+        {
+            Hover?.Refresh();
+        }
+
+        Redraw();
+    }
+
+    /// <summary>The hover over data wires. Null while no debug session is attached.</summary>
+    internal WireHover? Hover { get; private set; }
+
+    /// <summary>Shows the last value of a data wire under the pointer while the probe's game is stopped. Null takes the hover away.</summary>
+    internal void Probe(IWireProbe? probe)
+    {
+        Hover = probe is null ? null : new WireHover(_scene, probe);
+        _surface.Hover = Hover;
+    }
+
     /// <summary>Puts a text box over a place on the canvas. Accepting it passes the text to the commit.</summary>
     internal void BeginEdit(Rect graphRect, string text, Action<string> commit)
     {

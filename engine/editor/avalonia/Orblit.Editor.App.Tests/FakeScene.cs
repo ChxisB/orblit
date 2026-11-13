@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.Bridge;
@@ -202,9 +203,27 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>True from a Play until a Stop. A test sets it false for a game that ended on its own.</summary>
     public bool IsPlaying { get; set; }
 
-    public void Play()
+    /// <summary>The breakpoints the last Play was given.</summary>
+    public List<(string Source, int Step)> PlayedWith { get; } = [];
+
+    /// <summary>A failure the next Play throws, such as a debug port the engine could not open.</summary>
+    public IOException? PlayError { get; set; }
+
+    /// <summary>What the running game said. A test sets <see cref="FakeDebugChannel.Next"/>.</summary>
+    public FakeDebugChannel Channel { get; } = new();
+
+    public IDebugChannel Debug => Channel;
+
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
     {
+        if (PlayError is not null)
+        {
+            throw PlayError;
+        }
+
         Plays++;
+        PlayedWith.Clear();
+        PlayedWith.AddRange(breakpoints);
         IsPlaying = true;
     }
 
