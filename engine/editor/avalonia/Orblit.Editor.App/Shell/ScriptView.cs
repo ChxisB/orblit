@@ -261,6 +261,7 @@ internal sealed class ScriptView : Border
             ShowCanvas(file, _inspector);
             // The canvas shows the function it is given when it is made, so another function needs a new canvas.
             _panels.FunctionOpened += _ => ShowCanvas(file, _inspector);
+            _panels.StepRevealed += id => Canvas?.Reveal(id);
             var side = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
             Grid.SetRow(_inspector, 1);
             side.Children.Add(_panels);

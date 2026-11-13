@@ -10,7 +10,7 @@ namespace Orblit.Editor.App.Graph;
 
 /// <summary>
 /// The panels of a graph script: its variables, its functions with the signature of the one on show, the locals
-/// of that function, and its signals. Each row edits one thing and drags onto the canvas. An edit the engine
+/// of that function, its signals, and the steps that use each signal. Each row edits one thing and drags onto the canvas. An edit the engine
 /// refuses is shown as the reason it gave, and the row goes back to what the engine holds.
 /// </summary>
 internal sealed class ScriptPanels : Border
@@ -31,6 +31,9 @@ internal sealed class ScriptPanels : Border
     /// <summary>Raised when a person opens another function, so the canvas can show it. Opening is not an edit.</summary>
     public event Action<string>? FunctionOpened;
 
+    /// <summary>Raised when a person picks a link to a step, after its function is open, so the canvas can show the step.</summary>
+    public event Action<int>? StepRevealed;
+
     /// <summary>The reason the engine gave for the last edit it refused, or empty after an edit it took.</summary>
     internal string Notice => _notice.IsVisible ? _notice.Text ?? "" : "";
 
@@ -45,6 +48,7 @@ internal sealed class ScriptPanels : Border
         AddFunctions();
         AddLocals();
         AddSignals();
+        AddConnections();
     }
 
     // A result the engine refused leaves nothing changed and raises no event, so the panels go back to the document themselves.
@@ -177,6 +181,22 @@ internal sealed class ScriptPanels : Border
 
         _body.Children.Add(new TextBlock { Text = $"Locals of {_script.Function!.Name}", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
         _body.Children.Add(new TypedListEditor("local", signature.Locals, GraphDropKind.Local, list => Apply(Set(signature, "locals", GraphTyped.WriteList(list)))));
+    }
+
+    void AddConnections()
+    {
+        _body.Children.Add(new TextBlock { Text = "Connections", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _body.Children.Add(new ConnectionsList(_script.Document, Reveal));
+    }
+
+    void Reveal(string function, int step)
+    {
+        if (function != _script.Function?.Name)
+        {
+            Open(function);
+        }
+
+        StepRevealed?.Invoke(step);
     }
 
     void AddSignals()

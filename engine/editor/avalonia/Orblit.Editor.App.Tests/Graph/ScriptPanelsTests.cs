@@ -308,4 +308,63 @@ public sealed class ScriptPanelsTests
             Assert.True(panels.Find<Button>("function:helper:open")!.IsEnabled);
         });
     }
+
+    static GraphStep Signalling(int id, string kind, string signal) =>
+        FakeGraphSource.MakeStep(id, kind, 0, 0, [], [], null, ("signal", $"\"{signal}\""));
+
+    static (FakeGraphSource Source, ScriptPanels Panels) OpenWithLinks()
+    {
+        var source = FakeGraphSource.Sample();
+        source.Put(new GraphSignal("scored", [new GraphTyped("amount", 2)]));
+        source.Put(Signalling(4, "emit", "scored"));
+        source.PutFunction("helper", Signalling(5, "await_signal", "scored"));
+        return (source, new ScriptPanels(source));
+    }
+
+    [Fact]
+    public void Each_signal_lists_the_steps_that_use_it_in_every_function()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, panels) = OpenWithLinks();
+
+            Assert.Equal("scored", panels.Find<TextBlock>("connections:scored")!.Text);
+            Assert.Equal("main: emits scored", panels.Find<Button>("connection:main:4")!.Content);
+            Assert.Equal("helper: waits for scored", panels.Find<Button>("connection:helper:5")!.Content);
+        });
+    }
+
+    [Fact]
+    public void A_link_in_another_function_opens_that_function_and_then_reveals_the_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, panels) = OpenWithLinks();
+            var events = new List<string>();
+            panels.FunctionOpened += name => events.Add($"opened {name}");
+            panels.StepRevealed += id => events.Add($"revealed {id}");
+
+            Click(panels, "connection:helper:5");
+
+            Assert.Equal(["OpenFunction helper"], source.Calls);
+            Assert.Equal(["opened helper", "revealed 5"], events);
+        });
+    }
+
+    [Fact]
+    public void A_link_in_the_function_on_show_only_reveals_the_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, panels) = OpenWithLinks();
+            var events = new List<string>();
+            panels.FunctionOpened += name => events.Add($"opened {name}");
+            panels.StepRevealed += id => events.Add($"revealed {id}");
+
+            Click(panels, "connection:main:4");
+
+            Assert.Empty(source.Calls);
+            Assert.Equal(["revealed 4"], events);
+        });
+    }
 }

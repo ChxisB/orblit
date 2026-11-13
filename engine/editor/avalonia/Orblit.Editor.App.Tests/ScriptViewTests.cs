@@ -443,6 +443,42 @@ public sealed class ScriptViewTests
     }
 
     [Fact]
+    public void Picking_a_link_selects_its_step_on_the_canvas_and_shows_it_in_the_inspector()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            graph.Put(new GraphSignal("scored", []));
+            graph.Put(FakeGraphSource.MakeStep(4, "emit", 520, 200, [], [], null, ("signal", "\"scored\"")));
+            Pick(view, "res://logic.ograph");
+            var canvas = view.Canvas;
+
+            view.Panels!.Find<Button>("connection:main:4")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Same(canvas, view.Canvas);
+            Assert.Equal([4], view.Canvas!.Scene.SelectedSteps);
+            Assert.Equal("emit", view.Inspector!.Heading);
+        });
+    }
+
+    [Fact]
+    public void Picking_a_link_in_another_function_gives_the_canvas_that_function()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            graph.PutFunction("helper", FakeGraphSource.MakeStep(5, "await_signal", 0, 0, [], [], null, ("signal", "\"scored\"")));
+            Pick(view, "res://logic.ograph");
+            var before = view.Canvas;
+
+            view.Panels!.Find<Button>("connection:helper:5")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.NotSame(before, view.Canvas);
+            Assert.Contains("OpenFunction helper", graph.Calls);
+        });
+    }
+
+    [Fact]
     public void A_text_file_has_no_inspector()
     {
         UiThread.Run(() =>

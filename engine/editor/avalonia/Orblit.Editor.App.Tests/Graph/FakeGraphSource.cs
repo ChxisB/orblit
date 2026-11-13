@@ -47,6 +47,7 @@ internal sealed class FakeGraphSource : IGraphFile
     readonly List<GraphVariable> _variables = [];
     readonly List<GraphSignal> _signals = [];
     readonly List<string> _otherFunctions = [];
+    readonly Dictionary<string, GraphStep[]> _otherSteps = [];
     string _openName = "main";
 
     public List<string> Calls { get; } = [];
@@ -82,8 +83,12 @@ internal sealed class FakeGraphSource : IGraphFile
 
     public void Put(GraphSignal signal) => _signals.Add(signal);
 
-    /// <summary>Names a function that has no steps, so the script holds more than the one on show.</summary>
-    public void PutFunction(string name) => _otherFunctions.Add(name);
+    /// <summary>Names a function, with the steps it holds, so the script holds more than the one on show. It has no wires.</summary>
+    public void PutFunction(string name, params GraphStep[] steps)
+    {
+        _otherFunctions.Add(name);
+        _otherSteps[name] = steps;
+    }
 
     public event Action? Changed;
 
@@ -279,7 +284,7 @@ internal sealed class FakeGraphSource : IGraphFile
 
         foreach (var name in _otherFunctions)
         {
-            yield return new GraphFunction(name, "", [], [], []);
+            yield return new GraphFunction(name, "", _otherSteps.GetValueOrDefault(name) ?? [], [], []);
         }
     }
 

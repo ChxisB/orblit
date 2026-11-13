@@ -702,6 +702,75 @@ public sealed class GraphCanvasTests
         });
     }
 
+    [Fact]
+    public void Reveal_selects_only_that_step_and_reports_it_and_an_unknown_id_changes_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var picked = new List<int?>();
+            canvas.Scene.SelectStep(1, false);
+            canvas.SelectionChanged += picked.Add;
+
+            canvas.Reveal(99);
+            canvas.Reveal(3);
+
+            Assert.Equal([3], canvas.Scene.SelectedSteps);
+            Assert.Equal<int?>([3], picked);
+        });
+    }
+
+    [Fact]
+    public void Reveal_of_a_step_picked_with_others_leaves_it_alone()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            canvas.Scene.SelectStep(1, false);
+            canvas.Scene.SelectStep(3, true);
+
+            canvas.Reveal(3);
+
+            Assert.Equal([3], canvas.Scene.SelectedSteps);
+        });
+    }
+
+    [Fact]
+    public void Reveal_puts_the_step_in_the_middle_of_a_view_that_has_a_size()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var size = new Size(800, 600);
+            canvas.Measure(size);
+            canvas.Arrange(new Rect(size));
+
+            canvas.Reveal(3);
+
+            var middle = canvas.Viewport.VisibleRect(canvas.Surface.Bounds.Size).Center;
+            Assert.Equal(canvas.Scene.Find(3)!.Bounds.Center.X, middle.X, 3);
+            Assert.Equal(canvas.Scene.Find(3)!.Bounds.Center.Y, middle.Y, 3);
+        });
+    }
+
+    [Fact]
+    public void A_step_revealed_before_the_view_has_a_size_is_centered_when_it_gets_one_and_not_fitted_over()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+
+            canvas.Reveal(3);
+            var size = new Size(800, 600);
+            canvas.Measure(size);
+            canvas.Arrange(new Rect(size));
+
+            var middle = canvas.Viewport.VisibleRect(canvas.Surface.Bounds.Size).Center;
+            Assert.Equal(canvas.Scene.Find(3)!.Bounds.Center.X, middle.X, 3);
+            Assert.Equal(1.0, canvas.Viewport.Zoom, 3);
+        });
+    }
+
     // A move during a drag only offsets the held steps and the pending wire, so its cost must not grow with the step
     // count. The median is far under a millisecond headless, so the bound of 1 ms has wide headroom.
     // shortcut: the bound only catches a large regression, tighten it once a machine runs it steadily.

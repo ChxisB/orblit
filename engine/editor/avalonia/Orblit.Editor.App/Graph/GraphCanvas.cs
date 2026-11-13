@@ -40,6 +40,7 @@ internal sealed class GraphCanvas : Grid
     string _original = "";
     bool _fitted;
     int? _selected;
+    int? _revealed;
 
     public GraphCanvas(IGraphSource source)
     {
@@ -95,6 +96,23 @@ internal sealed class GraphCanvas : Grid
         _empty.IsVisible = _source.Function is null;
         _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
         FitOnce();
+        Redraw();
+        NotifySelection();
+    }
+
+    /// <summary>Selects one step and puts it in the middle of the view. An id the function does not have changes nothing.</summary>
+    public void Reveal(int stepId)
+    {
+        if (_scene.Find(stepId) is null)
+        {
+            return;
+        }
+
+        _scene.Clear();
+        _scene.SelectStep(stepId, false);
+        _revealed = stepId;
+        CenterOnRevealed();
+        _frame.IsEnabled = true;
         Redraw();
         NotifySelection();
     }
@@ -234,10 +252,23 @@ internal sealed class GraphCanvas : Grid
     // The first time the surface has a size and the graph has steps, the view shows all of it.
     void FitOnce()
     {
+        CenterOnRevealed();
         if (!_fitted && _surface.Bounds.Width > 0 && _scene.Steps.Count > 0)
         {
             _fitted = true;
             FitView();
+        }
+    }
+
+    // A canvas with no size has nothing to center on, so the step waits for the first size and the view is not fitted over it.
+    // shortcut: a step inside a collapsed frame is selected but not drawn. Open the frame first when frames are told apart here.
+    void CenterOnRevealed()
+    {
+        if (_revealed is { } id && _scene.Find(id) is { } step && _surface.Bounds.Width > 0)
+        {
+            _fitted = true;
+            _revealed = null;
+            _viewport.CenterOn(step.Bounds.Center, _surface.Bounds.Size);
         }
     }
 
