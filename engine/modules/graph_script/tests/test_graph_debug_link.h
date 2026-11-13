@@ -207,6 +207,26 @@ TEST_CASE("[GraphScript] Each debug command reaches the game by its name") {
 	}
 }
 
+TEST_CASE("[GraphScript] A listen that fails leaves the link on the port it already had") {
+	Game game;
+	REQUIRE(game.wait_connected());
+	const int port = game.link->get_port();
+	Ref<GraphDebugLink> taken;
+	taken.instantiate();
+	REQUIRE(taken->listen(0) == OK);
+
+	CHECK(game.link->listen(taken->get_port()) != OK);
+
+	CHECK(game.link->get_port() == port);
+	Ref<RemoteDebuggerPeer> second = Game::connect(game.link);
+	REQUIRE(game.wait_for([&]() {
+		game.link->send_command("continue");
+		return second->has_message();
+	}));
+	CHECK(second->get_message()[0] == Variant("continue"));
+	second->close();
+}
+
 TEST_CASE("[GraphScript] A game that connects replaces the one attached, and the stop of the first goes with it") {
 	Game game;
 	REQUIRE(game.wait_connected());

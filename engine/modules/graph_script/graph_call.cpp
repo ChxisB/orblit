@@ -151,6 +151,8 @@ void GraphCall::store(const GraphCompiledStep &p_step, int p_port, const Variant
 	slots.write[p_step.slot + p_port] = p_value;
 }
 
+// shortcut: only the call's own random state is restored. A pure step that changes something outside
+// the call, such as a const method that keeps its own state, runs once more. Fix if one shows up.
 Variant GraphCall::peek(const GraphCompiledStep &p_step, int p_port) {
 	RandomNumberGenerator &random = get_random();
 	const uint64_t random_state = random.get_state();

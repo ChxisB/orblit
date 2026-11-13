@@ -48,7 +48,8 @@ public:
 	static const GraphCall *get_level(int p_level);
 
 	// The value on a data input of a step in a running call, for the editor to show on a wire. The
-	// call is not changed. Null when the level, the step or the port does not exist.
+	// call's own slots, random state and failed flag are kept. A pure step with an effect outside
+	// the call runs once more. Null when the level, the step or the port does not exist.
 	static Variant get_wire_value(int p_level, int p_step_id, int p_port);
 	// Answers "graph_debug:wire" requests from the editor while the game is stopped. The request is
 	// [level, step, port]. The reply is the same three numbers and the value as text.
@@ -62,4 +63,7 @@ public:
 	// with more than max_subitems items shows the first of them and a count of the rest. A
 	// negative limit cuts nothing.
 	static Variant limit(const Variant &p_value, int p_max_subitems, int p_max_depth);
+	// A wire value as the text the editor shows. Containers are cut as limit does, and the text is
+	// cut at a length one debugger message can carry.
+	static String get_wire_text(const Variant &p_value);
 };

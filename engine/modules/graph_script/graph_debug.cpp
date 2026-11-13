@@ -64,8 +64,8 @@ Error parse_message(void *p_user, const String &p_msg, const Array &p_args, bool
 		return OK;
 	}
 	ERR_FAIL_COND_V(p_args.size() != 3, ERR_INVALID_DATA);
-	const Variant value = GraphDebug::limit(GraphDebug::get_wire_value(p_args[0], p_args[1], p_args[2]), 16, 3);
-	EngineDebugger::get_singleton()->send_message("graph_debug:wire", Array{ p_args[0], p_args[1], p_args[2], value.stringify() });
+	const String text = GraphDebug::get_wire_text(GraphDebug::get_wire_value(p_args[0], p_args[1], p_args[2]));
+	EngineDebugger::get_singleton()->send_message("graph_debug:wire", Array{ p_args[0], p_args[1], p_args[2], text });
 	return OK;
 }
 
@@ -154,6 +154,14 @@ String GraphDebug::make_source(const String &p_script_path, const StringName &p_
 
 String GraphDebug::get_source(const GraphCall &p_call) {
 	return make_source(p_call.get_instance().get_script()->get_path(), p_call.get_function().name);
+}
+
+String GraphDebug::get_wire_text(const Variant &p_value) {
+	constexpr int MAX_WIRE_TEXT = 200;
+	// shortcut: a packed array is turned to text whole before it is cut here. Cut the array first
+	// if hovering a wire that holds a huge one shows a stall.
+	const String text = limit(p_value, 16, 3).stringify();
+	return text.length() > MAX_WIRE_TEXT ? text.left(MAX_WIRE_TEXT) + "..." : text;
 }
 
 Variant GraphDebug::limit(const Variant &p_value, int p_max_subitems, int p_max_depth) {

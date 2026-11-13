@@ -329,6 +329,15 @@ TEST_CASE("[GraphScript] A value is cut to the depth and the count the caller as
 	CHECK(GraphDebug::limit(Variant(7), 1, 0) == Variant(7));
 }
 
+TEST_CASE("[GraphScript] The text of a wire value is cut to a length a message can carry") {
+	PackedByteArray big;
+	big.resize(5000);
+	const String text = GraphDebug::get_wire_text(big);
+	CHECK(text.length() < 300);
+	CHECK(text.ends_with("..."));
+	CHECK(GraphDebug::get_wire_text(Variant(12)) == "12");
+}
+
 // A failing call stops like a breakpoint, because a runtime error is what a person asks the debugger about.
 TEST_CASE("[Stage][GraphScript] A failing call breaks when the debugger asks for error breaks") {
 	Graph graph("go");

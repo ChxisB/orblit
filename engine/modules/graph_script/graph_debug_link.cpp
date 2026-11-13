@@ -54,10 +54,12 @@ GraphDebugLink::GraphDebugLink() {
 }
 
 Error GraphDebugLink::listen(int p_port) {
-	server.instantiate();
-	const Error error = server->listen(p_port, IPAddress("127.0.0.1"));
-	if (error != OK) {
-		server.unref();
+	// A bind that fails must not drop the server that already listens.
+	Ref<TCPServer> next;
+	next.instantiate();
+	const Error error = next->listen(p_port, IPAddress("127.0.0.1"));
+	if (error == OK) {
+		server = next;
 	}
 	return error;
 }
