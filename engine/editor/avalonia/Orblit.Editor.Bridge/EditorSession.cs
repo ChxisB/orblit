@@ -17,6 +17,7 @@ public sealed class EditorSession
 
     // ResourceLoader.CACHE_MODE_REUSE: a scene that is already loaded is not read again.
     const long CacheReuse = 1;
+    const string GraphSuffix = ".ograph";
 
     // Persistent groups, so a save keeps them.
     const string LockGroup = "_edit_lock_";
@@ -552,8 +553,9 @@ public sealed class EditorSession
         }
     }
 
-    // A script file is a C# file under res://. The language is decision 184.
-    static void RequireScriptFile(string resourcePath) => ResourcePath.RequireFile(resourcePath, ".cs", "a C# file");
+    // A script file is a graph script or a C# file under res://. Any other suffix falls to the C# test and is refused.
+    static void RequireScriptFile(string resourcePath) =>
+        ResourcePath.RequireFile(resourcePath, resourcePath.EndsWith(GraphSuffix, StringComparison.Ordinal) ? GraphSuffix : ".cs", "a graph script or C# file");
 
     static void RequireName(string name)
     {

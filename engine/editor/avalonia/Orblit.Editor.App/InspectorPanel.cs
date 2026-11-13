@@ -145,7 +145,7 @@ internal sealed class InspectorPanel : StackPanel
 
     void WireExtras()
     {
-        _script.Choices = () => _scene?.Scripts() ?? [];
+        _script.Choices = () => _scene is null ? [] : [.. _scene.Scripts(), .. _scene.GraphScripts()];
         _script.Chosen += path => TryChange(entity => _scene!.AttachScript(entity, path));
         _script.Cleared += () => TryChange(entity => _scene!.ClearScript(entity));
         _metadataRows.Entered += (name, value) => TryChange(entity => _scene!.SetMetadata(entity, name, value));

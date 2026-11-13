@@ -551,7 +551,10 @@ internal sealed class EditorChecks : IChecks
         Assert.Throws<ArgumentException>(() => _editor.AttachScript(holder, "res://main.oscn"));
         Assert.Null(_editor.ScriptOf(holder));
 
-        // A script is kept only through an instance, so an attach is proved only where a language module runs.
+        // A script is kept only through an instance. This engine has no C# module but has graph scripts, so a graph file attaches.
+        var graph = MakeGraphFile("attached");
+        _editor.AttachScript(holder, graph);
+        Assert.Equal(graph, _editor.ScriptOf(holder));
         _editor.ClearScript(holder);
         Assert.Null(_editor.ScriptOf(holder));
     }

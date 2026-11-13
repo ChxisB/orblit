@@ -158,8 +158,8 @@ internal interface IEditorScene : IScriptFiles
     string? ScriptOf(nint entity);
 
     /// <summary>
-    /// Attaches the C# file as the entity's script. Throws <see cref="ArgumentException"/> for a path that is no C# file under
-    /// res:// and <see cref="IOException"/> when the engine cannot load it. The entity keeps what it had.
+    /// Attaches the C# file or graph script as the entity's script. Throws <see cref="ArgumentException"/> for a path that is
+    /// neither under res:// and <see cref="IOException"/> when the engine cannot load it. The entity keeps what it had.
     /// </summary>
     void AttachScript(nint entity, string resourcePath);
 
