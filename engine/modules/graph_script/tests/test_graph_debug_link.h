@@ -8,6 +8,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/json.h"
 #include "core/os/os.h"
+#include "tests/test_macros.h"
 
 namespace TestGraphDebugLink {
 
@@ -232,6 +233,8 @@ TEST_CASE("[GraphScript] A game that connects replaces the one attached, and the
 	REQUIRE(game.wait_connected());
 	game.stop_at_breakpoint();
 	game.send_stack();
+	// The stack makes the link ask for the first level. Take that, so the check below sees only what comes after.
+	game.hear();
 
 	Ref<RemoteDebuggerPeer> second = Game::connect(game.link);
 	REQUIRE(game.wait_for([&]() { return !bool(game.state()["stopped"]); }));
