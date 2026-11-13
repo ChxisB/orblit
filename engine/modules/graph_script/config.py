@@ -7,7 +7,10 @@ def configure(env):
 
 
 def get_doc_classes():
-    return []
+    return [
+        "GraphCall",
+        "GraphScript",
+    ]
 
 
 def get_doc_path():
