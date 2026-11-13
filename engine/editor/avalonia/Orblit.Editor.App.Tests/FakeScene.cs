@@ -155,6 +155,8 @@ internal sealed class FakeScene : IEditorScene
     public IGraphFile OpenGraph(string resourcePath) =>
         Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 
+    public void CreateGraph(string resourcePath, string baseType) => Graphs[resourcePath] = FakeGraphSource.Sample();
+
     /// <summary>The text of each script file.</summary>
     public Dictionary<string, string> ScriptText { get; } = [];
 

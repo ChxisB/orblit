@@ -85,6 +85,14 @@ public sealed class ProjectScriptsTests : IDisposable
     }
 
     [Fact]
+    public void A_graph_script_path_names_its_file_when_the_extension_is_asked_for()
+    {
+        Assert.Equal(Path.GetFullPath(Path.Combine(_folder, "enemies/boss.ograph")), ProjectScripts.FileOf(_folder, "res://enemies/boss.ograph", ".ograph"));
+        Assert.Throws<ArgumentException>(() => ProjectScripts.FileOf(_folder, "res://spin.cs", ".ograph"));
+        Assert.Throws<ArgumentException>(() => ProjectScripts.FileOf(_folder, "res://logic.ograph"));
+    }
+
+    [Fact]
     public void A_sibling_folder_that_starts_with_the_project_name_is_refused()
     {
         var name = Path.GetFileName(_folder);

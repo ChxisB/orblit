@@ -18,14 +18,14 @@ internal static class ProjectScripts
     public static IReadOnlyList<string> FindGraphs(string project) => FindMatching(project, GraphPattern);
 
     /// <summary>
-    /// The file on disk for a res:// path. Throws <see cref="ArgumentException"/> for a path that is no C# file or that
-    /// leads out of the project folder.
+    /// The file on disk for a res:// path that ends in the extension, which is a C# file unless asked otherwise. Throws
+    /// <see cref="ArgumentException"/> for a path that does not end in it or that leads out of the project folder.
     /// </summary>
-    public static string FileOf(string project, string resourcePath)
+    public static string FileOf(string project, string resourcePath, string extension = ".cs")
     {
-        if (!resourcePath.StartsWith(Prefix, StringComparison.Ordinal) || !resourcePath.EndsWith(".cs", StringComparison.Ordinal))
+        if (!resourcePath.StartsWith(Prefix, StringComparison.Ordinal) || !resourcePath.EndsWith(extension, StringComparison.Ordinal))
         {
-            throw new ArgumentException($"{resourcePath} is no C# file under {Prefix}.", nameof(resourcePath));
+            throw new ArgumentException($"{resourcePath} is no {extension} file under {Prefix}.", nameof(resourcePath));
         }
 
         var root = Path.TrimEndingDirectorySeparator(Path.GetFullPath(project));

@@ -272,8 +272,8 @@ public sealed class EditorWindowTests
         {
             var scene = new FakeScene();
             var window = Open(scene);
-            window.Script.Breakpoints.Toggle("res://a.ograph#main", 2);
-            window.Script.Breakpoints.Toggle("res://b.ograph#_start", 5);
+            window.Graph.Breakpoints.Toggle("res://a.ograph#main", 2);
+            window.Graph.Breakpoints.Toggle("res://b.ograph#_start", 5);
 
             window.PlayButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 

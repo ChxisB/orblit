@@ -288,6 +288,18 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public IGraphFile OpenGraph(string resourcePath) => new SessionGraphFile(GraphScriptSession.Open(_host, resourcePath));
 
+    public void CreateGraph(string resourcePath, string baseType)
+    {
+        var file = ProjectScripts.FileOf(_project, resourcePath, ".ograph");
+        if (File.Exists(file))
+        {
+            throw new IOException($"{resourcePath} exists already.");
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(file) ?? _project);
+        GraphScriptSession.Create(_host, resourcePath, baseType);
+    }
+
     public string ReadScript(string resourcePath) => File.ReadAllText(ProjectScripts.FileOf(_project, resourcePath));
 
     public void WriteScript(string resourcePath, string text) => File.WriteAllText(ProjectScripts.FileOf(_project, resourcePath), text);

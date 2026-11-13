@@ -55,6 +55,7 @@ internal sealed class EditorWindow : Window
     readonly CenterArea _center;
     readonly StoreView _store;
     readonly ScriptView _script = new();
+    readonly GraphView _graph = new();
     readonly GameView _game = new();
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
     IEditorScene? _scene;
@@ -97,6 +98,7 @@ internal sealed class EditorWindow : Window
         _closeBar.DiscardRequested += () =>
         {
             _script.Discard();
+            _graph.Discard();
             ShowEdited(false);
             Close();
         };
@@ -126,6 +128,7 @@ internal sealed class EditorWindow : Window
         _center = new CenterArea(_sceneTabs, _toolbar, _viewport, _bottomBar);
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
         _center.AddWorkspace(TitleBar.Script, _script);
+        _center.AddWorkspace(TitleBar.Graph, _graph);
         _center.AddWorkspace(TitleBar.Game, _game);
         _center.AddWorkspace(TitleBar.Store, _store);
         _titleBar.WorkspaceChosen += ChooseWorkspace;
@@ -149,6 +152,8 @@ internal sealed class EditorWindow : Window
     internal StoreView Store => _store;
 
     internal ScriptView Script => _script;
+
+    internal GraphView Graph => _graph;
 
     internal SceneTabStrip SceneTabs => _sceneTabs;
 
@@ -201,6 +206,7 @@ internal sealed class EditorWindow : Window
         // The button can be pressed while the engine starts, before there is a scene to tell.
         scene.KeepChildren = _toolbar.KeepChildren;
         _script.Show(scene);
+        _graph.Show(scene);
         _center.Output.Show(scene.Output);
         _pollTimer.Start();
         ShowScenes();
@@ -214,7 +220,7 @@ internal sealed class EditorWindow : Window
     internal void Poll()
     {
         _scene?.PollOutput();
-        _script.PollDebugger();
+        _graph.PollDebugger();
         ShowGame();
     }
 
@@ -537,7 +543,7 @@ internal sealed class EditorWindow : Window
 
         try
         {
-            _scene!.Play(_script.Breakpoints.All);
+            _scene!.Play(_graph.Breakpoints.All);
         }
         catch (IOException error)
         {
@@ -633,7 +639,7 @@ internal sealed class EditorWindow : Window
     // An open script that was typed in is an edit too. Its file is written first, and the scene file only when the scene has edits.
     bool SaveEdits() => SaveScript() && (!_edited || Save());
 
-    bool HasEdits => _edited || _script.IsDirty;
+    bool HasEdits => _edited || _script.IsDirty || _graph.IsDirty;
 
     // The Save key and menu item keep the scene and the open script, whichever workspace shows.
     void SaveAll()
@@ -644,16 +650,22 @@ internal sealed class EditorWindow : Window
         }
     }
 
-    // A refused write is said in the script view, and in the window's own line too, because the view may be hidden.
+    // A refused write is said in the view of the file, and in the window's own line too, because the view may be hidden.
     bool SaveScript()
     {
-        if (_script.Save())
+        if (!_script.Save())
         {
-            return true;
+            _status.Text = _script.Status.Text ?? "";
+            return false;
         }
 
-        _status.Text = _script.Status.Text ?? "";
-        return false;
+        if (!_graph.Save())
+        {
+            _status.Text = _graph.Status.Text ?? "";
+            return false;
+        }
+
+        return true;
     }
 
     bool Save()

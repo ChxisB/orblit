@@ -6,7 +6,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles
+internal interface IEditorScene : IScriptFiles, IGraphFiles
 {
     OutlineNode? Outline();
 
@@ -178,7 +178,7 @@ internal interface IEditorScene : IScriptFiles
     bool IsPlaying { get; }
 
     /// <summary>
-    /// Runs the project in its own process, linked to <see cref="IScriptFiles.Debug"/>, and stopping on the breakpoints given,
+    /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
     /// each a source and a step id. A game already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
     /// </summary>
     void Play(IEnumerable<(string Source, int Step)> breakpoints);

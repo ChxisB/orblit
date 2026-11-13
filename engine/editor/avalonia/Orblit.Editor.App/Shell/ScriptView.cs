@@ -1,62 +1,28 @@
-using System.Text.Json;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Reactive;
-using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Theme;
-using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>A graph script open for editing. Disposing it lets the engine drop its copy, so an unsaved edit is gone.</summary>
-internal interface IGraphFile : IGraphSource, IScriptDeclarations, IGraphSnapshots, IDisposable
-{
-    // The canvas and the panels each declare these, with the same meaning, so a file is both. The file
-    // repeats them to give one member for a caller that holds the file.
-    new GraphFunction? Function { get; }
-
-    new event Action? Changed;
-
-    new GraphEditResult SetStepParameter(int id, string parameter, string valueText);
-
-    /// <summary>Writes the script to its file. Throws <see cref="IOException"/> when it cannot be written.</summary>
-    void Save();
-}
-
-/// <summary>What the script workspace needs from the project: its C# files and their text, and its graph scripts.</summary>
+/// <summary>What the Script workspace needs from the project: its C# files and their text.</summary>
 internal interface IScriptFiles
 {
     /// <summary>The res:// path of every C# file of the project.</summary>
     IReadOnlyList<string> Scripts();
-
-    /// <summary>The res:// path of every graph script of the project.</summary>
-    IReadOnlyList<string> GraphScripts();
-
-    /// <summary>Opens a graph script. Throws <see cref="IOException"/> when the engine cannot load it.</summary>
-    IGraphFile OpenGraph(string resourcePath);
-
-    /// <summary>The link to the game Play runs, which reports where it stopped and takes the commands that go on.</summary>
-    IDebugChannel Debug { get; }
 
     /// <summary>The text of a script. Throws <see cref="IOException"/> when it cannot be read.</summary>
     string ReadScript(string resourcePath);
 
     /// <summary>Replaces the text of a script. Throws <see cref="IOException"/> when it cannot be written.</summary>
     void WriteScript(string resourcePath, string text);
-
-    /// <summary>The saved breakpoints of the project's graph scripts, or null when it has none. Throws <see cref="IOException"/> when it cannot be read.</summary>
-    string? ReadBreakpoints();
-
-    /// <summary>Replaces the saved breakpoints. Throws <see cref="IOException"/> when it cannot be written.</summary>
-    void WriteBreakpoints(string text);
 }
 
 /// <summary>
-/// The Script workspace: the project's C# files and graph scripts in a list. A C# file opens in a text box with line
-/// numbers and a graph script opens on a canvas. It reads and writes the files and does not compile or run them.
+/// The Script workspace: the project's C# files in a list. A file opens in a text box with line numbers. It reads and
+/// writes the files and does not compile or run them. Graph scripts have their own workspace.
 /// </summary>
 internal sealed class ScriptView : Border
 {
@@ -79,19 +45,9 @@ internal sealed class ScriptView : Border
     readonly TextBlock _name = new() { Text = "Pick a script.", FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { Foreground = EditorBrushes.TabInactive, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _save = new() { Content = "Save", Padding = new Thickness(12, 4), MinHeight = 0, IsEnabled = false };
-    readonly ScrollViewer _text;
-    readonly Border _graphHost = new() { IsVisible = false };
-    readonly Border _panelsHost = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TabInactive };
-    readonly ScrollViewer _debugHost = new() { MaxHeight = 240, Padding = new Thickness(10, 6), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     IScriptFiles? _files;
-    GraphDebugger? _debugger;
-    DebugPlace? _shownStop;
-    IGraphFile? _graphFile;
-    ScriptPanels? _panels;
-    StepInspector? _inspector;
     string? _open;
     string _saved = "";
-    bool _graphEdited;
 
     public ScriptView()
     {
@@ -108,20 +64,13 @@ internal sealed class ScriptView : Border
         Grid.SetColumn(_editor, 1);
         text.Children.Add(_gutter);
         text.Children.Add(_editor);
-        _text = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var scroll = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
         // A short file would leave the box narrower than the area, and a click beside it would reach nothing.
-        _text.GetObservable(ScrollViewer.ViewportProperty).Subscribe(new AnonymousObserver<Size>(viewport => text.MinWidth = viewport.Width));
+        scroll.GetObservable(ScrollViewer.ViewportProperty).Subscribe(new AnonymousObserver<Size>(viewport => text.MinWidth = viewport.Width));
         var body = new DockPanel();
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
-        // The text spans both columns. A graph script has the canvas on the left and its panels on the right.
-        var area = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        Grid.SetColumnSpan(_text, 2);
-        Grid.SetColumn(_panelsHost, 1);
-        area.Children.Add(_text);
-        area.Children.Add(_graphHost);
-        area.Children.Add(_panelsHost);
-        body.Children.Add(area);
+        body.Children.Add(scroll);
         var panel = new DockPanel();
         DockPanel.SetDock(_list, Dock.Left);
         panel.Children.Add(_list);
@@ -141,74 +90,21 @@ internal sealed class ScriptView : Border
 
     internal Button SaveButton => _save;
 
-    /// <summary>The breakpoints of every graph script opened here. They outlive the canvas that shows them, and the project keeps them.</summary>
-    internal GraphBreakpoints Breakpoints { get; } = new();
-
-    /// <summary>The canvas of the open graph script, or null when a C# file or nothing is open.</summary>
-    internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
-
-    /// <summary>The panel of the debug session, or null before the files are shown.</summary>
-    internal DebuggerPanel? DebugPanel => _debugHost.Content as DebuggerPanel;
-
-    /// <summary>The panels of the open graph script, or null when a C# file or nothing is open.</summary>
-    internal ScriptPanels? Panels => _panels;
-
-    /// <summary>The inspector of the selected step of the open graph script, or null when a C# file or nothing is open.</summary>
-    internal StepInspector? Inspector => _inspector;
-
-    /// <summary>Whether the open file differs from what is on disk: the text in the box, or a graph the engine changed.</summary>
-    public bool IsDirty => _graphFile is not null ? _graphEdited : _open is not null && _editor.Text != _saved;
+    /// <summary>Whether the text in the box differs from what is on disk.</summary>
+    public bool IsDirty => _open is not null && _editor.Text != _saved;
 
     /// <summary>Starts from this project's files, with no script open.</summary>
     public void Show(IScriptFiles files)
     {
         _files = files;
-        StartDebugger(files);
-        CloseGraph();
         _open = null;
         _saved = "";
         _editor.Text = "";
         _editor.IsEnabled = false;
         _name.Text = "Pick a script.";
         _status.Text = "";
-        LoadBreakpoints(files);
         Refresh();
     }
-
-    // The project keeps the breakpoints, so a person's stops are still there when the editor opens again. A file that
-    // cannot be read leaves none and says why. Showing the files again must not write each change twice.
-    void LoadBreakpoints(IScriptFiles files)
-    {
-        Breakpoints.Changed -= SaveBreakpoints;
-        Breakpoints.Changed += SaveBreakpoints;
-        try
-        {
-            Breakpoints.Load(files.ReadBreakpoints());
-        }
-        catch (JsonException)
-        {
-            _status.Text = "The saved breakpoints could not be read.";
-        }
-        catch (Exception error) when (Failed(error))
-        {
-            _status.Text = error.Message;
-        }
-    }
-
-    void SaveBreakpoints(string source, int step, bool isSet)
-    {
-        try
-        {
-            _files!.WriteBreakpoints(Breakpoints.ToJson());
-        }
-        catch (Exception error) when (Failed(error))
-        {
-            _status.Text = $"The breakpoints were not saved. {error.Message}";
-        }
-    }
-
-    /// <summary>Takes in what the running game said. A stop on a step of a graph script opens the script and shows the step.</summary>
-    public void PollDebugger() => _debugger?.Poll();
 
     /// <summary>Writes the open script when it has edits. Answers whether the file holds the text now.</summary>
     public bool Save()
@@ -220,18 +116,9 @@ internal sealed class ScriptView : Border
 
         try
         {
-            if (_graphFile is not null)
-            {
-                _graphFile.Save();
-                _graphEdited = false;
-            }
-            else
-            {
-                var text = _editor.Text ?? "";
-                _files!.WriteScript(_open!, text);
-                _saved = text;
-            }
-
+            var text = _editor.Text ?? "";
+            _files!.WriteScript(_open!, text);
+            _saved = text;
             ShowText();
             _status.Text = $"Saved {_open}.";
             return true;
@@ -247,7 +134,6 @@ internal sealed class ScriptView : Border
     public void Discard()
     {
         _saved = _editor.Text ?? "";
-        _graphEdited = false;
         ShowText();
     }
 
@@ -265,7 +151,7 @@ internal sealed class ScriptView : Border
 
     void Refresh()
     {
-        IReadOnlyList<string> paths = _files is null ? [] : [.. _files.Scripts(), .. _files.GraphScripts()];
+        var paths = _files?.Scripts() ?? [];
         // The list keeps a selection that the new source still holds, which would open that script by itself.
         _list.SelectedItem = null;
         _list.ItemsSource = paths;
@@ -288,7 +174,12 @@ internal sealed class ScriptView : Border
 
         try
         {
-            Open(_files, path);
+            var text = _files.ReadScript(path);
+            _editor.Text = text;
+            _editor.IsEnabled = true;
+            _saved = text;
+            _open = path;
+            _name.Text = path;
             _status.Text = "";
             ShowText();
         }
@@ -297,115 +188,6 @@ internal sealed class ScriptView : Border
             _status.Text = error.Message;
             _list.SelectedItem = _open;
         }
-    }
-
-    void Open(IScriptFiles files, string path)
-    {
-        if (path.EndsWith(".ograph", StringComparison.Ordinal))
-        {
-            var file = files.OpenGraph(path);
-            CloseGraph();
-            _graphFile = file;
-            _graphEdited = false;
-            file.Changed += () =>
-            {
-                _graphEdited = true;
-                ShowText();
-            };
-            _panels = new ScriptPanels(file);
-            _inspector = new StepInspector(file);
-            ShowCanvas(file, path, _inspector);
-            // The canvas shows the function it is given when it is made, so another function needs a new canvas.
-            _panels.FunctionOpened += _ => ShowCanvas(file, path, _inspector);
-            _panels.StepRevealed += id => Canvas?.Reveal(id);
-            // A control has one parent, and the debug panel outlives the side column of the script before this one.
-            (_debugHost.Parent as Panel)?.Children.Remove(_debugHost);
-            var side = new Grid { RowDefinitions = new RowDefinitions("*,Auto,Auto") };
-            Grid.SetRow(_debugHost, 1);
-            Grid.SetRow(_inspector, 2);
-            side.Children.Add(_panels);
-            side.Children.Add(_debugHost);
-            side.Children.Add(_inspector);
-            _panelsHost.Child = side;
-            _graphHost.IsVisible = true;
-            _panelsHost.IsVisible = true;
-            _text.IsVisible = false;
-        }
-        else
-        {
-            var text = files.ReadScript(path);
-            CloseGraph();
-            _editor.Text = text;
-            _editor.IsEnabled = true;
-            _saved = text;
-        }
-
-        _open = path;
-        _name.Text = path;
-    }
-
-    // A new canvas has nothing selected, so the inspector is cleared with it.
-    void ShowCanvas(IGraphFile file, string path, StepInspector inspector)
-    {
-        var canvas = new GraphCanvas(file);
-        canvas.Scene.Script = path;
-        canvas.Scene.Breakpoints = Breakpoints;
-        canvas.Reload();
-        canvas.Probe(_debugger);
-        canvas.ShowStop(_debugger?.Current);
-        canvas.SelectionChanged += inspector.Show;
-        _graphHost.Child = canvas;
-        inspector.Show(null);
-    }
-
-    void StartDebugger(IScriptFiles files)
-    {
-        _debugger?.Dispose();
-        _shownStop = null;
-        _debugger = new GraphDebugger(files.Debug, Breakpoints);
-        _debugger.Changed += ShowStop;
-        _debugHost.Content = new DebuggerPanel(_debugger);
-    }
-
-    // The view moves to a stop once. A poll that only brings values leaves the view where the person put it.
-    void ShowStop()
-    {
-        var place = _debugger!.Current;
-        if (place != _shownStop && place is { } at)
-        {
-            Reveal(at);
-        }
-
-        _shownStop = place;
-        Canvas?.ShowStop(place);
-    }
-
-    void Reveal(DebugPlace at)
-    {
-        if (_files is null || !_files.GraphScripts().Contains(at.Script))
-        {
-            return;
-        }
-
-        _list.SelectedItem = at.Script;
-        if (_open == at.Script)
-        {
-            _panels!.Reveal(at.Function, at.Step);
-        }
-    }
-
-    void CloseGraph()
-    {
-        _panels = null;
-        _inspector = null;
-        _graphFile?.Dispose();
-        _graphFile = null;
-        _graphEdited = false;
-        _graphHost.Child = null;
-        _graphHost.IsVisible = false;
-        _panelsHost.Child = null;
-        _panelsHost.IsVisible = false;
-        _text.IsVisible = true;
     }
 
     void ShowText()
