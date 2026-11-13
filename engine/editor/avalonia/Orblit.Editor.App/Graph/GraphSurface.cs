@@ -39,6 +39,9 @@ internal sealed class GraphSurface : Control
         AddHandler(DragDrop.DropEvent, OnDrop);
     }
 
+    /// <summary>The commands of the keyboard, given by the canvas that owns the surface.</summary>
+    internal GraphShortcuts? Shortcuts { get; set; }
+
     /// <summary>Raised after the pointer or the keys changed what shows, so a minimap can follow.</summary>
     public event Action? Interacted;
 
@@ -96,7 +99,12 @@ internal sealed class GraphSurface : Control
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
-        var handled = true;
+        e.Handled = Shortcuts?.TryRun(e.Key, e.KeyModifiers, _viewport.ToGraph(_pointer)) == true || RunPlainKey(e);
+        Changed();
+    }
+
+    bool RunPlainKey(KeyEventArgs e)
+    {
         if (e.Key is Key.Delete or Key.Back)
         {
             _edits.DeleteSelection();
@@ -105,20 +113,16 @@ internal sealed class GraphSurface : Control
         {
             _gestures.Cancel();
         }
-        else if (e.Key == Key.G && (e.KeyModifiers & (KeyModifiers.Control | KeyModifiers.Meta)) != 0)
-        {
-            _edits.FrameSelection();
-        }
         else if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
         {
             _gestures.RequestPalette(_pointer);
         }
         else
         {
-            handled = false;
+            return false;
         }
-        e.Handled = handled;
-        Changed();
+
+        return true;
     }
 
     // A drop carries something from another panel: a file, an entity, a variable. It becomes the step that reads it.
@@ -168,7 +172,7 @@ internal sealed class GraphSurface : Control
         }
         foreach (var step in _scene.Steps.Where(step => !_scene.IsHidden(step) && step.Bounds.Intersects(view)))
         {
-            step.Draw(context, _scene.SelectedSteps.Contains(step.Id));
+            step.Draw(context, _scene.SelectedSteps.Contains(step.Id), _scene.Bookmarked.Contains(step.Id));
         }
         DrawPendingWire(context);
         if (_gestures.Band is { } band)

@@ -11,7 +11,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>A graph script open for editing. Disposing it lets the engine drop its copy, so an unsaved edit is gone.</summary>
-internal interface IGraphFile : IGraphSource, IScriptDeclarations, IDisposable
+internal interface IGraphFile : IGraphSource, IScriptDeclarations, IGraphSnapshots, IDisposable
 {
     // The canvas and the panels each declare these, with the same meaning, so a file is both. The file
     // repeats them to give one member for a caller that holds the file.

@@ -20,6 +20,8 @@ internal sealed class GraphScene
     readonly Dictionary<int, StepView> _byId = [];
     readonly List<FrameView> _frames = [];
     readonly HashSet<int> _hidden = [];
+    readonly Dictionary<string, HashSet<int>> _bookmarks = [];
+    string _function = "";
     IReadOnlyList<GraphWire> _wires = [];
 
     public IReadOnlyList<StepView> Steps => _steps;
@@ -36,6 +38,10 @@ internal sealed class GraphScene
 
     public WireStyle Style { get; set; }
 
+    /// <summary>The steps of the function on show that carry a bookmark.</summary>
+    // shortcut: bookmarks live in memory with the scene and are lost when the script closes. Keep them in the file when it has a place for editor data.
+    public IReadOnlySet<int> Bookmarked => _bookmarks.GetValueOrDefault(_function) ?? [];
+
     public int NextFrameId => _frames.Count == 0 ? 1 : _frames.Max(frame => frame.Id) + 1;
 
     /// <summary>The box that holds every step and frame, or an empty box for an empty graph.</summary>
@@ -50,6 +56,7 @@ internal sealed class GraphScene
 
     public void Load(GraphFunction? function)
     {
+        _function = function?.Name ?? "";
         _wires = function?.Wires ?? [];
         var wired = _wires.SelectMany(wire => new[] { new PinRef(wire.FromStep, wire.FromPort, false), new PinRef(wire.ToStep, wire.ToPort, true) }).ToHashSet();
         _steps.Clear();
@@ -60,6 +67,19 @@ internal sealed class GraphScene
         _frames.AddRange((function?.Frames ?? []).Select(frame => new FrameView(frame)));
         HideFoldedSteps();
         PruneSelection();
+        // A step id can be used again after the step is gone, so a bookmark outlives only its step.
+        _bookmarks.GetValueOrDefault(_function)?.IntersectWith(_byId.Keys);
+    }
+
+    /// <summary>Marks the step or takes its mark off. True when it is marked after the call.</summary>
+    public bool ToggleBookmark(int id)
+    {
+        if (!_bookmarks.TryGetValue(_function, out var marked))
+        {
+            _bookmarks[_function] = marked = [];
+        }
+
+        return !marked.Remove(id) && marked.Add(id);
     }
 
     public StepView? Find(int id) => _byId.GetValueOrDefault(id);

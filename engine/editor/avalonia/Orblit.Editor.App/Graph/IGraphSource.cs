@@ -15,6 +15,9 @@ internal interface IGraphSource
     /// <summary>Raised after an edit the engine took.</summary>
     event Action? Changed;
 
+    /// <summary>The undo and redo of the file. Edits made inside <see cref="GraphHistory.Group"/> undo as one.</summary>
+    GraphHistory History { get; }
+
     /// <summary>A step id the function does not use yet.</summary>
     int NextStepId();
 
@@ -37,6 +40,21 @@ internal interface IGraphSource
     GraphEditResult SetFrame(GraphFrame frame);
 
     GraphEditResult RemoveFrame(int id);
+
+    /// <summary>The steps with these ids of the function on show, the wires between them and what they name, as text for <see cref="PasteSteps"/>.</summary>
+    string GetPayload(IReadOnlyList<int> ids);
+
+    /// <summary>
+    /// Adds the steps of a payload to the function on show with their upper left corner at the point. A clash
+    /// with a declaration of the script comes back with the choice to make and changes nothing until it is made.
+    /// </summary>
+    GraphPasteResult PasteSteps(string payload, double x, double y, GraphPasteChoice choice);
+
+    /// <summary>Moves the steps of the function on show into a new function and puts a Call step in their place. A refusal changes nothing.</summary>
+    GraphFold Collapse(IReadOnlyList<int> ids);
+
+    /// <summary>Puts the steps of the function a Call step names where the call is, and takes the call away. A refusal changes nothing.</summary>
+    GraphFold Expand(int call);
 
     /// <summary>
     /// The steps that fit a wire dragged from the given side, matched on the text. The engine does the matching,

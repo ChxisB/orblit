@@ -159,6 +159,7 @@ public:
 	// dragged data wire carries. This asks about the engine and not about this script, and it sits
 	// here because the editor bridge calls methods on an object.
 	String find_steps(const String &p_text, const String &p_dragged_side, int p_type, const String &p_sort) const;
+	String find_overrides() const;
 
 	virtual void reload_from_file() override;
 	virtual bool can_instantiate() const override;

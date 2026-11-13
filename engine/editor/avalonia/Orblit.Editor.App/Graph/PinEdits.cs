@@ -12,8 +12,7 @@ internal readonly record struct Pin(GraphStep Step, bool IsInput, int Index)
 /// <summary>
 /// The edits a pin offers: make a variable or a local of it, put its zero back, or split or combine a struct.
 /// Each runs several engine calls in order and stops at the first one the engine refuses, returning that refusal.
-/// shortcut: the calls of one edit are not one undo step, so undo walks back through them. Group them when the
-/// history lands.
+/// The calls of one edit are one entry in the history.
 /// </summary>
 internal sealed class PinEdits
 {
@@ -92,18 +91,20 @@ internal sealed class PinEdits
         return _file.Connect(pin.IsInput ? new GraphWire(id, at, pin.Step.Id, pin.Index) : new GraphWire(pin.Step.Id, pin.Index, id, at));
     }
 
-    static GraphEditResult Chain(params Func<GraphEditResult>[] edits)
+    GraphEditResult Chain(params Func<GraphEditResult>[] edits)
     {
         var result = new GraphEditResult(0, "");
-        foreach (var edit in edits)
+        _file.History.Group(() =>
         {
-            result = edit();
-            if (!result.Ok)
+            foreach (var edit in edits)
             {
-                break;
+                result = edit();
+                if (!result.Ok)
+                {
+                    break;
+                }
             }
-        }
-
+        });
         return result;
     }
 

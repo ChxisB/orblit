@@ -1002,6 +1002,11 @@ String GraphScript::find_steps(const String &p_text, const String &p_dragged_sid
 	return GraphDocument::write_entries(GraphStepCatalogue::find(p_text, filter));
 }
 
+String GraphScript::find_overrides() const {
+	// A script with no base type goes on any object, so it is offered what an object can override.
+	return GraphDocument::write_entries(GraphStepCatalogue::find_overrides(base_type == StringName() ? StringName("Object") : base_type));
+}
+
 void GraphScript::reload_from_file() {
 	// The language reloads a script by calling this, so it must not call back into the language.
 	Resource::reload_from_file();
@@ -1228,6 +1233,7 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("paste_payload", "function", "payload_text", "x", "y", "conflict"), &GraphScript::paste_payload);
 	ClassRegistry::bind_method(D_METHOD("get_document"), &GraphScript::get_document);
 	ClassRegistry::bind_method(D_METHOD("find_steps", "text", "dragged_side", "type", "sort"), &GraphScript::find_steps);
+	ClassRegistry::bind_method(D_METHOD("find_overrides"), &GraphScript::find_overrides);
 
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "functions", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_functions", "get_functions");
 	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "variables", PROPERTY_HINT_NONE, "", PROPERTY_USAGE_NO_EDITOR), "set_variables", "get_variables");

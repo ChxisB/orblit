@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -26,6 +27,10 @@ internal sealed class GraphCanvas : Grid
     readonly GraphEdits _edits;
     readonly GraphGestures _gestures;
     readonly GraphSurface _surface;
+    readonly GraphClipboard _clipboard;
+    readonly PasteChoiceBar _pasteBar;
+    readonly ArrangeBar _arrangeBar;
+    readonly FindBar _findBar;
     readonly GraphMinimap _minimap;
     readonly PalettePopup _palette = new();
     readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
@@ -42,12 +47,19 @@ internal sealed class GraphCanvas : Grid
     int? _selected;
     int? _revealed;
 
-    public GraphCanvas(IGraphSource source)
+    /// <param name="source">What the canvas shows and edits.</param>
+    /// <param name="clipboard">Where copied steps go. The window's clipboard when none is given.</param>
+    public GraphCanvas(IGraphSource source, ITextClipboard? clipboard = null)
     {
         _source = source;
         _edits = new GraphEdits(source, _scene);
         _gestures = new GraphGestures(_scene, _viewport, _edits);
         _surface = new GraphSurface(_scene, _viewport, _gestures, _edits);
+        _clipboard = new GraphClipboard(source, _scene, _edits, clipboard ?? new WindowClipboard(this));
+        _pasteBar = new PasteChoiceBar(_clipboard);
+        _arrangeBar = new ArrangeBar(new GraphArranger(_scene, _edits), Select, _edits);
+        _findBar = new FindBar(new GraphSearch(_scene, Reveal, Redraw), () => _surface.Focus());
+        _surface.Shortcuts = Shortcuts();
         _minimap = new GraphMinimap(_scene, _viewport, _surface) { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 12, 12) };
         _noticeBar = new Border { Background = new SolidColorBrush(Color.Parse("#c04a3a")), Padding = new Thickness(10, 4), CornerRadius = new CornerRadius(4), IsVisible = false, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(12), Child = _notice };
         Build();
@@ -64,6 +76,14 @@ internal sealed class GraphCanvas : Grid
     internal GraphEdits Edits => _edits;
 
     internal GraphSurface Surface => _surface;
+
+    internal GraphClipboard Clipboard => _clipboard;
+
+    internal PasteChoiceBar PasteBar => _pasteBar;
+
+    internal ArrangeBar ArrangeBar => _arrangeBar;
+
+    internal FindBar FindBar => _findBar;
 
     internal GraphMinimap Minimap => _minimap;
 
@@ -94,8 +114,25 @@ internal sealed class GraphCanvas : Grid
     {
         _scene.Load(_source.Function);
         _empty.IsVisible = _source.Function is null;
-        _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
+        SyncTools();
         FitOnce();
+        Redraw();
+        NotifySelection();
+    }
+
+    /// <summary>The control with this id, such as <c>paste:reuse</c>. Null when the canvas has none.</summary>
+    internal T? Find<T>(string id) where T : Control => this.GetVisualDescendants().OfType<T>().FirstOrDefault(control => (control.Tag as string) == id);
+
+    /// <summary>Selects exactly these steps. An id the function does not have is skipped.</summary>
+    internal void Select(IEnumerable<int> ids)
+    {
+        _scene.Clear();
+        foreach (var id in ids.Where(id => _scene.Find(id) is not null))
+        {
+            _scene.SelectStep(id, true);
+        }
+
+        SyncTools();
         Redraw();
         NotifySelection();
     }
@@ -112,7 +149,7 @@ internal sealed class GraphCanvas : Grid
         _scene.SelectStep(stepId, false);
         _revealed = stepId;
         CenterOnRevealed();
-        _frame.IsEnabled = true;
+        SyncTools();
         Redraw();
         NotifySelection();
     }
@@ -158,7 +195,7 @@ internal sealed class GraphCanvas : Grid
         {
             tools.Children.Add(control);
         }
-        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _noticeBar, _palette, _editor })
+        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _arrangeBar, _findBar, _pasteBar, _noticeBar, _palette, _editor })
         {
             Children.Add(control);
         }
@@ -174,11 +211,10 @@ internal sealed class GraphCanvas : Grid
             }
         };
         _edits.Settled += Reload;
-        _edits.Refused += reason =>
-        {
-            _notice.Text = reason;
-            _noticeBar.IsVisible = true;
-        };
+        _edits.Refused += ShowNotice;
+        _edits.Folded += Select;
+        _clipboard.Refused += ShowNotice;
+        _clipboard.Pasted += Select;
         _surface.Interacted += OnInteracted;
         _gestures.Pressing += () =>
         {
@@ -199,6 +235,26 @@ internal sealed class GraphCanvas : Grid
         _map.Click += (_, _) => _minimap.IsVisible = _map.IsChecked == true;
     }
 
+    void ShowNotice(string reason)
+    {
+        _notice.Text = reason;
+        _noticeBar.IsVisible = true;
+    }
+
+    // A copy or paste reads the clipboard and so runs as a task, and its failures are reported by the clipboard.
+    GraphShortcuts Shortcuts() => new(new Dictionary<(Key Key, bool Shift), Action<Point>>
+    {
+        [(Key.Z, false)] = _ => _edits.Undo(),
+        [(Key.Z, true)] = _ => _edits.Redo(),
+        [(Key.Y, false)] = _ => _edits.Redo(),
+        [(Key.C, false)] = at => { _ = _clipboard.Copy(); },
+        [(Key.X, false)] = at => { _ = _clipboard.Cut(); },
+        [(Key.V, false)] = at => { _ = _clipboard.Paste(at); },
+        [(Key.D, false)] = _ => _clipboard.Duplicate(),
+        [(Key.G, false)] = _ => _edits.FrameSelection(),
+        [(Key.F, false)] = _ => _findBar.Open(),
+    });
+
     /// <summary>Opens the palette at a screen point. A step picked there is added at the point and joined to the pin when there is one.</summary>
     internal void OpenPalette(Point screen, PinRef? from)
     {
@@ -217,9 +273,17 @@ internal sealed class GraphCanvas : Grid
         return (pin.IsInput ? GraphDraggedSide.Input : GraphDraggedSide.Output, port.Type, port.Sort);
     }
 
+    // What the selection switches on: framing, and the bar of arrange buttons.
+    void SyncTools()
+    {
+        var any = _scene.SelectedSteps.Count > 0;
+        _frame.IsEnabled = any;
+        _arrangeBar.IsVisible = any;
+    }
+
     void OnInteracted()
     {
-        _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
+        SyncTools();
         _minimap.InvalidateVisual();
         NotifySelection();
     }

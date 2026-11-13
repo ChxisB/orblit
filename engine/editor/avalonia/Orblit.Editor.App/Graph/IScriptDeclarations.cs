@@ -46,6 +46,12 @@ internal interface IScriptDeclarations
     /// <summary>Adds a function with an Entry step, which holds its arguments and locals.</summary>
     GraphEditResult AddFunction(string name);
 
+    /// <summary>The virtual functions of the script's base type, each as an entry whose parameters are the signature to copy.</summary>
+    IReadOnlyList<GraphStepEntry> FindOverrides();
+
+    /// <summary>Adds a function named after the entry, with the entry's signature. One edit: it all happens or none of it.</summary>
+    GraphEditResult AddOverride(GraphStepEntry entry);
+
     GraphEditResult RemoveFunction(string name);
 
     GraphEditResult RenameFunction(string name, string newName);

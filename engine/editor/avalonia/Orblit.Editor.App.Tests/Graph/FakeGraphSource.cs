@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
@@ -49,6 +50,8 @@ internal sealed class FakeGraphSource : IGraphFile
     readonly List<string> _otherFunctions = [];
     readonly Dictionary<string, GraphStep[]> _otherSteps = [];
     string _openName = "main";
+    GraphHistory? _history;
+    readonly Dictionary<string, Action> _restorers = [];
 
     public List<string> Calls { get; } = [];
 
@@ -78,6 +81,155 @@ internal sealed class FakeGraphSource : IGraphFile
     public GraphFunction? Function => Empty ? null : new GraphFunction(_openName, "", [.. _steps], [.. _wires], [.. _frames]);
 
     public GraphDocument Document => new("Entity", "", [.. _variables], [.. _signals], [.. FunctionList()], []);
+
+    sealed record Payload(List<GraphStep> Steps, List<GraphWire> Wires, List<GraphVariable> Variables);
+
+    /// <summary>Made when first asked for, so it starts from what the test put in the source and not from an empty one. A test that edits before it asks has no entry for that edit.</summary>
+    public GraphHistory History => _history ??= new GraphHistory(this);
+
+    /// <summary>The state as text. The text is the whole state, so equal text is an equal script, as the engine's snapshot is.</summary>
+    public string GetSnapshot()
+    {
+        var text = JsonSerializer.Serialize(new object[] { _steps, _wires, _frames, _variables, _signals, _otherFunctions, _otherSteps, _openName });
+        var steps = _steps.ToList();
+        var wires = _wires.ToList();
+        var frames = _frames.ToList();
+        var variables = _variables.ToList();
+        var signals = _signals.ToList();
+        var others = _otherFunctions.ToList();
+        var otherSteps = new Dictionary<string, GraphStep[]>(_otherSteps);
+        var open = _openName;
+        _restorers[text] = () =>
+        {
+            Replace(_steps, steps);
+            Replace(_wires, wires);
+            Replace(_frames, frames);
+            Replace(_variables, variables);
+            Replace(_signals, signals);
+            Replace(_otherFunctions, others);
+            _otherSteps.Clear();
+            foreach (var pair in otherSteps)
+            {
+                _otherSteps[pair.Key] = pair.Value;
+            }
+
+            _openName = open;
+        };
+        return text;
+    }
+
+    public GraphEditResult Restore(string snapshot) =>
+        _restorers.TryGetValue(snapshot, out var restore) ? Take("Restore", restore) : Refuse("Restore", 30, "The text is not a copy of steps.");
+
+    /// <summary>The selected steps, the wires between them and the variables they name. The entry step is never copied.</summary>
+    public string GetPayload(IReadOnlyList<int> ids)
+    {
+        var steps = _steps.Where(step => ids.Contains(step.Id) && step.Kind != "entry").ToList();
+        var chosen = steps.Select(step => step.Id).ToHashSet();
+        var wires = _wires.Where(wire => chosen.Contains(wire.FromStep) && chosen.Contains(wire.ToStep)).ToList();
+        var named = steps.Select(step => VariantText.Unquote(step.Parameters.GetValueOrDefault("name"))).ToHashSet();
+        return JsonSerializer.Serialize(new Payload(steps, wires, [.. _variables.Where(variable => named.Contains(variable.Name))]));
+    }
+
+    // A collapse takes the steps out and puts a call where the first one stood. An expand puts a print where a call stood.
+    public GraphFold Collapse(IReadOnlyList<int> ids)
+    {
+        Calls.Add($"Collapse {string.Join(",", ids)}");
+        var first = Function!.Steps.First(step => ids.Contains(step.Id));
+        foreach (var id in ids)
+        {
+            RemoveStep(id);
+        }
+
+        var call = NextStepId();
+        AddStep(call, "call_function");
+        MoveStep(call, first.X, first.Y);
+        return new GraphFold(new GraphEditResult(0, ""), [call]);
+    }
+
+    public GraphFold Expand(int call)
+    {
+        Calls.Add($"Expand {call}");
+        var step = Function!.Steps.FirstOrDefault(candidate => candidate.Id == call);
+        if (step?.Kind != "call_function")
+        {
+            return new GraphFold(new GraphEditResult(31, "Select one Call step to expand."), []);
+        }
+
+        RemoveStep(call);
+        var back = NextStepId();
+        AddStep(back, "print");
+        MoveStep(back, step.X, step.Y);
+        return new GraphFold(new GraphEditResult(0, ""), [back]);
+    }
+
+    public GraphPasteResult PasteSteps(string payload, double x, double y, GraphPasteChoice choice)
+    {
+        Calls.Add($"PasteSteps {x} {y} {choice}");
+        Payload? incoming;
+        try
+        {
+            incoming = JsonSerializer.Deserialize<Payload>(payload);
+        }
+        catch (JsonException)
+        {
+            incoming = null;
+        }
+
+        if (incoming is null)
+        {
+            return new GraphPasteResult(new GraphEditResult(30, "The text is not a copy of steps."), [], []);
+        }
+
+        var clashes = incoming.Variables.Where(variable => _variables.Exists(held => held.Name == variable.Name && held.Type != variable.Type)).ToList();
+        if (clashes.Count > 0 && choice == GraphPasteChoice.Ask)
+        {
+            return new GraphPasteResult(new GraphEditResult(Exists, "That is already there."), [.. clashes.Select(variable => new GraphPasteClash("variable", variable.Name))], []);
+        }
+
+        var renamed = new Dictionary<string, string>();
+        foreach (var variable in incoming.Variables)
+        {
+            if (!_variables.Exists(held => held.Name == variable.Name))
+            {
+                _variables.Add(variable);
+            }
+            else if (clashes.Contains(variable) && choice == GraphPasteChoice.KeepBoth)
+            {
+                renamed[variable.Name] = variable.Name + "_2";
+                _variables.Add(variable with { Name = variable.Name + "_2" });
+            }
+        }
+
+        var ids = Place(incoming, x, y, renamed);
+        Changed?.Invoke();
+        return new GraphPasteResult(new GraphEditResult(0, ""), [], ids);
+    }
+
+    // The steps get fresh ids in order and the upper left one lands on the point.
+    List<int> Place(Payload incoming, double x, double y, Dictionary<string, string> renamed)
+    {
+        var left = incoming.Steps.Count == 0 ? 0 : incoming.Steps.Min(step => step.X);
+        var top = incoming.Steps.Count == 0 ? 0 : incoming.Steps.Min(step => step.Y);
+        var next = NextStepId();
+        var ids = new Dictionary<int, int>();
+        foreach (var step in incoming.Steps)
+        {
+            ids[step.Id] = next++;
+            var name = VariantText.Unquote(step.Parameters.GetValueOrDefault("name"));
+            var parameters = renamed.TryGetValue(name, out var other) ? new Dictionary<string, string>(step.Parameters) { ["name"] = VariantText.Quote(other) } : step.Parameters;
+            _steps.Add(step with { Id = ids[step.Id], X = step.X - left + x, Y = step.Y - top + y, Parameters = parameters });
+        }
+
+        _wires.AddRange(incoming.Wires.Select(wire => new GraphWire(ids[wire.FromStep], wire.FromPort, ids[wire.ToStep], wire.ToPort)));
+        return [.. ids.Values];
+    }
+
+    static void Replace<T>(List<T> list, List<T> with)
+    {
+        list.Clear();
+        list.AddRange(with);
+    }
 
     public void Put(GraphVariable variable) => _variables.Add(variable);
 
@@ -249,6 +401,14 @@ internal sealed class FakeGraphSource : IGraphFile
 
     public GraphEditResult AddFunction(string name) =>
         Declare($"AddFunction {name}", name, FunctionList().Any(f => f.Name == name), () => _otherFunctions.Add(name));
+
+    /// <summary>The virtuals the engine would list for the base type.</summary>
+    public List<GraphStepEntry> Overrides { get; } = [];
+
+    public IReadOnlyList<GraphStepEntry> FindOverrides() => Overrides;
+
+    public GraphEditResult AddOverride(GraphStepEntry entry) =>
+        Declare($"AddOverride {entry.Label}", entry.Label, FunctionList().Any(f => f.Name == entry.Label), () => _otherFunctions.Add(entry.Label));
 
     public GraphEditResult RemoveFunction(string name) =>
         _otherFunctions.Contains(name) ? Take($"RemoveFunction {name}", () => _otherFunctions.Remove(name)) : Refuse($"RemoveFunction {name}", Missing, "There is no such function.");

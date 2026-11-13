@@ -38,6 +38,9 @@ internal sealed class StepView
     const double TextInset = 14;
     const double ValueInset = 8;
     const double ButtonWidth = 24;
+    const double BookmarkInset = 12;
+    const double BookmarkWidth = 10;
+    const double BookmarkHeight = 14;
     const double ButtonGap = 6;
     // shortcut: a value box beside an input is a fixed 52 pixels, so a long output name on the same row can
     // touch it. Measure the names and place the box from that when a step needs it.
@@ -153,7 +156,7 @@ internal sealed class StepView
 
     public string ValueOf(string parameter) => _rows.Find(candidate => candidate.Parameter == parameter).Value ?? "";
 
-    public void Draw(DrawingContext context, bool selected)
+    public void Draw(DrawingContext context, bool selected, bool bookmarked)
     {
         if (IsReroute)
         {
@@ -169,6 +172,10 @@ internal sealed class StepView
         foreach (var label in Labels())
         {
             context.DrawText(label.Text, new Point(Origin.X + label.At.X, Origin.Y + label.At.Y));
+        }
+        if (bookmarked)
+        {
+            context.DrawRectangle(EditorBrushes.Accent, null, new Rect(bounds.Right - BookmarkInset - BookmarkWidth, bounds.Y - 2, BookmarkWidth, BookmarkHeight));
         }
     }
 

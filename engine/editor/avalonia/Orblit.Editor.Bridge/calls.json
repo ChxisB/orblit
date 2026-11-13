@@ -132,6 +132,7 @@
   "GraphScript.remove_frame",
   "GraphScript.get_document",
   "GraphScript.find_steps",
+  "GraphScript.find_overrides",
   "GraphScript.rename_function",
   "GraphScript.rename_variable",
   "GraphScript.rename_signal",
@@ -144,5 +145,9 @@
   "GraphScript.set_variable_info",
   "GraphScript.add_signal",
   "GraphScript.remove_signal",
-  "GraphScript.set_signal_arguments"
+  "GraphScript.set_signal_arguments",
+  "GraphScript.get_snapshot",
+  "GraphScript.restore_snapshot",
+  "GraphScript.get_payload",
+  "GraphScript.paste_payload"
 ]

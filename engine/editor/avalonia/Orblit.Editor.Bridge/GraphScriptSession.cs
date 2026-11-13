@@ -16,6 +16,7 @@ public sealed record GraphEditResult(long Code, string Reason)
         31 => "That does not fit. The ports do not match, or the engine does not take that value.",
         32 => "That is already there.",
         33 => "The function, step or wire is not there.",
+        30 => "The text is not a copy of steps.",
         43 => "The value is not written as Variant text.",
         _ => $"The engine refused the change with error code {code}.",
     });
@@ -29,11 +30,33 @@ public enum GraphDraggedSide
     Output,
 }
 
+/// <summary>What to do with a variable or a signal that a paste names and the script already declares in another way.</summary>
+public enum GraphPasteChoice
+{
+    /// <summary>Do not paste. The result lists the clashes.</summary>
+    Ask,
+
+    /// <summary>Point the pasted steps at the declaration the script has.</summary>
+    Reuse,
+
+    /// <summary>Declare the pasted one under a new name.</summary>
+    KeepBoth,
+}
+
+/// <summary>A variable or a signal whose name the script uses for a different declaration. Kind is "variable" or "signal".</summary>
+public sealed record GraphPasteClash(string Kind, string Name);
+
+/// <summary>
+/// What a paste did. When Result is the engine's "already there" code and Clashes is not empty, nothing was pasted and
+/// the clashes need a choice. After a paste that was taken, Steps holds the ids of the new steps in the order they were copied.
+/// </summary>
+public sealed record GraphPasteResult(GraphEditResult Result, IReadOnlyList<GraphPasteClash> Clashes, IReadOnlyList<int> Steps);
+
 /// <summary>
 /// One graph script open for editing. The engine holds the script. This class asks it to change and
 /// reads back what it holds, so what the editor shows is what the engine would run.
 /// </summary>
-public sealed class GraphScriptSession : IDisposable
+public sealed partial class GraphScriptSession : IDisposable
 {
     const long CacheReuse = 1;
 
@@ -142,6 +165,28 @@ public sealed class GraphScriptSession : IDisposable
     public GraphEditResult SetSignalArguments(string name, IReadOnlyList<GraphTyped> arguments) =>
         Edit(_host.GraphScriptSetSignalArguments(Script, name, GraphTyped.WriteList(arguments)));
 
+    /// <summary>The whole script as text. <see cref="Restore"/> takes it back in one edit, so a history needs no inverse call per edit.</summary>
+    public string GetSnapshot() => _host.GraphScriptGetSnapshot(Script);
+
+    /// <summary>Puts the script back to what a snapshot held. A text the engine cannot read changes nothing.</summary>
+    public GraphEditResult Restore(string snapshot) => Edit(_host.GraphScriptRestoreSnapshot(Script, snapshot));
+
+    /// <summary>The steps with these ids, the wires between them, and what they name, as text that <see cref="PasteSteps"/> of any script takes.</summary>
+    public string GetPayload(string function, IReadOnlyList<int> ids) => _host.GraphScriptGetPayload(Script, function, $"[{string.Join(", ", ids)}]");
+
+    /// <summary>Adds the steps of a payload to a function with their upper left corner at the point, as one edit.</summary>
+    public GraphPasteResult PasteSteps(string function, string payload, double x, double y, GraphPasteChoice choice)
+    {
+        var choiceText = choice switch
+        {
+            GraphPasteChoice.Reuse => "reuse",
+            GraphPasteChoice.KeepBoth => "keep_both",
+            _ => "",
+        };
+        var reply = GraphJson.Read<PasteReply>(_host.GraphScriptPastePayload(Script, function, payload, x, y, choiceText));
+        return new GraphPasteResult(Edit(reply.Error), reply.Conflicts, reply.Steps);
+    }
+
     /// <summary>The steps that fit a wire dragged from the given side. A type of 0 and no side list every step.</summary>
     /// <exception cref="InvalidDataException">The engine refused the question, for example for a type that is not a Variant type.</exception>
     public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)
@@ -155,6 +200,12 @@ public sealed class GraphScriptSession : IDisposable
         var sortText = sort == GraphPortSort.Flow ? "flow" : "data";
         return GraphStepEntry.ParseList(_host.GraphScriptFindSteps(Script, text, sideText, type, sortText));
     }
+
+    /// <summary>
+    /// The virtual functions of the script's base type, as start steps whose parameters are the signature to copy.
+    /// shortcut: the engine lists virtuals only in builds with debug code, so a release engine gives an empty list, when the engine keeps them in every build.
+    /// </summary>
+    public IReadOnlyList<GraphStepEntry> FindOverrides() => GraphStepEntry.ParseList(_host.GraphScriptFindOverrides(Script));
 
     /// <exception cref="IOException">The engine could not write the file.</exception>
     public void Save()
@@ -175,6 +226,8 @@ public sealed class GraphScriptSession : IDisposable
         _disposed = true;
         _host.Release(_script);
     }
+
+    sealed record PasteReply(long Error, List<GraphPasteClash> Conflicts, List<int> Steps);
 
     GraphEditResult Edit(long code)
     {

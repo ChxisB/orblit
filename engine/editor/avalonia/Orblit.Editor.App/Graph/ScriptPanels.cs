@@ -17,6 +17,7 @@ internal sealed class ScriptPanels : Border
 {
     readonly IScriptDeclarations _script;
     readonly StackPanel _body = new() { Spacing = 10, Margin = new Thickness(10) };
+    IReadOnlyList<GraphStepEntry>? _overrides;
     readonly TextBlock _notice = new() { Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, IsVisible = false, FontSize = 12 };
 
     public ScriptPanels(IScriptDeclarations script)
@@ -129,6 +130,11 @@ internal sealed class ScriptPanels : Border
     {
         var functions = _script.Document.Functions;
         _body.Children.Add(Header("Functions", "function:add", () => Apply(_script.AddFunction(PanelFields.Unique(functions.Select(f => f.Name), "function")))));
+        if (Overridable(functions) is { Count: > 0 } overridable)
+        {
+            _body.Children.Add(OverridePicker(overridable));
+        }
+
         foreach (var function in functions)
         {
             _body.Children.Add(FunctionRow(function));
@@ -138,6 +144,36 @@ internal sealed class ScriptPanels : Border
         {
             _body.Children.Add(SignatureEditor(signature));
         }
+    }
+
+    // The base type does not change while a script is open, so the engine is asked once.
+    List<GraphStepEntry> Overridable(IReadOnlyList<GraphFunction> functions)
+    {
+        _overrides ??= _script.FindOverrides();
+        var taken = functions.Select(f => f.Name).ToHashSet();
+        return _overrides.Where(entry => !taken.Contains(entry.Label)).DistinctBy(entry => entry.Label).ToList();
+    }
+
+    // Choosing a virtual adds the function that overrides it and opens that function.
+    ComboBox OverridePicker(List<GraphStepEntry> entries)
+    {
+        var box = new ComboBox { ItemsSource = entries.Select(entry => $"{entry.Label} ({entry.Group})").ToList(), PlaceholderText = "Override a virtual", Tag = "function:override", MinWidth = 90, FontSize = 12 };
+        box.SelectionChanged += (_, _) =>
+        {
+            if (box.SelectedIndex < 0)
+            {
+                return;
+            }
+
+            var entry = entries[box.SelectedIndex];
+            var result = _script.AddOverride(entry);
+            Apply(result);
+            if (result.Ok)
+            {
+                Open(entry.Label);
+            }
+        };
+        return box;
     }
 
     Control FunctionRow(GraphFunction function)

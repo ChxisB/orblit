@@ -66,6 +66,54 @@ public sealed class ScriptPanelsTests
         });
     }
 
+    static GraphStepEntry Virtual(string name, string group = "Entity") => new("event", group, name, new Dictionary<string, string> { ["arguments"] = "[]" });
+
+    static IReadOnlyList<string> Offered(ScriptPanels panels) => ((IEnumerable<string>)panels.Find<ComboBox>("function:override")!.ItemsSource!).ToList();
+
+    [Fact]
+    public void Choosing_a_virtual_adds_the_function_that_overrides_it_and_opens_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, _) = Open();
+            source.Overrides.AddRange([Virtual("_frame"), Virtual("_ready")]);
+            var panels = new ScriptPanels(source);
+            var opened = new List<string>();
+            panels.FunctionOpened += opened.Add;
+            Assert.Equal(["_frame (Entity)", "_ready (Entity)"], Offered(panels));
+
+            panels.Find<ComboBox>("function:override")!.SelectedIndex = 0;
+
+            Assert.Equal(["AddOverride _frame", "OpenFunction _frame"], source.Calls);
+            Assert.Equal(["_frame"], opened);
+            Assert.Equal(["_ready (Entity)"], Offered(panels));
+            Assert.NotNull(panels.Find<TextBox>("function:_frame:name"));
+        });
+    }
+
+    [Fact]
+    public void A_virtual_that_already_has_a_function_is_not_offered_and_one_named_in_two_classes_is_offered_once()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, _) = Open();
+            source.Overrides.AddRange([Virtual("helper"), Virtual("_frame"), Virtual("_frame", "Object")]);
+
+            Assert.Equal(["_frame (Entity)"], Offered(new ScriptPanels(source)));
+        });
+    }
+
+    [Fact]
+    public void No_picker_is_shown_when_the_engine_lists_no_virtuals()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, panels) = Open();
+
+            Assert.Null(panels.Find<ComboBox>("function:override"));
+        });
+    }
+
     [Fact]
     public void Enter_in_the_name_box_renames_once_and_the_row_follows()
     {

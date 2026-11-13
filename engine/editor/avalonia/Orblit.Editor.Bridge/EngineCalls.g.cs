@@ -159,6 +159,11 @@ public static unsafe class EngineCalls
     static readonly EngineMethod GraphScriptAddSignalMethod = new("GraphScript", "add_signal", 166001499);
     static readonly EngineMethod GraphScriptRemoveSignalMethod = new("GraphScript", "remove_signal", 166001499);
     static readonly EngineMethod GraphScriptSetSignalArgumentsMethod = new("GraphScript", "set_signal_arguments", 852856452);
+    static readonly EngineMethod GraphScriptFindOverridesMethod = new("GraphScript", "find_overrides", 201670096);
+    static readonly EngineMethod GraphScriptGetSnapshotMethod = new("GraphScript", "get_snapshot", 201670096);
+    static readonly EngineMethod GraphScriptRestoreSnapshotMethod = new("GraphScript", "restore_snapshot", 166001499);
+    static readonly EngineMethod GraphScriptGetPayloadMethod = new("GraphScript", "get_payload", 315676799);
+    static readonly EngineMethod GraphScriptPastePayloadMethod = new("GraphScript", "paste_payload", 1897090913);
 
     public static bool OrblitInstanceStart(this EngineHost host, nint target)
     {
@@ -1348,6 +1353,57 @@ public static unsafe class EngineCalls
         void** args = stackalloc void*[] { a0, a1 };
         host.Call(GraphScriptSetSignalArgumentsMethod, target, args, &result);
         return result;
+    }
+
+    public static string GraphScriptFindOverrides(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.String);
+        host.Call(GraphScriptFindOverridesMethod, target, null, result);
+        return NativeText.ReadString(result);
+    }
+
+    public static string GraphScriptGetSnapshot(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.String);
+        host.Call(GraphScriptGetSnapshotMethod, target, null, result);
+        return NativeText.ReadString(result);
+    }
+
+    public static long GraphScriptRestoreSnapshot(this EngineHost host, nint target, string snapshotText)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(snapshotText);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(GraphScriptRestoreSnapshotMethod, target, args, &result);
+        return result;
+    }
+
+    public static string GraphScriptGetPayload(this EngineHost host, nint target, string function, string idsText)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        void* a1 = scope.String(idsText);
+        void* result = scope.Result(VariantType.String);
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptGetPayloadMethod, target, args, result);
+        return NativeText.ReadString(result);
+    }
+
+    public static string GraphScriptPastePayload(this EngineHost host, nint target, string function, string payloadText, double x, double y, string conflict)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        void* a1 = scope.String(payloadText);
+        double a2 = x;
+        double a3 = y;
+        void* a4 = scope.String(conflict);
+        void* result = scope.Result(VariantType.String);
+        void** args = stackalloc void*[] { a0, a1, &a2, &a3, a4 };
+        host.Call(GraphScriptPastePayloadMethod, target, args, result);
+        return NativeText.ReadString(result);
     }
 
     public static string GraphScriptGetDocument(this EngineHost host, nint target)

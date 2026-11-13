@@ -56,6 +56,9 @@ internal sealed class EditorChecks : IChecks
         ("a frame is set, replaced, removed and saved, and a frame with no area is refused", GraphScriptFrames),
         ("variables and signals are declared, retyped and renamed, steps that name them follow, and the file keeps them", GraphScriptDeclarations),
         ("the text a pin is reset to is the zero of its type, and compose and decompose take the parts the editor gives them", GraphScriptPinEdits),
+        ("a snapshot takes a graph script back in one edit, and a copy of steps pastes into another script and asks before a clash", GraphScriptSnapshotsAndPaste),
+        ("steps collapse into a Call of a new function and expand back with the same wires, and a selection with a value across its edge is refused", GraphScriptCollapseAndExpand),
+        ("every virtual the engine lists for a script's base type makes a function with the signature it names and no error", GraphScriptOverrides),
     ];
 
     void SecondHostThrows()
@@ -757,6 +760,134 @@ internal sealed class EditorChecks : IChecks
     }
 
     // Builds a graph script in the engine and saves it to the project: an entry and a print step, not wired.
+    void GraphScriptSnapshotsAndPaste()
+    {
+        using var source = GraphScriptSession.Open(_host, MakeGraphFile("copy_from"));
+        Assert.True(source.AddVariable("total", 2).Ok);
+        Assert.True(source.AddStep("main", 3, "constant").Ok);
+        Assert.True(source.SetStepParameter("main", 3, "value", "7").Ok);
+        Assert.True(source.AddStep("main", 4, "set").Ok);
+        Assert.True(source.SetStepParameter("main", 4, "name", "\"total\"").Ok);
+        Assert.True(source.Connect("main", new GraphWire(3, 0, 4, 1)).Ok);
+
+        var before = source.GetSnapshot();
+        var changes = 0;
+        source.Changed += () => changes++;
+        Assert.True(source.AddStep("main", 5, "constant").Ok);
+        Assert.Equal(5, source.Document.Functions[0].Steps.Count);
+        Assert.True(source.Restore(before).Ok);
+        Assert.Equal(2, changes);
+        Assert.Equal(4, source.Document.Functions[0].Steps.Count);
+        Assert.Equal(before, source.GetSnapshot());
+        Assert.Equal(30, source.Restore("not a snapshot").Code);
+        Assert.Equal(before, source.GetSnapshot());
+
+        var payload = source.GetPayload("main", [3, 4]);
+        using var target = GraphScriptSession.Open(_host, MakeGraphFile("copy_to"));
+        var pasted = target.PasteSteps("main", payload, 10, 20, GraphPasteChoice.Ask);
+        Assert.True(pasted.Result.Ok);
+        Assert.Equal(2, pasted.Steps.Count);
+        Assert.Contains(target.Document.Variables, variable => variable.Name == "total" && variable.Type == 2);
+        var main = target.Document.Functions[0];
+        Assert.Equal(4, main.Steps.Count);
+        Assert.Equal(10, main.Steps.Where(step => pasted.Steps.Contains(step.Id)).Min(step => step.X));
+        Assert.Equal(20, main.Steps.Where(step => pasted.Steps.Contains(step.Id)).Min(step => step.Y));
+        Assert.Single(main.Wires);
+
+        // The target now declares total as an Int, so a payload that holds a String total clashes.
+        using var other = GraphScriptSession.Open(_host, MakeGraphFile("copy_other"));
+        Assert.True(other.AddVariable("total", 4).Ok);
+        var clash = other.PasteSteps("main", payload, 0, 0, GraphPasteChoice.Ask);
+        Assert.Equal(32, clash.Result.Code);
+        Assert.Equal(new GraphPasteClash("variable", "total"), Assert.Single(clash.Clashes));
+        Assert.Equal(2, other.Document.Functions[0].Steps.Count);
+        Assert.True(other.PasteSteps("main", payload, 0, 0, GraphPasteChoice.KeepBoth).Result.Ok);
+        Assert.Contains(other.Document.Variables, variable => variable.Name == "total_2" && variable.Type == 2);
+        Assert.Equal(30, target.PasteSteps("main", "not a payload", 0, 0, GraphPasteChoice.Ask).Result.Code);
+    }
+
+    // entry 1, then prints 2 to 5 in a row. Steps 3 and 4 are the ones that collapse, so flow enters at 3 and leaves by 4 to 5.
+    void GraphScriptCollapseAndExpand()
+    {
+        using var script = GraphScriptSession.Open(_host, MakeGraphFile("fold"));
+        Assert.True(script.AddStep("main", 3, "print").Ok);
+        Assert.True(script.AddStep("main", 4, "print").Ok);
+        Assert.True(script.AddStep("main", 5, "print").Ok);
+        foreach (var id in new[] { 2, 3, 4, 5 })
+        {
+            Assert.True(script.SetStepParameter("main", id, "text", "\"hi\"").Ok);
+        }
+
+        Assert.True(script.MoveStep("main", 3, 300, 40).Ok);
+        Assert.True(script.MoveStep("main", 4, 560, 40).Ok);
+        foreach (var (from, to) in new[] { (1, 2), (2, 3), (3, 4), (4, 5) })
+        {
+            Assert.True(script.Connect("main", new GraphWire(from, 0, to, 0)).Ok);
+        }
+
+        var folded = script.Collapse("main", [3, 4], "chunk");
+
+        Assert.True(folded.Result.Ok);
+        var call = Assert.Single(folded.Steps);
+        var main = script.Document.Functions.Single(function => function.Name == "main");
+        Assert.Equal([1, 2, 5, call], main.Steps.Select(step => step.Id).Order());
+        Assert.Equal("\"chunk\"", main.Steps.Single(step => step.Id == call).Parameters["function"]);
+        GraphWire[] collapsed = [new(1, 0, 2, 0), new(2, 0, call, 0), new(call, 0, 5, 0)];
+        Assert.True(collapsed.ToHashSet().SetEquals(main.Wires));
+        var chunk = script.Document.Functions.Single(function => function.Name == "chunk");
+        Assert.Equal(3, chunk.Steps.Count);
+        Assert.Equal([(300.0, 40.0), (560.0, 40.0)], chunk.Steps.Where(step => step.Kind == "print").Select(step => (step.X, step.Y)).Order());
+        Assert.Equal(2, chunk.Wires.Count);
+        Assert.Equal("", main.Error + chunk.Error);
+
+        var opened = script.Expand("main", call);
+
+        Assert.True(opened.Result.Ok);
+        Assert.Equal(2, opened.Steps.Count);
+        main = script.Document.Functions.Single(function => function.Name == "main");
+        var back = main.Steps.Where(step => opened.Steps.Contains(step.Id)).OrderBy(step => step.X).ToList();
+        Assert.Equal([(300.0, 40.0), (560.0, 40.0)], back.Select(step => (step.X, step.Y)));
+        GraphWire[] expected = [new(1, 0, 2, 0), new(2, 0, back[0].Id, 0), new(back[0].Id, 0, back[1].Id, 0), new(back[1].Id, 0, 5, 0)];
+        Assert.True(expected.ToHashSet().SetEquals(main.Wires));
+        Assert.Contains(script.Document.Functions, function => function.Name == "chunk");
+
+        var before = script.GetSnapshot();
+        Assert.False(script.Collapse("main", [1], "other").Result.Ok);
+        Assert.False(script.Collapse("main", [], "other").Result.Ok);
+        Assert.Equal(32, script.Collapse("main", [back[0].Id], "main").Result.Code);
+        Assert.False(script.Expand("main", 2).Result.Ok);
+        Assert.Equal(before, script.GetSnapshot());
+
+        Assert.True(script.AddStep("main", 9, "constant").Ok);
+        Assert.True(script.Connect("main", new GraphWire(9, 0, back[0].Id, 1)).Ok);
+        var crossing = script.Collapse("main", [back[0].Id], "other");
+        Assert.False(crossing.Result.Ok);
+        Assert.Contains("value crosses", crossing.Result.Reason);
+    }
+
+    void GraphScriptOverrides()
+    {
+        using var script = GraphScriptSession.Open(_host, MakeGraphFile("overrides"));
+
+        var virtuals = script.FindOverrides();
+
+        Assert.NotEmpty(virtuals);
+        Assert.All(virtuals, entry => Assert.Equal(("event", "Object"), (entry.Kind, entry.Group)));
+        foreach (var entry in virtuals)
+        {
+            Assert.True(script.AddFunction(entry.Label).Ok);
+            Assert.True(script.AddStep(entry.Label, 1, "entry").Ok);
+            foreach (var (parameter, text) in entry.Parameters)
+            {
+                Assert.True(script.SetStepParameter(entry.Label, 1, parameter, text).Ok);
+            }
+        }
+
+        var made = script.Document.Functions.Where(function => virtuals.Any(entry => entry.Label == function.Name)).ToList();
+        Assert.Equal(virtuals.Select(entry => entry.Label).Order(), made.Select(function => function.Name).Order());
+        Assert.All(made, function => Assert.Equal("", function.Error));
+    }
+
     string MakeGraphFile(string name)
     {
         var path = $"res://{name}.ograph";

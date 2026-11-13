@@ -198,4 +198,40 @@ TEST_CASE("[Stage][GraphScript] Find steps refuses a side or sort it does not kn
 	ERR_PRINT_ON;
 }
 
+#ifdef DEBUG_ENABLED
+TEST_CASE("[GraphScript] Find overrides lists the virtual functions of the base type and the ones above it") {
+	Ref<GraphScript> script;
+	script.instantiate();
+	script->set_base_type("Entity");
+
+	const Array entries = JSON::parse_string(script->find_overrides());
+
+	bool found = false;
+	for (const Variant &item : entries) {
+		const Dictionary entry = item;
+		if (entry["label"] == "_frame") {
+			found = true;
+			CHECK(entry["group"] == "Entity");
+			CHECK(entry["kind"] == "event");
+			const Dictionary parameters = entry["parameters"];
+			CHECK(parameters.has("arguments"));
+		}
+	}
+	CHECK(found);
+}
+
+TEST_CASE("[GraphScript] Find overrides of a script with no base type lists what an object can override") {
+	Ref<GraphScript> script;
+	script.instantiate();
+
+	const Array entries = JSON::parse_string(script->find_overrides());
+
+	CHECK(entries.size() > 0);
+	for (const Variant &item : entries) {
+		const Dictionary entry = item;
+		CHECK(entry["group"] == "Object");
+	}
+}
+#endif // DEBUG_ENABLED
+
 } // namespace TestGraphDocument
