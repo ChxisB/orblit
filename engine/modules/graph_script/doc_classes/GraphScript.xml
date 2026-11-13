@@ -1,0 +1,311 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="GraphScript" inherits="Script" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../docs/class.xsd">
+	<brief_description>
+		A script made of steps joined by wires, stored as an [code].ograph[/code] file.
+	</brief_description>
+	<description>
+		A graph script holds functions, variables and signals. A function is a set of steps joined by wires. A flow wire says which step runs next. A data wire carries a value from one step to another.
+		A graph script attaches to an entity like any other script. It runs when it is attached and a function is called on it. Its [member base_type] says which class it extends.
+		Every edit method changes one thing and returns an [enum Error]. When the edit fails, the script stays as it was and nothing is emitted. When it works, the script compiles again, running instances update and [signal Resource.changed] is emitted. The methods take and return text for anything that is not a string, a number or a bool, so a caller that only passes those types can use all of them. A text value is written the way [method @GlobalScope.var_to_str] writes it.
+		Each function starts at an [code]entry[/code] step. A function stops with an error when it runs more steps in one resume than the [member ProjectSettings.graph_script/runtime/step_budget] allows. A step that waits, such as a delay, hands the caller a [GraphCall] instead of a result.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="add_function">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Adds an empty function called [param name]. Returns [constant OK], [constant ERR_INVALID_PARAMETER] when the name is not a valid identifier, or [constant ERR_ALREADY_EXISTS] when a function has that name.
+			</description>
+		</method>
+		<method name="add_signal">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Adds a signal called [param name] with no arguments. Returns [constant OK], [constant ERR_INVALID_PARAMETER] when the name is not a valid identifier, or [constant ERR_ALREADY_EXISTS] when a signal has that name. Set its arguments with [method set_signal_arguments].
+			</description>
+		</method>
+		<method name="add_step">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="id" type="int" />
+			<param index="2" name="kind" type="String" />
+			<description>
+				Adds a step of the given [param kind] to [param function], with the number [param id]. Use [method get_valid_step_id] to get a free number. Returns [constant OK], [constant ERR_INVALID_PARAMETER] when [param id] is below 1 or the kind is unknown, [constant ERR_ALREADY_EXISTS] when the number is taken, or [constant ERR_DOES_NOT_EXIST] when the function is missing. Use [method find_steps] to list the kinds.
+			</description>
+		</method>
+		<method name="add_variable">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="type" type="int" />
+			<description>
+				Adds a variable called [param name] of the given Variant [param type]. Its default is the default value of that type. Returns [constant OK], [constant ERR_INVALID_PARAMETER] when the name is not valid or the type is not a Variant type, or [constant ERR_ALREADY_EXISTS] when a variable has that name.
+			</description>
+		</method>
+		<method name="connect_steps">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="from_step" type="int" />
+			<param index="2" name="from_port" type="int" />
+			<param index="3" name="to_step" type="int" />
+			<param index="4" name="to_port" type="int" />
+			<description>
+				Joins output [param from_port] of [param from_step] to input [param to_port] of [param to_step] in [param function]. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when a step or the function is missing, [constant ERR_INVALID_PARAMETER] when the two ports do not fit or both ends are the same step, [constant ERR_ALREADY_EXISTS] when the wire is already there, [constant ERR_ALREADY_IN_USE] when the data input already has a wire, or [constant ERR_UNAVAILABLE] when a step has a kind the engine does not know.
+			</description>
+		</method>
+		<method name="disconnect_steps">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="from_step" type="int" />
+			<param index="2" name="from_port" type="int" />
+			<param index="3" name="to_step" type="int" />
+			<param index="4" name="to_port" type="int" />
+			<description>
+				Removes the wire from output [param from_port] of [param from_step] to input [param to_port] of [param to_step] in [param function]. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST] when there is no such wire.
+			</description>
+		</method>
+		<method name="find_overrides" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns a JSON array of the virtual functions that this script can override, for its [member base_type]. A script with no base type is offered what an [Object] can override. Each entry is an object with [code]kind[/code], [code]group[/code], [code]label[/code] and [code]parameters[/code], like the entries of [method find_steps]. Choosing an entry means adding a function named by its [code]label[/code].
+			The list is empty in a build without debug features.
+			</description>
+		</method>
+		<method name="find_steps" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="text" type="String" />
+			<param index="1" name="dragged_side" type="String" />
+			<param index="2" name="type" type="int" />
+			<param index="3" name="sort" type="String" />
+			<description>
+				Returns a JSON array of the steps that a person can add, best match first. Each entry is an object with [code]kind[/code], [code]group[/code], [code]label[/code] and [code]parameters[/code]. With an empty [param text] it lists the step kinds of the engine. With text it lists the kinds that match, then the methods, properties, signals and classes of the engine that match.
+			[param dragged_side] narrows the list to steps that a dragged wire can reach. It is [code]""[/code] for no filter, [code]"input"[/code] when the wire comes from an input, or [code]"output"[/code] when it comes from an output. [param type] is the Variant type that a dragged data wire carries, and [constant TYPE_NIL] fits any. [param sort] is [code]"flow"[/code] or [code]"data"[/code] and says which sort of port the wire comes from. A value that is not one of these prints an error and returns an empty string.
+			</description>
+		</method>
+		<method name="get_document" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the whole script as text, in the format of an [code].ograph[/code] file. The same text is what saving the script writes.
+			</description>
+		</method>
+		<method name="get_error" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the first error found when the script was last compiled, or an empty string when it compiled with no error. The error names the function and the step. A function with an error does not run.
+			</description>
+		</method>
+		<method name="get_payload" qualifiers="const">
+			<return type="String" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="ids_text" type="String" />
+			<description>
+				Returns a copy of some steps of [param function] as JSON text, ready to hand to [method paste_payload] on this script or another one. [param ids_text] is a text array of step numbers, such as [code]"[2, 3]"[/code]. The copy holds those steps, the wires between them, and the variables and signals they use. It names the functions they call.
+			Returns an empty string when the function is missing, [param ids_text] is not an array, or none of the numbers is a step. The [code]entry[/code] step cannot be copied.
+			</description>
+		</method>
+		<method name="get_snapshot" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the functions, variables, signals and base type as one text. Pass the text to [method restore_snapshot] to return the script to this state. An undo history is made from these texts.
+			</description>
+		</method>
+		<method name="get_valid_step_id" qualifiers="const">
+			<return type="int" />
+			<param index="0" name="function" type="String" />
+			<description>
+				Returns a step number that no step of [param function] uses, or [code]-1[/code] when the function is missing.
+			</description>
+		</method>
+		<method name="get_warnings" qualifiers="const">
+			<return type="Array" />
+			<description>
+				Returns an array of dictionaries, one per warning. A warning does not stop a function from running. Each dictionary has these keys: [code]kind[/code], [code]function[/code], [code]step[/code], [code]name[/code] and [code]text[/code].
+			[code]kind[/code] is [code]"unused_variable"[/code], [code]"unused_local"[/code], [code]"unreachable_step"[/code] or [code]"shadowed_name"[/code]. [code]function[/code] is empty and [code]step[/code] is [code]-1[/code] when the warning does not belong to one function or step. A name that starts with an underscore is never reported as unused.
+			</description>
+		</method>
+		<method name="move_step">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="id" type="int" />
+			<param index="2" name="x" type="float" />
+			<param index="3" name="y" type="float" />
+			<description>
+				Puts step [param id] of [param function] at the position ([param x], [param y]) on the canvas. The position is only for the editor. It does not change how the function runs. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="paste_payload">
+			<return type="String" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="payload_text" type="String" />
+			<param index="2" name="x" type="float" />
+			<param index="3" name="y" type="float" />
+			<param index="4" name="conflict" type="String" />
+			<description>
+				Pastes steps from [method get_payload] into [param function], with the top left of the steps at ([param x], [param y]). The pasted steps get new numbers. Returns JSON text of an object with three keys. [code]error[/code] is an [enum Error] value, [code]conflicts[/code] is an array and [code]steps[/code] is the array of new step numbers.
+			The payload brings the variables and signals its steps use. When this script already has one with the same name and another definition, nothing is pasted and [code]error[/code] is [constant ERR_ALREADY_EXISTS]. [code]conflicts[/code] then lists each clash. Call again with [param conflict] set to [code]"reuse"[/code] to use this script's own, or [code]"keep_both"[/code] to add the pasted one under a new name. [param conflict] is empty for the first try. A function that the payload calls and this script lacks is added empty.
+			Other errors are [constant ERR_INVALID_DATA] when the text is not a payload, [constant ERR_DOES_NOT_EXIST] when the function is missing, and [constant ERR_INVALID_PARAMETER] when [param conflict] is not one of the three values or the payload has a [code]return[/code] step and the function has no [code]entry[/code] step. The whole paste is one change. It either all happens or none of it does.
+			</description>
+		</method>
+		<method name="remove_frame">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="id" type="int" />
+			<description>
+				Removes comment frame [param id] from [param function]. The steps inside it stay. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="remove_function">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Removes the function called [param name], with its steps. Steps that call it stay, and the call fails when it runs. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="remove_signal">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Removes the signal called [param name]. Steps that use it stay, and they fail when they run. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="remove_step">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="id" type="int" />
+			<description>
+				Removes step [param id] and every wire that touches it from [param function]. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="remove_variable">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<description>
+				Removes the variable called [param name]. Steps that read or write it stay, and the script does not compile until they change. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="rename_function">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="new_name" type="String" />
+			<description>
+				Renames a function and every step that calls it. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when no function has the name [param name], [constant ERR_INVALID_PARAMETER] when [param new_name] is not a valid identifier, or [constant ERR_ALREADY_EXISTS] when a function already has [param new_name].
+			</description>
+		</method>
+		<method name="rename_signal">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="new_name" type="String" />
+			<description>
+				Renames a signal and every step that uses it. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when no signal has the name [param name], [constant ERR_INVALID_PARAMETER] when [param new_name] is not a valid identifier, or [constant ERR_ALREADY_EXISTS] when a signal already has [param new_name].
+			</description>
+		</method>
+		<method name="rename_variable">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="new_name" type="String" />
+			<description>
+				Renames a variable and every step that reads or writes it. A running instance loses the value it held under the old name. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when no variable has the name [param name], [constant ERR_INVALID_PARAMETER] when [param new_name] is not a valid identifier, or [constant ERR_ALREADY_EXISTS] when a variable already has [param new_name].
+			</description>
+		</method>
+		<method name="restore_snapshot">
+			<return type="int" enum="Error" />
+			<param index="0" name="snapshot_text" type="String" />
+			<description>
+				Replaces the functions, variables, signals and base type with those of a text from [method get_snapshot]. Returns [constant OK] or [constant ERR_INVALID_DATA] when the text is not a snapshot. Nothing changes after an error.
+			</description>
+		</method>
+		<method name="set_frame">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="frame_text" type="String" />
+			<description>
+				Adds or replaces a comment frame in [param function]. [param frame_text] is the text of a dictionary with the keys [code]id[/code], [code]title[/code], [code]x[/code], [code]y[/code], [code]width[/code], [code]height[/code] and [code]collapsed[/code]. A frame is a box drawn behind steps. It has no effect on how the function runs. Returns [constant OK], [constant ERR_PARSE_ERROR] when the text cannot be read, [constant ERR_INVALID_DATA] when it is not a frame or has no area, or [constant ERR_DOES_NOT_EXIST] when the function is missing.
+			</description>
+		</method>
+		<method name="set_signal_arguments">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="arguments_text" type="String" />
+			<description>
+				Sets the arguments of signal [param name]. [param arguments_text] is a text array with one entry per argument, each a dictionary with [code skip-lint]name[/code] and [code]type[/code]. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when the signal is missing, [constant ERR_PARSE_ERROR] when the text cannot be read, or [constant ERR_INVALID_DATA] when an entry is not a name and a type.
+			</description>
+		</method>
+		<method name="set_step_parameter">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="id" type="int" />
+			<param index="2" name="parameter" type="String" />
+			<param index="3" name="value_text" type="String" />
+			<description>
+				Sets the parameter [param parameter] of step [param id] in [param function] to the value written in [param value_text]. A parameter is a value typed on the step, such as the name of a variable or the text to print. Wires that no longer fit the changed step are removed.
+			Returns [constant OK], [constant ERR_PARSE_ERROR] when [param value_text] cannot be read, [constant ERR_DOES_NOT_EXIST] when the step or function is missing, or [constant ERR_INVALID_PARAMETER] when [param parameter] is empty or is [code]"pins"[/code]. Use [method set_step_pins] to change the number of pins.
+			</description>
+		</method>
+		<method name="set_step_pins">
+			<return type="int" enum="Error" />
+			<param index="0" name="function" type="String" />
+			<param index="1" name="id" type="int" />
+			<param index="2" name="count" type="int" />
+			<description>
+				Sets how many pins a step has, for a kind that can grow, such as a sequence with more than two outputs. Wires on pins past the new count are removed. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when the step or function is missing, [constant ERR_UNAVAILABLE] when the kind is unknown, or [constant ERR_INVALID_PARAMETER] when the kind cannot grow or [param count] is below the smallest count or above the largest.
+			</description>
+		</method>
+		<method name="set_variable_default">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="value_text" type="String" />
+			<description>
+				Sets the value a new instance starts with for variable [param name]. [param value_text] is written the way [method @GlobalScope.var_to_str] writes a value. Its type must match the type of the variable, unless the variable has no type and holds any value. Returns [constant OK], [constant ERR_DOES_NOT_EXIST], [constant ERR_PARSE_ERROR] when the text cannot be read, or [constant ERR_INVALID_PARAMETER] when the type differs.
+			</description>
+		</method>
+		<method name="set_variable_exported">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="exported" type="bool" />
+			<description>
+				Sets whether variable [param name] shows in the inspector of an entity that has this script. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="set_variable_hint">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="hint" type="int" />
+			<param index="2" name="hint_string" type="String" />
+			<description>
+				Sets the property hint of variable [param name] to [param hint], a [enum PropertyHint] value, with [param hint_string] as its text. The inspector uses it to pick an editor, such as a range slider. Returns [constant OK], [constant ERR_DOES_NOT_EXIST], or [constant ERR_INVALID_PARAMETER] when [param hint] is not a hint.
+			</description>
+		</method>
+		<method name="set_variable_info">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="category" type="String" />
+			<param index="2" name="description" type="String" />
+			<description>
+				Sets the category and the description of variable [param name]. The inspector groups exported variables by category and shows the description as a tooltip. Returns [constant OK] or [constant ERR_DOES_NOT_EXIST].
+			</description>
+		</method>
+		<method name="set_variable_type">
+			<return type="int" enum="Error" />
+			<param index="0" name="name" type="String" />
+			<param index="1" name="type" type="int" />
+			<description>
+				Sets the Variant type of variable [param name]. The default value resets to the default of the new type when the type changes. Returns [constant OK], [constant ERR_DOES_NOT_EXIST], or [constant ERR_INVALID_PARAMETER] when [param type] is not a Variant type.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="base_type" type="StringName" setter="set_base_type" getter="get_base_type" default="&amp;&quot;&quot;">
+			The name of the class this script extends. A script with no base type extends [Object]. It decides which virtual functions [method find_overrides] offers.
+		</member>
+		<member name="functions" type="Array" setter="set_functions" getter="get_functions" default="[]">
+			The functions of the script, as an array of dictionaries. Each has [code]name[/code], [code]steps[/code], [code]wires[/code] and [code]frames[/code]. Setting it replaces every function. A value that is not a valid list of functions prints an error and changes nothing. Use the edit methods to change one thing.
+		</member>
+		<member name="signals" type="Array" setter="set_signals" getter="get_signals" default="[]">
+			The signals of the script, as an array of dictionaries. Each has a [code]name[/code] and its [code]arguments[/code]. Setting it replaces every signal. A value that is not a valid list of signals prints an error and changes nothing.
+		</member>
+		<member name="variables" type="Array" setter="set_variables" getter="get_variables" default="[]">
+			The variables of the script, as an array of dictionaries. Each has [code]name[/code], [code]type[/code], [code]default[/code] and [code]exported[/code], and may have [code]hint[/code], [code]hint_string[/code], [code]category[/code] and [code]description[/code]. Setting it replaces every variable. A value that is not a valid list of variables prints an error and changes nothing.
+		</member>
+	</members>
+</class>

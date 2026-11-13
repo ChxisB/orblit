@@ -11,11 +11,16 @@
 #include "core/os/os.h"
 
 bool RemoteDebuggerPeerTCP::is_peer_connected() {
-	return connected;
+	return connected.is_set();
+}
+
+int RemoteDebuggerPeerTCP::_get_queued_in() const {
+	MutexLock lock(mutex);
+	return in_queue.size();
 }
 
 bool RemoteDebuggerPeerTCP::has_message() {
-	return in_queue.size() > 0;
+	return _get_queued_in() > 0;
 }
 
 Array RemoteDebuggerPeerTCP::get_message() {
@@ -43,7 +48,7 @@ int RemoteDebuggerPeerTCP::get_max_message_size() const {
 }
 
 void RemoteDebuggerPeerTCP::close() {
-	running = false;
+	running.clear();
 	if (thread.is_started()) {
 		thread.wait_to_finish();
 	}
@@ -62,8 +67,8 @@ RemoteDebuggerPeerTCP::RemoteDebuggerPeerTCP(Ref<StreamPeerSocket> p_stream) :
 		RemoteDebuggerPeerTCP() {
 	DEV_ASSERT(p_stream.is_valid());
 	tcp_client = p_stream;
-	connected = true;
-	running = true;
+	connected.set();
+	running.set();
 	thread.start(_thread_func, this);
 }
 
@@ -104,7 +109,7 @@ void RemoteDebuggerPeerTCP::_read_in() {
 		uint8_t *buf = in_buf.ptrw();
 		Error err = OK;
 		if (in_left <= 0) {
-			if (in_queue.size() > max_queued_messages) {
+			if (_get_queued_in() > max_queued_messages) {
 				break; // Too many messages already in queue.
 			}
 			if (tcp_client->get_available_bytes() < 4) {
@@ -170,7 +175,7 @@ void RemoteDebuggerPeerTCP::_thread_func(void *p_ud) {
 	// Update in time for 144hz monitors
 	const uint64_t min_tick = 6900;
 	RemoteDebuggerPeerTCP *peer = static_cast<RemoteDebuggerPeerTCP *>(p_ud);
-	while (peer->running && peer->is_peer_connected()) {
+	while (peer->running.is_set() && peer->is_peer_connected()) {
 		uint64_t ticks_usec = OS::get_singleton()->get_ticks_usec();
 		peer->_poll();
 		if (!peer->is_peer_connected()) {
@@ -189,10 +194,10 @@ void RemoteDebuggerPeerTCP::poll() {
 
 void RemoteDebuggerPeerTCP::_poll() {
 	tcp_client->poll();
-	if (connected) {
+	if (connected.is_set()) {
 		_write_out();
 		_read_in();
-		connected = tcp_client->get_status() == StreamPeerTCP::STATUS_CONNECTED;
+		connected.set_to(tcp_client->get_status() == StreamPeerTCP::STATUS_CONNECTED);
 	}
 }
 

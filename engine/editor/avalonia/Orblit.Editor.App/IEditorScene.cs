@@ -6,7 +6,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles
+internal interface IEditorScene : IScriptFiles, IGraphFiles
 {
     OutlineNode? Outline();
 
@@ -158,8 +158,8 @@ internal interface IEditorScene : IScriptFiles
     string? ScriptOf(nint entity);
 
     /// <summary>
-    /// Attaches the C# file as the entity's script. Throws <see cref="ArgumentException"/> for a path that is no C# file under
-    /// res:// and <see cref="IOException"/> when the engine cannot load it. The entity keeps what it had.
+    /// Attaches the C# file or graph script as the entity's script. Throws <see cref="ArgumentException"/> for a path that is
+    /// neither under res:// and <see cref="IOException"/> when the engine cannot load it. The entity keeps what it had.
     /// </summary>
     void AttachScript(nint entity, string resourcePath);
 
@@ -177,8 +177,11 @@ internal interface IEditorScene : IScriptFiles
     /// <summary>Whether the game <see cref="Play"/> started is still running.</summary>
     bool IsPlaying { get; }
 
-    /// <summary>Runs the project in its own process. A game already running is stopped first.</summary>
-    void Play();
+    /// <summary>
+    /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
+    /// each a source and a step id. A game already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
+    /// </summary>
+    void Play(IEnumerable<(string Source, int Step)> breakpoints);
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();

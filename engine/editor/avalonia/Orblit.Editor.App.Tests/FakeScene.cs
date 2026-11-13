@@ -1,5 +1,8 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
+using Orblit.Editor.App.Graph;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests;
@@ -144,12 +147,29 @@ internal sealed class FakeScene : IEditorScene
 
     public IReadOnlyList<string> Scripts() => [.. ScriptPaths];
 
+    /// <summary>The graph script each path opens.</summary>
+    public Dictionary<string, FakeGraphSource> Graphs { get; } = [];
+
+    public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
+
+    public IGraphFile OpenGraph(string resourcePath) =>
+        Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
+
+    public void CreateGraph(string resourcePath, string baseType) => Graphs[resourcePath] = FakeGraphSource.Sample();
+
     /// <summary>The text of each script file.</summary>
     public Dictionary<string, string> ScriptText { get; } = [];
 
     public List<(string Path, string Text)> ScriptsWritten { get; } = [];
 
     public bool ScriptWriteFails { get; set; }
+
+    /// <summary>The text of the breakpoint file, or null when the project has none.</summary>
+    public string? BreakpointText { get; set; }
+
+    public string? ReadBreakpoints() => BreakpointText;
+
+    public void WriteBreakpoints(string text) => BreakpointText = text;
 
     public string ReadScript(string resourcePath) =>
         ScriptText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.");
@@ -192,9 +212,27 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>True from a Play until a Stop. A test sets it false for a game that ended on its own.</summary>
     public bool IsPlaying { get; set; }
 
-    public void Play()
+    /// <summary>The breakpoints the last Play was given.</summary>
+    public List<(string Source, int Step)> PlayedWith { get; } = [];
+
+    /// <summary>A failure the next Play throws, such as a debug port the engine could not open.</summary>
+    public IOException? PlayError { get; set; }
+
+    /// <summary>What the running game said. A test sets <see cref="FakeDebugChannel.Next"/>.</summary>
+    public FakeDebugChannel Channel { get; } = new();
+
+    public IDebugChannel Debug => Channel;
+
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
     {
+        if (PlayError is not null)
+        {
+            throw PlayError;
+        }
+
         Plays++;
+        PlayedWith.Clear();
+        PlayedWith.AddRange(breakpoints);
         IsPlaying = true;
     }
 

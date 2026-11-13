@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 

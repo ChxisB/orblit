@@ -23,6 +23,9 @@ internal sealed class TitleBar : Grid
     /// <summary>The name of the workspace that edits the C# files of the project.</summary>
     internal const string Script = "Script";
 
+    /// <summary>The name of the workspace that edits the graph scripts of the project.</summary>
+    internal const string Graph = "Graph";
+
     /// <summary>The name of the workspace that runs the project and stops it.</summary>
     internal const string Game = "Game";
 
@@ -35,6 +38,7 @@ internal sealed class TitleBar : Grid
         (Planar, "2D"),
         (Spatial, "3D"),
         (Script, "Script"),
+        (Graph, "GraphEdit"),
         (Game, "Game"),
         (Store, "AssetStore"),
     ];

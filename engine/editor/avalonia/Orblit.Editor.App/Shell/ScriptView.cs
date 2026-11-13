@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Reactive;
@@ -8,7 +7,7 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>What the script workspace needs from the project: its C# files and their text.</summary>
+/// <summary>What the Script workspace needs from the project: its C# files and their text.</summary>
 internal interface IScriptFiles
 {
     /// <summary>The res:// path of every C# file of the project.</summary>
@@ -22,8 +21,8 @@ internal interface IScriptFiles
 }
 
 /// <summary>
-/// The Script workspace: the project's C# files in a list and the open one in a text box with line numbers.
-/// It reads and writes the files and does not compile or run them.
+/// The Script workspace: the project's C# files in a list. A file opens in a text box with line numbers. It reads and
+/// writes the files and does not compile or run them. Graph scripts have their own workspace.
 /// </summary>
 internal sealed class ScriptView : Border
 {
@@ -65,7 +64,7 @@ internal sealed class ScriptView : Border
         Grid.SetColumn(_editor, 1);
         text.Children.Add(_gutter);
         text.Children.Add(_editor);
-        var scroll = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
+        var scroll = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto };
         // A short file would leave the box narrower than the area, and a click beside it would reach nothing.
         scroll.GetObservable(ScrollViewer.ViewportProperty).Subscribe(new AnonymousObserver<Size>(viewport => text.MinWidth = viewport.Width));
         var body = new DockPanel();
@@ -91,7 +90,7 @@ internal sealed class ScriptView : Border
 
     internal Button SaveButton => _save;
 
-    /// <summary>Whether the text in the box differs from the file it was read from.</summary>
+    /// <summary>Whether the text in the box differs from what is on disk.</summary>
     public bool IsDirty => _open is not null && _editor.Text != _saved;
 
     /// <summary>Starts from this project's files, with no script open.</summary>
@@ -178,8 +177,8 @@ internal sealed class ScriptView : Border
             var text = _files.ReadScript(path);
             _editor.Text = text;
             _editor.IsEnabled = true;
-            _open = path;
             _saved = text;
+            _open = path;
             _name.Text = path;
             _status.Text = "";
             ShowText();

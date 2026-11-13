@@ -37,12 +37,25 @@ public sealed class ProjectScriptsTests : IDisposable
         Touch("spin.csproj");
         Touch("notes.txt");
         Touch("main.oscn");
+        Touch("logic.ograph");
         Touch(".orblit/imported/cached.cs");
         Touch("bin/Debug/built.cs");
         Touch("obj/generated.cs");
         Touch("game/obj/generated.cs");
 
         Assert.Equal(["res://spin.cs"], ProjectScripts.Find(_folder));
+    }
+
+    [Fact]
+    public void Graph_scripts_are_listed_by_their_own_call_with_the_same_exclusions()
+    {
+        Touch("logic.ograph");
+        Touch("enemies/boss.ograph");
+        Touch("spin.cs");
+        Touch(".orblit/imported/cached.ograph");
+        Touch("bin/built.ograph");
+
+        Assert.Equal(["res://enemies/boss.ograph", "res://logic.ograph"], ProjectScripts.FindGraphs(_folder));
     }
 
     [Theory]
@@ -69,6 +82,14 @@ public sealed class ProjectScriptsTests : IDisposable
     public void A_path_that_is_no_script_of_the_project_is_refused(string resourcePath)
     {
         Assert.Throws<ArgumentException>(() => ProjectScripts.FileOf(_folder, resourcePath));
+    }
+
+    [Fact]
+    public void A_graph_script_path_names_its_file_when_the_extension_is_asked_for()
+    {
+        Assert.Equal(Path.GetFullPath(Path.Combine(_folder, "enemies/boss.ograph")), ProjectScripts.FileOf(_folder, "res://enemies/boss.ograph", ".ograph"));
+        Assert.Throws<ArgumentException>(() => ProjectScripts.FileOf(_folder, "res://spin.cs", ".ograph"));
+        Assert.Throws<ArgumentException>(() => ProjectScripts.FileOf(_folder, "res://logic.ograph"));
     }
 
     [Fact]

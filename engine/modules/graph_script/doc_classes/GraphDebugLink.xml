@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="GraphDebugLink" inherits="RefCounted" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../docs/class.xsd">
+	<brief_description>
+		The editor's end of the debug channel to a running game.
+	</brief_description>
+	<description>
+		Listens on the loopback address for a game that was started with [code]--remote-debug[/code] set to the address of the link, such as [code]tcp://127.0.0.1:6007[/code]. The link keeps what the game last said as one state, and sends the game commands. One game is attached at a time, and a game that connects while another is attached replaces it.
+		Call [method poll] often. Read the state with [method get_state].
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="get_port" qualifiers="const">
+			<return type="int" />
+			<description>
+				Returns the port the game connects to, or [code]0[/code] when the link does not listen.
+			</description>
+		</method>
+		<method name="get_state" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns what the game last said, as JSON text. The keys are [code]connected[/code], [code]stopped[/code], [code]reason[/code], [code]stack[/code], [code]level[/code], [code]locals[/code], [code]members[/code] and [code]wire[/code]. [code]stack[/code] lists objects with [code]source[/code], [code]line[/code] and [code]function[/code], innermost first. For a graph script the [code]source[/code] is the script path and the function joined by [code]#[/code], and the [code]line[/code] is the step number. [code]locals[/code] and [code]members[/code] list objects with [code]name[/code] and [code]value[/code] for [code]level[/code]. [code]wire[/code] is an empty object until [method request_wire] is answered, then it holds [code]level[/code], [code]step[/code], [code]port[/code] and [code]value[/code].
+				The state is cleared when the game goes away or runs on.
+			</description>
+		</method>
+		<method name="listen">
+			<return type="int" enum="Error" />
+			<param index="0" name="port" type="int" />
+			<description>
+				Starts listening on the loopback address. Port [code]0[/code] lets the system pick one, and [method get_port] says which. Returns an [enum Error] code.
+			</description>
+		</method>
+		<method name="poll">
+			<return type="void" />
+			<description>
+				Takes in what the game said since the last call, and accepts a game that is waiting to connect.
+			</description>
+		</method>
+		<method name="request_variables">
+			<return type="void" />
+			<param index="0" name="level" type="int" />
+			<description>
+				Asks the game for the locals and members of [param level] of the stack, the innermost level first. The reply replaces the ones in the state.
+			</description>
+		</method>
+		<method name="request_wire">
+			<return type="void" />
+			<param index="0" name="level" type="int" />
+			<param index="1" name="step" type="int" />
+			<param index="2" name="port" type="int" />
+			<description>
+				Asks the game for the value on input [param port] of [param step] at [param level] of the stack. The reply sets [code]wire[/code] in the state. It is empty when the step has not run or the input is not there.
+			</description>
+		</method>
+		<method name="send_command">
+			<return type="void" />
+			<param index="0" name="command" type="String" />
+			<description>
+				Sends [code]"step"[/code], [code]"next"[/code], [code]"out"[/code], [code]"continue"[/code] or [code]"break"[/code]. Step goes into a call, next goes over it and out leaves it. Break stops a game that is running. Any other text prints an error and sends nothing.
+			</description>
+		</method>
+		<method name="set_breakpoint">
+			<return type="void" />
+			<param index="0" name="source" type="String" />
+			<param index="1" name="step" type="int" />
+			<param index="2" name="set" type="bool" />
+			<description>
+				Sets or clears a breakpoint on [param step] of [param source], which is a script path and a function joined by [code]#[/code].
+			</description>
+		</method>
+	</methods>
+</class>

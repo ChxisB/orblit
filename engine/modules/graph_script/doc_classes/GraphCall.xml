@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="GraphCall" inherits="RefCounted" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../docs/class.xsd">
+	<brief_description>
+		One run of a graph function that is waiting to finish.
+	</brief_description>
+	<description>
+		A call to a graph function that stops at a step that waits, such as a delay or a wait for a signal, returns a [GraphCall] in place of a result. The call keeps the place where it stopped. It carries on when the thing it waits for happens.
+		Connect to [signal completed] to get the result. A call is dropped, without emitting [signal completed], when its instance is freed or its script changes.
+		A function that does not wait returns its result at once and no call is made.
+	</description>
+	<tutorials>
+	</tutorials>
+	<signals>
+		<signal name="completed">
+			<param index="0" name="result" type="Variant" />
+			<description>
+				Emitted when the function ends. [param result] is the value the function returned, or [code]null[/code] when it returns nothing.
+			</description>
+		</signal>
+	</signals>
+</class>

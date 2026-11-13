@@ -17,6 +17,7 @@ public sealed class EditorSession
 
     // ResourceLoader.CACHE_MODE_REUSE: a scene that is already loaded is not read again.
     const long CacheReuse = 1;
+    const string GraphSuffix = ".ograph";
 
     // Persistent groups, so a save keeps them.
     const string LockGroup = "_edit_lock_";
@@ -540,17 +541,7 @@ public sealed class EditorSession
     }
 
     // A scene path is a res:// file of the scene format. The engine would save to any path it can write.
-    static void RequireSceneFile(string resourcePath)
-    {
-        const string Prefix = "res://";
-        const string Extension = ".oscn";
-        var inside = resourcePath.StartsWith(Prefix, StringComparison.Ordinal) && resourcePath.EndsWith(Extension, StringComparison.Ordinal)
-            && resourcePath.Length > Prefix.Length + Extension.Length;
-        if (!inside || resourcePath.Contains("..") || resourcePath.Contains('\\'))
-        {
-            throw new ArgumentException($"{resourcePath} is not a scene file under res://.", nameof(resourcePath));
-        }
-    }
+    static void RequireSceneFile(string resourcePath) => ResourcePath.RequireFile(resourcePath, ".oscn", "a scene file");
 
     // The scene file writes the name as it is. A name with a space or an equals sign would not read back.
     static void RequireMetaName(string name)
@@ -562,18 +553,9 @@ public sealed class EditorSession
         }
     }
 
-    // A script file is a C# file under res://. The language is decision 184.
-    static void RequireScriptFile(string resourcePath)
-    {
-        const string Prefix = "res://";
-        const string Extension = ".cs";
-        var inside = resourcePath.StartsWith(Prefix, StringComparison.Ordinal) && resourcePath.EndsWith(Extension, StringComparison.Ordinal)
-            && resourcePath.Length > Prefix.Length + Extension.Length;
-        if (!inside || resourcePath.Contains("..") || resourcePath.Contains('\\'))
-        {
-            throw new ArgumentException($"{resourcePath} is not a C# file under res://.", nameof(resourcePath));
-        }
-    }
+    // A script file is a graph script or a C# file under res://. Any other suffix falls to the C# test and is refused.
+    static void RequireScriptFile(string resourcePath) =>
+        ResourcePath.RequireFile(resourcePath, resourcePath.EndsWith(GraphSuffix, StringComparison.Ordinal) ? GraphSuffix : ".cs", "a graph script or C# file");
 
     static void RequireName(string name)
     {

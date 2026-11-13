@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -328,6 +329,24 @@ public sealed class InspectorExtrasTests
 
             Assert.True(window.Inspector.ScriptMenu.IsOpen);
             Assert.Equal(["res://spin.cs", "res://enemies/slime.cs", "Clear"], window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
+        });
+    }
+
+    [Fact]
+    public void The_script_menu_lists_graph_scripts_after_the_C_sharp_ones_and_attaches_one()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            scene.Graphs["res://sum.ograph"] = FakeGraphSource.Sample();
+            var window = Selected(scene);
+
+            ClickOn(window.Inspector.ScriptField, window);
+
+            Assert.Equal(["res://spin.cs", "res://enemies/slime.cs", "res://sum.ograph", "Clear"], window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
+            Choose(window.Inspector.ScriptMenu, "res://sum.ograph");
+            Assert.Equal("res://sum.ograph", scene.ScriptOf(1));
+            Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "sum.ograph");
         });
     }
 
