@@ -518,12 +518,12 @@ TEST_CASE("[GraphScript] A saved wire on a step whose class is missing survives 
 }
 
 #ifndef SPATIAL_DISABLED
-TEST_CASE("[GraphScript] The catalogue finds a spatial method from a part of its name") {
+TEST_CASE("[GraphScript] The catalog finds a spatial method from a part of its name") {
 	const Vector<GraphStepEntry> found = GraphStepCatalogue::find("translate", GraphWireFilter());
 	CHECK(has_entry(found, "call_method", "Entity3D", "method", "translate"));
 }
 
-TEST_CASE("[GraphScript] The catalogue offers a Set step for a vector only when the dragged wire is a vector") {
+TEST_CASE("[GraphScript] The catalog offers a Set step for a vector only when the dragged wire is a vector") {
 	GraphWireFilter vector;
 	vector.dragged_from = GraphPinSide::OUTPUT;
 	vector.type = Variant::VECTOR3;
@@ -536,7 +536,7 @@ TEST_CASE("[GraphScript] The catalogue offers a Set step for a vector only when 
 }
 #endif // SPATIAL_DISABLED
 
-TEST_CASE("[GraphScript] The catalogue lists the table steps for no text and the engine for some") {
+TEST_CASE("[GraphScript] The catalog lists the table steps for no text and the engine for some") {
 	const Vector<GraphStepEntry> table = GraphStepCatalogue::find("", GraphWireFilter());
 	bool has_branch = false;
 	for (const GraphStepEntry &entry : table) {

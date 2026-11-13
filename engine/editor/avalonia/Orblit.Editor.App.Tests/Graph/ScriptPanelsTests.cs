@@ -357,15 +357,15 @@ public sealed class ScriptPanelsTests
         });
     }
 
-    static GraphStep Signalling(int id, string kind, string signal) =>
+    static GraphStep Signaling(int id, string kind, string signal) =>
         FakeGraphSource.MakeStep(id, kind, 0, 0, [], [], null, ("signal", $"\"{signal}\""));
 
     static (FakeGraphSource Source, ScriptPanels Panels) OpenWithLinks()
     {
         var source = FakeGraphSource.Sample();
         source.Put(new GraphSignal("scored", [new GraphTyped("amount", 2)]));
-        source.Put(Signalling(4, "emit", "scored"));
-        source.PutFunction("helper", Signalling(5, "await_signal", "scored"));
+        source.Put(Signaling(4, "emit", "scored"));
+        source.PutFunction("helper", Signaling(5, "await_signal", "scored"));
         return (source, new ScriptPanels(source));
     }
 

@@ -8,7 +8,7 @@ namespace Orblit.Editor.App.Tests.Graph;
 /// <summary>
 /// A graph source that holds a function in memory and keeps a log of the calls it got. It refuses what the engine
 /// refuses in the cases the tests use: a wire between ports of unlike sorts or unlike data types, a second wire
-/// into an input, and a step or wire that is not there. It offers a small catalogue of steps to search. It keeps
+/// into an input, and a step or wire that is not there. It offers a small catalog of steps to search. It keeps
 /// variables, signals and function names, and refuses a name that is taken, a name that is not an identifier and a
 /// name that is not there.
 /// </summary>
@@ -29,7 +29,7 @@ internal sealed class FakeGraphSource : IGraphFile
         new(new GraphStepEntry("constant", "Values", "Constant", new Dictionary<string, string> { ["value"] = "0" }), [], [Data("value", 0)]),
     ];
 
-    // The steps a pin edit adds. They are kept apart from the catalogue because the palette tests list the catalogue.
+    // The steps a pin edit adds. They are kept apart from the catalog because the palette tests list the catalog.
     static readonly Dictionary<string, (GraphPort[] Inputs, GraphPort[] Outputs, GraphGrowth Growth)> s_kinds = new()
     {
         ["get"] = ([], [Data("value", 0)], NoGrowth),

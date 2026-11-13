@@ -107,7 +107,7 @@ struct GraphStepKind {
 	// A cycle of flow wires is allowed when it passes through a loop.
 	bool loop;
 	GraphPinGrowth growth = {};
-	// A kind with this column mirrors something the engine registers, and the catalogue lists it
+	// A kind with this column mirrors something the engine registers, and the catalog lists it
 	// once per method, property or signal.
 	GraphDeriveFn derive = nullptr;
 
@@ -121,7 +121,7 @@ namespace GraphStepKinds {
 // Returns null for a name this build does not know.
 const GraphStepKind *find(const StringName &p_name);
 
-// The table, so the catalogue can list it.
+// The table, so the catalog can list it.
 int get_kind_count();
 const GraphStepKind &get_kind(int p_index);
 

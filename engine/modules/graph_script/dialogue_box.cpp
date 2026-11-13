@@ -64,7 +64,7 @@ String DialogueBox::get_text() const {
 }
 
 // The column and its labels are internal children, so packing a box into a prefab keeps only the box.
-// shortcut: a fixed width at the bottom centre with the default theme. A game that needs more
+// shortcut: a fixed width at the bottom center with the default theme. A game that needs more
 // makes its own prefab.
 DialogueBox::DialogueBox() {
 	set_anchors_preset(PRESET_CENTER_BOTTOM);

@@ -240,7 +240,7 @@ TEST_CASE("[GraphScript] A message holds at most ten choices") {
 	CHECK(graph.script->set_step_pins("go", MESSAGE_STEP, 0) == OK);
 }
 
-TEST_CASE("[GraphScript] The catalogue offers both dialogue steps with no text") {
+TEST_CASE("[GraphScript] The catalog offers both dialogue steps with no text") {
 	bool has_message = false;
 	bool has_choice = false;
 	for (const GraphStepEntry &entry : GraphStepCatalogue::find("", GraphWireFilter())) {

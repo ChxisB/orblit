@@ -624,10 +624,10 @@ public sealed class GraphCanvasTests
             var (_, canvas) = Open(source);
             var step = canvas.Scene.Find(4)!;
             var row = step.Origin.Y + step.Height - (StepView.RowHeight / 2);
-            var centre = step.Origin.X + (StepView.Width / 2);
+            var center = step.Origin.X + (StepView.Width / 2);
 
-            Click(canvas, new Point(centre - 18, row));
-            Click(canvas, new Point(centre + 18, row));
+            Click(canvas, new Point(center - 18, row));
+            Click(canvas, new Point(center + 18, row));
 
             Assert.Equal(["SetStepPins 4 4", "SetStepPins 4 3"], source.Calls);
         });
@@ -643,10 +643,10 @@ public sealed class GraphCanvasTests
             var (_, canvas) = Open(source);
             var step = canvas.Scene.Find(4)!;
             var row = step.Origin.Y + step.Height - (StepView.RowHeight / 2);
-            var centre = step.Origin.X + (StepView.Width / 2);
+            var center = step.Origin.X + (StepView.Width / 2);
 
-            Click(canvas, new Point(centre - 18, row));
-            Click(canvas, new Point(centre + 18, row));
+            Click(canvas, new Point(center - 18, row));
+            Click(canvas, new Point(center + 18, row));
 
             Assert.Empty(source.Calls);
         });

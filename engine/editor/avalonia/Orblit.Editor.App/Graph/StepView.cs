@@ -284,12 +284,12 @@ internal sealed class StepView
             return hit && _rows[row].Parameter.Length > 0 ? new StepHit(StepPart.Value, Parameter: _rows[row].Parameter) : new StepHit(StepPart.Body);
         }
         var growth = _step.Growth;
-        var centre = Width / 2;
-        if (local.X >= centre - ButtonGap - ButtonWidth && local.X <= centre - ButtonGap && growth.Count < growth.Maximum)
+        var center = Width / 2;
+        if (local.X >= center - ButtonGap - ButtonWidth && local.X <= center - ButtonGap && growth.Count < growth.Maximum)
         {
             return new StepHit(StepPart.Grow);
         }
-        var shrinks = local.X >= centre + ButtonGap && local.X <= centre + ButtonGap + ButtonWidth && growth.Count > growth.Minimum;
+        var shrinks = local.X >= center + ButtonGap && local.X <= center + ButtonGap + ButtonWidth && growth.Count > growth.Minimum;
         return new StepHit(shrinks ? StepPart.Shrink : StepPart.Body);
     }
 
@@ -345,9 +345,9 @@ internal sealed class StepView
 
     void AddGrowthLabels(double top)
     {
-        var centre = Width / 2;
-        _labels!.Add(new Label(Text("+", 13, EditorBrushes.Text, bold: true), new Point(centre - ButtonGap - (ButtonWidth / 2) - 4, top)));
-        _labels.Add(new Label(Text("−", 13, EditorBrushes.Text, bold: true), new Point(centre + ButtonGap + (ButtonWidth / 2) - 4, top)));
+        var center = Width / 2;
+        _labels!.Add(new Label(Text("+", 13, EditorBrushes.Text, bold: true), new Point(center - ButtonGap - (ButtonWidth / 2) - 4, top)));
+        _labels.Add(new Label(Text("−", 13, EditorBrushes.Text, bold: true), new Point(center + ButtonGap + (ButtonWidth / 2) - 4, top)));
     }
 
     void DrawRows(DrawingContext context)
@@ -374,23 +374,23 @@ internal sealed class StepView
         {
             return;
         }
-        var centre = PinCenter(pin.IsInput, pin.Port);
+        var center = PinCenter(pin.IsInput, pin.Port);
         var brush = PinColors.Of(port);
         var filled = _wired.Contains(pin);
         if (port.Sort == GraphPortSort.Flow)
         {
-            context.DrawGeometry(filled ? brush : null, new Pen(brush, 1.5).ToImmutable(), Triangle(centre));
+            context.DrawGeometry(filled ? brush : null, new Pen(brush, 1.5).ToImmutable(), Triangle(center));
             return;
         }
-        context.DrawEllipse(filled ? brush : s_body, new Pen(brush, 1.5).ToImmutable(), centre, PinRadius, PinRadius);
+        context.DrawEllipse(filled ? brush : s_body, new Pen(brush, 1.5).ToImmutable(), center, PinRadius, PinRadius);
     }
 
     void DrawGrowthButtons(DrawingContext context)
     {
         var top = Origin.Y + HeaderHeight + (RowHeight * _rows.Count) + 2;
-        var centre = Origin.X + (Width / 2);
-        var plus = new Rect(centre - ButtonGap - ButtonWidth, top, ButtonWidth, RowHeight - 4);
-        var minus = new Rect(centre + ButtonGap, top, ButtonWidth, RowHeight - 4);
+        var center = Origin.X + (Width / 2);
+        var plus = new Rect(center - ButtonGap - ButtonWidth, top, ButtonWidth, RowHeight - 4);
+        var minus = new Rect(center + ButtonGap, top, ButtonWidth, RowHeight - 4);
         context.DrawRectangle(s_field, s_border, new RoundedRect(plus, 3));
         context.DrawRectangle(s_field, s_border, new RoundedRect(minus, 3));
     }
@@ -401,13 +401,13 @@ internal sealed class StepView
         context.DrawEllipse(s_body, selected ? s_selected : new Pen(brush, 2).ToImmutable(), Bounds.Center, RerouteSize / 2, RerouteSize / 2);
     }
 
-    static StreamGeometry Triangle(Point centre)
+    static StreamGeometry Triangle(Point center)
     {
         var geometry = new StreamGeometry();
         using var context = geometry.Open();
-        context.BeginFigure(new Point(centre.X - 4, centre.Y - 5), true);
-        context.LineTo(new Point(centre.X + 5, centre.Y));
-        context.LineTo(new Point(centre.X - 4, centre.Y + 5));
+        context.BeginFigure(new Point(center.X - 4, center.Y - 5), true);
+        context.LineTo(new Point(center.X + 5, center.Y));
+        context.LineTo(new Point(center.X - 4, center.Y + 5));
         context.EndFigure(true);
         return geometry;
     }
