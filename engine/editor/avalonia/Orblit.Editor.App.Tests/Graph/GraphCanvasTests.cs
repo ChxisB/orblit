@@ -40,6 +40,46 @@ public sealed class GraphCanvasTests
 
     static Point HeaderOf(GraphCanvas canvas, int step) => canvas.Scene.Find(step)!.Origin + new Vector(40, 10);
 
+    static void Settle(GraphCanvas canvas) =>
+        canvas.Surface.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F13 });
+
+    [Fact]
+    public void Picking_one_step_reports_it_once_and_picking_nothing_reports_none()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var picked = new List<int?>();
+            canvas.SelectionChanged += picked.Add;
+
+            Click(canvas, HeaderOf(canvas, 2));
+            Settle(canvas);
+            Settle(canvas);
+            Click(canvas, new Point(5000, 5000));
+            Settle(canvas);
+
+            Assert.Equal(new int?[] { 2, null }, picked);
+        });
+    }
+
+    [Fact]
+    public void Two_steps_picked_together_are_not_one_selection()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var picked = new List<int?>();
+            canvas.SelectionChanged += picked.Add;
+
+            Click(canvas, HeaderOf(canvas, 2));
+            Settle(canvas);
+            Click(canvas, HeaderOf(canvas, 3), keys: KeyModifiers.Shift);
+            Settle(canvas);
+
+            Assert.Equal(new int?[] { 2, null }, picked);
+        });
+    }
+
     [Fact]
     public void It_shows_a_view_for_each_step_and_a_wire_for_each_connection()
     {

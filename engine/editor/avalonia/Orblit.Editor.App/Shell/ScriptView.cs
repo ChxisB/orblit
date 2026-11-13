@@ -74,6 +74,8 @@ internal sealed class ScriptView : Border
     readonly Border _panelsHost = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TabInactive };
     IScriptFiles? _files;
     IGraphFile? _graphFile;
+    ScriptPanels? _panels;
+    StepInspector? _inspector;
     string? _open;
     string _saved = "";
     bool _graphEdited;
@@ -130,7 +132,10 @@ internal sealed class ScriptView : Border
     internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
 
     /// <summary>The panels of the open graph script, or null when a C# file or nothing is open.</summary>
-    internal ScriptPanels? Panels => _panelsHost.Child as ScriptPanels;
+    internal ScriptPanels? Panels => _panels;
+
+    /// <summary>The inspector of the selected step of the open graph script, or null when a C# file or nothing is open.</summary>
+    internal StepInspector? Inspector => _inspector;
 
     /// <summary>Whether the open file differs from what is on disk: the text in the box, or a graph the engine changed.</summary>
     public bool IsDirty => _graphFile is not null ? _graphEdited : _open is not null && _editor.Text != _saved;
@@ -251,11 +256,16 @@ internal sealed class ScriptView : Border
                 _graphEdited = true;
                 ShowText();
             };
-            _graphHost.Child = new GraphCanvas(file);
-            var panels = new ScriptPanels(file);
+            _panels = new ScriptPanels(file);
+            _inspector = new StepInspector(file);
+            ShowCanvas(file, _inspector);
             // The canvas shows the function it is given when it is made, so another function needs a new canvas.
-            panels.FunctionOpened += _ => _graphHost.Child = new GraphCanvas(file);
-            _panelsHost.Child = panels;
+            _panels.FunctionOpened += _ => ShowCanvas(file, _inspector);
+            var side = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
+            Grid.SetRow(_inspector, 1);
+            side.Children.Add(_panels);
+            side.Children.Add(_inspector);
+            _panelsHost.Child = side;
             _graphHost.IsVisible = true;
             _panelsHost.IsVisible = true;
             _text.IsVisible = false;
@@ -273,8 +283,19 @@ internal sealed class ScriptView : Border
         _name.Text = path;
     }
 
+    // A new canvas has nothing selected, so the inspector is cleared with it.
+    void ShowCanvas(IGraphFile file, StepInspector inspector)
+    {
+        var canvas = new GraphCanvas(file);
+        canvas.SelectionChanged += inspector.Show;
+        _graphHost.Child = canvas;
+        inspector.Show(null);
+    }
+
     void CloseGraph()
     {
+        _panels = null;
+        _inspector = null;
         _graphFile?.Dispose();
         _graphFile = null;
         _graphEdited = false;

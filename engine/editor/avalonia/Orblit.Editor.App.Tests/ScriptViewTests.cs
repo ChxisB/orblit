@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
@@ -414,6 +415,45 @@ public sealed class ScriptViewTests
 
             Assert.NotSame(before, view.Canvas);
             Assert.Contains("OpenFunction helper", graph.Calls);
+        });
+    }
+
+    [Fact]
+    public void Selecting_one_step_shows_it_in_the_inspector_and_a_new_canvas_clears_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            graph.PutFunction("helper");
+            Pick(view, "res://logic.ograph");
+            Assert.Equal("No step selected.", view.Inspector!.Heading);
+
+            var canvas = view.Canvas!;
+            var header = canvas.Scene.Find(3)!.Origin + new Vector(40, 10);
+            canvas.Gestures.Press(header, MouseButton.Left, KeyModifiers.None, 1);
+            canvas.Gestures.Release(header);
+            canvas.Surface.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F13 });
+
+            Assert.Equal("print", view.Inspector.Heading);
+
+            view.Panels!.Find<Button>("function:helper:open")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal("No step selected.", view.Inspector.Heading);
+        });
+    }
+
+    [Fact]
+    public void A_text_file_has_no_inspector()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, "res://logic.ograph");
+            Assert.NotNull(view.Inspector);
+
+            Pick(view, "res://spin.cs");
+
+            Assert.Null(view.Inspector);
         });
     }
 

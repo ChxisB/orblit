@@ -55,6 +55,7 @@ internal sealed class EditorChecks : IChecks
         ("the palette lists what fits a dragged wire", GraphScriptPalette),
         ("a frame is set, replaced, removed and saved, and a frame with no area is refused", GraphScriptFrames),
         ("variables and signals are declared, retyped and renamed, steps that name them follow, and the file keeps them", GraphScriptDeclarations),
+        ("the text a pin is reset to is the zero of its type, and compose and decompose take the parts the editor gives them", GraphScriptPinEdits),
     ];
 
     void SecondHostThrows()
@@ -712,6 +713,47 @@ internal sealed class EditorChecks : IChecks
         Assert.True(reopened.RemoveVariable("sum").Ok);
         Assert.Empty(reopened.Document.Signals);
         Assert.Empty(reopened.Document.Variables);
+    }
+
+    void GraphScriptPinEdits()
+    {
+        using var session = GraphScriptSession.Open(_host, MakeGraphFile("pinedits"));
+
+        // The engine reads each zero text as its type and writes the same text back.
+        for (var type = 0; type < 39; type++)
+        {
+            if (VariantText.ZeroOf(type) is not { } zero)
+            {
+                continue;
+            }
+
+            Assert.True(session.SetStepParameter("main", 2, "text", zero).Ok, $"type {type} refused {zero}");
+            var held = session.Document.Functions[0].Steps.Single(step => step.Id == 2).Parameters["text"];
+            Assert.True(held == zero, $"type {type} reads back as {held} and not {zero}");
+        }
+
+        // A decompose or compose step with one pin for each part compiles, so the editor's part counts are ones the engine takes.
+        var id = 3;
+        foreach (var type in Enumerable.Range(0, 39).Where(type => VariantTypes.PartsOf(type) > 0))
+        {
+            var name = VariantTypes.NameOf(type);
+            foreach (var kind in new[] { "compose", "decompose" })
+            {
+                Assert.True(session.AddStep("main", id, kind).Ok);
+                Assert.True(session.SetStepParameter("main", id, "type", VariantText.Quote(name)).Ok);
+                Assert.True(session.SetStepPins("main", id, VariantTypes.PartsOf(type)).Ok);
+                // The engine reports an input with no wire and no value before it reads the parts, so every input gets a value.
+                foreach (var port in session.Document.Functions[0].Steps.Single(found => found.Id == id).Inputs.Where(port => port.Parameter != ""))
+                {
+                    Assert.True(session.SetStepParameter("main", id, port.Parameter, kind == "compose" ? "0.0" : VariantText.ZeroOf(type)!).Ok);
+                }
+
+                var function = session.Document.Functions[0];
+                var problem = function.Steps.Single(found => found.Id == id).Problem + function.Error;
+                Assert.True(problem == "", $"{kind} of {name} with {VariantTypes.PartsOf(type)} pins: {problem}");
+                id++;
+            }
+        }
     }
 
     // Builds a graph script in the engine and saves it to the project: an entry and a print step, not wired.

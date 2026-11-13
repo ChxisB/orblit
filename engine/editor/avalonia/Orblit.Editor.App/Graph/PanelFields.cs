@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
 

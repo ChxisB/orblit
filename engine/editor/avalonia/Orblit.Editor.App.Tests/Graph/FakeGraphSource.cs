@@ -28,6 +28,19 @@ internal sealed class FakeGraphSource : IGraphFile
         new(new GraphStepEntry("constant", "Values", "Constant", new Dictionary<string, string> { ["value"] = "0" }), [], [Data("value", 0)]),
     ];
 
+    // The steps a pin edit adds. They are kept apart from the catalogue because the palette tests list the catalogue.
+    static readonly Dictionary<string, (GraphPort[] Inputs, GraphPort[] Outputs, GraphGrowth Growth)> s_kinds = new()
+    {
+        ["get"] = ([], [Data("value", 0)], NoGrowth),
+        ["local"] = ([], [Data("value", 0)], NoGrowth),
+        ["set"] = ([Flow("run"), Data("value", 0, "value")], [Flow("then")], NoGrowth),
+        ["set_local"] = ([Flow("run"), Data("value", 0, "value")], [Flow("then")], NoGrowth),
+        ["decompose"] = ([Data("value", 0, "value")], [Data("part", 0)], new GraphGrowth(GraphGrowthSide.Output, 1, 1, 64)),
+        ["compose"] = ([Data("argument", 0)], [Data("value", 0)], new GraphGrowth(GraphGrowthSide.Input, 0, 0, 64)),
+    };
+
+    static GraphGrowth NoGrowth => new(GraphGrowthSide.None, 0, 0, 64);
+
     readonly List<GraphStep> _steps = [];
     readonly List<GraphWire> _wires = [];
     readonly List<GraphFrame> _frames = [];
@@ -107,9 +120,10 @@ internal sealed class FakeGraphSource : IGraphFile
     public GraphEditResult AddStep(int id, string kind)
     {
         var template = Array.Find(s_catalogue, found => found.Entry.Kind == kind);
-        GraphPort[] inputs = kind == "reroute" ? [Data("value", 0)] : template?.Inputs ?? [Flow("run")];
-        GraphPort[] outputs = kind == "reroute" ? [Data("value", 0)] : template?.Outputs ?? [Flow("then")];
-        return Take($"AddStep {id} {kind}", () => _steps.Add(MakeStep(id, kind, 0, 0, inputs, outputs)));
+        var made = s_kinds.GetValueOrDefault(kind);
+        GraphPort[] inputs = kind == "reroute" ? [Data("value", 0)] : template?.Inputs ?? made.Inputs ?? [Flow("run")];
+        GraphPort[] outputs = kind == "reroute" ? [Data("value", 0)] : template?.Outputs ?? made.Outputs ?? [Flow("then")];
+        return Take($"AddStep {id} {kind}", () => _steps.Add(MakeStep(id, kind, 0, 0, inputs, outputs, made.Growth)));
     }
 
     public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)

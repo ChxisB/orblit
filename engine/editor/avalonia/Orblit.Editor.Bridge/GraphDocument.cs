@@ -84,7 +84,22 @@ public sealed record GraphTyped(string Name, int Type)
 /// <summary>Variant text for a string, and the string out of Variant text.</summary>
 public static class VariantText
 {
+    // Indexed by Variant type number. A null entry is a type that has no text, such as an RID.
+    static readonly string?[] s_zero =
+    [
+        "null", "false", "0", "0.0", "\"\"", "Vector2(0, 0)", "Vector2i(0, 0)", "Rect2(0, 0, 0, 0)", "Rect2i(0, 0, 0, 0)",
+        "Vector3(0, 0, 0)", "Vector3i(0, 0, 0)", "Transform2D(1, 0, 0, 1, 0, 0)", "Vector4(0, 0, 0, 0)", "Vector4i(0, 0, 0, 0)",
+        "Plane(0, 1, 0, 0)", "Quaternion(0, 0, 0, 1)", "AABB(0, 0, 0, 0, 0, 0)", "Basis(1, 0, 0, 0, 1, 0, 0, 0, 1)",
+        "Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)", "Projection(1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1)",
+        "Color(0, 0, 0, 1)", "&\"\"", "EntityPath(\"\")", null, "null", null, null, "{}", "[]",
+        "PackedByteArray()", "PackedInt32Array()", "PackedInt64Array()", "PackedFloat32Array()", "PackedFloat64Array()",
+        "PackedStringArray()", "PackedVector2Array()", "PackedVector3Array()", "PackedColorArray()", "PackedVector4Array()",
+    ];
+
     public static string Quote(string text) => GraphJson.Write(text);
+
+    /// <summary>The Variant text of the value a type starts as, such as <c>0</c> for an Int. Null for a type with no such text.</summary>
+    public static string? ZeroOf(int type) => type >= 0 && type < s_zero.Length ? s_zero[type] : null;
 
     /// <summary>The string a text holds. Text that is not a quoted string comes back as it is.</summary>
     public static string Unquote(string? text)

@@ -76,6 +76,31 @@ public sealed class GraphDocumentTests
     }
 
     [Theory]
+    [InlineData(1, "false")]
+    [InlineData(2, "0")]
+    [InlineData(3, "0.0")]
+    [InlineData(4, "\"\"")]
+    [InlineData(9, "Vector3(0, 0, 0)")]
+    [InlineData(27, "{}")]
+    [InlineData(28, "[]")]
+    [InlineData(29, "PackedByteArray()")]
+    public void TheZeroOfATypeIsTheTextTheEngineStartsItAs(int type, string text)
+    {
+        Assert.Equal(text, VariantText.ZeroOf(type));
+    }
+
+    [Theory]
+    [InlineData(23)]
+    [InlineData(25)]
+    [InlineData(26)]
+    [InlineData(-1)]
+    [InlineData(39)]
+    public void ATypeWithNoTextHasNoZero(int type)
+    {
+        Assert.Null(VariantText.ZeroOf(type));
+    }
+
+    [Theory]
     [InlineData("")]
     [InlineData("not json")]
     [InlineData("null")]

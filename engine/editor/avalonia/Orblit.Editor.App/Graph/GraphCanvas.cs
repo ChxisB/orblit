@@ -39,6 +39,7 @@ internal sealed class GraphCanvas : Grid
     Action<string>? _commit;
     string _original = "";
     bool _fitted;
+    int? _selected;
 
     public GraphCanvas(IGraphSource source)
     {
@@ -81,6 +82,9 @@ internal sealed class GraphCanvas : Grid
 
     internal Avalonia.Controls.Primitives.ToggleButton MapToggle => _map;
 
+    /// <summary>Raised when the one selected step changes, with its id. Null when no step or more than one is selected.</summary>
+    public event Action<int?>? SelectionChanged;
+
     /// <summary>Whether a value or title box is open.</summary>
     internal bool IsEditing => _commit is not null;
 
@@ -92,6 +96,7 @@ internal sealed class GraphCanvas : Grid
         _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
         FitOnce();
         Redraw();
+        NotifySelection();
     }
 
     /// <summary>Puts a text box over a place on the canvas. Accepting it passes the text to the commit.</summary>
@@ -198,6 +203,17 @@ internal sealed class GraphCanvas : Grid
     {
         _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
         _minimap.InvalidateVisual();
+        NotifySelection();
+    }
+
+    void NotifySelection()
+    {
+        int? one = _scene.SelectedSteps.Count == 1 ? _scene.SelectedSteps.First() : null;
+        if (one != _selected)
+        {
+            _selected = one;
+            SelectionChanged?.Invoke(one);
+        }
     }
 
     void OnEditorKey(object? sender, KeyEventArgs e)
