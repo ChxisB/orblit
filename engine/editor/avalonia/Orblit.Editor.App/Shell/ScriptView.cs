@@ -129,6 +129,9 @@ internal sealed class ScriptView : Border
     internal Button SaveButton => _save;
 
     /// <summary>The canvas of the open graph script, or null when a C# file or nothing is open.</summary>
+    /// <summary>The breakpoints of every graph script opened here. They outlive the canvas that shows them.</summary>
+    internal GraphBreakpoints Breakpoints { get; } = new();
+
     internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
 
     /// <summary>The panels of the open graph script, or null when a C# file or nothing is open.</summary>
@@ -258,9 +261,9 @@ internal sealed class ScriptView : Border
             };
             _panels = new ScriptPanels(file);
             _inspector = new StepInspector(file);
-            ShowCanvas(file, _inspector);
+            ShowCanvas(file, path, _inspector);
             // The canvas shows the function it is given when it is made, so another function needs a new canvas.
-            _panels.FunctionOpened += _ => ShowCanvas(file, _inspector);
+            _panels.FunctionOpened += _ => ShowCanvas(file, path, _inspector);
             _panels.StepRevealed += id => Canvas?.Reveal(id);
             var side = new Grid { RowDefinitions = new RowDefinitions("*,Auto") };
             Grid.SetRow(_inspector, 1);
@@ -285,9 +288,12 @@ internal sealed class ScriptView : Border
     }
 
     // A new canvas has nothing selected, so the inspector is cleared with it.
-    void ShowCanvas(IGraphFile file, StepInspector inspector)
+    void ShowCanvas(IGraphFile file, string path, StepInspector inspector)
     {
         var canvas = new GraphCanvas(file);
+        canvas.Scene.Script = path;
+        canvas.Scene.Breakpoints = Breakpoints;
+        canvas.Reload();
         canvas.SelectionChanged += inspector.Show;
         _graphHost.Child = canvas;
         inspector.Show(null);

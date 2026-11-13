@@ -21,6 +21,7 @@ internal sealed class GraphScene
     readonly List<FrameView> _frames = [];
     readonly HashSet<int> _hidden = [];
     readonly Dictionary<string, HashSet<int>> _bookmarks = [];
+    HashSet<int> _warned = [];
     string _function = "";
     IReadOnlyList<GraphWire> _wires = [];
 
@@ -42,6 +43,20 @@ internal sealed class GraphScene
     // shortcut: bookmarks live in memory with the scene and are lost when the script closes. Keep them in the file when it has a place for editor data.
     public IReadOnlySet<int> Bookmarked => _bookmarks.GetValueOrDefault(_function) ?? [];
 
+    /// <summary>The breakpoints of every script. The scene shows the ones of its own script and function.</summary>
+    public GraphBreakpoints Breakpoints { get; set; } = new();
+
+    /// <summary>The path of the script on show, which names where its breakpoints are.</summary>
+    public string Script { get; set; } = "";
+
+    /// <summary>The steps of the function on show that carry a breakpoint.</summary>
+    public IReadOnlySet<int> Breakpointed => Breakpoints.Steps(BreakpointSource);
+
+    /// <summary>The steps of the function on show that a warning names.</summary>
+    public IReadOnlySet<int> Warned => _warned;
+
+    string BreakpointSource => GraphBreakpoints.SourceOf(Script, _function);
+
     public int NextFrameId => _frames.Count == 0 ? 1 : _frames.Max(frame => frame.Id) + 1;
 
     /// <summary>The box that holds every step and frame, or an empty box for an empty graph.</summary>
@@ -54,9 +69,12 @@ internal sealed class GraphScene
         }
     }
 
-    public void Load(GraphFunction? function)
+    /// <param name="function">The function to show.</param>
+    /// <param name="warnings">The warnings of the whole script. The ones that name a step of this function mark it.</param>
+    public void Load(GraphFunction? function, IReadOnlyList<GraphWarning>? warnings = null)
     {
         _function = function?.Name ?? "";
+        _warned = [.. (warnings ?? []).Where(warning => warning.Step > 0 && warning.Function == _function).Select(warning => warning.Step)];
         _wires = function?.Wires ?? [];
         var wired = _wires.SelectMany(wire => new[] { new PinRef(wire.FromStep, wire.FromPort, false), new PinRef(wire.ToStep, wire.ToPort, true) }).ToHashSet();
         _steps.Clear();
@@ -69,7 +87,18 @@ internal sealed class GraphScene
         PruneSelection();
         // A step id can be used again after the step is gone, so a bookmark outlives only its step.
         _bookmarks.GetValueOrDefault(_function)?.IntersectWith(_byId.Keys);
+        Breakpoints.Keep(BreakpointSource, _byId.Keys);
     }
+
+    /// <summary>What the canvas has marked on a step.</summary>
+    public StepMarks MarksOf(StepView step) =>
+        (SelectedSteps.Contains(step.Id) ? StepMarks.Selected : StepMarks.None)
+        | (Bookmarked.Contains(step.Id) ? StepMarks.Bookmarked : StepMarks.None)
+        | (Breakpointed.Contains(step.Id) ? StepMarks.Breakpoint : StepMarks.None)
+        | (Warned.Contains(step.Id) ? StepMarks.Warning : StepMarks.None);
+
+    /// <summary>Sets a breakpoint on the step or takes it off. True when it is set after the call.</summary>
+    public bool ToggleBreakpoint(int id) => Breakpoints.Toggle(BreakpointSource, id);
 
     /// <summary>Marks the step or takes its mark off. True when it is marked after the call.</summary>
     public bool ToggleBookmark(int id)

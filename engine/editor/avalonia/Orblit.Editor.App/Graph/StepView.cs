@@ -15,6 +15,18 @@ internal enum StepPart
     Value,
     Grow,
     Shrink,
+    Margin,
+}
+
+/// <summary>What the canvas has marked on a step, drawn on and around it.</summary>
+[Flags]
+internal enum StepMarks
+{
+    None = 0,
+    Selected = 1,
+    Bookmarked = 2,
+    Breakpoint = 4,
+    Warning = 8,
 }
 
 /// <summary>What a point lands on in a step. A pin hit says which pin and a value hit says which parameter.</summary>
@@ -42,6 +54,11 @@ internal sealed class StepView
     const double BookmarkWidth = 10;
     const double BookmarkHeight = 14;
     const double ButtonGap = 6;
+    const double MarginWidth = 14;
+    const double MarginGap = 2;
+    const double BreakpointRadius = 6;
+    const double WarningInset = 36;
+    const double WarningRadius = 5;
     // shortcut: a value box beside an input is a fixed 52 pixels, so a long output name on the same row can
     // touch it. Measure the names and place the box from that when a step needs it.
     const double InputValueLeft = Width * 0.28;
@@ -54,6 +71,8 @@ internal sealed class StepView
     static readonly IBrush s_field = Fill("#1a1a1a");
     static readonly IBrush s_dim = new ImmutableSolidColorBrush(EditorColors.TextDim);
     static readonly IBrush s_problem = Fill("#e0605a");
+    static readonly IBrush s_breakpoint = Fill("#d93a3a");
+    static readonly IBrush s_warning = Fill("#e0b050");
     static readonly IPen s_border = new Pen(Fill("#444444"), 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
     static readonly IPen s_broken = new Pen(s_problem, 2).ToImmutable();
@@ -98,6 +117,9 @@ internal sealed class StepView
     /// <summary>The name of the step with its underscores as spaces.</summary>
     public string Title => char.ToUpperInvariant(_step.Kind[0]) + _step.Kind[1..].Replace('_', ' ');
 
+    /// <summary>The strip beside the header where a click sets a breakpoint.</summary>
+    Rect MarginRect => new(Origin.X - MarginGap - MarginWidth, Origin.Y, MarginWidth, HeaderHeight);
+
     bool HasGrowth => _step.Growth.Side != GraphGrowthSide.None;
 
     public Point PinCenter(bool isInput, int port)
@@ -135,6 +157,10 @@ internal sealed class StepView
         {
             return new StepHit(StepPart.Pin, pin);
         }
+        if (!IsReroute && MarginRect.Contains(point))
+        {
+            return new StepHit(StepPart.Margin);
+        }
         if (!Bounds.Contains(point))
         {
             return null;
@@ -156,8 +182,9 @@ internal sealed class StepView
 
     public string ValueOf(string parameter) => _rows.Find(candidate => candidate.Parameter == parameter).Value ?? "";
 
-    public void Draw(DrawingContext context, bool selected, bool bookmarked)
+    public void Draw(DrawingContext context, StepMarks marks)
     {
+        var selected = marks.HasFlag(StepMarks.Selected);
         if (IsReroute)
         {
             DrawReroute(context, selected);
@@ -173,9 +200,22 @@ internal sealed class StepView
         {
             context.DrawText(label.Text, new Point(Origin.X + label.At.X, Origin.Y + label.At.Y));
         }
-        if (bookmarked)
+        DrawMarks(context, bounds, marks);
+    }
+
+    void DrawMarks(DrawingContext context, Rect bounds, StepMarks marks)
+    {
+        if (marks.HasFlag(StepMarks.Bookmarked))
         {
             context.DrawRectangle(EditorBrushes.Accent, null, new Rect(bounds.Right - BookmarkInset - BookmarkWidth, bounds.Y - 2, BookmarkWidth, BookmarkHeight));
+        }
+        if (marks.HasFlag(StepMarks.Warning))
+        {
+            context.DrawEllipse(s_warning, null, new Point(bounds.Right - WarningInset, bounds.Y + (HeaderHeight / 2)), WarningRadius, WarningRadius);
+        }
+        if (marks.HasFlag(StepMarks.Breakpoint))
+        {
+            context.DrawEllipse(s_breakpoint, null, MarginRect.Center, BreakpointRadius, BreakpointRadius);
         }
     }
 

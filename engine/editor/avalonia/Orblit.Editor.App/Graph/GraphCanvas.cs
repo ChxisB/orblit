@@ -112,7 +112,7 @@ internal sealed class GraphCanvas : Grid
     /// <summary>Builds the views again from what the source holds.</summary>
     public void Reload()
     {
-        _scene.Load(_source.Function);
+        _scene.Load(_source.Function, _source.Warnings);
         _empty.IsVisible = _source.Function is null;
         SyncTools();
         FitOnce();

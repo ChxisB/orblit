@@ -50,6 +50,7 @@ internal sealed class FakeGraphSource : IGraphFile
     readonly List<string> _otherFunctions = [];
     readonly Dictionary<string, GraphStep[]> _otherSteps = [];
     string _openName = "main";
+    readonly List<GraphWarning> _warnings = [];
     GraphHistory? _history;
     readonly Dictionary<string, Action> _restorers = [];
 
@@ -80,7 +81,9 @@ internal sealed class FakeGraphSource : IGraphFile
 
     public GraphFunction? Function => Empty ? null : new GraphFunction(_openName, "", [.. _steps], [.. _wires], [.. _frames]);
 
-    public GraphDocument Document => new("Entity", "", [.. _variables], [.. _signals], [.. FunctionList()], []);
+    public GraphDocument Document => new("Entity", "", [.. _variables], [.. _signals], [.. FunctionList()], [.. _warnings]);
+
+    public IReadOnlyList<GraphWarning> Warnings => _warnings;
 
     sealed record Payload(List<GraphStep> Steps, List<GraphWire> Wires, List<GraphVariable> Variables);
 
@@ -264,6 +267,8 @@ internal sealed class FakeGraphSource : IGraphFile
     }
 
     public void Put(GraphStep step) => _steps.Add(step);
+
+    public void Put(GraphWarning warning) => _warnings.Add(warning);
 
     public void Put(GraphWire wire) => _wires.Add(wire);
 

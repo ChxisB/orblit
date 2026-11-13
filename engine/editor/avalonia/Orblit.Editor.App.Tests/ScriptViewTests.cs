@@ -583,4 +583,23 @@ public sealed class ScriptViewTests
             Assert.Equal(0, graph.Saves);
         });
     }
+
+    [Fact]
+    public void A_breakpoint_set_on_the_canvas_is_kept_when_the_script_is_closed_and_opened_again()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, "res://logic.ograph");
+            var step = view.Canvas!.Scene.Find(2)!;
+            view.Canvas.Gestures.Press(step.Origin + new Vector(-8, 10), MouseButton.Left, KeyModifiers.None, 1);
+            view.Canvas.Gestures.Release(step.Origin + new Vector(-8, 10));
+            Assert.True(view.Breakpoints.Has("res://logic.ograph#main", 2));
+
+            Pick(view, "res://spin.cs");
+            Pick(view, "res://logic.ograph");
+
+            Assert.Equal([2], view.Canvas!.Scene.Breakpointed);
+        });
+    }
 }

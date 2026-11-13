@@ -216,6 +216,9 @@ internal sealed class GraphGestures
             case StepPart.Shrink:
                 _edits.ChangePins(step.Id, -1);
                 break;
+            case StepPart.Margin:
+                _scene.ToggleBreakpoint(step.Id);
+                break;
             default:
                 _scene.SelectStep(step.Id, Additive(keys));
                 _members = [.. _scene.SelectedSteps];

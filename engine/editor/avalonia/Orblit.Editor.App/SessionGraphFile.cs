@@ -23,6 +23,8 @@ internal sealed class SessionGraphFile : IGraphFile
 
     public GraphDocument Document => _session.Document;
 
+    public IReadOnlyList<GraphWarning> Warnings => _session.Document.Warnings;
+
     public GraphHistory History { get; }
 
     public string GetSnapshot() => _session.GetSnapshot();

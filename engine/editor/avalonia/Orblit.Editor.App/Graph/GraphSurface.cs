@@ -172,7 +172,7 @@ internal sealed class GraphSurface : Control
         }
         foreach (var step in _scene.Steps.Where(step => !_scene.IsHidden(step) && step.Bounds.Intersects(view)))
         {
-            step.Draw(context, _scene.SelectedSteps.Contains(step.Id), _scene.Bookmarked.Contains(step.Id));
+            step.Draw(context, _scene.MarksOf(step));
         }
         DrawPendingWire(context);
         if (_gestures.Band is { } band)

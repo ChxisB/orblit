@@ -415,4 +415,42 @@ public sealed class ScriptPanelsTests
             Assert.Equal(["revealed 4"], events);
         });
     }
+
+    static (FakeGraphSource Source, ScriptPanels Panels) OpenWithProblems()
+    {
+        var source = FakeGraphSource.Sample();
+        source.PutFunction("helper", FakeGraphSource.MakeStep(5, "print", 0, 0, [], []) with { Problem = "Wire a value." });
+        source.Put(new GraphWarning("unreachable_step", "main", 3, "", "Nothing runs this step."));
+        return (source, new ScriptPanels(source));
+    }
+
+    [Fact]
+    public void The_problems_of_the_script_are_listed_with_a_row_for_each()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, panels) = OpenWithProblems();
+
+            Assert.Equal("Wire a value.", panels.Find<TextBlock>("problem:helper:5:text")!.Text);
+            Assert.Equal("Nothing runs this step.", panels.Find<TextBlock>("problem:main:3:text")!.Text);
+        });
+    }
+
+    [Fact]
+    public void A_problem_in_another_function_opens_that_function_and_then_reveals_the_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, panels) = OpenWithProblems();
+            var events = new List<string>();
+            panels.FunctionOpened += name => events.Add($"opened {name}");
+            panels.StepRevealed += id => events.Add($"revealed {id}");
+
+            Click(panels, "problem:helper:5");
+            Click(panels, "problem:main:3");
+
+            Assert.Equal(["OpenFunction helper"], source.Calls);
+            Assert.Equal(["opened helper", "revealed 5", "revealed 3"], events);
+        });
+    }
 }

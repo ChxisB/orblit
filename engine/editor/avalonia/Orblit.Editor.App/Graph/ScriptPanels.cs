@@ -9,8 +9,8 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// The panels of a graph script: its variables, its functions with the signature of the one on show, the locals
-/// of that function, its signals, and the steps that use each signal. Each row edits one thing and drags onto the canvas. An edit the engine
+/// The panels of a graph script: its problems, its variables, its functions with the signature of the one on show,
+/// the locals of that function, its signals, and the steps that use each signal. Each row edits one thing and drags onto the canvas. An edit the engine
 /// refuses is shown as the reason it gave, and the row goes back to what the engine holds.
 /// </summary>
 internal sealed class ScriptPanels : Border
@@ -45,6 +45,7 @@ internal sealed class ScriptPanels : Border
     {
         _body.Children.Clear();
         _body.Children.Add(_notice);
+        AddProblems();
         AddVariables();
         AddFunctions();
         AddLocals();
@@ -217,6 +218,12 @@ internal sealed class ScriptPanels : Border
 
         _body.Children.Add(new TextBlock { Text = $"Locals of {_script.Function!.Name}", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
         _body.Children.Add(new TypedListEditor("local", signature.Locals, GraphDropKind.Local, list => Apply(Set(signature, "locals", GraphTyped.WriteList(list)))));
+    }
+
+    void AddProblems()
+    {
+        _body.Children.Add(new TextBlock { Text = "Problems", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _body.Children.Add(new ProblemsList(_script.Document, Reveal));
     }
 
     void AddConnections()

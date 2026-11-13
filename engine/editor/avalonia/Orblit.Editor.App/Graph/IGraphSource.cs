@@ -12,6 +12,9 @@ internal interface IGraphSource
     /// <summary>The function on show, as the engine holds it. Null when the script has no function.</summary>
     GraphFunction? Function { get; }
 
+    /// <summary>What the engine found that is not an error, for the whole script, as of the last edit.</summary>
+    IReadOnlyList<GraphWarning> Warnings { get; }
+
     /// <summary>Raised after an edit the engine took.</summary>
     event Action? Changed;
 
