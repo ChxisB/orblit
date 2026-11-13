@@ -45,6 +45,14 @@ internal sealed record GraphDrop(GraphDropKind Kind, string Value)
 
     public string ToText() => $"{Kind}:{Value}";
 
+    /// <summary>What a drag source hands to the drag: the text, under <see cref="Format"/>.</summary>
+    public DataTransfer ToTransfer()
+    {
+        var transfer = new DataTransfer();
+        transfer.Add(DataTransferItem.Create(Format, ToText()));
+        return transfer;
+    }
+
     /// <summary>Reads what <see cref="ToText"/> wrote. Text that is not from a drag source gives false.</summary>
     public static bool TryParse(string? text, out GraphDrop drop)
     {

@@ -6,12 +6,21 @@ using Avalonia.Media;
 using Avalonia.Reactive;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Theme;
+using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>A graph script open for editing. Disposing it lets the engine drop its copy, so an unsaved edit is gone.</summary>
-internal interface IGraphFile : IGraphSource, IDisposable
+internal interface IGraphFile : IGraphSource, IScriptDeclarations, IDisposable
 {
+    // The canvas and the panels each declare these, with the same meaning, so a file is both. The file
+    // repeats them to give one member for a caller that holds the file.
+    new GraphFunction? Function { get; }
+
+    new event Action? Changed;
+
+    new GraphEditResult SetStepParameter(int id, string parameter, string valueText);
+
     /// <summary>Writes the script to its file. Throws <see cref="IOException"/> when it cannot be written.</summary>
     void Save();
 }
@@ -62,6 +71,7 @@ internal sealed class ScriptView : Border
     readonly Button _save = new() { Content = "Save", Padding = new Thickness(12, 4), MinHeight = 0, IsEnabled = false };
     readonly ScrollViewer _text;
     readonly Border _graphHost = new() { IsVisible = false };
+    readonly Border _panelsHost = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TabInactive };
     IScriptFiles? _files;
     IGraphFile? _graphFile;
     string? _open;
@@ -89,7 +99,14 @@ internal sealed class ScriptView : Border
         var body = new DockPanel();
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
-        body.Children.Add(new Grid { Children = { _text, _graphHost } });
+        // The text spans both columns. A graph script has the canvas on the left and its panels on the right.
+        var area = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        Grid.SetColumnSpan(_text, 2);
+        Grid.SetColumn(_panelsHost, 1);
+        area.Children.Add(_text);
+        area.Children.Add(_graphHost);
+        area.Children.Add(_panelsHost);
+        body.Children.Add(area);
         var panel = new DockPanel();
         DockPanel.SetDock(_list, Dock.Left);
         panel.Children.Add(_list);
@@ -111,6 +128,9 @@ internal sealed class ScriptView : Border
 
     /// <summary>The canvas of the open graph script, or null when a C# file or nothing is open.</summary>
     internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
+
+    /// <summary>The panels of the open graph script, or null when a C# file or nothing is open.</summary>
+    internal ScriptPanels? Panels => _panelsHost.Child as ScriptPanels;
 
     /// <summary>Whether the open file differs from what is on disk: the text in the box, or a graph the engine changed.</summary>
     public bool IsDirty => _graphFile is not null ? _graphEdited : _open is not null && _editor.Text != _saved;
@@ -232,7 +252,12 @@ internal sealed class ScriptView : Border
                 ShowText();
             };
             _graphHost.Child = new GraphCanvas(file);
+            var panels = new ScriptPanels(file);
+            // The canvas shows the function it is given when it is made, so another function needs a new canvas.
+            panels.FunctionOpened += _ => _graphHost.Child = new GraphCanvas(file);
+            _panelsHost.Child = panels;
             _graphHost.IsVisible = true;
+            _panelsHost.IsVisible = true;
             _text.IsVisible = false;
         }
         else
@@ -255,6 +280,8 @@ internal sealed class ScriptView : Border
         _graphEdited = false;
         _graphHost.Child = null;
         _graphHost.IsVisible = false;
+        _panelsHost.Child = null;
+        _panelsHost.IsVisible = false;
         _text.IsVisible = true;
     }
 

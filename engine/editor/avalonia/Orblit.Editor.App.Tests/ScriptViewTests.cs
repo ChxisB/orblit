@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
+using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -376,6 +377,43 @@ public sealed class ScriptViewTests
             Assert.Equal("res://logic.ograph", view.Heading.Text);
             Assert.False(view.IsDirty);
             Assert.False(view.SaveButton.IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void A_graph_script_shows_its_panels_beside_the_canvas_and_a_text_file_shows_none()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            graph.Put(new GraphVariable("total", 2, "0", false, 0, "", "", ""));
+            Assert.Null(view.Panels);
+
+            Pick(view, "res://logic.ograph");
+
+            Assert.NotNull(view.Panels);
+            Assert.NotNull(view.Panels.Find<TextBox>("variable:total:name"));
+
+            Pick(view, "res://spin.cs");
+
+            Assert.Null(view.Panels);
+        });
+    }
+
+    [Fact]
+    public void Showing_another_function_in_the_panels_gives_the_canvas_that_function()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            graph.PutFunction("helper");
+            Pick(view, "res://logic.ograph");
+            var before = view.Canvas;
+
+            view.Panels!.Find<Button>("function:helper:open")!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.NotSame(before, view.Canvas);
+            Assert.Contains("OpenFunction helper", graph.Calls);
         });
     }
 

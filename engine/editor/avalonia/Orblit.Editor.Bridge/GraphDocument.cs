@@ -81,6 +81,30 @@ public sealed record GraphTyped(string Name, int Type)
     }
 }
 
+/// <summary>Variant text for a string, and the string out of Variant text.</summary>
+public static class VariantText
+{
+    public static string Quote(string text) => GraphJson.Write(text);
+
+    /// <summary>The string a text holds. Text that is not a quoted string comes back as it is.</summary>
+    public static string Unquote(string? text)
+    {
+        if (text is null || !text.StartsWith('"'))
+        {
+            return text ?? "";
+        }
+
+        try
+        {
+            return GraphJson.Read<string>(text);
+        }
+        catch (InvalidDataException)
+        {
+            return text;
+        }
+    }
+}
+
 public sealed record GraphSignal(string Name, IReadOnlyList<GraphTyped> Arguments);
 
 /// <summary>Something the engine found that is not an error, such as a variable nothing reads.</summary>
