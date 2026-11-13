@@ -155,9 +155,9 @@ Vector<StringName> GraphFunction::get_references(const GraphReference &p_referen
 	for (const GraphStep &step : steps) {
 		const Variant value = step.parameters.get(p_reference.parameter, Variant());
 		const bool is_text = value.get_type() == Variant::STRING || value.get_type() == Variant::STRING_NAME;
-		const StringName name = is_text ? StringName(String(value)) : StringName();
-		if (step.kind == p_reference.kind && name != StringName() && _acts_on_owner(step, p_reference.target_port)) {
-			names.push_back(name);
+		const StringName referenced_name = is_text ? StringName(String(value)) : StringName();
+		if (step.kind == p_reference.kind && referenced_name != StringName() && _acts_on_owner(step, p_reference.target_port)) {
+			names.push_back(referenced_name);
 		}
 	}
 	return names;

@@ -909,21 +909,21 @@ String GraphScript::get_payload(const String &p_function, const String &p_ids_te
 		return String();
 	}
 	Array used_variables;
-	for (const StringName &name : referenced(copy, VARIABLE_REFERENCES)) {
-		if (const GraphVariable *variable = get_variable(name)) {
+	for (const StringName &variable_name : referenced(copy, VARIABLE_REFERENCES)) {
+		if (const GraphVariable *variable = get_variable(variable_name)) {
 			used_variables.push_back(variable_to_dictionary(*variable));
 		}
 	}
 	Array used_signals;
-	for (const StringName &name : referenced(copy, SIGNAL_REFERENCES)) {
-		const int at = _find_signal_index(name);
+	for (const StringName &signal_name : referenced(copy, SIGNAL_REFERENCES)) {
+		const int at = _find_signal_index(signal_name);
 		if (at >= 0) {
 			used_signals.push_back(signal_to_variant(signals[at]));
 		}
 	}
 	Array used_functions;
-	for (const StringName &name : referenced(copy, FUNCTION_REFERENCES)) {
-		used_functions.push_back(String(name));
+	for (const StringName &function_name : referenced(copy, FUNCTION_REFERENCES)) {
+		used_functions.push_back(String(function_name));
 	}
 	Dictionary payload;
 	payload["steps"] = copy.to_dictionary();
@@ -971,9 +971,9 @@ String GraphScript::paste_payload(const String &p_function, const String &p_payl
 			payload.steps.rename_references(reference, p_old, p_new);
 		}
 	});
-	for (const String &name : payload.functions) {
-		if (!has_function(next_functions, name)) {
-			next_functions.push_back(GraphFunction(name));
+	for (const String &function_name : payload.functions) {
+		if (!has_function(next_functions, function_name)) {
+			next_functions.push_back(GraphFunction(function_name));
 		}
 	}
 	Vector<int> new_ids;
@@ -1081,12 +1081,12 @@ StringName GraphScript::get_doc_class_name() const {
 
 Vector<DocData::ClassDoc> GraphScript::get_documentation() const {
 	Vector<DocData::ClassDoc> docs;
-	const StringName name = get_doc_class_name();
-	if (name == StringName()) {
+	const StringName class_name = get_doc_class_name();
+	if (class_name == StringName()) {
 		return docs;
 	}
 	DocData::ClassDoc doc;
-	doc.name = name;
+	doc.name = class_name;
 	doc.inherits = base_type == StringName() ? String("Object") : String(base_type);
 	doc.is_script_doc = true;
 	doc.script_path = get_path();
