@@ -48,10 +48,50 @@ public sealed class GraphDebuggerTests
         Assert.Empty(channel.Sent);
 
         Hear(channel, debugger, FakeDebugChannel.Running());
+        channel.Sent.Clear();
         marks.Toggle(Main, 3);
         marks.Toggle(Main, 3);
 
         Assert.Equal([$"breakpoint {Main} 3 True", $"breakpoint {Main} 3 False"], channel.Sent);
+    }
+
+    [Fact]
+    public void A_game_that_connects_is_given_the_breakpoints_set_before_it_did()
+    {
+        var (channel, marks, debugger) = Open();
+        marks.Toggle(Main, 2);
+        marks.Toggle(Main, 5);
+
+        Hear(channel, debugger, FakeDebugChannel.Running());
+
+        Assert.Equal([$"breakpoint {Main} 2 True", $"breakpoint {Main} 5 True"], channel.Sent.Order());
+    }
+
+    [Fact]
+    public void A_game_that_comes_back_is_given_the_breakpoints_again()
+    {
+        var (channel, marks, debugger) = Open();
+        marks.Toggle(Main, 2);
+        Hear(channel, debugger, FakeDebugChannel.Running());
+        Hear(channel, debugger, DebugState.None);
+        channel.Sent.Clear();
+
+        Hear(channel, debugger, FakeDebugChannel.Running());
+
+        Assert.Equal([$"breakpoint {Main} 2 True"], channel.Sent);
+    }
+
+    [Fact]
+    public void A_stop_of_a_game_that_is_already_connected_gives_no_breakpoints()
+    {
+        var (channel, marks, debugger) = Open();
+        marks.Toggle(Main, 2);
+        Hear(channel, debugger, FakeDebugChannel.Running());
+        channel.Sent.Clear();
+
+        Hear(channel, debugger, StoppedAt(2));
+
+        Assert.Empty(channel.Sent);
     }
 
     [Fact]

@@ -35,7 +35,7 @@ internal readonly record struct DebugPlace(string Script, string Function, int S
 
 /// <summary>
 /// The editor's side of a debug session. It follows what the game says, forwards breakpoints while a game is
-/// there, and sends the commands that suit the state. A command that does not suit it is dropped, since the
+/// there and gives a game that connects the ones set before it did, and sends the commands that suit the state. A command that does not suit it is dropped, since the
 /// state a person saw can be a poll behind.
 /// </summary>
 internal sealed class GraphDebugger : IDisposable, IWireProbe
@@ -79,11 +79,23 @@ internal sealed class GraphDebugger : IDisposable, IWireProbe
     public void Poll()
     {
         _channel.Poll();
-        if (!ReferenceEquals(State, _seen))
+        if (ReferenceEquals(State, _seen))
         {
-            _seen = State;
-            Changed?.Invoke();
+            return;
         }
+
+        var joined = State.Connected && !_seen.Connected;
+        _seen = State;
+        if (joined)
+        {
+            // A breakpoint toggled while no game was there went nowhere, and a game that came back has forgotten its own.
+            foreach (var (source, step) in _breakpoints.All)
+            {
+                _channel.SetBreakpoint(source, step, true);
+            }
+        }
+
+        Changed?.Invoke();
     }
 
     public void Send(DebugCommand command)
