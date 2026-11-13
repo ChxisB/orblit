@@ -228,7 +228,7 @@
 			<param index="0" name="name" type="String" />
 			<param index="1" name="arguments_text" type="String" />
 			<description>
-				Sets the arguments of signal [param name]. [param arguments_text] is a text array with one entry per argument, each a dictionary with [code]name[/code] and [code]type[/code]. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when the signal is missing, [constant ERR_PARSE_ERROR] when the text cannot be read, or [constant ERR_INVALID_DATA] when an entry is not a name and a type.
+				Sets the arguments of signal [param name]. [param arguments_text] is a text array with one entry per argument, each a dictionary with [code skip-lint]name[/code] and [code]type[/code]. Returns [constant OK], [constant ERR_DOES_NOT_EXIST] when the signal is missing, [constant ERR_PARSE_ERROR] when the text cannot be read, or [constant ERR_INVALID_DATA] when an entry is not a name and a type.
 			</description>
 		</method>
 		<method name="set_step_parameter">
