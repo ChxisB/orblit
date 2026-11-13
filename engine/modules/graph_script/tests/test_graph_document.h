@@ -13,7 +13,7 @@ using TestGraphScriptRun::Graph;
 
 constexpr int RUN = 0;
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 
 Dictionary read_document(const Ref<GraphScript> &p_script) {
@@ -59,7 +59,7 @@ TEST_CASE("[Stage][GraphScript] The document lists steps with their ports and th
 	graph.add(3, "constant");
 	graph.set(3, "value", "Vector2(1, 2)");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 
 	const Dictionary function = first_function(read_document(graph.script));
 	CHECK(function["name"] == Variant("main"));

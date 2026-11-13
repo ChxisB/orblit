@@ -13,7 +13,7 @@ using TestGraphScriptRun::Graph;
 
 constexpr int RUN = 0;
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 
 // Entry (1), Set total (2) and a Constant 7 (3) feeding it, in a function called main.
@@ -27,7 +27,7 @@ Graph copy_source() {
 	graph.move(2, 100, 60);
 	graph.move(3, 20, 80);
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 	return graph;
 }
 

@@ -19,7 +19,7 @@ using TestGraphScriptRun::BODY;
 using TestGraphScriptRun::BUDGET_SETTING;
 using TestGraphScriptRun::Graph;
 using TestGraphScriptRun::ITEM;
-using TestGraphScriptRun::OUT;
+using TestGraphScriptRun::OUT_PORT;
 using TestGraphScriptRun::RUN;
 using TestGraphScriptRun::THEN;
 using TestGraphScriptRun::VALUE;
@@ -393,7 +393,7 @@ Graph sum_graph() {
 	graph.set(3, "a", "2");
 	graph.set(3, "b", "3");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 	return graph;
 }
 
@@ -444,7 +444,7 @@ TEST_CASE("[Stage][GraphScript] A wire from a step that ran gives the value that
 	graph.add_named(3, "get", "items");
 	graph.add_named(4, "set", "total");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, 1);
+	graph.wire(3, OUT_PORT, 2, 1);
 	graph.wire(2, BODY, 4, RUN);
 	graph.wire(2, ITEM, 4, VALUE);
 	FakeDebugger debugger;
@@ -470,7 +470,7 @@ TEST_CASE("[Stage][GraphScript] A wire read leaves the random generator where it
 	graph.add(3, "pick_random");
 	graph.set(3, "items", "[4, 5, 6]");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 	FakeDebugger debugger;
 	debugger.stop_at(graph, "go", 2);
 	debugger.probes.push_back(Vector3i(0, 2, VALUE));
@@ -496,7 +496,7 @@ TEST_CASE("[Stage][GraphScript] A wire read that fails reports nothing and does 
 	graph.add(6, "pick_random");
 	graph.set(6, "items", "[]");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(6, OUT, 5, VALUE);
+	graph.wire(6, OUT_PORT, 5, VALUE);
 	FakeDebugger debugger;
 	debugger.stop_at(graph, "go", 2);
 	debugger.probes.push_back(Vector3i(0, 5, VALUE));

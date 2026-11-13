@@ -16,7 +16,7 @@ using TestGraphScriptRun::Graph;
 
 constexpr int RUN = 0;
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 constexpr int A = 0;
 constexpr int B = 1;
@@ -45,7 +45,7 @@ void add_sum(Graph &p_graph) {
 	p_graph.wire(1, THEN, 3, RUN);
 	p_graph.wire(1, FIRST_ARGUMENT, 2, A);
 	p_graph.wire(1, FIRST_ARGUMENT + 1, 2, B);
-	p_graph.wire(2, OUT, 3, VALUE);
+	p_graph.wire(2, OUT_PORT, 3, VALUE);
 }
 
 Callable::CallError call_error_of(Entity *p_entity, const StringName &p_method, const Variant &p_first, const Variant &p_second) {
@@ -108,7 +108,7 @@ TEST_CASE("[Stage][GraphScript] A function gives the type it declares or fails")
 	graph.set(2, "value", "\"text\"");
 	graph.add(3, "return");
 	graph.wire(1, THEN, 3, RUN);
-	graph.wire(2, OUT, 3, VALUE);
+	graph.wire(2, OUT_PORT, 3, VALUE);
 
 	Entity *entity = attach(graph.script);
 	check_fails_with(entity, "go", "cannot return a String");
@@ -122,7 +122,7 @@ TEST_CASE("[Stage][GraphScript] A declared local starts as the default of its ty
 	graph.add_named(2, "local", "count");
 	graph.add(3, "return");
 	graph.wire(1, THEN, 3, RUN);
-	graph.wire(2, OUT, 3, VALUE);
+	graph.wire(2, OUT_PORT, 3, VALUE);
 	Graph write(graph.script, "write");
 	write.add(1, "entry");
 	write.set(1, "locals", list_text(entry_text("count", Variant::INT)));
@@ -149,7 +149,7 @@ TEST_CASE("[Stage][GraphScript] Call function passes arguments and reads the res
 	graph.set(2, "argument1", "5");
 	graph.add(4, "return");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, CALL_ARGUMENT);
+	graph.wire(3, OUT_PORT, 2, CALL_ARGUMENT);
 	graph.wire(2, THEN, 4, RUN);
 	graph.wire(2, CALL_RESULT, 4, VALUE);
 
@@ -173,7 +173,7 @@ TEST_CASE("[Stage][GraphScript] Call function reaches a function of another scri
 	graph.add_named(3, "get", "other");
 	graph.add(4, "return");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, CALL_TARGET);
+	graph.wire(3, OUT_PORT, 2, CALL_TARGET);
 	graph.wire(2, THEN, 4, RUN);
 	graph.wire(2, CALL_RESULT, 4, VALUE);
 

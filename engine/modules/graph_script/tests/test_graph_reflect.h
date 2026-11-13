@@ -18,7 +18,7 @@ using TestGraphScriptRun::Graph;
 // the run input first. A pure step has none.
 constexpr int RUN = 0;
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 constexpr int FLOW_TARGET = 1;
 constexpr int FLOW_ARGUMENT = 2;
@@ -66,7 +66,7 @@ Entity *attach_new_and_free(Graph &p_graph, const String &p_class) {
 	p_graph.wire(2, THEN, 4, RUN);
 	p_graph.wire(4, THEN, 5, RUN);
 	p_graph.wire(2, NEW_OBJECT, 3, PURE_TARGET);
-	p_graph.wire(3, OUT, 4, VALUE);
+	p_graph.wire(3, OUT_PORT, 4, VALUE);
 	p_graph.wire(2, NEW_OBJECT, 5, FREE_OBJECT);
 	return attach(p_graph.script);
 }
@@ -88,10 +88,10 @@ TEST_CASE("[Stage][GraphScript] Call method runs a method of another entity and 
 	graph.set(2, "argument_0", quoted("Renamed"));
 	graph.add_named(3, "get", "other");
 	add_method(graph, 4, "query_method", "Entity", "get_name");
-	add_return(graph, 5, 4, OUT);
+	add_return(graph, 5, 4, OUT_PORT);
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_TARGET);
-	graph.wire(3, OUT, 4, PURE_TARGET);
+	graph.wire(3, OUT_PORT, 2, FLOW_TARGET);
+	graph.wire(3, OUT_PORT, 4, PURE_TARGET);
 	graph.wire(2, THEN, 5, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -107,7 +107,7 @@ TEST_CASE("[Stage][GraphScript] A call with no target wired runs on the owner of
 	Graph graph("go");
 	graph.add(1, "entry");
 	add_method(graph, 2, "query_method", "Entity", "get_child_count");
-	add_return(graph, 3, 2, OUT);
+	add_return(graph, 3, 2, OUT_PORT);
 	graph.wire(1, THEN, 3, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -125,7 +125,7 @@ TEST_CASE("[Stage][GraphScript] A wired target that holds nothing is an error an
 	graph.set(2, "argument_0", quoted("Renamed"));
 	graph.add_named(3, "get", "other");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_TARGET);
+	graph.wire(3, OUT_PORT, 2, FLOW_TARGET);
 
 	Entity *entity = attach(graph.script);
 	entity->set_name("Original");
@@ -147,7 +147,7 @@ TEST_CASE("[Stage][GraphScript] Call method passes the extra arguments of a meth
 	add_method(graph, 2, "call_method", "Object", "call");
 	graph.add_named(3, "get", "other");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_TARGET);
+	graph.wire(3, OUT_PORT, 2, FLOW_TARGET);
 	CHECK(graph.script->set_step_pins(graph.function, 2, 1) == OK);
 	graph.set(2, "argument_0", quoted("set_name"));
 	graph.set(2, "extra0", quoted("ViaCall"));
@@ -173,7 +173,7 @@ TEST_CASE("[Stage][GraphScript] A failed call ends the function and names the st
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(2, THEN, 3, RUN);
 	// A number is no object, so the call has nothing to run on.
-	graph.wire(4, OUT, 2, FLOW_TARGET);
+	graph.wire(4, OUT_PORT, 2, FLOW_TARGET);
 
 	Entity *entity = attach(graph.script);
 	ErrorDetector errors;
@@ -192,7 +192,7 @@ TEST_CASE("[Stage][GraphScript] Set property and get property write and read a p
 	add_member(graph, 2, "set_property", "Entity", "property", "run_priority");
 	graph.set(2, "value", "7");
 	add_member(graph, 3, "get_property", "Entity", "property", "run_priority");
-	add_return(graph, 4, 3, OUT);
+	add_return(graph, 4, 3, OUT_PORT);
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(2, THEN, 4, RUN);
 
@@ -252,8 +252,8 @@ TEST_CASE("[Stage][GraphScript] Emit on sends a signal of a class from another o
 	graph.add(4, "self");
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(2, THEN, 3, RUN);
-	graph.wire(4, OUT, 2, 1);
-	graph.wire(4, OUT, 3, FLOW_TARGET);
+	graph.wire(4, OUT_PORT, 2, 1);
+	graph.wire(4, OUT_PORT, 3, FLOW_TARGET);
 
 	Entity *entity = attach(graph.script);
 	entity->call("go");
@@ -277,9 +277,9 @@ TEST_CASE("[Stage][GraphScript] Call builtin runs methods of a string and of an 
 	graph.set(4, "target", quoted("abc"));
 	graph.add_named(5, "set", "shout");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_TARGET);
+	graph.wire(3, OUT_PORT, 2, FLOW_TARGET);
 	graph.wire(2, THEN, 5, RUN);
-	graph.wire(4, OUT, 5, VALUE);
+	graph.wire(4, OUT_PORT, 5, VALUE);
 
 	Entity *entity = attach(graph.script);
 	entity->call("go");
@@ -305,10 +305,10 @@ TEST_CASE("[Stage][GraphScript] A step that changes a constant array does not ch
 	graph.set(4, "method", quoted("size"));
 	graph.add_named(5, "set", "count");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_TARGET);
-	graph.wire(3, OUT, 4, PURE_TARGET);
+	graph.wire(3, OUT_PORT, 2, FLOW_TARGET);
+	graph.wire(3, OUT_PORT, 4, PURE_TARGET);
 	graph.wire(2, THEN, 5, RUN);
-	graph.wire(4, OUT, 5, VALUE);
+	graph.wire(4, OUT_PORT, 5, VALUE);
 
 	Entity *entity = attach(graph.script);
 	entity->call("go");
@@ -336,7 +336,7 @@ TEST_CASE("[Stage][GraphScript] Call utility and query utility run utility funct
 	graph.set(3, "function", quoted("maxi"));
 	graph.set(3, "argument_0", "3");
 	graph.set(3, "argument_1", "8");
-	add_return(graph, 4, 3, OUT);
+	add_return(graph, 4, 3, OUT_PORT);
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(2, THEN, 4, RUN);
 
@@ -444,7 +444,7 @@ TEST_CASE("[GraphScript] A wire whose type cannot convert fails to compile") {
 	add_method(graph, 2, "call_method", "Entity", "set_name");
 	graph.add(3, "make_array");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_ARGUMENT);
+	graph.wire(3, OUT_PORT, 2, FLOW_ARGUMENT);
 
 	const String error = graph.script->get_error();
 	CHECK(error.contains("step 2"));
@@ -490,7 +490,7 @@ TEST_CASE("[GraphScript] Changing the method of a step drops the wires its new p
 	graph.add(3, "constant");
 	graph.set(3, "value", quoted("x"));
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, FLOW_ARGUMENT);
+	graph.wire(3, OUT_PORT, 2, FLOW_ARGUMENT);
 	CHECK(graph.script->get_function(graph.function)->get_wire_count() == 2);
 
 	graph.set(2, "method", quoted("get_name"));
@@ -601,9 +601,9 @@ TEST_CASE("[Stage][GraphScript] Call parent of a virtual method keeps the argume
 	graph.set(3, "value", "0.5");
 	graph.add(4, "constant");
 	graph.set(4, "value", "7");
-	add_return(graph, 5, 4, OUT);
+	add_return(graph, 5, 4, OUT_PORT);
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, PARENT_ARGUMENT);
+	graph.wire(3, OUT_PORT, 2, PARENT_ARGUMENT);
 	graph.wire(2, THEN, 5, RUN);
 	CHECK(graph.script->get_error().is_empty());
 

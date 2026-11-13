@@ -14,7 +14,7 @@ using TestGraphScriptRun::Graph;
 
 constexpr int RUN = 0;
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 constexpr int TARGET = 1;
 
@@ -51,7 +51,7 @@ TEST_CASE("[Stage][GraphScript] Renaming a variable renames the steps that read 
 	graph.add_named(4, "get", "total");
 	graph.add_named(5, "get", "other");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 
 	CHECK(graph.script->rename_variable("total", "sum") == OK);
 
@@ -101,7 +101,7 @@ TEST_CASE("[Stage][GraphScript] Renaming a function renames the calls that run o
 	graph.add(4, "call_function");
 	graph.set(4, "function", quoted("helper"));
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 4, TARGET);
+	graph.wire(3, OUT_PORT, 4, TARGET);
 
 	CHECK(graph.script->rename_function("helper", "assist") == OK);
 
@@ -130,7 +130,7 @@ TEST_CASE("[GraphScript] Renaming a signal renames the steps that name it on the
 	graph.add(3, "await_signal");
 	graph.set(3, "signal", quoted("scored"));
 	graph.add(4, "self");
-	graph.wire(4, OUT, 3, TARGET);
+	graph.wire(4, OUT_PORT, 3, TARGET);
 	graph.add(5, "emit");
 	graph.set(5, "signal", quoted("other"));
 	listener.add(1, "signal_received");

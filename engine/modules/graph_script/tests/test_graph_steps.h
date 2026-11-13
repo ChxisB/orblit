@@ -28,7 +28,7 @@ constexpr int VALUE = 1;
 constexpr int DEFAULT = 0;
 constexpr int CASE_0 = 1;
 constexpr int CASE_1 = 2;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALID = 1;
 constexpr int PART_1 = 1;
 constexpr int PREFAB = 1;
@@ -51,8 +51,8 @@ void add_increment(Graph &p_graph, int p_id, const String &p_variable) {
 	p_graph.add_operator(p_id + 1, "+");
 	p_graph.add_named(p_id + 2, "get", p_variable);
 	p_graph.set(p_id + 1, "b", "1");
-	p_graph.wire(p_id + 1, OUT, p_id, VALUE);
-	p_graph.wire(p_id + 2, OUT, p_id + 1, 0);
+	p_graph.wire(p_id + 1, OUT_PORT, p_id, VALUE);
+	p_graph.wire(p_id + 2, OUT_PORT, p_id + 1, 0);
 }
 
 void seed(Entity *p_entity, uint64_t p_seed) {
@@ -109,7 +109,7 @@ TEST_CASE("[Stage][GraphScript] Pick random gives an item and fails on an empty 
 	graph.add(1, "entry");
 	graph.add(2, "pick_random");
 	graph.set(2, "items", "[4, 5, 6]");
-	add_return(graph, 3, 2, OUT);
+	add_return(graph, 3, 2, OUT_PORT);
 	graph.wire(1, THEN, 3, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -143,8 +143,8 @@ TEST_CASE("[Stage][GraphScript] Select gives the value its condition chooses") {
 	graph.add_named(3, "get", "flag");
 	graph.set(2, "a", "10");
 	graph.set(2, "b", "20");
-	graph.wire(3, OUT, 2, 0);
-	add_return(graph, 4, 2, OUT);
+	graph.wire(3, OUT_PORT, 2, 0);
+	add_return(graph, 4, 2, OUT_PORT);
 	graph.wire(1, THEN, 4, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -167,7 +167,7 @@ Graph switch_graph(Variant::Type p_type, const String &p_case_type, const String
 	graph.set(2, "case0", p_case_0);
 	graph.set(2, "case1", p_case_1);
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 	add_return_value(graph, 10, "100");
 	add_return_value(graph, 11, "101");
 	add_return_value(graph, 12, "102");
@@ -215,10 +215,10 @@ TEST_CASE("[Stage][GraphScript] Compose builds a Vector3 and Decompose gives the
 	graph.add(3, "decompose");
 	graph.set(3, "type", "\"Vector3\"");
 	CHECK(graph.script->set_step_pins("go", 3, 3) == OK);
-	graph.wire(2, OUT, 3, 0);
+	graph.wire(2, OUT_PORT, 3, 0);
 	graph.variable("made", Variant::VECTOR3);
 	graph.add_named(4, "set", "made");
-	graph.wire(2, OUT, 4, VALUE);
+	graph.wire(2, OUT_PORT, 4, VALUE);
 	graph.wire(1, THEN, 4, RUN);
 	add_return(graph, 5, 3, PART_1);
 	graph.wire(4, THEN, 5, RUN);
@@ -235,7 +235,7 @@ TEST_CASE("[Stage][GraphScript] Convert changes the type of a value") {
 	graph.add(2, "convert");
 	graph.set(2, "value", "\"42\"");
 	graph.set(2, "to", "\"int\"");
-	add_return(graph, 3, 2, OUT);
+	add_return(graph, 3, 2, OUT_PORT);
 	graph.wire(1, THEN, 3, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -253,10 +253,10 @@ TEST_CASE("[Stage][GraphScript] Cast to a wrong class gives null and a false fla
 	graph.add(2, "self");
 	graph.add(3, "cast");
 	graph.set(3, "class", "\"Resource\"");
-	graph.wire(2, OUT, 3, 0);
+	graph.wire(2, OUT_PORT, 3, 0);
 	graph.add_named(4, "set", "held");
 	graph.add_named(5, "set", "fits");
-	graph.wire(3, OUT, 4, VALUE);
+	graph.wire(3, OUT_PORT, 4, VALUE);
 	graph.wire(3, VALID, 5, VALUE);
 	graph.wire(1, THEN, 4, RUN);
 	graph.wire(4, THEN, 5, RUN);
@@ -293,8 +293,8 @@ TEST_CASE("[Stage][GraphScript] Make array and Make dictionary keep the order of
 	}
 	graph.add_named(4, "set", "list");
 	graph.add_named(5, "set", "table");
-	graph.wire(2, OUT, 4, VALUE);
-	graph.wire(3, OUT, 5, VALUE);
+	graph.wire(2, OUT_PORT, 4, VALUE);
+	graph.wire(3, OUT_PORT, 5, VALUE);
 	graph.wire(1, THEN, 4, RUN);
 	graph.wire(4, THEN, 5, RUN);
 
@@ -325,7 +325,7 @@ TEST_CASE("[Stage][GraphScript] Each goes through arrays, dictionaries and count
 		graph.add(2, "each");
 		graph.add_named(3, "get", "items");
 		graph.wire(1, THEN, 2, RUN);
-		graph.wire(3, OUT, 2, 1);
+		graph.wire(3, OUT_PORT, 2, 1);
 		graph.add_running_total(4, "total", 2, 2);
 		graph.wire(2, 0, 4, RUN);
 
@@ -381,7 +381,7 @@ TEST_CASE("[Stage][GraphScript] Constant reads each source") {
 		if (test.name) {
 			graph.set(2, "name", String("\"") + test.name + "\"");
 		}
-		add_return(graph, 3, 2, OUT);
+		add_return(graph, 3, 2, OUT_PORT);
 		graph.wire(1, THEN, 3, RUN);
 
 		Entity *entity = attach(graph.script);
@@ -436,7 +436,7 @@ TEST_CASE("[GraphScript] A wire between types with no conversion stops the compi
 	graph.set(2, "action", "\"jump\"");
 	graph.set(2, "state", "\"pressed\"");
 	graph.add(3, "pick_random");
-	graph.wire(2, OUT, 3, 0);
+	graph.wire(2, OUT_PORT, 3, 0);
 	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
 	const String error = graph.script->get_error();
 	CHECK(error.contains("step 3"));
@@ -477,7 +477,7 @@ TEST_CASE("[Stage][GraphScript] Entity at path finds a child and names the step 
 	graph.add(1, "entry");
 	graph.add(2, "entity_at_path");
 	graph.set(2, "path", "\"Child\"");
-	add_return(graph, 3, 2, OUT);
+	add_return(graph, 3, 2, OUT_PORT);
 	graph.wire(1, THEN, 3, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -510,9 +510,9 @@ TEST_CASE("[Stage][GraphScript] Self, Stage, Singleton and Autoload give their o
 	graph.add(6, "make_array");
 	CHECK(graph.script->set_step_pins("go", 6, 4) == OK);
 	for (int i = 0; i < 4; i++) {
-		graph.wire(2 + i, OUT, 6, i);
+		graph.wire(2 + i, OUT_PORT, 6, i);
 	}
-	add_return(graph, 7, 6, OUT);
+	add_return(graph, 7, 6, OUT_PORT);
 	graph.wire(1, THEN, 7, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -540,7 +540,7 @@ TEST_CASE("[Stage][GraphScript] Instantiate prefab returns a detached root") {
 	graph.add_named(3, "get", "source");
 	graph.add_named(4, "set", "made");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, PREFAB);
+	graph.wire(3, OUT_PORT, 2, PREFAB);
 	graph.wire(2, THEN, 4, RUN);
 	graph.wire(2, MADE, 4, VALUE);
 
@@ -567,7 +567,7 @@ TEST_CASE("[Stage][GraphScript] Resource path gives its path and Preload loads a
 	graph.add(1, "entry");
 	graph.add(2, "resource_path");
 	graph.set(2, "path", "\"res://icon.svg\"");
-	add_return(graph, 3, 2, OUT);
+	add_return(graph, 3, 2, OUT_PORT);
 	graph.wire(1, THEN, 3, RUN);
 
 	Entity *entity = attach(graph.script);
@@ -582,7 +582,7 @@ TEST_CASE("[Stage][GraphScript] Input action reads the pressed state") {
 	graph.add(2, "input_action");
 	graph.set(2, "action", "\"graph_test_jump\"");
 	graph.set(2, "state", "\"pressed\"");
-	add_return(graph, 3, 2, OUT);
+	add_return(graph, 3, 2, OUT_PORT);
 	graph.wire(1, THEN, 3, RUN);
 
 	Entity *entity = attach(graph.script);

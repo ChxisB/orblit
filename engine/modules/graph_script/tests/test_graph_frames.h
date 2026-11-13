@@ -16,7 +16,7 @@ using TestGraphDocument::read_document;
 using TestGraphScriptRun::Graph;
 
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 constexpr int RUN = 0;
 
@@ -116,8 +116,8 @@ TEST_CASE("[Stage][GraphScript] A data reroute passes its value on") {
 	graph.add(3, "reroute");
 	graph.add_named(4, "set", "total");
 	graph.wire(1, THEN, 4, RUN);
-	graph.wire(2, OUT, 3, 0);
-	graph.wire(3, OUT, 4, VALUE);
+	graph.wire(2, OUT_PORT, 3, 0);
+	graph.wire(3, OUT_PORT, 4, VALUE);
 
 	Entity *entity = TestGraphScriptRun::attach(graph.script);
 	entity->call("go");
@@ -148,8 +148,8 @@ TEST_CASE("[GraphScript] A reroute takes a wire of any type and a flow reroute o
 	graph.add(3, "reroute");
 	graph.add(4, "reroute_flow");
 
-	CHECK(graph.script->connect_steps("go", 2, OUT, 3, 0) == OK);
-	CHECK(graph.script->connect_steps("go", 2, OUT, 4, RUN) == ERR_INVALID_PARAMETER);
+	CHECK(graph.script->connect_steps("go", 2, OUT_PORT, 3, 0) == OK);
+	CHECK(graph.script->connect_steps("go", 2, OUT_PORT, 4, RUN) == ERR_INVALID_PARAMETER);
 	CHECK(graph.script->connect_steps("go", 1, THEN, 4, RUN) == OK);
 }
 

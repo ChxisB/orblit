@@ -15,7 +15,7 @@ namespace TestGraphDialogue {
 using TestGraphLatent::advance;
 using TestGraphLatent::enter_stage;
 using TestGraphScriptRun::Graph;
-using TestGraphScriptRun::OUT;
+using TestGraphScriptRun::OUT_PORT;
 using TestGraphScriptRun::RUN;
 using TestGraphScriptRun::THEN;
 using TestGraphScriptRun::VALUE;
@@ -59,7 +59,7 @@ Graph dialogue_graph(int p_pins) {
 	for (int i = 0; i < p_pins; i++) {
 		graph.add(10 + i, "dialogue_choice");
 		graph.set(10 + i, "text", vformat("\"Choice %d\"", i));
-		graph.wire(10 + i, OUT, MESSAGE_STEP, FIRST_CHOICE_INPUT + i);
+		graph.wire(10 + i, OUT_PORT, MESSAGE_STEP, FIRST_CHOICE_INPUT + i);
 		graph.add_named(20 + i, "set", "picked");
 		graph.set(20 + i, "value", itos(i + 1));
 		graph.wire(MESSAGE_STEP, FIRST_CHOICE_OUTPUT + i, 20 + i, RUN);
@@ -133,7 +133,7 @@ TEST_CASE("[Stage][GraphScript] A hidden choice is not shown and the others keep
 
 TEST_CASE("[Stage][GraphScript] A choice with no wire is not shown") {
 	Graph graph = dialogue_graph(2);
-	CHECK(graph.script->disconnect_steps("go", 10, OUT, MESSAGE_STEP, FIRST_CHOICE_INPUT) == OK);
+	CHECK(graph.script->disconnect_steps("go", 10, OUT_PORT, MESSAGE_STEP, FIRST_CHOICE_INPUT) == OK);
 	Entity *entity = enter_stage(graph.script);
 	entity->call("go");
 	DialogueBox *box = find_box();
@@ -179,7 +179,7 @@ TEST_CASE("[Stage][GraphScript] The box is queued for removal after a choice") {
 TEST_CASE("[Stage][GraphScript] A packed box on the prefab input is the box that shows") {
 	Graph graph = dialogue_graph(1);
 	graph.add_named(40, "get", "source");
-	graph.wire(40, OUT, MESSAGE_STEP, PREFAB_INPUT);
+	graph.wire(40, OUT_PORT, MESSAGE_STEP, PREFAB_INPUT);
 	DialogueBox *custom = memnew(DialogueBox);
 	custom->set_name("Custom");
 
@@ -198,7 +198,7 @@ TEST_CASE("[Stage][GraphScript] A packed box on the prefab input is the box that
 TEST_CASE("[Stage][GraphScript] A prefab with no show_message method fails the call") {
 	Graph graph = dialogue_graph(1);
 	graph.add_named(40, "get", "source");
-	graph.wire(40, OUT, MESSAGE_STEP, PREFAB_INPUT);
+	graph.wire(40, OUT_PORT, MESSAGE_STEP, PREFAB_INPUT);
 	Entity *plain = memnew(Entity);
 	plain->set_name("Plain");
 

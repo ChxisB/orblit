@@ -11,7 +11,7 @@ using TestGraphScriptRun::Graph;
 
 constexpr int RUN = 0;
 constexpr int THEN = 0;
-constexpr int OUT = 0;
+constexpr int OUT_PORT = 0;
 constexpr int VALUE = 1;
 
 TEST_CASE("[Stage][GraphScript] A snapshot restores the document at any point of ten edits, back and forth") {
@@ -37,7 +37,7 @@ TEST_CASE("[Stage][GraphScript] A snapshot restores the document at any point of
 	note();
 	graph.wire(1, THEN, 2, RUN);
 	note();
-	graph.wire(3, OUT, 2, VALUE);
+	graph.wire(3, OUT_PORT, 2, VALUE);
 	note();
 	CHECK(script->add_signal("done") == OK);
 	note();

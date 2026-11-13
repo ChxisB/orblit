@@ -24,7 +24,7 @@ constexpr int DONE = 1;
 constexpr int FIRST = 0;
 constexpr int SECOND = 1;
 constexpr int VALUE = 1; // The value input of Set and Return.
-constexpr int OUT = 0; // The only output of Get, Local, Constant and Operator.
+constexpr int OUT_PORT = 0; // The only output of Get, Local, Constant and Operator.
 constexpr int CONDITION = 1;
 constexpr int INDEX = 2; // The index output of a count loop.
 constexpr int ITEM = 2; // The item output of Each.
@@ -89,8 +89,8 @@ struct Graph {
 		add_named(p_id, "set", p_total);
 		add_operator(p_id + 1, "+");
 		add_named(p_id + 2, "get", p_total);
-		wire(p_id + 1, OUT, p_id, VALUE);
-		wire(p_id + 2, OUT, p_id + 1, A);
+		wire(p_id + 1, OUT_PORT, p_id, VALUE);
+		wire(p_id + 2, OUT_PORT, p_id + 1, A);
 		wire(p_index_step, p_index_port, p_id + 1, B);
 	}
 };
@@ -112,8 +112,8 @@ TEST_CASE("[Stage][GraphScript] An entity runs the start event and sets a variab
 	graph.set(4, "value", "2");
 	graph.set(3, "b", "3");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, VALUE);
-	graph.wire(4, OUT, 3, A);
+	graph.wire(3, OUT_PORT, 2, VALUE);
+	graph.wire(4, OUT_PORT, 3, A);
 
 	Entity *entity = attach(graph.script);
 	CHECK(entity->get("total") == Variant(0));
@@ -134,7 +134,7 @@ TEST_CASE("[Stage][GraphScript] Branch takes the path its condition chooses") {
 	graph.add_named(5, "set", "path");
 	graph.set(5, "value", "2");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, CONDITION);
+	graph.wire(3, OUT_PORT, 2, CONDITION);
 	graph.wire(2, THEN, 4, RUN);
 	graph.wire(2, ELSE, 5, RUN);
 
@@ -162,8 +162,8 @@ TEST_CASE("[Stage][GraphScript] Sequence runs its outputs in order") {
 		graph.add_operator(base + 1, "+");
 		graph.add_named(base + 2, "get", "trace");
 		graph.set(base + 1, "b", String("\"") + letters[i] + "\"");
-		graph.wire(base + 1, OUT, base, VALUE);
-		graph.wire(base + 2, OUT, base + 1, A);
+		graph.wire(base + 1, OUT_PORT, base, VALUE);
+		graph.wire(base + 2, OUT_PORT, base + 1, A);
 		graph.wire(2, i, base, RUN);
 	}
 
@@ -203,8 +203,8 @@ TEST_CASE("[Stage][GraphScript] A count loop that ends at the largest integer st
 	graph.set(4, "b", "1");
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(2, BODY, 3, RUN);
-	graph.wire(4, OUT, 3, VALUE);
-	graph.wire(5, OUT, 4, A);
+	graph.wire(4, OUT_PORT, 3, VALUE);
+	graph.wire(5, OUT_PORT, 4, A);
 
 	Entity *entity = attach(graph.script);
 	entity->call("go");
@@ -220,7 +220,7 @@ TEST_CASE("[Stage][GraphScript] Each walks an array and gives its items") {
 	graph.add(2, "each");
 	graph.add_named(3, "get", "items");
 	graph.wire(1, THEN, 2, RUN);
-	graph.wire(3, OUT, 2, 1);
+	graph.wire(3, OUT_PORT, 2, 1);
 	graph.add_running_total(4, "total", 2, ITEM);
 	graph.wire(2, BODY, 4, RUN);
 
@@ -245,7 +245,7 @@ TEST_CASE("[Stage][GraphScript] Break leaves the loop and runs its done output")
 	graph.add(5, "break");
 	graph.wire(2, BODY, 3, RUN);
 	graph.wire(2, INDEX, 4, A);
-	graph.wire(4, OUT, 3, CONDITION);
+	graph.wire(4, OUT_PORT, 3, CONDITION);
 	graph.wire(3, THEN, 5, RUN);
 	graph.add_running_total(6, "total", 2, INDEX);
 	graph.wire(3, ELSE, 6, RUN);
@@ -289,7 +289,7 @@ TEST_CASE("[Stage][GraphScript] A local lives for one call") {
 	graph.add_named(4, "local", "x");
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(2, THEN, 3, RUN);
-	graph.wire(4, OUT, 3, VALUE);
+	graph.wire(4, OUT_PORT, 3, VALUE);
 
 	Entity *entity = attach(graph.script);
 	entity->call("go");
@@ -379,8 +379,8 @@ TEST_CASE("[Stage][GraphScript] The compile refuses these graphs") {
 			graph.add_operator(3, "+");
 			graph.set(2, "b", "1");
 			graph.set(3, "b", "1");
-			graph.wire(2, OUT, 3, A);
-			graph.wire(3, OUT, 2, A);
+			graph.wire(2, OUT_PORT, 3, A);
+			graph.wire(3, OUT_PORT, 2, A);
 		} else if (label == "an unknown operator") {
 			graph.add_operator(2, "?");
 			graph.set(2, "a", "1");

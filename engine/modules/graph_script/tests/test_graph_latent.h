@@ -22,7 +22,7 @@ using TestGraphScriptRun::BUDGET_SETTING;
 using TestGraphScriptRun::DONE;
 using TestGraphScriptRun::Graph;
 using TestGraphScriptRun::INDEX;
-using TestGraphScriptRun::OUT;
+using TestGraphScriptRun::OUT_PORT;
 using TestGraphScriptRun::RUN;
 using TestGraphScriptRun::THEN;
 using TestGraphScriptRun::VALUE;
@@ -187,10 +187,10 @@ TEST_CASE("[Stage][GraphScript] Two waiting calls resume in the order their time
 	graph.wire(1, THEN, 2, RUN);
 	graph.wire(1, FIRST_ARGUMENT, 2, SECONDS);
 	graph.wire(2, THEN, 3, RUN);
-	graph.wire(4, OUT, 3, VALUE);
-	graph.wire(5, OUT, 4, A);
+	graph.wire(4, OUT_PORT, 3, VALUE);
+	graph.wire(5, OUT_PORT, 4, A);
 	graph.wire(1, FIRST_ARGUMENT + 1, 4, B);
-	graph.wire(6, OUT, 5, A);
+	graph.wire(6, OUT_PORT, 5, A);
 
 	Entity *entity = enter_stage(graph.script);
 	entity->call("go", 0.5, 1);
