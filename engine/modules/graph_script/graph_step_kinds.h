@@ -71,10 +71,12 @@ struct GraphPort {
 	Variant::Type type = Variant::NIL;
 	// The step parameter that holds the value of an input with no wire. It is not always the name,
 	// because the name of an argument may be one of the parameters the step already has.
-	String parameter;
+	// The braces give a default member initializer, which keeps -Wmissing-field-initializers quiet
+	// for a port written with fewer values.
+	String parameter = {};
 	// An optional input with no wire and no value reads the fallback.
 	bool optional = false;
-	Variant fallback;
+	Variant fallback = {};
 };
 
 // The ports a step gets from what its parameters name, such as the arguments of a method.
