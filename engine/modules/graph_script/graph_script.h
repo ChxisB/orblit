@@ -132,6 +132,23 @@ public:
 	void set_base_type(const StringName &p_base_type);
 	StringName get_base_type() const { return base_type; }
 
+	// The whole script as Variant text, which restore_snapshot takes back. An editor keeps one per
+	// edit to undo with. A restore replaces everything and raises changed once. Text that is not a
+	// snapshot is refused and changes nothing.
+	String get_snapshot() const;
+	Error restore_snapshot(const String &p_snapshot_text);
+
+	// The steps with these ids, the wires between them and the variables, signals and functions they
+	// name, as Variant text. The ids are the text of a list of numbers. The text is empty when no
+	// step copies. The entry step does not, because a function has one.
+	String get_payload(const String &p_function, const String &p_ids_text) const;
+	// Adds the steps of a payload to the function with the upper left one at (p_x, p_y), and declares
+	// what they name that the script lacks, all in one change. The result is JSON text with the keys
+	// "error", "conflicts" (a kind and a name each) and "steps" (the new ids). A variable or signal
+	// of the same name with another type is a conflict, and the call changes nothing until the
+	// choice is "reuse" (use the one there) or "keep_both" (declare it again under a new name).
+	String paste_payload(const String &p_function, const String &p_payload_text, float p_x, float p_y, const String &p_conflict);
+
 	// One entry per warning: kind, function, step, name and text. Answers only, changes nothing.
 	Array get_warnings() const;
 

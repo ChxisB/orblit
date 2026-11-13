@@ -5,6 +5,7 @@
 
 #include "graph_step_kinds.h"
 
+#include "core/containers/hash_map.h"
 #include "core/containers/vector.h"
 #include "core/math/vector2.h"
 #include "core/string/ustring.h"
@@ -96,6 +97,7 @@ public:
 	const GraphCommentFrame &get_frame_at(int p_index) const { return frames[p_index]; }
 	int get_valid_step_id() const;
 	bool has_wire(const GraphWire &p_wire) const;
+	bool has_step_of_kind(const StringName &p_kind) const;
 
 	Error add_step(int p_id, const StringName &p_kind);
 	Error remove_step(int p_id);
@@ -106,6 +108,15 @@ public:
 	// Writes p_new into the parameter of every step the reference lists that holds p_old and acts
 	// on the owner of the script.
 	void rename_references(const GraphReference &p_reference, const StringName &p_old, const StringName &p_new);
+	// The steps with these ids and the wires between them, in a function with no name. An id that
+	// is not a step is skipped. So is the entry step, because a function has one.
+	GraphFunction extract(const Vector<int> &p_ids) const;
+	// The name each step of the reference's kind holds in its parameter, for the steps that act on the
+	// owner. A name that two steps hold is listed twice.
+	Vector<StringName> get_references(const GraphReference &p_reference) const;
+	// Adds copies of the steps and wires of p_source under new ids, with the upper left step at
+	// p_corner. r_ids gets the new ids in the order of the source steps.
+	void paste(const GraphFunction &p_source, const Vector2 &p_corner, Vector<int> &r_ids);
 	Error connect_steps(const GraphWire &p_wire);
 	Error disconnect_steps(const GraphWire &p_wire);
 	// Adds the frame, or replaces the frame with the same id.

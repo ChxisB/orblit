@@ -65,6 +65,10 @@ struct Graph {
 		CHECK(script->set_step_parameter(function, p_id, p_parameter, p_text) == OK);
 	}
 
+	void move(int p_id, float p_x, float p_y) {
+		CHECK(script->move_step(function, p_id, p_x, p_y) == OK);
+	}
+
 	// Adds a step that names a variable or a local.
 	void add_named(int p_id, const String &p_kind, const String &p_name) {
 		add(p_id, p_kind);

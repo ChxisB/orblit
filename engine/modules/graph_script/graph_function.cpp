@@ -57,6 +57,15 @@ bool GraphFunction::has_wire(const GraphWire &p_wire) const {
 	return _find_wire_index(p_wire) >= 0;
 }
 
+bool GraphFunction::has_step_of_kind(const StringName &p_kind) const {
+	for (const GraphStep &step : steps) {
+		if (step.kind == p_kind) {
+			return true;
+		}
+	}
+	return false;
+}
+
 Error GraphFunction::add_step(int p_id, const StringName &p_kind) {
 	if (p_id < 1 || !GraphStepKinds::find(p_kind)) {
 		return ERR_INVALID_PARAMETER;
@@ -119,6 +128,57 @@ void GraphFunction::rename_references(const GraphReference &p_reference, const S
 		if (step.kind == p_reference.kind && holds_name(step.parameters, p_reference.parameter, p_old) && _acts_on_owner(step, p_reference.target_port)) {
 			steps.write[i].parameters[p_reference.parameter] = String(p_new);
 		}
+	}
+}
+
+GraphFunction GraphFunction::extract(const Vector<int> &p_ids) const {
+	GraphFunction copy;
+	for (const GraphStep &step : steps) {
+		if (p_ids.has(step.id) && step.kind != StringName("entry")) {
+			GraphStep taken = step;
+			taken.parameters = step.parameters.duplicate(true);
+			copy.steps.push_back(taken);
+		}
+	}
+	for (const GraphWire &wire : wires) {
+		if (copy._find_step_index(wire.from_step) >= 0 && copy._find_step_index(wire.to_step) >= 0) {
+			copy.wires.push_back(wire);
+		}
+	}
+	return copy;
+}
+
+Vector<StringName> GraphFunction::get_references(const GraphReference &p_reference) const {
+	Vector<StringName> names;
+	for (const GraphStep &step : steps) {
+		const Variant value = step.parameters.get(p_reference.parameter, Variant());
+		const bool is_text = value.get_type() == Variant::STRING || value.get_type() == Variant::STRING_NAME;
+		const StringName name = is_text ? StringName(String(value)) : StringName();
+		if (step.kind == p_reference.kind && name != StringName() && _acts_on_owner(step, p_reference.target_port)) {
+			names.push_back(name);
+		}
+	}
+	return names;
+}
+
+void GraphFunction::paste(const GraphFunction &p_source, const Vector2 &p_corner, Vector<int> &r_ids) {
+	Vector2 corner = p_source.steps.is_empty() ? Vector2() : p_source.steps[0].position;
+	for (const GraphStep &step : p_source.steps) {
+		corner = corner.min(step.position);
+	}
+	HashMap<int, int> new_ids;
+	int next = get_valid_step_id();
+	for (const GraphStep &source : p_source.steps) {
+		GraphStep copy = source;
+		copy.id = next++;
+		copy.position = source.position - corner + p_corner;
+		copy.parameters = source.parameters.duplicate(true);
+		new_ids[source.id] = copy.id;
+		steps.push_back(copy);
+		r_ids.push_back(copy.id);
+	}
+	for (const GraphWire &source : p_source.wires) {
+		wires.push_back({ new_ids[source.from_step], source.from_port, new_ids[source.to_step], source.to_port });
 	}
 }
 

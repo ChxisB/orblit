@@ -10,6 +10,7 @@
 #include "graph_step_catalogue.h"
 #include "graph_warnings.h"
 
+#include "core/io/json.h"
 #include "core/object/class_registry.h"
 #include "core/variant/variant_parser.h"
 
@@ -173,6 +174,244 @@ Error parse_signal(const Variant &p_value, GraphSignal &r_signal) {
 	}
 	r_signal.name = String(name);
 	return OK;
+}
+
+// The loaders return the reason a list is refused, or an empty text.
+String load_functions(const Array &p_functions, Vector<GraphFunction> &r_loaded) {
+	for (const Variant &value : p_functions) {
+		GraphFunction function;
+		if (value.get_type() != Variant::DICTIONARY || GraphFunction::from_dictionary(value, function) != OK) {
+			return "Graph script functions are malformed.";
+		}
+		if (!is_valid_name(function.get_name())) {
+			return "Graph script function name is not an identifier.";
+		}
+		for (const GraphFunction &other : r_loaded) {
+			if (other.get_name() == function.get_name()) {
+				return "Graph script has two functions with one name.";
+			}
+		}
+		r_loaded.push_back(function);
+	}
+	return String();
+}
+
+String load_variables(const Array &p_variables, Vector<GraphVariable> &r_loaded) {
+	for (const Variant &value : p_variables) {
+		GraphVariable variable;
+		if (parse_variable(value, variable) != OK) {
+			return "Graph script variables are malformed.";
+		}
+		for (const GraphVariable &other : r_loaded) {
+			if (other.name == variable.name) {
+				return "Graph script has two variables with one name.";
+			}
+		}
+		r_loaded.push_back(variable);
+	}
+	return String();
+}
+
+String load_signals(const Array &p_signals, Vector<GraphSignal> &r_loaded) {
+	for (const Variant &value : p_signals) {
+		GraphSignal loaded_signal;
+		if (parse_signal(value, loaded_signal) != OK) {
+			return "Graph script signals are malformed.";
+		}
+		for (const GraphSignal &other : r_loaded) {
+			if (other.name == loaded_signal.name) {
+				return "Graph script signals are malformed.";
+			}
+		}
+		r_loaded.push_back(loaded_signal);
+	}
+	return String();
+}
+
+// A signal with no arguments is stored as its name, and one with arguments as a dictionary.
+Variant signal_to_variant(const GraphSignal &p_signal) {
+	if (p_signal.arguments.is_empty()) {
+		return String(p_signal.name);
+	}
+	Dictionary entry;
+	entry["name"] = String(p_signal.name);
+	entry["arguments"] = GraphSignatures::typed_list_to_array(p_signal.arguments);
+	return entry;
+}
+
+String write_variant(const Variant &p_value) {
+	String text;
+	VariantWriter::write_to_string(p_value, text);
+	return text;
+}
+
+bool parse_dictionary(const String &p_text, Dictionary &r_dictionary) {
+	Variant value;
+	if (!parse_variant(p_text, value) || value.get_type() != Variant::DICTIONARY) {
+		return false;
+	}
+	r_dictionary = value;
+	return true;
+}
+
+bool read_list(const Dictionary &p_dictionary, const char *p_key, Array &r_list) {
+	const Variant value = p_dictionary.get(p_key, Variant());
+	if (value.get_type() != Variant::ARRAY) {
+		return false;
+	}
+	r_list = value;
+	return true;
+}
+
+// Everything a script holds apart from its compiled form.
+struct Snapshot {
+	StringName base_type;
+	Vector<GraphFunction> functions;
+	Vector<GraphVariable> variables;
+	Vector<GraphSignal> signals;
+};
+
+bool read_snapshot(const String &p_text, Snapshot &r_snapshot) {
+	Dictionary entry;
+	Array function_list;
+	Array variable_list;
+	Array signal_list;
+	if (!parse_dictionary(p_text, entry) || !read_list(entry, "functions", function_list) || !read_list(entry, "variables", variable_list) || !read_list(entry, "signals", signal_list)) {
+		return false;
+	}
+	const Variant base = entry.get("base_type", Variant());
+	if (base.get_type() != Variant::STRING || (!String(base).is_empty() && !ClassRegistry::class_exists(StringName(String(base))))) {
+		return false;
+	}
+	r_snapshot.base_type = StringName(String(base));
+	return load_functions(function_list, r_snapshot.functions).is_empty() && load_variables(variable_list, r_snapshot.variables).is_empty() && load_signals(signal_list, r_snapshot.signals).is_empty();
+}
+
+// The steps of a function that were copied and what they name, as one text.
+struct Payload {
+	GraphFunction steps;
+	Vector<GraphVariable> variables;
+	Vector<GraphSignal> signals;
+	Vector<String> functions;
+};
+
+bool read_payload(const String &p_text, Payload &r_payload) {
+	Dictionary entry;
+	Array variable_list;
+	Array signal_list;
+	Array function_list;
+	if (!parse_dictionary(p_text, entry) || !read_list(entry, "variables", variable_list) || !read_list(entry, "signals", signal_list) || !read_list(entry, "functions", function_list)) {
+		return false;
+	}
+	const Variant steps = entry.get("steps", Variant());
+	if (steps.get_type() != Variant::DICTIONARY || GraphFunction::from_dictionary(steps, r_payload.steps) != OK) {
+		return false;
+	}
+	for (const Variant &name : function_list) {
+		if (name.get_type() != Variant::STRING || !is_valid_name(name)) {
+			return false;
+		}
+		r_payload.functions.push_back(name);
+	}
+	return load_variables(variable_list, r_payload.variables).is_empty() && load_signals(signal_list, r_payload.signals).is_empty();
+}
+
+template <typename T>
+int find_by_name(const Vector<T> &p_list, const StringName &p_name) {
+	for (int i = 0; i < p_list.size(); i++) {
+		if (p_list[i].name == p_name) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+// The first name of the form name_2, name_3 and so on that the list does not have.
+template <typename T>
+StringName unique_name(const Vector<T> &p_list, const StringName &p_name) {
+	for (int number = 2;; number++) {
+		const StringName candidate = StringName(String(p_name) + "_" + itos(number));
+		if (find_by_name(p_list, candidate) < 0) {
+			return candidate;
+		}
+	}
+}
+
+bool has_function(const Vector<GraphFunction> &p_functions, const String &p_name) {
+	for (const GraphFunction &function : p_functions) {
+		if (function.get_name() == p_name) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool same_declaration(const GraphVariable &p_a, const GraphVariable &p_b) {
+	return p_a.type == p_b.type;
+}
+
+bool same_declaration(const GraphSignal &p_a, const GraphSignal &p_b) {
+	if (p_a.arguments.size() != p_b.arguments.size()) {
+		return false;
+	}
+	for (int i = 0; i < p_a.arguments.size(); i++) {
+		if (p_a.arguments[i].name != p_b.arguments[i].name || p_a.arguments[i].type != p_b.arguments[i].type) {
+			return false;
+		}
+	}
+	return true;
+}
+
+template <typename T>
+void add_conflicts(const Vector<T> &p_declared, const Vector<T> &p_incoming, const String &p_kind, Array &r_conflicts) {
+	for (const T &item : p_incoming) {
+		const int at = find_by_name(p_declared, item.name);
+		if (at >= 0 && !same_declaration(p_declared[at], item)) {
+			Dictionary conflict;
+			conflict["kind"] = p_kind;
+			conflict["name"] = String(item.name);
+			r_conflicts.push_back(conflict);
+		}
+	}
+}
+
+// Declares what a payload names that the list lacks. One of another declaration is left alone, or
+// declared again under a new name that the payload's steps are pointed at.
+template <typename T, typename Rename>
+void declare_incoming(Vector<T> &r_declared, Vector<T> &r_incoming, bool p_keep_both, Rename p_rename) {
+	for (int i = 0; i < r_incoming.size(); i++) {
+		T &item = r_incoming.write[i];
+		const int at = find_by_name(r_declared, item.name);
+		if (at < 0) {
+			r_declared.push_back(item);
+		} else if (p_keep_both && !same_declaration(r_declared[at], item)) {
+			const StringName name = unique_name(r_declared, item.name);
+			p_rename(item.name, name);
+			item.name = name;
+			r_declared.push_back(item);
+		}
+	}
+}
+
+template <size_t COUNT>
+Vector<StringName> referenced(const GraphFunction &p_function, const GraphReference (&p_references)[COUNT]) {
+	Vector<StringName> names;
+	for (const GraphReference &reference : p_references) {
+		for (const StringName &name : p_function.get_references(reference)) {
+			if (!names.has(name)) {
+				names.push_back(name);
+			}
+		}
+	}
+	return names;
+}
+
+String paste_result(Error p_error, const Array &p_conflicts = Array(), const Array &p_steps = Array()) {
+	Dictionary result;
+	result["error"] = int(p_error);
+	result["conflicts"] = p_conflicts;
+	result["steps"] = p_steps;
+	return JSON::stringify(result);
 }
 
 // The arguments and the return type come from the start step, so a function that did not
@@ -566,15 +805,8 @@ Error GraphScript::set_signal_arguments(const String &p_name, const String &p_ar
 
 void GraphScript::set_functions(const Array &p_functions) {
 	Vector<GraphFunction> loaded;
-	for (const Variant &value : p_functions) {
-		GraphFunction function;
-		ERR_FAIL_COND_MSG(value.get_type() != Variant::DICTIONARY || GraphFunction::from_dictionary(value, function) != OK, "Graph script functions are malformed.");
-		ERR_FAIL_COND_MSG(!is_valid_name(function.get_name()), "Graph script function name is not an identifier.");
-		for (const GraphFunction &other : loaded) {
-			ERR_FAIL_COND_MSG(other.get_name() == function.get_name(), "Graph script has two functions with one name.");
-		}
-		loaded.push_back(function);
-	}
+	const String problem = load_functions(p_functions, loaded);
+	ERR_FAIL_COND_MSG(!problem.is_empty(), problem);
 	functions = loaded;
 	_commit(OK);
 }
@@ -589,14 +821,8 @@ Array GraphScript::get_functions() const {
 
 void GraphScript::set_variables(const Array &p_variables) {
 	Vector<GraphVariable> loaded;
-	for (const Variant &value : p_variables) {
-		GraphVariable variable;
-		ERR_FAIL_COND_MSG(parse_variable(value, variable) != OK, "Graph script variables are malformed.");
-		for (const GraphVariable &other : loaded) {
-			ERR_FAIL_COND_MSG(other.name == variable.name, "Graph script has two variables with one name.");
-		}
-		loaded.push_back(variable);
-	}
+	const String problem = load_variables(p_variables, loaded);
+	ERR_FAIL_COND_MSG(!problem.is_empty(), problem);
 	variables = loaded;
 	_commit(OK);
 }
@@ -611,14 +837,8 @@ Array GraphScript::get_variables() const {
 
 void GraphScript::set_signals(const Array &p_signals) {
 	Vector<GraphSignal> loaded;
-	for (const Variant &value : p_signals) {
-		GraphSignal loaded_signal;
-		ERR_FAIL_COND_MSG(parse_signal(value, loaded_signal) != OK, "Graph script signals are malformed.");
-		for (const GraphSignal &other : loaded) {
-			ERR_FAIL_COND_MSG(other.name == loaded_signal.name, "Graph script signals are malformed.");
-		}
-		loaded.push_back(loaded_signal);
-	}
+	const String problem = load_signals(p_signals, loaded);
+	ERR_FAIL_COND_MSG(!problem.is_empty(), problem);
 	signals = loaded;
 	_commit(OK);
 }
@@ -626,14 +846,7 @@ void GraphScript::set_signals(const Array &p_signals) {
 Array GraphScript::get_signals() const {
 	Array result;
 	for (const GraphSignal &declared : signals) {
-		if (declared.arguments.is_empty()) {
-			result.push_back(String(declared.name));
-			continue;
-		}
-		Dictionary entry;
-		entry["name"] = String(declared.name);
-		entry["arguments"] = GraphSignatures::typed_list_to_array(declared.arguments);
-		result.push_back(entry);
+		result.push_back(signal_to_variant(declared));
 	}
 	return result;
 }
@@ -655,6 +868,125 @@ Array GraphScript::get_warnings() const {
 		result.push_back(entry);
 	}
 	return result;
+}
+
+String GraphScript::get_snapshot() const {
+	Dictionary snapshot;
+	snapshot["base_type"] = String(base_type);
+	snapshot["functions"] = get_functions();
+	snapshot["variables"] = get_variables();
+	snapshot["signals"] = get_signals();
+	return write_variant(snapshot);
+}
+
+Error GraphScript::restore_snapshot(const String &p_snapshot_text) {
+	Snapshot snapshot;
+	if (!read_snapshot(p_snapshot_text, snapshot)) {
+		return ERR_INVALID_DATA;
+	}
+	functions = snapshot.functions;
+	variables = snapshot.variables;
+	signals = snapshot.signals;
+	base_type = snapshot.base_type;
+	return _commit(OK);
+}
+
+String GraphScript::get_payload(const String &p_function, const String &p_ids_text) const {
+	const GraphFunction *function = get_function(p_function);
+	Variant ids;
+	if (!function || !parse_variant(p_ids_text, ids) || ids.get_type() != Variant::ARRAY) {
+		return String();
+	}
+	Vector<int> wanted;
+	const Array id_list = ids;
+	for (const Variant &id : id_list) {
+		if (id.get_type() == Variant::INT) {
+			wanted.push_back(id);
+		}
+	}
+	const GraphFunction copy = function->extract(wanted);
+	if (copy.get_step_count() == 0) {
+		return String();
+	}
+	Array used_variables;
+	for (const StringName &name : referenced(copy, VARIABLE_REFERENCES)) {
+		if (const GraphVariable *variable = get_variable(name)) {
+			used_variables.push_back(variable_to_dictionary(*variable));
+		}
+	}
+	Array used_signals;
+	for (const StringName &name : referenced(copy, SIGNAL_REFERENCES)) {
+		const int at = _find_signal_index(name);
+		if (at >= 0) {
+			used_signals.push_back(signal_to_variant(signals[at]));
+		}
+	}
+	Array used_functions;
+	for (const StringName &name : referenced(copy, FUNCTION_REFERENCES)) {
+		used_functions.push_back(String(name));
+	}
+	Dictionary payload;
+	payload["steps"] = copy.to_dictionary();
+	payload["variables"] = used_variables;
+	payload["signals"] = used_signals;
+	payload["functions"] = used_functions;
+	return write_variant(payload);
+}
+
+String GraphScript::paste_payload(const String &p_function, const String &p_payload_text, float p_x, float p_y, const String &p_conflict) {
+	Payload payload;
+	if (!read_payload(p_payload_text, payload)) {
+		return paste_result(ERR_INVALID_DATA);
+	}
+	const int index = _find_function_index(p_function);
+	if (index < 0) {
+		return paste_result(ERR_DOES_NOT_EXIST);
+	}
+	// A return reports a value to the caller of the function, and a function with no entry has none.
+	if (payload.steps.has_step_of_kind("return") && !functions[index].has_step_of_kind("entry")) {
+		return paste_result(ERR_INVALID_PARAMETER);
+	}
+	Array conflicts;
+	add_conflicts(variables, payload.variables, "variable", conflicts);
+	add_conflicts(signals, payload.signals, "signal", conflicts);
+	if (p_conflict != "reuse" && p_conflict != "keep_both" && !p_conflict.is_empty()) {
+		return paste_result(ERR_INVALID_PARAMETER);
+	}
+	if (!conflicts.is_empty() && p_conflict.is_empty()) {
+		return paste_result(ERR_ALREADY_EXISTS, conflicts);
+	}
+
+	// Everything is built on copies and kept only when it is all done, so a paste is one change.
+	Vector<GraphVariable> next_variables = variables;
+	Vector<GraphSignal> next_signals = signals;
+	Vector<GraphFunction> next_functions = functions;
+	const bool keep_both = p_conflict == "keep_both";
+	declare_incoming(next_variables, payload.variables, keep_both, [&](const StringName &p_old, const StringName &p_new) {
+		for (const GraphReference &reference : VARIABLE_REFERENCES) {
+			payload.steps.rename_references(reference, p_old, p_new);
+		}
+	});
+	declare_incoming(next_signals, payload.signals, keep_both, [&](const StringName &p_old, const StringName &p_new) {
+		for (const GraphReference &reference : SIGNAL_REFERENCES) {
+			payload.steps.rename_references(reference, p_old, p_new);
+		}
+	});
+	for (const String &name : payload.functions) {
+		if (!has_function(next_functions, name)) {
+			next_functions.push_back(GraphFunction(name));
+		}
+	}
+	Vector<int> new_ids;
+	next_functions.write[index].paste(payload.steps, Vector2(p_x, p_y), new_ids);
+	variables = next_variables;
+	signals = next_signals;
+	functions = next_functions;
+	Array pasted;
+	for (const int id : new_ids) {
+		pasted.push_back(id);
+	}
+	_commit(OK);
+	return paste_result(OK, Array(), pasted);
 }
 
 String GraphScript::get_document() const {
@@ -890,6 +1222,10 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("set_base_type", "base_type"), &GraphScript::set_base_type);
 	ClassRegistry::bind_method(D_METHOD("get_base_type"), &GraphScript::get_base_type);
 	ClassRegistry::bind_method(D_METHOD("get_warnings"), &GraphScript::get_warnings);
+	ClassRegistry::bind_method(D_METHOD("get_snapshot"), &GraphScript::get_snapshot);
+	ClassRegistry::bind_method(D_METHOD("restore_snapshot", "snapshot_text"), &GraphScript::restore_snapshot);
+	ClassRegistry::bind_method(D_METHOD("get_payload", "function", "ids_text"), &GraphScript::get_payload);
+	ClassRegistry::bind_method(D_METHOD("paste_payload", "function", "payload_text", "x", "y", "conflict"), &GraphScript::paste_payload);
 	ClassRegistry::bind_method(D_METHOD("get_document"), &GraphScript::get_document);
 	ClassRegistry::bind_method(D_METHOD("find_steps", "text", "dragged_side", "type", "sort"), &GraphScript::find_steps);
 
