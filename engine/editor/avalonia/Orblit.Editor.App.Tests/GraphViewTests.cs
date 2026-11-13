@@ -79,9 +79,16 @@ public sealed class GraphViewTests
         }
     }
 
-    static GraphView Open(Files files, ITextClipboard? clipboard = null)
+    sealed class Links : ILinkOpener
     {
-        var view = new GraphView(clipboard);
+        public List<Uri> Opened { get; } = [];
+
+        public void Open(Uri link) => Opened.Add(link);
+    }
+
+    static GraphView Open(Files files, ITextClipboard? clipboard = null, ILinkOpener? links = null)
+    {
+        var view = new GraphView(clipboard, links);
         new Window { Content = view, Width = 1000, Height = 600 }.Show();
         view.Show(files);
         return view;
@@ -102,6 +109,11 @@ public sealed class GraphViewTests
         view.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
 
     static void Choose(GraphView view, string header) => Item(view, header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+    static MenuItem GotoItem(GraphView view, string header) =>
+        view.GotoMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
+
+    static void ChooseGoto(GraphView view, string header) => GotoItem(view, header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -918,6 +930,127 @@ public sealed class GraphViewTests
 
             Assert.True(view.Breakpoints.Has($"{Logic}#main", 2));
             Assert.Equal("The breakpoints were not saved. The disk is full.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void The_goto_commands_are_off_until_a_script_is_open()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+
+            Assert.All(view.GotoMenu.Items.OfType<MenuItem>(), item => Assert.False(item.IsEnabled));
+
+            Pick(view, Logic);
+
+            Assert.All(view.GotoMenu.Items.OfType<MenuItem>(), item => Assert.True(item.IsEnabled));
+        });
+    }
+
+    [Fact]
+    public void Find_step_and_go_to_step_show_the_find_bar()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+            Assert.False(view.Canvas!.FindBar.IsVisible);
+
+            ChooseGoto(view, "Find Step...");
+            Assert.True(view.Canvas.FindBar.IsVisible);
+
+            view.Canvas.FindBar.IsVisible = false;
+            ChooseGoto(view, "Go to Step...");
+            Assert.True(view.Canvas.FindBar.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Toggle_bookmark_marks_the_selected_step_and_says_so_on_the_find_bar()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+
+            ChooseGoto(view, "Toggle Bookmark");
+            Assert.Equal("Select one step to bookmark.", view.Canvas!.FindBar.Status);
+
+            view.Canvas.Select([2]);
+            ChooseGoto(view, "Toggle Bookmark");
+            Assert.Contains(2, view.Canvas.Scene.Bookmarked);
+            Assert.Equal("Bookmarked step 2.", view.Canvas.FindBar.Status);
+            Assert.True(view.Canvas.FindBar.IsVisible);
+
+            ChooseGoto(view, "Toggle Bookmark");
+            Assert.DoesNotContain(2, view.Canvas.Scene.Bookmarked);
+        });
+    }
+
+    [Fact]
+    public void Next_and_previous_bookmark_walk_the_bookmarks_and_say_when_there_are_none()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+
+            ChooseGoto(view, "Next Bookmark");
+            Assert.Equal("No bookmarks.", view.Canvas!.FindBar.Status);
+
+            view.Canvas.Select([3]);
+            ChooseGoto(view, "Toggle Bookmark");
+            view.Canvas.Select([1]);
+            ChooseGoto(view, "Previous Bookmark");
+
+            Assert.Equal([3], view.Canvas.Scene.SelectedSteps);
+            Assert.Equal("Bookmark 1 of 1", view.Canvas.FindBar.Status);
+        });
+    }
+
+    [Fact]
+    public void Toggle_breakpoint_sets_and_clears_a_breakpoint_on_the_selected_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+
+            ChooseGoto(view, "Toggle Breakpoint");
+            Assert.Equal("Select one step for a breakpoint.", view.Canvas!.FindBar.Status);
+            Assert.Empty(view.Breakpoints.All);
+
+            view.Canvas.Select([2]);
+            ChooseGoto(view, "Toggle Breakpoint");
+            Assert.Contains(2, view.Canvas.Scene.Breakpointed);
+            Assert.Equal("Set a breakpoint on step 2.", view.Canvas.FindBar.Status);
+
+            ChooseGoto(view, "Toggle Breakpoint");
+            Assert.DoesNotContain(2, view.Canvas.Scene.Breakpointed);
+            Assert.Equal("Took the breakpoint off step 2.", view.Canvas.FindBar.Status);
+        });
+    }
+
+    [Fact]
+    public void Help_opens_the_guide_and_the_class_reference()
+    {
+        UiThread.Run(() =>
+        {
+            var links = new Links();
+            var view = Open(new Files(), links: links);
+            var help = ((MenuFlyout)view.HelpButton.Flyout!).Items.OfType<MenuItem>().ToList();
+
+            help[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            help[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            Assert.Equal(["Your First Graph Script", "GraphScript Class Reference"], help.Select(item => (string?)item.Header));
+            Assert.Equal(
+                [
+                    new Uri("https://orblitengine.com/docs/start/your-first-graph-script/"),
+                    new Uri("https://orblitengine.com/docs/classes/class_graphscript/"),
+                ],
+                links.Opened);
         });
     }
 }

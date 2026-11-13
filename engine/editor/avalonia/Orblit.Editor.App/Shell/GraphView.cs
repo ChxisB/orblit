@@ -51,7 +51,8 @@ internal interface IGraphFiles
 
 /// <summary>
 /// The Graph workspace: the project's graph scripts in a list with a filter, a tab for each one open, and for the one
-/// on show its canvas, side panels and the debugger. The File menu makes and closes scripts.
+/// on show its canvas, side panels and the debugger. The File menu makes and closes scripts, Goto moves about the
+/// script on show and Help opens the guide.
 /// </summary>
 internal sealed class GraphView : Border
 {
@@ -66,6 +67,9 @@ internal sealed class GraphView : Border
     readonly Border _side = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TabInactive };
     readonly ScrollViewer _debugHost = new() { MaxHeight = 240, Padding = new Thickness(10, 6), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     readonly Button _fileButton = new() { Content = "File", Padding = new Thickness(12, 4), MinHeight = 0 };
+    readonly Button _gotoButton = new() { Content = "Goto", Padding = new Thickness(12, 4), MinHeight = 0 };
+    readonly Button _helpButton = new() { Content = "Help", Padding = new Thickness(12, 4), MinHeight = 0 };
+    readonly GotoMenu _gotoMenu;
     readonly MenuFlyout _menu = new();
     readonly MenuItem _save;
     readonly MenuItem _saveAll;
@@ -82,10 +86,13 @@ internal sealed class GraphView : Border
     DebugPlace? _shownStop;
     GraphSheet? _current;
 
-    public GraphView(ITextClipboard? clipboard = null)
+    public GraphView(ITextClipboard? clipboard = null, ILinkOpener? links = null)
     {
         Background = EditorBrushes.Panel;
         _clipboard = clipboard ?? new WindowClipboard(this);
+        _gotoMenu = new GotoMenu(() => Canvas);
+        _gotoButton.Flyout = _gotoMenu;
+        _helpButton.Flyout = new HelpMenu(links ?? new WindowLinks(this));
         _createFlyout = new Flyout { Content = _form, Placement = PlacementMode.BottomEdgeAlignedLeft };
         _save = Item("Save", SaveCurrent);
         _saveAll = Item("Save All", () => Save());
@@ -128,6 +135,10 @@ internal sealed class GraphView : Border
     internal TextBlock Hint => _hint;
 
     internal Button FileButton => _fileButton;
+
+    internal GotoMenu GotoMenu => _gotoMenu;
+
+    internal Button HelpButton => _helpButton;
 
     internal MenuFlyout FileMenu => _menu;
 
@@ -229,6 +240,8 @@ internal sealed class GraphView : Border
         left.Children.Add(_list);
         var header = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4) };
         header.Children.Add(_fileButton);
+        header.Children.Add(_gotoButton);
+        header.Children.Add(_helpButton);
         header.Children.Add(_tabs);
         header.Children.Add(_status);
         // The right column stacks the script's panels, the debugger and the step inspector.
@@ -508,5 +521,6 @@ internal sealed class GraphView : Border
         _close.IsEnabled = _current is not null;
         _closeAll.IsEnabled = _sheets.Count > 0;
         _copyPath.IsEnabled = _current is not null;
+        _gotoMenu.Show(_current is not null);
     }
 }

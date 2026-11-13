@@ -50,12 +50,27 @@ internal sealed class FindBar : Border
     /// <summary>The line the last command reported.</summary>
     internal string Status => _status.Text ?? "";
 
+    /// <summary>The commands the bar runs. A command run from a menu says its answer on the bar, so the bar shows too.</summary>
+    internal void Run(Action<GraphSearch> command)
+    {
+        IsVisible = true;
+        command(_search);
+    }
+
     /// <summary>Shows the bar and puts the cursor in the find box.</summary>
     public void Open()
     {
         IsVisible = true;
         _text.Focus();
         _text.SelectAll();
+    }
+
+    /// <summary>Shows the bar and puts the cursor in the step id box.</summary>
+    public void OpenGoto()
+    {
+        IsVisible = true;
+        _goto.Focus();
+        _goto.SelectAll();
     }
 
     void Close()

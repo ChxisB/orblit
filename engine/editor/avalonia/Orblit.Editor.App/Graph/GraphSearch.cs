@@ -55,6 +55,20 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
         Reported?.Invoke(scene.ToggleBookmark(id) ? $"Bookmarked step {id}." : $"Took the bookmark off step {id}.");
     }
 
+    /// <summary>Sets a breakpoint on the one selected step, or takes it off.</summary>
+    public void ToggleBreakpoint()
+    {
+        if (scene.SelectedSteps.Count != 1)
+        {
+            Reported?.Invoke("Select one step for a breakpoint.");
+            return;
+        }
+
+        var id = scene.SelectedSteps.First();
+        redraw();
+        Reported?.Invoke(scene.ToggleBreakpoint(id) ? $"Set a breakpoint on step {id}." : $"Took the breakpoint off step {id}.");
+    }
+
     /// <summary>Shows the next bookmarked step, or the previous one, wrapping at the ends.</summary>
     public void StepBookmark(bool forward)
     {
