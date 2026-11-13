@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "core/containers/safe_refcount.h"
 #include "core/object/ref_counted.h"
 #include "core/os/mutex.h"
 #include "core/os/thread.h"
@@ -44,14 +45,16 @@ private:
 	int in_left = 0;
 	int in_pos = 0;
 	Vector<uint8_t> in_buf;
-	bool connected = false;
-	bool running = false;
+	// The reader thread and the owner both read these, so they are atomic.
+	SafeFlag connected;
+	SafeFlag running;
 
 	static void _thread_func(void *p_ud);
 
 	void _poll();
 	void _write_out();
 	void _read_in();
+	int _get_queued_in() const;
 	void _disconnect_with_error(const String &p_reason);
 	static Error _try_connect(Ref<StreamPeerSocket> p_stream);
 
