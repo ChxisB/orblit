@@ -142,6 +142,8 @@ public static unsafe class EngineCalls
     static readonly EngineMethod GraphScriptSetStepPinsMethod = new("GraphScript", "set_step_pins", 2468526429);
     static readonly EngineMethod GraphScriptConnectStepsMethod = new("GraphScript", "connect_steps", 3272164336);
     static readonly EngineMethod GraphScriptDisconnectStepsMethod = new("GraphScript", "disconnect_steps", 3272164336);
+    static readonly EngineMethod GraphScriptSetFrameMethod = new("GraphScript", "set_frame", 852856452);
+    static readonly EngineMethod GraphScriptRemoveFrameMethod = new("GraphScript", "remove_frame", 993915709);
     static readonly EngineMethod GraphScriptGetDocumentMethod = new("GraphScript", "get_document", 201670096);
     static readonly EngineMethod GraphScriptFindStepsMethod = new("GraphScript", "find_steps", 1541712278);
 
@@ -1168,6 +1170,28 @@ public static unsafe class EngineCalls
         long result = 0;
         void** args = stackalloc void*[] { a0, &a1, &a2, &a3, &a4 };
         host.Call(GraphScriptDisconnectStepsMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptSetFrame(this EngineHost host, nint target, string function, string frameText)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        void* a1 = scope.String(frameText);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1 };
+        host.Call(GraphScriptSetFrameMethod, target, args, &result);
+        return result;
+    }
+
+    public static long GraphScriptRemoveFrame(this EngineHost host, nint target, string function, long id)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.String(function);
+        long a1 = id;
+        long result = 0;
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(GraphScriptRemoveFrameMethod, target, args, &result);
         return result;
     }
 

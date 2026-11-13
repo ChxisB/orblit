@@ -1,0 +1,211 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Layout;
+using Avalonia.Media;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
+
+namespace Orblit.Editor.App.Graph;
+
+/// <summary>
+/// The canvas for one graph script: the steps and wires of a function, panned and zoomed, with a bar for the
+/// engine's refusals, a box to type a value or a title into, and a minimap. It shows what the source holds
+/// and changes nothing itself. Every edit is a call to the source, and the canvas draws what comes back.
+/// </summary>
+internal sealed class GraphCanvas : Grid
+{
+    const double EditorHeight = 22;
+    const double EditorMinWidth = 60;
+    const string ValueHint = "Variant text, for example 2.5, true or \"name\". Enter keeps it and Escape drops it.";
+
+    readonly IGraphSource _source;
+    readonly GraphScene _scene = new();
+    readonly GraphViewport _viewport = new();
+    readonly GraphEdits _edits;
+    readonly GraphGestures _gestures;
+    readonly GraphSurface _surface;
+    readonly GraphMinimap _minimap;
+    readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+    readonly TextBlock _notice = new() { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
+    readonly Border _noticeBar;
+    readonly TextBlock _empty = new() { Text = "This script has no function yet.", Foreground = EditorBrushes.TabInactive, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
+    readonly Button _frame = Parts.IconButton("GraphFrame", "Frame the selected steps. Ctrl or Command and G does the same.");
+    readonly Button _fit = Parts.IconButton("ZoomReset", "Show every step");
+    readonly Avalonia.Controls.Primitives.ToggleButton _curved = Parts.IconToggle("Curve", "Curved wires. Off draws straight wires.");
+    readonly Avalonia.Controls.Primitives.ToggleButton _map = Parts.IconToggle("Grid", "Minimap");
+    Action<string>? _commit;
+    string _original = "";
+    bool _fitted;
+
+    public GraphCanvas(IGraphSource source)
+    {
+        _source = source;
+        _edits = new GraphEdits(source, _scene);
+        _gestures = new GraphGestures(_scene, _viewport, _edits);
+        _surface = new GraphSurface(_scene, _viewport, _gestures, _edits);
+        _minimap = new GraphMinimap(_scene, _viewport, _surface) { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 12, 12) };
+        _noticeBar = new Border { Background = new SolidColorBrush(Color.Parse("#c04a3a")), Padding = new Thickness(10, 4), CornerRadius = new CornerRadius(4), IsVisible = false, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(12), Child = _notice };
+        Build();
+        Wire();
+        Reload();
+    }
+
+    internal GraphScene Scene => _scene;
+
+    internal GraphViewport Viewport => _viewport;
+
+    internal GraphGestures Gestures => _gestures;
+
+    internal GraphEdits Edits => _edits;
+
+    internal GraphSurface Surface => _surface;
+
+    internal GraphMinimap Minimap => _minimap;
+
+    internal TextBox Editor => _editor;
+
+    internal Border NoticeBar => _noticeBar;
+
+    internal string NoticeText => _notice.Text ?? "";
+
+    internal Button FrameButton => _frame;
+
+    internal Button FitButton => _fit;
+
+    internal Avalonia.Controls.Primitives.ToggleButton CurvedToggle => _curved;
+
+    internal Avalonia.Controls.Primitives.ToggleButton MapToggle => _map;
+
+    /// <summary>Whether a value or title box is open.</summary>
+    internal bool IsEditing => _commit is not null;
+
+    /// <summary>Builds the views again from what the source holds.</summary>
+    public void Reload()
+    {
+        _scene.Load(_source.Function);
+        _empty.IsVisible = _source.Function is null;
+        _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
+        FitOnce();
+        Redraw();
+    }
+
+    /// <summary>Puts a text box over a place on the canvas. Accepting it passes the text to the commit.</summary>
+    internal void BeginEdit(Rect graphRect, string text, Action<string> commit)
+    {
+        EndEdit(accept: true);
+        var top = _viewport.ToScreen(graphRect.TopLeft);
+        _editor.Margin = new Thickness(top.X, top.Y, 0, 0);
+        _editor.Width = Math.Max(graphRect.Width * _viewport.Zoom, EditorMinWidth);
+        _editor.Height = Math.Max(graphRect.Height * _viewport.Zoom, EditorHeight);
+        _original = text;
+        _editor.Text = text;
+        _editor.IsVisible = true;
+        _commit = commit;
+        _editor.Focus();
+        _editor.SelectAll();
+    }
+
+    /// <summary>Closes the text box. Accepting passes a changed text on, and the same text is not an edit.</summary>
+    internal void EndEdit(bool accept)
+    {
+        var commit = _commit;
+        _commit = null;
+        _editor.IsVisible = false;
+        var text = _editor.Text ?? "";
+        if (accept && commit is not null && text != _original)
+        {
+            commit(text);
+        }
+        _surface.Focus();
+    }
+
+    void Build()
+    {
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 8, 12, 0) };
+        _curved.IsChecked = true;
+        _map.IsChecked = true;
+        _frame.IsEnabled = false;
+        ToolTip.SetTip(_editor, ValueHint);
+        foreach (var control in new Control[] { _frame, _fit, _curved, _map })
+        {
+            tools.Children.Add(control);
+        }
+        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _noticeBar, _editor })
+        {
+            Children.Add(control);
+        }
+    }
+
+    void Wire()
+    {
+        _source.Changed += () =>
+        {
+            if (!_edits.Busy)
+            {
+                Reload();
+            }
+        };
+        _edits.Settled += Reload;
+        _edits.Refused += reason =>
+        {
+            _notice.Text = reason;
+            _noticeBar.IsVisible = true;
+        };
+        _surface.Interacted += OnInteracted;
+        _gestures.Pressing += () => _noticeBar.IsVisible = false;
+        _surface.SizeChanged += (_, _) => FitOnce();
+        _minimap.Moved += _surface.InvalidateVisual;
+        _gestures.ValueEditRequested += (step, parameter) => BeginEdit(step.ValueRect(parameter), step.ValueOf(parameter), text => _edits.SetValue(step.Id, parameter, text));
+        _gestures.TitleEditRequested += frame => BeginEdit(frame.TitleRect, frame.Frame.Title, text => _edits.RenameFrame(frame, text));
+        _editor.KeyDown += OnEditorKey;
+        _editor.LostFocus += (_, _) => EndEdit(accept: true);
+        _frame.Click += (_, _) => _edits.FrameSelection();
+        _fit.Click += (_, _) => FitView();
+        _curved.Click += (_, _) => ChooseStyle(_curved.IsChecked == true);
+        _map.Click += (_, _) => _minimap.IsVisible = _map.IsChecked == true;
+    }
+
+    void OnInteracted()
+    {
+        _frame.IsEnabled = _scene.SelectedSteps.Count > 0;
+        _minimap.InvalidateVisual();
+    }
+
+    void OnEditorKey(object? sender, KeyEventArgs e)
+    {
+        if (e.Key is Key.Enter or Key.Escape)
+        {
+            EndEdit(accept: e.Key == Key.Enter);
+            e.Handled = true;
+        }
+    }
+
+    void ChooseStyle(bool curved)
+    {
+        _scene.Style = curved ? WireStyle.Curved : WireStyle.Straight;
+        Redraw();
+    }
+
+    // The first time the surface has a size and the graph has steps, the view shows all of it.
+    void FitOnce()
+    {
+        if (!_fitted && _surface.Bounds.Width > 0 && _scene.Steps.Count > 0)
+        {
+            _fitted = true;
+            FitView();
+        }
+    }
+
+    void FitView()
+    {
+        _viewport.Fit(_scene.ContentBounds, _surface.Bounds.Size);
+        Redraw();
+    }
+
+    void Redraw()
+    {
+        _surface.InvalidateVisual();
+        _minimap.InvalidateVisual();
+    }
+}

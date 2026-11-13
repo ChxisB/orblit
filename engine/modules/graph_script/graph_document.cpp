@@ -48,6 +48,23 @@ Array ports_of(const GraphStepKind &p_kind, const Dictionary &p_parameters, Grap
 	return ports;
 }
 
+String side_name(GraphPinSide p_side) {
+	if (p_side == GraphPinSide::INPUT) {
+		return "input";
+	}
+	return p_side == GraphPinSide::OUTPUT ? "output" : "none";
+}
+
+// What an editor needs to offer a plus and a minus on a step that grows pins.
+Dictionary growth_of(const GraphStepKind *p_kind, const Dictionary &p_parameters) {
+	Dictionary growth;
+	growth["side"] = side_name(p_kind ? p_kind->growth.side : GraphPinSide::NONE);
+	growth["minimum"] = p_kind ? p_kind->growth.minimum : 0;
+	growth["count"] = p_kind && p_kind->growth.side != GraphPinSide::NONE ? GraphStepKinds::get_pin_count(*p_kind, p_parameters) : 0;
+	growth["maximum"] = GraphStepKinds::MAX_PINS;
+	return growth;
+}
+
 Dictionary step_to_dictionary(const GraphStep &p_step) {
 	const GraphStepKind *kind = GraphStepKinds::find(p_step.kind);
 	Dictionary entry;
@@ -62,6 +79,7 @@ Dictionary step_to_dictionary(const GraphStep &p_step) {
 	entry["problem"] = kind ? GraphStepKinds::get_ports_problem(*kind, p_step.parameters) : String();
 	entry["inputs"] = kind ? ports_of(*kind, p_step.parameters, GraphPinSide::INPUT) : Array();
 	entry["outputs"] = kind ? ports_of(*kind, p_step.parameters, GraphPinSide::OUTPUT) : Array();
+	entry["growth"] = growth_of(kind, p_step.parameters);
 	return entry;
 }
 
@@ -83,12 +101,17 @@ Dictionary function_to_dictionary(const GraphScript &p_script, const GraphFuncti
 	for (int i = 0; i < p_function.get_wire_count(); i++) {
 		wires.push_back(wire_to_dictionary(p_function.get_wire_at(i)));
 	}
+	Array frames;
+	for (int i = 0; i < p_function.get_frame_count(); i++) {
+		frames.push_back(p_function.get_frame_at(i).to_dictionary());
+	}
 	const GraphCompiledFunction *compiled = p_script.get_compiled(p_function.get_name());
 	Dictionary entry;
 	entry["name"] = p_function.get_name();
 	entry["error"] = compiled ? compiled->error : String();
 	entry["steps"] = steps;
 	entry["wires"] = wires;
+	entry["frames"] = frames;
 	return entry;
 }
 

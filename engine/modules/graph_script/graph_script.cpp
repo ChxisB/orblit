@@ -346,6 +346,23 @@ Error GraphScript::disconnect_steps(const String &p_function, int p_from_step, i
 	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.disconnect_steps(wire); });
 }
 
+Error GraphScript::set_frame(const String &p_function, const String &p_frame_text) {
+	Variant value;
+	if (!parse_variant(p_frame_text, value)) {
+		return ERR_PARSE_ERROR;
+	}
+	GraphCommentFrame frame;
+	const Error err = GraphCommentFrame::from_variant(value, frame);
+	if (err != OK) {
+		return err;
+	}
+	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.set_frame(frame); });
+}
+
+Error GraphScript::remove_frame(const String &p_function, int p_id) {
+	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.remove_frame(p_id); });
+}
+
 Error GraphScript::add_variable(const String &p_name, int p_type) {
 	if (!is_valid_name(p_name) || !is_valid_type(p_type)) {
 		return ERR_INVALID_PARAMETER;
@@ -757,6 +774,8 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("set_step_pins", "function", "id", "count"), &GraphScript::set_step_pins);
 	ClassRegistry::bind_method(D_METHOD("connect_steps", "function", "from_step", "from_port", "to_step", "to_port"), &GraphScript::connect_steps);
 	ClassRegistry::bind_method(D_METHOD("disconnect_steps", "function", "from_step", "from_port", "to_step", "to_port"), &GraphScript::disconnect_steps);
+	ClassRegistry::bind_method(D_METHOD("set_frame", "function", "frame_text"), &GraphScript::set_frame);
+	ClassRegistry::bind_method(D_METHOD("remove_frame", "function", "id"), &GraphScript::remove_frame);
 	ClassRegistry::bind_method(D_METHOD("add_variable", "name", "type"), &GraphScript::add_variable);
 	ClassRegistry::bind_method(D_METHOD("remove_variable", "name"), &GraphScript::remove_variable);
 	ClassRegistry::bind_method(D_METHOD("set_variable_default", "name", "value_text"), &GraphScript::set_variable_default);

@@ -12,6 +12,7 @@ namespace {
 // These numbers follow the port lists in graph_step_kinds.cpp.
 constexpr int THEN = 0;
 constexpr int ELSE = 1;
+constexpr int VALUE = 0;
 constexpr int CHANCE = 1;
 constexpr int ITEMS = 0;
 constexpr int CONDITION = 0;
@@ -93,6 +94,14 @@ Variant eval_pick_random(GraphCall &p_call, const GraphCompiledStep &p_step) {
 // Only the chosen side is read, so the other side runs nothing.
 Variant eval_select(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	return p_call.input(p_step, bool(p_call.input(p_step, CONDITION)) ? IF_TRUE : IF_FALSE);
+}
+
+Variant eval_reroute(GraphCall &p_call, const GraphCompiledStep &p_step) {
+	return p_call.input(p_step, VALUE);
+}
+
+int run_reroute(GraphCall &p_call, const GraphCompiledStep &p_step) {
+	return THEN;
 }
 
 int run_chance(GraphCall &p_call, const GraphCompiledStep &p_step) {

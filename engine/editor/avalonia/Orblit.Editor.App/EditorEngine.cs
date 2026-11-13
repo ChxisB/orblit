@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Numerics;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App;
@@ -279,6 +280,10 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public string? ScriptOf(nint entity) => _session.ScriptOf(entity);
 
     public IReadOnlyList<string> Scripts() => ProjectScripts.Find(_project);
+
+    public IReadOnlyList<string> GraphScripts() => ProjectScripts.FindGraphs(_project);
+
+    public IGraphFile OpenGraph(string resourcePath) => new SessionGraphFile(GraphScriptSession.Open(_host, resourcePath));
 
     public string ReadScript(string resourcePath) => File.ReadAllText(ProjectScripts.FileOf(_project, resourcePath));
 

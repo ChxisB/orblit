@@ -91,6 +91,21 @@ TEST_CASE("[Stage][GraphScript] The document lists steps with their ports and th
 	CHECK(int(wire["to_step"]) == 2);
 }
 
+TEST_CASE("[Stage][GraphScript] The document says which steps grow pins and how many they have") {
+	Graph graph("main");
+	graph.add(1, "sequence");
+	graph.add(2, "branch");
+	CHECK(graph.script->set_step_pins("main", 1, 4) == OK);
+
+	const Dictionary function = first_function(read_document(graph.script));
+	const Dictionary sequence = Dictionary(find_step(function, 1))["growth"];
+	CHECK(sequence["side"] == Variant("output"));
+	CHECK(int(sequence["minimum"]) == 2);
+	CHECK(int(sequence["count"]) == 4);
+	CHECK(int(sequence["maximum"]) == GraphStepKinds::MAX_PINS);
+	CHECK(Dictionary(Dictionary(find_step(function, 2))["growth"])["side"] == Variant("none"));
+}
+
 TEST_CASE("[Stage][GraphScript] The document carries variables and signals in one shape") {
 	Ref<GraphScript> script;
 	script.instantiate();

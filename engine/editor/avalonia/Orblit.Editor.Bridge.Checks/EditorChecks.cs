@@ -53,6 +53,7 @@ internal sealed class EditorChecks : IChecks
         ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
         ("a refused graph edit gives the engine's reason and changes nothing, and a bad path or file is refused", GraphScriptRefusals),
         ("the palette lists what fits a dragged wire", GraphScriptPalette),
+        ("a frame is set, replaced, removed and saved, and a frame with no area is refused", GraphScriptFrames),
     ];
 
     void SecondHostThrows()
@@ -633,6 +634,32 @@ internal sealed class EditorChecks : IChecks
         Assert.DoesNotContain(fromFlow, entry => entry.Kind == "constant");
         Assert.Contains(session.FindSteps("", GraphDraggedSide.None, 0, GraphPortSort.Flow), entry => entry.Kind == "constant");
         Assert.Throws<InvalidDataException>(() => session.FindSteps("", GraphDraggedSide.None, 999, GraphPortSort.Flow));
+    }
+
+    void GraphScriptFrames()
+    {
+        var path = MakeGraphFile("frames");
+        var session = GraphScriptSession.Open(_host, path);
+        var frame = new GraphFrame(1, "Set up \"café\"", 10, 20, 300, 150, false);
+        Assert.True(session.SetFrame("main", frame).Ok);
+        Assert.True(session.SetFrame("main", frame with { Title = "Moved", Collapsed = true }).Ok);
+        Assert.True(session.SetFrame("main", new GraphFrame(2, "", 0, 0, 40, 40, false)).Ok);
+
+        var before = session.Document;
+        Assert.False(session.SetFrame("main", frame with { Id = 3, Width = 0 }).Ok);
+        Assert.False(session.SetFrame("nowhere", frame).Ok);
+        Assert.False(session.RemoveFrame("main", 9).Ok);
+        Assert.Same(before, session.Document);
+
+        Assert.True(session.RemoveFrame("main", 2).Ok);
+        session.Save();
+        session.Dispose();
+
+        using var reopened = GraphScriptSession.Open(_host, path);
+        var kept = Assert.Single(reopened.Document.Functions[0].Frames);
+        Assert.Equal(frame with { Title = "Moved", Collapsed = true }, kept);
+        Assert.True(reopened.SetFrame("main", frame).Ok);
+        Assert.Equal(frame, Assert.Single(reopened.Document.Functions[0].Frames));
     }
 
     // Builds a graph script in the engine and saves it to the project: an entry and a print step, not wired.

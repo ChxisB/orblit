@@ -1,3 +1,4 @@
+using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -13,6 +14,17 @@ public enum GraphPortSort
 /// <summary>One input or output of a step. Type is the engine's Variant type number.</summary>
 public sealed record GraphPort(string Name, GraphPortSort Sort, int Type, string Parameter, bool Optional);
 
+/// <summary>The side on which a step takes more pins.</summary>
+public enum GraphGrowthSide
+{
+    None,
+    Input,
+    Output,
+}
+
+/// <summary>Whether a step takes more pins on one side, and how many it has now. A step that does not grow has side None.</summary>
+public sealed record GraphGrowth(GraphGrowthSide Side, int Minimum, int Count, int Maximum);
+
 /// <summary>
 /// One step of a function. Parameters are Variant text, the same text a parameter is set with.
 /// A step of a kind the engine does not know has no ports and Known is false.
@@ -27,12 +39,16 @@ public sealed record GraphStep(
     IReadOnlyDictionary<string, string> Parameters,
     string Problem,
     IReadOnlyList<GraphPort> Inputs,
-    IReadOnlyList<GraphPort> Outputs);
+    IReadOnlyList<GraphPort> Outputs,
+    GraphGrowth Growth);
 
 public sealed record GraphWire(int FromStep, int FromPort, int ToStep, int ToPort);
 
+/// <summary>A labeled rectangle behind steps. It does not change how the function runs.</summary>
+public sealed record GraphFrame(int Id, string Title, double X, double Y, double Width, double Height, bool Collapsed);
+
 /// <summary>A function with the error the engine found when it compiled it. The error is empty when it compiles.</summary>
-public sealed record GraphFunction(string Name, string Error, IReadOnlyList<GraphStep> Steps, IReadOnlyList<GraphWire> Wires);
+public sealed record GraphFunction(string Name, string Error, IReadOnlyList<GraphStep> Steps, IReadOnlyList<GraphWire> Wires, IReadOnlyList<GraphFrame> Frames);
 
 public sealed record GraphVariable(string Name, int Type, string Default, bool Exported, string Hint, string HintString, string Category, string Description);
 
@@ -68,8 +84,14 @@ static class GraphJson
     static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
+        // The engine reads what is written here as Variant text, so letters stay as they are and are not escaped.
+        // shortcut: a character outside the basic plane, such as an emoji, is still escaped as two halves, and
+        // the engine reads two broken characters. Parse real JSON in the engine if frame titles need emoji.
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) },
     };
+
+    internal static string Write<T>(T value) => JsonSerializer.Serialize(value, Options);
 
     // An empty or broken text is the engine refusing a call, so it is reported as data that cannot be read.
     internal static T Read<T>(string json)

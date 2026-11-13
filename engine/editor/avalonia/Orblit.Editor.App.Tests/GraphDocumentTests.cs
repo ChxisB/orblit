@@ -21,12 +21,14 @@ public sealed class GraphDocumentTests
               "error": "",
               "steps": [
                 {"id": 1, "kind": "entry", "known": true, "category": "Flow", "x": 10.5, "y": -4, "parameters": {}, "problem": "",
-                 "inputs": [], "outputs": [{"name": "then", "sort": "flow", "type": 0, "parameter": "", "optional": false}]},
+                 "inputs": [], "outputs": [{"name": "then", "sort": "flow", "type": 0, "parameter": "", "optional": false}],
+                 "growth": {"side": "output", "minimum": 2, "count": 3, "maximum": 64}},
                 {"id": 2, "kind": "set", "known": true, "category": "Variables", "x": 200, "y": 0, "parameters": {"name": "\"speed\""}, "problem": "",
                  "inputs": [{"name": "run", "sort": "flow", "type": 0, "parameter": "", "optional": false}, {"name": "value", "sort": "data", "type": 3, "parameter": "", "optional": true}],
-                 "outputs": []}
+                 "outputs": [], "growth": {"side": "none", "minimum": 0, "count": 0, "maximum": 64}}
               ],
-              "wires": [{"from_step": 1, "from_port": 0, "to_step": 2, "to_port": 0}]
+              "wires": [{"from_step": 1, "from_port": 0, "to_step": 2, "to_port": 0}],
+              "frames": [{"id": 1, "title": "Setup", "x": 0, "y": -20, "width": 300.5, "height": 150, "collapsed": true}]
             }
           ],
           "warnings": [{"kind": "unused_variable", "function": "", "step": 0, "name": "speed", "text": "Nothing reads speed."}]
@@ -50,7 +52,10 @@ public sealed class GraphDocumentTests
         Assert.Equal(GraphPortSort.Data, set.Inputs[1].Sort);
         Assert.True(set.Inputs[1].Optional);
         Assert.Equal(-4, function.Steps[0].Y);
+        Assert.Equal(new GraphGrowth(GraphGrowthSide.Output, 2, 3, 64), function.Steps[0].Growth);
+        Assert.Equal(GraphGrowthSide.None, set.Growth.Side);
         Assert.Equal(new GraphWire(1, 0, 2, 0), Assert.Single(function.Wires));
+        Assert.Equal(new GraphFrame(1, "Setup", 0, -20, 300.5, 150, true), Assert.Single(function.Frames));
 
         var speed = Assert.Single(document.Variables);
         Assert.Equal("2.5", speed.Default);

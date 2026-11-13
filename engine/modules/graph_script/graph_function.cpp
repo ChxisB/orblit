@@ -219,6 +219,72 @@ Error GraphFunction::disconnect_steps(const GraphWire &p_wire) {
 	return OK;
 }
 
+Dictionary GraphCommentFrame::to_dictionary() const {
+	Dictionary entry;
+	entry["id"] = id;
+	entry["title"] = title;
+	entry["x"] = position.x;
+	entry["y"] = position.y;
+	entry["width"] = size.x;
+	entry["height"] = size.y;
+	entry["collapsed"] = collapsed;
+	return entry;
+}
+
+namespace {
+
+bool is_number(const Variant &p_value) {
+	return p_value.get_type() == Variant::INT || p_value.get_type() == Variant::FLOAT;
+}
+
+} // namespace
+
+Error GraphCommentFrame::from_variant(const Variant &p_value, GraphCommentFrame &r_frame) {
+	if (p_value.get_type() != Variant::DICTIONARY) {
+		return ERR_INVALID_DATA;
+	}
+	const Dictionary entry = p_value;
+	for (const char *key : { "id", "x", "y", "width", "height" }) {
+		if (!is_number(entry.get(key, Variant()))) {
+			return ERR_INVALID_DATA;
+		}
+	}
+	if (entry.get("title", Variant()).get_type() != Variant::STRING || entry.get("collapsed", Variant()).get_type() != Variant::BOOL) {
+		return ERR_INVALID_DATA;
+	}
+	r_frame.id = int(entry["id"]);
+	r_frame.title = entry["title"];
+	r_frame.position = Vector2(entry["x"], entry["y"]);
+	r_frame.size = Vector2(entry["width"], entry["height"]);
+	r_frame.collapsed = entry["collapsed"];
+	return OK;
+}
+
+Error GraphFunction::set_frame(const GraphCommentFrame &p_frame) {
+	// A frame with no area cannot be seen or grabbed.
+	if (p_frame.id < 1 || p_frame.size.x <= 0 || p_frame.size.y <= 0) {
+		return ERR_INVALID_PARAMETER;
+	}
+	for (GraphCommentFrame &frame : frames) {
+		if (frame.id == p_frame.id) {
+			frame = p_frame;
+			return OK;
+		}
+	}
+	frames.push_back(p_frame);
+	return OK;
+}
+
+Error GraphFunction::remove_frame(int p_id) {
+	for (int i = 0; i < frames.size(); i++) {
+		if (frames[i].id == p_id) {
+			frames.remove_at(i);
+			return OK;
+		}
+	}
+	return ERR_DOES_NOT_EXIST;
+}
+
 Dictionary GraphFunction::to_dictionary() const {
 	Array step_list;
 	for (const GraphStep &step : steps) {
@@ -233,10 +299,15 @@ Dictionary GraphFunction::to_dictionary() const {
 	for (const GraphWire &wire : wires) {
 		wire_list.push_back(Array{ wire.from_step, wire.from_port, wire.to_step, wire.to_port });
 	}
+	Array frame_list;
+	for (const GraphCommentFrame &frame : frames) {
+		frame_list.push_back(frame.to_dictionary());
+	}
 	Dictionary result;
 	result["name"] = name;
 	result["steps"] = step_list;
 	result["wires"] = wire_list;
+	result["frames"] = frame_list;
 	return result;
 }
 
@@ -309,6 +380,20 @@ Error GraphFunction::_load_wires(const Array &p_wires) {
 	return OK;
 }
 
+Error GraphFunction::_load_frames(const Array &p_frames) {
+	for (const Variant &value : p_frames) {
+		GraphCommentFrame frame;
+		Error err = GraphCommentFrame::from_variant(value, frame);
+		if (err == OK) {
+			err = set_frame(frame);
+		}
+		if (err != OK) {
+			return err;
+		}
+	}
+	return OK;
+}
+
 Error GraphFunction::from_dictionary(const Dictionary &p_dictionary, GraphFunction &r_function) {
 	if (p_dictionary.get("name", Variant()).get_type() != Variant::STRING || p_dictionary.get("steps", Variant()).get_type() != Variant::ARRAY || p_dictionary.get("wires", Variant()).get_type() != Variant::ARRAY) {
 		return ERR_INVALID_DATA;
@@ -318,5 +403,11 @@ Error GraphFunction::from_dictionary(const Dictionary &p_dictionary, GraphFuncti
 	if (err != OK) {
 		return err;
 	}
-	return r_function._load_wires(p_dictionary["wires"]);
+	const Error wires_err = r_function._load_wires(p_dictionary["wires"]);
+	if (wires_err != OK) {
+		return wires_err;
+	}
+	// A function with no frames may leave the key out.
+	const Variant frames = p_dictionary.get("frames", Array());
+	return frames.get_type() == Variant::ARRAY ? r_function._load_frames(frames) : ERR_INVALID_DATA;
 }

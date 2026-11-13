@@ -105,6 +105,11 @@ public sealed class GraphScriptSession : IDisposable
     public GraphEditResult Disconnect(string function, GraphWire wire) =>
         Edit(_host.GraphScriptDisconnectSteps(Script, function, wire.FromStep, wire.FromPort, wire.ToStep, wire.ToPort));
 
+    /// <summary>Adds the frame, or replaces the frame with the same id.</summary>
+    public GraphEditResult SetFrame(string function, GraphFrame frame) => Edit(_host.GraphScriptSetFrame(Script, function, GraphJson.Write(frame)));
+
+    public GraphEditResult RemoveFrame(string function, int id) => Edit(_host.GraphScriptRemoveFrame(Script, function, id));
+
     /// <summary>The steps that fit a wire dragged from the given side. A type of 0 and no side list every step.</summary>
     /// <exception cref="InvalidDataException">The engine refused the question, for example for a type that is not a Variant type.</exception>
     public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)

@@ -4,15 +4,29 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Reactive;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>What the script workspace needs from the project: its C# files and their text.</summary>
+/// <summary>A graph script open for editing. Disposing it lets the engine drop its copy, so an unsaved edit is gone.</summary>
+internal interface IGraphFile : IGraphSource, IDisposable
+{
+    /// <summary>Writes the script to its file. Throws <see cref="IOException"/> when it cannot be written.</summary>
+    void Save();
+}
+
+/// <summary>What the script workspace needs from the project: its C# files and their text, and its graph scripts.</summary>
 internal interface IScriptFiles
 {
     /// <summary>The res:// path of every C# file of the project.</summary>
     IReadOnlyList<string> Scripts();
+
+    /// <summary>The res:// path of every graph script of the project.</summary>
+    IReadOnlyList<string> GraphScripts();
+
+    /// <summary>Opens a graph script. Throws <see cref="IOException"/> when the engine cannot load it.</summary>
+    IGraphFile OpenGraph(string resourcePath);
 
     /// <summary>The text of a script. Throws <see cref="IOException"/> when it cannot be read.</summary>
     string ReadScript(string resourcePath);
@@ -22,8 +36,8 @@ internal interface IScriptFiles
 }
 
 /// <summary>
-/// The Script workspace: the project's C# files in a list and the open one in a text box with line numbers.
-/// It reads and writes the files and does not compile or run them.
+/// The Script workspace: the project's C# files and graph scripts in a list. A C# file opens in a text box with line
+/// numbers and a graph script opens on a canvas. It reads and writes the files and does not compile or run them.
 /// </summary>
 internal sealed class ScriptView : Border
 {
@@ -46,9 +60,13 @@ internal sealed class ScriptView : Border
     readonly TextBlock _name = new() { Text = "Pick a script.", FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { Foreground = EditorBrushes.TabInactive, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _save = new() { Content = "Save", Padding = new Thickness(12, 4), MinHeight = 0, IsEnabled = false };
+    readonly ScrollViewer _text;
+    readonly Border _graphHost = new() { IsVisible = false };
     IScriptFiles? _files;
+    IGraphFile? _graphFile;
     string? _open;
     string _saved = "";
+    bool _graphEdited;
 
     public ScriptView()
     {
@@ -65,13 +83,13 @@ internal sealed class ScriptView : Border
         Grid.SetColumn(_editor, 1);
         text.Children.Add(_gutter);
         text.Children.Add(_editor);
-        var scroll = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
+        _text = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
         // A short file would leave the box narrower than the area, and a click beside it would reach nothing.
-        scroll.GetObservable(ScrollViewer.ViewportProperty).Subscribe(new AnonymousObserver<Size>(viewport => text.MinWidth = viewport.Width));
+        _text.GetObservable(ScrollViewer.ViewportProperty).Subscribe(new AnonymousObserver<Size>(viewport => text.MinWidth = viewport.Width));
         var body = new DockPanel();
         DockPanel.SetDock(header, Dock.Top);
         body.Children.Add(header);
-        body.Children.Add(scroll);
+        body.Children.Add(new Grid { Children = { _text, _graphHost } });
         var panel = new DockPanel();
         DockPanel.SetDock(_list, Dock.Left);
         panel.Children.Add(_list);
@@ -91,13 +109,17 @@ internal sealed class ScriptView : Border
 
     internal Button SaveButton => _save;
 
-    /// <summary>Whether the text in the box differs from the file it was read from.</summary>
-    public bool IsDirty => _open is not null && _editor.Text != _saved;
+    /// <summary>The canvas of the open graph script, or null when a C# file or nothing is open.</summary>
+    internal GraphCanvas? Canvas => _graphHost.Child as GraphCanvas;
+
+    /// <summary>Whether the open file differs from what is on disk: the text in the box, or a graph the engine changed.</summary>
+    public bool IsDirty => _graphFile is not null ? _graphEdited : _open is not null && _editor.Text != _saved;
 
     /// <summary>Starts from this project's files, with no script open.</summary>
     public void Show(IScriptFiles files)
     {
         _files = files;
+        CloseGraph();
         _open = null;
         _saved = "";
         _editor.Text = "";
@@ -117,9 +139,18 @@ internal sealed class ScriptView : Border
 
         try
         {
-            var text = _editor.Text ?? "";
-            _files!.WriteScript(_open!, text);
-            _saved = text;
+            if (_graphFile is not null)
+            {
+                _graphFile.Save();
+                _graphEdited = false;
+            }
+            else
+            {
+                var text = _editor.Text ?? "";
+                _files!.WriteScript(_open!, text);
+                _saved = text;
+            }
+
             ShowText();
             _status.Text = $"Saved {_open}.";
             return true;
@@ -135,6 +166,7 @@ internal sealed class ScriptView : Border
     public void Discard()
     {
         _saved = _editor.Text ?? "";
+        _graphEdited = false;
         ShowText();
     }
 
@@ -152,7 +184,7 @@ internal sealed class ScriptView : Border
 
     void Refresh()
     {
-        var paths = _files?.Scripts() ?? [];
+        IReadOnlyList<string> paths = _files is null ? [] : [.. _files.Scripts(), .. _files.GraphScripts()];
         // The list keeps a selection that the new source still holds, which would open that script by itself.
         _list.SelectedItem = null;
         _list.ItemsSource = paths;
@@ -175,12 +207,7 @@ internal sealed class ScriptView : Border
 
         try
         {
-            var text = _files.ReadScript(path);
-            _editor.Text = text;
-            _editor.IsEnabled = true;
-            _open = path;
-            _saved = text;
-            _name.Text = path;
+            Open(_files, path);
             _status.Text = "";
             ShowText();
         }
@@ -189,6 +216,46 @@ internal sealed class ScriptView : Border
             _status.Text = error.Message;
             _list.SelectedItem = _open;
         }
+    }
+
+    void Open(IScriptFiles files, string path)
+    {
+        if (path.EndsWith(".ograph", StringComparison.Ordinal))
+        {
+            var file = files.OpenGraph(path);
+            CloseGraph();
+            _graphFile = file;
+            _graphEdited = false;
+            file.Changed += () =>
+            {
+                _graphEdited = true;
+                ShowText();
+            };
+            _graphHost.Child = new GraphCanvas(file);
+            _graphHost.IsVisible = true;
+            _text.IsVisible = false;
+        }
+        else
+        {
+            var text = files.ReadScript(path);
+            CloseGraph();
+            _editor.Text = text;
+            _editor.IsEnabled = true;
+            _saved = text;
+        }
+
+        _open = path;
+        _name.Text = path;
+    }
+
+    void CloseGraph()
+    {
+        _graphFile?.Dispose();
+        _graphFile = null;
+        _graphEdited = false;
+        _graphHost.Child = null;
+        _graphHost.IsVisible = false;
+        _text.IsVisible = true;
     }
 
     void ShowText()

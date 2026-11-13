@@ -1,6 +1,8 @@
 using Avalonia.Controls;
+using Avalonia;
 using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -23,6 +25,13 @@ public sealed class ScriptViewTests
 
         // A listed file that cannot be read, like one deleted since the list was made.
         public string? Gone { get; set; }
+
+        public Dictionary<string, FakeGraphSource> Graphs { get; } = [];
+
+        public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
+
+        public IGraphFile OpenGraph(string resourcePath) =>
+            Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 
         public IReadOnlyList<string> Scripts() => Gone is null ? [.. Text.Keys] : [.. Text.Keys, Gone];
 
@@ -339,6 +348,125 @@ public sealed class ScriptViewTests
             Assert.False(view.Editor.IsEnabled);
             Assert.False(view.IsDirty);
             Assert.Null(view.List.SelectedItem);
+        });
+    }
+
+    static (Files Files, FakeGraphSource Graph, ScriptView View) OpenWithGraph()
+    {
+        var files = new Files();
+        var graph = FakeGraphSource.Sample();
+        files.Graphs["res://logic.ograph"] = graph;
+        var view = Open(files);
+        return (files, graph, view);
+    }
+
+    [Fact]
+    public void A_graph_script_is_listed_after_the_C_sharp_files_and_opens_on_the_canvas()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Assert.Equal(["res://spin.cs", "res://slime.cs", "res://logic.ograph"], view.List.Items.Cast<string>());
+            Assert.Null(view.Canvas);
+
+            Pick(view, "res://logic.ograph");
+
+            Assert.NotNull(view.Canvas);
+            Assert.Equal(3, view.Canvas.Scene.Steps.Count);
+            Assert.Equal("res://logic.ograph", view.Heading.Text);
+            Assert.False(view.IsDirty);
+            Assert.False(view.SaveButton.IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void An_edit_on_the_canvas_makes_the_script_dirty_and_save_writes_it_through_the_file()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            Pick(view, "res://logic.ograph");
+
+            view.Canvas!.Edits.MoveSteps([2], new Vector(10, 0));
+
+            Assert.True(view.IsDirty);
+            Assert.True(view.SaveButton.IsEnabled);
+            view.SaveButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal(1, graph.Saves);
+            Assert.False(view.IsDirty);
+            Assert.Contains("Saved res://logic.ograph", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void A_graph_that_cannot_be_written_stays_dirty_and_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            Pick(view, "res://logic.ograph");
+            view.Canvas!.Edits.MoveSteps([2], new Vector(10, 0));
+            graph.SaveFails = true;
+
+            Assert.False(view.Save());
+
+            Assert.True(view.IsDirty);
+            Assert.Equal("The disk is full.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void Choosing_a_C_sharp_file_saves_the_open_graph_releases_it_and_shows_the_text()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            Pick(view, "res://logic.ograph");
+            view.Canvas!.Edits.MoveSteps([2], new Vector(10, 0));
+
+            Pick(view, "res://spin.cs");
+
+            Assert.Equal(1, graph.Saves);
+            Assert.True(graph.Disposed);
+            Assert.Null(view.Canvas);
+            Assert.Equal("class Spin\n{\n}\n", view.Editor.Text);
+            Assert.False(view.IsDirty);
+        });
+    }
+
+    [Fact]
+    public void A_graph_the_engine_cannot_load_keeps_the_open_file_and_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Pick(view, "res://spin.cs");
+            files.Graphs.Remove("res://logic.ograph");
+            view.List.SelectedItem = null;
+            files.Graphs["res://gone.ograph"] = FakeGraphSource.Sample();
+            view.Show(files);
+            files.Graphs.Remove("res://gone.ograph");
+
+            Pick(view, "res://gone.ograph");
+
+            Assert.Contains("No res://gone.ograph.", view.Status.Text);
+            Assert.Null(view.Canvas);
+        });
+    }
+
+    [Fact]
+    public void Discarding_counts_a_changed_graph_as_saved_and_writes_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, graph, view) = OpenWithGraph();
+            Pick(view, "res://logic.ograph");
+            view.Canvas!.Edits.MoveSteps([2], new Vector(10, 0));
+
+            view.Discard();
+
+            Assert.False(view.IsDirty);
+            Assert.Equal(0, graph.Saves);
         });
     }
 }

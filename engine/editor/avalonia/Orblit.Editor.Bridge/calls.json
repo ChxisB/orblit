@@ -128,6 +128,8 @@
   "GraphScript.set_step_pins",
   "GraphScript.connect_steps",
   "GraphScript.disconnect_steps",
+  "GraphScript.set_frame",
+  "GraphScript.remove_frame",
   "GraphScript.get_document",
   "GraphScript.find_steps"
 ]

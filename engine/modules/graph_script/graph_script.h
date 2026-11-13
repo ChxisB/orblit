@@ -96,6 +96,11 @@ public:
 	// Five parameters, because the editor bridge cannot marshal a struct.
 	Error disconnect_steps(const String &p_function, int p_from_step, int p_from_port, int p_to_step, int p_to_port);
 
+	// The frame is the text of a dictionary, which JSON also is, because the editor bridge marshals strings.
+	// A frame with the same id is replaced.
+	Error set_frame(const String &p_function, const String &p_frame_text);
+	Error remove_frame(const String &p_function, int p_id);
+
 	Error add_variable(const String &p_name, int p_type);
 	Error remove_variable(const String &p_name);
 	Error set_variable_default(const String &p_name, const String &p_value_text);

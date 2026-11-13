@@ -1,5 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Numerics;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests;
@@ -143,6 +145,14 @@ internal sealed class FakeScene : IEditorScene
     public string? ScriptOf(nint entity) => Scripted.GetValueOrDefault(entity);
 
     public IReadOnlyList<string> Scripts() => [.. ScriptPaths];
+
+    /// <summary>The graph script each path opens.</summary>
+    public Dictionary<string, FakeGraphSource> Graphs { get; } = [];
+
+    public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
+
+    public IGraphFile OpenGraph(string resourcePath) =>
+        Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 
     /// <summary>The text of each script file.</summary>
     public Dictionary<string, string> ScriptText { get; } = [];

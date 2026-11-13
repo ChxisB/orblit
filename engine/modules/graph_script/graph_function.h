@@ -29,12 +29,27 @@ struct GraphWire {
 	}
 };
 
+// A labeled rectangle on the canvas. It holds no steps and does not affect how the function
+// runs. The editor moves the steps inside it along with it.
+struct GraphCommentFrame {
+	int id = 0;
+	String title;
+	Vector2 position;
+	Vector2 size;
+	bool collapsed = false;
+
+	Dictionary to_dictionary() const;
+	// Reads the shape to_dictionary writes. A number may be an int or a float, because JSON has both.
+	static Error from_variant(const Variant &p_value, GraphCommentFrame &r_frame);
+};
+
 // The steps and wires of one function. Every change goes through a method here, and a
 // method that returns an error leaves the function as it was.
 class GraphFunction {
 	String name;
 	Vector<GraphStep> steps;
 	Vector<GraphWire> wires;
+	Vector<GraphCommentFrame> frames;
 
 	int _find_step_index(int p_id) const;
 	int _find_wire_index(const GraphWire &p_wire) const;
@@ -49,6 +64,7 @@ class GraphFunction {
 
 	Error _load_steps(const Array &p_steps);
 	Error _load_wires(const Array &p_wires);
+	Error _load_frames(const Array &p_frames);
 
 	static Error _parse_step(const Variant &p_value, GraphStep &r_step);
 	static Error _parse_wire(const Variant &p_value, GraphWire &r_wire);
@@ -61,9 +77,11 @@ public:
 	const String &get_name() const { return name; }
 	int get_step_count() const { return steps.size(); }
 	int get_wire_count() const { return wires.size(); }
+	int get_frame_count() const { return frames.size(); }
 	const GraphStep *get_step(int p_id) const;
 	const GraphStep &get_step_at(int p_index) const { return steps[p_index]; }
 	const GraphWire &get_wire_at(int p_index) const { return wires[p_index]; }
+	const GraphCommentFrame &get_frame_at(int p_index) const { return frames[p_index]; }
 	int get_valid_step_id() const;
 	bool has_wire(const GraphWire &p_wire) const;
 
@@ -75,6 +93,9 @@ public:
 	Error set_pin_count(int p_id, int p_count);
 	Error connect_steps(const GraphWire &p_wire);
 	Error disconnect_steps(const GraphWire &p_wire);
+	// Adds the frame, or replaces the frame with the same id.
+	Error set_frame(const GraphCommentFrame &p_frame);
+	Error remove_frame(int p_id);
 
 	Dictionary to_dictionary() const;
 	// Leaves r_function half filled on an error. The caller drops it then.

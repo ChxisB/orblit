@@ -93,6 +93,8 @@ constexpr GraphStepKind KINDS[] = {
 	{ "chance", "Flow", list(CHANCE_IN), list(BRANCH_OUT), nullptr, GraphStepFlow::run_chance, nullptr, false },
 	{ "pick_random", "Flow", list(PICK_IN), list(VALUE_OUT), GraphStepFlow::eval_pick_random, nullptr, nullptr, false },
 	{ "select", "Flow", list(SELECT_IN), list(VALUE_OUT), GraphStepFlow::eval_select, nullptr, nullptr, false },
+	{ "reroute", "Values", list(CONVERT_IN), list(VALUE_OUT), GraphStepFlow::eval_reroute, nullptr, nullptr, false },
+	{ "reroute_flow", "Flow", list(RUN_IN), list(THEN_OUT), nullptr, GraphStepFlow::run_reroute, nullptr, false },
 	{ "switch", "Flow", list(SWITCH_IN), list(DEFAULT_OUT), nullptr, GraphStepFlow::run_switch, GraphStepFlow::resolve_switch, false, CASE_PINS },
 	{ "break", "Flow", list(RUN_IN), NO_PORTS, nullptr, GraphStepRun::run_break, nullptr, false },
 	{ "wait", "Flow", list(WAIT_IN), list(THEN_OUT), nullptr, GraphStepLatent::run_wait, nullptr, false },
