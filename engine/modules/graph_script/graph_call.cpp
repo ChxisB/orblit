@@ -151,6 +151,18 @@ void GraphCall::store(const GraphCompiledStep &p_step, int p_port, const Variant
 	slots.write[p_step.slot + p_port] = p_value;
 }
 
+Variant GraphCall::peek(const GraphCompiledStep &p_step, int p_port) {
+	RandomNumberGenerator &random = get_random();
+	const uint64_t random_state = random.get_state();
+	const bool was_failed = failed;
+	// fail does nothing once a call has failed, so a failing read reports no error and stops no one.
+	failed = true;
+	const Variant value = input(p_step, p_port);
+	failed = was_failed;
+	random.set_state(random_state);
+	return value;
+}
+
 void GraphCall::push(const GraphPending &p_frame) {
 	stack.push_back(p_frame);
 }

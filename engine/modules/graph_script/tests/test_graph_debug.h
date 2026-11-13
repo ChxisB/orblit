@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../graph_call.h"
 #include "../graph_debug.h"
 #include "test_graph_functions.h"
 
@@ -14,10 +15,14 @@ namespace TestGraphDebug {
 using TestGraphFunctions::entry_text;
 using TestGraphFunctions::list_text;
 using TestGraphScriptRun::attach;
+using TestGraphScriptRun::BODY;
 using TestGraphScriptRun::BUDGET_SETTING;
 using TestGraphScriptRun::Graph;
+using TestGraphScriptRun::ITEM;
+using TestGraphScriptRun::OUT;
 using TestGraphScriptRun::RUN;
 using TestGraphScriptRun::THEN;
+using TestGraphScriptRun::VALUE;
 
 // What the debugger sees at one stop.
 struct Stop {
@@ -28,6 +33,10 @@ struct Stop {
 	String source;
 	Dictionary locals;
 	Dictionary members;
+	// The value of each probe the debugger asked for at this stop, and whether reading them moved
+	// the random generator of the call.
+	Array wires;
+	bool random_moved = false;
 };
 
 // Stands in for the engine's debugger. It writes down each stop and answers with the next
@@ -44,6 +53,8 @@ public:
 
 	Vector<Stop> stops;
 	Vector<Command> commands;
+	// Wires to read at each stop, as level, step id and input port.
+	Vector<Vector3i> probes;
 	int max_depth = -1;
 
 	FakeDebugger() {
@@ -96,6 +107,18 @@ private:
 		return pairs;
 	}
 
+	void _probe(Stop &r_stop) const {
+		const GraphCall *call = GraphDebug::get_level(0);
+		if (!call) {
+			return;
+		}
+		const uint64_t before = call->get_random().get_state();
+		for (const Vector3i &probe : probes) {
+			r_stop.wires.push_back(GraphDebug::get_wire_value(probe.x, probe.y, probe.z));
+		}
+		r_stop.random_moved = call->get_random().get_state() != before;
+	}
+
 	Stop _describe(ScriptLanguage &p_language, bool p_is_error) const {
 		Stop stop;
 		stop.reason = p_language.debug_get_error();
@@ -104,6 +127,7 @@ private:
 			stop.stack += (level == 0 ? "" : " ") + vformat("%s:%d", p_language.debug_get_stack_level_function(level), p_language.debug_get_stack_level_line(level));
 		}
 		stop.source = p_language.debug_get_stack_level_source(0);
+		_probe(stop);
 		List<String> names;
 		List<Variant> values;
 		p_language.debug_get_stack_level_locals(0, &names, &values, -1, max_depth);
@@ -347,6 +371,133 @@ TEST_CASE("[Stage][GraphScript] A call with no debugger attached runs as before"
 	entity->call("go", 0);
 	CHECK(entity->get("total") == Variant(2));
 	CHECK(GraphDebug::get_level_count() == 0);
+	memdelete(entity);
+}
+
+// "go" sets total from the sum of 2 and 3, which sit on the inputs of an Operator.
+Graph sum_graph() {
+	Graph graph("go");
+	graph.variable("total", Variant::INT);
+	graph.add(1, "entry");
+	graph.add_named(2, "set", "total");
+	graph.add_operator(3, "+");
+	graph.set(3, "a", "2");
+	graph.set(3, "b", "3");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(3, OUT, 2, VALUE);
+	return graph;
+}
+
+TEST_CASE("[Stage][GraphScript] A stop reads the value on a wire and on an input with no wire") {
+	Graph graph = sum_graph();
+	FakeDebugger debugger;
+	debugger.stop_at(graph, "go", 2);
+	debugger.probes.push_back(Vector3i(0, 2, VALUE));
+	debugger.probes.push_back(Vector3i(0, 3, 0));
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+
+	REQUIRE(debugger.stops.size() == 1);
+	CHECK(debugger.stops[0].wires[0] == Variant(5));
+	CHECK(debugger.stops[0].wires[1] == Variant(2));
+	CHECK(entity->get("total") == Variant(5));
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] A wire read gives null for a level, a step or a port that is not there") {
+	Graph graph = sum_graph();
+	FakeDebugger debugger;
+	debugger.stop_at(graph, "go", 2);
+	debugger.probes.push_back(Vector3i(1, 2, VALUE));
+	debugger.probes.push_back(Vector3i(-1, 2, VALUE));
+	debugger.probes.push_back(Vector3i(0, 9, VALUE));
+	debugger.probes.push_back(Vector3i(0, 2, 7));
+	debugger.probes.push_back(Vector3i(0, 2, -1));
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+
+	REQUIRE(debugger.stops.size() == 1);
+	for (const Variant &wire : debugger.stops[0].wires) {
+		CHECK(wire.get_type() == Variant::NIL);
+	}
+	CHECK(GraphDebug::get_wire_value(0, 2, VALUE).get_type() == Variant::NIL);
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] A wire from a step that ran gives the value that step stored") {
+	Graph graph("go");
+	graph.variable("total", Variant::INT);
+	graph.variable("items", Variant::ARRAY, "[4, 5, 6]");
+	graph.add(1, "entry");
+	graph.add(2, "each");
+	graph.add_named(3, "get", "items");
+	graph.add_named(4, "set", "total");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(3, OUT, 2, 1);
+	graph.wire(2, BODY, 4, RUN);
+	graph.wire(2, ITEM, 4, VALUE);
+	FakeDebugger debugger;
+	debugger.stop_at(graph, "go", 4);
+	debugger.probes.push_back(Vector3i(0, 4, VALUE));
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+
+	REQUIRE(debugger.stops.size() == 3);
+	CHECK(debugger.stops[0].wires[0] == Variant(4));
+	CHECK(debugger.stops[1].wires[0] == Variant(5));
+	CHECK(debugger.stops[2].wires[0] == Variant(6));
+	CHECK(entity->get("total") == Variant(6));
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] A wire read leaves the random generator where it was") {
+	Graph graph("go");
+	graph.variable("total", Variant::INT);
+	graph.add(1, "entry");
+	graph.add_named(2, "set", "total");
+	graph.add(3, "pick_random");
+	graph.set(3, "items", "[4, 5, 6]");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(3, OUT, 2, VALUE);
+	FakeDebugger debugger;
+	debugger.stop_at(graph, "go", 2);
+	debugger.probes.push_back(Vector3i(0, 2, VALUE));
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+
+	REQUIRE(debugger.stops.size() == 1);
+	const int64_t picked = debugger.stops[0].wires[0];
+	CHECK(picked >= 4);
+	CHECK(picked <= 6);
+	CHECK(!debugger.stops[0].random_moved);
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] A wire read that fails reports nothing and does not fail the call") {
+	Graph graph("go");
+	graph.variable("total", Variant::INT);
+	graph.add(1, "entry");
+	graph.add_named(2, "set", "total");
+	graph.set(2, "value", "1");
+	graph.add_named(5, "set", "total");
+	graph.add(6, "pick_random");
+	graph.set(6, "items", "[]");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(6, OUT, 5, VALUE);
+	FakeDebugger debugger;
+	debugger.stop_at(graph, "go", 2);
+	debugger.probes.push_back(Vector3i(0, 5, VALUE));
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+
+	REQUIRE(debugger.stops.size() == 1);
+	CHECK(debugger.stops[0].wires[0].get_type() == Variant::NIL);
+	CHECK(entity->get("total") == Variant(1));
 	memdelete(entity);
 }
 

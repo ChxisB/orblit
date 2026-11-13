@@ -93,6 +93,9 @@ public:
 	// The value on a data input. A pure step behind a wire runs now, each time.
 	Variant input(const GraphCompiledStep &p_step, int p_port);
 	void store(const GraphCompiledStep &p_step, int p_port, const Variant &p_value);
+	// The same value as input, read for the debugger. A pure step behind the wire may fail or draw a
+	// random number. Neither reaches the run being watched.
+	Variant peek(const GraphCompiledStep &p_step, int p_port);
 
 	void push(const GraphPending &p_frame);
 	bool has_loop() const;

@@ -12,7 +12,7 @@
 namespace {
 
 // The calls running on this thread, outermost first. The debugger's own counts are per thread too.
-thread_local LocalVector<const GraphCall *> running;
+thread_local LocalVector<GraphCall *> running;
 
 // A script VM does the same on entering and leaving a function. While a step command waits,
 // a level below the one that asked does not count steps.
@@ -52,6 +52,21 @@ Dictionary cut_dictionary(const Dictionary &p_dictionary, int p_max_subitems, in
 		cut["..."] = vformat("%d more", keys.size() - kept);
 	}
 	return cut;
+}
+
+GraphCall *at_level(int p_level) {
+	return p_level >= 0 && p_level < int(running.size()) ? running[running.size() - 1 - p_level] : nullptr;
+}
+
+Error parse_message(void *p_user, const String &p_msg, const Array &p_args, bool &r_captured) {
+	r_captured = p_msg == "wire";
+	if (!r_captured) {
+		return OK;
+	}
+	ERR_FAIL_COND_V(p_args.size() != 3, ERR_INVALID_DATA);
+	const Variant value = GraphDebug::limit(GraphDebug::get_wire_value(p_args[0], p_args[1], p_args[2]), 16, 3);
+	EngineDebugger::get_singleton()->send_message("graph_debug:wire", Array{ p_args[0], p_args[1], p_args[2], value.stringify() });
+	return OK;
 }
 
 } // namespace
@@ -109,7 +124,28 @@ int GraphDebug::get_level_count() {
 }
 
 const GraphCall *GraphDebug::get_level(int p_level) {
-	return p_level >= 0 && p_level < int(running.size()) ? running[running.size() - 1 - p_level] : nullptr;
+	return at_level(p_level);
+}
+
+Variant GraphDebug::get_wire_value(int p_level, int p_step_id, int p_port) {
+	GraphCall *call = at_level(p_level);
+	if (!call) {
+		return Variant();
+	}
+	for (const GraphCompiledStep &step : call->get_function().steps) {
+		if (step.id == p_step_id) {
+			return p_port >= 0 && p_port < step.inputs.size() ? call->peek(step, p_port) : Variant();
+		}
+	}
+	return Variant();
+}
+
+void GraphDebug::initialize() {
+	EngineDebugger::register_message_capture("graph_debug", EngineDebugger::Capture(nullptr, parse_message));
+}
+
+void GraphDebug::deinitialize() {
+	EngineDebugger::unregister_message_capture("graph_debug");
 }
 
 String GraphDebug::make_source(const String &p_script_path, const StringName &p_function) {

@@ -47,6 +47,14 @@ public:
 	static int get_level_count();
 	static const GraphCall *get_level(int p_level);
 
+	// The value on a data input of a step in a running call, for the editor to show on a wire. The
+	// call is not changed. Null when the level, the step or the port does not exist.
+	static Variant get_wire_value(int p_level, int p_step_id, int p_port);
+	// Answers "graph_debug:wire" requests from the editor while the game is stopped. The request is
+	// [level, step, port]. The reply is the same three numbers and the value as text.
+	static void initialize();
+	static void deinitialize();
+
 	static String make_source(const String &p_script_path, const StringName &p_function);
 	// The source of the function a call runs, as a breakpoint names it.
 	static String get_source(const GraphCall &p_call);
