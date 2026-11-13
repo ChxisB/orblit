@@ -54,6 +54,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("the Game tab runs and stops the game, and shows a game the user closed as stopped", RunsFromTheGameTab);
         await Step("the Asset Store tab shows the store's kits and the 3D tab brings the viewport back", ShowsTheStore);
         await Step("the Script tab lists the project's C# files, and Save and Command S write an edit to the file", EditsAScript);
+        await Step("the Graph tab makes a graph script with File and New, lists it, opens it and closes it again", MakesAGraphScript);
         await Step("the 2D tab draws a 2D scene flat, and a click, a drag on the mark, a pan and the wheel work", WorksIn2D);
         await Step("the operating system shows the editor's windows", ShowsInTheDesktop);
         return !_failed;
@@ -392,6 +393,43 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Wait(() => window.Viewport.IsEffectivelyVisible && Viewport.Bounds.Width > 0, "the viewport to show again");
         Expect(!window.Script.IsVisible, "the script view stayed over the viewport");
     }
+
+    async Task MakesAGraphScript()
+    {
+        const string Resource = "res://live.ograph";
+        var graph = window.Graph;
+        await _input.Click(Tab("Graph"));
+        await Wait(() => graph.IsVisible && graph.FileButton.IsAttachedToVisualTree(), "the Graph view to show");
+        Expect(!window.Viewport.IsEffectivelyVisible, "the graph view did not replace the viewport");
+        Expect(graph.Hint.IsVisible, "the hint did not show with no graph open");
+
+        await _input.Click(graph.FileButton);
+        await Wait(() => graph.FileMenu.IsOpen && NewItem(graph).IsAttachedToVisualTree(), "the File menu to open");
+        await _input.Click(NewItem(graph));
+        await Wait(() => graph.CreateFlyout.IsOpen && graph.Form.CreateButton.IsAttachedToVisualTree(), "the Create form to open");
+        // The boxes take text, which this run does not type. Setting it is the only part that is not injected.
+        graph.Form.PathBox.Text = Resource;
+        await _input.Click(graph.Form.CreateButton);
+        await Wait(() => graph.Current == Resource, $"the new graph to open, the form said {graph.Form.Notice}");
+        Expect(File.Exists(Path.Combine(project, "live.ograph")), "the engine wrote no live.ograph");
+        Expect(graph.List.Items.Cast<string>().Contains(Resource), "the list does not show the new graph");
+        Expect(graph.Tabs.Select(tab => tab.Label.Text).SequenceEqual(["live.ograph"]), "the tab row does not show live.ograph");
+        await Settle();
+        Shots.Save(window, Path.Combine(output, "graph-created.png"));
+
+        await _input.Click(graph.FileButton);
+        await Wait(() => graph.FileMenu.IsOpen && CloseItem(graph).IsAttachedToVisualTree(), "the File menu to open again");
+        await _input.Click(CloseItem(graph));
+        await Wait(() => graph.Current is null, "File, Close to close the graph");
+        Expect(graph.Hint.IsVisible, "the hint did not come back");
+
+        await _input.Click(Tab("3D"));
+        await Wait(() => window.Viewport.IsEffectivelyVisible && Viewport.Bounds.Width > 0, "the viewport to show again");
+    }
+
+    static MenuItem NewItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "New...");
+
+    static MenuItem CloseItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "Close");
 
     WorkspaceTab Tab(string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
 
