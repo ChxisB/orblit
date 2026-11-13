@@ -5,7 +5,6 @@
 
 #include "graph_step_kinds.h"
 
-#include "core/containers/hash_map.h"
 #include "core/containers/vector.h"
 #include "core/math/vector2.h"
 #include "core/string/ustring.h"

@@ -3,6 +3,7 @@
 
 #include "graph_function.h"
 
+#include "core/containers/hash_map.h"
 #include "core/variant/array.h"
 
 int GraphFunction::_find_step_index(int p_id) const {
