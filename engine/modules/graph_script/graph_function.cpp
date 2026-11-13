@@ -134,7 +134,9 @@ void GraphFunction::rename_references(const GraphReference &p_reference, const S
 GraphFunction GraphFunction::extract(const Vector<int> &p_ids) const {
 	GraphFunction copy;
 	for (const GraphStep &step : steps) {
-		if (p_ids.has(step.id) && step.kind != StringName("entry")) {
+		// A function has one start step, so a copy never carries one of any kind.
+		const GraphStepKind *kind = GraphStepKinds::find(step.kind);
+		if (p_ids.has(step.id) && !(kind && kind->is_start())) {
 			GraphStep taken = step;
 			taken.parameters = step.parameters.duplicate(true);
 			copy.steps.push_back(taken);

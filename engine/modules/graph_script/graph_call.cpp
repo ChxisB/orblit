@@ -138,7 +138,8 @@ Variant GraphCall::_read_pure(const GraphCompiledStep &p_step, int p_port) {
 Variant GraphCall::input(const GraphCompiledStep &p_step, int p_port) {
 	const GraphCompiledInput &source = p_step.inputs[p_port];
 	if (source.step < 0) {
-		return source.value;
+		// The same reason as a stored constant: a step may change an array or dictionary it is given.
+		return source.value.duplicate(true);
 	}
 	const GraphCompiledStep &from = get_step(source.step);
 	// shortcut: a pure step is not cached, so a value read twice runs twice. Cache per call if

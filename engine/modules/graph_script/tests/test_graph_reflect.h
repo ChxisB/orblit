@@ -116,6 +116,29 @@ TEST_CASE("[Stage][GraphScript] A call with no target wired runs on the owner of
 	memdelete(entity);
 }
 
+TEST_CASE("[Stage][GraphScript] A wired target that holds nothing is an error and does not run on the owner") {
+	Graph graph("go");
+	graph.variable("other", Variant::OBJECT);
+	graph.add(1, "entry");
+	add_method(graph, 2, "call_method", "Entity", "set_name");
+	graph.set(2, "argument_0", quoted("Renamed"));
+	graph.add_named(3, "get", "other");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(3, OUT, 2, FLOW_TARGET);
+
+	Entity *entity = attach(graph.script);
+	entity->set_name("Original");
+	{
+		ErrorDetector errors;
+		ERR_PRINT_OFF;
+		entity->call("go");
+		ERR_PRINT_ON;
+		CHECK(errors.has_error);
+	}
+	CHECK(entity->get_name() == StringName("Original"));
+	memdelete(entity);
+}
+
 TEST_CASE("[Stage][GraphScript] Call method passes the extra arguments of a method that takes any number") {
 	Graph graph("go");
 	graph.variable("other", Variant::OBJECT);
@@ -263,6 +286,33 @@ TEST_CASE("[Stage][GraphScript] Call builtin runs methods of a string and of an 
 	REQUIRE(list.size() == 1);
 	CHECK(list[0] == Variant(5));
 	CHECK(entity->get("shout") == Variant("ABC"));
+	memdelete(entity);
+}
+
+TEST_CASE("[Stage][GraphScript] A step that changes a constant array does not change the constant") {
+	Graph graph("go");
+	graph.variable("count", Variant::INT);
+	graph.add(1, "entry");
+	graph.add(2, "call_builtin");
+	graph.set(2, "type", quoted("Array"));
+	graph.set(2, "method", quoted("append"));
+	graph.set(2, "argument_0", "5");
+	graph.add(3, "constant");
+	graph.set(3, "value", "[1]");
+	graph.add(4, "query_builtin");
+	graph.set(4, "type", quoted("Array"));
+	graph.set(4, "method", quoted("size"));
+	graph.add_named(5, "set", "count");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(3, OUT, 2, FLOW_TARGET);
+	graph.wire(3, OUT, 4, PURE_TARGET);
+	graph.wire(2, THEN, 5, RUN);
+	graph.wire(4, OUT, 5, VALUE);
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+	entity->call("go");
+	CHECK(entity->get("count") == Variant(1));
 	memdelete(entity);
 }
 

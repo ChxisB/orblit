@@ -295,7 +295,10 @@ namespace GraphStepReflect {
 
 Object *read_target(GraphCall &p_call, const GraphCompiledStep &p_step, int p_port) {
 	const Variant target = p_call.input(p_step, p_port);
-	return target.get_type() == Variant::NIL ? p_call.get_owner() : live_object(p_call, p_step, target);
+	// Only a pin with no wire means the owner. A wire that carries nothing is a fault, or an unset
+	// variable would make the step act on the owner.
+	const bool wired = p_step.inputs[p_port].step >= 0;
+	return target.get_type() == Variant::NIL && !wired ? p_call.get_owner() : live_object(p_call, p_step, target);
 }
 
 bool returns_value(const MethodInfo &p_info) {

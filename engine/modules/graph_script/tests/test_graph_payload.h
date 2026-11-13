@@ -98,6 +98,23 @@ TEST_CASE("[Stage][GraphScript] The entry step does not copy, because a function
 	CHECK(source.script->get_payload("main", "[1]").is_empty());
 }
 
+TEST_CASE("[Stage][GraphScript] An event step does not copy either, because a function has one start") {
+	Graph source("on_start");
+	source.add(1, "event");
+	source.add(2, "print");
+	source.set(2, "text", "\"hi\"");
+	source.wire(1, THEN, 2, RUN);
+
+	CHECK(source.script->get_payload("on_start", "[1]").is_empty());
+	const String payload = source.script->get_payload("on_start", "[1, 2]");
+	Graph target("go");
+	target.add(1, "entry");
+	pasted(target.script, "go", payload);
+
+	CHECK(target.script->get_function("go")->get_step_count() == 2);
+	CHECK(target.script->get_error().is_empty());
+}
+
 TEST_CASE("[Stage][GraphScript] A payload asks for a choice when a variable of that name has another type") {
 	Graph source = copy_source();
 	const String payload = source.script->get_payload("main", "[2, 3]");

@@ -48,7 +48,13 @@ int resume_count(GraphCall &p_call, GraphPending &p_frame) {
 	if (p_frame.stopped || p_frame.position > p_frame.end) {
 		return end_loop(p_frame);
 	}
-	p_call.store(p_call.get_step(p_frame.step), COUNT_INDEX, p_frame.position++);
+	p_call.store(p_call.get_step(p_frame.step), COUNT_INDEX, p_frame.position);
+	// Stepping past the largest integer would wrap round and the loop would never reach its end.
+	if (p_frame.position == p_frame.end) {
+		p_frame.stopped = true;
+	} else {
+		p_frame.position++;
+	}
 	return BODY;
 }
 

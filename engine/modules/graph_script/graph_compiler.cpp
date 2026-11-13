@@ -149,7 +149,13 @@ String Compiler::_add_wires() {
 		const int from = index_of_id[wire.from_step];
 		const int to = index_of_id[wire.to_step];
 		if (_output(from, wire.from_port).sort == GraphPortSort::FLOW) {
-			out.steps.write[from].next.write[wire.from_port] = to;
+			// Connecting a wire replaces the old one, but a loaded file can hold two. Keeping the last
+			// would run a graph other than the one drawn. The loader already refuses two on a data input.
+			int &next = out.steps.write[from].next.write[wire.from_port];
+			if (next >= 0) {
+				return _fail(wire.from_step, vformat("the output '%s' has more than one wire.", _output(from, wire.from_port).name));
+			}
+			next = to;
 		} else {
 			out.steps.write[to].inputs.write[wire.to_port] = { from, wire.from_port, Variant() };
 		}

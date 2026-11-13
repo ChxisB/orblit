@@ -190,6 +190,28 @@ TEST_CASE("[Stage][GraphScript] A count loop from 1 to 10 sums to 55") {
 	memdelete(entity);
 }
 
+TEST_CASE("[Stage][GraphScript] A count loop that ends at the largest integer stops there") {
+	Graph graph("go");
+	graph.variable("ran", Variant::INT);
+	graph.add(1, "entry");
+	graph.add(2, "count_loop");
+	graph.set(2, "from", "9223372036854775806");
+	graph.set(2, "to", "9223372036854775807");
+	graph.add_named(3, "set", "ran");
+	graph.add_operator(4, "+");
+	graph.add_named(5, "get", "ran");
+	graph.set(4, "b", "1");
+	graph.wire(1, THEN, 2, RUN);
+	graph.wire(2, BODY, 3, RUN);
+	graph.wire(4, OUT, 3, VALUE);
+	graph.wire(5, OUT, 4, A);
+
+	Entity *entity = attach(graph.script);
+	entity->call("go");
+	CHECK(entity->get("ran") == Variant(2));
+	memdelete(entity);
+}
+
 TEST_CASE("[Stage][GraphScript] Each walks an array and gives its items") {
 	Graph graph("go");
 	graph.variable("total", Variant::INT);
@@ -397,6 +419,34 @@ TEST_CASE("[Stage][GraphScript] A step of an unknown kind fails the compile and 
 	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
 	CHECK(graph.script->get_error().contains("step 1"));
 	CHECK(graph.script->get_error().contains("future_kind"));
+}
+
+// A hand edit or a merge of a text file can leave a second wire on one pin. The wire goes in through
+// the loader, because connecting a wire replaces the first.
+void add_loaded_wire(Graph &p_graph, int p_from, int p_from_port, int p_to, int p_to_port) {
+	Array functions = p_graph.script->get_functions();
+	Dictionary function = functions[0];
+	Array wires = function["wires"];
+	Array wire;
+	wire.push_back(p_from);
+	wire.push_back(p_from_port);
+	wire.push_back(p_to);
+	wire.push_back(p_to_port);
+	wires.push_back(wire);
+	p_graph.script->set_functions(functions);
+}
+
+TEST_CASE("[Stage][GraphScript] Two flow wires from one output fail the compile and name the step") {
+	Graph graph("go");
+	graph.add(1, "entry");
+	graph.add(2, "print");
+	graph.add(3, "print");
+	graph.wire(1, THEN, 2, RUN);
+	add_loaded_wire(graph, 1, THEN, 3, RUN);
+
+	CHECK(graph.script->reload() == ERR_COMPILATION_FAILED);
+	CHECK(graph.script->get_error().contains("step 1"));
+	CHECK(graph.script->get_error().contains("more than one"));
 }
 
 TEST_CASE("[Stage][GraphScript] The instance answers calls and holds its variables") {

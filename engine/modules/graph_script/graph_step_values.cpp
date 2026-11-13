@@ -132,8 +132,10 @@ String resolve_type(GraphCompiledStep &p_step, const char *p_parameter) {
 
 namespace GraphStepValues {
 
+// An array or dictionary is shared between copies of a variant. A step that changes one would change
+// the constant for every later run, so each read gets its own.
 Variant eval_stored(GraphCall &p_call, const GraphCompiledStep &p_step) {
-	return p_step.values[0];
+	return p_step.values[0].duplicate(true);
 }
 
 Variant eval_make_array(GraphCall &p_call, const GraphCompiledStep &p_step) {
