@@ -94,6 +94,34 @@ Error GraphFunction::move_step(int p_id, const Vector2 &p_position) {
 	return OK;
 }
 
+namespace {
+
+bool holds_name(const Dictionary &p_parameters, const char *p_parameter, const StringName &p_name) {
+	const Variant value = p_parameters.get(p_parameter, Variant());
+	const bool is_text = value.get_type() == Variant::STRING || value.get_type() == Variant::STRING_NAME;
+	return is_text && StringName(String(value)) == p_name;
+}
+
+} // namespace
+
+bool GraphFunction::_acts_on_owner(const GraphStep &p_step, int p_target_port) const {
+	if (p_target_port >= 0 && _is_input_wired(p_step.id, p_target_port)) {
+		return false;
+	}
+	// A signal received step names its emitter by a path in this parameter.
+	const Variant target = p_step.parameters.get("target", Variant());
+	return target.get_type() == Variant::NIL || String(target).is_empty();
+}
+
+void GraphFunction::rename_references(const GraphReference &p_reference, const StringName &p_old, const StringName &p_new) {
+	for (int i = 0; i < steps.size(); i++) {
+		const GraphStep &step = steps[i];
+		if (step.kind == p_reference.kind && holds_name(step.parameters, p_reference.parameter, p_old) && _acts_on_owner(step, p_reference.target_port)) {
+			steps.write[i].parameters[p_reference.parameter] = String(p_new);
+		}
+	}
+}
+
 Error GraphFunction::set_step_parameter(int p_id, const StringName &p_parameter, const Variant &p_value) {
 	const int index = _find_step_index(p_id);
 	if (index < 0) {

@@ -77,6 +77,33 @@ Variant default_for_type(Variant::Type p_type) {
 	return value;
 }
 
+// The input of the Call, Connect and Await steps that takes the object they act on.
+constexpr int TARGET_PORT = 1;
+
+// The steps that name a declared function, variable or signal, and so change with a rename.
+constexpr GraphReference FUNCTION_REFERENCES[] = {
+	{ "call_function", "function", TARGET_PORT },
+};
+constexpr GraphReference VARIABLE_REFERENCES[] = {
+	{ "get", "name", -1 },
+	{ "set", "name", -1 },
+};
+constexpr GraphReference SIGNAL_REFERENCES[] = {
+	{ "emit", "signal", -1 },
+	{ "signal_received", "signal", -1 },
+	{ "connect", "signal", TARGET_PORT },
+	{ "await_signal", "signal", TARGET_PORT },
+};
+
+template <size_t COUNT>
+void rename_references(Vector<GraphFunction> &r_functions, const GraphReference (&p_references)[COUNT], const StringName &p_old, const StringName &p_new) {
+	for (int i = 0; i < r_functions.size(); i++) {
+		for (const GraphReference &reference : p_references) {
+			r_functions.write[i].rename_references(reference, p_old, p_new);
+		}
+	}
+}
+
 // A file from before exports had hints has none of these keys, and each then keeps its default.
 Error parse_variable_info(const Dictionary &p_entry, GraphVariable &r_variable) {
 	const Variant hint = p_entry.get("hint", int(PROPERTY_HINT_NONE));
@@ -363,6 +390,54 @@ Error GraphScript::remove_frame(const String &p_function, int p_id) {
 	return _edit_function(p_function, [&](GraphFunction &p_target) { return p_target.remove_frame(p_id); });
 }
 
+Error GraphScript::rename_function(const String &p_name, const String &p_new_name) {
+	const int index = _find_function_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	if (!is_valid_name(p_new_name)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	if (_find_function_index(p_new_name) >= 0) {
+		return ERR_ALREADY_EXISTS;
+	}
+	rename_references(functions, FUNCTION_REFERENCES, p_name, p_new_name);
+	functions.write[index].set_name(p_new_name);
+	return _commit(OK);
+}
+
+Error GraphScript::rename_variable(const String &p_name, const String &p_new_name) {
+	const int index = _find_variable_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	if (!is_valid_name(p_new_name)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	if (_find_variable_index(p_new_name) >= 0) {
+		return ERR_ALREADY_EXISTS;
+	}
+	rename_references(functions, VARIABLE_REFERENCES, p_name, p_new_name);
+	variables.write[index].name = p_new_name;
+	return _commit(OK);
+}
+
+Error GraphScript::rename_signal(const String &p_name, const String &p_new_name) {
+	const int index = _find_signal_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	if (!is_valid_name(p_new_name)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	if (_find_signal_index(p_new_name) >= 0) {
+		return ERR_ALREADY_EXISTS;
+	}
+	rename_references(functions, SIGNAL_REFERENCES, p_name, p_new_name);
+	signals.write[index].name = p_new_name;
+	return _commit(OK);
+}
+
 Error GraphScript::add_variable(const String &p_name, int p_type) {
 	if (!is_valid_name(p_name) || !is_valid_type(p_type)) {
 		return ERR_INVALID_PARAMETER;
@@ -384,6 +459,22 @@ Error GraphScript::remove_variable(const String &p_name) {
 		return ERR_DOES_NOT_EXIST;
 	}
 	variables.remove_at(index);
+	return _commit(OK);
+}
+
+Error GraphScript::set_variable_type(const String &p_name, int p_type) {
+	const int index = _find_variable_index(p_name);
+	if (index < 0) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	if (!is_valid_type(p_type)) {
+		return ERR_INVALID_PARAMETER;
+	}
+	GraphVariable &variable = variables.write[index];
+	if (variable.type != Variant::Type(p_type)) {
+		variable.type = Variant::Type(p_type);
+		variable.default_value = default_for_type(variable.type);
+	}
 	return _commit(OK);
 }
 
@@ -776,8 +867,12 @@ void GraphScript::register_members() {
 	ClassRegistry::bind_method(D_METHOD("disconnect_steps", "function", "from_step", "from_port", "to_step", "to_port"), &GraphScript::disconnect_steps);
 	ClassRegistry::bind_method(D_METHOD("set_frame", "function", "frame_text"), &GraphScript::set_frame);
 	ClassRegistry::bind_method(D_METHOD("remove_frame", "function", "id"), &GraphScript::remove_frame);
+	ClassRegistry::bind_method(D_METHOD("rename_function", "name", "new_name"), &GraphScript::rename_function);
+	ClassRegistry::bind_method(D_METHOD("rename_variable", "name", "new_name"), &GraphScript::rename_variable);
+	ClassRegistry::bind_method(D_METHOD("rename_signal", "name", "new_name"), &GraphScript::rename_signal);
 	ClassRegistry::bind_method(D_METHOD("add_variable", "name", "type"), &GraphScript::add_variable);
 	ClassRegistry::bind_method(D_METHOD("remove_variable", "name"), &GraphScript::remove_variable);
+	ClassRegistry::bind_method(D_METHOD("set_variable_type", "name", "type"), &GraphScript::set_variable_type);
 	ClassRegistry::bind_method(D_METHOD("set_variable_default", "name", "value_text"), &GraphScript::set_variable_default);
 	ClassRegistry::bind_method(D_METHOD("set_variable_exported", "name", "exported"), &GraphScript::set_variable_exported);
 	ClassRegistry::bind_method(D_METHOD("set_variable_hint", "name", "hint", "hint_string"), &GraphScript::set_variable_hint);

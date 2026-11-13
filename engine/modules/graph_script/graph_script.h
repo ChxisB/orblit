@@ -101,8 +101,16 @@ public:
 	Error set_frame(const String &p_function, const String &p_frame_text);
 	Error remove_frame(const String &p_function, int p_id);
 
+	// A rename writes the new name into every step that names the old one, in one change. A
+	// function, variable or signal that has the new name already is an error.
+	Error rename_function(const String &p_name, const String &p_new_name);
+	Error rename_variable(const String &p_name, const String &p_new_name);
+	Error rename_signal(const String &p_name, const String &p_new_name);
+
 	Error add_variable(const String &p_name, int p_type);
 	Error remove_variable(const String &p_name);
+	// A default that is not of the new type goes back to the default of that type.
+	Error set_variable_type(const String &p_name, int p_type);
 	Error set_variable_default(const String &p_name, const String &p_value_text);
 	Error set_variable_exported(const String &p_name, bool p_exported);
 	// The hint is a PropertyHint number, because the editor bridge marshals numbers and strings.

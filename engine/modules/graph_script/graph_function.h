@@ -29,6 +29,15 @@ struct GraphWire {
 	}
 };
 
+// A step parameter that names something the script declares, such as the variable a Get step reads.
+struct GraphReference {
+	const char *kind;
+	const char *parameter;
+	// The input that takes the object the step acts on, or -1 for a step with none. A step that acts
+	// on another object holds a name that is not one of this script's.
+	int target_port;
+};
+
 // A labeled rectangle on the canvas. It holds no steps and does not affect how the function
 // runs. The editor moves the steps inside it along with it.
 struct GraphCommentFrame {
@@ -60,6 +69,7 @@ class GraphFunction {
 	bool _ports_fit(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const;
 	void _remove_broken_wires(int p_step);
 	Error _check_ports(const GraphStep &p_from, const GraphStep &p_to, const GraphWire &p_wire) const;
+	bool _acts_on_owner(const GraphStep &p_step, int p_target_port) const;
 	void _remove_wires_beyond(int p_step, GraphPinSide p_side, int p_port_count);
 
 	Error _load_steps(const Array &p_steps);
@@ -75,6 +85,8 @@ public:
 			name(p_name) {}
 
 	const String &get_name() const { return name; }
+	// The script checks the name and the calls to the function, so it is the one caller.
+	void set_name(const String &p_name) { name = p_name; }
 	int get_step_count() const { return steps.size(); }
 	int get_wire_count() const { return wires.size(); }
 	int get_frame_count() const { return frames.size(); }
@@ -91,6 +103,9 @@ public:
 	// The "pins" parameter changes only here, because wires on a removed pin go with it.
 	Error set_step_parameter(int p_id, const StringName &p_parameter, const Variant &p_value);
 	Error set_pin_count(int p_id, int p_count);
+	// Writes p_new into the parameter of every step the reference lists that holds p_old and acts
+	// on the owner of the script.
+	void rename_references(const GraphReference &p_reference, const StringName &p_old, const StringName &p_new);
 	Error connect_steps(const GraphWire &p_wire);
 	Error disconnect_steps(const GraphWire &p_wire);
 	// Adds the frame, or replaces the frame with the same id.
