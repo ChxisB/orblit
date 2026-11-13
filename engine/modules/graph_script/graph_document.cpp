@@ -61,7 +61,7 @@ Dictionary growth_of(const GraphStepKind *p_kind, const Dictionary &p_parameters
 	growth["side"] = side_name(p_kind ? p_kind->growth.side : GraphPinSide::NONE);
 	growth["minimum"] = p_kind ? p_kind->growth.minimum : 0;
 	growth["count"] = p_kind && p_kind->growth.side != GraphPinSide::NONE ? GraphStepKinds::get_pin_count(*p_kind, p_parameters) : 0;
-	growth["maximum"] = GraphStepKinds::MAX_PINS;
+	growth["maximum"] = p_kind ? p_kind->growth.maximum : GraphStepKinds::MAX_PINS;
 	return growth;
 }
 

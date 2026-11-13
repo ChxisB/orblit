@@ -44,6 +44,13 @@ enum class GraphPinSide {
 	OUTPUT,
 };
 
+namespace GraphStepKinds {
+
+// The most pins one step may have, unless its kind sets a lower maximum.
+constexpr int MAX_PINS = 64;
+
+} // namespace GraphStepKinds
+
 // Ports a step adds after its fixed ones. The "pins" parameter of the step says how many.
 // A pin is one port named by the name below and its number. With a second name a pin is two
 // ports, such as a key and a value.
@@ -54,6 +61,7 @@ struct GraphPinGrowth {
 	GraphPortSort sort = GraphPortSort::DATA;
 	Variant::Type type = Variant::NIL;
 	int minimum = 0;
+	int maximum = GraphStepKinds::MAX_PINS;
 };
 
 // One port of a step, fixed, derived or grown.
@@ -112,9 +120,6 @@ namespace GraphStepKinds {
 
 // Returns null for a name this build does not know.
 const GraphStepKind *find(const StringName &p_name);
-
-// The most pins one step may have.
-constexpr int MAX_PINS = 64;
 
 // The table, so the catalogue can list it.
 int get_kind_count();

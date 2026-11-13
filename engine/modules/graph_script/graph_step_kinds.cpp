@@ -4,6 +4,7 @@
 #include "graph_step_kinds.h"
 
 #include "graph_signature.h"
+#include "graph_step_dialogue.h"
 #include "graph_step_flow.h"
 #include "graph_step_latent.h"
 #include "graph_step_reflect.h"
@@ -21,8 +22,12 @@ constexpr GraphPortSpec data(const char *p_name, Variant::Type p_type = Variant:
 	return { p_name, GraphPortSort::DATA, p_type };
 }
 
+constexpr GraphPortSpec optional_data(const char *p_name, Variant::Type p_type) {
+	return { p_name, GraphPortSort::DATA, p_type, true };
+}
+
 constexpr GraphPortSpec optional_object(const char *p_name) {
-	return { p_name, GraphPortSort::DATA, Variant::OBJECT, true };
+	return optional_data(p_name, Variant::OBJECT);
 }
 
 template <int N>
@@ -69,6 +74,10 @@ constexpr GraphPortSpec FREE_IN[] = { flow("run"), data("object", Variant::OBJEC
 constexpr GraphPortSpec CALL_FUNCTION_OUT[] = { flow("then"), data("result") };
 constexpr GraphPortSpec WAIT_IN[] = { flow("run"), data("seconds", Variant::FLOAT) };
 constexpr GraphPortSpec AWAIT_OUT[] = { flow("then"), data("arguments", Variant::ARRAY) };
+constexpr GraphPortSpec CHOICE_IN[] = { data("text", Variant::STRING), optional_data("visible", Variant::BOOL) };
+constexpr GraphPortSpec CHOICE_OUT[] = { data("choice", Variant::DICTIONARY) };
+// The choice inputs and outputs follow these, one per pin.
+constexpr GraphPortSpec MESSAGE_IN[] = { flow("run"), optional_data("speaker", Variant::STRING), data("text", Variant::STRING), optional_object("prefab") };
 
 constexpr GraphPinGrowth THEN_PINS = { GraphPinSide::OUTPUT, "then", nullptr, GraphPortSort::FLOW, Variant::NIL, 2 };
 constexpr GraphPinGrowth CASE_PINS = { GraphPinSide::OUTPUT, "case", nullptr, GraphPortSort::FLOW, Variant::NIL, 1 };
@@ -78,6 +87,8 @@ constexpr GraphPinGrowth ARGUMENT_PINS = { GraphPinSide::INPUT, "argument", null
 constexpr GraphPinGrowth PART_PINS = { GraphPinSide::OUTPUT, "part", nullptr, GraphPortSort::DATA, Variant::NIL, 1 };
 // The arguments a vararg method takes past its named ones.
 constexpr GraphPinGrowth EXTRA_PINS = { GraphPinSide::INPUT, "extra", nullptr, GraphPortSort::DATA, Variant::NIL, 0 };
+
+constexpr GraphPinGrowth CHOICE_PINS = { GraphPinSide::OUTPUT, "choice", nullptr, GraphPortSort::FLOW, Variant::NIL, 0, GraphStepDialogue::MAX_CHOICES };
 
 // Columns: name, category, inputs, outputs, eval, run, resolve, loop, growth, derive.
 constexpr GraphStepKind KINDS[] = {
@@ -99,6 +110,8 @@ constexpr GraphStepKind KINDS[] = {
 	{ "break", "Flow", list(RUN_IN), NO_PORTS, nullptr, GraphStepRun::run_break, nullptr, false },
 	{ "wait", "Flow", list(WAIT_IN), list(THEN_OUT), nullptr, GraphStepLatent::run_wait, nullptr, false },
 	{ "await_signal", "Flow", list(TARGET_RUN_IN), list(AWAIT_OUT), nullptr, GraphStepLatent::run_await_signal, GraphStepLatent::resolve_await_signal, false },
+	{ "dialogue_message", "Dialogue", list(MESSAGE_IN), list(THEN_OUT), nullptr, GraphStepDialogue::run_message, nullptr, false, CHOICE_PINS, GraphStepDialogue::derive_message },
+	{ "dialogue_choice", "Dialogue", list(CHOICE_IN), list(CHOICE_OUT), GraphStepDialogue::eval_choice, nullptr, nullptr, false },
 	{ "get", "Variables", NO_PORTS, list(VALUE_OUT), GraphStepRun::eval_variable, nullptr, GraphStepRun::resolve_variable, false },
 	{ "set", "Variables", list(SET_IN), list(THEN_OUT), nullptr, GraphStepRun::run_set_variable, GraphStepRun::resolve_variable, false },
 	{ "local", "Variables", NO_PORTS, list(VALUE_OUT), GraphStepRun::eval_local, nullptr, GraphStepRun::resolve_local, false },
@@ -190,7 +203,7 @@ int GraphStepKinds::get_pin_count(const GraphStepKind &p_kind, const Dictionary 
 	}
 	const Variant pins = p_parameters.get("pins", Variant());
 	const int count = pins.get_type() == Variant::INT ? int(pins) : p_kind.growth.minimum;
-	return CLAMP(count, p_kind.growth.minimum, MAX_PINS);
+	return CLAMP(count, p_kind.growth.minimum, p_kind.growth.maximum);
 }
 
 String GraphStepKinds::get_ports_problem(const GraphStepKind &p_kind, const Dictionary &p_parameters) {

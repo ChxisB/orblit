@@ -56,6 +56,7 @@ internal sealed class EditorChecks : IChecks
         ("a frame is set, replaced, removed and saved, and a frame with no area is refused", GraphScriptFrames),
         ("variables and signals are declared, retyped and renamed, steps that name them follow, and the file keeps them", GraphScriptDeclarations),
         ("the text a pin is reset to is the zero of its type, and compose and decompose take the parts the editor gives them", GraphScriptPinEdits),
+        ("a dialogue message holds up to ten choices, each with an input and an output, and the palette offers both dialogue steps", GraphScriptDialogue),
         ("a snapshot takes a graph script back in one edit, and a copy of steps pastes into another script and asks before a clash", GraphScriptSnapshotsAndPaste),
         ("steps collapse into a Call of a new function and expand back with the same wires, and a selection with a value across its edge is refused", GraphScriptCollapseAndExpand),
         ("every virtual the engine lists for a script's base type makes a function with the signature it names and no error", GraphScriptOverrides),
@@ -760,6 +761,31 @@ internal sealed class EditorChecks : IChecks
                 id++;
             }
         }
+    }
+
+    void GraphScriptDialogue()
+    {
+        using var session = GraphScriptSession.Open(_host, MakeGraphFile("dialogue"));
+
+        Assert.Contains(session.FindSteps("", GraphDraggedSide.None, 0, GraphPortSort.Flow), entry => entry.Kind == "dialogue_message");
+        Assert.Contains(session.FindSteps("", GraphDraggedSide.None, 0, GraphPortSort.Flow), entry => entry.Kind == "dialogue_choice");
+
+        var id = session.GetNextStepId("main");
+        Assert.True(session.AddStep("main", id, "dialogue_message").Ok);
+        Assert.True(session.SetStepPins("main", id, 3).Ok);
+        var message = session.Document.Functions[0].Steps.Single(step => step.Id == id);
+        Assert.Equal(new GraphGrowth(GraphGrowthSide.Output, 0, 3, 10), message.Growth);
+        Assert.Equal(["choice0", "choice1", "choice2"], message.Inputs.Where(port => port.Name.StartsWith("choice")).Select(port => port.Name));
+        Assert.Equal(4, message.Outputs.Count);
+
+        // A choice wired to the third input goes when the pins shrink below it, and no wire is left on a port that is gone.
+        var choice = session.GetNextStepId("main");
+        Assert.True(session.AddStep("main", choice, "dialogue_choice").Ok);
+        Assert.True(session.Connect("main", new GraphWire(choice, 0, id, 6)).Ok);
+        Assert.True(session.SetStepPins("main", id, 1).Ok);
+        Assert.DoesNotContain(session.Document.Functions[0].Wires, wire => wire.ToStep == id && wire.ToPort >= 5);
+
+        Assert.False(session.SetStepPins("main", id, 11).Ok);
     }
 
     // Builds a graph script in the engine and saves it to the project: an entry and a print step, not wired.

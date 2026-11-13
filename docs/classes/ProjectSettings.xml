@@ -1049,6 +1049,9 @@
 		<member name="filesystem/import/fbx2gltf/enabled.web" type="bool" setter="" getter="" default="false">
 			Override for [member filesystem/import/fbx2gltf/enabled] on the Web where FBX2glTF can't easily be accessed from Orblit.
 		</member>
+		<member name="graph_script/dialogue/prefab" type="String" setter="" getter="" default="&quot;&quot;">
+			A prefab to use as the box for every Dialogue message step of a graph script. Its root needs a [code]show_message[/code] method and a [code]finished[/code] signal. When empty, a step uses its own [code]prefab[/code] input, or a [DialogueBox] when that is not set either. See [DialogueBox].
+		</member>
 		<member name="graph_script/runtime/step_budget" type="int" setter="" getter="" default="1000000">
 			The most steps a graph function may run each time it starts or carries on after a wait. A function that runs more stops with an error that says a loop may never end. Raise it for a function that does a lot of work in one go. See [GraphScript].
 		</member>

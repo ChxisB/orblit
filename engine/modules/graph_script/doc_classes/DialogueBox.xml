@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="DialogueBox" inherits="PanelContainer" api_type="core" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="../../../../docs/class.xsd">
+	<brief_description>
+		A box that shows one line of dialogue with the choices under it.
+	</brief_description>
+	<description>
+		The Dialogue message step of a graph script puts one of these on the stage. It shows who speaks, the line, and one button for each choice. With no choices it shows one Continue button.
+		To use your own box, make a prefab whose root has a [method show_message] method and a [signal finished] signal. Wire the prefab to the step's [code]prefab[/code] input, or set the [code]graph_script/dialogue/prefab[/code] project setting to use it for every message. This class is the box the step makes when neither is set.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="choose">
+			<return type="void" />
+			<param index="0" name="index" type="int" />
+			<description>
+				Emits [signal finished] with [param index]. Choices count from zero. Pass [code]-1[/code] for Continue. The step that put the box on the stage removes it.
+			</description>
+		</method>
+		<method name="get_choices" qualifiers="const">
+			<return type="PackedStringArray" />
+			<description>
+				Returns the text of each choice on show, in the order they appear.
+			</description>
+		</method>
+		<method name="get_speaker" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns who speaks the line on show.
+			</description>
+		</method>
+		<method name="get_text" qualifiers="const">
+			<return type="String" />
+			<description>
+				Returns the line on show.
+			</description>
+		</method>
+		<method name="show_message">
+			<return type="void" />
+			<param index="0" name="speaker" type="String" />
+			<param index="1" name="text" type="String" />
+			<param index="2" name="choices" type="PackedStringArray" />
+			<description>
+				Shows [param text] said by [param speaker], with one button for each entry of [param choices]. A box that shows a message again replaces the buttons it had.
+			</description>
+		</method>
+	</methods>
+	<members>
+		<member name="anchor_bottom" type="float" setter="_set_anchor" getter="get_anchor" overrides="Control" default="1.0" />
+		<member name="anchor_left" type="float" setter="_set_anchor" getter="get_anchor" overrides="Control" default="0.5" />
+		<member name="anchor_right" type="float" setter="_set_anchor" getter="get_anchor" overrides="Control" default="0.5" />
+		<member name="anchor_top" type="float" setter="_set_anchor" getter="get_anchor" overrides="Control" default="1.0" />
+		<member name="custom_minimum_size" type="Vector2" setter="set_custom_minimum_size" getter="get_custom_minimum_size" overrides="Control" default="Vector2(480, 0)" />
+		<member name="grow_horizontal" type="int" setter="set_h_grow_direction" getter="get_h_grow_direction" overrides="Control" enum="Control.GrowDirection" default="2" />
+		<member name="grow_vertical" type="int" setter="set_v_grow_direction" getter="get_v_grow_direction" overrides="Control" enum="Control.GrowDirection" default="0" />
+	</members>
+	<signals>
+		<signal name="finished">
+			<param index="0" name="index" type="int" />
+			<description>
+				Emitted when a button is pressed. [param index] is the number of the choice, counted from zero, or [code]-1[/code] for Continue.
+			</description>
+		</signal>
+	</signals>
+</class>

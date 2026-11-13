@@ -30,18 +30,21 @@ int resume_arguments(GraphCall &p_call, GraphPending &p_frame) {
 	return THEN;
 }
 
-// Sets the call aside and returns where the flow goes in the meantime, which is nowhere.
-int suspend(GraphCall &p_call, const GraphCompiledStep &p_step, Object *p_emitter, const StringName &p_signal, int (*p_resume)(GraphCall &, GraphPending &)) {
-	GraphPending frame;
-	frame.step = p_step.index;
-	frame.resume = p_resume;
-	p_call.wait_for(p_emitter, p_signal, frame);
-	return GraphFlow::END;
-}
-
 } // namespace
 
 namespace GraphStepLatent {
+
+GraphPending make_frame(const GraphCompiledStep &p_step, int (*p_resume)(GraphCall &, GraphPending &)) {
+	GraphPending frame;
+	frame.step = p_step.index;
+	frame.resume = p_resume;
+	return frame;
+}
+
+int suspend(GraphCall &p_call, const GraphPending &p_frame, Object *p_emitter, const StringName &p_signal) {
+	p_call.wait_for(p_emitter, p_signal, p_frame);
+	return GraphFlow::END;
+}
 
 int run_wait(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	Stage *stage = Stage::get_singleton();
@@ -51,7 +54,7 @@ int run_wait(GraphCall &p_call, const GraphCompiledStep &p_step) {
 	}
 	// The timer stops with the stage, so a paused game also pauses every wait.
 	const Ref<StageTimer> timer = stage->create_timer(p_call.input(p_step, SECONDS), false);
-	return suspend(p_call, p_step, timer.ptr(), SNAME("timeout"), resume_then);
+	return suspend(p_call, make_frame(p_step, resume_then), timer.ptr(), SNAME("timeout"));
 }
 
 int run_await_signal(GraphCall &p_call, const GraphCompiledStep &p_step) {
@@ -64,7 +67,7 @@ int run_await_signal(GraphCall &p_call, const GraphCompiledStep &p_step) {
 		p_call.fail(p_step, vformat("the object has no signal named '%s'.", signal));
 		return GraphFlow::END;
 	}
-	return suspend(p_call, p_step, emitter, signal, resume_arguments);
+	return suspend(p_call, make_frame(p_step, resume_arguments), emitter, signal);
 }
 
 String resolve_await_signal(GraphCompiledStep &p_step, const Vector<StringName> &p_variables) {

@@ -298,8 +298,9 @@ Vector<GraphStepEntry> table_entries(const Matcher &p_matcher) {
 	Vector<GraphStepEntry> found;
 	for (int i = 0; i < GraphStepKinds::get_kind_count(); i++) {
 		const GraphStepKind &kind = GraphStepKinds::get_kind(i);
-		// A start step comes with its function or signal. A derived kind comes from the engine scan.
-		if (kind.is_start() || kind.derive) {
+		// A start step comes with its function or signal. A derived kind comes from the engine scan,
+		// unless it has its ports with no parameters at all.
+		if (kind.is_start() || !GraphStepKinds::get_ports_problem(kind, Dictionary()).is_empty()) {
 			continue;
 		}
 		const GraphStepEntry entry = { kind.name, kind.category, title(kind.name), Dictionary() };

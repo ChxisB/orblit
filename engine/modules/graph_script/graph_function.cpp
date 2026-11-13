@@ -216,11 +216,14 @@ Error GraphFunction::set_pin_count(int p_id, int p_count) {
 	if (!kind) {
 		return ERR_UNAVAILABLE;
 	}
-	if (kind->growth.side == GraphPinSide::NONE || p_count < kind->growth.minimum || p_count > GraphStepKinds::MAX_PINS) {
+	if (kind->growth.side == GraphPinSide::NONE || p_count < kind->growth.minimum || p_count > kind->growth.maximum) {
 		return ERR_INVALID_PARAMETER;
 	}
 	steps.write[index].parameters["pins"] = p_count;
-	_remove_wires_beyond(p_id, kind->growth.side, GraphStepKinds::get_port_count(*kind, steps[index].parameters, kind->growth.side));
+	// A kind can derive ports from its pins, so the other side may shrink too.
+	for (const GraphPinSide side : { GraphPinSide::INPUT, GraphPinSide::OUTPUT }) {
+		_remove_wires_beyond(p_id, side, GraphStepKinds::get_port_count(*kind, steps[index].parameters, side));
+	}
 	return OK;
 }
 
