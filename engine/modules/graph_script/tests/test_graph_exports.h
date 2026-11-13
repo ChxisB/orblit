@@ -9,6 +9,7 @@
 #include "core/io/resource_loader.h"
 #include "core/io/resource_saver.h"
 #include "core/object/script_language.h"
+#include "tests/test_utils.h"
 
 namespace TestGraphExports {
 
@@ -49,6 +50,7 @@ bool has_warning(const Array &p_warnings, const String &p_kind, const String &p_
 	return false;
 }
 
+#ifdef TOOLS_ENABLED
 // Makes the engine behave as the editor does: a script that is not a tool is not run.
 struct EditorScripting {
 	EditorScripting() {
@@ -60,6 +62,7 @@ struct EditorScripting {
 		Engine::get_singleton()->set_editor_hint(false);
 	}
 };
+#endif // TOOLS_ENABLED
 
 TEST_CASE("[Stage][GraphScript] An exported variable lists its hint and group, and edits survive a reload") {
 	Ref<GraphScript> script = make_speed_script();
@@ -113,6 +116,8 @@ TEST_CASE("[Stage][GraphScript] The hint, group and description of a variable ar
 	CHECK(loaded->get_variable("speed")->hint_string == "0,10");
 }
 
+// A placeholder exists only in an editor build.
+#ifdef TOOLS_ENABLED
 TEST_CASE("[Stage][GraphScript] A placeholder lists the exports and follows edits") {
 	Ref<GraphScript> script = make_speed_script();
 	CHECK(script->add_variable("hidden", Variant::INT) == OK);
@@ -150,6 +155,7 @@ TEST_CASE("[Stage][GraphScript] An entity in the editor holds a placeholder and 
 	}
 	CHECK(script->can_instantiate());
 }
+#endif // TOOLS_ENABLED
 
 TEST_CASE("[Stage][GraphScript] A reload with a renamed variable drops its value and keeps the others") {
 	Ref<GraphScript> script;
