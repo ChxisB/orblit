@@ -48,7 +48,7 @@ public sealed class WorkspaceTests
             Assert.False(window.Store.IsVisible);
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.True(window.Viewport.IsEffectivelyVisible);
-            AssertBox(293, 128, 2818, 1100, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
         });
     }
 

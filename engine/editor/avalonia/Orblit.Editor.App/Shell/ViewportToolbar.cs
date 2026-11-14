@@ -9,18 +9,18 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The row over the viewport: mode buttons in three rounded groups, the lock and group buttons, and the
-/// Transform and View menus, and a Mesh menu while a mesh is selected. The Transform, Move, Rotate, Scale and
-/// Select modes light one at a time, the Local coordinates button flips the handles between global and local axes,
-/// the Trackball button gives Rotate mode its ball, the Snap button and its three steps round the drags, the
-/// Lock and Group buttons show the flags of the selection, the Keep child transforms button lights while it is
-/// on, Focus Selection in the View menu works, and so do the Transform menu and the Mesh menu. The rest answer in
-/// the status line.
+/// The tools that float over the viewport. A pill at the top left holds the modes, the coordinate and trackball
+/// buttons, Snap and its steps, the lock, group and keep buttons, and two tools still to come. A pill at the bottom
+/// left holds the Transform and View menus, and a Mesh menu while a mesh is selected, because each acts on the
+/// selection. The Transform, Move, Rotate, Scale and Select modes light one at a time, the Local coordinates button
+/// flips the handles between global and local axes, the Trackball button gives Rotate mode its ball, the Snap
+/// button and its three steps round the drags, the Lock and Group buttons show the flags of the selection, the Keep
+/// child transforms button lights while it is on, Focus Selection in the View menu works, and so do the Transform
+/// menu and the Mesh menu. The rest answer in the status line. The grid has no fill, so a press between the pills
+/// goes to the viewport.
 /// </summary>
-internal sealed class ViewportToolbar : StackPanel
+internal sealed class ViewportToolbar : Grid
 {
-    const double Gap = 16;
-
     readonly FixedToggle _transform = new("ToolTransform", "Transform mode", lit: true);
     readonly FixedToggle _move = new("ToolMove", "Move mode", lit: false);
     readonly FixedToggle _rotate = new("ToolRotate", "Rotate mode", lit: false);
@@ -40,7 +40,7 @@ internal sealed class ViewportToolbar : StackPanel
     readonly Button _view = Text("View");
     readonly Button _transformMenu = Text("Transform");
     readonly Button _mesh = MeshChip();
-    readonly Border _meshGap = new() { Width = 1, Height = 24, Margin = new Thickness(3, 0, 4, 0), Background = EditorBrushes.LineStrong, IsVisible = false };
+    readonly Border _meshGap = Parts.Rule();
     readonly MenuItem _focus = new() { Header = "Focus Selection" };
     readonly MenuItem _resetPosition = new() { Header = "Reset Position" };
     readonly MenuItem _resetRotation = new() { Header = "Reset Rotation" };
@@ -52,10 +52,7 @@ internal sealed class ViewportToolbar : StackPanel
 
     public ViewportToolbar(Button focus)
     {
-        Orientation = Orientation.Horizontal;
-        Spacing = Gap;
-        Margin = new Thickness(4, 0, 0, 0);
-        VerticalAlignment = VerticalAlignment.Center;
+        _meshGap.IsVisible = false;
         _lock.IsEnabled = false;
         _group.IsEnabled = false;
         _transformMenu.IsEnabled = false;
@@ -82,26 +79,41 @@ internal sealed class ViewportToolbar : StackPanel
         _transformMenu.Flyout = Menu(_resetPosition, _resetRotation, _resetScale, _snapPosition, _snapRotation);
         _mesh.Flyout = Menu(_trimesh, _convex);
 
-        var snap = Pill(_snap, _snapOptions);
-        var preview = Pill(Tool("PreviewSun", "Sun preview", lit: false), Tool("PreviewEnvironment", "Environment preview", lit: true), Chevron("Preview settings"));
-        // The reference leaves 19 pixels before this group, 3 more than elsewhere.
-        preview.Margin = new Thickness(3, 0, 0, 0);
-        Children.Add(Pill(
+        Tools = Parts.Float(
+        [
             _transform,
             _move,
             _rotate,
             _scale,
             _select,
-            Separator(),
-            Tool("ListSelect", "Selection from a list", lit: false),
-            Tool("Ruler", "Ruler", lit: false)));
-        Children.Add(Row(_lock, _group));
-        Children.Add(Row(_local, _trackball, _keep));
-        Children.Add(snap);
-        Children.Add(preview);
-        Children.Add(Row(_transformMenu, _view, _meshGap, _mesh));
-        _view.Margin = new Thickness(-2, 0, 0, 0);
+            Parts.Rule(),
+            _local,
+            _trackball,
+            Parts.Rule(),
+            _snap,
+            _snapOptions,
+            Parts.Rule(),
+            _lock,
+            _group,
+            _keep,
+            Parts.Rule(),
+            Tool("ListSelect", "Selection from a list"),
+            Tool("Ruler", "Ruler"),
+        ]);
+        Tools.HorizontalAlignment = HorizontalAlignment.Left;
+        Tools.VerticalAlignment = VerticalAlignment.Top;
+        Menus = Parts.Float([_transformMenu, _view, _meshGap, _mesh]);
+        Menus.HorizontalAlignment = HorizontalAlignment.Left;
+        Menus.VerticalAlignment = VerticalAlignment.Bottom;
+        Children.Add(Tools);
+        Children.Add(Menus);
     }
+
+    /// <summary>The pill at the top left.</summary>
+    internal Border Tools { get; }
+
+    /// <summary>The pill at the bottom left.</summary>
+    internal Border Menus { get; }
 
     internal FixedToggle TransformButton => _transform;
 
@@ -220,29 +232,20 @@ internal sealed class ViewportToolbar : StackPanel
         return menu;
     }
 
-    static FixedToggle Tool(string icon, string name, bool lit) => Unbuilt.Mark(new FixedToggle(icon, name, lit), $"{name} is not built yet.");
+    static FixedToggle Tool(string icon, string name) => Unbuilt.Mark(new FixedToggle(icon, name, lit: false), $"{name} is not built yet.");
 
-    // 68 by 32: the class icon and the label on a raised chip.
+    // The class icon and the label, the height of the other menus.
     static Button MeshChip()
     {
         var content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
         content.Children.Add(new EditorIcon("MeshInstance3D"));
         content.Children.Add(new TextBlock { Text = "Mesh", VerticalAlignment = VerticalAlignment.Center });
-        return new Button
-        {
-            Content = content,
-            Background = EditorBrushes.Raised,
-            CornerRadius = EditorTheme.Corners,
-            Padding = new Thickness(6, 0, 8, 0),
-            BorderThickness = new Thickness(0),
-            MinWidth = 0,
-            Height = 32,
-            IsVisible = false,
-            VerticalContentAlignment = VerticalAlignment.Center,
-        };
+        var chip = Text("Mesh");
+        chip.Content = content;
+        chip.Padding = new Thickness(6, 0, 8, 0);
+        chip.IsVisible = false;
+        return chip;
     }
-
-    static Button Chevron(string name) => Parts.Tight(Unbuilt.Mark(Parts.IconButton("GuiDropdown", name), $"{name} are not built yet."));
 
     static TextBox StepBox(float step) => new()
     {
@@ -269,25 +272,7 @@ internal sealed class ViewportToolbar : StackPanel
         Padding = new Thickness(8, 0),
         BorderThickness = new Thickness(0),
         MinWidth = 0,
-        Height = 24,
+        Height = 26,
         VerticalContentAlignment = VerticalAlignment.Center,
     };
-
-    // A thin gap in the toolbar colour, 3 pixels clear on each side.
-    static Border Separator() => new() { Width = 2, Height = 24, Margin = new Thickness(3, 0), Background = EditorBrushes.Panel };
-
-    static Border Pill(params Control[] items) => new()
-    {
-        Background = EditorBrushes.Field,
-        CornerRadius = EditorTheme.Corners,
-        Padding = new Thickness(4),
-        Child = Row(items),
-    };
-
-    static StackPanel Row(params Control[] items)
-    {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        row.Children.AddRange(items);
-        return row;
-    }
 }

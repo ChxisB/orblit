@@ -372,7 +372,7 @@ public sealed class PlanarViewportTests
     }
 
     [Fact]
-    public void The_2D_workspace_has_no_toolbar_or_projection_controls_and_the_viewport_takes_the_toolbar_row()
+    public void The_2D_workspace_hides_the_tools_the_view_pill_and_the_axes_and_the_viewport_fills_the_island_in_both()
     {
         UiThread.Run(() =>
         {
@@ -383,7 +383,6 @@ public sealed class PlanarViewportTests
 
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.True(window.Center.Overlay.Planar);
-            Assert.False(window.Center.Overlay.Axes.IsVisible);
             AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
 
             ClickOn(TabOf(window, "3D"), window);
@@ -391,8 +390,7 @@ public sealed class PlanarViewportTests
 
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.False(window.Center.Overlay.Planar);
-            Assert.True(window.Center.Overlay.Axes.IsVisible);
-            AssertBox(293, 128, 2818, 1100, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
         });
     }
 

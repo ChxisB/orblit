@@ -40,15 +40,15 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_middle_column_stacks_tabs_toolbar_viewport_and_bottom_bar()
+    public void The_middle_column_stacks_tabs_viewport_and_bottom_bar_with_the_tools_over_the_viewport()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
             AssertBox(293, 47, 2818, 39, BoxOf(window.Center.SceneTabs, window));
-            AssertBox(293, 86, 2818, 42, BoxOf(window.Center.Toolbar, window));
-            AssertBox(293, 128, 2818, 1100, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Center.Toolbar, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
             AssertBox(292, 1235, 2820, 38, BoxOf(window.Center.BottomBar, window));
         });
     }

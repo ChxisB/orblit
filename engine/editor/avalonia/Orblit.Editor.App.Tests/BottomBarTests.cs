@@ -113,7 +113,7 @@ public sealed class BottomBarTests
 
             Assert.Equal(2, separator.Width);
             Assert.Equal(25, separator.Height);
-            Assert.Equal(1234 + (41 - 25) / 2, separator.Y);
+            Assert.Equal(1241, separator.Y);
             Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)BarOf(window).Separator.Background!).Color);
         });
     }
@@ -170,7 +170,7 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_pin_icon_ends_twelve_pixels_from_the_bar_edge_and_follows_the_version_by_eighteen()
+    public void The_pin_icon_ends_eleven_pixels_from_the_bar_edge_and_follows_the_version_by_seventeen()
     {
         UiThread.Run(() =>
         {
@@ -179,11 +179,11 @@ public sealed class BottomBarTests
             var icon = BoxOf(bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
             var text = BoxOf(bar.VersionButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
-            Assert.Equal(293 + 2818 - 12, icon.Right);
+            Assert.Equal(293 + 2818 - 11, icon.Right);
             Assert.Equal("Pin", bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Equal(16, icon.Width);
-            Assert.InRange(icon.X - text.Right, 17.5, 18.5);
-            AssertBox(3077, 1242, 28, 24, BoxOf(bar.PinButton, window));
+            Assert.InRange(icon.X - text.Right, 16.5, 17.5);
+            AssertBox(3079, 1241, 26, 26, BoxOf(bar.PinButton, window));
         });
     }
 

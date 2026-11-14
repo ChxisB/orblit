@@ -1,6 +1,8 @@
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -35,45 +37,18 @@ public sealed class ViewportAreaTests
         return (window, viewport);
     }
 
-    static Border Pill(EditorWindow window, int index) => (Border)window.Toolbar.Children[index];
+    static Control[] Items(Border pill) => [.. ((StackPanel)pill.Child!).Children];
 
-    static Control[] PillButtons(EditorWindow window, int index) =>
-        [.. ((StackPanel)Pill(window, index).Child!).Children.OfType<Control>()];
+    static FixedToggle[] Tools(EditorWindow window) => [.. Items(window.Toolbar.Tools).OfType<FixedToggle>()];
 
-    [Fact]
-    public void The_scene_tab_joins_the_toolbar_and_shows_the_root()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var strip = window.SceneTabs;
+    static Color Backing(ToggleButton button) =>
+        ((ISolidColorBrush)button.GetVisualDescendants().OfType<ContentPresenter>().Single(presenter => presenter.Name == "PART_ContentPresenter").Background!).Color;
 
-            Assert.True(strip.Tab.IsVisible);
-            Assert.Equal(293, BoxOf(strip.Tab, window).X);
-            Assert.Equal(47, BoxOf(strip.Tab, window).Y);
-            Assert.Equal(38, strip.Tab.Bounds.Height);
-            Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)strip.Tab.Background!).Color);
-            Assert.Equal("Field", strip.Label.Text);
-            Assert.Equal("Entity3D", strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal(EditorColors.Accent, ((ISolidColorBrush)strip.Label.Foreground!).Color);
-        });
-    }
+    static Color IconColor(Visual owner) =>
+        ((ISolidColorBrush)TextElement.GetForeground(owner.GetVisualDescendants().OfType<EditorIcon>().First())!).Color;
 
     [Fact]
-    public void The_icon_and_name_sit_where_the_reference_has_them()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var strip = window.SceneTabs;
-
-            AssertBox(309, 58, 16, 16, BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window));
-            Assert.Equal(330, BoxOf(strip.Label, window).X);
-        });
-    }
-
-    [Fact]
-    public void The_close_button_ends_12_pixels_inside_the_tab_and_the_plus_starts_8_after_it()
+    public void The_scene_tab_is_raised_on_a_fine_edge_and_shows_the_root()
     {
         UiThread.Run(() =>
         {
@@ -81,25 +56,63 @@ public sealed class ViewportAreaTests
             var strip = window.SceneTabs;
             var tab = BoxOf(strip.Tab, window);
 
-            Assert.Equal(24, strip.CloseButton.Bounds.Width);
-            Assert.Equal(12, tab.Right - BoxOf(strip.CloseButton, window).Right);
-            Assert.Equal(8, BoxOf(strip.AddButton, window).X - tab.Right);
-            Assert.InRange(BoxOf(strip.CloseButton, window).X - BoxOf(strip.Label, window).Right, 8.5, 9.5);
-            Assert.Equal(24, strip.AddButton.Bounds.Height);
+            Assert.True(strip.Tab.IsVisible);
+            Assert.Equal([299.0, 53.0, 26.0], [tab.X, tab.Y, tab.Height]);
+            Assert.Equal(
+                (EditorBrushes.Raised, EditorBrushes.LineStrong, new Thickness(1), EditorTheme.Corners),
+                (strip.Tab.Background, strip.Tab.BorderBrush, strip.Tab.BorderThickness, strip.Tab.CornerRadius));
+            Assert.Equal("Field", strip.Label.Text);
+            Assert.Equal("Entity3D", strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Equal(EditorColors.Accent, IconColor(strip.Icon));
+            Assert.Equal(EditorColors.Text, ((ISolidColorBrush)strip.Label.Foreground!).Color);
         });
     }
 
     [Fact]
-    public void The_two_menu_buttons_end_4_pixels_from_the_right_edge_with_8_between()
+    public void The_icon_sits_10_inside_the_tab_and_the_name_7_after_it()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var strip = window.SceneTabs;
+            var icon = BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
+
+            AssertBox(BoxOf(strip.Tab, window).X + 11, 58, 16, 16, icon);
+            Assert.Equal(icon.Right + 7, BoxOf(strip.Label, window).X);
+        });
+    }
+
+    [Fact]
+    public void The_dim_close_button_fills_the_end_of_the_tab_and_the_plus_starts_4_after_it()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var strip = window.SceneTabs;
+            var tab = BoxOf(strip.Tab, window);
+            var close = BoxOf(strip.CloseButton, window);
+
+            Assert.Equal(new Size(24, 24), close.Size);
+            Assert.Equal(tab.Right - 1, close.Right);
+            // The name's width follows the font, so its end can fall on a part pixel.
+            Assert.InRange(close.X - BoxOf(strip.Label, window).Right, 6.5, 7.5);
+            Assert.Equal(EditorColors.TextDim, IconColor(strip.CloseButton));
+            Assert.Equal(tab.Right + 4, BoxOf(strip.AddButton, window).X);
+            Assert.Equal(new Size(26, 26), strip.AddButton.Bounds.Size);
+        });
+    }
+
+    [Fact]
+    public void The_two_buttons_at_the_right_end_6_pixels_from_the_edge_with_2_between()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var strip = window.SceneTabs;
 
-            Assert.Equal(3111 - 4, BoxOf(strip.DistractionButton, window).Right);
-            Assert.Equal(8, BoxOf(strip.DistractionButton, window).X - BoxOf(strip.MenuButton, window).Right);
-            Assert.Equal(24, strip.MenuButton.Bounds.Width);
+            Assert.Equal(3111 - 6, BoxOf(strip.MenuButton, window).Right);
+            Assert.Equal(BoxOf(strip.DistractionButton, window).Right + 2, BoxOf(strip.MenuButton, window).X);
+            Assert.Equal(new Size(26, 26), strip.MenuButton.Bounds.Size);
         });
     }
 
@@ -153,20 +166,58 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_first_group_is_a_rounded_pill_with_five_modes_a_gap_and_two_tools()
+    public void The_tools_float_in_a_pill_10_pixels_in_from_the_top_left_of_the_viewport()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var pill = Pill(window, 0);
-            var buttons = PillButtons(window, 0).OfType<FixedToggle>().ToArray();
+            var pill = window.Toolbar.Tools;
+            var box = BoxOf(pill, window);
+            var floating = EditorColors.Floating;
 
-            AssertBox(297, 91, 240, 32, BoxOf(pill, window));
-            Assert.Equal(EditorColors.Field, ((ISolidColorBrush)pill.Background!).Color);
-            Assert.Equal(EditorTheme.Corners, pill.CornerRadius);
-            Assert.Equal([301, 333, 365, 397, 429, 473, 505], buttons.Select(b => BoxOf(b, window).X));
-            Assert.All(buttons, button => Assert.Equal(new Size(28, 24), button.Bounds.Size));
-            Assert.All(buttons, button => Assert.Equal(95, BoxOf(button, window).Y));
+            Assert.Equal([303.0, 96.0, 34.0], [box.X, box.Y, box.Height]);
+            Assert.Equal(
+                (EditorBrushes.Floating, EditorBrushes.LineStrong, EditorTheme.IslandCorners),
+                (pill.Background, pill.BorderBrush, pill.CornerRadius));
+            // The island fill at 90 percent.
+            Assert.Equal((0xE6, EditorColors.Panel), (floating.A, Color.FromRgb(floating.R, floating.G, floating.B)));
+        });
+    }
+
+    [Fact]
+    public void The_tool_pill_holds_the_modes_options_snap_flags_and_two_tools_to_come_between_rules()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var toolbar = window.Toolbar;
+            static string Kind(Control item) => item switch
+            {
+                FixedToggle tool => ((EditorIcon)tool.Content!).IconName,
+                Button => "options",
+                _ => "|",
+            };
+
+            Assert.Equal(
+                ["ToolTransform", "ToolMove", "ToolRotate", "ToolScale", "ToolSelect", "|", "Object", "Trackball", "|", "Snap", "options", "|", "Lock", "Group", "Pin", "|", "ListSelect", "Ruler"],
+                Items(toolbar.Tools).Select(Kind));
+            Assert.All(Tools(window), tool => Assert.Equal(new Size(26, 26), tool.Bounds.Size));
+            Assert.All(Tools(window), tool => Assert.Equal(100, BoxOf(tool, window).Y));
+            Assert.Equal([307, 335, 363, 391, 419], Tools(window).Take(5).Select(tool => BoxOf(tool, window).X));
+            Assert.Equal(BoxOf(toolbar.SelectButton, window).Right + 11, BoxOf(toolbar.LocalButton, window).X);
+            Assert.All(new[] { toolbar.LocalButton, toolbar.TrackballButton, toolbar.KeepChildrenButton }, option => Assert.False(option.IsChecked));
+        });
+    }
+
+    [Fact]
+    public void A_lit_tool_has_the_soft_accent_behind_an_accent_icon()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Assert.Equal((EditorColors.AccentSoft, EditorColors.Accent), (Backing(window.Toolbar.TransformButton), IconColor(window.Toolbar.TransformButton)));
+            Assert.Equal((Colors.Transparent, EditorColors.Text), (Backing(window.Toolbar.MoveButton), IconColor(window.Toolbar.MoveButton)));
         });
     }
 
@@ -176,7 +227,7 @@ public sealed class ViewportAreaTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var modes = PillButtons(window, 0).OfType<FixedToggle>().Take(5).ToArray();
+            var modes = Tools(window).Take(5).ToArray();
 
             Assert.Equal([true, false, false, false, false], modes.Select(mode => mode.IsChecked == true));
             Assert.Same(window.Toolbar.TransformButton, modes[0]);
@@ -189,7 +240,7 @@ public sealed class ViewportAreaTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var modes = PillButtons(window, 0).OfType<FixedToggle>().Take(5).ToArray();
+            var modes = Tools(window).Take(5).ToArray();
 
             ClickOn(modes[1], window);
             Assert.Equal([false, true, false, false, false], modes.Select(mode => mode.IsChecked == true));
@@ -226,7 +277,7 @@ public sealed class ViewportAreaTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var modes = PillButtons(window, 0).OfType<FixedToggle>().Take(5).ToArray();
+            var modes = Tools(window).Take(5).ToArray();
             ClickOn(modes[1], window);
 
             ClickOn(modes[2], window);
@@ -244,7 +295,7 @@ public sealed class ViewportAreaTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var modes = PillButtons(window, 0).OfType<FixedToggle>().Take(5).ToArray();
+            var modes = Tools(window).Take(5).ToArray();
 
             ClickOn(modes[3], window);
 
@@ -256,17 +307,14 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_lock_and_group_buttons_follow_the_pill_by_16_pixels_and_are_off_without_a_selection()
+    public void The_lock_and_group_buttons_are_off_without_a_selection()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var toolbar = window.Toolbar;
 
-            Assert.Equal(553, BoxOf(toolbar.LockButton, window).X);
-            Assert.Equal(585, BoxOf(toolbar.GroupButton, window).X);
-            Assert.False(toolbar.LockButton.IsEnabled);
-            Assert.False(toolbar.GroupButton.IsEnabled);
+            Assert.False(window.Toolbar.LockButton.IsEnabled);
+            Assert.False(window.Toolbar.GroupButton.IsEnabled);
         });
     }
 
@@ -300,85 +348,60 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_three_option_buttons_follow_with_a_gap_of_16()
+    public void The_snap_options_button_sits_2_after_the_snap_button()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var options = ((StackPanel)window.Toolbar.Children[2]).Children.Cast<FixedToggle>().ToArray();
+            var snap = BoxOf(window.Toolbar.SnapButton, window);
+            var options = BoxOf(window.Toolbar.SnapOptionsButton, window);
 
-            Assert.Equal([629, 661, 693], options.Select(option => BoxOf(option, window).X));
-            Assert.All(options, option => Assert.False(option.IsChecked));
+            Assert.Equal(snap.Right + 2, options.X);
+            Assert.Equal(snap.Center.Y, options.Center.Y);
         });
     }
 
     [Fact]
-    public void The_snap_group_is_a_pill_with_a_toggle_and_a_24_wide_menu_button()
+    public void The_view_pill_holds_the_previews_after_a_rule_with_the_environment_lit()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
-            var pill = Pill(window, 3);
-            var parts = PillButtons(window, 3);
+            var (window, _) = OpenWithViewport();
+            var items = Items(window.Center.Overlay.View);
+            var previews = items.OfType<FixedToggle>().ToArray();
 
-            AssertBox(737, 91, 64, 32, BoxOf(pill, window));
-            Assert.IsType<FixedToggle>(parts[0]);
-            Assert.Equal(28, parts[0].Bounds.Width);
-            Assert.Equal(24, parts[1].Bounds.Width);
+            Assert.Same(window.Center.Overlay.ProjectionButton, items[0]);
+            Assert.IsType<Border>(items[1]);
+            Assert.Equal(["PreviewSun", "PreviewEnvironment"], previews.Select(preview => ((EditorIcon)preview.Content!).IconName));
+            Assert.Equal([false, true], previews.Select(preview => preview.IsChecked == true));
         });
     }
 
     [Fact]
-    public void The_preview_group_lights_the_environment_and_not_the_sun()
+    public void The_preview_settings_button_says_it_is_not_built()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
-            var pill = Pill(window, 4);
-            var parts = PillButtons(window, 4);
+            var (window, _) = OpenWithViewport();
 
-            AssertBox(820, 91, 96, 32, BoxOf(pill, window));
-            Assert.False(((FixedToggle)parts[0]).IsChecked);
-            Assert.True(((FixedToggle)parts[1]).IsChecked);
-            Assert.Equal(24, parts[2].Bounds.Width);
-        });
-    }
-
-    [Fact]
-    public void A_menu_button_of_a_pill_says_it_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            ClickOn(PillButtons(window, 4)[2], window);
+            ClickOn(Items(window.Center.Overlay.View)[^1], window);
 
             Assert.Equal("Preview settings are not built yet.", window.Status);
         });
     }
 
     [Fact]
-    public void The_mode_pill_shows_the_icons_of_the_old_toolbar_in_order()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            Assert.Equal(
-                ["ToolTransform", "ToolMove", "ToolRotate", "ToolScale", "ToolSelect", "ListSelect", "Ruler"],
-                PillButtons(window, 0).OfType<FixedToggle>().Select(button => ((EditorIcon)button.Content!).IconName));
-        });
-    }
-
-    [Fact]
-    public void The_transform_and_view_menus_follow_the_last_pill_as_text()
+    public void The_transform_and_view_menus_float_as_text_in_a_pill_at_the_bottom_left()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var toolbar = window.Toolbar;
+            var pill = BoxOf(toolbar.Menus, window);
 
-            Assert.Equal(932, BoxOf(toolbar.TransformMenuButton, window).X);
+            Assert.Equal([303.0, 1218.0, 34.0], [pill.X, pill.Bottom, pill.Height]);
+            Assert.Equal(EditorBrushes.Floating, toolbar.Menus.Background);
+            Assert.Equal(307, BoxOf(toolbar.TransformMenuButton, window).X);
             Assert.Equal(2, BoxOf(toolbar.ViewButton, window).X - BoxOf(toolbar.TransformMenuButton, window).Right);
             Assert.Equal("Transform", toolbar.TransformMenuButton.Content);
             Assert.Equal("View", toolbar.ViewButton.Content);
@@ -413,7 +436,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_mesh_menu_is_a_chip_32_high_after_a_thin_bar_that_follows_view()
+    public void The_mesh_menu_follows_view_after_a_rule()
     {
         UiThread.Run(() =>
         {
@@ -428,32 +451,31 @@ public sealed class ViewportAreaTests
             var text = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
             // The widths follow the font, so the distances are measured from the neighbor.
-            Assert.Equal([91.0, 32.0, 95.0, 24.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
-            Assert.Equal(view.Right + 7, bar.X);
-            Assert.Equal(bar.Right + 8, chip.X);
+            Assert.Equal([1188.0, 26.0, 1192.0, 18.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
+            Assert.Equal(view.Right + 5, bar.X);
+            Assert.Equal(bar.Right + 5, chip.X);
             Assert.Equal(chip.X + 6, icon.X);
             Assert.Equal(chip.X + 28, text.X);
             Assert.Equal(chip.Right - 8, text.Right);
-            Assert.Equal(EditorBrushes.Raised, toolbar.MeshMenuButton.Background);
             Assert.Equal(EditorBrushes.LineStrong, toolbar.MeshGap.Background);
         });
     }
 
     [Fact]
-    public void The_menu_labels_are_centred_on_the_icons_of_the_pills()
+    public void The_menu_labels_are_centred_in_their_pill()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var iconCentre = BoxOf(PillButtons(window, 0)[0], window).Center.Y;
+            var middle = BoxOf(window.Toolbar.Menus, window).Center.Y;
 
             foreach (var button in new[] { window.Toolbar.TransformMenuButton, window.Toolbar.ViewButton })
             {
                 var label = button.GetVisualDescendants().OfType<TextBlock>().Single();
                 Assert.Equal(VerticalAlignment.Center, button.VerticalContentAlignment);
-                Assert.Equal(iconCentre, BoxOf(button, window).Center.Y);
+                Assert.Equal(middle, BoxOf(button, window).Center.Y);
                 // A 13 pixel font has an odd line height, so the label's centre can fall on a half pixel.
-                Assert.Equal(iconCentre, BoxOf(label, window).Center.Y, 0.5);
+                Assert.Equal(middle, BoxOf(label, window).Center.Y, 0.5);
             }
         });
     }
@@ -519,38 +541,39 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_projection_button_sits_10_pixels_in_from_the_viewport_corner()
+    public void The_view_pill_floats_10_pixels_in_from_the_top_right_of_the_viewport()
     {
         UiThread.Run(() =>
         {
             var (window, _) = OpenWithViewport();
-            var button = window.Center.Overlay.ProjectionButton;
+            var overlay = window.Center.Overlay;
+            var pill = BoxOf(overlay.View, window);
+            var chevron = overlay.ProjectionButton.GetVisualDescendants().OfType<EditorIcon>().Single();
 
-            Assert.Equal(303, BoxOf(button, window).X);
-            Assert.Equal(138, BoxOf(button, window).Y);
-            Assert.Equal(32, button.Bounds.Height);
-            var icon = BoxOf(button.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
-            Assert.Equal(311, icon.X);
-            Assert.Equal(new Size(16, 16), icon.Size);
-            Assert.Equal(Color.FromArgb(0x5c, 0, 0, 0), ((ISolidColorBrush)button.Background!).Color);
+            Assert.Equal([3101.0, 96.0, 34.0], [pill.Right, pill.Y, pill.Height]);
+            Assert.Equal(EditorBrushes.Floating, overlay.View.Background);
+            Assert.Equal(26, overlay.ProjectionButton.Bounds.Height);
+            Assert.Equal("Perspective", overlay.ProjectionLabel);
+            Assert.Equal("GuiDropdown", chevron.IconName);
+            Assert.Equal(EditorColors.TextDim, IconColor(overlay.ProjectionButton));
         });
     }
 
     [Fact]
-    public void The_axes_are_100_pixels_square_with_their_middle_50_in_from_the_top_right_corner()
+    public void The_axes_are_100_pixels_square_under_the_view_pill_at_the_right_edge()
     {
         UiThread.Run(() =>
         {
             var (window, _) = OpenWithViewport();
 
-            AssertBox(3011, 128, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
+            AssertBox(3011, 140, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
         });
     }
 
     [Theory]
-    [InlineData(3103, 166)]
-    [InlineData(700, 140)]
-    public void A_drag_that_starts_on_the_axes_or_beside_the_button_reaches_the_viewport(double x, double y)
+    [InlineData(3061, 190)]
+    [InlineData(1500, 113)]
+    public void A_drag_that_starts_on_the_axes_or_between_the_pills_reaches_the_viewport(double x, double y)
     {
         UiThread.Run(() =>
         {

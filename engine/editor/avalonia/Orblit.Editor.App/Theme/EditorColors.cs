@@ -10,6 +10,10 @@ internal static class EditorColors
     public static readonly Color Field = Color.Parse("#0D1015");
     public static readonly Color ClassBar = Color.Parse("#0F1217");
     public static readonly Color Panel = Color.Parse("#12151B");
+
+    // The island fill at 90 percent, for the pills that float over the viewport.
+    public static readonly Color Floating = Color.Parse("#E612151B");
+
     public static readonly Color Popover = Color.Parse("#161A21");
     public static readonly Color Raised = Color.Parse("#1A1E26");
     public static readonly Color Lifted = Color.Parse("#242A35");

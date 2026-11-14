@@ -8,6 +8,7 @@ internal static class EditorBrushes
 {
     public static readonly IBrush Window = new ImmutableSolidColorBrush(EditorColors.Window);
     public static readonly IBrush Panel = new ImmutableSolidColorBrush(EditorColors.Panel);
+    public static readonly IBrush Floating = new ImmutableSolidColorBrush(EditorColors.Floating);
     public static readonly IBrush Field = new ImmutableSolidColorBrush(EditorColors.Field);
     public static readonly IBrush Raised = new ImmutableSolidColorBrush(EditorColors.Raised);
     public static readonly IBrush Lifted = new ImmutableSolidColorBrush(EditorColors.Lifted);

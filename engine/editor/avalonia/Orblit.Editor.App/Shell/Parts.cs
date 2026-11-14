@@ -37,6 +37,24 @@ internal static class Parts
         return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(3), VerticalAlignment = VerticalAlignment.Center, Child = row };
     }
 
+    /// <summary>
+    /// A pill that floats 10 pixels in from an edge of the viewport, on a see-through fill with a stronger edge and
+    /// a shadow. It does not clip, so the shadow shows.
+    /// </summary>
+    public static Border Float(IEnumerable<Control> items)
+    {
+        var pill = Pill(items);
+        pill.Margin = new Thickness(10);
+        pill.Background = EditorBrushes.Floating;
+        pill.BorderBrush = EditorBrushes.LineStrong;
+        pill.BoxShadow = BoxShadows.Parse("0 6 20 0 #59000000");
+        pill.ClipToBounds = false;
+        return pill;
+    }
+
+    /// <summary>A thin upright line between groups in a pill, 18 high and 3 pixels clear on each side.</summary>
+    public static Border Rule() => new() { Width = 1, Height = 18, Margin = new Thickness(3, 0), Background = EditorBrushes.LineStrong };
+
     /// <summary>A button 24 pixels square: the icon and 4 pixels of padding, no border.</summary>
     public static Button Tight(Button button)
     {
