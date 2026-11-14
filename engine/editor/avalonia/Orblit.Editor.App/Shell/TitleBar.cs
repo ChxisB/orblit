@@ -118,7 +118,7 @@ internal sealed class TitleBar : Grid
             play,
             pause,
             stop,
-            new Border { Width = 1, Height = 18, Margin = new Thickness(3, 0), Background = EditorBrushes.LineStrong },
+            Parts.Rule(),
             Unbuilt.Mark(Parts.IconButton("PlayScene", "Run the current scene"), "Run current scene is the Play button."),
             Unbuilt.Mark(Parts.IconButton("PlayCustom", "Run a chosen scene"), "Run a chosen scene is not built yet."),
             Unbuilt.Mark(Parts.IconButton("MainMovieWrite", "Movie maker mode"), "Movie maker mode is not built yet."),
