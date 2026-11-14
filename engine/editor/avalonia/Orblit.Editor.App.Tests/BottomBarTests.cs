@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -14,14 +15,6 @@ public sealed class BottomBarTests
 
     static string[] Labels(Button tab) => tab.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text!).ToArray();
 
-    static EditorWindow OpenQuiet()
-    {
-        var window = OpenAtReferenceSize();
-        window.Fail("");
-        window.UpdateLayout();
-        return window;
-    }
-
     [Fact]
     public void The_bar_holds_the_five_panel_buttons_in_order()
     {
@@ -34,32 +27,32 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_first_button_starts_six_pixels_in_with_ten_before_its_content()
+    public void The_first_tab_starts_six_pixels_in_with_ten_before_its_icon_and_six_after_it()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var bar = BarOf(window);
-            var dot = bar.Tabs[0].GetVisualDescendants().OfType<Ellipse>().Single();
+            var icon = bar.Tabs[0].GetVisualDescendants().OfType<EditorIcon>().Single();
             var text = bar.Tabs[0].GetVisualDescendants().OfType<TextBlock>().Single();
 
-            Assert.Equal(293 + 6, BoxOf(bar.Tabs[0], window).X);
-            AssertBox(309, 1250, 8, 8, BoxOf(dot, window));
-            Assert.Equal(323, BoxOf(text, window).X);
+            AssertBox(293 + 6, 1241, BoxOf(bar.Tabs[0], window).Width, 26, BoxOf(bar.Tabs[0], window));
+            AssertBox(309, 1248, 13, 13, BoxOf(icon, window));
+            Assert.Equal(309 + 13 + 6, BoxOf(text, window).X);
         });
     }
 
     [Fact]
-    public void Only_the_output_button_has_a_dot_and_it_is_the_measured_colour()
+    public void Each_tab_shows_its_panel_icon_13_square_and_no_dot()
     {
         UiThread.Run(() =>
         {
             var bar = BarOf(OpenAtReferenceSize());
-            var dots = bar.Tabs.SelectMany(tab => tab.GetVisualDescendants().OfType<Ellipse>()).ToArray();
+            var icons = bar.Tabs.Select(tab => tab.GetVisualDescendants().OfType<EditorIcon>().Single()).ToArray();
 
-            var dot = Assert.Single(dots);
-            Assert.Equal(Color.Parse("#4CC38A"), ((ISolidColorBrush)dot.Fill!).Color);
-            Assert.Contains(dot, bar.Tabs[0].GetVisualDescendants());
+            Assert.Equal(["Output", "Debug", "AudioStreamPlayer", "Animation", "ShaderDock"], icons.Select(icon => icon.IconName));
+            Assert.All(icons, icon => Assert.Equal((13d, 13d), (icon.Bounds.Width, icon.Bounds.Height)));
+            Assert.Empty(bar.Tabs.SelectMany(tab => tab.GetVisualDescendants().OfType<Ellipse>()));
         });
     }
 
@@ -92,67 +85,47 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_buttons_are_dim_and_have_no_border()
+    public void The_output_tab_is_dim_and_the_unbuilt_tabs_dimmer_all_rounded_with_no_border()
     {
         UiThread.Run(() =>
         {
             var tabs = BarOf(OpenAtReferenceSize()).Tabs;
 
-            Assert.All(tabs, tab => Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tab.Foreground!).Color));
-            Assert.All(tabs, tab => Assert.Equal(0, tab.BorderThickness.Left));
+            Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tabs[0].Foreground!).Color);
+            Assert.All(tabs.Skip(1), tab => Assert.Equal(Color.Parse("#5C6573"), ((ISolidColorBrush)tab.Foreground!).Color));
+            Assert.All(tabs, tab => Assert.Equal((0d, EditorTheme.Corners), (tab.BorderThickness.Left, tab.CornerRadius)));
         });
     }
 
     [Fact]
-    public void The_separator_is_two_by_twenty_five_and_centred_in_the_bar()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenQuiet();
-            var separator = BoxOf(BarOf(window).Separator, window);
-
-            Assert.Equal(2, separator.Width);
-            Assert.Equal(25, separator.Height);
-            Assert.Equal(1241, separator.Y);
-            Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)BarOf(window).Separator.Background!).Color);
-        });
-    }
-
-    [Fact]
-    public void With_no_status_the_logo_starts_thirteen_pixels_after_the_separator()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenQuiet();
-            var bar = BarOf(window);
-            var logo = bar.VersionButton.GetVisualDescendants().OfType<EditorIcon>().Single();
-
-            AssertBox(BoxOf(bar.Separator, window).Right + 13, 1246, 16, 16, BoxOf(logo, window));
-        });
-    }
-
-    [Fact]
-    public void The_version_text_follows_the_logo_after_eleven_pixels()
+    public void The_rule_is_one_by_eighteen_and_eight_pixels_clear_of_the_status_and_the_version()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            window.Fail("Saved.");
+            window.UpdateLayout();
             var bar = BarOf(window);
-            var logo = bar.VersionButton.GetVisualDescendants().OfType<EditorIcon>().Single();
-            var text = bar.VersionButton.GetVisualDescendants().OfType<TextBlock>().Single();
+            var status = bar.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "Saved.");
+            var separator = BoxOf(bar.Separator, window);
 
-            Assert.Equal("1.0.stable", text.Text);
-            Assert.Equal("OrblitMonochrome", logo.IconName);
-            Assert.Equal(11, BoxOf(text, window).X - BoxOf(logo, window).Right);
+            AssertBox(BoxOf(status, window).Right + 8, 1245, 1, 18, separator);
+            Assert.Equal(separator.Right + 8, BoxOf(bar.VersionButton, window).X);
+            Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)bar.Separator.Background!).Color);
         });
     }
 
     [Fact]
-    public void The_version_is_drawn_dim()
+    public void The_version_is_small_dim_text_with_no_logo()
     {
         UiThread.Run(() =>
         {
-            Assert.Equal(0.65, BarOf(OpenAtReferenceSize()).VersionButton.Opacity);
+            var version = BarOf(OpenAtReferenceSize()).VersionButton;
+            var text = version.GetVisualDescendants().OfType<TextBlock>().Single();
+
+            Assert.Equal("1.0.stable", text.Text);
+            Assert.Equal((11d, EditorColors.TextDim, 1d), (text.FontSize, ((ISolidColorBrush)version.Foreground!).Color, version.Opacity));
+            Assert.Empty(version.GetVisualDescendants().OfType<EditorIcon>());
         });
     }
 
@@ -170,7 +143,7 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_pin_icon_ends_eleven_pixels_from_the_bar_edge_and_follows_the_version_by_seventeen()
+    public void The_pin_icon_ends_eleven_pixels_from_the_bar_edge_and_follows_the_version_by_eleven()
     {
         UiThread.Run(() =>
         {
@@ -182,13 +155,13 @@ public sealed class BottomBarTests
             Assert.Equal(293 + 2818 - 11, icon.Right);
             Assert.Equal("Pin", bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Equal(16, icon.Width);
-            Assert.InRange(icon.X - text.Right, 16.5, 17.5);
+            Assert.InRange(icon.X - text.Right, 10.5, 11.5);
             AssertBox(3079, 1241, 26, 26, BoxOf(bar.PinButton, window));
         });
     }
 
     [Fact]
-    public void The_status_line_sits_between_the_separator_and_the_version_and_follows_the_text()
+    public void The_status_follows_a_dim_info_icon_in_soft_12_pixel_text()
     {
         UiThread.Run(() =>
         {
@@ -197,10 +170,12 @@ public sealed class BottomBarTests
             window.Fail("Saved.");
             window.UpdateLayout();
             var status = bar.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "Saved.");
+            var icon = bar.GetVisualDescendants().OfType<EditorIcon>().Single(icon => icon.IconName == "Info");
 
-            Assert.Equal(BoxOf(bar.Separator, window).Right + 8, BoxOf(status, window).X);
-            Assert.Equal(BoxOf(bar.VersionButton, window).X, BoxOf(status, window).Right + 5);
-            Assert.InRange(BoxOf(status, window).Y + status.Bounds.Height / 2, 1254, 1255);
+            Assert.Equal(BoxOf(icon, window).Right + 6, BoxOf(status, window).X);
+            Assert.Equal((13d, EditorColors.TextDim), (icon.Bounds.Width, ((ISolidColorBrush)TextElement.GetForeground(icon)!).Color));
+            Assert.Equal((12d, EditorColors.TextSoft), (status.FontSize, ((ISolidColorBrush)status.Foreground!).Color));
+            Assert.InRange(BoxOf(status, window).Y + status.Bounds.Height / 2, 1253.5, 1254.5);
             Assert.Equal("Saved.", window.Status);
         });
     }

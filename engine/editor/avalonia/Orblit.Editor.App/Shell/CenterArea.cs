@@ -26,7 +26,7 @@ internal sealed class CenterArea : Grid
         Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
         BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
         Overlay = new ViewportOverlay { IsVisible = false };
-        Output = new OutputPanel { IsVisible = false };
+        Output = new OutputPanel { IsVisible = false, Margin = new Thickness(0, GapHeight, 0, 0) };
         bottom.OutputOpenChanged += open => Output.IsVisible = open;
         _main.Children.Add(viewport);
         _main.Children.Add(Overlay);
