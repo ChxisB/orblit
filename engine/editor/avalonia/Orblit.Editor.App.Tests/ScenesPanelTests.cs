@@ -255,7 +255,7 @@ public sealed class ScenesPanelTests
 
             Assert.Equal(new Point(22, BoxOf(line, window).Y), corner);
             Assert.Equal(new Size(256, 23), area.Size);
-            Assert.Equal(EditorColors.SelectedRow, ((ISolidColorBrush)highlight.Fill!).Color);
+            Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)highlight.Fill!).Color);
             Assert.Null(items[0].GetVisualDescendants().OfType<RowHighlight>().First().Fill);
         });
     }

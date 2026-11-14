@@ -19,7 +19,7 @@ internal sealed class BottomBar : Grid
     static readonly string[] Panels = ["Output", "Debugger", "Audio", "Animation", "Shader Editor"];
 
     readonly Button[] _tabs;
-    readonly Border _separator = new() { Width = 2, Height = 25, Margin = new Thickness(0, 0, 8, 0), Background = EditorBrushes.BarSeparator };
+    readonly Border _separator = new() { Width = 2, Height = 25, Margin = new Thickness(0, 0, 8, 0), Background = EditorBrushes.LineStrong };
     readonly Button _version = Unbuilt.Mark(
         new Button
         {
@@ -71,7 +71,7 @@ internal sealed class BottomBar : Grid
         private set
         {
             _outputOpen = value;
-            OutputTab.Foreground = value ? EditorBrushes.Text : EditorBrushes.TabInactive;
+            OutputTab.Foreground = value ? EditorBrushes.Text : EditorBrushes.TextDim;
             OutputOpenChanged?.Invoke(value);
         }
     }
@@ -107,7 +107,7 @@ internal sealed class BottomBar : Grid
             BorderThickness = new Thickness(0),
             MinWidth = 0,
             MinHeight = 0,
-            Foreground = EditorBrushes.TabInactive,
+            Foreground = EditorBrushes.TextDim,
         };
     }
 }

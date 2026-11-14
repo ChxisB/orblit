@@ -40,10 +40,10 @@ internal sealed class ScriptView : Border
         Background = null,
     };
 
-    readonly TextBlock _gutter = new() { FontFamily = s_mono, TextAlignment = TextAlignment.Right, Foreground = EditorBrushes.TabInactive, Margin = new Thickness(8, 0) };
+    readonly TextBlock _gutter = new() { FontFamily = s_mono, TextAlignment = TextAlignment.Right, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0) };
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Width = 240 };
     readonly TextBlock _name = new() { Text = "Pick a script.", FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _status = new() { Foreground = EditorBrushes.TabInactive, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _save = new() { Content = "Save", Padding = new Thickness(12, 4), MinHeight = 0, IsEnabled = false };
     IScriptFiles? _files;
     string? _open;

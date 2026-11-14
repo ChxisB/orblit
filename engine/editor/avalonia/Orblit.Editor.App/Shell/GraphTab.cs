@@ -44,7 +44,7 @@ internal sealed class GraphTab : Border
     public void Show(bool selected, bool edited)
     {
         _label.Text = edited ? $"{_name} *" : _name;
-        _label.Foreground = selected ? EditorBrushes.Accent : EditorBrushes.TabInactive;
+        _label.Foreground = selected ? EditorBrushes.Accent : EditorBrushes.TextDim;
         Background = selected ? EditorBrushes.Panel : null;
     }
 }

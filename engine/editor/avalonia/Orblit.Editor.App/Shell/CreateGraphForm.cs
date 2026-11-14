@@ -14,7 +14,7 @@ internal sealed class CreateGraphForm : StackPanel
 
     readonly TextBox _inherits = new() { Text = DefaultBase, MinWidth = FieldWidth };
     readonly TextBox _path = new() { Text = DefaultPath, MinWidth = FieldWidth };
-    readonly TextBlock _notice = new() { IsVisible = false, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MaxWidth = FieldWidth, Foreground = EditorBrushes.TabInactive };
+    readonly TextBlock _notice = new() { IsVisible = false, TextWrapping = Avalonia.Media.TextWrapping.Wrap, MaxWidth = FieldWidth, Foreground = EditorBrushes.TextDim };
     readonly Button _create = new() { Content = "Create" };
     readonly Button _cancel = new() { Content = "Cancel" };
 

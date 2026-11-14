@@ -81,7 +81,7 @@ internal sealed class DockTabs : Grid
         {
             var active = i == index;
             _tabs[i].Background = active ? EditorBrushes.Panel : Brushes.Transparent;
-            ((TextBlock)_tabs[i].Child!).Foreground = active ? EditorBrushes.Text : EditorBrushes.TabInactive;
+            ((TextBlock)_tabs[i].Child!).Foreground = active ? EditorBrushes.Text : EditorBrushes.TextDim;
         }
     }
 

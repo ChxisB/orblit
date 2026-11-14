@@ -40,7 +40,7 @@ internal sealed class ViewportToolbar : StackPanel
     readonly Button _view = Text("View");
     readonly Button _transformMenu = Text("Transform");
     readonly Button _mesh = MeshChip();
-    readonly Border _meshGap = new() { Width = 1, Height = 24, Margin = new Thickness(3, 0, 4, 0), Background = EditorBrushes.BarSeparator, IsVisible = false };
+    readonly Border _meshGap = new() { Width = 1, Height = 24, Margin = new Thickness(3, 0, 4, 0), Background = EditorBrushes.LineStrong, IsVisible = false };
     readonly MenuItem _focus = new() { Header = "Focus Selection" };
     readonly MenuItem _resetPosition = new() { Header = "Reset Position" };
     readonly MenuItem _resetRotation = new() { Header = "Reset Rotation" };
@@ -231,7 +231,7 @@ internal sealed class ViewportToolbar : StackPanel
         return new Button
         {
             Content = content,
-            Background = EditorBrushes.Chip,
+            Background = EditorBrushes.Raised,
             CornerRadius = EditorTheme.Corners,
             Padding = new Thickness(6, 0, 8, 0),
             BorderThickness = new Thickness(0),

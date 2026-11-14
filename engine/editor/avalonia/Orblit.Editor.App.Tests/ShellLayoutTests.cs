@@ -314,7 +314,7 @@ public sealed class ShellLayoutTests
             var window = OpenAtReferenceSize();
             window.SceneDock.Select(1);
 
-            Assert.Equal(EditorColors.TabInactive, Foreground(window.SceneDock.Tabs[0]));
+            Assert.Equal(EditorColors.TextDim, Foreground(window.SceneDock.Tabs[0]));
             Assert.Equal(EditorColors.Text, Foreground(window.SceneDock.Tabs[1]));
             Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)window.SceneDock.Tabs[1].Background!).Color);
             Assert.Equal(Colors.Transparent, ((ISolidColorBrush)window.SceneDock.Tabs[0].Background!).Color);

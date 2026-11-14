@@ -8,18 +8,25 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class EditorThemeTests
 {
-    // The values in REFERENCE.md, written out so a changed colour fails here.
+    // The values on the design canvas, written out so a changed colour fails here.
     [Theory]
-    [InlineData("Window", "#141414")]
-    [InlineData("Panel", "#2a2a2a")]
-    [InlineData("Field", "#1c1c1c")]
-    [InlineData("InspectorField", "#212121")]
-    [InlineData("ActiveTool", "#424242")]
-    [InlineData("SelectedRow", "#494949")]
-    [InlineData("Text", "#c5c5c5")]
-    [InlineData("Accent", "#559eff")]
-    [InlineData("TabInactive", "#959595")]
-    public void Colours_match_the_reference(string name, string hex)
+    [InlineData("Window", "#0A0C10")]
+    [InlineData("Panel", "#12151B")]
+    [InlineData("Field", "#0D1015")]
+    [InlineData("Popover", "#161A21")]
+    [InlineData("Raised", "#1A1E26")]
+    [InlineData("Lifted", "#242A35")]
+    [InlineData("Line", "#1E232C")]
+    [InlineData("LineStrong", "#262C37")]
+    [InlineData("Text", "#E8EBF0")]
+    [InlineData("TextSoft", "#AAB2BF")]
+    [InlineData("TextDim", "#858F9D")]
+    [InlineData("Accent", "#E5893F")]
+    [InlineData("AccentSoft", "#29E5893F")]
+    [InlineData("AxisX", "#FF6B78")]
+    [InlineData("AxisY", "#8BD450")]
+    [InlineData("AxisZ", "#5AA2FF")]
+    public void Colours_match_the_design(string name, string hex)
     {
         var field = typeof(EditorColors).GetField(name)!;
 
@@ -41,20 +48,34 @@ public sealed class EditorThemeTests
 
             Assert.Equal(Colors.Transparent, BrushOf(window, "ButtonBackground"));
             Assert.Equal(EditorColors.Hover, BrushOf(window, "ButtonBackgroundPointerOver"));
-            Assert.Equal(EditorColors.ActiveTool, BrushOf(window, "ToggleButtonBackgroundChecked"));
+            Assert.Equal(EditorColors.AccentSoft, BrushOf(window, "ToggleButtonBackgroundChecked"));
             Assert.Equal(EditorColors.Accent, BrushOf(window, "ToggleButtonForegroundChecked"));
             Assert.Equal(EditorColors.Field, BrushOf(window, "TextControlBackground"));
             Assert.Equal(EditorColors.Accent, BrushOf(window, "TextControlBorderBrushFocused"));
             Assert.Equal(EditorColors.Field, BrushOf(window, "ComboBoxBackground"));
             // A row highlight draws the block, so the line itself stays clear.
             Assert.Equal(Colors.Transparent, BrushOf(window, "TreeViewItemBackgroundSelected"));
-            Assert.Equal(EditorColors.Panel, BrushOf(window, "MenuFlyoutPresenterBackground"));
+            Assert.Equal(EditorColors.Popover, BrushOf(window, "MenuFlyoutPresenterBackground"));
+            Assert.Equal(EditorColors.LineStrong, BrushOf(window, "MenuFlyoutPresenterBorderBrush"));
             Assert.True(window.TryFindResource("ContentControlThemeFontFamily", ThemeVariant.Dark, out var font));
             Assert.True(window.TryFindResource("ControlContentThemeFontSize", ThemeVariant.Dark, out var size));
             Assert.True(window.TryFindResource("ControlCornerRadius", ThemeVariant.Dark, out var corners));
             Assert.Equal(EditorTheme.Font, font);
-            Assert.Equal(14.0, size);
-            Assert.Equal(new CornerRadius(4), corners);
+            Assert.Equal(13.0, size);
+            Assert.Equal(new CornerRadius(6), corners);
+        });
+    }
+
+    [Fact]
+    public void The_base_theme_takes_the_editor_accent()
+    {
+        UiThread.Run(() =>
+        {
+            var window = new Window();
+            window.Show();
+
+            Assert.True(window.TryFindResource("SystemAccentColor", ThemeVariant.Dark, out var accent));
+            Assert.Equal(EditorColors.Accent, accent);
         });
     }
 

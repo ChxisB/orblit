@@ -36,7 +36,7 @@ internal sealed class GraphCanvas : Grid
     readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     readonly TextBlock _notice = new() { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _noticeBar;
-    readonly TextBlock _empty = new() { Text = "This script has no function yet.", Foreground = EditorBrushes.TabInactive, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
+    readonly TextBlock _empty = new() { Text = "This script has no function yet.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
     readonly Button _frame = Parts.IconButton("GraphFrame", "Frame the selected steps. Ctrl or Command and G does the same.");
     readonly Button _fit = Parts.IconButton("ZoomReset", "Show every step");
     readonly Avalonia.Controls.Primitives.ToggleButton _curved = Parts.IconToggle("Curve", "Curved wires. Off draws straight wires.");
