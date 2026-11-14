@@ -36,6 +36,7 @@ internal sealed class EditorWindow : Window
     readonly CloseBar _closeBar = new();
     readonly ScenesPanel _scenes = new();
     readonly TextBlock _status = new() { Text = "Starting the engine." };
+    readonly Toast _toast;
     // Save and Frame are commands without a place of their own on screen. The shortcuts, the menus and the
     // tests press them, and a button off keeps its key unhandled.
     readonly Button _save = new() { IsEnabled = false };
@@ -66,8 +67,10 @@ internal sealed class EditorWindow : Window
     nint _gizmoTarget;
 
     // The screen bar of macOS has its own app menu, so a window on any other system also carries Quit and About.
-    public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null)
+    public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null, TimeProvider? time = null)
     {
+        // 16 in from the right, and 10 clear of the bottom bar, which ends 44 pixels above the window's foot.
+        _toast = new Toast(time ?? TimeProvider.System) { Margin = new Thickness(0, 0, 16, 54) };
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
         _titleBar = new TitleBar(_playButton, _stopButton);
         ShowTitle();
@@ -113,7 +116,7 @@ internal sealed class EditorWindow : Window
         _game.RunRequested += Play;
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
-        AddHandler(Unbuilt.Event, (_, e) => _status.Text = e.Message);
+        AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", new Panel())) { Slot = DockSlot.UpperLeft };
         _fileDock = new DockTabs(("FileSystem", _scenes), ("History", new Panel())) { Slot = DockSlot.LowerLeft };
         _inspectorPane = new InspectorPane(_inspector);
@@ -134,8 +137,8 @@ internal sealed class EditorWindow : Window
         _pollTimer.Tick += (_, _) => Poll();
         Closed += (_, _) => _pollTimer.Stop();
         WireMenus();
-        Content = Layout();
-        NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), message => _status.Text = message));
+        Content = new Panel { Children = { Layout(), _toast } };
+        NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
     internal TitleBar Bar => _titleBar;
@@ -196,6 +199,8 @@ internal sealed class EditorWindow : Window
 
     internal string Status => _status.Text ?? "";
 
+    internal Toast Toast => _toast;
+
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
 
@@ -214,6 +219,13 @@ internal sealed class EditorWindow : Window
     }
 
     public void Fail(string message) => _status.Text = message;
+
+    // The status line keeps the answer after the toast goes.
+    void ShowUnbuilt(string message)
+    {
+        _status.Text = message;
+        _toast.Show(message);
+    }
 
     /// <summary>Reads the lines the engine logged since the last call and shows whether the game still runs.</summary>
     internal void Poll()

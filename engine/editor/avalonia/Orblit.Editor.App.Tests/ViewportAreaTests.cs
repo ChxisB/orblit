@@ -8,6 +8,7 @@ using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
@@ -193,7 +194,7 @@ public sealed class ViewportAreaTests
             var toolbar = window.Toolbar;
             static string Kind(Control item) => item switch
             {
-                FixedToggle tool => ((EditorIcon)tool.Content!).IconName,
+                FixedToggle tool => tool.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName,
                 Button => "options",
                 _ => "|",
             };
@@ -372,7 +373,7 @@ public sealed class ViewportAreaTests
 
             Assert.Same(window.Center.Overlay.ProjectionButton, items[0]);
             Assert.IsType<Border>(items[1]);
-            Assert.Equal(["PreviewSun", "PreviewEnvironment"], previews.Select(preview => ((EditorIcon)preview.Content!).IconName));
+            Assert.Equal(["PreviewSun", "PreviewEnvironment"], previews.Select(preview => preview.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName));
             Assert.Equal([false, true], previews.Select(preview => preview.IsChecked == true));
         });
     }

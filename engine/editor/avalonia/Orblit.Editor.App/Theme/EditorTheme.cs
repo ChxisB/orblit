@@ -37,6 +37,9 @@ internal sealed class EditorTheme : Styles
 
     internal static readonly CornerRadius IslandCorners = new(10);
 
+    /// <summary>The corners of a menu or a flyout, a step rounder than an island.</summary>
+    internal static readonly CornerRadius PopoverCorners = new(11);
+
     // Fluent resource key and the colour that replaces it. A list of cases, so it is data.
     static readonly (string Key, Color Color)[] BrushOverrides =
     [
@@ -138,6 +141,8 @@ internal sealed class EditorTheme : Styles
         ("MenuFlyoutItemForegroundPointerOver", EditorColors.Text),
         ("MenuFlyoutItemForegroundPressed", EditorColors.Text),
         ("MenuFlyoutItemForegroundDisabled", EditorColors.Disabled),
+        ("FlyoutPresenterBackground", EditorColors.Popover),
+        ("FlyoutBorderThemeBrush", EditorColors.LineStrong),
         ("ToolTipBackground", EditorColors.Raised),
         ("ToolTipBorderBrush", EditorColors.LineStrong),
         ("ToolTipForeground", EditorColors.Text),
@@ -161,6 +166,8 @@ internal sealed class EditorTheme : Styles
             ["TreeViewItemMinHeight"] = RowHeight,
             ["TreeViewItemIndent"] = RowIndent,
             ["ScrollBarThumbBackgroundColor"] = EditorColors.Lifted,
+            // The base theme puts 4 pixels over and under the rows of a menu. The menu's own inset is the only gap.
+            ["MenuFlyoutScrollerMargin"] = new Thickness(0),
         };
         foreach (var (key, color) in BrushOverrides)
         {
@@ -198,6 +205,26 @@ internal sealed class EditorTheme : Styles
                 new Setter(TemplatedControl.ForegroundProperty, new SolidColorBrush(EditorColors.Text)),
             },
         });
+        // A menu is a popover: a 5 pixel inset round rows that have round corners of their own.
+        Add(new Style(x => Selectors.Or(x.OfType<MenuFlyoutPresenter>(), x.OfType<ContextMenu>()))
+        {
+            Setters =
+            {
+                new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(5)),
+            },
+        });
+        Add(new Style(x => x.OfType<MenuItem>())
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, 28.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(8, 0)),
+                new Setter(TemplatedControl.CornerRadiusProperty, Corners),
+            },
+        });
+        // A flyout holds a form, so it keeps the base theme's room inside and takes only the popover's corners.
+        Add(new Style(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } });
     }
 
     // The theme draws a thin, wide chevron. The reference draws its own 12 pixel arrow icons.
