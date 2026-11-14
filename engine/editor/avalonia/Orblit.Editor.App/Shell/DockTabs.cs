@@ -86,6 +86,7 @@ internal sealed class DockTabs : Border
         {
             var active = i == index;
             _tabs[i].Background = active ? EditorBrushes.Line : Brushes.Transparent;
+            // MakeTab always gives a tab its title block.
             ((TextBlock)_tabs[i].Child!).Foreground = active ? EditorBrushes.Text : EditorBrushes.TextDim;
         }
     }
