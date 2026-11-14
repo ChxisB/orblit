@@ -54,6 +54,18 @@ scene. It runs on macOS. Nothing else has run it.
   `OrblitSharp` beside the host executable. A packaged editor has no answer
   for that yet.
 
+## Look
+
+The look is Ember Graphite, decision 280. Each panel is an island on a
+near-black window. One ember accent marks the choice and the focus.
+
+- `Orblit.Editor.App/Theme/EditorColors.cs` holds every colour.
+  `EditorBrushes.cs` beside it makes the brushes.
+- `EditorTheme.cs` holds the sizes and corners, and the styles that dress the
+  Fluent controls.
+- A control that is not built carries a small amber dot. A click on it shows
+  a toast at the bottom right for 4 seconds.
+
 ## Run it
 
 1. Build the engine library once, from the repo root:
