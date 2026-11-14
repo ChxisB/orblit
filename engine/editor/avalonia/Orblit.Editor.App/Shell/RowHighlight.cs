@@ -9,14 +9,12 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The rounded block behind a selected or hovered tree row. The theme paints the whole line, so its own row
-/// colors are clear and a row lays this under its content instead.
+/// The rounded block behind a selected or hovered tree row, 6 pixels in from each side of the tree at every depth.
+/// The theme paints the whole line, so its own row colors are clear and a row lays this under its content instead.
 /// </summary>
 internal sealed class RowHighlight : Control
 {
-    // The block starts this far before the icon and stops this far short of the right edge of the tree.
-    internal const double Lead = 4;
-    const double RightGap = 6;
+    const double Inset = 6;
 
     TreeViewItem? _item;
     Border? _line;
@@ -33,7 +31,7 @@ internal sealed class RowHighlight : Control
     {
         var line = _line!.Bounds.Size;
         var origin = _line.TranslatePoint(default, this)!.Value;
-        return new Rect(-Lead, origin.Y, origin.X + line.Width - RightGap + Lead, line.Height);
+        return new Rect(origin.X + Inset, origin.Y, line.Width - (2 * Inset), line.Height);
     }
 
     public override void Render(DrawingContext context)

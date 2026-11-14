@@ -115,7 +115,7 @@ public sealed class EditorThemeTests
 
             Assert.True(window.TryFindResource("TreeViewItemMinHeight", ThemeVariant.Dark, out var height));
             Assert.True(window.TryFindResource("TreeViewItemIndent", ThemeVariant.Dark, out var indent));
-            Assert.Equal(23.0, height);
+            Assert.Equal(26.0, height);
             Assert.Equal(12.0, indent);
         });
     }

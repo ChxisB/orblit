@@ -41,7 +41,7 @@ internal sealed class ScenesPanel : Grid
     };
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter Files",
+        PlaceholderText = "Filter files",
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,

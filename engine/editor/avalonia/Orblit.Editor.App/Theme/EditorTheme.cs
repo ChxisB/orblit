@@ -21,7 +21,7 @@ internal sealed class EditorTheme : Styles
 
     internal const double FontSize = 13;
 
-    internal const double RowHeight = 23;
+    internal const double RowHeight = 26;
 
     internal const double RowIndent = 12;
 

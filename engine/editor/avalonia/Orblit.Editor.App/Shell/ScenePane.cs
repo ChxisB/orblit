@@ -25,7 +25,7 @@ internal sealed class ScenePane : Grid
     readonly TreeView _outline = new();
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter Nodes",
+        PlaceholderText = "Filter entities",
         Height = 28,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
