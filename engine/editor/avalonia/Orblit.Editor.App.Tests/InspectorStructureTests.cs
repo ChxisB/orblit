@@ -69,7 +69,7 @@ public sealed class InspectorStructureTests
             var bars = Bars(window);
 
             AssertBox(BarX, 149, BarWidth, 30, BoxOf(bars[0], window));
-            Assert.Equal(Color.Parse("#393939"), ((ISolidColorBrush)bars[0].Background!).Color);
+            Assert.Equal(Color.Parse("#0F1217"), ((ISolidColorBrush)bars[0].Background!).Color);
             Assert.Equal(EditorTheme.Corners, bars[0].CornerRadius);
             Assert.All(bars, bar => Assert.Equal((BarX, BarWidth, 30d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
         });
@@ -216,7 +216,7 @@ public sealed class InspectorStructureTests
 
             Assert.Equal((3231d, 130d, 30d), (button.X, button.Width, button.Height));
             Near(field.Bottom + 13, button.Y);
-            Assert.Equal(Color.Parse("#424242"), ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
+            Assert.Equal(Color.Parse("#1A1E26"), ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
             Assert.Equal("Add", window.Inspector.MetadataButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Contains(window.Inspector.MetadataButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Add Metadata");
         });

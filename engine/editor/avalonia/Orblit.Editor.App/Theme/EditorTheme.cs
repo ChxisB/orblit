@@ -15,11 +15,11 @@ namespace Orblit.Editor.App.Theme;
 /// </summary>
 internal sealed class EditorTheme : Styles
 {
-    // The old editor ships its font as woff2 files that the renderer cannot load, so this is the system font.
-    // A font package or converted files replace it in this one line (decision 218).
+    // The design names a font the editor does not ship, so this is the system font until decision 281 is taken.
+    // A font package or converted files replace it in this one line.
     internal static readonly FontFamily Font = FontFamily.Default;
 
-    internal const double FontSize = 14;
+    internal const double FontSize = 13;
 
     internal const double RowHeight = 23;
 
@@ -30,7 +30,7 @@ internal sealed class EditorTheme : Styles
 
     const double ArrowShift = 7;
 
-    internal static readonly CornerRadius Corners = new(4);
+    internal static readonly CornerRadius Corners = new(6);
 
     // Fluent resource key and the colour that replaces it. A list of cases, so it is data.
     static readonly (string Key, Color Color)[] BrushOverrides =
@@ -51,8 +51,8 @@ internal sealed class EditorTheme : Styles
         ("ToggleButtonBackgroundPointerOver", EditorColors.Hover),
         ("ToggleButtonBackgroundPressed", EditorColors.Field),
         ("ToggleButtonBackgroundDisabled", Colors.Transparent),
-        ("ToggleButtonBackgroundChecked", EditorColors.ActiveTool),
-        ("ToggleButtonBackgroundCheckedPointerOver", EditorColors.ActiveTool),
+        ("ToggleButtonBackgroundChecked", EditorColors.AccentSoft),
+        ("ToggleButtonBackgroundCheckedPointerOver", EditorColors.AccentSoft),
         ("ToggleButtonBackgroundCheckedPressed", EditorColors.Field),
         ("ToggleButtonBackgroundCheckedDisabled", Colors.Transparent),
         ("ToggleButtonBorderBrush", Colors.Transparent),
@@ -75,10 +75,10 @@ internal sealed class EditorTheme : Styles
         ("TextControlBackgroundPointerOver", EditorColors.Field),
         ("TextControlBackgroundFocused", EditorColors.Field),
         ("TextControlBackgroundDisabled", EditorColors.Field),
-        ("TextControlBorderBrush", Colors.Transparent),
-        ("TextControlBorderBrushPointerOver", Colors.Transparent),
+        ("TextControlBorderBrush", EditorColors.Line),
+        ("TextControlBorderBrushPointerOver", EditorColors.LineStrong),
         ("TextControlBorderBrushFocused", EditorColors.Accent),
-        ("TextControlBorderBrushDisabled", Colors.Transparent),
+        ("TextControlBorderBrushDisabled", EditorColors.Line),
         ("TextControlForeground", EditorColors.Text),
         ("TextControlForegroundPointerOver", EditorColors.Text),
         ("TextControlForegroundFocused", EditorColors.Text),
@@ -91,17 +91,17 @@ internal sealed class EditorTheme : Styles
         ("ComboBoxBackgroundPointerOver", EditorColors.Field),
         ("ComboBoxBackgroundPressed", EditorColors.Field),
         ("ComboBoxBackgroundDisabled", EditorColors.Field),
-        ("ComboBoxBorderBrush", Colors.Transparent),
-        ("ComboBoxBorderBrushPointerOver", Colors.Transparent),
-        ("ComboBoxBorderBrushPressed", Colors.Transparent),
-        ("ComboBoxBorderBrushDisabled", Colors.Transparent),
+        ("ComboBoxBorderBrush", EditorColors.Line),
+        ("ComboBoxBorderBrushPointerOver", EditorColors.LineStrong),
+        ("ComboBoxBorderBrushPressed", EditorColors.LineStrong),
+        ("ComboBoxBorderBrushDisabled", EditorColors.Line),
         ("ComboBoxForeground", EditorColors.Text),
         ("ComboBoxForegroundDisabled", EditorColors.Disabled),
-        ("ComboBoxDropDownBackground", EditorColors.Panel),
-        ("ComboBoxDropDownBorderBrush", EditorColors.Window),
+        ("ComboBoxDropDownBackground", EditorColors.Popover),
+        ("ComboBoxDropDownBorderBrush", EditorColors.LineStrong),
         ("ComboBoxItemBackgroundPointerOver", EditorColors.Hover),
-        ("ComboBoxItemBackgroundSelected", EditorColors.SelectedRow),
-        ("ComboBoxItemBackgroundSelectedPointerOver", EditorColors.SelectedRow),
+        ("ComboBoxItemBackgroundSelected", EditorColors.AccentSoft),
+        ("ComboBoxItemBackgroundSelectedPointerOver", EditorColors.AccentSoft),
         ("ComboBoxItemForeground", EditorColors.Text),
         ("ComboBoxItemForegroundPointerOver", EditorColors.Text),
         ("ComboBoxItemForegroundSelected", EditorColors.Text),
@@ -124,8 +124,8 @@ internal sealed class EditorTheme : Styles
         ("TreeViewItemForegroundSelected", EditorColors.Text),
         ("TreeViewItemForegroundSelectedPointerOver", EditorColors.Text),
         ("TreeViewItemForegroundSelectedPressed", EditorColors.Text),
-        ("MenuFlyoutPresenterBackground", EditorColors.Panel),
-        ("MenuFlyoutPresenterBorderBrush", EditorColors.Window),
+        ("MenuFlyoutPresenterBackground", EditorColors.Popover),
+        ("MenuFlyoutPresenterBorderBrush", EditorColors.LineStrong),
         ("MenuFlyoutItemBackground", Colors.Transparent),
         ("MenuFlyoutItemBackgroundPointerOver", EditorColors.Hover),
         ("MenuFlyoutItemBackgroundPressed", EditorColors.Hover),
@@ -133,20 +133,21 @@ internal sealed class EditorTheme : Styles
         ("MenuFlyoutItemForegroundPointerOver", EditorColors.Text),
         ("MenuFlyoutItemForegroundPressed", EditorColors.Text),
         ("MenuFlyoutItemForegroundDisabled", EditorColors.Disabled),
-        ("ToolTipBackground", EditorColors.Field),
-        ("ToolTipBorderBrush", EditorColors.ActiveTool),
+        ("ToolTipBackground", EditorColors.Raised),
+        ("ToolTipBorderBrush", EditorColors.LineStrong),
         ("ToolTipForeground", EditorColors.Text),
         ("ScrollBarTrackFill", Colors.Transparent),
         ("ScrollBarTrackFillPointerOver", Colors.Transparent),
         ("ScrollBarTrackStroke", Colors.Transparent),
         ("ScrollBarTrackStrokePointerOver", Colors.Transparent),
-        ("ScrollBarThumbFillPointerOver", EditorColors.SelectedRow),
+        ("ScrollBarThumbFillPointerOver", EditorColors.Disabled),
         ("ScrollBarThumbFillPressed", EditorColors.TextDim),
     ];
 
     public EditorTheme()
     {
-        Add(new FluentTheme());
+        // The theme resolves its own accent before any parent resource, so the palette is the one place to set it.
+        Add(new FluentTheme { Palettes = { [ThemeVariant.Dark] = new ColorPaletteResources { Accent = EditorColors.Accent } } });
         var overrides = new ResourceDictionary
         {
             ["ContentControlThemeFontFamily"] = Font,
@@ -154,7 +155,7 @@ internal sealed class EditorTheme : Styles
             ["ControlCornerRadius"] = Corners,
             ["TreeViewItemMinHeight"] = RowHeight,
             ["TreeViewItemIndent"] = RowIndent,
-            ["ScrollBarThumbBackgroundColor"] = EditorColors.ActiveTool,
+            ["ScrollBarThumbBackgroundColor"] = EditorColors.Lifted,
         };
         foreach (var (key, color) in BrushOverrides)
         {

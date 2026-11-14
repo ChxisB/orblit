@@ -36,7 +36,7 @@ internal sealed class PalettePopup : Border
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Top;
         Background = EditorBrushes.Panel;
-        BorderBrush = EditorBrushes.BarSeparator;
+        BorderBrush = EditorBrushes.LineStrong;
         BorderThickness = new Thickness(1);
         CornerRadius = new CornerRadius(4);
         Padding = new Thickness(6);
@@ -113,7 +113,7 @@ internal sealed class PalettePopup : Border
     {
         var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         row.Children.Add(new TextBlock { Text = entry.Label });
-        row.Children.Add(new TextBlock { Text = entry.Group, Foreground = EditorBrushes.TabInactive, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
+        row.Children.Add(new TextBlock { Text = entry.Group, Foreground = EditorBrushes.TextDim, FontSize = 11, VerticalAlignment = VerticalAlignment.Center });
         return row;
     }
 

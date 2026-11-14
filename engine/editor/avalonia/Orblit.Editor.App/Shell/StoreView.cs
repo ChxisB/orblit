@@ -14,7 +14,7 @@ internal sealed class StoreView : Border
 {
     readonly Func<CancellationToken, Task<string>> _read;
     readonly Button _load = new() { Content = "Load", Padding = new Thickness(12, 4), MinHeight = 0 };
-    readonly TextBlock _status = new() { Text = "Press Load to read the store.", Foreground = EditorBrushes.TabInactive, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { Text = "Press Load to read the store.", Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
     bool _loading;
 
@@ -76,7 +76,7 @@ internal sealed class StoreView : Border
     {
         var title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         title.Children.Add(new TextBlock { Text = kit.Name, FontWeight = FontWeight.Bold });
-        title.Children.Add(new TextBlock { Text = $"{kit.Version} by {kit.Publisher}", Foreground = EditorBrushes.TabInactive });
+        title.Children.Add(new TextBlock { Text = $"{kit.Version} by {kit.Publisher}", Foreground = EditorBrushes.TextDim });
         var row = new StackPanel { Margin = new Thickness(4, 4) };
         row.Children.Add(title);
         if (kit.Summary.Length > 0)

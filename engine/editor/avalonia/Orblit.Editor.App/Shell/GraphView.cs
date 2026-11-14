@@ -59,12 +59,12 @@ internal sealed class GraphView : Border
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
     readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(6) };
     readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _status = new() { Foreground = EditorBrushes.TabInactive, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
+    readonly TextBlock _status = new() { Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
     readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _canvasSlot = new();
     readonly Border _panelsSlot = new();
     readonly Border _inspectorSlot = new();
-    readonly Border _side = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TabInactive };
+    readonly Border _side = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TextDim };
     readonly ScrollViewer _debugHost = new() { MaxHeight = 240, Padding = new Thickness(10, 6), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     readonly Button _fileButton = new() { Content = "File", Padding = new Thickness(12, 4), MinHeight = 0 };
     readonly Button _gotoButton = new() { Content = "Goto", Padding = new Thickness(12, 4), MinHeight = 0 };

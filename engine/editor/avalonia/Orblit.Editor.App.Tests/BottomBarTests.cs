@@ -44,7 +44,7 @@ public sealed class BottomBarTests
             var text = bar.Tabs[0].GetVisualDescendants().OfType<TextBlock>().Single();
 
             Assert.Equal(287 + 6, BoxOf(bar.Tabs[0], window).X);
-            AssertBox(303, 1250, 8, 8, BoxOf(dot, window));
+            AssertBox(303, 1251, 8, 8, BoxOf(dot, window));
             Assert.Equal(317, BoxOf(text, window).X);
         });
     }
@@ -58,7 +58,7 @@ public sealed class BottomBarTests
             var dots = bar.Tabs.SelectMany(tab => tab.GetVisualDescendants().OfType<Ellipse>()).ToArray();
 
             var dot = Assert.Single(dots);
-            Assert.Equal(Color.Parse("#9d8d5c"), ((ISolidColorBrush)dot.Fill!).Color);
+            Assert.Equal(Color.Parse("#4CC38A"), ((ISolidColorBrush)dot.Fill!).Color);
             Assert.Contains(dot, bar.Tabs[0].GetVisualDescendants());
         });
     }
@@ -98,7 +98,7 @@ public sealed class BottomBarTests
         {
             var tabs = BarOf(OpenAtReferenceSize()).Tabs;
 
-            Assert.All(tabs, tab => Assert.Equal(EditorColors.TabInactive, ((ISolidColorBrush)tab.Foreground!).Color));
+            Assert.All(tabs, tab => Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tab.Foreground!).Color));
             Assert.All(tabs, tab => Assert.Equal(0, tab.BorderThickness.Left));
         });
     }
@@ -114,7 +114,7 @@ public sealed class BottomBarTests
             Assert.Equal(2, separator.Width);
             Assert.Equal(25, separator.Height);
             Assert.Equal(1234 + (41 - 25) / 2, separator.Y);
-            Assert.Equal(Color.Parse("#191919"), ((ISolidColorBrush)BarOf(window).Separator.Background!).Color);
+            Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)BarOf(window).Separator.Background!).Color);
         });
     }
 

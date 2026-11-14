@@ -13,7 +13,7 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class GameView : Border
 {
-    readonly TextBlock _state = new() { Foreground = EditorBrushes.TabInactive };
+    readonly TextBlock _state = new() { Foreground = EditorBrushes.TextDim };
     readonly Button _run = new() { Content = "Run", Padding = new Thickness(12, 4), MinHeight = 0 };
     readonly Button _stop = new() { Content = "Stop", Padding = new Thickness(12, 4), MinHeight = 0 };
 

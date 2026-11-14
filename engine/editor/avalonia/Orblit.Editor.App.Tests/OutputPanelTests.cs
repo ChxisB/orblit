@@ -77,7 +77,7 @@ public sealed class OutputPanelTests
             Assert.False(window.Center.Output.IsVisible);
             Assert.False(bar.OutputOpen);
             Assert.Equal(shut, BoxOf(window.Viewport, window).Height);
-            Assert.Equal(EditorColors.TabInactive, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
+            Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
         });
     }
 

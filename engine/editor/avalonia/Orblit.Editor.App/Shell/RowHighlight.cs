@@ -26,7 +26,7 @@ internal sealed class RowHighlight : Control
         IsHitTestVisible = false;
     }
 
-    internal IBrush? Fill => _item is { IsSelected: true } ? EditorBrushes.SelectedRow : _line is { IsPointerOver: true } ? EditorBrushes.Hover : null;
+    internal IBrush? Fill => _item is { IsSelected: true } ? EditorBrushes.AccentSoft : _line is { IsPointerOver: true } ? EditorBrushes.Hover : null;
 
     /// <summary>The block in the coordinates of this control, as tall as the line of the tree item.</summary>
     internal Rect Area()

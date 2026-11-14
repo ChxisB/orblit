@@ -434,8 +434,8 @@ public sealed class ViewportAreaTests
             Assert.Equal(chip.X + 6, icon.X);
             Assert.Equal(chip.X + 28, text.X);
             Assert.Equal(chip.Right - 8, text.Right);
-            Assert.Equal(EditorBrushes.Chip, toolbar.MeshMenuButton.Background);
-            Assert.Equal(EditorBrushes.BarSeparator, toolbar.MeshGap.Background);
+            Assert.Equal(EditorBrushes.Raised, toolbar.MeshMenuButton.Background);
+            Assert.Equal(EditorBrushes.LineStrong, toolbar.MeshGap.Background);
         });
     }
 
@@ -452,7 +452,8 @@ public sealed class ViewportAreaTests
                 var label = button.GetVisualDescendants().OfType<TextBlock>().Single();
                 Assert.Equal(VerticalAlignment.Center, button.VerticalContentAlignment);
                 Assert.Equal(iconCentre, BoxOf(button, window).Center.Y);
-                Assert.Equal(iconCentre, BoxOf(label, window).Center.Y);
+                // A 13 pixel font has an odd line height, so the label's centre can fall on a half pixel.
+                Assert.Equal(iconCentre, BoxOf(label, window).Center.Y, 0.5);
             }
         });
     }

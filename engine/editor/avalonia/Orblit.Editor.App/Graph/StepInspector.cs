@@ -34,7 +34,7 @@ internal sealed class StepInspector : Border
         _edits = new PinEdits(file);
         Background = EditorBrushes.Panel;
         BorderThickness = new Thickness(0, 1, 0, 0);
-        BorderBrush = EditorBrushes.TabInactive;
+        BorderBrush = EditorBrushes.TextDim;
         Child = new ScrollViewer { Content = _body, MaxHeight = 280, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         _file.Changed += Rebuild;
         Rebuild();

@@ -213,7 +213,7 @@ internal sealed class InspectorPanel : StackPanel
         HorizontalAlignment = HorizontalAlignment.Center,
         HorizontalContentAlignment = HorizontalAlignment.Center,
         VerticalContentAlignment = VerticalAlignment.Center,
-        Background = EditorBrushes.ActiveTool,
+        Background = EditorBrushes.Raised,
         CornerRadius = EditorTheme.Corners,
         Content = new StackPanel
         {

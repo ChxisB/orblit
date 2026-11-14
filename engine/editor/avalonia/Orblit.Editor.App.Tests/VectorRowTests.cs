@@ -29,7 +29,7 @@ public sealed class VectorRowTests
             var field = row.GetVisualDescendants().OfType<Border>().Single(border => border.Background == EditorBrushes.Field);
 
             AssertBox(rowBox.X, rowBox.Y + 30, rowBox.Width, 28, BoxOf(field, window));
-            Assert.Equal(new Avalonia.CornerRadius(4), field.CornerRadius);
+            Assert.Equal(new Avalonia.CornerRadius(6), field.CornerRadius);
             Assert.Equal(rowBox.X + 8, BoxOf(label, window).X);
             Assert.Equal(59, rowBox.Height);
         });
@@ -66,8 +66,8 @@ public sealed class VectorRowTests
             var colors = Texts(row).Where(text => text.Text is "x" or "y" or "z").Select(text => ((ISolidColorBrush)text.Foreground!).Color).ToArray();
             var unit = Texts(row).First(text => text.Text == "m");
 
-            Assert.Equal([Color.Parse("#7b3d49"), Color.Parse("#6f8341"), Color.Parse("#436488")], colors);
-            Assert.Equal(Color.Parse("#606060"), ((ISolidColorBrush)unit.Foreground!).Color);
+            Assert.Equal([Color.Parse("#FF6B78"), Color.Parse("#8BD450"), Color.Parse("#5AA2FF")], colors);
+            Assert.Equal(Color.Parse("#6B7482"), ((ISolidColorBrush)unit.Foreground!).Color);
         });
     }
 
