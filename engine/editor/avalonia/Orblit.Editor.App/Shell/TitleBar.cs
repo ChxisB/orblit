@@ -128,15 +128,6 @@ internal sealed class TitleBar : Grid
     // Drawn as a field so the bar keeps its place, and marked because search is not built yet.
     static Button Search()
     {
-        var key = new Border
-        {
-            CornerRadius = new CornerRadius(4),
-            Padding = new Thickness(5, 3),
-            Background = EditorBrushes.Line,
-            VerticalAlignment = VerticalAlignment.Center,
-            Child = new TextBlock { Text = "⌘K", FontSize = 10.5, Foreground = EditorBrushes.TextSoft },
-        };
-        DockPanel.SetDock(key, Dock.Right);
         var icon = Parts.SearchIcon();
         icon.Margin = new Thickness(0, 0, 8, 0);
         DockPanel.SetDock(icon, Dock.Left);
@@ -152,7 +143,7 @@ internal sealed class TitleBar : Grid
             Foreground = EditorBrushes.TextDim,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Content = new DockPanel { Children = { icon, key, new TextBlock { Text = "Search", VerticalAlignment = VerticalAlignment.Center } } },
+            Content = new DockPanel { Children = { icon, new TextBlock { Text = "Search", VerticalAlignment = VerticalAlignment.Center } } },
         };
         ToolTip.SetTip(button, "Search");
         return Unbuilt.Mark(button, "Search is not built yet.");

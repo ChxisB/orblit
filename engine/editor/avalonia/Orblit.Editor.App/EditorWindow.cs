@@ -69,8 +69,8 @@ internal sealed class EditorWindow : Window
     // The screen bar of macOS has its own app menu, so a window on any other system also carries Quit and About.
     public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null, TimeProvider? time = null)
     {
-        // 16 in from the right, and 10 clear of the bottom bar, which ends 44 pixels above the window's foot.
-        _toast = new Toast(time ?? TimeProvider.System) { Margin = new Thickness(0, 0, 16, 54) };
+        // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
+        _toast = new Toast(time ?? TimeProvider.System) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
         _titleBar = new TitleBar(_playButton, _stopButton);
         ShowTitle();
@@ -135,7 +135,11 @@ internal sealed class EditorWindow : Window
         _center.AddWorkspace(TitleBar.Store, _store);
         _titleBar.WorkspaceChosen += ChooseWorkspace;
         _pollTimer.Tick += (_, _) => Poll();
-        Closed += (_, _) => _pollTimer.Stop();
+        Closed += (_, _) =>
+        {
+            _pollTimer.Stop();
+            _toast.Close();
+        };
         WireMenus();
         Content = new Panel { Children = { Layout(), _toast } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));

@@ -14,6 +14,8 @@ public sealed class PinColorsTests
     [InlineData(GraphPortSort.Data, 4, "#F0A365")]
     [InlineData(GraphPortSort.Data, 24, "#8DB8FF")]
     [InlineData(GraphPortSort.Data, 30, "#8DB8FF")]
+    [InlineData(GraphPortSort.Data, 2, "#A6D86B")]
+    [InlineData(GraphPortSort.Data, 21, "#E3D27A")]
     public void A_pin_takes_the_canvas_tint_of_its_type(GraphPortSort sort, int type, string tint)
     {
         Assert.Equal(Color.Parse(tint), Of(sort, type));

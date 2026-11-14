@@ -54,6 +54,14 @@ internal sealed class Toast : Border
         _timer = _time.CreateTimer(_ => Dispatcher.UIThread.Post(() => Hide(show)), null, Shown, Timeout.InfiniteTimeSpan);
     }
 
+    /// <summary>Takes the card down and drops its timer, so nothing fires after the window goes.</summary>
+    public void Close()
+    {
+        _timer?.Dispose();
+        _timer = null;
+        IsVisible = false;
+    }
+
     // A late timer from an earlier message leaves a newer one up.
     void Hide(int show)
     {

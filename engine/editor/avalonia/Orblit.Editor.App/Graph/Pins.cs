@@ -26,17 +26,17 @@ internal static class PinColors
     const int FirstName = 21;
     const int FirstObject = 24;
 
-    // Flow, decimals, text and objects take the canvas tints. The rest keep tints of their own, so a pin
-    // still tells its type.
+    // Flow, decimals, text and objects take the canvas tints. Whole numbers and names move to lime and sand,
+    // away from the teal and blue those took, so every type still reads apart.
     static readonly IBrush s_flow = new ImmutableSolidColorBrush(EditorColors.Text);
     static readonly IBrush s_any = Brush("#9a9a9a");
     static readonly IBrush s_bool = Brush("#d9534f");
-    static readonly IBrush s_int = Brush("#4fb3a5");
+    static readonly IBrush s_int = Brush("#A6D86B");
     static readonly IBrush s_float = Brush("#7FD4C1");
     static readonly IBrush s_text = Brush("#F0A365");
     static readonly IBrush s_math = Brush("#b28ae6");
     static readonly IBrush s_color = Brush("#e87fb0");
-    static readonly IBrush s_name = Brush("#6fa8dc");
+    static readonly IBrush s_name = Brush("#E3D27A");
     static readonly IBrush s_object = Brush("#8DB8FF");
 
     public static IBrush Flow => s_flow;

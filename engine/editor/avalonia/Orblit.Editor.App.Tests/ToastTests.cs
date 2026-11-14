@@ -34,6 +34,23 @@ public sealed class ToastTests
     }
 
     [Fact]
+    public void Closing_the_window_takes_the_toast_down_and_drops_its_timer()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var window = OpenAtReferenceSize(new FakeScene(), time: time);
+            Click(window.SceneTabs.MenuButton);
+            Assert.Equal(1, time.Armed);
+
+            window.Close();
+
+            Assert.False(window.Toast.IsVisible);
+            Assert.Equal(0, time.Armed);
+        });
+    }
+
+    [Fact]
     public void The_toast_goes_after_four_seconds_and_the_status_keeps_the_message()
     {
         UiThread.Run(() =>

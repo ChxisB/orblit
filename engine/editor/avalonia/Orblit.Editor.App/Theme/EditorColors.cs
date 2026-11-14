@@ -40,7 +40,6 @@ internal static class EditorColors
     public static readonly Color AxisY = Color.Parse("#8BD450");
     public static readonly Color AxisZ = Color.Parse("#5AA2FF");
 
-    public static readonly Color Ok = Color.Parse("#4CC38A");
     public static readonly Color Warn = Color.Parse("#F2B33D");
 
     // The tree icons keep the colour they are drawn in, and a folder is that colour times the accent.
