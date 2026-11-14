@@ -58,9 +58,9 @@ public sealed class TreeGuidesTests
             var drawn = Drawn(window.ScenePane.Guides, window);
 
             Assert.Equal(3, drawn.Length);
-            AssertBox(18, lamp.Y + 1, 2, sound.Y + 12 - lamp.Y - 1, drawn[0].Area);
-            AssertBox(19, lamp.Y + 11, 18, 1, drawn[1].Area);
-            AssertBox(19, sound.Y + 11, 18, 1, drawn[2].Area);
+            AssertBox(18, lamp.Y + 1, 2, sound.Y + 14 - lamp.Y - 1, drawn[0].Area);
+            AssertBox(19, lamp.Y + 13, 18, 1, drawn[1].Area);
+            AssertBox(19, sound.Y + 13, 18, 1, drawn[2].Area);
             Assert.Equal([Vertical, Stub, Stub], drawn.Select(line => line.Colour));
         });
     }
@@ -77,10 +77,10 @@ public sealed class TreeGuidesTests
             var drawn = Drawn(window.ScenePane.Guides, window);
 
             Assert.Equal(4, drawn.Length);
-            AssertBox(18, lamp.Y, 2, 12, drawn[0].Area);
-            AssertBox(20, lamp.Y + 10, 17, 1, drawn[1].Area);
-            AssertBox(18, lamp.Y + 11, 19, 1, drawn[2].Area);
-            AssertBox(18, lamp.Y + 12, 19, 1, drawn[3].Area);
+            AssertBox(18, lamp.Y, 2, 14, drawn[0].Area);
+            AssertBox(20, lamp.Y + 12, 17, 1, drawn[1].Area);
+            AssertBox(18, lamp.Y + 13, 19, 1, drawn[2].Area);
+            AssertBox(18, lamp.Y + 14, 19, 1, drawn[3].Area);
             Assert.Equal([Lit, Stub, Lit, Stub], drawn.Select(line => line.Colour));
         });
     }
@@ -99,8 +99,8 @@ public sealed class TreeGuidesTests
             var drawn = Drawn(window.ScenePane.Guides, window);
 
             Assert.Equal(4, drawn.Length);
-            AssertBox(18, lamp.Y, 2, sound.Y + 12 - lamp.Y, drawn[0].Area);
-            AssertBox(18, sound.Y + 11, 19, 1, drawn[2].Area);
+            AssertBox(18, lamp.Y, 2, sound.Y + 14 - lamp.Y, drawn[0].Area);
+            AssertBox(18, sound.Y + 13, 19, 1, drawn[2].Area);
         });
     }
 
@@ -132,8 +132,8 @@ public sealed class TreeGuidesTests
 
             var drawn = Drawn(window.Scenes.Guides, window);
 
-            Assert.Contains(drawn, line => line.Area == new Rect(30, scene.Y + 1, 2, 11) && line.Colour == Vertical);
-            Assert.Contains(drawn, line => line.Area == new Rect(31, scene.Y + 11, 18, 1) && line.Colour == Stub);
+            Assert.Contains(drawn, line => line.Area == new Rect(30, scene.Y + 1, 2, 13) && line.Colour == Vertical);
+            Assert.Contains(drawn, line => line.Area == new Rect(31, scene.Y + 13, 18, 1) && line.Colour == Stub);
         });
     }
 }

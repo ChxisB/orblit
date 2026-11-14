@@ -23,7 +23,7 @@ internal sealed class InspectorPane : Grid
     readonly ScrollViewer _viewer;
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter Properties",
+        PlaceholderText = "Filter properties",
         Height = BoxHeight,
         MinHeight = 0,
         InnerRightContent = Parts.SearchIcon(),

@@ -105,7 +105,7 @@ public sealed class ScenesPanelTests
 
             AssertBox(11, 739, 237, 28, BoxOf(panel.FilterBox, window));
             AssertBox(254, 741, 24, 24, BoxOf(panel.SortButton, window));
-            Assert.Equal("Filter Files", panel.FilterBox.PlaceholderText);
+            Assert.Equal("Filter files", panel.FilterBox.PlaceholderText);
         });
     }
 
@@ -184,7 +184,7 @@ public sealed class ScenesPanelTests
     }
 
     [Fact]
-    public void The_rows_start_14_pixels_under_the_filter_and_are_23_high()
+    public void The_rows_start_14_pixels_under_the_filter_and_are_26_high()
     {
         UiThread.Run(() =>
         {
@@ -192,10 +192,7 @@ public sealed class ScenesPanelTests
             var items = Items(window);
 
             Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
-            Assert.Equal(781, BoxOf(items[0], window).Y);
-            Assert.Equal(804, BoxOf(items[1], window).Y);
-            Assert.Equal(827, BoxOf(items[2], window).Y);
-            Assert.Equal(850, BoxOf(items[3], window).Y);
+            Assert.Equal([781.0, 807.0, 833.0, 859.0], items.Take(4).Select(item => BoxOf(item, window).Y));
         });
     }
 
@@ -241,7 +238,7 @@ public sealed class ScenesPanelTests
     }
 
     [Fact]
-    public void The_selected_row_is_a_block_from_before_the_icon_to_near_the_dock_edge()
+    public void The_selected_row_is_a_soft_accent_block_6_pixels_in_from_each_side()
     {
         UiThread.Run(() =>
         {
@@ -253,8 +250,8 @@ public sealed class ScenesPanelTests
             var area = highlight.Area();
             var corner = highlight.TranslatePoint(area.TopLeft, window)!.Value;
 
-            Assert.Equal(new Point(25, BoxOf(line, window).Y), corner);
-            Assert.Equal(new Size(254, 23), area.Size);
+            Assert.Equal(new Point(BoxOf(line, window).X + 6, BoxOf(line, window).Y), corner);
+            Assert.Equal(new Size(BoxOf(line, window).Width - 12, 26), area.Size);
             Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)highlight.Fill!).Color);
             Assert.Null(items[0].GetVisualDescendants().OfType<RowHighlight>().First().Fill);
         });

@@ -33,7 +33,7 @@ public sealed class ScenePaneTests
         Rows(window).Select(row => row.GetVisualDescendants().OfType<TextBlock>().Single().Text!).ToArray();
 
     [Fact]
-    public void Each_row_has_a_highlight_that_starts_before_its_icon_and_covers_the_line()
+    public void Each_row_has_a_highlight_6_pixels_in_from_each_side_of_its_line_at_every_depth()
     {
         UiThread.Run(() =>
         {
@@ -42,9 +42,11 @@ public sealed class ScenePaneTests
             foreach (var row in Rows(window))
             {
                 var highlight = row.GetVisualDescendants().OfType<RowHighlight>().Single();
+                var line = BoxOf(row.GetVisualAncestors().OfType<TreeViewItem>().First().GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_LayoutRoot"), window);
+                var area = highlight.Area();
 
-                Assert.Equal(-4, highlight.Area().X);
-                Assert.Equal(EditorTheme.RowHeight, highlight.Area().Height);
+                Assert.Equal(new Point(line.X + 6, line.Y), highlight.TranslatePoint(area.TopLeft, window));
+                Assert.Equal(new Size(line.Width - 12, 26), area.Size);
             }
         });
     }
@@ -74,12 +76,12 @@ public sealed class ScenePaneTests
             Assert.Equal(9, BoxOf(pane.AddButton, window).X);
             Assert.Equal(41, BoxOf(pane.InstanceButton, window).X);
             Assert.Equal(250, BoxOf(pane.MenuButton, window).X);
-            Assert.Equal("Filter Nodes", pane.FilterBox.PlaceholderText);
+            Assert.Equal("Filter entities", pane.FilterBox.PlaceholderText);
         });
     }
 
     [Fact]
-    public void The_tree_starts_under_the_button_row_with_rows_23_high()
+    public void The_tree_starts_under_the_button_row_with_rows_26_high()
     {
         UiThread.Run(() =>
         {
@@ -89,8 +91,8 @@ public sealed class ScenePaneTests
 
             Assert.Equal(3, items.Length);
             Assert.Equal(132, BoxOf(items[0], window).Y);
-            Assert.Equal(23, BoxOf(items[1], window).Y - BoxOf(items[0], window).Y);
-            Assert.Equal(23, BoxOf(items[2], window).Y - BoxOf(items[1], window).Y);
+            Assert.Equal(26, BoxOf(items[1], window).Y - BoxOf(items[0], window).Y);
+            Assert.Equal(26, BoxOf(items[2], window).Y - BoxOf(items[1], window).Y);
         });
     }
 

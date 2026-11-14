@@ -36,7 +36,7 @@ public sealed class InspectorPaneTests
 
             AssertBox(3123, 122, 274, 28, BoxOf(pane.FilterBox, window));
             AssertBox(3403, 124, 24, 24, BoxOf(pane.ToolsButton, window));
-            Assert.Equal("Filter Properties", pane.FilterBox.PlaceholderText);
+            Assert.Equal("Filter properties", pane.FilterBox.PlaceholderText);
         });
     }
 
