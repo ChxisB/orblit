@@ -14,6 +14,9 @@ internal sealed class ManualTime : TimeProvider
         return timer;
     }
 
+    /// <summary>The timers that will still fire.</summary>
+    public int Armed => _timers.Count(timer => timer.Due != TimeSpan.MaxValue);
+
     // shortcut: a timer fires once and ignores its period, a repeating timer needs a test of its own first.
     public void Advance(TimeSpan by)
     {

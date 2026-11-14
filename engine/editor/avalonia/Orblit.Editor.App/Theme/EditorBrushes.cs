@@ -24,9 +24,6 @@ internal static class EditorBrushes
     public static readonly IBrush Warn = new ImmutableSolidColorBrush(EditorColors.Warn);
     public static readonly IBrush TreeIcon = new ImmutableSolidColorBrush(EditorColors.TreeIcon);
     public static readonly IBrush FolderIcon = new ImmutableSolidColorBrush(EditorColors.FolderIcon);
-    public static readonly IBrush AxisX = new ImmutableSolidColorBrush(EditorColors.AxisX);
-    public static readonly IBrush AxisY = new ImmutableSolidColorBrush(EditorColors.AxisY);
-    public static readonly IBrush AxisZ = new ImmutableSolidColorBrush(EditorColors.AxisZ);
     public static readonly IBrush Unit = new ImmutableSolidColorBrush(EditorColors.Unit);
     public static readonly IBrush ClassBar = new ImmutableSolidColorBrush(EditorColors.ClassBar);
     public static readonly IBrush Guide = new ImmutableSolidColorBrush(EditorColors.Guide);

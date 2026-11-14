@@ -59,8 +59,9 @@ scene. It runs on macOS. Nothing else has run it.
 The look is Ember Graphite, decision 280. Each panel is an island on a
 near-black window. One ember accent marks the choice and the focus.
 
-- `Orblit.Editor.App/Theme/EditorColors.cs` holds every colour.
-  `EditorBrushes.cs` beside it makes the brushes.
+- `Orblit.Editor.App/Theme/EditorColors.cs` holds the shell's colours.
+  `EditorBrushes.cs` beside it makes the brushes. The graph keeps its pin
+  and step tints in `Orblit.Editor.App/Graph`.
 - `EditorTheme.cs` holds the sizes and corners, and the styles that dress the
   Fluent controls.
 - A control that is not built carries a small amber dot. A click on it shows

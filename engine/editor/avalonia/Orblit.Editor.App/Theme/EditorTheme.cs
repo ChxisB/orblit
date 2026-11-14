@@ -158,23 +158,7 @@ internal sealed class EditorTheme : Styles
     {
         // The theme resolves its own accent before any parent resource, so the palette is the one place to set it.
         Add(new FluentTheme { Palettes = { [ThemeVariant.Dark] = new ColorPaletteResources { Accent = EditorColors.Accent } } });
-        var overrides = new ResourceDictionary
-        {
-            ["ContentControlThemeFontFamily"] = Font,
-            ["ControlContentThemeFontSize"] = FontSize,
-            ["ControlCornerRadius"] = Corners,
-            ["TreeViewItemMinHeight"] = RowHeight,
-            ["TreeViewItemIndent"] = RowIndent,
-            ["ScrollBarThumbBackgroundColor"] = EditorColors.Lifted,
-            // The base theme puts 4 pixels over and under the rows of a menu. The menu's own inset is the only gap.
-            ["MenuFlyoutScrollerMargin"] = new Thickness(0),
-        };
-        foreach (var (key, color) in BrushOverrides)
-        {
-            overrides[key] = new SolidColorBrush(color);
-        }
-
-        Resources = overrides;
+        Resources = Overrides();
         // The theme gives the arrow a 36 pixel box with margins that no style can change. A negative margin
         // on the arrow brings it back to the reference at 10. A row does the same for its icon.
         Add(new Style(x => x.OfType<TreeViewItem>().Template().Name("PART_ExpandCollapseChevron"))
@@ -205,16 +189,43 @@ internal sealed class EditorTheme : Styles
                 new Setter(TemplatedControl.ForegroundProperty, new SolidColorBrush(EditorColors.Text)),
             },
         });
-        // A menu is a popover: a 5 pixel inset round rows that have round corners of their own.
-        Add(new Style(x => Selectors.Or(x.OfType<MenuFlyoutPresenter>(), x.OfType<ContextMenu>()))
+        AddRange(PopoverStyles());
+    }
+
+    static ResourceDictionary Overrides()
+    {
+        var overrides = new ResourceDictionary
+        {
+            ["ContentControlThemeFontFamily"] = Font,
+            ["ControlContentThemeFontSize"] = FontSize,
+            ["ControlCornerRadius"] = Corners,
+            ["TreeViewItemMinHeight"] = RowHeight,
+            ["TreeViewItemIndent"] = RowIndent,
+            ["ScrollBarThumbBackgroundColor"] = EditorColors.Lifted,
+            // The base theme puts 4 pixels over and under the rows of a menu. The menu's own inset is the only gap.
+            ["MenuFlyoutScrollerMargin"] = new Thickness(0),
+        };
+        foreach (var (key, color) in BrushOverrides)
+        {
+            overrides[key] = new SolidColorBrush(color);
+        }
+
+        return overrides;
+    }
+
+    // A menu is a popover: a 5 pixel inset round rows that have round corners of their own. A flyout holds a
+    // form, so it keeps the base theme's room inside and takes only the popover's corners.
+    static Style[] PopoverStyles() =>
+    [
+        new(x => Selectors.Or(x.OfType<MenuFlyoutPresenter>(), x.OfType<ContextMenu>()))
         {
             Setters =
             {
                 new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners),
                 new Setter(TemplatedControl.PaddingProperty, new Thickness(5)),
             },
-        });
-        Add(new Style(x => x.OfType<MenuItem>())
+        },
+        new(x => x.OfType<MenuItem>())
         {
             Setters =
             {
@@ -222,10 +233,9 @@ internal sealed class EditorTheme : Styles
                 new Setter(TemplatedControl.PaddingProperty, new Thickness(8, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
-        });
-        // A flyout holds a form, so it keeps the base theme's room inside and takes only the popover's corners.
-        Add(new Style(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } });
-    }
+        },
+        new(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } },
+    ];
 
     // The theme draws a thin, wide chevron. The reference draws its own 12 pixel arrow icons.
     static Border Arrow(ToggleButton button)
