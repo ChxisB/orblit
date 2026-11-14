@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -17,8 +18,12 @@ public sealed class VectorRowTests
 
     static TextBlock[] Texts(VectorRow row) => [.. row.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsVisible)];
 
+    static Border[] Fields(VectorRow row) => [.. row.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("num"))];
+
+    static Border TagOf(Border field) => (Border)((DockPanel)field.Child!).Children[0];
+
     [Fact]
-    public void A_row_is_a_label_over_a_dark_field_28_high()
+    public void A_row_is_a_label_over_three_fields_28_high_and_4_apart()
     {
         UiThread.Run(() =>
         {
@@ -26,53 +31,48 @@ public sealed class VectorRowTests
             var row = Selected(window);
             var rowBox = BoxOf(row, window);
             var label = Texts(row).Single(text => text.Text == "Position");
-            var field = row.GetVisualDescendants().OfType<Border>().Single(border => border.Background == EditorBrushes.Field);
+            var fields = Fields(row).Select(field => BoxOf(field, window)).ToArray();
 
-            AssertBox(rowBox.X, rowBox.Y + 30, rowBox.Width, 28, BoxOf(field, window));
-            Assert.Equal(new Avalonia.CornerRadius(6), field.CornerRadius);
+            Assert.Equal(3, fields.Length);
+            Assert.All(fields, field => Assert.Equal((rowBox.Y + 30, 28d), (field.Y, field.Height)));
+            Assert.Equal(rowBox.X, fields[0].X);
+            Near(rowBox.Right, fields[2].Right);
+            Near(fields[0].Right + 4, fields[1].X);
+            Near(fields[1].Right + 4, fields[2].X);
+            Assert.All(Fields(row), field => Assert.Equal(
+                (EditorBrushes.Field, EditorBrushes.Line, new Thickness(1), new CornerRadius(6)),
+                (field.Background, field.BorderBrush, field.BorderThickness, field.CornerRadius)));
             Assert.Equal(rowBox.X + 8, BoxOf(label, window).X);
             Assert.Equal(59, rowBox.Height);
         });
     }
 
     [Fact]
-    public void The_field_has_three_cells_with_the_letter_8_in_and_the_value_28_in()
+    public void Each_field_starts_with_an_18_pixel_tag_in_its_axis_colour_at_12_percent()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var row = Selected(window);
-            var field = BoxOf(row.GetVisualDescendants().OfType<Border>().Single(border => border.Background == EditorBrushes.Field), window);
-            var letters = Texts(row).Where(text => text.Text is "x" or "y" or "z").ToArray();
+            Color[] axes = [EditorColors.AxisX, EditorColors.AxisY, EditorColors.AxisZ];
 
-            Assert.Equal(["x", "y", "z"], letters.Select(text => text.Text));
             for (var i = 0; i < 3; i++)
             {
-                var cellX = field.X + field.Width / 3 * i;
-                Near(cellX + 8, BoxOf(letters[i], window).X + letters[i].Padding.Left);
-                Near(cellX + 28, BoxOf(row.Axes[i], window).X);
+                var field = BoxOf(Fields(row)[i], window);
+                var tag = TagOf(Fields(row)[i]);
+                var letter = (TextBlock)tag.Child!;
+
+                AssertBox(field.X + 1, field.Y + 1, 18, 26, BoxOf(tag, window));
+                Assert.Equal(Color.FromArgb(0x1F, axes[i].R, axes[i].G, axes[i].B), ((ISolidColorBrush)tag.Background!).Color);
+                Assert.Equal((new[] { "X", "Y", "Z" }[i], axes[i], FontWeight.Bold), (letter.Text, ((ISolidColorBrush)letter.Foreground!).Color, letter.FontWeight));
+                Assert.Equal(BoxOf(tag, window).Right, BoxOf(row.Axes[i], window).X);
+                Assert.Equal(6, row.Axes[i].Padding.Left);
             }
         });
     }
 
     [Fact]
-    public void The_letters_are_red_green_and_blue_and_the_unit_is_dim()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var row = Selected(window);
-
-            var colors = Texts(row).Where(text => text.Text is "x" or "y" or "z").Select(text => ((ISolidColorBrush)text.Foreground!).Color).ToArray();
-            var unit = Texts(row).First(text => text.Text == "m");
-
-            Assert.Equal([Color.Parse("#FF6B78"), Color.Parse("#8BD450"), Color.Parse("#5AA2FF")], colors);
-            Assert.Equal(Color.Parse("#6B7482"), ((ISolidColorBrush)unit.Foreground!).Color);
-        });
-    }
-
-    [Fact]
-    public void The_unit_follows_the_value_7_pixels_after_it()
+    public void The_unit_is_dim_and_ends_7_pixels_inside_its_field()
     {
         UiThread.Run(() =>
         {
@@ -83,8 +83,43 @@ public sealed class VectorRowTests
             Assert.Equal(3, units.Length);
             for (var i = 0; i < 3; i++)
             {
-                Assert.Equal(BoxOf(row.Axes[i], window).Right + 7, BoxOf(units[i], window).X);
+                Assert.Equal(BoxOf(Fields(row)[i], window).Right - 1 - 7, BoxOf(units[i], window).Right);
+                Assert.Equal(BoxOf(units[i], window).X, BoxOf(row.Axes[i], window).Right);
+                Assert.Equal(EditorColors.Unit, ((ISolidColorBrush)units[i].Foreground!).Color);
             }
+        });
+    }
+
+    [Fact]
+    public void A_long_value_stays_inside_its_field()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+            var before = Fields(row).Select(field => BoxOf(field, window)).ToArray();
+
+            row.Show(new System.Numerics.Vector3(123456789.125f, -0.000123456f, 98765.4321f));
+            window.UpdateLayout();
+
+            Assert.Equal(before, Fields(row).Select(field => BoxOf(field, window)));
+            Assert.All(Enumerable.Range(0, 3), i => Assert.True(BoxOf(row.Axes[i], window).Right <= BoxOf(Fields(row)[i], window).Right));
+        });
+    }
+
+    [Fact]
+    public void A_field_lights_its_edge_while_its_box_has_focus()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+
+            row.Axes[1].Focus();
+            window.UpdateLayout();
+
+            Assert.Equal([EditorBrushes.Line, EditorBrushes.Accent, EditorBrushes.Line], Fields(row).Select(field => field.BorderBrush));
+            Assert.Equal(new Thickness(0), row.Axes[1].GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_BorderElement").BorderThickness);
         });
     }
 

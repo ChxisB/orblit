@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
@@ -61,17 +63,32 @@ public sealed class InspectorStructureTests
     }
 
     [Fact]
-    public void A_bar_is_a_30_high_rounded_block_inside_a_6_pixel_gutter()
+    public void A_bar_is_a_34_high_strip_across_the_gutter_with_a_line_over_it()
     {
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
             var bars = Bars(window);
 
-            AssertBox(BarX, 161, BarWidth, 30, BoxOf(bars[0], window));
-            Assert.Equal(Color.Parse("#0F1217"), ((ISolidColorBrush)bars[0].Background!).Color);
-            Assert.Equal(EditorTheme.Corners, bars[0].CornerRadius);
-            Assert.All(bars, bar => Assert.Equal((BarX, BarWidth, 30d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
+            AssertBox(BarX - 6, 161, BarWidth + 12, 34, BoxOf(bars[0], window));
+            Assert.Equal(
+                (EditorBrushes.ClassBar, EditorBrushes.Line, new Thickness(0, 1, 0, 0), default(CornerRadius)),
+                (bars[0].Background, bars[0].BorderBrush, bars[0].BorderThickness, bars[0].CornerRadius));
+            Assert.All(bars, bar => Assert.Equal((BarX - 6, BarWidth + 12, 34d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
+        });
+    }
+
+    [Fact]
+    public void A_bar_starts_its_icon_12_pixels_in_and_names_the_class_in_semibold_12_and_a_half()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(FakeScene.Lamp);
+            var bar = Bars(window)[0];
+            var title = bar.GetVisualDescendants().OfType<TextBlock>().Single();
+
+            Assert.Equal(BarX - 6 + 12, BoxOf(bar.GetVisualDescendants().OfType<EditorIcon>().Single(), window).X);
+            Assert.Equal((FontWeight.SemiBold, 12.5), (title.FontWeight, title.FontSize));
         });
     }
 
@@ -206,17 +223,20 @@ public sealed class InspectorStructureTests
     }
 
     [Fact]
-    public void Add_Metadata_is_a_centred_130_by_30_button_under_the_script_row()
+    public void Add_Metadata_is_a_ghost_button_on_a_dashed_edge_across_the_gutter_under_the_script_row()
     {
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
             var field = BoxOf(window.Inspector.ScriptField, window);
             var button = BoxOf(window.Inspector.MetadataButton, window);
+            var edge = window.Inspector.MetadataButton.GetVisualDescendants().OfType<Rectangle>().Single();
 
-            Assert.Equal((BarX + (BarWidth - 130) / 2, 130d, 30d), (button.X, button.Width, button.Height));
+            Assert.Equal((BarX, BarWidth, 30d), (button.X, button.Width, button.Height));
             Near(field.Bottom + 13, button.Y);
-            Assert.Equal(Color.Parse("#1A1E26"), ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
+            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
+            Assert.Equal((EditorBrushes.LineStrong, button.Size), (edge.Stroke, BoxOf(edge, window).Size));
+            Assert.NotEmpty(edge.StrokeDashArray!);
             Assert.Equal("Add", window.Inspector.MetadataButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Contains(window.Inspector.MetadataButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Add Metadata");
         });

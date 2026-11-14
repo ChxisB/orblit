@@ -1,6 +1,7 @@
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
@@ -201,25 +202,35 @@ internal sealed class InspectorPanel : StackPanel
         _transformRows.Children.Add(row);
     }
 
+    // A ghost button on a dashed edge, because it adds a row and holds no value. Border draws no dashes, so a
+    // rectangle under the content does.
     static Button Metadata() => new()
     {
-        Width = 130,
         Height = 30,
         MinHeight = 0,
         MinWidth = 0,
         Padding = new Thickness(0),
         BorderThickness = new Thickness(0),
         Margin = new Thickness(0, 13, 0, 0),
-        HorizontalAlignment = HorizontalAlignment.Center,
-        HorizontalContentAlignment = HorizontalAlignment.Center,
-        VerticalContentAlignment = VerticalAlignment.Center,
-        Background = EditorBrushes.Raised,
+        HorizontalAlignment = HorizontalAlignment.Stretch,
+        HorizontalContentAlignment = HorizontalAlignment.Stretch,
+        VerticalContentAlignment = VerticalAlignment.Stretch,
+        Foreground = EditorBrushes.TextSoft,
         CornerRadius = EditorTheme.Corners,
-        Content = new StackPanel
+        Content = new Panel
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Children = { new EditorIcon("Add") { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Add Metadata", VerticalAlignment = VerticalAlignment.Center } },
+            Children =
+            {
+                new Rectangle { Stroke = EditorBrushes.LineStrong, StrokeThickness = 1, StrokeDashArray = [4, 3], RadiusX = 6, RadiusY = 6 },
+                new StackPanel
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 6,
+                    Margin = new Thickness(12, 0),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Children = { new EditorIcon("Add") { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Add Metadata", VerticalAlignment = VerticalAlignment.Center } },
+                },
+            },
         },
     };
 }
