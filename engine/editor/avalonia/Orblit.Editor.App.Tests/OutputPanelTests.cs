@@ -68,8 +68,9 @@ public sealed class OutputPanelTests
             Assert.True(bar.OutputOpen);
             Assert.Equal(PanelHeight, panel.Height);
             Assert.Equal(BoxOf(window.Center.BottomBar, window).Y - CenterArea.GapHeight, panel.Bottom);
-            Assert.Equal(shut - PanelHeight, BoxOf(window.Viewport, window).Height);
+            Assert.Equal(shut - PanelHeight - CenterArea.GapHeight, BoxOf(window.Viewport, window).Height);
             Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
+            Assert.Equal(EditorColors.Hover, ((ISolidColorBrush)bar.OutputTab.Background!).Color);
 
             ClickOn(bar.OutputTab, window);
             window.UpdateLayout();
@@ -78,6 +79,7 @@ public sealed class OutputPanelTests
             Assert.False(bar.OutputOpen);
             Assert.Equal(shut, BoxOf(window.Viewport, window).Height);
             Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
+            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)bar.OutputTab.Background!).Color);
         });
     }
 
@@ -188,6 +190,45 @@ public sealed class OutputPanelTests
             Thread.Sleep(600);
             Dispatcher.UIThread.RunJobs();
             Assert.Equal(after, scene.Polls);
+        });
+    }
+
+    [Fact]
+    public void The_panel_is_an_island_6_pixels_under_the_viewport_with_a_36_pixel_strip_for_the_title_copy_and_clear()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            window.UpdateLayout();
+            var panel = window.Center.Output;
+            var strip = BoxOf(panel.Strip, window);
+            var title = panel.Strip.GetVisualDescendants().OfType<TextBlock>().Single();
+
+            Assert.Contains(EditorTheme.Island, panel.Classes);
+            Assert.Equal(BoxOf(window.Center.Stage, window).Bottom + CenterArea.GapHeight, BoxOf(panel, window).Y);
+            Assert.Equal(36, strip.Height);
+            Assert.Equal(EditorBrushes.Line, panel.Strip.BorderBrush);
+            Assert.Equal(("Output", FontWeight.SemiBold, strip.X + 12), (title.Text, title.FontWeight, BoxOf(title, window).X));
+            Assert.Equal(strip.Right - 6, BoxOf(panel.ClearButton, window).Right);
+            Assert.Equal(BoxOf(panel.ClearButton, window).X - 2, BoxOf(panel.CopyButton, window).Right);
+            Assert.Equal(strip.Bottom, BoxOf(panel.List, window).Y);
+        });
+    }
+
+    [Fact]
+    public void A_click_on_copy_says_copying_the_output_is_not_built()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            window.UpdateLayout();
+
+            ClickOn(window.Center.Output.CopyButton, window);
+
+            Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Equal("Copying the output is not built yet.", window.Status);
         });
     }
 

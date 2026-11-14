@@ -20,9 +20,9 @@ internal static class EditorBrushes
     public static readonly IBrush Text = new ImmutableSolidColorBrush(EditorColors.Text);
     public static readonly IBrush TextSoft = new ImmutableSolidColorBrush(EditorColors.TextSoft);
     public static readonly IBrush TextDim = new ImmutableSolidColorBrush(EditorColors.TextDim);
+    public static readonly IBrush Unbuilt = new ImmutableSolidColorBrush(EditorColors.Unbuilt);
     public static readonly IBrush TreeIcon = new ImmutableSolidColorBrush(EditorColors.TreeIcon);
     public static readonly IBrush FolderIcon = new ImmutableSolidColorBrush(EditorColors.FolderIcon);
-    public static readonly IBrush OutputDot = new ImmutableSolidColorBrush(EditorColors.OutputDot);
     public static readonly IBrush AxisX = new ImmutableSolidColorBrush(EditorColors.AxisX);
     public static readonly IBrush AxisY = new ImmutableSolidColorBrush(EditorColors.AxisY);
     public static readonly IBrush AxisZ = new ImmutableSolidColorBrush(EditorColors.AxisZ);

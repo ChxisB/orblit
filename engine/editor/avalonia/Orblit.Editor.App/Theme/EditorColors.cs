@@ -26,6 +26,9 @@ internal static class EditorColors
     public static readonly Color Text = Color.Parse("#E8EBF0");
     public static readonly Color TextSoft = Color.Parse("#AAB2BF");
     public static readonly Color TextDim = Color.Parse("#858F9D");
+
+    // A panel tab whose panel is not built yet, a step under the dim text.
+    public static readonly Color Unbuilt = Color.Parse("#5C6573");
     public static readonly Color Unit = Color.Parse("#6B7482");
     public static readonly Color Disabled = Color.Parse("#4A525F");
 
@@ -43,7 +46,6 @@ internal static class EditorColors
     // The tree icons keep the colour they are drawn in, and a folder is that colour times the accent.
     public static readonly Color TreeIcon = Color.Parse("#C9CFD8");
     public static readonly Color FolderIcon = Color.Parse("#B56F35");
-    public static readonly Color OutputDot = Ok;
 
     // The lines that join a tree row to its parent. The lit ones follow the path to the selected row.
     public static readonly Color Guide = Line;
