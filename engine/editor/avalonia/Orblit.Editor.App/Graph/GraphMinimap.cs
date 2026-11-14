@@ -15,9 +15,13 @@ internal sealed class GraphMinimap : Control
 
     const double Pad = 8;
 
-    static readonly IBrush s_back = new ImmutableSolidColorBrush(Color.Parse("#d0181818"));
-    static readonly IBrush s_step = new ImmutableSolidColorBrush(Color.Parse("#a0b0b0b0"));
-    static readonly IPen s_view = new Pen(EditorBrushes.Accent, 1).ToImmutable();
+    const double Corner = 9;
+
+    // The field fill at 90 percent, so the graph shows faintly through.
+    static readonly IBrush s_back = new ImmutableSolidColorBrush(Color.Parse("#E60D1015"));
+    static readonly IPen s_edge = new Pen(EditorBrushes.LineStrong, 1).ToImmutable();
+    static readonly IBrush s_step = new ImmutableSolidColorBrush(Color.Parse("#3A414C"));
+    static readonly IPen s_view = new Pen(new ImmutableSolidColorBrush(Color.Parse("#66AAB2BF")), 1.5).ToImmutable();
 
     readonly GraphScene _scene;
     readonly GraphViewport _viewport;
@@ -44,7 +48,7 @@ internal sealed class GraphMinimap : Control
 
     public override void Render(DrawingContext context)
     {
-        context.DrawRectangle(s_back, null, new Rect(Bounds.Size), 4);
+        context.DrawRectangle(s_back, s_edge, new Rect(Bounds.Size), Corner, Corner);
         var (scale, origin, offset) = Mapping();
         Rect Map(Rect graph) => new((graph.X - origin.X) * scale + offset.X, (graph.Y - origin.Y) * scale + offset.Y, graph.Width * scale, graph.Height * scale);
         foreach (var step in _scene.Steps.Where(step => !_scene.IsHidden(step)))

@@ -47,7 +47,7 @@ internal sealed class StepView
 
     const double PinRadius = 5;
     const double PinGrab = 9;
-    const double Corner = 6;
+    const double Corner = 10;
     const double TextInset = 14;
     const double ValueInset = 8;
     const double ButtonWidth = 24;
@@ -69,20 +69,20 @@ internal sealed class StepView
     const string RerouteKind = "reroute";
     const string FlowSuffix = "flow";
 
-    static readonly IBrush s_body = Fill("#262626");
-    static readonly IBrush s_field = Fill("#1a1a1a");
+    static readonly IBrush s_body = new ImmutableSolidColorBrush(EditorColors.Popover);
+    static readonly IBrush s_field = EditorBrushes.Field;
     static readonly IBrush s_dim = new ImmutableSolidColorBrush(EditorColors.TextDim);
     static readonly IBrush s_problem = Fill("#e0605a");
-    static readonly IBrush s_breakpoint = Fill("#d93a3a");
-    static readonly IBrush s_warning = Fill("#e0b050");
+    static readonly IBrush s_breakpoint = Fill("#FF5C6C");
+    static readonly IBrush s_warning = EditorBrushes.Warn;
     static readonly IPen s_current = new Pen(Fill("#f2d34f"), 3).ToImmutable();
-    static readonly IPen s_border = new Pen(Fill("#444444"), 1).ToImmutable();
+    static readonly IPen s_border = new Pen(EditorBrushes.LineStrong, 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
     static readonly IPen s_broken = new Pen(s_problem, 2).ToImmutable();
     static readonly Typeface s_face = new(FontFamily.Default);
     static readonly Typeface s_bold = new(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold);
-    static readonly IBrush[] s_categories = new[] { "#7c5a2a", "#2f6a8a", "#5a7a2a", "#7a3a6a", "#2a7a6a", "#8a4a3a", "#4a4a8a", "#6a6a2a" }
-        .Select(Fill).ToArray();
+    // The canvas tints a header from the left and fades it out. The category picks one of its five step tints.
+    static readonly IBrush[] s_categories = [.. new[] { EditorColors.Accent, Color.Parse("#8DB8FF"), Color.Parse("#7FD4C1"), Color.Parse("#C792EA"), EditorColors.TextSoft }.Select(HeaderFill)];
 
     readonly GraphStep _step;
     readonly IReadOnlySet<PinRef> _wired;
@@ -227,6 +227,13 @@ internal sealed class StepView
     }
 
     static IBrush Fill(string color) => new ImmutableSolidColorBrush(Color.Parse(color));
+
+    static IBrush HeaderFill(Color tint) => new LinearGradientBrush
+    {
+        StartPoint = new RelativePoint(0, 0.5, RelativeUnit.Relative),
+        EndPoint = new RelativePoint(1, 0.5, RelativeUnit.Relative),
+        GradientStops = { new GradientStop(Color.FromArgb(0x24, tint.R, tint.G, tint.B), 0), new GradientStop(Colors.Transparent, 1) },
+    }.ToImmutable();
 
     static IBrush CategoryBrush(string category) => s_categories[category.Sum(letter => letter) % s_categories.Length];
 
