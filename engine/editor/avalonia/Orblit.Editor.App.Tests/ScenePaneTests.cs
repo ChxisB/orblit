@@ -52,6 +52,23 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
+    public void A_click_in_the_middle_of_a_row_selects_its_entity()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Rows(window).Last();
+            var name = row.GetVisualDescendants().OfType<TextBlock>().Single().Text;
+            var middle = row.TranslatePoint(new Point(row.Bounds.Width / 2, row.Bounds.Height / 2), window)!.Value;
+
+            window.MouseDown(middle, MouseButton.Left);
+            window.MouseUp(middle, MouseButton.Left);
+
+            Assert.Equal(name, (window.Outline.SelectedItem as OutlineNode)?.Name);
+        });
+    }
+
+    [Fact]
     public void The_row_icons_are_drawn_in_the_tree_colour()
     {
         UiThread.Run(() =>
