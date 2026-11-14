@@ -68,7 +68,7 @@ public sealed class InspectorStructureTests
             var window = Selected(FakeScene.Lamp);
             var bars = Bars(window);
 
-            AssertBox(BarX, 156, BarWidth, 30, BoxOf(bars[0], window));
+            AssertBox(BarX, 161, BarWidth, 30, BoxOf(bars[0], window));
             Assert.Equal(Color.Parse("#0F1217"), ((ISolidColorBrush)bars[0].Background!).Color);
             Assert.Equal(EditorTheme.Corners, bars[0].CornerRadius);
             Assert.All(bars, bar => Assert.Equal((BarX, BarWidth, 30d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));

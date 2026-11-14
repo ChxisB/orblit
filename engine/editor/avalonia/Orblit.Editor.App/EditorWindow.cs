@@ -69,7 +69,8 @@ internal sealed class EditorWindow : Window
     public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null)
     {
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
-        Title = TitleText();
+        _titleBar = new TitleBar(_playButton, _stopButton);
+        ShowTitle();
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1440;
         Height = 900;
@@ -113,8 +114,6 @@ internal sealed class EditorWindow : Window
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         AddHandler(Unbuilt.Event, (_, e) => _status.Text = e.Message);
-        _titleBar = new TitleBar(_playButton, _stopButton);
-        _titleBar.Title.Bind(TextBlock.TextProperty, this.GetObservable(TitleProperty));
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", new Panel())) { Slot = DockSlot.UpperLeft };
         _fileDock = new DockTabs(("FileSystem", _scenes), ("History", new Panel())) { Slot = DockSlot.LowerLeft };
         _inspectorPane = new InspectorPane(_inspector);
@@ -251,7 +250,7 @@ internal sealed class EditorWindow : Window
         _save.IsEnabled = _root is not null;
         ShowGame();
         _sceneTabs.Show(_root, SceneLabel());
-        Title = TitleText();
+        ShowTitle();
         ShowSelection();
     }
 
@@ -515,11 +514,13 @@ internal sealed class EditorWindow : Window
 
     // The title of the old editor: the scene file, then the project, with a mark in front for edits that
     // the file does not hold yet.
-    string TitleText()
+    // The bar draws a dot for unsaved edits, so the mark goes in the window title alone.
+    void ShowTitle()
     {
         var project = _scene?.ProjectName is { Length: > 0 } name ? name : "Unnamed Project";
         var title = _scene?.SceneFile is { Length: > 0 } file ? $"{Path.GetFileName(file)} - {project}" : project;
-        return _edited ? $"(*) {title}" : title;
+        Title = _edited ? $"(*) {title}" : title;
+        _titleBar.Show(title, _edited);
     }
 
     // The tab is named for the scene file. A scene with no file takes the name of its root.
@@ -528,7 +529,7 @@ internal sealed class EditorWindow : Window
     void ShowEdited(bool edited)
     {
         _edited = edited;
-        Title = TitleText();
+        ShowTitle();
         _closeBar.IsVisible &= edited;
     }
 

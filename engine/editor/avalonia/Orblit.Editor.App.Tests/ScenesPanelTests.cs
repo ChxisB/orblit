@@ -34,10 +34,10 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(9, 705, 24, 24, BoxOf(panel.BackButton, window));
-            AssertBox(33, 705, 24, 24, BoxOf(panel.ForwardButton, window));
-            AssertBox(63, 703, 185, 28, BoxOf(panel.PathBox, window));
-            AssertBox(254, 705, 24, 24, BoxOf(panel.LayoutButton, window));
+            AssertBox(9, 708, 24, 24, BoxOf(panel.BackButton, window));
+            AssertBox(33, 708, 24, 24, BoxOf(panel.ForwardButton, window));
+            AssertBox(63, 706, 185, 28, BoxOf(panel.PathBox, window));
+            AssertBox(254, 708, 24, 24, BoxOf(panel.LayoutButton, window));
         });
     }
 
@@ -103,8 +103,8 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(11, 736, 237, 28, BoxOf(panel.FilterBox, window));
-            AssertBox(254, 738, 24, 24, BoxOf(panel.SortButton, window));
+            AssertBox(11, 739, 237, 28, BoxOf(panel.FilterBox, window));
+            AssertBox(254, 741, 24, 24, BoxOf(panel.SortButton, window));
             Assert.Equal("Filter Files", panel.FilterBox.PlaceholderText);
         });
     }
@@ -192,10 +192,10 @@ public sealed class ScenesPanelTests
             var items = Items(window);
 
             Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
-            Assert.Equal(778, BoxOf(items[0], window).Y);
-            Assert.Equal(801, BoxOf(items[1], window).Y);
-            Assert.Equal(824, BoxOf(items[2], window).Y);
-            Assert.Equal(847, BoxOf(items[3], window).Y);
+            Assert.Equal(781, BoxOf(items[0], window).Y);
+            Assert.Equal(804, BoxOf(items[1], window).Y);
+            Assert.Equal(827, BoxOf(items[2], window).Y);
+            Assert.Equal(850, BoxOf(items[3], window).Y);
         });
     }
 

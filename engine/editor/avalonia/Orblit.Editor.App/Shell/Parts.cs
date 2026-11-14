@@ -29,6 +29,14 @@ internal static class Parts
         return icon;
     }
 
+    /// <summary>A row of controls on a small island of its own, 2 pixels apart with 3 pixels around them.</summary>
+    public static Border Pill(IEnumerable<Control> items)
+    {
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        row.Children.AddRange(items);
+        return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(3), VerticalAlignment = VerticalAlignment.Center, Child = row };
+    }
+
     /// <summary>A button 24 pixels square: the icon and 4 pixels of padding, no border.</summary>
     public static Button Tight(Button button)
     {
@@ -37,11 +45,12 @@ internal static class Parts
         return button;
     }
 
-    // The theme gives a button no border, so the box is the icon and its padding: 26 pixels square.
+    // No border, so the box is the icon and its padding: 26 pixels square.
     static T Flat<T>(T button, string icon, string tip) where T : ContentControl
     {
         button.Content = new EditorIcon(icon);
         button.Padding = new Thickness(5);
+        button.BorderThickness = new Thickness(0);
         button.MinWidth = 0;
         button.MinHeight = 0;
         ToolTip.SetTip(button, tip);
