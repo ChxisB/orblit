@@ -1,8 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Avalonia.Styling;
 using Orblit.Editor.App.Theme;
+using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
 
@@ -117,6 +119,38 @@ public sealed class EditorThemeTests
             Assert.True(window.TryFindResource("TreeViewItemIndent", ThemeVariant.Dark, out var indent));
             Assert.Equal(26.0, height);
             Assert.Equal(12.0, indent);
+        });
+    }
+
+    [Fact]
+    public void A_menu_is_a_popover_with_a_5_pixel_inset_round_28_pixel_rows()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var menu = window.ScenePane.Outline.ContextMenu!;
+            menu.Open(window.ScenePane.Outline);
+            var item = menu.Items.OfType<MenuItem>().First(item => item.IsVisible);
+
+            Assert.Equal((EditorTheme.PopoverCorners, new Thickness(5)), (menu.CornerRadius, menu.Padding));
+            Assert.Equal((28.0, EditorTheme.Corners), (item.Bounds.Height, item.CornerRadius));
+            Assert.Equal(new Point(6, 6), item.TranslatePoint(new Point(0, 0), menu));
+            Assert.Equal(EditorColors.Popover, ((ISolidColorBrush)menu.Background!).Color);
+        });
+    }
+
+    [Fact]
+    public void A_flyout_takes_the_popover_fill_edge_and_corners()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            ClickOn(window.ScenePane.AddButton, window);
+            var presenter = ((Control)window.ScenePane.Flyout.Content!).FindAncestorOfType<FlyoutPresenter>()!;
+
+            Assert.Equal(EditorColors.Popover, ((ISolidColorBrush)presenter.Background!).Color);
+            Assert.Equal(EditorColors.LineStrong, ((ISolidColorBrush)presenter.BorderBrush!).Color);
+            Assert.Equal(EditorTheme.PopoverCorners, presenter.CornerRadius);
         });
     }
 }

@@ -1,5 +1,10 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
+using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
@@ -19,10 +24,36 @@ internal static class Unbuilt
     public static readonly RoutedEvent<UnbuiltEventArgs> Event =
         RoutedEvent.Register<Control, UnbuiltEventArgs>("Unbuilt", RoutingStrategies.Bubble);
 
-    /// <summary>Makes a click on the button raise <see cref="Event"/> with the answer to show.</summary>
+    /// <summary>
+    /// Makes a click on the button raise <see cref="Event"/> with the answer to show. An icon button also dims
+    /// and takes a small warn dot at its top right, so it reads as not built before anyone clicks it.
+    /// </summary>
     public static T Mark<T>(T button, string message) where T : Button
     {
         button.Click += (_, _) => button.RaiseEvent(new UnbuiltEventArgs(message));
+        if (button.Content is EditorIcon icon)
+        {
+            // The icon leaves the button before the panel takes it, because a control has one logical parent.
+            button.Content = null;
+            button.Content = new Panel { Children = { icon, Dot() } };
+            // A lit toggle keeps the accent, because it shows a mode the engine draws today.
+            if (button is not ToggleButton { IsChecked: true })
+            {
+                button.Foreground = EditorBrushes.Unbuilt;
+            }
+        }
+
         return button;
     }
+
+    // 4 pixels square, 4 in from the top right of a 26 pixel button, so it hangs a pixel past the icon.
+    static Ellipse Dot() => new()
+    {
+        Width = 4,
+        Height = 4,
+        Fill = EditorBrushes.Warn,
+        HorizontalAlignment = HorizontalAlignment.Right,
+        VerticalAlignment = VerticalAlignment.Top,
+        Margin = new Thickness(0, -1, -1, 0),
+    };
 }
