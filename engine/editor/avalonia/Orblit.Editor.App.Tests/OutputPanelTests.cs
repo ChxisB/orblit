@@ -67,7 +67,7 @@ public sealed class OutputPanelTests
             Assert.True(window.Center.Output.IsVisible);
             Assert.True(bar.OutputOpen);
             Assert.Equal(PanelHeight, panel.Height);
-            Assert.Equal(BoxOf(bar, window).Y - 3, panel.Bottom);
+            Assert.Equal(BoxOf(window.Center.BottomBar, window).Y - CenterArea.GapHeight, panel.Bottom);
             Assert.Equal(shut - PanelHeight, BoxOf(window.Viewport, window).Height);
             Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
 

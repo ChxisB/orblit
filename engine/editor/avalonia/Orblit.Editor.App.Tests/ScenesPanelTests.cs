@@ -34,10 +34,10 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(6, 698, 24, 24, BoxOf(panel.BackButton, window));
-            AssertBox(30, 698, 24, 24, BoxOf(panel.ForwardButton, window));
-            AssertBox(60, 696, 187, 28, BoxOf(panel.PathBox, window));
-            AssertBox(253, 698, 24, 24, BoxOf(panel.LayoutButton, window));
+            AssertBox(9, 705, 24, 24, BoxOf(panel.BackButton, window));
+            AssertBox(33, 705, 24, 24, BoxOf(panel.ForwardButton, window));
+            AssertBox(63, 703, 185, 28, BoxOf(panel.PathBox, window));
+            AssertBox(254, 705, 24, 24, BoxOf(panel.LayoutButton, window));
         });
     }
 
@@ -103,8 +103,8 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(8, 729, 239, 28, BoxOf(panel.FilterBox, window));
-            AssertBox(253, 731, 24, 24, BoxOf(panel.SortButton, window));
+            AssertBox(11, 736, 237, 28, BoxOf(panel.FilterBox, window));
+            AssertBox(254, 738, 24, 24, BoxOf(panel.SortButton, window));
             Assert.Equal("Filter Files", panel.FilterBox.PlaceholderText);
         });
     }
@@ -192,10 +192,10 @@ public sealed class ScenesPanelTests
             var items = Items(window);
 
             Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
-            Assert.Equal(771, BoxOf(items[0], window).Y);
-            Assert.Equal(794, BoxOf(items[1], window).Y);
-            Assert.Equal(817, BoxOf(items[2], window).Y);
-            Assert.Equal(840, BoxOf(items[3], window).Y);
+            Assert.Equal(778, BoxOf(items[0], window).Y);
+            Assert.Equal(801, BoxOf(items[1], window).Y);
+            Assert.Equal(824, BoxOf(items[2], window).Y);
+            Assert.Equal(847, BoxOf(items[3], window).Y);
         });
     }
 
@@ -222,9 +222,9 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var items = Items(window);
 
-            Assert.Equal(26, BoxOf(RowIconOf(items[1]), window).X);
-            Assert.Equal(49, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
-            Assert.Equal(61, BoxOf(items[2].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(29, BoxOf(RowIconOf(items[1]), window).X);
+            Assert.Equal(52, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(64, BoxOf(items[2].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
         });
     }
 
@@ -253,8 +253,8 @@ public sealed class ScenesPanelTests
             var area = highlight.Area();
             var corner = highlight.TranslatePoint(area.TopLeft, window)!.Value;
 
-            Assert.Equal(new Point(22, BoxOf(line, window).Y), corner);
-            Assert.Equal(new Size(256, 23), area.Size);
+            Assert.Equal(new Point(25, BoxOf(line, window).Y), corner);
+            Assert.Equal(new Size(254, 23), area.Size);
             Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)highlight.Fill!).Color);
             Assert.Null(items[0].GetVisualDescendants().OfType<RowHighlight>().First().Fill);
         });

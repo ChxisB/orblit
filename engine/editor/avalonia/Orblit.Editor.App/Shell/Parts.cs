@@ -37,11 +37,11 @@ internal static class Parts
         return button;
     }
 
-    // The theme gives a button no border, so the box is the icon and its padding.
+    // The theme gives a button no border, so the box is the icon and its padding: 26 pixels square.
     static T Flat<T>(T button, string icon, string tip) where T : ContentControl
     {
         button.Content = new EditorIcon(icon);
-        button.Padding = new Thickness(6);
+        button.Padding = new Thickness(5);
         button.MinWidth = 0;
         button.MinHeight = 0;
         ToolTip.SetTip(button, tip);

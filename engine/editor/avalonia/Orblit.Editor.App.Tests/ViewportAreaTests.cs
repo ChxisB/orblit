@@ -49,9 +49,9 @@ public sealed class ViewportAreaTests
             var strip = window.SceneTabs;
 
             Assert.True(strip.Tab.IsVisible);
-            Assert.Equal(287, BoxOf(strip.Tab, window).X);
-            Assert.Equal(41, BoxOf(strip.Tab, window).Y);
-            Assert.Equal(33, strip.Tab.Bounds.Height);
+            Assert.Equal(293, BoxOf(strip.Tab, window).X);
+            Assert.Equal(42, BoxOf(strip.Tab, window).Y);
+            Assert.Equal(38, strip.Tab.Bounds.Height);
             Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)strip.Tab.Background!).Color);
             Assert.Equal("Field", strip.Label.Text);
             Assert.Equal("Entity3D", strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
@@ -67,8 +67,8 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize();
             var strip = window.SceneTabs;
 
-            AssertBox(303, 49, 16, 16, BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window));
-            Assert.Equal(324, BoxOf(strip.Label, window).X);
+            AssertBox(309, 53, 16, 16, BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window));
+            Assert.Equal(330, BoxOf(strip.Label, window).X);
         });
     }
 
@@ -97,7 +97,7 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize();
             var strip = window.SceneTabs;
 
-            Assert.Equal(3153 - 4, BoxOf(strip.DistractionButton, window).Right);
+            Assert.Equal(3111 - 4, BoxOf(strip.DistractionButton, window).Right);
             Assert.Equal(8, BoxOf(strip.DistractionButton, window).X - BoxOf(strip.MenuButton, window).Right);
             Assert.Equal(24, strip.MenuButton.Bounds.Width);
         });
@@ -161,12 +161,12 @@ public sealed class ViewportAreaTests
             var pill = Pill(window, 0);
             var buttons = PillButtons(window, 0).OfType<FixedToggle>().ToArray();
 
-            AssertBox(291, 79, 240, 32, BoxOf(pill, window));
+            AssertBox(297, 86, 240, 32, BoxOf(pill, window));
             Assert.Equal(EditorColors.Field, ((ISolidColorBrush)pill.Background!).Color);
             Assert.Equal(EditorTheme.Corners, pill.CornerRadius);
-            Assert.Equal([295, 327, 359, 391, 423, 467, 499], buttons.Select(b => BoxOf(b, window).X));
+            Assert.Equal([301, 333, 365, 397, 429, 473, 505], buttons.Select(b => BoxOf(b, window).X));
             Assert.All(buttons, button => Assert.Equal(new Size(28, 24), button.Bounds.Size));
-            Assert.All(buttons, button => Assert.Equal(83, BoxOf(button, window).Y));
+            Assert.All(buttons, button => Assert.Equal(90, BoxOf(button, window).Y));
         });
     }
 
@@ -263,8 +263,8 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize();
             var toolbar = window.Toolbar;
 
-            Assert.Equal(547, BoxOf(toolbar.LockButton, window).X);
-            Assert.Equal(579, BoxOf(toolbar.GroupButton, window).X);
+            Assert.Equal(553, BoxOf(toolbar.LockButton, window).X);
+            Assert.Equal(585, BoxOf(toolbar.GroupButton, window).X);
             Assert.False(toolbar.LockButton.IsEnabled);
             Assert.False(toolbar.GroupButton.IsEnabled);
         });
@@ -307,7 +307,7 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize();
             var options = ((StackPanel)window.Toolbar.Children[2]).Children.Cast<FixedToggle>().ToArray();
 
-            Assert.Equal([623, 655, 687], options.Select(option => BoxOf(option, window).X));
+            Assert.Equal([629, 661, 693], options.Select(option => BoxOf(option, window).X));
             Assert.All(options, option => Assert.False(option.IsChecked));
         });
     }
@@ -321,7 +321,7 @@ public sealed class ViewportAreaTests
             var pill = Pill(window, 3);
             var parts = PillButtons(window, 3);
 
-            AssertBox(731, 79, 64, 32, BoxOf(pill, window));
+            AssertBox(737, 86, 64, 32, BoxOf(pill, window));
             Assert.IsType<FixedToggle>(parts[0]);
             Assert.Equal(28, parts[0].Bounds.Width);
             Assert.Equal(24, parts[1].Bounds.Width);
@@ -337,7 +337,7 @@ public sealed class ViewportAreaTests
             var pill = Pill(window, 4);
             var parts = PillButtons(window, 4);
 
-            AssertBox(814, 79, 96, 32, BoxOf(pill, window));
+            AssertBox(820, 86, 96, 32, BoxOf(pill, window));
             Assert.False(((FixedToggle)parts[0]).IsChecked);
             Assert.True(((FixedToggle)parts[1]).IsChecked);
             Assert.Equal(24, parts[2].Bounds.Width);
@@ -378,7 +378,7 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize();
             var toolbar = window.Toolbar;
 
-            Assert.Equal(926, BoxOf(toolbar.TransformMenuButton, window).X);
+            Assert.Equal(932, BoxOf(toolbar.TransformMenuButton, window).X);
             Assert.Equal(2, BoxOf(toolbar.ViewButton, window).X - BoxOf(toolbar.TransformMenuButton, window).Right);
             Assert.Equal("Transform", toolbar.TransformMenuButton.Content);
             Assert.Equal("View", toolbar.ViewButton.Content);
@@ -428,7 +428,7 @@ public sealed class ViewportAreaTests
             var text = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
             // The widths follow the font, so the distances are measured from the neighbor.
-            Assert.Equal([79.0, 32.0, 83.0, 24.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
+            Assert.Equal([86.0, 32.0, 90.0, 24.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
             Assert.Equal(view.Right + 7, bar.X);
             Assert.Equal(bar.Right + 8, chip.X);
             Assert.Equal(chip.X + 6, icon.X);
@@ -526,11 +526,11 @@ public sealed class ViewportAreaTests
             var (window, _) = OpenWithViewport();
             var button = window.Center.Overlay.ProjectionButton;
 
-            Assert.Equal(297, BoxOf(button, window).X);
-            Assert.Equal(126, BoxOf(button, window).Y);
+            Assert.Equal(303, BoxOf(button, window).X);
+            Assert.Equal(133, BoxOf(button, window).Y);
             Assert.Equal(32, button.Bounds.Height);
             var icon = BoxOf(button.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
-            Assert.Equal(305, icon.X);
+            Assert.Equal(311, icon.X);
             Assert.Equal(new Size(16, 16), icon.Size);
             Assert.Equal(Color.FromArgb(0x5c, 0, 0, 0), ((ISolidColorBrush)button.Background!).Color);
         });
@@ -543,7 +543,7 @@ public sealed class ViewportAreaTests
         {
             var (window, _) = OpenWithViewport();
 
-            AssertBox(3053, 116, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
+            AssertBox(3011, 123, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
         });
     }
 

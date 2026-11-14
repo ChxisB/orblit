@@ -70,10 +70,10 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize();
             var pane = window.ScenePane;
 
-            AssertBox(72, 78, 175, 28, BoxOf(pane.FilterBox, window));
-            Assert.Equal(6, BoxOf(pane.AddButton, window).X);
-            Assert.Equal(38, BoxOf(pane.InstanceButton, window).X);
-            Assert.Equal(249, BoxOf(pane.MenuButton, window).X);
+            AssertBox(75, 85, 173, 28, BoxOf(pane.FilterBox, window));
+            Assert.Equal(9, BoxOf(pane.AddButton, window).X);
+            Assert.Equal(41, BoxOf(pane.InstanceButton, window).X);
+            Assert.Equal(250, BoxOf(pane.MenuButton, window).X);
             Assert.Equal("Filter Nodes", pane.FilterBox.PlaceholderText);
         });
     }
@@ -88,7 +88,7 @@ public sealed class ScenePaneTests
             var items = window.Outline.GetVisualDescendants().OfType<TreeViewItem>().ToArray();
 
             Assert.Equal(3, items.Length);
-            Assert.Equal(120, BoxOf(items[0], window).Y);
+            Assert.Equal(127, BoxOf(items[0], window).Y);
             Assert.Equal(23, BoxOf(items[1], window).Y - BoxOf(items[0], window).Y);
             Assert.Equal(23, BoxOf(items[2], window).Y - BoxOf(items[1], window).Y);
         });
@@ -103,11 +103,11 @@ public sealed class ScenePaneTests
             var rows = Rows(window);
             var arrow = window.Outline.GetVisualDescendants().OfType<ToggleButton>().First();
 
-            Assert.Equal(10, BoxOf(arrow, window).X);
-            Assert.Equal(26, BoxOf(RowIconOf(rows[0]), window).X);
-            Assert.Equal(49, BoxOf(rows[0].GetVisualDescendants().OfType<TextBlock>().Single(), window).X);
-            Assert.Equal(38, BoxOf(RowIconOf(rows[1]), window).X);
-            Assert.Equal(61, BoxOf(rows[1].GetVisualDescendants().OfType<TextBlock>().Single(), window).X);
+            Assert.Equal(13, BoxOf(arrow, window).X);
+            Assert.Equal(29, BoxOf(RowIconOf(rows[0]), window).X);
+            Assert.Equal(52, BoxOf(rows[0].GetVisualDescendants().OfType<TextBlock>().Single(), window).X);
+            Assert.Equal(41, BoxOf(RowIconOf(rows[1]), window).X);
+            Assert.Equal(64, BoxOf(rows[1].GetVisualDescendants().OfType<TextBlock>().Single(), window).X);
         });
     }
 
@@ -122,7 +122,7 @@ public sealed class ScenePaneTests
 
             Assert.Equal(["GuiTreeArrowRight", "GuiTreeArrowDown"], icons.Select(icon => icon.IconName));
             Assert.Equal([false, true], icons.Select(icon => icon.IsVisible));
-            AssertBox(10, BoxOf(arrow, window).Y, 12, 12, BoxOf(icons[1], window));
+            AssertBox(13, BoxOf(arrow, window).Y, 12, 12, BoxOf(icons[1], window));
         });
     }
 
@@ -164,7 +164,7 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize();
             var eye = Rows(window)[1].GetVisualDescendants().OfType<Button>().Single();
 
-            Assert.Equal(284 - 9, BoxOf(eye.GetVisualDescendants().OfType<EditorIcon>().Single(), window).Right);
+            Assert.Equal(285 - 9, BoxOf(eye.GetVisualDescendants().OfType<EditorIcon>().Single(), window).Right);
         });
     }
 

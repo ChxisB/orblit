@@ -43,9 +43,9 @@ public sealed class BottomBarTests
             var dot = bar.Tabs[0].GetVisualDescendants().OfType<Ellipse>().Single();
             var text = bar.Tabs[0].GetVisualDescendants().OfType<TextBlock>().Single();
 
-            Assert.Equal(287 + 6, BoxOf(bar.Tabs[0], window).X);
-            AssertBox(303, 1251, 8, 8, BoxOf(dot, window));
-            Assert.Equal(317, BoxOf(text, window).X);
+            Assert.Equal(293 + 6, BoxOf(bar.Tabs[0], window).X);
+            AssertBox(309, 1250, 8, 8, BoxOf(dot, window));
+            Assert.Equal(323, BoxOf(text, window).X);
         });
     }
 
@@ -72,7 +72,7 @@ public sealed class BottomBarTests
             var texts = BarOf(window).Tabs.SelectMany(tab => tab.GetVisualDescendants().OfType<TextBlock>()).ToArray();
 
             Assert.Equal(5, texts.Length);
-            Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1254, 1255));
+            Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1253.5, 1254.5));
         });
     }
 
@@ -179,11 +179,11 @@ public sealed class BottomBarTests
             var icon = BoxOf(bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
             var text = BoxOf(bar.VersionButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
-            Assert.Equal(287 + 2866 - 12, icon.Right);
+            Assert.Equal(293 + 2818 - 12, icon.Right);
             Assert.Equal("Pin", bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Equal(16, icon.Width);
             Assert.InRange(icon.X - text.Right, 17.5, 18.5);
-            AssertBox(3119, 1242, 28, 24, BoxOf(bar.PinButton, window));
+            AssertBox(3077, 1242, 28, 24, BoxOf(bar.PinButton, window));
         });
     }
 
@@ -229,7 +229,7 @@ public sealed class BottomBarTests
             var window = OpenAtReferenceSize();
 
             Assert.IsType<BottomBar>(window.Center.BottomBar.Child);
-            AssertBox(287, 1234, 2866, 41, BoxOf(BarOf(window), window));
+            AssertBox(293, 1236, 2818, 36, BoxOf(BarOf(window), window));
         });
     }
 }

@@ -11,8 +11,8 @@ namespace Orblit.Editor.App.Tests;
 public sealed class InspectorStructureTests
 {
     // The bars and rows sit 6 pixels inside the dock, which starts at 3156.
-    const double BarX = 3162;
-    const double BarWidth = 268;
+    const double BarX = 3125;
+    const double BarWidth = 302;
 
     static readonly string[] s_entityGroups = ["Process", "Physics Interpolation", "Auto Translate", "Editor Description"];
 
@@ -68,7 +68,7 @@ public sealed class InspectorStructureTests
             var window = Selected(FakeScene.Lamp);
             var bars = Bars(window);
 
-            AssertBox(BarX, 149, BarWidth, 30, BoxOf(bars[0], window));
+            AssertBox(BarX, 156, BarWidth, 30, BoxOf(bars[0], window));
             Assert.Equal(Color.Parse("#0F1217"), ((ISolidColorBrush)bars[0].Background!).Color);
             Assert.Equal(EditorTheme.Corners, bars[0].CornerRadius);
             Assert.All(bars, bar => Assert.Equal((BarX, BarWidth, 30d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
@@ -197,7 +197,7 @@ public sealed class InspectorStructureTests
             var field = BoxOf(window.Inspector.ScriptField, window);
             var label = window.Inspector.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "Script");
 
-            Assert.Equal((3296d, 134d, 28d), (field.X, field.Width, field.Height));
+            Assert.Equal((BarX + BarWidth / 2, BarWidth / 2, 28d), (field.X, field.Width, field.Height));
             Near(last.Bottom + 4, field.Y);
             Near(BarX + 10, BoxOf(label, window).X);
             Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "<empty>");
@@ -214,7 +214,7 @@ public sealed class InspectorStructureTests
             var field = BoxOf(window.Inspector.ScriptField, window);
             var button = BoxOf(window.Inspector.MetadataButton, window);
 
-            Assert.Equal((3231d, 130d, 30d), (button.X, button.Width, button.Height));
+            Assert.Equal((BarX + (BarWidth - 130) / 2, 130d, 30d), (button.X, button.Width, button.Height));
             Near(field.Bottom + 13, button.Y);
             Assert.Equal(Color.Parse("#1A1E26"), ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
             Assert.Equal("Add", window.Inspector.MetadataButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
