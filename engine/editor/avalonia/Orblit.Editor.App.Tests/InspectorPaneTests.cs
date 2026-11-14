@@ -20,9 +20,9 @@ public sealed class InspectorPaneTests
             var window = OpenAtReferenceSize();
             var pane = window.InspectorPane;
 
-            AssertBox(3121, 87, 24, 24, BoxOf(pane.BackButton, window));
-            AssertBox(3149, 87, 24, 24, BoxOf(pane.ForwardButton, window));
-            AssertBox(3403, 87, 24, 24, BoxOf(pane.HistoryButton, window));
+            AssertBox(3121, 92, 24, 24, BoxOf(pane.BackButton, window));
+            AssertBox(3149, 92, 24, 24, BoxOf(pane.ForwardButton, window));
+            AssertBox(3403, 92, 24, 24, BoxOf(pane.HistoryButton, window));
         });
     }
 
@@ -34,8 +34,8 @@ public sealed class InspectorPaneTests
             var window = OpenAtReferenceSize();
             var pane = window.InspectorPane;
 
-            AssertBox(3123, 117, 274, 28, BoxOf(pane.FilterBox, window));
-            AssertBox(3403, 119, 24, 24, BoxOf(pane.ToolsButton, window));
+            AssertBox(3123, 122, 274, 28, BoxOf(pane.FilterBox, window));
+            AssertBox(3403, 124, 24, 24, BoxOf(pane.ToolsButton, window));
             Assert.Equal("Filter Properties", pane.FilterBox.PlaceholderText);
         });
     }
@@ -47,7 +47,7 @@ public sealed class InspectorPaneTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(3119, 146, 314, 1126, BoxOf(window.InspectorPane.Viewer, window));
+            AssertBox(3119, 151, 314, 1121, BoxOf(window.InspectorPane.Viewer, window));
             Assert.Same(window.Inspector, window.InspectorPane.Viewer.Content);
         });
     }

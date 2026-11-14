@@ -1,18 +1,25 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The top strip: the window title, the workspace switcher in the middle and the run buttons at the right.</summary>
+/// <summary>
+/// The top strip: the title, the workspace switcher in a pill in the middle, then Search and the run buttons at the
+/// right.
+/// </summary>
 internal sealed class TitleBar : Grid
 {
-    internal const double BarHeight = 41;
+    internal const double BarHeight = 46;
 
     // The system draws the traffic lights over the left of the bar, so the title starts after them.
     const double TitleLeft = 92;
+
+    const double SearchWidth = 176;
 
     /// <summary>The name of the workspace that edits the scene in the viewport with a 3D camera.</summary>
     internal const string Spatial = "3D";
@@ -43,76 +50,124 @@ internal sealed class TitleBar : Grid
         (Store, "AssetStore"),
     ];
 
+    readonly WorkspaceTab[] _tabs;
+
     public TitleBar(Button play, Button stop)
     {
         Height = BarHeight;
         Background = EditorBrushes.Window;
         ColumnDefinitions = new ColumnDefinitions("*,Auto,*");
-        Title = new TextBlock { Margin = new Thickness(TitleLeft, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, IsHitTestVisible = false };
-        var tabs = Workspaces.Select(Workspace).ToArray();
-        tabs.Single(tab => tab.Label == Spatial).IsChecked = true;
-        var switcher = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-        switcher.Children.AddRange(tabs);
-        SetColumn(switcher, 1);
-        var run = RunButtons(play, stop);
-        SetColumn(run, 2);
-        Children.Add(Title);
-        Children.Add(switcher);
-        Children.Add(run);
+        var heading = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Margin = new Thickness(TitleLeft, 0, 0, 0),
+            IsHitTestVisible = false,
+            Children = { Title, EditedDot },
+        };
+        _tabs = [.. Workspaces.Select(Workspace)];
+        _tabs.Single(tab => tab.Label == Spatial).IsChecked = true;
+        Switcher = Parts.Pill(_tabs);
+        SetColumn(Switcher, 1);
+        Run = RunButtons(play, stop);
+        var end = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            Children = { SearchButton, Run },
+        };
+        SetColumn(end, 2);
+        Children.Add(heading);
+        Children.Add(Switcher);
+        Children.Add(end);
         PointerPressed += BeginMove;
     }
 
     /// <summary>Raised with the name of a workspace after its tab lights.</summary>
     public event Action<string>? WorkspaceChosen;
 
-    internal TextBlock Title { get; }
+    internal TextBlock Title { get; } = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
 
-    internal IEnumerable<WorkspaceTab> Tabs => ((StackPanel)Children[1]).Children.Cast<WorkspaceTab>();
+    /// <summary>Shown while the scene has edits that are not saved.</summary>
+    internal Ellipse EditedDot { get; } = new() { Width = 7, Height = 7, Fill = EditorBrushes.Accent, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
+
+    internal Border Switcher { get; }
+
+    internal Border Run { get; }
+
+    internal Button SearchButton { get; } = Search();
+
+    internal IReadOnlyList<WorkspaceTab> Tabs => _tabs;
+
+    internal void Show(string title, bool edited)
+    {
+        Title.Text = title;
+        EditedDot.IsVisible = edited;
+    }
 
     // Pause is off because the game runs in its own process and the editor cannot pause it.
-    static StackPanel RunButtons(Button play, Button stop)
+    static Border RunButtons(Button play, Button stop)
     {
         var pause = Parts.IconButton("Pause", "Pause the game");
         pause.IsEnabled = false;
-        var bar = new StackPanel
+        return Parts.Pill(
+        [
+            play,
+            pause,
+            stop,
+            new Border { Width = 1, Height = 18, Margin = new Thickness(3, 0), Background = EditorBrushes.LineStrong },
+            Unbuilt.Mark(Parts.IconButton("PlayScene", "Run the current scene"), "Run current scene is the Play button."),
+            Unbuilt.Mark(Parts.IconButton("PlayCustom", "Run a chosen scene"), "Run a chosen scene is not built yet."),
+            Unbuilt.Mark(Parts.IconButton("MainMovieWrite", "Movie maker mode"), "Movie maker mode is not built yet."),
+        ]);
+    }
+
+    // Drawn as a field so the bar keeps its place, and marked because search is not built yet.
+    static Button Search()
+    {
+        var key = new Border
         {
-            Orientation = Orientation.Horizontal,
-            HorizontalAlignment = HorizontalAlignment.Right,
+            CornerRadius = new CornerRadius(4),
+            Padding = new Thickness(5, 3),
+            Background = EditorBrushes.Line,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 14, 0),
-            Children =
-            {
-                play,
-                pause,
-                stop,
-                Unbuilt.Mark(Parts.IconButton("PlayScene", "Run the current scene"), "Run current scene is the Play button."),
-                Unbuilt.Mark(Parts.IconButton("PlayCustom", "Run a chosen scene"), "Run a chosen scene is not built yet."),
-                Unbuilt.Mark(Parts.IconButton("MainMovieWrite", "Movie maker mode"), "Movie maker mode is not built yet."),
-            },
+            Child = new TextBlock { Text = "⌘K", FontSize = 10.5, Foreground = EditorBrushes.TextSoft },
         };
-        // The reference run buttons are 32 pixels apart: the icon and 8 pixels each side. The buttons that
-        // start a scene sit 4 pixels clear of the three before them.
-        foreach (var button in bar.Children.Cast<Button>())
+        DockPanel.SetDock(key, Dock.Right);
+        var icon = Parts.SearchIcon();
+        icon.Margin = new Thickness(0, 0, 8, 0);
+        DockPanel.SetDock(icon, Dock.Left);
+        var button = new Button
         {
-            button.Padding = new Thickness(8);
-            button.BorderThickness = new Thickness(0);
-        }
-
-        bar.Children[3].Margin = new Thickness(4, 0, 0, 0);
-
-        return bar;
+            Width = SearchWidth,
+            Height = 30,
+            Padding = new Thickness(10, 0),
+            Background = EditorBrushes.Field,
+            BorderBrush = EditorBrushes.Line,
+            BorderThickness = new Thickness(1),
+            CornerRadius = new CornerRadius(7),
+            Foreground = EditorBrushes.TextDim,
+            HorizontalContentAlignment = HorizontalAlignment.Stretch,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            Content = new DockPanel { Children = { icon, key, new TextBlock { Text = "Search", VerticalAlignment = VerticalAlignment.Center } } },
+        };
+        ToolTip.SetTip(button, "Search");
+        return Unbuilt.Mark(button, "Search is not built yet.");
     }
 
     WorkspaceTab Workspace((string Name, string Icon) workspace)
     {
-        var tab = new WorkspaceTab(workspace.Icon, workspace.Name) { Padding = new Thickness(10, 4), MinHeight = 0 };
+        var tab = new WorkspaceTab(workspace.Icon, workspace.Name);
         tab.Click += (_, _) => Choose(workspace.Name);
         return tab;
     }
 
     void Choose(string name)
     {
-        foreach (var tab in Tabs)
+        foreach (var tab in _tabs)
         {
             tab.IsChecked = tab.Label == name;
         }

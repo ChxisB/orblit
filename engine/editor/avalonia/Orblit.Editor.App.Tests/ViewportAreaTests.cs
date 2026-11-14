@@ -50,7 +50,7 @@ public sealed class ViewportAreaTests
 
             Assert.True(strip.Tab.IsVisible);
             Assert.Equal(293, BoxOf(strip.Tab, window).X);
-            Assert.Equal(42, BoxOf(strip.Tab, window).Y);
+            Assert.Equal(47, BoxOf(strip.Tab, window).Y);
             Assert.Equal(38, strip.Tab.Bounds.Height);
             Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)strip.Tab.Background!).Color);
             Assert.Equal("Field", strip.Label.Text);
@@ -67,7 +67,7 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize();
             var strip = window.SceneTabs;
 
-            AssertBox(309, 53, 16, 16, BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window));
+            AssertBox(309, 58, 16, 16, BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window));
             Assert.Equal(330, BoxOf(strip.Label, window).X);
         });
     }
@@ -161,12 +161,12 @@ public sealed class ViewportAreaTests
             var pill = Pill(window, 0);
             var buttons = PillButtons(window, 0).OfType<FixedToggle>().ToArray();
 
-            AssertBox(297, 86, 240, 32, BoxOf(pill, window));
+            AssertBox(297, 91, 240, 32, BoxOf(pill, window));
             Assert.Equal(EditorColors.Field, ((ISolidColorBrush)pill.Background!).Color);
             Assert.Equal(EditorTheme.Corners, pill.CornerRadius);
             Assert.Equal([301, 333, 365, 397, 429, 473, 505], buttons.Select(b => BoxOf(b, window).X));
             Assert.All(buttons, button => Assert.Equal(new Size(28, 24), button.Bounds.Size));
-            Assert.All(buttons, button => Assert.Equal(90, BoxOf(button, window).Y));
+            Assert.All(buttons, button => Assert.Equal(95, BoxOf(button, window).Y));
         });
     }
 
@@ -321,7 +321,7 @@ public sealed class ViewportAreaTests
             var pill = Pill(window, 3);
             var parts = PillButtons(window, 3);
 
-            AssertBox(737, 86, 64, 32, BoxOf(pill, window));
+            AssertBox(737, 91, 64, 32, BoxOf(pill, window));
             Assert.IsType<FixedToggle>(parts[0]);
             Assert.Equal(28, parts[0].Bounds.Width);
             Assert.Equal(24, parts[1].Bounds.Width);
@@ -337,7 +337,7 @@ public sealed class ViewportAreaTests
             var pill = Pill(window, 4);
             var parts = PillButtons(window, 4);
 
-            AssertBox(820, 86, 96, 32, BoxOf(pill, window));
+            AssertBox(820, 91, 96, 32, BoxOf(pill, window));
             Assert.False(((FixedToggle)parts[0]).IsChecked);
             Assert.True(((FixedToggle)parts[1]).IsChecked);
             Assert.Equal(24, parts[2].Bounds.Width);
@@ -428,7 +428,7 @@ public sealed class ViewportAreaTests
             var text = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
             // The widths follow the font, so the distances are measured from the neighbor.
-            Assert.Equal([86.0, 32.0, 90.0, 24.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
+            Assert.Equal([91.0, 32.0, 95.0, 24.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
             Assert.Equal(view.Right + 7, bar.X);
             Assert.Equal(bar.Right + 8, chip.X);
             Assert.Equal(chip.X + 6, icon.X);
@@ -527,7 +527,7 @@ public sealed class ViewportAreaTests
             var button = window.Center.Overlay.ProjectionButton;
 
             Assert.Equal(303, BoxOf(button, window).X);
-            Assert.Equal(133, BoxOf(button, window).Y);
+            Assert.Equal(138, BoxOf(button, window).Y);
             Assert.Equal(32, button.Bounds.Height);
             var icon = BoxOf(button.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
             Assert.Equal(311, icon.X);
@@ -543,7 +543,7 @@ public sealed class ViewportAreaTests
         {
             var (window, _) = OpenWithViewport();
 
-            AssertBox(3011, 123, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
+            AssertBox(3011, 128, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
         });
     }
 

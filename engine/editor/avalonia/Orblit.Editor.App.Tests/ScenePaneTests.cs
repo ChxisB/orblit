@@ -70,7 +70,7 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize();
             var pane = window.ScenePane;
 
-            AssertBox(75, 85, 173, 28, BoxOf(pane.FilterBox, window));
+            AssertBox(75, 90, 173, 28, BoxOf(pane.FilterBox, window));
             Assert.Equal(9, BoxOf(pane.AddButton, window).X);
             Assert.Equal(41, BoxOf(pane.InstanceButton, window).X);
             Assert.Equal(250, BoxOf(pane.MenuButton, window).X);
@@ -88,7 +88,7 @@ public sealed class ScenePaneTests
             var items = window.Outline.GetVisualDescendants().OfType<TreeViewItem>().ToArray();
 
             Assert.Equal(3, items.Length);
-            Assert.Equal(127, BoxOf(items[0], window).Y);
+            Assert.Equal(132, BoxOf(items[0], window).Y);
             Assert.Equal(23, BoxOf(items[1], window).Y - BoxOf(items[0], window).Y);
             Assert.Equal(23, BoxOf(items[2], window).Y - BoxOf(items[1], window).Y);
         });

@@ -384,7 +384,7 @@ public sealed class PlanarViewportTests
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.True(window.Center.Overlay.Planar);
             Assert.False(window.Center.Overlay.Axes.IsVisible);
-            AssertBox(293, 81, 2818, 1147, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
 
             ClickOn(TabOf(window, "3D"), window);
             window.UpdateLayout();
@@ -392,7 +392,7 @@ public sealed class PlanarViewportTests
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.False(window.Center.Overlay.Planar);
             Assert.True(window.Center.Overlay.Axes.IsVisible);
-            AssertBox(293, 123, 2818, 1105, BoxOf(window.Viewport, window));
+            AssertBox(293, 128, 2818, 1100, BoxOf(window.Viewport, window));
         });
     }
 
