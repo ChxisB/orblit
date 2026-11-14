@@ -8,9 +8,8 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The bar under the viewport. Panel tabs on the left. On the right the status line in the slot the old editor
-/// gives its toasts, a rule, the version and the pin. Only the Output tab opens a panel, the others answer that
-/// theirs is not built.
+/// The bar under the viewport. Panel tabs on the left. On the right the status line, a rule, the version and the
+/// pin. Only the Output tab opens a panel, the others answer that theirs is not built.
 /// </summary>
 internal sealed class BottomBar : Grid
 {
