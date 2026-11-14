@@ -24,7 +24,7 @@ internal sealed class GraphSurface : Control
 
     static readonly IPen s_grid = new Pen(new ImmutableSolidColorBrush(Color.Parse("#26ffffff")), 1).ToImmutable();
     static readonly IPen s_band = new Pen(EditorBrushes.Accent, 1, new DashStyle([4, 3], 0)).ToImmutable();
-    static readonly IBrush s_bandFill = new ImmutableSolidColorBrush(Color.Parse("#2a3d8fff"));
+    static readonly IBrush s_bandFill = EditorBrushes.AccentSoft;
     static readonly IPen s_labelEdge = new Pen(EditorBrushes.Accent, 1).ToImmutable();
 
     readonly GraphScene _scene;
