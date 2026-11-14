@@ -1,37 +1,47 @@
+using Avalonia;
 using Avalonia.Controls;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The middle column: the scene tabs, the viewport toolbar, the viewport, the Output panel when it is open and the bottom bar.</summary>
+/// <summary>
+/// The middle column. One island holds the scene tabs, the viewport toolbar and the viewport. The Output panel opens
+/// under it when asked, and the bottom bar is an island of its own.
+/// </summary>
 internal sealed class CenterArea : Grid
 {
     internal const double ToolbarHeight = 42;
 
-    internal const double BottomBarHeight = 41;
+    internal const double BottomBarHeight = 38;
 
-    const double GapHeight = 3;
+    internal const double GapHeight = 6;
 
     readonly Dictionary<string, Control> _views = [];
+    readonly Grid _stage = new() { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},{ToolbarHeight},*") };
     readonly Grid _main = new();
 
     public CenterArea(Control tabs, Control toolbar, Control viewport, BottomBar bottom)
     {
-        RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},{ToolbarHeight},*,Auto,{GapHeight},{BottomBarHeight}");
-        SceneTabs = new Border { Background = EditorBrushes.Window, Child = tabs };
-        Toolbar = new Border { Background = EditorBrushes.Panel, Child = toolbar };
-        BottomBar = new Border { Background = EditorBrushes.Panel, Child = bottom };
+        RowDefinitions = new RowDefinitions($"*,Auto,{GapHeight},{BottomBarHeight}");
+        SceneTabs = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = tabs };
+        Toolbar = new Border { Child = toolbar };
+        Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
+        BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
         Overlay = new ViewportOverlay { IsVisible = false };
         Output = new OutputPanel { IsVisible = false };
         bottom.OutputOpenChanged += open => Output.IsVisible = open;
-        Place(SceneTabs, 0);
-        Place(Toolbar, 1);
         _main.Children.Add(viewport);
         _main.Children.Add(Overlay);
-        Place(_main, 2);
-        Place(Output, 3);
-        Place(BottomBar, 5);
+        Place(_stage, SceneTabs, 0);
+        Place(_stage, Toolbar, 1);
+        Place(_stage, _main, 2);
+        Place(this, Stage, 0);
+        Place(this, Output, 1);
+        Place(this, BottomBar, 3);
     }
+
+    /// <summary>The island that holds the scene tabs, the toolbar, the viewport and every other workspace's view.</summary>
+    internal Border Stage { get; }
 
     internal Border SceneTabs { get; }
 
@@ -53,7 +63,7 @@ internal sealed class CenterArea : Grid
         view.IsVisible = false;
         SetRow(view, 1);
         SetRowSpan(view, 2);
-        Children.Add(view);
+        _stage.Children.Add(view);
         _views.Add(name, view);
     }
 
@@ -74,9 +84,9 @@ internal sealed class CenterArea : Grid
         }
     }
 
-    void Place(Control child, int row)
+    static void Place(Grid grid, Control child, int row)
     {
         SetRow(child, row);
-        Children.Add(child);
+        grid.Children.Add(child);
     }
 }

@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -8,39 +9,43 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// A dock: a strip of tabs over a body that shows the chosen tab's content. The menu at the end of the strip offers
-/// every slot but the one the dock sits in. The window moves the dock, so the menu only asks.
+/// A dock: an island with a strip of tabs over a body that shows the chosen tab's content. The menu at the end of the
+/// strip offers every slot but the one the dock sits in. The window moves the dock, so the menu only asks.
 /// </summary>
-internal sealed class DockTabs : Grid
+internal sealed class DockTabs : Border
 {
-    internal const double StripHeight = 33;
+    /// <summary>A 26 pixel row of tabs, 6 pixels of padding around it, and the line under it.</summary>
+    internal const double StripHeight = 39;
 
-    const double TabPadding = 15;
+    const double TabHeight = 26;
+
+    const double TabPadding = 10;
 
     readonly Border[] _tabs;
     readonly Control[] _contents;
-    readonly Border _body = new() { Background = EditorBrushes.Panel };
+    readonly Border _body = new();
     readonly MenuItem[] _moves;
     DockSlot _slot;
 
     public DockTabs(params (string Title, Control Content)[] tabs)
     {
         Title = tabs[0].Title;
-        RowDefinitions = new RowDefinitions($"{StripHeight},*");
+        Classes.Add(EditorTheme.Island);
         _contents = tabs.Select(tab => tab.Content).ToArray();
         _tabs = tabs.Select((tab, index) => MakeTab(tab.Title, index)).ToArray();
-        var headers = new StackPanel { Orientation = Orientation.Horizontal };
+        var headers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
         headers.Children.AddRange(_tabs);
-        var strip = new DockPanel { Background = EditorBrushes.Window };
+        var strip = new DockPanel();
         _moves = [.. Enum.GetValues<DockSlot>().Select(slot => MoveItem(slot))];
         var menu = Parts.IconButton("GuiTabMenuHl", "Dock options");
-        menu.Flyout = new MenuFlyout { Items = { _moves[0], _moves[1], _moves[2] } };
+        // Under the button and right aligned, so the menu never covers the tabs.
+        menu.Flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight, Items = { _moves[0], _moves[1], _moves[2] } };
         DockPanel.SetDock(menu, Dock.Right);
         strip.Children.Add(menu);
         strip.Children.Add(headers);
-        Children.Add(strip);
-        SetRow(_body, 1);
-        Children.Add(_body);
+        var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6), Child = strip };
+        Grid.SetRow(_body, 1);
+        Child = new Grid { RowDefinitions = new RowDefinitions($"{StripHeight},*"), Children = { bar, _body } };
         Select(0);
         Slot = DockSlot.UpperLeft;
     }
@@ -80,7 +85,7 @@ internal sealed class DockTabs : Grid
         for (var i = 0; i < _tabs.Length; i++)
         {
             var active = i == index;
-            _tabs[i].Background = active ? EditorBrushes.Panel : Brushes.Transparent;
+            _tabs[i].Background = active ? EditorBrushes.Line : Brushes.Transparent;
             ((TextBlock)_tabs[i].Child!).Foreground = active ? EditorBrushes.Text : EditorBrushes.TextDim;
         }
     }
@@ -96,9 +101,10 @@ internal sealed class DockTabs : Grid
     {
         var tab = new Border
         {
-            CornerRadius = new CornerRadius(4, 4, 0, 0),
+            Height = TabHeight,
+            CornerRadius = EditorTheme.Corners,
             Padding = new Thickness(TabPadding, 0),
-            Child = new TextBlock { Text = title, VerticalAlignment = VerticalAlignment.Center },
+            Child = new TextBlock { Text = title, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
         };
         tab.PointerPressed += (_, e) =>
         {

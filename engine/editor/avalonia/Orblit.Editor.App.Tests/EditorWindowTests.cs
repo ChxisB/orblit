@@ -577,9 +577,9 @@ public sealed class EditorWindowTests
             window.ShowViewport(viewport);
 
             Assert.Same(viewport, window.Viewport.Content);
-            // The viewport shares a cell with its overlay, and the cell is the third row of the middle area.
+            // The viewport shares a cell with its overlay, and the cell is the third row of the stage island.
             var cell = Assert.IsType<Grid>(window.Viewport.Parent);
-            Assert.Same(window.Center, cell.Parent);
+            Assert.Same(window.Center.Stage.Child, cell.Parent);
             Assert.Equal(2, Grid.GetRow(cell));
         });
     }

@@ -32,6 +32,11 @@ internal sealed class EditorTheme : Styles
 
     internal static readonly CornerRadius Corners = new(6);
 
+    /// <summary>The class that makes a border an island: a panel on the ground with a fine edge and round corners.</summary>
+    internal const string Island = "island";
+
+    internal static readonly CornerRadius IslandCorners = new(10);
+
     // Fluent resource key and the colour that replaces it. A list of cases, so it is data.
     static readonly (string Key, Color Color)[] BrushOverrides =
     [
@@ -171,6 +176,18 @@ internal sealed class EditorTheme : Styles
             {
                 new Setter(Layoutable.MarginProperty, new Thickness(-ArrowShift, 0, ArrowShift, 0)),
                 new Setter(TemplatedControl.TemplateProperty, new FuncControlTemplate<ToggleButton>((button, _) => Arrow(button))),
+            },
+        });
+        // Clipped, so a viewport or a row highlight inside follows the round corners.
+        Add(new Style(x => x.Is<Border>().Class(Island))
+        {
+            Setters =
+            {
+                new Setter(Border.BackgroundProperty, EditorBrushes.Panel),
+                new Setter(Border.BorderBrushProperty, EditorBrushes.Line),
+                new Setter(Border.BorderThicknessProperty, new Thickness(1)),
+                new Setter(Border.CornerRadiusProperty, IslandCorners),
+                new Setter(Visual.ClipToBoundsProperty, true),
             },
         });
         Add(new Style(x => x.OfType<Window>())

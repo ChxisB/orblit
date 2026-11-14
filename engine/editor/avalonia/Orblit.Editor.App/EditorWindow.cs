@@ -687,11 +687,11 @@ internal sealed class EditorWindow : Window
     // The title bar on top, then the columns with the 4 pixel margin and the 3 pixel gaps of the reference.
     Control Layout()
     {
-        var left = new Grid { RowDefinitions = new RowDefinitions("*,4,*") };
+        var left = new Grid { RowDefinitions = new RowDefinitions("*,6,*") };
         Fill(left, _slots[DockSlot.UpperLeft], 0);
         Fill(left, Splitter(false), 1);
         Fill(left, _slots[DockSlot.LowerLeft], 2);
-        var body = new Grid { Margin = new Thickness(4, 0, 4, 4), ColumnDefinitions = new ColumnDefinitions("280,3,*,3,280") };
+        var body = new Grid { Margin = new Thickness(6, 0, 6, 6), ColumnDefinitions = new ColumnDefinitions("280,6,*,6,316") };
         Fill(body, left, 0);
         Fill(body, Splitter(true), 1);
         Fill(body, _center, 2);
