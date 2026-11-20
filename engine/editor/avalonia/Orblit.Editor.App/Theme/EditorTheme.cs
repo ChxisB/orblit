@@ -74,6 +74,9 @@ internal sealed class EditorTheme : Styles
     /// <summary>A text box with no fill or border in any state, for a search line that its card frames.</summary>
     internal const string Bare = "bare";
 
+    /// <summary>A flyout whose card sets its own room, so the presenter adds none.</summary>
+    internal const string Flush = "flush";
+
     /// <summary>
     /// Marks a menu item, or the native item behind one, whose feature is not built. The theme dims its label and
     /// draws Soon where its key would be. The screen bar of macOS draws its own items, so it shows neither.
@@ -299,6 +302,7 @@ internal sealed class EditorTheme : Styles
             },
         },
         new(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } },
+        new(x => x.OfType<FlyoutPresenter>().Class(Flush)) { Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(0)) } },
         // The window bar draws one item for each native item, so it carries the mark of the item it draws.
         new(x => x.OfType<NativeMenuBar>().Descendant().OfType<MenuItem>())
         {

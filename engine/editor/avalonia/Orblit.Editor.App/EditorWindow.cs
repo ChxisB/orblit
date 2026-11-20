@@ -330,7 +330,6 @@ internal sealed class EditorWindow : Window
         // A locked entity keeps no handles, but it can still be framed.
         _gizmoTarget = spatial && selected?.Locked == false ? selected.Handle : 0;
         _frame.IsEnabled = spatial;
-        _toolbar.TransformMenuButton.IsEnabled = spatial;
         _toolbar.Select(selected);
         HighlightSelected();
     }
@@ -505,6 +504,7 @@ internal sealed class EditorWindow : Window
         (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.MoveButton,
         (Key.E, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.RotateButton,
         (Key.R, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.ScaleButton,
+        (Key.R, KeyModifiers.Alt) when e.Source is not (TextBox or ComboBox) => _toolbar.ResetAllButton,
         (Key.T, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.LocalButton,
         _ => null,
     };
@@ -591,16 +591,22 @@ internal sealed class EditorWindow : Window
         _status.Text = $"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.";
     }
 
-    // The Transform menu changes the selected entity's place, the Mesh menu gives a mesh a collision shape, and the
-    // projection menu switches the viewport's camera.
+    // The Reset menu and the snap actions change the selected entity's place, the Collision menu gives a mesh a
+    // collision shape, and the projection menu switches the viewport's camera.
     void WireMenus()
     {
         _toolbar.ResetPositionItem.Click += (_, _) => Transform("Reset the position of", entity => _scene!.MoveTo(entity, Vector3.Zero));
         _toolbar.ResetRotationItem.Click += (_, _) => Transform("Reset the rotation of", entity => _scene!.RotateTo(entity, Vector3.Zero));
         _toolbar.ResetScaleItem.Click += (_, _) => Transform("Reset the scale of", entity => _scene!.ScaleTo(entity, Vector3.One));
-        _toolbar.SnapPositionItem.Click += (_, _) =>
+        _toolbar.ResetAllButton.Click += (_, _) => Transform("Reset the transform of", entity =>
+        {
+            _scene!.MoveTo(entity, Vector3.Zero);
+            _scene.RotateTo(entity, Vector3.Zero);
+            _scene.ScaleTo(entity, Vector3.One);
+        });
+        _toolbar.SnapPositionButton.Click += (_, _) =>
             Transform("Snapped the position of", entity => _scene!.MoveTo(entity, GizmoMath.Stepped(_scene.PositionOf(entity), _toolbar.Steps.Move)));
-        _toolbar.SnapRotationItem.Click += (_, _) =>
+        _toolbar.SnapRotationButton.Click += (_, _) =>
             Transform("Snapped the rotation of", entity => _scene!.RotateTo(entity, GizmoMath.Stepped(_scene.RotationOf(entity), _toolbar.Steps.Turn)));
         _toolbar.TrimeshItem.Click += (_, _) => AddCollision(false);
         _toolbar.ConvexItem.Click += (_, _) => AddCollision(true);

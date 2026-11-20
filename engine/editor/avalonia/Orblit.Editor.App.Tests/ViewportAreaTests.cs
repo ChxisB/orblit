@@ -379,33 +379,21 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_preview_settings_button_says_it_is_not_built()
+    public void Preview_settings_opens_a_popover_that_marks_both_previews_soon()
     {
         UiThread.Run(() =>
         {
             var (window, _) = OpenWithViewport();
+            var button = window.Center.Overlay.PreviewSettingsButton;
 
-            ClickOn(Items(window.Center.Overlay.View)[^1], window);
+            ClickOn(button, window);
 
-            Assert.Equal("Preview settings are not built yet.", window.Status);
-        });
-    }
-
-    [Fact]
-    public void The_transform_and_view_menus_float_as_text_in_a_pill_at_the_bottom_left()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var toolbar = window.Toolbar;
-            var pill = BoxOf(toolbar.Menus, window);
-
-            Assert.Equal([303.0, 1218.0, 34.0], [pill.X, pill.Bottom, pill.Height]);
-            Assert.Equal(EditorBrushes.Floating, toolbar.Menus.Background);
-            Assert.Equal(307, BoxOf(toolbar.TransformMenuButton, window).X);
-            Assert.Equal(2, BoxOf(toolbar.ViewButton, window).X - BoxOf(toolbar.TransformMenuButton, window).Right);
-            Assert.Equal("Transform", toolbar.TransformMenuButton.Content);
-            Assert.Equal("View", toolbar.ViewButton.Content);
+            Assert.True(button.Flyout!.IsOpen);
+            var body = (Control)((Flyout)button.Flyout).Content!;
+            var texts = body.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "").ToArray();
+            Assert.Equal(["Preview settings", "What the viewport adds when the scene has no light or sky."], texts[..2]);
+            // A row docks its Soon tag first, so the tag comes before the label.
+            Assert.Equal(["Soon", "Sun preview", "Soon", "Environment preview"], texts.Where(text => text is "Sun preview" or "Environment preview" or "Soon"));
         });
     }
 
@@ -418,84 +406,86 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_mesh_menu_shows_for_a_mesh_alone()
+    public void The_chip_waits_for_a_selection_and_names_it_with_its_class()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var toolbar = window.Toolbar;
+            Assert.False(toolbar.Chip.IsVisible);
+
+            window.Outline.SelectedItem = FakeScene.Lamp;
+
+            Assert.True(toolbar.Chip.IsVisible);
+            Assert.Equal(["Lamp", FakeScene.Lamp.ClassName], [toolbar.NameText.Text!, toolbar.ClassText.Text!]);
+            Assert.Equal(EditorIcons.ForClass(FakeScene.Lamp.ClassName), toolbar.ClassIcon.IconName);
+            window.Outline.SelectedItem = null;
+            Assert.False(toolbar.Chip.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_chip_floats_36_high_10_pixels_in_from_the_bottom_left_of_the_viewport()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.UpdateLayout();
+            var chip = BoxOf(window.Toolbar.Chip, window);
+
+            Assert.Equal([303.0, 1218.0, 36.0], [chip.X, chip.Bottom, chip.Height]);
+            Assert.Equal(EditorBrushes.Floating, window.Toolbar.Chip.Background);
+        });
+    }
+
+    [Fact]
+    public void The_collision_tab_shows_for_a_mesh_alone()
     {
         UiThread.Run(() =>
         {
             var (window, mesh) = OpenWithMesh();
             var toolbar = window.Toolbar;
-            bool[] Shown() => [toolbar.MeshMenuButton.IsVisible, toolbar.MeshGap.IsVisible];
+            bool[] Shown() => [toolbar.CollisionButton.IsVisible, toolbar.CollisionRule.IsVisible];
 
-            Assert.Equal([false, false], Shown());
             window.Outline.SelectedItem = FakeScene.Lamp;
             Assert.Equal([false, false], Shown());
             window.Outline.SelectedItem = mesh;
             Assert.Equal([true, true], Shown());
-            window.Outline.SelectedItem = null;
+            Assert.Equal("Box", toolbar.NameText.Text);
+            window.Outline.SelectedItem = FakeScene.Lamp;
             Assert.Equal([false, false], Shown());
         });
     }
 
     [Fact]
-    public void The_mesh_menu_follows_view_after_a_rule()
+    public void The_projection_menu_ends_with_focus_selection_under_a_rule()
     {
         UiThread.Run(() =>
         {
-            var (window, mesh) = OpenWithMesh();
-            window.Outline.SelectedItem = mesh;
-            window.UpdateLayout();
-            var toolbar = window.Toolbar;
-            var view = BoxOf(toolbar.ViewButton, window);
-            var bar = BoxOf(toolbar.MeshGap, window);
-            var chip = BoxOf(toolbar.MeshMenuButton, window);
-            var icon = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
-            var text = BoxOf(toolbar.MeshMenuButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
+            var overlay = OpenAtReferenceSize().Center.Overlay;
+            var items = ((MenuFlyout)overlay.ProjectionButton.Flyout!).Items;
 
-            // The widths follow the font, so the distances are measured from the neighbor.
-            Assert.Equal([1188.0, 26.0, 1192.0, 18.0, 1.0], [chip.Y, chip.Height, bar.Y, bar.Height, bar.Width]);
-            Assert.Equal(view.Right + 5, bar.X);
-            Assert.Equal(bar.Right + 5, chip.X);
-            Assert.Equal(chip.X + 6, icon.X);
-            Assert.Equal(chip.X + 28, text.X);
-            Assert.Equal(chip.Right - 8, text.Right);
-            Assert.Equal(EditorBrushes.LineStrong, toolbar.MeshGap.Background);
+            Assert.Equal("PROJECTION", ((TextBlock)((MenuItem)items[0]!).Header!).Text);
+            Assert.Equal([overlay.PerspectiveItem, overlay.OrthogonalItem], items.Skip(1).Take(2));
+            Assert.IsType<Separator>(items[3]);
+            Assert.Same(overlay.FocusItem, items[4]);
         });
     }
 
     [Fact]
-    public void The_menu_labels_are_centred_in_their_pill()
+    public void Focus_selection_is_off_without_a_framable_selection()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var middle = BoxOf(window.Toolbar.Menus, window).Center.Y;
+            var focus = window.Center.Overlay.FocusItem;
 
-            foreach (var button in new[] { window.Toolbar.TransformMenuButton, window.Toolbar.ViewButton })
-            {
-                var label = button.GetVisualDescendants().OfType<TextBlock>().Single();
-                Assert.Equal(VerticalAlignment.Center, button.VerticalContentAlignment);
-                Assert.Equal(middle, BoxOf(button, window).Center.Y);
-                // A 13 pixel font has an odd line height, so the label's centre can fall on a half pixel.
-                Assert.Equal(middle, BoxOf(label, window).Center.Y, 0.5);
-            }
-        });
-    }
-
-    [Fact]
-    public void The_view_menu_opens_and_its_focus_item_is_off_without_a_framable_selection()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            ClickOn(window.Toolbar.ViewButton, window);
-
-            Assert.True(window.Toolbar.ViewButton.Flyout!.IsOpen);
-            Assert.False(window.Toolbar.FocusItem.IsEnabled);
+            Assert.False(focus.IsEnabled);
             window.Outline.SelectedItem = FakeScene.Lamp;
-            Assert.True(window.Toolbar.FocusItem.IsEnabled);
+            Assert.True(focus.IsEnabled);
             window.Outline.SelectedItem = FakeScene.Sound;
-            Assert.False(window.Toolbar.FocusItem.IsEnabled);
+            Assert.False(focus.IsEnabled);
         });
     }
 
@@ -508,9 +498,10 @@ public sealed class ViewportAreaTests
             var window = OpenAtReferenceSize(scene);
             window.Outline.SelectedItem = FakeScene.Lamp;
 
-            window.Toolbar.FocusItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            window.Center.Overlay.FocusItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            window.Toolbar.FocusButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-            Assert.Equal([FakeScene.Lamp.Handle], scene.Framed);
+            Assert.Equal([FakeScene.Lamp.Handle, FakeScene.Lamp.Handle], scene.Framed);
             Assert.Equal("Framed Lamp.", window.Status);
         });
     }

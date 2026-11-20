@@ -19,21 +19,16 @@ internal sealed class Dialog : Border
 
     public Dialog(string title, string why, Control body)
     {
-        Heading = new TextBlock { Text = title, FontWeight = FontWeight.SemiBold };
-        Why = new TextBlock { Text = why, FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
-        // The design draws this cross at 14 in the usual 26 pixel button.
-        CloseButton = Parts.IconButton("Close", "Close");
-        CloseButton.Content = new EditorIcon("Close") { Width = 14, Height = 14 };
-        CloseButton.Padding = new Thickness(6);
-        CloseButton.VerticalAlignment = VerticalAlignment.Top;
+        var heading = new CardHead(title, why);
+        Heading = heading.Heading;
+        Why = heading.Why;
+        CloseButton = heading.CloseButton;
         CancelButton = new Button { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
         MainButton = new Button { Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
         DockPanel.SetDock(MainButton, Dock.Right);
         DockPanel.SetDock(CancelButton, Dock.Right);
         _footer = new DockPanel { LastChildFill = false, Children = { MainButton, CancelButton } };
 
-        var heading = new DockPanel { Margin = new Thickness(14, 12, 12, 0), Children = { CloseButton, new StackPanel { Children = { Heading, Why } } } };
-        DockPanel.SetDock(CloseButton, Dock.Right);
         var footer = new Border
         {
             Padding = new Thickness(12, 10),
