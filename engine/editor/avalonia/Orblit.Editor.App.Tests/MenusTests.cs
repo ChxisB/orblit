@@ -51,13 +51,13 @@ public sealed class MenusTests
     }
 
     [Fact]
-    public void Reset_focus_and_the_snap_actions_are_on_for_an_entity_with_a_place_alone()
+    public void Reset_and_focus_are_on_for_an_entity_with_a_place_alone()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var toolbar = window.Toolbar;
-            Button[] buttons = [toolbar.ResetButton, toolbar.ResetAllButton, toolbar.FocusButton, toolbar.SnapPositionButton, toolbar.SnapRotationButton];
+            Button[] buttons = [toolbar.ResetButton, toolbar.ResetAllButton, toolbar.FocusButton];
             bool On() => buttons.All(button => button.IsEnabled);
             bool Off() => buttons.All(button => !button.IsEnabled);
             Assert.True(Off());
@@ -127,49 +127,31 @@ public sealed class MenusTests
     }
 
     [Fact]
-    public void Snap_position_rounds_each_axis_to_the_move_step_in_the_snap_options()
+    public void The_snap_switches_start_on_and_a_switch_that_is_off_gives_no_step()
     {
         UiThread.Run(() =>
         {
-            var (window, scene) = OpenOnLamp();
-            scene.MoveTo(1, new Vector3(1.3f, 2.7f, -3.2f));
-            window.Toolbar.SnapMoveBox.Text = "0.5";
+            var toolbar = OpenAtReferenceSize().Toolbar;
+            toolbar.SnapMoveBox.Text = "0.5";
+            Assert.Equal(new GizmoSnap(0.5f, 15f, 0.1f), toolbar.Steps);
 
-            Press(window.Toolbar.SnapPositionButton);
+            toolbar.SnapPositionSwitch.IsChecked = false;
+            Assert.Equal(new GizmoSnap(0f, 15f, 0.1f), toolbar.Steps);
 
-            Assert.Equal(new Vector3(1.5f, 2.5f, -3f), scene.PositionOf(1));
-            Assert.Equal("Snapped the position of Lamp. Save keeps the change.", window.Status);
+            toolbar.SnapRotationSwitch.IsChecked = false;
+            Assert.Equal(new GizmoSnap(0f, 0f, 0.1f), toolbar.Steps);
         });
     }
 
     [Fact]
-    public void Snap_rotation_rounds_each_angle_to_the_turn_step_and_leaves_the_rest_alone()
+    public void A_snap_step_that_is_not_a_positive_number_gives_the_default_step()
     {
         UiThread.Run(() =>
         {
-            var (window, scene) = OpenOnLamp();
+            var toolbar = OpenAtReferenceSize().Toolbar;
+            toolbar.SnapMoveBox.Text = "-2";
 
-            Press(window.Toolbar.SnapRotationButton);
-
-            Assert.Equal(new Vector3(15, 15, 30), scene.RotationOf(1));
-            Assert.Equal(new Vector3(1, 2, 3), scene.PositionOf(1));
-            Assert.Equal(new Vector3(4, 5, 6), scene.ScaleOf(1));
-            Assert.Equal("Snapped the rotation of Lamp. Save keeps the change.", window.Status);
-        });
-    }
-
-    [Fact]
-    public void A_snap_step_that_is_not_a_positive_number_snaps_to_the_default_step()
-    {
-        UiThread.Run(() =>
-        {
-            var (window, scene) = OpenOnLamp();
-            scene.MoveTo(1, new Vector3(1.3f, 2.7f, 3.6f));
-            window.Toolbar.SnapMoveBox.Text = "-2";
-
-            Press(window.Toolbar.SnapPositionButton);
-
-            Assert.Equal(new Vector3(1, 3, 4), scene.PositionOf(1));
+            Assert.Equal(GizmoSnap.Default, toolbar.Steps);
         });
     }
 

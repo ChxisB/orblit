@@ -166,6 +166,7 @@ internal sealed class EditorWindow : Window
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddBareWorkspace(TitleBar.Game, _game);
         _center.AddBareWorkspace(TitleBar.Store, _store);
+        _center.AddSide(TitleBar.Store, _store.Drawer);
         _titleBar.WorkspaceChosen += ChooseWorkspace;
         _pollTimer.Tick += (_, _) => Poll();
         Closed += (_, _) =>
@@ -669,10 +670,6 @@ internal sealed class EditorWindow : Window
             _scene.RotateTo(entity, Vector3.Zero);
             _scene.ScaleTo(entity, Vector3.One);
         });
-        _toolbar.SnapPositionButton.Click += (_, _) =>
-            Transform("Snapped the position of", entity => _scene!.MoveTo(entity, GizmoMath.Stepped(_scene.PositionOf(entity), _toolbar.Steps.Move)));
-        _toolbar.SnapRotationButton.Click += (_, _) =>
-            Transform("Snapped the rotation of", entity => _scene!.RotateTo(entity, GizmoMath.Stepped(_scene.RotationOf(entity), _toolbar.Steps.Turn)));
         _toolbar.TrimeshItem.Click += (_, _) => AddCollision(false);
         _toolbar.ConvexItem.Click += (_, _) => AddCollision(true);
         _center.Overlay.ProjectionChanged += orthogonal =>
@@ -772,7 +769,7 @@ internal sealed class EditorWindow : Window
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
 
-    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? []);
+    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar);
 
     // The rows are read at each open, so the palette shows the menus, files and entities as they are now.
     void OpenPalette()

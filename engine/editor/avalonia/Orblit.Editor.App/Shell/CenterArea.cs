@@ -15,12 +15,14 @@ internal sealed class CenterArea : Grid
     internal const double GapHeight = 6;
 
     readonly Dictionary<string, Control> _views = [];
+    readonly Dictionary<string, Decorator> _sides = [];
     readonly Grid _stage = new() { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},*") };
     readonly Grid _main = new();
 
     public CenterArea(Control tabs, ViewportToolbar toolbar, Control viewport, BottomBar bottom)
     {
         RowDefinitions = new RowDefinitions($"*,Auto,{GapHeight},{BottomBarHeight}");
+        ColumnDefinitions = new ColumnDefinitions("*,Auto");
         SceneTabs = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = tabs };
         Toolbar = toolbar;
         Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
@@ -99,6 +101,19 @@ internal sealed class CenterArea : Grid
     }
 
     /// <summary>
+    /// Adds a part beside the whole column, bottom bar and all, that shows while the workspace under this name is
+    /// chosen. The part keeps its own visibility, so a closed drawer takes no room.
+    /// </summary>
+    public void AddSide(string name, Control side)
+    {
+        var holder = new Decorator { Child = side, IsVisible = false };
+        SetColumn(holder, 1);
+        SetRowSpan(holder, RowDefinitions.Count);
+        Children.Add(holder);
+        _sides.Add(name, holder);
+    }
+
+    /// <summary>
     /// Shows the viewport with the 3D tools for the spatial workspace, the viewport with the 2D tools for the planar
     /// one, and the view added under this name for any other.
     /// </summary>
@@ -114,6 +129,11 @@ internal sealed class CenterArea : Grid
         foreach (var (key, view) in _views)
         {
             view.IsVisible = key == name;
+        }
+
+        foreach (var (key, side) in _sides)
+        {
+            side.IsVisible = key == name;
         }
     }
 
