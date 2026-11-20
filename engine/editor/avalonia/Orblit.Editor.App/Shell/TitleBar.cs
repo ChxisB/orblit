@@ -181,7 +181,9 @@ internal sealed class TitleBar : Grid
                 project,
                 UnbuiltItem("Run the current scene", new KeyGesture(Key.R, command)),
                 UnbuiltItem("Run a chosen scene...", new KeyGesture(Key.R, command | KeyModifiers.Shift)),
+                new Separator(),
                 UnbuiltItem("Movie maker mode"),
+                new Separator(),
                 UnbuiltItem("Customize Run Instances..."),
             },
         };
@@ -192,6 +194,7 @@ internal sealed class TitleBar : Grid
     {
         var item = new MenuItem { Header = label, InputGesture = key };
         item.Click += (_, _) => MoreButton.RaiseEvent(new UnbuiltEventArgs($"{label.TrimEnd('.')} is not built yet."));
+        EditorTheme.MarkSoon(item);
         return item;
     }
 

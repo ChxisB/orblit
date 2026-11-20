@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
+using Avalonia.Data;
+using Avalonia.Data.Converters;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
@@ -43,6 +45,16 @@ internal sealed class EditorTheme : Styles
 
     /// <summary>The corners of a menu or a flyout, a step rounder than an island.</summary>
     internal static readonly CornerRadius PopoverCorners = new(11);
+
+    /// <summary>
+    /// Marks a menu item, or the native item behind one, whose feature is not built. The theme dims its label and
+    /// draws Soon where its key would be. The screen bar of macOS draws its own items, so it shows neither.
+    /// </summary>
+    internal static readonly AttachedProperty<bool> SoonProperty = AvaloniaProperty.RegisterAttached<AvaloniaObject, bool>("Soon", typeof(EditorTheme));
+
+    internal static bool IsSoon(AvaloniaObject item) => item.GetValue(SoonProperty);
+
+    internal static void MarkSoon(AvaloniaObject item) => item.SetValue(SoonProperty, true);
 
     // Fluent resource key and the colour that replaces it. A list of cases, so it is data.
     static readonly (string Key, Color Color)[] BrushOverrides =
@@ -239,6 +251,22 @@ internal sealed class EditorTheme : Styles
             },
         },
         new(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } },
+        // The window bar draws one item for each native item, so it carries the mark of the item it draws.
+        new(x => x.OfType<NativeMenuBar>().Descendant().OfType<MenuItem>())
+        {
+            Setters = { new Setter(SoonProperty, new Binding { Converter = new FuncValueConverter<object?, bool>(item => item is NativeMenuItem native && IsSoon(native)) }) },
+        },
+        // The label stays readable so people learn the menu. The tag takes the place of the key.
+        new(x => x.OfType<MenuItem>().PropertyEquals(SoonProperty, true)) { Setters = { new Setter(TemplatedControl.ForegroundProperty, EditorBrushes.Unbuilt) } },
+        new(x => x.OfType<MenuItem>().PropertyEquals(SoonProperty, true).Template().OfType<TextBlock>().Name("PART_InputGestureText"))
+        {
+            Setters =
+            {
+                new Setter(TextBlock.TextProperty, "Soon"),
+                new Setter(TextBlock.ForegroundProperty, EditorBrushes.Warn),
+                new Setter(TextBlock.FontWeightProperty, FontWeight.SemiBold),
+            },
+        },
         // The menus of a bar are header tabs, so they take the tab height and a softer name.
         new(x => x.Is<Menu>().Child().Is<MenuItem>())
         {

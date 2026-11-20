@@ -37,6 +37,7 @@ internal sealed class EditorWindow : Window
     readonly ScenesPanel _scenes = new();
     readonly TextBlock _status = new() { Text = "Starting the engine." };
     readonly Toast _toast;
+    readonly List<string> _recent = [];
     // Save and Frame are commands without a place of their own on screen. The shortcuts, the menus and the
     // tests press them, and a button off keeps its key unhandled.
     readonly Button _save = new() { IsEnabled = false };
@@ -219,6 +220,7 @@ internal sealed class EditorWindow : Window
         _pollTimer.Start();
         ShowScenes();
         Reload(0);
+        Remember(scene.SceneFile);
         _status.Text = OpenedStatus();
     }
 
@@ -392,12 +394,25 @@ internal sealed class EditorWindow : Window
     }
 
     // Save is on while the Save button is. Quit and fullscreen are the other menu items the editor can do.
-    Dictionary<string, MenuAction> MenuActions() => new()
+    // Each Editor Docks item shows and hides its tab.
+    Dictionary<string, MenuAction> MenuActions()
     {
-        ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
-        ["Quit"] = new(Close),
-        ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
-    };
+        var actions = new Dictionary<string, MenuAction>
+        {
+            ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
+            ["Quit"] = new(Close),
+            ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
+        };
+        foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
+        {
+            foreach (var title in dock.Titles)
+            {
+                actions[title] = new(() => dock.ToggleTab(title), Checked: dock.Shown(title));
+            }
+        }
+
+        return actions;
+    }
 
     // A shortcut presses the button it stands for, so a key and a click run the same code. A button that is
     // off leaves the key unhandled.
@@ -641,9 +656,30 @@ internal sealed class EditorWindow : Window
         }
 
         Reload(0);
+        Remember(_scene!.SceneFile);
         _status.Text = OpenedStatus();
         return true;
     }
+
+    // Open Recent lists the scenes opened this session, newest first. An edit reloads the scene and opens nothing,
+    // so only a load and a change of scene call this.
+    void Remember(string sceneFile)
+    {
+        if (sceneFile == "")
+        {
+            return;
+        }
+
+        _recent.Remove(sceneFile);
+        _recent.Insert(0, sceneFile);
+        ShowRecent();
+    }
+
+    void ShowRecent() => EditorMenu.ShowRecent(NativeMenu.GetMenu(this)!, _recent, Open, () =>
+    {
+        _recent.Clear();
+        ShowRecent();
+    });
 
     // shortcut: one file stat per scene on each refresh. Read the times only for a newest first sort when a project has thousands.
     void ShowScenes()

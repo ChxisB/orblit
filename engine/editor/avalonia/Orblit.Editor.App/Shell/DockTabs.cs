@@ -21,6 +21,7 @@ internal sealed class DockTabs : Border
 
     const double TabPadding = 10;
 
+    readonly string[] _titles;
     readonly Border[] _tabs;
     readonly Control[] _contents;
     readonly Border _body = new();
@@ -31,6 +32,7 @@ internal sealed class DockTabs : Border
     {
         Title = tabs[0].Title;
         Classes.Add(EditorTheme.Island);
+        _titles = tabs.Select(tab => tab.Title).ToArray();
         _contents = tabs.Select(tab => tab.Content).ToArray();
         _tabs = tabs.Select((tab, index) => MakeTab(tab.Title, index)).ToArray();
         var headers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
@@ -90,6 +92,27 @@ internal sealed class DockTabs : Border
             ((TextBlock)_tabs[i].Child!).Foreground = active ? EditorBrushes.Text : EditorBrushes.TextDim;
         }
     }
+
+    /// <summary>
+    /// Shows the tab with this title if it is hidden, and hides it if it shows. A dock with no tab left hides and
+    /// keeps its slot. A hidden tab hands the body to the first tab that shows.
+    /// </summary>
+    internal void ToggleTab(string title)
+    {
+        var tab = _tabs[Array.IndexOf(_titles, title)];
+        tab.IsVisible = !tab.IsVisible;
+        IsVisible = _tabs.Any(each => each.IsVisible);
+        if (IsVisible && !_tabs[SelectedIndex].IsVisible)
+        {
+            Select(Array.FindIndex(_tabs, each => each.IsVisible));
+        }
+    }
+
+    /// <summary>Whether the tab with this title shows, now and after each change.</summary>
+    internal IObservable<bool> Shown(string title) => _tabs[Array.IndexOf(_titles, title)].GetObservable(IsVisibleProperty);
+
+    /// <summary>The titles of the tabs, in order.</summary>
+    internal IReadOnlyList<string> Titles => _titles;
 
     MenuItem MoveItem(DockSlot slot)
     {
