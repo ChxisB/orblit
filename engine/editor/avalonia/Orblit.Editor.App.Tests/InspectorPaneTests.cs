@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -12,8 +14,19 @@ public sealed class InspectorPaneTests
 
     static string IconOf(Control control) => control.GetVisualDescendants().OfType<EditorIcon>().First().IconName;
 
+    static string[] Names(MenuFlyout menu) =>
+        [.. menu.Items.OfType<MenuItem>().Select(item => ((StackPanel)item.Header!).Children.OfType<TextBlock>().First().Text!)];
+
+    static void Choose(MenuFlyout menu, Func<MenuItem, bool> which) =>
+        menu.Items.OfType<MenuItem>().Single(which).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+    static void Choose(MenuFlyout menu, string header) => Choose(menu, item => (string?)item.Header == header);
+
+    static PropertyGroup Transform(EditorWindow window) =>
+        window.Inspector.GetVisualDescendants().OfType<PropertyGroup>().Single(group => group.Title == "Transform");
+
     [Fact]
-    public void The_history_row_holds_back_forward_and_the_menu()
+    public void The_history_row_holds_back_forward_and_the_object_chip()
     {
         UiThread.Run(() =>
         {
@@ -22,7 +35,8 @@ public sealed class InspectorPaneTests
 
             AssertBox(3121, 92, 24, 24, BoxOf(pane.BackButton, window));
             AssertBox(3149, 92, 24, 24, BoxOf(pane.ForwardButton, window));
-            AssertBox(3403, 92, 24, 24, BoxOf(pane.HistoryButton, window));
+            AssertBox(3181, 88, 246, 32, BoxOf(pane.Chip, window));
+            Assert.Equal("Inspected objects", ToolTip.GetTip(pane.Chip));
         });
     }
 
@@ -60,17 +74,18 @@ public sealed class InspectorPaneTests
             var window = OpenAtReferenceSize();
             var pane = window.InspectorPane;
 
-            Assert.Equal(["Back", "Forward", "GuiTabMenuHl", "Tools", "Search"],
-                [IconOf(pane.BackButton), IconOf(pane.ForwardButton), IconOf(pane.HistoryButton), IconOf(pane.ToolsButton), IconOf(pane.FilterBox)]);
+            Assert.Equal(["Back", "Forward", "Tools", "Search"],
+                [IconOf(pane.BackButton), IconOf(pane.ForwardButton), IconOf(pane.ToolsButton), IconOf(pane.FilterBox)]);
         });
     }
 
     [Fact]
-    public void Back_and_forward_are_off_because_no_history_is_kept()
+    public void Back_and_forward_are_off_until_a_second_object_is_shown()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            window.Outline.SelectedItem = FakeScene.Lamp;
 
             Assert.False(window.InspectorPane.BackButton.IsEnabled);
             Assert.False(window.InspectorPane.ForwardButton.IsEnabled);
@@ -78,28 +93,94 @@ public sealed class InspectorPaneTests
     }
 
     [Fact]
-    public void The_history_menu_says_it_is_not_built()
+    public void Back_returns_to_the_last_object_and_forward_comes_back()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var pane = window.InspectorPane;
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.Outline.SelectedItem = FakeScene.Sound;
 
-            ClickOn(window.InspectorPane.HistoryButton, window);
+            ClickOn(pane.BackButton, window);
+            Assert.Equal(FakeScene.Lamp.Handle, window.ScenePane.Selected!.Handle);
+            Assert.Equal("Lamp", pane.InspectedName.Text);
+            Assert.False(pane.BackButton.IsEnabled);
+            Assert.True(pane.ForwardButton.IsEnabled);
 
-            Assert.Equal("The history of inspected objects is not built yet.", window.Status);
+            ClickOn(pane.ForwardButton, window);
+            Assert.Equal(FakeScene.Sound.Handle, window.ScenePane.Selected!.Handle);
+            Assert.False(pane.ForwardButton.IsEnabled);
         });
     }
 
     [Fact]
-    public void The_tools_button_says_it_is_not_built()
+    public void A_new_object_after_a_step_back_drops_the_steps_forward()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var pane = window.InspectorPane;
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.Outline.SelectedItem = FakeScene.Sound;
+            ClickOn(pane.BackButton, window);
 
-            ClickOn(window.InspectorPane.ToolsButton, window);
+            window.ScenePane.Select(FakeScene.Field.Handle);
 
-            Assert.Equal("The inspector tools are not built yet.", window.Status);
+            Assert.False(pane.ForwardButton.IsEnabled);
+            ClickOn(pane.BackButton, window);
+            Assert.Equal(FakeScene.Lamp.Handle, window.ScenePane.Selected!.Handle);
+        });
+    }
+
+    [Fact]
+    public void The_chip_names_the_class_and_lists_recent_objects_newest_first_once_each()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var pane = window.InspectorPane;
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.Outline.SelectedItem = FakeScene.Sound;
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            Assert.Equal("Entity3D", pane.InspectedClass.Text);
+
+            ClickOn(pane.Chip, window);
+
+            Assert.Equal(["Lamp", "Sound"], Names(pane.Recent));
+            Choose(pane.Recent, item => item == pane.Recent.Items[1]);
+            Assert.Equal(FakeScene.Sound.Handle, window.ScenePane.Selected!.Handle);
+        });
+    }
+
+    [Fact]
+    public void Collapse_All_and_Expand_All_fold_the_groups_with_rows()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var tools = (MenuFlyout)window.InspectorPane.ToolsButton.Flyout!;
+            window.Outline.SelectedItem = FakeScene.Lamp;
+
+            Choose(tools, "Collapse All");
+            Assert.False(Transform(window).IsOpen);
+
+            Choose(tools, "Expand All");
+            Assert.True(Transform(window).IsOpen);
+        });
+    }
+
+    [Fact]
+    public void A_tool_past_the_folds_says_it_is_not_built()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var tools = (MenuFlyout)window.InspectorPane.ToolsButton.Flyout!;
+
+            Choose(tools, "Copy Properties");
+
+            Assert.Equal("Copy Properties is not built yet.", window.Status);
         });
     }
 
@@ -145,6 +226,36 @@ public sealed class InspectorPaneTests
             window.InspectorPane.FilterBox.Text = text;
 
             Assert.Equal(expected, Shown(window));
+        });
+    }
+
+    [Theory]
+    [InlineData("pos", "1 of 3 properties match.")]
+    [InlineData("o", "2 of 3 properties match.")]
+    [InlineData("zzz", "No properties match.")]
+    public void A_filter_counts_the_rows_that_match(string text, string expected)
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            window.Outline.SelectedItem = FakeScene.Lamp;
+
+            window.InspectorPane.FilterBox.Text = text;
+
+            Assert.True(window.Inspector.FilterCount.IsEffectivelyVisible);
+            Assert.Equal(expected, window.Inspector.FilterCount.Text);
+        });
+    }
+
+    [Fact]
+    public void With_no_filter_there_is_no_count()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            window.Outline.SelectedItem = FakeScene.Lamp;
+
+            Assert.False(window.Inspector.FilterCount.IsVisible);
         });
     }
 

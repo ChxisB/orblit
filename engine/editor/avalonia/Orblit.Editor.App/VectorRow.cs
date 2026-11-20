@@ -7,23 +7,26 @@ using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
 using Avalonia.Styling;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// A label over three fields for one vector, each with a tag for its axis, the value and the unit. It raises
-/// <see cref="Entered"/> when the boxes hold a finite value that differs from the one shown. Any other text is
-/// put back.
+/// A label beside three fields for one vector, each with a tag for its axis, the value and the unit. A field shows
+/// its value rounded at rest and in full while it has the caret. It raises <see cref="Entered"/> when a box holds a
+/// finite value that differs from the one shown. Any other text stays, with a red edge and a line that says why,
+/// until the next value is shown.
 /// </summary>
-internal sealed class VectorRow : StackPanel
+internal sealed class VectorRow : Grid
 {
-    // The label is 30 high and the fields 28, 4 apart, with a pixel under them. The tag is 18 wide, the value
-    // starts 6 after it, and the unit ends 7 short of the field's edge.
-    const double LabelHeight = 30;
+    // The label column is 96 wide and 8 from the fields. The row is 30 high and its fields 28, 4 apart. The tag is
+    // 18 wide, the value starts 6 after it, and the unit ends 7 short of the field's edge.
+    const double LabelWidth = 96;
+    const double LabelGap = 8;
+    const double RowHeight = 30;
     const double FieldHeight = 28;
     const double FieldGap = 4;
-    const double LabelIndent = 8;
     const double TagWidth = 18;
     const double ValueIndent = 6;
     const double UnitGap = 7;
@@ -32,43 +35,61 @@ internal sealed class VectorRow : StackPanel
     const byte TagAlpha = 0x1F;
 
     const string Field = "num";
+    const string Bad = "bad";
+    const string AtRest = "0.####";
 
     static readonly (string Letter, Color Color)[] s_letters =
         [("X", EditorColors.AxisX), ("Y", EditorColors.AxisY), ("Z", EditorColors.AxisZ)];
 
     readonly TextBox[] _axes = [AxisBox(), AxisBox(), AxisBox()];
+    readonly Border[] _fields = new Border[3];
+    readonly TextBlock _fault = Parts.FaultLine();
     Vector3? _shown;
 
     public VectorRow(string label, string unit = "")
     {
         Label = label;
-        // Styles, not local values, so focus can light the edge of the field that holds the caret.
+        ColumnDefinitions = new ColumnDefinitions($"{LabelWidth},{LabelGap},*");
+        RowDefinitions = new RowDefinitions($"{RowHeight},Auto");
+        // Styles, not local values, so focus can light the edge of the field that holds the caret. Bad text comes
+        // last, so its red wins over the caret's light.
         Styles.Add(new Style(x => x.OfType<Border>().Class(Field)) { Setters = { new Setter(Border.BorderBrushProperty, EditorBrushes.Line) } });
         Styles.Add(new Style(x => x.OfType<Border>().Class(Field).Class(":focus-within")) { Setters = { new Setter(Border.BorderBrushProperty, EditorBrushes.Accent) } });
+        Styles.Add(new Style(x => x.OfType<Border>().Class(Field).Class(Bad)) { Setters = { new Setter(Border.BorderBrushProperty, EditorBrushes.Fault) } });
         // The field draws the edge, so the box drops the 2 pixel ring the theme gives a focused text box.
         Styles.Add(new Style(x => x.OfType<TextBox>().Class(":focus").Template().OfType<Border>().Name("PART_BorderElement")) { Setters = { new Setter(Border.BorderThicknessProperty, new Thickness(0)) } });
-        Children.Add(new Border
+        Children.Add(new TextBlock
         {
-            Height = LabelHeight,
-            Child = new TextBlock { Text = label, Margin = new Thickness(LabelIndent, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center },
+            Text = label,
+            FontSize = 12,
+            Foreground = EditorBrushes.TextSoft,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
         });
-        var cells = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = FieldGap, Margin = new Thickness(0, 0, 0, 1) };
+        var cells = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = FieldGap, VerticalAlignment = VerticalAlignment.Center };
         for (var i = 0; i < _axes.Length; i++)
         {
+            var axis = i;
             var box = _axes[i];
-            box.LostFocus += (_, _) => Commit();
+            box.GotFocus += (_, _) => ShowAxis(axis);
+            box.LostFocus += (_, _) => Commit(axis);
             box.KeyDown += (_, e) =>
             {
                 if (e.Key == Key.Enter)
                 {
-                    Commit();
+                    Commit(axis);
                 }
             };
-            var cell = Cell(i, unit);
-            Grid.SetColumn(cell, i);
-            cells.Children.Add(cell);
+            _fields[i] = Cell(i, unit);
+            SetColumn(_fields[i], i);
+            cells.Children.Add(_fields[i]);
         }
-        Children.Add(cells);
+        SetColumn(cells, 2);
+        _fault.Text = "Type a number.";
+        _fault.Margin = new Thickness(0, 0, 0, 4);
+        SetColumn(_fault, 2);
+        SetRow(_fault, 1);
+        Children.AddRange([cells, _fault]);
         Show(null);
     }
 
@@ -79,15 +100,29 @@ internal sealed class VectorRow : StackPanel
 
     internal IReadOnlyList<TextBox> Axes => _axes;
 
-    /// <summary>Shows a value in the boxes. Null empties and disables them.</summary>
+    internal IReadOnlyList<Border> Fields => _fields;
+
+    internal TextBlock Fault => _fault;
+
+    /// <summary>Shows a value in the boxes and clears any fault. Null empties and disables them.</summary>
     public void Show(Vector3? value)
     {
         _shown = value;
         for (var i = 0; i < _axes.Length; i++)
         {
             _axes[i].IsEnabled = value is not null;
-            _axes[i].Text = value is { } shown ? shown[i].ToString(CultureInfo.InvariantCulture) : "";
+            ShowFault(i, false);
+            ShowAxis(i);
         }
+    }
+
+    // In full while the box has the caret, so an edit starts from the real value.
+    void ShowAxis(int axis)
+    {
+        var box = _axes[axis];
+        box.Text = _shown is { } shown
+            ? box.IsFocused ? shown[axis].ToString(CultureInfo.InvariantCulture) : ((double)shown[axis]).ToString(AtRest, CultureInfo.InvariantCulture)
+            : "";
     }
 
     // The value box fills what the tag and the unit leave, so a long value scrolls inside it and the field keeps its width.
@@ -130,35 +165,34 @@ internal sealed class VectorRow : StackPanel
         };
     }
 
-    void Commit()
+    // One axis at a time, because the other boxes may hold rounded text.
+    void Commit(int axis)
     {
         if (_shown is not { } shown)
         {
             return;
         }
-        if (TryRead(out var typed) && typed != shown)
+        // NaN and infinity parse as numbers but would corrupt a transform.
+        if (!float.TryParse(_axes[axis].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out var typed) || !float.IsFinite(typed))
         {
-            _shown = typed;
-            Entered?.Invoke(typed);
+            ShowFault(axis, true);
             return;
         }
-        Show(shown);
+        ShowFault(axis, false);
+        if (typed == shown[axis])
+        {
+            ShowAxis(axis);
+            return;
+        }
+        shown[axis] = typed;
+        _shown = shown;
+        Entered?.Invoke(shown);
     }
 
-    // NaN and infinity parse as numbers but would corrupt a transform.
-    bool TryRead(out Vector3 value)
+    void ShowFault(int axis, bool bad)
     {
-        var parts = new float[_axes.Length];
-        for (var i = 0; i < parts.Length; i++)
-        {
-            if (!float.TryParse(_axes[i].Text, NumberStyles.Float, CultureInfo.InvariantCulture, out parts[i]) || !float.IsFinite(parts[i]))
-            {
-                value = default;
-                return false;
-            }
-        }
-        value = new Vector3(parts[0], parts[1], parts[2]);
-        return true;
+        _fields[axis].Classes.Set(Bad, bad);
+        _fault.IsVisible = _fields.Any(field => field.Classes.Contains(Bad));
     }
 
     // The field draws the edge and the fill, so the box has neither.

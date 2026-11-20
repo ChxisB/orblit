@@ -71,8 +71,10 @@ internal sealed class PropertyGroup : StackPanel
         }
     }
 
-    void Fold(bool open)
+    /// <summary>Opens or closes the body. A group with no body stays closed.</summary>
+    internal void Fold(bool open)
     {
+        open &= _body is not null;
         if (_body is not null)
         {
             _body.IsVisible = open;

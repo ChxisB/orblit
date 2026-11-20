@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Theme;
@@ -23,7 +24,7 @@ public sealed class VectorRowTests
     static Border TagOf(Border field) => (Border)((DockPanel)field.Child!).Children[0];
 
     [Fact]
-    public void A_row_is_a_label_over_three_fields_28_high_and_4_apart()
+    public void A_row_is_a_label_beside_three_fields_28_high_and_4_apart()
     {
         UiThread.Run(() =>
         {
@@ -34,16 +35,17 @@ public sealed class VectorRowTests
             var fields = Fields(row).Select(field => BoxOf(field, window)).ToArray();
 
             Assert.Equal(3, fields.Length);
-            Assert.All(fields, field => Assert.Equal((rowBox.Y + 30, 28d), (field.Y, field.Height)));
-            Assert.Equal(rowBox.X, fields[0].X);
+            Assert.All(fields, field => Assert.Equal((rowBox.Y + 1, 28d), (field.Y, field.Height)));
+            Assert.Equal(rowBox.X + 96 + 8, fields[0].X);
             Near(rowBox.Right, fields[2].Right);
             Near(fields[0].Right + 4, fields[1].X);
             Near(fields[1].Right + 4, fields[2].X);
             Assert.All(Fields(row), field => Assert.Equal(
                 (EditorBrushes.Field, EditorBrushes.Line, new Thickness(1), new CornerRadius(6)),
                 (field.Background, field.BorderBrush, field.BorderThickness, field.CornerRadius)));
-            Assert.Equal(rowBox.X + 8, BoxOf(label, window).X);
-            Assert.Equal(59, rowBox.Height);
+            Assert.Equal(rowBox.X, BoxOf(label, window).X);
+            Assert.Equal((12d, EditorBrushes.TextSoft), (label.FontSize, label.Foreground));
+            Assert.Equal(30, rowBox.Height);
         });
     }
 
@@ -136,4 +138,85 @@ public sealed class VectorRowTests
             Assert.Equal("Rotation", window.Inspector.Rotation.Label);
         });
     }
+
+    [Fact]
+    public void A_field_rounds_its_value_at_rest_and_shows_it_in_full_with_the_caret()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+
+            row.Show(new System.Numerics.Vector3(0.99960005f, -29.75703f, 2));
+            Assert.Equal(["0.9996", "-29.757", "2"], row.Axes.Select(box => box.Text));
+
+            row.Axes[0].Focus();
+            Assert.Equal("0.99960005", row.Axes[0].Text);
+
+            row.Axes[1].Focus();
+            Assert.Equal(["0.9996", "-29.75703"], row.Axes.Take(2).Select(box => box.Text));
+        });
+    }
+
+    [Fact]
+    public void Leaving_a_field_unchanged_writes_nothing_though_the_others_are_rounded()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var row = Selected(window);
+            row.Show(new System.Numerics.Vector3(0.99960005f, 2, 3));
+            var edited = 0;
+            row.Entered += _ => edited++;
+
+            row.Axes[1].Focus();
+            row.Axes[2].Focus();
+
+            Assert.Equal(0, edited);
+        });
+    }
+
+    [Fact]
+    public void Bad_text_stays_with_a_red_edge_and_the_scene_keeps_its_value()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var row = Selected(window);
+
+            row.Axes[1].Text = "1.0.2";
+            Enter(row.Axes[1]);
+
+            Assert.Equal(new System.Numerics.Vector3(1, 2, 3), scene.PositionOf(FakeScene.Lamp.Handle));
+            Assert.Equal("1.0.2", row.Axes[1].Text);
+            Assert.True(row.Fault.IsVisible);
+            Assert.Equal("Type a number.", row.Fault.Text);
+            Assert.Equal(EditorBrushes.FaultText, row.Fault.Foreground);
+            Assert.Equal([EditorBrushes.Line, EditorBrushes.Fault, EditorBrushes.Line], row.Fields.Select(field => field.BorderBrush));
+        });
+    }
+
+    [Fact]
+    public void A_good_number_clears_the_fault()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var row = Selected(window);
+            row.Axes[1].Text = "high";
+            Enter(row.Axes[1]);
+
+            row.Axes[1].Text = "7";
+            Enter(row.Axes[1]);
+
+            Assert.Equal(new System.Numerics.Vector3(1, 7, 3), scene.PositionOf(FakeScene.Lamp.Handle));
+            Assert.False(row.Fault.IsVisible);
+            Assert.All(row.Fields, field => Assert.DoesNotContain("bad", field.Classes));
+        });
+    }
+
+    static void Enter(TextBox box) => box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
 }
