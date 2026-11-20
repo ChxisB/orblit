@@ -64,6 +64,9 @@ internal sealed class DockTabs : Border
     /// <summary>The title of the first tab, which names the dock.</summary>
     internal string Title { get; }
 
+    /// <summary>The mark of the dock's button on a folded side's rail.</summary>
+    internal required string Icon { get; init; }
+
     /// <summary>The slot the dock sits in, which the map lights and the menu leaves out as a choice.</summary>
     internal DockSlot Slot
     {

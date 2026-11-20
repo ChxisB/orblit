@@ -61,6 +61,8 @@ internal sealed class EditorWindow : Window
     readonly DockTabs _fileDock;
     readonly InspectorPane _inspectorPane;
     readonly DockTabs _inspectorDock;
+    readonly DockSide _leftSide;
+    readonly DockSide _rightSide;
     readonly CenterArea _center;
     readonly StoreView _store;
     readonly ScriptView _script = new();
@@ -68,6 +70,12 @@ internal sealed class EditorWindow : Window
     readonly GameView _game = new();
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
     readonly Dictionary<DockTabs, DockSlot> _homes = [];
+
+    // The sides a workspace folds to their rails, by workspace. A workspace not listed keeps both open.
+    static readonly Dictionary<string, (bool Left, bool Right)> s_folds = new()
+    {
+        [TitleBar.Script] = (true, true),
+    };
     IEditorScene? _scene;
     OutlineNode? _root;
     bool _edited;
@@ -130,12 +138,14 @@ internal sealed class EditorWindow : Window
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
-        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports."))) { Slot = DockSlot.UpperLeft };
-        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", Parts.EmptyState("Clock", "Nothing to undo yet", "Undo is not built yet. Its steps will be listed here."))) { Slot = DockSlot.LowerLeft };
+        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports."))) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
+        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", Parts.EmptyState("Clock", "Nothing to undo yet", "Undo is not built yet. Its steps will be listed here."))) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
         _inspectorPane = new InspectorPane(_inspector);
         _inspectorPane.Picked += _scenePane.Select;
-        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", Parts.EmptyState("Pulse", "Signals are not built yet", "The signals of the selected entity and where they go will show here."))) { Slot = DockSlot.Right };
+        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", Parts.EmptyState("Pulse", "Signals are not built yet", "The signals of the selected entity and where they go will show here."))) { Slot = DockSlot.Right, Icon = "ListSelect" };
         WireDocks();
+        _leftSide = new DockSide(LeftColumn(), () => DocksIn(DockSlot.UpperLeft, DockSlot.LowerLeft));
+        _rightSide = new DockSide(_slots[DockSlot.Right], () => DocksIn(DockSlot.Right));
         _toolbar = new ViewportToolbar(_frame);
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
@@ -147,7 +157,7 @@ internal sealed class EditorWindow : Window
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
-        _center.AddWorkspace(TitleBar.Script, _script);
+        _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddWorkspace(TitleBar.Graph, _graph);
         _center.AddWorkspace(TitleBar.Game, _game);
         _center.AddWorkspace(TitleBar.Store, _store);
@@ -171,6 +181,10 @@ internal sealed class EditorWindow : Window
     internal DockTabs FileDock => _fileDock;
 
     internal DockTabs InspectorDock => _inspectorDock;
+
+    internal DockSide LeftSide => _leftSide;
+
+    internal DockSide RightSide => _rightSide;
 
     internal CenterArea Center => _center;
 
@@ -311,6 +325,9 @@ internal sealed class EditorWindow : Window
     // The 2D view is on for the 2D workspace alone, so any other workspace gives the viewport back to 3D.
     void ChooseWorkspace(string name)
     {
+        var (left, right) = s_folds.GetValueOrDefault(name);
+        _leftSide.Fold(left);
+        _rightSide.Fold(right);
         _center.ShowWorkspace(name);
         _planar = name == TitleBar.Planar;
         _center.Overlay.Planar = _planar;
@@ -906,29 +923,33 @@ internal sealed class EditorWindow : Window
     }
 
     // The title bar on top, then the columns with the 4 pixel margin and the 3 pixel gaps of the reference.
-    Control Layout()
+    Grid LeftColumn()
     {
         var left = new Grid { RowDefinitions = new RowDefinitions("*,6,*") };
         Fill(left, _slots[DockSlot.UpperLeft], 0);
-        Fill(left, Splitter(false), 1);
+        Fill(left, RowSplitter(), 1);
         Fill(left, _slots[DockSlot.LowerLeft], 2);
+        return left;
+    }
+
+    IEnumerable<DockTabs> DocksIn(params DockSlot[] slots) => slots.Select(slot => _slots[slot].Child).OfType<DockTabs>();
+
+    Control Layout()
+    {
         var body = new Grid { Margin = new Thickness(6, 0, 6, 6), ColumnDefinitions = new ColumnDefinitions("280,6,*,6,316") };
-        Fill(body, left, 0);
-        Fill(body, Splitter(true), 1);
+        Fill(body, _leftSide, 0);
+        Fill(body, _leftSide.Splitter, 1);
         Fill(body, _center, 2);
-        Fill(body, Splitter(true), 3);
-        Fill(body, _slots[DockSlot.Right], 4);
+        Fill(body, _rightSide.Splitter, 3);
+        Fill(body, _rightSide, 4);
         var root = new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*") };
         Fill(root, _titleBar, 0);
         Fill(root, body, 1);
         return root;
     }
 
-    static GridSplitter Splitter(bool vertical) => new()
-    {
-        Background = Brushes.Transparent,
-        ResizeDirection = vertical ? GridResizeDirection.Columns : GridResizeDirection.Rows,
-    };
+    // Between the left side's two docks. Each side has its own splitter to the middle.
+    static GridSplitter RowSplitter() => new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Rows };
 
     // Puts the child in the next row of a vertical grid, or the next column of a horizontal one.
     static void Fill(Grid grid, Control child, int slot)

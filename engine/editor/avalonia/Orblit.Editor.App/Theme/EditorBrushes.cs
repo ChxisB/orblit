@@ -51,4 +51,13 @@ internal static class EditorBrushes
     public static readonly IBrush RulerTick = new ImmutableSolidColorBrush(EditorColors.RulerTick);
     public static readonly IBrush RulerMajor = new ImmutableSolidColorBrush(EditorColors.RulerMajor);
     public static readonly IBrush Stage = new ImmutableSolidColorBrush(EditorColors.Stage);
+    public static readonly IBrush Code = new ImmutableSolidColorBrush(EditorColors.Code);
+    public static readonly IBrush CodeLine = new ImmutableSolidColorBrush(EditorColors.CodeLine);
+    public static readonly IBrush CodeKeyword = new ImmutableSolidColorBrush(EditorColors.CodeKeyword);
+    public static readonly IBrush CodeType = new ImmutableSolidColorBrush(EditorColors.CodeType);
+    public static readonly IBrush CodeString = new ImmutableSolidColorBrush(EditorColors.CodeString);
+    public static readonly IBrush CodeNumber = new ImmutableSolidColorBrush(EditorColors.CodeNumber);
+    public static readonly IBrush CodeComment = new ImmutableSolidColorBrush(EditorColors.CodeComment);
+    public static readonly IBrush CodeFunction = new ImmutableSolidColorBrush(EditorColors.CodeFunction);
+    public static readonly IBrush CodeAttribute = new ImmutableSolidColorBrush(EditorColors.CodeAttribute);
 }
