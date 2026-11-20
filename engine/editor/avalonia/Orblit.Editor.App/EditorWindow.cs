@@ -1,8 +1,11 @@
+using System.Globalization;
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -33,10 +36,12 @@ internal sealed class EditorWindow : Window
     readonly InstanceTool _instanceScene = new();
     readonly Flyout _newSceneFlyout = new();
     readonly Flyout _instanceFlyout = new();
-    readonly CloseBar _closeBar = new();
+    readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
+    readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes = new();
     readonly TextBlock _status = new() { Text = "Starting the engine." };
-    readonly Toast _toast;
+    readonly TimeProvider _time;
+    readonly ToastStack _toasts;
     readonly List<string> _recent = [];
     // Save and Frame are commands without a place of their own on screen. The shortcuts, the menus and the
     // tests press them, and a button off keeps its key unhandled.
@@ -63,6 +68,9 @@ internal sealed class EditorWindow : Window
     IEditorScene? _scene;
     OutlineNode? _root;
     bool _edited;
+    // The edits since the scene opened or was last saved, and when that was, for the Save changes dialog.
+    int _edits;
+    DateTimeOffset _since;
     bool _planar;
     // The Entity3D the gizmo drags, or zero when the selection has none.
     nint _gizmoTarget;
@@ -71,7 +79,9 @@ internal sealed class EditorWindow : Window
     public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null, TimeProvider? time = null)
     {
         // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
-        _toast = new Toast(time ?? TimeProvider.System) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
+        _time = time ?? TimeProvider.System;
+        _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
+        _saveChanges = SaveChangesDialog();
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
         _titleBar = new TitleBar(_playButton, _stopButton, CommandKey);
         ShowTitle();
@@ -94,19 +104,6 @@ internal sealed class EditorWindow : Window
             _status.Text = "Edited. Save keeps the change.";
         };
         _inspector.Failed += message => _status.Text = message;
-        // A failed save leaves the edits, so the close asks again.
-        _closeBar.SaveRequested += () =>
-        {
-            SaveEdits();
-            Close();
-        };
-        _closeBar.DiscardRequested += () =>
-        {
-            _script.Discard();
-            _graph.Discard();
-            ShowEdited(false);
-            Close();
-        };
         _scenes.Chosen += Open;
         WireSceneFiles();
         _playButton.IsEnabled = false;
@@ -139,10 +136,11 @@ internal sealed class EditorWindow : Window
         Closed += (_, _) =>
         {
             _pollTimer.Stop();
-            _toast.Close();
+            _toasts.Close();
         };
         WireMenus();
-        Content = new Panel { Children = { Layout(), _toast } };
+        // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
+        Content = new Panel { Children = { Layout(), _saveChanges, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -186,7 +184,9 @@ internal sealed class EditorWindow : Window
 
     internal Flyout InstanceFlyout => _instanceFlyout;
 
-    internal CloseBar CloseBar => _closeBar;
+    internal Dialog SaveChanges => _saveChanges;
+
+    internal TextBlock ChangesLine => _changesLine;
 
     internal ContentControl Viewport => _viewport;
 
@@ -204,7 +204,7 @@ internal sealed class EditorWindow : Window
 
     internal string Status => _status.Text ?? "";
 
-    internal Toast Toast => _toast;
+    internal ToastStack Toasts => _toasts;
 
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
@@ -221,16 +221,17 @@ internal sealed class EditorWindow : Window
         ShowScenes();
         Reload(0);
         Remember(scene.SceneFile);
+        _since = _time.GetLocalNow();
         _status.Text = OpenedStatus();
     }
 
     public void Fail(string message) => _status.Text = message;
 
-    // The status line keeps the answer after the toast goes.
+    // The status line keeps the answer after the toast goes. A toast title has no full stop.
     void ShowUnbuilt(string message)
     {
         _status.Text = message;
-        _toast.Show(message);
+        _toasts.Show(ToastKind.Unbuilt, message.TrimEnd('.'));
     }
 
     /// <summary>Reads the lines the engine logged since the last call and shows whether the game still runs.</summary>
@@ -389,8 +390,48 @@ internal sealed class EditorWindow : Window
         if (HasEdits)
         {
             e.Cancel = true;
-            _closeBar.IsVisible = true;
+            AskToSave();
         }
+    }
+
+    // Closing without saving drops the edits, so that action sits at the far left, away from Save and close.
+    Dialog SaveChangesDialog()
+    {
+        var warn = new EditorIcon("WarnTriangle") { Width = 15, Height = 15, Margin = new Thickness(0, 0, 10, 0) };
+        TextElement.SetForeground(warn, EditorBrushes.Warn);
+        var drop = new Button { Content = "Close without saving", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
+        var body = new StackPanel { Orientation = Orientation.Horizontal, Children = { warn, _changesLine } };
+        var dialog = new Dialog("", "Closing without saving drops them.", body)
+        {
+            MainText = "Save and close",
+            CancelText = "Keep editing",
+            Closable = false,
+            CardWidth = 400,
+            LeadButton = drop,
+        };
+        // A failed save leaves the edits, so the close asks again.
+        dialog.MainButton.Click += (_, _) =>
+        {
+            SaveEdits();
+            Close();
+        };
+        drop.Click += (_, _) =>
+        {
+            _script.Discard();
+            _graph.Discard();
+            ShowEdited(false);
+            Close();
+        };
+        return dialog;
+    }
+
+    // An open script that was typed in counts as one change, as the scene does not count its keys.
+    void AskToSave()
+    {
+        _saveChanges.Title = $"Save changes to {(_edited ? SceneName() : "the open scripts")}?";
+        var count = _edits + (_script.IsDirty ? 1 : 0) + (_graph.IsDirty ? 1 : 0);
+        _changesLine.Text = $"{count} {(count == 1 ? "change" : "changes")} since {_since.ToString("HH:mm", CultureInfo.InvariantCulture)}.";
+        _saveChanges.Open();
     }
 
     // Save is on while the Save button is. Quit and fullscreen are the other menu items the editor can do.
@@ -558,11 +599,15 @@ internal sealed class EditorWindow : Window
     // The tab is named for the scene file. A scene with no file takes the name of its root.
     string SceneLabel() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileNameWithoutExtension(file) : _root?.Name ?? "";
 
+    // The file name the toasts and the Save changes dialog give. A scene with no file takes the name of its root.
+    string SceneName() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : _root?.Name ?? "";
+
     void ShowEdited(bool edited)
     {
         _edited = edited;
+        _edits = edited ? _edits + 1 : 0;
         ShowTitle();
-        _closeBar.IsVisible &= edited;
+        _saveChanges.IsVisible &= edited;
     }
 
     // The game runs from the files on disk, so a play saves edits first. A scene with none is left alone,
@@ -581,6 +626,7 @@ internal sealed class EditorWindow : Window
         catch (IOException error)
         {
             _status.Text = error.Message;
+            _toasts.Show(ToastKind.Failed, "The game could not start", error.Message);
             return;
         }
 
@@ -657,6 +703,7 @@ internal sealed class EditorWindow : Window
 
         Reload(0);
         Remember(_scene!.SceneFile);
+        _since = _time.GetLocalNow();
         _status.Text = OpenedStatus();
         return true;
     }
@@ -728,12 +775,15 @@ internal sealed class EditorWindow : Window
         {
             _scene!.Save();
             ShowEdited(false);
+            _since = _time.GetLocalNow();
             _status.Text = "Saved.";
+            _toasts.Show(ToastKind.Done, $"Saved {SceneName()}");
             return true;
         }
         catch (IOException error)
         {
             _status.Text = error.Message;
+            _toasts.Show(ToastKind.Failed, "The scene could not be saved", error.Message, new ToastAction("Try again", SaveAll));
             return false;
         }
     }
@@ -751,10 +801,9 @@ internal sealed class EditorWindow : Window
         Fill(body, _center, 2);
         Fill(body, Splitter(true), 3);
         Fill(body, _slots[DockSlot.Right], 4);
-        var root = new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},Auto,*") };
+        var root = new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*") };
         Fill(root, _titleBar, 0);
-        Fill(root, _closeBar, 1);
-        Fill(root, body, 2);
+        Fill(root, body, 1);
         return root;
     }
 

@@ -1296,7 +1296,7 @@ public sealed class EditorWindowTests
             window.Close();
 
             Assert.True(window.IsVisible);
-            Assert.True(window.CloseBar.IsVisible);
+            Assert.True(window.SaveChanges.IsVisible);
         });
     }
 
@@ -1311,7 +1311,7 @@ public sealed class EditorWindowTests
             window.Close();
 
             Assert.False(window.IsVisible);
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
             Assert.Equal(0, scene.Saves);
         });
     }
@@ -1326,7 +1326,7 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.Equal(1, scene.Saves);
             Assert.False(window.IsVisible);
@@ -1342,7 +1342,7 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.True(window.IsVisible);
             Assert.Contains("Error code 7", window.Status);
@@ -1359,7 +1359,7 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.CloseWithoutButton);
+            Click(window.SaveChanges.LeadButton!);
 
             Assert.Equal(0, scene.Saves);
             Assert.False(window.IsVisible);
@@ -1367,7 +1367,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Keep_editing_hides_the_bar_and_keeps_the_edits()
+    public void Keep_editing_hides_the_dialog_and_keeps_the_edits()
     {
         UiThread.Run(() =>
         {
@@ -1375,16 +1375,16 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.KeepEditingButton);
+            Click(window.SaveChanges.CancelButton);
 
             Assert.True(window.IsVisible);
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
             Assert.Equal("(*) Unnamed Project", window.Title);
         });
     }
 
     [Fact]
-    public void A_save_while_the_bar_is_up_hides_it()
+    public void A_save_while_the_dialog_is_up_hides_it()
     {
         UiThread.Run(() =>
         {
@@ -1395,12 +1395,12 @@ public sealed class EditorWindowTests
             Click(window.SaveButton);
 
             Assert.True(window.IsVisible);
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
         });
     }
 
     [Fact]
-    public void The_bar_stays_hidden_until_a_close_is_asked_for()
+    public void The_dialog_stays_hidden_until_a_close_is_asked_for()
     {
         UiThread.Run(() =>
         {
@@ -1408,7 +1408,69 @@ public sealed class EditorWindowTests
 
             MakeAnEdit(window);
 
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Save_changes_names_the_scene_and_counts_the_edits_since_it_opened()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn" }, time: new ManualTime());
+            MakeAnEdit(window);
+            MakeAnEdit(window);
+
+            window.Close();
+
+            var dialog = window.SaveChanges;
+            Assert.Equal("Save changes to main.oscn?", dialog.Title);
+            Assert.Equal("Closing without saving drops them.", dialog.Why.Text);
+            Assert.Equal("2 changes since 16:33.", window.ChangesLine.Text);
+            Assert.Equal("Save and close", dialog.MainButton.Content);
+            Assert.Equal("Keep editing", dialog.CancelButton.Content);
+            Assert.Equal("Close without saving", dialog.LeadButton!.Content);
+            Assert.False(dialog.CloseButton.IsVisible);
+            Assert.Equal(400, dialog.Card.Width);
+        });
+    }
+
+    [Fact]
+    public void Save_changes_counts_from_the_last_save()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn" }, time: time);
+            MakeAnEdit(window);
+            time.Advance(TimeSpan.FromMinutes(5));
+            Click(window.SaveButton);
+            MakeAnEdit(window);
+
+            window.Close();
+
+            Assert.Equal("1 change since 16:38.", window.ChangesLine.Text);
+        });
+    }
+
+    [Fact]
+    public void Escape_in_Save_changes_keeps_editing_and_Enter_saves_and_closes()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene, time: new ManualTime());
+            MakeAnEdit(window);
+            window.Close();
+
+            window.SaveChanges.MainButton.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
+            Assert.True(window.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
+            window.Close();
+            window.SaveChanges.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+
+            Assert.Equal(1, scene.Saves);
+            Assert.False(window.IsVisible);
         });
     }
 }

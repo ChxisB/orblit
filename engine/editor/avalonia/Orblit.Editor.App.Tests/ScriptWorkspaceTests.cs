@@ -82,7 +82,10 @@ public sealed class ScriptWorkspaceTests
             window.Close();
 
             Assert.True(window.IsVisible);
-            Assert.True(window.CloseBar.IsVisible);
+            Assert.True(window.SaveChanges.IsVisible);
+            // The scene has no edits, so the scene's name would point at the wrong file.
+            Assert.Equal("Save changes to the open scripts?", window.SaveChanges.Title);
+            Assert.StartsWith("1 change since ", window.ChangesLine.Text);
         });
     }
 
@@ -96,7 +99,7 @@ public sealed class ScriptWorkspaceTests
             EditAScript(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.Equal([(Spin, "class Spin { int turns; }")], scene.ScriptsWritten);
             Assert.Equal(0, scene.Saves);
@@ -114,7 +117,7 @@ public sealed class ScriptWorkspaceTests
             EditAScript(window);
             window.Close();
 
-            Click(window.CloseBar.CloseWithoutButton);
+            Click(window.SaveChanges.LeadButton!);
 
             Assert.Empty(scene.ScriptsWritten);
             Assert.False(window.IsVisible);
@@ -132,7 +135,7 @@ public sealed class ScriptWorkspaceTests
             EditAScript(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.True(window.IsVisible);
             Assert.True(window.Script.IsDirty);
