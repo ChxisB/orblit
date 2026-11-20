@@ -71,6 +71,9 @@ internal sealed class EditorTheme : Styles
     /// <summary>A field whose value cannot be used. It rings red until the value changes.</summary>
     internal const string Bad = "bad";
 
+    /// <summary>A text box with no fill or border in any state, for a search line that its card frames.</summary>
+    internal const string Bare = "bare";
+
     /// <summary>
     /// Marks a menu item, or the native item behind one, whose feature is not built. The theme dims its label and
     /// draws Soon where its key would be. The screen bar of macOS draws its own items, so it shows neither.
@@ -431,6 +434,10 @@ internal sealed class EditorTheme : Styles
         yield return new Style(x => x.OfType<TextBox>().Class(Field).Class(":focus").Template().OfType<Border>().Name("PART_BorderElement"))
         {
             Setters = { new Setter(Border.BoxShadowProperty, Ring(EditorColors.AccentSoft)) },
+        };
+        yield return new Style(x => x.OfType<TextBox>().Class(Bare).Template().OfType<Border>().Name("PART_BorderElement"))
+        {
+            Setters = { new Setter(Border.BackgroundProperty, Brushes.Transparent), new Setter(Border.BorderThicknessProperty, new Thickness(0)) },
         };
         yield return new Style(x => x.OfType<TextBox>().Class(Field).Class(Bad).Template().OfType<Border>().Name("PART_BorderElement"))
         {

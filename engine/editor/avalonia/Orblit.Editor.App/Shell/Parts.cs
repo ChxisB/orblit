@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
@@ -78,6 +79,26 @@ internal static class Parts
         var icon = new EditorIcon(name) { Width = 14, Height = 14, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, tint);
         return icon;
+    }
+
+    /// <summary>A key on a small grey cap, as a hint beside the thing it runs.</summary>
+    public static Border Kbd(string key) => new()
+    {
+        Padding = new Thickness(5, 3),
+        CornerRadius = new CornerRadius(4),
+        Background = EditorBrushes.Line,
+        VerticalAlignment = VerticalAlignment.Center,
+        Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.TextSoft },
+    };
+
+    /// <summary>A key as the macOS menus write it: the modifiers as marks in their fixed order, then the key.</summary>
+    // shortcut: the macOS marks only. Add the Windows and Linux words when the editor ships there.
+    public static string KeyText(KeyGesture gesture)
+    {
+        string Mark(KeyModifiers modifier, string mark) => gesture.KeyModifiers.HasFlag(modifier) ? mark : "";
+
+        var key = gesture.Key == Key.OemComma ? "," : gesture.Key.ToString();
+        return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + Mark(KeyModifiers.Shift, "⇧") + Mark(KeyModifiers.Meta, "⌘") + key;
     }
 
     /// <summary>The line under a field that says why its value cannot be used. It waits hidden until there is something to say.</summary>

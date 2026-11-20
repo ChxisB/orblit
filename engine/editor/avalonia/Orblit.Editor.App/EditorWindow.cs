@@ -42,6 +42,10 @@ internal sealed class EditorWindow : Window
     readonly TimeProvider _time;
     readonly ToastStack _toasts;
     readonly List<string> _recent = [];
+    readonly Dictionary<string, DateTimeOffset> _openedAt = [];
+    readonly Picker _palette = CommandPalette.Build();
+    readonly Picker _quickOpen;
+    readonly Button _quickOpenButton = new();
     // Save and Frame are commands without a place of their own on screen. The shortcuts, the menus and the
     // tests press them, and a button off keeps its key unhandled.
     readonly Button _save = new() { IsEnabled = false };
@@ -83,6 +87,9 @@ internal sealed class EditorWindow : Window
         _saveChanges = SaveChangesDialog();
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
         _titleBar = new TitleBar(_playButton, _stopButton, CommandKey);
+        _titleBar.SearchButton.Click += (_, _) => OpenPalette();
+        _quickOpen = QuickOpen.Build(CommandKey);
+        _quickOpenButton.Click += (_, _) => OpenQuickOpen();
         ShowTitle();
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1440;
@@ -139,7 +146,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _saveChanges, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _saveChanges, _palette, _quickOpen, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -202,6 +209,10 @@ internal sealed class EditorWindow : Window
     internal string Status => _status.Text ?? "";
 
     internal ToastStack Toasts => _toasts;
+
+    internal Picker Palette => _palette;
+
+    internal Picker QuickOpener => _quickOpen;
 
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
@@ -438,6 +449,8 @@ internal sealed class EditorWindow : Window
         var actions = new Dictionary<string, MenuAction>
         {
             ["New Scene"] = new(OpenNewScene),
+            ["Command Palette..."] = new(OpenPalette),
+            ["Quick Open Scene..."] = new(OpenQuickOpen),
             ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
             ["Quit"] = new(Close),
             ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
@@ -472,6 +485,9 @@ internal sealed class EditorWindow : Window
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
+        (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
+        (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
+        (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SelectButton,
         (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.MoveButton,
@@ -653,6 +669,31 @@ internal sealed class EditorWindow : Window
 
     void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? []);
 
+    // The rows are read at each open, so the palette shows the menus, files and entities as they are now.
+    void OpenPalette()
+    {
+        IEnumerable<PickerRow> entities = _root is null ? [] : CommandPalette.EntitiesOf(_root, _scene!.SceneFile, _scenePane.Select);
+        _palette.Open(CommandPalette.Finder([
+            .. CommandPalette.CommandsOf(NativeMenu.GetMenu(this)!),
+            .. CommandPalette.FilesOf(_scene?.Scenes() ?? [], Open),
+            .. entities,
+        ]));
+    }
+
+    // The open scene comes first, then the recent ones newest first, then the rest of the project.
+    void OpenQuickOpen()
+    {
+        var files = (_scene?.Scenes() ?? []).Where(path => !path.EndsWith('/'));
+        var scenes = new[] { _scene?.SceneFile ?? "" }.Concat(_recent).Concat(files).Where(path => path != "").Distinct();
+        var rows = QuickOpen.Rows(scenes, OpenedText, Open);
+        _quickOpen.Open(query => Picker.Matching(rows, query));
+    }
+
+    string OpenedText(string path) =>
+        path == _scene?.SceneFile ? "Open now"
+        : _openedAt.TryGetValue(path, out var at) ? $"Opened {at.ToString("HH:mm", CultureInfo.InvariantCulture)}"
+        : "";
+
     // The dialog that makes a scene file, the flyout that instances one, and the tab's close button.
     void WireSceneFiles()
     {
@@ -723,12 +764,14 @@ internal sealed class EditorWindow : Window
 
         _recent.Remove(sceneFile);
         _recent.Insert(0, sceneFile);
+        _openedAt[sceneFile] = _time.GetLocalNow();
         ShowRecent();
     }
 
     void ShowRecent() => EditorMenu.ShowRecent(NativeMenu.GetMenu(this)!, _recent, Open, () =>
     {
         _recent.Clear();
+        _openedAt.Clear();
         ShowRecent();
     });
 

@@ -85,6 +85,7 @@ internal sealed class TitleBar : Grid
         SetColumn(Switcher, 1);
         MoreButton.Flyout = RunMenu(play, command);
         Run = RunButtons(play, stop, MoreButton);
+        SearchButton = Search(command);
         var end = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -138,7 +139,7 @@ internal sealed class TitleBar : Grid
 
     internal Border Run { get; }
 
-    internal Button SearchButton { get; } = Search();
+    internal Button SearchButton { get; }
 
     internal IReadOnlyList<WorkspaceTab> Tabs => _tabs;
 
@@ -198,12 +199,15 @@ internal sealed class TitleBar : Grid
         return item;
     }
 
-    // Drawn as a field so the bar keeps its place, and marked because search is not built yet.
-    static Button Search()
+    // Drawn as a field with its key, because it opens the command palette's search.
+    static Button Search(KeyModifiers command)
     {
         var icon = Parts.SearchIcon();
         icon.Margin = new Thickness(0, 0, 8, 0);
         DockPanel.SetDock(icon, Dock.Left);
+        var key = Parts.Kbd(Parts.KeyText(new KeyGesture(Key.K, command)));
+        key.Margin = new Thickness(8, 0, 0, 0);
+        DockPanel.SetDock(key, Dock.Right);
         var button = new Button
         {
             Width = SearchWidth,
@@ -216,10 +220,10 @@ internal sealed class TitleBar : Grid
             Foreground = EditorBrushes.TextDim,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Content = new DockPanel { Children = { icon, new TextBlock { Text = "Search", VerticalAlignment = VerticalAlignment.Center } } },
+            Content = new DockPanel { Children = { icon, key, new TextBlock { Text = "Search", VerticalAlignment = VerticalAlignment.Center } } },
         };
         ToolTip.SetTip(button, "Search");
-        return Unbuilt.Mark(button, "Search is not built yet.");
+        return button;
     }
 
     WorkspaceTab Workspace((string Name, string Icon) workspace)
