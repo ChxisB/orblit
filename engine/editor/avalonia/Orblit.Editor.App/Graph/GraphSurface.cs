@@ -206,7 +206,7 @@ internal sealed class GraphSurface : Control
     static void DrawLabel(DrawingContext context, HoverLabel label)
     {
         var shown = label.Text.Length > LabelChars ? label.Text[..LabelChars] + "..." : label.Text;
-        var text = new FormattedText(shown, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Default), LabelSize, EditorBrushes.Text);
+        var text = new FormattedText(shown, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(EditorTheme.Font), LabelSize, EditorBrushes.Text);
         var box = new Rect(label.At.X - text.Width - (2 * LabelPad) - LabelGap, label.At.Y - text.Height - (2 * LabelPad) - LabelPad, text.Width + (2 * LabelPad), text.Height + (2 * LabelPad));
         context.DrawRectangle(EditorBrushes.Panel, s_labelEdge, box, 3, 3);
         context.DrawText(text, box.TopLeft + new Point(LabelPad, LabelPad));

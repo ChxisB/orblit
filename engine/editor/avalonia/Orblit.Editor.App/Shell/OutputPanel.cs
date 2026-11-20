@@ -20,7 +20,7 @@ internal sealed class OutputPanel : Border
 
     const double StripHeight = 36;
 
-    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
+    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), FontFamily = EditorTheme.Mono };
     readonly Button _copy = Unbuilt.Mark(Parts.IconButton("ActionCopy", "Copy all"), "Copying the output is not built yet.");
     readonly Button _clear = Parts.IconButton("Clear", "Clear Output");
     bool _scrollPending;

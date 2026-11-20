@@ -15,9 +15,13 @@ namespace Orblit.Editor.App.Theme;
 /// </summary>
 internal sealed class EditorTheme : Styles
 {
-    // The design names a font the editor does not ship, so this is the system font until decision 281 is taken.
-    // A font package or converted files replace it in this one line.
-    internal static readonly FontFamily Font = FontFamily.Default;
+    internal const string FontFolder = "avares://Orblit.Editor.App/Assets/Fonts/";
+
+    /// <summary>The face for words.</summary>
+    internal static readonly FontFamily Font = new(FontFolder + "#Geist");
+
+    /// <summary>The face for values a reader compares by column: numbers, code and log lines.</summary>
+    internal static readonly FontFamily Mono = new(FontFolder + "#Geist Mono");
 
     internal const double FontSize = 13;
 
