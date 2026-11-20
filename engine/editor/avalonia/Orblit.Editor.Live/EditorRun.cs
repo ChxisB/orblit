@@ -348,8 +348,8 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         await _input.Click(Tab("Asset Store"));
         Expect(window.Store.IsVisible && !window.Viewport.IsEffectivelyVisible, "the store did not replace the viewport");
-        await _input.Click(window.Store.LoadButton);
-        await Wait(() => window.Store.Status.Text == "2 kits.", "the two kits of the store");
+        await _input.Click(window.Store.ReloadButton);
+        await Wait(() => window.Store.Status.Text == "2 kits in the index.", "the two kits of the store");
         await Settle();
         Shots.Save(window, Path.Combine(output, "store-loaded.png"));
 
