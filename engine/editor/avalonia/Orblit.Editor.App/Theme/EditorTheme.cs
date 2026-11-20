@@ -361,7 +361,9 @@ internal sealed class EditorTheme : Styles
         };
         foreach (var (kind, fill, lit, edge, text) in ButtonKinds)
         {
-            yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(kind))
+            // A selector that names one class twice matches nothing, so the first kind names it once.
+            Selector Of(Selector? x) => kind == TextButton ? x.OfType<Button>().Class(TextButton) : x.OfType<Button>().Class(TextButton).Class(kind);
+            yield return new Style(x => Of(x))
             {
                 Setters =
                 {
@@ -371,8 +373,8 @@ internal sealed class EditorTheme : Styles
                 },
             };
             yield return new Style(x => Selectors.Or(
-                x.OfType<Button>().Class(TextButton).Class(kind).Class(":pointerover").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"),
-                x.OfType<Button>().Class(TextButton).Class(kind).Class(":pressed").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter")))
+                Of(x).Class(":pointerover").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"),
+                Of(x).Class(":pressed").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter")))
             {
                 Setters =
                 {
@@ -434,6 +436,11 @@ internal sealed class EditorTheme : Styles
                 new Setter(ContentPresenter.BorderBrushProperty, EditorBrushes.Line),
                 new Setter(ContentPresenter.ForegroundProperty, EditorBrushes.Disabled),
             },
+        };
+        // A ghost has no shape to keep, so one that is off is only dim text.
+        yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(Ghost).Class(":disabled").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+        {
+            Setters = { new Setter(ContentPresenter.BackgroundProperty, Brushes.Transparent), new Setter(ContentPresenter.BorderBrushProperty, Brushes.Transparent) },
         };
     }
 
