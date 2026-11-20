@@ -19,6 +19,12 @@ internal static partial class EditorIcons
         s_icons["Lens"] = Line("M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM20 20l-4.8-4.8");
         s_icons["SceneFile"] = Line("M4 9.5h16v10H4zM4 9.5l1.5-5h13l1.5 5M9 4.5l-1.5 5M14.5 4.5l-1.5 5");
         s_icons["FolderLine"] = Line("M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z");
+        s_icons["CodeFile"] = Line("M9 7.5L4.5 12 9 16.5M15 7.5l4.5 4.5-4.5 4.5");
+        s_icons["GraphFile"] = Line("M4 5h6v5H4zM14 14h6v5h-6zM10 7.5h2.5a2 2 0 0 1 2 2V14");
+        s_icons["ImportArrow"] = Line("M12 4v11M7.5 10.5L12 15l4.5-4.5M5 19.5h14");
+        s_icons["Pulse"] = Line("M3 12h3.5l2.5-6 4 12 2.5-6H21");
+        // Ours: the design draws no empty History tab.
+        s_icons["Clock"] = Line("M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17zM12 7.5V12l3 2");
     }
 
     static IconDrawing Line(string path) =>

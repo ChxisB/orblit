@@ -157,7 +157,7 @@ internal sealed class ScriptView : Border
     }
 
     // Choosing another script writes the open one first, as opening a scene does. A failure keeps the open one.
-    void Choose(string? path)
+    internal void Choose(string? path)
     {
         if (path is null || path == _open || _files is null)
         {

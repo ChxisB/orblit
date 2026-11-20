@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
@@ -103,6 +104,62 @@ internal static class Parts
 
     /// <summary>The line under a field that says why its value cannot be used. It waits hidden until there is something to say.</summary>
     public static TextBlock FaultLine() => new() { FontSize = 11, Foreground = EditorBrushes.FaultText, TextWrapping = TextWrapping.Wrap, IsVisible = false };
+
+    /// <summary>A heading that names a group of a menu. It is off, so it takes no hover and no click.</summary>
+    public static MenuItem MenuHeading(string group) => new()
+    {
+        IsEnabled = false,
+        MinHeight = 0,
+        Header = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.Unit },
+    };
+
+    public static MenuItem ActionItem(string header, Action run, KeyGesture? key = null)
+    {
+        var item = new MenuItem { Header = header, InputGesture = key };
+        item.Click += (_, _) => run();
+        return item;
+    }
+
+    /// <summary>
+    /// An item that presses the button it stands for, so the menus and a key run the same code. The item is on
+    /// while the button is on.
+    /// </summary>
+    public static MenuItem PressItem(string header, Button button, KeyGesture? key = null)
+    {
+        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), key);
+        item.Bind(InputElement.IsEnabledProperty, button.GetObservable(InputElement.IsEnabledProperty));
+        return item;
+    }
+
+    /// <summary>
+    /// An item for a command that is not built. It says so from the control, because a menu shows in a popup
+    /// and only a control in the window reaches the window.
+    /// </summary>
+    public static MenuItem SoonItem(string header, Control from, KeyGesture? key = null)
+    {
+        var item = ActionItem(header, () => from.RaiseEvent(new UnbuiltEventArgs($"{header.TrimEnd('.')} is not built yet.")), key);
+        EditorTheme.MarkSoon(item);
+        return item;
+    }
+
+    /// <summary>What a tab with nothing to show says: a dim mark, a line on what fills it, and a line on how.</summary>
+    public static StackPanel EmptyState(string icon, string title, string line)
+    {
+        var mark = new EditorIcon(icon) { Width = 24, Height = 24 };
+        TextElement.SetForeground(mark, EditorBrushes.Disabled);
+        return new StackPanel
+        {
+            Spacing = 8,
+            Margin = new Thickness(18, 26),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Children =
+            {
+                mark,
+                new TextBlock { Text = title, FontSize = 12, Foreground = EditorBrushes.TextSoft, HorizontalAlignment = HorizontalAlignment.Center },
+                new TextBlock { Text = line, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
+            },
+        };
+    }
 
     // No border, so the box is the icon and its padding: 26 pixels square.
     static T Flat<T>(T button, string icon, string tip) where T : ContentControl
