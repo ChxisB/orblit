@@ -64,9 +64,9 @@ internal sealed class StoreView : Border
         };
         _close.Click += (_, _) => Choose(null);
         _drawer.Child = DrawerBody();
-        var kits = new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = Kits() };
-        Grid.SetColumn(_drawer, 1);
-        Child = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { kits, _drawer } };
+        Classes.Add(EditorTheme.Island);
+        ClipToBounds = true;
+        Child = Kits();
         ShowCards();
     }
 
@@ -84,6 +84,7 @@ internal sealed class StoreView : Border
     /// <summary>The kit cards, each tagged with its kit, and the Publish card last.</summary>
     internal IEnumerable<Control> Cards => _cards.Children;
 
+    /// <summary>The kit's details. The window puts it beside the bottom bar, as tall as the column.</summary>
     internal Border Drawer => _drawer;
 
     internal Button CloseButton => _close;

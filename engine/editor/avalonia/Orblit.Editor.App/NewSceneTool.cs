@@ -36,7 +36,6 @@ internal sealed class NewSceneTool : StackPanel
             (Card(new RootCard(), "2D scene", "Root Entity2D", "Square", EditorBrushes.Planar), "Entity2D"),
             (Card(new RootCard(), "Empty", "Root Entity", "Ring", EditorBrushes.TextSoft), "Entity"),
         ];
-        _roots[0].Card.IsChecked = true;
         OtherCard = Unbuilt.Mark(Card(new Button(), "Other...", "Soon", "Lens", EditorBrushes.TextDim), "Picking any class for the root is not built yet.");
         var cards = new UniformGrid { Columns = 2, RowSpacing = 8, ColumnSpacing = 8 };
         cards.Children.AddRange([.. _roots.Select(root => root.Card), OtherCard]);
@@ -89,10 +88,14 @@ internal sealed class NewSceneTool : StackPanel
     /// <summary>The line under the name that says why the scene cannot be made, or empty.</summary>
     internal string Fault => _fault.IsVisible ? _fault.Text ?? "" : "";
 
-    /// <summary>Opens the dialog with no name and the keys in the name box. A new name must not match one of the scenes.</summary>
-    public void Open(IReadOnlyCollection<string> scenes)
+    /// <summary>
+    /// Opens the dialog with no name and the keys in the name box, on the 2D root in the 2D workspace and the 3D
+    /// root elsewhere. A new name must not match one of the scenes.
+    /// </summary>
+    public void Open(IReadOnlyCollection<string> scenes, bool planar)
     {
         _scenes = scenes;
+        _roots[planar ? 1 : 0].Card.IsChecked = true;
         _name.Text = "";
         Check();
         Dialog.Open();

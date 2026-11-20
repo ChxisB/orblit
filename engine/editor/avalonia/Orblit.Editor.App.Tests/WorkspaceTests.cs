@@ -70,6 +70,32 @@ public sealed class WorkspaceTests
     }
 
     [Fact]
+    public void The_kit_drawer_stands_beside_the_bottom_bar_and_leaves_with_the_store()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene(), _ => Task.FromResult(OneKit));
+            ClickOn(Tab(window, "Asset Store"), window);
+            ClickOn(window.Store.ReloadButton, window);
+            Dispatcher.UIThread.RunJobs();
+
+            window.Store.Choose(window.Store.Shown.Single());
+            window.UpdateLayout();
+            var drawer = BoxOf(window.Store.Drawer, window);
+            var bar = BoxOf(window.Center.BottomBar, window);
+
+            Assert.True(window.Store.Drawer.IsEffectivelyVisible);
+            Assert.Equal(BoxOf(window.Store, window).Top, drawer.Top);
+            Assert.Equal(bar.Bottom, drawer.Bottom);
+            Assert.True(drawer.Left > bar.Right);
+
+            ClickOn(Tab(window, "3D"), window);
+
+            Assert.False(window.Store.Drawer.IsEffectivelyVisible);
+        });
+    }
+
+    [Fact]
     public void The_window_hands_the_store_the_reader_it_was_given()
     {
         UiThread.Run(() =>

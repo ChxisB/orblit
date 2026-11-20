@@ -1,5 +1,6 @@
 using System.Globalization;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
@@ -36,8 +37,8 @@ internal sealed class ViewportToolbar : Grid
     readonly TextBox _snapMove = StepBox(GizmoSnap.Default.Move, "m");
     readonly TextBox _snapTurn = StepBox(GizmoSnap.Default.Turn, "°");
     readonly TextBox _snapScale = StepBox(GizmoSnap.Default.Scale, "");
-    readonly Button _snapPosition = ActionRow("Snap Position to Steps");
-    readonly Button _snapRotation = ActionRow("Snap Rotation to Steps");
+    readonly ToggleSwitch _snapPosition = SnapSwitch("Snap Position to Steps");
+    readonly ToggleSwitch _snapRotation = SnapSwitch("Snap Rotation to Steps");
     readonly FixedToggle _lock = new("Lock", "Lock the selection", lit: false);
     readonly FixedToggle _group = new("Group", "Group the selection", lit: false);
     readonly FixedToggle _keep = new("Pin", "Keep child transforms", lit: false);
@@ -77,8 +78,8 @@ internal sealed class ViewportToolbar : Grid
             Spacing = 8,
             Children =
             {
-                _snapPosition,
-                _snapRotation,
+                SwitchRow("Snap Position to Steps", _snapPosition),
+                SwitchRow("Snap Rotation to Steps", _snapRotation),
                 new Border { Height = 1, Margin = new Thickness(0, 4), Background = EditorBrushes.Line },
                 StepRow("Move step", _snapMove),
                 StepRow("Rotate step", _snapTurn),
@@ -87,7 +88,7 @@ internal sealed class ViewportToolbar : Grid
         });
         _focus.Click += (_, _) => focus.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         // Each of these acts on an entity with a place in 3D, which is when the window turns Focus on.
-        foreach (var control in new Control[] { _focus, _reset, _resetAll, _snapPosition, _snapRotation })
+        foreach (var control in new Control[] { _focus, _reset, _resetAll })
         {
             control.Bind(IsEnabledProperty, focus.GetObservable(IsEnabledProperty));
         }
@@ -181,10 +182,13 @@ internal sealed class ViewportToolbar : Grid
     /// <summary>Whether the Snap button is lit. A drag with Ctrl or Command down flips it for that drag.</summary>
     internal bool Snaps => _snap.IsChecked == true;
 
-    /// <summary>The steps in the Snap options. A box that does not hold a positive number gives the default step.</summary>
+    /// <summary>
+    /// The steps in the Snap options. A box that does not hold a positive number gives the default step. A switch that
+    /// is off gives a step of zero, which a drag reads as no snap.
+    /// </summary>
     internal GizmoSnap Steps => new(
-        Step(_snapMove, GizmoSnap.Default.Move),
-        Step(_snapTurn, GizmoSnap.Default.Turn),
+        _snapPosition.IsChecked == true ? Step(_snapMove, GizmoSnap.Default.Move) : 0f,
+        _snapRotation.IsChecked == true ? Step(_snapTurn, GizmoSnap.Default.Turn) : 0f,
         Step(_snapScale, GizmoSnap.Default.Scale));
 
     /// <summary>
@@ -226,9 +230,9 @@ internal sealed class ViewportToolbar : Grid
 
     internal MenuItem ResetScaleItem => _resetScale;
 
-    internal Button SnapPositionButton => _snapPosition;
+    internal ToggleSwitch SnapPositionSwitch => _snapPosition;
 
-    internal Button SnapRotationButton => _snapRotation;
+    internal ToggleSwitch SnapRotationSwitch => _snapRotation;
 
     internal MenuItem TrimeshItem => _trimesh;
 
@@ -323,20 +327,22 @@ internal sealed class ViewportToolbar : Grid
         },
     };
 
-    // A one-shot action on the selection, drawn as a row of the popover rather than a switch.
-    static Button ActionRow(string label) => new()
+    static ToggleSwitch SnapSwitch(string name)
     {
-        Content = label,
-        FontSize = 12,
-        Height = 28,
-        MinHeight = 0,
-        Padding = new Thickness(8, 0),
-        Margin = new Thickness(-8, 0),
-        BorderThickness = new Thickness(0),
-        HorizontalAlignment = HorizontalAlignment.Stretch,
-        HorizontalContentAlignment = HorizontalAlignment.Left,
-        VerticalContentAlignment = VerticalAlignment.Center,
-    };
+        var toggle = new ToggleSwitch { IsChecked = true, OnContent = null, OffContent = null, MinWidth = 0 };
+        AutomationProperties.SetName(toggle, name);
+        return toggle;
+    }
+
+    static DockPanel SwitchRow(string label, ToggleSwitch toggle)
+    {
+        DockPanel.SetDock(toggle, Dock.Right);
+        return new DockPanel
+        {
+            Height = 28,
+            Children = { toggle, new TextBlock { Text = label, FontSize = 12, VerticalAlignment = VerticalAlignment.Center } },
+        };
+    }
 
     static TextBox StepBox(float step, string unit) => new()
     {

@@ -156,7 +156,7 @@ public sealed class StoreViewTests
         {
             var view = Loaded(Two);
             view.Choose(view.Shown.First());
-            var waiting = view.GetLogicalDescendants().OfType<Button>()
+            var waiting = view.GetLogicalDescendants().Concat(view.Drawer.GetLogicalDescendants()).OfType<Button>()
                 .Where(button => button is not RadioButton && button != view.ReloadButton && button != view.CloseButton)
                 .Concat(view.Filter.Choices.Skip(1))
                 .ToList();

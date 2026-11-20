@@ -11,11 +11,13 @@ namespace Orblit.Editor.App.Tests;
 public sealed class NewSceneToolTests
 {
     // The dialog laid out in a window of its own, so the cards have their templates and the radio group its parent.
-    static NewSceneTool Opened(params string[] scenes)
+    static NewSceneTool Opened(params string[] scenes) => Opened(false, scenes);
+
+    static NewSceneTool Opened(bool planar, params string[] scenes)
     {
         var tool = new NewSceneTool();
         new Window { Width = 1000, Height = 700, Content = tool.Dialog }.Show();
-        tool.Open(scenes);
+        tool.Open(scenes, planar);
         tool.Dialog.UpdateLayout();
         return tool;
     }
@@ -57,6 +59,22 @@ public sealed class NewSceneToolTests
             Click(tool.OtherCard);
 
             Assert.Equal("Picking any class for the root is not built yet.", said);
+        });
+    }
+
+    [Fact]
+    public void The_root_starts_on_the_kind_of_the_workspace_each_time_it_opens()
+    {
+        UiThread.Run(() =>
+        {
+            var tool = Opened(planar: true);
+            Assert.Equal([false, true, false], tool.Roots.Select(card => card.IsChecked == true));
+
+            tool.Roots.Last().IsChecked = true;
+            tool.Dialog.Close();
+            tool.Open([], planar: false);
+
+            Assert.Equal([true, false, false], tool.Roots.Select(card => card.IsChecked == true));
         });
     }
 
@@ -132,7 +150,7 @@ public sealed class NewSceneToolTests
             tool.Say("The engine could not save res://arena.oscn. Error code 7.");
             tool.Dialog.Close();
 
-            tool.Open([]);
+            tool.Open([], planar: false);
 
             Assert.True(tool.Dialog.IsVisible);
             Assert.Equal("", tool.NameBox.Text);

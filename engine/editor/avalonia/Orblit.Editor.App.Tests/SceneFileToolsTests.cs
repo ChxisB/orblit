@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -65,6 +66,20 @@ public sealed class SceneFileToolsTests
             Assert.StartsWith("arena.oscn", window.Title);
             Assert.Contains(FileNodes(window), node => node.Path == "res://arena.oscn");
             Assert.False(window.NewScene.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_new_scene_from_the_2D_workspace_starts_on_the_2D_root()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+            ClickOn(PlanarViewportTests.TabOf(window, TitleBar.Planar), window);
+
+            ClickOn(window.SceneTabs.AddButton, window);
+
+            Assert.Equal([false, true, false], window.NewScene.Roots.Select(card => card.IsChecked == true));
         });
     }
 
