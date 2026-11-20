@@ -1,4 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
@@ -15,59 +19,158 @@ public sealed class StoreViewTests
 
     static Func<CancellationToken, Task<string>> Answer(string text) => _ => Task.FromResult(text);
 
-    static string[] Shown(StoreView view)
+    static string[] Names(StoreView view) => [.. view.Shown.Select(kit => kit.Name)];
+
+    static string[] Texts(Control control)
     {
-        ((Window)TopLevel.GetTopLevel(view)!).UpdateLayout();
-        return [.. view.List.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text!)];
+        ((Window)TopLevel.GetTopLevel(control)!).UpdateLayout();
+        return [.. control.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).OfType<string>()];
+    }
+
+    static Control CardOf(StoreView view, string name) => view.Cards.Single(card => card.Tag is KitEntry kit && kit.Name == name);
+
+    static StoreView Loaded(string index)
+    {
+        var view = Open(Answer(index));
+        view.LoadAsync().Wait();
+        Dispatcher.UIThread.RunJobs();
+        return view;
     }
 
     [Fact]
-    public void It_starts_with_no_rows_and_has_asked_for_nothing()
+    public void It_starts_with_only_the_publish_card_and_has_asked_for_nothing()
     {
         UiThread.Run(() =>
         {
             var asked = 0;
             var view = Open(_ => { asked++; return Task.FromResult(Two); });
 
-            Assert.Equal("Press Load to read the store.", view.Status.Text);
-            Assert.Null(view.List.ItemsSource);
+            Assert.Equal("Press Reload to read the store.", view.Status.Text);
+            Assert.Empty(view.Shown);
+            Assert.Contains("Publish your own kit", Texts(view.Cards.Single()));
+            Assert.Contains("Nothing read yet", Texts(view));
             Assert.Equal(0, asked);
         });
     }
 
     [Fact]
-    public void Load_shows_a_row_for_each_kit_with_its_name_version_publisher_and_summary()
+    public void Reload_shows_a_card_for_each_kit_with_its_version_publisher_and_summary()
     {
         UiThread.Run(() =>
         {
-            var view = Open(Answer(Two));
+            var view = Loaded(Two);
 
+            Assert.Equal("2 kits in the index.", view.Status.Text);
+            Assert.Equal(["Platformer", "Racing"], Names(view));
+            Assert.Equal(["1.2.0", "Platformer", "by ada", "A side scroller.", "Install"], Texts(CardOf(view, "Platformer")));
+            Assert.Equal(["0.1.0", "Racing", "by bo", "No summary.", "Install"], Texts(CardOf(view, "Racing")));
+            Assert.Contains("Publish your own kit", Texts(view.Cards.Last()));
+        });
+    }
+
+    [Fact]
+    public void One_kit_reads_as_one_kit_and_none_shows_an_empty_store()
+    {
+        UiThread.Run(() =>
+        {
+            var one = Loaded("""{"formatVersion":1,"kits":[{"name":"A","publisher":"p","slug":"a","version":"1"}]}""");
+            var none = Loaded("""{"formatVersion":1,"kits":[]}""");
+
+            Assert.Equal("1 kit in the index.", one.Status.Text);
+            Assert.Equal("No kits in the index.", none.Status.Text);
+            Assert.Contains("No kits yet", Texts(none));
+        });
+    }
+
+    [Theory]
+    [InlineData("racing", "Racing")]
+    [InlineData("ADA", "Platformer")]
+    [InlineData("scroller", "Platformer")]
+    public void The_search_keeps_the_kits_whose_name_publisher_or_summary_holds_the_words(string words, string kept)
+    {
+        UiThread.Run(() =>
+        {
+            var view = Loaded(Two);
+
+            view.SearchBox.Text = words;
+
+            Assert.Equal([kept], Names(view));
+        });
+    }
+
+    [Fact]
+    public void A_search_that_keeps_nothing_says_so_and_clearing_it_shows_every_kit()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Loaded(Two);
+
+            view.SearchBox.Text = "boat";
+            Assert.Empty(view.Shown);
+            Assert.Contains("Nothing matches", Texts(view));
+
+            view.SearchBox.Text = "";
+            Assert.Equal(["Platformer", "Racing"], Names(view));
+        });
+    }
+
+    [Fact]
+    public void A_click_on_a_card_opens_the_drawer_on_its_kit_and_marks_the_card()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Loaded(Two);
+            Assert.False(view.Drawer.IsVisible);
+
+            ClickOn(CardOf(view, "Racing"));
+
+            Assert.True(view.Drawer.IsVisible);
+            Assert.Equal(["Racing", "by bo", "0.1.0", "bo", "racing"], view.Details);
+            Assert.Equal(0, ((Border)CardOf(view, "Platformer")).BoxShadow.Count);
+            Assert.NotEqual(0, ((Border)CardOf(view, "Racing")).BoxShadow.Count);
+        });
+    }
+
+    [Fact]
+    public void The_drawer_closes_on_its_cross_and_on_a_new_read()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Loaded(Two);
+            view.Choose(view.Shown.First());
+
+            ReferenceWindow.Click(view.CloseButton);
+            Assert.False(view.Drawer.IsVisible);
+            Assert.Equal(0, ((Border)CardOf(view, "Platformer")).BoxShadow.Count);
+
+            view.Choose(view.Shown.First());
             view.LoadAsync().Wait();
-            Dispatcher.UIThread.RunJobs();
-
-            Assert.Equal("2 kits.", view.Status.Text);
-            Assert.Equal(["Platformer", "1.2.0 by ada", "A side scroller.", "Racing", "0.1.0 by bo"], Shown(view));
+            Assert.False(view.Drawer.IsVisible);
         });
     }
 
     [Fact]
-    public void One_kit_reads_as_one_kit_and_none_as_none()
+    public void Install_the_kit_page_the_filters_and_publishing_take_no_input_until_they_are_built()
     {
         UiThread.Run(() =>
         {
-            var one = Open(Answer("""{"formatVersion":1,"kits":[{"name":"A","publisher":"p","slug":"a","version":"1"}]}"""));
-            var none = Open(Answer("""{"formatVersion":1,"kits":[]}"""));
+            var view = Loaded(Two);
+            view.Choose(view.Shown.First());
+            var waiting = view.GetLogicalDescendants().OfType<Button>()
+                .Where(button => button is not RadioButton && button != view.ReloadButton && button != view.CloseButton)
+                .Concat(view.Filter.Choices.Skip(1))
+                .ToList();
 
-            one.LoadAsync().Wait();
-            none.LoadAsync().Wait();
-
-            Assert.Equal("1 kit.", one.Status.Text);
-            Assert.Equal("0 kits.", none.Status.Text);
+            // Two cards and the drawer each hold Install and a page button, and the publish card holds Learn how.
+            Assert.Equal(9, waiting.Count);
+            Assert.All(waiting, button => Assert.False(button.IsEnabled));
+            Assert.All(waiting, button => Assert.Equal("Not built yet", (string?)ToolTip.GetTip(button)));
+            Assert.True(view.Filter.Choices[0].IsEnabled);
         });
     }
 
     [Fact]
-    public void A_failed_read_says_why_and_keeps_the_rows_from_before()
+    public void A_failed_read_says_why_and_keeps_the_cards_from_before()
     {
         UiThread.Run(() =>
         {
@@ -79,8 +182,8 @@ public sealed class StoreViewTests
             view.LoadAsync().Wait();
 
             Assert.Equal("The store did not answer.", view.Status.Text);
-            Assert.Equal(2, ((System.Collections.ICollection)view.List.ItemsSource!).Count);
-            Assert.True(view.LoadButton.IsEnabled);
+            Assert.Equal(["Platformer", "Racing"], Names(view));
+            Assert.True(view.ReloadButton.IsEnabled);
         });
     }
 
@@ -89,16 +192,14 @@ public sealed class StoreViewTests
     {
         UiThread.Run(() =>
         {
-            var view = Open(Answer("""{"formatVersion":9,"kits":[]}"""));
-
-            view.LoadAsync().Wait();
+            var view = Loaded("""{"formatVersion":9,"kits":[]}""");
 
             Assert.Equal("The index is in a format this editor does not read.", view.Status.Text);
         });
     }
 
     [Fact]
-    public void A_second_load_replaces_the_rows_and_a_press_during_a_read_does_nothing()
+    public void A_second_read_replaces_the_cards_and_a_press_during_a_read_does_nothing()
     {
         UiThread.Run(() =>
         {
@@ -114,28 +215,37 @@ public sealed class StoreViewTests
             var ignored = view.LoadAsync();
 
             Assert.Single(reads);
-            Assert.False(view.LoadButton.IsEnabled);
-            Assert.Equal("Loading the store.", view.Status.Text);
+            Assert.False(view.ReloadButton.IsEnabled);
+            Assert.Equal("Reading the store.", view.Status.Text);
             reads.Dequeue().SetResult(Two);
             Dispatcher.UIThread.RunJobs();
             Assert.True(first.IsCompleted);
             Assert.True(ignored.IsCompleted);
-            Assert.True(view.LoadButton.IsEnabled);
+            Assert.True(view.ReloadButton.IsEnabled);
 
             var second = view.LoadAsync();
             reads.Dequeue().SetResult("""{"formatVersion":1,"kits":[{"name":"Only","publisher":"p","slug":"o","version":"1"}]}""");
             Dispatcher.UIThread.RunJobs();
 
             Assert.True(second.IsCompleted);
-            Assert.Equal(["Only", "1 by p"], Shown(view));
+            Assert.Equal(["Only"], Names(view));
         });
     }
 
-    // The rows are measured only when the view has a parent window to lay out in.
+    static void ClickOn(Control control)
+    {
+        var window = (Window)TopLevel.GetTopLevel(control)!;
+        window.UpdateLayout();
+        var center = control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), window)!.Value;
+        window.MouseDown(center, MouseButton.Left);
+        window.MouseUp(center, MouseButton.Left);
+    }
+
+    // The cards are measured only when the view has a parent window to lay out in.
     static StoreView Open(Func<CancellationToken, Task<string>> read)
     {
         var view = new StoreView(read);
-        new Window { Content = view, Width = 600, Height = 400 }.Show();
+        new Window { Content = view, Width = 1200, Height = 800 }.Show();
         return view;
     }
 }

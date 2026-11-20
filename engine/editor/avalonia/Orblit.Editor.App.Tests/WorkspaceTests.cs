@@ -28,7 +28,7 @@ public sealed class WorkspaceTests
             Assert.True(window.Store.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Store, window));
+            AssertBox(56, 46, 3328, 1183, BoxOf(window.Store, window));
             Assert.Equal(before, window.Status);
         });
     }
@@ -59,13 +59,13 @@ public sealed class WorkspaceTests
         {
             var window = OpenAtReferenceSize(new FakeScene(), _ => Task.FromResult(OneKit));
             ClickOn(Tab(window, "Asset Store"), window);
-            ClickOn(window.Store.LoadButton, window);
+            ClickOn(window.Store.ReloadButton, window);
             Dispatcher.UIThread.RunJobs();
 
             ClickOn(Tab(window, "3D"), window);
             ClickOn(Tab(window, "Asset Store"), window);
 
-            Assert.Equal("1 kit.", window.Store.Status.Text);
+            Assert.Equal("1 kit in the index.", window.Store.Status.Text);
         });
     }
 
@@ -79,7 +79,7 @@ public sealed class WorkspaceTests
 
             ClickOn(Tab(window, "Asset Store"), window);
             Assert.Equal(0, asked);
-            ClickOn(window.Store.LoadButton, window);
+            ClickOn(window.Store.ReloadButton, window);
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal(1, asked);

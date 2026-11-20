@@ -88,17 +88,6 @@ internal sealed class CenterArea : Grid
     internal PlanarOverlay Planar { get; }
 
     /// <summary>
-    /// Adds a view that fills the island under the scene tabs while its workspace is chosen. It starts hidden.
-    /// </summary>
-    public void AddWorkspace(string name, Control view)
-    {
-        view.IsVisible = false;
-        SetRow(view, 1);
-        _stage.Children.Add(view);
-        _views.Add(name, view);
-    }
-
-    /// <summary>
     /// Adds a view that takes the place of the whole island, scene tabs and all, while its workspace is chosen. It
     /// brings islands of its own. It starts hidden.
     /// </summary>
@@ -120,8 +109,8 @@ internal sealed class CenterArea : Grid
         Toolbar.IsVisible = spatial;
         Planar.IsVisible = planar;
         _main.IsVisible = spatial || planar;
-        // A bare view sits beside the island in this grid, not in it.
-        Stage.IsVisible = !(_views.TryGetValue(name, out var chosen) && chosen.Parent == this);
+        // An added view brings islands of its own and takes the place of this one.
+        Stage.IsVisible = !_views.ContainsKey(name);
         foreach (var (key, view) in _views)
         {
             view.IsVisible = key == name;

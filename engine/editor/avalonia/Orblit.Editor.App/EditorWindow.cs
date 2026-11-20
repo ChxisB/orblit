@@ -77,6 +77,7 @@ internal sealed class EditorWindow : Window
         [TitleBar.Script] = (true, true),
         [TitleBar.Graph] = (true, true),
         [TitleBar.Game] = (true, true),
+        [TitleBar.Store] = (true, true),
     };
     IEditorScene? _scene;
     OutlineNode? _root;
@@ -164,7 +165,7 @@ internal sealed class EditorWindow : Window
         _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddBareWorkspace(TitleBar.Game, _game);
-        _center.AddWorkspace(TitleBar.Store, _store);
+        _center.AddBareWorkspace(TitleBar.Store, _store);
         _titleBar.WorkspaceChosen += ChooseWorkspace;
         _pollTimer.Tick += (_, _) => Poll();
         Closed += (_, _) =>
