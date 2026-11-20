@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Data;
@@ -45,6 +46,21 @@ internal sealed class EditorTheme : Styles
 
     /// <summary>The corners of a menu or a flyout, a step rounder than an island.</summary>
     internal static readonly CornerRadius PopoverCorners = new(11);
+
+    /// <summary>The class of a worded button: a raised fill with an edge. The classes after it change its kind or size.</summary>
+    internal const string TextButton = "text";
+
+    /// <summary>The one main action of a dialog or a toast, in the accent.</summary>
+    internal const string Primary = "primary";
+
+    /// <summary>A quiet action with no fill or edge, such as Cancel.</summary>
+    internal const string Ghost = "ghost";
+
+    /// <summary>An action that drops work, such as Close without saving.</summary>
+    internal const string Danger = "danger";
+
+    /// <summary>The smaller worded button a toast or a row holds.</summary>
+    internal const string Small = "small";
 
     /// <summary>
     /// Marks a menu item, or the native item behind one, whose feature is not built. The theme dims its label and
@@ -206,6 +222,7 @@ internal sealed class EditorTheme : Styles
             },
         });
         AddRange(PopoverStyles());
+        AddRange(ButtonStyles());
     }
 
     static ResourceDictionary Overrides()
@@ -278,6 +295,68 @@ internal sealed class EditorTheme : Styles
             },
         },
     ];
+
+    // The fill, hovered fill, edge and text of each kind of worded button. A list of cases, so it is data. Later
+    // rows win over the first, which every kind also carries.
+    static readonly (string Kind, IBrush Fill, IBrush Lit, IBrush Edge, IBrush Text)[] ButtonKinds =
+    [
+        (TextButton, EditorBrushes.Raised, EditorBrushes.Hover, EditorBrushes.LineStrong, EditorBrushes.Text),
+        (Primary, EditorBrushes.Accent, EditorBrushes.Accent, Brushes.Transparent, EditorBrushes.OnAccent),
+        (Ghost, Brushes.Transparent, EditorBrushes.Hover, Brushes.Transparent, EditorBrushes.TextSoft),
+        (Danger, Brushes.Transparent, EditorBrushes.Hover, EditorBrushes.FaultEdge, EditorBrushes.FaultText),
+    ];
+
+    // The base theme paints a hovered or pressed button on its template part from its own resources, which would
+    // turn the accent grey. So each kind lights its own fill and keeps its edge and text.
+    static IEnumerable<Style> ButtonStyles()
+    {
+        yield return new Style(x => x.OfType<Button>().Class(TextButton))
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, 30.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(12, 0)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
+                new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
+                new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
+            },
+        };
+        foreach (var (kind, fill, lit, edge, text) in ButtonKinds)
+        {
+            yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(kind))
+            {
+                Setters =
+                {
+                    new Setter(TemplatedControl.BackgroundProperty, fill),
+                    new Setter(TemplatedControl.BorderBrushProperty, edge),
+                    new Setter(TemplatedControl.ForegroundProperty, text),
+                },
+            };
+            yield return new Style(x => Selectors.Or(
+                x.OfType<Button>().Class(TextButton).Class(kind).Class(":pointerover").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"),
+                x.OfType<Button>().Class(TextButton).Class(kind).Class(":pressed").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter")))
+            {
+                Setters =
+                {
+                    new Setter(ContentPresenter.BackgroundProperty, lit),
+                    new Setter(ContentPresenter.BorderBrushProperty, edge),
+                    new Setter(ContentPresenter.ForegroundProperty, text),
+                },
+            };
+        }
+
+        yield return new Style(x => x.OfType<Button>().Class(Primary)) { Setters = { new Setter(TemplatedControl.FontWeightProperty, FontWeight.SemiBold) } };
+        yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(Small))
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, 26.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.FontSizeProperty, 12.0),
+                new Setter(TemplatedControl.CornerRadiusProperty, Corners),
+            },
+        };
+    }
 
     // The theme draws a thin, wide chevron. The reference draws its own 12 pixel arrow icons.
     static Border Arrow(ToggleButton button)

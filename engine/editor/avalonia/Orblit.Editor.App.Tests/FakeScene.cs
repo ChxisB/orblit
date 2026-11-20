@@ -30,7 +30,7 @@ internal sealed class FakeScene : IEditorScene
 
     public int Saves { get; private set; }
 
-    public bool SaveFails { get; init; }
+    public bool SaveFails { get; set; }
 
     public bool OpenFails { get; init; }
 

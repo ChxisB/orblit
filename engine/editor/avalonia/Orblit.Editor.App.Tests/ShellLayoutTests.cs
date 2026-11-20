@@ -421,19 +421,18 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_close_bar_sits_under_the_title_bar_and_pushes_the_columns_down()
+    public void Save_changes_covers_the_whole_window_and_leaves_the_docks_where_they_are()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var dock = BoxOf(window.SceneDock, window);
 
-            window.CloseBar.IsVisible = true;
+            window.SaveChanges.Open();
             window.UpdateLayout();
 
-            var bar = BoxOf(window.CloseBar, window);
-            Assert.Equal(46, bar.Y);
-            Assert.True(bar.Height > 0);
-            Assert.Equal(TitleBar.BarHeight + bar.Height + window.CloseBar.Margin.Bottom, BoxOf(window.SceneDock, window).Y);
+            AssertBox(0, 0, window.Bounds.Width, window.Bounds.Height, BoxOf(window.SaveChanges, window));
+            Assert.Equal(dock, BoxOf(window.SceneDock, window));
         });
     }
 

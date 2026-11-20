@@ -3,8 +3,15 @@ namespace Orblit.Editor.App.Tests;
 /// <summary>A clock that moves only when a test moves it. A timer that falls due fires inside <see cref="Advance"/>.</summary>
 internal sealed class ManualTime : TimeProvider
 {
+    /// <summary>The clock starts here, in a zone with no offset, so a test can name the time it shows.</summary>
+    internal static readonly DateTimeOffset Start = new(2026, 11, 20, 16, 33, 0, TimeSpan.Zero);
+
     readonly List<ManualTimer> _timers = [];
     TimeSpan _now;
+
+    public override DateTimeOffset GetUtcNow() => Start + _now;
+
+    public override TimeZoneInfo LocalTimeZone => TimeZoneInfo.Utc;
 
     public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
     {

@@ -42,6 +42,18 @@ internal static class EditorColors
 
     public static readonly Color Warn = Color.Parse("#F2B33D");
 
+    // A job that went through and one that did not. A danger button takes the fault in a lighter text and a faint edge.
+    public static readonly Color Done = Color.Parse("#4CC38A");
+    public static readonly Color Fault = Color.Parse("#FF5C6C");
+    public static readonly Color FaultText = Color.Parse("#FF8A96");
+    public static readonly Color FaultEdge = Color.Parse("#55FF5C6C");
+
+    // Text on an accent fill. White on the orange reads too thin.
+    public static readonly Color OnAccent = Color.Parse("#1B0F06");
+
+    // The shade over the editor behind a dialog. The design draws none, so this one is ours.
+    public static readonly Color Veil = Color.Parse("#8C05070A");
+
     // The tree icons keep the colour they are drawn in, and a folder is that colour times the accent.
     public static readonly Color TreeIcon = Color.Parse("#C9CFD8");
     public static readonly Color FolderIcon = Color.Parse("#B56F35");
