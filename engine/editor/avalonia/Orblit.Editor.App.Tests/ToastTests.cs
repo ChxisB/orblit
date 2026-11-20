@@ -202,6 +202,22 @@ public sealed class ToastTests
     }
 
     [Fact]
+    public void Play_saves_an_edited_scene_and_says_so_in_a_toast()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://main.oscn" };
+            var window = OpenAtReferenceSize(scene, time: new ManualTime());
+            MakeAnEdit(window);
+
+            Click(window.PlayButton);
+
+            Assert.Equal(1, scene.Saves);
+            Assert.Equal(["Saved main.oscn"], Titles(window));
+        });
+    }
+
+    [Fact]
     public void A_game_that_cannot_start_says_why_in_a_toast()
     {
         UiThread.Run(() =>

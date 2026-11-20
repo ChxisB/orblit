@@ -159,6 +159,12 @@ internal sealed class ScenePane : Grid
     // The selected row edits its name in place. A row the filter hides cannot.
     void Rename(EntityTools tools)
     {
+        // A row added a moment ago has no control until the tree's next layout.
+        if (!_rows.ContainsKey(_selected))
+        {
+            _outline.UpdateLayout();
+        }
+
         if (_rows.TryGetValue(_selected, out var row))
         {
             row.Rename(tools.Rename);

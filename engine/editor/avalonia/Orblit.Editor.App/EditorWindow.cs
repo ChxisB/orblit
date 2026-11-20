@@ -918,17 +918,24 @@ internal sealed class EditorWindow : Window
     {
         if (!_script.Save())
         {
-            Fail(_script.Status.Text ?? "");
+            FailScript(_script.Status.Text ?? "");
             return false;
         }
 
         if (!_graph.Save())
         {
-            Fail(_graph.Status.Text ?? "");
+            FailScript(_graph.Status.Text ?? "");
             return false;
         }
 
         return true;
+    }
+
+    // A save from Play or Leave happens where the script view may be hidden, so the toast says it too.
+    void FailScript(string why)
+    {
+        Fail(why);
+        _toasts.Show(ToastKind.Failed, "The script could not be saved", why, new ToastAction("Try again", SaveAll));
     }
 
     bool Save()
