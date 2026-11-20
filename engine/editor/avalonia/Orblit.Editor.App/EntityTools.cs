@@ -10,8 +10,8 @@ namespace Orblit.Editor.App;
 internal sealed record EntityEdit(nint Select, string Message);
 
 /// <summary>
-/// Adds an entity under the selected one through the Add an entity dialog, and copies, renames and removes the
-/// selected entity. Each command is a button, so the dock, its menus and a key press the same one.
+/// Adds an entity under the selected one, or over it as its new parent, through the Add an entity dialog, and
+/// copies, renames and removes the selected entity. Each command is a button, so the dock, its menus and a key press the same one.
 /// </summary>
 internal sealed class EntityTools
 {
@@ -32,16 +32,19 @@ internal sealed class EntityTools
     IEditorScene? _scene;
     OutlineNode? _root;
     OutlineNode? _selected;
+    Func<EntityEdit> _adding;
 
     public EntityTools()
     {
         AddDialog = new Dialog("Add an entity", "", _classes) { CardWidth = 320, MainText = "Add", Hint = "↑ ↓ to move, ↵ to add" };
         AddDialog.CancelButton.IsVisible = false;
         _classes.PickedChanged += () => AddDialog.MainButton.IsEnabled = _classes.Picked is not null;
-        AddButton.Click += (_, _) => OpenAdd();
+        _adding = Add;
+        AddButton.Click += (_, _) => OpenAdd(Add, $"As a child of {(_selected ?? _root)!.Name}");
+        NewParentButton.Click += (_, _) => OpenAdd(AddParent, $"As the parent of {_selected!.Name}");
         AddDialog.MainButton.Click += (_, _) =>
         {
-            Run(Add);
+            Run(_adding);
             // The new entity has its class's name, so its row opens for a better one. Escape keeps the class name.
             if (!AddDialog.IsVisible)
             {
@@ -62,6 +65,9 @@ internal sealed class EntityTools
     /// <summary>The plus of the Scene dock. It opens the Add an entity dialog.</summary>
     internal Button AddButton { get; } = Parts.IconButton("Add", "Add an entity");
 
+    /// <summary>Opens the Add an entity dialog to put the new entity in the selected one's place, over it.</summary>
+    internal Button NewParentButton { get; } = new();
+
     internal Dialog AddDialog { get; }
 
     internal ChoiceList ClassList => _classes;
@@ -80,6 +86,7 @@ internal sealed class EntityTools
         _selected = selected;
         AddButton.IsEnabled = root is not null;
         DuplicateButton.IsEnabled = selected is not null && selected != root;
+        NewParentButton.IsEnabled = selected is not null && selected != root;
         RenameButton.IsEnabled = selected is not null;
         RemoveButton.IsEnabled = selected is not null && selected != root;
     }
@@ -92,9 +99,10 @@ internal sealed class EntityTools
     });
 
     // The keys go to the search, so the arrows and Enter work at once.
-    void OpenAdd()
+    void OpenAdd(Func<EntityEdit> adding, string why)
     {
-        AddDialog.Why.Text = $"As a child of {(_selected ?? _root)!.Name}";
+        _adding = adding;
+        AddDialog.Why.Text = why;
         _classes.Show([.. Classes.Select(entry => new Choice(EditorIcons.ForClass(entry.ClassName), entry.ClassName) { Line = entry.Line, Tint = EditorBrushes.TreeIcon })]);
         AddDialog.Open();
         _classes.SearchBox.Focus();
@@ -119,6 +127,20 @@ internal sealed class EntityTools
         var made = _scene!.AddChild((_selected ?? _root)!.Handle, className, className);
         AddDialog.Close();
         return new EntityEdit(made, $"Added {className}.");
+    }
+
+    // The new entity starts last among the selected one's siblings, moves up to its place and takes it under.
+    // The selected entity keeps where it is drawn, because the new parent sits where the old one does.
+    EntityEdit AddParent()
+    {
+        var className = _classes.Picked!.Name;
+        var parent = _root!.PathTo(_selected!.Handle)[^2];
+        var at = parent.Children.ToList().FindIndex(child => child.Handle == _selected.Handle);
+        var made = _scene!.AddChild(parent.Handle, className, className);
+        _scene.MoveWithinParent(made, at - parent.Children.Count);
+        _scene.Reparent(_selected.Handle, made, keepGlobalTransform: true);
+        AddDialog.Close();
+        return new EntityEdit(made, $"Added {className} over {_selected.Name}.");
     }
 
     EntityEdit Duplicate()

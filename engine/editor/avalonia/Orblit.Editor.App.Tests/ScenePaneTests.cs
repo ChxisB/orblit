@@ -255,6 +255,41 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
+    public void A_new_parent_takes_the_selected_entitys_place_and_holds_it_where_it_was_drawn()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            window.ScenePane.Select(FakeScene.Lamp.Handle);
+            OptionItems(window).Single(item => HeaderOf(item) == "Add a New Parent...").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal("As the parent of Lamp", window.Tools.AddDialog.Why.Text);
+
+            window.Tools.ClassList.SearchBox.Text = "Marker3D";
+            Click(window.Tools.AddDialog.MainButton);
+
+            var made = scene.Outline()!.Children[0];
+            Assert.Equal(["Marker3D", "Sound"], scene.Outline()!.Children.Select(child => child.Name));
+            Assert.Equal(["Lamp"], made.Children.Select(child => child.Name));
+            Assert.True(scene.KeptGlobal);
+            Assert.Equal("Marker3D", window.ScenePane.Selected!.Name);
+            Assert.Equal("Added Marker3D over Lamp.", window.Status);
+        });
+    }
+
+    [Fact]
+    public void The_scene_root_gets_no_new_parent()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            window.ScenePane.Select(FakeScene.Field.Handle);
+
+            Assert.False(window.Tools.NewParentButton.IsEnabled);
+        });
+    }
+
+    [Fact]
     public void A_new_entity_opens_its_row_for_a_name_and_enter_keeps_it()
     {
         UiThread.Run(() =>
@@ -323,7 +358,7 @@ public sealed class ScenePaneTests
             Assert.False(items[0].IsEnabled);
             Assert.False(items[5].IsEnabled);
             Assert.Equal(new KeyGesture(Key.Up, window.CommandKey), items[1].InputGesture);
-            Assert.True(EditorTheme.IsSoon(items[4]));
+            Assert.False(EditorTheme.IsSoon(items[4]));
         });
     }
 
