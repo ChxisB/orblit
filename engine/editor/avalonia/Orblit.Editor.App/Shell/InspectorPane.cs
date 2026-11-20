@@ -112,7 +112,7 @@ internal sealed class InspectorPane : Grid
         _inspected.IsVisible = node is not null;
         _icon.Content = node is null ? null : Parts.RowIcon(EditorIcons.ForClass(node.ClassName));
         _name.Text = node?.Name ?? "";
-        _class.Text = node?.ClassName ?? "";
+        _class.Text = string.Join(" › ", _panel.Chain);
         Remember(scene?.SceneFile, node);
     }
 

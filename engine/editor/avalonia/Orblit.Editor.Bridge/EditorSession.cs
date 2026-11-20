@@ -23,6 +23,14 @@ public sealed class EditorSession
     const string LockGroup = "_edit_lock_";
     const string GroupGroup = "_edit_group_";
 
+    // PropertyUsageFlags: the editor shows the property, and these entries head a group, a class or a subgroup.
+    const long UsageEditor = 4;
+    const long UsageGroup = 64;
+    const long UsageCategory = 128;
+    const long UsageSubgroup = 256;
+
+    static readonly string[] s_propertyKeys = ["name", "type", "hint", "hint_string", "usage"];
+
     readonly EngineHost _host;
     readonly ISceneSource _source;
 
@@ -140,6 +148,57 @@ public sealed class EditorSession
         RequireMetaName(name);
         _host.ObjectRemoveMeta(entity, name);
     }
+
+    /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
+    public IReadOnlyList<string> ClassChainOf(nint entity)
+    {
+        var registry = _host.Singleton("ClassRegistry");
+        var chain = new List<string>();
+        for (var name = _host.ObjectGetClass(entity); name.Length > 0; name = name == "Entity" ? "" : _host.ClassRegistryGetParentClass(registry, name))
+        {
+            chain.Add(name);
+        }
+        return chain;
+    }
+
+    /// <summary>
+    /// The properties the editor shows for the entity, with their values now, in the engine's order, which is base
+    /// class first. Classes above Entity, the script and metadata are left out, because the inspector has its own
+    /// rows for them. A property that does not start with its group's prefix leaves the group, as in the engine.
+    /// </summary>
+    public IReadOnlyList<EntityProperty> PropertiesOf(nint entity)
+    {
+        var chain = ClassChainOf(entity);
+        var found = new List<EntityProperty>();
+        string? owner = null;
+        var (group, prefix) = ("", "");
+        foreach (var row in _host.ObjectGetPropertyList(entity, s_propertyKeys))
+        {
+            var (name, usage, hintString) = ((string?)row[0] ?? "", (long?)row[4] ?? 0, (string?)row[3] ?? "");
+            if ((usage & UsageCategory) != 0)
+            {
+                owner = chain.Contains(name) ? name : null;
+                (group, prefix) = ("", "");
+            }
+            else if ((usage & UsageGroup) != 0)
+            {
+                (group, prefix) = (name, hintString);
+            }
+            else if (owner is not null && (usage & (UsageEditor | UsageSubgroup)) == UsageEditor && name != "script" && !name.StartsWith("metadata/", StringComparison.Ordinal))
+            {
+                (group, prefix) = name.StartsWith(prefix, StringComparison.Ordinal) ? (group, prefix) : ("", "");
+                found.Add(new EntityProperty(owner, group, name, (int)((long?)row[1] ?? 0), _host.ObjectGet(entity, name))
+                {
+                    Hint = (int)((long?)row[2] ?? 0),
+                    HintString = hintString,
+                });
+            }
+        }
+        return found;
+    }
+
+    /// <summary>Sets one property. The value is a bool, a long, a double, a string, a vector or a Vector4 colour.</summary>
+    public void SetProperty(nint entity, string name, object value) => _host.ObjectSet(entity, name, value);
 
     /// <summary>The res:// path of the entity's script, an empty string for a script with no file, or null for none.</summary>
     public string? ScriptOf(nint entity) =>

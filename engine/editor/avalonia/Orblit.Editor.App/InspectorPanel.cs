@@ -10,24 +10,28 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// The selected entity's classes and their groups. Only an Entity3D has a transform to edit. Rotation is in
-/// degrees. With nothing selected the list is empty. A filter hides the rows whose label lacks the text, and
-/// every bar and group that then holds no row. The groups beside Transform have no rows yet. The Script row and the
-/// metadata rows read the scene when the selection changes, and not on each drag step.
+/// The selected entity's classes, most derived first, each under its bar with its own rows and groups. Only an
+/// Entity3D has the Transform rows, which edit rotation in degrees through the transform calls. Every other row
+/// edits through the engine's typed get and set. With nothing selected the list is empty. A filter hides the rows
+/// whose label lacks the text, and every bar and group that then holds no row. A closed group with a match shows
+/// only its header. The properties, the Script row and the metadata rows read the scene when the selection
+/// changes and after an edit here, and not on each drag step.
 /// </summary>
 internal sealed class InspectorPanel : StackPanel
 {
-    static readonly string[] s_entityGroups = ["Process", "Physics Interpolation", "Auto Translate", "Editor Description"];
+    // The engine's Transform group holds these, and the vector rows edit them through the transform calls.
+    static readonly string[] s_vectorNames = ["position", "rotation", "scale"];
+    static readonly Thickness s_groupIndent = new(12, -2, 0, 0);
 
-    readonly ClassBar _classBar = new();
-    readonly ClassBar _entity3DBar = new("Entity3D");
-    readonly ClassBar _entityBar = new("Entity");
     readonly VectorRow _position = new("Position", "m");
     readonly VectorRow _rotation = new("Rotation", "°");
     readonly VectorRow _scale = new("Scale");
-    readonly StackPanel _transformRows = new() { Margin = new Thickness(12, -2, 0, 0) };
+    readonly StackPanel _transformRows = new() { Margin = s_groupIndent };
     readonly PropertyGroup _transform;
-    readonly PropertyGroup _visibility = new("Visibility");
+    readonly StackPanel _sections = new();
+    readonly List<PropertyRow> _rows = [];
+    // Whether each group was open, by title, so a group keeps its fold from one entity to the next.
+    readonly Dictionary<string, bool> _folds = [];
     readonly ScriptRow _script = new();
     readonly MetadataRows _metadataRows = new();
     readonly MetadataTool _metadataTool = new();
@@ -40,6 +44,9 @@ internal sealed class InspectorPanel : StackPanel
     readonly Control[] _entityParts;
     IEditorScene? _scene;
     OutlineNode? _node;
+    IReadOnlyList<string> _chain = [];
+    // The classes and property names the sections were built for. Values alone change in place.
+    string _built = "";
     string _filter = "";
 
     public InspectorPanel()
@@ -49,16 +56,16 @@ internal sealed class InspectorPanel : StackPanel
         Add(_position, (entity, value) => _scene!.MoveTo(entity, value));
         Add(_rotation, (entity, value) => _scene!.RotateTo(entity, value));
         Add(_scale, (entity, value) => _scene!.ScaleTo(entity, value));
-        _entityParts = [_entityBar, .. s_entityGroups.Select(title => new PropertyGroup(title)), _script, _attach, _metadataRows, _metadata];
-        Children.AddRange([_classBar, _entity3DBar, _transform, _visibility, .. _entityParts, _count]);
+        _entityParts = [_script, _attach, _metadataRows, _metadata];
+        Children.AddRange([_sections, .. _entityParts, _count]);
         WireExtras();
         Show(null, null);
     }
 
-    /// <summary>Raised after the scene took a new position, rotation, scale, metadata value or script.</summary>
+    /// <summary>Raised after the scene took a new position, rotation, scale, property, metadata value or script.</summary>
     public event Action? Edited;
 
-    /// <summary>Raised with the reason when the scene refused a metadata value or a script.</summary>
+    /// <summary>Raised with the reason when the scene refused a property, a metadata value or a script.</summary>
     public event Action<string>? Failed;
 
     /// <summary>Raised with the res:// path of the attached script when Edit is chosen in the script menu.</summary>
@@ -90,6 +97,11 @@ internal sealed class InspectorPanel : StackPanel
 
     internal TextBlock FilterCount => _count;
 
+    /// <summary>The selected entity's class and the classes it inherits, most derived first.</summary>
+    internal IReadOnlyList<string> Chain => _chain;
+
+    internal IReadOnlyList<PropertyRow> Rows => _rows;
+
     bool IsSelected => _scene is not null && _node is not null;
 
     bool IsEditable => IsSelected && _scene!.IsEntity3D(_node!.Handle);
@@ -99,7 +111,6 @@ internal sealed class InspectorPanel : StackPanel
         var selectionChanged = !ReferenceEquals(scene, _scene) || !ReferenceEquals(node, _node);
         _scene = scene;
         _node = node;
-        _classBar.Show(node?.ClassName ?? "");
         Refresh();
         if (selectionChanged)
         {
@@ -115,40 +126,50 @@ internal sealed class InspectorPanel : StackPanel
         ShowRows();
     }
 
-    /// <summary>Opens or closes every group that has rows.</summary>
+    /// <summary>Opens or closes every group.</summary>
     public void FoldAll(bool open)
     {
-        foreach (var group in Children.OfType<PropertyGroup>())
+        foreach (var group in Groups())
         {
             group.Fold(open);
         }
     }
 
-    // A filter keeps the rows that match, and the bar and group above them. The parts with no rows show only
-    // when there is no filter.
+    IEnumerable<PropertyGroup> Groups() => _sections.Children.OfType<Panel>().SelectMany(section => section.Children.OfType<PropertyGroup>());
+
+    // The vector rows count only while their group is in a section.
+    IEnumerable<(Control Row, string Label)> Labeled() =>
+        [.. (_transform.Parent is null ? [] : new[] { _position, _rotation, _scale }).Select(row => ((Control)row, row.Label)), .. _rows.Select(row => ((Control)row, row.Label))];
+
+    // A filter keeps the rows that match, and the bar and group above them. The script and metadata parts show
+    // only when there is no filter.
     void ShowRows()
     {
         var any = _node is not null;
         var all = any && _filter.Length == 0;
-        foreach (var row in new[] { _position, _rotation, _scale })
+        var labeled = Labeled().ToArray();
+        // The vector rows stay hidden while their group is in no section.
+        _position.IsVisible = _rotation.IsVisible = _scale.IsVisible = false;
+        foreach (var (row, label) in labeled)
         {
-            row.IsVisible = any && row.Label.Contains(_filter, StringComparison.OrdinalIgnoreCase);
+            row.IsVisible = label.Contains(_filter, StringComparison.OrdinalIgnoreCase);
         }
-
-        _transform.IsVisible = IsEditable && _transformRows.Children.Any(row => row.IsVisible);
-        _visibility.IsVisible = all && IsEditable;
-        _entity3DBar.IsVisible = _transform.IsVisible || _visibility.IsVisible;
-        _classBar.IsVisible = all && _node!.ClassName is not ("Entity3D" or "Entity");
+        foreach (var section in _sections.Children.OfType<Panel>())
+        {
+            foreach (var group in section.Children.OfType<PropertyGroup>())
+            {
+                group.IsVisible = ((Panel)group.Body).Children.Any(row => row.IsVisible);
+            }
+            section.Children[0].IsVisible = all || section.Children.Skip(1).Any(part => part.IsVisible);
+        }
         foreach (var part in _entityParts)
         {
             part.IsVisible = all;
         }
 
-        // Only the Transform rows can match yet, so they are what the line counts.
-        var rows = IsEditable ? _transformRows.Children.Count : 0;
-        var matched = IsEditable ? _transformRows.Children.Count(row => row.IsVisible) : 0;
+        var matched = labeled.Count(row => row.Row.IsVisible);
         _count.IsVisible = any && !all;
-        _count.Text = matched == 0 ? "No properties match." : $"{matched} of {rows} properties match.";
+        _count.Text = matched == 0 ? "No properties match." : $"{matched} of {labeled.Length} properties match.";
     }
 
     // The scene may answer with other numbers than the ones typed, such as a rotation turned into range.
@@ -170,12 +191,79 @@ internal sealed class InspectorPanel : StackPanel
     void ShowExtras()
     {
         var entity = _scene is not null && _node is not null ? _node.Handle : 0;
+        ShowProperties(entity);
         _metadataRows.Show(entity == 0 ? [] : _scene!.MetadataOf(entity));
         _script.Show(entity == 0 ? null : _scene!.ScriptOf(entity));
         if (entity != 0)
         {
             _metadataTool.ShowOwner(_node!.Name, _scene!.SceneFile);
         }
+    }
+
+    // The sections are built again only for other classes or property names, so a row keeps its box and caret
+    // when only its value changed.
+    void ShowProperties(nint entity)
+    {
+        _chain = entity == 0 ? [] : _scene!.ClassChainOf(entity);
+        var properties = entity == 0 ? [] : _scene!.PropertiesOf(entity);
+        var built = string.Join(',', _chain) + ';' + string.Join(',', properties.Select(property => property.Name));
+        if (built != _built)
+        {
+            _built = built;
+            Build(properties);
+            return;
+        }
+        var values = properties.DistinctBy(property => property.Name).ToDictionary(property => property.Name, property => property.Value);
+        foreach (var row in _rows)
+        {
+            row.Show(values[row.PropertyName]);
+        }
+    }
+
+    // One section per class: its bar, its rows with no group, then its groups in the engine's order. The
+    // Entity3D section starts with the Transform group, which takes the engine's other Transform rows.
+    void Build(IReadOnlyList<EntityProperty> properties)
+    {
+        foreach (var group in Groups().Where(group => group != _transform))
+        {
+            _folds[group.Title] = group.IsOpen;
+        }
+        foreach (var section in _sections.Children.OfType<Panel>())
+        {
+            section.Children.Clear();
+        }
+        _sections.Children.Clear();
+        _transformRows.Children.RemoveRange(s_vectorNames.Length, _transformRows.Children.Count - s_vectorNames.Length);
+        _rows.Clear();
+        foreach (var className in _chain)
+        {
+            var own = properties.Where(property => property.Class == className).ToArray();
+            var transform = className == "Entity3D" && IsEditable;
+            var section = new StackPanel { Children = { new ClassBar(className) } };
+            if (transform)
+            {
+                section.Children.Add(_transform);
+                _transformRows.Children.AddRange(own.Where(property => property.Group == "Transform" && !s_vectorNames.Contains(property.Name)).Select(Row));
+            }
+            section.Children.AddRange(own.Where(property => property.Group.Length == 0).Select(Row));
+            foreach (var group in own.Where(property => property.Group.Length > 0 && !(transform && property.Group == "Transform")).GroupBy(property => property.Group))
+            {
+                var body = new StackPanel { Margin = s_groupIndent };
+                body.Children.AddRange(group.Select(Row));
+                var folder = new PropertyGroup(group.Key, body);
+                folder.Fold(_folds.GetValueOrDefault(group.Key));
+                section.Children.Add(folder);
+            }
+            _sections.Children.Add(section);
+        }
+    }
+
+    PropertyRow Row(EntityProperty property)
+    {
+        var row = new PropertyRow(property);
+        row.Entered += value => TryChange(entity => _scene!.SetProperty(entity, property.Name, value));
+        _rows.Add(row);
+        return row;
     }
 
     void WireExtras()

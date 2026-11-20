@@ -143,7 +143,7 @@ public sealed class InspectorPaneTests
             window.Outline.SelectedItem = FakeScene.Lamp;
             window.Outline.SelectedItem = FakeScene.Sound;
             window.Outline.SelectedItem = FakeScene.Lamp;
-            Assert.Equal("Entity3D", pane.InspectedClass.Text);
+            Assert.Equal("Entity3D › Entity", pane.InspectedClass.Text);
 
             ClickOn(pane.Chip, window);
 
@@ -230,8 +230,8 @@ public sealed class InspectorPaneTests
     }
 
     [Theory]
-    [InlineData("pos", "1 of 3 properties match.")]
-    [InlineData("o", "2 of 3 properties match.")]
+    [InlineData("pos", "1 of 10 properties match.")]
+    [InlineData("o", "8 of 10 properties match.")]
     [InlineData("zzz", "No properties match.")]
     public void A_filter_counts_the_rows_that_match(string text, string expected)
     {

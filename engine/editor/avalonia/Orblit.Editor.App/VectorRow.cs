@@ -13,7 +13,7 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// A label beside three fields for one vector, each with a tag for its axis, the value and the unit. A field shows
+/// A label beside two or three fields for one vector, each with a tag for its axis, the value and the unit. A field shows
 /// its value rounded at rest and in full while it has the caret. It raises <see cref="Entered"/> when a box holds a
 /// finite value that differs from the one shown. Any other text stays, with a red edge and a line that says why,
 /// until the next value is shown.
@@ -41,14 +41,16 @@ internal sealed class VectorRow : Grid
     static readonly (string Letter, Color Color)[] s_letters =
         [("X", EditorColors.AxisX), ("Y", EditorColors.AxisY), ("Z", EditorColors.AxisZ)];
 
-    readonly TextBox[] _axes = [AxisBox(), AxisBox(), AxisBox()];
-    readonly Border[] _fields = new Border[3];
+    readonly TextBox[] _axes;
+    readonly Border[] _fields;
     readonly TextBlock _fault = Parts.FaultLine();
     Vector3? _shown;
 
-    public VectorRow(string label, string unit = "")
+    public VectorRow(string label, string unit = "", int axes = 3)
     {
         Label = label;
+        _axes = [.. Enumerable.Range(0, axes).Select(_ => AxisBox())];
+        _fields = new Border[axes];
         ColumnDefinitions = new ColumnDefinitions($"{LabelWidth},{LabelGap},*");
         RowDefinitions = new RowDefinitions($"{RowHeight},Auto");
         // Styles, not local values, so focus can light the edge of the field that holds the caret. Bad text comes
@@ -66,7 +68,7 @@ internal sealed class VectorRow : Grid
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         });
-        var cells = new Grid { ColumnDefinitions = new ColumnDefinitions("*,*,*"), ColumnSpacing = FieldGap, VerticalAlignment = VerticalAlignment.Center };
+        var cells = new Grid { ColumnDefinitions = new ColumnDefinitions(string.Join(',', Enumerable.Repeat("*", axes))), ColumnSpacing = FieldGap, VerticalAlignment = VerticalAlignment.Center };
         for (var i = 0; i < _axes.Length; i++)
         {
             var axis = i;
@@ -104,7 +106,7 @@ internal sealed class VectorRow : Grid
 
     internal TextBlock Fault => _fault;
 
-    /// <summary>Shows a value in the boxes and clears any fault. Null empties and disables them.</summary>
+    /// <summary>Shows a value in the boxes and clears any fault. Null empties and disables them. A row of two shows x and y.</summary>
     public void Show(Vector3? value)
     {
         _shown = value;

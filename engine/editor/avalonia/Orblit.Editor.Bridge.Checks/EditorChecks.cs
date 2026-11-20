@@ -51,6 +51,7 @@ internal sealed class EditorChecks : IChecks
         ("a scene path outside res://, an empty name and a class that is no entity are refused, and a file that is no scene does not instance", SceneFileRefusals),
         ("metadata keeps its type through a save and a reopen, an engine name is not listed and a bad name is refused", MetadataIsSaved),
         ("an object value reads back as the same object, and a Variant of another kind reads as nothing", ObjectVariantRoundTrips),
+        ("a Camera3D lists its classes and their properties with values and hints, and a set of each kind reads back", PropertiesAreListedAndSet),
         ("a script that cannot load is refused and leaves the entity as it was, and clearing no script changes nothing", ScriptRefusals),
         ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
         ("a new graph script is saved with its base type and opens empty, and a base that is no class or a path that is no graph file is refused", GraphScriptCreation),
@@ -536,6 +537,40 @@ internal sealed class EditorChecks : IChecks
         // The marshaller takes an object handle, but the editor keeps only the four kinds it lists.
         Assert.Throws<ArgumentException>(() => _editor.SetMetadata(holder, "second", other));
         Assert.Null(_host.ObjectGetMeta(holder, "second", null));
+    }
+
+    void PropertiesAreListedAndSet()
+    {
+        var root = _editor.Outline()!.Handle;
+        var camera = _editor.AddChild(root, "Camera3D", "Eye");
+        var light = _editor.AddChild(root, "DirectionalLight3D", "Sun");
+
+        Assert.Equal(["Camera3D", "Entity3D", "Entity"], _editor.ClassChainOf(camera));
+        Assert.Equal(["DirectionalLight3D", "Light3D", "VisualInstance3D", "Entity3D", "Entity"], _editor.ClassChainOf(light));
+        var listed = _editor.PropertiesOf(camera);
+        // The engine lists the base class first, and the inspector's own rows are not listed.
+        Assert.Equal(["Entity", "Entity3D", "Camera3D"], listed.Select(property => property.Class).Distinct());
+        Assert.DoesNotContain(listed, property => property.Name is "script" or "name" || property.Name.StartsWith("metadata/", StringComparison.Ordinal));
+        EntityProperty Find(IEnumerable<EntityProperty> properties, string name) => properties.Single(property => property.Name == name);
+        var fov = Find(listed, "fov");
+        Assert.Equal(("Camera3D", "", 3, 75.0, 1, "1,179,0.1,degrees"), (fov.Class, fov.Group, fov.Type, fov.Value, fov.Hint, fov.HintString));
+        var projection = Find(listed, "projection");
+        Assert.Equal((2, 0L, 2, "Perspective,Orthogonal,Frustum"), (projection.Type, projection.Value, projection.Hint, projection.HintString));
+        Assert.Equal(("Entity3D", "Transform", 9, Vector3.Zero), (Find(listed, "position").Class, Find(listed, "position").Group, Find(listed, "position").Type, Find(listed, "position").Value));
+        Assert.Equal(("Entity3D", "Visibility", true), (Find(listed, "visible").Class, Find(listed, "visible").Group, Find(listed, "visible").Value));
+        Assert.Equal(("Entity", "Run"), (Find(listed, "run_mode").Class, Find(listed, "run_mode").Group));
+        Assert.Equal(("Entity", "Editor Description", ""), (Find(listed, "editor_description").Class, Find(listed, "editor_description").Group, Find(listed, "editor_description").Value));
+
+        _editor.SetProperty(camera, "far", 500.0);
+        _editor.SetProperty(camera, "current", true);
+        _editor.SetProperty(camera, "projection", 2L);
+        _editor.SetProperty(camera, "frustum_offset", new Vector2(1, 2));
+        _editor.SetProperty(camera, "editor_description", "the eye");
+        _editor.SetProperty(light, "light_color", new Vector4(1, 0.5f, 0.25f, 1));
+        var after = _editor.PropertiesOf(camera);
+        Assert.Equal((500.0, true, 2L, new Vector2(1, 2), "the eye"), (Find(after, "far").Value, Find(after, "current").Value, Find(after, "projection").Value, Find(after, "frustum_offset").Value, Find(after, "editor_description").Value));
+        Assert.Equal((20, new Vector4(1, 0.5f, 0.25f, 1)), (Find(_editor.PropertiesOf(light), "light_color").Type, Find(_editor.PropertiesOf(light), "light_color").Value));
+        Assert.Throws<ArgumentException>(() => _editor.SetProperty(camera, "far", 5));
     }
 
     void ScriptRefusals()

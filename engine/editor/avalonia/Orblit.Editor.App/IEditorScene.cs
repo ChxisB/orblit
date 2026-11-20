@@ -150,6 +150,18 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>When the project file was last written, in UTC.</summary>
     DateTime ModifiedOf(string resourcePath);
 
+    /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
+    IReadOnlyList<string> ClassChainOf(nint entity);
+
+    /// <summary>The properties the inspector lists for the entity, base class first, with their values now.</summary>
+    IReadOnlyList<EntityProperty> PropertiesOf(nint entity);
+
+    /// <summary>
+    /// Sets one listed property to a bool, a long, a double, a string, a vector or a Vector4 colour. Throws
+    /// <see cref="ArgumentException"/> for any other kind of value.
+    /// </summary>
+    void SetProperty(nint entity, string name, object value);
+
     /// <summary>The entity's metadata in the order the engine lists it. A name that starts with an underscore is the engine's and is left out.</summary>
     IReadOnlyList<MetaEntry> MetadataOf(nint entity);
 

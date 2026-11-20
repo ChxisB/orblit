@@ -16,7 +16,7 @@ public sealed class InspectorStructureTests
     const double BarX = 3125;
     const double BarWidth = 302;
 
-    static readonly string[] s_entityGroups = ["Process", "Physics Interpolation", "Auto Translate", "Editor Description"];
+    static readonly string[] s_entityGroups = ["Run", "Physics Interpolation", "Auto Translate", "Editor Description"];
 
     static EditorWindow Selected(OutlineNode node)
     {
@@ -135,7 +135,8 @@ public sealed class InspectorStructureTests
             Assert.Equal((BarX + 12, BarWidth - 12), (position.X, position.Width));
             Near(header.Bottom - 2, position.Y);
             Near(position.Y + 60, scale.Y);
-            Near(scale.Bottom, BoxOf(Group(window, "Visibility").Header, window).Y);
+            Near(scale.Bottom, BoxOf(window.Inspector.Rows.Single(row => row.Label == "Top Level"), window).Y);
+            Near(BoxOf(Group(window, "Transform").Body, window).Bottom, BoxOf(Group(window, "Visibility").Header, window).Y);
         });
     }
 
@@ -147,7 +148,7 @@ public sealed class InspectorStructureTests
             var window = Selected(FakeScene.Lamp);
             var visibility = BoxOf(Group(window, "Visibility").Header, window);
             var bar = BoxOf(Bars(window)[1], window);
-            var process = BoxOf(Group(window, "Process").Header, window);
+            var process = BoxOf(Group(window, "Run").Header, window);
             var last = BoxOf(Group(window, "Editor Description").Header, window);
 
             Near(visibility.Bottom + 4, bar.Y);
@@ -184,23 +185,42 @@ public sealed class InspectorStructureTests
     }
 
     [Theory]
-    [InlineData("Visibility")]
-    [InlineData("Process")]
-    [InlineData("Physics Interpolation")]
-    [InlineData("Auto Translate")]
-    [InlineData("Editor Description")]
-    public void A_group_with_no_rows_stays_closed_and_says_it_is_not_built(string title)
+    [InlineData("Visibility", "Visible")]
+    [InlineData("Run", "Mode")]
+    [InlineData("Physics Interpolation", "Mode")]
+    [InlineData("Auto Translate", "Mode")]
+    [InlineData("Editor Description", "Editor Description")]
+    public void A_group_of_the_engine_rows_starts_closed_and_a_click_opens_it(string title, string first)
     {
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
             var group = Group(window, title);
+            Assert.False(group.IsOpen);
+            Assert.Equal("GuiTreeArrowRight", ArrowOf(group));
 
             ClickOn(group.Header, window);
 
-            Assert.False(group.IsOpen);
-            Assert.Equal("GuiTreeArrowRight", ArrowOf(group));
-            Assert.Equal($"{title} is not built yet.", window.Status);
+            Assert.True(group.IsOpen);
+            Assert.Equal("GuiTreeArrowDown", ArrowOf(group));
+            Assert.Equal(first, ((PropertyRow)((Panel)group.Body).Children[0]).Label);
+            Assert.True(group.Body.IsEffectivelyVisible);
+        });
+    }
+
+    [Fact]
+    public void A_group_keeps_its_fold_from_one_entity_to_the_next()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(FakeScene.Lamp);
+            ClickOn(Group(window, "Run").Header, window);
+
+            window.Outline.SelectedItem = FakeScene.Sound;
+            window.UpdateLayout();
+
+            Assert.True(Group(window, "Run").IsOpen);
+            Assert.False(Group(window, "Auto Translate").IsOpen);
         });
     }
 
