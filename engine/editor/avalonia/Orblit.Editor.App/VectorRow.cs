@@ -123,9 +123,12 @@ internal sealed class VectorRow : Grid
     {
         var box = _axes[axis];
         box.Text = _shown is { } shown
-            ? box.IsFocused ? shown[axis].ToString(CultureInfo.InvariantCulture) : ((double)shown[axis]).ToString(AtRest, CultureInfo.InvariantCulture)
+            ? box.IsFocused ? shown[axis].ToString(CultureInfo.InvariantCulture) : AtRestText(shown[axis])
             : "";
     }
+
+    // The format writes a tiny negative value as -0, which reads as a fault.
+    internal static string AtRestText(double value) => Math.Round(value, 4) == 0 ? "0" : value.ToString(AtRest, CultureInfo.InvariantCulture);
 
     // The value box fills what the tag and the unit leave, so a long value scrolls inside it and the field keeps its width.
     Border Cell(int index, string unit)

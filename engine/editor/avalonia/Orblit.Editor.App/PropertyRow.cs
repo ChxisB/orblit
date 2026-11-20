@@ -13,7 +13,7 @@ namespace Orblit.Editor.App;
 
 /// <summary>
 /// One engine property in the inspector, with an editor of its kind: a switch, a list of an enum's choices, a number
-/// box with its unit, a text box, a vector or a colour swatch with its hex. Any other kind shows its type, read only.
+/// box with its unit, a text box, a vector or a colour swatch with its hex. Any other kind shows read only.
 /// A box raises <see cref="Entered"/> when it holds a value of its kind that differs from the one shown. Any other
 /// text is put back.
 /// </summary>
@@ -37,7 +37,6 @@ internal sealed class PropertyRow : Border
     const double LabelGap = 8;
     const double RowHeight = 30;
     const double FieldHeight = 28;
-    const string AtRest = "0.####";
 
     // Words the engine's names spell in lower case that read as capitals.
     static readonly string[] s_capitals = ["fov", "id", "lod", "ui", "uv"];
@@ -130,7 +129,7 @@ internal sealed class PropertyRow : Border
             value => value switch
             {
                 long whole => whole.ToString(CultureInfo.InvariantCulture),
-                double real => (real * scale).ToString(AtRest, CultureInfo.InvariantCulture),
+                double real => VectorRow.AtRestText(real * scale),
                 _ => "",
             },
             text => _property.Type == Int
@@ -179,10 +178,16 @@ internal sealed class PropertyRow : Border
     TextBlock ReadOnly()
     {
         var text = new TextBlock { Foreground = EditorBrushes.TextDim, FontSize = 12, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-        // An object shows the resource type it takes, and any other kind its type.
-        _show = value => text.Text = _property.Type == Object
-            ? value is null ? "<empty>" : _property.HintString.Split(',')[0]
-            : VariantTypes.Names[_property.Type];
+        // An object shows the resource type it takes, a number or text its value, and any other kind its type.
+        _show = value => text.Text = (_property.Type, value) switch
+        {
+            (Object, null) => "<empty>",
+            (Object, _) => _property.HintString.Split(',')[0],
+            (_, long whole) => whole.ToString(CultureInfo.InvariantCulture),
+            (_, double real) => VectorRow.AtRestText(real),
+            (_, string words) => words,
+            _ => VariantTypes.Names[_property.Type],
+        };
         return text;
     }
 

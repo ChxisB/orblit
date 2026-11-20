@@ -37,7 +37,8 @@ internal sealed class InspectorPane : Grid
     readonly ContentControl _icon = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _name = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _class = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-    readonly StackPanel _inspected = new() { Orientation = Orientation.Horizontal, Spacing = 6, IsVisible = false };
+    // The class fills what the icon and the name leave, so a long chain trims before the chevron.
+    readonly DockPanel _inspected = new() { HorizontalSpacing = 6, IsVisible = false };
     readonly MenuFlyout _recent = new();
     readonly Button _chip;
     readonly Button _tools = Parts.Tight(Parts.IconButton("Tools", "Inspector tools"));
