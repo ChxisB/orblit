@@ -1,4 +1,5 @@
 using System.Numerics;
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.VisualTree;
@@ -43,6 +44,20 @@ public sealed class InspectorPropertyTests
     }
 
     [Fact]
+    public void A_long_chain_in_the_chip_ends_before_its_chevron()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = Picked("MeshInstance3D");
+            var pane = window.InspectorPane;
+            var chevron = ((DockPanel)pane.Chip.Content!).Children[0];
+            var classRight = pane.InspectedClass.TranslatePoint(new Point(pane.InspectedClass.Bounds.Width, 0), pane.Chip)!.Value.X;
+
+            Assert.True(classRight <= chevron.TranslatePoint(default, pane.Chip)!.Value.X, $"the class ends at {classRight}");
+        });
+    }
+
+    [Fact]
     public void A_number_shows_its_unit_takes_typed_text_and_puts_back_text_that_is_not_a_number()
     {
         UiThread.Run(() =>
@@ -83,14 +98,14 @@ public sealed class InspectorPropertyTests
     }
 
     [Fact]
-    public void Another_type_shows_read_only_and_an_empty_object_says_so()
+    public void Another_kind_shows_its_value_read_only_and_an_empty_object_says_so()
     {
         UiThread.Run(() =>
         {
             var (window, _, _) = Picked("Camera3D");
 
             Assert.Equal("<empty>", ((TextBlock)Row(window, "Environment").Editor).Text);
-            Assert.Equal("Int", ((TextBlock)Row(window, "Cull Mask").Editor).Text);
+            Assert.Equal("1048575", ((TextBlock)Row(window, "Cull Mask").Editor).Text);
         });
     }
 

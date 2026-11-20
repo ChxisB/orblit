@@ -159,6 +159,20 @@ public sealed class VectorRowTests
     }
 
     [Fact]
+    public void A_value_that_rounds_to_zero_from_below_shows_no_minus_sign()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+
+            row.Show(new System.Numerics.Vector3(-0.00001f, -0f, -0.0001f));
+
+            Assert.Equal(["0", "0", "-0.0001"], row.Axes.Select(box => box.Text));
+        });
+    }
+
+    [Fact]
     public void Leaving_a_field_unchanged_writes_nothing_though_the_others_are_rounded()
     {
         UiThread.Run(() =>
