@@ -45,4 +45,22 @@ public sealed class ProjectSettingsTests : IDisposable
 
         Assert.Equal("", ProjectSettings.NameOf(_folder));
     }
+
+    [Fact]
+    public void The_tags_are_the_quoted_values_of_config_tags()
+    {
+        Write("config/name=\"crate\"\nconfig/tags=PackedStringArray(\"3D\", \"C#\")\n");
+
+        Assert.Equal(["3D", "C#"], ProjectSettings.TagsOf(_folder));
+    }
+
+    [Fact]
+    public void A_missing_file_or_key_gives_no_tags()
+    {
+        Assert.Empty(ProjectSettings.TagsOf(_folder));
+
+        Write("config/name=\"crate\"\n");
+
+        Assert.Empty(ProjectSettings.TagsOf(_folder));
+    }
 }

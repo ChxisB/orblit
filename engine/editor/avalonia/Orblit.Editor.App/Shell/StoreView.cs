@@ -19,18 +19,9 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class StoreView : Border
 {
-    const string Soon = "Not built yet";
     const double CardWidth = 250;
     // Half the 14 pixel gap between cards, as a margin on every side of each.
     const double Half = 7;
-
-    // A glow and a deep tone for each banner, taken in turn down the index so a kit keeps its colour as the search narrows.
-    static readonly (Color Glow, Color Deep)[] s_banners =
-    [
-        (Color.Parse("#AAFF9A4D"), Color.Parse("#C2410C")),
-        (Color.Parse("#AA5AA2FF"), Color.Parse("#1E3A8A")),
-        (Color.Parse("#AA8BD450"), Color.Parse("#166534")),
-    ];
 
     readonly Func<CancellationToken, Task<string>> _read;
     readonly Button _reload = new() { Classes = { EditorTheme.TextButton, EditorTheme.Small } };
@@ -57,11 +48,11 @@ internal sealed class StoreView : Border
     public StoreView(Func<CancellationToken, Task<string>> read)
     {
         _read = read;
-        _reload.Content = Worded("Reload", "Reload");
+        _reload.Content = Parts.Worded("Reload", "Reload");
         _reload.Click += async (_, _) => await LoadAsync();
         foreach (var choice in _filter.Choices.Skip(1))
         {
-            Unbuilt(choice);
+            Unbuilt.Disable(choice);
         }
         // The property changes as the text is set. The TextChanged event waits for a render.
         _search.PropertyChanged += (_, e) =>
@@ -147,7 +138,7 @@ internal sealed class StoreView : Border
         {
             return;
         }
-        _drawerBanner.Child = Banner(Tone(kit), 190);
+        _drawerBanner.Child = Parts.Banner("AssetStore", Tone(kit), 190);
         _drawerName.Text = kit.Name;
         _drawerBy.Text = $"by {kit.Publisher}";
         _drawerSummary.Text = kit.Summary.Length > 0 ? kit.Summary : "No summary.";
@@ -207,8 +198,8 @@ internal sealed class StoreView : Border
         var install = new Button { Content = "Install", HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Primary, EditorTheme.Small } };
         var page = Parts.IconButton("ExternalLink", "Open the kit page");
         page.VerticalAlignment = VerticalAlignment.Center;
-        Unbuilt(install);
-        Unbuilt(page);
+        Unbuilt.Disable(install);
+        Unbuilt.Disable(page);
         DockPanel.SetDock(page, Dock.Right);
         var version = Badge(kit.Version);
         DockPanel.SetDock(version, Dock.Right);
@@ -231,7 +222,7 @@ internal sealed class StoreView : Border
             Classes = { EditorTheme.Island },
             Margin = new Thickness(Half),
             Cursor = new Cursor(StandardCursorType.Hand),
-            Child = new StackPanel { Children = { Banner(Tone(kit), 132), body } },
+            Child = new StackPanel { Children = { Parts.Banner("AssetStore", Tone(kit), 132), body } },
         };
         card.Tapped += (_, _) => Choose(kit);
         return card;
@@ -246,44 +237,11 @@ internal sealed class StoreView : Border
         Foreground = kit.Summary.Length > 0 ? EditorBrushes.TextSoft : EditorBrushes.Disabled,
     };
 
-    // The banner sits on the card's top edge, so it rounds its own top corners in place of a clip that would cut the ring.
-    static Border Banner(int at, double height)
-    {
-        var (glow, deep) = s_banners[at % s_banners.Length];
-        var top = new CornerRadius(9, 9, 0, 0);
-        var icon = new EditorIcon("AssetStore") { Width = 36, Height = 36, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
-        TextElement.SetForeground(icon, new ImmutableSolidColorBrush(Color.Parse("#E6FFFFFF")));
-        return new Border
-        {
-            Height = height,
-            CornerRadius = top,
-            Background = new LinearGradientBrush
-            {
-                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
-                GradientStops = { new GradientStop(deep, 0), new GradientStop(EditorColors.Panel, 1) },
-            },
-            Child = new Border
-            {
-                CornerRadius = top,
-                Background = new RadialGradientBrush
-                {
-                    Center = new RelativePoint(0.2, 0, RelativeUnit.Relative),
-                    GradientOrigin = new RelativePoint(0.2, 0, RelativeUnit.Relative),
-                    RadiusX = new RelativeScalar(1.2, RelativeUnit.Relative),
-                    RadiusY = new RelativeScalar(0.9, RelativeUnit.Relative),
-                    GradientStops = { new GradientStop(glow, 0), new GradientStop(Colors.Transparent, 0.6) },
-                },
-                Child = icon,
-            },
-        };
-    }
-
     static Panel PublishCard()
     {
-        var learn = new Button { Content = Worded("ExternalLink", "Learn how"), HorizontalAlignment = HorizontalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small } };
+        var learn = new Button { Content = Parts.Worded("ExternalLink", "Learn how"), HorizontalAlignment = HorizontalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small } };
         // No page on the site says how to publish a kit yet.
-        Unbuilt(learn);
+        Unbuilt.Disable(learn);
         var words = new StackPanel
         {
             Spacing = 8,
@@ -304,9 +262,9 @@ internal sealed class StoreView : Border
     StackPanel DrawerBody()
     {
         var install = new Button { Content = "Install", Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
-        var page = new Button { Content = Worded("ExternalLink", "Open page"), Classes = { EditorTheme.TextButton, EditorTheme.Ghost } };
-        Unbuilt(install);
-        Unbuilt(page);
+        var page = new Button { Content = Parts.Worded("ExternalLink", "Open page"), Classes = { EditorTheme.TextButton, EditorTheme.Ghost } };
+        Unbuilt.Disable(install);
+        Unbuilt.Disable(page);
         DockPanel.SetDock(_close, Dock.Right);
         var facts = new Border
         {
@@ -353,18 +311,4 @@ internal sealed class StoreView : Border
         VerticalAlignment = VerticalAlignment.Center,
         Child = new TextBlock { Text = text, FontFamily = EditorTheme.Mono, FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
     };
-
-    static StackPanel Worded(string icon, string text) => new()
-    {
-        Orientation = Orientation.Horizontal,
-        Spacing = 6,
-        Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
-    };
-
-    static void Unbuilt(Control control)
-    {
-        control.IsEnabled = false;
-        ToolTip.SetTip(control, Soon);
-        ToolTip.SetShowOnDisabled(control, true);
-    }
 }

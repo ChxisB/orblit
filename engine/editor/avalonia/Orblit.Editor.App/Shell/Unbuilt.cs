@@ -24,6 +24,16 @@ internal static class Unbuilt
     public static readonly RoutedEvent<UnbuiltEventArgs> Event =
         RoutedEvent.Register<Control, UnbuiltEventArgs>("Unbuilt", RoutingStrategies.Bubble);
 
+    public const string Soon = "Not built yet";
+
+    /// <summary>Off, and says why when the pointer rests on it. For a surface with no toast host to answer a click.</summary>
+    public static void Disable(Control control)
+    {
+        control.IsEnabled = false;
+        ToolTip.SetTip(control, Soon);
+        ToolTip.SetShowOnDisabled(control, true);
+    }
+
     /// <summary>A tool of a viewport pill that is not built. Lit shows it on, as the design draws it.</summary>
     public static FixedToggle Tool(string icon, string name, bool lit = false) => Mark(new FixedToggle(icon, name, lit), $"{name} is not built yet.");
 

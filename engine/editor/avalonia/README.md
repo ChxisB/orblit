@@ -94,6 +94,10 @@ near-black window. One ember accent marks the choice and the focus.
    `res://main.oscn`. `--headless` runs the engine with no window, so the
    viewport is empty.
 
+   With no `--project` the launcher opens. It lists the projects in the
+   engine's `projects.cfg`, opens a project folder from disk and makes a new
+   project from a template. The chosen project opens in the editor.
+
 The engine window opens beside the editor and takes the foreground when it
 starts. One process holds one engine.
 
