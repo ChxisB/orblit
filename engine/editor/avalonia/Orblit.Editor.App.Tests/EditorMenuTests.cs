@@ -368,9 +368,9 @@ public sealed class EditorMenuTests
         {
             var window = OpenAtReferenceSize();
 
-            Press(Find(NativeMenu.GetMenu(window)!, "Command Palette..."));
+            Press(Find(NativeMenu.GetMenu(window)!, "Editor Settings..."));
 
-            Assert.Equal("Command Palette is not built yet.", window.Status);
+            Assert.Equal("Editor Settings is not built yet.", window.Status);
         });
     }
 

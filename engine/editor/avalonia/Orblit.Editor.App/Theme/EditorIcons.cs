@@ -17,6 +17,7 @@ internal static partial class EditorIcons
         s_icons["Square"] = Line("M5.5 5.5h13v13h-13z");
         s_icons["Ring"] = Line("M12 6a6 6 0 1 0 0 12a6 6 0 1 0 0-12z");
         s_icons["Lens"] = Line("M10.5 4a6.5 6.5 0 1 0 0 13a6.5 6.5 0 1 0 0-13zM20 20l-4.8-4.8");
+        s_icons["SceneFile"] = Line("M4 9.5h16v10H4zM4 9.5l1.5-5h13l1.5 5M9 4.5l-1.5 5M14.5 4.5l-1.5 5");
         s_icons["FolderLine"] = Line("M3.5 7A1.5 1.5 0 0 1 5 5.5h4l2 2h8A1.5 1.5 0 0 1 20.5 9v8.5A1.5 1.5 0 0 1 19 19H5a1.5 1.5 0 0 1-1.5-1.5z");
     }
 

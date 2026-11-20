@@ -58,6 +58,9 @@ internal static class EditorColors
     public static readonly Color Spatial = Color.Parse("#F27D8A");
     public static readonly Color Planar = Color.Parse("#6FA8FF");
 
+    // A scene file where a list mixes it with other rows, such as the command palette.
+    public static readonly Color SceneIcon = Color.Parse("#F0A365");
+
     // Text on an accent fill. White on the orange reads too thin.
     public static readonly Color OnAccent = Color.Parse("#1B0F06");
 
