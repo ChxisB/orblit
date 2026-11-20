@@ -46,7 +46,7 @@ internal sealed class ScenePane : Grid
     public ScenePane(EntityTools tools, MoveTools move, InstanceTool instance, KeyModifiers command)
     {
         RowDefinitions = new RowDefinitions($"{RowHeight},*");
-        _menu.Flyout = Options(move, command);
+        _menu.Flyout = Options(tools, move, command);
         tools.RenameButton.Click += (_, _) => Rename(tools);
         _outline.Margin = new Thickness(0, TreeTop, 0, 0);
         _outline.ContextMenu = new ContextMenu
@@ -171,7 +171,7 @@ internal sealed class ScenePane : Grid
         }
     }
 
-    MenuFlyout Options(MoveTools move, KeyModifiers command)
+    MenuFlyout Options(EntityTools tools, MoveTools move, KeyModifiers command)
     {
         // The pane keeps the flag, so the tick is right whether or not the item flips itself before this runs.
         _classNames.Click += (_, _) =>
@@ -189,7 +189,7 @@ internal sealed class ScenePane : Grid
                 Parts.PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
                 Parts.PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
                 Parts.PressItem("Move Under...", move.MoveUnderButton),
-                Parts.SoonItem("Add a New Parent...", _menu),
+                Parts.PressItem("Add a New Parent...", tools.NewParentButton),
                 new Separator(),
                 Parts.MenuHeading("Tree"),
                 Parts.ActionItem("Expand All", () => SetExpanded(true)),

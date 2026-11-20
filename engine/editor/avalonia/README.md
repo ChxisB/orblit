@@ -20,7 +20,8 @@ scene. It runs on macOS. Nothing else has run it.
 - The inspector edits the transform of an `Entity3D`, the metadata of any
   entity and the script attached to it. The Transform and Mesh menus act on
   the selection.
-- The tools add, duplicate, rename, remove, reorder and move an entity.
+- The tools add, duplicate, rename, remove, reorder and move an entity, and
+  add a new parent over one.
 - Save writes the scene file. Play saves edits, then runs the project in a
   second window. A star in the window title marks edits that no save holds.
   A scene with no edits is not saved by Play or by opening another scene,
