@@ -99,6 +99,17 @@ internal sealed class CenterArea : Grid
     }
 
     /// <summary>
+    /// Adds a view that takes the place of the whole island, scene tabs and all, while its workspace is chosen. It
+    /// brings islands of its own. It starts hidden.
+    /// </summary>
+    public void AddBareWorkspace(string name, Control view)
+    {
+        view.IsVisible = false;
+        Place(this, view, 0);
+        _views.Add(name, view);
+    }
+
+    /// <summary>
     /// Shows the viewport with the 3D tools for the spatial workspace, the viewport with the 2D tools for the planar
     /// one, and the view added under this name for any other.
     /// </summary>
@@ -109,6 +120,8 @@ internal sealed class CenterArea : Grid
         Toolbar.IsVisible = spatial;
         Planar.IsVisible = planar;
         _main.IsVisible = spatial || planar;
+        // A bare view sits beside the island in this grid, not in it.
+        Stage.IsVisible = !(_views.TryGetValue(name, out var chosen) && chosen.Parent == this);
         foreach (var (key, view) in _views)
         {
             view.IsVisible = key == name;

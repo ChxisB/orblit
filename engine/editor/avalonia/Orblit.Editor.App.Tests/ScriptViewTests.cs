@@ -1,5 +1,9 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Presenters;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -338,6 +342,109 @@ public sealed class ScriptViewTests
             Assert.False(view.Editor.IsEnabled);
             Assert.False(view.IsDirty);
             Assert.Null(view.List.SelectedItem);
+        });
+    }
+
+    // A view with the player script open, the one the colour tests read.
+    static ScriptView OpenPlayer()
+    {
+        var files = new Files();
+        files.Text["res://player.cs"] = CodeColoursTests.Player;
+        var view = Open(files);
+        Pick(view, "res://player.cs");
+        view.UpdateLayout();
+        return view;
+    }
+
+    [Fact]
+    public void The_text_shows_in_its_colours_over_the_text_box_line_for_line()
+    {
+        UiThread.Run(() =>
+        {
+            var view = OpenPlayer();
+            var runs = view.Code.Colours.Inlines!.OfType<Run>().ToList();
+            var text = view.Editor.GetVisualDescendants().OfType<TextPresenter>().Single();
+
+            Assert.Equal(CodeColoursTests.Player, string.Concat(runs.Select(run => run.Text)));
+            Assert.Same(EditorBrushes.CodeKeyword, runs.First(run => run.Text == "public").Foreground);
+            Assert.Same(EditorBrushes.CodeString, runs.Single(run => run.Text == "\"jump\"").Foreground);
+            Assert.Equal(BoxOf(text, view).TopLeft, BoxOf(view.Code.Colours, view).TopLeft);
+            Assert.Equal(text.Bounds.Height, view.Code.Colours.Bounds.Height, 0.5);
+            Assert.Equal(view.Code.Colours.Bounds.Height, view.Gutter.Bounds.Height, 0.5);
+        });
+    }
+
+    [Fact]
+    public void The_status_line_shows_the_caret_and_the_indent()
+    {
+        UiThread.Run(() =>
+        {
+            var view = OpenPlayer();
+
+            Assert.Equal("Line 1, column 1", view.CaretText.Text);
+            Assert.Equal("Spaces: 4", view.IndentText.Text);
+
+            view.Editor.Text = "class A\n{\n\tint b;\n}";
+            view.Editor.CaretIndex = 12;
+
+            Assert.Equal("Line 3, column 3", view.CaretText.Text);
+            Assert.Equal("Tabs", view.IndentText.Text);
+        });
+    }
+
+    [Fact]
+    public void A_member_in_the_outline_takes_the_caret_to_it_and_lights_its_line()
+    {
+        UiThread.Run(() =>
+        {
+            var view = OpenPlayer();
+
+            Assert.Equal(["JumpHeight", "OnFrame"], ((IEnumerable<ScriptMember>)view.Outline.ItemsSource!).Select(member => member.Name));
+
+            view.Outline.SelectedItem = ((IEnumerable<ScriptMember>)view.Outline.ItemsSource!).Last();
+
+            Assert.Equal(CodeColoursTests.Player.IndexOf("OnFrame", StringComparison.Ordinal), view.Editor.CaretIndex);
+            Assert.Equal("Line 8, column 26", view.CaretText.Text);
+            Assert.Equal(7 * CodeBox.LineHeight, view.Code.CaretLine.Margin.Top);
+            Assert.Null(view.Outline.SelectedItem);
+        });
+    }
+
+    [Fact]
+    public void The_filter_narrows_the_list_and_keeps_the_open_script()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+            Pick(view, "res://spin.cs");
+
+            view.Filter.Text = "SL";
+
+            Assert.Equal(["res://slime.cs"], (IEnumerable<string>)view.List.ItemsSource!);
+            Assert.Null(view.List.SelectedItem);
+            Assert.Equal("res://spin.cs", view.Heading.Text);
+
+            view.Filter.Text = "";
+
+            Assert.Equal("res://spin.cs", view.List.SelectedItem);
+        });
+    }
+
+    [Fact]
+    public void Picking_another_script_after_an_edit_saves_it_and_selects_the_new_one()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            var view = Open(files);
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "class Spin { int turns; }";
+
+            Pick(view, "res://slime.cs");
+
+            Assert.Equal([("res://spin.cs", "class Spin { int turns; }")], files.Written);
+            Assert.Equal("res://slime.cs", view.List.SelectedItem);
+            Assert.Equal("res://slime.cs", view.Heading.Text);
         });
     }
 }

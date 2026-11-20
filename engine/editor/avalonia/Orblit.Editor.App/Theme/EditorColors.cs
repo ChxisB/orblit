@@ -94,4 +94,17 @@ internal static class EditorColors
 
     // What fills the 2D view while it says the scene has nothing for it.
     public static readonly Color Stage = Color.Parse("#15181E");
+
+    // The script text area sits deeper than its island, and the line with the caret lifts by a trace of white.
+    public static readonly Color Code = Color.Parse("#0E1116");
+    public static readonly Color CodeLine = Color.Parse("#08FFFFFF");
+
+    // The colours of C# text. A type shares the graph mark's teal and a function the script mark's blue.
+    public static readonly Color CodeKeyword = Color.Parse("#FF9E64");
+    public static readonly Color CodeType = GraphIcon;
+    public static readonly Color CodeString = Color.Parse("#B5D67A");
+    public static readonly Color CodeNumber = Warn;
+    public static readonly Color CodeComment = Unbuilt;
+    public static readonly Color CodeFunction = ScriptIcon;
+    public static readonly Color CodeAttribute = Color.Parse("#C792EA");
 }
