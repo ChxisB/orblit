@@ -239,6 +239,16 @@ internal sealed class EditorTheme : Styles
             },
         },
         new(x => x.OfType<FlyoutPresenter>()) { Setters = { new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners) } },
+        // The menus of a bar are header tabs, so they take the tab height and a softer name.
+        new(x => x.Is<Menu>().Child().Is<MenuItem>())
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, 26.0),
+                new Setter(TemplatedControl.ForegroundProperty, EditorBrushes.TextSoft),
+                new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
+            },
+        },
     ];
 
     // The theme draws a thin, wide chevron. The reference draws its own 12 pixel arrow icons.
