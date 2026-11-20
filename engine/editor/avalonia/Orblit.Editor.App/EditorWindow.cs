@@ -255,7 +255,7 @@ internal sealed class EditorWindow : Window
         scene.KeepChildren = _toolbar.KeepChildren;
         _script.Show(scene);
         _graph.Show(scene);
-        _center.Output.Show(scene.Output);
+        _center.Output.Show(scene.Output, _time);
         _pollTimer.Start();
         ShowScenes();
         Reload(0);
