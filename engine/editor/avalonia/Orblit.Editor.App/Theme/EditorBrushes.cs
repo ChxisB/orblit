@@ -22,6 +22,7 @@ internal static class EditorBrushes
     public static readonly IBrush TextSoft = new ImmutableSolidColorBrush(EditorColors.TextSoft);
     public static readonly IBrush TextDim = new ImmutableSolidColorBrush(EditorColors.TextDim);
     public static readonly IBrush Disabled = new ImmutableSolidColorBrush(EditorColors.Disabled);
+    public static readonly IBrush DisabledFill = new ImmutableSolidColorBrush(EditorColors.DisabledFill);
     public static readonly IBrush Unbuilt = new ImmutableSolidColorBrush(EditorColors.Unbuilt);
     public static readonly IBrush Warn = new ImmutableSolidColorBrush(EditorColors.Warn);
     public static readonly IBrush Done = new ImmutableSolidColorBrush(EditorColors.Done);
@@ -29,6 +30,9 @@ internal static class EditorBrushes
     public static readonly IBrush FaultText = new ImmutableSolidColorBrush(EditorColors.FaultText);
     public static readonly IBrush FaultEdge = new ImmutableSolidColorBrush(EditorColors.FaultEdge);
     public static readonly IBrush OnAccent = new ImmutableSolidColorBrush(EditorColors.OnAccent);
+    public static readonly IBrush Shade = new ImmutableSolidColorBrush(EditorColors.Shade);
+    public static readonly IBrush Spatial = new ImmutableSolidColorBrush(EditorColors.Spatial);
+    public static readonly IBrush Planar = new ImmutableSolidColorBrush(EditorColors.Planar);
     public static readonly IBrush Veil = new ImmutableSolidColorBrush(EditorColors.Veil);
     public static readonly IBrush TreeIcon = new ImmutableSolidColorBrush(EditorColors.TreeIcon);
     public static readonly IBrush FolderIcon = new ImmutableSolidColorBrush(EditorColors.FolderIcon);

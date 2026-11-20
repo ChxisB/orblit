@@ -34,7 +34,6 @@ internal sealed class EditorWindow : Window
     readonly MoveTools _move = new();
     readonly NewSceneTool _newScene = new();
     readonly InstanceTool _instanceScene = new();
-    readonly Flyout _newSceneFlyout = new();
     readonly Flyout _instanceFlyout = new();
     readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
     readonly Dialog _saveChanges;
@@ -140,7 +139,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _saveChanges, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _saveChanges, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -179,8 +178,6 @@ internal sealed class EditorWindow : Window
     internal NewSceneTool NewScene => _newScene;
 
     internal InstanceTool InstanceScene => _instanceScene;
-
-    internal Flyout NewSceneFlyout => _newSceneFlyout;
 
     internal Flyout InstanceFlyout => _instanceFlyout;
 
@@ -440,6 +437,7 @@ internal sealed class EditorWindow : Window
     {
         var actions = new Dictionary<string, MenuAction>
         {
+            ["New Scene"] = new(OpenNewScene),
             ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
             ["Quit"] = new(Close),
             ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
@@ -470,6 +468,7 @@ internal sealed class EditorWindow : Window
     // F, Q, W, E, R and T are plain letters, so a box that takes typing keeps them.
     Button? ShortcutFor(KeyEventArgs e) => (e.Key, e.KeyModifiers) switch
     {
+        (Key.N, var modifiers) when modifiers == CommandKey => _sceneTabs.AddButton,
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
@@ -652,22 +651,27 @@ internal sealed class EditorWindow : Window
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
 
-    // The flyouts that make a scene file and instance one, and the tab's close button.
+    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? []);
+
+    // The dialog that makes a scene file, the flyout that instances one, and the tab's close button.
     void WireSceneFiles()
     {
-        _newSceneFlyout.Content = _newScene;
-        _sceneTabs.AddButton.Flyout = _newSceneFlyout;
-        _newScene.Requested += (name, className) =>
+        _sceneTabs.AddButton.Click += (_, _) => OpenNewScene();
+        _newScene.Requested += (path, className) =>
         {
             var left = Leave(() =>
             {
-                _scene!.Create($"{FileTree.Root}{name}.oscn", className);
+                _scene!.Create(path, className);
                 ShowScenes();
             });
+            // A failed save or create says why in the status line, and the dialog stays open with the same words.
             if (left)
             {
-                _newSceneFlyout.Hide();
-                _newScene.Clear();
+                _newScene.Dialog.Close();
+            }
+            else
+            {
+                _newScene.Say(_status.Text ?? "");
             }
         };
         _instanceFlyout.Content = _instanceScene;

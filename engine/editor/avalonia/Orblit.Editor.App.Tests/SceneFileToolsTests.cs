@@ -1,5 +1,7 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -9,41 +11,39 @@ public sealed class SceneFileToolsTests
 {
     static void CreateScene(EditorWindow window, string name)
     {
+        ClickOn(window.SceneTabs.AddButton, window);
         window.NewScene.NameBox.Text = name;
         Click(window.NewScene.CreateButton);
     }
 
     static void OpenInstanceFlyout(EditorWindow window) => window.InstanceFlyout.ShowAt(window.ScenePane.InstanceButton);
 
+    static IEnumerable<NativeMenuItem> Items(NativeMenu menu) =>
+        menu.Items.OfType<NativeMenuItem>().SelectMany(item => item.Menu is { } sub ? Items(sub).Prepend(item) : [item]);
+
     [Fact]
-    public void The_plus_of_the_tab_strip_opens_the_new_scene_flyout()
+    public void The_plus_the_key_and_the_menu_open_the_new_scene_dialog_over_the_window()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var menuItem = Items(NativeMenu.GetMenu(window)!).Single(item => item.Header == "New Scene");
+            Action[] ways =
+            [
+                () => ClickOn(window.SceneTabs.AddButton, window),
+                () => window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.N, KeyModifiers = window.CommandKey }),
+                () => menuItem.Command!.Execute(menuItem.CommandParameter),
+            ];
 
-            ClickOn(window.SceneTabs.AddButton, window);
+            foreach (var open in ways)
+            {
+                window.NewScene.Dialog.Close();
+                open();
+                Assert.True(window.NewScene.Dialog.IsVisible);
+            }
 
-            Assert.True(window.NewSceneFlyout.IsOpen);
-            Assert.Same(window.NewSceneFlyout, window.SceneTabs.AddButton.Flyout);
-            Assert.Same(window.NewScene, window.NewSceneFlyout.Content);
-        });
-    }
-
-    [Fact]
-    public void Create_is_off_while_the_name_is_blank()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var create = window.NewScene.CreateButton;
-            Assert.False(create.IsEnabled);
-
-            window.NewScene.NameBox.Text = "arena";
-            Assert.True(create.IsEnabled);
-
-            window.NewScene.NameBox.Text = "   ";
-            Assert.False(create.IsEnabled);
+            Assert.True(window.NewScene.Dialog.IsAttachedToVisualTree());
+            Assert.True(window.Graph.CreateDialog.IsAttachedToVisualTree());
         });
     }
 
@@ -54,17 +54,17 @@ public sealed class SceneFileToolsTests
         {
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
-            window.NewSceneFlyout.ShowAt(window.SceneTabs.AddButton);
-            window.NewScene.Class.SelectedIndex = 1;
+            ClickOn(window.SceneTabs.AddButton, window);
+            window.NewScene.Roots.ElementAt(1).IsChecked = true;
+            window.NewScene.NameBox.Text = " arena ";
 
-            CreateScene(window, " arena ");
+            Click(window.NewScene.CreateButton);
 
-            Assert.Equal([("res://arena.oscn", "Entity3D")], scene.Created);
+            Assert.Equal([("res://arena.oscn", "Entity2D")], scene.Created);
             Assert.Equal("Opened arena.", window.Status);
             Assert.StartsWith("arena.oscn", window.Title);
             Assert.Contains(FileNodes(window), node => node.Path == "res://arena.oscn");
-            Assert.False(window.NewSceneFlyout.IsOpen);
-            Assert.Equal("", window.NewScene.NameBox.Text);
+            Assert.False(window.NewScene.Dialog.IsVisible);
         });
     }
 
@@ -85,7 +85,7 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void A_failed_save_stops_the_new_scene()
+    public void A_failed_save_stops_the_new_scene_and_the_dialog_says_why()
     {
         UiThread.Run(() =>
         {
@@ -97,28 +97,31 @@ public sealed class SceneFileToolsTests
 
             Assert.Empty(scene.Created);
             Assert.Equal("The engine could not save the scene. Error code 7.", window.Status);
+            Assert.Equal("The engine could not save the scene. Error code 7.", window.NewScene.Fault);
+            Assert.True(window.NewScene.Dialog.IsVisible);
         });
     }
 
     [Fact]
-    public void A_name_that_is_a_file_already_goes_to_the_status_and_changes_nothing()
+    public void A_name_that_is_a_scene_already_keeps_Create_off_and_changes_nothing()
     {
         UiThread.Run(() =>
         {
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
+            ClickOn(window.SceneTabs.AddButton, window);
 
-            CreateScene(window, "field");
+            window.NewScene.NameBox.Text = "field";
 
-            Assert.Equal("res://field.oscn already exists.", window.Status);
+            Assert.Equal("field.oscn already exists. Pick another name.", window.NewScene.Fault);
+            Assert.False(window.NewScene.CreateButton.IsEnabled);
             Assert.Empty(scene.Opened);
             Assert.Empty(scene.Created);
-            Assert.Equal("field", window.NewScene.NameBox.Text);
         });
     }
 
     [Fact]
-    public void An_engine_failure_on_a_new_scene_goes_to_the_status()
+    public void An_engine_failure_on_a_new_scene_goes_to_the_status_and_the_dialog()
     {
         UiThread.Run(() =>
         {
@@ -127,6 +130,8 @@ public sealed class SceneFileToolsTests
             CreateScene(window, "arena");
 
             Assert.Equal("The engine could not save res://arena.oscn. Error code 7.", window.Status);
+            Assert.Equal("The engine could not save res://arena.oscn. Error code 7.", window.NewScene.Fault);
+            Assert.True(window.NewScene.Dialog.IsVisible);
         });
     }
 

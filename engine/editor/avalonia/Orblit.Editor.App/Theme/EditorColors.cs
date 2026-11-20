@@ -32,6 +32,9 @@ internal static class EditorColors
     public static readonly Color Unit = Color.Parse("#6B7482");
     public static readonly Color Disabled = Color.Parse("#4A525F");
 
+    // The fill of a worded button that is off, a step over the panel, so it reads as a button but not as one to press.
+    public static readonly Color DisabledFill = Color.Parse("#14171D");
+
     // The one accent. Its soft step fills a lit tool and a chosen row, so accent text on it stays readable.
     public static readonly Color Accent = Color.Parse("#E5893F");
     public static readonly Color AccentSoft = Color.Parse("#29E5893F");
@@ -48,8 +51,18 @@ internal static class EditorColors
     public static readonly Color FaultText = Color.Parse("#FF8A96");
     public static readonly Color FaultEdge = Color.Parse("#55FF5C6C");
 
+    // The ring round a field with a fault, as the soft accent rings a focused one.
+    public static readonly Color FaultSoft = Color.Parse("#22FF5C6C");
+
+    // The colour of a 3D class and a 2D class where a dialog marks which kind a root or a base is.
+    public static readonly Color Spatial = Color.Parse("#F27D8A");
+    public static readonly Color Planar = Color.Parse("#6FA8FF");
+
     // Text on an accent fill. White on the orange reads too thin.
     public static readonly Color OnAccent = Color.Parse("#1B0F06");
+
+    // A key cap on an accent button. A grey cap would dull the orange, so this darkens what is under it.
+    public static readonly Color Shade = Color.Parse("#1F000000");
 
     // The shade over the editor behind a dialog. The design draws none, so this one is ours.
     public static readonly Color Veil = Color.Parse("#8C05070A");

@@ -130,6 +130,9 @@ internal sealed class Dialog : Border
         MainButton.Focus();
     }
 
+    /// <summary>Hides the dialog once its main action went through.</summary>
+    public void Close() => IsVisible = false;
+
     public void Cancel()
     {
         IsVisible = false;

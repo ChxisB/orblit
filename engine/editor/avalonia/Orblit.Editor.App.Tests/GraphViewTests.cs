@@ -533,20 +533,20 @@ public sealed class GraphViewTests
     }
 
     [Fact]
-    public void New_opens_the_form_with_the_first_values()
+    public void New_opens_the_dialog_with_the_first_values()
     {
         UiThread.Run(() =>
         {
             var (_, _, view) = OpenWithGraph();
-            view.Form.InheritsBox.Text = "Other";
+            view.Form.FolderBox.Text = "res://old";
             view.Form.Say("old");
 
             Choose(view, "New...");
 
-            Assert.True(view.CreateFlyout.IsOpen);
-            Assert.Equal("Entity", view.Form.InheritsBox.Text);
-            Assert.Equal("res://new_graph.ograph", view.Form.PathBox.Text);
-            Assert.Equal("", view.Form.Notice);
+            Assert.True(view.CreateDialog.IsVisible);
+            Assert.Equal("new_graph", view.Form.NameBox.Text);
+            Assert.Equal("res://", view.Form.FolderBox.Text);
+            Assert.Equal("", view.Form.Fault);
         });
     }
 
@@ -557,16 +557,33 @@ public sealed class GraphViewTests
         {
             var (files, _, view) = OpenWithGraph();
             Choose(view, "New...");
-            view.Form.InheritsBox.Text = " Entity3D ";
-            view.Form.PathBox.Text = " res://enemies/slime.ograph ";
+            view.Form.NameBox.Text = "slime";
+            view.Form.ExtendsBox.SelectedItem = "Entity3D";
+            view.Form.FolderBox.Text = "res://enemies";
 
             Click(view.Form.CreateButton);
 
             Assert.Equal([("res://enemies/slime.ograph", "Entity3D")], files.Created);
             Assert.Equal("res://enemies/slime.ograph", view.Current);
             Assert.Contains("res://enemies/slime.ograph", view.List.Items.Cast<string>());
-            Assert.False(view.CreateFlyout.IsOpen);
+            Assert.False(view.CreateDialog.IsVisible);
             Assert.Equal("Created res://enemies/slime.ograph.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void New_knows_the_graph_scripts_of_the_project()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Choose(view, "New...");
+
+            view.Form.NameBox.Text = "logic";
+
+            Assert.Equal("logic.ograph already exists. Pick another name.", view.Form.Fault);
+            Assert.False(view.Form.CreateButton.IsEnabled);
+            Assert.Empty(files.Created);
         });
     }
 
@@ -574,7 +591,7 @@ public sealed class GraphViewTests
     [InlineData(typeof(IOException), "res://logic.ograph exists already.")]
     [InlineData(typeof(UnauthorizedAccessException), "Access denied.")]
     [InlineData(typeof(ArgumentException), "Nope is not a class.")]
-    public void A_make_the_engine_refuses_says_why_in_the_form_and_opens_nothing(Type kind, string message)
+    public void A_make_the_engine_refuses_says_why_in_the_dialog_and_opens_nothing(Type kind, string message)
     {
         UiThread.Run(() =>
         {
@@ -584,29 +601,25 @@ public sealed class GraphViewTests
 
             Click(view.Form.CreateButton);
 
-            Assert.Equal(message, view.Form.Notice);
-            Assert.True(view.CreateFlyout.IsOpen);
+            Assert.Equal(message, view.Form.Fault);
+            Assert.True(view.CreateDialog.IsVisible);
             Assert.Null(view.Current);
             Assert.Empty(view.Tabs);
         });
     }
 
     [Fact]
-    public void Create_is_off_while_a_field_is_empty_and_Cancel_closes_the_form()
+    public void Cancel_closes_the_dialog_and_makes_nothing()
     {
         UiThread.Run(() =>
         {
-            var (_, _, view) = OpenWithGraph();
+            var (files, _, view) = OpenWithGraph();
             Choose(view, "New...");
-            view.Form.PathBox.Text = "  ";
 
-            Assert.False(view.Form.CreateButton.IsEnabled);
+            Click(view.CreateDialog.CancelButton);
 
-            view.Form.PathBox.Text = "res://a.ograph";
-            Assert.True(view.Form.CreateButton.IsEnabled);
-
-            Click(view.Form.CancelButton);
-            Assert.False(view.CreateFlyout.IsOpen);
+            Assert.False(view.CreateDialog.IsVisible);
+            Assert.Empty(files.Created);
         });
     }
 
