@@ -71,25 +71,56 @@ internal sealed class NewProject
     }
 
     /// <summary>
-    /// Writes the project. Throws <see cref="IOException"/> when the folder already holds anything. Git starts
-    /// before any file is written, so a Git failure leaves the folder empty for another try.
+    /// Writes the project. Throws <see cref="IOException"/> when the folder already holds anything. A failure
+    /// takes back what was made: a folder this made is removed and an empty one is emptied again.
     /// </summary>
     public void Make(Action<string> initGit)
     {
-        if (Directory.Exists(Folder) && Directory.EnumerateFileSystemEntries(Folder).Any())
+        var existed = Directory.Exists(Folder);
+        if (existed && Directory.EnumerateFileSystemEntries(Folder).Any())
         {
             throw new IOException($"{Folder} is not empty. Choose a new folder.");
         }
 
         Directory.CreateDirectory(Folder);
-        if (Git)
+        try
         {
-            initGit(Folder);
+            if (Git)
+            {
+                initGit(Folder);
+            }
+
+            foreach (var (file, text) in Files())
+            {
+                File.WriteAllText(Path.Combine(Folder, file), text);
+            }
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            TakeBack(existed);
+            throw;
+        }
+    }
+
+    // The folder held nothing before Make, so everything in it now is Make's own.
+    void TakeBack(bool existed)
+    {
+        if (!existed)
+        {
+            Directory.Delete(Folder, true);
+            return;
         }
 
-        foreach (var (file, text) in Files())
+        foreach (var entry in new DirectoryInfo(Folder).EnumerateFileSystemInfos())
         {
-            File.WriteAllText(Path.Combine(Folder, file), text);
+            if (entry is DirectoryInfo folder)
+            {
+                folder.Delete(true);
+            }
+            else
+            {
+                entry.Delete();
+            }
         }
     }
 

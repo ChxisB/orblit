@@ -21,6 +21,15 @@ public sealed class ProjectSettingsTests : IDisposable
     }
 
     [Fact]
+    public void The_main_scene_is_run_main_scene_or_main_oscn_when_it_is_missing()
+    {
+        Assert.Equal("res://main.oscn", ProjectSettings.MainSceneOf(_folder));
+        Write("[application]\n\nrun/main_scene=\"res://levels/start.oscn\"\n");
+
+        Assert.Equal("res://levels/start.oscn", ProjectSettings.MainSceneOf(_folder));
+    }
+
+    [Fact]
     public void A_name_with_spaces_is_kept_whole()
     {
         Write("config/name=\"Space Ranger\"\n");

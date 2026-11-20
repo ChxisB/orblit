@@ -236,6 +236,20 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public void A_folder_typed_by_hand_is_kept_when_the_name_changes()
+    {
+        UiThread.Run(() =>
+        {
+            var panel = Open().NewPanel;
+
+            panel.FolderBox.Text = "~/Work/kept";
+            panel.NameBox.Text = "Space Ranger";
+
+            Assert.Equal("~/Work/kept", panel.FolderBox.Text);
+        });
+    }
+
+    [Fact]
     public void Docs_opens_the_site_and_the_places_not_built_are_off_and_say_so()
     {
         UiThread.Run(() =>

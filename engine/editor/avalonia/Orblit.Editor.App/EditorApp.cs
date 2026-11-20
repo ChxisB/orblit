@@ -36,7 +36,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
         var launcher = new LauncherWindow(list, InitGit);
         launcher.Opening += folder =>
         {
-            var window = Edit(options with { Project = folder });
+            var window = Edit(options with { Project = folder, Scene = ProjectSettings.MainSceneOf(folder) });
             desktop.MainWindow = window;
             window.Show();
             launcher.Close();
