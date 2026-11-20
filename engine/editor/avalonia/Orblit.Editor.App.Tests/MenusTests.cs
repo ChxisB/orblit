@@ -1,5 +1,6 @@
 using System.Numerics;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
@@ -14,7 +15,16 @@ public sealed class MenusTests
 {
     static void Press(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-    static string[] Headers(Button button) => [.. ((MenuFlyout)button.Flyout!).Items.Cast<MenuItem>().Select(item => (string)item.Header!)];
+    static void Press(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    // A heading is a text block, a described item a stack with its title first, and a separator a dash.
+    static string HeaderText(object? item) => item switch
+    {
+        MenuItem { Header: string text } => text,
+        MenuItem { Header: TextBlock block } => block.Text!,
+        MenuItem { Header: Panel panel } => ((TextBlock)panel.Children[0]).Text!,
+        _ => "-",
+    };
 
     static (EditorWindow Window, FakeScene Scene) OpenOnLamp()
     {
@@ -25,35 +35,58 @@ public sealed class MenusTests
     }
 
     [Fact]
-    public void The_transform_menu_lists_its_five_actions_and_the_mesh_menu_its_two()
+    public void The_reset_menu_names_the_entity_and_the_collision_menu_describes_its_two_shapes()
     {
         UiThread.Run(() =>
         {
-            var toolbar = OpenAtReferenceSize().Toolbar;
+            var toolbar = OpenOnLamp().Window.Toolbar;
+            var resetAll = (MenuItem)toolbar.ResetMenu.Items[^1]!;
 
+            Assert.Equal(["RESET LAMP", "Reset Position", "Reset Rotation", "Reset Scale", "-", "Reset All"], toolbar.ResetMenu.Items.Select(HeaderText));
+            Assert.Equal("⌥R", Parts.KeyText(resetAll.InputGesture!));
             Assert.Equal(
-                ["Reset Position", "Reset Rotation", "Reset Scale", "Snap Position to Steps", "Snap Rotation to Steps"],
-                Headers(toolbar.TransformMenuButton));
-            Assert.Equal(["Create Trimesh Collision", "Create Convex Collision"], Headers(toolbar.MeshMenuButton));
+                ["ADD COLLISION TO THE MESH", "Create Convex Collision", "Create Trimesh Collision"],
+                ((MenuFlyout)toolbar.CollisionButton.Flyout!).Items.Select(HeaderText));
         });
     }
 
     [Fact]
-    public void The_transform_menu_is_on_for_an_entity_with_a_place_alone()
+    public void Reset_focus_and_the_snap_actions_are_on_for_an_entity_with_a_place_alone()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var button = window.Toolbar.TransformMenuButton;
-            Assert.False(button.IsEnabled);
+            var toolbar = window.Toolbar;
+            Button[] buttons = [toolbar.ResetButton, toolbar.ResetAllButton, toolbar.FocusButton, toolbar.SnapPositionButton, toolbar.SnapRotationButton];
+            bool On() => buttons.All(button => button.IsEnabled);
+            bool Off() => buttons.All(button => !button.IsEnabled);
+            Assert.True(Off());
 
             window.Outline.SelectedItem = FakeScene.Lamp;
-            Assert.True(button.IsEnabled);
+            Assert.True(On());
             window.Outline.SelectedItem = FakeScene.Sound;
-            Assert.False(button.IsEnabled);
+            Assert.True(Off());
             window.Outline.SelectedItem = FakeScene.Lamp;
             window.Outline.SelectedItem = null;
-            Assert.False(button.IsEnabled);
+            Assert.True(Off());
+        });
+    }
+
+    [Fact]
+    public void Reset_all_puts_back_the_place_the_turn_and_the_size_from_the_item_and_from_alt_r()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = OpenOnLamp();
+
+            Press((MenuItem)window.Toolbar.ResetMenu.Items[^1]!);
+            Assert.Equal([Vector3.Zero, Vector3.Zero, Vector3.One], [scene.PositionOf(1), scene.RotationOf(1), scene.ScaleOf(1)]);
+            Assert.Equal("Reset the transform of Lamp. Save keeps the change.", window.Status);
+
+            scene.MoveTo(1, new Vector3(1, 2, 3));
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.R, KeyModifiers = KeyModifiers.Alt });
+            Assert.Equal(Vector3.Zero, scene.PositionOf(1));
+            Assert.Equal(1, window.ScenePane.Selected!.Handle);
         });
     }
 
@@ -102,7 +135,7 @@ public sealed class MenusTests
             scene.MoveTo(1, new Vector3(1.3f, 2.7f, -3.2f));
             window.Toolbar.SnapMoveBox.Text = "0.5";
 
-            Press(window.Toolbar.SnapPositionItem);
+            Press(window.Toolbar.SnapPositionButton);
 
             Assert.Equal(new Vector3(1.5f, 2.5f, -3f), scene.PositionOf(1));
             Assert.Equal("Snapped the position of Lamp. Save keeps the change.", window.Status);
@@ -116,7 +149,7 @@ public sealed class MenusTests
         {
             var (window, scene) = OpenOnLamp();
 
-            Press(window.Toolbar.SnapRotationItem);
+            Press(window.Toolbar.SnapRotationButton);
 
             Assert.Equal(new Vector3(15, 15, 30), scene.RotationOf(1));
             Assert.Equal(new Vector3(1, 2, 3), scene.PositionOf(1));
@@ -134,7 +167,7 @@ public sealed class MenusTests
             scene.MoveTo(1, new Vector3(1.3f, 2.7f, 3.6f));
             window.Toolbar.SnapMoveBox.Text = "-2";
 
-            Press(window.Toolbar.SnapPositionItem);
+            Press(window.Toolbar.SnapPositionButton);
 
             Assert.Equal(new Vector3(1, 3, 4), scene.PositionOf(1));
         });

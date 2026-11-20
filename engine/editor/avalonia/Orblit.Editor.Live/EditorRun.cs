@@ -77,9 +77,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
 
     async Task FocusesFromTheMenu()
     {
-        await _input.Click(window.Toolbar.ViewButton);
-        await Wait(() => window.Toolbar.ViewButton.Flyout?.IsOpen == true && window.Toolbar.FocusItem.IsAttachedToVisualTree(), "the View menu to open");
-        await _input.Click(window.Toolbar.FocusItem);
+        await _input.Click(window.Center.Overlay.ProjectionButton);
+        await Wait(() => window.Center.Overlay.ProjectionButton.Flyout?.IsOpen == true && window.Center.Overlay.FocusItem.IsAttachedToVisualTree(), "the projection menu to open");
+        await _input.Click(window.Center.Overlay.FocusItem);
         await Settle();
         var middle = new Vector2(Viewport.Frame!.PixelSize.Width, Viewport.Frame.PixelSize.Height) / 2;
         var origin = Handles().Origin;

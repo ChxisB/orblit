@@ -18,14 +18,14 @@ internal sealed class CenterArea : Grid
     readonly Grid _stage = new() { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},*") };
     readonly Grid _main = new();
 
-    public CenterArea(Control tabs, Control toolbar, Control viewport, BottomBar bottom)
+    public CenterArea(Control tabs, ViewportToolbar toolbar, Control viewport, BottomBar bottom)
     {
         RowDefinitions = new RowDefinitions($"*,Auto,{GapHeight},{BottomBarHeight}");
         SceneTabs = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = tabs };
         Toolbar = toolbar;
         Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
         BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
-        Overlay = new ViewportOverlay { IsVisible = false };
+        Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
         Output = new OutputPanel { IsVisible = false, Margin = new Thickness(0, GapHeight, 0, 0) };
         bottom.OutputOpenChanged += open => Output.IsVisible = open;
         _main.Children.Add(viewport);

@@ -25,6 +25,8 @@ internal static partial class EditorIcons
         s_icons["Pulse"] = Line("M3 12h3.5l2.5-6 4 12 2.5-6H21");
         // Ours: the design draws no empty History tab.
         s_icons["Clock"] = Line("M12 3.5a8.5 8.5 0 1 0 0 17a8.5 8.5 0 1 0 0-17zM12 7.5V12l3 2");
+        s_icons["FocusFrame"] = Line("M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5M12 10.5a1.5 1.5 0 1 0 0 3a1.5 1.5 0 1 0 0-3z");
+        s_icons["ResetTurn"] = Line("M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4v4h4");
     }
 
     static IconDrawing Line(string path) =>
