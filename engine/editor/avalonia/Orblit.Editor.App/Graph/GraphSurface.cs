@@ -220,6 +220,7 @@ internal sealed class GraphSurface : Control
         }
         var pin = step.PinCenter(pending.From.IsInput, pending.From.Port);
         var (from, to) = pending.From.IsInput ? (pending.To, pin) : (pin, pending.To);
-        WireLayer.Draw(context, from, to, EditorBrushes.Accent, _scene.Style, selected: false);
+        var clash = _scene.PinAt(pending.To) is { } over && _scene.Clashes(pending.From, over);
+        WireLayer.Draw(context, from, to, clash ? EditorBrushes.Fault : EditorBrushes.Accent, _scene.Style, selected: false);
     }
 }

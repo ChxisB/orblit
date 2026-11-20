@@ -15,6 +15,9 @@ internal static class WireLayer
     const int Samples = 24;
     const double MinReach = 40;
     const double ReachShare = 0.5;
+    const double FlowWidth = 2.25;
+    const double DataWidth = 1.75;
+    const double SelectedExtra = 2;
 
     public static IReadOnlyList<Point> Path(Point from, Point to, WireStyle style)
     {
@@ -46,7 +49,9 @@ internal static class WireLayer
             }
             path.EndFigure(false);
         }
-        context.DrawGeometry(null, new Pen(brush, selected ? 4 : 2), geometry);
+        // Flow wires draw a touch heavier than data wires, so the order of steps reads first.
+        var width = (brush == PinColors.Flow ? FlowWidth : DataWidth) + (selected ? SelectedExtra : 0);
+        context.DrawGeometry(null, new Pen(brush, width), geometry);
     }
 
     /// <summary>Whether a point lies within the tolerance of the wire.</summary>

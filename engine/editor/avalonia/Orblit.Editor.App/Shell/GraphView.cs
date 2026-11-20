@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -50,25 +51,31 @@ internal interface IGraphFiles
 }
 
 /// <summary>
-/// The Graph workspace: the project's graph scripts in a list with a filter, a tab for each one open, and for the one
-/// on show its canvas, side panels and the debugger. The File menu makes and closes scripts, Goto moves about the
-/// script on show and Help opens the guide.
+/// The Graph workspace, as three islands. The left one lists the project's graph scripts with a filter, over the
+/// panels of the script on show. The middle one holds a tab for each open script over its canvas, with the
+/// debugger under it. The right one inspects the selected step. The File menu makes and closes scripts, Goto moves
+/// about the script on show and Help opens the guide.
 /// </summary>
 internal sealed class GraphView : Border
 {
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
-    readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(6) };
+    readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(8, 8, 8, 6), Classes = { EditorTheme.Field } };
     readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _status = new() { Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
-    readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
+    readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+    readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _canvasSlot = new();
-    readonly Border _panelsSlot = new();
+    readonly Border _panelsSlot = new() { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 1, 0, 0) };
     readonly Border _inspectorSlot = new();
-    readonly Border _side = new() { IsVisible = false, Width = 320, BorderThickness = new Thickness(1, 0, 0, 0), BorderBrush = EditorBrushes.TextDim };
-    readonly ScrollViewer _debugHost = new() { MaxHeight = 240, Padding = new Thickness(10, 6), HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
-    readonly Button _fileButton = new() { Content = "File", Padding = new Thickness(12, 4), MinHeight = 0 };
-    readonly Button _gotoButton = new() { Content = "Goto", Padding = new Thickness(12, 4), MinHeight = 0 };
-    readonly Button _helpButton = new() { Content = "Help", Padding = new Thickness(12, 4), MinHeight = 0 };
+    readonly Control _noStep = StepInspector.Empty();
+    readonly ScrollViewer _debugHost = new() { MaxHeight = 240, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+    readonly Button _fileButton = MenuButton("File");
+    readonly Button _gotoButton = MenuButton("Goto");
+    readonly Button _helpButton = MenuButton("Help");
+    readonly Button _findButton = Parts.IconButton("Search", "Find steps");
+    readonly Button _saveButton = new() { Classes = { EditorTheme.TextButton, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
+    readonly Button _bookmarkButton = Parts.IconButton("Favorites", "Bookmark");
+    readonly Button _breakpointButton = Parts.IconButton("Breakpoint", "Toggle Breakpoint");
     readonly GotoMenu _gotoMenu;
     readonly MenuFlyout _menu = new();
     readonly MenuItem _save;
@@ -87,7 +94,6 @@ internal sealed class GraphView : Border
 
     public GraphView(ITextClipboard? clipboard = null, ILinkOpener? links = null)
     {
-        Background = EditorBrushes.Panel;
         _clipboard = clipboard ?? new WindowClipboard(this);
         _gotoMenu = new GotoMenu(() => Canvas);
         _gotoButton.Flyout = _gotoMenu;
@@ -109,6 +115,11 @@ internal sealed class GraphView : Border
         // The FileSystem dock lists scenes only, so there is nothing for it to select yet.
         _menu.Items.Add(Item("Show in FileSystem", () => _fileButton.RaiseEvent(new UnbuiltEventArgs("The FileSystem dock does not list graph scripts yet."))));
         _fileButton.Flyout = _menu;
+        _saveButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "Save", VerticalAlignment = VerticalAlignment.Center }, Parts.Kbd("⌘S") } };
+        _saveButton.Click += (_, _) => SaveCurrent();
+        _findButton.Click += (_, _) => Canvas?.FindBar.Open();
+        _bookmarkButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBookmark());
+        _breakpointButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBreakpoint());
         _form.Requested += Create;
         _list.SelectionChanged += (_, _) => Open(_list.SelectedItem as string);
         // TextChanged waits for a render, so the property is the one that fires at once.
@@ -136,6 +147,17 @@ internal sealed class GraphView : Border
     internal GotoMenu GotoMenu => _gotoMenu;
 
     internal Button HelpButton => _helpButton;
+
+    internal Button FindButton => _findButton;
+
+    internal Button SaveButton => _saveButton;
+
+    internal Button BookmarkButton => _bookmarkButton;
+
+    internal Button BreakpointButton => _breakpointButton;
+
+    /// <summary>The class the script on show extends, as the canvas bar says it.</summary>
+    internal TextBlock Extends => _extends;
 
     internal MenuFlyout FileMenu => _menu;
 
@@ -229,40 +251,80 @@ internal sealed class GraphView : Border
         return item;
     }
 
+    static Button MenuButton(string text) => new() { Content = text, Classes = { EditorTheme.TextButton, EditorTheme.Segment } };
+
+    // A strip like a dock's: a row with 6 pixels around it and a line under it.
+    static Border Bar(params Control[] items)
+    {
+        var row = new DockPanel { LastChildFill = false };
+        foreach (var item in items)
+        {
+            row.Children.Add(item);
+        }
+
+        return new Border
+        {
+            Height = DockTabs.StripHeight,
+            Padding = new Thickness(6),
+            BorderBrush = EditorBrushes.Line,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = row,
+        };
+    }
+
+    static Control Right(Control control)
+    {
+        DockPanel.SetDock(control, Dock.Right);
+        return control;
+    }
+
+    static Border Island(Control child, int column) => Place(new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = child }, column);
+
+    static T Place<T>(T control, int column, int row = 0) where T : Control
+    {
+        Grid.SetColumn(control, column);
+        Grid.SetRow(control, row);
+        return control;
+    }
+
     Grid Layout()
     {
-        var left = new DockPanel { Width = 240 };
-        DockPanel.SetDock(_filter, Dock.Top);
-        left.Children.Add(_filter);
-        left.Children.Add(_list);
-        var header = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(6, 4) };
-        header.Children.Add(_fileButton);
-        header.Children.Add(_gotoButton);
-        header.Children.Add(_helpButton);
-        header.Children.Add(_tabs);
-        header.Children.Add(_status);
-        // The right column stacks the script's panels, the debugger and the step inspector.
-        var column = new Grid { RowDefinitions = new RowDefinitions("*,Auto,Auto") };
-        Grid.SetRow(_debugHost, 1);
-        Grid.SetRow(_inspectorSlot, 2);
-        column.Children.Add(_panelsSlot);
-        column.Children.Add(_debugHost);
-        column.Children.Add(_inspectorSlot);
-        _side.Child = column;
-        var area = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
-        Grid.SetColumn(_side, 1);
-        area.Children.Add(_hint);
-        area.Children.Add(_canvasSlot);
-        area.Children.Add(_side);
-        var body = new DockPanel();
-        DockPanel.SetDock(header, Dock.Top);
-        body.Children.Add(header);
-        body.Children.Add(area);
-        var root = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
-        Grid.SetColumn(body, 1);
-        root.Children.Add(left);
-        root.Children.Add(body);
-        return root;
+        var list = new DockPanel();
+        foreach (var top in new Control[] { Bar(_fileButton, _gotoButton, _helpButton, Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
+        {
+            DockPanel.SetDock(top, Dock.Top);
+            list.Children.Add(top);
+        }
+        list.Children.Add(_panelsSlot);
+
+        var canvas = new DockPanel();
+        var canvasBar = Bar(_tabs, _extends, Right(_saveButton), Right(_status));
+        DockPanel.SetDock(canvasBar, Dock.Top);
+        canvas.Children.Add(canvasBar);
+        canvas.Children.Add(new Grid { Children = { _hint, _canvasSlot } });
+        var middle = new Grid { RowDefinitions = new RowDefinitions("*,6,Auto") };
+        middle.Children.Add(Island(canvas, 0));
+        middle.Children.Add(Place(new Border { Classes = { EditorTheme.Island }, Child = _debugHost }, 0, 2));
+
+        var tab = new Border
+        {
+            Height = 26,
+            Padding = new Thickness(10, 0),
+            CornerRadius = EditorTheme.Corners,
+            Background = EditorBrushes.Line,
+            Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
+        };
+        var inspector = new DockPanel();
+        var inspectorBar = Bar(tab, Right(_breakpointButton), Right(_bookmarkButton));
+        DockPanel.SetDock(inspectorBar, Dock.Top);
+        inspector.Children.Add(inspectorBar);
+        inspector.Children.Add(new Grid { Children = { _noStep, _inspectorSlot } });
+
+        return new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("248,6,*,6,292"),
+            Children = { Island(list, 0), Place(middle, 2), Island(inspector, 4) },
+        };
     }
 
     // The project keeps the breakpoints, so a person's stops are still there when the editor opens again. A file that
@@ -303,7 +365,7 @@ internal sealed class GraphView : Border
         _shownStop = null;
         _debugger = new GraphDebugger(files.Debug, Breakpoints);
         _debugger.Changed += ShowStop;
-        _debugHost.Content = new DebuggerPanel(_debugger);
+        _debugHost.Content = new DebuggerPanel(_debugger, place => _current?.StepTitle(place));
     }
 
     // The view moves to a stop once. A poll that only brings values leaves the view where the person put it.
@@ -508,7 +570,12 @@ internal sealed class GraphView : Border
         }
 
         _hint.IsVisible = _current is null;
-        _side.IsVisible = _current is not null;
+        _noStep.IsVisible = _current is null;
+        _extends.Text = _current is null ? "" : $"extends {_current.Graph.Document.BaseType}";
+        _saveButton.IsEnabled = _current?.IsEdited == true;
+        _findButton.IsEnabled = _current is not null;
+        _bookmarkButton.IsEnabled = _current is not null;
+        _breakpointButton.IsEnabled = _current is not null;
         _save.IsEnabled = _current?.IsEdited == true;
         _saveAll.IsEnabled = IsDirty;
         _close.IsEnabled = _current is not null;

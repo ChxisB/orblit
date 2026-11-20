@@ -23,8 +23,9 @@ internal sealed class StepInspector : Border
 
     readonly IGraphFile _file;
     readonly PinEdits _edits;
-    readonly StackPanel _body = new() { Spacing = 6, Margin = new Thickness(10) };
-    readonly TextBlock _heading = new() { FontWeight = FontWeight.Bold };
+    readonly StackPanel _body = new() { Spacing = 6, Margin = new Thickness(12) };
+    readonly TextBlock _heading = new() { FontSize = 15, FontWeight = FontWeight.SemiBold };
+    readonly TextBlock _where = new() { FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim };
     readonly TextBlock _notice = new() { Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, IsVisible = false, FontSize = 12 };
     int? _stepId;
 
@@ -32,10 +33,7 @@ internal sealed class StepInspector : Border
     {
         _file = file;
         _edits = new PinEdits(file);
-        Background = EditorBrushes.Panel;
-        BorderThickness = new Thickness(0, 1, 0, 0);
-        BorderBrush = EditorBrushes.TextDim;
-        Child = new ScrollViewer { Content = _body, MaxHeight = 280, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+        Child = new ScrollViewer { Content = _body, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
         _file.Changed += Rebuild;
         Rebuild();
     }
@@ -48,6 +46,9 @@ internal sealed class StepInspector : Border
 
     /// <summary>The control with this id, such as <c>input:1:value</c>. Null when the inspector has none.</summary>
     internal T? Find<T>(string id) where T : Control => _body.GetVisualDescendants().OfType<T>().FirstOrDefault(control => (control.Tag as string) == id);
+
+    /// <summary>What the inspector shows with no step selected.</summary>
+    internal static Control Empty() => Parts.EmptyState("GraphNode", NoStep, "Click a step to see its inputs and where they come from.");
 
     /// <summary>Shows the step with this id. Null, or an id the function does not have, shows nothing.</summary>
     public void Show(int? stepId)
@@ -63,12 +64,14 @@ internal sealed class StepInspector : Border
         var function = _file.Function;
         var step = function?.Steps.FirstOrDefault(found => found.Id == _stepId);
         _heading.Text = step?.Kind ?? NoStep;
-        _body.Children.Add(_heading);
-        _body.Children.Add(_notice);
         if (function is null || step is null)
         {
+            _body.Children.Add(Empty());
             return;
         }
+
+        _where.Text = $"{step.Category} · step {step.Id}";
+        _body.Children.AddRange([_heading, _where, _notice]);
 
         AddParameters(step);
         AddPins(step, function.Wires);

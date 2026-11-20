@@ -32,6 +32,21 @@ public sealed class ArrangeTests
     }
 
     [Fact]
+    public void The_arrange_bar_names_its_rows_and_buttons_in_words()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Open(FakeGraphSource.Sample(), 1, 2);
+            var rows = ((StackPanel)canvas.ArrangeBar.Child!).Children.Cast<StackPanel>();
+            var words = rows.Select(row => string.Join(" ", row.Children.Select(child => child is TextBlock text ? text.Text : (string?)((Button)child).Content)));
+            Assert.True(canvas.ArrangeBar.IsVisible);
+            Assert.Equal(
+                ["Align Left Center Right Top Middle Bottom", "Lay out Row Column Spread across Spread down", "Tidy Straighten Flow Expand To function"],
+                words);
+        });
+    }
+
+    [Fact]
     public void Align_top_puts_three_steps_on_one_row_and_undo_takes_it_back_in_one_step()
     {
         UiThread.Run(() =>

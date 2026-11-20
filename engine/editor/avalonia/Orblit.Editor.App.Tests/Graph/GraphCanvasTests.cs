@@ -201,6 +201,62 @@ public sealed class GraphCanvasTests
         });
     }
 
+    [Theory]
+    [InlineData(9, 4, false)]
+    [InlineData(2, 3, true)]
+    [InlineData(21, 4, true)]
+    [InlineData(4, 21, true)]
+    [InlineData(17, 18, true)]
+    [InlineData(18, 17, false)]
+    [InlineData(32, 28, true)]
+    [InlineData(32, 33, false)]
+    [InlineData(0, 9, true)]
+    [InlineData(9, 0, true)]
+    public void A_type_fits_a_pin_by_the_engine_strict_convert_rule(int from, int to, bool fits)
+    {
+        Assert.Equal(fits, VariantTypes.Fits(from, to));
+    }
+
+    [Fact]
+    public void A_wire_dropped_on_a_pin_of_the_wrong_type_offers_a_convert_step_instead_of_joining()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 200, [], [FakeGraphSource.Data("value", 9)]));
+            var (_, canvas) = Open(source);
+
+            Drag(canvas, Pin(canvas, 4, false, 0), Pin(canvas, 3, true, 1));
+
+            Assert.Empty(source.Calls);
+            Assert.True(canvas.ConvertOffer.IsVisible);
+            Assert.Equal("Vector3 cannot plug into text.", canvas.ConvertOfferText);
+
+            canvas.ConvertOfferButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+
+            Assert.False(canvas.ConvertOffer.IsVisible);
+            Assert.Equal(["AddStep 5 convert", "SetStepParameter 5 to 4", "MoveStep", "Connect 4.0 5.0", "Connect 5.0 3.1"], source.Calls.Select(call => call.StartsWith("MoveStep 5 ", StringComparison.Ordinal) ? "MoveStep" : call));
+            Assert.Equal(4, canvas.Scene.Wires.Count);
+        });
+    }
+
+    [Fact]
+    public void A_press_on_the_canvas_drops_the_convert_offer()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.Put(FakeGraphSource.MakeStep(4, "constant", 0, 200, [], [FakeGraphSource.Data("value", 9)]));
+            var (_, canvas) = Open(source);
+            Drag(canvas, Pin(canvas, 4, false, 0), Pin(canvas, 3, true, 1));
+
+            Click(canvas, new Point(5000, 5000));
+
+            Assert.False(canvas.ConvertOffer.IsVisible);
+            Assert.Empty(source.Calls);
+        });
+    }
+
     [Fact]
     public void A_flow_pin_dragged_to_a_data_pin_is_refused_and_the_bar_gives_the_reason()
     {

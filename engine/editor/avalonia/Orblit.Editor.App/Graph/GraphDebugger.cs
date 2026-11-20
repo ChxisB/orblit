@@ -61,19 +61,19 @@ internal sealed class GraphDebugger : IDisposable, IWireProbe
     public bool CanPause => State.Connected && !State.Stopped;
 
     /// <summary>The graph step of the selected level of the stack, or null when the game runs or the level is not a graph step.</summary>
-    public DebugPlace? Current
-    {
-        get
-        {
-            var state = State;
-            if (!state.Stopped || state.Level < 0 || state.Level >= state.Stack.Count)
-            {
-                return null;
-            }
+    public DebugPlace? Current => PlaceAt(State.Level);
 
-            var frame = state.Stack[state.Level];
-            return GraphBreakpoints.Split(frame.Source) is var (script, function) ? new DebugPlace(script, function, frame.Line) : null;
+    /// <summary>The graph step at a level of the stack, or null when the game runs or the level is not a graph step.</summary>
+    public DebugPlace? PlaceAt(int level)
+    {
+        var state = State;
+        if (!state.Stopped || level < 0 || level >= state.Stack.Count)
+        {
+            return null;
         }
+
+        var frame = state.Stack[level];
+        return GraphBreakpoints.Split(frame.Source) is var (script, function) ? new DebugPlace(script, function, frame.Line) : null;
     }
 
     public void Poll()
