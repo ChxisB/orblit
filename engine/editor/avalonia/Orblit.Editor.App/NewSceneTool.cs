@@ -41,10 +41,10 @@ internal sealed class NewSceneTool : StackPanel
         var cards = new UniformGrid { Columns = 2, RowSpacing = 8, ColumnSpacing = 8 };
         cards.Children.AddRange([.. _roots.Select(root => root.Card), OtherCard]);
         Children.Add(cards);
-        var name = Parts.Labelled("Name", _name, _fault);
+        var name = Parts.Labeled("Name", _name, _fault);
         name.Margin = new Thickness(0, 14, 0, 0);
         Children.Add(name);
-        var path = Parts.Labelled("Saved to", _path);
+        var path = Parts.Labeled("Saved to", _path);
         path.Margin = new Thickness(0, 10, 0, 0);
         Children.Add(path);
 

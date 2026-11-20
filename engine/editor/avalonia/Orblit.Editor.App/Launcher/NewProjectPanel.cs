@@ -41,10 +41,10 @@ internal sealed class NewProjectPanel : Border
             Spacing = 14,
             Children =
             {
-                Parts.Labelled("Name", _name),
-                Parts.Labelled("Folder", folder),
-                Parts.Labelled("Template", _template),
-                Parts.Labelled("First script", _script),
+                Parts.Labeled("Name", _name),
+                Parts.Labeled("Folder", folder),
+                Parts.Labeled("Template", _template),
+                Parts.Labeled("First script", _script),
                 _git,
             },
         };

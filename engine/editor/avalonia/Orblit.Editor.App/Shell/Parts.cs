@@ -76,7 +76,7 @@ internal static class Parts
     }
 
     /// <summary>A field with its name over it in small dim text, and the lines that go under it, such as a fault.</summary>
-    public static StackPanel Labelled(string label, params Control[] rows)
+    public static StackPanel Labeled(string label, params Control[] rows)
     {
         var group = new StackPanel { Spacing = 4 };
         group.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = EditorBrushes.TextDim });
@@ -92,7 +92,7 @@ internal static class Parts
         return icon;
     }
 
-    /// <summary>A key on a small grey cap, as a hint beside the thing it runs.</summary>
+    /// <summary>A key on a small gray cap, as a hint beside the thing it runs.</summary>
     public static Border Kbd(string key) => new()
     {
         Padding = new Thickness(5, 3),
@@ -242,7 +242,7 @@ internal static class Parts
         };
     }
 
-    /// <summary>The logo's round mark, in its own two colours. Nothing else in the editor draws them.</summary>
+    /// <summary>The logo's round mark, in its own two colors. Nothing else in the editor draws them.</summary>
     public static Ellipse LogoMark(double size) => new()
     {
         Width = size,
