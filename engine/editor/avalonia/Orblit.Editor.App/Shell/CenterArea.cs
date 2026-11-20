@@ -6,7 +6,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The middle column. One island holds the scene tabs and the viewport, with the viewport's tools floating over it.
-/// The Output panel opens under it when asked, and the bottom bar is an island of its own.
+/// The bar's panels open under it one at a time, and the bottom bar is an island of its own.
 /// </summary>
 internal sealed class CenterArea : Grid
 {
@@ -27,8 +27,25 @@ internal sealed class CenterArea : Grid
         BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
         Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
         Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton) { IsVisible = false };
-        Output = new OutputPanel { IsVisible = false, Margin = new Thickness(0, GapHeight, 0, 0) };
-        bottom.OutputOpenChanged += open => Output.IsVisible = open;
+        Output = new OutputPanel();
+        Debugger = new DebuggerNote();
+        // In the order of the bar's tabs.
+        Panels =
+        [
+            Output,
+            new NotePanel("Debugger", Debugger),
+            NotePanel.Soon("Audio", "AudioStreamPlayer", "Buses and effects for the project sound."),
+            NotePanel.Soon("Animation", "Animation", "Tracks and keys for the picked entity."),
+            NotePanel.Soon("Shader Editor", "ShaderDock", "Shader code and its preview."),
+        ];
+        Output.ErrorsAdded += bottom.AddErrors;
+        bottom.PanelChanged += open =>
+        {
+            for (var at = 0; at < Panels.Count; at++)
+            {
+                Panels[at].IsVisible = at == open;
+            }
+        };
         _main.Children.Add(viewport);
         _main.Children.Add(Overlay);
         _main.Children.Add(toolbar);
@@ -36,7 +53,13 @@ internal sealed class CenterArea : Grid
         Place(_stage, SceneTabs, 0);
         Place(_stage, _main, 1);
         Place(this, Stage, 0);
-        Place(this, Output, 1);
+        foreach (var panel in Panels)
+        {
+            panel.IsVisible = false;
+            panel.Margin = new Thickness(0, GapHeight, 0, 0);
+            Place(this, panel, 1);
+        }
+
         Place(this, BottomBar, 3);
     }
 
@@ -52,6 +75,11 @@ internal sealed class CenterArea : Grid
 
     /// <summary>Between the viewport and the bar, and hidden until the bar's Output button opens it.</summary>
     internal OutputPanel Output { get; }
+
+    internal DebuggerNote Debugger { get; }
+
+    /// <summary>The panels the bar's tabs open, in the order of the tabs. One shows at a time.</summary>
+    internal IReadOnlyList<Border> Panels { get; }
 
     /// <summary>Over the viewport, and hidden until a viewport is shown.</summary>
     internal ViewportOverlay Overlay { get; }

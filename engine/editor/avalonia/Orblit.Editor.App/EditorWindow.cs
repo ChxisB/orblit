@@ -4,6 +4,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
@@ -37,7 +38,6 @@ internal sealed class EditorWindow : Window
     readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
     readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes;
-    readonly TextBlock _status = new() { Text = "Starting the engine." };
     readonly TimeProvider _time;
     readonly ToastStack _toasts;
     readonly List<string> _recent = [];
@@ -54,7 +54,7 @@ internal sealed class EditorWindow : Window
     readonly SceneTabStrip _sceneTabs = new();
     readonly ViewportToolbar _toolbar;
     readonly TitleBar _titleBar;
-    readonly BottomBar _bottomBar;
+    readonly BottomBar _bottomBar = new();
     readonly DispatcherTimer _pollTimer = new() { Interval = PollInterval };
     readonly ScenePane _scenePane;
     readonly DockTabs _sceneDock;
@@ -101,18 +101,18 @@ internal sealed class EditorWindow : Window
         _scenePane.SelectionChanged += ShowSelection;
         _scenePane.EyeClicked += ToggleEye;
         _tools.Changed += Edited;
-        _tools.Failed += message => _status.Text = message;
+        _tools.Failed += Fail;
         _move.Changed += Edited;
-        _move.Failed += message => _status.Text = message;
+        _move.Failed += Fail;
         _instanceScene.Changed += Edited;
-        _instanceScene.Failed += message => _status.Text = message;
+        _instanceScene.Failed += Fail;
         _inspector.Edited += () =>
         {
             ShowEdited(true);
             HighlightSelected();
-            _status.Text = "Edited. Save keeps the change.";
+            Say("Edited. Save keeps the change.");
         };
-        _inspector.Failed += message => _status.Text = message;
+        _inspector.Failed += Fail;
         _inspector.Editing += OpenFile;
         _scenes.Chosen += OpenFile;
         _scenes.NewGraphRequested += () =>
@@ -140,9 +140,11 @@ internal sealed class EditorWindow : Window
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
-        _bottomBar = new BottomBar(_status);
         _center = new CenterArea(_sceneTabs, _toolbar, _viewport, _bottomBar);
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
+        _center.Output.CopyRequested += text => Copy(text, "the output");
+        _center.Debugger.RunRequested += Play;
+        _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
         _center.AddWorkspace(TitleBar.Script, _script);
@@ -216,7 +218,7 @@ internal sealed class EditorWindow : Window
 
     internal Button FrameButton => _frame;
 
-    internal string Status => _status.Text ?? "";
+    internal string Status => _bottomBar.Status;
 
     internal ToastStack Toasts => _toasts;
 
@@ -240,15 +242,26 @@ internal sealed class EditorWindow : Window
         Reload(0);
         Remember(scene.SceneFile);
         _since = _time.GetLocalNow();
-        _status.Text = OpenedStatus();
+        Say(OpenedStatus());
     }
 
-    public void Fail(string message) => _status.Text = message;
+    public void Fail(string message) => _bottomBar.Say(message, StatusKind.Failed);
+
+    void Say(string message, StatusKind kind = StatusKind.Info) => _bottomBar.Say(message, kind);
+
+    async void Copy(string text, string what)
+    {
+        if (Clipboard is { } clipboard)
+        {
+            await clipboard.SetTextAsync(text);
+            Say($"Copied {what}.", StatusKind.Done);
+        }
+    }
 
     // The status line keeps the answer after the toast goes. A toast title has no full stop.
     void ShowUnbuilt(string message)
     {
-        _status.Text = message;
+        Say(message);
         _toasts.Show(ToastKind.Unbuilt, message.TrimEnd('.'));
     }
 
@@ -262,7 +275,7 @@ internal sealed class EditorWindow : Window
 
     public void ShowViewport(ViewportControl viewport)
     {
-        viewport.Ended += () => _status.Text = "The engine window was closed. Restart the editor to see the scene.";
+        viewport.Ended += () => Fail("The engine window was closed. Restart the editor to see the scene.");
         viewport.Clicked += SelectAt;
         viewport.PlanarSource = () => _planar;
         viewport.MarkSource = PivotOfSelected;
@@ -398,7 +411,7 @@ internal sealed class EditorWindow : Window
         _inspectorPane.Show(_scene, selected);
         HighlightSelected();
         ShowEdited(true);
-        _status.Text = $"{verb} {selected.Name}. Save keeps the change.";
+        Say($"{verb} {selected.Name}. Save keeps the change.");
     }
 
     // The box is drawn from the entity's place and size, so an edit in the inspector moves it too.
@@ -522,7 +535,7 @@ internal sealed class EditorWindow : Window
     {
         Reload(edit.Select);
         ShowEdited(true);
-        _status.Text = edit.Message;
+        Say(edit.Message);
     }
 
     // The buttons show the flags the engine holds, so a press flips the flag and the tree is read again.
@@ -552,7 +565,7 @@ internal sealed class EditorWindow : Window
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException)
         {
-            _status.Text = error.Message;
+            Fail(error.Message);
         }
     }
 
@@ -583,7 +596,7 @@ internal sealed class EditorWindow : Window
             dock.ShowAllTabs();
         }
 
-        _status.Text = "Reset the layout. Every dock is back in its place with all its tabs.";
+        Say("Reset the layout. Every dock is back in its place with all its tabs.");
     }
 
     void MoveDock(DockTabs dock, DockSlot to)
@@ -596,7 +609,7 @@ internal sealed class EditorWindow : Window
         _slots[from].Child = other;
         dock.Slot = to;
         other.Slot = from;
-        _status.Text = $"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.";
+        Say($"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.");
     }
 
     // The Reset menu and the snap actions change the selected entity's place, the Collision menu gives a mesh a
@@ -621,7 +634,7 @@ internal sealed class EditorWindow : Window
         _center.Overlay.ProjectionChanged += orthogonal =>
         {
             _scene?.SetOrthogonal(orthogonal);
-            _status.Text = orthogonal ? "Orthogonal projection." : "Perspective projection.";
+            Say(orthogonal ? "Orthogonal projection." : "Perspective projection.");
         };
     }
 
@@ -643,7 +656,7 @@ internal sealed class EditorWindow : Window
     {
         var selected = _scenePane.Selected!;
         _scene!.FrameOn(selected.Handle);
-        _status.Text = $"Framed {selected.Name}.";
+        Say($"Framed {selected.Name}.");
     }
 
     // The window title is the scene file, then the project, with a mark in front for edits that the file does
@@ -686,21 +699,21 @@ internal sealed class EditorWindow : Window
         }
         catch (IOException error)
         {
-            _status.Text = error.Message;
+            Fail(error.Message);
             _toasts.Show(ToastKind.Failed, "The game could not start", error.Message);
             return;
         }
 
         ShowGame();
         _bottomBar.OpenOutputUnlessPinned();
-        _status.Text = "Playing in a second window.";
+        Say("Playing in a second window.");
     }
 
     void Stop()
     {
         _scene!.Stop();
         ShowGame();
-        _status.Text = "Stopped the game.";
+        Say("Stopped the game.");
     }
 
     void ShowGame()
@@ -709,6 +722,7 @@ internal sealed class EditorWindow : Window
         _playButton.IsEnabled = _root is not null;
         _stopButton.IsEnabled = playing;
         _game.Show(playing, _root is not null);
+        _center.Debugger.ShowGame(playing, _root is not null);
     }
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
@@ -758,7 +772,7 @@ internal sealed class EditorWindow : Window
             }
             else
             {
-                _newScene.Say(_status.Text ?? "");
+                _newScene.Say(Status);
             }
         };
         _sceneTabs.CloseButton.Click += (_, _) => Leave(() => _scene!.Close());
@@ -779,14 +793,14 @@ internal sealed class EditorWindow : Window
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException)
         {
-            _status.Text = error.Message;
+            Fail(error.Message);
             return false;
         }
 
         Reload(0);
         Remember(_scene!.SceneFile);
         _since = _time.GetLocalNow();
-        _status.Text = OpenedStatus();
+        Say(OpenedStatus());
         return true;
     }
 
@@ -859,13 +873,13 @@ internal sealed class EditorWindow : Window
     {
         if (!_script.Save())
         {
-            _status.Text = _script.Status.Text ?? "";
+            Fail(_script.Status.Text ?? "");
             return false;
         }
 
         if (!_graph.Save())
         {
-            _status.Text = _graph.Status.Text ?? "";
+            Fail(_graph.Status.Text ?? "");
             return false;
         }
 
@@ -879,13 +893,13 @@ internal sealed class EditorWindow : Window
             _scene!.Save();
             ShowEdited(false);
             _since = _time.GetLocalNow();
-            _status.Text = "Saved.";
+            Say("Saved.", StatusKind.Done);
             _toasts.Show(ToastKind.Done, $"Saved {SceneName()}");
             return true;
         }
         catch (IOException error)
         {
-            _status.Text = error.Message;
+            Fail(error.Message);
             _toasts.Show(ToastKind.Failed, "The scene could not be saved", error.Message, new ToastAction("Try again", SaveAll));
             return false;
         }

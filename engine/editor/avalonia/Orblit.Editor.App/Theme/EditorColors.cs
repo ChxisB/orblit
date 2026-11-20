@@ -45,6 +45,9 @@ internal static class EditorColors
 
     public static readonly Color Warn = Color.Parse("#F2B33D");
 
+    // The fill of a Soon pill, so the warm word reads on it.
+    public static readonly Color WarnSoft = Color.Parse("#1AF2B33D");
+
     // A job that went through and one that did not. A danger button takes the fault in a lighter text and a faint edge.
     public static readonly Color Done = Color.Parse("#4CC38A");
     public static readonly Color Fault = Color.Parse("#FF5C6C");

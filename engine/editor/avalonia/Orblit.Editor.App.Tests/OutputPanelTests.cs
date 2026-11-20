@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -203,7 +204,7 @@ public sealed class OutputPanelTests
             window.UpdateLayout();
             var panel = window.Center.Output;
             var strip = BoxOf(panel.Strip, window);
-            var title = panel.Strip.GetVisualDescendants().OfType<TextBlock>().Single();
+            var title = panel.Strip.GetVisualDescendants().OfType<TextBlock>().First(text => text.Text == "Output");
 
             Assert.Contains(EditorTheme.Island, panel.Classes);
             Assert.Equal(BoxOf(window.Center.Stage, window).Bottom + CenterArea.GapHeight, BoxOf(panel, window).Y);
@@ -217,18 +218,103 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
-    public void A_click_on_copy_says_copying_the_output_is_not_built()
+    public void Copy_all_puts_every_line_as_the_engine_wrote_it_on_the_clipboard()
+    {
+        UiThread.Run(async () =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            Write(window, scene, "one", "ERROR: two");
+
+            ClickOn(window.Center.Output.CopyButton, window);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Equal("Copy all", ToolTip.GetTip(window.Center.Output.CopyButton));
+            Assert.Equal("one\nERROR: two", await window.Clipboard!.TryGetTextAsync());
+            Assert.Equal("Copied the output.", window.Status);
+        });
+    }
+
+    [Fact]
+    public void Errors_logged_while_the_panel_is_shut_wait_on_a_badge_until_it_opens()
     {
         UiThread.Run(() =>
         {
-            var (window, _) = Open();
+            var (window, scene) = Open();
+            var bar = BarOf(window);
+
+            Write(window, scene, "fine", "ERROR: broke");
+
+            Assert.True(bar.Unread.IsVisible);
+            Assert.Equal("1", ((TextBlock)bar.Unread.Child!).Text);
+
+            Write(window, scene, "SCRIPT ERROR: broke again");
+            Assert.Equal("2", ((TextBlock)bar.Unread.Child!).Text);
+
+            ClickOn(bar.OutputTab, window);
+            Assert.False(bar.Unread.IsVisible);
+
+            Write(window, scene, "ERROR: seen at once");
+            Assert.False(bar.Unread.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Each_chip_counts_its_level_and_hides_it_when_turned_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            var output = window.Center.Output;
             ClickOn(BarOf(window).OutputTab, window);
+            Write(window, scene, "ERROR: broke", "WARNING: slow", "plain", "also plain");
+
+            Assert.Equal(["1", "1", "2"], output.Chips.Select(chip => chip.Count.Text));
+            Assert.Equal(["Errors", "Warnings", "Messages"], output.Chips.Select(chip => ToolTip.GetTip(chip)));
+
+            ClickOn(output.Chips[2], window);
             window.UpdateLayout();
 
-            ClickOn(window.Center.Output.CopyButton, window);
+            Assert.Equal(["broke", "slow"], Shown(window));
+            Assert.Equal(0.4, output.Chips[2].Opacity);
+            Assert.Equal(1, output.Chips[0].Opacity);
+        });
+    }
 
-            Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal("Copying the output is not built yet.", window.Status);
+    [Fact]
+    public void The_filter_keeps_the_lines_that_hold_its_text_in_any_case()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            Write(window, scene, "alpha", "beta", "Alphabet");
+
+            window.Center.Output.FilterBox.Text = "ALPHA";
+            window.UpdateLayout();
+
+            Assert.Equal(["alpha", "Alphabet"], Shown(window));
+            Assert.Equal("Filter messages", window.Center.Output.FilterBox.PlaceholderText);
+        });
+    }
+
+    [Fact]
+    public void A_fault_shows_its_text_in_its_colour_with_the_file_it_came_from()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+
+            Write(window, scene, "ERROR: Cannot open file", "   at: load (res://scenes/main.oscn:12)");
+
+            var texts = window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().ToArray();
+            Assert.Equal(["Cannot open file", "main.oscn:12"], Shown(window).Order());
+            var text = texts.Single(block => block.Text == "Cannot open file");
+            Assert.True(BoxOf(texts.Single(block => block.Text == "main.oscn:12"), window).X > BoxOf(text, window).Right);
+            Assert.Equal(EditorColors.FaultText, ((ISolidColorBrush)text.Foreground!).Color);
+            Assert.Equal("FaultCircle", window.Center.Output.List.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
         });
     }
 
@@ -342,25 +428,6 @@ public sealed class OutputPanelTests
 
             ClickOn(pin, window);
             Assert.False(pin.IsChecked);
-        });
-    }
-
-    [Theory]
-    [InlineData(1, "The Debugger panel is not built yet.")]
-    [InlineData(2, "The Audio panel is not built yet.")]
-    [InlineData(3, "The Animation panel is not built yet.")]
-    [InlineData(4, "The Shader Editor panel is not built yet.")]
-    public void The_other_buttons_still_say_their_panel_is_not_built_and_open_nothing(int index, string message)
-    {
-        UiThread.Run(() =>
-        {
-            var (window, _) = Open();
-
-            ClickOn(BarOf(window).Tabs[index], window);
-
-            Assert.Equal(message, window.Status);
-            Assert.False(window.Center.Output.IsVisible);
-            Assert.False(BarOf(window).OutputOpen);
         });
     }
 }

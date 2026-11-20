@@ -1,7 +1,11 @@
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -10,28 +14,79 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The log of the engine and of the games it ran, on an island of its own: a strip with the title, Copy and Clear
-/// over the lines. It only shows the lines it is given and asks the window to clear them.
+/// The log of the engine and of the games it ran, on an island of its own. The strip holds the title, a filter, a
+/// chip for each level with its count, Copy all and Clear. Each line shows its level and, for a fault, the file it
+/// came from. The panel only shows the lines it is given and asks the window to copy or clear them.
 /// </summary>
 internal sealed class OutputPanel : Border
 {
     // shortcut: a fixed height with no drag handle on its top edge. Add the drag when a panel needs more room.
-    const double PanelHeight = 200;
+    internal const double PanelHeight = 200;
 
-    const double StripHeight = 36;
+    internal const double StripHeight = 36;
 
-    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), FontFamily = EditorTheme.Mono };
-    readonly Button _copy = Unbuilt.Mark(Parts.IconButton("ActionCopy", "Copy all"), "Copying the output is not built yet.");
+    const double FilterWidth = 180;
+    const double BoxHeight = 28;
+    const double LineIcon = 13;
+
+    // The mark, its tint, the text's tint and the chip's tip of each level, in the order of LogLevel. A list of
+    // cases, so it is data. Plain messages keep the panel's text colour.
+    static readonly (string Icon, IBrush Tint, IBrush? Text, string Tip)[] s_levels =
+    [
+        ("FaultCircle", EditorBrushes.Fault, EditorBrushes.FaultText, "Errors"),
+        ("WarnTriangle", EditorBrushes.Warn, EditorBrushes.Warn, "Warnings"),
+        ("Info", EditorBrushes.TextDim, null, "Messages"),
+    ];
+
+    readonly ListBox _list = new()
+    {
+        Background = null,
+        BorderThickness = new Thickness(0),
+        FontFamily = EditorTheme.Mono,
+        // The list builds a row with no entry while it recycles one.
+        ItemTemplate = new FuncDataTemplate<LogEntry>((entry, _) => entry is null ? null : Row(entry)),
+    };
+    readonly TextBox _filter = new()
+    {
+        PlaceholderText = "Filter messages",
+        Width = FilterWidth,
+        Height = BoxHeight,
+        MinHeight = 0,
+        VerticalAlignment = VerticalAlignment.Center,
+        InnerRightContent = Parts.SearchIcon(),
+    };
+    readonly Chip[] _chips = [.. s_levels.Select(level => new Chip(level.Icon, level.Tint, level.Text, level.Tip))];
+    readonly Button _copy = Parts.IconButton("ActionCopy", "Copy all");
     readonly Button _clear = Parts.IconButton("Clear", "Clear Output");
-    bool _scrollPending;
+    IReadOnlyList<string> _lines = [];
+    List<LogEntry> _entries = [];
+    bool _refreshPending;
 
     public OutputPanel()
     {
         Height = PanelHeight;
         Classes.Add(EditorTheme.Island);
         _clear.Click += (_, _) => ClearRequested?.Invoke();
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, _clear } };
-        DockPanel.SetDock(buttons, Dock.Right);
+        _copy.Click += (_, _) => CopyRequested?.Invoke(string.Join('\n', _lines));
+        // TextChanged waits for a render, so the property is the one that fires at once.
+        _filter.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == TextBox.TextProperty)
+            {
+                ShowEntries();
+            }
+        };
+        foreach (var chip in _chips)
+        {
+            chip.IsCheckedChanged += (_, _) => ShowEntries();
+        }
+
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        tools.Children.Add(_filter);
+        tools.Children.AddRange(_chips);
+        tools.Children.Add(Parts.Rule());
+        tools.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, _clear } });
+        DockPanel.SetDock(tools, Dock.Right);
         Strip = new Border
         {
             Height = StripHeight,
@@ -40,7 +95,7 @@ internal sealed class OutputPanel : Border
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new DockPanel
             {
-                Children = { buttons, new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center } },
+                Children = { tools, new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center } },
             },
         };
         DockPanel.SetDock(Strip, Dock.Top);
@@ -50,9 +105,20 @@ internal sealed class OutputPanel : Border
     /// <summary>Raised when the clear button is pressed. The panel has not changed, it follows the lines.</summary>
     public event Action? ClearRequested;
 
+    /// <summary>Raised with every line, as the engine wrote them, when Copy all is pressed.</summary>
+    public event Action<string>? CopyRequested;
+
+    /// <summary>Raised with the number of errors in lines that just arrived, so the bar can say there are some.</summary>
+    public event Action<int>? ErrorsAdded;
+
     internal ListBox List => _list;
 
     internal Border Strip { get; }
+
+    internal TextBox FilterBox => _filter;
+
+    /// <summary>The error, warning and info chips, in that order.</summary>
+    internal IReadOnlyList<Chip> Chips => _chips;
 
     internal Button CopyButton => _copy;
 
@@ -61,19 +127,115 @@ internal sealed class OutputPanel : Border
     /// <summary>Shows these lines and keeps showing them as they change, scrolled to the newest.</summary>
     public void Show(ReadOnlyObservableCollection<string> lines)
     {
-        _list.ItemsSource = lines;
+        _lines = lines;
         ((INotifyCollectionChanged)lines).CollectionChanged += (_, e) =>
         {
-            if (e.Action == NotifyCollectionChangedAction.Add && !_scrollPending)
+            var errors = e.NewItems is { } added ? LogEntry.Read(added.Cast<string>()).Count(entry => entry.Level == LogLevel.Error) : 0;
+            if (errors > 0)
             {
-                // One scroll per batch, after the layout that measures the new rows. Before it the scroll stops at the old end.
-                _scrollPending = true;
-                Dispatcher.UIThread.Post(() =>
-                {
-                    _scrollPending = false;
-                    _list.ScrollIntoView(lines.Count - 1);
-                }, DispatcherPriority.Background);
+                ErrorsAdded?.Invoke(errors);
             }
+
+            RefreshSoon();
         };
+        Refresh();
+    }
+
+    // The log grows a line at a time, so one refresh reads a whole batch.
+    void RefreshSoon()
+    {
+        if (_refreshPending)
+        {
+            return;
+        }
+
+        _refreshPending = true;
+        Dispatcher.UIThread.Post(() =>
+        {
+            _refreshPending = false;
+            Refresh();
+        }, DispatcherPriority.Background);
+    }
+
+    void Refresh()
+    {
+        _entries = LogEntry.Read(_lines);
+        for (var at = 0; at < _chips.Length; at++)
+        {
+            _chips[at].Count.Text = _entries.Count(entry => entry.Level == (LogLevel)at).ToString(CultureInfo.InvariantCulture);
+        }
+
+        ShowEntries();
+    }
+
+    void ShowEntries()
+    {
+        var filter = (_filter.Text ?? "").Trim();
+        var shown = _entries.Where(entry => _chips[(int)entry.Level].IsChecked == true && Matches(entry, filter)).ToList();
+        _list.ItemsSource = shown;
+        // After the layout that measures the new rows. Before it the scroll stops at the old end.
+        Dispatcher.UIThread.Post(() => _list.ScrollIntoView(shown.Count - 1), DispatcherPriority.Background);
+    }
+
+    static bool Matches(LogEntry entry, string filter) =>
+        entry.Text.Contains(filter, StringComparison.OrdinalIgnoreCase) || entry.Source.Contains(filter, StringComparison.OrdinalIgnoreCase);
+
+    // The level's mark, the text, and the place the engine named on the right.
+    static DockPanel Row(LogEntry entry)
+    {
+        var (icon, tint, text, _) = s_levels[(int)entry.Level];
+        var mark = new EditorIcon(icon) { Width = LineIcon, Height = LineIcon, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        TextElement.SetForeground(mark, tint);
+        DockPanel.SetDock(mark, Dock.Left);
+        var row = new DockPanel { Children = { mark } };
+        if (entry.Source != "")
+        {
+            var source = new TextBlock { Text = entry.Source, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(source, Dock.Right);
+            row.Children.Add(source);
+        }
+
+        var message = new TextBlock { Text = entry.Text, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        if (text is not null)
+        {
+            message.Foreground = text;
+        }
+
+        row.Children.Add(message);
+        return row;
+    }
+
+    /// <summary>A level's switch: its mark and how many lines it has. It is lit while the level's lines show.</summary>
+    internal sealed class Chip : ToggleButton
+    {
+        const double ChipHeight = 24;
+        const double ChipIcon = 12;
+
+        public Chip(string icon, IBrush tint, IBrush? text, string tip)
+        {
+            var mark = new EditorIcon(icon) { Width = ChipIcon, Height = ChipIcon, VerticalAlignment = VerticalAlignment.Center };
+            TextElement.SetForeground(mark, tint);
+            Count = new TextBlock { Text = "0", FontFamily = EditorTheme.Mono, FontSize = 11, VerticalAlignment = VerticalAlignment.Center };
+            if (text is not null)
+            {
+                Count.Foreground = text;
+            }
+
+            Classes.Add(EditorTheme.TextButton);
+            Height = ChipHeight;
+            MinHeight = 0;
+            MinWidth = 0;
+            Padding = new Thickness(9, 0);
+            VerticalAlignment = VerticalAlignment.Center;
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { mark, Count } };
+            IsChecked = true;
+            IsCheckedChanged += (_, _) => Opacity = IsChecked == true ? 1 : 0.4;
+            ToolTip.SetTip(this, tip);
+        }
+
+        internal TextBlock Count { get; }
+
+        // Drawn as a worded button, so the chip shares the raised look of the other buttons.
+        protected override Type StyleKeyOverride => typeof(Button);
     }
 }
