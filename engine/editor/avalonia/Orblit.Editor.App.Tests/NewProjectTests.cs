@@ -75,15 +75,42 @@ public sealed class NewProjectTests : IDisposable
     }
 
     [Fact]
-    public void A_Git_failure_writes_no_files_so_the_folder_can_be_tried_again()
+    public void A_Git_failure_leaves_no_folder_so_it_can_be_tried_again()
     {
         var project = new NewProject("Crate", _folder) { Git = true };
 
         Assert.Throws<IOException>(() => project.Make(_ => throw new IOException("no git")));
 
-        Assert.Empty(Made());
+        Assert.False(Directory.Exists(_folder));
         project.Make(_ => { });
         Assert.Contains("project.orblit", Made());
+    }
+
+    [Fact]
+    public void A_write_that_fails_after_Git_leaves_no_folder_behind()
+    {
+        var project = new NewProject("Crate", _folder) { Git = true };
+
+        // A folder where project.orblit goes makes the first write fail after Git has run.
+        Assert.Throws<UnauthorizedAccessException>(() => project.Make(folder =>
+        {
+            Directory.CreateDirectory(Path.Combine(folder, ".git"));
+            Directory.CreateDirectory(Path.Combine(folder, "project.orblit"));
+        }));
+
+        Assert.False(Directory.Exists(_folder));
+    }
+
+    [Fact]
+    public void A_write_that_fails_in_an_empty_folder_keeps_the_folder_and_empties_it()
+    {
+        Directory.CreateDirectory(_folder);
+        var project = new NewProject("Crate", _folder) { Git = true };
+
+        Assert.Throws<UnauthorizedAccessException>(() => project.Make(folder => Directory.CreateDirectory(Path.Combine(folder, "project.orblit"))));
+
+        Assert.True(Directory.Exists(_folder));
+        Assert.Empty(Directory.EnumerateFileSystemEntries(_folder));
     }
 
     [Fact]

@@ -13,9 +13,11 @@ namespace Orblit.Editor.App.Launcher;
 /// </summary>
 internal sealed class NewProjectPanel : Border
 {
+    const string FirstFolder = "~/Games/my-game";
+
     readonly Action<string> _initGit;
     readonly TextBox _name = new() { Text = "My game", Classes = { EditorTheme.Field } };
-    readonly TextBox _folder = new() { Text = "~/Games/my-game", FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
+    readonly TextBox _folder = new() { Text = FirstFolder, FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
     readonly Button _choose = Parts.IconButton("Folder", "Choose a folder");
     readonly TextBlock _fault = Parts.FaultLine();
     readonly Segments _template = new("3D scene", "2D scene", "Empty");
@@ -23,6 +25,7 @@ internal sealed class NewProjectPanel : Border
     readonly CheckBox _git = new() { Content = "Start a Git repository", IsChecked = true };
     readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
     readonly Button _create = new() { Content = "Create and open", Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
+    string? _written = FirstFolder;
 
     public NewProjectPanel(Action<string> initGit)
     {
@@ -61,18 +64,19 @@ internal sealed class NewProjectPanel : Border
         DockPanel.SetDock(footer, Dock.Bottom);
         Child = new DockPanel { Children = { Head, footer, new ScrollViewer { Content = new Border { Padding = new Thickness(14, 12), Child = body } } } };
         // TextChanged waits for a render, so the property is the one that fires at once.
+        // A folder typed by hand is the user's choice, so only the folder the panel wrote follows the name.
         _name.PropertyChanged += (_, e) =>
         {
-            if (e.Property == TextBox.TextProperty)
+            if (e.Property == TextBox.TextProperty && _folder.Text == _written)
             {
-                _folder.Text = InFolder(Path.GetDirectoryName(_folder.Text ?? "") ?? "");
+                WriteFolder(Path.GetDirectoryName(_folder.Text ?? "") ?? "");
             }
         };
         _choose.Click += async (_, _) =>
         {
             if (await PickFolderAsync(this, "Choose where the project folder goes") is { } parent)
             {
-                _folder.Text = InFolder(HomeFolder.Shorten(parent));
+                WriteFolder(HomeFolder.Shorten(parent));
             }
         };
         _create.Click += (_, _) => Create();
@@ -119,8 +123,12 @@ internal sealed class NewProjectPanel : Border
         return picked.Count > 0 ? picked[0].TryGetLocalPath() : null;
     }
 
-    // The project's own folder in this parent, named after the project.
-    string InFolder(string parent) => Path.Combine(parent, HomeFolder.Slug(_name.Text ?? ""));
+    // Puts the project's own folder in this parent, named after the project.
+    void WriteFolder(string parent)
+    {
+        _written = Path.Combine(parent, HomeFolder.Slug(_name.Text ?? ""));
+        _folder.Text = _written;
+    }
 
     void Create()
     {
