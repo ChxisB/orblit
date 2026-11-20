@@ -157,6 +157,8 @@ internal sealed class OutputPanel : Border
         }, DispatcherPriority.Background);
     }
 
+    // shortcut: each batch reads the whole log again, at most OutputLog.MaxLines lines. Read only the added lines if a
+    // busy game makes the panel slow.
     void Refresh()
     {
         _entries = LogEntry.Read(_lines);

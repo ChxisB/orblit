@@ -270,10 +270,20 @@ internal sealed class EditorWindow : Window
 
     async void Copy(string text, string what)
     {
-        if (Clipboard is { } clipboard)
+        if (Clipboard is not { } clipboard)
+        {
+            return;
+        }
+
+        // An async void that throws ends the editor, and each platform's clipboard fails with its own type.
+        try
         {
             await clipboard.SetTextAsync(text);
             Say($"Copied {what}.", StatusKind.Done);
+        }
+        catch (Exception error)
+        {
+            Fail($"Could not copy {what}: {error.Message}");
         }
     }
 
@@ -519,6 +529,12 @@ internal sealed class EditorWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
+        // An open dialog or picker holds the keys, so nothing it hides acts behind it.
+        if (e.Source is Visual source && source.GetSelfAndVisualAncestors().Any(visual => visual is Dialog or Picker))
+        {
+            return;
+        }
+
         if (ShortcutFor(e) is { IsEnabled: true } button)
         {
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
@@ -538,7 +554,7 @@ internal sealed class EditorWindow : Window
         (Key.Up, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _move.UpButton,
         (Key.Down, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _move.DownButton,
         (Key.F2, KeyModifiers.None) when e.Source is not TextBox => _tools.RenameButton,
-        (Key.Back or Key.Delete, KeyModifiers.None) when e.Source is not TextBox => _tools.RemoveButton,
+        (Key.Back or Key.Delete, KeyModifiers.None) when e.Source is not TextBox && Erases(e.Source) => _tools.RemoveButton,
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
         (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
         (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
@@ -551,6 +567,12 @@ internal sealed class EditorWindow : Window
         (Key.T, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.LocalButton,
         _ => null,
     };
+
+    // Erase drops an entity with no undo, so it acts only from the window, the scene pane or the viewport while
+    // the scene shows.
+    bool Erases(object? source) =>
+        _scenePane.IsEffectivelyVisible
+        && (source == this || source is Visual visual && (_scenePane.IsVisualAncestorOf(visual) || _viewport.IsVisualAncestorOf(visual)));
 
     // A tool changed the scene: read it again and show what it did.
     void Edited(EntityEdit edit)
