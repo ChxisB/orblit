@@ -65,6 +65,9 @@ internal sealed class EditorTheme : Styles
     /// <summary>A tall worded button that holds an icon and two lines, such as a root in New Scene. A checked one is the choice.</summary>
     internal const string Card = "card";
 
+    /// <summary>A small ghost button inside a segmented choice, 24 high. A checked one is lifted.</summary>
+    internal const string Segment = "segment";
+
     /// <summary>A text box or a list box drawn as the design's field, 30 high with a ring while it has the keys.</summary>
     internal const string Field = "field";
 
@@ -411,6 +414,16 @@ internal sealed class EditorTheme : Styles
         yield return new Style(x => x.OfType<Button>().Class(Card).Class(":checked").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
         {
             Setters = { new Setter(ContentPresenter.BackgroundProperty, EditorBrushes.AccentSoft), new Setter(ContentPresenter.BorderBrushProperty, EditorBrushes.Accent) },
+        };
+        // After Small, so the segment's height wins.
+        yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(Segment)) { Setters = { new Setter(Layoutable.HeightProperty, 24.0) } };
+        yield return new Style(x => x.OfType<Button>().Class(Segment).Class(":checked"))
+        {
+            Setters = { new Setter(TemplatedControl.BackgroundProperty, EditorBrushes.Lifted), new Setter(TemplatedControl.ForegroundProperty, EditorBrushes.Text) },
+        };
+        yield return new Style(x => x.OfType<Button>().Class(Segment).Class(":checked").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+        {
+            Setters = { new Setter(ContentPresenter.BackgroundProperty, EditorBrushes.Lifted), new Setter(ContentPresenter.ForegroundProperty, EditorBrushes.Text) },
         };
         // The base theme clears the fill and the edge of a button that is off. The design keeps its shape in a sunk fill.
         yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(":disabled").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))

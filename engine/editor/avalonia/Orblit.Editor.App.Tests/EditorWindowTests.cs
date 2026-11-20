@@ -145,7 +145,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Text_that_is_not_a_number_is_put_back()
+    public void Text_that_is_not_a_number_leaves_the_scene_as_it_was()
     {
         UiThread.Run(() =>
         {
@@ -157,7 +157,7 @@ public sealed class EditorWindowTests
             Commit(window.Inspector.Position.Axes[1]);
 
             Assert.Equal(new Vector3(1, 2, 3), scene.PositionOf(FakeScene.Lamp.Handle));
-            Assert.Equal("2", window.Inspector.Position.Axes[1].Text);
+            Assert.True(window.Inspector.Position.Fault.IsVisible);
         });
     }
 
@@ -218,7 +218,7 @@ public sealed class EditorWindowTests
     [InlineData("NaN")]
     [InlineData("Infinity")]
     [InlineData("-Infinity")]
-    public void A_value_that_is_not_finite_is_put_back(string typed)
+    public void A_value_that_is_not_finite_is_refused(string typed)
     {
         UiThread.Run(() =>
         {
@@ -230,7 +230,7 @@ public sealed class EditorWindowTests
             Commit(window.Inspector.Scale.Axes[0]);
 
             Assert.Equal(new Vector3(4, 5, 6), scene.ScaleOf(FakeScene.Lamp.Handle));
-            Assert.Equal("4", window.Inspector.Scale.Axes[0].Text);
+            Assert.True(window.Inspector.Scale.Fault.IsVisible);
             Assert.Equal("Opened Field.", window.Status);
         });
     }

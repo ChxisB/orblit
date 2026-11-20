@@ -31,8 +31,12 @@ internal sealed class InspectorPanel : StackPanel
     readonly ScriptRow _script = new();
     readonly MetadataRows _metadataRows = new();
     readonly MetadataTool _metadataTool = new();
-    readonly Flyout _metadataFlyout = new();
-    readonly Button _metadata = Metadata();
+    readonly Flyout _metadataFlyout = new() { FlyoutPresenterClasses = { EditorTheme.Flush } };
+    readonly Button _metadata = Dashed("Add", "Add Metadata");
+    readonly ScriptTool _scriptTool = new();
+    readonly Flyout _attachFlyout = new() { FlyoutPresenterClasses = { EditorTheme.Flush } };
+    readonly Button _attach = Dashed("ScriptCreate", "Attach a script");
+    readonly TextBlock _count = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(6, 8, 6, 14) };
     readonly Control[] _entityParts;
     IEditorScene? _scene;
     OutlineNode? _node;
@@ -45,8 +49,8 @@ internal sealed class InspectorPanel : StackPanel
         Add(_position, (entity, value) => _scene!.MoveTo(entity, value));
         Add(_rotation, (entity, value) => _scene!.RotateTo(entity, value));
         Add(_scale, (entity, value) => _scene!.ScaleTo(entity, value));
-        _entityParts = [_entityBar, .. s_entityGroups.Select(title => new PropertyGroup(title)), _script, _metadataRows, _metadata];
-        Children.AddRange([_classBar, _entity3DBar, _transform, _visibility, .. _entityParts]);
+        _entityParts = [_entityBar, .. s_entityGroups.Select(title => new PropertyGroup(title)), _script, _attach, _metadataRows, _metadata];
+        Children.AddRange([_classBar, _entity3DBar, _transform, _visibility, .. _entityParts, _count]);
         WireExtras();
         Show(null, null);
     }
@@ -56,6 +60,9 @@ internal sealed class InspectorPanel : StackPanel
 
     /// <summary>Raised with the reason when the scene refused a metadata value or a script.</summary>
     public event Action<string>? Failed;
+
+    /// <summary>Raised with the res:// path of the attached script when Edit is chosen in the script menu.</summary>
+    public event Action<string>? Editing;
 
     internal VectorRow Position => _position;
 
@@ -67,6 +74,12 @@ internal sealed class InspectorPanel : StackPanel
 
     internal Button MetadataButton => _metadata;
 
+    internal Button AttachButton => _attach;
+
+    internal ScriptTool ScriptTool => _scriptTool;
+
+    internal Flyout AttachFlyout => _attachFlyout;
+
     internal MetadataRows MetadataRows => _metadataRows;
 
     internal MetadataTool MetadataTool => _metadataTool;
@@ -74,6 +87,8 @@ internal sealed class InspectorPanel : StackPanel
     internal Flyout MetadataFlyout => _metadataFlyout;
 
     internal MenuFlyout ScriptMenu => _script.Menu;
+
+    internal TextBlock FilterCount => _count;
 
     bool IsSelected => _scene is not null && _node is not null;
 
@@ -100,6 +115,15 @@ internal sealed class InspectorPanel : StackPanel
         ShowRows();
     }
 
+    /// <summary>Opens or closes every group that has rows.</summary>
+    public void FoldAll(bool open)
+    {
+        foreach (var group in Children.OfType<PropertyGroup>())
+        {
+            group.Fold(open);
+        }
+    }
+
     // A filter keeps the rows that match, and the bar and group above them. The parts with no rows show only
     // when there is no filter.
     void ShowRows()
@@ -119,6 +143,12 @@ internal sealed class InspectorPanel : StackPanel
         {
             part.IsVisible = all;
         }
+
+        // Only the Transform rows can match yet, so they are what the line counts.
+        var rows = IsEditable ? _transformRows.Children.Count : 0;
+        var matched = IsEditable ? _transformRows.Children.Count(row => row.IsVisible) : 0;
+        _count.IsVisible = any && !all;
+        _count.Text = matched == 0 ? "No properties match." : $"{matched} of {rows} properties match.";
     }
 
     // The scene may answer with other numbers than the ones typed, such as a rotation turned into range.
@@ -142,6 +172,10 @@ internal sealed class InspectorPanel : StackPanel
         var entity = _scene is not null && _node is not null ? _node.Handle : 0;
         _metadataRows.Show(entity == 0 ? [] : _scene!.MetadataOf(entity));
         _script.Show(entity == 0 ? null : _scene!.ScriptOf(entity));
+        if (entity != 0)
+        {
+            _metadataTool.ShowOwner(_node!.Name, _scene!.SceneFile);
+        }
     }
 
     void WireExtras()
@@ -149,10 +183,36 @@ internal sealed class InspectorPanel : StackPanel
         _script.Choices = () => _scene is null ? [] : [.. _scene.Scripts(), .. _scene.GraphScripts()];
         _script.Chosen += path => TryChange(entity => _scene!.AttachScript(entity, path));
         _script.Cleared += () => TryChange(entity => _scene!.ClearScript(entity));
+        _script.Loading += () => _attachFlyout.ShowAt(_script.Field);
+        _script.Editing += path => Editing?.Invoke(path);
         _metadataRows.Entered += (name, value) => TryChange(entity => _scene!.SetMetadata(entity, name, value));
         _metadataRows.Removed += name => TryChange(entity => _scene!.RemoveMetadata(entity, name));
         _metadataFlyout.Content = _metadataTool;
         _metadata.Flyout = _metadataFlyout;
+        _metadataTool.Cancelled += _metadataFlyout.Hide;
+        // The board draws Attach a script a little taller and quieter than Add Metadata.
+        _attach.Height = 32;
+        _attach.Margin = new Thickness(0, 10, 0, 0);
+        _attach.Foreground = EditorBrushes.TextDim;
+        _attachFlyout.Content = _scriptTool;
+        _attach.Flyout = _attachFlyout;
+        _attachFlyout.Opening += (_, _) =>
+        {
+            if (IsSelected)
+            {
+                _scriptTool.Show(_node!.Name, _scene!.Scripts(), _scene.GraphScripts());
+            }
+        };
+        _scriptTool.Cancelled += _attachFlyout.Hide;
+        _scriptTool.Requested += path =>
+        {
+            if (TryChange(entity => _scene!.AttachScript(entity, path)))
+            {
+                _attachFlyout.Hide();
+            }
+        };
+        // The popover shows in a popup, so the button in the window says it.
+        _scriptTool.NewButton.Click += (_, _) => _attach.RaiseEvent(new UnbuiltEventArgs("New script is not built yet."));
         _metadataTool.Requested += (name, value) =>
         {
             if (TryChange(entity => _scene!.SetMetadata(entity, name, value)))
@@ -202,9 +262,9 @@ internal sealed class InspectorPanel : StackPanel
         _transformRows.Children.Add(row);
     }
 
-    // A ghost button on a dashed edge, because it adds a row and holds no value. Border draws no dashes, so a
-    // rectangle under the content does.
-    static Button Metadata() => new()
+    // A ghost button on a dashed edge, because it adds to the entity and holds no value. Border draws no dashes,
+    // so a rectangle under the content does.
+    static Button Dashed(string icon, string text) => new()
     {
         Height = 30,
         MinHeight = 0,
@@ -228,7 +288,7 @@ internal sealed class InspectorPanel : StackPanel
                     Spacing = 6,
                     Margin = new Thickness(12, 0),
                     VerticalAlignment = VerticalAlignment.Center,
-                    Children = { new EditorIcon("Add") { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Add Metadata", VerticalAlignment = VerticalAlignment.Center } },
+                    Children = { new EditorIcon(icon) { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
                 },
             },
         },

@@ -113,6 +113,7 @@ internal sealed class EditorWindow : Window
             _status.Text = "Edited. Save keeps the change.";
         };
         _inspector.Failed += message => _status.Text = message;
+        _inspector.Editing += OpenFile;
         _scenes.Chosen += OpenFile;
         _scenes.NewGraphRequested += () =>
         {
@@ -132,6 +133,7 @@ internal sealed class EditorWindow : Window
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports."))) { Slot = DockSlot.UpperLeft };
         _fileDock = new DockTabs(("FileSystem", _scenes), ("History", Parts.EmptyState("Clock", "Nothing to undo yet", "Undo is not built yet. Its steps will be listed here."))) { Slot = DockSlot.LowerLeft };
         _inspectorPane = new InspectorPane(_inspector);
+        _inspectorPane.Picked += _scenePane.Select;
         _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", Parts.EmptyState("Pulse", "Signals are not built yet", "The signals of the selected entity and where they go will show here."))) { Slot = DockSlot.Right };
         WireDocks();
         _toolbar = new ViewportToolbar(_frame);

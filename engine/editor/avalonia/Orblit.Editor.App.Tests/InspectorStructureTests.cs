@@ -134,7 +134,7 @@ public sealed class InspectorStructureTests
 
             Assert.Equal((BarX + 12, BarWidth - 12), (position.X, position.Width));
             Near(header.Bottom - 2, position.Y);
-            Near(position.Y + 118, scale.Y);
+            Near(position.Y + 60, scale.Y);
             Near(scale.Bottom, BoxOf(Group(window, "Visibility").Header, window).Y);
         });
     }
@@ -228,17 +228,35 @@ public sealed class InspectorStructureTests
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
-            var field = BoxOf(window.Inspector.ScriptField, window);
+            var attach = BoxOf(window.Inspector.AttachButton, window);
             var button = BoxOf(window.Inspector.MetadataButton, window);
             var edge = window.Inspector.MetadataButton.GetVisualDescendants().OfType<Rectangle>().Single();
 
             Assert.Equal((BarX, BarWidth, 30d), (button.X, button.Width, button.Height));
-            Near(field.Bottom + 13, button.Y);
+            Near(attach.Bottom + 13, button.Y);
             Assert.Equal(Colors.Transparent, ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
             Assert.Equal((EditorBrushes.LineStrong, button.Size), (edge.Stroke, BoxOf(edge, window).Size));
             Assert.NotEmpty(edge.StrokeDashArray!);
             Assert.Equal("Add", window.Inspector.MetadataButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Contains(window.Inspector.MetadataButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Add Metadata");
+        });
+    }
+
+    [Fact]
+    public void Attach_a_script_is_a_quieter_dashed_button_10_under_the_script_row()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(FakeScene.Lamp);
+            var field = BoxOf(window.Inspector.ScriptField, window);
+            var button = BoxOf(window.Inspector.AttachButton, window);
+
+            Assert.Equal((BarX, BarWidth, 32d), (button.X, button.Width, button.Height));
+            Near(field.Bottom + 10, button.Y);
+            Assert.Equal(EditorBrushes.TextDim, window.Inspector.AttachButton.Foreground);
+            Assert.NotEmpty(window.Inspector.AttachButton.GetVisualDescendants().OfType<Rectangle>().Single().StrokeDashArray!);
+            Assert.Equal("ScriptCreate", window.Inspector.AttachButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Contains(window.Inspector.AttachButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Attach a script");
         });
     }
 
@@ -292,6 +310,7 @@ public sealed class InspectorStructureTests
             Assert.Empty(Bars(window));
             Assert.Empty(Groups(window));
             Assert.False(window.Inspector.ScriptField.IsEffectivelyVisible);
+            Assert.False(window.Inspector.AttachButton.IsEffectivelyVisible);
             Assert.False(window.Inspector.MetadataButton.IsEffectivelyVisible);
         });
     }
@@ -319,22 +338,6 @@ public sealed class InspectorStructureTests
             window.Outline.SelectedItem = FakeScene.Sound;
             Assert.Equal("Sound", window.InspectorPane.InspectedName.Text);
             Assert.Equal("Entity", window.InspectorPane.InspectedIcon.IconName);
-        });
-    }
-
-    [Fact]
-    public void The_history_row_has_a_dropdown_button_that_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var pane = window.InspectorPane;
-
-            Assert.Equal("GuiDropdown", pane.DropdownButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.True(BoxOf(pane.DropdownButton, window).Right < BoxOf(pane.HistoryButton, window).X);
-
-            ClickOn(pane.DropdownButton, window);
-            Assert.Equal("The list of inspected objects is not built yet.", window.Status);
         });
     }
 }
