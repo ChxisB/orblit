@@ -556,6 +556,26 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
+    public void A_run_flag_in_the_Debug_menu_flips_the_Game_tabs_switch_and_ticks_with_it()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var paths = Find(NativeMenu.GetMenu(window)!, "Visible Paths");
+
+            Press(paths);
+
+            Assert.True(window.Game.SwitchOf("Visible Paths").IsChecked);
+            Assert.True(paths.IsChecked);
+            Assert.False(EditorTheme.IsSoon(paths));
+
+            window.Game.SwitchOf("Visible Paths").IsChecked = false;
+
+            Assert.False(paths.IsChecked);
+        });
+    }
+
+    [Fact]
     public void A_dock_with_no_tab_shown_hides_and_comes_back_in_its_place()
     {
         UiThread.Run(() =>

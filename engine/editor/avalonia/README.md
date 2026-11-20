@@ -58,8 +58,9 @@ scene. It runs on macOS. Nothing else has run it.
 - The Debugger panel only says whether a game is connected. Graph scripts
   are debugged in the Graph workspace.
 - The inspector shows no class chain, no Mixed value and no drag to scrub.
-- Game has no live copy of the game window, no run settings, no monitors
-  and no Pause. The game sends the editor nothing.
+- Game has no live copy of the game window, no monitors and no Pause. Of
+  the run settings, only Show while running reaches the game, as engine
+  flags. The game sends the editor nothing.
 - Asset Store does not install a kit or open its page.
 - The launcher's Templates, Asset Store and Settings places and each card's
   More menu are not built. A listed folder that lost its `project.orblit` is

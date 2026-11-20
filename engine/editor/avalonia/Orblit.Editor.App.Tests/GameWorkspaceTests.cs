@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -63,7 +64,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void The_run_settings_and_monitors_take_no_input_until_the_game_sends_them()
+    public void The_run_settings_past_Show_while_running_and_the_monitors_take_no_input_until_the_game_sends_them()
     {
         UiThread.Run(() =>
         {
@@ -72,7 +73,25 @@ public sealed class GameWorkspaceTests
             window.UpdateLayout();
 
             Assert.All(window.Game.Unbuilts, part => Assert.False(part.IsEnabled));
+            Assert.All(GameView.FlagNames, name => Assert.True(window.Game.SwitchOf(name).IsEffectivelyEnabled));
             Assert.Equal(10, window.Game.GetVisualDescendants().OfType<ToggleSwitch>().Count());
+        });
+    }
+
+    [Fact]
+    public void The_Show_while_running_switches_that_are_on_go_to_the_game_as_engine_flags()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            ShowGame(window);
+
+            window.Game.SwitchOf("Visible Navigation").IsChecked = true;
+            window.Game.SwitchOf("Visible Collision Shapes").IsChecked = true;
+            Click(window.Game.RunButton);
+
+            Assert.Equal(["--debug-collisions", "--debug-navigation"], scene.PlayedFlags);
         });
     }
 

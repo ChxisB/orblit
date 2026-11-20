@@ -186,9 +186,10 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
 
     /// <summary>
     /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
-    /// each a source and a step id. A game already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
+    /// each a source and a step id. The flags go to the engine as they are, such as <c>--debug-collisions</c>. A game
+    /// already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
     /// </summary>
-    void Play(IEnumerable<(string Source, int Step)> breakpoints);
+    void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags);
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();
