@@ -14,7 +14,7 @@ public sealed class TitleBarTests
     static string Heading(EditorWindow window) =>
         string.Join(" ", window.Bar.Heading.Children.OfType<TextBlock>().Where(text => text.IsVisible).Select(text => text.Text));
 
-    static MenuItem[] RunItems(EditorWindow window) => [.. ((MenuFlyout)window.Bar.MoreButton.Flyout!).Items.Cast<MenuItem>()];
+    static MenuItem[] RunItems(EditorWindow window) => [.. ((MenuFlyout)window.Bar.MoreButton.Flyout!).Items.OfType<MenuItem>()];
 
     static MenuItem RunItem(EditorWindow window, string header) => RunItems(window).Single(item => (string?)item.Header == header);
 
@@ -114,6 +114,28 @@ public sealed class TitleBarTests
                     ("Customize Run Instances...", null),
                 ],
                 RunItems(window).Select(item => ((string)item.Header!, item.InputGesture)));
+        });
+    }
+
+    [Fact]
+    public void Lines_split_the_more_menu_into_three_groups()
+    {
+        UiThread.Run(() =>
+        {
+            var items = ((MenuFlyout)OpenAtReferenceSize().Bar.MoreButton.Flyout!).Items;
+
+            Assert.Equal(["Item", "Item", "Item", "Line", "Item", "Line", "Item"], items.Select(item => item is Separator ? "Line" : "Item"));
+        });
+    }
+
+    [Fact]
+    public void Only_Run_the_project_lacks_the_soon_mark()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Assert.Equal(["Run the project"], RunItems(window).Where(item => !EditorTheme.IsSoon(item)).Select(item => (string)item.Header!));
         });
     }
 
