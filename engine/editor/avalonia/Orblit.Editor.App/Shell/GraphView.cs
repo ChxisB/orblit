@@ -253,31 +253,6 @@ internal sealed class GraphView : Border
 
     static Button MenuButton(string text) => new() { Content = text, Classes = { EditorTheme.TextButton, EditorTheme.Segment } };
 
-    // A strip like a dock's: a row with 6 pixels around it and a line under it.
-    static Border Bar(params Control[] items)
-    {
-        var row = new DockPanel { LastChildFill = false };
-        foreach (var item in items)
-        {
-            row.Children.Add(item);
-        }
-
-        return new Border
-        {
-            Height = DockTabs.StripHeight,
-            Padding = new Thickness(6),
-            BorderBrush = EditorBrushes.Line,
-            BorderThickness = new Thickness(0, 0, 0, 1),
-            Child = row,
-        };
-    }
-
-    static Control Right(Control control)
-    {
-        DockPanel.SetDock(control, Dock.Right);
-        return control;
-    }
-
     static Border Island(Control child, int column) => Place(new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = child }, column);
 
     static T Place<T>(T control, int column, int row = 0) where T : Control
@@ -290,7 +265,7 @@ internal sealed class GraphView : Border
     Grid Layout()
     {
         var list = new DockPanel();
-        foreach (var top in new Control[] { Bar(_fileButton, _gotoButton, _helpButton, Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
+        foreach (var top in new Control[] { Parts.Bar(_fileButton, _gotoButton, _helpButton, Parts.Right(_findButton)), _filter, new ScrollViewer { MaxHeight = 220, Content = _list } })
         {
             DockPanel.SetDock(top, Dock.Top);
             list.Children.Add(top);
@@ -298,7 +273,7 @@ internal sealed class GraphView : Border
         list.Children.Add(_panelsSlot);
 
         var canvas = new DockPanel();
-        var canvasBar = Bar(_tabs, _extends, Right(_saveButton), Right(_status));
+        var canvasBar = Parts.Bar(_tabs, _extends, Parts.Right(_saveButton), Parts.Right(_status));
         DockPanel.SetDock(canvasBar, Dock.Top);
         canvas.Children.Add(canvasBar);
         canvas.Children.Add(new Grid { Children = { _hint, _canvasSlot } });
@@ -315,7 +290,7 @@ internal sealed class GraphView : Border
             Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
         };
         var inspector = new DockPanel();
-        var inspectorBar = Bar(tab, Right(_breakpointButton), Right(_bookmarkButton));
+        var inspectorBar = Parts.Bar(tab, Parts.Right(_breakpointButton), Parts.Right(_bookmarkButton));
         DockPanel.SetDock(inspectorBar, Dock.Top);
         inspector.Children.Add(inspectorBar);
         inspector.Children.Add(new Grid { Children = { _noStep, _inspectorSlot } });

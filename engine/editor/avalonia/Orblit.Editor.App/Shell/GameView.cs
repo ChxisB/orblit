@@ -1,5 +1,7 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
@@ -7,30 +9,58 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The Game workspace: whether the game is running, with Run and Stop. The game draws in a window of its own, so
-/// the view shows no frames. Its log is in the Output panel. It only shows what it is given and asks the window to
-/// run or stop the game.
+/// The Game workspace in three islands: the run settings, the running game and its monitors. The game draws in a
+/// window of its own, so the middle shows its state and no frames. Its log is in the Output panel. The settings and
+/// the monitors wait on the game sending more to the editor, so they show what they will hold and take no input.
+/// The view only shows what it is given and asks the window to run or stop the game.
 /// </summary>
 internal sealed class GameView : Border
 {
-    readonly TextBlock _state = new() { Foreground = EditorBrushes.TextDim };
-    readonly Button _run = new() { Content = "Run", Padding = new Thickness(12, 4), MinHeight = 0 };
-    readonly Button _stop = new() { Content = "Stop", Padding = new Thickness(12, 4), MinHeight = 0 };
+    const string Soon = "Not built yet";
+    const string Unknown = "—";
+
+    // The board's groups of run settings, each row with whether it starts on. The Debug menu keeps checks of its own.
+    static readonly (string Group, (string Name, bool On)[] Rows)[] s_settings =
+    [
+        ("Show while running", [("Visible Collision Shapes", false), ("Visible Paths", false), ("Visible Navigation", false), ("Visible Avoidance", false), ("Debug CanvasItem Redraws", false)]),
+        ("Live edits", [("Synchronize Scene Changes", true), ("Synchronize Script Changes", true), ("Keep Debug Server Open", false)]),
+        ("Deploy", [("Deploy with Remote Debug", false), ("Small Deploy with Network Filesystem", false)]),
+    ];
+
+    static readonly (string Name, string Unit)[] s_monitors =
+    [
+        ("Frame time", "ms"), ("Process", "ms"), ("Physics", "ms"), ("Draw calls", ""), ("Objects", ""), ("Video memory", "MB"),
+    ];
+
+    readonly Ellipse _dot = new() { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { FontSize = 12, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center };
+    readonly Border _pill = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 3), Margin = new Thickness(6, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _project = new() { FontSize = 12, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _time = new() { FontSize = 12, FontFamily = EditorTheme.Mono, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+    readonly Button _run = Worded("MainPlay", "Run");
+    readonly Button _pause = Worded("Pause", "Pause");
+    readonly Button _stop = Worded("Stop", "Stop");
+    readonly Button _front = Worded("Window", "Bring to front");
+    readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+    readonly StackPanel _settings = new();
+    readonly StackPanel _monitors = new();
 
     public GameView()
     {
-        Background = EditorBrushes.Panel;
+        _pill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _status } };
+        _front.Classes.Add(EditorTheme.Ghost);
+        foreach (var unbuilt in new Control[] { _pause, _front, _settings, _monitors })
+        {
+            Unbuilt(unbuilt);
+        }
         _run.Click += (_, _) => RunRequested?.Invoke();
         _stop.Click += (_, _) => StopRequested?.Invoke();
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
-        buttons.Children.Add(_run);
-        buttons.Children.Add(_stop);
-        var panel = new StackPanel { Margin = new Thickness(12, 8), Spacing = 8 };
-        panel.Children.Add(new TextBlock { Text = "Game", FontWeight = FontWeight.Bold });
-        panel.Children.Add(buttons);
-        panel.Children.Add(_state);
-        Child = panel;
-        Show(false, false);
+        Child = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("288,6,*,6,300"),
+            Children = { Island(RunSettings(), 0), Island(RunningGame(), 2), Island(Monitors(), 4) },
+        };
+        Show(false, false, "", TimeSpan.Zero);
     }
 
     /// <summary>Raised when Run is pressed. The view has not changed, the window shows the new state.</summary>
@@ -41,15 +71,184 @@ internal sealed class GameView : Border
 
     internal Button RunButton => _run;
 
+    internal Button PauseButton => _pause;
+
     internal Button StopButton => _stop;
 
     internal TextBlock State => _state;
 
-    /// <summary>Shows whether a game runs and whether a project is open to run.</summary>
-    public void Show(bool playing, bool canRun)
+    internal TextBlock Status => _status;
+
+    internal TextBlock Project => _project;
+
+    internal TextBlock Time => _time;
+
+    /// <summary>The run settings and the monitors, which take no input yet.</summary>
+    internal IEnumerable<Control> Unbuilts => [_settings, _monitors];
+
+    /// <summary>Shows whether a game runs, whether a project is open to run, the project's name and how long the game has run.</summary>
+    public void Show(bool playing, bool canRun, string project, TimeSpan elapsed)
     {
         _run.IsEnabled = canRun;
+        _run.IsVisible = !playing;
         _stop.IsEnabled = playing;
+        _stop.IsVisible = playing;
+        _pause.IsVisible = playing;
+        _status.Text = playing ? "Running" : "Stopped";
+        _status.Foreground = playing ? EditorBrushes.Done : EditorBrushes.TextDim;
+        _dot.Fill = _status.Foreground;
+        _pill.Background = playing ? EditorBrushes.DoneSoft : EditorBrushes.Line;
+        _project.Text = project;
+        _time.Text = playing ? elapsed.ToString(elapsed.TotalHours >= 1 ? @"h\:mm\:ss" : @"mm\:ss", CultureInfo.InvariantCulture) : "";
         _state.Text = playing ? "The game is running in its own window." : "No game is running. Run opens one in its own window.";
+    }
+
+    DockPanel RunSettings()
+    {
+        var choices = new StackPanel { Spacing = 10, Margin = new Thickness(12) };
+        choices.Children.AddRange([Caps("Scene"), new Segments("Main scene", "Current", "Chosen"), Caps("Instances"), new Segments("1", "2", "3", "4")]);
+        _settings.Children.Add(choices);
+        foreach (var (group, rows) in s_settings)
+        {
+            var list = new StackPanel { Margin = new Thickness(6, 0, 6, 10) };
+            list.Children.AddRange(rows.Select(row => Setting(row.Name, row.On)));
+            _settings.Children.Add(Section(group, list));
+        }
+        _settings.Children.Add(Note("Run uses the project's main scene and one instance."));
+        var instances = Parts.IconButton("GuiTabMenuHl", "Customize Run Instances...");
+        Unbuilt(instances);
+        return Stack(Parts.Bar(Title("Run"), Parts.Right(instances)), new ScrollViewer { Content = _settings });
+    }
+
+    DockPanel RunningGame()
+    {
+        var bar = Parts.Bar(_pill, _project, _time, Parts.Right(_front), Parts.Right(Parts.Rule()), Parts.Right(_stop), Parts.Right(_pause), Parts.Right(_run));
+        var footer = new Border
+        {
+            Height = 30,
+            Padding = new Thickness(12, 0),
+            BorderBrush = EditorBrushes.Line,
+            BorderThickness = new Thickness(0, 1, 0, 0),
+            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { Parts.RowIcon("NodeInfo", EditorBrushes.TextDim), _state } },
+        };
+        DockPanel.SetDock(footer, Dock.Bottom);
+        var stage = new Border
+        {
+            Background = EditorBrushes.Window,
+            Child = new Border
+            {
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = Parts.EmptyState("Window", "No live copy yet", "The game draws in a window of its own. A copy of it here is not built yet."),
+            },
+        };
+        return Stack(bar, footer, stage);
+    }
+
+    DockPanel Monitors()
+    {
+        var rate = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 8,
+            Margin = new Thickness(12, 14, 12, 8),
+            Children =
+            {
+                new TextBlock { Text = Unknown, FontSize = 30, FontWeight = FontWeight.Medium, FontFamily = EditorTheme.Mono },
+                new TextBlock { Text = "frames a second", FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 0, 6) },
+            },
+        };
+        _monitors.Children.Add(rate);
+        _monitors.Children.AddRange(s_monitors.Select(monitor => Monitor(monitor.Name, monitor.Unit)));
+        _monitors.Children.Add(Note("The game does not send these numbers to the editor yet."));
+        var scene = Section("Live scene", Parts.EmptyState("Tree", "No live scene", "The game does not send its entities to the editor yet."));
+        var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { Tab("Monitors", true), Tab("Scene", false) } };
+        var keepOnTop = Parts.IconButton("Pin", "Keep on top");
+        Unbuilt(keepOnTop);
+        return Stack(Parts.Bar(tabs, Parts.Right(keepOnTop)), new ScrollViewer { Content = new StackPanel { Children = { _monitors, scene } } });
+    }
+
+    // The last control fills what the ones before it leave.
+    static DockPanel Stack(params Control[] parts)
+    {
+        var panel = new DockPanel();
+        foreach (var part in parts[..^1].Where(part => !part.IsSet(DockPanel.DockProperty)))
+        {
+            DockPanel.SetDock(part, Dock.Top);
+        }
+        panel.Children.AddRange(parts);
+        return panel;
+    }
+
+    static Border Island(Control child, int column) => At(new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = child }, column);
+
+    static T At<T>(T control, int column) where T : Control
+    {
+        Grid.SetColumn(control, column);
+        return control;
+    }
+
+    static Border Section(string title, Control body) => new()
+    {
+        BorderBrush = EditorBrushes.Line,
+        BorderThickness = new Thickness(0, 1, 0, 0),
+        Child = new StackPanel { Children = { new Border { Height = 34, Padding = new Thickness(6, 0), Child = Title(title) }, body } },
+    };
+
+    static Grid Setting(string name, bool on)
+    {
+        var label = new TextBlock { Text = name, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        var toggle = At(new ToggleSwitch { IsChecked = on, OnContent = null, OffContent = null, MinWidth = 0 }, 1);
+        ToolTip.SetTip(toggle, name);
+        return new Grid { Height = 30, Margin = new Thickness(6, 0), ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { label, toggle } };
+    }
+
+    static Grid Monitor(string name, string unit) => new()
+    {
+        Height = 28,
+        Margin = new Thickness(12, 0),
+        ColumnDefinitions = new ColumnDefinitions("*,Auto,30"),
+        Children =
+        {
+            new TextBlock { Text = name, FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center },
+            At(new TextBlock { Text = Unknown, FontSize = 12, FontFamily = EditorTheme.Mono, VerticalAlignment = VerticalAlignment.Center }, 1),
+            At(new TextBlock { Text = unit, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center }, 2),
+        },
+    };
+
+    static Border Tab(string text, bool on) => new()
+    {
+        Height = 26,
+        Padding = new Thickness(10, 0),
+        CornerRadius = EditorTheme.Corners,
+        Background = on ? EditorBrushes.Line : null,
+        Child = new TextBlock { Text = text, FontWeight = FontWeight.Medium, Foreground = on ? EditorBrushes.Text : EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center },
+        [ToolTip.TipProperty] = on ? null : Soon,
+    };
+
+    static TextBlock Title(string text) => new() { Text = text, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+
+    static TextBlock Caps(string text) => new() { Text = text.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.TextDim };
+
+    static TextBlock Note(string text) => new() { Text = $"{Soon}. {text}", FontSize = 11, Foreground = EditorBrushes.Disabled, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 6, 12, 12) };
+
+    static Button Worded(string icon, string text) => new()
+    {
+        Classes = { EditorTheme.TextButton, EditorTheme.Small },
+        Margin = new Thickness(4, 0, 0, 0),
+        VerticalAlignment = VerticalAlignment.Center,
+        Content = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
+        },
+    };
+
+    // Off, and says why when the pointer rests on it.
+    static void Unbuilt(Control control)
+    {
+        control.IsEnabled = false;
+        ToolTip.SetTip(control, Soon);
+        ToolTip.SetShowOnDisabled(control, true);
     }
 }

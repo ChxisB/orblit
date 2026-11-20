@@ -50,6 +50,7 @@ internal static class EditorColors
 
     // A job that went through and one that did not. A danger button takes the fault in a lighter text and a faint edge.
     public static readonly Color Done = Color.Parse("#4CC38A");
+    public static readonly Color DoneSoft = Color.Parse("#1F4CC38A");
     public static readonly Color Fault = Color.Parse("#FF5C6C");
     public static readonly Color FaultText = Color.Parse("#FF8A96");
     public static readonly Color FaultEdge = Color.Parse("#55FF5C6C");
