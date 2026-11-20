@@ -513,7 +513,10 @@ internal sealed class FakeScene : IEditorScene
         _root = Rebuild(_root, parent.Handle, node => node with { Children = made });
     }
 
-    public void Reparent(nint entity, nint newParent)
+    /// <summary>What the last move under another parent asked for its transform.</summary>
+    public bool? KeptGlobal { get; private set; }
+
+    public void Reparent(nint entity, nint newParent, bool keepGlobalTransform)
     {
         RequireNotRoot(entity, "moved");
         var moved = _root.Find(entity)!;
@@ -526,6 +529,7 @@ internal sealed class FakeScene : IEditorScene
         {
             throw new InvalidOperationException($"{target.Name} already has a child named {moved.Name}.");
         }
+        KeptGlobal = keepGlobalTransform;
         var without = Without(_root, entity);
         _root = Rebuild(without, newParent, node => node with { Children = [.. node.Children, moved] });
     }

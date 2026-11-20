@@ -34,7 +34,6 @@ internal sealed class EditorWindow : Window
     readonly MoveTools _move = new();
     readonly NewSceneTool _newScene = new();
     readonly InstanceTool _instanceScene = new();
-    readonly Flyout _instanceFlyout = new();
     readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
     readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes = new();
@@ -96,13 +95,15 @@ internal sealed class EditorWindow : Window
         Height = 900;
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaTitleBarHeightHint = TitleBar.BarHeight;
-        _scenePane = new ScenePane(_tools, _move);
+        _scenePane = new ScenePane(_tools, _move, _instanceScene, CommandKey);
         _scenePane.SelectionChanged += ShowSelection;
         _scenePane.EyeClicked += ToggleEye;
         _tools.Changed += Edited;
         _tools.Failed += message => _status.Text = message;
         _move.Changed += Edited;
         _move.Failed += message => _status.Text = message;
+        _instanceScene.Changed += Edited;
+        _instanceScene.Failed += message => _status.Text = message;
         _inspector.Edited += () =>
         {
             ShowEdited(true);
@@ -146,7 +147,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _saveChanges, _palette, _quickOpen, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -185,8 +186,6 @@ internal sealed class EditorWindow : Window
     internal NewSceneTool NewScene => _newScene;
 
     internal InstanceTool InstanceScene => _instanceScene;
-
-    internal Flyout InstanceFlyout => _instanceFlyout;
 
     internal Dialog SaveChanges => _saveChanges;
 
@@ -478,13 +477,19 @@ internal sealed class EditorWindow : Window
         }
     }
 
-    // F, Q, W, E, R and T are plain letters, so a box that takes typing keeps them.
+    // Plain letters, the arrows, select all and the erase keys belong to a box that takes typing.
     Button? ShortcutFor(KeyEventArgs e) => (e.Key, e.KeyModifiers) switch
     {
         (Key.N, var modifiers) when modifiers == CommandKey => _sceneTabs.AddButton,
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
+        (Key.A, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _tools.AddButton,
+        (Key.A, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _instanceScene.OpenButton,
+        (Key.Up, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _move.UpButton,
+        (Key.Down, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _move.DownButton,
+        (Key.F2, KeyModifiers.None) when e.Source is not TextBox => _tools.RenameButton,
+        (Key.Back or Key.Delete, KeyModifiers.None) when e.Source is not TextBox => _tools.RemoveButton,
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
         (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
         (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
@@ -715,15 +720,6 @@ internal sealed class EditorWindow : Window
                 _newScene.Say(_status.Text ?? "");
             }
         };
-        _instanceFlyout.Content = _instanceScene;
-        _scenePane.InstanceButton.Flyout = _instanceFlyout;
-        _instanceFlyout.Opening += (_, _) => _instanceScene.LoadScenes();
-        _instanceScene.Changed += edit =>
-        {
-            _instanceFlyout.Hide();
-            Edited(edit);
-        };
-        _instanceScene.Failed += message => _status.Text = message;
         _sceneTabs.CloseButton.Click += (_, _) => Leave(() => _scene!.Close());
     }
 

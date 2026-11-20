@@ -123,6 +123,17 @@ internal sealed class Dialog : Border
         }
     }
 
+    /// <summary>Dim words at the far left of the footer, such as the keys the body takes.</summary>
+    public string Hint
+    {
+        get;
+        init
+        {
+            field = value;
+            _footer.Children.Add(new TextBlock { Text = value, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        }
+    } = "";
+
     /// <summary>Shows the dialog with the keys on the main action, so Enter runs it and Escape leaves.</summary>
     public void Open()
     {

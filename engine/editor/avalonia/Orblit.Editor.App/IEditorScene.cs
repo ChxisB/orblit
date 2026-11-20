@@ -105,10 +105,11 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     void MoveWithinParent(nint entity, int places);
 
     /// <summary>
-    /// Moves the entity and its children to the end of another parent. The scene root, the entity itself, its
-    /// own children and a parent with a child of the same name are refused.
+    /// Moves the entity and its children to the end of another parent, where it is drawn or with its local
+    /// transform. The scene root, the entity itself, its own children and a parent with a child of the same name
+    /// are refused.
     /// </summary>
-    void Reparent(nint entity, nint newParent);
+    void Reparent(nint entity, nint newParent, bool keepGlobalTransform);
 
     void Rename(nint entity, string name);
 

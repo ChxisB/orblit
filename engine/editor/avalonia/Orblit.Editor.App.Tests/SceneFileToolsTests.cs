@@ -16,7 +16,7 @@ public sealed class SceneFileToolsTests
         Click(window.NewScene.CreateButton);
     }
 
-    static void OpenInstanceFlyout(EditorWindow window) => window.InstanceFlyout.ShowAt(window.ScenePane.InstanceButton);
+    static void OpenInstanceDialog(EditorWindow window) => Click(window.InstanceScene.OpenButton);
 
     static IEnumerable<NativeMenuItem> Items(NativeMenu menu) =>
         menu.Items.OfType<NativeMenuItem>().SelectMany(item => item.Menu is { } sub ? Items(sub).Prepend(item) : [item]);
@@ -189,19 +189,23 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void The_instance_button_opens_a_flyout_that_lists_the_other_scenes_and_no_folders()
+    public void The_instance_button_opens_a_dialog_that_turns_off_the_open_scene_and_leaves_out_folders()
     {
         UiThread.Run(() =>
         {
             var scene = new FakeScene { SceneFile = "res://field.oscn" };
             scene.ScenePaths.Add("res://levels/");
             var window = OpenAtReferenceSize(scene);
+            var list = window.InstanceScene.SceneList;
 
-            ClickOn(window.ScenePane.InstanceButton, window);
+            ClickOn(window.InstanceScene.OpenButton, window);
 
-            Assert.True(window.InstanceFlyout.IsOpen);
-            Assert.Same(window.InstanceScene, window.InstanceFlyout.Content);
-            Assert.Equal(["res://levels/second.oscn"], window.InstanceScene.Scene.ItemsSource!.Cast<string>());
+            Assert.True(window.InstanceScene.Dialog.IsVisible);
+            Assert.Equal("As a child of Field", window.InstanceScene.Dialog.Why.Text);
+            Assert.Equal(["field.oscn", "second.oscn"], list.Shown.Select(choice => choice.Name));
+            Assert.Equal([true, false], list.Shown.Select(choice => choice.Off));
+            Assert.Equal(["This scene. It cannot hold itself.", "res://levels/"], list.Shown.Select(choice => choice.Line));
+            Assert.Equal("second.oscn", list.Picked!.Name);
         });
     }
 
@@ -221,38 +225,37 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void Instance_is_off_until_a_scene_is_chosen_and_while_none_is_open()
+    public void Instance_is_off_while_no_scene_is_lit_and_while_none_is_open()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            OpenInstanceFlyout(window);
-            var instance = window.InstanceScene.InstanceButton;
-            Assert.False(instance.IsEnabled);
-
-            window.InstanceScene.Scene.SelectedIndex = 0;
+            OpenInstanceDialog(window);
+            var instance = window.InstanceScene.Dialog.MainButton;
             Assert.True(instance.IsEnabled);
 
+            window.InstanceScene.SceneList.SearchBox.Text = "zzz";
+            Assert.False(instance.IsEnabled);
+
             var empty = OpenAtReferenceSize(new FakeScene { StartsEmpty = true });
-            OpenInstanceFlyout(empty);
-            empty.InstanceScene.Scene.SelectedIndex = 0;
-            Assert.False(empty.InstanceScene.InstanceButton.IsEnabled);
+            Assert.False(empty.InstanceScene.OpenButton.IsEnabled);
         });
     }
 
     [Fact]
-    public void Opening_the_flyout_again_clears_the_chosen_scene()
+    public void Opening_the_dialog_again_clears_the_search()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            OpenInstanceFlyout(window);
-            window.InstanceScene.Scene.SelectedIndex = 0;
+            OpenInstanceDialog(window);
+            window.InstanceScene.SceneList.SearchBox.Text = "sec";
+            window.InstanceScene.Dialog.Cancel();
 
-            window.InstanceScene.LoadScenes();
+            OpenInstanceDialog(window);
 
-            Assert.Equal(-1, window.InstanceScene.Scene.SelectedIndex);
-            Assert.False(window.InstanceScene.InstanceButton.IsEnabled);
+            Assert.Equal("", window.InstanceScene.SceneList.SearchBox.Text);
+            Assert.Equal(2, window.InstanceScene.SceneList.Shown.Count);
         });
     }
 
@@ -264,16 +267,15 @@ public sealed class SceneFileToolsTests
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
             window.Outline.SelectedItem = FakeScene.Lamp;
-            OpenInstanceFlyout(window);
-            window.InstanceScene.Scene.SelectedIndex = 0;
+            OpenInstanceDialog(window);
 
-            Click(window.InstanceScene.InstanceButton);
+            Click(window.InstanceScene.Dialog.MainButton);
 
             Assert.Equal([(FakeScene.Lamp.Handle, "res://field.oscn")], scene.Instanced);
             Assert.Equal("field", window.ScenePane.Selected!.Name);
             Assert.Equal("Instanced field under Lamp.", window.Status);
             Assert.StartsWith("(*)", window.Title);
-            Assert.False(window.InstanceFlyout.IsOpen);
+            Assert.False(window.InstanceScene.Dialog.IsVisible);
         });
     }
 
@@ -284,10 +286,9 @@ public sealed class SceneFileToolsTests
         {
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
-            OpenInstanceFlyout(window);
-            window.InstanceScene.Scene.SelectedIndex = 0;
+            OpenInstanceDialog(window);
 
-            Click(window.InstanceScene.InstanceButton);
+            Click(window.InstanceScene.Dialog.MainButton);
 
             Assert.Equal([(FakeScene.Field.Handle, "res://field.oscn")], scene.Instanced);
             Assert.Equal("Instanced field under Field.", window.Status);
@@ -300,10 +301,9 @@ public sealed class SceneFileToolsTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene { InstanceFails = true });
-            OpenInstanceFlyout(window);
-            window.InstanceScene.Scene.SelectedIndex = 0;
+            OpenInstanceDialog(window);
 
-            Click(window.InstanceScene.InstanceButton);
+            Click(window.InstanceScene.Dialog.MainButton);
 
             Assert.Equal("res://field.oscn is not a scene.", window.Status);
             Assert.DoesNotContain("(*)", window.Title);

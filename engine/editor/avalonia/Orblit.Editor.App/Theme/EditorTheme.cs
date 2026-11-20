@@ -30,7 +30,7 @@ internal sealed class EditorTheme : Styles
 
     internal const double RowHeight = 26;
 
-    internal const double RowIndent = 12;
+    internal const double RowIndent = 16;
 
     /// <summary>Pixels the theme leaves before the content of a tree row, more than the reference draws.</summary>
     internal const double RowOverhang = 15;
@@ -173,9 +173,9 @@ internal sealed class EditorTheme : Styles
         ("TreeViewItemForeground", EditorColors.Text),
         ("TreeViewItemForegroundPointerOver", EditorColors.Text),
         ("TreeViewItemForegroundPressed", EditorColors.Text),
-        ("TreeViewItemForegroundSelected", EditorColors.Text),
-        ("TreeViewItemForegroundSelectedPointerOver", EditorColors.Text),
-        ("TreeViewItemForegroundSelectedPressed", EditorColors.Text),
+        ("TreeViewItemForegroundSelected", Colors.White),
+        ("TreeViewItemForegroundSelectedPointerOver", Colors.White),
+        ("TreeViewItemForegroundSelectedPressed", Colors.White),
         ("MenuFlyoutPresenterBackground", EditorColors.Popover),
         ("MenuFlyoutPresenterBorderBrush", EditorColors.LineStrong),
         ("MenuFlyoutItemBackground", Colors.Transparent),
@@ -196,6 +196,24 @@ internal sealed class EditorTheme : Styles
         ("ScrollBarTrackStrokePointerOver", Colors.Transparent),
         ("ScrollBarThumbFillPointerOver", EditorColors.Disabled),
         ("ScrollBarThumbFillPressed", EditorColors.TextDim),
+        ("ToggleSwitchFillOff", EditorColors.LineStrong),
+        ("ToggleSwitchFillOffPointerOver", EditorColors.LineStrong),
+        ("ToggleSwitchFillOffPressed", EditorColors.LineStrong),
+        ("ToggleSwitchFillOn", EditorColors.Accent),
+        ("ToggleSwitchFillOnPointerOver", EditorColors.Accent),
+        ("ToggleSwitchFillOnPressed", EditorColors.Accent),
+        ("ToggleSwitchKnobFillOff", EditorColors.TextSoft),
+        ("ToggleSwitchKnobFillOffPointerOver", EditorColors.TextSoft),
+        ("ToggleSwitchKnobFillOffPressed", EditorColors.TextSoft),
+        ("ToggleSwitchKnobFillOn", EditorColors.OnAccent),
+        ("ToggleSwitchKnobFillOnPointerOver", EditorColors.OnAccent),
+        ("ToggleSwitchKnobFillOnPressed", EditorColors.OnAccent),
+        ("ToggleSwitchStrokeOff", Colors.Transparent),
+        ("ToggleSwitchStrokeOffPointerOver", Colors.Transparent),
+        ("ToggleSwitchStrokeOffPressed", Colors.Transparent),
+        ("ToggleSwitchStrokeOn", Colors.Transparent),
+        ("ToggleSwitchStrokeOnPointerOver", Colors.Transparent),
+        ("ToggleSwitchStrokeOnPressed", Colors.Transparent),
     ];
 
     public EditorTheme()
