@@ -8,8 +8,12 @@ internal enum VariantType
     Int = 2,
     Float = 3,
     String = 4,
+    Vector2 = 5,
+    Vector3 = 9,
+    Color = 20,
     StringName = 21,
     Object = 24,
+    Dictionary = 27,
     Array = 28,
     PackedByteArray = 29,
 }

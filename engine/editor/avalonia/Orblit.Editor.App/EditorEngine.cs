@@ -282,6 +282,12 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public nint Instance(nint parent, string resourcePath) => _session.Instance(parent, resourcePath);
 
+    public IReadOnlyList<string> ClassChainOf(nint entity) => _session.ClassChainOf(entity);
+
+    public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) => _session.PropertiesOf(entity);
+
+    public void SetProperty(nint entity, string name, object value) => _session.SetProperty(entity, name, value);
+
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => _session.MetadataOf(entity);
 
     public void SetMetadata(nint entity, string name, object value) => _session.SetMetadata(entity, name, value);

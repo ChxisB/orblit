@@ -111,6 +111,76 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>The metadata of each entity, in the order it was set.</summary>
     public Dictionary<nint, List<MetaEntry>> Metadata { get; } = [];
 
+    // The engine's class tree for the classes the tests add. Any other class comes straight from Entity.
+    static readonly Dictionary<string, string> s_parents = new()
+    {
+        ["Camera3D"] = "Entity3D",
+        ["MeshInstance3D"] = "GeometryInstance3D",
+        ["GeometryInstance3D"] = "VisualInstance3D",
+        ["DirectionalLight3D"] = "Light3D",
+        ["Light3D"] = "VisualInstance3D",
+        ["VisualInstance3D"] = "Entity3D",
+        ["Marker3D"] = "Entity3D",
+        ["Entity3D"] = "Entity",
+        ["Entity2D"] = "CanvasItem",
+        ["ColorRect"] = "Control",
+        ["Control"] = "CanvasItem",
+        ["CanvasItem"] = "Entity",
+    };
+
+    // A few of the engine's properties for each class, with its groups, hints and first values.
+    static readonly Dictionary<string, EntityProperty[]> s_properties = new()
+    {
+        ["Entity"] =
+        [
+            new("Entity", "Run", "run_mode", 2, 0L) { Hint = 2, HintString = "Inherit,Pausable,When Paused,Always,Disabled" },
+            new("Entity", "Run", "run_priority", 2, 0L),
+            new("Entity", "Physics Interpolation", "physics_interpolation_mode", 2, 0L) { Hint = 2, HintString = "Inherit,On,Off" },
+            new("Entity", "Auto Translate", "auto_translate_mode", 2, 0L) { Hint = 2, HintString = "Inherit,Always,Disabled" },
+            new("Entity", "Editor Description", "editor_description", 4, "") { Hint = 18 },
+        ],
+        ["Entity3D"] =
+        [
+            new("Entity3D", "Transform", "position", 9, Vector3.Zero) { HintString = "suffix:m" },
+            new("Entity3D", "Transform", "top_level", 1, false),
+            new("Entity3D", "Visibility", "visible", 1, true),
+        ],
+        ["Light3D"] = [new("Light3D", "Light", "light_color", 20, Vector4.One) { Hint = 21 }],
+        ["Camera3D"] =
+        [
+            new("Camera3D", "", "cull_mask", 2, 1048575L) { Hint = 10 },
+            new("Camera3D", "", "environment", 24, null) { Hint = 17, HintString = "Environment" },
+            new("Camera3D", "", "projection", 2, 0L) { Hint = 2, HintString = "Perspective,Orthogonal,Frustum" },
+            new("Camera3D", "", "current", 1, false),
+            new("Camera3D", "", "fov", 3, 75.0) { Hint = 1, HintString = "1,179,0.1,degrees" },
+            new("Camera3D", "", "frustum_offset", 5, Vector2.Zero) { HintString = "suffix:m" },
+            new("Camera3D", "", "near", 3, 0.05) { Hint = 1, HintString = "0.001,10,0.001,or_greater,exp,suffix:m" },
+            new("Camera3D", "", "far", 3, 4000.0) { Hint = 1, HintString = "0.01,4000,0.01,or_greater,exp,suffix:m" },
+        ],
+    };
+
+    /// <summary>Every property value the window set, by entity and name.</summary>
+    public Dictionary<(nint Entity, string Name), object> PropertyValues { get; } = [];
+
+    public IReadOnlyList<string> ClassChainOf(nint entity)
+    {
+        List<string> chain = [_root.Find(entity)!.ClassName];
+        while (chain[^1] != "Entity")
+        {
+            chain.Add(s_parents.GetValueOrDefault(chain[^1], "Entity"));
+        }
+        return chain;
+    }
+
+    public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) =>
+    [
+        .. ClassChainOf(entity).Reverse()
+            .SelectMany(className => s_properties.GetValueOrDefault(className, []))
+            .Select(property => PropertyValues.TryGetValue((entity, property.Name), out var value) ? property with { Value = value } : property),
+    ];
+
+    public void SetProperty(nint entity, string name, object value) => PropertyValues[(entity, name)] = value;
+
     public bool MetadataFails { get; init; }
 
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => Metadata.TryGetValue(entity, out var list) ? [.. list] : [];

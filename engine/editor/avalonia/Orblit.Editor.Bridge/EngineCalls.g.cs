@@ -126,6 +126,10 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ControlSetAnchorsAndOffsetsPresetMethod = new("Control", "set_anchors_and_offsets_preset", 3724524307);
     static readonly EngineMethod ResourceLoaderExistsMethod = new("ResourceLoader", "exists", 4185558881);
     static readonly EngineMethod ObjectGetMetaListMethod = new("Object", "get_meta_list", 3995934104);
+    static readonly EngineMethod ObjectGetPropertyListMethod = new("Object", "get_property_list", 3995934104);
+    static readonly EngineMethod ObjectGetMethod = new("Object", "get", 2760726917);
+    static readonly EngineMethod ObjectSetMethod = new("Object", "set", 3776071444);
+    static readonly EngineMethod ClassRegistryGetParentClassMethod = new("ClassRegistry", "get_parent_class", 1965194235);
     static readonly EngineMethod ObjectGetMetaMethod = new("Object", "get_meta", 3990617847);
     static readonly EngineMethod ObjectSetMetaMethod = new("Object", "set_meta", 3776071444);
     static readonly EngineMethod ObjectRemoveMetaMethod = new("Object", "remove_meta", 3304788590);
@@ -1058,6 +1062,43 @@ public static unsafe class EngineCalls
         void* a0 = scope.StringName(name);
         void** args = stackalloc void*[] { a0 };
         host.Call(ObjectRemoveMetaMethod, target, args, null);
+    }
+
+    public static object?[][] ObjectGetPropertyList(this EngineHost host, nint target, IReadOnlyList<string> keys)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.Array);
+        host.Call(ObjectGetPropertyListMethod, target, null, result);
+        return NativeVariant.ReadDictionaries(result, keys);
+    }
+
+    public static object? ObjectGet(this EngineHost host, nint target, string property)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(property);
+        using var result = NativeVariant.Create();
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ObjectGetMethod, target, args, result.Slot);
+        return result.Read();
+    }
+
+    public static void ObjectSet(this EngineHost host, nint target, string property, object? value)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(property);
+        using var a1 = NativeVariant.From(value);
+        void** args = stackalloc void*[] { a0, a1.Slot };
+        host.Call(ObjectSetMethod, target, args, null);
+    }
+
+    public static string ClassRegistryGetParentClass(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        void* result = scope.Result(VariantType.StringName);
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryGetParentClassMethod, target, args, result);
+        return NativeText.ReadStringName(result);
     }
 
     public static object? ObjectGetScript(this EngineHost host, nint target)

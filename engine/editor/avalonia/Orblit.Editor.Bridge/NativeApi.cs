@@ -23,6 +23,7 @@ internal static unsafe class NativeApi
     internal static delegate* unmanaged<int, delegate* unmanaged<void*, void*, void>> VariantFromType;
     internal static delegate* unmanaged<int, delegate* unmanaged<void*, void*, void>> VariantToType;
     internal static delegate* unmanaged<void*, long, void*> ArrayAtConst;
+    internal static delegate* unmanaged<void*, void*, void*> DictionaryAtConst;
 
     internal static void Load(delegate* unmanaged<byte*, void*> get)
     {
@@ -43,6 +44,7 @@ internal static unsafe class NativeApi
         VariantFromType = (delegate* unmanaged<int, delegate* unmanaged<void*, void*, void>>)Find(get, "get_variant_from_type_constructor");
         VariantToType = (delegate* unmanaged<int, delegate* unmanaged<void*, void*, void>>)Find(get, "get_variant_to_type_constructor");
         ArrayAtConst = (delegate* unmanaged<void*, long, void*>)Find(get, "array_operator_index_const");
+        DictionaryAtConst = (delegate* unmanaged<void*, void*, void*>)Find(get, "dictionary_operator_index_const");
     }
 
     static void* Find(delegate* unmanaged<byte*, void*> get, string name)
