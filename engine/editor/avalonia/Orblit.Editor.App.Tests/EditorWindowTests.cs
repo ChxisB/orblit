@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -1015,6 +1016,41 @@ public sealed class EditorWindowTests
             Assert.False(window.Tools.AddDialog.IsVisible);
             Assert.Null(window.ScenePane.Rows[FakeScene.Lamp.Handle].Editing);
             Assert.Equal(["Lamp", "Sound"], Root(window).Children.Select(c => c.Name));
+        });
+    }
+
+    [Fact]
+    public void Erase_leaves_the_entity_when_the_key_comes_from_the_files_or_another_workspace()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.UpdateLayout();
+
+            Press(window.Scenes.Tree, Key.Back);
+            ClickOn(PlanarViewportTests.TabOf(window, TitleBar.Script), window);
+            Press(window, Key.Delete);
+
+            Assert.Equal(["Lamp", "Sound"], Root(window).Children.Select(c => c.Name));
+        });
+    }
+
+    [Fact]
+    public void A_shortcut_does_nothing_to_the_editor_behind_an_open_dialog()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            MakeAnEdit(window);
+            window.Close();
+            var names = Root(window).Children.Select(c => c.Name).ToArray();
+
+            Press(window.SaveChanges.MainButton, Key.Back);
+            Press(window.SaveChanges.MainButton, Key.N, window.CommandKey);
+
+            Assert.Equal(names, Root(window).Children.Select(c => c.Name));
+            Assert.False(window.NewScene.Dialog.IsVisible);
         });
     }
 

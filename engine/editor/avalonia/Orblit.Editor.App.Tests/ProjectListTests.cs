@@ -99,7 +99,8 @@ public sealed class ProjectListTests : IDisposable
         var folder = Path.Combine(home, "Games", "crate");
 
         Assert.Equal("~/Games/crate".Replace('/', Path.DirectorySeparatorChar), HomeFolder.Shorten(folder));
-        Assert.Equal(folder, HomeFolder.Expand("~/Games/crate"));
+        Assert.Equal(folder, HomeFolder.Expand(HomeFolder.Shorten(folder)));
+        Assert.Equal(Path.Combine(home, "Games"), HomeFolder.Expand("~/Games"));
         Assert.Equal("/elsewhere/crate", HomeFolder.Shorten("/elsewhere/crate"));
     }
 }

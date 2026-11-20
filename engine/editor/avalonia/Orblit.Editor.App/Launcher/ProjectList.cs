@@ -60,7 +60,11 @@ internal static class HomeFolder
 {
     static string Home => Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
 
-    public static string Expand(string text) => text == "~" ? Home : text.StartsWith("~/", StringComparison.Ordinal) ? Path.Combine(Home, text[2..]) : text;
+    // Shorten writes the platform separator after the tilde, and people type a slash on every platform.
+    public static string Expand(string text) =>
+        text == "~" ? Home
+        : text.Length > 1 && text[0] == '~' && (text[1] == '/' || text[1] == Path.DirectorySeparatorChar) ? Path.Combine(Home, text[2..])
+        : text;
 
     public static string Shorten(string folder) =>
         folder.StartsWith(Home + Path.DirectorySeparatorChar, StringComparison.Ordinal) ? "~" + folder[Home.Length..] : folder;
