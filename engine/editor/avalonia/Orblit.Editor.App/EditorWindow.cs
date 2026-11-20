@@ -76,6 +76,7 @@ internal sealed class EditorWindow : Window
     {
         [TitleBar.Script] = (true, true),
         [TitleBar.Graph] = (true, true),
+        [TitleBar.Game] = (true, true),
     };
     IEditorScene? _scene;
     OutlineNode? _root;
@@ -83,6 +84,8 @@ internal sealed class EditorWindow : Window
     // The edits since the scene opened or was last saved, and when that was, for the Save changes dialog.
     int _edits;
     DateTimeOffset _since;
+    // When the game last started, for the time the Game view shows.
+    DateTimeOffset _playedAt;
     bool _planar;
     // The Entity3D the gizmo drags, or zero when the selection has none.
     nint _gizmoTarget;
@@ -160,7 +163,7 @@ internal sealed class EditorWindow : Window
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
         _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
-        _center.AddWorkspace(TitleBar.Game, _game);
+        _center.AddBareWorkspace(TitleBar.Game, _game);
         _center.AddWorkspace(TitleBar.Store, _store);
         _titleBar.WorkspaceChosen += ChooseWorkspace;
         _pollTimer.Tick += (_, _) => Poll();
@@ -722,6 +725,7 @@ internal sealed class EditorWindow : Window
             return;
         }
 
+        _playedAt = _time.GetUtcNow();
         ShowGame();
         _bottomBar.OpenOutputUnlessPinned();
         Say("Playing in a second window.");
@@ -739,7 +743,7 @@ internal sealed class EditorWindow : Window
         var playing = _scene?.IsPlaying == true;
         _playButton.IsEnabled = _root is not null;
         _stopButton.IsEnabled = playing;
-        _game.Show(playing, _root is not null);
+        _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
         _center.Debugger.ShowGame(playing, _root is not null);
     }
 

@@ -26,8 +26,53 @@ public sealed class GameWorkspaceTests
             Assert.True(window.Game.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Game, window));
+            AssertBox(56, 46, 3328, 1183, BoxOf(window.Game, window));
             Assert.Equal(before, window.Status);
+        });
+    }
+
+    [Fact]
+    public void The_running_card_names_the_project_and_counts_the_time_on_the_clock()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var window = OpenAtReferenceSize(new FakeScene { ProjectName = "view_demo" }, time: time);
+            ShowGame(window);
+            Assert.Equal(("Stopped", ""), (window.Game.Status.Text, window.Game.Time.Text));
+            Assert.True(window.Game.RunButton.IsVisible);
+
+            Click(window.Game.RunButton);
+            time.Advance(TimeSpan.FromSeconds(42));
+            window.Poll();
+
+            Assert.Equal(("Running", "view_demo", "00:42"), (window.Game.Status.Text, window.Game.Project.Text, window.Game.Time.Text));
+            Assert.False(window.Game.RunButton.IsVisible);
+            Assert.True(window.Game.StopButton.IsVisible);
+            Assert.False(window.Game.PauseButton.IsEnabled);
+
+            time.Advance(TimeSpan.FromHours(1));
+            window.Poll();
+
+            Assert.Equal("1:00:42", window.Game.Time.Text);
+
+            Click(window.Game.StopButton);
+
+            Assert.Equal(("Stopped", ""), (window.Game.Status.Text, window.Game.Time.Text));
+        });
+    }
+
+    [Fact]
+    public void The_run_settings_and_monitors_take_no_input_until_the_game_sends_them()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            ShowGame(window);
+            window.UpdateLayout();
+
+            Assert.All(window.Game.Unbuilts, part => Assert.False(part.IsEnabled));
+            Assert.Equal(10, window.Game.GetVisualDescendants().OfType<ToggleSwitch>().Count());
         });
     }
 

@@ -27,6 +27,7 @@ internal static class EditorBrushes
     public static readonly IBrush Warn = new ImmutableSolidColorBrush(EditorColors.Warn);
     public static readonly IBrush WarnSoft = new ImmutableSolidColorBrush(EditorColors.WarnSoft);
     public static readonly IBrush Done = new ImmutableSolidColorBrush(EditorColors.Done);
+    public static readonly IBrush DoneSoft = new ImmutableSolidColorBrush(EditorColors.DoneSoft);
     public static readonly IBrush Fault = new ImmutableSolidColorBrush(EditorColors.Fault);
     public static readonly IBrush FaultText = new ImmutableSolidColorBrush(EditorColors.FaultText);
     public static readonly IBrush FaultEdge = new ImmutableSolidColorBrush(EditorColors.FaultEdge);

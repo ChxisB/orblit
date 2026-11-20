@@ -142,6 +142,32 @@ internal static class Parts
         return item;
     }
 
+    /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
+    public static Border Bar(params Control[] items)
+    {
+        var row = new DockPanel { LastChildFill = false };
+        foreach (var item in items)
+        {
+            row.Children.Add(item);
+        }
+
+        return new Border
+        {
+            Height = DockTabs.StripHeight,
+            Padding = new Thickness(6),
+            BorderBrush = EditorBrushes.Line,
+            BorderThickness = new Thickness(0, 0, 0, 1),
+            Child = row,
+        };
+    }
+
+    /// <summary>Docks an item of a <see cref="Bar"/> at its right end.</summary>
+    public static Control Right(Control control)
+    {
+        DockPanel.SetDock(control, Dock.Right);
+        return control;
+    }
+
     /// <summary>What a tab with nothing to show says: a dim mark, a line on what fills it, and a line on how.</summary>
     public static StackPanel EmptyState(string icon, string title, string line)
     {
