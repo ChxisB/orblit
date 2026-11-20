@@ -82,4 +82,13 @@ internal static class EditorColors
     public static readonly Color Guide = Line;
     public static readonly Color GuideStub = LineStrong;
     public static readonly Color GuideLit = Color.Parse("#3A414C");
+
+    // The rulers of the 2D view. A major tick is as strong as off text, and the labels take the unit colour.
+    public static readonly Color Ruler = Color.Parse("#101318");
+    public static readonly Color RulerEdge = Color.Parse("#232831");
+    public static readonly Color RulerTick = GuideLit;
+    public static readonly Color RulerMajor = Disabled;
+
+    // What fills the 2D view while it says the scene has nothing for it.
+    public static readonly Color Stage = Color.Parse("#15181E");
 }

@@ -24,6 +24,9 @@ internal static class Unbuilt
     public static readonly RoutedEvent<UnbuiltEventArgs> Event =
         RoutedEvent.Register<Control, UnbuiltEventArgs>("Unbuilt", RoutingStrategies.Bubble);
 
+    /// <summary>A tool of a viewport pill that is not built. Lit shows it on, as the design draws it.</summary>
+    public static FixedToggle Tool(string icon, string name, bool lit = false) => Mark(new FixedToggle(icon, name, lit), $"{name} is not built yet.");
+
     /// <summary>
     /// Makes a click on the button raise <see cref="Event"/> with the answer to show. An icon button also dims
     /// and takes a small warn dot at its top right, so it reads as not built before anyone clicks it.

@@ -141,6 +141,8 @@ internal sealed class EditorWindow : Window
         _bottomBar = new BottomBar(_status);
         _center = new CenterArea(_sceneTabs, _toolbar, _viewport, _bottomBar);
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
+        _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
+        _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
         _center.AddWorkspace(TitleBar.Script, _script);
         _center.AddWorkspace(TitleBar.Graph, _graph);
         _center.AddWorkspace(TitleBar.Game, _game);
@@ -264,6 +266,9 @@ internal sealed class EditorWindow : Window
         viewport.MarkSource = PivotOfSelected;
         viewport.PlanarMoved += MoveSelected;
         viewport.ModeSource = () => _toolbar.Mode;
+        viewport.GripAnywhereSource = () => _center.Planar.MovesAnywhere;
+        viewport.Zoomed += _ => _center.Planar.Refresh();
+        viewport.PlanarPanned += _ => _center.Planar.Refresh();
         viewport.TrackballSource = () => _toolbar.Trackball;
         viewport.HandlesSource = () => _gizmoTarget == 0 ? null : _scene?.HandlesOf(_gizmoTarget, _toolbar.Space);
         viewport.RingsSource = () => _gizmoTarget == 0 ? null : _scene?.RingsOf(_gizmoTarget, _toolbar.Space);
@@ -283,6 +288,7 @@ internal sealed class EditorWindow : Window
         _save.IsEnabled = _root is not null;
         ShowGame();
         _sceneTabs.Show(_root, SceneLabel());
+        _center.Planar.ShowScene(_scene!, _root, SceneName());
         ShowTitle();
         ShowSelection();
     }
