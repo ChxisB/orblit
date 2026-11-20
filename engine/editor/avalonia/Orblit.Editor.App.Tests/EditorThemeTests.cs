@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Presenters;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
@@ -141,6 +142,25 @@ public sealed class EditorThemeTests
             Assert.Equal(EditorColors.Text, ((ISolidColorBrush)window.Foreground!).Color);
             Assert.Equal(EditorTheme.Font, window.FontFamily);
             Assert.Equal(EditorTheme.FontSize, window.FontSize);
+        });
+    }
+
+    [Fact]
+    public void A_plain_worded_button_is_raised_and_a_ghost_that_is_off_has_no_shape()
+    {
+        UiThread.Run(() =>
+        {
+            var plain = new Button { Content = "Reload", Classes = { EditorTheme.TextButton } };
+            var ghost = new Button { Content = "Open", IsEnabled = false, Classes = { EditorTheme.TextButton, EditorTheme.Ghost } };
+            var window = new Window { Content = new StackPanel { Children = { plain, ghost } } };
+            window.Show();
+            window.UpdateLayout();
+
+            Assert.Same(EditorBrushes.Raised, plain.Background);
+            Assert.Same(EditorBrushes.LineStrong, plain.BorderBrush);
+            var shape = ghost.GetVisualDescendants().OfType<ContentPresenter>().First();
+            Assert.Same(Brushes.Transparent, shape.Background);
+            Assert.Same(Brushes.Transparent, shape.BorderBrush);
         });
     }
 
