@@ -18,4 +18,7 @@ internal static class UiThread
     static readonly HeadlessUnitTestSession s_session = HeadlessUnitTestSession.StartNew(typeof(TestApp));
 
     public static void Run(Action body) => s_session.Dispatch(() => { body(); return 0; }, CancellationToken.None).Wait();
+
+    /// <summary>Runs a body that awaits, such as a read of the clipboard, to its end.</summary>
+    public static void Run(Func<Task> body) => s_session.Dispatch(body, CancellationToken.None).Wait();
 }
