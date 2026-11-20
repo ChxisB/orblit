@@ -72,7 +72,7 @@ internal sealed class EditorWindow : Window
         // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
         _toast = new Toast(time ?? TimeProvider.System) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
-        _titleBar = new TitleBar(_playButton, _stopButton);
+        _titleBar = new TitleBar(_playButton, _stopButton, CommandKey);
         ShowTitle();
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1440;
@@ -415,6 +415,7 @@ internal sealed class EditorWindow : Window
     Button? ShortcutFor(KeyEventArgs e) => (e.Key, e.KeyModifiers) switch
     {
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
+        (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SelectButton,
@@ -528,15 +529,15 @@ internal sealed class EditorWindow : Window
         _status.Text = $"Framed {selected.Name}.";
     }
 
-    // The title of the old editor: the scene file, then the project, with a mark in front for edits that
-    // the file does not hold yet.
-    // The bar draws a dot for unsaved edits, so the mark goes in the window title alone.
+    // The window title is the scene file, then the project, with a mark in front for edits that the file does
+    // not hold yet. The bar draws a dot for those edits, so the mark goes in the window title alone.
     void ShowTitle()
     {
         var project = _scene?.ProjectName is { Length: > 0 } name ? name : "Unnamed Project";
-        var title = _scene?.SceneFile is { Length: > 0 } file ? $"{Path.GetFileName(file)} - {project}" : project;
+        var scene = _scene?.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : null;
+        var title = scene is null ? project : $"{scene} - {project}";
         Title = _edited ? $"(*) {title}" : title;
-        _titleBar.Show(title, _edited);
+        _titleBar.Show(project, scene, _edited);
     }
 
     // The tab is named for the scene file. A scene with no file takes the name of its root.

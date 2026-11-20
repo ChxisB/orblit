@@ -89,25 +89,6 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_bar_shows_the_title_and_an_orange_dot_while_the_scene_has_edits()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn", ProjectName = "Demo" });
-            Assert.Equal("main.oscn - Demo", window.Bar.Title.Text);
-            Assert.False(window.Bar.EditedDot.IsVisible);
-
-            MakeAnEdit(window);
-            Assert.Equal("main.oscn - Demo", window.Bar.Title.Text);
-            Assert.True(window.Bar.EditedDot.IsVisible);
-            Assert.Equal(EditorColors.Accent, ((ISolidColorBrush)window.Bar.EditedDot.Fill!).Color);
-
-            window.SaveButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.False(window.Bar.EditedDot.IsVisible);
-        });
-    }
-
-    [Fact]
     public void The_header_is_46_high_with_the_workspaces_centred_in_a_pill_and_the_run_buttons_in_another()
     {
         UiThread.Run(() =>
@@ -172,20 +153,6 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void A_run_button_the_editor_lacks_answers_in_the_status()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var button = window.Bar.GetVisualDescendants().OfType<Button>().Single(b => ToolTip.GetTip(b) is "Movie maker mode");
-
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-
-            Assert.Equal("Movie maker mode is not built yet.", window.Status);
-        });
-    }
-
-    [Fact]
     public void The_play_button_sits_in_the_title_bar()
     {
         UiThread.Run(() =>
@@ -208,12 +175,12 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_run_buttons_are_26_square_with_a_rule_before_the_scene_buttons_and_the_pill_8_from_the_edge()
+    public void The_run_buttons_are_26_square_with_a_rule_before_the_more_menu_and_the_pill_8_from_the_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var tips = new[] { "Run the project", "Pause the game", "Stop the game", "Run the current scene", "Run a chosen scene", "Movie maker mode" };
+            var tips = new[] { "Run the project", "Run the current scene", "Pause the game", "Stop the game", "More ways to run" };
             var boxes = tips
                 .Select(tip => BoxOf(window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) as string == tip), window))
                 .ToArray();
@@ -221,10 +188,9 @@ public sealed class ShellLayoutTests
             Assert.All(boxes, box => Assert.Equal(new Size(26, 26), box.Size));
             Assert.Equal(boxes[0].Right + 2, boxes[1].X);
             Assert.Equal(boxes[1].Right + 2, boxes[2].X);
+            Assert.Equal(boxes[2].Right + 2, boxes[3].X);
             // The rule is 1 wide with 3 each side, inside the 2 pixel gaps.
-            Assert.Equal(boxes[2].Right + 11, boxes[3].X);
-            Assert.Equal(boxes[3].Right + 2, boxes[4].X);
-            Assert.Equal(boxes[4].Right + 2, boxes[5].X);
+            Assert.Equal(boxes[3].Right + 11, boxes[4].X);
             Assert.Equal(3440 - 8, BoxOf(window.Bar.Run, window).Right);
         });
     }
@@ -370,14 +336,14 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_title_starts_after_the_traffic_lights_and_lets_a_press_through()
+    public void The_heading_starts_after_the_traffic_lights_and_lets_a_press_through()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(92, BoxOf(window.Bar.Title, window).X);
-            Assert.False(((Control)window.Bar.Title.Parent!).IsHitTestVisible);
+            Assert.Equal(92, BoxOf(window.Bar.Heading, window).X);
+            Assert.False(window.Bar.Heading.IsHitTestVisible);
         });
     }
 
