@@ -16,7 +16,6 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class GameView : Border
 {
-    const string Soon = "Not built yet";
     const string Unknown = "—";
 
     // The board's groups of run settings, each row with whether it starts on. The Debug menu keeps checks of its own.
@@ -51,7 +50,7 @@ internal sealed class GameView : Border
         _front.Classes.Add(EditorTheme.Ghost);
         foreach (var unbuilt in new Control[] { _pause, _front, _settings, _monitors })
         {
-            Unbuilt(unbuilt);
+            Unbuilt.Disable(unbuilt);
         }
         _run.Click += (_, _) => RunRequested?.Invoke();
         _stop.Click += (_, _) => StopRequested?.Invoke();
@@ -116,7 +115,7 @@ internal sealed class GameView : Border
         }
         _settings.Children.Add(Note("Run uses the project's main scene and one instance."));
         var instances = Parts.IconButton("GuiTabMenuHl", "Customize Run Instances...");
-        Unbuilt(instances);
+        Unbuilt.Disable(instances);
         return Stack(Parts.Bar(Title("Run"), Parts.Right(instances)), new ScrollViewer { Content = _settings });
     }
 
@@ -163,7 +162,7 @@ internal sealed class GameView : Border
         var scene = Section("Live scene", Parts.EmptyState("Tree", "No live scene", "The game does not send its entities to the editor yet."));
         var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { Tab("Monitors", true), Tab("Scene", false) } };
         var keepOnTop = Parts.IconButton("Pin", "Keep on top");
-        Unbuilt(keepOnTop);
+        Unbuilt.Disable(keepOnTop);
         return Stack(Parts.Bar(tabs, Parts.Right(keepOnTop)), new ScrollViewer { Content = new StackPanel { Children = { _monitors, scene } } });
     }
 
@@ -222,14 +221,14 @@ internal sealed class GameView : Border
         CornerRadius = EditorTheme.Corners,
         Background = on ? EditorBrushes.Line : null,
         Child = new TextBlock { Text = text, FontWeight = FontWeight.Medium, Foreground = on ? EditorBrushes.Text : EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center },
-        [ToolTip.TipProperty] = on ? null : Soon,
+        [ToolTip.TipProperty] = on ? null : Unbuilt.Soon,
     };
 
     static TextBlock Title(string text) => new() { Text = text, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
 
     static TextBlock Caps(string text) => new() { Text = text.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.TextDim };
 
-    static TextBlock Note(string text) => new() { Text = $"{Soon}. {text}", FontSize = 11, Foreground = EditorBrushes.Disabled, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 6, 12, 12) };
+    static TextBlock Note(string text) => new() { Text = $"{Unbuilt.Soon}. {text}", FontSize = 11, Foreground = EditorBrushes.Disabled, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 6, 12, 12) };
 
     static Button Worded(string icon, string text) => new()
     {
@@ -243,12 +242,4 @@ internal sealed class GameView : Border
             Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
         },
     };
-
-    // Off, and says why when the pointer rests on it.
-    static void Unbuilt(Control control)
-    {
-        control.IsEnabled = false;
-        ToolTip.SetTip(control, Soon);
-        ToolTip.SetShowOnDisabled(control, true);
-    }
 }

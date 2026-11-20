@@ -2,10 +2,12 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -13,6 +15,14 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>The small controls that more than one area of the shell uses.</summary>
 internal static class Parts
 {
+    // A glow and a deep tone for each banner, taken in turn so an item keeps its colour as a search narrows the list.
+    static readonly (Color Glow, Color Deep)[] s_banners =
+    [
+        (Color.Parse("#AAFF9A4D"), Color.Parse("#C2410C")),
+        (Color.Parse("#AA5AA2FF"), Color.Parse("#1E3A8A")),
+        (Color.Parse("#AA8BD450"), Color.Parse("#166534")),
+    ];
+
     public static Button IconButton(string icon, string tip) => Flat(new Button(), icon, tip);
 
     public static ToggleButton IconToggle(string icon, string tip) => Flat(new ToggleButton(), icon, tip);
@@ -198,4 +208,59 @@ internal static class Parts
         ToolTip.SetTip(button, tip);
         return button;
     }
+
+    // The banner sits on the card's top edge, so it rounds its own top corners in place of a clip that would cut the ring.
+    public static Border Banner(string icon, int tone, double height)
+    {
+        var (glow, deep) = s_banners[tone % s_banners.Length];
+        var top = new CornerRadius(9, 9, 0, 0);
+        var mark = new EditorIcon(icon) { Width = 36, Height = 36, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
+        TextElement.SetForeground(mark, new ImmutableSolidColorBrush(Color.Parse("#E6FFFFFF")));
+        return new Border
+        {
+            Height = height,
+            CornerRadius = top,
+            Background = new LinearGradientBrush
+            {
+                StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+                EndPoint = new RelativePoint(1, 1, RelativeUnit.Relative),
+                GradientStops = { new GradientStop(deep, 0), new GradientStop(EditorColors.Panel, 1) },
+            },
+            Child = new Border
+            {
+                CornerRadius = top,
+                Background = new RadialGradientBrush
+                {
+                    Center = new RelativePoint(0.2, 0, RelativeUnit.Relative),
+                    GradientOrigin = new RelativePoint(0.2, 0, RelativeUnit.Relative),
+                    RadiusX = new RelativeScalar(1.2, RelativeUnit.Relative),
+                    RadiusY = new RelativeScalar(0.9, RelativeUnit.Relative),
+                    GradientStops = { new GradientStop(glow, 0), new GradientStop(Colors.Transparent, 0.6) },
+                },
+                Child = mark,
+            },
+        };
+    }
+
+    /// <summary>The logo's round mark, in its own two colours. Nothing else in the editor draws them.</summary>
+    public static Ellipse LogoMark(double size) => new()
+    {
+        Width = size,
+        Height = size,
+        VerticalAlignment = VerticalAlignment.Center,
+        Fill = new LinearGradientBrush
+        {
+            StartPoint = RelativePoint.TopLeft,
+            EndPoint = RelativePoint.BottomRight,
+            GradientStops = { new GradientStop(Color.Parse("#FFC21A"), 0), new GradientStop(Color.Parse("#FF6A00"), 1) },
+        },
+    };
+
+    /// <summary>An icon and a word, for the content of a text button.</summary>
+    public static StackPanel Worded(string icon, string text) => new()
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 6,
+        Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
+    };
 }

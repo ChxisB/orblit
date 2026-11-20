@@ -17,6 +17,7 @@ internal sealed class WindowLinks(Control owner) : ILinkOpener
 /// <summary>The Help menu of the Graph workspace: the guide and the class reference on the site.</summary>
 internal sealed class HelpMenu : MenuFlyout
 {
+    internal static readonly Uri Docs = new("https://orblitengine.com/docs/");
     internal static readonly Uri Guide = new("https://orblitengine.com/docs/start/your-first-graph-script/");
     internal static readonly Uri Reference = new("https://orblitengine.com/docs/classes/class_graphscript/");
 

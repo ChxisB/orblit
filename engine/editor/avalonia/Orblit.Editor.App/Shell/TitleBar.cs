@@ -21,10 +21,6 @@ internal sealed class TitleBar : Grid
     // The system draws the traffic lights over the left of the bar, so the heading starts after them.
     const double TitleLeft = 92;
 
-    // The logo's own colours. Nothing else in the editor draws them.
-    static readonly Color LogoTop = Color.Parse("#FFC21A");
-    static readonly Color LogoBottom = Color.Parse("#FF6A00");
-
     const double SearchWidth = 176;
 
     /// <summary>The name of the workspace that edits the scene in the viewport with a 3D camera.</summary>
@@ -108,18 +104,7 @@ internal sealed class TitleBar : Grid
     /// <summary>The logo, then the project, a slash and the scene, then the dot for edits.</summary>
     internal StackPanel Heading { get; }
 
-    internal Ellipse Logo { get; } = new()
-    {
-        Width = 15,
-        Height = 15,
-        VerticalAlignment = VerticalAlignment.Center,
-        Fill = new LinearGradientBrush
-        {
-            StartPoint = RelativePoint.TopLeft,
-            EndPoint = RelativePoint.BottomRight,
-            GradientStops = { new GradientStop(LogoTop, 0), new GradientStop(LogoBottom, 1) },
-        },
-    };
+    internal Ellipse Logo { get; } = Parts.LogoMark(15);
 
     readonly TextBlock _project = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
 
