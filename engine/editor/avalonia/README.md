@@ -26,27 +26,43 @@ scene. It runs on macOS. Nothing else has run it.
   A scene with no edits is not saved by Play or by opening another scene,
   because its scripts run while it is open and a save would write what they
   changed.
-- Closing the window with unsaved edits keeps it open and shows a bar: Save
-  and close, Close without saving, or Keep editing.
+- Closing the window with unsaved edits keeps it open and asks in the Save
+  changes dialog: Save and close, Close without saving, or Keep editing.
 - Command+S saves and Command+D duplicates. Command is Control on Windows and
   Linux. F frames the selected entity, except while a box has the typing
   focus. Q, W, E and R pick Select, Move, Rotate and Scale. A shortcut acts only when its
   button is on.
 - The Output panel shows what the engine and the games it runs log, read from
-  their `--log-file`.
-- The workspace tabs are 3D, 2D, Script, Game and Asset Store. 2D pans,
-  zooms, picks and moves an `Entity2D`. Script edits a project `.cs` file.
-  Game shows whether the game runs. Asset Store lists the kits in the store
-  index when Load is pressed.
+  their `--log-file`. It filters by words and by level, and counts each level.
+- Command+K opens the command palette: commands, project files and the
+  scene's entities in one list. Shift+Command+O opens a scene by name.
+- New Scene and New Graph Script are dialogs. Toasts stack at the bottom
+  right.
+- The workspace tabs are 2D, 3D, Script, Graph, Game and Asset Store. 2D
+  pans, zooms, picks and moves an `Entity2D`, with rulers and a zoom pill.
+  Script edits a project `.cs` file with syntax colours and an outline. Graph
+  edits a `.ograph` graph script. Game runs the project and shows whether it
+  runs. Asset Store lists the kits in the store index when Reload is pressed.
+- With no `--project` a launcher opens. It lists recent projects, opens a
+  project folder and makes a new project from a template.
 
 ## What is not built
 
-- Undo and redo, and drag to reparent.
+- Undo and redo of scene edits, and drag to reparent.
 - A pick by mesh bounds. A big mesh is hard to hit away from its pivot.
-- Docking changes are kept in memory only.
+- Docking changes are kept in memory only. Layouts and Float are not built.
 - 2D has no rotate, scale, snap or grid. The Preview sun, Preview
-  environment, Ruler, Debugger, Audio, Animation and Shader Editor bottom
-  panels are marked "not built yet".
+  environment, Ruler and Select from a list are marked "not built yet". So
+  are the Audio, Animation and Shader Editor bottom panels.
+- The Debugger panel only says whether a game is connected. Graph scripts
+  are debugged in the Graph workspace.
+- The inspector shows no class chain, no Mixed value and no drag to scrub.
+- Game has no live copy of the game window, no run settings, no monitors
+  and no Pause. The game sends the editor nothing.
+- Asset Store does not install a kit or open its page.
+- The launcher's Templates, Asset Store and Settings places and each card's
+  More menu are not built. A listed folder that lost its `project.orblit` is
+  hidden.
 - Windows and Linux runs. The engine builds for them and for iOS, visionOS,
   Android and Web, but only macOS has run. Play looks for macOS and Linux
   file names only.
@@ -64,8 +80,12 @@ near-black window. One ember accent marks the choice and the focus.
   and step tints in `Orblit.Editor.App/Graph`.
 - `EditorTheme.cs` holds the sizes and corners, and the styles that dress the
   Fluent controls.
-- A control that is not built carries a small amber dot. A click on it shows
-  a toast at the bottom right for 4 seconds.
+- Words are set in Geist and values, paths and keys in Geist Mono. The font
+  files ship in the app.
+- A menu item that is not built carries a Soon tag, and a tool carries a small
+  amber dot. A click on either shows a toast at the bottom right for 4
+  seconds. A worded button that is not built is off, and its tip says "Not
+  built yet".
 
 ## Run it
 
