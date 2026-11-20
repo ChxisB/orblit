@@ -19,12 +19,16 @@ internal sealed class ScriptPanels : Border
     readonly StackPanel _body = new() { Spacing = 10, Margin = new Thickness(10) };
     IReadOnlyList<GraphStepEntry>? _overrides;
     readonly TextBlock _notice = new() { Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, IsVisible = false, FontSize = 12 };
+    readonly VariableTool _variableTool = new();
+    readonly Flyout _variableFlyout = new() { FlyoutPresenterClasses = { EditorTheme.Flush } };
 
     public ScriptPanels(IScriptDeclarations script)
     {
         _script = script;
-        Background = EditorBrushes.Panel;
         Child = new ScrollViewer { Content = _body, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled };
+        _variableFlyout.Content = _variableTool;
+        _variableTool.Cancelled += _variableFlyout.Hide;
+        _variableTool.Requested += AddVariable;
         _script.Changed += Rebuild;
         Rebuild();
     }
@@ -40,6 +44,9 @@ internal sealed class ScriptPanels : Border
 
     /// <summary>The control with this id, such as <c>variable:total:name</c>. Null when the panels have none.</summary>
     internal T? Find<T>(string id) where T : Control => _body.GetVisualDescendants().OfType<T>().FirstOrDefault(control => (control.Tag as string) == id);
+
+    /// <summary>The popover the Variables add button opens.</summary>
+    internal VariableTool VariableTool => _variableTool;
 
     void Rebuild()
     {
@@ -64,11 +71,10 @@ internal sealed class ScriptPanels : Border
         }
     }
 
-    Control Header(string title, string id, Action add)
+    static Grid Header(string title, Button button)
     {
         var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 6, 0, 0) };
         header.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center });
-        var button = PanelFields.Small(id, "+", add);
         Grid.SetColumn(button, 1);
         header.Children.Add(button);
         return header;
@@ -77,11 +83,32 @@ internal sealed class ScriptPanels : Border
     void AddVariables()
     {
         var variables = _script.Document.Variables;
-        _body.Children.Add(Header("Variables", "variable:add", () => Apply(_script.AddVariable(PanelFields.Unique(variables.Select(v => v.Name), "variable"), 0))));
+        // The button opens the popover itself. The click starts the popover over with a free name.
+        var add = PanelFields.Small("variable:add", "+", () => _variableTool.Reset(PanelFields.Unique(variables.Select(v => v.Name), "variable")));
+        add.Flyout = _variableFlyout;
+        _body.Children.Add(Header("Variables", add));
         foreach (var variable in variables)
         {
             _body.Children.Add(VariableRow(variable));
         }
+    }
+
+    // The popover closes first, because the edit rebuilds the panels and the button it hangs from goes.
+    void AddVariable(string name, int type, string valueText, bool shown)
+    {
+        _variableFlyout.Hide();
+        var result = _script.AddVariable(name, type);
+        if (result.Ok && valueText != "")
+        {
+            result = _script.SetVariableDefault(name, valueText);
+        }
+
+        if (result.Ok && shown)
+        {
+            result = _script.SetVariableExported(name, true);
+        }
+
+        Apply(result);
     }
 
     Control VariableRow(GraphVariable variable)
@@ -130,7 +157,7 @@ internal sealed class ScriptPanels : Border
     void AddFunctions()
     {
         var functions = _script.Document.Functions;
-        _body.Children.Add(Header("Functions", "function:add", () => Apply(_script.AddFunction(PanelFields.Unique(functions.Select(f => f.Name), "function")))));
+        _body.Children.Add(Header("Functions", PanelFields.Small("function:add", "+", () => Apply(_script.AddFunction(PanelFields.Unique(functions.Select(f => f.Name), "function"))))));
         if (Overridable(functions) is { Count: > 0 } overridable)
         {
             _body.Children.Add(OverridePicker(overridable));
@@ -246,7 +273,7 @@ internal sealed class ScriptPanels : Border
     void AddSignals()
     {
         var signals = _script.Document.Signals;
-        _body.Children.Add(Header("Signals", "signal:add", () => Apply(_script.AddSignal(PanelFields.Unique(signals.Select(s => s.Name), "signal")))));
+        _body.Children.Add(Header("Signals", PanelFields.Small("signal:add", "+", () => Apply(_script.AddSignal(PanelFields.Unique(signals.Select(s => s.Name), "signal"))))));
         foreach (var signal in signals)
         {
             var name = signal.Name;

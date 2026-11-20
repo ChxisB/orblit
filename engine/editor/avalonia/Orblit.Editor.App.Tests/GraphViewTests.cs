@@ -137,6 +137,30 @@ public sealed class GraphViewTests
     }
 
     [Fact]
+    public void The_bars_name_the_base_type_and_turn_on_once_a_script_is_open_and_save_once_it_is_edited()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Button[] scriptButtons = [view.FindButton, view.BookmarkButton, view.BreakpointButton];
+
+            Assert.Equal("", view.Extends.Text);
+            Assert.All(scriptButtons, button => Assert.False(button.IsEnabled));
+            Assert.False(view.SaveButton.IsEnabled);
+
+            Pick(view, Logic);
+
+            Assert.Equal("extends Entity", view.Extends.Text);
+            Assert.All(scriptButtons, button => Assert.True(button.IsEnabled));
+            Assert.False(view.SaveButton.IsEnabled);
+
+            Edit(view);
+
+            Assert.True(view.SaveButton.IsEnabled);
+        });
+    }
+
+    [Fact]
     public void Picking_a_graph_script_opens_it_on_the_canvas_with_a_tab()
     {
         UiThread.Run(() =>

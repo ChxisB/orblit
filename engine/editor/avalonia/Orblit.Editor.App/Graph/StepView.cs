@@ -77,6 +77,7 @@ internal sealed class StepView
     static readonly IBrush s_warning = EditorBrushes.Warn;
     static readonly IPen s_current = new Pen(Fill("#f2d34f"), 3).ToImmutable();
     static readonly IPen s_border = new Pen(EditorBrushes.LineStrong, 1).ToImmutable();
+    static readonly IPen s_rule = new Pen(EditorBrushes.Line, 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
     static readonly IPen s_broken = new Pen(s_problem, 2).ToImmutable();
     static readonly Typeface s_face = new(EditorTheme.Font);
@@ -198,6 +199,7 @@ internal sealed class StepView
         context.DrawRectangle(s_body, border, new RoundedRect(bounds, Corner));
         var header = new Rect(bounds.X, bounds.Y, bounds.Width, HeaderHeight);
         context.DrawRectangle(CategoryBrush(_step.Category), null, new RoundedRect(header, new CornerRadius(Corner, Corner, 0, 0)));
+        context.DrawLine(s_rule, new Point(header.X, header.Bottom - 0.5), new Point(header.Right, header.Bottom - 0.5));
         DrawRows(context);
         foreach (var label in Labels())
         {
@@ -235,7 +237,7 @@ internal sealed class StepView
         GradientStops = { new GradientStop(Color.FromArgb(0x24, tint.R, tint.G, tint.B), 0), new GradientStop(Colors.Transparent, 1) },
     }.ToImmutable();
 
-    static IBrush CategoryBrush(string category) => s_categories[category.Sum(letter => letter) % s_categories.Length];
+    internal static IBrush CategoryBrush(string category) => s_categories[category.Sum(letter => letter) % s_categories.Length];
 
     static double Distance(Point a, Point b) => Math.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)));
 

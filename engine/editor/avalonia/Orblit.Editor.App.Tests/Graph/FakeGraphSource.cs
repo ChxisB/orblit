@@ -38,6 +38,7 @@ internal sealed class FakeGraphSource : IGraphFile
         ["set_local"] = ([Flow("run"), Data("value", 0, "value")], [Flow("then")], NoGrowth),
         ["decompose"] = ([Data("value", 0, "value")], [Data("part", 0)], new GraphGrowth(GraphGrowthSide.Output, 1, 1, 64)),
         ["compose"] = ([Data("argument", 0)], [Data("value", 0)], new GraphGrowth(GraphGrowthSide.Input, 0, 0, 64)),
+        ["convert"] = ([Data("value", 0, "value")], [Data("value", 0)], NoGrowth),
     };
 
     static GraphGrowth NoGrowth => new(GraphGrowthSide.None, 0, 0, 64);

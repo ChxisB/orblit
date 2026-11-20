@@ -75,6 +75,7 @@ internal sealed class EditorWindow : Window
     static readonly Dictionary<string, (bool Left, bool Right)> s_folds = new()
     {
         [TitleBar.Script] = (true, true),
+        [TitleBar.Graph] = (true, true),
     };
     IEditorScene? _scene;
     OutlineNode? _root;
@@ -158,7 +159,7 @@ internal sealed class EditorWindow : Window
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
         _center.AddBareWorkspace(TitleBar.Script, _script);
-        _center.AddWorkspace(TitleBar.Graph, _graph);
+        _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddWorkspace(TitleBar.Game, _game);
         _center.AddWorkspace(TitleBar.Store, _store);
         _titleBar.WorkspaceChosen += ChooseWorkspace;

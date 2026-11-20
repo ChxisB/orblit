@@ -25,8 +25,12 @@ public sealed class PaletteTests
 
     static Point Pin(GraphCanvas canvas, int step, bool isInput, int port) => canvas.Scene.Find(step)!.PinCenter(isInput, port);
 
-    static void Key(Avalonia.Controls.Control target, Key key) =>
-        target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key });
+    static void Key(Avalonia.Controls.Control target, Key key, KeyModifiers keys = KeyModifiers.None) =>
+        target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = keys });
+
+    static GraphStepEntry Entry(string group, string label) => new(label.ToLowerInvariant(), group, label, new Dictionary<string, string>());
+
+    static string[] Tags(PalettePopup palette) => [.. palette.Rows.Select(row => row.Tag as string ?? "")];
 
     static string[] Labels(GraphCanvas canvas) => [.. canvas.Palette.Entries.Select(entry => entry.Label)];
 
@@ -78,6 +82,66 @@ public sealed class PaletteTests
             Drag(canvas, Pin(canvas, 3, false, 0), Empty);
 
             Assert.Equal(["Branch", "Translate", "Print"], Labels(canvas));
+        });
+    }
+
+    [Fact]
+    public void The_steps_are_grouped_and_only_the_group_of_the_chosen_step_lists_its_steps()
+    {
+        UiThread.Run(() =>
+        {
+            var palette = new PalettePopup();
+            IReadOnlyList<GraphStepEntry> found = [Entry("Flow", "Branch"), Entry("Math", "Add"), Entry("Flow", "Loop"), Entry("Math", "Sine")];
+            palette.Open(default, new Size(2000, 2000), _ => found, (_, _) => { });
+
+            Assert.Equal(["Branch", "Loop", "Add", "Sine"], palette.Entries.Select(entry => entry.Label));
+            Assert.Equal(["palette:group:Flow", "palette:step:0", "palette:step:1", "palette:group:Math"], Tags(palette));
+            Assert.Equal("Flow Branch", palette.Preview);
+
+            Key(palette.SearchBox, Avalonia.Input.Key.Down);
+            Key(palette.SearchBox, Avalonia.Input.Key.Down);
+
+            Assert.Equal(2, palette.SelectedIndex);
+            Assert.Equal(["palette:group:Flow", "palette:group:Math", "palette:step:2", "palette:step:3"], Tags(palette));
+            Assert.Equal("Math Add", palette.Preview);
+
+            palette.Rows.First().RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Avalonia.Controls.Button.ClickEvent));
+
+            Assert.Equal(0, palette.SelectedIndex);
+            Assert.True(palette.IsOpen);
+        });
+    }
+
+    [Fact]
+    public void Shift_enter_adds_the_step_and_wires_it_from_the_selected_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open();
+            canvas.Select([3]);
+            canvas.OpenPalette(Empty, null);
+            canvas.Palette.SearchBox.Text = "branch";
+
+            Key(canvas.Palette.SearchBox, Avalonia.Input.Key.Enter, KeyModifiers.Shift);
+
+            Assert.False(canvas.Palette.IsOpen);
+            Assert.Equal(["AddStep 4 branch", $"MoveStep 4 {Where(canvas, Empty)}", "Connect 3.0 4.0"], source.Calls);
+        });
+    }
+
+    [Fact]
+    public void Enter_adds_the_step_without_a_wire_even_with_a_step_selected()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, canvas) = Open();
+            canvas.Select([3]);
+            canvas.OpenPalette(Empty, null);
+            canvas.Palette.SearchBox.Text = "branch";
+
+            Key(canvas.Palette.SearchBox, Avalonia.Input.Key.Enter);
+
+            Assert.Equal(["AddStep 4 branch", $"MoveStep 4 {Where(canvas, Empty)}"], source.Calls);
         });
     }
 
