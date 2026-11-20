@@ -32,7 +32,7 @@ internal sealed class FrameView
     static readonly IBrush s_bar = new ImmutableSolidColorBrush(Color.Parse("#70505a6a"));
     static readonly IPen s_border = new Pen(new ImmutableSolidColorBrush(Color.Parse("#6a7686")), 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
-    static readonly Typeface s_face = new(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold);
+    static readonly Typeface s_face = new(EditorTheme.Font, FontStyle.Normal, FontWeight.SemiBold);
 
     FormattedText? _title;
 

@@ -79,8 +79,8 @@ internal sealed class StepView
     static readonly IPen s_border = new Pen(EditorBrushes.LineStrong, 1).ToImmutable();
     static readonly IPen s_selected = new Pen(EditorBrushes.Accent, 2).ToImmutable();
     static readonly IPen s_broken = new Pen(s_problem, 2).ToImmutable();
-    static readonly Typeface s_face = new(FontFamily.Default);
-    static readonly Typeface s_bold = new(FontFamily.Default, FontStyle.Normal, FontWeight.SemiBold);
+    static readonly Typeface s_face = new(EditorTheme.Font);
+    static readonly Typeface s_bold = new(EditorTheme.Font, FontStyle.Normal, FontWeight.SemiBold);
     // The canvas tints a header from the left and fades it out. The category picks one of its five step tints.
     static readonly IBrush[] s_categories = [.. new[] { EditorColors.Accent, Color.Parse("#8DB8FF"), Color.Parse("#7FD4C1"), Color.Parse("#C792EA"), EditorColors.TextSoft }.Select(HeaderFill)];
 

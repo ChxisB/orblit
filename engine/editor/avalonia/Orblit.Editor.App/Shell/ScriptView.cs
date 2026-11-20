@@ -26,21 +26,19 @@ internal interface IScriptFiles
 /// </summary>
 internal sealed class ScriptView : Border
 {
-    static readonly FontFamily s_mono = new("Menlo, Consolas, DejaVu Sans Mono");
-
     // shortcut: one text box holds the whole file, so a file of many thousands of lines types slowly. Use a virtualized editor then.
     readonly TextBox _editor = new()
     {
         AcceptsReturn = true,
         AcceptsTab = true,
         TextWrapping = TextWrapping.NoWrap,
-        FontFamily = s_mono,
+        FontFamily = EditorTheme.Mono,
         Padding = new Thickness(0),
         BorderThickness = new Thickness(0),
         Background = null,
     };
 
-    readonly TextBlock _gutter = new() { FontFamily = s_mono, TextAlignment = TextAlignment.Right, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0) };
+    readonly TextBlock _gutter = new() { FontFamily = EditorTheme.Mono, TextAlignment = TextAlignment.Right, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0) };
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Width = 240 };
     readonly TextBlock _name = new() { Text = "Pick a script.", FontWeight = FontWeight.Bold, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };

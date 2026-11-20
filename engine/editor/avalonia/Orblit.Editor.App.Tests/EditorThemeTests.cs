@@ -1,8 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Platform;
 using Avalonia.VisualTree;
 using Avalonia.Styling;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -65,6 +67,40 @@ public sealed class EditorThemeTests
             Assert.Equal(EditorTheme.Font, font);
             Assert.Equal(13.0, size);
             Assert.Equal(new CornerRadius(6), corners);
+        });
+    }
+
+    [Theory]
+    [InlineData("Geist-Regular.ttf")]
+    [InlineData("Geist-Medium.ttf")]
+    [InlineData("Geist-SemiBold.ttf")]
+    [InlineData("Geist-Bold.ttf")]
+    [InlineData("GeistMono-Regular.ttf")]
+    public void The_editor_ships_the_canvas_fonts(string file)
+    {
+        UiThread.Run(() => Assert.True(AssetLoader.Exists(new Uri(EditorTheme.FontFolder + file))));
+    }
+
+    [Fact]
+    public void Words_are_set_in_Geist_and_values_in_Geist_Mono()
+    {
+        Assert.Equal("Geist", EditorTheme.Font.Name);
+        Assert.Equal("Geist Mono", EditorTheme.Mono.Name);
+        Assert.Equal(new Uri(EditorTheme.FontFolder), EditorTheme.Font.Key!.Source);
+        Assert.Equal(new Uri(EditorTheme.FontFolder), EditorTheme.Mono.Key!.Source);
+    }
+
+    [Fact]
+    public void Number_fields_script_text_and_output_lines_are_set_in_Geist_Mono()
+    {
+        UiThread.Run(() =>
+        {
+            var script = new ScriptView();
+
+            Assert.All(new VectorRow("Position").Axes, box => Assert.Equal(EditorTheme.Mono, box.FontFamily));
+            Assert.Equal(EditorTheme.Mono, script.Editor.FontFamily);
+            Assert.Equal(EditorTheme.Mono, script.Gutter.FontFamily);
+            Assert.Equal(EditorTheme.Mono, new OutputPanel().List.FontFamily);
         });
     }
 

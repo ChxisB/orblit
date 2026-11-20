@@ -169,6 +169,7 @@ internal sealed class VectorRow : StackPanel
         Padding = new Thickness(ValueIndent, 0),
         BorderThickness = new Thickness(0),
         Background = Brushes.Transparent,
+        FontFamily = EditorTheme.Mono,
         VerticalContentAlignment = VerticalAlignment.Center,
     };
 }
