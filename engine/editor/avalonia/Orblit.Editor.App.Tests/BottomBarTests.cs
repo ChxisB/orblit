@@ -43,7 +43,7 @@ public sealed class BottomBarTests
             var text = Words(bar.Tabs[0]).Single();
 
             AssertBox(293 + 6, 1241, BoxOf(bar.Tabs[0], window).Width, 26, BoxOf(bar.Tabs[0], window));
-            // A 13 pixel icon in a 26 pixel tab is half a pixel off centre. Geist's line box rounds it up.
+            // A 13 pixel icon in a 26 pixel tab is half a pixel off center. Geist's line box rounds it up.
             AssertBox(309, 1247, 13, 13, BoxOf(icon, window));
             Assert.Equal(309 + 13 + 6, BoxOf(text, window).X);
         });

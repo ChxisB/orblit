@@ -30,7 +30,7 @@ internal sealed class VariableTool : StackPanel
         Children.Add(new Border
         {
             Padding = new Thickness(14, 12),
-            Child = new StackPanel { Spacing = 10, Children = { Parts.Labelled("Name", _name), Parts.Labelled("Type", _type), Parts.Labelled("Default", _default), _shown } },
+            Child = new StackPanel { Spacing = 10, Children = { Parts.Labeled("Name", _name), Parts.Labeled("Type", _type), Parts.Labeled("Default", _default), _shown } },
         });
         Children.Add(new Border
         {

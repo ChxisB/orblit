@@ -49,9 +49,9 @@ internal sealed class CreateGraphForm : StackPanel
     public CreateGraphForm()
     {
         Spacing = 10;
-        Children.Add(Parts.Labelled("Name", _name, _fault));
-        Children.Add(Parts.Labelled("Extends", _extends));
-        Children.Add(Parts.Labelled("Folder", _folder));
+        Children.Add(Parts.Labeled("Name", _name, _fault));
+        Children.Add(Parts.Labeled("Extends", _extends));
+        Children.Add(Parts.Labeled("Folder", _folder));
         Dialog = new Dialog("New Graph Script", "A script made of steps.", this) { MainText = "Create", CardWidth = 380 };
         // TextChanged waits for a render, so the property is the one that fires at once.
         _name.PropertyChanged += (_, e) => Check(e.Property);

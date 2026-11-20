@@ -39,7 +39,7 @@ internal sealed class MetadataTool : StackPanel
         Children.Add(new Border
         {
             Padding = new Thickness(14, 12),
-            Child = new StackPanel { Spacing = 10, Children = { Parts.Labelled("Name", _name), Parts.Labelled("Type", _kind), Parts.Labelled("Value", _value, _fault) } },
+            Child = new StackPanel { Spacing = 10, Children = { Parts.Labeled("Name", _name), Parts.Labeled("Type", _kind), Parts.Labeled("Value", _value, _fault) } },
         });
         Children.Add(new Border
         {

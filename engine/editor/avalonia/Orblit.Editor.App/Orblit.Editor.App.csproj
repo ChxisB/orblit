@@ -13,7 +13,7 @@
 
   <ItemGroup>
     <AvaloniaResource Include="Assets/Fonts/*.ttf" />
-    <!-- The font licence asks for its text to travel with the font files. -->
+    <!-- The font license asks for its text to travel with the font files. -->
     <None Include="Assets/Fonts/LICENSE.Geist.txt" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 

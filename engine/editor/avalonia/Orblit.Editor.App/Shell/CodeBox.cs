@@ -10,7 +10,7 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The text area of the Script workspace: C# in its colours, line numbers in a gutter, and the caret's line lit.
+/// The text area of the Script workspace: C# in its colors, line numbers in a gutter, and the caret's line lit.
 /// The text box draws its text clear. A copy in colour lies over it and takes no clicks, so the caret and the
 /// selection stay the text box's own.
 /// </summary>
@@ -40,7 +40,7 @@ internal sealed class CodeBox : Border
         EditorBrushes.CodeAttribute,
     ];
 
-    // shortcut: one text box holds the whole file and every edit colours it all again, so a file of many thousands
+    // shortcut: one text box holds the whole file and every edit colors it all again, so a file of many thousands
     // of lines types slowly. Use a virtualized editor then.
     readonly TextBox _editor = new()
     {
@@ -105,8 +105,8 @@ internal sealed class CodeBox : Border
 
     internal TextBlock Gutter => _gutter;
 
-    /// <summary>The coloured copy of the text that lies over the text box.</summary>
-    internal TextBlock Colours => _colours;
+    /// <summary>The colored copy of the text that lies over the text box.</summary>
+    internal TextBlock Colors => _colours;
 
     /// <summary>The band that lights the caret's line.</summary>
     internal Border CaretLine => _band;

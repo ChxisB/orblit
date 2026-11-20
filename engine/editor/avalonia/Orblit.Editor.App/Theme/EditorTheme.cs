@@ -345,7 +345,7 @@ internal sealed class EditorTheme : Styles
     ];
 
     // The base theme paints a hovered or pressed button on its template part from its own resources, which would
-    // turn the accent grey. So each kind lights its own fill and keeps its edge and text.
+    // turn the accent gray. So each kind lights its own fill and keeps its edge and text.
     static IEnumerable<Style> ButtonStyles()
     {
         yield return new Style(x => x.OfType<Button>().Class(TextButton))
@@ -447,7 +447,7 @@ internal sealed class EditorTheme : Styles
     // A 3 pixel ring with no blur, as the design draws round a field.
     static BoxShadows Ring(Color color) => new(new BoxShadow { Spread = 3, Color = color });
 
-    // The design's field. The ring sits on the template's border, which the base theme colours by state, so the
+    // The design's field. The ring sits on the template's border, which the base theme colors by state, so the
     // fault comes after focus and wins while both hold.
     static IEnumerable<Style> FieldStyles()
     {

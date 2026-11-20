@@ -40,7 +40,7 @@ scene. It runs on macOS. Nothing else has run it.
   right.
 - The workspace tabs are 2D, 3D, Script, Graph, Game and Asset Store. 2D
   pans, zooms, picks and moves an `Entity2D`, with rulers and a zoom pill.
-  Script edits a project `.cs` file with syntax colours and an outline. Graph
+  Script edits a project `.cs` file with syntax colors and an outline. Graph
   edits a `.ograph` graph script. Game runs the project and shows whether it
   runs. Asset Store lists the kits in the store index when Reload is pressed.
 - With no `--project` a launcher opens. It lists recent projects, opens a
@@ -75,7 +75,7 @@ scene. It runs on macOS. Nothing else has run it.
 The look is Ember Graphite, decision 280. Each panel is an island on a
 near-black window. One ember accent marks the choice and the focus.
 
-- `Orblit.Editor.App/Theme/EditorColors.cs` holds the shell's colours.
+- `Orblit.Editor.App/Theme/EditorColors.cs` holds the shell's colors.
   `EditorBrushes.cs` beside it makes the brushes. The graph keeps its pin
   and step tints in `Orblit.Editor.App/Graph`.
 - `EditorTheme.cs` holds the sizes and corners, and the styles that dress the

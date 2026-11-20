@@ -17,7 +17,7 @@ internal enum CodeKind
 internal readonly record struct CodeSpan(int Start, int Length, CodeKind Kind);
 
 /// <summary>
-/// Splits C# text into stretches to colour. It reads words and their neighbours, not the grammar. A type is a
+/// Splits C# text into stretches to colour. It reads words and their neighbors, not the grammar. A type is a
 /// capital word in a place a type stands, and a word before a bracket is a function.
 /// </summary>
 internal static class CodeColours
@@ -41,7 +41,7 @@ internal static class CodeColours
 
     public static bool IsKeyword(string word) => s_keywords.Contains(word);
 
-    /// <summary>The stretches of the text in order, with no gaps. Neighbours of one kind are joined.</summary>
+    /// <summary>The stretches of the text in order, with no gaps. Neighbors of one kind are joined.</summary>
     public static List<CodeSpan> Read(string text)
     {
         var spans = new List<CodeSpan>();

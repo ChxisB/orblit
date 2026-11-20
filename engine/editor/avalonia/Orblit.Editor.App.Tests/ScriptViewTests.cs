@@ -362,15 +362,15 @@ public sealed class ScriptViewTests
         UiThread.Run(() =>
         {
             var view = OpenPlayer();
-            var runs = view.Code.Colours.Inlines!.OfType<Run>().ToList();
+            var runs = view.Code.Colors.Inlines!.OfType<Run>().ToList();
             var text = view.Editor.GetVisualDescendants().OfType<TextPresenter>().Single();
 
             Assert.Equal(CodeColoursTests.Player, string.Concat(runs.Select(run => run.Text)));
             Assert.Same(EditorBrushes.CodeKeyword, runs.First(run => run.Text == "public").Foreground);
             Assert.Same(EditorBrushes.CodeString, runs.Single(run => run.Text == "\"jump\"").Foreground);
-            Assert.Equal(BoxOf(text, view).TopLeft, BoxOf(view.Code.Colours, view).TopLeft);
-            Assert.Equal(text.Bounds.Height, view.Code.Colours.Bounds.Height, 0.5);
-            Assert.Equal(view.Code.Colours.Bounds.Height, view.Gutter.Bounds.Height, 0.5);
+            Assert.Equal(BoxOf(text, view).TopLeft, BoxOf(view.Code.Colors, view).TopLeft);
+            Assert.Equal(text.Bounds.Height, view.Code.Colors.Bounds.Height, 0.5);
+            Assert.Equal(view.Code.Colors.Bounds.Height, view.Gutter.Bounds.Height, 0.5);
         });
     }
 

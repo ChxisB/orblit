@@ -72,7 +72,7 @@ internal static class EditorColors
     // Text on an accent fill. White on the orange reads too thin.
     public static readonly Color OnAccent = Color.Parse("#1B0F06");
 
-    // A key cap on an accent button. A grey cap would dull the orange, so this darkens what is under it.
+    // A key cap on an accent button. A gray cap would dull the orange, so this darkens what is under it.
     public static readonly Color Shade = Color.Parse("#1F000000");
 
     // The shade over the editor behind a dialog. The design draws none, so this one is ours.
@@ -100,7 +100,7 @@ internal static class EditorColors
     public static readonly Color Code = Color.Parse("#0E1116");
     public static readonly Color CodeLine = Color.Parse("#08FFFFFF");
 
-    // The colours of C# text. A type shares the graph mark's teal and a function the script mark's blue.
+    // The colors of C# text. A type shares the graph mark's teal and a function the script mark's blue.
     public static readonly Color CodeKeyword = Color.Parse("#FF9E64");
     public static readonly Color CodeType = GraphIcon;
     public static readonly Color CodeString = Color.Parse("#B5D67A");
