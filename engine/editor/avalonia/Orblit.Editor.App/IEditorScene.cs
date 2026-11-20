@@ -141,7 +141,7 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>Adds the scene file under the entity as a reference and not a copy, and returns the new entity.</summary>
     nint Instance(nint parent, string resourcePath);
 
-    /// <summary>When the scene file was last written, in UTC.</summary>
+    /// <summary>When the project file was last written, in UTC.</summary>
     DateTime ModifiedOf(string resourcePath);
 
     /// <summary>The entity's metadata in the order the engine lists it. A name that starts with an underscore is the engine's and is left out.</summary>

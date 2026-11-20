@@ -23,7 +23,7 @@ public sealed class FileTreeTests
     [Fact]
     public void Newest_first_orders_the_files_of_each_folder_and_keeps_folders_first()
     {
-        var project = FileTree.Build(Dated, FileTree.Newest(Times))[1];
+        var project = FileTree.Build(Dated, FileTree.Newest(Times)).Single();
 
         Assert.Equal(["levels", "b.oscn", "c.oscn", "a.oscn"], Names(project.Children));
         Assert.Equal(["y.oscn", "x.oscn"], Names(project.Children[0].Children));
@@ -32,9 +32,9 @@ public sealed class FileTreeTests
     [Fact]
     public void Newest_first_orders_a_flat_match_list_across_folders()
     {
-        var project = FileTree.Matches(Dated, "oscn", FileTree.Newest(Times))[1];
+        var files = FileTree.Matches(Dated, "oscn", FileTree.Newest(Times));
 
-        Assert.Equal(["b.oscn", "c.oscn", "levels/y.oscn", "a.oscn", "levels/x.oscn"], Names(project.Children));
+        Assert.Equal(["b.oscn", "c.oscn", "levels/y.oscn", "a.oscn", "levels/x.oscn"], Names(files));
     }
 
     [Fact]
@@ -42,26 +42,42 @@ public sealed class FileTreeTests
     {
         var times = new Dictionary<string, DateTime> { ["res://b.oscn"] = Day(3) };
 
-        var project = FileTree.Build(["res://a.oscn", "res://b.oscn", "res://c.oscn"], FileTree.Newest(times))[1];
+        var project = FileTree.Build(["res://a.oscn", "res://b.oscn", "res://c.oscn"], FileTree.Newest(times)).Single();
 
         Assert.Equal(["b.oscn", "a.oscn", "c.oscn"], Names(project.Children));
     }
 
     [Fact]
-    public void The_tree_is_the_favorites_row_over_the_project_folder()
+    public void The_tree_is_the_project_folder()
     {
-        var roots = FileTree.Build(Scenes);
+        var project = FileTree.Build(Scenes).Single();
 
-        Assert.Equal([FileKind.Favorites, FileKind.Folder], roots.Select(node => node.Kind));
-        Assert.Equal(["Favorites", "res://"], Names(roots));
-        Assert.Empty(roots[0].Children);
-        Assert.Equal("res://", roots[1].Path);
+        Assert.Equal(FileKind.Folder, project.Kind);
+        Assert.Equal("res://", project.Name);
+        Assert.Equal("res://", project.Path);
+    }
+
+    [Fact]
+    public void A_file_takes_its_kind_from_its_extension()
+    {
+        var project = FileTree.Build(["res://main.oscn", "res://spin.cs", "res://brain.ograph"]).Single();
+
+        Assert.Equal([FileKind.Graph, FileKind.Scene, FileKind.Script], project.Children.Select(node => node.Kind));
+    }
+
+    [Fact]
+    public void A_path_listed_twice_is_one_row()
+    {
+        var project = FileTree.Build(["res://enemies/", "res://enemies/", "res://enemies/slime.cs"]).Single();
+
+        Assert.Equal(["enemies"], Names(project.Children));
+        Assert.Equal(["slime.cs"], Names(project.Children[0].Children));
     }
 
     [Fact]
     public void Folders_come_before_files_and_each_group_is_in_name_order()
     {
-        var project = FileTree.Build(Scenes)[1];
+        var project = FileTree.Build(Scenes).Single();
 
         Assert.Equal(["levels", "Zoo", "main.oscn", "Zed.oscn"], Names(project.Children));
         Assert.Equal([FileKind.Folder, FileKind.Folder, FileKind.Scene, FileKind.Scene], project.Children.Select(node => node.Kind));
@@ -70,7 +86,7 @@ public sealed class FileTreeTests
     [Fact]
     public void A_folder_with_no_scene_still_has_a_row_with_nothing_under_it()
     {
-        var project = FileTree.Build(["res://scripts/", "res://main.oscn"])[1];
+        var project = FileTree.Build(["res://scripts/", "res://main.oscn"]).Single();
 
         Assert.Equal(["scripts", "main.oscn"], Names(project.Children));
         Assert.Equal(FileKind.Folder, project.Children[0].Kind);
@@ -80,15 +96,15 @@ public sealed class FileTreeTests
     [Fact]
     public void A_filter_matches_scenes_and_never_a_folder()
     {
-        var roots = FileTree.Matches(["res://scripts/", "res://scripts/run.oscn"], "script");
+        var files = FileTree.Matches(["res://scripts/", "res://scripts/run.oscn"], "script");
 
-        Assert.Equal(["scripts/run.oscn"], Names(roots[1].Children));
+        Assert.Equal(["scripts/run.oscn"], Names(files));
     }
 
     [Fact]
     public void A_folder_holds_its_scenes_and_its_own_folders()
     {
-        var levels = FileTree.Build(Scenes)[1].Children[0];
+        var levels = FileTree.Build(Scenes).Single().Children[0];
 
         Assert.Equal("res://levels/", levels.Path);
         Assert.Equal(["deep", "a.oscn", "b.oscn"], Names(levels.Children));
@@ -98,7 +114,7 @@ public sealed class FileTreeTests
     [Fact]
     public void A_scene_row_carries_the_path_to_open()
     {
-        var main = FileTree.Build(Scenes)[1].Children.Single(node => node.Name == "main.oscn");
+        var main = FileTree.Build(Scenes).Single().Children.Single(node => node.Name == "main.oscn");
 
         Assert.Equal("res://main.oscn", main.Path);
         Assert.Empty(main.Children);
@@ -107,7 +123,7 @@ public sealed class FileTreeTests
     [Fact]
     public void No_scenes_leave_an_empty_project_folder()
     {
-        var project = FileTree.Build([])[1];
+        var project = FileTree.Build([]).Single();
 
         Assert.Empty(project.Children);
     }
@@ -115,7 +131,7 @@ public sealed class FileTreeTests
     [Fact]
     public void A_path_outside_res_is_not_a_project_file()
     {
-        var project = FileTree.Build(["user://save.oscn", "res://ok.oscn"])[1];
+        var project = FileTree.Build(["user://save.oscn", "res://ok.oscn"]).Single();
 
         Assert.Equal(["ok.oscn"], Names(project.Children));
     }
@@ -123,27 +139,24 @@ public sealed class FileTreeTests
     [Fact]
     public void Matches_lists_the_scenes_with_the_text_in_their_path_without_folders()
     {
-        var roots = FileTree.Matches(Scenes, "LEVELS/");
+        var files = FileTree.Matches(Scenes, "LEVELS/");
 
-        Assert.Equal(["Favorites", "res://"], Names(roots));
-        Assert.Equal(["levels/a.oscn", "levels/b.oscn", "levels/deep/c.oscn"], Names(roots[1].Children));
-        Assert.All(roots[1].Children, node => Assert.Equal(FileKind.Scene, node.Kind));
-        Assert.Equal("res://levels/a.oscn", roots[1].Children[0].Path);
+        Assert.Equal(["levels/a.oscn", "levels/b.oscn", "levels/deep/c.oscn"], Names(files));
+        Assert.All(files, node => Assert.Equal(FileKind.Scene, node.Kind));
+        Assert.Equal("res://levels/a.oscn", files[0].Path);
     }
 
     [Fact]
     public void Matches_are_in_name_order_ignoring_case()
     {
-        var roots = FileTree.Matches(Scenes, "oscn");
+        var files = FileTree.Matches(Scenes, "oscn");
 
-        Assert.Equal(["levels/a.oscn", "levels/b.oscn", "levels/deep/c.oscn", "main.oscn", "Zed.oscn", "Zoo/z.oscn"], Names(roots[1].Children));
+        Assert.Equal(["levels/a.oscn", "levels/b.oscn", "levels/deep/c.oscn", "main.oscn", "Zed.oscn", "Zoo/z.oscn"], Names(files));
     }
 
     [Fact]
-    public void Matches_with_nothing_found_leaves_the_two_rows()
+    public void Matches_with_nothing_found_is_an_empty_list()
     {
-        var roots = FileTree.Matches(Scenes, "zzz");
-
-        Assert.Empty(roots[1].Children);
+        Assert.Empty(FileTree.Matches(Scenes, "zzz"));
     }
 }

@@ -10,7 +10,8 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// A dock: an island with a strip of tabs over a body that shows the chosen tab's content. The menu at the end of the
-/// strip offers every slot but the one the dock sits in. The window moves the dock, so the menu only asks.
+/// strip maps where the dock sits, shows and hides its tabs, and offers every other slot. The window moves the dock,
+/// so the menu only asks.
 /// </summary>
 internal sealed class DockTabs : Border
 {
@@ -26,6 +27,7 @@ internal sealed class DockTabs : Border
     readonly Control[] _contents;
     readonly Border _body = new();
     readonly MenuItem[] _moves;
+    readonly Border[] _map;
     DockSlot _slot;
 
     public DockTabs(params (string Title, Control Content)[] tabs)
@@ -39,11 +41,10 @@ internal sealed class DockTabs : Border
         headers.Children.AddRange(_tabs);
         var strip = new DockPanel();
         _moves = [.. Enum.GetValues<DockSlot>().Select(slot => MoveItem(slot))];
-        var menu = Parts.IconButton("GuiTabMenuHl", "Dock options");
-        // Under the button and right aligned, so the menu never covers the tabs.
-        menu.Flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight, Items = { _moves[0], _moves[1], _moves[2] } };
-        DockPanel.SetDock(menu, Dock.Right);
-        strip.Children.Add(menu);
+        _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
+        MenuButton.Flyout = Options();
+        DockPanel.SetDock(MenuButton, Dock.Right);
+        strip.Children.Add(MenuButton);
         strip.Children.Add(headers);
         var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6), Child = strip };
         Grid.SetRow(_body, 1);
@@ -55,10 +56,15 @@ internal sealed class DockTabs : Border
     /// <summary>Raised with the slot the user chose in the dock menu. The dock has not moved.</summary>
     public event Action<DockSlot>? MoveRequested;
 
+    /// <summary>Raised when the user asks for every dock back in its first slot.</summary>
+    public event Action? ResetRequested;
+
+    internal Button MenuButton { get; } = Parts.IconButton("GuiTabMenuHl", "Dock options");
+
     /// <summary>The title of the first tab, which names the dock.</summary>
     internal string Title { get; }
 
-    /// <summary>The slot the dock sits in, which the menu leaves out as a choice.</summary>
+    /// <summary>The slot the dock sits in, which the map lights and the menu leaves out as a choice.</summary>
     internal DockSlot Slot
     {
         get => _slot;
@@ -67,12 +73,18 @@ internal sealed class DockTabs : Border
             _slot = value;
             for (var i = 0; i < _moves.Length; i++)
             {
-                _moves[i].IsEnabled = (DockSlot)i != value;
+                _moves[i].IsVisible = (DockSlot)i != value;
+                // The design draws the free slots in the tone of a lit guide.
+                _map[i].Background = (DockSlot)i == value ? EditorBrushes.Accent : EditorBrushes.GuideLit;
             }
         }
     }
 
+    /// <summary>The move item of each slot, by slot.</summary>
     internal IReadOnlyList<MenuItem> MoveItems => _moves;
+
+    /// <summary>The cell of each slot on the map in the menu, by slot.</summary>
+    internal IReadOnlyList<Border> MapCells => _map;
 
     internal int SelectedIndex { get; private set; }
 
@@ -108,15 +120,75 @@ internal sealed class DockTabs : Border
         }
     }
 
+    /// <summary>Shows every tab, and the dock with them.</summary>
+    internal void ShowAllTabs()
+    {
+        foreach (var tab in _tabs)
+        {
+            tab.IsVisible = true;
+        }
+
+        IsVisible = true;
+    }
+
     /// <summary>Whether the tab with this title shows, now and after each change.</summary>
     internal IObservable<bool> Shown(string title) => _tabs[Array.IndexOf(_titles, title)].GetObservable(IsVisibleProperty);
 
     /// <summary>The titles of the tabs, in order.</summary>
     internal IReadOnlyList<string> Titles => _titles;
 
+    // Under the button and right aligned, so the menu never covers the tabs.
+    MenuFlyout Options()
+    {
+        var flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
+        flyout.Items.Add(Parts.MenuHeading($"{Title} dock sits at"));
+        flyout.Items.Add(new MenuItem { IsEnabled = false, MinHeight = 0, Header = Map() });
+        flyout.Items.Add(Parts.MenuHeading("Show tabs"));
+        foreach (var title in _titles)
+        {
+            var item = Parts.ActionItem(title, () => ToggleTab(title));
+            item.ToggleType = MenuItemToggleType.CheckBox;
+            item.Bind(MenuItem.IsCheckedProperty, Shown(title));
+            flyout.Items.Add(item);
+        }
+
+        flyout.Items.Add(new Separator());
+        foreach (var move in _moves)
+        {
+            flyout.Items.Add(move);
+        }
+
+        flyout.Items.Add(Parts.SoonItem("Float", MenuButton));
+        flyout.Items.Add(new Separator());
+        flyout.Items.Add(Parts.ActionItem("Reset Layout", () => ResetRequested?.Invoke()));
+        return flyout;
+    }
+
+    // The window as three slots round the viewport: the left column over and under, the viewport, and the right.
+    Grid Map()
+    {
+        var viewport = new Border { CornerRadius = new CornerRadius(3), Background = EditorBrushes.Lifted, Margin = new Thickness(3, 0) };
+        Grid.SetColumn(viewport, 1);
+        Grid.SetRowSpan(viewport, 2);
+        _map[(int)DockSlot.UpperLeft].Margin = new Thickness(0, 0, 0, 1.5);
+        _map[(int)DockSlot.LowerLeft].Margin = new Thickness(0, 1.5, 0, 0);
+        Grid.SetRow(_map[(int)DockSlot.LowerLeft], 1);
+        Grid.SetColumn(_map[(int)DockSlot.Right], 2);
+        Grid.SetRowSpan(_map[(int)DockSlot.Right], 2);
+        return new Grid
+        {
+            Width = 118,
+            Height = 62,
+            Margin = new Thickness(0, 2, 0, 6),
+            ColumnDefinitions = new ColumnDefinitions("34,*,40"),
+            RowDefinitions = new RowDefinitions("*,*"),
+            Children = { _map[0], _map[1], viewport, _map[2] },
+        };
+    }
+
     MenuItem MoveItem(DockSlot slot)
     {
-        var item = new MenuItem { Header = $"Move to {slot.Label()}" };
+        var item = new MenuItem { Header = $"Move to the {slot.Label()}" };
         item.Click += (_, _) => MoveRequested?.Invoke(slot);
         return item;
     }

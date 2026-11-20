@@ -53,14 +53,14 @@ internal sealed class ScenePane : Grid
         {
             ItemsSource = new[]
             {
-                PressItem("Add Child Entity...", tools.AddButton, new KeyGesture(Key.A, command)),
-                PressItem("Instance Scene...", instance.OpenButton, new KeyGesture(Key.A, command | KeyModifiers.Shift)),
-                PressItem("Duplicate", tools.DuplicateButton, new KeyGesture(Key.D, command)),
-                PressItem("Rename...", tools.RenameButton, new KeyGesture(Key.F2)),
-                PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
-                PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
-                PressItem("Move Under...", move.MoveUnderButton),
-                PressItem("Remove", tools.RemoveButton, new KeyGesture(Key.Back)),
+                Parts.PressItem("Add Child Entity...", tools.AddButton, new KeyGesture(Key.A, command)),
+                Parts.PressItem("Instance Scene...", instance.OpenButton, new KeyGesture(Key.A, command | KeyModifiers.Shift)),
+                Parts.PressItem("Duplicate", tools.DuplicateButton, new KeyGesture(Key.D, command)),
+                Parts.PressItem("Rename...", tools.RenameButton, new KeyGesture(Key.F2)),
+                Parts.PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
+                Parts.PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
+                Parts.PressItem("Move Under...", move.MoveUnderButton),
+                Parts.PressItem("Remove", tools.RemoveButton, new KeyGesture(Key.Back)),
             },
         };
         _outline.Styles.Add(new Style(x => x.OfType<TreeViewItem>())
@@ -167,9 +167,6 @@ internal sealed class ScenePane : Grid
 
     MenuFlyout Options(MoveTools move, KeyModifiers command)
     {
-        var parent = new MenuItem { Header = "Add a New Parent..." };
-        parent.Click += (_, _) => _menu.RaiseEvent(new UnbuiltEventArgs("Add a New Parent is not built yet."));
-        EditorTheme.MarkSoon(parent);
         // The pane keeps the flag, so the tick is right whether or not the item flips itself before this runs.
         _classNames.Click += (_, _) =>
         {
@@ -182,15 +179,15 @@ internal sealed class ScenePane : Grid
             Placement = PlacementMode.BottomEdgeAlignedRight,
             Items =
             {
-                Heading("Order"),
-                PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
-                PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
-                PressItem("Move Under...", move.MoveUnderButton),
-                parent,
+                Parts.MenuHeading("Order"),
+                Parts.PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
+                Parts.PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
+                Parts.PressItem("Move Under...", move.MoveUnderButton),
+                Parts.SoonItem("Add a New Parent...", _menu),
                 new Separator(),
-                Heading("Tree"),
-                ActionItem("Expand All", () => SetExpanded(true)),
-                ActionItem("Collapse All", () => SetExpanded(false)),
+                Parts.MenuHeading("Tree"),
+                Parts.ActionItem("Expand All", () => SetExpanded(true)),
+                Parts.ActionItem("Collapse All", () => SetExpanded(false)),
                 _classNames,
             },
         };
@@ -210,31 +207,6 @@ internal sealed class ScenePane : Grid
                 item.IsExpanded = false;
             }
         }
-    }
-
-    // A heading names a group of the menu. It is off, so it takes no hover and no click.
-    static MenuItem Heading(string group) => new()
-    {
-        IsEnabled = false,
-        MinHeight = 0,
-        Header = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.Unit },
-    };
-
-    static MenuItem ActionItem(string header, Action run)
-    {
-        var item = new MenuItem { Header = header };
-        item.Click += (_, _) => run();
-        return item;
-    }
-
-    // An item presses the button it stands for, so the menus and a key run the same code. The item is on while
-    // the button is on.
-    static MenuItem PressItem(string header, Button button, KeyGesture? key = null)
-    {
-        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)));
-        item.InputGesture = key;
-        item.Bind(IsEnabledProperty, button.GetObservable(IsEnabledProperty));
-        return item;
     }
 
     static void Place(Grid grid, Control child, int column)

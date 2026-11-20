@@ -36,7 +36,7 @@ internal sealed class EditorWindow : Window
     readonly InstanceTool _instanceScene = new();
     readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
     readonly Dialog _saveChanges;
-    readonly ScenesPanel _scenes = new();
+    readonly ScenesPanel _scenes;
     readonly TextBlock _status = new() { Text = "Starting the engine." };
     readonly TimeProvider _time;
     readonly ToastStack _toasts;
@@ -67,6 +67,7 @@ internal sealed class EditorWindow : Window
     readonly GraphView _graph = new();
     readonly GameView _game = new();
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
+    readonly Dictionary<DockTabs, DockSlot> _homes = [];
     IEditorScene? _scene;
     OutlineNode? _root;
     bool _edited;
@@ -96,6 +97,7 @@ internal sealed class EditorWindow : Window
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaTitleBarHeightHint = TitleBar.BarHeight;
         _scenePane = new ScenePane(_tools, _move, _instanceScene, CommandKey);
+        _scenes = new ScenesPanel(CommandKey);
         _scenePane.SelectionChanged += ShowSelection;
         _scenePane.EyeClicked += ToggleEye;
         _tools.Changed += Edited;
@@ -111,7 +113,12 @@ internal sealed class EditorWindow : Window
             _status.Text = "Edited. Save keeps the change.";
         };
         _inspector.Failed += message => _status.Text = message;
-        _scenes.Chosen += Open;
+        _scenes.Chosen += OpenFile;
+        _scenes.NewGraphRequested += () =>
+        {
+            _titleBar.Choose(TitleBar.Graph);
+            _graph.ShowCreate();
+        };
         WireSceneFiles();
         _playButton.IsEnabled = false;
         _stopButton.IsEnabled = false;
@@ -122,10 +129,10 @@ internal sealed class EditorWindow : Window
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
-        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", new Panel())) { Slot = DockSlot.UpperLeft };
-        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", new Panel())) { Slot = DockSlot.LowerLeft };
+        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports."))) { Slot = DockSlot.UpperLeft };
+        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", Parts.EmptyState("Clock", "Nothing to undo yet", "Undo is not built yet. Its steps will be listed here."))) { Slot = DockSlot.LowerLeft };
         _inspectorPane = new InspectorPane(_inspector);
-        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", new Panel())) { Slot = DockSlot.Right };
+        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", Parts.EmptyState("Pulse", "Signals are not built yet", "The signals of the selected entity and where they go will show here."))) { Slot = DockSlot.Right };
         WireDocks();
         _toolbar = new ViewportToolbar(_frame);
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
@@ -541,14 +548,34 @@ internal sealed class EditorWindow : Window
         }
     }
 
-    // The docks sit in three slots. A dock sent to a slot trades places with the dock that sits there.
+    // The docks sit in three slots. A dock sent to a slot trades places with the dock that sits there. The slot each
+    // starts in is its home, where Reset Layout puts it back.
     void WireDocks()
     {
         foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
         {
             _slots[dock.Slot].Child = dock;
+            _homes[dock] = dock.Slot;
             dock.MoveRequested += to => MoveDock(dock, to);
+            dock.ResetRequested += ResetLayout;
         }
+    }
+
+    void ResetLayout()
+    {
+        foreach (var slot in _slots.Values)
+        {
+            slot.Child = null;
+        }
+
+        foreach (var (dock, home) in _homes)
+        {
+            _slots[home].Child = dock;
+            dock.Slot = home;
+            dock.ShowAllTabs();
+        }
+
+        _status.Text = "Reset the layout. Every dock is back in its place with all its tabs.";
     }
 
     void MoveDock(DockTabs dock, DockSlot to)
@@ -561,7 +588,7 @@ internal sealed class EditorWindow : Window
         _slots[from].Child = other;
         dock.Slot = to;
         other.Slot = from;
-        _status.Text = $"Moved {dock.Title} to the {to.Label().ToLowerInvariant()} slot. The layout is not saved.";
+        _status.Text = $"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.";
     }
 
     // The Transform menu changes the selected entity's place, the Mesh menu gives a mesh a collision shape, and the
@@ -774,8 +801,27 @@ internal sealed class EditorWindow : Window
     // shortcut: one file stat per scene on each refresh. Read the times only for a newest first sort when a project has thousands.
     void ShowScenes()
     {
-        var scenes = _scene!.Scenes();
-        _scenes.Show(scenes, scenes.Where(path => !path.EndsWith('/')).ToDictionary(path => path, _scene.ModifiedOf));
+        IReadOnlyList<string> files = [.. _scene!.Scenes(), .. _scene.Scripts(), .. _scene.GraphScripts()];
+        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, _scene.ModifiedOf));
+    }
+
+    // A script opens in its workspace. It is opened before the workspace shows, so the workspace's list shows it chosen.
+    void OpenFile(string resourcePath)
+    {
+        switch (FileTree.KindOf(resourcePath))
+        {
+            case FileKind.Script:
+                _script.Choose(resourcePath);
+                _titleBar.Choose(TitleBar.Script);
+                break;
+            case FileKind.Graph:
+                _graph.Open(resourcePath);
+                _titleBar.Choose(TitleBar.Graph);
+                break;
+            default:
+                Open(resourcePath);
+                break;
+        }
     }
 
     string OpenedStatus() => _root is null ? "No scene is open." : $"Opened {_root.Name}.";

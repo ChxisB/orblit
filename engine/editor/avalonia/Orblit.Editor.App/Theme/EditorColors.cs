@@ -61,6 +61,10 @@ internal static class EditorColors
     // A scene file where a list mixes it with other rows, such as the command palette.
     public static readonly Color SceneIcon = Color.Parse("#F0A365");
 
+    // A C# script and a graph script where a list mixes them with scenes, such as the FileSystem dock.
+    public static readonly Color ScriptIcon = Color.Parse("#8DB8FF");
+    public static readonly Color GraphIcon = Color.Parse("#7FD4C1");
+
     // Text on an accent fill. White on the orange reads too thin.
     public static readonly Color OnAccent = Color.Parse("#1B0F06");
 

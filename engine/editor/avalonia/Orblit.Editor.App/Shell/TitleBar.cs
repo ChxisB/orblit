@@ -180,23 +180,14 @@ internal sealed class TitleBar : Grid
             Items =
             {
                 project,
-                UnbuiltItem("Run the current scene", new KeyGesture(Key.R, command)),
-                UnbuiltItem("Run a chosen scene...", new KeyGesture(Key.R, command | KeyModifiers.Shift)),
+                Parts.SoonItem("Run the current scene", MoreButton, new KeyGesture(Key.R, command)),
+                Parts.SoonItem("Run a chosen scene...", MoreButton, new KeyGesture(Key.R, command | KeyModifiers.Shift)),
                 new Separator(),
-                UnbuiltItem("Movie maker mode"),
+                Parts.SoonItem("Movie maker mode", MoreButton),
                 new Separator(),
-                UnbuiltItem("Customize Run Instances..."),
+                Parts.SoonItem("Customize Run Instances...", MoreButton),
             },
         };
-    }
-
-    // The menu shows in a popup, so the answer starts from the button, which is in the window.
-    MenuItem UnbuiltItem(string label, KeyGesture? key = null)
-    {
-        var item = new MenuItem { Header = label, InputGesture = key };
-        item.Click += (_, _) => MoreButton.RaiseEvent(new UnbuiltEventArgs($"{label.TrimEnd('.')} is not built yet."));
-        EditorTheme.MarkSoon(item);
-        return item;
     }
 
     // Drawn as a field with its key, because it opens the command palette's search.
@@ -233,7 +224,7 @@ internal sealed class TitleBar : Grid
         return tab;
     }
 
-    void Choose(string name)
+    internal void Choose(string name)
     {
         foreach (var tab in _tabs)
         {

@@ -350,7 +350,7 @@ internal sealed class GraphView : Border
     }
 
     // A script that is open already is shown again with its edits. One that is not is loaded and gets a tab.
-    void Open(string? script)
+    internal void Open(string? script)
     {
         if (script is null || script == _current?.Script || _files is null)
         {
@@ -473,7 +473,7 @@ internal sealed class GraphView : Border
         }
     }
 
-    void ShowCreate() => _form.Open(_all);
+    internal void ShowCreate() => _form.Open(_all);
 
     void Create(string path, string baseType)
     {
