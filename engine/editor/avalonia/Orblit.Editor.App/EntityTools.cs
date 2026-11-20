@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -38,7 +39,15 @@ internal sealed class EntityTools
         AddDialog.CancelButton.IsVisible = false;
         _classes.PickedChanged += () => AddDialog.MainButton.IsEnabled = _classes.Picked is not null;
         AddButton.Click += (_, _) => OpenAdd();
-        AddDialog.MainButton.Click += (_, _) => Run(Add);
+        AddDialog.MainButton.Click += (_, _) =>
+        {
+            Run(Add);
+            // The new entity has its class's name, so its row opens for a better one. Escape keeps the class name.
+            if (!AddDialog.IsVisible)
+            {
+                RenameButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            }
+        };
         DuplicateButton.Click += (_, _) => Run(Duplicate);
         RemoveButton.Click += (_, _) => Run(Remove);
         Show(null, null, null);

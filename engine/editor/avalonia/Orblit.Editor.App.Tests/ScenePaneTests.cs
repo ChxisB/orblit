@@ -255,6 +255,45 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
+    public void A_new_entity_opens_its_row_for_a_name_and_enter_keeps_it()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            window.ScenePane.Select(FakeScene.Lamp.Handle);
+            Click(window.Tools.AddButton);
+            var search = window.Tools.ClassList.SearchBox;
+            search.Text = "Marker";
+            Press(search, Key.Enter);
+
+            var box = window.ScenePane.Rows[window.ScenePane.Selected!.Handle].Editing!;
+            Assert.Equal("Marker3D", box.Text);
+            box.Text = "Spawn";
+            Press(box, Key.Enter);
+
+            Assert.Equal(["Field", "Lamp", "Spawn", "Sound"], Names(window));
+        });
+    }
+
+    [Fact]
+    public void Escape_after_an_add_keeps_the_class_name()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Click(window.Tools.AddButton);
+            window.Tools.ClassList.SearchBox.Text = "Marker";
+            Press(window.Tools.ClassList.SearchBox, Key.Enter);
+
+            var row = window.ScenePane.Rows[window.ScenePane.Selected!.Handle];
+            Press(row.Editing!, Key.Escape);
+
+            Assert.Null(row.Editing);
+            Assert.Equal("Added Marker3D.", window.Status);
+        });
+    }
+
+    [Fact]
     public void A_search_with_no_match_says_so_and_turns_the_add_button_off()
     {
         UiThread.Run(() =>
