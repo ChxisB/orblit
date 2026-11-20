@@ -119,7 +119,7 @@ public sealed class TreeGuidesTests
     }
 
     [Fact]
-    public void A_nested_parent_draws_12_pixels_further_right()
+    public void A_nested_parent_draws_16_pixels_further_right()
     {
         UiThread.Run(() =>
         {
@@ -132,8 +132,8 @@ public sealed class TreeGuidesTests
 
             var drawn = Drawn(window.Scenes.Guides, window);
 
-            Assert.Contains(drawn, line => line.Area == new Rect(30, scene.Y + 1, 2, 13) && line.Colour == Vertical);
-            Assert.Contains(drawn, line => line.Area == new Rect(31, scene.Y + 13, 18, 1) && line.Colour == Stub);
+            Assert.Contains(drawn, line => line.Area == new Rect(34, scene.Y + 1, 2, 13) && line.Colour == Vertical);
+            Assert.Contains(drawn, line => line.Area == new Rect(35, scene.Y + 13, 18, 1) && line.Colour == Stub);
         });
     }
 }

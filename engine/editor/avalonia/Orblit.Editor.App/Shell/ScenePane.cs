@@ -2,18 +2,20 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Styling;
-using Avalonia.Threading;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The body of the Scene tab: a row with the add and instance buttons, the filter box and the menu, over the
-/// entity tree. The add and menu buttons open the tool rows.
+/// The body of the Scene tab: a row with the add and instance buttons, the filter box and the Scene options
+/// menu, over the entity tree. A row's menu holds every command with its key, and F2 renames in the row.
 /// </summary>
 internal sealed class ScenePane : Grid
 {
@@ -31,28 +33,36 @@ internal sealed class ScenePane : Grid
         VerticalAlignment = VerticalAlignment.Center,
         InnerRightContent = Parts.SearchIcon(),
     };
-    readonly Button _add = Parts.IconButton("Add", "Add an entity");
-    readonly Button _instance = Parts.IconButton("Instance", "Instance a scene as a child of the selected entity");
     readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene options");
-    readonly Flyout _flyout = new();
+    readonly MenuItem _classNames = new() { Header = "Show Class Names", ToggleType = MenuItemToggleType.CheckBox };
+    readonly Dictionary<nint, OutlineRow> _rows = [];
     readonly TreeGuides _guides;
+    bool _showClassNames;
     OutlineNode? _full;
     OutlineNode? _shown;
     nint _selected;
     bool _mirroring;
 
-    public ScenePane(EntityTools tools, MoveTools move)
+    public ScenePane(EntityTools tools, MoveTools move, InstanceTool instance, KeyModifiers command)
     {
         RowDefinitions = new RowDefinitions($"{RowHeight},*");
-        _flyout.Content = new StackPanel { Children = { tools, move } };
-        // The flyout moves focus itself while it opens, so the name box takes it back on a later turn.
-        _flyout.Opened += (_, _) => Dispatcher.UIThread.Post(() => tools.NameBox.Focus(), DispatcherPriority.Background);
-        _add.Flyout = _flyout;
-        _menu.Flyout = _flyout;
-        tools.Changed += _ => _flyout.Hide();
-        move.Changed += _ => _flyout.Hide();
+        _menu.Flyout = Options(move, command);
+        tools.RenameButton.Click += (_, _) => Rename(tools);
         _outline.Margin = new Thickness(0, TreeTop, 0, 0);
-        _outline.ContextMenu = BuildMenu(tools, move);
+        _outline.ContextMenu = new ContextMenu
+        {
+            ItemsSource = new[]
+            {
+                PressItem("Add Child Entity...", tools.AddButton, new KeyGesture(Key.A, command)),
+                PressItem("Instance Scene...", instance.OpenButton, new KeyGesture(Key.A, command | KeyModifiers.Shift)),
+                PressItem("Duplicate", tools.DuplicateButton, new KeyGesture(Key.D, command)),
+                PressItem("Rename...", tools.RenameButton, new KeyGesture(Key.F2)),
+                PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
+                PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
+                PressItem("Move Under...", move.MoveUnderButton),
+                PressItem("Remove", tools.RemoveButton, new KeyGesture(Key.Back)),
+            },
+        };
         _outline.Styles.Add(new Style(x => x.OfType<TreeViewItem>())
         {
             Setters =
@@ -62,7 +72,7 @@ internal sealed class ScenePane : Grid
                 new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Stretch),
             },
         });
-        _outline.ItemTemplate = new FuncTreeDataTemplate<OutlineNode>((node, _) => new OutlineRow(node, entity => EyeClicked?.Invoke(entity)), node => node.Children);
+        _outline.ItemTemplate = new FuncTreeDataTemplate<OutlineNode>((node, _) => _rows[node.Handle] = new OutlineRow(node, entity => EyeClicked?.Invoke(entity), _filter.Text ?? "", _showClassNames), node => node.Children);
         _outline.SelectionChanged += (_, _) =>
         {
             // The tree only shows the selection. A change the pane makes to the tree must not rewrite it.
@@ -81,8 +91,8 @@ internal sealed class ScenePane : Grid
             }
         };
         var bar = new Grid { ColumnDefinitions = new ColumnDefinitions("32,32,2,*,2,32"), Margin = new Thickness(2, 0, 3, 0) };
-        Place(bar, _add, 0);
-        Place(bar, _instance, 1);
+        Place(bar, tools.AddButton, 0);
+        Place(bar, instance.OpenButton, 1);
         Place(bar, _filter, 3);
         Place(bar, _menu, 5);
         SetRow(_outline, 1);
@@ -105,13 +115,10 @@ internal sealed class ScenePane : Grid
 
     internal TextBox FilterBox => _filter;
 
-    internal Button AddButton => _add;
-
-    internal Button InstanceButton => _instance;
-
     internal Button MenuButton => _menu;
 
-    internal Flyout Flyout => _flyout;
+    /// <summary>The row of each entity the tree has drawn, by handle.</summary>
+    internal IReadOnlyDictionary<nint, OutlineRow> Rows => _rows;
 
     /// <summary>The selected entity of the whole tree, also while the filter hides its row. Null for none.</summary>
     public OutlineNode? Selected => _selected == 0 ? null : _full?.Find(_selected);
@@ -123,6 +130,7 @@ internal sealed class ScenePane : Grid
         _shown = OutlineFilter.Apply(root, _filter.Text ?? "");
         Choose(select, () =>
         {
+            _rows.Clear();
             _outline.ItemsSource = _shown is null ? Array.Empty<OutlineNode>() : new[] { _shown };
             _outline.SelectedItem = ShownSelection();
         });
@@ -148,30 +156,84 @@ internal sealed class ScenePane : Grid
         }
     }
 
-    // An item presses the button it stands for, so the menu, the tool row and a shortcut run the same code. Add
-    // and Rename need a name, so they open the tool row. Reparenting stays in the tool row.
-    ContextMenu BuildMenu(EntityTools tools, MoveTools move) => new()
+    // The selected row edits its name in place. A row the filter hides cannot.
+    void Rename(EntityTools tools)
     {
-        ItemsSource = new[]
+        if (_rows.TryGetValue(_selected, out var row))
         {
-            Item("Add Child Entity...", tools.AddButton, () => _flyout.ShowAt(_add)),
-            PressItem("Duplicate", tools.DuplicateButton),
-            Item("Rename...", tools.RenameButton, () => _flyout.ShowAt(_add)),
-            PressItem("Move Up", move.UpButton),
-            PressItem("Move Down", move.DownButton),
-            PressItem("Remove", tools.RemoveButton),
-        },
+            row.Rename(tools.Rename);
+        }
+    }
+
+    MenuFlyout Options(MoveTools move, KeyModifiers command)
+    {
+        var parent = new MenuItem { Header = "Add a New Parent..." };
+        parent.Click += (_, _) => _menu.RaiseEvent(new UnbuiltEventArgs("Add a New Parent is not built yet."));
+        EditorTheme.MarkSoon(parent);
+        // The pane keeps the flag, so the tick is right whether or not the item flips itself before this runs.
+        _classNames.Click += (_, _) =>
+        {
+            _showClassNames = !_showClassNames;
+            _classNames.IsChecked = _showClassNames;
+            Show(_full, _selected);
+        };
+        return new MenuFlyout
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            Items =
+            {
+                Heading("Order"),
+                PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
+                PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
+                PressItem("Move Under...", move.MoveUnderButton),
+                parent,
+                new Separator(),
+                Heading("Tree"),
+                ActionItem("Expand All", () => SetExpanded(true)),
+                ActionItem("Collapse All", () => SetExpanded(false)),
+                _classNames,
+            },
+        };
+    }
+
+    // Expanding clears what the arrows set, so the pane's style opens every row again, also rows not drawn yet.
+    void SetExpanded(bool expanded)
+    {
+        foreach (var item in _outline.GetVisualDescendants().OfType<TreeViewItem>().ToList())
+        {
+            if (expanded)
+            {
+                item.ClearValue(TreeViewItem.IsExpandedProperty);
+            }
+            else
+            {
+                item.IsExpanded = false;
+            }
+        }
+    }
+
+    // A heading names a group of the menu. It is off, so it takes no hover and no click.
+    static MenuItem Heading(string group) => new()
+    {
+        IsEnabled = false,
+        MinHeight = 0,
+        Header = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.Unit },
     };
 
-    static MenuItem PressItem(string header, Button button) =>
-        Item(header, button, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)));
-
-    // The item is on while the button it stands for is on.
-    static MenuItem Item(string header, Button enabledWith, Action run)
+    static MenuItem ActionItem(string header, Action run)
     {
         var item = new MenuItem { Header = header };
         item.Click += (_, _) => run();
-        item.Bind(IsEnabledProperty, enabledWith.GetObservable(IsEnabledProperty));
+        return item;
+    }
+
+    // An item presses the button it stands for, so the menus and a key run the same code. The item is on while
+    // the button is on.
+    static MenuItem PressItem(string header, Button button, KeyGesture? key = null)
+    {
+        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)));
+        item.InputGesture = key;
+        item.Bind(IsEnabledProperty, button.GetObservable(IsEnabledProperty));
         return item;
     }
 

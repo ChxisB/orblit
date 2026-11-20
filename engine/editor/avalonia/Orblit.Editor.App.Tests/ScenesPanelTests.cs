@@ -221,7 +221,7 @@ public sealed class ScenesPanelTests
 
             Assert.Equal(29, BoxOf(RowIconOf(items[1]), window).X);
             Assert.Equal(52, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
-            Assert.Equal(64, BoxOf(items[2].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(68, BoxOf(items[2].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
         });
     }
 

@@ -154,7 +154,7 @@ public sealed class EditorThemeTests
             Assert.True(window.TryFindResource("TreeViewItemMinHeight", ThemeVariant.Dark, out var height));
             Assert.True(window.TryFindResource("TreeViewItemIndent", ThemeVariant.Dark, out var indent));
             Assert.Equal(26.0, height);
-            Assert.Equal(12.0, indent);
+            Assert.Equal(16.0, indent);
         });
     }
 
@@ -181,8 +181,9 @@ public sealed class EditorThemeTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            ClickOn(window.ScenePane.AddButton, window);
-            var presenter = ((Control)window.ScenePane.Flyout.Content!).FindAncestorOfType<FlyoutPresenter>()!;
+            var snap = window.Toolbar.SnapOptionsButton;
+            ClickOn(snap, window);
+            var presenter = ((Control)((Flyout)snap.Flyout!).Content!).FindAncestorOfType<FlyoutPresenter>()!;
 
             Assert.Equal(EditorColors.Popover, ((ISolidColorBrush)presenter.Background!).Color);
             Assert.Equal(EditorColors.LineStrong, ((ISolidColorBrush)presenter.BorderBrush!).Color);

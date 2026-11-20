@@ -396,11 +396,12 @@ public sealed class EditorSession
     }
 
     /// <summary>
-    /// Moves an entity and everything under it to the end of another parent, keeping where it is drawn. The
-    /// engine keeps the owner, so a save still holds it. A parent that already has a child of that name is
+    /// Moves an entity and everything under it to the end of another parent. With
+    /// <paramref name="keepGlobalTransform"/> it stays where it is drawn, otherwise it keeps its local transform
+    /// under the new parent. The engine keeps the owner, so a save still holds it. A parent that already has a child of that name is
     /// refused, because the engine would give the mover an unreadable name.
     /// </summary>
-    public void Reparent(nint entity, nint newParent)
+    public void Reparent(nint entity, nint newParent, bool keepGlobalTransform)
     {
         RequireNotRoot(entity, "moved");
         var moving = Describe(entity);
@@ -416,7 +417,7 @@ public sealed class EditorSession
         {
             throw new InvalidOperationException($"{_host.EntityGetName(newParent)} already has a child named {moving.Name}.");
         }
-        _host.EntityReparent(entity, newParent, true);
+        _host.EntityReparent(entity, newParent, keepGlobalTransform);
     }
 
     public void Rename(nint entity, string name)

@@ -236,7 +236,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void MoveWithinParent(nint entity, int places) => _session.MoveWithinParent(entity, places);
 
-    public void Reparent(nint entity, nint newParent) => _session.Reparent(entity, newParent);
+    public void Reparent(nint entity, nint newParent, bool keepGlobalTransform) => _session.Reparent(entity, newParent, keepGlobalTransform);
 
     public void Remove(nint entity) => _session.Remove(entity);
 

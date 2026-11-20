@@ -260,7 +260,7 @@ internal sealed class EditorChecks : IChecks
         _editor.MoveTo(b, new Vector3(10, 0, 0));
         _editor.MoveTo(c, new Vector3(1, 2, 3));
         var drawnAt = _host.Entity3DGetGlobalPosition(c);
-        _editor.Reparent(c, b);
+        _editor.Reparent(c, b, true);
         _editor.Save();
 
         var moved = _editor.Outline()!.Find(b)!;
@@ -270,11 +270,11 @@ internal sealed class EditorChecks : IChecks
         Assert.Contains("[node name=\"MoveC\" type=\"Marker3D\" parent=\"MoveB\"", SavedScene());
 
         _editor.AddChild(a, "Marker3D", "MoveLeaf");
-        Assert.Equal("MoveB is already under CubeField.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, root)).Message);
-        Assert.Equal("An entity cannot move under itself or its own children.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, leaf)).Message);
-        Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, b));
-        Assert.Equal("MoveA already has a child named MoveLeaf.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(leaf, a)).Message);
-        Assert.Equal("The scene root cannot be moved.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(root, a)).Message);
+        Assert.Equal("MoveB is already under CubeField.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, root, true)).Message);
+        Assert.Equal("An entity cannot move under itself or its own children.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, leaf, true)).Message);
+        Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, b, true));
+        Assert.Equal("MoveA already has a child named MoveLeaf.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(leaf, a, true)).Message);
+        Assert.Equal("The scene root cannot be moved.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(root, a, true)).Message);
         Assert.Equal("The scene root cannot be moved.", Assert.Throws<InvalidOperationException>(() => _editor.MoveWithinParent(root, 1)).Message);
         Assert.Equal(["MoveLeaf", "MoveC"], _editor.Outline()!.Find(b)!.Children.Select(child => child.Name));
     }

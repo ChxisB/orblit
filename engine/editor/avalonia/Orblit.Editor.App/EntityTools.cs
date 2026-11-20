@@ -1,6 +1,6 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App;
@@ -8,37 +8,39 @@ namespace Orblit.Editor.App;
 /// <summary>What a tool changed. Select is the entity to show selected afterwards, or zero for none.</summary>
 internal sealed record EntityEdit(nint Select, string Message);
 
-/// <summary>Adds an entity under the selected one, copies the selected entity, renames it and removes it.</summary>
-internal sealed class EntityTools : StackPanel
+/// <summary>
+/// Adds an entity under the selected one through the Add an entity dialog, and copies, renames and removes the
+/// selected entity. Each command is a button, so the dock, its menus and a key press the same one.
+/// </summary>
+internal sealed class EntityTools
 {
     // shortcut: a short fixed list. Replace it with a class browser when the editor has one.
-    internal static readonly string[] ClassNames = ["Entity", "Entity3D", "Marker3D", "MeshInstance3D", "Camera3D"];
+    internal static readonly (string ClassName, string Line)[] Classes =
+    [
+        ("Entity", "The base of every entity."),
+        ("Entity3D", "A point in 3D space."),
+        ("MeshInstance3D", "Draws a mesh."),
+        ("Camera3D", "Looks at the world."),
+        ("DirectionalLight3D", "Light from far away, like the sun."),
+        ("Marker3D", "A point to place things at."),
+        ("Entity2D", "A point in 2D space."),
+        ("ColorRect", "A filled rectangle for UI."),
+    ];
 
-    readonly ComboBox _class = new() { ItemsSource = ClassNames, SelectedIndex = 0 };
-    readonly TextBox _name = new() { PlaceholderText = "Name", MinWidth = 160 };
-    readonly Button _add = new() { Content = "Add" };
-    readonly Button _duplicate = new() { Content = "Duplicate" };
-    readonly Button _rename = new() { Content = "Rename" };
-    readonly Button _remove = new() { Content = "Remove" };
+    readonly ChoiceList _classes = new("Search classes");
     IEditorScene? _scene;
     OutlineNode? _root;
     OutlineNode? _selected;
 
     public EntityTools()
     {
-        Orientation = Orientation.Horizontal;
-        Spacing = 8;
-        Margin = new Thickness(8, 0, 8, 8);
-        Children.Add(_class);
-        Children.Add(_name);
-        Children.Add(_add);
-        Children.Add(_duplicate);
-        Children.Add(_rename);
-        Children.Add(_remove);
-        _add.Click += (_, _) => Run(Add);
-        _duplicate.Click += (_, _) => Run(Duplicate);
-        _rename.Click += (_, _) => Run(Rename);
-        _remove.Click += (_, _) => Run(Remove);
+        AddDialog = new Dialog("Add an entity", "", _classes) { CardWidth = 320, MainText = "Add", Hint = "↑ ↓ to move, ↵ to add" };
+        AddDialog.CancelButton.IsVisible = false;
+        _classes.PickedChanged += () => AddDialog.MainButton.IsEnabled = _classes.Picked is not null;
+        AddButton.Click += (_, _) => OpenAdd();
+        AddDialog.MainButton.Click += (_, _) => Run(Add);
+        DuplicateButton.Click += (_, _) => Run(Duplicate);
+        RemoveButton.Click += (_, _) => Run(Remove);
         Show(null, null, null);
     }
 
@@ -48,27 +50,45 @@ internal sealed class EntityTools : StackPanel
     /// <summary>Raised with the reason when the scene refused a change.</summary>
     public event Action<string>? Failed;
 
-    internal ComboBox Class => _class;
+    /// <summary>The plus of the Scene dock. It opens the Add an entity dialog.</summary>
+    internal Button AddButton { get; } = Parts.IconButton("Add", "Add an entity");
 
-    internal TextBox NameBox => _name;
+    internal Dialog AddDialog { get; }
 
-    internal Button AddButton => _add;
+    internal ChoiceList ClassList => _classes;
 
-    internal Button DuplicateButton => _duplicate;
+    internal Button DuplicateButton { get; } = new();
 
-    internal Button RenameButton => _rename;
+    /// <summary>Starts a rename of the selected entity. The Scene dock edits the name in its row and calls <see cref="Rename"/>.</summary>
+    internal Button RenameButton { get; } = new();
 
-    internal Button RemoveButton => _remove;
+    internal Button RemoveButton { get; } = new();
 
     public void Show(IEditorScene? scene, OutlineNode? root, OutlineNode? selected)
     {
         _scene = scene;
         _root = root;
         _selected = selected;
-        _add.IsEnabled = root is not null;
-        _duplicate.IsEnabled = selected is not null && selected != root;
-        _rename.IsEnabled = selected is not null;
-        _remove.IsEnabled = selected is not null && selected != root;
+        AddButton.IsEnabled = root is not null;
+        DuplicateButton.IsEnabled = selected is not null && selected != root;
+        RenameButton.IsEnabled = selected is not null;
+        RemoveButton.IsEnabled = selected is not null && selected != root;
+    }
+
+    /// <summary>Gives the selected entity this name.</summary>
+    public void Rename(string name) => Run(() =>
+    {
+        _scene!.Rename(_selected!.Handle, name);
+        return new EntityEdit(_selected.Handle, $"Renamed {_selected.Name}.");
+    });
+
+    // The keys go to the search, so the arrows and Enter work at once.
+    void OpenAdd()
+    {
+        AddDialog.Why.Text = $"As a child of {(_selected ?? _root)!.Name}";
+        _classes.Show([.. Classes.Select(entry => new Choice(EditorIcons.ForClass(entry.ClassName), entry.ClassName) { Line = entry.Line, Tint = EditorBrushes.TreeIcon })]);
+        AddDialog.Open();
+        _classes.SearchBox.Focus();
     }
 
     void Run(Func<EntityEdit> change)
@@ -83,24 +103,19 @@ internal sealed class EntityTools : StackPanel
         }
     }
 
+    // The engine makes the name unique among the new entity's siblings.
     EntityEdit Add()
     {
-        var className = (string)_class.SelectedItem!;
-        var name = string.IsNullOrWhiteSpace(_name.Text) ? className : _name.Text.Trim();
-        var made = _scene!.AddChild((_selected ?? _root)!.Handle, className, name);
-        return new EntityEdit(made, $"Added {name}.");
+        var className = _classes.Picked!.Name;
+        var made = _scene!.AddChild((_selected ?? _root)!.Handle, className, className);
+        AddDialog.Close();
+        return new EntityEdit(made, $"Added {className}.");
     }
 
     EntityEdit Duplicate()
     {
         var copy = _scene!.Duplicate(_selected!.Handle);
         return new EntityEdit(copy, $"Duplicated {_selected.Name}.");
-    }
-
-    EntityEdit Rename()
-    {
-        _scene!.Rename(_selected!.Handle, _name.Text ?? "");
-        return new EntityEdit(_selected.Handle, $"Renamed {_selected.Name}.");
     }
 
     EntityEdit Remove()
