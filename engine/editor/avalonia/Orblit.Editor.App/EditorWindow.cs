@@ -3,6 +3,7 @@ using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
@@ -502,7 +503,7 @@ internal sealed class EditorWindow : Window
     }
 
     // Save is on while the Save button is. Quit and fullscreen are the other menu items the editor can do.
-    // Each Editor Docks item shows and hides its tab.
+    // Each Editor Docks item shows and hides its tab. Each run flag in the Debug menu flips the Game tab's switch.
     Dictionary<string, MenuAction> MenuActions()
     {
         var actions = new Dictionary<string, MenuAction>
@@ -514,6 +515,12 @@ internal sealed class EditorWindow : Window
             ["Quit"] = new(Close),
             ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
         };
+        foreach (var name in GameView.FlagNames)
+        {
+            var toggle = _game.SwitchOf(name);
+            actions[name] = new(() => toggle.IsChecked = toggle.IsChecked != true, Checked: toggle.GetObservable(ToggleButton.IsCheckedProperty, on => on == true));
+        }
+
         foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
         {
             foreach (var title in dock.Titles)
@@ -736,7 +743,7 @@ internal sealed class EditorWindow : Window
 
         try
         {
-            _scene!.Play(_graph.Breakpoints.All);
+            _scene!.Play(_graph.Breakpoints.All, [.. _game.Flags]);
         }
         catch (IOException error)
         {

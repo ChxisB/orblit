@@ -10,18 +10,28 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The Game workspace in three islands: the run settings, the running game and its monitors. The game draws in a
-/// window of its own, so the middle shows its state and no frames. Its log is in the Output panel. The settings and
-/// the monitors wait on the game sending more to the editor, so they show what they will hold and take no input.
-/// The view only shows what it is given and asks the window to run or stop the game.
+/// window of its own, so the middle shows its state and no frames. Its log is in the Output panel. The Show while
+/// running switches go to the game as engine flags. The other settings and the monitors wait on the game sending
+/// more to the editor, so they show what they will hold and take no input. The view only shows what it is given
+/// and asks the window to run or stop the game.
 /// </summary>
 internal sealed class GameView : Border
 {
     const string Unknown = "—";
 
-    // The board's groups of run settings, each row with whether it starts on. The Debug menu keeps checks of its own.
-    static readonly (string Group, (string Name, bool On)[] Rows)[] s_settings =
+    // The run settings the engine takes as flags. The Debug menu ticks the same switches.
+    static readonly (string Name, string Flag)[] s_shown =
     [
-        ("Show while running", [("Visible Collision Shapes", false), ("Visible Paths", false), ("Visible Navigation", false), ("Visible Avoidance", false), ("Debug CanvasItem Redraws", false)]),
+        ("Visible Collision Shapes", "--debug-collisions"),
+        ("Visible Paths", "--debug-paths"),
+        ("Visible Navigation", "--debug-navigation"),
+        ("Visible Avoidance", "--debug-avoidance"),
+        ("Debug CanvasItem Redraws", "--debug-canvas-item-redraw"),
+    ];
+
+    // The board's other groups of run settings, each row with whether it starts on. They wait on the game link.
+    static readonly (string Group, (string Name, bool On)[] Rows)[] s_waiting =
+    [
         ("Live edits", [("Synchronize Scene Changes", true), ("Synchronize Script Changes", true), ("Keep Debug Server Open", false)]),
         ("Deploy", [("Deploy with Remote Debug", false), ("Small Deploy with Network Filesystem", false)]),
     ];
@@ -41,14 +51,16 @@ internal sealed class GameView : Border
     readonly Button _stop = Worded("Stop", "Stop");
     readonly Button _front = Worded("Window", "Bring to front");
     readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
-    readonly StackPanel _settings = new();
+    readonly ToggleSwitch[] _shown = [.. s_shown.Select(_ => Switch(false))];
+    readonly StackPanel _choices = new() { Spacing = 10, Margin = new Thickness(12) };
+    readonly StackPanel _waiting = new();
     readonly StackPanel _monitors = new();
 
     public GameView()
     {
         _pill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _status } };
         _front.Classes.Add(EditorTheme.Ghost);
-        foreach (var unbuilt in new Control[] { _pause, _front, _settings, _monitors })
+        foreach (var unbuilt in new Control[] { _pause, _front, _choices, _waiting, _monitors })
         {
             Unbuilt.Disable(unbuilt);
         }
@@ -82,8 +94,17 @@ internal sealed class GameView : Border
 
     internal TextBlock Time => _time;
 
-    /// <summary>The run settings and the monitors, which take no input yet.</summary>
-    internal IEnumerable<Control> Unbuilts => [_settings, _monitors];
+    /// <summary>The run settings past Show while running and the monitors, which take no input yet.</summary>
+    internal IEnumerable<Control> Unbuilts => [_choices, _waiting, _monitors];
+
+    /// <summary>The names of the run settings that are engine flags, in the order of their rows.</summary>
+    internal static IEnumerable<string> FlagNames => s_shown.Select(row => row.Name);
+
+    /// <summary>The engine flags of the run settings that are on, in the order of their rows.</summary>
+    internal IEnumerable<string> Flags => s_shown.Where((_, at) => _shown[at].IsChecked == true).Select(row => row.Flag);
+
+    /// <summary>The switch of the run setting with this name, one of <see cref="FlagNames"/>.</summary>
+    internal ToggleSwitch SwitchOf(string name) => _shown[Array.FindIndex(s_shown, row => row.Name == name)];
 
     /// <summary>Shows whether a game runs, whether a project is open to run, the project's name and how long the game has run.</summary>
     public void Show(bool playing, bool canRun, string project, TimeSpan elapsed)
@@ -104,19 +125,17 @@ internal sealed class GameView : Border
 
     DockPanel RunSettings()
     {
-        var choices = new StackPanel { Spacing = 10, Margin = new Thickness(12) };
-        choices.Children.AddRange([Caps("Scene"), new Segments("Main scene", "Current", "Chosen"), Caps("Instances"), new Segments("1", "2", "3", "4")]);
-        _settings.Children.Add(choices);
-        foreach (var (group, rows) in s_settings)
+        _choices.Children.AddRange([Caps("Scene"), new Segments("Main scene", "Current", "Chosen"), Caps("Instances"), new Segments("1", "2", "3", "4")]);
+        var shown = Rows(s_shown.Select((row, at) => Setting(row.Name, _shown[at])));
+        foreach (var (group, rows) in s_waiting)
         {
-            var list = new StackPanel { Margin = new Thickness(6, 0, 6, 10) };
-            list.Children.AddRange(rows.Select(row => Setting(row.Name, row.On)));
-            _settings.Children.Add(Section(group, list));
+            _waiting.Children.Add(Section(group, Rows(rows.Select(row => Setting(row.Name, Switch(row.On))))));
         }
-        _settings.Children.Add(Note("Run uses the project's main scene and one instance."));
+        _waiting.Children.Add(Note("Run uses the project's main scene and one instance."));
+        var settings = new StackPanel { Children = { _choices, Section("Show while running", shown), _waiting } };
         var instances = Parts.IconButton("GuiTabMenuHl", "Customize Run Instances...");
         Unbuilt.Disable(instances);
-        return Stack(Parts.Bar(Title("Run"), Parts.Right(instances)), new ScrollViewer { Content = _settings });
+        return Stack(Parts.Bar(Title("Run"), Parts.Right(instances)), new ScrollViewer { Content = settings });
     }
 
     DockPanel RunningGame()
@@ -193,11 +212,19 @@ internal sealed class GameView : Border
         Child = new StackPanel { Children = { new Border { Height = 34, Padding = new Thickness(6, 0), Child = Title(title) }, body } },
     };
 
-    static Grid Setting(string name, bool on)
+    static StackPanel Rows(IEnumerable<Control> rows)
+    {
+        var list = new StackPanel { Margin = new Thickness(6, 0, 6, 10) };
+        list.Children.AddRange(rows);
+        return list;
+    }
+
+    static ToggleSwitch Switch(bool on) => new() { IsChecked = on, OnContent = null, OffContent = null, MinWidth = 0 };
+
+    static Grid Setting(string name, ToggleSwitch toggle)
     {
         var label = new TextBlock { Text = name, FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
-        var toggle = At(new ToggleSwitch { IsChecked = on, OnContent = null, OffContent = null, MinWidth = 0 }, 1);
-        ToolTip.SetTip(toggle, name);
+        ToolTip.SetTip(At(toggle, 1), name);
         return new Grid { Height = 30, Margin = new Thickness(6, 0), ColumnDefinitions = new ColumnDefinitions("*,Auto"), Children = { label, toggle } };
     }
 

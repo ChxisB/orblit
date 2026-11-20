@@ -333,12 +333,12 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public IDebugChannel Debug => _debug;
 
     /// <summary>Runs the project in its own process, because one process holds one engine.</summary>
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags)
     {
         Stop();
         var port = _debug.Listen();
         var player = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
-        foreach (var argument in GameArguments(_project, Log.NewFile(), port, breakpoints))
+        foreach (var argument in GameArguments(_project, Log.NewFile(), port, breakpoints).Concat(flags))
         {
             player.ArgumentList.Add(argument);
         }

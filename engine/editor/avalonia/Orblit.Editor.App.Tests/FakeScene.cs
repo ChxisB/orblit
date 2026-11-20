@@ -223,7 +223,10 @@ internal sealed class FakeScene : IEditorScene
 
     public IDebugChannel Debug => Channel;
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
+    /// <summary>The engine flags of the last play.</summary>
+    public List<string> PlayedFlags { get; } = [];
+
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags)
     {
         if (PlayError is not null)
         {
@@ -233,6 +236,8 @@ internal sealed class FakeScene : IEditorScene
         Plays++;
         PlayedWith.Clear();
         PlayedWith.AddRange(breakpoints);
+        PlayedFlags.Clear();
+        PlayedFlags.AddRange(flags);
         IsPlaying = true;
     }
 
