@@ -48,8 +48,8 @@ internal sealed class ViewportOverlay : Grid
         [
             _projection,
             Parts.Rule(),
-            Tool("PreviewSun", "Sun preview", lit: false),
-            Tool("PreviewEnvironment", "Environment preview", lit: true),
+            Unbuilt.Tool("PreviewSun", "Sun preview"),
+            Unbuilt.Tool("PreviewEnvironment", "Environment preview", lit: true),
             _previewSettings,
         ]);
         _previewSettings.Flyout = CardHead.Popover("Preview settings", "What the viewport adds when the scene has no light or sky.", 300, new StackPanel
@@ -91,8 +91,6 @@ internal sealed class ViewportOverlay : Grid
 
     /// <summary>Turns the axes with the camera.</summary>
     public void Orbit(float yaw, float pitch) => _axes.Orbit(yaw, pitch);
-
-    static FixedToggle Tool(string icon, string name, bool lit) => Unbuilt.Mark(new FixedToggle(icon, name, lit), $"{name} is not built yet.");
 
     // A setting that is not built shows Soon where its switch will go.
     static DockPanel SoonRow(string icon, string label)

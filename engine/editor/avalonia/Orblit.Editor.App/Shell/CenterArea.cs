@@ -26,11 +26,13 @@ internal sealed class CenterArea : Grid
         Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
         BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
         Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
+        Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton) { IsVisible = false };
         Output = new OutputPanel { IsVisible = false, Margin = new Thickness(0, GapHeight, 0, 0) };
         bottom.OutputOpenChanged += open => Output.IsVisible = open;
         _main.Children.Add(viewport);
         _main.Children.Add(Overlay);
         _main.Children.Add(toolbar);
+        _main.Children.Add(Planar);
         Place(_stage, SceneTabs, 0);
         Place(_stage, _main, 1);
         Place(this, Stage, 0);
@@ -54,6 +56,9 @@ internal sealed class CenterArea : Grid
     /// <summary>Over the viewport, and hidden until a viewport is shown.</summary>
     internal ViewportOverlay Overlay { get; }
 
+    /// <summary>The rulers and pills of the 2D tools over the viewport.</summary>
+    internal PlanarOverlay Planar { get; }
+
     /// <summary>
     /// Adds a view that fills the island under the scene tabs while its workspace is chosen. It starts hidden.
     /// </summary>
@@ -66,14 +71,16 @@ internal sealed class CenterArea : Grid
     }
 
     /// <summary>
-    /// Shows the viewport and its tools for the spatial workspace, the viewport alone for the planar one, which has no
-    /// tools, and the view added under this name for any other.
+    /// Shows the viewport with the 3D tools for the spatial workspace, the viewport with the 2D tools for the planar
+    /// one, and the view added under this name for any other.
     /// </summary>
     public void ShowWorkspace(string name)
     {
         var spatial = name == TitleBar.Spatial;
+        var planar = name == TitleBar.Planar;
         Toolbar.IsVisible = spatial;
-        _main.IsVisible = spatial || name == TitleBar.Planar;
+        Planar.IsVisible = planar;
+        _main.IsVisible = spatial || planar;
         foreach (var (key, view) in _views)
         {
             view.IsVisible = key == name;

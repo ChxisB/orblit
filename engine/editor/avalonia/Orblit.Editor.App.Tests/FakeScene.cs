@@ -316,6 +316,11 @@ internal sealed class FakeScene : IEditorScene
         return Pivots.TryGetValue(entity, out var pivot) ? pivot : null;
     }
 
+    public PlanarView PlanarView { get; set; } = PlanarView.Start;
+
+    /// <summary>An entity with a pivot is an Entity2D, so the 2D view draws it.</summary>
+    public bool IsCanvasItem(nint entity) => Pivots.ContainsKey(entity);
+
     /// <summary>Every 2D move the window made, in order.</summary>
     public List<(nint Entity, Vector2 Pixels)> PlanarMoved { get; } = [];
 

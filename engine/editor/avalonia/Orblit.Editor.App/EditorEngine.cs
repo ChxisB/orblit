@@ -132,6 +132,14 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public Vector2? PlanarPivotOf(nint entity) =>
         _viewport is null || !_session.IsEntity2D(entity) ? null : _viewport.Planar.PivotOf(entity);
 
+    public PlanarView PlanarView
+    {
+        get => _viewport?.Planar.View ?? PlanarView.Start;
+        set => _viewport?.Planar.View = value;
+    }
+
+    public bool IsCanvasItem(nint entity) => _session.IsCanvasItem(entity);
+
     public void MovePlanar(nint entity, FrameMove move)
     {
         if (_viewport is not null)

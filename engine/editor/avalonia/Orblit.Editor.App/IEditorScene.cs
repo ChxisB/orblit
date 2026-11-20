@@ -31,6 +31,12 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>Moves an Entity2D by a pointer move in the viewport's frame, so its pivot ends under the pointer. It does nothing when there is no viewport.</summary>
     void MovePlanar(nint entity, FrameMove move);
 
+    /// <summary>Where the 2D camera looks and how far in. It is the start view and a set does nothing when there is no viewport.</summary>
+    PlanarView PlanarView { get; set; }
+
+    /// <summary>Whether the 2D view draws the entity, as it does every 2D and UI entity.</summary>
+    bool IsCanvasItem(nint entity);
+
     /// <summary>Points the viewport's camera at the entity. It does nothing when there is no viewport.</summary>
     void FrameOn(nint entity);
 

@@ -321,12 +321,12 @@ public sealed class PlanarViewportTests
         });
     }
 
-    static readonly Vector2 Pivot = new(40, 20);
+    internal static readonly Vector2 Pivot = new(40, 20);
 
-    static WorkspaceTab TabOf(EditorWindow window, string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
+    internal static WorkspaceTab TabOf(EditorWindow window, string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
 
     // The Lamp has a pivot at (40, 20) of the 100 by 50 frame. Opens the window with it selected, in 2D.
-    static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn2D(Action<FakeScene>? prepare = null)
+    internal static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn2D(Action<FakeScene>? prepare = null)
     {
         var scene = new FakeScene();
         scene.Pivots[FakeScene.Lamp.Handle] = Pivot;
@@ -343,7 +343,7 @@ public sealed class PlanarViewportTests
         return (window, scene, viewport);
     }
 
-    static Point InWindow(Control viewport, Visual window, Vector2 framePoint)
+    internal static Point InWindow(Control viewport, Visual window, Vector2 framePoint)
     {
         var control = ViewportControl.ControlAt(framePoint, FrameSize, viewport.Bounds.Size);
         return viewport.TranslatePoint(new Point(control.X, control.Y), window)!.Value;

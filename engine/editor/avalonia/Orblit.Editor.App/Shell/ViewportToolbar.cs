@@ -118,8 +118,8 @@ internal sealed class ViewportToolbar : Grid
             _group,
             _keep,
             Parts.Rule(),
-            Tool("ListSelect", "Selection from a list"),
-            Tool("Ruler", "Ruler"),
+            Unbuilt.Tool("ListSelect", "Selection from a list"),
+            Unbuilt.Tool("Ruler", "Ruler"),
         ]);
         Tools.HorizontalAlignment = HorizontalAlignment.Left;
         Tools.VerticalAlignment = VerticalAlignment.Top;
@@ -271,8 +271,6 @@ internal sealed class ViewportToolbar : Grid
             mode.IsChecked = mode == lit;
         }
     }
-
-    static FixedToggle Tool(string icon, string name) => Unbuilt.Mark(new FixedToggle(icon, name, lit: false), $"{name} is not built yet.");
 
     // A 3D class takes the 3D colour and a 2D class the 2D colour, as in New Scene.
     static EditorIcon ClassMark(string className)

@@ -187,6 +187,9 @@ public sealed class EditorSession
 
     public bool IsEntity2D(nint entity) => _host.ObjectIsClass(entity, "Entity2D");
 
+    /// <summary>Whether the 2D view draws the entity, as it does every 2D and UI entity.</summary>
+    public bool IsCanvasItem(nint entity) => _host.ObjectIsClass(entity, "CanvasItem");
+
     public Vector3 PositionOf(nint entity) => _host.Entity3DGetPosition(entity);
 
     public void MoveTo(nint entity, Vector3 position) => Place(entity, () => _host.Entity3DSetPosition(entity, position));
