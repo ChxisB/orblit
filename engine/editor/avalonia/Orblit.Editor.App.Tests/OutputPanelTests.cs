@@ -19,7 +19,7 @@ public sealed class OutputPanelTests
     static BottomBar BarOf(EditorWindow window) => Assert.IsType<BottomBar>(window.Center.BottomBar.Child);
 
     static string[] Shown(EditorWindow window) =>
-        [.. window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text!)];
+        [.. window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().Where(text => !text.Classes.Contains(OutputPanel.Stamp)).Select(text => text.Text!)];
 
     static (EditorWindow Window, FakeScene Scene) Open()
     {
@@ -315,6 +315,44 @@ public sealed class OutputPanelTests
             Assert.True(BoxOf(texts.Single(block => block.Text == "main.oscn:12"), window).X > BoxOf(text, window).Right);
             Assert.Equal(EditorColors.FaultText, ((ISolidColorBrush)text.Foreground!).Color);
             Assert.Equal("FaultCircle", window.Center.Output.List.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+        });
+    }
+
+    [Fact]
+    public void Each_line_shows_the_time_it_came_and_an_info_mark_and_a_blank_line_shows_no_row()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene, time: time);
+            ClickOn(BarOf(window).OutputTab, window);
+
+            Write(window, scene, "first");
+            time.Advance(TimeSpan.FromSeconds(62));
+            Write(window, scene, "", "second");
+
+            var texts = window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().ToArray();
+            Assert.Equal(["16:33:00", "16:34:02"], texts.Where(text => text.Classes.Contains(OutputPanel.Stamp)).Select(text => text.Text));
+            Assert.Equal(["first", "second"], Shown(window));
+            Assert.All(window.Center.Output.List.GetVisualDescendants().OfType<EditorIcon>(), icon => Assert.Equal("InfoCircle", icon.IconName));
+            Assert.All(texts.Where(text => !text.Classes.Contains(OutputPanel.Stamp)), text => Assert.Equal(TextWrapping.Wrap, text.TextWrapping));
+        });
+    }
+
+    [Fact]
+    public void Rows_sit_close_like_lines_of_a_log()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+
+            Write(window, scene, "first", "second");
+
+            var rows = window.Center.Output.List.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+            Assert.Equal(2, rows.Length);
+            Assert.True(rows[0].Bounds.Height < 26, $"a row is {rows[0].Bounds.Height} high");
         });
     }
 

@@ -290,7 +290,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
             await _input.Click(window.PlayButton);
             Expect(window.Status == "Playing in a second window.", $"the status is \"{window.Status}\"");
             Expect(window.Center.Output.IsVisible, "Play did not open the Output panel");
-            await Wait(() => window.Center.Output.List.Items.OfType<string>().Any(line => line.Contains("Metal")), "the game's graphics line in the panel");
+            await Wait(() => window.Center.Output.List.Items.OfType<LogEntry>().Any(entry => entry.Text.Contains("Metal")), "the game's graphics line in the panel");
             await _input.Click(window.StopButton);
             Expect(!engine.IsPlaying, "the Stop button did not end the game");
         }
