@@ -63,6 +63,26 @@ internal static class Parts
         return button;
     }
 
+    /// <summary>A field with its name over it in small dim text, and the lines that go under it, such as a fault.</summary>
+    public static StackPanel Labelled(string label, params Control[] rows)
+    {
+        var group = new StackPanel { Spacing = 4 };
+        group.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = EditorBrushes.TextDim });
+        group.Children.AddRange(rows);
+        return group;
+    }
+
+    /// <summary>The 14 pixel mark at the left of a field, such as a folder.</summary>
+    public static EditorIcon FieldIcon(string name, IBrush tint)
+    {
+        var icon = new EditorIcon(name) { Width = 14, Height = 14, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        TextElement.SetForeground(icon, tint);
+        return icon;
+    }
+
+    /// <summary>The line under a field that says why its value cannot be used. It waits hidden until there is something to say.</summary>
+    public static TextBlock FaultLine() => new() { FontSize = 11, Foreground = EditorBrushes.FaultText, TextWrapping = TextWrapping.Wrap, IsVisible = false };
+
     // No border, so the box is the icon and its padding: 26 pixels square.
     static T Flat<T>(T button, string icon, string tip) where T : ContentControl
     {

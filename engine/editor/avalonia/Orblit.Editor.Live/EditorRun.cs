@@ -406,11 +406,11 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await _input.Click(graph.FileButton);
         await Wait(() => graph.FileMenu.IsOpen && NewItem(graph).IsAttachedToVisualTree(), "the File menu to open");
         await _input.Click(NewItem(graph));
-        await Wait(() => graph.CreateFlyout.IsOpen && graph.Form.CreateButton.IsAttachedToVisualTree(), "the Create form to open");
+        await Wait(() => graph.CreateDialog.IsVisible && graph.Form.CreateButton.IsAttachedToVisualTree(), "the New Graph Script dialog to open");
         // The boxes take text, which this run does not type. Setting it is the only part that is not injected.
-        graph.Form.PathBox.Text = Resource;
+        graph.Form.NameBox.Text = "live";
         await _input.Click(graph.Form.CreateButton);
-        await Wait(() => graph.Current == Resource, $"the new graph to open, the form said {graph.Form.Notice}");
+        await Wait(() => graph.Current == Resource, $"the new graph to open, the dialog said {graph.Form.Fault}");
         Expect(File.Exists(Path.Combine(project, "live.ograph")), "the engine wrote no live.ograph");
         Expect(graph.List.Items.Cast<string>().Contains(Resource), "the list does not show the new graph");
         Expect(graph.Tabs.Select(tab => tab.Label.Text).SequenceEqual(["live.ograph"]), "the tab row does not show live.ograph");

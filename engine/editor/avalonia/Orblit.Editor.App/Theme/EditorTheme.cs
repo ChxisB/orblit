@@ -62,6 +62,15 @@ internal sealed class EditorTheme : Styles
     /// <summary>The smaller worded button a toast or a row holds.</summary>
     internal const string Small = "small";
 
+    /// <summary>A tall worded button that holds an icon and two lines, such as a root in New Scene. A checked one is the choice.</summary>
+    internal const string Card = "card";
+
+    /// <summary>A text box or a list box drawn as the design's field, 30 high with a ring while it has the keys.</summary>
+    internal const string Field = "field";
+
+    /// <summary>A field whose value cannot be used. It rings red until the value changes.</summary>
+    internal const string Bad = "bad";
+
     /// <summary>
     /// Marks a menu item, or the native item behind one, whose feature is not built. The theme dims its label and
     /// draws Soon where its key would be. The screen bar of macOS draws its own items, so it shows neither.
@@ -223,6 +232,7 @@ internal sealed class EditorTheme : Styles
         });
         AddRange(PopoverStyles());
         AddRange(ButtonStyles());
+        AddRange(FieldStyles());
     }
 
     static ResourceDictionary Overrides()
@@ -355,6 +365,76 @@ internal sealed class EditorTheme : Styles
                 new Setter(TemplatedControl.FontSizeProperty, 12.0),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
+        };
+        yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(Card))
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, double.NaN),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(12)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(10)),
+                new Setter(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
+                new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Left),
+                new Setter(TemplatedControl.FontWeightProperty, FontWeight.Normal),
+            },
+        };
+        yield return new Style(x => x.OfType<Button>().Class(Card).Class(":checked"))
+        {
+            Setters = { new Setter(TemplatedControl.BackgroundProperty, EditorBrushes.AccentSoft), new Setter(TemplatedControl.BorderBrushProperty, EditorBrushes.Accent) },
+        };
+        // After the kinds, so a hovered choice keeps its accent.
+        yield return new Style(x => x.OfType<Button>().Class(Card).Class(":checked").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+        {
+            Setters = { new Setter(ContentPresenter.BackgroundProperty, EditorBrushes.AccentSoft), new Setter(ContentPresenter.BorderBrushProperty, EditorBrushes.Accent) },
+        };
+        // The base theme clears the fill and the edge of a button that is off. The design keeps its shape in a sunk fill.
+        yield return new Style(x => x.OfType<Button>().Class(TextButton).Class(":disabled").Template().OfType<ContentPresenter>().Name("PART_ContentPresenter"))
+        {
+            Setters =
+            {
+                new Setter(ContentPresenter.BackgroundProperty, EditorBrushes.DisabledFill),
+                new Setter(ContentPresenter.BorderBrushProperty, EditorBrushes.Line),
+                new Setter(ContentPresenter.ForegroundProperty, EditorBrushes.Disabled),
+            },
+        };
+    }
+
+    // A 3 pixel ring with no blur, as the design draws round a field.
+    static BoxShadows Ring(Color color) => new(new BoxShadow { Spread = 3, Color = color });
+
+    // The design's field. The ring sits on the template's border, which the base theme colours by state, so the
+    // fault comes after focus and wins while both hold.
+    static IEnumerable<Style> FieldStyles()
+    {
+        yield return new Style(x => x.OfType<TextBox>().Class(Field))
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, 30.0),
+                new Setter(Layoutable.MinHeightProperty, 0.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
+                new Setter(TextBox.VerticalContentAlignmentProperty, VerticalAlignment.Center),
+            },
+        };
+        yield return new Style(x => x.OfType<ComboBox>().Class(Field))
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, 30.0),
+                new Setter(Layoutable.MinHeightProperty, 0.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0, 0, 0)),
+                new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
+                new Setter(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
+            },
+        };
+        yield return new Style(x => x.OfType<TextBox>().Class(Field).Class(":focus").Template().OfType<Border>().Name("PART_BorderElement"))
+        {
+            Setters = { new Setter(Border.BoxShadowProperty, Ring(EditorColors.AccentSoft)) },
+        };
+        yield return new Style(x => x.OfType<TextBox>().Class(Field).Class(Bad).Template().OfType<Border>().Name("PART_BorderElement"))
+        {
+            Setters = { new Setter(Border.BorderBrushProperty, EditorBrushes.Fault), new Setter(Border.BoxShadowProperty, Ring(EditorColors.FaultSoft)) },
         };
     }
 

@@ -77,7 +77,6 @@ internal sealed class GraphView : Border
     readonly MenuItem _closeAll;
     readonly MenuItem _copyPath;
     readonly CreateGraphForm _form = new();
-    readonly Flyout _createFlyout;
     readonly ITextClipboard _clipboard;
     readonly List<GraphSheet> _sheets = [];
     IReadOnlyList<string> _all = [];
@@ -93,7 +92,6 @@ internal sealed class GraphView : Border
         _gotoMenu = new GotoMenu(() => Canvas);
         _gotoButton.Flyout = _gotoMenu;
         _helpButton.Flyout = new HelpMenu(links ?? new WindowLinks(this));
-        _createFlyout = new Flyout { Content = _form, Placement = PlacementMode.BottomEdgeAlignedLeft };
         _save = Item("Save", SaveCurrent);
         _saveAll = Item("Save All", () => Save());
         _close = Item("Close", CloseCurrent);
@@ -112,7 +110,6 @@ internal sealed class GraphView : Border
         _menu.Items.Add(Item("Show in FileSystem", () => _fileButton.RaiseEvent(new UnbuiltEventArgs("The FileSystem dock does not list graph scripts yet."))));
         _fileButton.Flyout = _menu;
         _form.Requested += Create;
-        _form.Cancelled += _createFlyout.Hide;
         _list.SelectionChanged += (_, _) => Open(_list.SelectedItem as string);
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
@@ -144,7 +141,7 @@ internal sealed class GraphView : Border
 
     internal CreateGraphForm Form => _form;
 
-    internal Flyout CreateFlyout => _createFlyout;
+    internal Dialog CreateDialog => _form.Dialog;
 
     /// <summary>One tab for each open graph script, in the order they were opened.</summary>
     internal IEnumerable<GraphTab> Tabs => _tabs.Children.Cast<GraphTab>();
@@ -476,11 +473,7 @@ internal sealed class GraphView : Border
         }
     }
 
-    void ShowCreate()
-    {
-        _form.Reset();
-        _createFlyout.ShowAt(_fileButton);
-    }
+    void ShowCreate() => _form.Open(_all);
 
     void Create(string path, string baseType)
     {
@@ -499,7 +492,7 @@ internal sealed class GraphView : Border
             return;
         }
 
-        _createFlyout.Hide();
+        _form.Dialog.Close();
         Refresh();
         Open(path);
         _status.Text = $"Created {path}.";
