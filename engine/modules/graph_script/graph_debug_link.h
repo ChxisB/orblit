@@ -23,6 +23,7 @@ class GraphDebugLink : public RefCounted {
 	Dictionary state;
 
 	void _reset_state();
+	void _reset_stop();
 	void _accept(const Ref<StreamPeerSocket> &p_socket);
 	void _send(const String &p_command, const Array &p_data);
 	void _handle(const Array &p_message);
@@ -30,6 +31,8 @@ class GraphDebugLink : public RefCounted {
 	void _on_stack_dump(const Array &p_data);
 	void _on_variable(const Array &p_data);
 	void _on_wire(const Array &p_data);
+	void _on_profile_frame(const Array &p_data);
+	void _on_scene_tree(const Array &p_data);
 
 protected:
 	static void register_members();
