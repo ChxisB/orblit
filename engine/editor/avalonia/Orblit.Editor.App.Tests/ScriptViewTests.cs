@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
@@ -47,6 +48,18 @@ public sealed class ScriptViewTests
 
             Written.Add((resourcePath, text));
             Text[resourcePath] = text;
+        }
+
+        public IReadOnlyList<string> AddableClasses() => ["Entity", "Entity3D"];
+
+        public void CreateScript(string resourcePath, string baseType)
+        {
+            if (Text.ContainsKey(resourcePath))
+            {
+                throw new IOException($"{resourcePath} exists already.");
+            }
+
+            WriteScript(resourcePath, $"class New : {baseType} {{ }}");
         }
 
         public List<ScriptProblem> Problems { get; } = [];
@@ -510,6 +523,150 @@ public sealed class ScriptViewTests
             Assert.Equal("Check problems", view.ProblemsText);
             Assert.Equal("dotnet was not found.", view.Status.Text);
             Assert.True(view.ProblemsButton.IsEnabled);
+        });
+    }
+
+    static void Press(Control target, Key key, KeyModifiers modifiers = KeyModifiers.None) =>
+        target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers });
+
+    [Fact]
+    public void New_script_writes_the_class_and_opens_it()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            var view = Open(files);
+
+            Click(view.NewButton);
+
+            Assert.True(view.CreateDialog.IsVisible);
+            Assert.Equal("New C# Script", view.CreateDialog.Title);
+            Assert.Equal(["Entity", "Entity3D"], view.Form.ExtendsBox.Items.Cast<string>());
+
+            view.Form.NameBox.Text = "Mover";
+            view.Form.ExtendsBox.SelectedItem = "Entity3D";
+            Click(view.Form.CreateButton);
+
+            Assert.False(view.CreateDialog.IsVisible);
+            Assert.Equal("class New : Entity3D { }", files.Text["res://Mover.cs"]);
+            Assert.Contains("res://Mover.cs", (IEnumerable<string>)view.List.ItemsSource!);
+            Assert.Equal("res://Mover.cs", view.Heading.Text);
+            Assert.Equal("Created res://Mover.cs.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void A_script_that_cannot_be_made_keeps_the_dialog_open_and_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files { Denied = true };
+            var view = Open(files);
+
+            Click(view.NewButton);
+            Click(view.Form.CreateButton);
+
+            Assert.True(view.CreateDialog.IsVisible);
+            Assert.Equal("Access denied.", view.Form.Fault);
+            Assert.Equal("Pick a script.", view.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void Sort_turns_the_list_round_and_a_second_press_turns_it_back()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+
+            Click(view.SortButton);
+
+            Assert.Equal(["res://slime.cs", "res://spin.cs"], (IEnumerable<string>)view.List.ItemsSource!);
+            Assert.Equal("Sort the scripts A to Z", ToolTip.GetTip(view.SortButton));
+
+            Click(view.SortButton);
+
+            Assert.Equal(["res://spin.cs", "res://slime.cs"], (IEnumerable<string>)view.List.ItemsSource!);
+            Assert.Equal("Sort the scripts Z to A", ToolTip.GetTip(view.SortButton));
+        });
+    }
+
+    [Fact]
+    public void Find_is_off_until_a_script_opens()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+
+            Assert.False(view.FindButton.IsEnabled);
+
+            Pick(view, "res://spin.cs");
+
+            Assert.True(view.FindButton.IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void Enter_selects_each_match_in_turn_and_goes_round_past_the_end()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files { Text = { ["res://ab.cs"] = "ab Ab\nAB" } };
+            var view = Open(files);
+            Pick(view, "res://ab.cs");
+
+            Click(view.FindButton);
+            view.Finder.Text.Text = "ab";
+
+            Assert.True(view.Finder.IsVisible);
+            foreach (var (start, count) in new[] { (0, "1 of 3"), (3, "2 of 3"), (6, "3 of 3"), (0, "1 of 3") })
+            {
+                Press(view.Finder.Text, Key.Enter);
+                Assert.Equal((start, start + 2), (view.Editor.SelectionStart, view.Editor.SelectionEnd));
+                Assert.Equal(count, view.Finder.Count);
+            }
+        });
+    }
+
+    [Fact]
+    public void Shift_and_Enter_selects_the_match_before_and_goes_round_past_the_start()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files { Text = { ["res://ab.cs"] = "ab Ab\nAB" } };
+            var view = Open(files);
+            Pick(view, "res://ab.cs");
+            Click(view.FindButton);
+            view.Finder.Text.Text = "ab";
+
+            Press(view.Finder.Text, Key.Enter, KeyModifiers.Shift);
+
+            Assert.Equal("3 of 3", view.Finder.Count);
+
+            Press(view.Finder.Text, Key.Enter, KeyModifiers.Shift);
+
+            Assert.Equal((3, 5), (view.Editor.SelectionStart, view.Editor.SelectionEnd));
+            Assert.Equal("2 of 3", view.Finder.Count);
+        });
+    }
+
+    [Fact]
+    public void A_missing_word_says_no_match_and_Escape_closes_the_card()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+            Pick(view, "res://spin.cs");
+            Click(view.FindButton);
+            view.Finder.Text.Text = "slime";
+
+            Press(view.Finder.Text, Key.Enter);
+
+            Assert.Equal("No match", view.Finder.Count);
+
+            Press(view.Finder.Text, Key.Escape);
+
+            Assert.False(view.Finder.IsVisible);
         });
     }
 }

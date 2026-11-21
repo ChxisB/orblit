@@ -7,23 +7,29 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>
-/// The New Graph Script dialog. It asks for the name of the file, the class the script extends and its folder.
-/// A name that is a graph script already turns Create off and says so under the field.
-/// </summary>
-internal sealed class CreateGraphForm : StackPanel
+/// <summary>The words and the file suffix of one kind of script that the New Script dialog makes.</summary>
+internal sealed record ScriptKind(string Title, string Lead, string DefaultName, string Suffix)
 {
-    const string DefaultName = "new_graph";
+    public static readonly ScriptKind Graph = new("New Graph Script", "A script made of steps.", "new_graph", ".ograph");
+
+    public static readonly ScriptKind Csharp = new("New C# Script", "A class written in C#.", "NewScript", ".cs");
+}
+
+/// <summary>
+/// The New Script dialog for one kind of script. It asks for the name of the file, the class the script extends
+/// and its folder. A name that is a script of the kind already turns Create off and says so under the field.
+/// </summary>
+internal sealed class CreateScriptForm : StackPanel
+{
     const string DefaultBase = "Entity";
     const string DefaultFolder = "res://";
-    const string Suffix = ".ograph";
 
+    readonly ScriptKind _kind;
     readonly TextBox _name = new()
     {
         PlaceholderText = "Name",
         InnerRightContent = new TextBlock
         {
-            Text = Suffix,
             FontFamily = EditorTheme.Mono,
             FontSize = 11,
             Foreground = EditorBrushes.TextDim,
@@ -43,13 +49,15 @@ internal sealed class CreateGraphForm : StackPanel
     readonly TextBlock _fault = Parts.FaultLine();
     IReadOnlyCollection<string> _scripts = [];
 
-    public CreateGraphForm()
+    public CreateScriptForm(ScriptKind kind)
     {
+        _kind = kind;
+        ((TextBlock)_name.InnerRightContent!).Text = kind.Suffix;
         Spacing = 10;
         Children.Add(Parts.Labeled("Name", _name, _fault));
         Children.Add(Parts.Labeled("Extends", _extends));
         Children.Add(Parts.Labeled("Folder", _folder));
-        Dialog = new Dialog("New Graph Script", "A script made of steps.", this) { MainText = "Create", CardWidth = 380 };
+        Dialog = new Dialog(kind.Title, kind.Lead, this) { MainText = "Create", CardWidth = 380 };
         // TextChanged waits for a render, so the property is the one that fires at once.
         _name.PropertyChanged += (_, e) => Check(e.Property);
         _folder.PropertyChanged += (_, e) => Check(e.Property);
@@ -81,7 +89,7 @@ internal sealed class CreateGraphForm : StackPanel
     {
         _scripts = scripts;
         _extends.ItemsSource = classes;
-        _name.Text = DefaultName;
+        _name.Text = _kind.DefaultName;
         _extends.SelectedItem = DefaultBase;
         _folder.Text = DefaultFolder;
         Check();
@@ -105,13 +113,13 @@ internal sealed class CreateGraphForm : StackPanel
         }
     }
 
-    // Create waits for a name and a folder, and for a path that is no graph script yet.
+    // Create waits for a name and a folder, and for a path that is no script yet.
     void Check()
     {
         var name = _name.Text?.Trim() ?? "";
         var taken = _scripts.Contains(PathOf());
         _name.Classes.Set(EditorTheme.Bad, taken);
-        Say(taken ? $"{name}{Suffix} already exists. Pick another name." : "");
+        Say(taken ? $"{name}{_kind.Suffix} already exists. Pick another name." : "");
         Dialog.MainButton.IsEnabled = name != "" && !string.IsNullOrWhiteSpace(_folder.Text) && !taken;
     }
 
@@ -119,7 +127,7 @@ internal sealed class CreateGraphForm : StackPanel
     string PathOf()
     {
         var folder = _folder.Text?.Trim() ?? "";
-        return $"{(folder.EndsWith('/') ? folder : folder + "/")}{_name.Text?.Trim()}{Suffix}";
+        return $"{(folder.EndsWith('/') ? folder : folder + "/")}{_name.Text?.Trim()}{_kind.Suffix}";
     }
 
     // A 3D base is marked in the 3D colour and a 2D base in the 2D colour, as the roots of New Scene are.

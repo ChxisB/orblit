@@ -374,6 +374,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void WriteScript(string resourcePath, string text) => File.WriteAllText(ProjectScripts.FileOf(_project, resourcePath), text);
 
+    public void CreateScript(string resourcePath, string baseType) => ProjectScripts.Create(_project, resourcePath, baseType);
+
     public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => ScriptChecker.Check(_project);
 
     public IReadOnlyList<string> ImportedFiles() => ProjectScripts.FindImported(_project);

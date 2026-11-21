@@ -86,7 +86,7 @@ internal sealed class GraphView : Border
     readonly MenuItem _close;
     readonly MenuItem _closeAll;
     readonly MenuItem _copyPath;
-    readonly CreateGraphForm _form = new();
+    readonly CreateScriptForm _form = new(ScriptKind.Graph);
     readonly ITextClipboard _clipboard;
     readonly List<GraphSheet> _sheets = [];
     IReadOnlyList<string> _all = [];
@@ -164,7 +164,7 @@ internal sealed class GraphView : Border
 
     internal MenuFlyout FileMenu => _menu;
 
-    internal CreateGraphForm Form => _form;
+    internal CreateScriptForm Form => _form;
 
     internal Dialog CreateDialog => _form.Dialog;
 

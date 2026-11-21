@@ -53,11 +53,12 @@ internal sealed class EditorWindow : Window
     // tests press them, and a button off keeps its key unhandled.
     readonly Button _save = new() { IsEnabled = false };
     readonly Button _playButton = Parts.IconButton("MainPlay", "Run the project");
+    readonly Button _playSceneButton = Parts.IconButton("PlayScene", "Run the current scene");
     readonly Button _stopButton = Parts.IconButton("Stop", "Stop the game");
     readonly Button _frame = new() { IsEnabled = false };
     readonly Button _undo = new() { IsEnabled = false };
     readonly Button _redo = new() { IsEnabled = false };
-    readonly SceneTabStrip _sceneTabs = new();
+    readonly SceneTabStrip _sceneTabs;
     readonly ViewportToolbar _toolbar;
     readonly TitleBar _titleBar;
     readonly BottomBar _bottomBar = new();
@@ -116,7 +117,8 @@ internal sealed class EditorWindow : Window
         _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
         _saveChanges = SaveChangesDialog();
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
-        _titleBar = new TitleBar(_playButton, _stopButton, CommandKey);
+        _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
+        _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
         _titleBar.SearchButton.Click += (_, _) => OpenPalette();
         _quickOpen = QuickOpen.Build(CommandKey);
         _quickOpenButton.Click += (_, _) => OpenQuickOpen();
@@ -155,11 +157,14 @@ internal sealed class EditorWindow : Window
         };
         WireSceneFiles();
         _playButton.IsEnabled = false;
+        _playSceneButton.IsEnabled = false;
         _stopButton.IsEnabled = false;
         _save.Click += (_, _) => SaveAll();
         _playButton.Click += (_, _) => Play();
+        _playSceneButton.Click += (_, _) => Play("--scene", _scene!.SceneFile);
         _stopButton.Click += (_, _) => Stop();
-        _game.RunRequested += Play;
+        _sceneTabs.DistractionButton.Click += (_, _) => ToggleDistractionFree();
+        _game.RunRequested += () => Play();
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
@@ -179,7 +184,7 @@ internal sealed class EditorWindow : Window
         _center = new CenterArea(_sceneTabs, _toolbar, _viewport, _bottomBar);
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
         _center.Output.CopyRequested += text => Copy(text, "the output");
-        _center.Debugger.RunRequested += Play;
+        _center.Debugger.RunRequested += () => Play();
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
@@ -197,7 +202,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -258,6 +263,8 @@ internal sealed class EditorWindow : Window
     internal Button SaveButton => _save;
 
     internal Button PlayButton => _playButton;
+
+    internal Button PlaySceneButton => _playSceneButton;
 
     internal Button StopButton => _stopButton;
 
@@ -655,6 +662,7 @@ internal sealed class EditorWindow : Window
         (Key.Z, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _undo,
         (Key.Z, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && e.Source is not TextBox => _redo,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
+        (Key.R, var modifiers) when modifiers == CommandKey => _playSceneButton,
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
         (Key.A, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _tools.AddButton,
         (Key.A, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _instanceScene.OpenButton,
@@ -665,6 +673,7 @@ internal sealed class EditorWindow : Window
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
         (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
         (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
+        (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SelectButton,
         (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.MoveButton,
@@ -916,8 +925,9 @@ internal sealed class EditorWindow : Window
     }
 
     // The game runs from the files on disk, so a play saves edits first. A scene with none is left alone,
-    // because its scripts run while it is open and a save would write what they changed.
-    void Play()
+    // because its scripts run while it is open and a save would write what they changed. The arguments go to
+    // the game after its flags, such as the scene to run in place of the main one.
+    void Play(params string[] arguments)
     {
         if (!SaveEdits())
         {
@@ -926,7 +936,7 @@ internal sealed class EditorWindow : Window
 
         try
         {
-            _scene!.Play(_graph.Breakpoints.All, [.. _game.Flags]);
+            _scene!.Play(_graph.Breakpoints.All, [.. _game.Flags, .. arguments]);
         }
         catch (IOException error)
         {
@@ -952,9 +962,18 @@ internal sealed class EditorWindow : Window
     {
         var playing = _scene?.IsPlaying == true;
         _playButton.IsEnabled = _root is not null;
+        _playSceneButton.IsEnabled = _root is not null && _scene is { SceneFile.Length: > 0 };
         _stopButton.IsEnabled = playing;
         _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
         _center.Debugger.ShowGame(playing, _root is not null);
+    }
+
+    // Folds both sides while either shows, so a second press brings both back.
+    void ToggleDistractionFree()
+    {
+        var fold = !_leftSide.IsFolded || !_rightSide.IsFolded;
+        _leftSide.Fold(fold);
+        _rightSide.Fold(fold);
     }
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));

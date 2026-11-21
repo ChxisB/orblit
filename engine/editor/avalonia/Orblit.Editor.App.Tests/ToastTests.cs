@@ -20,6 +20,12 @@ public sealed class ToastTests
         Dispatcher.UIThread.RunJobs();
     }
 
+    const string Movie = "Movie maker mode is not built yet.";
+    const string Instances = "Customize Run Instances is not built yet.";
+
+    // The run menu's unbuilt items show in a popup, so the tests raise what they raise from a control in the window.
+    static void Soon(EditorWindow window, string message) => window.SceneTabs.RaiseEvent(new UnbuiltEventArgs(message));
+
     static Toast[] Cards(EditorWindow window) => [.. window.Toasts.Cards];
 
     static string[] Titles(EditorWindow window) => [.. window.Toasts.Cards.Select(card => card.Title)];
@@ -32,13 +38,13 @@ public sealed class ToastTests
             var window = OpenAtReferenceSize(new FakeScene(), time: new ManualTime());
             Assert.Empty(Cards(window));
 
-            Click(window.SceneTabs.MenuButton);
+            Soon(window, Movie);
 
             var card = Assert.Single(Cards(window));
-            Assert.Equal("The scene tab menu is not built yet", card.Title);
+            Assert.Equal("Movie maker mode is not built yet", card.Title);
             Assert.Equal("InfoCircle", card.Icon.IconName);
             Assert.Same(EditorBrushes.Warn, TextElement.GetForeground(card.Icon));
-            Assert.Equal("The scene tab menu is not built yet.", window.Status);
+            Assert.Equal(Movie, window.Status);
         });
     }
 
@@ -49,8 +55,8 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Click(window.SceneTabs.MenuButton);
-            Click(window.SceneTabs.DistractionButton);
+            Soon(window, Movie);
+            Soon(window, Instances);
             Assert.Equal(2, time.Armed);
 
             window.Close();
@@ -67,14 +73,14 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Click(window.SceneTabs.MenuButton);
+            Soon(window, Movie);
 
             Pass(time, 3.9);
             Assert.Single(Cards(window));
             Pass(time, 0.1);
 
             Assert.Empty(Cards(window));
-            Assert.Equal("The scene tab menu is not built yet.", window.Status);
+            Assert.Equal(Movie, window.Status);
         });
     }
 
@@ -85,17 +91,17 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Click(window.SceneTabs.MenuButton);
+            Soon(window, Movie);
             Pass(time, 3);
 
-            Click(window.SceneTabs.DistractionButton);
+            Soon(window, Instances);
             window.UpdateLayout();
 
-            Assert.Equal(["The scene tab menu is not built yet", "Distraction free mode is not built yet"], Titles(window));
+            Assert.Equal(["Movie maker mode is not built yet", "Customize Run Instances is not built yet"], Titles(window));
             var cards = Cards(window);
             Assert.Equal(BoxOf(cards[0], window).Bottom + 10, BoxOf(cards[1], window).Y);
             Pass(time, 1);
-            Assert.Equal(["Distraction free mode is not built yet"], Titles(window));
+            Assert.Equal(["Customize Run Instances is not built yet"], Titles(window));
             Pass(time, 3);
             Assert.Empty(Cards(window));
         });
@@ -108,14 +114,14 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Click(window.SceneTabs.MenuButton);
-            Click(window.SceneTabs.DistractionButton);
+            Soon(window, Movie);
+            Soon(window, Instances);
             Pass(time, 3);
 
-            Click(window.SceneTabs.MenuButton);
+            Soon(window, Movie);
             Pass(time, 3);
 
-            Assert.Equal(["The scene tab menu is not built yet"], Titles(window));
+            Assert.Equal(["Movie maker mode is not built yet"], Titles(window));
             Assert.Equal(1, time.Armed);
         });
     }
@@ -127,7 +133,7 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Click(window.SceneTabs.MenuButton);
+            Soon(window, Movie);
             var dismiss = Cards(window)[0].DismissButton;
 
             Click(dismiss);
@@ -239,7 +245,7 @@ public sealed class ToastTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene(), time: new ManualTime());
-            Click(window.SceneTabs.MenuButton);
+            Soon(window, Movie);
             window.UpdateLayout();
 
             var card = Cards(window)[0];
@@ -258,12 +264,12 @@ public sealed class ToastTests
     }
 
     [Fact]
-    public void An_unbuilt_icon_button_is_dim_with_a_4_pixel_warn_dot_4_in_from_its_top_right()
+    public void An_unbuilt_tool_is_dim_with_a_4_pixel_warn_dot_4_in_from_its_top_right()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
-            var button = window.SceneTabs.MenuButton;
+            var (window, _, _) = PlanarViewportTests.OpenIn2D();
+            var button = window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().Single(tool => (string?)ToolTip.GetTip(tool) == "Ruler");
 
             var dot = button.GetVisualDescendants().OfType<Ellipse>().Single();
             var box = BoxOf(button, window);

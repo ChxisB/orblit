@@ -43,6 +43,43 @@ internal static class ProjectScripts
         return file;
     }
 
+    /// <summary>
+    /// Writes a new C# script whose class takes the file's name and extends the base, with the two methods an entity
+    /// fills most. Throws <see cref="ArgumentException"/> for a name that is no C# class name, and
+    /// <see cref="IOException"/> when the file exists already.
+    /// </summary>
+    public static void Create(string project, string resourcePath, string baseType)
+    {
+        var file = FileOf(project, resourcePath);
+        var name = Path.GetFileNameWithoutExtension(file);
+        if (name.Length == 0 || char.IsDigit(name[0]) || !name.All(letter => char.IsLetterOrDigit(letter) || letter == '_'))
+        {
+            throw new ArgumentException($"{name} is no C# class name. Use letters, digits and _, and start with no digit.", nameof(resourcePath));
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(file) ?? project);
+        // CreateNew refuses a file that is there, so a script made since the list was read keeps its text.
+        using var writer = new StreamWriter(new FileStream(file, FileMode.CreateNew));
+        writer.Write($$"""
+            using Orblit;
+            using System;
+
+            public partial class {{name}} : {{baseType}}
+            {
+                // Called when the entity enters the stage for the first time.
+                public override void OnStart()
+                {
+                }
+
+                // Called every frame. 'delta' is the time since the frame before, in seconds.
+                public override void OnFrame(double delta)
+                {
+                }
+            }
+
+            """);
+    }
+
     static List<string> FindMatching(string project, string pattern)
     {
         var found = new List<string>();

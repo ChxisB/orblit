@@ -3,7 +3,6 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Input;
-using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
@@ -54,7 +53,7 @@ internal sealed class TitleBar : Grid
 
     readonly WorkspaceTab[] _tabs;
 
-    public TitleBar(Button play, Button stop, KeyModifiers command)
+    public TitleBar(Button play, Button playScene, Button stop, KeyModifiers command)
     {
         Height = BarHeight;
         Background = EditorBrushes.Window;
@@ -79,8 +78,8 @@ internal sealed class TitleBar : Grid
         _tabs.Single(tab => tab.Label == Spatial).IsChecked = true;
         Switcher = Parts.Pill(_tabs);
         SetColumn(Switcher, 1);
-        MoreButton.Flyout = RunMenu(play, command);
-        Run = RunButtons(play, stop, MoreButton);
+        MoreButton.Flyout = RunMenu(play, playScene, command);
+        Run = RunButtons(play, playScene, stop, MoreButton);
         SearchButton = Search(command);
         var end = new StackPanel
         {
@@ -138,14 +137,14 @@ internal sealed class TitleBar : Grid
     }
 
     // Pause is off because the game runs in its own process and the editor cannot pause it.
-    static Border RunButtons(Button play, Button stop, Button more)
+    static Border RunButtons(Button play, Button playScene, Button stop, Button more)
     {
         var pause = Parts.IconButton("Pause", "Pause the game");
         pause.IsEnabled = false;
         return Parts.Pill(
         [
             play,
-            Unbuilt.Mark(Parts.IconButton("PlayScene", "Run the current scene"), "Run the current scene is not built yet."),
+            playScene,
             pause,
             stop,
             Parts.Rule(),
@@ -153,27 +152,21 @@ internal sealed class TitleBar : Grid
         ]);
     }
 
-    // The game runs the project's main scene alone, so the other ways answer that they are not built.
-    MenuFlyout RunMenu(Button play, KeyModifiers command)
+    // The game runs the main scene or the open one, so the other ways answer that they are not built.
+    MenuFlyout RunMenu(Button play, Button playScene, KeyModifiers command) => new()
     {
-        var project = new MenuItem { Header = "Run the project", InputGesture = new KeyGesture(Key.B, command) };
-        project.Click += (_, _) => play.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-        project.Bind(IsEnabledProperty, play.GetObservable(IsEnabledProperty));
-        return new MenuFlyout
+        Placement = PlacementMode.BottomEdgeAlignedRight,
+        Items =
         {
-            Placement = PlacementMode.BottomEdgeAlignedRight,
-            Items =
-            {
-                project,
-                Parts.SoonItem("Run the current scene", MoreButton, new KeyGesture(Key.R, command)),
-                Parts.SoonItem("Run a chosen scene...", MoreButton, new KeyGesture(Key.R, command | KeyModifiers.Shift)),
-                new Separator(),
-                Parts.SoonItem("Movie maker mode", MoreButton),
-                new Separator(),
-                Parts.SoonItem("Customize Run Instances...", MoreButton),
-            },
-        };
-    }
+            Parts.PressItem("Run the project", play, new KeyGesture(Key.B, command)),
+            Parts.PressItem("Run the current scene", playScene, new KeyGesture(Key.R, command)),
+            Parts.SoonItem("Run a chosen scene...", MoreButton, new KeyGesture(Key.R, command | KeyModifiers.Shift)),
+            new Separator(),
+            Parts.SoonItem("Movie maker mode", MoreButton),
+            new Separator(),
+            Parts.SoonItem("Customize Run Instances...", MoreButton),
+        },
+    };
 
     // Drawn as a field with its key, because it opens the command palette's search.
     static Button Search(KeyModifiers command)
