@@ -201,6 +201,39 @@ public sealed class ViewportControlTests
     }
 
     [Fact]
+    public void A_frame_that_closes_its_window_asks_for_nothing_after_it()
+    {
+        UiThread.Run(() =>
+        {
+            Window? window = null;
+            var asked = 0;
+            var viewport = new ViewportControl(() =>
+            {
+                window!.Close();
+                return false;
+            }, (out int w, out int h, ref byte[] rgba) =>
+            {
+                asked++;
+                w = 0;
+                h = 0;
+                return false;
+            });
+            viewport.ModeSource = () =>
+            {
+                asked++;
+                return GizmoMode.Transform;
+            };
+            window = new Window { Content = viewport };
+            window.Show();
+
+            viewport.Tick();
+
+            Assert.Equal(0, asked);
+            Assert.False(viewport.IsRunning);
+        });
+    }
+
+    [Fact]
     public void Leaving_the_window_stops_the_viewport()
     {
         UiThread.Run(() =>
