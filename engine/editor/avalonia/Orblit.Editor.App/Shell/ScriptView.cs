@@ -23,6 +23,15 @@ internal interface IScriptFiles
 
     /// <summary>Builds the project's C# and answers each error and warning. Throws <see cref="IOException"/> when it cannot build.</summary>
     Task<IReadOnlyList<ScriptProblem>> CheckScripts();
+
+    /// <summary>The classes a new script can extend, by name.</summary>
+    IReadOnlyList<string> AddableClasses();
+
+    /// <summary>
+    /// Writes a new script that extends the class. Throws <see cref="ArgumentException"/> for a name that is no class
+    /// name and <see cref="IOException"/> when the file exists or cannot be written.
+    /// </summary>
+    void CreateScript(string resourcePath, string baseType);
 }
 
 /// <summary>
@@ -38,6 +47,11 @@ internal sealed class ScriptView : Border
     const double DotSize = 6;
 
     readonly CodeBox _code = new();
+    readonly ScriptFind _finder;
+    readonly CreateScriptForm _form = new(ScriptKind.Csharp);
+    readonly Button _new = Parts.IconButton("ScriptCreate", "New script");
+    readonly Button _sort = Parts.IconButton("Sort", SortTip(descending: false));
+    readonly Button _find = Parts.IconButton("Search", "Find in the script");
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
     readonly ListBox _outline = new()
     {
@@ -73,9 +87,11 @@ internal sealed class ScriptView : Border
     string? _open;
     string _saved = "";
     bool _shownDirty;
+    bool _descending;
 
     public ScriptView()
     {
+        _finder = new ScriptFind(_code);
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
         _save.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "Save", VerticalAlignment = VerticalAlignment.Center }, Parts.Kbd("⌘S") } };
         _tab = new Border
@@ -91,6 +107,7 @@ internal sealed class ScriptView : Border
             Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, Children = { Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), _tabName, _tabDot } },
         };
         _code.Editor.IsEnabled = false;
+        _find.IsEnabled = false;
         _code.Editor.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty)
@@ -109,6 +126,10 @@ internal sealed class ScriptView : Border
         _list.SelectionChanged += (_, _) => Choose(_list.SelectedItem as string);
         _outline.SelectionChanged += (_, _) => GoToMember();
         _save.Click += (_, _) => Save();
+        _new.Click += (_, _) => _form.Open(_paths, _files?.AddableClasses() ?? []);
+        _form.Requested += Create;
+        _sort.Click += (_, _) => Sort();
+        _find.Click += (_, _) => _finder.Open();
         _problems.Click += async (_, _) => await ListOrCheck();
         ToolTip.SetTip(_problems, "Build the project's C# and list its errors and warnings");
         ShowProblems("Check problems", null, EditorBrushes.TextDim);
@@ -130,6 +151,18 @@ internal sealed class ScriptView : Border
     internal TextBox Filter => _filter;
 
     internal ListBox Outline => _outline;
+
+    internal Dialog CreateDialog => _form.Dialog;
+
+    internal CreateScriptForm Form => _form;
+
+    internal Button NewButton => _new;
+
+    internal Button SortButton => _sort;
+
+    internal Button FindButton => _find;
+
+    internal ScriptFind Finder => _finder;
 
     /// <summary>The open script's path, or a line asking for one.</summary>
     internal TextBlock Heading => _name;
@@ -205,6 +238,8 @@ internal sealed class ScriptView : Border
 
     static bool Failed(Exception error) => error is IOException or UnauthorizedAccessException;
 
+    static string SortTip(bool descending) => descending ? "Sort the scripts A to Z" : "Sort the scripts Z to A";
+
     static string FileName(string path) => path.StartsWith("res://", StringComparison.Ordinal) ? path["res://".Length..] : path;
 
     // The width of one step of indent: tabs when a line starts with one, else the fewest spaces any line starts with.
@@ -269,9 +304,7 @@ internal sealed class ScriptView : Border
             Background = EditorBrushes.Line,
             Child = new TextBlock { Text = "Scripts", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
         };
-        var tools = Row(
-            Unbuilt.Mark(Parts.IconButton("ScriptCreate", "New script"), "New script is not built yet."),
-            Unbuilt.Mark(Parts.IconButton("Sort", "Sort scripts"), "Sorting the scripts is not built yet."));
+        var tools = Row(_new, _sort);
         var heading = new Border
         {
             Padding = new Thickness(14, 14, 14, 6),
@@ -298,8 +331,7 @@ internal sealed class ScriptView : Border
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = "C#", FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
         };
-        var find = Unbuilt.Mark(Parts.IconButton("Search", "Find"), "Find in a script is not built yet.");
-        var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, find, new Border { Width = 4 }, _save);
+        var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, _find, new Border { Width = 4 }, _save);
         DockPanel.SetDock(_problems, Dock.Right);
         var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status } };
         var status = new Border
@@ -316,6 +348,7 @@ internal sealed class ScriptView : Border
         Place(grid, Bar(_tab, tools), 0);
         Place(grid, _code, 1);
         Place(grid, _empty, 1);
+        Place(grid, _finder, 1);
         Place(grid, status, 2);
         // The text area's corners would square off the island's lower ones.
         return new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = grid };
@@ -337,6 +370,12 @@ internal sealed class ScriptView : Border
     {
         var filter = (_filter.Text ?? "").Trim();
         var shown = _paths.Where(path => FileName(path).Contains(filter, StringComparison.OrdinalIgnoreCase)).ToList();
+        // The project lists its scripts A to Z, so Z to A is the list turned round.
+        if (_descending)
+        {
+            shown.Reverse();
+        }
+
         // The list keeps a selection that the new source still holds, which would open that script by itself.
         _list.SelectedItem = null;
         _list.ItemsSource = shown;
@@ -378,9 +417,44 @@ internal sealed class ScriptView : Border
         }
     }
 
+    void Sort()
+    {
+        _descending = !_descending;
+        ToolTip.SetTip(_sort, SortTip(_descending));
+        ShowList();
+    }
+
+    void Create(string path, string baseType)
+    {
+        if (_files is null)
+        {
+            return;
+        }
+
+        try
+        {
+            _files.CreateScript(path, baseType);
+        }
+        catch (Exception error) when (Failed(error) || error is ArgumentException)
+        {
+            _form.Say(error.Message);
+            return;
+        }
+
+        _form.Dialog.Close();
+        Refresh();
+        Choose(path);
+        if (_open == path)
+        {
+            Say($"Created {path}.", EditorBrushes.TextDim);
+        }
+    }
+
     void ShowOpen()
     {
         _code.Editor.IsEnabled = _open is not null;
+        _find.IsEnabled = _open is not null;
+        _finder.IsVisible &= _open is not null;
         _empty.IsVisible = _open is null;
         _tab.IsVisible = _open is not null;
         _tabName.Text = _open is null ? "" : FileName(_open);

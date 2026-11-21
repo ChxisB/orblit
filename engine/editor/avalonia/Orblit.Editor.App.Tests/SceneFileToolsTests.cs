@@ -324,4 +324,48 @@ public sealed class SceneFileToolsTests
             Assert.DoesNotContain("(*)", window.Title);
         });
     }
+
+    static MenuItem TabItem(EditorWindow window, string header) =>
+        ((MenuFlyout)window.SceneTabs.MenuButton.Flyout!).Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
+
+    [Fact]
+    public void The_scene_tab_menu_makes_runs_and_closes_the_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+
+            TabItem(window, "New Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.True(window.NewScene.Dialog.IsVisible);
+            window.NewScene.Dialog.Close();
+
+            TabItem(window, "Run This Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal("res://levels/one.oscn", scene.PlayedFlags[^1]);
+
+            TabItem(window, "Close Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.False(window.SceneTabs.Tab.IsVisible);
+            Assert.False(TabItem(window, "Close Scene").IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void Distraction_free_folds_both_sides_and_a_second_press_brings_both_back()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+            window.RightSide.Fold(true);
+
+            Click(window.SceneTabs.DistractionButton);
+
+            Assert.True(window.LeftSide.IsFolded);
+            Assert.True(window.RightSide.IsFolded);
+
+            Click(window.SceneTabs.DistractionButton);
+
+            Assert.False(window.LeftSide.IsFolded);
+            Assert.False(window.RightSide.IsFolded);
+        });
+    }
 }

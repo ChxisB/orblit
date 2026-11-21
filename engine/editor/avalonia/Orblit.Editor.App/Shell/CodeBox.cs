@@ -128,7 +128,23 @@ internal sealed class CodeBox : Border
     {
         _editor.CaretIndex = index;
         _editor.Focus();
-        var top = (Caret.Line - 1) * LineHeight;
+        ShowLineOf(index);
+    }
+
+    /// <summary>Selects this much of the text from this place and scrolls its line into view. The keys stay where they are.</summary>
+    public void Select(int start, int length)
+    {
+        // A caret write drops the selection, so it goes first.
+        _editor.CaretIndex = start;
+        _editor.SelectionStart = start;
+        _editor.SelectionEnd = start + length;
+        ShowLineOf(start);
+    }
+
+    void ShowLineOf(int index)
+    {
+        var text = _editor.Text ?? "";
+        var top = text.AsSpan(0, Math.Min(index, text.Length)).Count('\n') * LineHeight;
         var shown = _scroll.Offset.Y;
         if (top < shown || top + LineHeight > shown + _scroll.Viewport.Height)
         {

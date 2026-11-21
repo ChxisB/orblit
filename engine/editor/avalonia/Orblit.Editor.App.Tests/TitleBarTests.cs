@@ -129,13 +129,13 @@ public sealed class TitleBarTests
     }
 
     [Fact]
-    public void Only_Run_the_project_lacks_the_soon_mark()
+    public void Only_the_project_and_the_current_scene_lack_the_soon_mark()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(["Run the project"], RunItems(window).Where(item => !EditorTheme.IsSoon(item)).Select(item => (string)item.Header!));
+            Assert.Equal(["Run the project", "Run the current scene"], RunItems(window).Where(item => !EditorTheme.IsSoon(item)).Select(item => (string)item.Header!));
         });
     }
 
@@ -169,8 +169,55 @@ public sealed class TitleBarTests
         });
     }
 
+    [Fact]
+    public void Run_the_current_scene_gives_the_game_the_open_scene_file()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+            scene.PlayedFlags.Add("--stale");
+
+            Click(window.PlaySceneButton);
+
+            Assert.Equal(1, scene.Plays);
+            Assert.Equal(["--scene", "res://levels/one.oscn"], scene.PlayedFlags.TakeLast(2));
+            Assert.DoesNotContain("--stale", scene.PlayedFlags);
+        });
+    }
+
+    [Fact]
+    public void Command_R_and_the_more_menu_run_the_current_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+
+            var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.R, KeyModifiers = window.CommandKey };
+            window.RaiseEvent(press);
+            RunItem(window, "Run the current scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            Assert.True(press.Handled);
+            Assert.Equal(2, scene.Plays);
+            Assert.Equal("res://levels/one.oscn", scene.PlayedFlags[^1]);
+        });
+    }
+
+    [Fact]
+    public void Run_the_current_scene_is_off_while_the_scene_has_no_file()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+
+            Assert.True(window.PlayButton.IsEnabled);
+            Assert.False(window.PlaySceneButton.IsEnabled);
+            Assert.False(RunItem(window, "Run the current scene").IsEnabled);
+        });
+    }
+
     [Theory]
-    [InlineData("Run the current scene", "Run the current scene is not built yet.")]
     [InlineData("Run a chosen scene...", "Run a chosen scene is not built yet.")]
     [InlineData("Movie maker mode", "Movie maker mode is not built yet.")]
     [InlineData("Customize Run Instances...", "Customize Run Instances is not built yet.")]

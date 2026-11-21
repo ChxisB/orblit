@@ -117,4 +117,34 @@ public sealed class ProjectScriptsTests : IDisposable
     {
         Assert.Empty(ProjectScripts.Find(_folder));
     }
+
+    [Fact]
+    public void Create_writes_a_class_of_the_file_name_that_extends_the_base()
+    {
+        ProjectScripts.Create(_folder, "res://enemies/Slime.cs", "Entity3D");
+
+        var text = File.ReadAllText(Path.Combine(_folder, "enemies", "Slime.cs"));
+        Assert.Contains("public partial class Slime : Entity3D", text, StringComparison.Ordinal);
+        Assert.Contains("OnFrame(double delta)", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Create_refuses_a_file_that_exists_and_leaves_it_as_it_was()
+    {
+        Touch("Slime.cs");
+
+        Assert.Throws<IOException>(() => ProjectScripts.Create(_folder, "res://Slime.cs", "Entity"));
+        Assert.Equal("", File.ReadAllText(Path.Combine(_folder, "Slime.cs")));
+    }
+
+    [Theory]
+    [InlineData("res://2fast.cs")]
+    [InlineData("res://my-script.cs")]
+    public void Create_refuses_a_name_that_is_no_class_name(string resourcePath)
+    {
+        var error = Assert.Throws<ArgumentException>(() => ProjectScripts.Create(_folder, resourcePath, "Entity"));
+
+        Assert.Contains("is no C# class name", error.Message, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(_folder));
+    }
 }

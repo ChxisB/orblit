@@ -144,29 +144,6 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void Each_button_of_the_strip_answers_in_the_status()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var strip = window.SceneTabs;
-            (Button Button, string Message)[] cases =
-            [
-                (strip.MenuButton, "The scene tab menu is not built yet."),
-                (strip.DistractionButton, "Distraction free mode is not built yet."),
-            ];
-
-            foreach (var (button, message) in cases)
-            {
-                ClickOn(button, window);
-
-                Assert.Equal(message, window.Status);
-                window.Fail("");
-            }
-        });
-    }
-
-    [Fact]
     public void The_tools_float_in_a_pill_10_pixels_in_from_the_top_left_of_the_viewport()
     {
         UiThread.Run(() =>
@@ -657,7 +634,7 @@ public sealed class ViewportAreaTests
     {
         UiThread.Run(() =>
         {
-            var strip = new SceneTabStrip();
+            var strip = new SceneTabStrip(new Button(), KeyModifiers.Meta);
 
             strip.Show(new OutlineNode(1, "Odd", "NoSuchClass", []), "odd");
 

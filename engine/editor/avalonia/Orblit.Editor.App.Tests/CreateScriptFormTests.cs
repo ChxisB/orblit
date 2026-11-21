@@ -9,18 +9,18 @@ using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
 
-public sealed class CreateGraphFormTests
+public sealed class CreateScriptFormTests
 {
-    static CreateGraphForm Opened(params string[] scripts)
+    static CreateScriptForm Opened(params string[] scripts)
     {
-        var form = new CreateGraphForm();
+        var form = new CreateScriptForm(ScriptKind.Graph);
         new Window { Width = 1000, Height = 700, Content = form.Dialog }.Show();
         form.Open(scripts, ["Camera3D", "Entity", "Entity2D", "Entity3D"]);
         form.Dialog.UpdateLayout();
         return form;
     }
 
-    static (string Path, string Base)? Create(CreateGraphForm form)
+    static (string Path, string Base)? Create(CreateScriptForm form)
     {
         (string, string)? asked = null;
         form.Requested += (path, baseType) => asked = (path, baseType);

@@ -309,6 +309,8 @@ internal sealed class FakeScene : IEditorScene
         ScriptText[resourcePath] = text;
     }
 
+    public void CreateScript(string resourcePath, string baseType) => WriteScript(resourcePath, $"class {baseType}Script : {baseType} {{ }}");
+
     public void AttachScript(nint entity, string resourcePath)
     {
         if (AttachFails)
