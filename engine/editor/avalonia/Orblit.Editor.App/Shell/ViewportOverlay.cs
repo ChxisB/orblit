@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Layout;
@@ -10,8 +11,9 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>
 /// What floats over the top right of the viewport: a pill with the projection button, the preview buttons and the
 /// preview settings, and the axes under it. The projection button opens a menu of Perspective, Orthogonal and Focus
-/// Selection, and its label shows the projection in force. The previews are not built, so their buttons and the
-/// settings popover say so. The overlay has no fill, so a press on any other point goes to the viewport under it.
+/// Selection, and its label shows the projection in force. The preview buttons and the switches in the settings
+/// popover turn the preview sun and sky on and off, and stay in step. The overlay has no fill, so a press on any
+/// other point goes to the viewport under it.
 /// </summary>
 internal sealed class ViewportOverlay : Grid
 {
@@ -21,6 +23,10 @@ internal sealed class ViewportOverlay : Grid
     readonly MenuItem _orthogonal = new() { Header = "Orthogonal", ToggleType = MenuItemToggleType.Radio };
     readonly MenuItem _focus;
     readonly Button _previewSettings = Parts.Tight(Parts.IconButton("GuiDropdown", "Preview settings"));
+    readonly FixedToggle _sun = new("PreviewSun", "Sun preview", lit: true);
+    readonly FixedToggle _environment = new("PreviewEnvironment", "Environment preview", lit: true);
+    readonly ToggleSwitch _sunSwitch = Switch();
+    readonly ToggleSwitch _environmentSwitch = Switch();
 
     readonly AxisGizmo _axes = new() { HorizontalAlignment = HorizontalAlignment.Right };
     readonly StackPanel _corner;
@@ -48,15 +54,19 @@ internal sealed class ViewportOverlay : Grid
         [
             _projection,
             Parts.Rule(),
-            Unbuilt.Tool("PreviewSun", "Sun preview"),
-            Unbuilt.Tool("PreviewEnvironment", "Environment preview", lit: true),
+            _sun,
+            _environment,
             _previewSettings,
         ]);
         _previewSettings.Flyout = CardHead.Popover("Preview settings", "What the viewport adds when the scene has no light or sky.", 300, new StackPanel
         {
             Spacing = 10,
-            Children = { SoonRow("PreviewSun", "Sun preview"), SoonRow("PreviewEnvironment", "Environment preview") },
+            Children = { SwitchRow("PreviewSun", "Sun preview", _sunSwitch), SwitchRow("PreviewEnvironment", "Environment preview", _environmentSwitch) },
         });
+        _sun.Click += (_, _) => ShowPreviews(!Sun, Environment);
+        _environment.Click += (_, _) => ShowPreviews(Sun, !Environment);
+        _sunSwitch.IsCheckedChanged += (_, _) => ShowPreviews(_sunSwitch.IsChecked == true, Environment);
+        _environmentSwitch.IsCheckedChanged += (_, _) => ShowPreviews(Sun, _environmentSwitch.IsChecked == true);
         View.HorizontalAlignment = HorizontalAlignment.Right;
         _corner = new StackPanel { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Top, Children = { View, _axes } };
         Children.Add(_corner);
@@ -64,6 +74,9 @@ internal sealed class ViewportOverlay : Grid
 
     /// <summary>Raised with true when the user chose Orthogonal and false for Perspective. The menu and the label already show it.</summary>
     public event Action<bool>? ProjectionChanged;
+
+    /// <summary>Raised with whether the sun and the sky preview are on, after the buttons and switches show it.</summary>
+    public event Action<bool, bool>? PreviewsChanged;
 
     /// <summary>The pill at the top right.</summary>
     internal Border View { get; }
@@ -77,6 +90,18 @@ internal sealed class ViewportOverlay : Grid
     internal MenuItem FocusItem => _focus;
 
     internal Button PreviewSettingsButton => _previewSettings;
+
+    internal FixedToggle SunButton => _sun;
+
+    internal FixedToggle EnvironmentButton => _environment;
+
+    internal ToggleSwitch SunSwitch => _sunSwitch;
+
+    internal ToggleSwitch EnvironmentSwitch => _environmentSwitch;
+
+    internal bool Sun => _sun.IsChecked == true;
+
+    internal bool Environment => _environment.IsChecked == true;
 
     internal string ProjectionLabel => _label.Text!;
 
@@ -92,14 +117,30 @@ internal sealed class ViewportOverlay : Grid
     /// <summary>Turns the axes with the camera.</summary>
     public void Orbit(float yaw, float pitch) => _axes.Orbit(yaw, pitch);
 
-    // A setting that is not built shows Soon where its switch will go.
-    static DockPanel SoonRow(string icon, string label)
+    static ToggleSwitch Switch() => new() { IsChecked = true, OnContent = null, OffContent = null, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
+
+    static DockPanel SwitchRow(string icon, string label, ToggleSwitch toggle)
     {
-        var soon = new TextBlock { Text = "Soon", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.Warn, VerticalAlignment = VerticalAlignment.Center };
         var mark = new EditorIcon(icon) { Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-        DockPanel.SetDock(soon, Dock.Right);
+        DockPanel.SetDock(toggle, Dock.Right);
         DockPanel.SetDock(mark, Dock.Left);
-        return new DockPanel { Children = { soon, mark, new TextBlock { Text = label, FontSize = 12, VerticalAlignment = VerticalAlignment.Center } } };
+        AutomationProperties.SetName(toggle, label);
+        return new DockPanel { Children = { toggle, mark, new TextBlock { Text = label, FontSize = 12, VerticalAlignment = VerticalAlignment.Center } } };
+    }
+
+    // The overlay keeps the flags on its buttons. A switch set here raises its own change, which finds nothing new.
+    void ShowPreviews(bool sun, bool environment)
+    {
+        if (sun == Sun && environment == Environment)
+        {
+            return;
+        }
+
+        _sun.IsChecked = sun;
+        _environment.IsChecked = environment;
+        _sunSwitch.IsChecked = sun;
+        _environmentSwitch.IsChecked = environment;
+        PreviewsChanged?.Invoke(sun, environment);
     }
 
     void Choose(bool orthogonal)

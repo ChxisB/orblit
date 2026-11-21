@@ -28,6 +28,14 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public nint PickAt(Vector2 framePoint) => scene.PickAt(framePoint);
 
+    public IReadOnlyList<nint> PickAllAt(Vector2 framePoint) => scene.PickAllAt(framePoint);
+
+    public Vector3? WorldPointAt(Vector2 framePoint) => scene.WorldPointAt(framePoint);
+
+    public Vector2? FramePointOf(Vector3 world) => scene.FramePointOf(world);
+
+    public void ShowPreviews(bool sun, bool sky) => scene.ShowPreviews(sun, sky);
+
     public void ShowPlanar(bool on) => scene.ShowPlanar(on);
 
     public nint PickPlanarAt(Vector2 framePoint) => scene.PickPlanarAt(framePoint);

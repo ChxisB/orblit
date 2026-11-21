@@ -23,6 +23,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     readonly string _project;
     readonly EngineDebugChannel _debug;
     Process? _game;
+    bool _sunPreview = true;
+    bool _skyPreview = true;
 
     EditorEngine(EngineHost host, EditorSession session, ViewportParts? viewport, EditorOptions options)
     {
@@ -39,7 +41,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     internal required OutputLog Log { get; init; }
 
     // What a windowed engine adds: the frame reader and the camera that moves the view.
-    sealed record ViewportParts(ViewportReadback Readback, EditorCamera Camera, SelectionBox Box, PlanarCamera Planar);
+    sealed record ViewportParts(ViewportReadback Readback, EditorCamera Camera, SelectionBox Box, PlanarCamera Planar, EditorPreviews Previews);
 
     public static EditorEngine Start(EditorOptions options)
     {
@@ -75,9 +77,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
             var session = new EditorSession(host, new RunningScene(host));
             OpenFirstScene(session, options);
             readback = new ViewportReadback(host);
-            EditorWorld.Build(host);
+            var previews = EditorWorld.Build(host);
             var camera = new EditorCamera(host);
-            return new EditorEngine(host, session, new ViewportParts(readback, camera, new SelectionBox(host), new PlanarCamera(host)), options) { Log = log };
+            var engine = new EditorEngine(host, session, new ViewportParts(readback, camera, new SelectionBox(host), new PlanarCamera(host), previews), options) { Log = log };
+            engine.PutPreviews();
+            return engine;
         }
         catch
         {
@@ -124,6 +128,28 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public void MoveTo(nint entity, Vector3 position) => _session.MoveTo(entity, position);
 
     public nint PickAt(Vector2 framePoint) => _viewport is null ? 0 : _session.Pick(_viewport.Camera, framePoint);
+
+    public IReadOnlyList<nint> PickAllAt(Vector2 framePoint) => _viewport is null ? [] : _session.PickAll(_viewport.Camera, framePoint);
+
+    public Vector3? WorldPointAt(Vector2 framePoint) => _viewport is null ? null : _session.PointAt(_viewport.Camera, framePoint);
+
+    public Vector2? FramePointOf(Vector3 world) =>
+        _viewport is null || _viewport.Camera.IsBehind(world) ? null : _viewport.Camera.Project(world);
+
+    public void ShowPreviews(bool sun, bool sky)
+    {
+        (_sunPreview, _skyPreview) = (sun, sky);
+        PutPreviews();
+    }
+
+    // shortcut: the scene is asked for a sun when it opens or a switch flips, so a sun added later shines beside the preview one until then. Ask on each outline change if that shows.
+    void PutPreviews()
+    {
+        if (_viewport is not null)
+        {
+            EditorWorld.Show(_host, _viewport.Previews, _sunPreview && !_session.Holds("DirectionalLight3D"), _skyPreview);
+        }
+    }
 
     public void ShowPlanar(bool on) => _viewport?.Planar.SetOn(on);
 
@@ -284,11 +310,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public void Open(string resourcePath)
     {
         _session.OpenScene(resourcePath);
-        if (_viewport is not null)
-        {
-            EditorWorld.PutSkyLast(_host);
-        }
-
+        PutPreviews();
         SceneFile = resourcePath;
     }
 

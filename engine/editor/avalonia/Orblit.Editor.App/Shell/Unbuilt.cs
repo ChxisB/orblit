@@ -1,6 +1,5 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Shapes;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
@@ -34,8 +33,8 @@ internal static class Unbuilt
         ToolTip.SetShowOnDisabled(control, true);
     }
 
-    /// <summary>A tool of a viewport pill that is not built. Lit shows it on, as the design draws it.</summary>
-    public static FixedToggle Tool(string icon, string name, bool lit = false) => Mark(new FixedToggle(icon, name, lit), $"{name} is not built yet.");
+    /// <summary>A tool of a viewport pill that is not built.</summary>
+    public static FixedToggle Tool(string icon, string name) => Mark(new FixedToggle(icon, name, lit: false), $"{name} is not built yet.");
 
     /// <summary>
     /// Makes a click on the button raise <see cref="Event"/> with the answer to show. An icon button also dims
@@ -49,11 +48,7 @@ internal static class Unbuilt
             // The icon leaves the button before the panel takes it, because a control has one logical parent.
             button.Content = null;
             button.Content = new Panel { Children = { icon, Dot() } };
-            // A lit toggle keeps the accent, because it shows a mode the engine draws today.
-            if (button is not ToggleButton { IsChecked: true })
-            {
-                button.Foreground = EditorBrushes.Unbuilt;
-            }
+            button.Foreground = EditorBrushes.Unbuilt;
         }
 
         return button;

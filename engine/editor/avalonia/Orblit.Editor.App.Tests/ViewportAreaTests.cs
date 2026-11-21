@@ -363,7 +363,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_view_pill_holds_the_previews_after_a_rule_with_the_environment_lit()
+    public void The_view_pill_holds_the_previews_after_a_rule_with_both_lit()
     {
         UiThread.Run(() =>
         {
@@ -374,12 +374,12 @@ public sealed class ViewportAreaTests
             Assert.Same(window.Center.Overlay.ProjectionButton, items[0]);
             Assert.IsType<Border>(items[1]);
             Assert.Equal(["PreviewSun", "PreviewEnvironment"], previews.Select(preview => preview.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName));
-            Assert.Equal([false, true], previews.Select(preview => preview.IsChecked == true));
+            Assert.Equal([true, true], previews.Select(preview => preview.IsChecked == true));
         });
     }
 
     [Fact]
-    public void Preview_settings_opens_a_popover_that_marks_both_previews_soon()
+    public void Preview_settings_opens_a_popover_with_a_switch_for_each_preview()
     {
         UiThread.Run(() =>
         {
@@ -392,8 +392,10 @@ public sealed class ViewportAreaTests
             var body = (Control)((Flyout)button.Flyout).Content!;
             var texts = body.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "").ToArray();
             Assert.Equal(["Preview settings", "What the viewport adds when the scene has no light or sky."], texts[..2]);
-            // A row docks its Soon tag first, so the tag comes before the label.
-            Assert.Equal(["Soon", "Sun preview", "Soon", "Environment preview"], texts.Where(text => text is "Sun preview" or "Environment preview" or "Soon"));
+            Assert.Equal(["Sun preview", "Environment preview"], texts[2..]);
+            var switches = body.GetLogicalDescendants().OfType<ToggleSwitch>().ToArray();
+            Assert.Equal([window.Center.Overlay.SunSwitch, window.Center.Overlay.EnvironmentSwitch], switches);
+            Assert.All(switches, toggle => Assert.True(toggle.IsChecked));
         });
     }
 

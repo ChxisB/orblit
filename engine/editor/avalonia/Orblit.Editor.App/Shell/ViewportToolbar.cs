@@ -14,13 +14,14 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The tools that float over the viewport. A pill at the top left holds the modes, the coordinate and trackball
-/// buttons, Snap and its popover, the lock, group and keep buttons, and two tools still to come. A chip at the
+/// buttons, Snap and its popover, the lock, group and keep buttons, Select from a list and the ruler. A chip at the
 /// bottom left names the selection and holds what acts on it: the Collision menu for a mesh, Focus Selection and
 /// the Reset menu. The Transform, Move, Rotate, Scale and Select modes light one at a time, the Local coordinates
 /// button flips the handles between global and local axes, the Trackball button gives Rotate mode its ball, Snap
 /// and the three steps in its popover round the drags, the Lock and Group buttons show the flags of the selection,
-/// and the Keep child transforms button lights while it is on. The two tools still to come answer in the status
-/// line. The grid has no fill, so a press between the pills goes to the viewport.
+/// and the Keep child transforms button lights while it is on. Select from a list and the ruler change what a click
+/// does, so they light one at a time and a press on the lit one puts it out. The grid has no fill, so a press
+/// between the pills goes to the viewport.
 /// </summary>
 internal sealed class ViewportToolbar : Grid
 {
@@ -42,6 +43,8 @@ internal sealed class ViewportToolbar : Grid
     readonly FixedToggle _lock = new("Lock", "Lock the selection", lit: false);
     readonly FixedToggle _group = new("Group", "Group the selection", lit: false);
     readonly FixedToggle _keep = new("Pin", "Keep child transforms", lit: false);
+    readonly FixedToggle _listSelect = new("ListSelect", "Select from a list. Alt click where things overlap.", lit: false);
+    readonly FixedToggle _ruler = new("Ruler", "Ruler. Click two points to measure.", lit: false);
     readonly StackPanel _named = new() { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(8, 0) };
     readonly TextBlock _name = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _className = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
@@ -73,6 +76,8 @@ internal sealed class ViewportToolbar : Grid
         {
             toggle.Click += (_, _) => toggle.IsChecked = toggle.IsChecked != true;
         }
+        _listSelect.Click += (_, _) => (_listSelect.IsChecked, _ruler.IsChecked) = (_listSelect.IsChecked != true, false);
+        _ruler.Click += (_, _) => (_ruler.IsChecked, _listSelect.IsChecked) = (_ruler.IsChecked != true, false);
         _snapOptions.Flyout = CardHead.Popover("Snap", "Hold Ctrl or Command to flip it for one drag.", 290, new StackPanel
         {
             Spacing = 8,
@@ -119,8 +124,8 @@ internal sealed class ViewportToolbar : Grid
             _group,
             _keep,
             Parts.Rule(),
-            Unbuilt.Tool("ListSelect", "Selection from a list"),
-            Unbuilt.Tool("Ruler", "Ruler"),
+            _listSelect,
+            _ruler,
         ]);
         Tools.HorizontalAlignment = HorizontalAlignment.Left;
         Tools.VerticalAlignment = VerticalAlignment.Top;
@@ -203,6 +208,16 @@ internal sealed class ViewportToolbar : Grid
 
     internal FixedToggle KeepChildrenButton => _keep;
 
+    internal FixedToggle ListSelectButton => _listSelect;
+
+    internal FixedToggle RulerButton => _ruler;
+
+    /// <summary>True while a click shows what is under it to choose from.</summary>
+    internal bool ListSelects => _listSelect.IsChecked == true;
+
+    /// <summary>True while a click puts down a ruler point.</summary>
+    internal bool Measures => _ruler.IsChecked == true;
+
     /// <summary>Whether a change to a parent leaves its children where they stand.</summary>
     internal bool KeepChildren => _keep.IsChecked == true;
 
@@ -274,6 +289,21 @@ internal sealed class ViewportToolbar : Grid
         {
             mode.IsChecked = mode == lit;
         }
+    }
+
+    /// <summary>A menu of the entities under the cursor, nearest first, each with its class. A click on one chooses it.</summary>
+    public static MenuFlyout PickList(IEnumerable<OutlineNode> under, Action<nint> choose)
+    {
+        var list = new MenuFlyout { Items = { Parts.MenuHeading("Pick from what is under the cursor") } };
+        foreach (var node in under)
+        {
+            var className = new TextBlock { Text = node.ClassName, FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(16, 0, 0, 0) };
+            DockPanel.SetDock(className, Dock.Right);
+            var item = new MenuItem { Icon = ClassMark(node.ClassName), Header = new DockPanel { MinWidth = 220, Children = { className, new TextBlock { Text = node.Name } } } };
+            item.Click += (_, _) => choose(node.Handle);
+            list.Items.Add(item);
+        }
+        return list;
     }
 
     // A 3D class takes the 3D colour and a 2D class the 2D colour, as in New Scene.

@@ -416,6 +416,21 @@ internal sealed class FakeScene : IEditorScene
         return PickResult;
     }
 
+    /// <summary>What a click picks with Select from a list, nearest first.</summary>
+    public List<nint> PickAllResult { get; } = [];
+
+    public IReadOnlyList<nint> PickAllAt(Vector2 framePoint) => PickAllResult;
+
+    /// <summary>A frame point (x, y) lands on the ground at (x, 0, y), so a ruler measures frame pixels.</summary>
+    public Vector3? WorldPointAt(Vector2 framePoint) => new Vector3(framePoint.X, 0, framePoint.Y);
+
+    public Vector2? FramePointOf(Vector3 world) => new Vector2(world.X, world.Z);
+
+    /// <summary>Each time the window switched the preview lights, in order.</summary>
+    public List<(bool Sun, bool Sky)> Previews { get; } = [];
+
+    public void ShowPreviews(bool sun, bool sky) => Previews.Add((sun, sky));
+
     /// <summary>Each time the window turned the 2D view on (true) or off (false), in order.</summary>
     public List<bool> Planar { get; } = [];
 

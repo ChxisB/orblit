@@ -53,7 +53,7 @@ public sealed class RotateGizmoTests
         var viewport = new ViewportControl(() => false, Frame) { RingsSource = source, ModeSource = () => GizmoMode.Rotate };
         var rig = new Rig { Window = new Window { Width = width, Height = height, Content = viewport }, Viewport = viewport };
         viewport.GizmoDragged += drag => rig.Turns.Add((drag.Hit.Axis, GizmoMath.RingAngle(Rings.Of(drag.Hit.Axis), drag.Move.To, drag.Move.Delta)));
-        viewport.Clicked += rig.Clicks.Add;
+        viewport.Clicked += (point, _) => rig.Clicks.Add(point);
         viewport.Orbited += (yaw, pitch) => rig.Orbits.Add((yaw, pitch));
         rig.Window.Show();
         viewport.Tick();

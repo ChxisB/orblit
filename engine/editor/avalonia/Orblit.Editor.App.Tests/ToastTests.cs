@@ -272,18 +272,4 @@ public sealed class ToastTests
             Assert.Same(EditorBrushes.Unbuilt, button.Foreground);
         });
     }
-
-    [Fact]
-    public void A_lit_unbuilt_toggle_keeps_the_accent_and_takes_the_dot()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            // The overlay has no template without a viewport, so the logical tree holds what it shows.
-            var environment = window.Center.Overlay.View.GetLogicalDescendants().OfType<FixedToggle>().Single(toggle => toggle.IsChecked == true);
-
-            Assert.Single(environment.GetLogicalDescendants().OfType<Ellipse>());
-            Assert.NotSame(EditorBrushes.Unbuilt, environment.Foreground);
-        });
-    }
 }

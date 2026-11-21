@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,10 +7,14 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
 using Avalonia.Platform;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 using Vector2 = System.Numerics.Vector2;
 
 namespace Orblit.Editor.App;
+
+/// <summary>The 3D ruler in the frame's pixels: its first point, its second once one is down, and the distance to show.</summary>
+internal sealed record RulerShown(Vector2 From, Vector2? To, string Label);
 
 /// <summary>Which 2D drags take the mark of the selection.</summary>
 internal enum MarkGrip
@@ -53,6 +58,16 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     // A press this near the mark, in control pixels, takes it.
     const double MarkGrab = 12;
 
+    // The ruler, as the design draws it: a dashed amber line, a dark dot with an amber ring at each end, and the
+    // distance in a dark tag at the middle.
+    const double RulerDot = 5;
+    const double LabelSize = 11;
+    static readonly IPen RulerPen = new Pen(EditorBrushes.Warn, 2, new DashStyle([3, 2], 0)).ToImmutable();
+    static readonly IPen RulerRing = new Pen(EditorBrushes.Warn, 2).ToImmutable();
+    static readonly IBrush RulerDotFill = new ImmutableSolidColorBrush(EditorColors.Window);
+    static readonly IBrush RulerTag = new ImmutableSolidColorBrush(EditorColors.Window, 0.9);
+    static readonly Typeface RulerFace = new(EditorTheme.Mono);
+
     static readonly IBrush CentreBrush = new ImmutableSolidColorBrush(Color.Parse("#e0e0e0"));
     static readonly IPen OuterPen = new Pen(new ImmutableSolidColorBrush(Color.Parse("#b3ffffff")), OuterWidth).ToImmutable();
     static readonly IBrush BallBrush = new ImmutableSolidColorBrush(Color.Parse("#26ffffff"));
@@ -85,6 +100,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     GizmoHit? _grab;
     GizmoRings? _rings;
     Vector2? _mark;
+    RulerShown? _ruler;
     bool _markGrab;
 
     /// <summary>Asked for whether the view is the 2D one. It is the 3D one until set.</summary>
@@ -108,6 +124,9 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Asked on each tick for the move handles to draw, in the frame's pixels. Null from it draws none.</summary>
     internal Func<GizmoHandles?>? HandlesSource { get; set; }
 
+    /// <summary>Asked on each tick, while the view is 3D, for the ruler to draw. Null from it draws none.</summary>
+    internal Func<RulerShown?>? RulerSource { get; set; }
+
     /// <summary>The newest frame, or null before the first one.</summary>
     internal WriteableBitmap? Frame { get; private set; }
 
@@ -120,8 +139,8 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Raised while the left button drags, with the yaw and pitch change in radians.</summary>
     public event Action<float, float>? Orbited;
 
-    /// <summary>Raised when the left button goes up near where it went down, with the point in the frame's pixels.</summary>
-    public event Action<Vector2>? Clicked;
+    /// <summary>Raised when the left button goes up near where it went down, with the point in the frame's pixels and the keys held.</summary>
+    public event Action<Vector2, KeyModifiers>? Clicked;
 
     /// <summary>Raised while a part of the gizmo drags, with the pointer move since the last event in the frame's pixels.</summary>
     internal event Action<GizmoDrag>? GizmoDragged;
@@ -158,6 +177,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         _handles = !planar && GizmoZones.HasHandles(mode) ? HandlesSource?.Invoke() : null;
         _rings = !planar && GizmoZones.HasRings(mode) ? RingsSource?.Invoke() : null;
         _mark = planar ? MarkSource?.Invoke() : null;
+        _ruler = planar ? null : RulerSource?.Invoke();
         if (read(out var width, out var height, ref _rgba))
         {
             Keep(width, height);
@@ -267,7 +287,30 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
             {
                 DrawMark(context, Control(mark));
             }
+
+            if (_ruler is { } ruler)
+            {
+                DrawRuler(context, Control(ruler.From), ruler.To is { } to ? Control(to) : null, ruler.Label);
+            }
         }
+    }
+
+    static void DrawRuler(DrawingContext context, Vector2 from, Vector2? to, string label)
+    {
+        var start = new Point(from.X, from.Y);
+        if (to is { } other)
+        {
+            var end = new Point(other.X, other.Y);
+            context.DrawLine(RulerPen, start, end);
+            context.DrawEllipse(RulerDotFill, RulerRing, end, RulerDot, RulerDot);
+            var text = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, RulerFace, LabelSize, EditorBrushes.Warn);
+            var middle = (start + end) / 2;
+            var tag = new Rect(middle.X - (text.Width / 2) - 8, middle.Y - (text.Height / 2) - 3, text.Width + 16, text.Height + 6);
+            context.DrawRectangle(RulerTag, null, tag, 6, 6);
+            context.DrawText(text, new Point(tag.X + 8, tag.Y + 3));
+        }
+
+        context.DrawEllipse(RulerDotFill, RulerRing, start, RulerDot, RulerDot);
     }
 
     static void DrawMark(DrawingContext context, Vector2 at)
@@ -432,7 +475,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         if (e.InitialPressMouseButton == MouseButton.Left && _pressedAt is not null
             && Frame is not null && FrameAt(e.GetPosition(this), Frame.Size, Bounds.Size) is { } point)
         {
-            Clicked?.Invoke(point);
+            Clicked?.Invoke(point, e.KeyModifiers);
         }
         _pressedAt = null;
     }
