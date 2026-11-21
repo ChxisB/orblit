@@ -28,6 +28,7 @@
   "Entity.remove_child",
   "Entity.queue_destroy",
   "Entity.get_parent",
+  "Entity.get_owner",
   "Entity.get_child_count",
   "Entity.get_child",
   "Entity.duplicate",

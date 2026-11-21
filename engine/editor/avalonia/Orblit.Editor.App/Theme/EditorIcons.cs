@@ -29,6 +29,9 @@ internal static partial class EditorIcons
         s_icons["Book"] = Line("M4 5.5h5.5A2.5 2.5 0 0 1 12 8v11a2 2 0 0 0-2-2H4zM20 5.5h-5.5A2.5 2.5 0 0 0 12 8v11a2 2 0 0 1 2-2h6z");
         s_icons["Triangle"] = Line("M12 5l8 14H4z");
         s_icons["ResetTurn"] = Line("M4.5 12a7.5 7.5 0 1 0 2.2-5.3M4.5 4v4h4");
+        s_icons["Past"] = Line("M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2");
+        s_icons["Bin"] = Line("M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13");
+        s_icons["StepArrow"] = Line("M5 12h14M13 6l6 6-6 6");
     }
 
     static IconDrawing Line(string path) =>

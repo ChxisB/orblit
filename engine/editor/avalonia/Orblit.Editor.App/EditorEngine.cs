@@ -246,7 +246,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void Reparent(nint entity, nint newParent, bool keepGlobalTransform) => _session.Reparent(entity, newParent, keepGlobalTransform);
 
-    public void Remove(nint entity) => _session.Remove(entity);
+    public DetachedEntity Detach(nint entity) => _session.Detach(entity);
+
+    public void Restore(DetachedEntity detached) => _session.Restore(detached);
+
+    public void Destroy(nint entity) => _session.Destroy(entity);
 
     public void Save() => _session.Save();
 

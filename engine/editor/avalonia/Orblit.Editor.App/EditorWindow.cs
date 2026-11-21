@@ -41,6 +41,8 @@ internal sealed class EditorWindow : Window
     readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes;
     readonly TimeProvider _time;
+    readonly EditHistory _history;
+    readonly HistoryPane _historyPane = new();
     readonly ToastStack _toasts;
     readonly List<string> _recent = [];
     readonly Dictionary<string, DateTimeOffset> _openedAt = [];
@@ -53,6 +55,8 @@ internal sealed class EditorWindow : Window
     readonly Button _playButton = Parts.IconButton("MainPlay", "Run the project");
     readonly Button _stopButton = Parts.IconButton("Stop", "Stop the game");
     readonly Button _frame = new() { IsEnabled = false };
+    readonly Button _undo = new() { IsEnabled = false };
+    readonly Button _redo = new() { IsEnabled = false };
     readonly SceneTabStrip _sceneTabs = new();
     readonly ViewportToolbar _toolbar;
     readonly TitleBar _titleBar;
@@ -92,12 +96,20 @@ internal sealed class EditorWindow : Window
     bool _planar;
     // The Entity3D the gizmo drags, or zero when the selection has none.
     nint _gizmoTarget;
+    // What the drag under way did, such as Moved Box, which names its step in History when it ends.
+    string _dragged = "";
 
     // The screen bar of macOS has its own app menu, so a window on any other system also carries Quit and About.
     public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null, TimeProvider? time = null)
     {
         // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
         _time = time ?? TimeProvider.System;
+        _history = new EditHistory(_time);
+        _history.Changed += ShowHistory;
+        _historyPane.Picked += GoTo;
+        _historyPane.ClearButton.Click += (_, _) => _history.Clear();
+        _undo.Click += (_, _) => GoTo(_history.Done - 1);
+        _redo.Click += (_, _) => GoTo(_history.Done + 1);
         _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
         _saveChanges = SaveChangesDialog();
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
@@ -125,6 +137,7 @@ internal sealed class EditorWindow : Window
         _instanceScene.Failed += Fail;
         _inspector.Edited += () =>
         {
+            _history.Commit($"Edited {_scenePane.Selected?.Name}");
             ShowEdited(true);
             HighlightSelected();
             Say("Edited. Save keeps the change.");
@@ -148,7 +161,8 @@ internal sealed class EditorWindow : Window
         _frame.Click += (_, _) => Frame();
         AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports."))) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
-        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", Parts.EmptyState("Clock", "Nothing to undo yet", "Undo is not built yet. Its steps will be listed here."))) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
+        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
+        _fileDock.AddTool("History", _historyPane.ClearButton);
         _inspectorPane = new InspectorPane(_inspector);
         _inspectorPane.Picked += _scenePane.Select;
         _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", _signals)) { Slot = DockSlot.Right, Icon = "ListSelect" };
@@ -222,6 +236,8 @@ internal sealed class EditorWindow : Window
 
     internal SignalsPane Signals => _signals;
 
+    internal HistoryPane History => _historyPane;
+
     internal NewSceneTool NewScene => _newScene;
 
     internal InstanceTool InstanceScene => _instanceScene;
@@ -255,8 +271,9 @@ internal sealed class EditorWindow : Window
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
 
-    public void Load(IEditorScene scene)
+    public void Load(IEditorScene editorScene)
     {
+        var scene = new UndoableScene(editorScene, _history);
         _scene = scene;
         // The button can be pressed while the engine starts, before there is a scene to tell.
         scene.KeepChildren = _toolbar.KeepChildren;
@@ -324,7 +341,11 @@ internal sealed class EditorWindow : Window
         viewport.HandlesSource = () => _gizmoTarget == 0 ? null : _scene?.HandlesOf(_gizmoTarget, _toolbar.Space);
         viewport.RingsSource = () => _gizmoTarget == 0 ? null : _scene?.RingsOf(_gizmoTarget, _toolbar.Space);
         viewport.GizmoDragged += DragSelected;
-        viewport.GizmoReleased += () => _scene?.EndDrag();
+        viewport.GizmoReleased += () =>
+        {
+            _scene?.EndDrag();
+            _history.Commit(_dragged);
+        };
         viewport.Orbited += _center.Overlay.Orbit;
         _center.Overlay.IsVisible = true;
         _viewport.Content = viewport;
@@ -451,13 +472,14 @@ internal sealed class EditorWindow : Window
         _inspectorPane.Show(_scene, selected);
         HighlightSelected();
         ShowEdited(true);
-        Say($"{verb} {selected.Name}. Save keeps the change.");
+        _dragged = $"{verb} {selected.Name}";
+        Say($"{_dragged}. Save keeps the change.");
     }
 
     // The box is drawn from the entity's place and size, so an edit in the inspector moves it too.
     void HighlightSelected() => _scene?.Highlight(_scenePane.Selected?.Handle ?? 0);
 
-    // Closing drops the scene and there is no undo, so edits that no save holds ask first.
+    // Closing drops the scene and its history, so edits that no save holds ask first.
     protected override void OnClosing(WindowClosingEventArgs e)
     {
         base.OnClosing(e);
@@ -518,6 +540,8 @@ internal sealed class EditorWindow : Window
             ["Command Palette..."] = new(OpenPalette),
             ["Quick Open Scene..."] = new(OpenQuickOpen),
             ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
+            ["Undo"] = new(() => _undo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _undo.GetObservable(IsEnabledProperty)),
+            ["Redo"] = new(() => _redo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _redo.GetObservable(IsEnabledProperty)),
             ["Quit"] = new(Close),
             ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
         };
@@ -561,6 +585,8 @@ internal sealed class EditorWindow : Window
     {
         (Key.N, var modifiers) when modifiers == CommandKey => _sceneTabs.AddButton,
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
+        (Key.Z, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _undo,
+        (Key.Z, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && e.Source is not TextBox => _redo,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
         (Key.A, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _tools.AddButton,
@@ -582,8 +608,8 @@ internal sealed class EditorWindow : Window
         _ => null,
     };
 
-    // Erase drops an entity with no undo, so it acts only from the window, the scene pane or the viewport while
-    // the scene shows.
+    // An erase key in another pane means that pane's own thing, so erase acts only from the window, the scene pane
+    // or the viewport while the scene shows.
     bool Erases(object? source) =>
         _scenePane.IsEffectivelyVisible
         && (source == this || source is Visual visual && (_scenePane.IsVisualAncestorOf(visual) || _viewport.IsVisualAncestorOf(visual)));
@@ -591,6 +617,8 @@ internal sealed class EditorWindow : Window
     // A tool changed the scene: read it again and show what it did.
     void Edited(EntityEdit edit)
     {
+        // The first sentence names the step, such as Renamed Ball to Box. A name can hold a full stop, so the split is on a full stop and a space.
+        _history.Commit(edit.Message.Split(". ")[0].TrimEnd('.'));
         Reload(edit.Select);
         ShowEdited(true);
         Say(edit.Message);
@@ -738,6 +766,41 @@ internal sealed class EditorWindow : Window
         _saveChanges.IsVisible &= edited;
     }
 
+    // Undo, redo and a click in History all come here, so the scene reloads once however many steps it moves.
+    void GoTo(int done)
+    {
+        var was = _history.Done;
+        try
+        {
+            _history.GoTo(done);
+        }
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException)
+        {
+            Fail(error.Message);
+            return;
+        }
+
+        if (_history.Done == was)
+        {
+            return;
+        }
+
+        Reload(_scenePane.Selected?.Handle ?? 0);
+        ShowEdited(true);
+        var moved = Math.Abs(_history.Done - was);
+        var step = _history.Steps[Math.Min(was, _history.Done)].Label;
+        var what = moved == 1 ? step : $"{moved} steps";
+        Say($"{(_history.Done < was ? "Undid" : "Redid")} {what}. Save keeps the change.");
+    }
+
+    void ShowHistory()
+    {
+        _undo.IsEnabled = _history.CanUndo;
+        _redo.IsEnabled = _history.CanRedo;
+        var file = _scene?.SceneFile ?? "";
+        _historyPane.Show(_history, $"Opened {(_scene is null ? "" : SceneName())}", _openedAt.GetValueOrDefault(file, _time.GetLocalNow()));
+    }
+
     // The game runs from the files on disk, so a play saves edits first. A scene with none is left alone,
     // because its scripts run while it is open and a save would write what they changed.
     void Play()
@@ -833,7 +896,7 @@ internal sealed class EditorWindow : Window
         _sceneTabs.CloseButton.Click += (_, _) => Leave(() => _scene!.Close());
     }
 
-    // Opening, making or closing a scene drops the open one and there is no undo, so the file takes its edits
+    // Opening, making or closing a scene drops the open one and its history, so the file takes its edits
     // first, as in a play. Answers whether the change was made.
     bool Leave(Action change)
     {

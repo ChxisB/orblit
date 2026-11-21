@@ -154,7 +154,7 @@ internal sealed class EntityTools
 
     EntityEdit Remove()
     {
-        _scene!.Remove(_selected!.Handle);
+        _scene!.Detach(_selected!.Handle);
         return new EntityEdit(0, $"Removed {_selected.Name}.");
     }
 }

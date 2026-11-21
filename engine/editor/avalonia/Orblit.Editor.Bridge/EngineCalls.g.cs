@@ -45,6 +45,7 @@ public static unsafe class EngineCalls
     static readonly EngineMethod EntityRemoveChildMethod = new("Entity", "remove_child", 159989177);
     static readonly EngineMethod EntityQueueDestroyMethod = new("Entity", "queue_destroy", 3218959716);
     static readonly EngineMethod EntityGetParentMethod = new("Entity", "get_parent", 897901198);
+    static readonly EngineMethod EntityGetOwnerMethod = new("Entity", "get_owner", 897901198);
     static readonly EngineMethod EntityGetChildCountMethod = new("Entity", "get_child_count", 894402480);
     static readonly EngineMethod EntityGetChildMethod = new("Entity", "get_child", 830376207);
     static readonly EngineMethod EntityDuplicateMethod = new("Entity", "duplicate", 1580522283);
@@ -395,6 +396,13 @@ public static unsafe class EngineCalls
     {
         nint result = 0;
         host.Call(EntityGetParentMethod, target, null, &result);
+        return result;
+    }
+
+    public static nint EntityGetOwner(this EngineHost host, nint target)
+    {
+        nint result = 0;
+        host.Call(EntityGetOwnerMethod, target, null, &result);
         return result;
     }
 

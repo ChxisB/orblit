@@ -206,14 +206,29 @@ internal sealed class EditorChecks : IChecks
 
     void RemovedEntityIsGone()
     {
-        var cubes = _editor.Outline()!.Children.Single(c => c.Name == "Cubes");
+        var children = _editor.Outline()!.Children;
+        var cubes = children.Single(c => c.Name == "Cubes");
+        var at = children.ToList().IndexOf(cubes);
 
-        _editor.Remove(cubes.Handle);
+        var detached = _editor.Detach(cubes.Handle);
         _editor.Save();
 
         Assert.DoesNotContain(_editor.Outline()!.Children, c => c.Name == "Cubes");
         Assert.DoesNotContain("name=\"Cubes\"", SavedScene());
         Assert.DoesNotContain("name=\"Cube\"", SavedScene());
+
+        // Undo puts the same entity back at its place, and a save holds it and its children again.
+        _editor.Restore(detached);
+        _editor.Save();
+
+        Assert.Equal(cubes.Handle, _editor.Outline()!.Children[at].Handle);
+        Assert.Contains("name=\"Cubes\"", SavedScene());
+        Assert.Contains("name=\"Cube\"", SavedScene());
+
+        _editor.Destroy(_editor.Detach(cubes.Handle).Entity);
+        _editor.Save();
+
+        Assert.DoesNotContain("name=\"Cubes\"", SavedScene());
     }
 
     void DuplicatedEntityIsSaved()
@@ -379,7 +394,7 @@ internal sealed class EditorChecks : IChecks
         var root = _editor.Outline()!;
         var before = root.Children.Count;
 
-        Assert.Throws<InvalidOperationException>(() => _editor.Remove(root.Handle));
+        Assert.Throws<InvalidOperationException>(() => _editor.Detach(root.Handle));
         Assert.Throws<InvalidOperationException>(() => _editor.Duplicate(root.Handle));
         Assert.Throws<ArgumentException>(() => _editor.AddChild(root.Handle, "Image", "Picture"));
         Assert.Throws<InvalidOperationException>(() => _editor.AddChild(root.Handle, "NoSuchClass", "Nothing"));

@@ -26,6 +26,8 @@ internal sealed class DockTabs : Border
     readonly Border[] _tabs;
     readonly Control[] _contents;
     readonly Border _body = new();
+    readonly Control?[] _tools;
+    readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly MenuItem[] _moves;
     readonly Border[] _map;
     DockSlot _slot;
@@ -36,6 +38,7 @@ internal sealed class DockTabs : Border
         Classes.Add(EditorTheme.Island);
         _titles = tabs.Select(tab => tab.Title).ToArray();
         _contents = tabs.Select(tab => tab.Content).ToArray();
+        _tools = new Control?[tabs.Length];
         _tabs = tabs.Select((tab, index) => MakeTab(tab.Title, index)).ToArray();
         var headers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
         headers.Children.AddRange(_tabs);
@@ -44,7 +47,9 @@ internal sealed class DockTabs : Border
         _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
         MenuButton.Flyout = Options();
         DockPanel.SetDock(MenuButton, Dock.Right);
+        DockPanel.SetDock(_tool, Dock.Right);
         strip.Children.Add(MenuButton);
+        strip.Children.Add(_tool);
         strip.Children.Add(headers);
         var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6), Child = strip };
         Grid.SetRow(_body, 1);
@@ -99,6 +104,7 @@ internal sealed class DockTabs : Border
     {
         SelectedIndex = index;
         _body.Child = _contents[index];
+        _tool.Child = _tools[index];
         for (var i = 0; i < _tabs.Length; i++)
         {
             var active = i == index;
@@ -136,6 +142,13 @@ internal sealed class DockTabs : Border
 
     /// <summary>Whether the tab with this title shows, now and after each change.</summary>
     internal IObservable<bool> Shown(string title) => _tabs[Array.IndexOf(_titles, title)].GetObservable(IsVisibleProperty);
+
+    /// <summary>Puts a control in the strip, left of the menu, that shows while the tab with this title is chosen.</summary>
+    internal void AddTool(string title, Control tool)
+    {
+        _tools[Array.IndexOf(_titles, title)] = tool;
+        Select(SelectedIndex);
+    }
 
     /// <summary>The titles of the tabs, in order.</summary>
     internal IReadOnlyList<string> Titles => _titles;
