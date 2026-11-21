@@ -3,9 +3,11 @@
 
 #include "graph_debug_link.h"
 
+#include "core/containers/local_vector.h"
 #include "core/io/ip_address.h"
 #include "core/io/json.h"
 #include "core/object/class_registry.h"
+#include "startup/performance.h"
 
 namespace {
 
@@ -15,6 +17,9 @@ const char *const COMMANDS[] = { "step", "next", "out", "continue", "break" };
 // A variable arrives as [name, scope, type, value, hint]. Scope 0 is a local and 1 is a member.
 constexpr int LOCAL_SCOPE = 0;
 constexpr int MEMBER_SCOPE = 1;
+
+// A live entity arrives as [child count, name, type, id, scene file, view flags].
+constexpr int ENTITY_FIELDS = 6;
 
 Dictionary make_row(const String &p_name, const Variant &p_value) {
 	Dictionary row;
@@ -36,10 +41,16 @@ void GraphDebugLink::register_members() {
 	ClassRegistry::bind_method(D_METHOD("get_state"), &GraphDebugLink::get_state);
 }
 
+// The monitors stay out until the game sends its first frame, so the editor can tell none from zero.
 void GraphDebugLink::_reset_state() {
-	thread = Thread::MAIN_ID;
 	state.clear();
 	state["connected"] = peer.is_valid();
+	state["scene"] = Array();
+	_reset_stop();
+}
+
+void GraphDebugLink::_reset_stop() {
+	thread = Thread::MAIN_ID;
 	state["stopped"] = false;
 	state["reason"] = "";
 	state["stack"] = Array();
@@ -112,9 +123,13 @@ void GraphDebugLink::_handle(const Array &p_message) {
 	} else if (command == "stack_frame_var") {
 		_on_variable(data);
 	} else if (command == "debug_exit") {
-		_reset_state();
+		_reset_stop();
 	} else if (command == "graph_debug:wire") {
 		_on_wire(data);
+	} else if (command == "performance:profile_frame") {
+		_on_profile_frame(data);
+	} else if (command == "scene:scene_tree") {
+		_on_scene_tree(data);
 	}
 }
 
@@ -161,6 +176,49 @@ void GraphDebugLink::_on_wire(const Array &p_data) {
 	wire["port"] = p_data[2];
 	wire["value"] = p_data[3];
 	state["wire"] = wire;
+}
+
+// The game sends a frame of its monitors each second while it runs. It sends its tree only when asked,
+// so each frame asks for the tree too.
+// shortcut: the whole tree comes each second, which is a lot of traffic for a scene of many thousands of
+// entities. Ask only while the editor shows the tree then.
+void GraphDebugLink::_on_profile_frame(const Array &p_data) {
+	ERR_FAIL_COND(p_data.size() < Performance::MONITOR_MAX);
+	Dictionary monitors;
+	monitors["fps"] = p_data[Performance::TIME_FPS];
+	monitors["process"] = p_data[Performance::TIME_PROCESS];
+	monitors["physics"] = p_data[Performance::TIME_PHYSICS_PROCESS];
+	monitors["draw_calls"] = p_data[Performance::RENDER_TOTAL_DRAW_CALLS_IN_FRAME];
+	monitors["objects"] = p_data[Performance::OBJECT_COUNT];
+	monitors["video_memory"] = p_data[Performance::RENDER_VIDEO_MEM_USED];
+	state["monitors"] = monitors;
+	_send("scene:request_scene_tree", Array());
+}
+
+// The tree comes depth first, each entity with its child count. The open entities and the children each
+// has left give the depth. The first entity is the game's window, which the rows leave out.
+void GraphDebugLink::_on_scene_tree(const Array &p_data) {
+	ERR_FAIL_COND(p_data.size() % ENTITY_FIELDS != 0);
+	Array rows;
+	LocalVector<int> left;
+	for (int i = 0; i < p_data.size(); i += ENTITY_FIELDS) {
+		while (!left.is_empty() && left[left.size() - 1] == 0) {
+			left.resize(left.size() - 1);
+		}
+		const int depth = int(left.size()) - 1;
+		if (!left.is_empty()) {
+			left[left.size() - 1]--;
+		}
+		left.push_back(p_data[i]);
+		if (depth >= 0) {
+			Dictionary row;
+			row["name"] = String(p_data[i + 1]);
+			row["type"] = String(p_data[i + 2]);
+			row["depth"] = depth;
+			rows.push_back(row);
+		}
+	}
+	state["scene"] = rows;
 }
 
 void GraphDebugLink::send_command(const String &p_command) {

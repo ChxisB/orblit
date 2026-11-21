@@ -329,6 +329,8 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
 
             await _input.Click(window.Game.RunButton);
             await Wait(() => engine.IsPlaying && window.Game.State.Text!.Contains("is running"), "the game to start");
+            // The game sends its monitors once a second and its tree after each, so both come within a few seconds.
+            await Wait(() => window.Game.Rate.Text != "—" && window.Game.LiveRows.Count() == 4, "the game's monitors and its four entities in the live scene");
             await Settle();
             Shots.Save(window, Path.Combine(output, "game-running.png"));
             await _input.Click(window.Game.StopButton);

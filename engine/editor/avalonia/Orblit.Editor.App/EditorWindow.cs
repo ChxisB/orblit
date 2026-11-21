@@ -965,6 +965,7 @@ internal sealed class EditorWindow : Window
         _playSceneButton.IsEnabled = _root is not null && _scene is { SceneFile.Length: > 0 };
         _stopButton.IsEnabled = playing;
         _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
+        _game.ShowLive(_scene is { IsPlaying: true } scene ? scene.Debug.State : DebugState.None);
         _center.Debugger.ShowGame(playing, _root is not null);
     }
 
