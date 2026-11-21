@@ -16,6 +16,8 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>
 /// The body of the Scene tab: a row with the add and instance buttons, the filter box and the Scene options
 /// menu, over the entity tree. A row's menu holds every command with its key, and F2 renames in the row.
+/// Command click adds or drops an entity and Shift click picks a range. The entity picked last is the selected
+/// one, which the gizmo and the row commands act on.
 /// </summary>
 internal sealed class ScenePane : Grid
 {
@@ -24,7 +26,7 @@ internal sealed class ScenePane : Grid
     // The tree starts 10 pixels under the button row in the reference.
     const double TreeTop = 10;
 
-    readonly TreeView _outline = new();
+    readonly TreeView _outline = new() { SelectionMode = SelectionMode.Multiple };
     readonly TextBox _filter = new()
     {
         PlaceholderText = "Filter entities",
@@ -41,6 +43,8 @@ internal sealed class ScenePane : Grid
     OutlineNode? _full;
     OutlineNode? _shown;
     nint _selected;
+    // The entities picked with the selected one, in the tree's order.
+    List<nint> _others = [];
     bool _mirroring;
 
     public ScenePane(EntityTools tools, MoveTools move, InstanceTool instance, KeyModifiers command)
@@ -73,12 +77,12 @@ internal sealed class ScenePane : Grid
             },
         });
         _outline.ItemTemplate = new FuncTreeDataTemplate<OutlineNode>((node, _) => _rows[node.Handle] = new OutlineRow(node, entity => EyeClicked?.Invoke(entity), _filter.Text ?? "", _showClassNames), node => node.Children);
-        _outline.SelectionChanged += (_, _) =>
+        _outline.SelectionChanged += (_, e) =>
         {
             // The tree only shows the selection. A change the pane makes to the tree must not rewrite it.
             if (!_mirroring)
             {
-                _selected = (_outline.SelectedItem as OutlineNode)?.Handle ?? 0;
+                Pick(e.AddedItems.OfType<OutlineNode>().LastOrDefault());
                 SelectionChanged?.Invoke();
             }
         };
@@ -123,6 +127,9 @@ internal sealed class ScenePane : Grid
     /// <summary>The selected entity of the whole tree, also while the filter hides its row. Null for none.</summary>
     public OutlineNode? Selected => _selected == 0 ? null : _full?.Find(_selected);
 
+    /// <summary>Every picked entity, with the selected one last. Empty for none.</summary>
+    public IReadOnlyList<OutlineNode> Picked => Selected is { } selected ? [.. _others.Select(handle => _full!.Find(handle)).OfType<OutlineNode>(), selected] : [];
+
     /// <summary>Shows a tree under the filter and selects the entity with this handle. Zero selects nothing.</summary>
     public void Show(OutlineNode? root, nint select)
     {
@@ -132,21 +139,40 @@ internal sealed class ScenePane : Grid
         {
             _rows.Clear();
             _outline.ItemsSource = _shown is null ? Array.Empty<OutlineNode>() : new[] { _shown };
-            _outline.SelectedItem = ShownSelection();
+            ShowPicked();
         });
     }
 
     /// <summary>Selects the entity with this handle, also when the filter hides its row. Zero selects nothing.</summary>
-    public void Select(nint handle) => Choose(handle, () => _outline.SelectedItem = ShownSelection());
+    public void Select(nint handle) => Choose(handle, ShowPicked);
 
-    OutlineNode? ShownSelection() => _selected == 0 ? null : _shown?.Find(_selected);
+    // The tree holds only the rows the filter shows. Setting its one item clears the others first.
+    void ShowPicked()
+    {
+        _outline.SelectedItem = _selected == 0 ? null : _shown?.Find(_selected);
+        foreach (var other in _others.Select(handle => _shown?.Find(handle)).OfType<OutlineNode>())
+        {
+            _outline.SelectedItems!.Add(other);
+        }
+    }
+
+    // The entity just added leads. When one is dropped, the lead stays if it is still picked.
+    void Pick(OutlineNode? added)
+    {
+        List<nint> picked = [.. _outline.SelectedItems!.OfType<OutlineNode>().Select(node => node.Handle)];
+        _selected = added?.Handle ?? (picked.Contains(_selected) ? _selected : picked.LastOrDefault());
+        _others = [.. picked.Where(handle => handle != _selected)];
+    }
 
     // The tree raises nothing while the pane sets it, because a hidden row leaves it unchanged. The pane raises
-    // SelectionChanged itself when the handle differs.
+    // SelectionChanged itself when the selection differs. The same entity chosen again, as after an edit, keeps
+    // the others still in the scene.
     void Choose(nint handle, Action showInTree)
     {
-        var changed = handle != _selected;
+        List<nint> kept = handle != 0 && handle == _selected ? [.. _others.Where(other => _full?.Find(other) is not null)] : [];
+        var changed = handle != _selected || kept.Count != _others.Count;
         _selected = handle;
+        _others = kept;
         _mirroring = true;
         showInTree();
         _mirroring = false;

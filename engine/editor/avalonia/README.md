@@ -47,9 +47,13 @@ scene. It runs on macOS. Nothing else has run it.
 - With no `--project` a launcher opens. It lists recent projects, opens a
   project folder and makes a new project from a template.
 - Undo and redo cover scene edits, and History lists them.
-- The inspector lists each class's properties, shows a Mixed value and
-  scrubs a number when its label is dragged. Copy and Paste Properties and
-  Make Unique are in its tools.
+- The inspector lists each class's properties and scrubs a number when its
+  label is dragged. Copy and Paste Properties and Make Unique are in its
+  tools.
+- Command click and Shift click in the outliner pick several entities. The
+  inspector then shows the classes they all have. A value they differ in
+  shows Mixed, and an edit writes each of them as one undo step. The gizmo
+  stays on the entity picked last.
 - The Signals tab lists an entity's signals and connects them. The Import
   tab shows import options and reimports on a change.
 - The class list comes from the engine.
@@ -67,6 +71,8 @@ scene. It runs on macOS. Nothing else has run it.
   New Script is not built.
 - Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
   hard to hit away from its pivot.
+- Picking several entities in the viewport. Move, Remove and Duplicate act
+  on the selected entity alone, and only it is outlined.
 - Saved layouts. Docking changes, moves and floated docks are kept in memory
   only.
 - The 2D Ruler. The Audio, Animation and Shader Editor bottom panels.

@@ -15,7 +15,9 @@ namespace Orblit.Editor.App;
 /// edits through the engine's typed get and set. With nothing selected the list is empty. A filter hides the rows
 /// whose label lacks the text, and every bar and group that then holds no row. A closed group with a match shows
 /// only its header. The properties, the Script row and the metadata rows read the scene when the selection
-/// changes and after an edit here, and not on each drag step.
+/// changes and after an edit here, and not on each drag step. With several entities picked it shows the classes
+/// they all have, a value they differ in shows Mixed, and an edit writes each of them. The script and metadata
+/// parts show for one entity only.
 /// </summary>
 internal sealed class InspectorPanel : StackPanel
 {
@@ -43,6 +45,8 @@ internal sealed class InspectorPanel : StackPanel
     readonly TextBlock _count = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(6, 8, 6, 14) };
     readonly Control[] _entityParts;
     IEditorScene? _scene;
+    IReadOnlyList<OutlineNode> _picked = [];
+    // The entity picked last, which the script and metadata parts and the class check of a paste name.
     OutlineNode? _node;
     (string ClassName, (string Name, object Value)[] Values)? _copied;
     IReadOnlyList<string> _chain = [];
@@ -54,13 +58,13 @@ internal sealed class InspectorPanel : StackPanel
     {
         Margin = new Thickness(6);
         _transform = new PropertyGroup("Transform", _transformRows);
-        Add(_position, (entity, value) => _scene!.MoveTo(entity, value));
-        Add(_rotation, (entity, value) => _scene!.RotateTo(entity, value));
-        Add(_scale, (entity, value) => _scene!.ScaleTo(entity, value));
+        Add(_position, entity => _scene!.PositionOf(entity), (entity, value) => _scene!.MoveTo(entity, value));
+        Add(_rotation, entity => _scene!.RotationOf(entity), (entity, value) => _scene!.RotateTo(entity, value));
+        Add(_scale, entity => _scene!.ScaleOf(entity), (entity, value) => _scene!.ScaleTo(entity, value));
         _entityParts = [_script, _attach, _metadataRows, _metadata];
         Children.AddRange([_sections, .. _entityParts, _count]);
         WireExtras();
-        Show(null, null);
+        Show(null, []);
     }
 
     /// <summary>Raised after the scene took a new position, rotation, scale, property, metadata value or script.</summary>
@@ -98,20 +102,22 @@ internal sealed class InspectorPanel : StackPanel
 
     internal TextBlock FilterCount => _count;
 
-    /// <summary>The selected entity's class and the classes it inherits, most derived first.</summary>
+    /// <summary>The selected entity's class and the classes it inherits that every picked entity has, most derived first.</summary>
     internal IReadOnlyList<string> Chain => _chain;
 
     internal IReadOnlyList<PropertyRow> Rows => _rows;
 
     bool IsSelected => _scene is not null && _node is not null;
 
-    bool IsEditable => IsSelected && _scene!.IsEntity3D(_node!.Handle);
+    bool IsEditable => IsSelected && _picked.All(node => _scene!.IsEntity3D(node.Handle));
 
-    public void Show(IEditorScene? scene, OutlineNode? node)
+    /// <summary>Shows the picked entities, with the selected one last.</summary>
+    public void Show(IEditorScene? scene, IReadOnlyList<OutlineNode> picked)
     {
-        var selectionChanged = !ReferenceEquals(scene, _scene) || !ReferenceEquals(node, _node);
+        var selectionChanged = !ReferenceEquals(scene, _scene) || !picked.SequenceEqual(_picked, ReferenceEqualityComparer.Instance);
         _scene = scene;
-        _node = node;
+        _picked = picked;
+        _node = picked.Count == 0 ? null : picked[^1];
         Refresh();
         if (selectionChanged)
         {
@@ -156,9 +162,9 @@ internal sealed class InspectorPanel : StackPanel
         {
             Failed?.Invoke("Copy Properties first, then paste them onto an entity of the same class.");
         }
-        else if (copied.ClassName != _node!.ClassName)
+        else if (_picked.FirstOrDefault(node => node.ClassName != copied.ClassName) is { } other)
         {
-            Failed?.Invoke($"The copied properties are a {copied.ClassName}'s, and {_node.Name} is a {_node.ClassName}.");
+            Failed?.Invoke($"The copied properties are a {copied.ClassName}'s, and {other.Name} is a {other.ClassName}.");
         }
         else
         {
@@ -197,7 +203,7 @@ internal sealed class InspectorPanel : StackPanel
         }
         foreach (var part in _entityParts)
         {
-            part.IsVisible = all;
+            part.IsVisible = all && _picked.Count == 1;
         }
 
         var matched = labeled.Count(row => row.Row.IsVisible);
@@ -215,16 +221,17 @@ internal sealed class InspectorPanel : StackPanel
             _scale.Show(null);
             return;
         }
-        var entity = _node!.Handle;
-        _position.Show(_scene!.PositionOf(entity));
-        _rotation.Show(_scene.RotationOf(entity));
-        _scale.Show(_scene.ScaleOf(entity));
+        _position.Show(Shared(_scene!.PositionOf));
+        _rotation.Show(Shared(_scene.RotationOf));
+        _scale.Show(Shared(_scene.ScaleOf));
     }
+
+    Vector3 Shared(Func<nint, Vector3> read) => _picked.Select(node => read(node.Handle)).Aggregate(Mix);
 
     void ShowExtras()
     {
         var entity = _scene is not null && _node is not null ? _node.Handle : 0;
-        ShowProperties(entity);
+        ShowProperties();
         _metadataRows.Show(entity == 0 ? [] : _scene!.MetadataOf(entity));
         _script.Show(entity == 0 ? null : _scene!.ScriptOf(entity));
         if (entity != 0)
@@ -235,23 +242,53 @@ internal sealed class InspectorPanel : StackPanel
 
     // The sections are built again only for other classes or property names, so a row keeps its box and caret
     // when only its value changed.
-    void ShowProperties(nint entity)
+    void ShowProperties()
     {
-        _chain = entity == 0 ? [] : _scene!.ClassChainOf(entity);
-        var properties = entity == 0 ? [] : _scene!.PropertiesOf(entity);
+        var picked = _scene is null ? [] : _picked;
+        var chains = picked.Select(node => _scene!.ClassChainOf(node.Handle)).ToArray();
+        _chain = chains.Length == 0 ? [] : [.. chains[^1].Where(className => chains.All(chain => chain.Contains(className)))];
+        var lists = picked.Select(node => _scene!.PropertiesOf(node.Handle)).ToArray();
+        EntityProperty[] properties = lists.Length == 0 ? [] : [.. lists[^1].Where(property => _chain.Contains(property.Class))];
         var built = string.Join(',', _chain) + ';' + string.Join(',', properties.Select(property => property.Name));
         if (built != _built)
         {
             _built = built;
             Build(properties);
-            return;
         }
-        var values = properties.DistinctBy(property => property.Name).ToDictionary(property => property.Name, property => property.Value);
+        var values = lists.Select(list => list.DistinctBy(property => property.Name).ToDictionary(property => property.Name, property => property.Value)).ToArray();
         foreach (var row in _rows)
         {
-            row.Show(values[row.PropertyName]);
+            row.Show(Shared([.. values.Select(value => value.GetValueOrDefault(row.PropertyName))]));
         }
     }
+
+    // A vector that differs on an axis is NaN there, so the other axes still show. Any other value that differs
+    // is Mixed.
+    static object? Shared(object?[] values) => values switch
+    {
+        _ when values.All(value => Equals(value, values[0])) => values[0],
+        _ when values.All(value => value is Vector3) => values.Cast<Vector3>().Aggregate(Mix),
+        _ when values.All(value => value is Vector2) => Flat(values.Cast<Vector2>().Select(value => new Vector3(value, 0)).Aggregate(Mix)),
+        _ => PropertyRow.Mixed,
+    };
+
+    static Vector3 Mix(Vector3 one, Vector3 other) =>
+        new(one.X == other.X ? one.X : float.NaN, one.Y == other.Y ? one.Y : float.NaN, one.Z == other.Z ? one.Z : float.NaN);
+
+    // A NaN axis is one left Mixed, so each entity keeps its own value there.
+    static Vector3 Merge(Vector3 typed, Vector3 own) =>
+        new(float.IsNaN(typed.X) ? own.X : typed.X, float.IsNaN(typed.Y) ? own.Y : typed.Y, float.IsNaN(typed.Z) ? own.Z : typed.Z);
+
+    static Vector2 Flat(Vector3 value) => new(value.X, value.Y);
+
+    object Merge(object typed, nint entity, string name) => typed switch
+    {
+        Vector3 vector => Merge(vector, (Vector3)Own(entity, name)!),
+        Vector2 vector => Flat(Merge(new Vector3(vector, 0), new Vector3((Vector2)Own(entity, name)!, 0))),
+        _ => typed,
+    };
+
+    object? Own(nint entity, string name) => _scene!.PropertiesOf(entity).First(property => property.Name == name).Value;
 
     // One section per class: its bar, its rows with no group, then its groups in the engine's order. The
     // Entity3D section starts with the Transform group, which takes the engine's other Transform rows.
@@ -294,7 +331,7 @@ internal sealed class InspectorPanel : StackPanel
     PropertyRow Row(EntityProperty property)
     {
         var row = new PropertyRow(property);
-        row.Entered += value => TryChange(entity => _scene!.SetProperty(entity, property.Name, value));
+        row.Entered += value => TryChange(entity => _scene!.SetProperty(entity, property.Name, Merge(value, entity, property.Name)));
         _rows.Add(row);
         return row;
     }
@@ -344,7 +381,7 @@ internal sealed class InspectorPanel : StackPanel
         };
     }
 
-    // Runs one edit on the selected entity and answers whether the scene took it. Either way the rows show what the
+    // Runs one edit on each picked entity and answers whether the scene took it. Either way the rows show what the
     // scene holds, so a refused value is put back.
     bool TryChange(Action<nint> write)
     {
@@ -352,14 +389,24 @@ internal sealed class InspectorPanel : StackPanel
         {
             return false;
         }
+        var written = 0;
         try
         {
-            write(_node!.Handle);
+            foreach (var node in _picked)
+            {
+                write(node.Handle);
+                written++;
+            }
             Edited?.Invoke();
             return true;
         }
         catch (Exception error) when (error is ArgumentException or IOException)
         {
+            // The entities written before the refusal changed, so the edit still counts.
+            if (written > 0)
+            {
+                Edited?.Invoke();
+            }
             Failed?.Invoke(error.Message);
             return false;
         }
@@ -369,13 +416,16 @@ internal sealed class InspectorPanel : StackPanel
         }
     }
 
-    void Add(VectorRow row, Action<nint, Vector3> write)
+    void Add(VectorRow row, Func<nint, Vector3> read, Action<nint, Vector3> write)
     {
         row.Entered += value =>
         {
             if (IsEditable)
             {
-                write(_node!.Handle, value);
+                foreach (var node in _picked)
+                {
+                    write(node.Handle, Merge(value, read(node.Handle)));
+                }
                 Edited?.Invoke();
             }
             Refresh();

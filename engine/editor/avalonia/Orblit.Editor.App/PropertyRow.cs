@@ -15,7 +15,8 @@ namespace Orblit.Editor.App;
 /// One engine property in the inspector, with an editor of its kind: a switch, a list of an enum's choices, a number
 /// box with its unit, a text box, a vector or a colour swatch with its hex. Any other kind shows read only.
 /// A box raises <see cref="Entered"/> when it holds a value of its kind that differs from the one shown. Any other
-/// text is put back. A drag across a number's label steps it.
+/// text is put back. A drag across a number's label steps it. <see cref="Mixed"/> shows that the picked entities
+/// differ, and a vector shows that per axis as NaN.
 /// </summary>
 internal sealed class PropertyRow : Border
 {
@@ -46,6 +47,9 @@ internal sealed class PropertyRow : Border
     Action _commit = () => { };
     object? _shown;
     bool _showing;
+
+    /// <summary>The value to show when the picked entities hold different values.</summary>
+    internal static readonly object Mixed = new();
 
     public PropertyRow(EntityProperty property)
     {
@@ -103,7 +107,8 @@ internal sealed class PropertyRow : Border
     {
         var toggle = new ToggleSwitch { OnContent = null, OffContent = null, MinWidth = 0 };
         toggle.IsCheckedChanged += (_, _) => Enter(toggle.IsChecked == true);
-        _show = value => toggle.IsChecked = value is true;
+        // A switch over entities that differ is neither on nor off.
+        _show = value => toggle.IsChecked = value == Mixed ? null : value is true;
         return toggle;
     }
 
@@ -121,7 +126,11 @@ internal sealed class PropertyRow : Border
                 Enter(choices[box.SelectedIndex].Value);
             }
         };
-        _show = value => box.SelectedIndex = Array.FindIndex(choices, choice => value is long shown && choice.Value == shown);
+        _show = value =>
+        {
+            box.SelectedIndex = Array.FindIndex(choices, choice => value is long shown && choice.Value == shown);
+            box.PlaceholderText = value == Mixed ? "Mixed" : null;
+        };
         return box;
     }
 
@@ -188,6 +197,7 @@ internal sealed class PropertyRow : Border
         // An object shows the resource type it takes, a number or text its value, and any other kind its type.
         _show = value => text.Text = (_property.Type, value) switch
         {
+            _ when value == Mixed => "Mixed",
             (Object, null) => "<empty>",
             (Object, _) => _property.HintString.Split(',')[0],
             (_, long whole) => whole.ToString(CultureInfo.InvariantCulture),
@@ -198,7 +208,8 @@ internal sealed class PropertyRow : Border
         return text;
     }
 
-    // A text box that commits on Enter and when it loses the caret. Text that does not parse is put back.
+    // A text box that commits on Enter and when it loses the caret. Text that does not parse is put back. Text
+    // still as shown commits nothing, so a box passed through keeps a value it shows rounded, and Mixed stays.
     TextBox Box(Func<object?, string> format, Func<string, object?> parse, string unit)
     {
         var box = new TextBox
@@ -212,7 +223,7 @@ internal sealed class PropertyRow : Border
         };
         void Commit()
         {
-            if (parse(box.Text ?? "") is { } typed)
+            if (box.Text != format(_shown) && parse(box.Text ?? "") is { } typed)
             {
                 Enter(typed);
             }
@@ -226,7 +237,11 @@ internal sealed class PropertyRow : Border
                 Commit();
             }
         };
-        _show = value => box.Text = format(value);
+        _show = value =>
+        {
+            box.Text = format(value);
+            box.PlaceholderText = value == Mixed ? "Mixed" : null;
+        };
         _commit = Commit;
         return box;
     }
