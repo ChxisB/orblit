@@ -743,6 +743,47 @@ public sealed class ScriptViewTests
     }
 
     [Fact]
+    public void A_pick_asked_for_in_the_middle_of_a_word_replaces_the_whole_word()
+    {
+        UiThread.Run(async () =>
+        {
+            var view = Open(new Files { Text = { ["res://api.cs"] = Api } });
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "using Orblit;\nclass Spin { void F() { var v = Vector3.Zxx; } }";
+            view.Editor.CaretIndex = view.Editor.Text.IndexOf("Zxx", StringComparison.Ordinal) + 1;
+
+            Press(view.Editor, Key.Space, KeyModifiers.Control);
+            await view.Completions.Asking;
+            view.Completions.List.SelectedItem = Offered(view).First(item => item.DisplayText == "Zero");
+            Press(view.Editor, Key.Enter);
+            await view.Completions.Asking;
+
+            Assert.Contains("var v = Vector3.Zero; }", view.Editor.Text);
+        });
+    }
+
+    [Fact]
+    public void A_list_closed_by_a_click_elsewhere_stays_closed_when_the_caret_moves()
+    {
+        UiThread.Run(async () =>
+        {
+            var view = Open(new Files { Text = { ["res://api.cs"] = Api } });
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "using Orblit;\nclass Spin { void F() { var v = Vector3.Ze } }";
+            view.Editor.CaretIndex = view.Editor.Text.IndexOf("Ze", StringComparison.Ordinal) + 2;
+            Press(view.Editor, Key.Space, KeyModifiers.Control);
+            await view.Completions.Asking;
+            Assert.True(view.Completions.Popup.IsOpen);
+
+            // What a light dismiss does.
+            view.Completions.Popup.IsOpen = false;
+            view.Editor.CaretIndex--;
+
+            Assert.False(view.Completions.Popup.IsOpen);
+        });
+    }
+
+    [Fact]
     public void A_broken_line_shows_the_error_in_the_status_line_until_it_is_fixed()
     {
         UiThread.Run(async () =>

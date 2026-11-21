@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Globalization;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Completion;
@@ -8,14 +9,17 @@ using Orblit.Editor.App.Shell;
 namespace Orblit.Editor.App;
 
 /// <summary>The completions at one caret. The text from <see cref="Start"/> to the caret is what they are filtered by.</summary>
-internal sealed class CompletionSet(Document document, CompletionService service, CompletionList list)
+internal sealed class CompletionSet(Document document, CompletionService service, CompletionList list, int length)
 {
     public int Start => list.Span.Start;
 
+    /// <summary>The length of the text the completions were asked for.</summary>
+    public int Length => length;
+
     public IReadOnlyList<CompletionItem> Items => list.ItemsList;
 
-    /// <summary>The text that replaces the typed part when the item is picked, from <see cref="Start"/>.</summary>
-    public async Task<string> TextOf(CompletionItem item) => (await service.GetChangeAsync(document, item)).TextChange.NewText ?? item.DisplayText;
+    /// <summary>What picking the item does to the text as it was asked: the span it replaces, the new text and the caret after.</summary>
+    public Task<CompletionChange> ChangeOf(CompletionItem item) => service.GetChangeAsync(document, item);
 }
 
 /// <summary>
@@ -27,15 +31,19 @@ internal sealed class CompletionSet(Document document, CompletionService service
 // own build when scripts lean on either.
 internal sealed class ScriptCompletion
 {
-    readonly Solution _solution;
-    readonly ProjectId _project;
+    // The runtime and the engine's API are tens of megabytes, and a new workspace comes with every script opened.
+    // shortcut: an assembly rebuilt while the editor runs keeps its old members until a restart. Key by the file's
+    // time when engine work in the editor needs it.
+    static readonly ConcurrentDictionary<string, MetadataReference> s_references = new();
+    readonly ProjectId _project = ProjectId.CreateNewId();
     readonly Dictionary<string, DocumentId> _documents;
+    readonly Lazy<Solution> _solution;
 
-    ScriptCompletion(Solution solution, ProjectId project, Dictionary<string, DocumentId> documents)
+    // The solution is built on the first ask, which runs off the UI thread, because it reads the references.
+    ScriptCompletion(Dictionary<string, string> scripts, IReadOnlyList<string> references)
     {
-        _solution = solution;
-        _project = project;
-        _documents = documents;
+        _documents = scripts.Keys.ToDictionary(path => path, path => DocumentId.CreateNewId(_project, path));
+        _solution = new Lazy<Solution>(() => Build(scripts, references));
     }
 
     /// <summary>Reads every script of the project. A script that cannot be read is left out.</summary>
@@ -44,30 +52,36 @@ internal sealed class ScriptCompletion
         // The runtime's own folder, because the editor's trusted list also holds the editor's packages.
         var runtime = Path.GetDirectoryName(typeof(object).Assembly.Location);
         var trusted = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? "").Split(Path.PathSeparator);
-        var references = trusted.Where(path => Path.GetDirectoryName(path) == runtime).Concat(files.ScriptReferences())
-            .Select(path => MetadataReference.CreateFromFile(path));
-        var project = ProjectId.CreateNewId();
-        var info = ProjectInfo.Create(project, VersionStamp.Create(), "Scripts", "Scripts", LanguageNames.CSharp,
-            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable),
-            parseOptions: new CSharpParseOptions(LanguageVersion.Latest),
-            metadataReferences: references);
-        var solution = new AdhocWorkspace().CurrentSolution.AddProject(info);
-        Dictionary<string, DocumentId> documents = [];
+        Dictionary<string, string> scripts = [];
         foreach (var path in files.Scripts())
         {
             try
             {
-                var id = DocumentId.CreateNewId(project, path);
-                solution = solution.AddDocument(id, path, SourceText.From(files.ReadScript(path)));
-                documents[path] = id;
+                scripts[path] = files.ReadScript(path);
             }
-            catch (IOException)
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException)
             {
-                // A file deleted since the list was made has nothing to offer.
+                // A file deleted or locked since the list was made has nothing to offer.
             }
         }
 
-        return new ScriptCompletion(solution, project, documents);
+        // The trusted list can name a file twice, and Roslyn refuses a reference it is given twice.
+        return new ScriptCompletion(scripts, [.. trusted.Where(path => Path.GetDirectoryName(path) == runtime).Concat(files.ScriptReferences()).Distinct()]);
+    }
+
+    Solution Build(Dictionary<string, string> scripts, IReadOnlyList<string> references)
+    {
+        var info = ProjectInfo.Create(_project, VersionStamp.Create(), "Scripts", "Scripts", LanguageNames.CSharp,
+            compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable),
+            parseOptions: new CSharpParseOptions(LanguageVersion.Latest),
+            metadataReferences: references.Select(path => s_references.GetOrAdd(path, each => MetadataReference.CreateFromFile(each))));
+        var solution = new AdhocWorkspace().CurrentSolution.AddProject(info);
+        foreach (var (path, text) in scripts)
+        {
+            solution = solution.AddDocument(_documents[path], path, SourceText.From(text));
+        }
+
+        return solution;
     }
 
     /// <summary>The completions at the caret in the script's text, or none when Roslyn offers nothing there.</summary>
@@ -77,9 +91,8 @@ internal sealed class ScriptCompletion
         // Every C# document has the service, because the workspace loads the C# features.
         var service = CompletionService.GetService(document)!;
         var list = await service.GetCompletionsAsync(document, caret);
-        return list.ItemsList.Count == 0 ? null : new CompletionSet(document, service, list);
+        return list.ItemsList.Count == 0 ? null : new CompletionSet(document, service, list, text.Length);
     }
-
     /// <summary>The errors in the script's text, with lines and columns counted from one.</summary>
     public async Task<IReadOnlyList<ScriptProblem>> Problems(string path, string text)
     {
@@ -98,10 +111,10 @@ internal sealed class ScriptCompletion
     {
         if (_documents.TryGetValue(path, out var id))
         {
-            return _solution.WithDocumentText(id, SourceText.From(text)).GetDocument(id)!;
+            return _solution.Value.WithDocumentText(id, SourceText.From(text)).GetDocument(id)!;
         }
 
         var added = DocumentId.CreateNewId(_project, path);
-        return _solution.AddDocument(added, path, SourceText.From(text)).GetDocument(added)!;
+        return _solution.Value.AddDocument(added, path, SourceText.From(text)).GetDocument(added)!;
     }
 }

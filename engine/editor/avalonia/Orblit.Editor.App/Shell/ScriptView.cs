@@ -103,7 +103,18 @@ internal sealed class ScriptView : Border
     {
         _finder = new ScriptFind(_code);
         _completions = new CompletionPopup(_code, Complete);
-        _errorsAfter.Tick += async (_, _) => await ShowErrors();
+        _errorsAfter.Tick += async (_, _) =>
+        {
+            // Roslyn reads every script and reference, and a timer's fault would end the editor. The line says what failed.
+            try
+            {
+                await ShowErrors();
+            }
+            catch (Exception error) when (Failed(error) || error is BadImageFormatException)
+            {
+                _errors.Text = error.Message;
+            }
+        };
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
         _save.Content = Parts.Keyed("Save", "⌘S");
         _tab = new Border

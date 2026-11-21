@@ -32,6 +32,7 @@ internal sealed class CompletionPopup
 
     readonly Popup _popup;
     CompletionSet? _set;
+    int _asks;
 
     /// <summary>The ask is given the text and the caret, and answers what Roslyn offers there.</summary>
     public CompletionPopup(CodeBox code, Func<string, int, Task<CompletionSet?>> ask)
@@ -65,6 +66,8 @@ internal sealed class CompletionPopup
                 Filter();
             }
         };
+        // A click outside closes the list too, and a list closed that way must not come back when the caret moves.
+        _popup.Closed += (_, _) => _set = null;
         _list.DoubleTapped += (_, _) => Asking = Insert();
     }
 
@@ -143,8 +146,14 @@ internal sealed class CompletionPopup
 
     async Task Ask()
     {
-        _set = await _ask(_code.Editor.Text ?? "", _code.Editor.CaretIndex);
-        Filter();
+        var ask = ++_asks;
+        var set = await _ask(_code.Editor.Text ?? "", _code.Editor.CaretIndex);
+        // An answer that comes after a later ask is for a caret that has moved on.
+        if (ask == _asks)
+        {
+            _set = set;
+            Filter();
+        }
     }
 
     // The list keeps the items whose name starts with what was typed since the list's start. Any other key closes it.
@@ -180,7 +189,8 @@ internal sealed class CompletionPopup
         _popup.IsOpen = true;
     }
 
-    // The pick replaces what was typed since the list's start, as typing it would, so one undo takes it out.
+    // Roslyn's change is for the text it was asked about. What was typed since sits inside the change's span, so the
+    // span grows by it. The change goes in as one edit, so one undo takes it out.
     async Task Insert()
     {
         if (_set is not { } set || _list.SelectedItem is not CompletionItem item)
@@ -189,11 +199,16 @@ internal sealed class CompletionPopup
         }
 
         Close();
-        var text = await set.TextOf(item);
+        var change = await set.ChangeOf(item);
         var editor = _code.Editor;
-        editor.SelectionStart = set.Start;
-        editor.SelectionEnd = Math.Max(editor.CaretIndex, set.Start);
-        editor.SelectedText = text;
+        var span = change.TextChange.Span;
+        editor.SelectionStart = span.Start;
+        editor.SelectionEnd = Math.Max(span.Start, span.End + (editor.Text ?? "").Length - set.Length);
+        editor.SelectedText = change.TextChange.NewText ?? item.DisplayText;
+        if (change.NewPosition is { } caret)
+        {
+            editor.CaretIndex = caret;
+        }
     }
 
     void Close()
