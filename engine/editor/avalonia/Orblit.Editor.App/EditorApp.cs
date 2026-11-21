@@ -45,8 +45,8 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
         return launcher;
     }
 
-    // The engine pumps the app's events inside a frame. A quit in a frame let the engine take the one event that
-    // wakes the main loop to stop, and the app idled forever. So a quit closes the window, and the app stops
+    // The engine pumps the app's events inside a frame. A quit in a frame lets the engine take the one event that
+    // wakes the main loop to stop, and the app then idles for ever. So a quit closes the window, and the app stops
     // once the engine is destroyed, which is after any frame.
     EditorWindow Edit(IClassicDesktopStyleApplicationLifetime desktop, EditorOptions chosen)
     {
