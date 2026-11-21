@@ -21,7 +21,7 @@ public sealed class InspectorExtrasTests
 
     static MetadataRow[] Rows(EditorWindow window) => [.. window.Inspector.MetadataRows.Rows];
 
-    static readonly string[] SlotItems = ["New Script...", "Load...", "Edit", "Make Unique", "Clear"];
+    static readonly string[] SlotItems = ["New Script...", "Load...", "Edit", "Clear"];
 
     static void Choose(MenuFlyout menu, string header) =>
         menu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -559,19 +559,17 @@ public sealed class InspectorExtrasTests
         });
     }
 
-    [Theory]
-    [InlineData("New Script...", "New Script is not built yet.")]
-    [InlineData("Make Unique", "Make Unique is not built yet.")]
-    public void A_slot_item_that_is_not_built_says_so(string header, string status)
+    [Fact]
+    public void New_script_in_the_slot_menu_says_it_is_not_built()
     {
         UiThread.Run(() =>
         {
             var window = Selected(new FakeScene());
             ClickOn(window.Inspector.ScriptField, window);
 
-            Choose(window.Inspector.ScriptMenu, header);
+            Choose(window.Inspector.ScriptMenu, "New Script...");
 
-            Assert.Equal(status, window.Status);
+            Assert.Equal("New Script is not built yet.", window.Status);
         });
     }
 
