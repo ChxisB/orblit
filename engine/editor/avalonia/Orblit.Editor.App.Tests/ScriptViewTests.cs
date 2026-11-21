@@ -3,6 +3,7 @@ using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.Media;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
@@ -102,6 +103,41 @@ public sealed class ScriptViewTests
     }
 
     [Fact]
+    public void Save_is_a_small_primary_button_that_holds_its_whole_key()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+            Pick(view, "res://spin.cs");
+            view.Editor.Text += "// edit\n";
+            view.UpdateLayout();
+
+            Assert.Same(EditorBrushes.Accent, view.SaveButton.Background);
+            Assert.Equal(26, view.SaveButton.Bounds.Height);
+            var key = view.SaveButton.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "⌘S");
+            var box = BoxOf(key, view.SaveButton);
+            Assert.True(box.Top >= 1 && box.Bottom <= view.SaveButton.Bounds.Height - 1, $"the key lies at {box} in a button {view.SaveButton.Bounds.Height} high");
+        });
+    }
+
+    [Fact]
+    public void A_picked_script_is_a_tree_row_lit_in_the_soft_accent()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+            Pick(view, "res://spin.cs");
+            view.UpdateLayout();
+
+            var row = view.List.ContainerFromIndex(0)!;
+            var fill = row.GetVisualDescendants().OfType<ContentPresenter>().First().Background;
+            Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)fill!).Color);
+            Assert.Equal((26.0, EditorTheme.Corners), (row.Bounds.Height, ((ListBoxItem)row).CornerRadius));
+            Assert.Equal(6, BoxOf(row, view.List).X);
+        });
+    }
+
+    [Fact]
     public void Picking_a_script_shows_its_text_and_numbers_the_lines()
     {
         UiThread.Run(() =>
@@ -114,6 +150,8 @@ public sealed class ScriptViewTests
             Assert.Equal("1\n2\n3\n4", view.Gutter.Text);
             Assert.Equal("res://spin.cs", view.Heading.Text);
             Assert.True(view.Editor.IsEnabled);
+            view.UpdateLayout();
+            Assert.Equal(view.Tab.DesiredSize.Width, view.Tab.Bounds.Width);
             Assert.False(view.IsDirty);
             Assert.False(view.SaveButton.IsEnabled);
         });

@@ -61,7 +61,7 @@ internal interface IGraphFiles
 /// </summary>
 internal sealed class GraphView : Border
 {
-    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
+    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
     readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(8, 8, 8, 6), Classes = { EditorTheme.Field } };
     readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
@@ -118,7 +118,7 @@ internal sealed class GraphView : Border
         // The FileSystem dock lists scenes only, so there is nothing for it to select yet.
         _menu.Items.Add(Item("Show in FileSystem", () => _fileButton.RaiseEvent(new UnbuiltEventArgs("The FileSystem dock does not list graph scripts yet."))));
         _fileButton.Flyout = _menu;
-        _saveButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "Save", VerticalAlignment = VerticalAlignment.Center }, Parts.Kbd("⌘S") } };
+        _saveButton.Content = Parts.Keyed("Save", "⌘S");
         _saveButton.Click += (_, _) => SaveCurrent();
         _findButton.Click += (_, _) => Canvas?.FindBar.Open();
         _bookmarkButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBookmark());
