@@ -327,12 +327,12 @@ TEST_CASE("[GraphScript] A game shows no monitors until it sends a frame, and th
 
 	game.send_frame();
 	Dictionary monitors = game.state()["monitors"];
-	CHECK(double(monitors["fps"]) == Performance::TIME_FPS);
-	CHECK(double(monitors["process"]) == Performance::TIME_PROCESS);
-	CHECK(double(monitors["physics"]) == Performance::TIME_PHYSICS_PROCESS);
-	CHECK(double(monitors["draw_calls"]) == Performance::RENDER_TOTAL_DRAW_CALLS_IN_FRAME);
-	CHECK(double(monitors["objects"]) == Performance::OBJECT_COUNT);
-	CHECK(double(monitors["video_memory"]) == Performance::RENDER_VIDEO_MEM_USED);
+	CHECK(double(monitors["fps"]) == double(Performance::TIME_FPS));
+	CHECK(double(monitors["process"]) == double(Performance::TIME_PROCESS));
+	CHECK(double(monitors["physics"]) == double(Performance::TIME_PHYSICS_PROCESS));
+	CHECK(double(monitors["draw_calls"]) == double(Performance::RENDER_TOTAL_DRAW_CALLS_IN_FRAME));
+	CHECK(double(monitors["objects"]) == double(Performance::OBJECT_COUNT));
+	CHECK(double(monitors["video_memory"]) == double(Performance::RENDER_VIDEO_MEM_USED));
 }
 
 TEST_CASE("[GraphScript] A frame of monitors asks the game for its tree") {
