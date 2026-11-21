@@ -19,7 +19,7 @@ namespace GraphDocument {
 // A step of a kind this build does not know has no ports. Answers only, changes nothing.
 String write(const GraphScript &p_script);
 
-// The palette entries, each with the parameters to set after adding the step.
+// The palette entries, each with the parameters to set after adding the step and the ports the step will have.
 String write_entries(const Vector<GraphStepEntry> &p_entries);
 
 } // namespace GraphDocument

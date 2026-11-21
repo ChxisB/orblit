@@ -61,10 +61,12 @@ internal sealed class StepView
     const double WarningInset = 36;
     const double WarningRadius = 5;
     const double CurrentOutset = 3;
-    // shortcut: a value box beside an input is a fixed 52 pixels, so a long output name on the same row can
-    // touch it. Measure the names and place the box from that when a step needs it.
+    // shortcut: a value box beside an input ends at a fixed place, so a long output name on the same row can
+    // touch it. Measure the output name and end the box before it when a step needs it.
     const double InputValueLeft = Width * 0.28;
     const double InputValueRight = Width * 0.55;
+    const double ValueMinWidth = 36;
+    const double ValueGap = 6;
     const string ParameterOfPins = "pins";
     const string RerouteKind = "reroute";
     const string FlowSuffix = "flow";
@@ -91,7 +93,7 @@ internal sealed class StepView
     List<Label>? _labels;
 
     /// <summary>One line: an input and an output that share it, or one parameter. A note is a line of words.</summary>
-    readonly record struct Row(GraphPort? Input, GraphPort? Output, string Parameter, string Value, string Note);
+    readonly record struct Row(GraphPort? Input, GraphPort? Output, string Parameter, string Value, string Note, double ValueLeft = ValueInset);
 
     readonly record struct Label(FormattedText Text, Point At);
 
@@ -237,7 +239,7 @@ internal sealed class StepView
         GradientStops = { new GradientStop(Color.FromArgb(0x24, tint.R, tint.G, tint.B), 0), new GradientStop(Colors.Transparent, 1) },
     }.ToImmutable();
 
-    internal static IBrush CategoryBrush(string category) => s_categories[category.Sum(letter => letter) % s_categories.Length];
+    static IBrush CategoryBrush(string category) => s_categories[category.Sum(letter => letter) % s_categories.Length];
 
     static double Distance(Point a, Point b) => Math.Sqrt(((a.X - b.X) * (a.X - b.X)) + ((a.Y - b.Y) * (a.Y - b.Y)));
 
@@ -253,7 +255,7 @@ internal sealed class StepView
             var input = i < _step.Inputs.Count ? _step.Inputs[i] : null;
             var output = i < _step.Outputs.Count ? _step.Outputs[i] : null;
             var parameter = ValueParameter(input, i);
-            rows.Add(new Row(input, output, parameter, ValueText(parameter), ""));
+            rows.Add(new Row(input, output, parameter, ValueText(parameter), "", ValueLeftOf(input, parameter)));
         }
         var held = _step.Inputs.Select(port => port.Parameter).ToHashSet();
         foreach (var (name, value) in _step.Parameters.OrderBy(pair => pair.Key, StringComparer.Ordinal))
@@ -270,6 +272,10 @@ internal sealed class StepView
         return rows;
     }
 
+    // The box starts after the input's name, so a long name does not run into it.
+    static double ValueLeftOf(GraphPort? input, string parameter) =>
+        input is null || parameter.Length == 0 ? ValueInset : Math.Max(InputValueLeft, TextInset + Text(input.Name, 11, EditorBrushes.Text).Width + ValueGap);
+
     // A data input with no wire holds its own value, so it is edited in place.
     string ValueParameter(GraphPort? input, int port) =>
         input is { Sort: GraphPortSort.Data, Parameter.Length: > 0 } && !_wired.Contains(new PinRef(_step.Id, port, true)) ? input.Parameter : "";
@@ -279,8 +285,8 @@ internal sealed class StepView
     Rect FieldOf(Row row, int index)
     {
         var top = Origin.Y + HeaderHeight + (RowHeight * index) + 2;
-        var left = row.Input is null ? ValueInset : InputValueLeft;
-        var right = row.Input is null || row.Output is null ? Width - ValueInset : InputValueRight;
+        var left = row.ValueLeft;
+        var right = row.Input is null || row.Output is null ? Width - ValueInset : Math.Max(InputValueRight, left + ValueMinWidth);
         return new Rect(Origin.X + left, top, right - left, RowHeight - 4);
     }
 
@@ -348,8 +354,7 @@ internal sealed class StepView
         var shown = row.Value.Length > 0 ? row.Value : "empty";
         var brush = row.Value.Length > 0 ? EditorBrushes.Text : s_dim;
         var text = row.Input is null ? $"{row.Parameter}   {shown}" : shown;
-        var left = row.Input is null ? ValueInset : InputValueLeft;
-        _labels!.Add(new Label(Text(text, 11, brush), new Point(left + 4, y)));
+        _labels!.Add(new Label(Text(text, 11, brush), new Point(row.ValueLeft + 4, y)));
     }
 
     void AddGrowthLabels(double top)
