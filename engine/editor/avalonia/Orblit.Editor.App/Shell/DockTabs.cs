@@ -29,6 +29,7 @@ internal sealed class DockTabs : Border
     readonly Control?[] _tools;
     readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly MenuItem[] _moves;
+    readonly MenuItem _float = new() { Header = "Float" };
     readonly Border[] _map;
     DockSlot _slot;
 
@@ -45,6 +46,7 @@ internal sealed class DockTabs : Border
         var strip = new DockPanel();
         _moves = [.. Enum.GetValues<DockSlot>().Select(slot => MoveItem(slot))];
         _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
+        _float.Click += (_, _) => FloatRequested?.Invoke();
         MenuButton.Flyout = Options();
         DockPanel.SetDock(MenuButton, Dock.Right);
         DockPanel.SetDock(_tool, Dock.Right);
@@ -60,6 +62,9 @@ internal sealed class DockTabs : Border
 
     /// <summary>Raised with the slot the user chose in the dock menu. The dock has not moved.</summary>
     public event Action<DockSlot>? MoveRequested;
+
+    /// <summary>Raised when the user chose Float, or Dock on a dock that floats. The dock has not moved.</summary>
+    public event Action? FloatRequested;
 
     /// <summary>Raised when the user asks for every dock back in its first slot.</summary>
     public event Action? ResetRequested;
@@ -87,6 +92,15 @@ internal sealed class DockTabs : Border
             }
         }
     }
+
+    /// <summary>True while the dock sits in a window of its own, so the menu offers Dock in place of Float.</summary>
+    internal bool Floats
+    {
+        get => (string?)_float.Header == "Dock";
+        set => _float.Header = value ? "Dock" : "Float";
+    }
+
+    internal MenuItem FloatItem => _float;
 
     /// <summary>The move item of each slot, by slot.</summary>
     internal IReadOnlyList<MenuItem> MoveItems => _moves;
@@ -174,7 +188,7 @@ internal sealed class DockTabs : Border
             flyout.Items.Add(move);
         }
 
-        flyout.Items.Add(Parts.SoonItem("Float", MenuButton));
+        flyout.Items.Add(_float);
         flyout.Items.Add(new Separator());
         flyout.Items.Add(Parts.ActionItem("Reset Layout", () => ResetRequested?.Invoke()));
         return flyout;

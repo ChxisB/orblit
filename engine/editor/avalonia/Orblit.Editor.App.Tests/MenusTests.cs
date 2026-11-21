@@ -349,16 +349,91 @@ public sealed class MenusTests
         });
     }
 
+    static Window? FloatOf(DockTabs dock, EditorWindow window) => TopLevel.GetTopLevel(dock) is Window owner && owner != window ? owner : null;
+
     [Fact]
-    public void Float_says_it_is_not_built()
+    public void Float_puts_a_dock_in_its_own_window_and_dock_puts_it_back()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var dock = window.SceneDock;
+            var box = BoxOf(dock, window);
 
-            Press(DockItem(window.SceneDock, "Float"));
+            Press(dock.FloatItem);
 
-            Assert.Equal("Float is not built yet.", window.Status);
+            var floating = FloatOf(dock, window)!;
+            Assert.Equal("Scene", floating.Title);
+            Assert.Same(window, floating.Owner);
+            Assert.Equal("Dock", dock.FloatItem.Header);
+            Assert.Equal("Floated Scene. Close its window or choose Dock to put it back.", window.Status);
+
+            Press(dock.FloatItem);
+            window.UpdateLayout();
+
+            Assert.Null(FloatOf(dock, window));
+            Assert.Equal("Float", dock.FloatItem.Header);
+            Assert.Equal(box, BoxOf(dock, window));
+        });
+    }
+
+    [Fact]
+    public void Closing_the_float_window_docks_the_dock_in_its_slot()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Press(window.InspectorDock.FloatItem);
+
+            FloatOf(window.InspectorDock, window)!.Close();
+
+            Assert.Null(FloatOf(window.InspectorDock, window));
+            Assert.Contains(window.InspectorDock, window.GetVisualDescendants());
+        });
+    }
+
+    [Fact]
+    public void A_dock_sent_to_a_floating_dock_slot_trades_and_the_floating_dock_comes_back_in_the_other_slot()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var lower = BoxOf(window.FileDock, window);
+            Press(window.SceneDock.FloatItem);
+
+            Press(window.FileDock.MoveItems[(int)DockSlot.UpperLeft]);
+
+            Assert.NotNull(FloatOf(window.SceneDock, window));
+            Assert.Equal(DockSlot.LowerLeft, window.SceneDock.Slot);
+
+            Press(window.SceneDock.FloatItem);
+            window.UpdateLayout();
+
+            Assert.Equal(lower, BoxOf(window.SceneDock, window));
+            Assert.Equal(DockSlot.UpperLeft, window.FileDock.Slot);
+        });
+    }
+
+    [Fact]
+    public void Moving_or_resetting_a_floating_dock_docks_it_first()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var right = BoxOf(window.InspectorDock, window);
+            Press(window.SceneDock.FloatItem);
+
+            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            window.UpdateLayout();
+
+            Assert.Null(FloatOf(window.SceneDock, window));
+            Assert.Equal(right, BoxOf(window.SceneDock, window));
+
+            Press(window.FileDock.FloatItem);
+            Press(DockItem(window.InspectorDock, "Reset Layout"));
+
+            Assert.Null(FloatOf(window.FileDock, window));
+            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.Right], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
         });
     }
 
