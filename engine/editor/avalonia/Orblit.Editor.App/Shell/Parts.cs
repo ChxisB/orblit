@@ -41,6 +41,16 @@ internal static class Parts
         return icon;
     }
 
+    /// <summary>A small rounded tag in mono type, such as a version or a kind.</summary>
+    public static Border Badge(string text) => new()
+    {
+        Padding = new Thickness(6, 2),
+        CornerRadius = new CornerRadius(999),
+        Background = EditorBrushes.Line,
+        VerticalAlignment = VerticalAlignment.Center,
+        Child = new TextBlock { Text = text, FontFamily = EditorTheme.Mono, FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
+    };
+
     /// <summary>A row of controls on a small island of its own, 2 pixels apart with 3 pixels around them.</summary>
     public static Border Pill(IEnumerable<Control> items)
     {

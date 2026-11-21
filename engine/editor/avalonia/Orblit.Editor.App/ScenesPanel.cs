@@ -199,6 +199,11 @@ internal sealed class ScenesPanel : Grid
     {
         CopyPathButton.IsEnabled = _tree.SelectedItem is FileNode;
         OpenButton.IsEnabled = _tree.SelectedItem is FileNode { Kind: not FileKind.Folder };
+        // An imported file opens in the Import tab, which sits beside the tree, so a click is enough.
+        if (_tree.SelectedItem is FileNode { Kind: FileKind.Imported } imported)
+        {
+            Chosen?.Invoke(imported.Path);
+        }
     }
 
     // The file menu acts on the selected row. What the editor cannot do to a file yet says so.
@@ -293,6 +298,7 @@ internal sealed class ScenesPanel : Grid
         FileKind.Folder => "Folder",
         FileKind.Scene => "SceneFile",
         FileKind.Script => "CodeFile",
+        FileKind.Imported => "ImportArrow",
         _ => "GraphFile",
     };
 
@@ -301,6 +307,7 @@ internal sealed class ScenesPanel : Grid
         FileKind.Folder => EditorBrushes.FolderIcon,
         FileKind.Scene => EditorBrushes.SceneIcon,
         FileKind.Script => EditorBrushes.ScriptIcon,
+        FileKind.Imported => EditorBrushes.TreeIcon,
         _ => EditorBrushes.GraphIcon,
     };
 

@@ -6,7 +6,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles, IGraphFiles
+internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles
 {
     OutlineNode? Outline();
 

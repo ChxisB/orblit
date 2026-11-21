@@ -1,6 +1,6 @@
 namespace Orblit.Editor.App;
 
-/// <summary>Finds the C# script files and the graph script files of a project folder.</summary>
+/// <summary>Finds the C# script files, the graph script files and the imported files of a project folder.</summary>
 internal static class ProjectScripts
 {
     const string Prefix = "res://";
@@ -16,6 +16,10 @@ internal static class ProjectScripts
 
     /// <summary>The res:// path of every graph script under the folder, in order.</summary>
     public static IReadOnlyList<string> FindGraphs(string project) => FindMatching(project, GraphPattern);
+
+    /// <summary>The res:// path of every file the engine imports, found by the .import file beside it, in order.</summary>
+    public static IReadOnlyList<string> FindImported(string project) =>
+        [.. FindMatching(project, "*" + ImportFile.Suffix).Select(path => path[..^ImportFile.Suffix.Length])];
 
     /// <summary>
     /// The file on disk for a res:// path that ends in the extension, which is a C# file unless asked otherwise. Throws

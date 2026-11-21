@@ -60,9 +60,9 @@ public sealed class FileTreeTests
     [Fact]
     public void A_file_takes_its_kind_from_its_extension()
     {
-        var project = FileTree.Build(["res://main.oscn", "res://spin.cs", "res://brain.ograph"]).Single();
+        var project = FileTree.Build(["res://main.oscn", "res://spin.cs", "res://brain.ograph", "res://rock.glb"]).Single();
 
-        Assert.Equal([FileKind.Graph, FileKind.Scene, FileKind.Script], project.Children.Select(node => node.Kind));
+        Assert.Equal([FileKind.Graph, FileKind.Scene, FileKind.Imported, FileKind.Script], project.Children.Select(node => node.Kind));
     }
 
     [Fact]
