@@ -48,6 +48,7 @@ internal sealed class EditorChecks : IChecks
         ("a new scene file is written with its root, and an instance of it is saved as a reference and not a copy", NewSceneIsSavedAndInstanced),
         ("an instance reads the scene file as last saved, not as it was first loaded", InstanceReadsTheSavedFile),
         ("a closed scene has no outline, and the next one opens", ClosedSceneHasNoOutline),
+        ("an entity of a scene that is no longer open has no handles and no rings", EntityOfAnotherSceneHasNoGizmo),
         ("a scene path outside res://, an empty name and a class that is no entity are refused, and a file that is no scene does not instance", SceneFileRefusals),
         ("metadata keeps its type through a save and a reopen, an engine name is not listed and a bad name is refused", MetadataIsSaved),
         ("an object value reads back as the same object, and a Variant of another kind reads as nothing", ObjectVariantRoundTrips),
@@ -469,6 +470,23 @@ internal sealed class EditorChecks : IChecks
         Assert.Null(_editor.Outline());
         _editor.OpenScene("res://main.oscn");
         Assert.NotNull(_editor.Outline());
+    }
+
+    // The engine can switch scenes inside a frame, and the viewport asks for the gizmo before the selection follows.
+    void EntityOfAnotherSceneHasNoGizmo()
+    {
+        _editor.CreateScene("res://here.oscn", "Entity3D", "Here");
+        _editor.OpenScene("res://here.oscn");
+        var lamp = _editor.AddChild(_editor.Outline()!.Handle, "Marker3D", "Lamp");
+        var camera = new EditorCamera(_host);
+        Assert.NotNull(_editor.HandlesOf(camera, lamp, GizmoSpace.Global));
+
+        _editor.CreateScene("res://away.oscn", "Entity3D", "Away");
+        _editor.OpenScene("res://away.oscn");
+
+        Assert.Null(_editor.HandlesOf(camera, lamp, GizmoSpace.Global));
+        Assert.Null(_editor.RingsOf(camera, lamp, GizmoSpace.Global));
+        _editor.OpenScene("res://main.oscn");
     }
 
     void SceneFileRefusals()
