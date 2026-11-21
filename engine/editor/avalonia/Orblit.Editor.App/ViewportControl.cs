@@ -166,10 +166,16 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Runs one engine frame and keeps its pixels. Stops the control when the engine asks to quit.</summary>
     public void Tick()
     {
+        var running = _running;
         if (iterate())
         {
             Stop();
             Ended?.Invoke();
+            return;
+        }
+        // The frame pumps the app's events, and a window closed by one of them has disposed the engine.
+        if (running && !_running)
+        {
             return;
         }
         var mode = ModeSource();
