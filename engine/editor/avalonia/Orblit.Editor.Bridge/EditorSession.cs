@@ -407,9 +407,21 @@ public sealed class EditorSession
         }
     }
 
-    /// <summary>The move gizmo's handles for an Entity3D, or null when its pivot is behind the camera.</summary>
+    /// <summary>The move gizmo's handles for an Entity3D, or null when its pivot is behind the camera or the open scene does not hold it.</summary>
     public GizmoHandles? HandlesOf(EditorCamera camera, nint entity, GizmoSpace space) =>
-        camera.HandlesAt(_host.Entity3DGetGlobalTransform(entity), space);
+        InOpenScene(entity) ? camera.HandlesAt(_host.Entity3DGetGlobalTransform(entity), space) : null;
+
+    // The viewport asks each frame, and the engine can switch scenes inside a frame before the selection follows.
+    bool InOpenScene(nint entity)
+    {
+        var root = _source.Root();
+        var at = entity;
+        while (at != 0 && at != root)
+        {
+            at = _host.EntityGetParent(at);
+        }
+        return at != 0;
+    }
 
     /// <summary>Moves an Entity3D along an axis by a pointer move in the frame. Its rotation and scale stay.</summary>
     public void Drag(EditorCamera camera, nint entity, GizmoDirection direction, FrameMove move)
@@ -476,9 +488,9 @@ public sealed class EditorSession
         _host.Entity2DSetGlobalScale(entity, place.Scale);
     }
 
-    /// <summary>The rotate gizmo's rings for an Entity3D, or null when its pivot is behind the camera.</summary>
+    /// <summary>The rotate gizmo's rings for an Entity3D, or null when its pivot is behind the camera or the open scene does not hold it.</summary>
     public GizmoRings? RingsOf(EditorCamera camera, nint entity, GizmoSpace space) =>
-        camera.RingsAt(_host.Entity3DGetGlobalTransform(entity), space);
+        InOpenScene(entity) ? camera.RingsAt(_host.Entity3DGetGlobalTransform(entity), space) : null;
 
     /// <summary>Turns an Entity3D about an axis through its pivot by a pointer move in the frame. Its place and scale stay.</summary>
     public void RotateDrag(EditorCamera camera, nint entity, GizmoDirection direction, FrameMove move) =>
