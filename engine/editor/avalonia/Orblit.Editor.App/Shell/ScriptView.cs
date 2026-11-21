@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -23,6 +24,9 @@ internal interface IScriptFiles
 
     /// <summary>Builds the project's C# and answers each error and warning. Throws <see cref="IOException"/> when it cannot build.</summary>
     Task<IReadOnlyList<ScriptProblem>> CheckScripts();
+
+    /// <summary>The path of each assembly a script can use besides the .NET runtime, such as the engine's C# API.</summary>
+    IReadOnlyList<string> ScriptReferences();
 
     /// <summary>The classes a new script can extend, by name.</summary>
     IReadOnlyList<string> AddableClasses();
@@ -82,7 +86,12 @@ internal sealed class ScriptView : Border
     readonly Button _save = new() { Classes = { EditorTheme.TextButton, EditorTheme.Primary, EditorTheme.Small }, IsEnabled = false, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _problems = new() { Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _problemsText = StatusText();
+    readonly TextBlock _errors = new() { Foreground = EditorBrushes.FaultText, MaxWidth = 520, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+    // A pause in typing, so Roslyn reads the text once a burst of keys is done.
+    readonly DispatcherTimer _errorsAfter = new() { Interval = TimeSpan.FromMilliseconds(600) };
+    readonly CompletionPopup _completions;
     IReadOnlyList<ScriptProblem> _found = [];
+    ScriptCompletion? _completion;
     IScriptFiles? _files;
     IReadOnlyList<string> _paths = [];
     string? _open;
@@ -93,6 +102,8 @@ internal sealed class ScriptView : Border
     public ScriptView()
     {
         _finder = new ScriptFind(_code);
+        _completions = new CompletionPopup(_code, Complete);
+        _errorsAfter.Tick += async (_, _) => await ShowErrors();
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
         _save.Content = Parts.Keyed("Save", "⌘S");
         _tab = new Border
@@ -185,6 +196,11 @@ internal sealed class ScriptView : Border
 
     internal string ProblemsText => _problemsText.Text ?? "";
 
+    internal CompletionPopup Completions => _completions;
+
+    /// <summary>The first error Roslyn finds in the open text, after a pause in typing.</summary>
+    internal TextBlock ErrorsText => _errors;
+
     /// <summary>Whether the text in the box differs from what is on disk.</summary>
     public bool IsDirty => _open is not null && _code.Editor.Text != _saved;
 
@@ -197,6 +213,7 @@ internal sealed class ScriptView : Border
         _code.Editor.Text = "";
         ShowOpen();
         _status.Text = "";
+        _errors.Text = "";
         Refresh();
     }
 
@@ -338,7 +355,7 @@ internal sealed class ScriptView : Border
         };
         var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, _find, new Border { Width = 4 }, _save);
         DockPanel.SetDock(_problems, Dock.Right);
-        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status } };
+        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status, _errors } };
         var status = new Border
         {
             Height = 28,
@@ -354,6 +371,7 @@ internal sealed class ScriptView : Border
         Place(grid, _code, 1);
         Place(grid, _empty, 1);
         Place(grid, _finder, 1);
+        Place(grid, _completions.Popup, 1);
         Place(grid, status, 2);
         // The text area's corners would square off the island's lower ones.
         return new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = grid };
@@ -368,7 +386,46 @@ internal sealed class ScriptView : Border
     void Refresh()
     {
         _paths = _files?.Scripts() ?? [];
+        _completion = null;
         ShowList();
+    }
+
+    // Built on first use, and again after the files change, because it reads every script.
+    ScriptCompletion Completion() => _completion ??= ScriptCompletion.For(_files!);
+
+    // The workspace is read here, because the files answer only on the UI thread. Roslyn works off it.
+    Task<CompletionSet?> Complete(string text, int caret)
+    {
+        if (_open is not { } path || _files is null)
+        {
+            return Task.FromResult<CompletionSet?>(null);
+        }
+
+        var completion = Completion();
+        return Task.Run(() => completion.Complete(path, text, caret));
+    }
+
+    internal async Task ShowErrors()
+    {
+        _errorsAfter.Stop();
+        if (_open is not { } path || _files is null)
+        {
+            _errors.Text = "";
+            return;
+        }
+
+        var completion = Completion();
+        var text = _code.Editor.Text ?? "";
+        var found = await Task.Run(() => completion.Problems(path, text));
+        // Another script or more typing since the ask makes the answer stale. The next pause asks again.
+        if (path != _open || text != _code.Editor.Text)
+        {
+            return;
+        }
+
+        var more = found.Count > 1 ? $" {found.Count - 1} more." : "";
+        _errors.Text = found.Count == 0 ? "" : $"Line {found[0].Line}: {found[0].Text}{more}";
+        ToolTip.SetTip(_errors, found.Count == 0 ? null : string.Join("\n", found.Select(problem => $"Line {problem.Line}: {problem.Text}")));
     }
 
     void ShowList()
@@ -407,6 +464,9 @@ internal sealed class ScriptView : Border
             var text = _files.ReadScript(path);
             _saved = text;
             _open = path;
+            // The workspace holds the last script as it was read, before the save.
+            _completion = null;
+            _errors.Text = "";
             _code.Editor.Text = text;
             _code.Editor.CaretIndex = 0;
             // Saving the last script lists the files again, which selects that one.
@@ -479,6 +539,12 @@ internal sealed class ScriptView : Border
         _tabDot.IsVisible = IsDirty;
         _indent.Text = Indent(text);
         _outline.ItemsSource = ScriptMember.Read(text);
+        _errorsAfter.Stop();
+        if (_open is not null)
+        {
+            _errorsAfter.Start();
+        }
+
         if (IsDirty != _shownDirty)
         {
             ShowList();

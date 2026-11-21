@@ -378,6 +378,13 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => ScriptChecker.Check(_project);
 
+    // The engine build writes its C# API beside the library, once for each configuration. Any one has every member.
+    public IReadOnlyList<string> ScriptReferences()
+    {
+        var api = Path.Combine(Path.GetDirectoryName(EngineLibrary.Find())!, "OrblitSharp", "Api");
+        return Directory.Exists(api) ? [.. Directory.GetFiles(api, "OrblitSharp.dll", SearchOption.AllDirectories).Take(1)] : [];
+    }
+
     public IReadOnlyList<string> ImportedFiles() => ProjectScripts.FindImported(_project);
 
     public string ReadImport(string resourcePath) => File.ReadAllText(ImportFileOf(resourcePath));

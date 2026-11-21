@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Microsoft.CodeAnalysis.Completion;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
@@ -74,6 +75,8 @@ public sealed class ScriptViewTests
             Checks++;
             return CheckFails ? throw new IOException("dotnet was not found.") : Task.FromResult<IReadOnlyList<ScriptProblem>>([.. Problems]);
         }
+
+        public IReadOnlyList<string> ScriptReferences() => [];
     }
 
     static ScriptView Open(Files files)
@@ -705,6 +708,57 @@ public sealed class ScriptViewTests
             Press(view.Finder.Text, Key.Escape);
 
             Assert.False(view.Finder.IsVisible);
+        });
+    }
+
+    // A stand-in for the engine's C# API, which a test run has not built.
+    const string Api = "namespace Orblit { public struct Vector3 { public static Vector3 Zero => default; public static Vector3 Lerp(Vector3 a, Vector3 b, float t) => a; } }";
+
+    static List<CompletionItem> Offered(ScriptView view) => [.. view.Completions.List.Items.Cast<CompletionItem>()];
+
+    [Fact]
+    public void Ctrl_Space_after_a_dot_lists_the_engine_types_members_and_Enter_puts_the_pick_in()
+    {
+        UiThread.Run(async () =>
+        {
+            var view = Open(new Files { Text = { ["res://api.cs"] = Api } });
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "using Orblit;\nclass Spin { void F() { var v = Vector3. } }";
+            view.Editor.CaretIndex = view.Editor.Text.IndexOf("3.", StringComparison.Ordinal) + 2;
+
+            Press(view.Editor, Key.Space, KeyModifiers.Control);
+            await view.Completions.Asking;
+
+            Assert.True(view.Completions.Popup.IsOpen);
+            Assert.Contains("Zero", Offered(view).Select(item => item.DisplayText));
+            Assert.Contains("Lerp", Offered(view).Select(item => item.DisplayText));
+
+            view.Completions.List.SelectedItem = Offered(view).First(item => item.DisplayText == "Zero");
+            Press(view.Editor, Key.Enter);
+            await view.Completions.Asking;
+
+            Assert.Contains("var v = Vector3.Zero }", view.Editor.Text);
+            Assert.False(view.Completions.Popup.IsOpen);
+        });
+    }
+
+    [Fact]
+    public void A_broken_line_shows_the_error_in_the_status_line_until_it_is_fixed()
+    {
+        UiThread.Run(async () =>
+        {
+            var view = Open(new Files());
+            Pick(view, "res://spin.cs");
+
+            view.Editor.Text = "class Spin { void F() { int x = } }";
+            await view.ShowErrors();
+
+            Assert.StartsWith("Line 1: CS", view.ErrorsText.Text);
+
+            view.Editor.Text = "class Spin { }";
+            await view.ShowErrors();
+
+            Assert.Equal("", view.ErrorsText.Text);
         });
     }
 }

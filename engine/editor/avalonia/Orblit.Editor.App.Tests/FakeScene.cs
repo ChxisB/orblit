@@ -350,6 +350,8 @@ internal sealed class FakeScene : IEditorScene
 
     public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => Task.FromResult<IReadOnlyList<ScriptProblem>>([]);
 
+    public IReadOnlyList<string> ScriptReferences() => [];
+
     public string ReadScript(string resourcePath) =>
         ScriptText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.");
 

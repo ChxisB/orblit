@@ -121,6 +121,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => scene.CheckScripts();
 
+    public IReadOnlyList<string> ScriptReferences() => scene.ScriptReferences();
+
     public IReadOnlyList<string> GraphScripts() => scene.GraphScripts();
 
     public IReadOnlyList<string> ImportedFiles() => scene.ImportedFiles();
