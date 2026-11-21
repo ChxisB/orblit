@@ -46,25 +46,38 @@ scene. It runs on macOS. Nothing else has run it.
   runs. Asset Store lists the kits in the store index when Reload is pressed.
 - With no `--project` a launcher opens. It lists recent projects, opens a
   project folder and makes a new project from a template.
+- Undo and redo cover scene edits, and History lists them.
+- The inspector lists each class's properties, shows a Mixed value and
+  scrubs a number when its label is dragged. Copy and Paste Properties and
+  Make Unique are in its tools.
+- The Signals tab lists an entity's signals and connects them. The Import
+  tab shows import options and reimports on a change.
+- The class list comes from the engine.
+- Script shows C# build problems in its status line.
+- 2D has Rotate, Scale, Pan, Snap and a grid. The 3D viewport has a
+  ruler, Select from a list and the preview lights.
+- A dock floats in its own window from the dock menu.
+- Game passes its run settings to the game as engine flags, and shows the
+  running game's monitors and live scene tree.
 
 ## What is not built
 
-- Undo and redo of scene edits, and drag to reparent.
-- A pick by mesh bounds. A big mesh is hard to hit away from its pivot.
-- Docking changes are kept in memory only. Layouts and Float are not built.
-- 2D has no rotate, scale, snap or grid. The Preview sun, Preview
-  environment, Ruler and Select from a list are marked "not built yet". So
-  are the Audio, Animation and Shader Editor bottom panels.
-- The Debugger panel only says whether a game is connected. Graph scripts
-  are debugged in the Graph workspace.
-- The inspector shows no class chain, no Mixed value and no drag to scrub.
-- Game has no live copy of the game window, no monitors and no Pause. Of
-  the run settings, only Show while running reaches the game, as engine
-  flags. The game sends the editor nothing.
-- Asset Store does not install a kit or open its page.
+- C# completion, the C# debugger and kit install. Each waits on a
+  decision, 284 to 286. The script slot's Make Unique waits on 287, and its
+  New Script is not built.
+- Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
+  hard to hit away from its pivot.
+- Saved layouts. Docking changes, moves and floated docks are kept in memory
+  only.
+- The 2D Ruler. The Audio, Animation and Shader Editor bottom panels.
+- The Scenes list's file menu, apart from Open. Open Documentation in the
+  inspector tools.
+- Game has no live copy of the game window, no Pause, no bring to front and
+  no run choices. Run a chosen scene, Movie maker mode and Customize Run
+  Instances in the run menu.
+- A menu item with no action carries a Soon tag.
 - The launcher's Templates, Asset Store and Settings places and each card's
-  More menu are not built. A listed folder that lost its `project.orblit` is
-  hidden.
+  More menu. A listed folder that lost its `project.orblit` is hidden.
 - Windows and Linux runs. The engine builds for them and for iOS, visionOS,
   Android and Web, but only macOS has run. Play looks for macOS and Linux
   file names only.
