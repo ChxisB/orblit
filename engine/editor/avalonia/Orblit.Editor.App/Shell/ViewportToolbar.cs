@@ -255,10 +255,10 @@ internal sealed class ViewportToolbar : Grid
 
     /// <summary>
     /// Lock and group act on an entity that has a place, so they are off for any other. They are lit for the
-    /// flags the entity holds. The chip names the entity, and its Collision menu is for a mesh, so it is shown for
-    /// that class alone. Pass null when nothing is selected.
+    /// flags the entity holds. The chip names the entity, or counts the picked ones when there are several, and its
+    /// Collision menu is for a mesh, so it is shown for that class alone. Pass null when nothing is selected.
     /// </summary>
-    public void Select(OutlineNode? selected)
+    public void Select(OutlineNode? selected, int picked)
     {
         var placed = selected is not null && OutlineNode.IsPlaced(selected.ClassName);
         _lock.IsEnabled = placed;
@@ -270,15 +270,15 @@ internal sealed class ViewportToolbar : Grid
         Chip.IsVisible = selected is not null;
         if (selected is not null)
         {
-            ShowName(selected);
+            ShowName(selected, picked);
         }
     }
 
     // An icon draws one name for good, so a new selection puts a new icon in its place.
-    void ShowName(OutlineNode selected)
+    void ShowName(OutlineNode selected, int picked)
     {
         _named.Children[0] = ClassMark(selected.ClassName);
-        _name.Text = selected.Name;
+        _name.Text = picked > 1 ? $"{picked} selected" : selected.Name;
         _className.Text = selected.ClassName;
         _resetMenu.Items[0] = Parts.MenuHeading($"Reset {selected.Name}");
     }

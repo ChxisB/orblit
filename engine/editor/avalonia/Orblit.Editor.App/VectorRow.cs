@@ -16,7 +16,8 @@ namespace Orblit.Editor.App;
 /// A label beside two or three fields for one vector, each with a tag for its axis, the value and the unit. A field shows
 /// its value rounded at rest and in full while it has the caret. It raises <see cref="Entered"/> when a box holds a
 /// finite value that differs from the one shown. Any other text stays, with a red edge and a line that says why,
-/// until the next value is shown. A drag across a tag steps its axis.
+/// until the next value is shown. A drag across a tag steps its axis. A NaN axis shows Mixed, for entities that
+/// differ there, and stays NaN in what the row raises until a number is typed in it.
 /// </summary>
 internal sealed class VectorRow : Grid
 {
@@ -106,7 +107,7 @@ internal sealed class VectorRow : Grid
 
     internal TextBlock Fault => _fault;
 
-    /// <summary>Shows a value in the boxes and clears any fault. Null empties and disables them. A row of two shows x and y.</summary>
+    /// <summary>Shows a value in the boxes and clears any fault. Null empties and disables them. A row of two shows x and y. A NaN axis shows Mixed.</summary>
     public void Show(Vector3? value)
     {
         _shown = value;
@@ -122,9 +123,11 @@ internal sealed class VectorRow : Grid
     void ShowAxis(int axis)
     {
         var box = _axes[axis];
-        box.Text = _shown is { } shown
+        var mixed = _shown is { } value && float.IsNaN(value[axis]);
+        box.Text = _shown is { } shown && !mixed
             ? box.IsFocused ? shown[axis].ToString(CultureInfo.InvariantCulture) : AtRestText(shown[axis])
             : "";
+        box.PlaceholderText = mixed ? "Mixed" : null;
     }
 
     // The format writes a tiny negative value as -0, which reads as a fault.
@@ -174,7 +177,8 @@ internal sealed class VectorRow : Grid
     // One axis at a time, because the other boxes may hold rounded text.
     void Commit(int axis)
     {
-        if (_shown is not { } shown)
+        // A Mixed axis left empty keeps each entity's own value.
+        if (_shown is not { } shown || (float.IsNaN(shown[axis]) && string.IsNullOrEmpty(_axes[axis].Text)))
         {
             return;
         }

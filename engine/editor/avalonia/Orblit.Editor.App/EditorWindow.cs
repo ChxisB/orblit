@@ -144,7 +144,7 @@ internal sealed class EditorWindow : Window
         _instanceScene.Failed += Fail;
         _inspector.Edited += () =>
         {
-            _history.Commit($"Edited {_scenePane.Selected?.Name}");
+            _history.Commit(_scenePane.Picked.Count > 1 ? $"Edited {_scenePane.Picked.Count} entities" : $"Edited {_scenePane.Selected?.Name}");
             ShowEdited(true);
             HighlightSelected();
             Say("Edited. Save keeps the change.");
@@ -484,7 +484,7 @@ internal sealed class EditorWindow : Window
     void ShowSelection()
     {
         var selected = _scenePane.Selected;
-        _inspectorPane.Show(_scene, selected);
+        _inspectorPane.Show(_scene, _scenePane.Picked);
         _tools.Show(_scene, _root, selected);
         _move.Show(_scene, _root, selected);
         _signals.Show(_scene, _root, selected);
@@ -493,7 +493,7 @@ internal sealed class EditorWindow : Window
         // A locked entity keeps no handles, but it can still be framed.
         _gizmoTarget = spatial && selected?.Locked == false ? selected.Handle : 0;
         _frame.IsEnabled = spatial;
-        _toolbar.Select(selected);
+        _toolbar.Select(selected, _scenePane.Picked.Count);
         HighlightSelected();
     }
 
@@ -550,7 +550,7 @@ internal sealed class EditorWindow : Window
     void ShowDragged(string verb)
     {
         var selected = _scenePane.Selected!;
-        _inspectorPane.Show(_scene, selected);
+        _inspectorPane.Show(_scene, _scenePane.Picked);
         HighlightSelected();
         ShowEdited(true);
         _dragged = $"{verb} {selected.Name}";

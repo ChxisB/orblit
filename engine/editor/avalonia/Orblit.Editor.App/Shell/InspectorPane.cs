@@ -106,13 +106,17 @@ internal sealed class InspectorPane : Grid
     /// <summary>Raised with the handle of an object the history goes back to.</summary>
     public event Action<nint>? Picked;
 
-    /// <summary>Shows the node in the property list, names it in the chip and adds it to the history.</summary>
-    public void Show(IEditorScene? scene, OutlineNode? node)
+    /// <summary>
+    /// Shows the picked entities in the property list, names the selected one, which is last, or counts them in the
+    /// chip, and adds the selected one to the history.
+    /// </summary>
+    public void Show(IEditorScene? scene, IReadOnlyList<OutlineNode> picked)
     {
-        _panel.Show(scene, node);
+        var node = picked.Count == 0 ? null : picked[^1];
+        _panel.Show(scene, picked);
         _inspected.IsVisible = node is not null;
         _icon.Content = node is null ? null : Parts.RowIcon(EditorIcons.ForClass(node.ClassName));
-        _name.Text = node?.Name ?? "";
+        _name.Text = picked.Count > 1 ? $"{picked.Count} selected" : node?.Name ?? "";
         _class.Text = string.Join(" › ", _panel.Chain);
         Remember(scene?.SceneFile, node);
     }
