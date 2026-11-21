@@ -551,6 +551,12 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         _game = null;
     }
 
+    public event Action? Destroyed
+    {
+        add => _host.Destroyed += value;
+        remove => _host.Destroyed -= value;
+    }
+
     // The readback holds a texture the engine owns, so it goes first. A game still running is left to run.
     public void Dispose()
     {

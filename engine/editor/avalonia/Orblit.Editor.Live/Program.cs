@@ -43,8 +43,14 @@ int RunEditor()
             Console.WriteLine($"FAIL the run stopped: {error}");
         }
         Console.WriteLine($"the run is over at {DateTime.Now:HH:mm:ss}, closing the window");
-        _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(_ => EndWith("FAIL the editor did not exit a minute after its window closed, which an unsaved-edits prompt would cause", 3));
+        _ = Task.Delay(TimeSpan.FromMinutes(1)).ContinueWith(_ => EndWith("FAIL the editor did not exit a minute after its window closed", 3));
         window.Close();
+        // A close the save prompt holds back says what is unsaved, because the run saves every edit it makes.
+        if (window.SaveChanges.IsVisible)
+        {
+            var toasts = string.Join(" | ", window.Toasts.Cards.Select(card => card.Title));
+            Console.WriteLine($"the save prompt held the close: title {window.Title}, script {window.Script.IsDirty}, graph {window.Graph.IsDirty}, toasts {toasts}");
+        }
     }
 }
 

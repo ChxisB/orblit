@@ -28,6 +28,9 @@ public sealed unsafe class EngineHost : IDisposable
     bool _disposed;
     int _frames;
 
+    /// <summary>Raised once the engine is destroyed. A dispose inside a frame puts that off to the frame's end.</summary>
+    public event Action? Destroyed;
+
     EngineHost(nint instance, delegate* unmanaged<nint, void> destroy)
     {
         _instance = instance;
@@ -102,7 +105,7 @@ public sealed unsafe class EngineHost : IDisposable
             // The engine still used its input after the event that disposed the host.
             if (--_frames == 0 && _disposed)
             {
-                _destroy(_instance);
+                End();
             }
         }
     }
@@ -171,7 +174,13 @@ public sealed unsafe class EngineHost : IDisposable
         // A frame pumps the app's events, so a window closed by one disposes the host inside that frame.
         if (_frames == 0)
         {
-            _destroy(_instance);
+            End();
         }
+    }
+
+    void End()
+    {
+        _destroy(_instance);
+        Destroyed?.Invoke();
     }
 }

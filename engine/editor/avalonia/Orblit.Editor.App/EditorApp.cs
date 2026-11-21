@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using Avalonia;
+using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Orblit.Editor.App.Launcher;
@@ -26,7 +27,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            desktop.MainWindow = projects is null ? Edit(options) : Launch(desktop, projects);
+            desktop.MainWindow = projects is null ? Edit(desktop, options) : Launch(desktop, projects);
         }
         base.OnFrameworkInitializationCompleted();
     }
@@ -36,7 +37,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
         var launcher = new LauncherWindow(list, InitGit);
         launcher.Opening += folder =>
         {
-            var window = Edit(options with { Project = folder, Scene = ProjectSettings.MainSceneOf(folder) });
+            var window = Edit(desktop, options with { Project = folder, Scene = ProjectSettings.MainSceneOf(folder) });
             desktop.MainWindow = window;
             window.Show();
             launcher.Close();
@@ -44,11 +45,29 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
         return launcher;
     }
 
-    EditorWindow Edit(EditorOptions chosen)
+    // The engine pumps the app's events inside a frame. A quit in a frame let the engine take the one event that
+    // wakes the main loop to stop, and the app idled forever. So a quit closes the window, and the app stops
+    // once the engine is destroyed, which is after any frame.
+    EditorWindow Edit(IClassicDesktopStyleApplicationLifetime desktop, EditorOptions chosen)
     {
         var window = new EditorWindow(readStore: chosen.StoreReader);
         window.Opened += (_, _) => DispatcherTimer.RunOnce(() => StartEngine(window, chosen), EngineStartDelay);
-        window.Closed += (_, _) => _engine?.Dispose();
+        desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+        desktop.ShutdownRequested += (_, e) =>
+        {
+            e.Cancel = true;
+            window.Close();
+        };
+        window.Closed += (_, _) =>
+        {
+            if (_engine is null)
+            {
+                desktop.Shutdown();
+                return;
+            }
+            _engine.Destroyed += () => desktop.Shutdown();
+            _engine.Dispose();
+        };
         return window;
     }
 
