@@ -15,7 +15,7 @@ namespace Orblit.Editor.App;
 /// One engine property in the inspector, with an editor of its kind: a switch, a list of an enum's choices, a number
 /// box with its unit, a text box, a vector or a colour swatch with its hex. Any other kind shows read only.
 /// A box raises <see cref="Entered"/> when it holds a value of its kind that differs from the one shown. Any other
-/// text is put back.
+/// text is put back. A drag across a number's label steps it.
 /// </summary>
 internal sealed class PropertyRow : Border
 {
@@ -43,6 +43,7 @@ internal sealed class PropertyRow : Border
 
     readonly EntityProperty _property;
     Action<object?> _show = _ => { };
+    Action _commit = () => { };
     object? _shown;
     bool _showing;
 
@@ -60,8 +61,14 @@ internal sealed class PropertyRow : Border
             { Type: ColorType } => Swatch(),
             _ => ReadOnly(),
         };
+        var label = new TextBlock { Text = Label, FontSize = 12, Foreground = EditorBrushes.TextSoft, Background = Brushes.Transparent, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         // A vector row has its own label.
-        Child = Editor is VectorRow ? Editor : Labeled(Label, Editor);
+        Child = Editor is VectorRow ? Editor : Labeled(label, Editor);
+        if (property.Type is Int or Float && Editor is TextBox box)
+        {
+            Scrub.Attach(label, box, _commit, property.Type == Int);
+        }
+
         Show(property.Value);
     }
 
@@ -220,6 +227,7 @@ internal sealed class PropertyRow : Border
             }
         };
         _show = value => box.Text = format(value);
+        _commit = Commit;
         return box;
     }
 
@@ -242,7 +250,7 @@ internal sealed class PropertyRow : Border
 
     static byte Byte(float part) => (byte)Math.Clamp(MathF.Round(part * 255), 0, 255);
 
-    static Grid Labeled(string label, Control editor)
+    static Grid Labeled(TextBlock label, Control editor)
     {
         Grid.SetColumn(editor, 2);
         editor.VerticalAlignment = VerticalAlignment.Center;
@@ -250,11 +258,7 @@ internal sealed class PropertyRow : Border
         {
             Height = RowHeight,
             ColumnDefinitions = new ColumnDefinitions($"{LabelWidth},{LabelGap},*"),
-            Children =
-            {
-                new TextBlock { Text = label, FontSize = 12, Foreground = EditorBrushes.TextSoft, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center },
-                editor,
-            },
+            Children = { label, editor },
         };
     }
 

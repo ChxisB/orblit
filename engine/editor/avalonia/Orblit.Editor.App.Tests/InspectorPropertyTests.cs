@@ -1,10 +1,12 @@
 using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -207,6 +209,34 @@ public sealed class InspectorPropertyTests
 
             Assert.Equal(["Camera3D"], window.Inspector.GetVisualDescendants().OfType<ClassBar>().Where(bar => bar.IsEffectivelyVisible).Select(bar => bar.Title));
             Assert.Equal("1 of 16 properties match.", window.Inspector.FilterCount.Text);
+        });
+    }
+
+    [Fact]
+    public void A_drag_across_a_number_label_steps_the_number_and_an_angle_in_degrees()
+    {
+        UiThread.Run(() =>
+        {
+            var count = new PropertyRow(new EntityProperty("", "", "max_count", 2, 5L));
+            var angle = new PropertyRow(new EntityProperty("", "", "spin", 3, 0.0) { HintString = "radians_as_degrees" });
+            var window = new Window { Content = new StackPanel { Children = { count, angle } }, Width = 400, Height = 100 };
+            window.Show();
+            window.UpdateLayout();
+            var entered = new List<object>();
+            count.Entered += entered.Add;
+            angle.Entered += entered.Add;
+
+            foreach (var row in new[] { count, angle })
+            {
+                var at = BoxOf(row.GetVisualDescendants().OfType<TextBlock>().First(text => text.Text == row.Label), window).Center;
+                window.MouseDown(at, MouseButton.Left);
+                window.MouseMove(at + new Point(6, 0));
+                window.MouseUp(at + new Point(6, 0), MouseButton.Left);
+            }
+
+            Assert.Equal(8L, entered[0]);
+            Assert.Equal(0.3 * Math.PI / 180, (double)entered[1], 9);
+            Assert.Equal("0.3", ((TextBox)angle.Editor).Text);
         });
     }
 }
