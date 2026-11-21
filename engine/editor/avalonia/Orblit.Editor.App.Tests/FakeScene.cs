@@ -293,6 +293,21 @@ internal sealed class FakeScene : IEditorScene
 
     public void Reimport() => Reimports++;
 
+    /// <summary>The zips Install from File unpacked, in order.</summary>
+    public List<string> Kits { get; } = [];
+
+    /// <summary>When set, an install throws this.</summary>
+    public Exception? KitFault { get; set; }
+
+    public void InstallKit(string zipFile)
+    {
+        if (KitFault is not null)
+        {
+            throw KitFault;
+        }
+        Kits.Add(zipFile);
+    }
+
     public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => Task.FromResult<IReadOnlyList<ScriptProblem>>([]);
 
     public string ReadScript(string resourcePath) =>

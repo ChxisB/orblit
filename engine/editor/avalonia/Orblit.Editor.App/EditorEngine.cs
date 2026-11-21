@@ -396,6 +396,12 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         using var started = Process.Start(import);
     }
 
+    public void InstallKit(string zipFile)
+    {
+        KitArchive.Install(zipFile, _project);
+        Reimport();
+    }
+
     string ImportFileOf(string resourcePath) => ProjectScripts.FileOf(_project, resourcePath + ImportFile.Suffix, ImportFile.Suffix);
 
     public string? ReadBreakpoints() => BreakpointFile.Read(_project);

@@ -117,6 +117,7 @@ internal sealed class EditorWindow : Window
         _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
         _saveChanges = SaveChangesDialog();
         _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
+        _store.Installed += ShowScenes;
         _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
         _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
         _titleBar.SearchButton.Click += (_, _) => OpenPalette();
@@ -292,6 +293,7 @@ internal sealed class EditorWindow : Window
         _script.Show(scene);
         _graph.Show(scene);
         _import.Show(scene);
+        _store.Show(scene);
         _center.Output.Show(scene.Output, _time);
         _pollTimer.Start();
         ShowScenes();

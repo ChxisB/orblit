@@ -8,14 +8,26 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Avalonia.Platform.Storage;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
+/// <summary>What the Asset Store needs from the project: a place to unpack a kit.</summary>
+internal interface IKitFiles
+{
+    /// <summary>
+    /// Unpacks a kit's zip into the project and starts an import of what it holds. Throws
+    /// <see cref="InvalidDataException"/> or <see cref="IOException"/>, before any file is written, when the zip
+    /// cannot be read or an entry would land outside the project or on a file it has.
+    /// </summary>
+    void InstallKit(string zipFile);
+}
+
 /// <summary>
 /// The Asset Store workspace: a card for each kit the store's index lists, a search over them and a drawer with
-/// the chosen kit's details. It reads the index when Reload is pressed. It names kits and does not install them,
-/// so Install and the Installed and Updates filters wait on an installer.
+/// the chosen kit's details. It reads the index when Reload is pressed. Install from File unpacks a kit's zip
+/// from disk into the project. The cards' Install and the Installed and Updates filters wait on a download.
 /// </summary>
 internal sealed class StoreView : Border
 {
@@ -25,6 +37,7 @@ internal sealed class StoreView : Border
 
     readonly Func<CancellationToken, Task<string>> _read;
     readonly Button _reload = new() { Classes = { EditorTheme.TextButton, EditorTheme.Small } };
+    readonly Button _installFile = new() { IsEnabled = false, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
     readonly TextBlock _status = new() { Text = "Press Reload to read the store.", FontSize = 12, Foreground = EditorBrushes.TextDim };
     readonly TextBox _search = new() { Width = 260, PlaceholderText = "Search kits", InnerLeftContent = Parts.FieldIcon("Lens", EditorBrushes.TextDim), Classes = { EditorTheme.Field } };
     readonly Segments _filter = new("All", "Installed", "Updates");
@@ -43,6 +56,7 @@ internal sealed class StoreView : Border
     KitEntry? _chosen;
     bool _readOnce;
     bool _loading;
+    IKitFiles? _project;
 
     // shortcut: the index is read when Reload is pressed and not on first show, so a tab click sends no request. Read it on first show once the store lists kits.
     public StoreView(Func<CancellationToken, Task<string>> read)
@@ -50,6 +64,15 @@ internal sealed class StoreView : Border
         _read = read;
         _reload.Content = Parts.Worded("Reload", "Reload");
         _reload.Click += async (_, _) => await LoadAsync();
+        _installFile.Content = Parts.Worded("Download", "Install from File");
+        ToolTip.SetTip(_installFile, "Unpack a kit's zip into the project");
+        _installFile.Click += async (_, _) =>
+        {
+            if (await PickZipAsync() is { } zip)
+            {
+                InstallFile(zip);
+            }
+        };
         foreach (var choice in _filter.Choices.Skip(1))
         {
             Unbuilt.Disable(choice);
@@ -73,6 +96,46 @@ internal sealed class StoreView : Border
     internal Button ReloadButton => _reload;
 
     internal TextBlock Status => _status;
+
+    internal Button InstallFileButton => _installFile;
+
+    /// <summary>Raised after a kit's files land in the project.</summary>
+    public event Action? Installed;
+
+    /// <summary>Lets Install from File unpack kits into this project.</summary>
+    public void Show(IKitFiles project)
+    {
+        _project = project;
+        _installFile.IsEnabled = true;
+    }
+
+    /// <summary>Unpacks the kit's zip into the project. What happened, or why it did not, is said in the status.</summary>
+    public void InstallFile(string zipFile)
+    {
+        var name = System.IO.Path.GetFileName(zipFile);
+        try
+        {
+            _project?.InstallKit(zipFile);
+            _status.Text = $"Installed {name} into the project.";
+            Installed?.Invoke();
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
+        {
+            _status.Text = $"{name} was not installed. {error.Message}";
+        }
+    }
+
+    async Task<string?> PickZipAsync()
+    {
+        if (TopLevel.GetTopLevel(this) is not { } top)
+        {
+            return null;
+        }
+
+        var options = new FilePickerOpenOptions { Title = "Install a kit from a zip", FileTypeFilter = [new FilePickerFileType("Kit zip") { Patterns = ["*.zip"] }] };
+        var picked = await top.StorageProvider.OpenFilePickerAsync(options);
+        return picked.Count > 0 ? picked[0].TryGetLocalPath() : null;
+    }
 
     internal TextBox SearchBox => _search;
 
@@ -164,7 +227,7 @@ internal sealed class StoreView : Border
     DockPanel Kits()
     {
         var title = new StackPanel { Children = { new TextBlock { Text = "Asset Store", FontSize = 20, FontWeight = FontWeight.SemiBold }, _status } };
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { _search, _filter, _reload } };
+        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { _search, _filter, _installFile, _reload } };
         DockPanel.SetDock(tools, Dock.Right);
         var header = new DockPanel { Margin = new Thickness(18, 16, 18, 6), Children = { tools, title } };
         DockPanel.SetDock(header, Dock.Top);
