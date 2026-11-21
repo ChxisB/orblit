@@ -18,9 +18,6 @@ internal sealed class CreateGraphForm : StackPanel
     const string DefaultFolder = "res://";
     const string Suffix = ".ograph";
 
-    // shortcut: a short fixed list of bases. Replace it with a class browser when the editor has one.
-    static readonly string[] Bases = ["Entity", "Entity2D", "Entity3D", "Marker3D", "MeshInstance3D", "Camera3D"];
-
     readonly TextBox _name = new()
     {
         PlaceholderText = "Name",
@@ -35,7 +32,7 @@ internal sealed class CreateGraphForm : StackPanel
         },
         Classes = { EditorTheme.Field },
     };
-    readonly ComboBox _extends = new() { ItemsSource = Bases, ItemTemplate = new FuncDataTemplate<string>((name, _) => BaseRow(name)), Classes = { EditorTheme.Field } };
+    readonly ComboBox _extends = new() { ItemTemplate = new FuncDataTemplate<string>((name, _) => BaseRow(name)), Classes = { EditorTheme.Field } };
     readonly TextBox _folder = new()
     {
         PlaceholderText = "Folder",
@@ -76,10 +73,14 @@ internal sealed class CreateGraphForm : StackPanel
     /// <summary>The line under the name that says why the script cannot be made, or empty.</summary>
     internal string Fault => _fault.IsVisible ? _fault.Text ?? "" : "";
 
-    /// <summary>Opens the dialog with the first values and the name selected. A new path must not match one of the scripts.</summary>
-    public void Open(IReadOnlyCollection<string> scripts)
+    /// <summary>
+    /// Opens the dialog with the first values and the name selected. A new path must not match one of the scripts, and
+    /// the script extends one of the classes.
+    /// </summary>
+    public void Open(IReadOnlyCollection<string> scripts, IReadOnlyList<string> classes)
     {
         _scripts = scripts;
+        _extends.ItemsSource = classes;
         _name.Text = DefaultName;
         _extends.SelectedItem = DefaultBase;
         _folder.Text = DefaultFolder;

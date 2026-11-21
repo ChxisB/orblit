@@ -776,7 +776,7 @@ internal sealed class EditorWindow : Window
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
 
-    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar);
+    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? []);
 
     // The rows are read at each open, so the palette shows the menus, files and entities as they are now.
     void OpenPalette()

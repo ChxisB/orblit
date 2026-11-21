@@ -53,6 +53,7 @@ internal sealed class EditorChecks : IChecks
         ("an object value reads back as the same object, and a Variant of another kind reads as nothing", ObjectVariantRoundTrips),
         ("a Camera3D lists its classes and their properties with values and hints, and a set of each kind reads back", PropertiesAreListedAndSet),
         ("two entities that share a mesh each hold their own after the second's resources are made unique", ResourcesAreMadeUnique),
+        ("the addable classes are the game's own that can be made, by name", AddableClassesAreTheGamesOwn),
         ("a script that cannot load is refused and leaves the entity as it was, and clearing no script changes nothing", ScriptRefusals),
         ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
         ("a new graph script is saved with its base type and opens empty, and a base that is no class or a path that is no graph file is refused", GraphScriptCreation),
@@ -572,6 +573,17 @@ internal sealed class EditorChecks : IChecks
         Assert.Equal((500.0, true, 2L, new Vector2(1, 2), "the eye"), (Find(after, "far").Value, Find(after, "current").Value, Find(after, "projection").Value, Find(after, "frustum_offset").Value, Find(after, "editor_description").Value));
         Assert.Equal((20, new Vector4(1, 0.5f, 0.25f, 1)), (Find(_editor.PropertiesOf(light), "light_color").Type, Find(_editor.PropertiesOf(light), "light_color").Value));
         Assert.Throws<ArgumentException>(() => _editor.SetProperty(camera, "far", 5));
+    }
+
+    void AddableClassesAreTheGamesOwn()
+    {
+        var classes = _editor.AddableClasses();
+        Console.WriteLine($"  {classes.Count} addable classes");
+        Assert.Contains("Entity", classes);
+        Assert.Contains("Camera3D", classes);
+        Assert.DoesNotContain("CanvasItem", classes);
+        Assert.DoesNotContain("EditorInspector", classes);
+        Assert.Equal(classes.Order(StringComparer.Ordinal), classes);
     }
 
     void ResourcesAreMadeUnique()

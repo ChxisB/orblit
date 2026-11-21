@@ -16,4 +16,5 @@ internal enum VariantType
     Dictionary = 27,
     Array = 28,
     PackedByteArray = 29,
+    PackedStringArray = 34,
 }

@@ -10,6 +10,8 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class NewSceneToolTests
 {
+    static readonly string[] Classes = ["Camera3D", "Entity", "Timer"];
+
     // The dialog laid out in a window of its own, so the cards have their templates and the radio group its parent.
     static NewSceneTool Opened(params string[] scenes) => Opened(false, scenes);
 
@@ -17,7 +19,7 @@ public sealed class NewSceneToolTests
     {
         var tool = new NewSceneTool();
         new Window { Width = 1000, Height = 700, Content = tool.Dialog }.Show();
-        tool.Open(scenes, planar);
+        tool.Open(scenes, planar, Classes);
         tool.Dialog.UpdateLayout();
         return tool;
     }
@@ -42,23 +44,45 @@ public sealed class NewSceneToolTests
     }
 
     [Fact]
-    public void The_cards_offer_three_roots_and_a_class_browser_that_is_not_built()
+    public void The_cards_offer_three_roots_and_Other_which_searches_every_class()
     {
         UiThread.Run(() =>
         {
             var tool = Opened();
-            string? said = null;
-            tool.Dialog.AddHandler(Unbuilt.Event, (_, e) => said = e.Message);
 
             Assert.Equal(
                 [["3D scene", "Root Entity3D"], ["2D scene", "Root Entity2D"], ["Empty", "Root Entity"]],
                 tool.Roots.Select(card => Texts(card).ToArray()));
-            Assert.Equal(["Other...", "Soon"], Texts(tool.OtherCard));
+            Assert.Equal(["Other...", "Any class"], Texts(tool.OtherCard));
             Assert.Equal([true, false, false], tool.Roots.Select(card => card.IsChecked == true));
+            Assert.False(tool.OtherClasses.IsVisible);
 
-            Click(tool.OtherCard);
+            tool.OtherCard.IsChecked = true;
 
-            Assert.Equal("Picking any class for the root is not built yet.", said);
+            Assert.True(tool.OtherClasses.IsVisible);
+            Assert.Equal(Classes, tool.OtherClasses.Shown.Select(choice => choice.Name));
+            Assert.Equal([false, false, false], tool.Roots.Select(card => card.IsChecked == true));
+        });
+    }
+
+    [Fact]
+    public void Other_makes_the_root_of_the_lit_class_and_waits_for_one()
+    {
+        UiThread.Run(() =>
+        {
+            var tool = Opened();
+            (string Path, string Class)? asked = null;
+            tool.Requested += (path, root) => asked = (path, root);
+            tool.NameBox.Text = "clock";
+            tool.OtherCard.IsChecked = true;
+
+            tool.OtherClasses.SearchBox.Text = "zzz";
+            Assert.False(tool.CreateButton.IsEnabled);
+
+            tool.OtherClasses.SearchBox.Text = "tim";
+            Click(tool.CreateButton);
+
+            Assert.Equal(("res://clock.oscn", "Timer"), asked);
         });
     }
 
@@ -72,7 +96,7 @@ public sealed class NewSceneToolTests
 
             tool.Roots.Last().IsChecked = true;
             tool.Dialog.Close();
-            tool.Open([], planar: false);
+            tool.Open([], planar: false, Classes);
 
             Assert.Equal([true, false, false], tool.Roots.Select(card => card.IsChecked == true));
         });
@@ -150,7 +174,7 @@ public sealed class NewSceneToolTests
             tool.Say("The engine could not save res://arena.oscn. Error code 7.");
             tool.Dialog.Close();
 
-            tool.Open([], planar: false);
+            tool.Open([], planar: false, Classes);
 
             Assert.True(tool.Dialog.IsVisible);
             Assert.Equal("", tool.NameBox.Text);

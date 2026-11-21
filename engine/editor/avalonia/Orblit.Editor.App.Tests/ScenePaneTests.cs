@@ -226,7 +226,8 @@ public sealed class ScenePaneTests
             Assert.True(window.Tools.AddDialog.IsVisible);
             Assert.Equal("Add an entity", window.Tools.AddDialog.Title);
             Assert.Equal("As a child of Lamp", window.Tools.AddDialog.Why.Text);
-            Assert.Equal(EntityTools.Classes.Select(entry => entry.ClassName), window.Tools.ClassList.Shown.Select(choice => choice.Name));
+            Assert.Equal([.. EntityTools.Common.Select(entry => entry.ClassName), "Timer"], window.Tools.ClassList.Shown.Select(choice => choice.Name));
+            Assert.Equal("", window.Tools.ClassList.Shown[^1].Line);
             Assert.Equal("Light from far away, like the sun.", window.Tools.ClassList.Shown.Single(choice => choice.Name == "DirectionalLight3D").Line);
             Assert.Equal(0, window.Tools.ClassList.Lit);
             Assert.True(window.Tools.ClassList.SearchBox.IsFocused);

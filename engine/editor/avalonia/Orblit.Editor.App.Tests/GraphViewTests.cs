@@ -38,6 +38,8 @@ public sealed class GraphViewTests
 
         public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
 
+        public IReadOnlyList<string> AddableClasses() => ["Entity", "Entity3D"];
+
         public IGraphFile OpenGraph(string resourcePath) =>
             Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 

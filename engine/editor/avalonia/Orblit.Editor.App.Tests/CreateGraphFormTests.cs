@@ -15,7 +15,7 @@ public sealed class CreateGraphFormTests
     {
         var form = new CreateGraphForm();
         new Window { Width = 1000, Height = 700, Content = form.Dialog }.Show();
-        form.Open(scripts);
+        form.Open(scripts, ["Camera3D", "Entity", "Entity2D", "Entity3D"]);
         form.Dialog.UpdateLayout();
         return form;
     }
@@ -57,7 +57,7 @@ public sealed class CreateGraphFormTests
 
             IBrush? Mark(string name) => TextElement.GetForeground(((Panel)form.ExtendsBox.ItemTemplate!.Build(name)!).Children.OfType<EditorIcon>().Single());
 
-            Assert.Equal(["Entity", "Entity2D", "Entity3D", "Marker3D", "MeshInstance3D", "Camera3D"], form.ExtendsBox.Items.Cast<string>());
+            Assert.Equal(["Camera3D", "Entity", "Entity2D", "Entity3D"], form.ExtendsBox.Items.Cast<string>());
             Assert.Same(EditorBrushes.Spatial, Mark("Camera3D"));
             Assert.Same(EditorBrushes.Planar, Mark("Entity2D"));
             Assert.Same(EditorBrushes.TextSoft, Mark("Entity"));

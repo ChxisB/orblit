@@ -48,6 +48,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("Local and Snap by click, then a drag moves the entity by whole steps", SnapsInLocalSpace);
         await Step("Command and S write the live transform to the scene file", SaveWritesTheTransform);
         await Step("Add Metadata makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
+        await Step("the plus opens Add an entity on the engine's classes, and a search lights Timer", ListsTheEngineClasses);
         await Step("the Output button opens the panel with the engine's log lines", OpensTheEngineLog);
         await Step("Clear empties the Output panel and a second click on its button shuts it", ClearsAndShutsTheLog);
         await Step("Play starts the game, opens the Output panel and shows the game's own log line", PlayShowsTheGameLog);
@@ -171,6 +172,24 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         var block = File.ReadAllText(Path.Combine(project, "main.oscn")).Split("\n\n").Single(part => part.Contains("name=\"Box\""));
         Expect(block.Contains("metadata/tag = \"\""), "the file holds no metadata/tag line for Box");
         Expect(!Edited, $"the title still shows unsaved edits: {window.Title}");
+    }
+
+    // The dialog closes without adding, because the later steps save and play this scene.
+    async Task ListsTheEngineClasses()
+    {
+        var tools = window.Tools;
+        var opening = Stopwatch.StartNew();
+        await _input.Click(tools.AddButton);
+        await Wait(() => tools.AddDialog.IsVisible && tools.ClassList.Shown.Count > 0, "the Add an entity dialog to open");
+        Console.WriteLine($"  the Add dialog listed {tools.ClassList.Shown.Count} classes in {opening.ElapsedMilliseconds} ms");
+        Expect(tools.ClassList.Shown.Count > 200, $"the dialog lists only {tools.ClassList.Shown.Count} classes");
+        // The search box takes text, which this run does not type. Setting it is the only part that is not injected.
+        tools.ClassList.SearchBox.Text = "timer";
+        await Settle();
+        Shots.Save(window, Path.Combine(output, "add-dialog-search.png"));
+        Expect(tools.ClassList.Picked?.Name == "Timer", $"the search lights {tools.ClassList.Picked?.Name ?? "nothing"}");
+        tools.AddDialog.Close();
+        await Settle();
     }
 
     async Task ShowsInTheDesktop()
