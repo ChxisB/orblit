@@ -6,8 +6,11 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles, IGraphFiles
+internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IKitFiles, IExportGame
 {
+    // Both script views ask for the classes a new script can extend, so the window names the one list they share.
+    new IReadOnlyList<string> AddableClasses();
+
     OutlineNode? Outline();
 
     bool IsEntity3D(nint entity);
@@ -19,6 +22,18 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>The Entity3D whose pivot lands nearest a point in the viewport's frame, or 0 for a miss.</summary>
     nint PickAt(Vector2 framePoint);
 
+    /// <summary>Every Entity3D a click at a point in the viewport's frame could pick, nearest first. It is empty when there is no viewport.</summary>
+    IReadOnlyList<nint> PickAllAt(Vector2 framePoint);
+
+    /// <summary>The world point a ruler click lands on: the pivot it would pick, else the ground. Null when it meets neither or there is no viewport.</summary>
+    Vector3? WorldPointAt(Vector2 framePoint);
+
+    /// <summary>Where a world point lands in the viewport's frame. Null when it is behind the camera or there is no viewport.</summary>
+    Vector2? FramePointOf(Vector3 world);
+
+    /// <summary>Turns the preview sun and sky on or off. The sun shows only while the scene has no sun of its own. It does nothing when there is no viewport.</summary>
+    void ShowPreviews(bool sun, bool sky);
+
     /// <summary>Turns the 2D camera and its flat backdrop on, which hides the 3D world, or off. It does nothing when there is no viewport.</summary>
     void ShowPlanar(bool on);
 
@@ -28,8 +43,27 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>Where the pivot of an Entity2D lands in the viewport's frame. Null when there is no viewport or the entity is no Entity2D.</summary>
     Vector2? PlanarPivotOf(nint entity);
 
-    /// <summary>Moves an Entity2D by a pointer move in the viewport's frame, so its pivot ends under the pointer. It does nothing when there is no viewport.</summary>
+    /// <summary>
+    /// Moves an Entity2D by a pointer move in the viewport's frame, so its pivot ends under the pointer, or on the
+    /// move step's grid while <see cref="Snap"/> has one. It does nothing when there is no viewport.
+    /// </summary>
     void MovePlanar(nint entity, FrameMove move);
+
+    /// <summary>Turns an Entity2D about its pivot by a pointer move round it in the viewport's frame. It does nothing when there is no viewport.</summary>
+    void RotatePlanar(nint entity, FrameMove move);
+
+    /// <summary>Scales an Entity2D evenly by a pointer move toward or away from its pivot in the viewport's frame. It does nothing when there is no viewport.</summary>
+    void ScalePlanar(nint entity, FrameMove move);
+
+    PlanarPlace PlanarPlaceOf(nint entity);
+
+    void PlacePlanar(nint entity, PlanarPlace place);
+
+    /// <summary>Where the 2D camera looks and how far in. It is the start view and a set does nothing when there is no viewport.</summary>
+    PlanarView PlanarView { get; set; }
+
+    /// <summary>Whether the 2D view draws the entity, as it does every 2D and UI entity.</summary>
+    bool IsCanvasItem(nint entity);
 
     /// <summary>Points the viewport's camera at the entity. It does nothing when there is no viewport.</summary>
     void FrameOn(nint entity);
@@ -105,14 +139,22 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     void MoveWithinParent(nint entity, int places);
 
     /// <summary>
-    /// Moves the entity and its children to the end of another parent. The scene root, the entity itself, its
-    /// own children and a parent with a child of the same name are refused.
+    /// Moves the entity and its children to the end of another parent, where it is drawn or with its local
+    /// transform. The scene root, the entity itself, its own children and a parent with a child of the same name
+    /// are refused.
     /// </summary>
-    void Reparent(nint entity, nint newParent);
+    void Reparent(nint entity, nint newParent, bool keepGlobalTransform);
 
     void Rename(nint entity, string name);
 
-    void Remove(nint entity);
+    /// <summary>Takes the entity and everything under it out of the scene and keeps it. The scene root cannot be taken out.</summary>
+    DetachedEntity Detach(nint entity);
+
+    /// <summary>Puts a detached entity back where it was.</summary>
+    void Restore(DetachedEntity detached);
+
+    /// <summary>Frees a detached entity and everything under it.</summary>
+    void Destroy(nint entity);
 
     void Save();
 
@@ -140,8 +182,35 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>Adds the scene file under the entity as a reference and not a copy, and returns the new entity.</summary>
     nint Instance(nint parent, string resourcePath);
 
-    /// <summary>When the scene file was last written, in UTC.</summary>
+    /// <summary>When the project file was last written, in UTC.</summary>
     DateTime ModifiedOf(string resourcePath);
+
+    /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
+    IReadOnlyList<string> ClassChainOf(nint entity);
+
+    /// <summary>The properties the inspector lists for the entity, base class first, with their values now.</summary>
+    IReadOnlyList<EntityProperty> PropertiesOf(nint entity);
+
+    /// <summary>
+    /// Sets one listed property to a bool, a long, a double, a string, a vector or a Vector4 colour. Throws
+    /// <see cref="ArgumentException"/> for any other kind of value.
+    /// </summary>
+    void SetProperty(nint entity, string name, object value);
+
+    /// <summary>Gives the entity its own copy of each resource its properties hold. Throws <see cref="IOException"/> when one cannot be copied.</summary>
+    void MakeResourcesUnique(nint entity);
+
+    /// <summary>The entity's signals by name, each with the class that declares it and its saved connections. A script's signal has no class.</summary>
+    IReadOnlyList<EntitySignal> SignalsOf(nint entity);
+
+    /// <summary>
+    /// Connects the signal to a method on the target, saved with the scene. Throws <see cref="InvalidOperationException"/>
+    /// when the engine refuses, such as for a connection that is there already.
+    /// </summary>
+    void Connect(nint entity, string signal, nint target, string method);
+
+    /// <summary>Removes a saved connection.</summary>
+    void Disconnect(nint entity, string signal, nint target, string method);
 
     /// <summary>The entity's metadata in the order the engine lists it. A name that starts with an underscore is the engine's and is left out.</summary>
     IReadOnlyList<MetaEntry> MetadataOf(nint entity);
@@ -177,11 +246,15 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>Whether the game <see cref="Play"/> started is still running.</summary>
     bool IsPlaying { get; }
 
+    /// <summary>The process id of the game <see cref="Play"/> started, or null when none runs.</summary>
+    int? GameId { get; }
+
     /// <summary>
     /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
-    /// each a source and a step id. A game already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
+    /// each a source and a step id. The flags go to the engine as they are, such as <c>--debug-collisions</c>. A game
+    /// already running is stopped first. Throws <see cref="IOException"/> when the link cannot be opened.
     /// </summary>
-    void Play(IEnumerable<(string Source, int Step)> breakpoints);
+    void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags);
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();

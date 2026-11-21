@@ -140,6 +140,23 @@ internal sealed class GraphScene
 
     public PinRef? PinAt(Point point) => HitStep(point) is { Hit.Part: StepPart.Pin } found ? found.Hit.Pin : null;
 
+    /// <summary>The port a pin stands for. Null when the step or the port is gone.</summary>
+    public GraphPort? PortOf(PinRef pin) =>
+        Find(pin.Step)?.Step is { } step && (pin.IsInput ? step.Inputs : step.Outputs) is var ports && pin.Port < ports.Count ? ports[pin.Port] : null;
+
+    /// <summary>
+    /// Whether a wire between two pins would carry a value its input cannot take. The engine joins it anyway and
+    /// its compiler reports it later, so the canvas warns at the drop.
+    /// </summary>
+    public bool Clashes(PinRef a, PinRef b)
+    {
+        var (output, input) = a.IsInput ? (b, a) : (a, b);
+        return output.IsInput != input.IsInput
+            && PortOf(output) is { Sort: GraphPortSort.Data } from
+            && PortOf(input) is { Sort: GraphPortSort.Data } to
+            && !VariantTypes.Fits(from.Type, to.Type);
+    }
+
     /// <summary>The top frame whose bar, button or grip is at the point. A frame body is a backdrop and is not hit.</summary>
     public (FrameView Frame, FramePart Part)? HitFrame(Point point)
     {

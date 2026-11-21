@@ -12,6 +12,9 @@ public static unsafe class EngineCalls
     internal const long PackedByteArraySizeHash = 3173160232;
     internal const long PackedByteArrayResizeHash = 848867239;
     internal const long ArraySizeHash = 3173160232;
+    internal const long PackedStringArraySizeHash = 3173160232;
+    internal const long CallableGetObjectHash = 4008621732;
+    internal const long CallableGetMethodHash = 1825232092;
 
     static readonly EngineMethod OrblitInstanceStartMethod = new("OrblitInstance", "start", 2240911060);
     static readonly EngineMethod OrblitInstanceIsStartedMethod = new("OrblitInstance", "is_started", 2240911060);
@@ -42,6 +45,7 @@ public static unsafe class EngineCalls
     static readonly EngineMethod EntityRemoveChildMethod = new("Entity", "remove_child", 159989177);
     static readonly EngineMethod EntityQueueDestroyMethod = new("Entity", "queue_destroy", 3218959716);
     static readonly EngineMethod EntityGetParentMethod = new("Entity", "get_parent", 897901198);
+    static readonly EngineMethod EntityGetOwnerMethod = new("Entity", "get_owner", 897901198);
     static readonly EngineMethod EntityGetChildCountMethod = new("Entity", "get_child_count", 894402480);
     static readonly EngineMethod EntityGetChildMethod = new("Entity", "get_child", 830376207);
     static readonly EngineMethod EntityDuplicateMethod = new("Entity", "duplicate", 1580522283);
@@ -78,6 +82,10 @@ public static unsafe class EngineCalls
     static readonly EngineMethod Entity2DSetPositionMethod = new("Entity2D", "set_position", 743155724);
     static readonly EngineMethod Entity2DGetGlobalPositionMethod = new("Entity2D", "get_global_position", 3341600327);
     static readonly EngineMethod Entity2DSetGlobalPositionMethod = new("Entity2D", "set_global_position", 743155724);
+    static readonly EngineMethod Entity2DGetGlobalRotationMethod = new("Entity2D", "get_global_rotation", 1740695150);
+    static readonly EngineMethod Entity2DSetGlobalRotationMethod = new("Entity2D", "set_global_rotation", 373806689);
+    static readonly EngineMethod Entity2DGetGlobalScaleMethod = new("Entity2D", "get_global_scale", 3341600327);
+    static readonly EngineMethod Entity2DSetGlobalScaleMethod = new("Entity2D", "set_global_scale", 743155724);
     static readonly EngineMethod CanvasLayerSetLayerMethod = new("CanvasLayer", "set_layer", 1286410249);
     static readonly EngineMethod CanvasLayerSetVisibleMethod = new("CanvasLayer", "set_visible", 2586408642);
     static readonly EngineMethod ColorRectSetColorMethod = new("ColorRect", "set_color", 2920490490);
@@ -126,12 +134,25 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ControlSetAnchorsAndOffsetsPresetMethod = new("Control", "set_anchors_and_offsets_preset", 3724524307);
     static readonly EngineMethod ResourceLoaderExistsMethod = new("ResourceLoader", "exists", 4185558881);
     static readonly EngineMethod ObjectGetMetaListMethod = new("Object", "get_meta_list", 3995934104);
+    static readonly EngineMethod ObjectGetPropertyListMethod = new("Object", "get_property_list", 3995934104);
+    static readonly EngineMethod ObjectGetMethod = new("Object", "get", 2760726917);
+    static readonly EngineMethod ObjectSetMethod = new("Object", "set", 3776071444);
+    static readonly EngineMethod ClassRegistryGetParentClassMethod = new("ClassRegistry", "get_parent_class", 1965194235);
+    static readonly EngineMethod ClassRegistryGetInheritersFromClassMethod = new("ClassRegistry", "get_inheriters_from_class", 1761182771);
+    static readonly EngineMethod ClassRegistryCanInstantiateMethod = new("ClassRegistry", "can_instantiate", 2619796661);
+    static readonly EngineMethod ClassRegistryClassGetApiTypeMethod = new("ClassRegistry", "class_get_api_type", 3310495372);
+    static readonly EngineMethod ClassRegistryClassGetSignalListMethod = new("ClassRegistry", "class_get_signal_list", 3504980660);
+    static readonly EngineMethod ObjectGetSignalListMethod = new("Object", "get_signal_list", 3995934104);
+    static readonly EngineMethod ObjectGetSignalConnectionListMethod = new("Object", "get_signal_connection_list", 3147814860);
+    static readonly EngineMethod ObjectConnectMethod = new("Object", "connect", 1518946055);
+    static readonly EngineMethod ObjectDisconnectMethod = new("Object", "disconnect", 1874754934);
     static readonly EngineMethod ObjectGetMetaMethod = new("Object", "get_meta", 3990617847);
     static readonly EngineMethod ObjectSetMetaMethod = new("Object", "set_meta", 3776071444);
     static readonly EngineMethod ObjectRemoveMetaMethod = new("Object", "remove_meta", 3304788590);
     static readonly EngineMethod ObjectGetScriptMethod = new("Object", "get_script", 1214101251);
     static readonly EngineMethod ObjectSetScriptMethod = new("Object", "set_script", 1114965689);
     static readonly EngineMethod ResourceGetPathMethod = new("Resource", "get_path", 201670096);
+    static readonly EngineMethod ResourceDuplicateMethod = new("Resource", "duplicate", 482882304);
     static readonly EngineMethod GraphScriptAddFunctionMethod = new("GraphScript", "add_function", 166001499);
     static readonly EngineMethod GraphScriptRemoveFunctionMethod = new("GraphScript", "remove_function", 166001499);
     static readonly EngineMethod GraphScriptSetBaseTypeMethod = new("GraphScript", "set_base_type", 3304788590);
@@ -379,6 +400,13 @@ public static unsafe class EngineCalls
     {
         nint result = 0;
         host.Call(EntityGetParentMethod, target, null, &result);
+        return result;
+    }
+
+    public static nint EntityGetOwner(this EngineHost host, nint target)
+    {
+        nint result = 0;
+        host.Call(EntityGetOwnerMethod, target, null, &result);
         return result;
     }
 
@@ -663,6 +691,34 @@ public static unsafe class EngineCalls
         Vector2 a0 = position;
         void** args = stackalloc void*[] { &a0 };
         host.Call(Entity2DSetGlobalPositionMethod, target, args, null);
+    }
+
+    public static float Entity2DGetGlobalRotation(this EngineHost host, nint target)
+    {
+        double result = default;
+        host.Call(Entity2DGetGlobalRotationMethod, target, null, &result);
+        return (float)result;
+    }
+
+    public static void Entity2DSetGlobalRotation(this EngineHost host, nint target, float radians)
+    {
+        double a0 = radians;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(Entity2DSetGlobalRotationMethod, target, args, null);
+    }
+
+    public static Vector2 Entity2DGetGlobalScale(this EngineHost host, nint target)
+    {
+        Vector2 result = default;
+        host.Call(Entity2DGetGlobalScaleMethod, target, null, &result);
+        return result;
+    }
+
+    public static void Entity2DSetGlobalScale(this EngineHost host, nint target, Vector2 scale)
+    {
+        Vector2 a0 = scale;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(Entity2DSetGlobalScaleMethod, target, args, null);
     }
 
     public static void CanvasLayerSetLayer(this EngineHost host, nint target, long layer)
@@ -1060,6 +1116,147 @@ public static unsafe class EngineCalls
         host.Call(ObjectRemoveMetaMethod, target, args, null);
     }
 
+    public static object?[][] ObjectGetPropertyList(this EngineHost host, nint target, IReadOnlyList<string> keys)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.Array);
+        host.Call(ObjectGetPropertyListMethod, target, null, result);
+        return NativeVariant.ReadDictionaries(result, keys);
+    }
+
+    public static object? ObjectGet(this EngineHost host, nint target, string property)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(property);
+        using var result = NativeVariant.Create();
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ObjectGetMethod, target, args, result.Slot);
+        return result.Read();
+    }
+
+    public static void ObjectSet(this EngineHost host, nint target, string property, object? value)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(property);
+        using var a1 = NativeVariant.From(value);
+        void** args = stackalloc void*[] { a0, a1.Slot };
+        host.Call(ObjectSetMethod, target, args, null);
+    }
+
+    public static string ClassRegistryGetParentClass(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        void* result = scope.Result(VariantType.StringName);
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryGetParentClassMethod, target, args, result);
+        return NativeText.ReadStringName(result);
+    }
+
+    public static string[] ClassRegistryGetInheritersFromClass(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        // A PackedStringArray is two pointers, so it does not fit a scope slot. The engine assigns into it, so it starts zeroed.
+        nint* result = stackalloc nint[2] { 0, 0 };
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryGetInheritersFromClassMethod, target, args, result);
+        try
+        {
+            return NativeText.ReadStrings(result);
+        }
+        finally
+        {
+            NativeApi.VariantDestructor((int)VariantType.PackedStringArray)(result);
+        }
+    }
+
+    public static bool ClassRegistryCanInstantiate(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        ulong result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryCanInstantiateMethod, target, args, &result);
+        return (result & 0xFF) != 0;
+    }
+
+    public static long ClassRegistryClassGetApiType(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryClassGetApiTypeMethod, target, args, &result);
+        return result;
+    }
+
+    public static (string Name, string[] Arguments)[] ClassRegistryClassGetSignalList(this EngineHost host, nint target, string className, bool noInheritance)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        byte a1 = (byte)(noInheritance ? 1 : 0);
+        void* result = scope.Result(VariantType.Array);
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(ClassRegistryClassGetSignalListMethod, target, args, result);
+        return NativeVariant.ReadSignals(result);
+    }
+
+    public static (string Name, string[] Arguments)[] ObjectGetSignalList(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.Array);
+        host.Call(ObjectGetSignalListMethod, target, null, result);
+        return NativeVariant.ReadSignals(result);
+    }
+
+    public static (nint Target, string Method, long Flags)[] ObjectGetSignalConnectionList(this EngineHost host, nint target, string signal)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(signal);
+        void* result = scope.Result(VariantType.Array);
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ObjectGetSignalConnectionListMethod, target, args, result);
+        return NativeVariant.ReadConnections(result);
+    }
+
+    public static long ObjectConnect(this EngineHost host, nint target, string signal, nint callableTarget, string method, long flags)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(signal);
+        // A Callable is two pointers, so it does not fit a scope slot.
+        nint* a1 = stackalloc nint[2] { 0, 0 };
+        NativeVariant.BuildCallable(a1, callableTarget, method);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1, &flags };
+        try
+        {
+            host.Call(ObjectConnectMethod, target, args, &result);
+            return result;
+        }
+        finally
+        {
+            NativeApi.VariantDestructor((int)VariantType.Callable)(a1);
+        }
+    }
+
+    public static void ObjectDisconnect(this EngineHost host, nint target, string signal, nint callableTarget, string method)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(signal);
+        nint* a1 = stackalloc nint[2] { 0, 0 };
+        NativeVariant.BuildCallable(a1, callableTarget, method);
+        void** args = stackalloc void*[] { a0, a1 };
+        try
+        {
+            host.Call(ObjectDisconnectMethod, target, args, null);
+        }
+        finally
+        {
+            NativeApi.VariantDestructor((int)VariantType.Callable)(a1);
+        }
+    }
+
     public static object? ObjectGetScript(this EngineHost host, nint target)
     {
         using var result = NativeVariant.Create();
@@ -1072,6 +1269,15 @@ public static unsafe class EngineCalls
         using var a0 = NativeVariant.From(script);
         void** args = stackalloc void*[] { a0.Slot };
         host.Call(ObjectSetScriptMethod, target, args, null);
+    }
+
+    public static nint ResourceDuplicate(this EngineHost host, nint target, bool deep)
+    {
+        byte a0 = (byte)(deep ? 1 : 0);
+        nint result = 0;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(ResourceDuplicateMethod, target, args, &result);
+        return result;
     }
 
     public static string ResourceGetPath(this EngineHost host, nint target)

@@ -1,4 +1,6 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
@@ -11,10 +13,10 @@ namespace Orblit.Editor.App.Tests;
 public sealed class InspectorStructureTests
 {
     // The bars and rows sit 6 pixels inside the dock, which starts at 3156.
-    const double BarX = 3162;
-    const double BarWidth = 268;
+    const double BarX = 3125;
+    const double BarWidth = 302;
 
-    static readonly string[] s_entityGroups = ["Process", "Physics Interpolation", "Auto Translate", "Editor Description"];
+    static readonly string[] s_entityGroups = ["Run", "Physics Interpolation", "Auto Translate", "Editor Description"];
 
     static EditorWindow Selected(OutlineNode node)
     {
@@ -61,17 +63,32 @@ public sealed class InspectorStructureTests
     }
 
     [Fact]
-    public void A_bar_is_a_30_high_rounded_block_inside_a_6_pixel_gutter()
+    public void A_bar_is_a_34_high_strip_across_the_gutter_with_a_line_over_it()
     {
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
             var bars = Bars(window);
 
-            AssertBox(BarX, 149, BarWidth, 30, BoxOf(bars[0], window));
-            Assert.Equal(Color.Parse("#393939"), ((ISolidColorBrush)bars[0].Background!).Color);
-            Assert.Equal(EditorTheme.Corners, bars[0].CornerRadius);
-            Assert.All(bars, bar => Assert.Equal((BarX, BarWidth, 30d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
+            AssertBox(BarX - 6, 161, BarWidth + 12, 34, BoxOf(bars[0], window));
+            Assert.Equal(
+                (EditorBrushes.ClassBar, EditorBrushes.Line, new Thickness(0, 1, 0, 0), default(CornerRadius)),
+                (bars[0].Background, bars[0].BorderBrush, bars[0].BorderThickness, bars[0].CornerRadius));
+            Assert.All(bars, bar => Assert.Equal((BarX - 6, BarWidth + 12, 34d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
+        });
+    }
+
+    [Fact]
+    public void A_bar_starts_its_icon_12_pixels_in_and_names_the_class_in_semibold_12_and_a_half()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(FakeScene.Lamp);
+            var bar = Bars(window)[0];
+            var title = bar.GetVisualDescendants().OfType<TextBlock>().Single();
+
+            Assert.Equal(BarX - 6 + 12, BoxOf(bar.GetVisualDescendants().OfType<EditorIcon>().Single(), window).X);
+            Assert.Equal((FontWeight.SemiBold, 12.5), (title.FontWeight, title.FontSize));
         });
     }
 
@@ -117,8 +134,9 @@ public sealed class InspectorStructureTests
 
             Assert.Equal((BarX + 12, BarWidth - 12), (position.X, position.Width));
             Near(header.Bottom - 2, position.Y);
-            Near(position.Y + 118, scale.Y);
-            Near(scale.Bottom, BoxOf(Group(window, "Visibility").Header, window).Y);
+            Near(position.Y + 60, scale.Y);
+            Near(scale.Bottom, BoxOf(window.Inspector.Rows.Single(row => row.Label == "Top Level"), window).Y);
+            Near(BoxOf(Group(window, "Transform").Body, window).Bottom, BoxOf(Group(window, "Visibility").Header, window).Y);
         });
     }
 
@@ -130,7 +148,7 @@ public sealed class InspectorStructureTests
             var window = Selected(FakeScene.Lamp);
             var visibility = BoxOf(Group(window, "Visibility").Header, window);
             var bar = BoxOf(Bars(window)[1], window);
-            var process = BoxOf(Group(window, "Process").Header, window);
+            var process = BoxOf(Group(window, "Run").Header, window);
             var last = BoxOf(Group(window, "Editor Description").Header, window);
 
             Near(visibility.Bottom + 4, bar.Y);
@@ -167,23 +185,42 @@ public sealed class InspectorStructureTests
     }
 
     [Theory]
-    [InlineData("Visibility")]
-    [InlineData("Process")]
-    [InlineData("Physics Interpolation")]
-    [InlineData("Auto Translate")]
-    [InlineData("Editor Description")]
-    public void A_group_with_no_rows_stays_closed_and_says_it_is_not_built(string title)
+    [InlineData("Visibility", "Visible")]
+    [InlineData("Run", "Mode")]
+    [InlineData("Physics Interpolation", "Mode")]
+    [InlineData("Auto Translate", "Mode")]
+    [InlineData("Editor Description", "Editor Description")]
+    public void A_group_of_the_engine_rows_starts_closed_and_a_click_opens_it(string title, string first)
     {
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
             var group = Group(window, title);
+            Assert.False(group.IsOpen);
+            Assert.Equal("GuiTreeArrowRight", ArrowOf(group));
 
             ClickOn(group.Header, window);
 
-            Assert.False(group.IsOpen);
-            Assert.Equal("GuiTreeArrowRight", ArrowOf(group));
-            Assert.Equal($"{title} is not built yet.", window.Status);
+            Assert.True(group.IsOpen);
+            Assert.Equal("GuiTreeArrowDown", ArrowOf(group));
+            Assert.Equal(first, ((PropertyRow)((Panel)group.Body).Children[0]).Label);
+            Assert.True(group.Body.IsEffectivelyVisible);
+        });
+    }
+
+    [Fact]
+    public void A_group_keeps_its_fold_from_one_entity_to_the_next()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(FakeScene.Lamp);
+            ClickOn(Group(window, "Run").Header, window);
+
+            window.Outline.SelectedItem = FakeScene.Sound;
+            window.UpdateLayout();
+
+            Assert.True(Group(window, "Run").IsOpen);
+            Assert.False(Group(window, "Auto Translate").IsOpen);
         });
     }
 
@@ -197,7 +234,7 @@ public sealed class InspectorStructureTests
             var field = BoxOf(window.Inspector.ScriptField, window);
             var label = window.Inspector.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "Script");
 
-            Assert.Equal((3296d, 134d, 28d), (field.X, field.Width, field.Height));
+            Assert.Equal((BarX + BarWidth / 2, BarWidth / 2, 28d), (field.X, field.Width, field.Height));
             Near(last.Bottom + 4, field.Y);
             Near(BarX + 10, BoxOf(label, window).X);
             Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "<empty>");
@@ -206,19 +243,40 @@ public sealed class InspectorStructureTests
     }
 
     [Fact]
-    public void Add_Metadata_is_a_centred_130_by_30_button_under_the_script_row()
+    public void Add_Metadata_is_a_ghost_button_on_a_dashed_edge_across_the_gutter_under_the_script_row()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(FakeScene.Lamp);
+            var attach = BoxOf(window.Inspector.AttachButton, window);
+            var button = BoxOf(window.Inspector.MetadataButton, window);
+            var edge = window.Inspector.MetadataButton.GetVisualDescendants().OfType<Rectangle>().Single();
+
+            Assert.Equal((BarX, BarWidth, 30d), (button.X, button.Width, button.Height));
+            Near(attach.Bottom + 13, button.Y);
+            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
+            Assert.Equal((EditorBrushes.LineStrong, button.Size), (edge.Stroke, BoxOf(edge, window).Size));
+            Assert.NotEmpty(edge.StrokeDashArray!);
+            Assert.Equal("Add", window.Inspector.MetadataButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Contains(window.Inspector.MetadataButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Add Metadata");
+        });
+    }
+
+    [Fact]
+    public void Attach_a_script_is_a_quieter_dashed_button_10_under_the_script_row()
     {
         UiThread.Run(() =>
         {
             var window = Selected(FakeScene.Lamp);
             var field = BoxOf(window.Inspector.ScriptField, window);
-            var button = BoxOf(window.Inspector.MetadataButton, window);
+            var button = BoxOf(window.Inspector.AttachButton, window);
 
-            Assert.Equal((3231d, 130d, 30d), (button.X, button.Width, button.Height));
-            Near(field.Bottom + 13, button.Y);
-            Assert.Equal(Color.Parse("#424242"), ((ISolidColorBrush)window.Inspector.MetadataButton.Background!).Color);
-            Assert.Equal("Add", window.Inspector.MetadataButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Contains(window.Inspector.MetadataButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Add Metadata");
+            Assert.Equal((BarX, BarWidth, 32d), (button.X, button.Width, button.Height));
+            Near(field.Bottom + 10, button.Y);
+            Assert.Equal(EditorBrushes.TextDim, window.Inspector.AttachButton.Foreground);
+            Assert.NotEmpty(window.Inspector.AttachButton.GetVisualDescendants().OfType<Rectangle>().Single().StrokeDashArray!);
+            Assert.Equal("ScriptCreate", window.Inspector.AttachButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Contains(window.Inspector.AttachButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "Attach a script");
         });
     }
 
@@ -272,6 +330,7 @@ public sealed class InspectorStructureTests
             Assert.Empty(Bars(window));
             Assert.Empty(Groups(window));
             Assert.False(window.Inspector.ScriptField.IsEffectivelyVisible);
+            Assert.False(window.Inspector.AttachButton.IsEffectivelyVisible);
             Assert.False(window.Inspector.MetadataButton.IsEffectivelyVisible);
         });
     }
@@ -299,22 +358,6 @@ public sealed class InspectorStructureTests
             window.Outline.SelectedItem = FakeScene.Sound;
             Assert.Equal("Sound", window.InspectorPane.InspectedName.Text);
             Assert.Equal("Entity", window.InspectorPane.InspectedIcon.IconName);
-        });
-    }
-
-    [Fact]
-    public void The_history_row_has_a_dropdown_button_that_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var pane = window.InspectorPane;
-
-            Assert.Equal("GuiDropdown", pane.DropdownButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.True(BoxOf(pane.DropdownButton, window).Right < BoxOf(pane.HistoryButton, window).X);
-
-            ClickOn(pane.DropdownButton, window);
-            Assert.Equal("The list of inspected objects is not built yet.", window.Status);
         });
     }
 }

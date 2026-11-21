@@ -25,7 +25,7 @@ public sealed class PointerMoveCostTests
             for (var i = 0; i < ms.Length; i++)
             {
                 var start = Stopwatch.GetTimestamp();
-                window.InspectorPane.Show(scene, lamp);
+                window.InspectorPane.Show(scene, [lamp]);
                 window.UpdateLayout();
                 ms[i] = Stopwatch.GetElapsedTime(start).TotalMilliseconds;
             }

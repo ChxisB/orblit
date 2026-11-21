@@ -1,28 +1,28 @@
-using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App;
 
-/// <summary>Instances a scene file of the project under the selected entity, or under the root with none selected.</summary>
-internal sealed class InstanceTool : StackPanel
+/// <summary>
+/// The Instance a scene dialog. It lists the project's scene files and puts the chosen one under the selected
+/// entity, or under the root with none selected. The open scene is listed but off, with the reason.
+/// </summary>
+internal sealed class InstanceTool
 {
-    readonly ComboBox _scenes = new() { MinWidth = 220, PlaceholderText = "Scene" };
-    readonly Button _instance = new() { Content = "Instance", IsEnabled = false };
+    readonly ChoiceList _scenes = new("Search scenes");
     IEditorScene? _scene;
     OutlineNode? _root;
     OutlineNode? _selected;
 
     public InstanceTool()
     {
-        Orientation = Orientation.Horizontal;
-        Spacing = 8;
-        Margin = new Thickness(8);
-        Children.Add(_scenes);
-        Children.Add(_instance);
-        _scenes.SelectionChanged += (_, _) => EnableInstance();
-        _instance.Click += (_, _) => Run();
+        Dialog = new Dialog("Instance a scene", "", _scenes) { CardWidth = 320, MainText = "Instance" };
+        _scenes.PickedChanged += () => Dialog.MainButton.IsEnabled = _scenes.Picked is not null;
+        OpenButton.Click += (_, _) => Open();
+        Dialog.MainButton.Click += (_, _) => Run();
+        Show(null, null, null);
     }
 
     /// <summary>Raised after the scene took the instance.</summary>
@@ -31,9 +31,12 @@ internal sealed class InstanceTool : StackPanel
     /// <summary>Raised with the reason when the scene refused the instance.</summary>
     public event Action<string>? Failed;
 
-    internal ComboBox Scene => _scenes;
+    /// <summary>The link of the Scene dock. It opens the dialog.</summary>
+    internal Button OpenButton { get; } = Parts.IconButton("Instance", "Instance a scene as a child of the selected entity");
 
-    internal Button InstanceButton => _instance;
+    internal Dialog Dialog { get; }
+
+    internal ChoiceList SceneList => _scenes;
 
     /// <summary>Takes the scene and the selection. It reads no files, because a selection changes often.</summary>
     public void Show(IEditorScene? scene, OutlineNode? root, OutlineNode? selected)
@@ -41,27 +44,33 @@ internal sealed class InstanceTool : StackPanel
         _scene = scene;
         _root = root;
         _selected = selected;
-        EnableInstance();
+        OpenButton.IsEnabled = root is not null;
     }
 
-    // shortcut: only the open scene is left out, so A inside B inside A is not caught. Check the chain
-    // when the bridge can read the scenes a file instances.
-    /// <summary>Lists the project's scene files other than the open one, with nothing chosen.</summary>
-    public void LoadScenes()
+    // shortcut: only the open scene is off, so A inside B inside A is not caught. Check the chain when the
+    // bridge can read the scenes a file instances. The line is the folder, as the bridge cannot read a root's class.
+    void Open()
     {
-        _scenes.ItemsSource = _scene?.Scenes().Where(path => !path.EndsWith('/') && path != _scene.SceneFile).ToList() ?? [];
-        _scenes.SelectedIndex = -1;
+        Dialog.Why.Text = $"As a child of {(_selected ?? _root)!.Name}";
+        _scenes.Show([.. _scene!.Scenes().Where(path => !path.EndsWith('/')).Select(path => new Choice("SceneFile", Path.GetFileName(path))
+        {
+            Tint = EditorBrushes.SceneIcon,
+            Off = path == _scene.SceneFile,
+            Line = path == _scene.SceneFile ? "This scene. It cannot hold itself." : path[..(path.LastIndexOf('/') + 1)],
+        })]);
+        Dialog.Open();
+        _scenes.SearchBox.Focus();
     }
-
-    void EnableInstance() => _instance.IsEnabled = _root is not null && _scenes.SelectedIndex >= 0;
 
     void Run()
     {
         try
         {
             var parent = (_selected ?? _root)!;
-            var path = (string)_scenes.SelectedItem!;
+            // A choice that is on has its folder as its line, so the two make the path.
+            var path = _scenes.Picked!.Line + _scenes.Picked.Name;
             var made = _scene!.Instance(parent.Handle, path);
+            Dialog.Close();
             Changed?.Invoke(new EntityEdit(made, $"Instanced {Path.GetFileNameWithoutExtension(path)} under {parent.Name}."));
         }
         catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException)

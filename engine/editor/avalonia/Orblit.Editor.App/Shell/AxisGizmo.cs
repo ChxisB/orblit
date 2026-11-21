@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Media;
 using Avalonia.Media.Immutable;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
@@ -26,14 +27,17 @@ internal sealed class AxisGizmo : Control
     // The letter is a darker shade of the dot it sits on.
     const double LetterShade = 0.45;
 
+    const double NegativeShade = 0.65;
+
+    // A negative end is the axis colour in a darker shade, with the full colour as its edge.
     static readonly (string Name, Vector3 Direction, Color Fill, Color Edge)[] Axes =
     [
-        ("X", Vector3.UnitX, Color.Parse("#f63252"), Color.Parse("#f63252")),
-        ("Y", Vector3.UnitY, Color.Parse("#87d703"), Color.Parse("#87d703")),
-        ("Z", Vector3.UnitZ, Color.Parse("#288cf5"), Color.Parse("#288cf5")),
-        ("-X", -Vector3.UnitX, Color.Parse("#a72d40"), Color.Parse("#d74e65")),
-        ("-Y", -Vector3.UnitY, Color.Parse("#649810"), Color.Parse("#87bd30")),
-        ("-Z", -Vector3.UnitZ, Color.Parse("#3e76b1"), Color.Parse("#5c92ca")),
+        ("X", Vector3.UnitX, EditorColors.AxisX, EditorColors.AxisX),
+        ("Y", Vector3.UnitY, EditorColors.AxisY, EditorColors.AxisY),
+        ("Z", Vector3.UnitZ, EditorColors.AxisZ, EditorColors.AxisZ),
+        ("-X", -Vector3.UnitX, Shade(EditorColors.AxisX, NegativeShade), EditorColors.AxisX),
+        ("-Y", -Vector3.UnitY, Shade(EditorColors.AxisY, NegativeShade), EditorColors.AxisY),
+        ("-Z", -Vector3.UnitZ, Shade(EditorColors.AxisZ, NegativeShade), EditorColors.AxisZ),
     ];
 
     OrbitView _view = OrbitView.Start;
@@ -86,11 +90,11 @@ internal sealed class AxisGizmo : Control
             context.DrawEllipse(fill, positive ? null : new Pen(new ImmutableSolidColorBrush(axis.Edge), 1), end.At, Radius, Radius);
             if (positive)
             {
-                var letter = new FormattedText(axis.Name, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, new ImmutableSolidColorBrush(Shade(axis.Fill)));
+                var letter = new FormattedText(axis.Name, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, 12, new ImmutableSolidColorBrush(Shade(axis.Fill, LetterShade)));
                 context.DrawText(letter, new Point(end.At.X - letter.Width / 2, end.At.Y - letter.Height / 2));
             }
         }
     }
 
-    static Color Shade(Color color) => Color.FromRgb((byte)(color.R * LetterShade), (byte)(color.G * LetterShade), (byte)(color.B * LetterShade));
+    static Color Shade(Color color, double by) => Color.FromRgb((byte)(color.R * by), (byte)(color.G * by), (byte)(color.B * by));
 }

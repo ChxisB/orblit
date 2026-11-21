@@ -24,7 +24,7 @@ internal sealed class GraphSurface : Control
 
     static readonly IPen s_grid = new Pen(new ImmutableSolidColorBrush(Color.Parse("#26ffffff")), 1).ToImmutable();
     static readonly IPen s_band = new Pen(EditorBrushes.Accent, 1, new DashStyle([4, 3], 0)).ToImmutable();
-    static readonly IBrush s_bandFill = new ImmutableSolidColorBrush(Color.Parse("#2a3d8fff"));
+    static readonly IBrush s_bandFill = EditorBrushes.AccentSoft;
     static readonly IPen s_labelEdge = new Pen(EditorBrushes.Accent, 1).ToImmutable();
 
     readonly GraphScene _scene;
@@ -206,7 +206,7 @@ internal sealed class GraphSurface : Control
     static void DrawLabel(DrawingContext context, HoverLabel label)
     {
         var shown = label.Text.Length > LabelChars ? label.Text[..LabelChars] + "..." : label.Text;
-        var text = new FormattedText(shown, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(FontFamily.Default), LabelSize, EditorBrushes.Text);
+        var text = new FormattedText(shown, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(EditorTheme.Font), LabelSize, EditorBrushes.Text);
         var box = new Rect(label.At.X - text.Width - (2 * LabelPad) - LabelGap, label.At.Y - text.Height - (2 * LabelPad) - LabelPad, text.Width + (2 * LabelPad), text.Height + (2 * LabelPad));
         context.DrawRectangle(EditorBrushes.Panel, s_labelEdge, box, 3, 3);
         context.DrawText(text, box.TopLeft + new Point(LabelPad, LabelPad));
@@ -220,6 +220,7 @@ internal sealed class GraphSurface : Control
         }
         var pin = step.PinCenter(pending.From.IsInput, pending.From.Port);
         var (from, to) = pending.From.IsInput ? (pending.To, pin) : (pin, pending.To);
-        WireLayer.Draw(context, from, to, EditorBrushes.Accent, _scene.Style, selected: false);
+        var clash = _scene.PinAt(pending.To) is { } over && _scene.Clashes(pending.From, over);
+        WireLayer.Draw(context, from, to, clash ? EditorBrushes.Fault : EditorBrushes.Accent, _scene.Style, selected: false);
     }
 }

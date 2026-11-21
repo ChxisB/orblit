@@ -46,7 +46,7 @@ public sealed class MoveGizmoTests
         var viewport = new ViewportControl(() => false, Frame) { HandlesSource = source, ModeSource = () => GizmoMode.Move };
         var rig = new Rig { Window = new Window { Width = 200, Height = 100, Content = viewport }, Viewport = viewport };
         viewport.GizmoDragged += drag => rig.Drags.Add((drag.Hit.Axis, drag.Move.Delta));
-        viewport.Clicked += rig.Clicks.Add;
+        viewport.Clicked += (point, _) => rig.Clicks.Add(point);
         viewport.Orbited += (yaw, pitch) => rig.Orbits.Add((yaw, pitch));
         rig.Window.Show();
         viewport.Tick();

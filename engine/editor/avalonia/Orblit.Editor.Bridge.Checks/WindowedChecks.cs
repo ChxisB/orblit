@@ -23,6 +23,7 @@ internal sealed class WindowedChecks : IChecks
     readonly EditorSession _editor;
     EditorCamera? _camera;
     PlanarCamera? _planar;
+    EditorPreviews? _previews;
 
     public WindowedChecks()
     {
@@ -44,6 +45,7 @@ internal sealed class WindowedChecks : IChecks
         ("another scene of the project opens and the editor camera still draws it", AnotherSceneOpens),
         ("a click picks the entity whose pivot lands nearest, and never one behind the camera", PickChoosesTheNearestPivot),
         ("a locked entity is never picked, and a pick under a group gives the topmost group unless it is locked", LockedAndGroupedPicks),
+        ("a pick of all lists every pivot under the cursor nearest first, and a ruler point lands on a pivot or the ground", PickAllAndRulerPoints),
         ("the move handles reach out from the pivot and a drag along one moves the entity along its axis only", MoveHandlesDragAlongTheirAxis),
         ("the local handles turn with the entity and a drag along one moves it along that local axis only", LocalHandlesTurnWithTheEntity),
         ("a scale drag along a local handle stretches that axis only, and a pivot behind the camera stays put", ScaleDragStretchesOneAxis),
@@ -57,6 +59,7 @@ internal sealed class WindowedChecks : IChecks
         ("framing an entity puts its pivot in the middle of the frame", FrameCentresThePivot),
         ("the editor world fills the frame with sky, ground and axes and stays out of the scene", EditorWorldIsOutsideTheScene),
         ("a scene opened after the editor world is drawn before its sky", OpenedSceneComesBeforeTheSky),
+        ("the preview sun and sky switch on and off and stay out of the scene", PreviewsSwitchOnAndOff),
         ("the selection box draws orange edges round an entity, none when nothing is selected, and stays out of the scene", SelectionBoxDrawsTheEdges),
         ("an uploaded UI frame covers the window with premultiplied blending and goes with its surface", UiSurfaceDrawsOverTheScene),
         ("the sample game UI draws its menu over the scene and leaves the rest of the frame alone", GameUiDrawsItsMenuOverTheScene),
@@ -69,6 +72,7 @@ internal sealed class WindowedChecks : IChecks
         ("a planar pick chooses the nearest pivot of an Entity2D, and honors locks and groups", PlanarPickChoosesTheNearestPivot),
         ("a planar move drag lands the pivot where the pointer ends, at any zoom", PlanarMoveFollowsThePointerAtAnyZoom),
         ("the planar camera and its backdrop stay out of the outline and the saved scene", PlanarCameraStaysOutOfTheScene),
+        ("a planar rotate and scale drag turn and scale about the pivot, and a snapped move adds up small steps", PlanarRotateScaleAndSnapWork),
         ("a line the engine logs reaches the output log, and a clear drops the lines read so far", EngineLogReachesTheOutputLog),
     ];
 
@@ -235,6 +239,37 @@ internal sealed class WindowedChecks : IChecks
         _editor.SetGrouped(spawn, false);
         Assert.Equal(child, _editor.Pick(camera, childPoint));
         _editor.SetGrouped(child, false);
+    }
+
+    // Spawn stands three to the side with a child a fifth of a unit beside it, so both pivots are under the cursor.
+    // A point on no pivot that looks down meets the ground, and one that looks up at the sky meets nothing.
+    void PickAllAndRulerPoints()
+    {
+        _editor.OpenScene("res://main.oscn");
+        _host.Pump(FramesToSettle);
+        var camera = new EditorCamera(_host);
+        var root = _editor.Outline()!;
+        var spawn = root.Children.Single(c => c.Name == "Spawn").Handle;
+        var beside = _editor.AddChild(spawn, "Marker3D", "Beside");
+        var spawnAt = new Vector3(3, 0, 0);
+        var besideAt = spawnAt + new Vector3(0.2f, 0, 0);
+        _editor.MoveTo(root.Handle, Vector3.Zero);
+        _editor.MoveTo(spawn, spawnAt);
+        _editor.MoveTo(beside, besideAt - spawnAt);
+        _host.Pump(1);
+
+        Assert.Equal([spawn, beside], _editor.PickAll(camera, camera.Project(spawnAt)));
+        Assert.Equal([beside, spawn], _editor.PickAll(camera, camera.Project(besideAt)));
+        _editor.SetGrouped(spawn, true);
+        Assert.Equal([spawn], _editor.PickAll(camera, camera.Project(besideAt)));
+        _editor.SetGrouped(spawn, false);
+        Assert.Empty(_editor.PickAll(camera, Vector2.Zero));
+
+        Assert.True(Vector3.Distance(spawnAt, _editor.PointAt(camera, camera.Project(spawnAt))!.Value) < 1e-3f);
+        var ground = new Vector3(-4, 0, 2);
+        var onGround = _editor.PointAt(camera, camera.Project(ground));
+        Assert.True(onGround is { } point && Vector3.Distance(ground, point) < 0.01f, $"the ground point is {onGround}");
+        Assert.Null(_editor.PointAt(camera, new Vector2(camera.Project(ground).X, 0)));
     }
 
     // Spawn is three to the side of the lifted root. Its handles start at its pivot and run a fixed length on
@@ -709,7 +744,7 @@ internal sealed class WindowedChecks : IChecks
     // out, high and to the side, looking at the origin, so the top of the frame is sky and the bottom is ground.
     void EditorWorldIsOutsideTheScene()
     {
-        EditorWorld.Build(_host);
+        _previews = EditorWorld.Build(_host);
         var camera = new EditorCamera(_host);
         _host.Pump(FramesToSettle);
         var frame = Frame();
@@ -734,7 +769,7 @@ internal sealed class WindowedChecks : IChecks
     {
         _editor.OpenScene("res://second.oscn");
         var behind = RootNames();
-        EditorWorld.PutSkyLast(_host);
+        EditorWorld.Show(_host, Previews, sun: false, sky: true);
         var ahead = RootNames();
         _editor.OpenScene("res://main.oscn");
 
@@ -742,6 +777,24 @@ internal sealed class WindowedChecks : IChecks
         Assert.Equal("EditorEnvironment", ahead[^1]);
         Assert.True(ahead.IndexOf("Second") < ahead.IndexOf("EditorEnvironment"), $"the scene is not before the sky: {string.Join(", ", ahead)}");
     }
+
+    void PreviewsSwitchOnAndOff()
+    {
+        EditorWorld.Show(_host, Previews, sun: true, sky: false);
+        Assert.True(_host.Entity3DIsVisible(Previews.Sun));
+        Assert.DoesNotContain("EditorEnvironment", RootNames());
+        Assert.True(_editor.Holds("DirectionalLight3D"));
+        Assert.False(_editor.Holds("Camera2D"));
+
+        EditorWorld.Show(_host, Previews, sun: false, sky: true);
+        Assert.False(_host.Entity3DIsVisible(Previews.Sun));
+        Assert.Equal("EditorEnvironment", RootNames()[^1]);
+        Assert.Contains("EditorSun", RootNames());
+        Assert.DoesNotContain("EditorSun", _editor.Outline()!.Children.Select(c => c.Name));
+    }
+
+    // Set by the editor world check, which runs before every check that reads it.
+    EditorPreviews Previews => _previews ?? throw new InvalidOperationException("The editor world check has not run.");
 
     // The names of what sits under the stage root, in tree order.
     List<string> RootNames()
@@ -1240,6 +1293,41 @@ internal sealed class WindowedChecks : IChecks
         Assert.DoesNotContain("EditorPlanar", saved);
         Assert.DoesNotContain("Camera2D", saved);
         Assert.DoesNotContain("CanvasLayer", saved);
+        planar.SetOn(false);
+    }
+
+    // The pointer goes a quarter turn round the pivot, then twice as far from it, then moves in steps on a grid.
+    void PlanarRotateScaleAndSnapWork()
+    {
+        var level = OpenPlanarLevel();
+        var planar = PlanarOn();
+        var pivot = planar.PivotOf(level.Left);
+
+        _editor.RotatePlanar(planar, level.Left, new FrameMove(pivot + new Vector2(50, 0), pivot + new Vector2(0, 50)));
+        _editor.EndDrag();
+        var turn = _host.Entity2DGetGlobalRotation(level.Left);
+        Assert.True(MathF.Abs(turn - (MathF.PI / 2)) < 0.001f, $"Left turned {turn} radians");
+
+        _editor.ScalePlanar(planar, level.Left, new FrameMove(pivot + new Vector2(50, 0), pivot + new Vector2(100, 0)));
+        _editor.EndDrag();
+        var scale = _host.Entity2DGetGlobalScale(level.Left);
+        Assert.True(Vector2.Distance(scale, new Vector2(2, 2)) < 0.001f, $"Left scaled to {scale}");
+
+        // Each step alone is under half a grid step, so only steps that add up reach the next line.
+        _editor.Snap = new GizmoSnap(16, 15, 0.1f);
+        var start = _host.Entity2DGetGlobalPosition(level.Left);
+        var by = new Vector2(30, 4) * planar.View.Zoom;
+        var free = start + planar.Offset(new FrameMove(pivot, pivot + by));
+        for (var step = 0; step < 5; step++)
+        {
+            _editor.MovePlanar(planar, level.Left, Step(pivot, pivot + by, step, 5));
+        }
+
+        _editor.EndDrag();
+        _editor.Snap = null;
+        var at = _host.Entity2DGetGlobalPosition(level.Left);
+        Assert.Equal(new Vector2(GizmoMath.Stepped(free.X, 16), GizmoMath.Stepped(free.Y, 16)), at);
+        Assert.NotEqual(start, at);
         planar.SetOn(false);
     }
 

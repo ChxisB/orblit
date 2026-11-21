@@ -57,12 +57,38 @@ public sealed class ScriptPanelsTests
             var (source, panels) = Open();
 
             Click(panels, "variable:add");
+            panels.VariableTool.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Click(panels, "variable:add");
+            panels.VariableTool.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Click(panels, "signal:add");
             Click(panels, "function:add");
 
             Assert.Equal(["AddVariable variable 0", "AddVariable variable2 0", "AddSignal signal", "AddFunction function"], source.Calls);
             Assert.NotNull(panels.Find<TextBox>("variable:variable2:name"));
+        });
+    }
+
+    [Fact]
+    public void The_variable_popover_adds_the_variable_with_its_type_default_and_inspector_choice()
+    {
+        UiThread.Run(() =>
+        {
+            var (source, panels) = Open();
+            Click(panels, "variable:add");
+            var tool = panels.VariableTool;
+            Assert.Equal("variable", tool.NameBox.Text);
+
+            tool.NameBox.Text = "speed";
+            tool.TypeBox.SelectedIndex = 3;
+            tool.DefaultBox.Text = "2.5";
+            tool.Shown.IsChecked = true;
+            tool.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(["AddVariable speed 3", "SetVariableDefault speed 2.5", "SetVariableExported speed True"], source.Calls);
+            Assert.Equal("2.5", panels.Find<TextBox>("variable:speed:default")!.Text);
+
+            tool.NameBox.Text = " ";
+            Assert.False(tool.AddButton.IsEnabled);
         });
     }
 

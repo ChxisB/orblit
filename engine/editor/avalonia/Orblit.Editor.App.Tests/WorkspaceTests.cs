@@ -28,7 +28,7 @@ public sealed class WorkspaceTests
             Assert.True(window.Store.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(287, 74, 2866, 1157, BoxOf(window.Store, window));
+            AssertBox(56, 46, 3328, 1183, BoxOf(window.Store, window));
             Assert.Equal(before, window.Status);
         });
     }
@@ -48,7 +48,7 @@ public sealed class WorkspaceTests
             Assert.False(window.Store.IsVisible);
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.True(window.Viewport.IsEffectivelyVisible);
-            AssertBox(287, 116, 2866, 1115, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
         });
     }
 
@@ -59,13 +59,39 @@ public sealed class WorkspaceTests
         {
             var window = OpenAtReferenceSize(new FakeScene(), _ => Task.FromResult(OneKit));
             ClickOn(Tab(window, "Asset Store"), window);
-            ClickOn(window.Store.LoadButton, window);
+            ClickOn(window.Store.ReloadButton, window);
             Dispatcher.UIThread.RunJobs();
 
             ClickOn(Tab(window, "3D"), window);
             ClickOn(Tab(window, "Asset Store"), window);
 
-            Assert.Equal("1 kit.", window.Store.Status.Text);
+            Assert.Equal("1 kit in the index.", window.Store.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void The_kit_drawer_stands_beside_the_bottom_bar_and_leaves_with_the_store()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene(), _ => Task.FromResult(OneKit));
+            ClickOn(Tab(window, "Asset Store"), window);
+            ClickOn(window.Store.ReloadButton, window);
+            Dispatcher.UIThread.RunJobs();
+
+            window.Store.Choose(window.Store.Shown.Single());
+            window.UpdateLayout();
+            var drawer = BoxOf(window.Store.Drawer, window);
+            var bar = BoxOf(window.Center.BottomBar, window);
+
+            Assert.True(window.Store.Drawer.IsEffectivelyVisible);
+            Assert.Equal(BoxOf(window.Store, window).Top, drawer.Top);
+            Assert.Equal(bar.Bottom, drawer.Bottom);
+            Assert.True(drawer.Left > bar.Right);
+
+            ClickOn(Tab(window, "3D"), window);
+
+            Assert.False(window.Store.Drawer.IsEffectivelyVisible);
         });
     }
 
@@ -79,7 +105,7 @@ public sealed class WorkspaceTests
 
             ClickOn(Tab(window, "Asset Store"), window);
             Assert.Equal(0, asked);
-            ClickOn(window.Store.LoadButton, window);
+            ClickOn(window.Store.ReloadButton, window);
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal(1, asked);

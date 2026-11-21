@@ -1,11 +1,12 @@
 using System.Windows.Input;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>What a menu item does, and optionally the switch that says when it is on.</summary>
-internal sealed record MenuAction(Action Run, IObservable<bool>? On = null);
+/// <summary>What a menu item does, and optionally the switch that says when it is on and the one that ticks it.</summary>
+internal sealed record MenuAction(Action Run, IObservable<bool>? On = null, IObservable<bool>? Checked = null);
 
 /// <summary>
 /// The menu bar of the old editor: Scene, Project, Debug, Editor and Help, with its items, order and shortcuts.
@@ -18,9 +19,13 @@ internal static class EditorMenu
     const KeyModifiers CmdShift = KeyModifiers.Meta | KeyModifiers.Shift;
 
     // shortcut: the macOS key set only. Add the Windows and Linux overrides when the editor ships there.
-    sealed record Entry(string Label, Key Key = Key.None, KeyModifiers Modifiers = KeyModifiers.None, bool? Check = null, bool Off = false, Entry[]? Items = null);
+    sealed record Entry(string Label, Key Key = Key.None, KeyModifiers Modifiers = KeyModifiers.None, bool? Check = null, bool Off = false, Entry[]? Items = null, MenuItemToggleType Toggle = MenuItemToggleType.CheckBox);
 
     static readonly Entry Separator = new("-");
+
+    const string OpenRecent = "Open Recent";
+
+    const string NoRecent = "No Recent Scenes";
 
     /// <summary>
     /// Builds the bar. The screen bar of macOS has its own app menu, so it leaves out the items the old editor
@@ -47,6 +52,7 @@ internal static class EditorMenu
             if (!actions.TryGetValue(label, out var action))
             {
                 item.Command = new MenuCommand(() => unbuilt($"{label.TrimEnd('.')} is not built yet."));
+                EditorTheme.MarkSoon(item);
                 return;
             }
 
@@ -54,6 +60,11 @@ internal static class EditorMenu
             if (action.On is { } on)
             {
                 item.Bind(NativeMenuItem.IsEnabledProperty, on);
+            }
+
+            if (action.Checked is { } ticked)
+            {
+                item.Bind(NativeMenuItem.IsCheckedProperty, ticked);
             }
         }
 
@@ -78,7 +89,7 @@ internal static class EditorMenu
 
             if (entry.Check is { } on)
             {
-                item.ToggleType = MenuItemToggleType.CheckBox;
+                item.ToggleType = entry.Toggle;
                 item.IsChecked = on;
             }
 
@@ -100,6 +111,32 @@ internal static class EditorMenu
         ]);
     }
 
+    /// <summary>
+    /// Fills Open Recent with these scenes, newest first, under a dim heading. A pick opens its scene and Clear
+    /// Recent Scenes empties the list. The menu keeps its items between calls, so the window calls this on a change.
+    /// </summary>
+    internal static void ShowRecent(NativeMenu bar, IReadOnlyList<string> scenes, Action<string> open, Action clear)
+    {
+        NativeMenu Under(NativeMenu menu, string header) => menu.Items.OfType<NativeMenuItem>().Single(item => item.Header == header).Menu!;
+
+        var recent = Under(Under(bar, "Scene"), OpenRecent);
+        recent.Items.Clear();
+        if (scenes.Count == 0)
+        {
+            recent.Add(new NativeMenuItem(NoRecent) { IsEnabled = false });
+            return;
+        }
+
+        recent.Add(new NativeMenuItem("Recent") { IsEnabled = false });
+        foreach (var scene in scenes)
+        {
+            recent.Add(new NativeMenuItem(Path.GetFileName(scene)) { Command = new MenuCommand(() => open(scene)) });
+        }
+
+        recent.Add(new NativeMenuItemSeparator());
+        recent.Add(new NativeMenuItem("Clear Recent Scenes") { Command = new MenuCommand(clear) });
+    }
+
     static Entry[] Scene(bool global)
     {
         Entry[] quit = global ? [] : [Separator, new("Quit", Key.Q, Cmd)];
@@ -109,7 +146,7 @@ internal static class EditorMenu
             new("New Inherited Scene...", Key.N, CmdShift),
             new("Open Scene...", Key.O, Cmd),
             new("Reopen Closed Scene", Key.T, CmdShift),
-            new("Open Recent", Items: [new("No Recent Scenes", Off: true)]),
+            new(OpenRecent, Items: [new(NoRecent, Off: true)]),
             Separator,
             new("Save Scene", Key.S, Cmd),
             new("Save Scene As...", Key.S, CmdShift),
@@ -181,8 +218,15 @@ internal static class EditorMenu
         new("Editor Settings...", Key.OemComma, Cmd),
         new("Command Palette...", Key.P, CmdShift),
         Separator,
-        new("Editor Docks", Items: [new("Scene"), new("Import"), new("FileSystem"), new("History"), new("Inspector"), new("Signals")]),
-        new("Editor Layout", Items: [new("Save Layout..."), new("Delete Layout..."), Separator, new("Default")]),
+        new("Editor Docks", Items: [.. new[] { "Scene", "Import", "FileSystem", "History", "Inspector", "Signals" }.Select(dock => new Entry(dock, Check: true))]),
+        new("Editor Layout", Items:
+        [
+            new("Save Layout..."),
+            new("Delete Layout..."),
+            Separator,
+            new("Layouts", Off: true),
+            new("Default", Check: true, Toggle: MenuItemToggleType.Radio),
+        ]),
         Separator,
         new("Take Screenshot", Key.F12, Cmd),
         new("Toggle Fullscreen", Key.F, Cmd | KeyModifiers.Control),

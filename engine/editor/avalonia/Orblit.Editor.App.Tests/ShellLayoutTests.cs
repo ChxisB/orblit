@@ -1,6 +1,8 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
+using Avalonia.Controls.Primitives;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -21,7 +23,7 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(0, 0, 3440, 41, BoxOf(window.Bar, window));
+            AssertBox(0, 0, 3440, 46, BoxOf(window.Bar, window));
         });
     }
 
@@ -32,22 +34,22 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(4, 41, 280, 615, BoxOf(window.SceneDock, window));
-            AssertBox(4, 660, 280, 615, BoxOf(window.FileDock, window));
+            AssertBox(6, 46, 280, 611, BoxOf(window.SceneDock, window));
+            AssertBox(6, 663, 280, 610, BoxOf(window.FileDock, window));
         });
     }
 
     [Fact]
-    public void The_middle_column_stacks_tabs_toolbar_viewport_and_bottom_bar()
+    public void The_middle_column_stacks_tabs_viewport_and_bottom_bar_with_the_tools_over_the_viewport()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(287, 41, 2866, 33, BoxOf(window.Center.SceneTabs, window));
-            AssertBox(287, 74, 2866, 42, BoxOf(window.Center.Toolbar, window));
-            AssertBox(287, 116, 2866, 1115, BoxOf(window.Viewport, window));
-            AssertBox(287, 1234, 2866, 41, BoxOf(window.Center.BottomBar, window));
+            AssertBox(293, 47, 2818, 39, BoxOf(window.Center.SceneTabs, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Center.Toolbar, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
+            AssertBox(292, 1235, 2820, 38, BoxOf(window.Center.BottomBar, window));
         });
     }
 
@@ -58,7 +60,7 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(3156, 41, 280, 1234, BoxOf(window.InspectorDock, window));
+            AssertBox(3118, 46, 316, 1227, BoxOf(window.InspectorDock, window));
         });
     }
 
@@ -87,14 +89,23 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_title_follows_the_window_title()
+    public void The_header_is_46_high_with_the_workspaces_centred_in_a_pill_and_the_run_buttons_in_another()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            window.Title = "(*) main.oscn - Demo";
 
-            Assert.Equal("(*) main.oscn - Demo", window.Bar.Title.Text);
+            Assert.Equal(46, window.Bar.Bounds.Height);
+            Assert.Equal(window.Bounds.Width / 2, BoxOf(window.Bar.Switcher, window).Center.X, 0.5);
+            foreach (var pill in new[] { window.Bar.Switcher, window.Bar.Run })
+            {
+                Assert.Contains(EditorTheme.Island, pill.Classes);
+                Assert.Equal(new Thickness(3), pill.Padding);
+                Assert.Equal(23, BoxOf(pill, window).Center.Y, 0.5);
+            }
+
+            Assert.Equal(26, window.Bar.Tabs[0].Bounds.Height);
+            Assert.Equal(176, window.Bar.SearchButton.Bounds.Width);
         });
     }
 
@@ -142,20 +153,6 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void A_run_button_the_editor_lacks_answers_in_the_status()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var button = window.Bar.GetVisualDescendants().OfType<Button>().Single(b => ToolTip.GetTip(b) is "Movie maker mode");
-
-            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-
-            Assert.Equal("Movie maker mode is not built yet.", window.Status);
-        });
-    }
-
-    [Fact]
     public void The_play_button_sits_in_the_title_bar()
     {
         UiThread.Run(() =>
@@ -178,41 +175,47 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_run_buttons_are_32_wide_with_4_clear_before_the_scene_buttons_and_14_from_the_edge()
+    public void The_run_buttons_are_26_square_with_a_rule_before_the_more_menu_and_the_pill_8_from_the_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var tips = new[] { "Run the project", "Pause the game", "Stop the game", "Run the current scene", "Run a chosen scene", "Movie maker mode" };
+            var tips = new[] { "Run the project", "Run the current scene", "Pause the game", "Stop the game", "More ways to run" };
             var boxes = tips
                 .Select(tip => BoxOf(window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) as string == tip), window))
                 .ToArray();
 
-            Assert.All(boxes, box => Assert.Equal(new Size(32, 32), box.Size));
-            Assert.Equal(boxes[0].X + 32, boxes[1].X);
-            Assert.Equal(boxes[1].X + 32, boxes[2].X);
-            Assert.Equal(boxes[2].Right + 4, boxes[3].X);
-            Assert.Equal(boxes[3].X + 32, boxes[4].X);
-            Assert.Equal(boxes[4].X + 32, boxes[5].X);
-            Assert.Equal(3440 - 14, boxes[5].Right);
+            Assert.All(boxes, box => Assert.Equal(new Size(26, 26), box.Size));
+            Assert.Equal(boxes[0].Right + 2, boxes[1].X);
+            Assert.Equal(boxes[1].Right + 2, boxes[2].X);
+            Assert.Equal(boxes[2].Right + 2, boxes[3].X);
+            // The rule is 1 wide with 3 each side, inside the 2 pixel gaps.
+            Assert.Equal(boxes[3].Right + 11, boxes[4].X);
+            Assert.Equal(3440 - 8, BoxOf(window.Bar.Run, window).Right);
         });
     }
 
     [Fact]
-    public void The_lit_workspace_has_no_box_behind_it()
+    public void The_lit_workspace_is_lifted_with_a_bright_name_and_an_orange_icon()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var lit = window.Bar.Tabs.Single(tab => tab.IsChecked == true);
-            var backing = lit.GetVisualDescendants().OfType<ContentPresenter>().Single(presenter => presenter.Name == "PART_ContentPresenter");
+            var dim = window.Bar.Tabs.First(tab => tab.IsChecked != true);
 
-            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)backing.Background!).Color);
+            static Color Backing(WorkspaceTab tab) =>
+                ((ISolidColorBrush)tab.GetVisualDescendants().OfType<ContentPresenter>().Single(presenter => presenter.Name == "PART_ContentPresenter").Background!).Color;
+            static Color Name(WorkspaceTab tab) => ((ISolidColorBrush)tab.GetVisualDescendants().OfType<TextBlock>().Single().Foreground!).Color;
+            static Color Icon(WorkspaceTab tab) => ((ISolidColorBrush)TextElement.GetForeground(tab.GetVisualDescendants().OfType<EditorIcon>().Single())!).Color;
+
+            Assert.Equal((EditorColors.Lifted, EditorColors.Text, EditorColors.Accent), (Backing(lit), Name(lit), Icon(lit)));
+            Assert.Equal((Colors.Transparent, EditorColors.TextDim, EditorColors.TextDim), (Backing(dim), Name(dim), Icon(dim)));
         });
     }
 
     [Fact]
-    public void Each_workspace_name_is_bold_and_sits_10_pixels_inside_its_tab()
+    public void Each_workspace_name_is_medium_weight_and_sits_10_pixels_inside_its_tab()
     {
         UiThread.Run(() =>
         {
@@ -221,14 +224,14 @@ public sealed class ShellLayoutTests
             foreach (var tab in window.Bar.Tabs)
             {
                 var content = (StackPanel)tab.Content!;
-                Assert.Equal(FontWeight.Bold, content.Children.OfType<TextBlock>().Single().FontWeight);
+                Assert.Equal(FontWeight.Medium, content.Children.OfType<TextBlock>().Single().FontWeight);
                 Assert.Equal(BoxOf(tab, window).X + 10 + tab.BorderThickness.Left, BoxOf(content, window).X);
             }
         });
     }
 
     [Fact]
-    public void An_icon_button_is_the_icon_with_6_pixels_around_it()
+    public void An_icon_button_is_the_icon_with_5_pixels_around_it()
     {
         UiThread.Run(() =>
         {
@@ -239,9 +242,7 @@ public sealed class ShellLayoutTests
             window.Show();
             window.UpdateLayout();
 
-            // The theme of the editor window gives the button no border. This bare window may.
-            var border = button.BorderThickness.Left + button.BorderThickness.Right;
-            Assert.Equal(new Size(28 + border, 28 + border), button.Bounds.Size);
+            Assert.Equal(new Size(26, 26), button.Bounds.Size);
         });
     }
 
@@ -251,7 +252,7 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var icons = window.GetVisualDescendants().OfType<EditorIcon>().Where(icon => icon.IconName == "Search").ToArray();
+            var icons = window.GetVisualDescendants().OfType<EditorIcon>().Where(icon => icon.IconName == "Search" && icon.FindAncestorOfType<TitleBar>() is null).ToArray();
 
             Assert.Equal(3, icons.Length);
             foreach (var icon in icons)
@@ -274,7 +275,8 @@ public sealed class ShellLayoutTests
             window.FileDock.Select(1);
 
             Assert.NotSame(first, window.FileDock.Content);
-            Assert.Same(window.FileDock.Content, ((Border)window.FileDock.Children[1]).Child);
+            Assert.Null(first.GetVisualParent());
+            Assert.Same(window.FileDock, window.FileDock.Content.FindAncestorOfType<DockTabs>());
         });
     }
 
@@ -314,9 +316,9 @@ public sealed class ShellLayoutTests
             var window = OpenAtReferenceSize();
             window.SceneDock.Select(1);
 
-            Assert.Equal(EditorColors.TabInactive, Foreground(window.SceneDock.Tabs[0]));
+            Assert.Equal(EditorColors.TextDim, Foreground(window.SceneDock.Tabs[0]));
             Assert.Equal(EditorColors.Text, Foreground(window.SceneDock.Tabs[1]));
-            Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)window.SceneDock.Tabs[1].Background!).Color);
+            Assert.Equal(EditorColors.Line, ((ISolidColorBrush)window.SceneDock.Tabs[1].Background!).Color);
             Assert.Equal(Colors.Transparent, ((ISolidColorBrush)window.SceneDock.Tabs[0].Background!).Color);
         });
     }
@@ -329,19 +331,19 @@ public sealed class ShellLayoutTests
             var window = OpenAtReferenceSize();
 
             Assert.True(window.ExtendClientAreaToDecorationsHint);
-            Assert.Equal(41, window.ExtendClientAreaTitleBarHeightHint);
+            Assert.Equal(46, window.ExtendClientAreaTitleBarHeightHint);
         });
     }
 
     [Fact]
-    public void The_title_starts_after_the_traffic_lights_and_lets_a_press_through()
+    public void The_heading_starts_after_the_traffic_lights_and_lets_a_press_through()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(92, BoxOf(window.Bar.Title, window).X);
-            Assert.False(window.Bar.Title.IsHitTestVisible);
+            Assert.Equal(92, BoxOf(window.Bar.Heading, window).X);
+            Assert.False(window.Bar.Heading.IsHitTestVisible);
         });
     }
 
@@ -373,32 +375,64 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_middle_strips_use_the_reference_colours()
+    public void Each_dock_the_stage_and_the_bottom_bar_is_an_island()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(EditorColors.Window, ((ISolidColorBrush)window.Center.SceneTabs.Background!).Color);
-            Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)window.Center.Toolbar.Background!).Color);
-            Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)window.Center.BottomBar.Background!).Color);
+            foreach (var island in new Border[] { window.SceneDock, window.FileDock, window.InspectorDock, window.Center.Stage, window.Center.BottomBar })
+            {
+                Assert.Equal(EditorColors.Panel, ((ISolidColorBrush)island.Background!).Color);
+                Assert.Equal(EditorColors.Line, ((ISolidColorBrush)island.BorderBrush!).Color);
+                Assert.Equal(new Thickness(1), island.BorderThickness);
+                Assert.Equal(new CornerRadius(10), island.CornerRadius);
+                Assert.True(island.ClipToBounds);
+            }
         });
     }
 
     [Fact]
-    public void The_close_bar_sits_under_the_title_bar_and_pushes_the_columns_down()
+    public void The_dock_menu_opens_under_its_button_at_the_right()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var menu = window.SceneDock.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) is "Dock options");
 
-            window.CloseBar.IsVisible = true;
+            Assert.Equal(PlacementMode.BottomEdgeAlignedRight, Assert.IsType<MenuFlyout>(menu.Flyout).Placement);
+        });
+    }
+
+    [Fact]
+    public void A_dock_tab_is_a_26_pixel_pill_in_a_39_pixel_strip()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var dock = BoxOf(window.SceneDock, window);
+            var tab = BoxOf(window.SceneDock.Tabs[0], window);
+
+            Assert.Equal(26, tab.Height);
+            Assert.Equal(dock.X + 1 + 6, tab.X);
+            Assert.Equal(dock.Y + 1 + 6, tab.Y);
+            Assert.Equal(new CornerRadius(6), window.SceneDock.Tabs[0].CornerRadius);
+        });
+    }
+
+    [Fact]
+    public void Save_changes_covers_the_whole_window_and_leaves_the_docks_where_they_are()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var dock = BoxOf(window.SceneDock, window);
+
+            window.SaveChanges.Open();
             window.UpdateLayout();
 
-            var bar = BoxOf(window.CloseBar, window);
-            Assert.Equal(41, bar.Y);
-            Assert.True(bar.Height > 0);
-            Assert.Equal(41 + bar.Height + window.CloseBar.Margin.Bottom, BoxOf(window.SceneDock, window).Y);
+            AssertBox(0, 0, window.Bounds.Width, window.Bounds.Height, BoxOf(window.SaveChanges, window));
+            Assert.Equal(dock, BoxOf(window.SceneDock, window));
         });
     }
 

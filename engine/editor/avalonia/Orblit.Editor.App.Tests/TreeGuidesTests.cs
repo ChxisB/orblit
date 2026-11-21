@@ -10,9 +10,9 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class TreeGuidesTests
 {
-    static readonly Color Vertical = Color.Parse("#343434");
-    static readonly Color Stub = Color.Parse("#3f3f3f");
-    static readonly Color Lit = Color.Parse("#545454");
+    static readonly Color Vertical = Color.Parse("#1E232C");
+    static readonly Color Stub = Color.Parse("#262C37");
+    static readonly Color Lit = Color.Parse("#3A414C");
 
     static TreeViewItem[] Items(TreeView tree) => [.. tree.GetVisualDescendants().OfType<TreeViewItem>()];
 
@@ -58,9 +58,9 @@ public sealed class TreeGuidesTests
             var drawn = Drawn(window.ScenePane.Guides, window);
 
             Assert.Equal(3, drawn.Length);
-            AssertBox(15, lamp.Y + 1, 2, sound.Y + 12 - lamp.Y - 1, drawn[0].Area);
-            AssertBox(16, lamp.Y + 11, 18, 1, drawn[1].Area);
-            AssertBox(16, sound.Y + 11, 18, 1, drawn[2].Area);
+            AssertBox(18, lamp.Y + 1, 2, sound.Y + 14 - lamp.Y - 1, drawn[0].Area);
+            AssertBox(19, lamp.Y + 13, 18, 1, drawn[1].Area);
+            AssertBox(19, sound.Y + 13, 18, 1, drawn[2].Area);
             Assert.Equal([Vertical, Stub, Stub], drawn.Select(line => line.Colour));
         });
     }
@@ -77,10 +77,10 @@ public sealed class TreeGuidesTests
             var drawn = Drawn(window.ScenePane.Guides, window);
 
             Assert.Equal(4, drawn.Length);
-            AssertBox(15, lamp.Y, 2, 12, drawn[0].Area);
-            AssertBox(17, lamp.Y + 10, 17, 1, drawn[1].Area);
-            AssertBox(15, lamp.Y + 11, 19, 1, drawn[2].Area);
-            AssertBox(15, lamp.Y + 12, 19, 1, drawn[3].Area);
+            AssertBox(18, lamp.Y, 2, 14, drawn[0].Area);
+            AssertBox(20, lamp.Y + 12, 17, 1, drawn[1].Area);
+            AssertBox(18, lamp.Y + 13, 19, 1, drawn[2].Area);
+            AssertBox(18, lamp.Y + 14, 19, 1, drawn[3].Area);
             Assert.Equal([Lit, Stub, Lit, Stub], drawn.Select(line => line.Colour));
         });
     }
@@ -99,8 +99,8 @@ public sealed class TreeGuidesTests
             var drawn = Drawn(window.ScenePane.Guides, window);
 
             Assert.Equal(4, drawn.Length);
-            AssertBox(15, lamp.Y, 2, sound.Y + 12 - lamp.Y, drawn[0].Area);
-            AssertBox(15, sound.Y + 11, 19, 1, drawn[2].Area);
+            AssertBox(18, lamp.Y, 2, sound.Y + 14 - lamp.Y, drawn[0].Area);
+            AssertBox(18, sound.Y + 13, 19, 1, drawn[2].Area);
         });
     }
 
@@ -119,7 +119,7 @@ public sealed class TreeGuidesTests
     }
 
     [Fact]
-    public void A_nested_parent_draws_12_pixels_further_right()
+    public void A_nested_parent_draws_16_pixels_further_right()
     {
         UiThread.Run(() =>
         {
@@ -132,8 +132,8 @@ public sealed class TreeGuidesTests
 
             var drawn = Drawn(window.Scenes.Guides, window);
 
-            Assert.Contains(drawn, line => line.Area == new Rect(27, scene.Y + 1, 2, 11) && line.Colour == Vertical);
-            Assert.Contains(drawn, line => line.Area == new Rect(28, scene.Y + 11, 18, 1) && line.Colour == Stub);
+            Assert.Contains(drawn, line => line.Area == new Rect(34, scene.Y + 1, 2, 13) && line.Colour == Vertical);
+            Assert.Contains(drawn, line => line.Area == new Rect(35, scene.Y + 13, 18, 1) && line.Colour == Stub);
         });
     }
 }

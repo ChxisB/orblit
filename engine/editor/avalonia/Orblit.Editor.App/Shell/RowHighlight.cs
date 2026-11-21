@@ -9,15 +9,11 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The rounded block behind a selected or hovered tree row. The theme paints the whole line, so its own row
-/// colors are clear and a row lays this under its content instead.
+/// The rounded block behind a selected or hovered tree row, 6 pixels in from each side of the tree at every depth.
+/// The theme paints the whole line, so its own row colors are clear and a row lays this under its content instead.
 /// </summary>
 internal sealed class RowHighlight : Control
 {
-    // The block starts this far before the icon and stops this far short of the right edge of the tree.
-    internal const double Lead = 4;
-    const double RightGap = 6;
-
     TreeViewItem? _item;
     Border? _line;
 
@@ -26,14 +22,14 @@ internal sealed class RowHighlight : Control
         IsHitTestVisible = false;
     }
 
-    internal IBrush? Fill => _item is { IsSelected: true } ? EditorBrushes.SelectedRow : _line is { IsPointerOver: true } ? EditorBrushes.Hover : null;
+    internal IBrush? Fill => _item is { IsSelected: true } ? EditorBrushes.AccentSoft : _line is { IsPointerOver: true } ? EditorBrushes.Hover : null;
 
     /// <summary>The block in the coordinates of this control, as tall as the line of the tree item.</summary>
     internal Rect Area()
     {
         var line = _line!.Bounds.Size;
         var origin = _line.TranslatePoint(default, this)!.Value;
-        return new Rect(-Lead, origin.Y, origin.X + line.Width - RightGap + Lead, line.Height);
+        return new Rect(origin.X + EditorTheme.RowInset, origin.Y, line.Width - (2 * EditorTheme.RowInset), line.Height);
     }
 
     public override void Render(DrawingContext context)

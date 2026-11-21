@@ -4,8 +4,10 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 
@@ -13,7 +15,8 @@ namespace Orblit.Editor.App;
 
 /// <summary>
 /// The body of the FileSystem tab: a row with the history arrows, the path and the layout button, a filter row,
-/// and the tree of the project's scene files. A double press or Enter on a scene raises it to open.
+/// and the tree of the project's scenes, C# scripts and graph scripts, each tinted by kind. A double press or Enter
+/// on a file raises it to open, and a right click opens the file menu.
 /// </summary>
 internal sealed class ScenesPanel : Grid
 {
@@ -41,7 +44,7 @@ internal sealed class ScenesPanel : Grid
     };
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter Files",
+        PlaceholderText = "Filter files",
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
@@ -52,14 +55,16 @@ internal sealed class ScenesPanel : Grid
     readonly Button _layout = Parts.Tight(Parts.IconButton("Panels1", ListTip));
     readonly Button _sort = Parts.Tight(Parts.IconButton("Sort", NewestTip));
     readonly TreeGuides _guides;
-    IReadOnlyList<string> _scenes = [];
+    readonly ITextClipboard _clipboard;
+    IReadOnlyList<string> _files = [];
     IReadOnlyDictionary<string, DateTime> _modified = new Dictionary<string, DateTime>();
     string _open = "";
     bool _flat;
     bool _newest;
 
-    public ScenesPanel()
+    public ScenesPanel(KeyModifiers command, ITextClipboard? clipboard = null)
     {
+        _clipboard = clipboard ?? new WindowClipboard(this);
         RowDefinitions = new RowDefinitions($"{PathRowHeight},{BoxHeight},*");
         _back.IsEnabled = false;
         _forward.IsEnabled = false;
@@ -100,7 +105,13 @@ internal sealed class ScenesPanel : Grid
             {
                 Activate(_tree.SelectedItem);
             }
+            else if (e.Key == Key.C && e.KeyModifiers == (command | KeyModifiers.Alt))
+            {
+                CopyPath();
+            }
         };
+        _tree.ContextMenu = FileMenu(command);
+        _tree.SelectionChanged += (_, _) => ShowSelected();
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
         {
@@ -127,8 +138,17 @@ internal sealed class ScenesPanel : Grid
         Children.Add(_guides);
     }
 
-    /// <summary>Raised with the res:// path of the scene to open.</summary>
+    /// <summary>Raised with the res:// path of the file to open.</summary>
     public event Action<string>? Chosen;
+
+    /// <summary>Raised when the file menu asks for a new graph script.</summary>
+    public event Action? NewGraphRequested;
+
+    /// <summary>Opens the selected file. It is on while a file is selected.</summary>
+    internal Button OpenButton { get; } = new();
+
+    /// <summary>Copies the res:// path of the selected row. It is on while a row is selected.</summary>
+    internal Button CopyPathButton { get; } = new();
 
     internal TreeView Tree => _tree;
 
@@ -146,10 +166,10 @@ internal sealed class ScenesPanel : Grid
 
     internal Button SortButton => _sort;
 
-    /// <summary>Shows the scenes. The times of the files order them when the sort is newest first.</summary>
-    public void Show(IReadOnlyList<string> scenes, IReadOnlyDictionary<string, DateTime> modified)
+    /// <summary>Shows the files. Their times order them when the sort is newest first.</summary>
+    public void Show(IReadOnlyList<string> files, IReadOnlyDictionary<string, DateTime> modified)
     {
-        _scenes = scenes;
+        _files = files;
         _modified = modified;
         Rebuild();
     }
@@ -164,14 +184,61 @@ internal sealed class ScenesPanel : Grid
         }
     }
 
-    // The project folder is selected, as in the reference.
+    // The first row is selected, as in the reference: the project folder, or the first file of a list.
     void Rebuild()
     {
         var text = (_filter.Text ?? "").Trim();
         var order = _newest ? FileTree.Newest(_modified) : null;
-        var rows = text.Length == 0 && !_flat ? FileTree.Build(_scenes, order) : FileTree.Matches(_scenes, text, order);
+        var rows = text.Length == 0 && !_flat ? FileTree.Build(_files, order) : FileTree.Matches(_files, text, order);
         _tree.ItemsSource = rows;
-        _tree.SelectedItem = rows[1];
+        _tree.SelectedItem = rows.FirstOrDefault();
+        ShowSelected();
+    }
+
+    void ShowSelected()
+    {
+        CopyPathButton.IsEnabled = _tree.SelectedItem is FileNode;
+        OpenButton.IsEnabled = _tree.SelectedItem is FileNode { Kind: not FileKind.Folder };
+        // An imported file opens in the Import tab, which sits beside the tree, so a click is enough.
+        if (_tree.SelectedItem is FileNode { Kind: FileKind.Imported } imported)
+        {
+            Chosen?.Invoke(imported.Path);
+        }
+    }
+
+    // The file menu acts on the selected row. What the editor cannot do to a file yet says so.
+    ContextMenu FileMenu(KeyModifiers command)
+    {
+        OpenButton.Click += (_, _) => Activate(_tree.SelectedItem);
+        CopyPathButton.Click += (_, _) => CopyPath();
+        return new ContextMenu
+        {
+            ItemsSource = new Control[]
+            {
+                Parts.PressItem("Open", OpenButton),
+                Parts.SoonItem("Show in Finder", _tree),
+                Parts.PressItem("Copy Path", CopyPathButton, new KeyGesture(Key.C, command | KeyModifiers.Alt)),
+                new Separator(),
+                Parts.SoonItem("Rename...", _tree),
+                Parts.SoonItem("Duplicate...", _tree),
+                Parts.SoonItem("Move To...", _tree),
+                new Separator(),
+                Parts.SoonItem("New Script...", _tree),
+                Parts.ActionItem("New Graph Script...", () => NewGraphRequested?.Invoke()),
+                Parts.SoonItem("New Folder...", _tree),
+                new Separator(),
+                Parts.SoonItem("Delete", _tree),
+            },
+        };
+    }
+
+    // shortcut: a clipboard that fails says nothing. Raise the fault to the status line when one is seen.
+    void CopyPath()
+    {
+        if (_tree.SelectedItem is FileNode node)
+        {
+            _ = _clipboard.SetText(node.Path);
+        }
     }
 
     void Remember(object? source, bool open)
@@ -184,9 +251,9 @@ internal sealed class ScenesPanel : Grid
 
     void Activate(object? item)
     {
-        if (item is FileNode { Kind: FileKind.Scene } scene)
+        if (item is FileNode { Kind: not FileKind.Folder } file)
         {
-            Chosen?.Invoke(scene.Path);
+            Chosen?.Invoke(file.Path);
         }
     }
 
@@ -213,7 +280,7 @@ internal sealed class ScenesPanel : Grid
         {
             ColumnDefinitions = new ColumnDefinitions("Auto,*"),
             Margin = new Thickness(-EditorTheme.RowOverhang, 0, 0, 0),
-            Children = { highlight, Parts.RowIcon(IconOf(node.Kind), node.Kind == FileKind.Folder ? EditorBrushes.FolderIcon : null), name },
+            Children = { highlight, Parts.RowIcon(IconOf(node.Kind), TintOf(node.Kind)), name },
         };
         // A nested row's item does not raise the tree's ContainerPrepared, so the row opens its own item.
         row.AttachedToVisualTree += (_, _) =>
@@ -228,9 +295,20 @@ internal sealed class ScenesPanel : Grid
 
     static string IconOf(FileKind kind) => kind switch
     {
-        FileKind.Favorites => "Favorites",
         FileKind.Folder => "Folder",
-        _ => "Prefab",
+        FileKind.Scene => "SceneFile",
+        FileKind.Script => "CodeFile",
+        FileKind.Imported => "ImportArrow",
+        _ => "GraphFile",
+    };
+
+    static IBrush TintOf(FileKind kind) => kind switch
+    {
+        FileKind.Folder => EditorBrushes.FolderIcon,
+        FileKind.Scene => EditorBrushes.SceneIcon,
+        FileKind.Script => EditorBrushes.ScriptIcon,
+        FileKind.Imported => EditorBrushes.TreeIcon,
+        _ => EditorBrushes.GraphIcon,
     };
 
     static void Place(Grid grid, Control child, int column)

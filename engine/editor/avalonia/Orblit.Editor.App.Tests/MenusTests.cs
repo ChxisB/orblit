@@ -1,8 +1,11 @@
 using System.Numerics;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -12,7 +15,16 @@ public sealed class MenusTests
 {
     static void Press(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
-    static string[] Headers(Button button) => [.. ((MenuFlyout)button.Flyout!).Items.Cast<MenuItem>().Select(item => (string)item.Header!)];
+    static void Press(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    // A heading is a text block, a described item a stack with its title first, and a separator a dash.
+    static string HeaderText(object? item) => item switch
+    {
+        MenuItem { Header: string text } => text,
+        MenuItem { Header: TextBlock block } => block.Text!,
+        MenuItem { Header: Panel panel } => ((TextBlock)panel.Children[0]).Text!,
+        _ => "-",
+    };
 
     static (EditorWindow Window, FakeScene Scene) OpenOnLamp()
     {
@@ -23,35 +35,58 @@ public sealed class MenusTests
     }
 
     [Fact]
-    public void The_transform_menu_lists_its_five_actions_and_the_mesh_menu_its_two()
+    public void The_reset_menu_names_the_entity_and_the_collision_menu_describes_its_two_shapes()
     {
         UiThread.Run(() =>
         {
-            var toolbar = OpenAtReferenceSize().Toolbar;
+            var toolbar = OpenOnLamp().Window.Toolbar;
+            var resetAll = (MenuItem)toolbar.ResetMenu.Items[^1]!;
 
+            Assert.Equal(["RESET LAMP", "Reset Position", "Reset Rotation", "Reset Scale", "-", "Reset All"], toolbar.ResetMenu.Items.Select(HeaderText));
+            Assert.Equal("⌥R", Parts.KeyText(resetAll.InputGesture!));
             Assert.Equal(
-                ["Reset Position", "Reset Rotation", "Reset Scale", "Snap Position to Steps", "Snap Rotation to Steps"],
-                Headers(toolbar.TransformMenuButton));
-            Assert.Equal(["Create Trimesh Collision", "Create Convex Collision"], Headers(toolbar.MeshMenuButton));
+                ["ADD COLLISION TO THE MESH", "Create Convex Collision", "Create Trimesh Collision"],
+                ((MenuFlyout)toolbar.CollisionButton.Flyout!).Items.Select(HeaderText));
         });
     }
 
     [Fact]
-    public void The_transform_menu_is_on_for_an_entity_with_a_place_alone()
+    public void Reset_and_focus_are_on_for_an_entity_with_a_place_alone()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var button = window.Toolbar.TransformMenuButton;
-            Assert.False(button.IsEnabled);
+            var toolbar = window.Toolbar;
+            Button[] buttons = [toolbar.ResetButton, toolbar.ResetAllButton, toolbar.FocusButton];
+            bool On() => buttons.All(button => button.IsEnabled);
+            bool Off() => buttons.All(button => !button.IsEnabled);
+            Assert.True(Off());
 
             window.Outline.SelectedItem = FakeScene.Lamp;
-            Assert.True(button.IsEnabled);
+            Assert.True(On());
             window.Outline.SelectedItem = FakeScene.Sound;
-            Assert.False(button.IsEnabled);
+            Assert.True(Off());
             window.Outline.SelectedItem = FakeScene.Lamp;
             window.Outline.SelectedItem = null;
-            Assert.False(button.IsEnabled);
+            Assert.True(Off());
+        });
+    }
+
+    [Fact]
+    public void Reset_all_puts_back_the_place_the_turn_and_the_size_from_the_item_and_from_alt_r()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = OpenOnLamp();
+
+            Press((MenuItem)window.Toolbar.ResetMenu.Items[^1]!);
+            Assert.Equal([Vector3.Zero, Vector3.Zero, Vector3.One], [scene.PositionOf(1), scene.RotationOf(1), scene.ScaleOf(1)]);
+            Assert.Equal("Reset the transform of Lamp. Save keeps the change.", window.Status);
+
+            scene.MoveTo(1, new Vector3(1, 2, 3));
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.R, KeyModifiers = KeyModifiers.Alt });
+            Assert.Equal(Vector3.Zero, scene.PositionOf(1));
+            Assert.Equal(1, window.ScenePane.Selected!.Handle);
         });
     }
 
@@ -92,49 +127,31 @@ public sealed class MenusTests
     }
 
     [Fact]
-    public void Snap_position_rounds_each_axis_to_the_move_step_in_the_snap_options()
+    public void The_snap_switches_start_on_and_a_switch_that_is_off_gives_no_step()
     {
         UiThread.Run(() =>
         {
-            var (window, scene) = OpenOnLamp();
-            scene.MoveTo(1, new Vector3(1.3f, 2.7f, -3.2f));
-            window.Toolbar.SnapMoveBox.Text = "0.5";
+            var toolbar = OpenAtReferenceSize().Toolbar;
+            toolbar.SnapMoveBox.Text = "0.5";
+            Assert.Equal(new GizmoSnap(0.5f, 15f, 0.1f), toolbar.Steps);
 
-            Press(window.Toolbar.SnapPositionItem);
+            toolbar.SnapPositionSwitch.IsChecked = false;
+            Assert.Equal(new GizmoSnap(0f, 15f, 0.1f), toolbar.Steps);
 
-            Assert.Equal(new Vector3(1.5f, 2.5f, -3f), scene.PositionOf(1));
-            Assert.Equal("Snapped the position of Lamp. Save keeps the change.", window.Status);
+            toolbar.SnapRotationSwitch.IsChecked = false;
+            Assert.Equal(new GizmoSnap(0f, 0f, 0.1f), toolbar.Steps);
         });
     }
 
     [Fact]
-    public void Snap_rotation_rounds_each_angle_to_the_turn_step_and_leaves_the_rest_alone()
+    public void A_snap_step_that_is_not_a_positive_number_gives_the_default_step()
     {
         UiThread.Run(() =>
         {
-            var (window, scene) = OpenOnLamp();
+            var toolbar = OpenAtReferenceSize().Toolbar;
+            toolbar.SnapMoveBox.Text = "-2";
 
-            Press(window.Toolbar.SnapRotationItem);
-
-            Assert.Equal(new Vector3(15, 15, 30), scene.RotationOf(1));
-            Assert.Equal(new Vector3(1, 2, 3), scene.PositionOf(1));
-            Assert.Equal(new Vector3(4, 5, 6), scene.ScaleOf(1));
-            Assert.Equal("Snapped the rotation of Lamp. Save keeps the change.", window.Status);
-        });
-    }
-
-    [Fact]
-    public void A_snap_step_that_is_not_a_positive_number_snaps_to_the_default_step()
-    {
-        UiThread.Run(() =>
-        {
-            var (window, scene) = OpenOnLamp();
-            scene.MoveTo(1, new Vector3(1.3f, 2.7f, 3.6f));
-            window.Toolbar.SnapMoveBox.Text = "-2";
-
-            Press(window.Toolbar.SnapPositionItem);
-
-            Assert.Equal(new Vector3(1, 3, 4), scene.PositionOf(1));
+            Assert.Equal(GizmoSnap.Default, toolbar.Steps);
         });
     }
 
@@ -201,10 +218,10 @@ public sealed class MenusTests
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(["Move to Upper Left", "Move to Lower Left", "Move to Right"], window.SceneDock.MoveItems.Select(item => (string)item.Header!));
-            Assert.Equal([false, true, true], window.SceneDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal([true, false, true], window.FileDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal([true, true, false], window.InspectorDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal(["Move to the top", "Move to the bottom", "Move to the right"], window.SceneDock.MoveItems.Select(item => (string)item.Header!));
+            Assert.Equal([false, true, true], window.SceneDock.MoveItems.Select(item => item.IsVisible));
+            Assert.Equal([true, false, true], window.FileDock.MoveItems.Select(item => item.IsVisible));
+            Assert.Equal([true, true, false], window.InspectorDock.MoveItems.Select(item => item.IsVisible));
         });
     }
 
@@ -224,8 +241,8 @@ public sealed class MenusTests
             Assert.Equal(inspectorBox, BoxOf(window.SceneDock, window));
             Assert.Equal(sceneBox, BoxOf(window.InspectorDock, window));
             Assert.Equal([DockSlot.Right, DockSlot.LowerLeft, DockSlot.UpperLeft], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
-            Assert.Equal([true, true, false], window.SceneDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal([false, true, true], window.InspectorDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal([true, true, false], window.SceneDock.MoveItems.Select(item => item.IsVisible));
+            Assert.Equal([false, true, true], window.InspectorDock.MoveItems.Select(item => item.IsVisible));
             Assert.Equal("Moved Scene to the right slot. The layout is not saved.", window.Status);
         });
     }
@@ -243,7 +260,7 @@ public sealed class MenusTests
             window.UpdateLayout();
             Assert.Equal(upper, BoxOf(window.FileDock, window));
             Assert.Equal(lower, BoxOf(window.SceneDock, window));
-            Assert.Equal("Moved FileSystem to the upper left slot. The layout is not saved.", window.Status);
+            Assert.Equal("Moved FileSystem to the top slot. The layout is not saved.", window.Status);
 
             Press(window.SceneDock.MoveItems[(int)DockSlot.UpperLeft]);
             window.UpdateLayout();
@@ -268,6 +285,196 @@ public sealed class MenusTests
             Assert.Equal(1, window.InspectorDock.SelectedIndex);
             Assert.Same(content, window.InspectorDock.Content);
             Assert.Contains(window.InspectorDock, content.GetVisualAncestors());
+        });
+    }
+
+    static MenuItem DockItem(DockTabs dock, string header) =>
+        ((MenuFlyout)dock.MenuButton.Flyout!).Items.OfType<MenuItem>().Single(item => item.Header as string == header);
+
+    [Fact]
+    public void The_dock_menu_lists_its_tabs_its_moves_float_and_reset()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var items = ((MenuFlyout)window.FileDock.MenuButton.Flyout!).Items.OfType<MenuItem>().ToList();
+
+            // The map is the item with no text.
+            Assert.Equal(
+                ["FILESYSTEM DOCK SITS AT", null, "SHOW TABS", "FileSystem", "History", "Move to the top", "Move to the right", "Float", "Reset Layout"],
+                items.Where(item => item.IsVisible).Select(item => item.Header as string ?? (item.Header as TextBlock)?.Text));
+        });
+    }
+
+    [Fact]
+    public void The_dock_map_lights_the_slot_the_dock_sits_in()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Assert.Equal([EditorBrushes.Accent, EditorBrushes.GuideLit, EditorBrushes.GuideLit], window.SceneDock.MapCells.Select(cell => cell.Background));
+
+            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+
+            Assert.Equal([EditorBrushes.GuideLit, EditorBrushes.GuideLit, EditorBrushes.Accent], window.SceneDock.MapCells.Select(cell => cell.Background));
+            Assert.Equal([EditorBrushes.Accent, EditorBrushes.GuideLit, EditorBrushes.GuideLit], window.InspectorDock.MapCells.Select(cell => cell.Background));
+        });
+    }
+
+    [Fact]
+    public void A_tab_hidden_from_the_dock_menu_hands_the_body_to_a_tab_that_shows()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var dock = window.InspectorDock;
+            var signals = DockItem(dock, "Signals");
+            dock.Select(1);
+            Assert.True(signals.IsChecked);
+
+            Press(signals);
+
+            Assert.False(dock.Tabs[1].IsVisible);
+            Assert.False(signals.IsChecked);
+            Assert.Equal(0, dock.SelectedIndex);
+            Assert.True(dock.IsVisible);
+
+            Press(DockItem(dock, "Inspector"));
+            Assert.False(dock.IsVisible);
+
+            Press(signals);
+            Assert.True(dock.IsVisible);
+            Assert.True(signals.IsChecked);
+            Assert.Equal(1, dock.SelectedIndex);
+        });
+    }
+
+    static Window? FloatOf(DockTabs dock, EditorWindow window) => TopLevel.GetTopLevel(dock) is Window owner && owner != window ? owner : null;
+
+    [Fact]
+    public void Float_puts_a_dock_in_its_own_window_and_dock_puts_it_back()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var dock = window.SceneDock;
+            var box = BoxOf(dock, window);
+
+            Press(dock.FloatItem);
+
+            var floating = FloatOf(dock, window)!;
+            Assert.Equal("Scene", floating.Title);
+            Assert.Same(window, floating.Owner);
+            Assert.Equal("Dock", dock.FloatItem.Header);
+            Assert.Equal("Floated Scene. Close its window or choose Dock to put it back.", window.Status);
+
+            Press(dock.FloatItem);
+            window.UpdateLayout();
+
+            Assert.Null(FloatOf(dock, window));
+            Assert.Equal("Float", dock.FloatItem.Header);
+            Assert.Equal(box, BoxOf(dock, window));
+        });
+    }
+
+    [Fact]
+    public void Closing_the_float_window_docks_the_dock_in_its_slot()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Press(window.InspectorDock.FloatItem);
+
+            FloatOf(window.InspectorDock, window)!.Close();
+
+            Assert.Null(FloatOf(window.InspectorDock, window));
+            Assert.Contains(window.InspectorDock, window.GetVisualDescendants());
+        });
+    }
+
+    [Fact]
+    public void A_dock_sent_to_a_floating_dock_slot_trades_and_the_floating_dock_comes_back_in_the_other_slot()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var lower = BoxOf(window.FileDock, window);
+            Press(window.SceneDock.FloatItem);
+
+            Press(window.FileDock.MoveItems[(int)DockSlot.UpperLeft]);
+
+            Assert.NotNull(FloatOf(window.SceneDock, window));
+            Assert.Equal(DockSlot.LowerLeft, window.SceneDock.Slot);
+
+            Press(window.SceneDock.FloatItem);
+            window.UpdateLayout();
+
+            Assert.Equal(lower, BoxOf(window.SceneDock, window));
+            Assert.Equal(DockSlot.UpperLeft, window.FileDock.Slot);
+        });
+    }
+
+    [Fact]
+    public void Moving_or_resetting_a_floating_dock_docks_it_first()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var right = BoxOf(window.InspectorDock, window);
+            Press(window.SceneDock.FloatItem);
+
+            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            window.UpdateLayout();
+
+            Assert.Null(FloatOf(window.SceneDock, window));
+            Assert.Equal(right, BoxOf(window.SceneDock, window));
+
+            Press(window.FileDock.FloatItem);
+            Press(DockItem(window.InspectorDock, "Reset Layout"));
+
+            Assert.Null(FloatOf(window.FileDock, window));
+            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.Right], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
+        });
+    }
+
+    [Fact]
+    public void Reset_layout_puts_every_dock_home_with_all_its_tabs()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var sceneBox = BoxOf(window.SceneDock, window);
+            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            Press(DockItem(window.FileDock, "History"));
+            Press(DockItem(window.FileDock, "FileSystem"));
+            window.UpdateLayout();
+            Assert.False(window.FileDock.IsVisible);
+
+            Press(DockItem(window.InspectorDock, "Reset Layout"));
+            window.UpdateLayout();
+
+            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.Right], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
+            Assert.Equal(sceneBox, BoxOf(window.SceneDock, window));
+            Assert.True(window.FileDock.IsVisible);
+            Assert.All(window.FileDock.Tabs, tab => Assert.True(tab.IsVisible));
+            Assert.Equal("Reset the layout. Every dock is back in its place with all its tabs.", window.Status);
+        });
+    }
+
+    [Theory]
+    [InlineData("Scene", "Nothing to import")]
+    [InlineData("FileSystem", "Nothing to undo yet")]
+    [InlineData("Inspector", "Nothing selected")]
+    public void The_second_tab_of_each_dock_says_why_it_is_empty(string dock, string title)
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var tabs = new[] { window.SceneDock, window.FileDock, window.InspectorDock }.Single(each => each.Title == dock);
+
+            tabs.Select(1);
+
+            Assert.Contains(title, tabs.Content.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text));
         });
     }
 

@@ -1,89 +1,126 @@
+using System.Globalization;
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Controls.Shapes;
+using Avalonia.Controls.Documents;
 using Avalonia.Layout;
+using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
+/// <summary>What a status message reports. It sets the mark in front of the message.</summary>
+internal enum StatusKind
+{
+    Info,
+    Done,
+    Failed,
+}
+
 /// <summary>
-/// The bar under the viewport. Panel buttons on the left. On the right a separator, the status line in the
-/// slot the old editor gives its toasts, the version and the pin. Only the Output button opens a panel, the
-/// others answer that theirs is not built.
+/// The bar under the viewport. Panel tabs on the left, each opening its panel over the bar, with a badge on Output
+/// while errors wait to be read. On the right the last message with a mark for its kind, a rule, the version and
+/// the pin.
 /// </summary>
 internal sealed class BottomBar : Grid
 {
     // shortcut: copied from the engine's version file, read it through the bridge when it gains a version call.
     internal const string Version = "1.0.stable";
 
-    static readonly string[] Panels = ["Output", "Debugger", "Audio", "Animation", "Shader Editor"];
+    const double TabHeight = 26;
+    const double SmallIcon = 13;
+
+    // Name, icon file, and whether the panel does its job yet. The order is the order of the panels.
+    static readonly (string Name, string Icon, bool Built)[] Panels =
+    [
+        ("Output", "Output", true),
+        ("Debugger", "Debug", true),
+        ("Audio", "AudioStreamPlayer", false),
+        ("Animation", "Animation", false),
+        ("Shader Editor", "ShaderDock", false),
+    ];
+
+    // The mark and its tint for each kind, in the order of StatusKind. A list of cases, so it is data.
+    static readonly (string Icon, IBrush Tint)[] s_kinds =
+    [
+        ("Info", EditorBrushes.TextDim),
+        ("Tick", EditorBrushes.Done),
+        ("FaultCircle", EditorBrushes.Fault),
+    ];
 
     readonly Button[] _tabs;
-    readonly Border _separator = new() { Width = 2, Height = 25, Margin = new Thickness(0, 0, 8, 0), Background = EditorBrushes.BarSeparator };
-    readonly Button _version = Unbuilt.Mark(
-        new Button
-        {
-            Padding = new Thickness(0),
-            BorderThickness = new Thickness(0),
-            MinWidth = 0,
-            MinHeight = 0,
-            Margin = new Thickness(5, 0, 0, 0),
-            // The old bar draws the version dim so it reads as a label.
-            Opacity = 0.65,
-            Content = new StackPanel
-            {
-                Orientation = Orientation.Horizontal,
-                Spacing = 11,
-                Children = { new EditorIcon("OrblitMonochrome") { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = Version, VerticalAlignment = VerticalAlignment.Center } },
-            },
-        },
-        "Copying the version is not built yet.");
+    readonly TextBlock _unreadCount = new() { FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.FaultText };
+    readonly Border _unread;
+    readonly ContentControl _statusIcon = new() { Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { Text = "Starting the engine.", FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
+    readonly Border _separator = Parts.Rule();
+    readonly Button _version = new()
+    {
+        Padding = new Thickness(4, 0),
+        BorderThickness = new Thickness(0),
+        MinWidth = 0,
+        MinHeight = 0,
+        FontSize = 11,
+        Foreground = EditorBrushes.TextDim,
+        VerticalAlignment = VerticalAlignment.Center,
+        Content = new TextBlock { Text = Version },
+    };
     // The pin keeps the game run from opening a panel on its own. FixedToggle never flips itself, so a click does it here.
-    readonly FixedToggle _pin = new("Pin", "Pin the bottom panel", false) { Margin = new Thickness(12, 0, 0, 0) };
-    bool _outputOpen;
+    readonly FixedToggle _pin = new("Pin", "Pin the bottom panel", false) { Margin = new Thickness(2, 0, 0, 0) };
+    int _open = -1;
+    int _errors;
 
-    public BottomBar(TextBlock status)
+    public BottomBar()
     {
         ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
-        _tabs = Panels.Select((name, index) => index == 0 ? Tab(name) : Unbuilt.Mark(Tab(name), $"The {name} panel is not built yet.")).ToArray();
-        OutputTab.Click += (_, _) => OutputOpen = !OutputOpen;
+        _unread = new Border
+        {
+            Padding = new Thickness(6, 1),
+            CornerRadius = new CornerRadius(999),
+            Background = EditorBrushes.FaultSoft,
+            VerticalAlignment = VerticalAlignment.Center,
+            IsVisible = false,
+            Child = _unreadCount,
+        };
+        _tabs = [.. Panels.Select(Tab)];
+        ((StackPanel)_tabs[0].Content!).Children.Add(_unread);
+        foreach (var (tab, index) in _tabs.Select((tab, index) => (tab, index)))
+        {
+            tab.Click += (_, _) => Open(_open == index ? -1 : index);
+        }
+
+        ToolTip.SetTip(_version, "Copy the version");
+        _version.Click += (_, _) => VersionCopyRequested?.Invoke();
         _pin.Click += (_, _) => _pin.IsChecked = _pin.IsChecked != true;
         var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         left.Children.AddRange(_tabs);
         var right = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-        status.VerticalAlignment = VerticalAlignment.Center;
-        right.Children.AddRange([_separator, status, _version, _pin]);
+        _separator.Margin = new Thickness(8, 0);
+        right.Children.AddRange([_statusIcon, _status, _separator, _version, _pin]);
         SetColumn(right, 2);
         Children.Add(left);
         Children.Add(right);
+        Say(_status.Text, StatusKind.Info);
+        Open(-1);
     }
 
-    /// <summary>Raised with the new state when the Output panel opens or shuts.</summary>
-    public event Action<bool>? OutputOpenChanged;
+    /// <summary>Raised with the index of the panel now open, or -1 when every panel is shut.</summary>
+    public event Action<int>? PanelChanged;
+
+    /// <summary>Raised when the version is pressed. The window puts it on the clipboard.</summary>
+    public event Action? VersionCopyRequested;
 
     internal IReadOnlyList<Button> Tabs => _tabs;
 
     internal Button OutputTab => _tabs[0];
 
-    internal bool OutputOpen
-    {
-        get => _outputOpen;
-        private set
-        {
-            _outputOpen = value;
-            OutputTab.Foreground = value ? EditorBrushes.Text : EditorBrushes.TabInactive;
-            OutputOpenChanged?.Invoke(value);
-        }
-    }
+    internal bool OutputOpen => _open == 0;
 
-    /// <summary>Opens the Output panel for the editor's own reasons, such as a game starting. The pin stops it.</summary>
-    internal void OpenOutputUnlessPinned()
-    {
-        if (_pin.IsChecked != true)
-        {
-            OutputOpen = true;
-        }
-    }
+    internal string Status => _status.Text ?? "";
+
+    internal EditorIcon StatusIcon => (EditorIcon)_statusIcon.Content!;
+
+    /// <summary>The badge on the Output tab. It counts the errors logged while Output was shut.</summary>
+    internal Border Unread => _unread;
 
     internal Border Separator => _separator;
 
@@ -91,23 +128,91 @@ internal sealed class BottomBar : Grid
 
     internal FixedToggle PinButton => _pin;
 
-    static Button Tab(string name)
+    /// <summary>Shows the message on the right of the bar with the mark of its kind.</summary>
+    internal void Say(string text, StatusKind kind)
     {
-        Control label = new TextBlock { Text = name };
-        if (name == "Output")
+        var (icon, tint) = s_kinds[(int)kind];
+        var mark = new EditorIcon(icon) { Width = SmallIcon, Height = SmallIcon };
+        TextElement.SetForeground(mark, tint);
+        _statusIcon.Content = mark;
+        _status.Text = text;
+    }
+
+    /// <summary>Counts errors logged while Output is shut. An open Output shows them already.</summary>
+    internal void AddErrors(int count)
+    {
+        if (!OutputOpen)
         {
-            var dot = new Ellipse { Width = 8, Height = 8, Margin = new Thickness(0, 0, 6, 0), Fill = EditorBrushes.OutputDot, VerticalAlignment = VerticalAlignment.Center };
-            label = new StackPanel { Orientation = Orientation.Horizontal, Children = { dot, label } };
+            ShowErrors(_errors + count);
+        }
+    }
+
+    /// <summary>
+    /// Opens the Output panel for the editor's own reasons, such as a game starting. The pin stops it, and a panel
+    /// the user opened stays.
+    /// </summary>
+    internal void OpenOutputUnlessPinned()
+    {
+        if (_pin.IsChecked != true && _open < 0)
+        {
+            Open(0);
+        }
+    }
+
+    // One panel is open at a time. Opening Output reads its errors, so the badge goes.
+    void Open(int index)
+    {
+        _open = index;
+        if (index == 0)
+        {
+            ShowErrors(0);
         }
 
-        return new Button
+        for (var at = 0; at < _tabs.Length; at++)
         {
-            Content = label,
-            Padding = new Thickness(10, 4),
+            _tabs[at].Foreground = at == index ? EditorBrushes.Text : Panels[at].Built ? EditorBrushes.TextDim : EditorBrushes.Unbuilt;
+            _tabs[at].Background = at == index ? EditorBrushes.Hover : Brushes.Transparent;
+        }
+
+        PanelChanged?.Invoke(index);
+    }
+
+    void ShowErrors(int count)
+    {
+        _errors = count;
+        _unreadCount.Text = count.ToString(CultureInfo.InvariantCulture);
+        _unread.IsVisible = count > 0;
+    }
+
+    static Button Tab((string Name, string Icon, bool Built) panel)
+    {
+        var tab = new Button
+        {
+            Height = TabHeight,
+            Padding = new Thickness(10, 0),
             BorderThickness = new Thickness(0),
+            CornerRadius = EditorTheme.Corners,
             MinWidth = 0,
             MinHeight = 0,
-            Foreground = EditorBrushes.TabInactive,
+            VerticalAlignment = VerticalAlignment.Center,
+            VerticalContentAlignment = VerticalAlignment.Center,
+            FontWeight = FontWeight.Medium,
+            Content = new StackPanel
+            {
+                Orientation = Orientation.Horizontal,
+                Spacing = 6,
+                Children =
+                {
+                    new EditorIcon(panel.Icon) { Width = SmallIcon, Height = SmallIcon, VerticalAlignment = VerticalAlignment.Center },
+                    new TextBlock { Text = panel.Name, VerticalAlignment = VerticalAlignment.Center },
+                },
+            },
         };
+        if (!panel.Built)
+        {
+            ToolTip.SetTip(tab, "Not built yet");
+        }
+
+        return tab;
     }
 }

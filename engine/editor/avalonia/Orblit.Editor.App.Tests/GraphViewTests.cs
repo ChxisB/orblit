@@ -2,9 +2,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests;
@@ -37,6 +39,8 @@ public sealed class GraphViewTests
         public IDebugChannel Debug => Channel;
 
         public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
+
+        public IReadOnlyList<string> AddableClasses() => ["Entity", "Entity3D"];
 
         public IGraphFile OpenGraph(string resourcePath) =>
             Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
@@ -120,6 +124,23 @@ public sealed class GraphViewTests
     static void Edit(GraphView view) => view.Canvas!.Edits.MoveSteps([2], new Vector(10, 0));
 
     [Fact]
+    public void A_listed_graph_script_holds_its_name_in_the_middle_of_its_row()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            view.UpdateLayout();
+
+            var row = view.List.GetVisualDescendants().OfType<ListBoxItem>().Single();
+            var name = row.GetVisualDescendants().OfType<TextBlock>().Single();
+            var box = ReferenceWindow.BoxOf(name, row);
+            Assert.Equal(EditorTheme.RowHeight, row.Bounds.Height);
+            Assert.Equal(name.DesiredSize.Height, box.Height);
+            Assert.Equal(row.Bounds.Height / 2, box.Center.Y, 0.5);
+        });
+    }
+
+    [Fact]
     public void It_starts_with_the_graph_scripts_listed_and_none_open()
     {
         UiThread.Run(() =>
@@ -133,6 +154,30 @@ public sealed class GraphViewTests
             Assert.True(view.Hint.IsVisible);
             Assert.False(view.IsDirty);
             Assert.True(view.Save());
+        });
+    }
+
+    [Fact]
+    public void The_bars_name_the_base_type_and_turn_on_once_a_script_is_open_and_save_once_it_is_edited()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Button[] scriptButtons = [view.FindButton, view.BookmarkButton, view.BreakpointButton];
+
+            Assert.Equal("", view.Extends.Text);
+            Assert.All(scriptButtons, button => Assert.False(button.IsEnabled));
+            Assert.False(view.SaveButton.IsEnabled);
+
+            Pick(view, Logic);
+
+            Assert.Equal("extends Entity", view.Extends.Text);
+            Assert.All(scriptButtons, button => Assert.True(button.IsEnabled));
+            Assert.False(view.SaveButton.IsEnabled);
+
+            Edit(view);
+
+            Assert.True(view.SaveButton.IsEnabled);
         });
     }
 
@@ -533,20 +578,20 @@ public sealed class GraphViewTests
     }
 
     [Fact]
-    public void New_opens_the_form_with_the_first_values()
+    public void New_opens_the_dialog_with_the_first_values()
     {
         UiThread.Run(() =>
         {
             var (_, _, view) = OpenWithGraph();
-            view.Form.InheritsBox.Text = "Other";
+            view.Form.FolderBox.Text = "res://old";
             view.Form.Say("old");
 
             Choose(view, "New...");
 
-            Assert.True(view.CreateFlyout.IsOpen);
-            Assert.Equal("Entity", view.Form.InheritsBox.Text);
-            Assert.Equal("res://new_graph.ograph", view.Form.PathBox.Text);
-            Assert.Equal("", view.Form.Notice);
+            Assert.True(view.CreateDialog.IsVisible);
+            Assert.Equal("new_graph", view.Form.NameBox.Text);
+            Assert.Equal("res://", view.Form.FolderBox.Text);
+            Assert.Equal("", view.Form.Fault);
         });
     }
 
@@ -557,16 +602,33 @@ public sealed class GraphViewTests
         {
             var (files, _, view) = OpenWithGraph();
             Choose(view, "New...");
-            view.Form.InheritsBox.Text = " Entity3D ";
-            view.Form.PathBox.Text = " res://enemies/slime.ograph ";
+            view.Form.NameBox.Text = "slime";
+            view.Form.ExtendsBox.SelectedItem = "Entity3D";
+            view.Form.FolderBox.Text = "res://enemies";
 
             Click(view.Form.CreateButton);
 
             Assert.Equal([("res://enemies/slime.ograph", "Entity3D")], files.Created);
             Assert.Equal("res://enemies/slime.ograph", view.Current);
             Assert.Contains("res://enemies/slime.ograph", view.List.Items.Cast<string>());
-            Assert.False(view.CreateFlyout.IsOpen);
+            Assert.False(view.CreateDialog.IsVisible);
             Assert.Equal("Created res://enemies/slime.ograph.", view.Status.Text);
+        });
+    }
+
+    [Fact]
+    public void New_knows_the_graph_scripts_of_the_project()
+    {
+        UiThread.Run(() =>
+        {
+            var (files, _, view) = OpenWithGraph();
+            Choose(view, "New...");
+
+            view.Form.NameBox.Text = "logic";
+
+            Assert.Equal("logic.ograph already exists. Pick another name.", view.Form.Fault);
+            Assert.False(view.Form.CreateButton.IsEnabled);
+            Assert.Empty(files.Created);
         });
     }
 
@@ -574,7 +636,7 @@ public sealed class GraphViewTests
     [InlineData(typeof(IOException), "res://logic.ograph exists already.")]
     [InlineData(typeof(UnauthorizedAccessException), "Access denied.")]
     [InlineData(typeof(ArgumentException), "Nope is not a class.")]
-    public void A_make_the_engine_refuses_says_why_in_the_form_and_opens_nothing(Type kind, string message)
+    public void A_make_the_engine_refuses_says_why_in_the_dialog_and_opens_nothing(Type kind, string message)
     {
         UiThread.Run(() =>
         {
@@ -584,29 +646,25 @@ public sealed class GraphViewTests
 
             Click(view.Form.CreateButton);
 
-            Assert.Equal(message, view.Form.Notice);
-            Assert.True(view.CreateFlyout.IsOpen);
+            Assert.Equal(message, view.Form.Fault);
+            Assert.True(view.CreateDialog.IsVisible);
             Assert.Null(view.Current);
             Assert.Empty(view.Tabs);
         });
     }
 
     [Fact]
-    public void Create_is_off_while_a_field_is_empty_and_Cancel_closes_the_form()
+    public void Cancel_closes_the_dialog_and_makes_nothing()
     {
         UiThread.Run(() =>
         {
-            var (_, _, view) = OpenWithGraph();
+            var (files, _, view) = OpenWithGraph();
             Choose(view, "New...");
-            view.Form.PathBox.Text = "  ";
 
-            Assert.False(view.Form.CreateButton.IsEnabled);
+            Click(view.CreateDialog.CancelButton);
 
-            view.Form.PathBox.Text = "res://a.ograph";
-            Assert.True(view.Form.CreateButton.IsEnabled);
-
-            Click(view.Form.CancelButton);
-            Assert.False(view.CreateFlyout.IsOpen);
+            Assert.False(view.CreateDialog.IsVisible);
+            Assert.Empty(files.Created);
         });
     }
 

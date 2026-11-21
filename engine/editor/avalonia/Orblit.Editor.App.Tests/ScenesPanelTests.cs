@@ -6,7 +6,9 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -23,6 +25,13 @@ public sealed class ScenesPanelTests
     static string[] Names(EditorWindow window) =>
         [.. Items(window).Select(item => item.GetVisualDescendants().OfType<TextBlock>().First().Text!)];
 
+    static FakeScene WithGraph()
+    {
+        var scene = new FakeScene();
+        scene.Graphs["res://grow.ograph"] = FakeGraphSource.Sample();
+        return scene;
+    }
+
     static void PressEnter(EditorWindow window) =>
         window.Scenes.Tree.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
 
@@ -34,10 +43,10 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(6, 698, 24, 24, BoxOf(panel.BackButton, window));
-            AssertBox(30, 698, 24, 24, BoxOf(panel.ForwardButton, window));
-            AssertBox(60, 696, 187, 28, BoxOf(panel.PathBox, window));
-            AssertBox(253, 698, 24, 24, BoxOf(panel.LayoutButton, window));
+            AssertBox(9, 708, 24, 24, BoxOf(panel.BackButton, window));
+            AssertBox(33, 708, 24, 24, BoxOf(panel.ForwardButton, window));
+            AssertBox(63, 706, 185, 28, BoxOf(panel.PathBox, window));
+            AssertBox(254, 708, 24, 24, BoxOf(panel.LayoutButton, window));
         });
     }
 
@@ -103,9 +112,9 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(8, 729, 239, 28, BoxOf(panel.FilterBox, window));
-            AssertBox(253, 731, 24, 24, BoxOf(panel.SortButton, window));
-            Assert.Equal("Filter Files", panel.FilterBox.PlaceholderText);
+            AssertBox(11, 739, 237, 28, BoxOf(panel.FilterBox, window));
+            AssertBox(254, 741, 24, 24, BoxOf(panel.SortButton, window));
+            Assert.Equal("Filter files", panel.FilterBox.PlaceholderText);
         });
     }
 
@@ -120,12 +129,12 @@ public sealed class ScenesPanelTests
 
             ClickOn(layout, window);
 
-            Assert.Equal(["Favorites", "res://", "field.oscn", "levels/second.oscn"], Names(window));
+            Assert.Equal(["enemies/slime.cs", "field.oscn", "levels/second.oscn", "spin.cs"], Names(window));
             Assert.Equal("Show the files as a tree", ToolTip.GetTip(layout));
 
             ClickOn(layout, window);
 
-            Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
+            Assert.Equal(["res://", "enemies", "levels", "field.oscn", "spin.cs"], Names(window));
             Assert.Equal("Show the files as a list", ToolTip.GetTip(layout));
         });
     }
@@ -143,12 +152,12 @@ public sealed class ScenesPanelTests
 
             ClickOn(sort, window);
 
-            Assert.Equal(["Favorites", "res://", "levels/second.oscn", "field.oscn"], Names(window));
+            Assert.Equal(["levels/second.oscn", "field.oscn", "enemies/slime.cs", "spin.cs"], Names(window));
             Assert.Equal("Sort the files by name", ToolTip.GetTip(sort));
 
             ClickOn(sort, window);
 
-            Assert.Equal(["Favorites", "res://", "field.oscn", "levels/second.oscn"], Names(window));
+            Assert.Equal(["enemies/slime.cs", "field.oscn", "levels/second.oscn", "spin.cs"], Names(window));
         });
     }
 
@@ -160,11 +169,11 @@ public sealed class ScenesPanelTests
             var scene = new FakeScene { Times = { ["res://alpha.oscn"] = new DateTime(2026, 11, 2), ["res://field.oscn"] = new DateTime(2026, 11, 6) } };
             scene.ScenePaths.Insert(0, "res://alpha.oscn");
             var window = OpenAtReferenceSize(scene);
-            Assert.Equal(["Favorites", "res://", "levels", "alpha.oscn", "field.oscn"], Names(window));
+            Assert.Equal(["res://", "enemies", "levels", "alpha.oscn", "field.oscn", "spin.cs"], Names(window));
 
             ClickOn(window.Scenes.SortButton, window);
 
-            Assert.Equal(["Favorites", "res://", "levels", "field.oscn", "alpha.oscn"], Names(window));
+            Assert.Equal(["res://", "enemies", "levels", "field.oscn", "alpha.oscn", "spin.cs"], Names(window));
         });
     }
 
@@ -179,23 +188,20 @@ public sealed class ScenesPanelTests
 
             window.Scenes.FilterBox.Text = "oscn";
 
-            Assert.Equal(["Favorites", "res://", "levels/second.oscn", "field.oscn"], Names(window));
+            Assert.Equal(["levels/second.oscn", "field.oscn"], Names(window));
         });
     }
 
     [Fact]
-    public void The_rows_start_14_pixels_under_the_filter_and_are_23_high()
+    public void The_rows_start_14_pixels_under_the_filter_and_are_26_high()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var items = Items(window);
 
-            Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
-            Assert.Equal(771, BoxOf(items[0], window).Y);
-            Assert.Equal(794, BoxOf(items[1], window).Y);
-            Assert.Equal(817, BoxOf(items[2], window).Y);
-            Assert.Equal(840, BoxOf(items[3], window).Y);
+            Assert.Equal(["res://", "enemies", "levels", "field.oscn", "spin.cs"], Names(window));
+            Assert.Equal([781.0, 807.0, 833.0, 859.0], items.Take(4).Select(item => BoxOf(item, window).Y));
         });
     }
 
@@ -207,8 +213,8 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var items = Items(window);
 
-            Assert.False(items[0].IsExpanded);
-            Assert.True(items[1].IsExpanded);
+            Assert.True(items[0].IsExpanded);
+            Assert.False(items[1].IsExpanded);
             Assert.False(items[2].IsExpanded);
             Assert.DoesNotContain("second.oscn", Names(window));
         });
@@ -222,9 +228,9 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var items = Items(window);
 
-            Assert.Equal(26, BoxOf(RowIconOf(items[1]), window).X);
-            Assert.Equal(49, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
-            Assert.Equal(61, BoxOf(items[2].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(29, BoxOf(RowIconOf(items[0]), window).X);
+            Assert.Equal(52, BoxOf(items[0].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(68, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
         });
     }
 
@@ -233,30 +239,30 @@ public sealed class ScenesPanelTests
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
-            window.Scenes.Tree.ExpandSubTree(Items(window)[1]);
+            var window = OpenAtReferenceSize(WithGraph());
+            window.Scenes.Tree.ExpandSubTree(Items(window)[0]);
 
-            Assert.Equal(["Favorites", "Folder", "Folder", "Prefab", "Prefab"], Items(window).Select(item => RowIconOf(item).IconName));
+            Assert.Equal(["Folder", "Folder", "CodeFile", "Folder", "SceneFile", "SceneFile", "GraphFile", "CodeFile"], Items(window).Select(item => RowIconOf(item).IconName));
         });
     }
 
     [Fact]
-    public void The_selected_row_is_a_block_from_before_the_icon_to_near_the_dock_edge()
+    public void The_selected_row_is_a_soft_accent_block_6_pixels_in_from_each_side()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var items = Items(window);
-            var line = items[1].GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_LayoutRoot");
-            var highlight = items[1].GetVisualDescendants().OfType<RowHighlight>().First();
+            var line = items[0].GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_LayoutRoot");
+            var highlight = items[0].GetVisualDescendants().OfType<RowHighlight>().First();
 
             var area = highlight.Area();
             var corner = highlight.TranslatePoint(area.TopLeft, window)!.Value;
 
-            Assert.Equal(new Point(22, BoxOf(line, window).Y), corner);
-            Assert.Equal(new Size(256, 23), area.Size);
-            Assert.Equal(EditorColors.SelectedRow, ((ISolidColorBrush)highlight.Fill!).Color);
-            Assert.Null(items[0].GetVisualDescendants().OfType<RowHighlight>().First().Fill);
+            Assert.Equal(new Point(BoxOf(line, window).X + 6, BoxOf(line, window).Y), corner);
+            Assert.Equal(new Size(BoxOf(line, window).Width - 12, 26), area.Size);
+            Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)highlight.Fill!).Color);
+            Assert.Null(items[1].GetVisualDescendants().OfType<RowHighlight>().First().Fill);
         });
     }
 
@@ -267,8 +273,8 @@ public sealed class ScenesPanelTests
         {
             var window = OpenAtReferenceSize();
             var items = Items(window);
-            var line = items[0].GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_LayoutRoot");
-            var highlight = items[0].GetVisualDescendants().OfType<RowHighlight>().First();
+            var line = items[1].GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_LayoutRoot");
+            var highlight = items[1].GetVisualDescendants().OfType<RowHighlight>().First();
 
             window.MouseMove(BoxOf(line, window).Center);
 
@@ -277,16 +283,16 @@ public sealed class ScenesPanelTests
     }
 
     [Fact]
-    public void The_row_icons_are_pale_and_the_folders_are_blue()
+    public void Each_kind_of_row_tints_its_icon()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
-            window.Scenes.Tree.ExpandSubTree(Items(window)[1]);
+            var window = OpenAtReferenceSize(WithGraph());
+            window.Scenes.Tree.ExpandSubTree(Items(window)[0]);
 
             var colors = Items(window).Select(item => ((ISolidColorBrush)TextElement.GetForeground(RowIconOf(item))!).Color).ToArray();
 
-            Assert.Equal([EditorColors.TreeIcon, EditorColors.FolderIcon, EditorColors.FolderIcon, EditorColors.TreeIcon, EditorColors.TreeIcon], colors);
+            Assert.Equal([EditorColors.FolderIcon, EditorColors.FolderIcon, EditorColors.ScriptIcon, EditorColors.FolderIcon, EditorColors.SceneIcon, EditorColors.SceneIcon, EditorColors.GraphIcon, EditorColors.ScriptIcon], colors);
         });
     }
 
@@ -313,7 +319,7 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var items = Items(window);
 
-            Assert.True(items[1].IsSelected);
+            Assert.True(items[0].IsSelected);
         });
     }
 
@@ -405,7 +411,7 @@ public sealed class ScenesPanelTests
     }
 
     [Fact]
-    public void The_filter_lists_the_scenes_whose_path_matches_and_selects_the_project_folder()
+    public void The_filter_lists_the_files_whose_path_matches_and_selects_the_first()
     {
         UiThread.Run(() =>
         {
@@ -414,8 +420,8 @@ public sealed class ScenesPanelTests
 
             window.Scenes.FilterBox.Text = "SECOND";
 
-            Assert.Equal(["Favorites", "res://", "levels/second.oscn"], Names(window));
-            Assert.Equal("res://", ((FileNode)window.Scenes.Tree.SelectedItem!).Path);
+            Assert.Equal(["levels/second.oscn"], Names(window));
+            Assert.Equal("res://levels/second.oscn", ((FileNode)window.Scenes.Tree.SelectedItem!).Path);
         });
     }
 
@@ -429,7 +435,7 @@ public sealed class ScenesPanelTests
 
             window.Scenes.FilterBox.Text = " ";
 
-            Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
+            Assert.Equal(["res://", "enemies", "levels", "field.oscn", "spin.cs"], Names(window));
         });
     }
 
@@ -444,7 +450,7 @@ public sealed class ScenesPanelTests
 
             window.Scenes.FilterBox.Text = "";
 
-            Assert.Equal(["Favorites", "res://", "levels", "second.oscn", "field.oscn"], Names(window));
+            Assert.Equal(["res://", "enemies", "levels", "second.oscn", "field.oscn", "spin.cs"], Names(window));
         });
     }
 
@@ -461,12 +467,12 @@ public sealed class ScenesPanelTests
 
             window.Scenes.FilterBox.Text = "";
 
-            Assert.Equal(["Favorites", "res://", "levels", "field.oscn"], Names(window));
+            Assert.Equal(["res://", "enemies", "levels", "field.oscn", "spin.cs"], Names(window));
         });
     }
 
     [Fact]
-    public void The_project_folder_stays_open_for_a_filter_after_the_user_closed_it()
+    public void A_filter_lists_its_matches_after_the_user_closed_the_project_folder()
     {
         UiThread.Run(() =>
         {
@@ -475,7 +481,7 @@ public sealed class ScenesPanelTests
 
             window.Scenes.FilterBox.Text = "second";
 
-            Assert.Equal(["Favorites", "res://", "levels/second.oscn"], Names(window));
+            Assert.Equal(["levels/second.oscn"], Names(window));
         });
     }
 
@@ -490,6 +496,131 @@ public sealed class ScenesPanelTests
             OpenScene(window, "res://levels/second.oscn");
 
             Assert.Equal("Opened second.", window.Status);
+        });
+    }
+
+    static IEnumerable<Control> MenuItems(EditorWindow window) => (IEnumerable<Control>)window.Scenes.Tree.ContextMenu!.ItemsSource!;
+
+    static void Press(EditorWindow window, string header) =>
+        MenuItems(window).OfType<MenuItem>().Single(item => (string)item.Header! == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+    [Fact]
+    public void The_file_menu_groups_what_can_be_done_to_a_file()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            // A separator has no header.
+            Assert.Equal(
+                ["Open", "Show in Finder", "Copy Path", null, "Rename...", "Duplicate...", "Move To...", null, "New Script...", "New Graph Script...", "New Folder...", null, "Delete"],
+                MenuItems(window).Select(item => (item as MenuItem)?.Header as string));
+        });
+    }
+
+    [Fact]
+    public void Open_is_off_for_a_folder_and_copy_path_is_on_for_any_row()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Assert.False(window.Scenes.OpenButton.IsEnabled);
+            Assert.True(window.Scenes.CopyPathButton.IsEnabled);
+
+            window.Scenes.Tree.SelectedItem = FileNodes(window).Single(node => node.Name == "spin.cs");
+
+            Assert.True(window.Scenes.OpenButton.IsEnabled);
+            Assert.True(window.Scenes.CopyPathButton.IsEnabled);
+        });
+    }
+
+    sealed class MemoryClipboard : ITextClipboard
+    {
+        public string? Text { get; private set; }
+
+        public Task<string?> GetText() => Task.FromResult(Text);
+
+        public Task SetText(string text)
+        {
+            Text = text;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public void Copy_path_puts_the_res_path_of_the_selected_row_on_the_clipboard()
+    {
+        UiThread.Run(() =>
+        {
+            var clipboard = new MemoryClipboard();
+            var panel = new ScenesPanel(KeyModifiers.Meta, clipboard);
+            new Window { Content = panel }.Show();
+            panel.Show(["res://levels/second.oscn"], new Dictionary<string, DateTime>());
+
+            panel.CopyPathButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal("res://", clipboard.Text);
+
+            panel.FilterBox.Text = "second";
+            panel.Tree.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.C, KeyModifiers = KeyModifiers.Meta | KeyModifiers.Alt });
+
+            Assert.Equal("res://levels/second.oscn", clipboard.Text);
+        });
+    }
+
+    [Fact]
+    public void A_file_command_that_is_not_built_says_so()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(window, "Rename...");
+
+            Assert.Equal("Rename is not built yet.", window.Status);
+        });
+    }
+
+    [Fact]
+    public void New_graph_script_opens_the_graph_workspace_on_its_create_form()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(window, "New Graph Script...");
+
+            Assert.Equal(["Graph"], window.Bar.Tabs.Where(tab => tab.IsChecked == true).Select(tab => tab.Label));
+            Assert.True(window.Graph.CreateDialog.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_script_opened_from_the_files_shows_in_the_script_workspace()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { ScriptText = { ["res://spin.cs"] = "class Spin {}" } });
+            window.Scenes.Tree.SelectedItem = FileNodes(window).Single(node => node.Name == "spin.cs");
+
+            PressEnter(window);
+
+            Assert.Equal(["Script"], window.Bar.Tabs.Where(tab => tab.IsChecked == true).Select(tab => tab.Label));
+            Assert.Equal("res://spin.cs", window.Script.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void A_graph_opened_from_the_files_shows_in_the_graph_workspace()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(WithGraph());
+            window.Scenes.Tree.SelectedItem = FileNodes(window).Single(node => node.Name == "grow.ograph");
+
+            PressEnter(window);
+
+            Assert.Equal(["Graph"], window.Bar.Tabs.Where(tab => tab.IsChecked == true).Select(tab => tab.Label));
+            Assert.Equal("res://grow.ograph", window.Graph.Current);
         });
     }
 }

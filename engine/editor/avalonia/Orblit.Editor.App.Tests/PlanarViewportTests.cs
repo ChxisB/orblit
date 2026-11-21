@@ -76,8 +76,8 @@ public sealed class PlanarViewportTests
         };
         rig = new Rig { Window = new Window { Width = 200, Height = 100, Content = viewport }, Viewport = viewport };
         viewport.PlanarPanned += rig.Pans.Add;
-        viewport.PlanarMoved += move => rig.Moves.Add(move.Delta);
-        viewport.Clicked += rig.Clicks.Add;
+        viewport.PlanarMoved += (move, _) => rig.Moves.Add(move.Delta);
+        viewport.Clicked += (point, _) => rig.Clicks.Add(point);
         viewport.Orbited += (yaw, pitch) => rig.Orbits.Add((yaw, pitch));
         rig.Window.Show();
         viewport.Tick();
@@ -321,20 +321,14 @@ public sealed class PlanarViewportTests
         });
     }
 
-    static readonly Vector2 Pivot = new(40, 20);
+    internal static readonly Vector2 Pivot = new(40, 20);
 
-    static WorkspaceTab TabOf(EditorWindow window, string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
+    internal static WorkspaceTab TabOf(EditorWindow window, string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
 
     // The Lamp has a pivot at (40, 20) of the 100 by 50 frame. Opens the window with it selected, in 2D.
-    static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn2D(Action<FakeScene>? prepare = null)
+    internal static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn2D(Action<FakeScene>? prepare = null)
     {
-        var scene = new FakeScene();
-        scene.Pivots[FakeScene.Lamp.Handle] = Pivot;
-        prepare?.Invoke(scene);
-        var window = OpenAtReferenceSize(scene);
-        var viewport = new ViewportControl(() => false, Frame);
-        window.ShowViewport(viewport);
-        window.UpdateLayout();
+        var (window, scene, viewport) = OpenIn3D(prepare);
         window.Outline.SelectedItem = FakeScene.Lamp;
         ClickOn(TabOf(window, TitleBar.Planar), window);
         window.UpdateLayout();
@@ -343,7 +337,22 @@ public sealed class PlanarViewportTests
         return (window, scene, viewport);
     }
 
-    static Point InWindow(Control viewport, Visual window, Vector2 framePoint)
+    // The same window in 3D with nothing selected.
+    internal static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn3D(Action<FakeScene>? prepare = null)
+    {
+        var scene = new FakeScene();
+        scene.Pivots[FakeScene.Lamp.Handle] = Pivot;
+        prepare?.Invoke(scene);
+        var window = OpenAtReferenceSize(scene);
+        var viewport = new ViewportControl(() => false, Frame);
+        window.ShowViewport(viewport);
+        window.UpdateLayout();
+        viewport.Tick();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        return (window, scene, viewport);
+    }
+
+    internal static Point InWindow(Control viewport, Visual window, Vector2 framePoint)
     {
         var control = ViewportControl.ControlAt(framePoint, FrameSize, viewport.Bounds.Size);
         return viewport.TranslatePoint(new Point(control.X, control.Y), window)!.Value;
@@ -372,7 +381,7 @@ public sealed class PlanarViewportTests
     }
 
     [Fact]
-    public void The_2D_workspace_has_no_toolbar_or_projection_controls_and_the_viewport_takes_the_toolbar_row()
+    public void The_2D_workspace_hides_the_tools_the_view_pill_and_the_axes_and_the_viewport_fills_the_island_in_both()
     {
         UiThread.Run(() =>
         {
@@ -383,16 +392,14 @@ public sealed class PlanarViewportTests
 
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.True(window.Center.Overlay.Planar);
-            Assert.False(window.Center.Overlay.Axes.IsVisible);
-            AssertBox(287, 74, 2866, 1157, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
 
             ClickOn(TabOf(window, "3D"), window);
             window.UpdateLayout();
 
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.False(window.Center.Overlay.Planar);
-            Assert.True(window.Center.Overlay.Axes.IsVisible);
-            AssertBox(287, 116, 2866, 1115, BoxOf(window.Viewport, window));
+            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
         });
     }
 

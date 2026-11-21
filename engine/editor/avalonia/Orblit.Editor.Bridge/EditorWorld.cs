@@ -2,15 +2,22 @@ using System.Numerics;
 
 namespace Orblit.Editor.Bridge;
 
+/// <summary>The two preview lights the viewport can add: a sun and the sky's environment.</summary>
+public sealed record EditorPreviews(nint Sun, nint Sky);
+
 /// <summary>
-/// What the viewport shows around the scene: a sky, a grid on the ground that fades with distance and a line
-/// for each axis. It all sits under the stage root, beside the scene and not in it, so the outline never lists
-/// it and a save never packs it. A scene with an environment of its own is drawn with that one, because the
+/// What the viewport shows around the scene: a sky, a preview sun, a grid on the ground that fades with distance
+/// and a line for each axis. It all sits under the stage root, beside the scene and not in it, so the outline never
+/// lists it and a save never packs it. A scene with an environment of its own is drawn with that one, because the
 /// engine takes the first environment in tree order and the scene comes first.
 /// </summary>
 public static class EditorWorld
 {
     const string SkyName = "EditorEnvironment";
+    const string SunName = "EditorSun";
+
+    // The sun comes from above and behind the start view, so the faces the camera sees first are lit.
+    static readonly Vector3 SunTurn = new(-60, 150, 0);
 
     // Environment.BGMode, PlaneMesh.Orientation.
     const long SkyBackground = 2;
@@ -43,40 +50,46 @@ public static class EditorWorld
 
     internal static nint StageRoot(EngineHost host) => host.StageGetRoot(host.EngineGetMainLoop(host.Singleton("Engine")));
 
-    /// <summary>Adds the world to the running engine. Call it once, after the engine has started.</summary>
-    public static void Build(EngineHost host)
+    /// <summary>Adds the world to the running engine, with the sun hidden. Call it once, after the engine has started.</summary>
+    public static EditorPreviews Build(EngineHost host)
     {
         var root = StageRoot(host);
-        AddSky(host, root);
+        var sky = AddSky(host, root);
+        // shortcut: the preview sun casts no shadow. Turn its shadow on when the preview settings gain a switch for it.
+        var sun = Add(host, root, "DirectionalLight3D", SunName);
+        host.Entity3DSetRotationDegrees(sun, SunTurn);
+        host.Entity3DSetVisible(sun, false);
         Draw(host, root, new Drawing("EditorGrid", FaceY, new Vector2(GridExtent, GridExtent), GridShader));
         foreach (var axis in Axes)
         {
             AddAxis(host, root, axis);
         }
+        return new EditorPreviews(sun, sky);
     }
 
     /// <summary>
-    /// Puts the sky after the scene again. A scene opened after <see cref="Build"/> is added last, and the engine
-    /// takes the first environment in tree order, so the sky would hide the scene's own.
+    /// Shows or hides each preview light. A shown sky is put back last, after the scene. A scene opened after
+    /// <see cref="Build"/> is added last, and the engine takes the first environment in tree order, so a sky before
+    /// it would hide the scene's own.
     /// </summary>
-    public static void PutSkyLast(EngineHost host)
+    public static void Show(EngineHost host, EditorPreviews previews, bool sun, bool sky)
     {
+        host.Entity3DSetVisible(previews.Sun, sun);
         var root = StageRoot(host);
-        var count = host.EntityGetChildCount(root, false);
-        for (var i = 0; i < count; i++)
+        if (host.EntityGetParent(previews.Sky) != 0)
         {
-            var child = host.EntityGetChild(root, i, false);
-            if (host.EntityGetName(child) == SkyName)
-            {
-                host.EntityMoveChild(root, child, count - 1);
-                return;
-            }
+            host.EntityRemoveChild(root, previews.Sky);
+        }
+
+        if (sky)
+        {
+            host.EntityAddChild(root, previews.Sky, false, 0);
         }
     }
 
     // The sky colors are the old editor's preview. The horizon is halfway between sky and ground, pulled
     // halfway to a gray three times as bright, so it reads as haze.
-    static void AddSky(EngineHost host, nint root)
+    static nint AddSky(EngineHost host, nint root)
     {
         var mid = Vector4.Lerp(SkyTop, SkyGround, 0.5f);
         var gray = (0.2126f * mid.X + 0.7152f * mid.Y + 0.0722f * mid.Z) * 3.333f;
@@ -95,6 +108,7 @@ public static class EditorWorld
         var world = Add(host, root, "WorldEnvironment", SkyName);
         host.WorldEnvironmentSetEnvironment(world, environment);
         Release(host, material, sky, environment);
+        return world;
     }
 
     // The carrier is a thin plane as long as the line, so the engine culls the line only when all of it is

@@ -3,31 +3,37 @@ using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// What a debug session shows: the state of the game, the buttons that move it on, the stack with the selected level
-/// marked, and the locals and members of that level. It is built again from the debugger after every change.
+/// What a debug session shows: a bar with the state of the game and the buttons that move it on, then while the
+/// game is stopped the stack with the selected level marked, and the locals and members of that level. It is
+/// built again from the debugger after every change.
 /// </summary>
 internal sealed class DebuggerPanel : StackPanel
 {
-    static readonly (string Id, string Label, DebugCommand Command)[] s_buttons =
+    static readonly (string Id, string Icon, string Tip, DebugCommand Command)[] s_buttons =
     [
-        ("pause", "Pause", DebugCommand.Break),
-        ("continue", "Continue", DebugCommand.Continue),
-        ("step", "Step into", DebugCommand.Step),
-        ("next", "Step over", DebugCommand.Next),
-        ("out", "Step out", DebugCommand.Out),
+        ("pause", "Pause", "Pause", DebugCommand.Break),
+        ("continue", "DebugContinue", "Continue", DebugCommand.Continue),
+        ("step", "DebugStep", "Step into", DebugCommand.Step),
+        ("next", "DebugNext", "Step over", DebugCommand.Next),
+        ("out", "DebugOut", "Step out", DebugCommand.Out),
     ];
 
     readonly GraphDebugger _debugger;
+    readonly Func<DebugPlace, string?> _stepTitle;
+    readonly StackPanel _details = new() { Spacing = 4, Margin = new Thickness(12, 0, 12, 10) };
 
-    public DebuggerPanel(GraphDebugger debugger)
+    /// <summary>The step title gives the name of a step on show, or null when the canvas does not show it.</summary>
+    public DebuggerPanel(GraphDebugger debugger, Func<DebugPlace, string?> stepTitle)
     {
         _debugger = debugger;
-        Spacing = 4;
+        _stepTitle = stepTitle;
         _debugger.Changed += Rebuild;
         Rebuild();
     }
@@ -39,30 +45,50 @@ internal sealed class DebuggerPanel : StackPanel
     {
         var state = _debugger.State;
         Children.Clear();
-        Children.Add(Line("debugger:status", Describe(state)));
-        Children.Add(Buttons());
+        _details.Children.Clear();
+        Children.Add(Bar(state));
         AddStack(state);
         AddValues("Locals", "local", state.Locals);
         AddValues("Members", "member", state.Members);
+        if (_details.Children.Count > 0)
+        {
+            Children.Add(_details);
+        }
     }
 
-    static string Describe(DebugState state) =>
+    // The game pauses at the top of the stack, whichever level the person has selected.
+    string Describe(DebugState state) =>
         !state.Connected ? "No game is connected."
-        : state.Stopped ? $"Stopped: {state.Reason}."
-        : "The game is running.";
+        : !state.Stopped ? "The game is running."
+        : _debugger.PlaceAt(0) is { } place && _stepTitle(place) is { } title ? $"Paused at {title}."
+        : $"Paused: {state.Reason}.";
 
-    WrapPanel Buttons()
+    Grid Bar(DebugState state)
     {
-        var row = new WrapPanel { Orientation = Orientation.Horizontal };
-        foreach (var (id, label, command) in s_buttons)
+        var bar = new Grid { Height = 44, Margin = new Thickness(12, 0, 8, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var icon = Parts.RowIcon("Debug", EditorBrushes.TextDim);
+        var status = new TextBlock
         {
-            var button = PanelFields.Small($"debugger:{id}", label, () => _debugger.Send(command));
-            button.Margin = new Thickness(0, 0, 4, 4);
+            Text = Describe(state),
+            Tag = "debugger:status",
+            FontSize = 12,
+            Foreground = state.Stopped ? EditorBrushes.Text : EditorBrushes.TextDim,
+            TextTrimming = TextTrimming.CharacterEllipsis,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        foreach (var (id, name, tip, command) in s_buttons)
+        {
+            var button = Parts.IconButton(name, tip);
+            button.Tag = $"debugger:{id}";
             button.IsEnabled = command == DebugCommand.Break ? _debugger.CanPause : _debugger.CanResume;
-            row.Children.Add(button);
+            button.Click += (_, _) => _debugger.Send(command);
+            buttons.Children.Add(button);
         }
-
-        return row;
+        Grid.SetColumn(status, 1);
+        Grid.SetColumn(buttons, 2);
+        bar.Children.AddRange([icon, status, buttons]);
+        return bar;
     }
 
     void AddStack(DebugState state)
@@ -72,13 +98,13 @@ internal sealed class DebuggerPanel : StackPanel
             return;
         }
 
-        Children.Add(new TextBlock { Text = "Stack", FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _details.Children.Add(Heading("Stack"));
         for (var at = 0; at < state.Stack.Count; at++)
         {
             var level = at;
             var button = PanelFields.Small($"debugger:frame:{at}", FrameText(state.Stack[at], at == state.Level), () => _debugger.SelectLevel(level));
             button.HorizontalAlignment = HorizontalAlignment.Left;
-            Children.Add(button);
+            _details.Children.Add(button);
         }
     }
 
@@ -95,12 +121,14 @@ internal sealed class DebuggerPanel : StackPanel
             return;
         }
 
-        Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.Bold, Margin = new Thickness(0, 6, 0, 0) });
+        _details.Children.Add(Heading(title));
         foreach (var value in values)
         {
-            Children.Add(Line($"debugger:{kind}:{value.Name}", $"{value.Name} = {value.Value}"));
+            _details.Children.Add(Line($"debugger:{kind}:{value.Name}", $"{value.Name} = {value.Value}"));
         }
     }
+
+    static TextBlock Heading(string text) => new() { Text = text, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 6, 0, 0) };
 
     static TextBlock Line(string id, string text) => new() { Text = text, Tag = id, FontSize = 12, TextWrapping = TextWrapping.Wrap };
 }

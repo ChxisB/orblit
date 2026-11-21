@@ -1,5 +1,8 @@
 using Avalonia.Controls;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
+using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -9,7 +12,24 @@ public sealed class GameWorkspaceTests
     const string Idle = "No game is running. Run opens one in its own window.";
     const string Running = "The game is running in its own window.";
 
+    static readonly DebugMonitors s_frame = new(Fps: 60, Process: 0.004, Physics: 0.001, DrawCalls: 12, Objects: 340, VideoMemory: 50 * 1024 * 1024);
+
+    static readonly LiveEntity[] s_tree = [new("Level", "Entity3D", 0), new("Props", "Entity3D", 1), new("Crate", "MeshInstance3D", 2), new("Sun", "DirectionalLight3D", 1)];
+
     static void ShowGame(EditorWindow window) => ClickOn(window.Bar.Tabs.Single(tab => tab.Label == "Game"), window);
+
+    // A game runs and has sent one frame of monitors and its tree.
+    static (EditorWindow Window, FakeScene Scene) RunningWithLiveState()
+    {
+        var scene = new FakeScene();
+        var window = OpenAtReferenceSize(scene);
+        ShowGame(window);
+        Click(window.Game.RunButton);
+        scene.Channel.Next = FakeDebugChannel.Running() with { Monitors = s_frame, Scene = s_tree };
+        window.Poll();
+        window.UpdateLayout();
+        return (window, scene);
+    }
 
     [Fact]
     public void The_Game_tab_swaps_the_toolbar_and_viewport_for_the_game_view()
@@ -26,8 +46,180 @@ public sealed class GameWorkspaceTests
             Assert.True(window.Game.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(287, 74, 2866, 1157, BoxOf(window.Game, window));
+            AssertBox(56, 46, 3328, 1183, BoxOf(window.Game, window));
             Assert.Equal(before, window.Status);
+        });
+    }
+
+    [Fact]
+    public void The_running_card_names_the_project_and_counts_the_time_on_the_clock()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var window = OpenAtReferenceSize(new FakeScene { ProjectName = "view_demo" }, time: time);
+            ShowGame(window);
+            Assert.Equal(("Stopped", ""), (window.Game.Status.Text, window.Game.Time.Text));
+            Assert.True(window.Game.RunButton.IsVisible);
+
+            Click(window.Game.RunButton);
+            time.Advance(TimeSpan.FromSeconds(42));
+            window.Poll();
+
+            Assert.Equal(("Running", "view_demo", "00:42"), (window.Game.Status.Text, window.Game.Project.Text, window.Game.Time.Text));
+            Assert.False(window.Game.RunButton.IsVisible);
+            Assert.True(window.Game.StopButton.IsVisible);
+            Assert.False(window.Game.PauseButton.IsEnabled);
+
+            time.Advance(TimeSpan.FromHours(1));
+            window.Poll();
+
+            Assert.Equal("1:00:42", window.Game.Time.Text);
+
+            Click(window.Game.StopButton);
+
+            Assert.Equal(("Stopped", ""), (window.Game.Status.Text, window.Game.Time.Text));
+        });
+    }
+
+    [Fact]
+    public void The_run_settings_past_Show_while_running_take_no_input_until_the_game_link_has_them()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            ShowGame(window);
+            window.UpdateLayout();
+
+            Assert.All(window.Game.Unbuilts, part => Assert.False(part.IsEnabled));
+            Assert.All(GameView.FlagNames, name => Assert.True(window.Game.SwitchOf(name).IsEffectivelyEnabled));
+            Assert.Equal(10, window.Game.GetVisualDescendants().OfType<ToggleSwitch>().Count());
+        });
+    }
+
+    [Fact]
+    public void Before_the_game_sends_a_frame_the_monitors_show_dashes_and_the_scene_is_empty()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+            ShowGame(window);
+            Click(window.Game.RunButton);
+
+            Assert.Equal("—", window.Game.Rate.Text);
+            Assert.All(window.Game.MonitorValues, value => Assert.Equal("—", value));
+            Assert.Empty(window.Game.LiveRows);
+            Assert.True(window.Game.NoScene.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_frame_from_the_game_fills_each_monitor_in_its_unit()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = RunningWithLiveState();
+
+            Assert.Equal("60", window.Game.Rate.Text);
+            Assert.Equal(["Frame time", "Process", "Physics", "Draw calls", "Objects", "Video memory"], GameView.MonitorNames);
+            Assert.Equal(["16.7", "4.0", "1.0", "12", "340", "50"], window.Game.MonitorValues);
+        });
+    }
+
+    [Fact]
+    public void A_game_at_no_frames_a_second_shows_no_frame_time()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = RunningWithLiveState();
+            scene.Channel.Next = scene.Channel.State with { Monitors = s_frame with { Fps = 0 } };
+
+            window.Poll();
+
+            Assert.Equal("—", window.Game.MonitorValues.First());
+        });
+    }
+
+    [Fact]
+    public void The_live_scene_lists_each_entity_of_the_game_indented_by_its_depth()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = RunningWithLiveState();
+
+            var rows = window.Game.LiveRows.ToList();
+            Assert.Equal(["Level", "Props", "Crate", "Sun"], rows.Select(row => row.GetVisualDescendants().OfType<TextBlock>().Single().Text));
+            Assert.Equal([6.0, 22, 38, 22], rows.Select(row => row.Margin.Left));
+            Assert.Equal("MeshInstance3D", ToolTip.GetTip(rows[2]));
+            Assert.False(window.Game.NoScene.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_poll_that_brings_the_same_tree_keeps_the_rows()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = RunningWithLiveState();
+            var first = window.Game.LiveRows.First();
+            scene.Channel.Next = scene.Channel.State with { Monitors = s_frame with { Fps = 59 }, Scene = [.. s_tree] };
+
+            window.Poll();
+
+            Assert.Equal("59", window.Game.Rate.Text);
+            Assert.Same(first, window.Game.LiveRows.First());
+        });
+    }
+
+    [Fact]
+    public void A_game_that_stops_takes_its_monitors_and_its_scene_with_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = RunningWithLiveState();
+
+            Click(window.Game.StopButton);
+
+            Assert.Equal("—", window.Game.Rate.Text);
+            Assert.Empty(window.Game.LiveRows);
+            Assert.True(window.Game.NoScene.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_Scene_tab_gives_the_island_to_the_live_scene_and_Monitors_brings_the_numbers_back()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = RunningWithLiveState();
+            Assert.True(window.Game.MonitorList.IsVisible);
+
+            ClickOn(window.Game.Tabs[1], window);
+
+            Assert.False(window.Game.MonitorList.IsVisible);
+            Assert.True(window.Game.LiveRows.First().IsEffectivelyVisible);
+
+            window.UpdateLayout();
+            ClickOn(window.Game.Tabs[0], window);
+
+            Assert.True(window.Game.MonitorList.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_Show_while_running_switches_that_are_on_go_to_the_game_as_engine_flags()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            ShowGame(window);
+
+            window.Game.SwitchOf("Visible Navigation").IsChecked = true;
+            window.Game.SwitchOf("Visible Collision Shapes").IsChecked = true;
+            Click(window.Game.RunButton);
+
+            Assert.Equal(["--debug-collisions", "--debug-navigation"], scene.PlayedFlags);
         });
     }
 

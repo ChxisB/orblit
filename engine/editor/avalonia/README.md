@@ -20,39 +20,93 @@ scene. It runs on macOS. Nothing else has run it.
 - The inspector edits the transform of an `Entity3D`, the metadata of any
   entity and the script attached to it. The Transform and Mesh menus act on
   the selection.
-- The tools add, duplicate, rename, remove, reorder and move an entity.
+- The tools add, duplicate, rename, remove, reorder and move an entity, and
+  add a new parent over one.
 - Save writes the scene file. Play saves edits, then runs the project in a
   second window. A star in the window title marks edits that no save holds.
   A scene with no edits is not saved by Play or by opening another scene,
   because its scripts run while it is open and a save would write what they
   changed.
-- Closing the window with unsaved edits keeps it open and shows a bar: Save
-  and close, Close without saving, or Keep editing.
+- Closing the window with unsaved edits keeps it open and asks in the Save
+  changes dialog: Save and close, Close without saving, or Keep editing.
 - Command+S saves and Command+D duplicates. Command is Control on Windows and
   Linux. F frames the selected entity, except while a box has the typing
   focus. Q, W, E and R pick Select, Move, Rotate and Scale. A shortcut acts only when its
   button is on.
 - The Output panel shows what the engine and the games it runs log, read from
-  their `--log-file`.
-- The workspace tabs are 3D, 2D, Script, Game and Asset Store. 2D pans,
-  zooms, picks and moves an `Entity2D`. Script edits a project `.cs` file.
-  Game shows whether the game runs. Asset Store lists the kits in the store
-  index when Load is pressed.
+  their `--log-file`. It filters by words and by level, and counts each level.
+- Command+K opens the command palette: commands, project files and the
+  scene's entities in one list. Shift+Command+O opens a scene by name.
+- New Scene and New Graph Script are dialogs. Toasts stack at the bottom
+  right.
+- The workspace tabs are 2D, 3D, Script, Graph, Game and Asset Store. 2D
+  pans, zooms, picks and moves an `Entity2D`, with rulers and a zoom pill.
+  Script edits a project `.cs` file with syntax colors and an outline. Graph
+  edits a `.ograph` graph script. Game runs the project and shows whether it
+  runs. Asset Store lists the kits in the store index when Reload is pressed.
+- With no `--project` a launcher opens. It lists recent projects, opens a
+  project folder and makes a new project from a template.
+- Undo and redo cover scene edits, and History lists them.
+- The inspector lists each class's properties and scrubs a number when its
+  label is dragged. Copy and Paste Properties and Make Unique are in its
+  tools.
+- Command click and Shift click in the outliner pick several entities. The
+  inspector then shows the classes they all have. A value they differ in
+  shows Mixed, and an edit writes each of them as one undo step. The gizmo
+  stays on the entity picked last.
+- The Signals tab lists an entity's signals and connects them. The Import
+  tab shows import options and reimports on a change.
+- The class list comes from the engine.
+- Script shows C# build problems in its status line.
+- 2D has Rotate, Scale, Pan, Snap and a grid. The 3D viewport has a
+  ruler, Select from a list and the preview lights.
+- A dock floats in its own window from the dock menu.
+- Game passes its run settings to the game as engine flags, and shows the
+  running game's monitors and live scene tree.
 
 ## What is not built
 
-- Undo and redo, and drag to reparent.
-- A pick by mesh bounds. A big mesh is hard to hit away from its pivot.
-- Docking changes are kept in memory only.
-- 2D has no rotate, scale, snap or grid. The Preview sun, Preview
-  environment, Ruler, Debugger, Audio, Animation and Shader Editor bottom
-  panels are marked "not built yet".
+- C# completion, the C# debugger and kit install. Each waits on a
+  decision, 284 to 286. The script slot's Make Unique waits on 287, and its
+  New Script is not built.
+- Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
+  hard to hit away from its pivot.
+- Picking several entities in the viewport. Move, Remove and Duplicate act
+  on the selected entity alone, and only it is outlined.
+- Saved layouts. Docking changes, moves and floated docks are kept in memory
+  only.
+- The 2D Ruler. The Audio, Animation and Shader Editor bottom panels.
+- The Scenes list's file menu, apart from Open. Open Documentation in the
+  inspector tools.
+- Game has no live copy of the game window, no Pause, no bring to front and
+  no run choices. Run a chosen scene, Movie maker mode and Customize Run
+  Instances in the run menu.
+- A menu item with no action carries a Soon tag.
+- The launcher's Templates, Asset Store and Settings places and each card's
+  More menu. A listed folder that lost its `project.orblit` is hidden.
 - Windows and Linux runs. The engine builds for them and for iOS, visionOS,
   Android and Web, but only macOS has run. Play looks for macOS and Linux
   file names only.
 - The C# module is built, but the editor finds its assemblies only in
   `OrblitSharp` beside the host executable. A packaged editor has no answer
   for that yet.
+
+## Look
+
+The look is Ember Graphite, decision 280. Each panel is an island on a
+near-black window. One ember accent marks the choice and the focus.
+
+- `Orblit.Editor.App/Theme/EditorColors.cs` holds the shell's colors.
+  `EditorBrushes.cs` beside it makes the brushes. The graph keeps its pin
+  and step tints in `Orblit.Editor.App/Graph`.
+- `EditorTheme.cs` holds the sizes and corners, and the styles that dress the
+  Fluent controls.
+- Words are set in Geist and values, paths and keys in Geist Mono. The font
+  files ship in the app.
+- A menu item that is not built carries a Soon tag, and a tool carries a small
+  amber dot. A click on either shows a toast at the bottom right for 4
+  seconds. A worded button that is not built is off, and its tip says "Not
+  built yet".
 
 ## Run it
 
@@ -80,6 +134,10 @@ scene. It runs on macOS. Nothing else has run it.
    `--scene <res:// path>` and `--headless`. The scene defaults to
    `res://main.oscn`. `--headless` runs the engine with no window, so the
    viewport is empty.
+
+   With no `--project` the launcher opens. It lists the projects in the
+   engine's `projects.cfg`, opens a project folder from disk and makes a new
+   project from a template. The chosen project opens in the editor.
 
 The engine window opens beside the editor and takes the foreground when it
 starts. One process holds one engine.

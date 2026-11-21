@@ -1,5 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -18,7 +19,7 @@ public sealed class OutputPanelTests
     static BottomBar BarOf(EditorWindow window) => Assert.IsType<BottomBar>(window.Center.BottomBar.Child);
 
     static string[] Shown(EditorWindow window) =>
-        [.. window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text!)];
+        [.. window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().Where(text => !text.Classes.Contains(OutputPanel.Stamp)).Select(text => text.Text!)];
 
     static (EditorWindow Window, FakeScene Scene) Open()
     {
@@ -67,9 +68,10 @@ public sealed class OutputPanelTests
             Assert.True(window.Center.Output.IsVisible);
             Assert.True(bar.OutputOpen);
             Assert.Equal(PanelHeight, panel.Height);
-            Assert.Equal(BoxOf(bar, window).Y - 3, panel.Bottom);
-            Assert.Equal(shut - PanelHeight, BoxOf(window.Viewport, window).Height);
+            Assert.Equal(BoxOf(window.Center.BottomBar, window).Y - CenterArea.GapHeight, panel.Bottom);
+            Assert.Equal(shut - PanelHeight - CenterArea.GapHeight, BoxOf(window.Viewport, window).Height);
             Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
+            Assert.Equal(EditorColors.Hover, ((ISolidColorBrush)bar.OutputTab.Background!).Color);
 
             ClickOn(bar.OutputTab, window);
             window.UpdateLayout();
@@ -77,7 +79,8 @@ public sealed class OutputPanelTests
             Assert.False(window.Center.Output.IsVisible);
             Assert.False(bar.OutputOpen);
             Assert.Equal(shut, BoxOf(window.Viewport, window).Height);
-            Assert.Equal(EditorColors.TabInactive, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
+            Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)bar.OutputTab.Foreground!).Color);
+            Assert.Equal(Colors.Transparent, ((ISolidColorBrush)bar.OutputTab.Background!).Color);
         });
     }
 
@@ -192,6 +195,168 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
+    public void The_panel_is_an_island_6_pixels_under_the_viewport_with_a_36_pixel_strip_for_the_title_copy_and_clear()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            window.UpdateLayout();
+            var panel = window.Center.Output;
+            var strip = BoxOf(panel.Strip, window);
+            var title = panel.Strip.GetVisualDescendants().OfType<TextBlock>().First(text => text.Text == "Output");
+
+            Assert.Contains(EditorTheme.Island, panel.Classes);
+            Assert.Equal(BoxOf(window.Center.Stage, window).Bottom + CenterArea.GapHeight, BoxOf(panel, window).Y);
+            Assert.Equal(36, strip.Height);
+            Assert.Equal(EditorBrushes.Line, panel.Strip.BorderBrush);
+            Assert.Equal(("Output", FontWeight.SemiBold, strip.X + 12), (title.Text, title.FontWeight, BoxOf(title, window).X));
+            Assert.Equal(strip.Right - 6, BoxOf(panel.ClearButton, window).Right);
+            Assert.Equal(BoxOf(panel.ClearButton, window).X - 2, BoxOf(panel.CopyButton, window).Right);
+            Assert.Equal(strip.Bottom, BoxOf(panel.List, window).Y);
+        });
+    }
+
+    [Fact]
+    public void Copy_all_puts_every_line_as_the_engine_wrote_it_on_the_clipboard()
+    {
+        UiThread.Run(async () =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            Write(window, scene, "one", "ERROR: two");
+
+            ClickOn(window.Center.Output.CopyButton, window);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Equal("Copy all", ToolTip.GetTip(window.Center.Output.CopyButton));
+            Assert.Equal("one\nERROR: two", await window.Clipboard!.TryGetTextAsync());
+            Assert.Equal("Copied the output.", window.Status);
+        });
+    }
+
+    [Fact]
+    public void Errors_logged_while_the_panel_is_shut_wait_on_a_badge_until_it_opens()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            var bar = BarOf(window);
+
+            Write(window, scene, "fine", "ERROR: broke");
+
+            Assert.True(bar.Unread.IsVisible);
+            Assert.Equal("1", ((TextBlock)bar.Unread.Child!).Text);
+
+            Write(window, scene, "SCRIPT ERROR: broke again");
+            Assert.Equal("2", ((TextBlock)bar.Unread.Child!).Text);
+
+            ClickOn(bar.OutputTab, window);
+            Assert.False(bar.Unread.IsVisible);
+
+            Write(window, scene, "ERROR: seen at once");
+            Assert.False(bar.Unread.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Each_chip_counts_its_level_and_hides_it_when_turned_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            var output = window.Center.Output;
+            ClickOn(BarOf(window).OutputTab, window);
+            Write(window, scene, "ERROR: broke", "WARNING: slow", "plain", "also plain");
+
+            Assert.Equal(["1", "1", "2"], output.Chips.Select(chip => chip.Count.Text));
+            Assert.Equal(["Errors", "Warnings", "Messages"], output.Chips.Select(chip => ToolTip.GetTip(chip)));
+
+            ClickOn(output.Chips[2], window);
+            window.UpdateLayout();
+
+            Assert.Equal(["broke", "slow"], Shown(window));
+            Assert.Equal(0.4, output.Chips[2].Opacity);
+            Assert.Equal(1, output.Chips[0].Opacity);
+        });
+    }
+
+    [Fact]
+    public void The_filter_keeps_the_lines_that_hold_its_text_in_any_case()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+            Write(window, scene, "alpha", "beta", "Alphabet");
+
+            window.Center.Output.FilterBox.Text = "ALPHA";
+            window.UpdateLayout();
+
+            Assert.Equal(["alpha", "Alphabet"], Shown(window));
+            Assert.Equal("Filter messages", window.Center.Output.FilterBox.PlaceholderText);
+        });
+    }
+
+    [Fact]
+    public void A_fault_shows_its_text_in_its_colour_with_the_file_it_came_from()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+
+            Write(window, scene, "ERROR: Cannot open file", "   at: load (res://scenes/main.oscn:12)");
+
+            var texts = window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().ToArray();
+            Assert.Equal(["Cannot open file", "main.oscn:12"], Shown(window).Order());
+            var text = texts.Single(block => block.Text == "Cannot open file");
+            Assert.True(BoxOf(texts.Single(block => block.Text == "main.oscn:12"), window).X > BoxOf(text, window).Right);
+            Assert.Equal(EditorColors.FaultText, ((ISolidColorBrush)text.Foreground!).Color);
+            Assert.Equal("FaultCircle", window.Center.Output.List.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+        });
+    }
+
+    [Fact]
+    public void Each_line_shows_the_time_it_came_and_an_info_mark_and_a_blank_line_shows_no_row()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene, time: time);
+            ClickOn(BarOf(window).OutputTab, window);
+
+            Write(window, scene, "first");
+            time.Advance(TimeSpan.FromSeconds(62));
+            Write(window, scene, "", "second");
+
+            var texts = window.Center.Output.List.GetVisualDescendants().OfType<TextBlock>().ToArray();
+            Assert.Equal(["16:33:00", "16:34:02"], texts.Where(text => text.Classes.Contains(OutputPanel.Stamp)).Select(text => text.Text));
+            Assert.Equal(["first", "second"], Shown(window));
+            Assert.All(window.Center.Output.List.GetVisualDescendants().OfType<EditorIcon>(), icon => Assert.Equal("InfoCircle", icon.IconName));
+            Assert.All(texts.Where(text => !text.Classes.Contains(OutputPanel.Stamp)), text => Assert.Equal(TextWrapping.Wrap, text.TextWrapping));
+        });
+    }
+
+    [Fact]
+    public void Rows_sit_close_like_lines_of_a_log()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = Open();
+            ClickOn(BarOf(window).OutputTab, window);
+
+            Write(window, scene, "first", "second");
+
+            var rows = window.Center.Output.List.GetVisualDescendants().OfType<ListBoxItem>().ToArray();
+            Assert.Equal(2, rows.Length);
+            Assert.True(rows[0].Bounds.Height < 26, $"a row is {rows[0].Bounds.Height} high");
+        });
+    }
+
+    [Fact]
     public void The_clear_button_has_the_clear_icon_and_a_tip()
     {
         UiThread.Run(() =>
@@ -301,25 +466,6 @@ public sealed class OutputPanelTests
 
             ClickOn(pin, window);
             Assert.False(pin.IsChecked);
-        });
-    }
-
-    [Theory]
-    [InlineData(1, "The Debugger panel is not built yet.")]
-    [InlineData(2, "The Audio panel is not built yet.")]
-    [InlineData(3, "The Animation panel is not built yet.")]
-    [InlineData(4, "The Shader Editor panel is not built yet.")]
-    public void The_other_buttons_still_say_their_panel_is_not_built_and_open_nothing(int index, string message)
-    {
-        UiThread.Run(() =>
-        {
-            var (window, _) = Open();
-
-            ClickOn(BarOf(window).Tabs[index], window);
-
-            Assert.Equal(message, window.Status);
-            Assert.False(window.Center.Output.IsVisible);
-            Assert.False(BarOf(window).OutputOpen);
         });
     }
 }

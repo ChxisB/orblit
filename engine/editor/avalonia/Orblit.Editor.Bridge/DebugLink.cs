@@ -9,7 +9,18 @@ public sealed record DebugValue(string Name, string Value);
 /// <summary>The value that sits on one input of a step at one level of the stack, as text.</summary>
 public sealed record DebugWire(int Level, int Step, int Port, string Value);
 
-/// <summary>What a running game last said to the editor. A game that is not attached is not connected and holds nothing.</summary>
+/// <summary>
+/// The game's last frame of monitors. Process and physics are seconds a frame, and video memory is bytes.
+/// </summary>
+public sealed record DebugMonitors(double Fps, double Process, double Physics, double DrawCalls, double Objects, double VideoMemory);
+
+/// <summary>An entity of the running game's tree, with its depth from the scene's top.</summary>
+public sealed record LiveEntity(string Name, string Type, int Depth);
+
+/// <summary>
+/// What a running game last said to the editor. A game that is not attached is not connected and holds nothing.
+/// The monitors are null until the game sends its first frame. The scene lists the game's tree depth first.
+/// </summary>
 public sealed record DebugState(
     bool Connected,
     bool Stopped,
@@ -18,9 +29,11 @@ public sealed record DebugState(
     int Level,
     IReadOnlyList<DebugValue> Locals,
     IReadOnlyList<DebugValue> Members,
-    DebugWire? Wire)
+    DebugWire? Wire,
+    DebugMonitors? Monitors,
+    IReadOnlyList<LiveEntity> Scene)
 {
-    public static DebugState None { get; } = new(false, false, "", [], 0, [], [], null);
+    public static DebugState None { get; } = new(false, false, "", [], 0, [], [], null, null, []);
 
     /// <exception cref="InvalidDataException">The text is not a state the engine writes.</exception>
     public static DebugState Parse(string json)

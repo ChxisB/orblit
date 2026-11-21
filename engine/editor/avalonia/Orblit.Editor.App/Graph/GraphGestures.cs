@@ -56,6 +56,12 @@ internal sealed class GraphGestures
     /// </summary>
     public event Action<Point, PinRef?>? PaletteRequested;
 
+    /// <summary>
+    /// Raised instead of a join when a wire is dropped on a pin whose type cannot take its value, with both pins
+    /// and the screen point. The canvas offers a Convert step.
+    /// </summary>
+    public event Action<PinRef, PinRef, Point>? WireClashed;
+
     /// <summary>Raised when a frame title is pressed twice. The canvas puts a text box over it.</summary>
     public event Action<FrameView>? TitleEditRequested;
 
@@ -147,6 +153,9 @@ internal sealed class GraphGestures
                 break;
             case Mode.FrameResize when moved:
                 _edits.ResizeFrame(frame!, graphDelta);
+                break;
+            case Mode.Wire when _scene.PinAt(_viewport.ToGraph(screen)) is { } target && _scene.Clashes(wireFrom, target):
+                WireClashed?.Invoke(wireFrom, target, screen);
                 break;
             case Mode.Wire when _scene.PinAt(_viewport.ToGraph(screen)) is { } target:
                 _edits.Connect(wireFrom, target);

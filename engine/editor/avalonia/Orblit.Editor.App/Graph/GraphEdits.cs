@@ -12,6 +12,8 @@ internal sealed class GraphEdits
 {
     const string RerouteData = "reroute";
     const string RerouteFlow = "reroute_flow";
+    const string ConvertKind = "convert";
+    const string ConvertTo = "to";
     const double FramePadding = 20;
     const string NewFrameTitle = "Frame";
 
@@ -114,6 +116,30 @@ internal sealed class GraphEdits
             _source.Disconnect(wire),
             _source.Connect(new GraphWire(wire.FromStep, wire.FromPort, id, 0)),
             _source.Connect(new GraphWire(id, 0, wire.ToStep, wire.ToPort)),
+        };
+        Array.ForEach(steps, result => Report(result));
+    });
+
+    /// <summary>
+    /// Joins two pins through a Convert step set to the input's type, placed halfway between them, as one undo.
+    /// A refused call leaves the graph in the state of the calls that went before it.
+    /// </summary>
+    public void InsertConvert(PinRef a, PinRef b) => Batch(() =>
+    {
+        var (output, input) = a.IsInput ? (b, a) : (a, b);
+        if (_scene.Find(output.Step) is not { } from || _scene.Find(input.Step) is not { } to || _scene.PortOf(input) is not { } port)
+        {
+            return;
+        }
+        var id = _source.NextStepId();
+        var middle = (from.PinCenter(false, output.Port) + to.PinCenter(true, input.Port)) / 2;
+        var steps = new[]
+        {
+            _source.AddStep(id, ConvertKind),
+            _source.SetStepParameter(id, ConvertTo, port.Type.ToString(System.Globalization.CultureInfo.InvariantCulture)),
+            _source.MoveStep(id, Math.Round(middle.X - (StepView.Width / 2)), Math.Round(middle.Y - StepView.HeaderHeight)),
+            _source.Connect(new GraphWire(output.Step, output.Port, id, 0)),
+            _source.Connect(new GraphWire(id, 0, input.Step, input.Port)),
         };
         Array.ForEach(steps, result => Report(result));
     });

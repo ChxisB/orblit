@@ -63,6 +63,10 @@ internal sealed class GraphSheet : IDisposable
 
     public void ShowStop(DebugPlace? place) => Canvas?.ShowStop(place);
 
+    /// <summary>The title of a step in the function on show, or null when the place is in another script or function.</summary>
+    public string? StepTitle(DebugPlace place) =>
+        place.Script == Script && Graph.Function?.Name == place.Function ? Canvas?.Scene.Find(place.Step)?.Title : null;
+
     public void Dispose() => Graph.Dispose();
 
     void ShowCanvas()

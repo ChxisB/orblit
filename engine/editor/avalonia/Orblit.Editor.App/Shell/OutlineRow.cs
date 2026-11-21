@@ -1,5 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -7,8 +9,9 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// One row of the scene tree: the class icon, the name with a lock and a group mark when the entity has those
-/// flags, and, for a planar or spatial entity, an eye. A hidden entity is dimmed and shows a closed eye.
+/// One row of the scene tree: the class icon, the name with the filter's match marked, the class name when the
+/// pane shows it, a lock and a group mark when the entity has those flags, and, for a planar or spatial entity,
+/// an eye. A hidden entity is dimmed and shows a closed eye. The name can be edited in the row.
 /// </summary>
 internal sealed class OutlineRow : Grid
 {
@@ -20,15 +23,24 @@ internal sealed class OutlineRow : Grid
     // A hidden row is dimmed, not grayed out, so the name stays readable.
     const double HiddenOpacity = 0.5;
 
-    public OutlineRow(OutlineNode entity, Action<OutlineNode> eyeClicked)
+    readonly OutlineNode _entity;
+    readonly StackPanel _label;
+
+    public OutlineRow(OutlineNode entity, Action<OutlineNode> eyeClicked, string filter, bool showClassName)
     {
+        _entity = entity;
         ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
         HorizontalAlignment = HorizontalAlignment.Stretch;
         Margin = new Thickness(-EditorTheme.RowOverhang, 0, 0, 0);
         var icon = Parts.RowIcon(EditorIcons.ForClass(entity.ClassName));
-        var name = new TextBlock { Text = entity.Name, VerticalAlignment = VerticalAlignment.Center };
-        var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        var name = MarkedName(entity.Name, filter.Trim());
+        var label = _label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         label.Children.Add(name);
+        if (showClassName)
+        {
+            label.Children.Add(new TextBlock { Text = entity.ClassName, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        }
+
         AddMark(label, entity.Locked, "Lock");
         AddMark(label, entity.Grouped, "Group");
         SetColumn(label, 1);
@@ -52,6 +64,79 @@ internal sealed class OutlineRow : Grid
             SetColumn(eye, 2);
             Children.Add(eye);
         }
+    }
+
+    /// <summary>The box the name is being edited in, or null when the row is not renaming.</summary>
+    internal TextBox? Editing { get; private set; }
+
+    /// <summary>
+    /// Swaps the name for a box holding it. Enter or leaving the box keeps the new name, Escape keeps the old one.
+    /// An unchanged name is not passed on.
+    /// </summary>
+    public void Rename(Action<string> keep)
+    {
+        var box = Editing = new TextBox
+        {
+            Text = _entity.Name,
+            Height = 22,
+            MinHeight = 0,
+            Padding = new Thickness(6, 0),
+            FontFamily = EditorTheme.Mono,
+            FontSize = 12,
+            VerticalContentAlignment = VerticalAlignment.Center,
+        };
+        var done = false;
+        void Finish(bool keepIt)
+        {
+            if (done)
+            {
+                return;
+            }
+
+            done = true;
+            Children.Remove(box);
+            Editing = null;
+            _label.IsVisible = true;
+            if (keepIt && box.Text is { Length: > 0 } text && text != _entity.Name)
+            {
+                keep(text);
+            }
+        }
+
+        box.KeyDown += (_, e) =>
+        {
+            if (e.Key is Key.Enter or Key.Escape)
+            {
+                e.Handled = true;
+                Finish(e.Key == Key.Enter);
+            }
+        };
+        box.LostFocus += (_, _) => Finish(true);
+        _label.IsVisible = false;
+        SetColumn(box, 1);
+        Children.Add(box);
+        box.Focus();
+        box.SelectAll();
+    }
+
+    // The part of the name the filter matched takes the soft accent, so the reader sees why the row is shown.
+    static TextBlock MarkedName(string name, string filter)
+    {
+        var text = new TextBlock { VerticalAlignment = VerticalAlignment.Center };
+        var at = filter == "" ? -1 : name.IndexOf(filter, StringComparison.OrdinalIgnoreCase);
+        if (at < 0)
+        {
+            text.Text = name;
+            return text;
+        }
+
+        text.Inlines = new InlineCollection
+        {
+            new Run(name[..at]),
+            new Run(name.Substring(at, filter.Length)) { Background = EditorBrushes.AccentSoft, Foreground = EditorBrushes.Accent },
+            new Run(name[(at + filter.Length)..]),
+        };
+        return text;
     }
 
     // A mark is an icon, not a button: the toolbar is where a flag changes.

@@ -12,6 +12,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <AvaloniaResource Include="Assets/Fonts/*.ttf" />
+    <!-- The font license asks for its text to travel with the font files. -->
+    <None Include="Assets/Fonts/LICENSE.Geist.txt" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../Orblit.Editor.Bridge/Orblit.Editor.Bridge.csproj" />
     <InternalsVisibleTo Include="Orblit.Editor.App.Tests" />
     <InternalsVisibleTo Include="Orblit.Editor.Live" />

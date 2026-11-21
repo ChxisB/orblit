@@ -36,7 +36,11 @@ internal sealed class GraphCanvas : Grid
     readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     readonly TextBlock _notice = new() { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _noticeBar;
-    readonly TextBlock _empty = new() { Text = "This script has no function yet.", Foreground = EditorBrushes.TabInactive, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
+    readonly TextBlock _offerText = new() { FontSize = 12, Foreground = EditorBrushes.Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 260 };
+    readonly Button _offerButton = new() { Content = "Add a Convert step?", Tag = "convert:add", Classes = { EditorTheme.TextButton, EditorTheme.Primary, EditorTheme.Small } };
+    readonly Border _offer;
+    (PinRef A, PinRef B) _offered;
+    readonly TextBlock _empty = new() { Text = "This script has no function yet.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
     readonly Button _frame = Parts.IconButton("GraphFrame", "Frame the selected steps. Ctrl or Command and G does the same.");
     readonly Button _fit = Parts.IconButton("ZoomReset", "Show every step");
     readonly Avalonia.Controls.Primitives.ToggleButton _curved = Parts.IconToggle("Curve", "Curved wires. Off draws straight wires.");
@@ -62,6 +66,18 @@ internal sealed class GraphCanvas : Grid
         _surface.Shortcuts = Shortcuts();
         _minimap = new GraphMinimap(_scene, _viewport, _surface) { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 12, 12) };
         _noticeBar = new Border { Background = new SolidColorBrush(Color.Parse("#c04a3a")), Padding = new Thickness(10, 4), CornerRadius = new CornerRadius(4), IsVisible = false, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(12), Child = _notice };
+        _offer = new Border
+        {
+            Background = EditorBrushes.Popover,
+            BorderBrush = EditorBrushes.Fault,
+            BorderThickness = new Thickness(1),
+            CornerRadius = EditorTheme.PopoverCorners,
+            Padding = new Thickness(12, 10),
+            IsVisible = false,
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Top,
+            Child = new StackPanel { Spacing = 8, Children = { _offerText, _offerButton } },
+        };
         Build();
         Wire();
         Reload();
@@ -94,6 +110,13 @@ internal sealed class GraphCanvas : Grid
     internal Border NoticeBar => _noticeBar;
 
     internal string NoticeText => _notice.Text ?? "";
+
+    /// <summary>The offer of a Convert step after a wire was dropped on a pin of the wrong type.</summary>
+    internal Border ConvertOffer => _offer;
+
+    internal string ConvertOfferText => _offerText.Text ?? "";
+
+    internal Button ConvertOfferButton => _offerButton;
 
     internal Button FrameButton => _frame;
 
@@ -218,7 +241,7 @@ internal sealed class GraphCanvas : Grid
         {
             tools.Children.Add(control);
         }
-        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _arrangeBar, _findBar, _pasteBar, _noticeBar, _palette, _editor })
+        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _arrangeBar, _findBar, _pasteBar, _noticeBar, _offer, _palette, _editor })
         {
             Children.Add(control);
         }
@@ -242,9 +265,16 @@ internal sealed class GraphCanvas : Grid
         _gestures.Pressing += () =>
         {
             _noticeBar.IsVisible = false;
+            _offer.IsVisible = false;
             _palette.Close();
         };
         _gestures.PaletteRequested += OpenPalette;
+        _gestures.WireClashed += OfferConvert;
+        _offerButton.Click += (_, _) =>
+        {
+            _offer.IsVisible = false;
+            _edits.InsertConvert(_offered.A, _offered.B);
+        };
         _palette.Closed += () => _surface.Focus();
         _surface.SizeChanged += (_, _) => FitOnce();
         _minimap.Moved += _surface.InvalidateVisual;
@@ -264,6 +294,16 @@ internal sealed class GraphCanvas : Grid
         _noticeBar.IsVisible = true;
     }
 
+    void OfferConvert(PinRef a, PinRef b, Point screen)
+    {
+        var (output, input) = a.IsInput ? (b, a) : (a, b);
+        var type = _scene.PortOf(output)?.Type ?? 0;
+        _offerText.Text = $"{VariantTypes.NameOf(type)} cannot plug into {_scene.PortOf(input)?.Name}.";
+        _offered = (a, b);
+        _offer.Margin = new Thickness(screen.X + 12, screen.Y + 12, 0, 0);
+        _offer.IsVisible = true;
+    }
+
     // A copy or paste reads the clipboard and so runs as a task, and its failures are reported by the clipboard.
     GraphShortcuts Shortcuts() => new(new Dictionary<(Key Key, bool Shift), Action<Point>>
     {
@@ -278,21 +318,34 @@ internal sealed class GraphCanvas : Grid
         [(Key.F, false)] = _ => _findBar.Open(),
     });
 
-    /// <summary>Opens the palette at a screen point. A step picked there is added at the point and joined to the pin when there is one.</summary>
+    /// <summary>
+    /// Opens the palette at a screen point. A step picked there is added at the point and joined to the pin when
+    /// there is one. With no pin, a step picked to be wired is joined to the first flow output of the one selected step.
+    /// </summary>
     internal void OpenPalette(Point screen, PinRef? from)
     {
         var (side, type, sort) = DraggedKind(from);
-        _palette.Open(screen, _surface.Bounds.Size, text => _source.FindSteps(text, side, type, sort), entry => _edits.AddStep(entry, _viewport.ToGraph(screen), from));
+        _palette.Open(screen, _surface.Bounds.Size, text => _source.FindSteps(text, side, type, sort), (entry, wire) =>
+            _edits.AddStep(entry, _viewport.ToGraph(screen), from ?? (wire ? SelectedFlowOut() : null)));
+    }
+
+    PinRef? SelectedFlowOut()
+    {
+        if (_scene.SelectedSteps.Count != 1 || _scene.Find(_scene.SelectedSteps.First()) is not { } step)
+        {
+            return null;
+        }
+        var port = step.Step.Outputs.ToList().FindIndex(output => output.Sort == GraphPortSort.Flow);
+        return port < 0 ? null : new PinRef(step.Id, port, false);
     }
 
     // The palette lists steps with a port that fits the pin, and every step when no wire was dragged.
     (GraphDraggedSide Side, int Type, GraphPortSort Sort) DraggedKind(PinRef? from)
     {
-        if (from is not { } pin || _scene.Find(pin.Step) is not { } view)
+        if (from is not { } pin || _scene.PortOf(pin) is not { } port)
         {
             return (GraphDraggedSide.None, 0, GraphPortSort.Flow);
         }
-        var port = (pin.IsInput ? view.Step.Inputs : view.Step.Outputs)[pin.Port];
         return (pin.IsInput ? GraphDraggedSide.Input : GraphDraggedSide.Output, port.Type, port.Sort);
     }
 

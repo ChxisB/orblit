@@ -13,7 +13,7 @@ public sealed class DebuggerPanelTests
     {
         var channel = new FakeDebugChannel();
         var debugger = new GraphDebugger(channel, new GraphBreakpoints());
-        return (channel, debugger, new DebuggerPanel(debugger));
+        return (channel, debugger, new DebuggerPanel(debugger, _ => null));
     }
 
     static void Hear(FakeDebugChannel channel, GraphDebugger debugger, DebugState state)
@@ -68,12 +68,29 @@ public sealed class DebuggerPanelTests
 
             Hear(channel, debugger, Stopped());
 
-            Assert.Equal("Stopped: breakpoint.", Status(panel));
+            Assert.Equal("Paused: breakpoint.", Status(panel));
             Assert.False(panel.Find<Button>("debugger:pause")!.IsEnabled);
             foreach (var id in new[] { "continue", "step", "next", "out" })
             {
                 Assert.True(panel.Find<Button>($"debugger:{id}")!.IsEnabled, id);
             }
+        });
+    }
+
+    [Fact]
+    public void A_stopped_game_names_the_step_at_the_top_of_the_stack_when_it_is_on_show()
+    {
+        UiThread.Run(() =>
+        {
+            var channel = new FakeDebugChannel();
+            var debugger = new GraphDebugger(channel, new GraphBreakpoints());
+            var panel = new DebuggerPanel(debugger, place => place == new DebugPlace(Script, "helper", 7) ? "Rotate y" : null);
+
+            Hear(channel, debugger, Stopped());
+            Assert.Equal("Paused at Rotate y.", Status(panel));
+
+            Hear(channel, debugger, debugger.State with { Level = 1 });
+            Assert.Equal("Paused at Rotate y.", Status(panel));
         });
     }
 

@@ -23,6 +23,21 @@ internal static unsafe class NativeText
         return Encoding.UTF8.GetString(buffer);
     }
 
+    /// <summary>The text in an engine PackedStringArray.</summary>
+    public static string[] ReadStrings(void* packed)
+    {
+        using var scope = new NativeScope();
+        var size = NativeApi.BuiltinMethod((int)VariantType.PackedStringArray, scope.StringName("size"), EngineCalls.PackedStringArraySizeHash);
+        long count = 0;
+        size(packed, null, &count, 0);
+        var texts = new string[count];
+        for (var i = 0; i < count; i++)
+        {
+            texts[i] = ReadString(NativeApi.StringArrayAt(packed, i));
+        }
+        return texts;
+    }
+
     /// <summary>The names in an engine Array of StringName.</summary>
     public static string[] ReadStringNames(void* array)
     {
