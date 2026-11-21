@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Globalization;
 using System.Numerics;
 using Avalonia.Controls;
 using Avalonia.Input;
@@ -26,7 +27,17 @@ internal sealed partial class EditorRun
     {
         File.WriteAllBytes(Path.Combine(project, "swatch.png"), Convert.FromBase64String(SwatchPng));
         using var import = Process.Start(EditorEngine.PlayerPath(EngineLibrary.Find()), ["--headless", "--path", project, "--import"]);
-        import.WaitForExit();
+        // This runs before the editor's start clock, so a hung import would hold the run for ever.
+        if (!import.WaitForExit(ImportMilliseconds))
+        {
+            import.Kill();
+            throw new TimeoutException($"The engine did not import swatch.png in {ImportMilliseconds / 1000} s.");
+        }
+
+        if (import.ExitCode != 0)
+        {
+            throw new InvalidOperationException($"The engine's import of swatch.png exited with {import.ExitCode}.");
+        }
     }
 
     async Task ShowsTheClassProperties()
@@ -165,11 +176,16 @@ internal sealed partial class EditorRun
         await Wait(() => window.Viewport.IsEffectivelyVisible && Viewport.Bounds.Width > 0, "the viewport to show again");
     }
 
-    static async Task<string> GameArguments()
+    async Task<string> GameArguments()
     {
-        using var list = Process.Start(new ProcessStartInfo("ps", ["-ax", "-o", "args="]) { RedirectStandardOutput = true })!;
-        var lines = await list.StandardOutput.ReadToEndAsync();
+        if (engine.GameId is not { } id)
+        {
+            return "no game process";
+        }
+
+        using var list = Process.Start(new ProcessStartInfo("ps", ["-o", "args=", "-p", id.ToString(CultureInfo.InvariantCulture)]) { RedirectStandardOutput = true })!;
+        var line = await list.StandardOutput.ReadToEndAsync();
         await list.WaitForExitAsync();
-        return lines.Split('\n').FirstOrDefault(line => line.Contains(".arm64 --path")) ?? "no game process";
+        return line.Trim();
     }
 }
