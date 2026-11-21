@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -230,6 +231,56 @@ public sealed class VectorRowTests
             Assert.False(row.Fault.IsVisible);
             Assert.All(row.Fields, field => Assert.DoesNotContain("bad", field.Classes));
         });
+    }
+
+    [Fact]
+    public void A_drag_across_a_tag_steps_its_axis_and_enters_the_value_once_when_it_ends()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, row) = Alone();
+            var entered = new List<System.Numerics.Vector3>();
+            row.Entered += entered.Add;
+            var at = BoxOf(TagOf(Fields(row)[0]), window).Center;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseMove(at + new Point(10, 0));
+
+            Assert.Equal("1.5", row.Axes[0].Text);
+            Assert.Empty(entered);
+
+            window.MouseUp(at + new Point(10, 0), MouseButton.Left);
+
+            Assert.Equal([new System.Numerics.Vector3(1.5f, 2, 3)], entered);
+        });
+    }
+
+    [Fact]
+    public void A_click_on_a_tag_with_no_drag_enters_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, row) = Alone();
+            row.Show(new System.Numerics.Vector3(0.99960005f, 2, 3));
+            var entered = new List<System.Numerics.Vector3>();
+            row.Entered += entered.Add;
+            var at = BoxOf(TagOf(Fields(row)[0]), window).Center;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseUp(at, MouseButton.Left);
+
+            Assert.Empty(entered);
+        });
+    }
+
+    static (Window Window, VectorRow Row) Alone()
+    {
+        var row = new VectorRow("Position", "m");
+        var window = new Window { Content = row, Width = 400, Height = 100 };
+        window.Show();
+        row.Show(new System.Numerics.Vector3(1, 2, 3));
+        window.UpdateLayout();
+        return (window, row);
     }
 
     static void Enter(TextBox box) => box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });

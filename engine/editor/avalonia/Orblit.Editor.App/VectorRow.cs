@@ -16,7 +16,7 @@ namespace Orblit.Editor.App;
 /// A label beside two or three fields for one vector, each with a tag for its axis, the value and the unit. A field shows
 /// its value rounded at rest and in full while it has the caret. It raises <see cref="Entered"/> when a box holds a
 /// finite value that differs from the one shown. Any other text stays, with a red edge and a line that says why,
-/// until the next value is shown.
+/// until the next value is shown. A drag across a tag steps its axis.
 /// </summary>
 internal sealed class VectorRow : Grid
 {
@@ -149,6 +149,7 @@ internal sealed class VectorRow : Grid
             },
         };
         DockPanel.SetDock(tag, Dock.Left);
+        Scrub.Attach(tag, _axes[index], () => Commit(index), whole: false);
         var suffix = new TextBlock
         {
             Text = unit,
