@@ -1,8 +1,10 @@
 name: Release
 
 # A tag such as v1.0.0 builds the editor for Linux, Windows and macOS and attaches one zip
-# file for each to a GitHub Release. A pull request that edits this workflow runs the same
-# builds and publishes nothing. The tag must match version.py.
+# file for each to a GitHub Release. The same tag builds the export templates for all three
+# and attaches them as one .tpz file, which the editor installs to export a game. A pull
+# request that edits this workflow runs the same builds and publishes nothing. The tag must
+# match version.py.
 
 on:
   push:
@@ -42,6 +44,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       prerelease: ${{ steps.version.outputs.prerelease }}
+      templates: ${{ steps.version.outputs.templates }}
     steps:
       - name: Check out the source
         uses: actions/checkout@v7
@@ -60,6 +63,10 @@ jobs:
           case "$version" in *-*) ;; *) prerelease=false ;; esac
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          # The editor looks for templates in a folder named for its version, such as
+          # 1.0.stable.csharp. A patch of zero is left out, as core/version.h does.
+          templates=$(python3 -c "import version as v; print(f'{v.major}.{v.minor}' + ('.%d' % v.patch if v.patch else '') + f'.{v.status}.csharp')")
+          echo "templates=$templates" >> "$GITHUB_OUTPUT"
 
   linux:
     name: Linux editor
@@ -302,9 +309,226 @@ jobs:
           path: ${{ env.PACKAGE }}.zip
           retention-days: 14
 
+  # Each target is its own job, so the debug and release templates build at the same time.
+  linux-templates:
+    name: Linux ${{ matrix.target }}
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      matrix:
+        target: [template_release, template_debug]
+    env:
+      MATRIX_TARGET: ${{ matrix.target }}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Install system packages
+        timeout-minutes: 10
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-bin
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Fetch AccessKit
+        run: python ./dist/scripts/install_accesskit.py
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: linuxbsd
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} accesskit=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      # The exporter looks for linux_release.x86_64 and linux_debug.x86_64.
+      - name: Name the template
+        run: |
+          mkdir templates
+          cp "bin/orblit.linuxbsd.$MATRIX_TARGET.x86_64.csharp" "templates/linux_${MATRIX_TARGET#template_}.x86_64"
+          strip templates/*
+
+      - name: Upload the template
+        uses: actions/upload-artifact@v7
+        with:
+          name: templates-linux-${{ matrix.target }}
+          path: templates/
+          retention-days: 14
+
+  windows-templates:
+    name: Windows ${{ matrix.target }}
+    needs: prepare
+    runs-on: windows-latest
+    timeout-minutes: 240
+    strategy:
+      matrix:
+        target: [template_release, template_debug]
+    defaults:
+      run:
+        shell: bash
+    env:
+      PYTHONIOENCODING: utf8
+      MATRIX_TARGET: ${{ matrix.target }}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Fetch the Direct3D 12 SDK
+        run: python ./dist/scripts/install_d3d12_sdk_windows.py
+
+      - name: Fetch ANGLE
+        run: python ./dist/scripts/install_angle.py
+
+      - name: Fetch AccessKit
+        run: python ./dist/scripts/install_accesskit.py
+
+      - name: Build
+        uses: ./.github/actions/scons-build
+        with:
+          platform: windows
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} windows_subsystem=gui d3d12=yes accesskit=yes angle=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      # The exporter looks for windows_release_x86_64.exe and its console wrapper beside it,
+      # and copies the Direct3D 12 libraries it finds there named for the architecture.
+      - name: Name the template
+        run: |
+          mkdir templates
+          kind=${MATRIX_TARGET#template_}
+          cp "bin/orblit.windows.$MATRIX_TARGET.x86_64.csharp.exe" "templates/windows_${kind}_x86_64.exe"
+          cp "bin/orblit.windows.$MATRIX_TARGET.x86_64.csharp.console.exe" "templates/windows_${kind}_x86_64_console.exe"
+          if [ "$kind" = release ]; then
+            for dll in D3D12Core d3d12SDKLayers; do
+              cp "bin/$dll.dll" "templates/$dll.x86_64.dll"
+            done
+          fi
+          ls -l templates
+
+      - name: Upload the template
+        uses: actions/upload-artifact@v7
+        with:
+          name: templates-windows-${{ matrix.target }}
+          path: templates/
+          retention-days: 14
+
+  macos-templates:
+    name: macOS ${{ matrix.target }}
+    needs: prepare
+    runs-on: macos-26
+    timeout-minutes: 300
+    strategy:
+      matrix:
+        target: [template_release, template_debug]
+    env:
+      MATRIX_TARGET: ${{ matrix.target }}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          submodules: recursive
+          persist-credentials: false
+
+      - name: Set up SCons
+        uses: ./.github/actions/setup-scons
+
+      - name: Fetch ANGLE
+        run: python ./dist/scripts/install_angle.py
+
+      - name: Fetch AccessKit
+        run: python ./dist/scripts/install_accesskit.py
+
+      - name: Install the Vulkan SDK
+        run: sh ./dist/scripts/install_vulkan_sdk_macos.sh
+
+      - name: Build for x86_64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=x86_64 vulkan=yes accesskit=yes angle=yes metal=no
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Build for arm64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: ${{ matrix.target }}
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=arm64 vulkan=yes accesskit=yes angle=yes
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      # The pack job puts orblit_macos_release.universal in the template app bundle.
+      - name: Merge the architectures
+        run: |
+          mkdir templates
+          out="templates/orblit_macos_${MATRIX_TARGET#template_}.universal"
+          lipo -create "bin/orblit.macos.$MATRIX_TARGET.x86_64.csharp" "bin/orblit.macos.$MATRIX_TARGET.arm64.csharp" -output "$out"
+          strip -x "$out"
+          lipo -info "$out"
+
+      - name: Upload the template
+        uses: actions/upload-artifact@v7
+        with:
+          name: templates-macos-${{ matrix.target }}
+          path: templates/
+          retention-days: 14
+
+  templates:
+    name: Pack the export templates
+    needs: [prepare, linux-templates, windows-templates, macos-templates]
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    env:
+      PACKAGE: orblit-${{ needs.prepare.outputs.version }}-export-templates
+      TEMPLATES: ${{ needs.prepare.outputs.templates }}
+    steps:
+      - name: Check out the source
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Download the templates
+        uses: actions/download-artifact@v8
+        with:
+          pattern: templates-*
+          path: templates
+          merge-multiple: true
+
+      # The editor reads templates/version.txt to choose the folder it installs into. An
+      # artifact loses the executable bit, so it is set again before zipping.
+      - name: Pack
+        run: |
+          cp -R dist/macos_template.app .
+          mkdir -p macos_template.app/Contents/MacOS
+          mv templates/orblit_macos_*.universal macos_template.app/Contents/MacOS/
+          chmod +x macos_template.app/Contents/MacOS/* templates/linux_* templates/*.exe
+          zip -q -9 -r templates/macos.zip macos_template.app
+          echo "$TEMPLATES" > templates/version.txt
+          zip -q -9 -r "$PACKAGE.tpz" templates
+          unzip -l "$PACKAGE.tpz"
+
+      - name: Upload the package
+        uses: actions/upload-artifact@v7
+        with:
+          name: package-templates
+          path: ${{ env.PACKAGE }}.tpz
+          retention-days: 14
+
   publish:
     name: Publish the release
-    needs: [prepare, linux, windows, macos]
+    needs: [prepare, linux, windows, macos, templates]
     # Only a pushed tag publishes. A pull request or a manual run stops after the builds.
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-26.04
@@ -325,7 +549,7 @@ jobs:
 
       - name: Write checksums
         working-directory: packages
-        run: sha256sum ./*.zip | tee SHA256SUMS.txt
+        run: sha256sum ./*.zip ./*.tpz | tee SHA256SUMS.txt
 
       - name: Create the release
         run: |
