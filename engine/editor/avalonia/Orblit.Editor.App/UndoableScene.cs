@@ -101,6 +101,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public bool IsPlaying => scene.IsPlaying;
 
+    public int? GameId => scene.GameId;
+
     public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags) => scene.Play(breakpoints, flags);
 
     public void Stop() => scene.Stop();

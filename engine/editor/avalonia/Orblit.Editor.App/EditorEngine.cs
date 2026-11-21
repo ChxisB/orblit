@@ -422,6 +422,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public bool IsPlaying => _game is { HasExited: false };
 
+    public int? GameId => _game is { HasExited: false } game ? game.Id : null;
+
     public IDebugChannel Debug => _debug;
 
     /// <summary>Runs the project in its own process, because one process holds one engine.</summary>

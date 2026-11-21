@@ -246,6 +246,9 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IKitF
     /// <summary>Whether the game <see cref="Play"/> started is still running.</summary>
     bool IsPlaying { get; }
 
+    /// <summary>The process id of the game <see cref="Play"/> started, or null when none runs.</summary>
+    int? GameId { get; }
+
     /// <summary>
     /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
     /// each a source and a step id. The flags go to the engine as they are, such as <c>--debug-collisions</c>. A game
