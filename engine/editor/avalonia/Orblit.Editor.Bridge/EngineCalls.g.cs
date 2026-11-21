@@ -12,6 +12,7 @@ public static unsafe class EngineCalls
     internal const long PackedByteArraySizeHash = 3173160232;
     internal const long PackedByteArrayResizeHash = 848867239;
     internal const long ArraySizeHash = 3173160232;
+    internal const long PackedStringArraySizeHash = 3173160232;
 
     static readonly EngineMethod OrblitInstanceStartMethod = new("OrblitInstance", "start", 2240911060);
     static readonly EngineMethod OrblitInstanceIsStartedMethod = new("OrblitInstance", "is_started", 2240911060);
@@ -130,6 +131,9 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ObjectGetMethod = new("Object", "get", 2760726917);
     static readonly EngineMethod ObjectSetMethod = new("Object", "set", 3776071444);
     static readonly EngineMethod ClassRegistryGetParentClassMethod = new("ClassRegistry", "get_parent_class", 1965194235);
+    static readonly EngineMethod ClassRegistryGetInheritersFromClassMethod = new("ClassRegistry", "get_inheriters_from_class", 1761182771);
+    static readonly EngineMethod ClassRegistryCanInstantiateMethod = new("ClassRegistry", "can_instantiate", 2619796661);
+    static readonly EngineMethod ClassRegistryClassGetApiTypeMethod = new("ClassRegistry", "class_get_api_type", 3310495372);
     static readonly EngineMethod ObjectGetMetaMethod = new("Object", "get_meta", 3990617847);
     static readonly EngineMethod ObjectSetMetaMethod = new("Object", "set_meta", 3776071444);
     static readonly EngineMethod ObjectRemoveMetaMethod = new("Object", "remove_meta", 3304788590);
@@ -1100,6 +1104,44 @@ public static unsafe class EngineCalls
         void** args = stackalloc void*[] { a0 };
         host.Call(ClassRegistryGetParentClassMethod, target, args, result);
         return NativeText.ReadStringName(result);
+    }
+
+    public static string[] ClassRegistryGetInheritersFromClass(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        // A PackedStringArray is two pointers, so it does not fit a scope slot. The engine assigns into it, so it starts zeroed.
+        nint* result = stackalloc nint[2] { 0, 0 };
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryGetInheritersFromClassMethod, target, args, result);
+        try
+        {
+            return NativeText.ReadStrings(result);
+        }
+        finally
+        {
+            NativeApi.VariantDestructor((int)VariantType.PackedStringArray)(result);
+        }
+    }
+
+    public static bool ClassRegistryCanInstantiate(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        ulong result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryCanInstantiateMethod, target, args, &result);
+        return (result & 0xFF) != 0;
+    }
+
+    public static long ClassRegistryClassGetApiType(this EngineHost host, nint target, string className)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        long result = 0;
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ClassRegistryClassGetApiTypeMethod, target, args, &result);
+        return result;
     }
 
     public static object? ObjectGetScript(this EngineHost host, nint target)

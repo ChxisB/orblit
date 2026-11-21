@@ -284,6 +284,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public IReadOnlyList<string> ClassChainOf(nint entity) => _session.ClassChainOf(entity);
 
+    public IReadOnlyList<string> AddableClasses() => _session.AddableClasses();
+
     public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) => _session.PropertiesOf(entity);
 
     public void SetProperty(nint entity, string name, object value) => _session.SetProperty(entity, name, value);

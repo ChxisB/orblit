@@ -31,6 +31,9 @@ internal interface IGraphFiles
     /// <summary>The res:// path of every graph script of the project.</summary>
     IReadOnlyList<string> GraphScripts();
 
+    /// <summary>Every class a game can make an entity of, by name.</summary>
+    IReadOnlyList<string> AddableClasses();
+
     /// <summary>Opens a graph script. Throws <see cref="IOException"/> when the engine cannot load it.</summary>
     IGraphFile OpenGraph(string resourcePath);
 
@@ -510,7 +513,7 @@ internal sealed class GraphView : Border
         }
     }
 
-    internal void ShowCreate() => _form.Open(_all);
+    internal void ShowCreate() => _form.Open(_all, _files?.AddableClasses() ?? []);
 
     void Create(string path, string baseType)
     {

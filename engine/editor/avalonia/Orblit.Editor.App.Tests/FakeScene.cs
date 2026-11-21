@@ -227,6 +227,9 @@ internal sealed class FakeScene : IEditorScene
 
     public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
 
+    /// <summary>The common classes of the Add dialog and one more, by name, as the engine gives them.</summary>
+    public IReadOnlyList<string> AddableClasses() => ["Camera3D", "ColorRect", "DirectionalLight3D", "Entity", "Entity2D", "Entity3D", "Marker3D", "MeshInstance3D", "Timer"];
+
     public IGraphFile OpenGraph(string resourcePath) =>
         Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 

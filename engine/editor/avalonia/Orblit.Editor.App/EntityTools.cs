@@ -15,8 +15,8 @@ internal sealed record EntityEdit(nint Select, string Message);
 /// </summary>
 internal sealed class EntityTools
 {
-    // shortcut: a short fixed list. Replace it with a class browser when the editor has one.
-    internal static readonly (string ClassName, string Line)[] Classes =
+    // The classes most scenes start with come first, each with a line on what it is for.
+    internal static readonly (string ClassName, string Line)[] Common =
     [
         ("Entity", "The base of every entity."),
         ("Entity3D", "A point in 3D space."),
@@ -103,7 +103,10 @@ internal sealed class EntityTools
     {
         _adding = adding;
         AddDialog.Why.Text = why;
-        _classes.Show([.. Classes.Select(entry => new Choice(EditorIcons.ForClass(entry.ClassName), entry.ClassName) { Line = entry.Line, Tint = EditorBrushes.TreeIcon })]);
+        var classes = _scene!.AddableClasses();
+        var lined = Common.Where(entry => classes.Contains(entry.ClassName));
+        var rest = classes.Except(Common.Select(entry => entry.ClassName)).Select(name => (ClassName: name, Line: ""));
+        _classes.Show([.. lined.Concat(rest).Select(entry => new Choice(EditorIcons.ForClass(entry.ClassName), entry.ClassName) { Line = entry.Line, Tint = EditorBrushes.TreeIcon })]);
         AddDialog.Open();
         _classes.SearchBox.Focus();
     }

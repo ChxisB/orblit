@@ -29,6 +29,9 @@ public sealed class EditorSession
     const long UsageCategory = 128;
     const long UsageSubgroup = 256;
     const int HintResourceType = 17;
+    // The kinds of class the registry tells apart. A game holds only the core and extension kinds.
+    const long ApiCore = 0;
+    const long ApiExtension = 2;
 
     static readonly string[] s_propertyKeys = ["name", "type", "hint", "hint_string", "usage"];
 
@@ -148,6 +151,18 @@ public sealed class EditorSession
     {
         RequireMetaName(name);
         _host.ObjectRemoveMeta(entity, name);
+    }
+
+    /// <summary>
+    /// Every class a game can make an entity of, by name. A class that cannot be made, such as an abstract one, and a
+    /// class of the editor itself are left out.
+    /// </summary>
+    public IReadOnlyList<string> AddableClasses()
+    {
+        var registry = _host.Singleton("ClassRegistry");
+        return [.. _host.ClassRegistryGetInheritersFromClass(registry, "Entity").Prepend("Entity")
+            .Where(name => _host.ClassRegistryCanInstantiate(registry, name) && _host.ClassRegistryClassGetApiType(registry, name) is ApiCore or ApiExtension)
+            .Order(StringComparer.Ordinal)];
     }
 
     /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
