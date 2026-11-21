@@ -136,6 +136,7 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ObjectGetScriptMethod = new("Object", "get_script", 1214101251);
     static readonly EngineMethod ObjectSetScriptMethod = new("Object", "set_script", 1114965689);
     static readonly EngineMethod ResourceGetPathMethod = new("Resource", "get_path", 201670096);
+    static readonly EngineMethod ResourceDuplicateMethod = new("Resource", "duplicate", 482882304);
     static readonly EngineMethod GraphScriptAddFunctionMethod = new("GraphScript", "add_function", 166001499);
     static readonly EngineMethod GraphScriptRemoveFunctionMethod = new("GraphScript", "remove_function", 166001499);
     static readonly EngineMethod GraphScriptSetBaseTypeMethod = new("GraphScript", "set_base_type", 3304788590);
@@ -1113,6 +1114,15 @@ public static unsafe class EngineCalls
         using var a0 = NativeVariant.From(script);
         void** args = stackalloc void*[] { a0.Slot };
         host.Call(ObjectSetScriptMethod, target, args, null);
+    }
+
+    public static nint ResourceDuplicate(this EngineHost host, nint target, bool deep)
+    {
+        byte a0 = (byte)(deep ? 1 : 0);
+        nint result = 0;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(ResourceDuplicateMethod, target, args, &result);
+        return result;
     }
 
     public static string ResourceGetPath(this EngineHost host, nint target)

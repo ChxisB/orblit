@@ -175,9 +175,9 @@ internal sealed class InspectorPane : Grid
             Parts.ActionItem("Expand All", () => _panel.FoldAll(true)),
             Parts.ActionItem("Collapse All", () => _panel.FoldAll(false)),
             new Separator(),
-            Parts.SoonItem("Copy Properties", _tools),
-            Parts.SoonItem("Paste Properties", _tools),
-            Parts.SoonItem("Make Sub-Resources Unique", _tools),
+            Parts.ActionItem("Copy Properties", _panel.CopyProperties),
+            Parts.ActionItem("Paste Properties", _panel.PasteProperties),
+            Parts.ActionItem("Make Sub-Resources Unique", _panel.MakeResourcesUnique),
             Parts.SoonItem("Open Documentation", _tools),
         },
     };

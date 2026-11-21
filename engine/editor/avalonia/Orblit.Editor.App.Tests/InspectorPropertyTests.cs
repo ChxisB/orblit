@@ -2,6 +2,7 @@ using System.Numerics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
@@ -15,12 +16,82 @@ public sealed class InspectorPropertyTests
         var scene = new FakeScene();
         var handle = scene.AddChild(FakeScene.Field.Handle, className, "Eye");
         var window = OpenAtReferenceSize(scene);
-        window.Outline.SelectedItem = scene.Outline()!.Find(handle);
-        window.UpdateLayout();
+        Pick(window, scene, handle);
         return (window, scene, handle);
     }
 
     static PropertyRow Row(EditorWindow window, string label) => window.Inspector.Rows.Single(row => row.Label == label);
+
+    // A Camera3D named Eye is picked beside a second entity. Both are added first, because the outline lists only what the scene held when the window opened.
+    static (EditorWindow Window, FakeScene Scene, nint Eye, nint Other) Two(string className, string name)
+    {
+        var scene = new FakeScene();
+        var eye = scene.AddChild(FakeScene.Field.Handle, "Camera3D", "Eye");
+        var other = scene.AddChild(FakeScene.Field.Handle, className, name);
+        var window = OpenAtReferenceSize(scene);
+        Pick(window, scene, eye);
+        return (window, scene, eye, other);
+    }
+
+    static void Pick(EditorWindow window, FakeScene scene, nint handle)
+    {
+        window.Outline.SelectedItem = scene.Outline()!.Find(handle);
+        window.UpdateLayout();
+    }
+
+    static void Choose(EditorWindow window, string header) =>
+        ((MenuFlyout)window.InspectorPane.ToolsButton.Flyout!).Items.OfType<MenuItem>().Single(item => (string?)item.Header == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+    [Fact]
+    public void Paste_Properties_sets_the_copied_values_on_another_entity_of_the_class_and_leaves_objects_out()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, eye, lens) = Two("Camera3D", "Lens");
+            scene.SetProperty(eye, "fov", 90.0);
+            scene.SetProperty(eye, "current", true);
+
+            Choose(window, "Copy Properties");
+            Pick(window, scene, lens);
+            Choose(window, "Paste Properties");
+
+            Assert.Equal((90.0, true), (scene.PropertyValues[(lens, "fov")], scene.PropertyValues[(lens, "current")]));
+            Assert.False(scene.PropertyValues.ContainsKey((lens, "environment")));
+            Assert.Equal("90", ((TextBox)Row(window, "FOV").Editor).Text);
+        });
+    }
+
+    [Fact]
+    public void Paste_Properties_refuses_an_entity_of_another_class_and_says_so()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, _, sun) = Two("Light3D", "Sun");
+
+            Choose(window, "Paste Properties");
+            Assert.Equal("Copy Properties first, then paste them onto an entity of the same class.", window.Status);
+
+            Choose(window, "Copy Properties");
+            Pick(window, scene, sun);
+            Choose(window, "Paste Properties");
+
+            Assert.Equal("The copied properties are a Camera3D's, and Sun is a Light3D.", window.Status);
+            Assert.DoesNotContain(scene.PropertyValues.Keys, key => key.Entity == sun);
+        });
+    }
+
+    [Fact]
+    public void Make_Sub_Resources_Unique_gives_the_selected_entity_its_own_resources()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, eye) = Picked("Camera3D");
+
+            Choose(window, "Make Sub-Resources Unique");
+
+            Assert.Equal([eye], scene.MadeUnique);
+        });
+    }
 
     static void Type(TextBox box, string text)
     {
