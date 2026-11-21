@@ -19,6 +19,18 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles
     /// <summary>The Entity3D whose pivot lands nearest a point in the viewport's frame, or 0 for a miss.</summary>
     nint PickAt(Vector2 framePoint);
 
+    /// <summary>Every Entity3D a click at a point in the viewport's frame could pick, nearest first. It is empty when there is no viewport.</summary>
+    IReadOnlyList<nint> PickAllAt(Vector2 framePoint);
+
+    /// <summary>The world point a ruler click lands on: the pivot it would pick, else the ground. Null when it meets neither or there is no viewport.</summary>
+    Vector3? WorldPointAt(Vector2 framePoint);
+
+    /// <summary>Where a world point lands in the viewport's frame. Null when it is behind the camera or there is no viewport.</summary>
+    Vector2? FramePointOf(Vector3 world);
+
+    /// <summary>Turns the preview sun and sky on or off. The sun shows only while the scene has no sun of its own. It does nothing when there is no viewport.</summary>
+    void ShowPreviews(bool sun, bool sky);
+
     /// <summary>Turns the 2D camera and its flat backdrop on, which hides the 3D world, or off. It does nothing when there is no viewport.</summary>
     void ShowPlanar(bool on);
 

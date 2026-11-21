@@ -88,6 +88,7 @@ internal sealed class EditorWindow : Window
     };
     IEditorScene? _scene;
     OutlineNode? _root;
+    readonly RulerPoints _ruler = new();
     bool _edited;
     // The edits since the scene opened or was last saved, and when that was, for the Save changes dialog.
     int _edits;
@@ -333,7 +334,8 @@ internal sealed class EditorWindow : Window
     public void ShowViewport(ViewportControl viewport)
     {
         viewport.Ended += () => Fail("The engine window was closed. Restart the editor to see the scene.");
-        viewport.Clicked += SelectAt;
+        viewport.Clicked += ClickAt;
+        viewport.RulerSource = () => _toolbar.Measures && _scene is not null ? _ruler.Shown(_scene.FramePointOf) : null;
         viewport.PlanarSource = () => _planar;
         viewport.MarkSource = PivotOfSelected;
         viewport.PlanarMoved += DragPlanar;
@@ -381,12 +383,55 @@ internal sealed class EditorWindow : Window
         _scene?.ShowPlanar(_planar);
     }
 
-    // A click on empty space selects nothing.
-    void SelectAt(Vector2 framePoint)
+    // A click on empty space selects nothing. The 3D tools that change what a click does have no 2D form yet.
+    void ClickAt(Vector2 framePoint, KeyModifiers keys)
     {
-        var picked = _planar ? _scene!.PickPlanarAt(framePoint) : _scene!.PickAt(framePoint);
-        _scenePane.Select(picked);
+        if (_planar)
+        {
+            _scenePane.Select(_scene!.PickPlanarAt(framePoint));
+        }
+        else if (_toolbar.Measures)
+        {
+            PutRulerPoint(framePoint);
+        }
+        else if (_toolbar.ListSelects || keys.HasFlag(KeyModifiers.Alt))
+        {
+            ChooseFromList(framePoint);
+        }
+        else
+        {
+            _scenePane.Select(_scene!.PickAt(framePoint));
+        }
     }
+
+    void PutRulerPoint(Vector2 framePoint)
+    {
+        if (_scene!.WorldPointAt(framePoint) is not { } point)
+        {
+            Say("The ruler needs a point on an entity or the ground.");
+            return;
+        }
+
+        _ruler.Add(point);
+        Say(_ruler.Length is { } length ? $"Measured {RulerPoints.Label(length)}." : "Click a second point to measure to.");
+    }
+
+    // One entity or none under the cursor needs no list, so the click picks as usual.
+    void ChooseFromList(Vector2 framePoint)
+    {
+        var under = _scene!.PickAllAt(framePoint).Select(handle => _root?.Find(handle)).OfType<OutlineNode>().ToList();
+        if (under.Count < 2)
+        {
+            _scenePane.Select(under.FirstOrDefault()?.Handle ?? 0);
+            return;
+        }
+
+        PickList = ViewportToolbar.PickList(under, _scenePane.Select);
+        PickList.ShowAt(_viewport, showAtPointer: true);
+    }
+
+    /// <summary>The last list Select from a list showed, or null before any.</summary>
+    internal MenuFlyout? PickList { get; private set; }
 
     // The selected Entity2D has a mark unless it is locked, as a locked Entity3D has no handles.
     Vector2? PivotOfSelected() =>
@@ -734,6 +779,8 @@ internal sealed class EditorWindow : Window
         });
         _toolbar.TrimeshItem.Click += (_, _) => AddCollision(false);
         _toolbar.ConvexItem.Click += (_, _) => AddCollision(true);
+        _toolbar.RulerButton.Click += (_, _) => _ruler.Clear();
+        _center.Overlay.PreviewsChanged += (sun, sky) => _scene?.ShowPreviews(sun, sky);
         _center.Overlay.ProjectionChanged += orthogonal =>
         {
             _scene?.SetOrthogonal(orthogonal);

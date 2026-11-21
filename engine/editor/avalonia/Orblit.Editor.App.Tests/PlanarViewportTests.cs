@@ -77,7 +77,7 @@ public sealed class PlanarViewportTests
         rig = new Rig { Window = new Window { Width = 200, Height = 100, Content = viewport }, Viewport = viewport };
         viewport.PlanarPanned += rig.Pans.Add;
         viewport.PlanarMoved += (move, _) => rig.Moves.Add(move.Delta);
-        viewport.Clicked += rig.Clicks.Add;
+        viewport.Clicked += (point, _) => rig.Clicks.Add(point);
         viewport.Orbited += (yaw, pitch) => rig.Orbits.Add((yaw, pitch));
         rig.Window.Show();
         viewport.Tick();
@@ -328,15 +328,24 @@ public sealed class PlanarViewportTests
     // The Lamp has a pivot at (40, 20) of the 100 by 50 frame. Opens the window with it selected, in 2D.
     internal static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn2D(Action<FakeScene>? prepare = null)
     {
+        var (window, scene, viewport) = OpenIn3D(prepare);
+        window.Outline.SelectedItem = FakeScene.Lamp;
+        ClickOn(TabOf(window, TitleBar.Planar), window);
+        window.UpdateLayout();
+        viewport.Tick();
+        AvaloniaHeadlessPlatform.ForceRenderTimerTick();
+        return (window, scene, viewport);
+    }
+
+    // The same window in 3D with nothing selected.
+    internal static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) OpenIn3D(Action<FakeScene>? prepare = null)
+    {
         var scene = new FakeScene();
         scene.Pivots[FakeScene.Lamp.Handle] = Pivot;
         prepare?.Invoke(scene);
         var window = OpenAtReferenceSize(scene);
         var viewport = new ViewportControl(() => false, Frame);
         window.ShowViewport(viewport);
-        window.UpdateLayout();
-        window.Outline.SelectedItem = FakeScene.Lamp;
-        ClickOn(TabOf(window, TitleBar.Planar), window);
         window.UpdateLayout();
         viewport.Tick();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();

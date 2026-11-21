@@ -75,26 +75,24 @@ public sealed class EditorCamera
     /// The entity whose pivot lands nearest the frame point, within <see cref="PickRadius"/> pixels, or 0 for a
     /// miss. The first of two equally near wins. Entities behind the camera are never picked.
     /// </summary>
-    public nint Pick(IEnumerable<nint> entities, Vector2 framePoint)
-    {
-        nint picked = 0;
-        var nearest = PickRadius;
-        foreach (var entity in entities)
-        {
-            var world = _host.Entity3DGetGlobalPosition(entity);
-            if (IsBehind(world))
-            {
-                continue;
-            }
+    public nint Pick(IEnumerable<nint> entities, Vector2 framePoint) => PickAll(entities, framePoint).FirstOrDefault();
 
-            var distance = Vector2.Distance(Project(world), framePoint);
-            if (distance < nearest)
-            {
-                nearest = distance;
-                picked = entity;
-            }
-        }
-        return picked;
+    /// <summary>Every entity whose pivot lands within <see cref="PickRadius"/> pixels of the frame point, nearest first.</summary>
+    public IEnumerable<nint> PickAll(IEnumerable<nint> entities, Vector2 framePoint) =>
+        entities
+            .Select(entity => (Entity: entity, World: _host.Entity3DGetGlobalPosition(entity)))
+            .Where(pivot => !IsBehind(pivot.World))
+            .Select(pivot => (pivot.Entity, Distance: Vector2.Distance(Project(pivot.World), framePoint)))
+            .Where(pivot => pivot.Distance < PickRadius)
+            .OrderBy(pivot => pivot.Distance)
+            .Select(pivot => pivot.Entity);
+
+    /// <summary>Where the ray under a frame point meets the ground, which is the plane at height 0, or null when it never does.</summary>
+    public Vector3? GroundAt(Vector2 framePoint)
+    {
+        var ray = RayAt(framePoint);
+        var along = MathF.Abs(ray.Direction.Y) < 1e-6f ? -1 : -ray.Origin.Y / ray.Direction.Y;
+        return along > 0 ? ray.Origin + (ray.Direction * along) : null;
     }
 
     /// <summary>The move gizmo's handles for an entity placed at <paramref name="place"/>, or null when its pivot is behind the camera.</summary>

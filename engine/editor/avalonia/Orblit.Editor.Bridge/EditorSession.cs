@@ -350,15 +350,31 @@ public sealed class EditorSession
     /// </summary>
     public nint PickPlanar(PlanarCamera camera, Vector2 framePoint) => Choose(camera.Pick, IsEntity2D, framePoint);
 
-    // The pick, with a locked entity left out of it and a group's topmost entity standing for what is under it.
-    nint Choose(Func<IEnumerable<nint>, Vector2, nint> pick, Func<nint, bool> isPlaced, Vector2 framePoint)
+    /// <summary>
+    /// Every Entity3D a click at the frame point could pick, nearest first, each once. Locks and groups act as they
+    /// do for <see cref="Pick"/>.
+    /// </summary>
+    public IReadOnlyList<nint> PickAll(EditorCamera camera, Vector2 framePoint) =>
+        Outline() is { } root
+            ? [.. camera.PickAll(Pickable(root, IsEntity3D), framePoint).Select(picked => StandIn(root, picked)).Where(picked => picked != 0).Distinct()]
+            : [];
+
+    /// <summary>The point a click measures from: the pivot it would pick, else where it meets the ground, else null.</summary>
+    public Vector3? PointAt(EditorCamera camera, Vector2 framePoint) =>
+        Pick(camera, framePoint) is not 0 and var picked ? _host.Entity3DGetGlobalPosition(picked) : camera.GroundAt(framePoint);
+
+    /// <summary>Whether any entity of the open scene is of the class or a class that extends it.</summary>
+    public bool Holds(string className) => Outline() is { } root && Flatten(root).Any(node => _host.ObjectIsClass(node.Handle, className));
+
+    nint Choose(Func<IEnumerable<nint>, Vector2, nint> pick, Func<nint, bool> isPlaced, Vector2 framePoint) =>
+        Outline() is { } root ? StandIn(root, pick(Pickable(root, isPlaced), framePoint)) : 0;
+
+    static IEnumerable<nint> Pickable(OutlineNode root, Func<nint, bool> isPlaced) =>
+        Flatten(root).Where(node => !node.Locked).Select(node => node.Handle).Where(isPlaced);
+
+    // A group's topmost entity stands for what is under it, and a locked group for nothing.
+    static nint StandIn(OutlineNode root, nint picked)
     {
-        var root = Outline();
-        if (root is null)
-        {
-            return 0;
-        }
-        var picked = pick(Flatten(root).Where(node => !node.Locked).Select(node => node.Handle).Where(isPlaced), framePoint);
         var group = root.PathTo(picked).FirstOrDefault(node => node.Grouped);
         return group is { Locked: true } ? 0 : group?.Handle ?? picked;
     }

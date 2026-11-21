@@ -390,7 +390,7 @@ public sealed class ViewportControlTests
         var viewport = new ViewportControl(() => false, hasFrame ? Image(width, height, (_, _) => [1, 2, 3, 255]) : NoFrame);
         var clicks = new List<Vector2>();
         var orbits = new List<(float, float)>();
-        viewport.Clicked += clicks.Add;
+        viewport.Clicked += (point, _) => clicks.Add(point);
         viewport.Orbited += (yaw, pitch) => orbits.Add((yaw, pitch));
         var window = new Window { Width = 200, Height = 100, Content = viewport };
         window.Show();
