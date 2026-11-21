@@ -20,12 +20,15 @@ internal interface IScriptFiles
 
     /// <summary>Replaces the text of a script. Throws <see cref="IOException"/> when it cannot be written.</summary>
     void WriteScript(string resourcePath, string text);
+
+    /// <summary>Builds the project's C# and answers each error and warning. Throws <see cref="IOException"/> when it cannot build.</summary>
+    Task<IReadOnlyList<ScriptProblem>> CheckScripts();
 }
 
 /// <summary>
 /// The Script workspace, on two islands. The left one lists the project's C# files over the outline of the open one.
-/// The right one holds the open file in colour, with a status line under it. It reads and writes the files and does
-/// not compile or run them. Graph scripts have their own workspace.
+/// The right one holds the open file in colour, with a status line under it. It reads and writes the files, and the
+/// status line builds them to list their problems. It does not run them. Graph scripts have their own workspace.
 /// </summary>
 internal sealed class ScriptView : Border
 {
@@ -62,6 +65,9 @@ internal sealed class ScriptView : Border
     readonly TextBlock _indent = StatusText();
     readonly Control _empty = Parts.EmptyState("CodeFile", "No script open", "Pick a script on the left to read and edit it.");
     readonly Button _save = new() { Classes = { EditorTheme.Primary }, IsEnabled = false, VerticalAlignment = VerticalAlignment.Center };
+    readonly Button _problems = new() { Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _problemsText = StatusText();
+    IReadOnlyList<ScriptProblem> _found = [];
     IScriptFiles? _files;
     IReadOnlyList<string> _paths = [];
     string? _open;
@@ -103,6 +109,9 @@ internal sealed class ScriptView : Border
         _list.SelectionChanged += (_, _) => Choose(_list.SelectedItem as string);
         _outline.SelectionChanged += (_, _) => GoToMember();
         _save.Click += (_, _) => Save();
+        _problems.Click += async (_, _) => await ListOrCheck();
+        ToolTip.SetTip(_problems, "Build the project's C# and list its errors and warnings");
+        ShowProblems("Check problems", null, EditorBrushes.TextDim);
         var lists = Lists();
         var editor = EditorIsland();
         Grid.SetColumn(editor, 2);
@@ -133,6 +142,10 @@ internal sealed class ScriptView : Border
     internal TextBlock IndentText => _indent;
 
     internal Button SaveButton => _save;
+
+    internal Button ProblemsButton => _problems;
+
+    internal string ProblemsText => _problemsText.Text ?? "";
 
     /// <summary>Whether the text in the box differs from what is on disk.</summary>
     public bool IsDirty => _open is not null && _code.Editor.Text != _saved;
@@ -287,18 +300,15 @@ internal sealed class ScriptView : Border
         };
         var find = Unbuilt.Mark(Parts.IconButton("Search", "Find"), "Find in a script is not built yet.");
         var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, find, new Border { Width = 4 }, _save);
-        var problems = StatusText("Problems not checked");
-        problems.Foreground = EditorBrushes.Unbuilt;
-        ToolTip.SetTip(problems, "Not built yet");
-        DockPanel.SetDock(problems, Dock.Right);
+        DockPanel.SetDock(_problems, Dock.Right);
         var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status } };
         var status = new Border
         {
             Height = 28,
-            Padding = new Thickness(12, 0),
+            Padding = new Thickness(12, 0, 4, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new DockPanel { Children = { problems, line } },
+            Child = new DockPanel { Children = { _problems, line } },
         };
         TextElement.SetFontSize(status, 11);
         TextElement.SetForeground(status, EditorBrushes.TextDim);
@@ -412,6 +422,130 @@ internal sealed class ScriptView : Border
         // Cleared, so a second click on the same member goes there again.
         _outline.SelectedItem = null;
         _code.GoTo(member.Index);
+    }
+
+    /// <summary>Writes the open script, then builds the project's C# and shows the count of what the build found.</summary>
+    internal async Task Check()
+    {
+        if (_files is null || !Save())
+        {
+            return;
+        }
+
+        _problems.IsEnabled = false;
+        ShowProblems("Checking…", null, EditorBrushes.TextDim);
+        try
+        {
+            _found = await _files.CheckScripts();
+            ShowFound();
+        }
+        catch (Exception error) when (Failed(error))
+        {
+            _found = [];
+            ShowProblems("Check problems", null, EditorBrushes.TextDim);
+            Say(error.Message, EditorBrushes.FaultText);
+        }
+
+        _problems.IsEnabled = true;
+    }
+
+    /// <summary>The list of what the last check found, with Check again under it.</summary>
+    internal MenuFlyout ProblemList()
+    {
+        var list = new MenuFlyout { Placement = PlacementMode.TopEdgeAlignedRight };
+        foreach (var problem in _found)
+        {
+            var place = problem.Line > 0 ? $"{FileName(problem.Path)}:{problem.Line}  " : "";
+            var icon = new EditorIcon(problem.IsError ? "FaultCircle" : "WarnTriangle") { Width = 14, Height = 14 };
+            TextElement.SetForeground(icon, problem.IsError ? EditorBrushes.Fault : EditorBrushes.Warn);
+            var item = new MenuItem
+            {
+                Header = new TextBlock { Text = place + problem.Text, MaxWidth = 560, TextWrapping = TextWrapping.Wrap },
+                Icon = icon,
+                // A problem with no place in a project file has nowhere to go.
+                IsEnabled = problem.Line > 0 && problem.Path.StartsWith(FileTree.Root, StringComparison.Ordinal),
+            };
+            item.Click += (_, _) => GoTo(problem);
+            list.Items.Add(item);
+        }
+
+        list.Items.Add(new Separator());
+        var again = new MenuItem { Header = "Check again" };
+        again.Click += async (_, _) => await Check();
+        list.Items.Add(again);
+        return list;
+    }
+
+    /// <summary>Opens the problem's script with the caret at its line and column.</summary>
+    internal void GoTo(ScriptProblem problem)
+    {
+        Choose(problem.Path);
+        if (_open == problem.Path)
+        {
+            _code.GoTo(IndexOf(_code.Editor.Text ?? "", problem.Line, problem.Column));
+        }
+    }
+
+    // The index of a line and column, both counted from one. A line past the end is the end of the text.
+    static int IndexOf(string text, int line, int column)
+    {
+        var start = 0;
+        for (var at = 1; at < line; at++)
+        {
+            var end = text.IndexOf('\n', start);
+            if (end < 0)
+            {
+                return text.Length;
+            }
+
+            start = end + 1;
+        }
+
+        return Math.Min(start + Math.Max(column - 1, 0), text.Length);
+    }
+
+    // A click lists what the last check found. With nothing to list it checks.
+    async Task ListOrCheck()
+    {
+        if (_found.Count > 0)
+        {
+            ProblemList().ShowAt(_problems);
+            return;
+        }
+
+        await Check();
+    }
+
+    void ShowFound()
+    {
+        var errors = _found.Count(problem => problem.IsError);
+        var warnings = _found.Count - errors;
+        if (_found.Count == 0)
+        {
+            ShowProblems("No problems", "Tick", EditorBrushes.Done);
+            return;
+        }
+
+        var text = $"{Count(errors, "error")}, {Count(warnings, "warning")}";
+        ShowProblems(text, errors > 0 ? "FaultCircle" : "WarnTriangle", errors > 0 ? EditorBrushes.FaultText : EditorBrushes.Warn);
+    }
+
+    static string Count(int count, string word) => count == 1 ? $"1 {word}" : $"{count} {word}s";
+
+    void ShowProblems(string text, string? icon, IBrush tint)
+    {
+        _problemsText.Text = text;
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+        if (icon is not null)
+        {
+            row.Children.Add(new EditorIcon(icon) { Width = 13, Height = 13, VerticalAlignment = VerticalAlignment.Center });
+        }
+
+        // Detached first, because the last row still holds the text.
+        (_problemsText.Parent as Panel)?.Children.Remove(_problemsText);
+        row.Children.Add(_problemsText);
+        _problems.Content = row;
+        _problems.Foreground = tint;
     }
 
     // The open script's row carries a dot while it has edits.

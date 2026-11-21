@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
+using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
@@ -46,6 +47,18 @@ public sealed class ScriptViewTests
 
             Written.Add((resourcePath, text));
             Text[resourcePath] = text;
+        }
+
+        public List<ScriptProblem> Problems { get; } = [];
+
+        public int Checks { get; private set; }
+
+        public bool CheckFails { get; set; }
+
+        public Task<IReadOnlyList<ScriptProblem>> CheckScripts()
+        {
+            Checks++;
+            return CheckFails ? throw new IOException("dotnet was not found.") : Task.FromResult<IReadOnlyList<ScriptProblem>>([.. Problems]);
         }
     }
 
@@ -445,6 +458,58 @@ public sealed class ScriptViewTests
             Assert.Equal([("res://spin.cs", "class Spin { int turns; }")], files.Written);
             Assert.Equal("res://slime.cs", view.List.SelectedItem);
             Assert.Equal("res://slime.cs", view.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void Check_saves_the_open_script_then_counts_the_problems_and_a_pick_opens_the_file_at_its_place()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            files.Problems.Add(new ScriptProblem("res://slime.cs", 1, 7, true, "CS1002: ; expected"));
+            files.Problems.Add(new ScriptProblem("CSC", 0, 0, false, "CS8032: An analyzer could not load"));
+            var view = Open(files);
+            Pick(view, "res://spin.cs");
+            view.Editor.Text = "class Spin { }";
+
+            Assert.Equal("Check problems", view.ProblemsText);
+            Assert.True(view.Check().IsCompletedSuccessfully);
+
+            Assert.Equal([("res://spin.cs", "class Spin { }")], files.Written);
+            Assert.Equal("1 error, 1 warning", view.ProblemsText);
+            Assert.Same(EditorBrushes.FaultText, view.ProblemsButton.Foreground);
+            var items = view.ProblemList().Items.OfType<MenuItem>().ToList();
+            Assert.Equal(["slime.cs:1  CS1002: ; expected", "CS8032: An analyzer could not load", "Check again"], items.Select(item => item.Header is TextBlock text ? text.Text : item.Header));
+            Assert.False(items[1].IsEnabled);
+
+            items[0].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            Assert.Equal("res://slime.cs", view.Heading.Text);
+            Assert.Equal(6, view.Editor.CaretIndex);
+        });
+    }
+
+    [Fact]
+    public void A_clean_check_says_no_problems_and_a_failed_one_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            var view = Open(files);
+
+            view.ProblemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(1, files.Checks);
+            Assert.Equal("No problems", view.ProblemsText);
+            Assert.Same(EditorBrushes.Done, view.ProblemsButton.Foreground);
+
+            files.CheckFails = true;
+            view.ProblemsButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal("Check problems", view.ProblemsText);
+            Assert.Equal("dotnet was not found.", view.Status.Text);
+            Assert.True(view.ProblemsButton.IsEnabled);
         });
     }
 }
