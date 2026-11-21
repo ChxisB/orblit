@@ -178,9 +178,9 @@ public sealed class InspectorPaneTests
             var window = OpenAtReferenceSize();
             var tools = (MenuFlyout)window.InspectorPane.ToolsButton.Flyout!;
 
-            Choose(tools, "Copy Properties");
+            Choose(tools, "Open Documentation");
 
-            Assert.Equal("Copy Properties is not built yet.", window.Status);
+            Assert.Equal("Open Documentation is not built yet.", window.Status);
         });
     }
 

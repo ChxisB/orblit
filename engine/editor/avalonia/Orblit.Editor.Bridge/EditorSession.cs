@@ -28,6 +28,7 @@ public sealed class EditorSession
     const long UsageGroup = 64;
     const long UsageCategory = 128;
     const long UsageSubgroup = 256;
+    const int HintResourceType = 17;
 
     static readonly string[] s_propertyKeys = ["name", "type", "hint", "hint_string", "usage"];
 
@@ -199,6 +200,32 @@ public sealed class EditorSession
 
     /// <summary>Sets one property. The value is a bool, a long, a double, a string, a vector or a Vector4 colour.</summary>
     public void SetProperty(nint entity, string name, object value) => _host.ObjectSet(entity, name, value);
+
+    /// <summary>
+    /// Gives the entity its own copy of each resource its properties hold, so an edit to one changes no other
+    /// entity. A copy is shallow, so a resource inside it stays shared. Throws <see cref="IOException"/> when the
+    /// engine cannot copy one.
+    /// </summary>
+    public void MakeResourcesUnique(nint entity)
+    {
+        foreach (var property in PropertiesOf(entity).Where(property => property.Hint == HintResourceType && property.Value is nint))
+        {
+            var copy = _host.ResourceDuplicate((nint)property.Value!, false);
+            // A null copy would clear the property.
+            if (copy == 0)
+            {
+                throw new IOException($"The engine could not copy the resource in {property.Name}.");
+            }
+            try
+            {
+                _host.ObjectSet(entity, property.Name, copy);
+            }
+            finally
+            {
+                _host.Release(copy);
+            }
+        }
+    }
 
     /// <summary>The res:// path of the entity's script, an empty string for a script with no file, or null for none.</summary>
     public string? ScriptOf(nint entity) =>

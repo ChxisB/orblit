@@ -181,6 +181,11 @@ internal sealed class FakeScene : IEditorScene
 
     public void SetProperty(nint entity, string name, object value) => PropertyValues[(entity, name)] = value;
 
+    /// <summary>Each entity whose resources were made unique, in order.</summary>
+    public List<nint> MadeUnique { get; } = [];
+
+    public void MakeResourcesUnique(nint entity) => MadeUnique.Add(entity);
+
     public bool MetadataFails { get; init; }
 
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => Metadata.TryGetValue(entity, out var list) ? [.. list] : [];

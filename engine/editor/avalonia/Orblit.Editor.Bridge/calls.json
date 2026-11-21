@@ -122,6 +122,7 @@
   "Object.get_script",
   "Object.set_script",
   "Resource.get_path",
+  "Resource.duplicate",
   "GraphScript.add_function",
   "GraphScript.remove_function",
   "GraphScript.get_valid_step_id",

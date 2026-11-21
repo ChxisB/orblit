@@ -288,6 +288,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void SetProperty(nint entity, string name, object value) => _session.SetProperty(entity, name, value);
 
+    public void MakeResourcesUnique(nint entity) => _session.MakeResourcesUnique(entity);
+
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => _session.MetadataOf(entity);
 
     public void SetMetadata(nint entity, string name, object value) => _session.SetMetadata(entity, name, value);

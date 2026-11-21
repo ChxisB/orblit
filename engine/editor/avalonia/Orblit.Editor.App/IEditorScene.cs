@@ -162,6 +162,9 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// </summary>
     void SetProperty(nint entity, string name, object value);
 
+    /// <summary>Gives the entity its own copy of each resource its properties hold. Throws <see cref="IOException"/> when one cannot be copied.</summary>
+    void MakeResourcesUnique(nint entity);
+
     /// <summary>The entity's metadata in the order the engine lists it. A name that starts with an underscore is the engine's and is left out.</summary>
     IReadOnlyList<MetaEntry> MetadataOf(nint entity);
 

@@ -44,6 +44,7 @@ internal sealed class InspectorPanel : StackPanel
     readonly Control[] _entityParts;
     IEditorScene? _scene;
     OutlineNode? _node;
+    (string ClassName, (string Name, object Value)[] Values)? _copied;
     IReadOnlyList<string> _chain = [];
     // The classes and property names the sections were built for. Values alone change in place.
     string _built = "";
@@ -134,6 +135,38 @@ internal sealed class InspectorPanel : StackPanel
             group.Fold(open);
         }
     }
+
+    /// <summary>Keeps the selected entity's values for <see cref="PasteProperties"/>. An object is left out, because the engine can free it before the paste.</summary>
+    public void CopyProperties()
+    {
+        if (IsSelected)
+        {
+            _copied = (_node!.ClassName, [.. _scene!.PropertiesOf(_node.Handle).Where(property => property.Value is not (null or nint)).Select(property => (property.Name, property.Value!))]);
+        }
+    }
+
+    /// <summary>Sets the copied values on the selected entity. It must be of the class they came from.</summary>
+    public void PasteProperties()
+    {
+        if (!IsSelected)
+        {
+            return;
+        }
+        if (_copied is not { } copied)
+        {
+            Failed?.Invoke("Copy Properties first, then paste them onto an entity of the same class.");
+        }
+        else if (copied.ClassName != _node!.ClassName)
+        {
+            Failed?.Invoke($"The copied properties are a {copied.ClassName}'s, and {_node.Name} is a {_node.ClassName}.");
+        }
+        else
+        {
+            TryChange(entity => Array.ForEach(copied.Values, value => _scene!.SetProperty(entity, value.Name, value.Value)));
+        }
+    }
+
+    public void MakeResourcesUnique() => TryChange(entity => _scene!.MakeResourcesUnique(entity));
 
     IEnumerable<PropertyGroup> Groups() => _sections.Children.OfType<Panel>().SelectMany(section => section.Children.OfType<PropertyGroup>());
 
