@@ -131,6 +131,8 @@ internal sealed class NewProject
         {
             yield return ("Main.cs", $"using Orblit;\n\npublic partial class Main : {RootType}\n{{\n    public override void OnStart() => Orb.Print(\"Main started\");\n}}\n");
             yield return ($"{Assembly}.csproj", "<Project Sdk=\"Orblit.NET.Sdk/1.0.0\">\n  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n    <EnableDynamicLoading>true</EnableDynamicLoading>\n  </PropertyGroup>\n</Project>\n");
+            // The engine's C# export builds the solution, and refuses a project without one.
+            yield return ($"{Assembly}.slnx", $"<Solution>\n  <Project Path=\"{Assembly}.csproj\" />\n</Solution>\n");
         }
 
         if (Script == FirstScript.Graph)

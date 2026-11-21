@@ -72,4 +72,36 @@ public sealed class ProjectSettingsTests : IDisposable
 
         Assert.Empty(ProjectSettings.TagsOf(_folder));
     }
+
+    string Text() => File.ReadAllText(Path.Combine(_folder, "project.orblit"));
+
+    [Fact]
+    public void A_key_set_in_a_section_the_file_has_goes_under_its_heading()
+    {
+        Write("[application]\n\nconfig/name=\"crate\"\n\n[rendering]\n\nlights/max=8\n");
+
+        ProjectSettings.SetValue(_folder, "rendering", "textures/etc2=true");
+
+        Assert.Equal("[application]\n\nconfig/name=\"crate\"\n\n[rendering]\n\ntextures/etc2=true\nlights/max=8\n", Text());
+    }
+
+    [Fact]
+    public void A_key_the_file_has_takes_the_new_value_in_its_place()
+    {
+        Write("[rendering]\n\ntextures/etc2=false\nlights/max=8\n");
+
+        ProjectSettings.SetValue(_folder, "rendering", "textures/etc2=true");
+
+        Assert.Equal("[rendering]\n\ntextures/etc2=true\nlights/max=8\n", Text());
+    }
+
+    [Fact]
+    public void A_key_in_a_section_the_file_lacks_adds_the_section_at_the_end()
+    {
+        Write("[application]\n\nconfig/name=\"crate\"\n");
+
+        ProjectSettings.SetValue(_folder, "rendering", "textures/etc2=true");
+
+        Assert.Equal("[application]\n\nconfig/name=\"crate\"\n\n[rendering]\n\ntextures/etc2=true\n", Text());
+    }
 }

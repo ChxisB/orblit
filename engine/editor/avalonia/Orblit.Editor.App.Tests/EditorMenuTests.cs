@@ -392,6 +392,22 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
+    public void Export_opens_the_export_dialog_with_the_project_s_presets()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            scene.ExportList.Add(new ExportPreset("Desktop", "Linux", "/games/a/build/Game.x86_64"));
+            var window = OpenAtReferenceSize(scene);
+
+            Press(Find(NativeMenu.GetMenu(window)!, "Export..."));
+
+            Assert.True(window.Export.Dialog.IsVisible);
+            Assert.Equal(["Desktop"], window.Export.PresetBox.Items.Cast<string>());
+        });
+    }
+
+    [Fact]
     public void Quit_closes_the_window_on_a_platform_without_the_screen_bar()
     {
         UiThread.Run(() =>

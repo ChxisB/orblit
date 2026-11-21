@@ -308,6 +308,46 @@ internal sealed class FakeScene : IEditorScene
         Kits.Add(zipFile);
     }
 
+    /// <summary>The presets the project's export_presets.cfg holds.</summary>
+    public List<ExportPreset> ExportList { get; } = [];
+
+    public int PresetsAdded { get; private set; }
+
+    /// <summary>The exports run, as preset and path.</summary>
+    public List<(string Preset, string Path)> Exports { get; } = [];
+
+    /// <summary>When set, an export fails with this.</summary>
+    public Exception? ExportFault { get; set; }
+
+    /// <summary>The .tpz files installed, in order.</summary>
+    public List<string> Templates { get; } = [];
+
+    /// <summary>When set, a template install throws this.</summary>
+    public Exception? TemplateFault { get; set; }
+
+    public IReadOnlyList<ExportPreset> Presets() => [.. ExportList];
+
+    public void AddPreset()
+    {
+        PresetsAdded++;
+        ExportList.Add(new ExportPreset(ExportPresets.ThisComputer.Platform, ExportPresets.ThisComputer.Platform, "/games/a/build/Game"));
+    }
+
+    public void InstallTemplates(string tpz)
+    {
+        if (TemplateFault is not null)
+        {
+            throw TemplateFault;
+        }
+        Templates.Add(tpz);
+    }
+
+    public Task Export(string preset, string path)
+    {
+        Exports.Add((preset, path));
+        return ExportFault is null ? Task.CompletedTask : Task.FromException(ExportFault);
+    }
+
     public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => Task.FromResult<IReadOnlyList<ScriptProblem>>([]);
 
     public string ReadScript(string resourcePath) =>

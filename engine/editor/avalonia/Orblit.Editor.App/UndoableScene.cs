@@ -133,6 +133,14 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public void InstallKit(string zipFile) => scene.InstallKit(zipFile);
 
+    public IReadOnlyList<ExportPreset> Presets() => scene.Presets();
+
+    public void AddPreset() => scene.AddPreset();
+
+    public void InstallTemplates(string tpz) => scene.InstallTemplates(tpz);
+
+    public Task Export(string preset, string path) => scene.Export(preset, path);
+
     public IReadOnlyList<string> AddableClasses() => scene.AddableClasses();
 
     public IGraphFile OpenGraph(string resourcePath) => scene.OpenGraph(resourcePath);
