@@ -58,6 +58,18 @@ public sealed class ProjectScriptsTests : IDisposable
         Assert.Equal(["res://enemies/boss.ograph", "res://logic.ograph"], ProjectScripts.FindGraphs(_folder));
     }
 
+    [Fact]
+    public void Imported_files_are_named_by_their_import_file_and_the_cache_is_left_out()
+    {
+        Touch("rock.glb");
+        Touch("rock.glb.import");
+        Touch("art/sky.png.import");
+        Touch(".orblit/imported/rock.glb.import");
+
+        Assert.Equal(["res://art/sky.png", "res://rock.glb"], ProjectScripts.FindImported(_folder));
+        Assert.EndsWith(Path.Combine("art", "sky.png.import"), ProjectScripts.FileOf(_folder, "res://art/sky.png.import", ImportFile.Suffix));
+    }
+
     [Theory]
     [InlineData("res://spin.cs", "spin.cs")]
     [InlineData("res://enemies/deep/boss.cs", "enemies/deep/boss.cs")]

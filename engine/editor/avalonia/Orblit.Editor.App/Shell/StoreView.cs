@@ -202,7 +202,7 @@ internal sealed class StoreView : Border
         Unbuilt.Disable(install);
         Unbuilt.Disable(page);
         DockPanel.SetDock(page, Dock.Right);
-        var version = Badge(kit.Version);
+        var version = Parts.Badge(kit.Version);
         DockPanel.SetDock(version, Dock.Right);
         var name = new TextBlock { Text = kit.Name, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
         var body = new StackPanel
@@ -303,13 +303,4 @@ internal sealed class StoreView : Border
             Child = new DockPanel { Children = { value, new TextBlock { Text = name, FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center } } },
         };
     }
-
-    static Border Badge(string text) => new()
-    {
-        Padding = new Thickness(6, 2),
-        CornerRadius = new CornerRadius(999),
-        Background = EditorBrushes.Line,
-        VerticalAlignment = VerticalAlignment.Center,
-        Child = new TextBlock { Text = text, FontFamily = EditorTheme.Mono, FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
-    };
 }

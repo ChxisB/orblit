@@ -101,6 +101,14 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public IReadOnlyList<string> GraphScripts() => scene.GraphScripts();
 
+    public IReadOnlyList<string> ImportedFiles() => scene.ImportedFiles();
+
+    public string ReadImport(string resourcePath) => scene.ReadImport(resourcePath);
+
+    public void WriteImport(string resourcePath, string text) => scene.WriteImport(resourcePath, text);
+
+    public void Reimport() => scene.Reimport();
+
     public IReadOnlyList<string> AddableClasses() => scene.AddableClasses();
 
     public IGraphFile OpenGraph(string resourcePath) => scene.OpenGraph(resourcePath);

@@ -332,6 +332,26 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void WriteScript(string resourcePath, string text) => File.WriteAllText(ProjectScripts.FileOf(_project, resourcePath), text);
 
+    public IReadOnlyList<string> ImportedFiles() => ProjectScripts.FindImported(_project);
+
+    public string ReadImport(string resourcePath) => File.ReadAllText(ImportFileOf(resourcePath));
+
+    public void WriteImport(string resourcePath, string text) => File.WriteAllText(ImportFileOf(resourcePath), text);
+
+    // The editor's engine runs the game, which imports nothing, so an engine with --import does it in its own process and quits.
+    public void Reimport()
+    {
+        var import = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
+        foreach (var argument in new[] { "--headless", "--path", _project, "--import", "--log-file", Log.NewFile() })
+        {
+            import.ArgumentList.Add(argument);
+        }
+
+        using var started = Process.Start(import);
+    }
+
+    string ImportFileOf(string resourcePath) => ProjectScripts.FileOf(_project, resourcePath + ImportFile.Suffix, ImportFile.Suffix);
+
     public string? ReadBreakpoints() => BreakpointFile.Read(_project);
 
     public void WriteBreakpoints(string text) => BreakpointFile.Write(_project, text);

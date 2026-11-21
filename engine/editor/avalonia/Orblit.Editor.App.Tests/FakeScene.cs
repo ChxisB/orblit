@@ -279,6 +279,20 @@ internal sealed class FakeScene : IEditorScene
 
     public void WriteBreakpoints(string text) => BreakpointText = text;
 
+    /// <summary>The text of each imported file's .import file, by the imported file's path.</summary>
+    public Dictionary<string, string> ImportText { get; } = [];
+
+    public int Reimports { get; private set; }
+
+    public IReadOnlyList<string> ImportedFiles() => [.. ImportText.Keys];
+
+    public string ReadImport(string resourcePath) =>
+        ImportText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.import.");
+
+    public void WriteImport(string resourcePath, string text) => ImportText[resourcePath] = text;
+
+    public void Reimport() => Reimports++;
+
     public string ReadScript(string resourcePath) =>
         ScriptText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.");
 

@@ -72,6 +72,7 @@ internal sealed class EditorWindow : Window
     readonly CenterArea _center;
     readonly StoreView _store;
     readonly ScriptView _script = new();
+    readonly ImportPane _import = new();
     readonly GraphView _graph = new();
     readonly GameView _game = new();
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
@@ -160,7 +161,7 @@ internal sealed class EditorWindow : Window
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
-        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", Parts.EmptyState("ImportArrow", "Nothing to import", "Select a model, image or sound in FileSystem to set how it imports."))) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
+        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
         _fileDock = new DockTabs(("FileSystem", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
         _fileDock.AddTool("History", _historyPane.ClearButton);
         _inspectorPane = new InspectorPane(_inspector);
@@ -250,6 +251,8 @@ internal sealed class EditorWindow : Window
 
     internal ScenesPanel Scenes => _scenes;
 
+    internal ImportPane Import => _import;
+
     internal Button SaveButton => _save;
 
     internal Button PlayButton => _playButton;
@@ -279,6 +282,7 @@ internal sealed class EditorWindow : Window
         scene.KeepChildren = _toolbar.KeepChildren;
         _script.Show(scene);
         _graph.Show(scene);
+        _import.Show(scene);
         _center.Output.Show(scene.Output, _time);
         _pollTimer.Start();
         ShowScenes();
@@ -947,7 +951,7 @@ internal sealed class EditorWindow : Window
     // shortcut: one file stat per scene on each refresh. Read the times only for a newest first sort when a project has thousands.
     void ShowScenes()
     {
-        IReadOnlyList<string> files = [.. _scene!.Scenes(), .. _scene.Scripts(), .. _scene.GraphScripts()];
+        IReadOnlyList<string> files = [.. _scene!.Scenes(), .. _scene.Scripts(), .. _scene.GraphScripts(), .. _scene.ImportedFiles()];
         _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, _scene.ModifiedOf));
     }
 
@@ -963,6 +967,10 @@ internal sealed class EditorWindow : Window
             case FileKind.Graph:
                 _graph.Open(resourcePath);
                 _titleBar.Choose(TitleBar.Graph);
+                break;
+            case FileKind.Imported:
+                _import.Open(resourcePath);
+                _sceneDock.Select(1);
                 break;
             default:
                 Open(resourcePath);

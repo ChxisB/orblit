@@ -1,6 +1,6 @@
 namespace Orblit.Editor.App;
 
-internal enum FileKind { Folder, Scene, Script, Graph }
+internal enum FileKind { Folder, Scene, Script, Graph, Imported }
 
 /// <summary>One row of the file tree. A file row's path is the res:// path to open.</summary>
 internal sealed record FileNode(string Name, string Path, FileKind Kind, IReadOnlyList<FileNode> Children);
@@ -31,12 +31,13 @@ internal static class FileTree
         return newer != 0 ? newer : s_byName.Compare(a, b);
     });
 
-    /// <summary>The kind of a file by its extension. The engine lists scenes, and the project lists C# and graph scripts, so any other file is a scene.</summary>
+    /// <summary>The kind of a file by its extension. The project lists scenes, C# and graph scripts and the files the engine imports, so any other file is imported.</summary>
     internal static FileKind KindOf(string path) => Path.GetExtension(path) switch
     {
         ".cs" => FileKind.Script,
         ".ograph" => FileKind.Graph,
-        _ => FileKind.Scene,
+        ".oscn" => FileKind.Scene,
+        _ => FileKind.Imported,
     };
 
     // A path that is not under res:// is not a project file. A folder the engine and the scripts both name is one row.
