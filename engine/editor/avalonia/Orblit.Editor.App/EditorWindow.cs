@@ -34,6 +34,7 @@ internal sealed class EditorWindow : Window
     };
     readonly EntityTools _tools = new();
     readonly MoveTools _move = new();
+    readonly SignalsPane _signals = new();
     readonly NewSceneTool _newScene = new();
     readonly InstanceTool _instanceScene = new();
     readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
@@ -118,6 +119,8 @@ internal sealed class EditorWindow : Window
         _tools.Failed += Fail;
         _move.Changed += Edited;
         _move.Failed += Fail;
+        _signals.Changed += Edited;
+        _signals.Failed += Fail;
         _instanceScene.Changed += Edited;
         _instanceScene.Failed += Fail;
         _inspector.Edited += () =>
@@ -148,7 +151,7 @@ internal sealed class EditorWindow : Window
         _fileDock = new DockTabs(("FileSystem", _scenes), ("History", Parts.EmptyState("Clock", "Nothing to undo yet", "Undo is not built yet. Its steps will be listed here."))) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
         _inspectorPane = new InspectorPane(_inspector);
         _inspectorPane.Picked += _scenePane.Select;
-        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", Parts.EmptyState("Pulse", "Signals are not built yet", "The signals of the selected entity and where they go will show here."))) { Slot = DockSlot.Right, Icon = "ListSelect" };
+        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", _signals)) { Slot = DockSlot.Right, Icon = "ListSelect" };
         WireDocks();
         _leftSide = new DockSide(LeftColumn(), () => DocksIn(DockSlot.UpperLeft, DockSlot.LowerLeft));
         _rightSide = new DockSide(_slots[DockSlot.Right], () => DocksIn(DockSlot.Right));
@@ -177,7 +180,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -216,6 +219,8 @@ internal sealed class EditorWindow : Window
     internal EntityTools Tools => _tools;
 
     internal MoveTools Move => _move;
+
+    internal SignalsPane Signals => _signals;
 
     internal NewSceneTool NewScene => _newScene;
 
@@ -380,6 +385,7 @@ internal sealed class EditorWindow : Window
         _inspectorPane.Show(_scene, selected);
         _tools.Show(_scene, _root, selected);
         _move.Show(_scene, _root, selected);
+        _signals.Show(_scene, _root, selected);
         _instanceScene.Show(_scene, _root, selected);
         var spatial = selected is not null && _scene is not null && _scene.IsEntity3D(selected.Handle);
         // A locked entity keeps no handles, but it can still be framed.

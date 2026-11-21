@@ -13,6 +13,8 @@ public static unsafe class EngineCalls
     internal const long PackedByteArrayResizeHash = 848867239;
     internal const long ArraySizeHash = 3173160232;
     internal const long PackedStringArraySizeHash = 3173160232;
+    internal const long CallableGetObjectHash = 4008621732;
+    internal const long CallableGetMethodHash = 1825232092;
 
     static readonly EngineMethod OrblitInstanceStartMethod = new("OrblitInstance", "start", 2240911060);
     static readonly EngineMethod OrblitInstanceIsStartedMethod = new("OrblitInstance", "is_started", 2240911060);
@@ -134,6 +136,11 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ClassRegistryGetInheritersFromClassMethod = new("ClassRegistry", "get_inheriters_from_class", 1761182771);
     static readonly EngineMethod ClassRegistryCanInstantiateMethod = new("ClassRegistry", "can_instantiate", 2619796661);
     static readonly EngineMethod ClassRegistryClassGetApiTypeMethod = new("ClassRegistry", "class_get_api_type", 3310495372);
+    static readonly EngineMethod ClassRegistryClassGetSignalListMethod = new("ClassRegistry", "class_get_signal_list", 3504980660);
+    static readonly EngineMethod ObjectGetSignalListMethod = new("Object", "get_signal_list", 3995934104);
+    static readonly EngineMethod ObjectGetSignalConnectionListMethod = new("Object", "get_signal_connection_list", 3147814860);
+    static readonly EngineMethod ObjectConnectMethod = new("Object", "connect", 1518946055);
+    static readonly EngineMethod ObjectDisconnectMethod = new("Object", "disconnect", 1874754934);
     static readonly EngineMethod ObjectGetMetaMethod = new("Object", "get_meta", 3990617847);
     static readonly EngineMethod ObjectSetMetaMethod = new("Object", "set_meta", 3776071444);
     static readonly EngineMethod ObjectRemoveMetaMethod = new("Object", "remove_meta", 3304788590);
@@ -1142,6 +1149,72 @@ public static unsafe class EngineCalls
         void** args = stackalloc void*[] { a0 };
         host.Call(ClassRegistryClassGetApiTypeMethod, target, args, &result);
         return result;
+    }
+
+    public static (string Name, string[] Arguments)[] ClassRegistryClassGetSignalList(this EngineHost host, nint target, string className, bool noInheritance)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(className);
+        byte a1 = (byte)(noInheritance ? 1 : 0);
+        void* result = scope.Result(VariantType.Array);
+        void** args = stackalloc void*[] { a0, &a1 };
+        host.Call(ClassRegistryClassGetSignalListMethod, target, args, result);
+        return NativeVariant.ReadSignals(result);
+    }
+
+    public static (string Name, string[] Arguments)[] ObjectGetSignalList(this EngineHost host, nint target)
+    {
+        using var scope = new NativeScope();
+        void* result = scope.Result(VariantType.Array);
+        host.Call(ObjectGetSignalListMethod, target, null, result);
+        return NativeVariant.ReadSignals(result);
+    }
+
+    public static (nint Target, string Method, long Flags)[] ObjectGetSignalConnectionList(this EngineHost host, nint target, string signal)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(signal);
+        void* result = scope.Result(VariantType.Array);
+        void** args = stackalloc void*[] { a0 };
+        host.Call(ObjectGetSignalConnectionListMethod, target, args, result);
+        return NativeVariant.ReadConnections(result);
+    }
+
+    public static long ObjectConnect(this EngineHost host, nint target, string signal, nint callableTarget, string method, long flags)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(signal);
+        // A Callable is two pointers, so it does not fit a scope slot.
+        nint* a1 = stackalloc nint[2] { 0, 0 };
+        NativeVariant.BuildCallable(a1, callableTarget, method);
+        long result = 0;
+        void** args = stackalloc void*[] { a0, a1, &flags };
+        try
+        {
+            host.Call(ObjectConnectMethod, target, args, &result);
+            return result;
+        }
+        finally
+        {
+            NativeApi.VariantDestructor((int)VariantType.Callable)(a1);
+        }
+    }
+
+    public static void ObjectDisconnect(this EngineHost host, nint target, string signal, nint callableTarget, string method)
+    {
+        using var scope = new NativeScope();
+        void* a0 = scope.StringName(signal);
+        nint* a1 = stackalloc nint[2] { 0, 0 };
+        NativeVariant.BuildCallable(a1, callableTarget, method);
+        void** args = stackalloc void*[] { a0, a1 };
+        try
+        {
+            host.Call(ObjectDisconnectMethod, target, args, null);
+        }
+        finally
+        {
+            NativeApi.VariantDestructor((int)VariantType.Callable)(a1);
+        }
     }
 
     public static object? ObjectGetScript(this EngineHost host, nint target)

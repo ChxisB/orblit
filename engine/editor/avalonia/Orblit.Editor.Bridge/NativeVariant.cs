@@ -133,9 +133,7 @@ internal sealed unsafe class NativeVariant : IDisposable
     internal static object?[][] ReadDictionaries(void* array, IReadOnlyList<string> keys)
     {
         using var scope = new NativeScope();
-        var size = NativeApi.BuiltinMethod((int)VariantType.Array, scope.StringName("size"), EngineCalls.ArraySizeHash);
-        long count = 0;
-        size(array, null, &count, 0);
+        var count = Count(array, scope);
         var keyVariants = keys.Select(From).ToArray();
         try
         {
@@ -160,6 +158,73 @@ internal sealed unsafe class NativeVariant : IDisposable
                 key.Dispose();
             }
         }
+    }
+
+    /// <summary>Reads an engine Array of signal Dictionaries into each signal's name and the names of its arguments.</summary>
+    internal static (string Name, string[] Arguments)[] ReadSignals(void* array)
+    {
+        using var scope = new NativeScope();
+        using var nameKey = From("name");
+        using var argumentsKey = From("args");
+        var signals = new (string, string[])[Count(array, scope)];
+        for (var i = 0; i < signals.Length; i++)
+        {
+            var row = scope.Result(VariantType.Dictionary);
+            Take(NativeApi.ArrayAtConst(array, i), VariantType.Dictionary, row);
+            var arguments = scope.Result(VariantType.Array);
+            Take(NativeApi.DictionaryAtConst(row, argumentsKey.Slot), VariantType.Array, arguments);
+            signals[i] = ((string?)Read(NativeApi.DictionaryAtConst(row, nameKey.Slot)) ?? "", [.. ReadDictionaries(arguments, ["name"]).Select(argument => (string?)argument[0] ?? "")]);
+        }
+        return signals;
+    }
+
+    /// <summary>Reads an engine Array of connection Dictionaries into the object and method each one calls, and its flags.</summary>
+    internal static (nint Target, string Method, long Flags)[] ReadConnections(void* array)
+    {
+        using var scope = new NativeScope();
+        using var callableKey = From("callable");
+        using var flagsKey = From("flags");
+        var getObject = NativeApi.BuiltinMethod((int)VariantType.Callable, scope.StringName("get_object"), EngineCalls.CallableGetObjectHash);
+        var getMethod = NativeApi.BuiltinMethod((int)VariantType.Callable, scope.StringName("get_method"), EngineCalls.CallableGetMethodHash);
+        var connections = new (nint, string, long)[Count(array, scope)];
+        // A Callable is two pointers, so it does not fit a scope slot. The to-type call assigns into it, so it starts zeroed each time.
+        nint* callable = stackalloc nint[2];
+        for (var i = 0; i < connections.Length; i++)
+        {
+            var row = scope.Result(VariantType.Dictionary);
+            Take(NativeApi.ArrayAtConst(array, i), VariantType.Dictionary, row);
+            (callable[0], callable[1]) = (0, 0);
+            Take(NativeApi.DictionaryAtConst(row, callableKey.Slot), VariantType.Callable, callable);
+            try
+            {
+                nint target = 0;
+                getObject(callable, null, &target, 0);
+                var method = scope.Result(VariantType.StringName);
+                getMethod(callable, null, method, 0);
+                connections[i] = (target, NativeText.ReadStringName(method), (long?)Read(NativeApi.DictionaryAtConst(row, flagsKey.Slot)) ?? 0);
+            }
+            finally
+            {
+                NativeApi.VariantDestructor((int)VariantType.Callable)(callable);
+            }
+        }
+        return connections;
+    }
+
+    /// <summary>Builds a Callable of a method on an object into a zeroed two-pointer slot. The caller frees it with the Callable destructor.</summary>
+    internal static void BuildCallable(nint* slot, nint target, string method)
+    {
+        using var scope = new NativeScope();
+        void** args = stackalloc void*[] { &target, scope.StringName(method) };
+        NativeApi.VariantConstructor((int)VariantType.Callable, 2)(slot, args);
+    }
+
+    static long Count(void* array, NativeScope scope)
+    {
+        var size = NativeApi.BuiltinMethod((int)VariantType.Array, scope.StringName("size"), EngineCalls.ArraySizeHash);
+        long count = 0;
+        size(array, null, &count, 0);
+        return count;
     }
 
     void Fill(VariantType type, void* raw) => NativeApi.VariantFromType((int)type)(_slot, raw);

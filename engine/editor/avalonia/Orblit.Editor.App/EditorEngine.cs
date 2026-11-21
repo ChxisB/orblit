@@ -292,6 +292,12 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void MakeResourcesUnique(nint entity) => _session.MakeResourcesUnique(entity);
 
+    public IReadOnlyList<EntitySignal> SignalsOf(nint entity) => _session.SignalsOf(entity);
+
+    public void Connect(nint entity, string signal, nint target, string method) => _session.Connect(entity, signal, target, method);
+
+    public void Disconnect(nint entity, string signal, nint target, string method) => _session.Disconnect(entity, signal, target, method);
+
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => _session.MetadataOf(entity);
 
     public void SetMetadata(nint entity, string name, object value) => _session.SetMetadata(entity, name, value);

@@ -186,6 +186,36 @@ internal sealed class FakeScene : IEditorScene
 
     public void MakeResourcesUnique(nint entity) => MadeUnique.Add(entity);
 
+    // A few signals of each class, as the engine lists them. A script adds one of its own.
+    static readonly Dictionary<string, (string Name, string[] Arguments)[]> s_signals = new()
+    {
+        ["Entity3D"] = [("visibility_changed", [])],
+        ["Entity"] = [("child_entered_stage", ["entity"]), ("renamed", [])],
+    };
+
+    /// <summary>The saved connections, in the order they were made.</summary>
+    public List<(nint Entity, string Signal, nint Target, string Method)> Links { get; } = [];
+
+    public IReadOnlyList<EntitySignal> SignalsOf(nint entity) =>
+    [
+        .. ClassChainOf(entity)
+            .SelectMany(className => s_signals.GetValueOrDefault(className, []).Select(signal => (Class: className, signal.Name, signal.Arguments)))
+            .Concat(Scripted.ContainsKey(entity) ? [("", "hit", ["damage"])] : [])
+            .OrderBy(signal => signal.Name, StringComparer.Ordinal)
+            .Select(signal => new EntitySignal(signal.Class, signal.Name, signal.Arguments, [.. Links.Where(link => link.Entity == entity && link.Signal == signal.Name).Select(link => new SignalConnection(link.Target, link.Method))])),
+    ];
+
+    public void Connect(nint entity, string signal, nint target, string method)
+    {
+        if (Links.Contains((entity, signal, target, method)))
+        {
+            throw new InvalidOperationException($"The engine could not connect {signal} to {method}, error 22.");
+        }
+        Links.Add((entity, signal, target, method));
+    }
+
+    public void Disconnect(nint entity, string signal, nint target, string method) => Links.Remove((entity, signal, target, method));
+
     public bool MetadataFails { get; init; }
 
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => Metadata.TryGetValue(entity, out var list) ? [.. list] : [];

@@ -54,6 +54,7 @@ internal sealed class EditorChecks : IChecks
         ("a Camera3D lists its classes and their properties with values and hints, and a set of each kind reads back", PropertiesAreListedAndSet),
         ("two entities that share a mesh each hold their own after the second's resources are made unique", ResourcesAreMadeUnique),
         ("the addable classes are the game's own that can be made, by name", AddableClassesAreTheGamesOwn),
+        ("a signal lists its class and arguments, and a connection to another entity is saved with the scene and removed again", SignalConnectionIsSaved),
         ("a script that cannot load is refused and leaves the entity as it was, and clearing no script changes nothing", ScriptRefusals),
         ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
         ("a new graph script is saved with its base type and opens empty, and a base that is no class or a path that is no graph file is refused", GraphScriptCreation),
@@ -584,6 +585,34 @@ internal sealed class EditorChecks : IChecks
         Assert.DoesNotContain("CanvasItem", classes);
         Assert.DoesNotContain("EditorInspector", classes);
         Assert.Equal(classes.Order(StringComparer.Ordinal), classes);
+    }
+
+    void SignalConnectionIsSaved()
+    {
+        var root = _editor.Outline()!.Handle;
+        var (lamp, cubes) = (_editor.AddChild(root, "Entity3D", "Lamp"), _editor.AddChild(root, "Entity3D", "Cubes"));
+        string Saved() => File.ReadAllText(Path.Combine(_folder, "main.oscn"));
+        EntitySignal Visibility() => _editor.SignalsOf(lamp).Single(signal => signal.Name == "visibility_changed");
+
+        var signals = _editor.SignalsOf(lamp);
+        Assert.Equal(("Entity3D", 0), (Visibility().Class, Visibility().Arguments.Count));
+        Assert.Equal("Entity", signals.Single(signal => signal.Name == "child_entered_stage").Class);
+        Assert.Single(signals.Single(signal => signal.Name == "child_entered_stage").Arguments);
+        Assert.DoesNotContain(signals, signal => signal.Name == "script_changed");
+        Assert.Empty(Visibility().Links);
+
+        _editor.Connect(lamp, "visibility_changed", cubes, "OnLampShown");
+        _editor.Save();
+
+        Assert.Equal([new SignalConnection(cubes, "OnLampShown")], Visibility().Links);
+        Assert.Contains("[connection signal=\"visibility_changed\" from=\"Lamp\" to=\"Cubes\" method=\"OnLampShown\"]", Saved());
+        Assert.Throws<InvalidOperationException>(() => _editor.Connect(lamp, "visibility_changed", cubes, "OnLampShown"));
+
+        _editor.Disconnect(lamp, "visibility_changed", cubes, "OnLampShown");
+        _editor.Save();
+
+        Assert.Empty(Visibility().Links);
+        Assert.DoesNotContain("[connection", Saved());
     }
 
     void ResourcesAreMadeUnique()

@@ -389,7 +389,7 @@ public sealed class MenusTests
     [Theory]
     [InlineData("Scene", "Nothing to import")]
     [InlineData("FileSystem", "Nothing to undo yet")]
-    [InlineData("Inspector", "Signals are not built yet")]
+    [InlineData("Inspector", "Nothing selected")]
     public void The_second_tab_of_each_dock_says_why_it_is_empty(string dock, string title)
     {
         UiThread.Run(() =>

@@ -13,6 +13,7 @@ internal enum VariantType
     Color = 20,
     StringName = 21,
     Object = 24,
+    Callable = 25,
     Dictionary = 27,
     Array = 28,
     PackedByteArray = 29,

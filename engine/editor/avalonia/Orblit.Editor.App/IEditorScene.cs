@@ -165,6 +165,18 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
     /// <summary>Gives the entity its own copy of each resource its properties hold. Throws <see cref="IOException"/> when one cannot be copied.</summary>
     void MakeResourcesUnique(nint entity);
 
+    /// <summary>The entity's signals by name, each with the class that declares it and its saved connections. A script's signal has no class.</summary>
+    IReadOnlyList<EntitySignal> SignalsOf(nint entity);
+
+    /// <summary>
+    /// Connects the signal to a method on the target, saved with the scene. Throws <see cref="InvalidOperationException"/>
+    /// when the engine refuses, such as for a connection that is there already.
+    /// </summary>
+    void Connect(nint entity, string signal, nint target, string method);
+
+    /// <summary>Removes a saved connection.</summary>
+    void Disconnect(nint entity, string signal, nint target, string method);
+
     /// <summary>The entity's metadata in the order the engine lists it. A name that starts with an underscore is the engine's and is left out.</summary>
     IReadOnlyList<MetaEntry> MetadataOf(nint entity);
 
