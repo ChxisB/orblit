@@ -126,6 +126,6 @@ internal sealed class MoveTools
     }
 
     // Every entity from the root down, parents first. The path is the names from the root, for example Field/Lamp.
-    static IEnumerable<(OutlineNode Entity, string Path, int Depth)> Tree(OutlineNode node, string path, int depth) =>
+    internal static IEnumerable<(OutlineNode Entity, string Path, int Depth)> Tree(OutlineNode node, string path, int depth) =>
         node.Children.SelectMany(child => Tree(child, $"{path}/{child.Name}", depth + 1)).Prepend((node, path, depth));
 }

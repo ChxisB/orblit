@@ -32,6 +32,8 @@ public sealed class EditorSession
     // The kinds of class the registry tells apart. A game holds only the core and extension kinds.
     const long ApiCore = 0;
     const long ApiExtension = 2;
+    // ConnectFlags: a persistent connection is saved with the scene.
+    const long ConnectPersist = 2;
 
     static readonly string[] s_propertyKeys = ["name", "type", "hint", "hint_string", "usage"];
 
@@ -164,6 +166,42 @@ public sealed class EditorSession
             .Where(name => _host.ClassRegistryCanInstantiate(registry, name) && _host.ClassRegistryClassGetApiType(registry, name) is ApiCore or ApiExtension)
             .Order(StringComparer.Ordinal)];
     }
+
+    /// <summary>
+    /// The entity's signals by name, each with the class that declares it and the connections a save keeps. A signal of
+    /// the entity's script has an empty class. The signals of Object, which every class has, are left out.
+    /// </summary>
+    public IReadOnlyList<EntitySignal> SignalsOf(nint entity)
+    {
+        var registry = _host.Singleton("ClassRegistry");
+        var owners = ClassChainOf(entity)
+            .SelectMany(name => _host.ClassRegistryClassGetSignalList(registry, name, noInheritance: true).Select(signal => (signal.Name, Class: name)))
+            .DistinctBy(owned => owned.Name)
+            .ToDictionary(owned => owned.Name, owned => owned.Class);
+        var shared = _host.ClassRegistryClassGetSignalList(registry, "Object", noInheritance: true).Select(signal => signal.Name).ToHashSet();
+        return [.. _host.ObjectGetSignalList(entity)
+            .Where(signal => !shared.Contains(signal.Name))
+            .OrderBy(signal => signal.Name, StringComparer.Ordinal)
+            .Select(signal => new EntitySignal(owners.GetValueOrDefault(signal.Name, ""), signal.Name, signal.Arguments, LinksOf(entity, signal.Name)))];
+    }
+
+    IReadOnlyList<SignalConnection> LinksOf(nint entity, string signal) =>
+        [.. _host.ObjectGetSignalConnectionList(entity, signal).Where(link => (link.Flags & ConnectPersist) != 0).Select(link => new SignalConnection(link.Target, link.Method))];
+
+    /// <summary>
+    /// Joins the entity's signal to a method of the target, so a save keeps it. Throws
+    /// <see cref="InvalidOperationException"/> when the engine refuses, as it does for a connection it has already.
+    /// </summary>
+    public void Connect(nint entity, string signal, nint target, string method)
+    {
+        var error = _host.ObjectConnect(entity, signal, target, method, ConnectPersist);
+        if (error != 0)
+        {
+            throw new InvalidOperationException($"The engine could not connect {signal} to {method}, error {error}.");
+        }
+    }
+
+    public void Disconnect(nint entity, string signal, nint target, string method) => _host.ObjectDisconnect(entity, signal, target, method);
 
     /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
     public IReadOnlyList<string> ClassChainOf(nint entity)
