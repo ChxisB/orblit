@@ -93,6 +93,11 @@ internal static class EditorColors
     public static readonly Color RulerTick = GuideLit;
     public static readonly Color RulerMajor = Disabled;
 
+    // The grid of the 2D view, with its two world axes in the axis colors at the grid's strength.
+    public static readonly Color GridLine = Color.Parse("#66232933");
+    public static readonly Color GridAxisX = Color.Parse("#66FF6B78");
+    public static readonly Color GridAxisY = Color.Parse("#668BD450");
+
     // What fills the 2D view while it says the scene has nothing for it.
     public static readonly Color Stage = Color.Parse("#15181E");
 

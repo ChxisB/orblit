@@ -12,12 +12,16 @@ using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
+/// <summary>What a drag does to the selection in the 2D view.</summary>
+internal enum PlanarTool { Select, Move, Rotate, Scale, Pan, }
+
 /// <summary>
-/// What floats over the viewport in the 2D workspace: rulers on the top and left that follow the view, the tool
-/// pill at the top left, the View menu at the top right and the zoom pill at the bottom right. Select and Move are
-/// the modes. In Select a drag on the mark moves the selection, and in Move a drag anywhere does. Lock and Group
-/// press the 3D toolbar's buttons and show what they show. A scene that has nothing the 2D view draws gets a note
-/// over the whole view. The grid has no fill, so a press between the pills goes to the viewport.
+/// What floats over the viewport in the 2D workspace: the grid, rulers on the top and left that follow the view,
+/// the tool pill at the top left, the View menu at the top right and the zoom pill at the bottom right. In Select
+/// a drag on the mark moves the selection. In Move, Rotate and Scale a drag anywhere moves, turns or scales it, and
+/// in Pan every drag pans. Snap, Lock and Group press the 3D toolbar's buttons and show what they show. A scene
+/// that has nothing the 2D view draws gets a note over the whole view. The overlay has no fill, so a press between
+/// the pills goes to the viewport.
 /// </summary>
 internal sealed class PlanarOverlay : Grid
 {
@@ -26,6 +30,13 @@ internal sealed class PlanarOverlay : Grid
 
     readonly FixedToggle _select = new("ToolSelect", "Select mode", lit: true);
     readonly FixedToggle _move = new("ToolMove", "Move mode", lit: false);
+    readonly FixedToggle _rotate = new("ToolRotate", "Rotate mode", lit: false);
+    readonly FixedToggle _scale = new("ToolScale", "Scale mode", lit: false);
+    readonly FixedToggle _pan = new("ToolPan", "Pan mode", lit: false);
+    readonly (FixedToggle Button, PlanarTool Tool)[] _tools;
+    readonly PlanarGrid _grid = new();
+    readonly FixedToggle _gridButton = new("GridToggle", "Show the grid", lit: true);
+    readonly MenuItem _gridItem = new() { Header = "Show Grid", ToggleType = MenuItemToggleType.CheckBox, IsChecked = true };
     readonly Ruler _top = new() { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(Ruler.Thickness, 0, 0, 0) };
     readonly Ruler _side = new();
     readonly Grid _rulers = new();
@@ -63,10 +74,16 @@ internal sealed class PlanarOverlay : Grid
     readonly Border _note;
     IEditorScene? _scene;
 
-    public PlanarOverlay(FixedToggle locks, FixedToggle groups)
+    public PlanarOverlay(FixedToggle locks, FixedToggle groups, FixedToggle snaps)
     {
-        _select.Click += (_, _) => Light(_select);
-        _move.Click += (_, _) => Light(_move);
+        _tools = [(_select, PlanarTool.Select), (_move, PlanarTool.Move), (_rotate, PlanarTool.Rotate), (_scale, PlanarTool.Scale), (_pan, PlanarTool.Pan)];
+        foreach (var (button, _) in _tools)
+        {
+            button.Click += (_, _) => Light(button);
+        }
+
+        _gridButton.Click += (_, _) => ShowGrid(!_grid.IsVisible);
+        _gridItem.Click += (_, _) => ShowGrid(!_grid.IsVisible);
         _zoomIn.Click += (_, _) => Change(view => view.Zoomed(ZoomPress));
         _zoomOut.Click += (_, _) => Change(view => view.Zoomed(-ZoomPress));
         _zoom.Click += (_, _) => Change(view => view with { Zoom = 1 });
@@ -82,7 +99,7 @@ internal sealed class PlanarOverlay : Grid
             Items =
             {
                 _rulersItem,
-                Parts.SoonItem("Show Grid", _view),
+                _gridItem,
                 new Separator(),
                 Parts.PressItem("Center the View", _center),
                 Parts.PressItem("Zoom to 100%", _zoom),
@@ -100,14 +117,14 @@ internal sealed class PlanarOverlay : Grid
         [
             _select,
             _move,
-            Unbuilt.Tool("ToolRotate", "Rotate mode"),
-            Unbuilt.Tool("ToolScale", "Scale mode"),
+            _rotate,
+            _scale,
             Parts.Rule(),
-            Unbuilt.Tool("ToolPan", "Pan mode"),
+            _pan,
             Unbuilt.Tool("Ruler", "Ruler"),
             Parts.Rule(),
-            Unbuilt.Tool("Snap", "Snap"),
-            Unbuilt.Tool("GridToggle", "Show the grid"),
+            Mirror(snaps, "Snap", "Snap to the grid. Hold Ctrl or Command to flip it for one drag."),
+            _gridButton,
             Parts.Rule(),
             Mirror(locks, "Lock", "Lock the selection"),
             Mirror(groups, "Group", "Group the selection"),
@@ -124,13 +141,28 @@ internal sealed class PlanarOverlay : Grid
         zoomPill.HorizontalAlignment = HorizontalAlignment.Right;
         zoomPill.VerticalAlignment = VerticalAlignment.Bottom;
         _note = NoteCard(_noteTitle, _switch, _open);
-        Children.AddRange([_rulers, Tools, viewPill, zoomPill, _note]);
+        Children.AddRange([_grid, _rulers, Tools, viewPill, zoomPill, _note]);
     }
 
     /// <summary>The pill at the top left.</summary>
     internal Border Tools { get; }
 
     internal FixedToggle MoveButton => _move;
+
+    internal FixedToggle RotateButton => _rotate;
+
+    internal FixedToggle ScaleButton => _scale;
+
+    internal FixedToggle PanButton => _pan;
+
+    internal PlanarGrid Grid => _grid;
+
+    internal FixedToggle GridButton => _gridButton;
+
+    internal MenuItem GridItem => _gridItem;
+
+    /// <summary>The world units between two grid lines, which is the step a snapped move keeps to.</summary>
+    internal double GridStep => _grid.Step;
 
     internal Grid Rulers => _rulers;
 
@@ -156,8 +188,16 @@ internal sealed class PlanarOverlay : Grid
 
     internal Button OpenButton => _open;
 
-    /// <summary>Whether a drag anywhere moves the selection, which is Move mode. In Select mode only the mark does.</summary>
-    internal bool MovesAnywhere => _move.IsChecked == true;
+    /// <summary>The lit mode.</summary>
+    internal PlanarTool Tool => _tools.First(tool => tool.Button.IsChecked == true).Tool;
+
+    /// <summary>Which drags take the selection: the mark in Select, none in Pan and any in the other modes.</summary>
+    internal MarkGrip Grip => Tool switch
+    {
+        PlanarTool.Select => MarkGrip.OnMark,
+        PlanarTool.Pan => MarkGrip.Never,
+        _ => MarkGrip.Anywhere,
+    };
 
     /// <summary>
     /// Shows the open scene: its view on the rulers and the zoom pill, and the note when the 2D view draws none of
@@ -180,6 +220,7 @@ internal sealed class PlanarOverlay : Grid
         _top.Show(view.Center.X + (Ruler.Thickness - Bounds.Width / 2) * perPixel, perPixel);
         // The left ruler is turned a quarter to the left, so it starts at the bottom and goes up.
         _side.Show(view.Center.Y + Bounds.Height / 2 * perPixel, -perPixel);
+        _grid.Show(view.Center, perPixel);
         _zoom.Content = string.Create(CultureInfo.InvariantCulture, $"{MathF.Round(view.Zoom * 100)}%");
     }
 
@@ -200,8 +241,18 @@ internal sealed class PlanarOverlay : Grid
 
     void Light(FixedToggle lit)
     {
-        _select.IsChecked = lit == _select;
-        _move.IsChecked = lit == _move;
+        foreach (var (button, _) in _tools)
+        {
+            button.IsChecked = button == lit;
+        }
+    }
+
+    // The overlay keeps the flag, so the button and the tick stay in step whichever was pressed.
+    void ShowGrid(bool shown)
+    {
+        _grid.IsVisible = shown;
+        _gridButton.IsChecked = shown;
+        _gridItem.IsChecked = shown;
     }
 
     static bool Draws(IEditorScene scene, OutlineNode node) => scene.IsCanvasItem(node.Handle) || node.Children.Any(child => Draws(scene, child));

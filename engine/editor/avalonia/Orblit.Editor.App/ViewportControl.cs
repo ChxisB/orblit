@@ -11,6 +11,14 @@ using Vector2 = System.Numerics.Vector2;
 
 namespace Orblit.Editor.App;
 
+/// <summary>Which 2D drags take the mark of the selection.</summary>
+internal enum MarkGrip
+{
+    OnMark,
+    Anywhere,
+    Never,
+}
+
 /// <summary>Reads the engine's latest frame as RGBA bytes. Returns false when there is no frame yet.</summary>
 internal delegate bool FrameReader(out int width, out int height, ref byte[] rgba);
 
@@ -22,8 +30,8 @@ internal delegate bool FrameReader(out int width, out int height, ref byte[] rgb
 /// <see cref="GizmoReleased"/>. The mode says which parts are there. The caller creates, stops and disposes the
 /// control on the UI thread, and stops it before the engine goes. While <see cref="PlanarSource"/> says yes the
 /// gizmo is gone: a left drag that starts on the mark raises <see cref="PlanarMoved"/>, and any other left drag
-/// raises <see cref="PlanarPanned"/> and does not orbit. While <see cref="GripAnywhereSource"/> also says yes, a
-/// left drag anywhere takes the mark.
+/// raises <see cref="PlanarPanned"/> and does not orbit. <see cref="GripSource"/> can make a drag anywhere take the
+/// mark, or none take it. The release of a drag that took the mark raises <see cref="GizmoReleased"/> too.
 /// </summary>
 internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Control
 {
@@ -85,8 +93,8 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Asked on each tick, while the view is 2D, for the pivot to mark in the frame's pixels. Null from it marks none.</summary>
     internal Func<Vector2?>? MarkSource { get; set; }
 
-    /// <summary>Asked on a press in 2D for whether a drag anywhere takes the mark, as in the 2D Move mode. No until set.</summary>
-    internal Func<bool> GripAnywhereSource { get; set; } = () => false;
+    /// <summary>Asked on a press in 2D for which drags take the mark. A drag that starts on it until set.</summary>
+    internal Func<MarkGrip> GripSource { get; set; } = () => MarkGrip.OnMark;
 
     /// <summary>Asked for the mode, which says what the gizmo shows and takes presses on. Transform until set.</summary>
     internal Func<GizmoMode> ModeSource { get; set; } = () => GizmoMode.Transform;
@@ -118,7 +126,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Raised while a part of the gizmo drags, with the pointer move since the last event in the frame's pixels.</summary>
     internal event Action<GizmoDrag>? GizmoDragged;
 
-    /// <summary>Raised when the drag of a gizmo part ends.</summary>
+    /// <summary>Raised when the drag of a gizmo part or of the 2D mark ends.</summary>
     internal event Action? GizmoReleased;
 
     /// <summary>Raised when the frame is not the size of the control, with the size the engine should draw.</summary>
@@ -130,8 +138,11 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Raised while a 2D drag pans the view, with the pointer move since the last event in the frame's pixels.</summary>
     internal event Action<Vector2>? PlanarPanned;
 
-    /// <summary>Raised while a drag that started on the mark moves, with the pointer move since the last event in the frame's pixels.</summary>
-    internal event Action<FrameMove>? PlanarMoved;
+    /// <summary>
+    /// Raised while a drag that took the mark moves, with the pointer move since the last event in the frame's pixels
+    /// and whether Ctrl or Command is down.
+    /// </summary>
+    internal event Action<FrameMove, bool>? PlanarMoved;
 
     /// <summary>Runs one engine frame and keeps its pixels. Stops the control when the engine asks to quit.</summary>
     public void Tick()
@@ -223,8 +234,12 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         ? new GizmoRings(Control(rings.Origin), Control(rings.X), Control(rings.Y), Control(rings.Z)) { Outer = Control(rings.Outer) }
         : null;
 
-    bool OnMark(Point press) =>
-        _mark is { } mark && Frame is not null && (GripAnywhereSource() || Vector2.Distance(Control(mark), new Vector2((float)press.X, (float)press.Y)) <= MarkGrab);
+    bool OnMark(Point press) => _mark is { } mark && Frame is not null && GripSource() switch
+    {
+        MarkGrip.Anywhere => true,
+        MarkGrip.OnMark => Vector2.Distance(Control(mark), new Vector2((float)press.X, (float)press.Y)) <= MarkGrab,
+        _ => false,
+    };
 
     Vector2 Control(Vector2 framePoint) => ControlAt(framePoint, Frame!.Size, Bounds.Size);
 
@@ -379,7 +394,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         }
         else
         {
-            PlanarMoved?.Invoke(move);
+            PlanarMoved?.Invoke(move, inverts);
         }
     }
 
@@ -428,9 +443,10 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         base.OnPointerCaptureLost(e);
         _dragFrom = null;
         _pressedAt = null;
-        if (_grab is not null)
+        if (_grab is not null || _markGrab)
         {
             _grab = null;
+            _markGrab = false;
             GizmoReleased?.Invoke();
         }
     }

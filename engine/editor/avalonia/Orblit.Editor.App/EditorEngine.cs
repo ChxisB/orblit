@@ -148,6 +148,26 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         }
     }
 
+    public void RotatePlanar(nint entity, FrameMove move)
+    {
+        if (_viewport is not null)
+        {
+            _session.RotatePlanar(_viewport.Planar, entity, move);
+        }
+    }
+
+    public void ScalePlanar(nint entity, FrameMove move)
+    {
+        if (_viewport is not null)
+        {
+            _session.ScalePlanar(_viewport.Planar, entity, move);
+        }
+    }
+
+    public PlanarPlace PlanarPlaceOf(nint entity) => _session.PlanarPlaceOf(entity);
+
+    public void PlacePlanar(nint entity, PlanarPlace place) => _session.PlacePlanar(entity, place);
+
     public GizmoHandles? HandlesOf(nint entity, GizmoSpace space) => _viewport is null ? null : _session.HandlesOf(_viewport.Camera, entity, space);
 
     public void Drag(nint entity, GizmoDirection direction, FrameMove move)

@@ -69,6 +69,7 @@ internal sealed class WindowedChecks : IChecks
         ("a planar pick chooses the nearest pivot of an Entity2D, and honors locks and groups", PlanarPickChoosesTheNearestPivot),
         ("a planar move drag lands the pivot where the pointer ends, at any zoom", PlanarMoveFollowsThePointerAtAnyZoom),
         ("the planar camera and its backdrop stay out of the outline and the saved scene", PlanarCameraStaysOutOfTheScene),
+        ("a planar rotate and scale drag turn and scale about the pivot, and a snapped move adds up small steps", PlanarRotateScaleAndSnapWork),
         ("a line the engine logs reaches the output log, and a clear drops the lines read so far", EngineLogReachesTheOutputLog),
     ];
 
@@ -1240,6 +1241,41 @@ internal sealed class WindowedChecks : IChecks
         Assert.DoesNotContain("EditorPlanar", saved);
         Assert.DoesNotContain("Camera2D", saved);
         Assert.DoesNotContain("CanvasLayer", saved);
+        planar.SetOn(false);
+    }
+
+    // The pointer goes a quarter turn round the pivot, then twice as far from it, then moves in steps on a grid.
+    void PlanarRotateScaleAndSnapWork()
+    {
+        var level = OpenPlanarLevel();
+        var planar = PlanarOn();
+        var pivot = planar.PivotOf(level.Left);
+
+        _editor.RotatePlanar(planar, level.Left, new FrameMove(pivot + new Vector2(50, 0), pivot + new Vector2(0, 50)));
+        _editor.EndDrag();
+        var turn = _host.Entity2DGetGlobalRotation(level.Left);
+        Assert.True(MathF.Abs(turn - (MathF.PI / 2)) < 0.001f, $"Left turned {turn} radians");
+
+        _editor.ScalePlanar(planar, level.Left, new FrameMove(pivot + new Vector2(50, 0), pivot + new Vector2(100, 0)));
+        _editor.EndDrag();
+        var scale = _host.Entity2DGetGlobalScale(level.Left);
+        Assert.True(Vector2.Distance(scale, new Vector2(2, 2)) < 0.001f, $"Left scaled to {scale}");
+
+        // Each step alone is under half a grid step, so only steps that add up reach the next line.
+        _editor.Snap = new GizmoSnap(16, 15, 0.1f);
+        var start = _host.Entity2DGetGlobalPosition(level.Left);
+        var by = new Vector2(30, 4) * planar.View.Zoom;
+        var free = start + planar.Offset(new FrameMove(pivot, pivot + by));
+        for (var step = 0; step < 5; step++)
+        {
+            _editor.MovePlanar(planar, level.Left, Step(pivot, pivot + by, step, 5));
+        }
+
+        _editor.EndDrag();
+        _editor.Snap = null;
+        var at = _host.Entity2DGetGlobalPosition(level.Left);
+        Assert.Equal(new Vector2(GizmoMath.Stepped(free.X, 16), GizmoMath.Stepped(free.Y, 16)), at);
+        Assert.NotEqual(start, at);
         planar.SetOn(false);
     }
 
