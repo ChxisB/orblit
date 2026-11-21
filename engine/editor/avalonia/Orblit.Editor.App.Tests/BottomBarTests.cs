@@ -295,6 +295,32 @@ public sealed class BottomBarTests
     }
 
     [Fact]
+    public void A_running_game_shows_its_process_id_for_an_outside_ide_and_hides_it_once_stopped()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var debugger = window.Center.Debugger;
+            var copied = new List<string>();
+            debugger.CopyRequested += copied.Add;
+            Assert.False(debugger.CopyButton.IsVisible);
+
+            debugger.RunButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            debugger.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal("Graph scripts stop at their breakpoints in the Graph workspace. To debug C#, attach VS Code or Rider to process 4242.", debugger.Line.Text);
+            Assert.True(debugger.CopyButton.IsVisible);
+            Assert.Equal(["4242"], copied);
+
+            window.Game.StopButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.False(debugger.CopyButton.IsVisible);
+            Assert.Equal("No game is connected", debugger.Title.Text);
+        });
+    }
+
+    [Fact]
     public void The_debugger_cannot_run_before_a_scene_is_open()
     {
         UiThread.Run(() =>

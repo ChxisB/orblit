@@ -186,6 +186,7 @@ internal sealed class EditorWindow : Window
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
         _center.Output.CopyRequested += text => Copy(text, "the output");
         _center.Debugger.RunRequested += () => Play();
+        _center.Debugger.CopyRequested += id => Copy(id, "the process id");
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
@@ -968,7 +969,7 @@ internal sealed class EditorWindow : Window
         _stopButton.IsEnabled = playing;
         _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
         _game.ShowLive(_scene is { IsPlaying: true } scene ? scene.Debug.State : DebugState.None);
-        _center.Debugger.ShowGame(playing, _root is not null);
+        _center.Debugger.ShowGame(_scene?.GameId, _root is not null);
     }
 
     // Folds both sides while either shows, so a second press brings both back.

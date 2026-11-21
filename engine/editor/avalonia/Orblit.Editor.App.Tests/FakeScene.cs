@@ -353,6 +353,8 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>True from a Play until a Stop. A test sets it false for a game that ended on its own.</summary>
     public bool IsPlaying { get; set; }
 
+    public int? GameId => IsPlaying ? 4242 : null;
+
     /// <summary>The breakpoints the last Play was given.</summary>
     public List<(string Source, int Step)> PlayedWith { get; } = [];
 
