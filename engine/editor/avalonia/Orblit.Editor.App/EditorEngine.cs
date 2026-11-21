@@ -402,6 +402,76 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         Reimport();
     }
 
+    public IReadOnlyList<ExportPreset> Presets() => ExportPresets.Read(_project);
+
+    public void AddPreset() => ExportPresets.AddForThisComputer(_project);
+
+    public void InstallTemplates(string tpz) => ExportTemplates.Install(tpz, ExportTemplates.DataFolder);
+
+    /// <summary>
+    /// Exports the game through an engine of its own, which imports and builds the project first. Throws
+    /// <see cref="InvalidOperationException"/> with the engine's reason when the export fails.
+    /// </summary>
+    public async Task Export(string preset, string path)
+    {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        Directory.CreateDirectory(folder);
+        // A build folder in the project would go into the next export, so it holds the file that makes the engine skip it.
+        if (folder.StartsWith(Path.GetFullPath(_project) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            File.AppendAllText(Path.Combine(folder, ".oignore"), "");
+        }
+
+        var log = Log.NewFile();
+        var export = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
+        foreach (var argument in ExportArguments(_project, preset, path, log))
+        {
+            export.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(export)!;
+        await process.WaitForExitAsync();
+        if (process.ExitCode != 0)
+        {
+            var reason = File.Exists(log) ? ExportReason(File.ReadLines(log)) : null;
+            throw new InvalidOperationException(reason ?? $"The engine stopped with code {process.ExitCode}. The Output panel has its log.");
+        }
+    }
+
+    internal static IReadOnlyList<string> ExportArguments(string project, string preset, string path, string logFile) =>
+        ["--headless", "--path", project, "--export-release", preset, path, "--log-file", logFile];
+
+    /// <summary>
+    /// Why an export failed: the error the engine printed just before it said the export failed, or its first error
+    /// when it never got that far, or null. An error runs on to the blank or "at:" line that ends it.
+    /// </summary>
+    internal static string? ExportReason(IEnumerable<string> log)
+    {
+        const string Error = "ERROR: ";
+        List<string> errors = [];
+        var open = false;
+        foreach (var line in log)
+        {
+            if (line.StartsWith(Error, StringComparison.Ordinal))
+            {
+                errors.Add(line[Error.Length..]);
+                open = true;
+            }
+            else if (open && line.Length > 0 && !line.TrimStart().StartsWith("at: ", StringComparison.Ordinal))
+            {
+                errors[^1] += " " + line;
+            }
+            else
+            {
+                open = false;
+            }
+        }
+
+        // The engine can print errors of its own as it starts and stops, around the one that stopped the export.
+        var failed = errors.FindIndex(error => error.StartsWith("Project export for preset", StringComparison.Ordinal));
+        return failed > 0 ? errors[failed - 1] : errors.FirstOrDefault();
+    }
+
     string ImportFileOf(string resourcePath) => ProjectScripts.FileOf(_project, resourcePath + ImportFile.Suffix, ImportFile.Suffix);
 
     public string? ReadBreakpoints() => BreakpointFile.Read(_project);

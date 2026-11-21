@@ -20,17 +20,18 @@ public sealed class NewProjectTests : IDisposable
     string[] Made() => [.. Directory.GetFiles(_folder).Select(Path.GetFileName).Order(StringComparer.Ordinal).OfType<string>()];
 
     [Fact]
-    public void A_3D_project_with_CSharp_writes_settings_a_script_a_csproj_and_a_lit_scene()
+    public void A_3D_project_with_CSharp_writes_settings_a_script_a_csproj_a_solution_and_a_lit_scene()
     {
         new NewProject("Space \"Ranger\"", _folder) { Template = ProjectTemplate.Spatial, Script = FirstScript.Csharp }.Make(_ => { });
 
-        Assert.Equal(["Main.cs", "SpaceRanger.csproj", "main.oscn", "project.orblit"], Made());
+        Assert.Equal(["Main.cs", "SpaceRanger.csproj", "SpaceRanger.slnx", "main.oscn", "project.orblit"], Made());
         Assert.Equal(
             "config_version=5\n\n[application]\n\nconfig/name=\"Space \\\"Ranger\\\"\"\nconfig/tags=PackedStringArray(\"3D\", \"C#\")\n"
             + "run/main_scene=\"res://main.oscn\"\nconfig/features=PackedStringArray(\"1.0\", \"C#\")\n\n[dotnet]\n\nproject/assembly_name=\"SpaceRanger\"\n",
             Read("project.orblit"));
         Assert.Contains("public partial class Main : Entity3D", Read("Main.cs"));
         Assert.Contains("<Project Sdk=\"Orblit.NET.Sdk/1.0.0\">", Read("SpaceRanger.csproj"));
+        Assert.Equal("<Solution>\n  <Project Path=\"SpaceRanger.csproj\" />\n</Solution>\n", Read("SpaceRanger.slnx"));
         var scene = Read("main.oscn");
         Assert.StartsWith("[orb_scene format=3]\n\n[ext_resource type=\"Script\" path=\"res://Main.cs\" id=\"1\"]\n\n[sub_resource type=\"PlaneMesh\"", scene);
         Assert.Contains("[node name=\"Main\" type=\"Entity3D\"]\nscript = ExtResource(\"1\")\n\n[node name=\"Camera\" type=\"Camera3D\" parent=\".\"]", scene);

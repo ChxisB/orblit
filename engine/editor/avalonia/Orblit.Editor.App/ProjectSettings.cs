@@ -23,6 +23,34 @@ internal static partial class ProjectSettings
     /// <summary>The scene the project runs first, or main.oscn when the file or the key is missing.</summary>
     public static string MainSceneOf(string project) => ValueOf(project, MainSceneKey)?.Trim('"') ?? "res://main.oscn";
 
+    /// <summary>
+    /// Writes one key=value line into a section of the settings file. A key the file has takes the new value in
+    /// its place. A new key goes under the section's heading, and a section the file lacks is added at the end.
+    /// </summary>
+    public static void SetValue(string project, string section, string line)
+    {
+        var path = Path.Combine(project, FileName);
+        var lines = File.ReadAllLines(path).ToList();
+        var key = line[..(line.IndexOf('=') + 1)];
+        var at = lines.FindIndex(next => next.StartsWith(key, StringComparison.Ordinal));
+        var heading = lines.IndexOf($"[{section}]");
+        if (at >= 0)
+        {
+            lines[at] = line;
+        }
+        else if (heading >= 0)
+        {
+            // The engine writes a blank line under each heading.
+            lines.Insert(Math.Min(heading + 2, lines.Count), line);
+        }
+        else
+        {
+            lines.AddRange(["", $"[{section}]", "", line]);
+        }
+
+        File.WriteAllText(path, string.Join('\n', lines) + "\n");
+    }
+
     static string? ValueOf(string project, string key)
     {
         var path = Path.Combine(project, FileName);

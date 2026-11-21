@@ -72,6 +72,7 @@ internal sealed class EditorWindow : Window
     readonly DockSide _rightSide;
     readonly CenterArea _center;
     readonly StoreView _store;
+    readonly ExportTool _export = new();
     readonly ScriptView _script = new();
     readonly ImportPane _import = new();
     readonly GraphView _graph = new();
@@ -204,7 +205,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
     }
 
@@ -223,6 +224,8 @@ internal sealed class EditorWindow : Window
     internal CenterArea Center => _center;
 
     internal StoreView Store => _store;
+
+    internal ExportTool Export => _export;
 
     internal ScriptView Script => _script;
 
@@ -295,6 +298,7 @@ internal sealed class EditorWindow : Window
         _graph.Show(scene);
         _import.Show(scene);
         _store.Show(scene);
+        _export.Show(scene);
         _center.Output.Show(scene.Output, _time);
         _pollTimer.Start();
         ShowScenes();
@@ -616,6 +620,7 @@ internal sealed class EditorWindow : Window
             ["New Scene"] = new(OpenNewScene),
             ["Command Palette..."] = new(OpenPalette),
             ["Quick Open Scene..."] = new(OpenQuickOpen),
+            ["Export..."] = new(_export.Open),
             ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
             ["Undo"] = new(() => _undo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _undo.GetObservable(IsEnabledProperty)),
             ["Redo"] = new(() => _redo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _redo.GetObservable(IsEnabledProperty)),
