@@ -76,6 +76,7 @@ internal sealed class EditorWindow : Window
     readonly GraphView _graph = new();
     readonly GameView _game = new();
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
+    readonly Dictionary<DockTabs, Window> _floats = [];
     readonly Dictionary<DockTabs, DockSlot> _homes = [];
 
     // The sides a workspace folds to their rails, by workspace. A workspace not listed keeps both open.
@@ -730,12 +731,18 @@ internal sealed class EditorWindow : Window
             _slots[dock.Slot].Child = dock;
             _homes[dock] = dock.Slot;
             dock.MoveRequested += to => MoveDock(dock, to);
+            dock.FloatRequested += () => FloatDock(dock);
             dock.ResetRequested += ResetLayout;
         }
     }
 
     void ResetLayout()
     {
+        foreach (var floating in _floats.Values.ToList())
+        {
+            floating.Close();
+        }
+
         foreach (var slot in _slots.Values)
         {
             slot.Child = null;
@@ -751,17 +758,56 @@ internal sealed class EditorWindow : Window
         Say("Reset the layout. Every dock is back in its place with all its tabs.");
     }
 
+    // A floating dock docks before it moves. A dock that floats keeps a slot, so a move can trade with it, and it
+    // docks in the slot it traded for.
     void MoveDock(DockTabs dock, DockSlot to)
     {
+        _floats.GetValueOrDefault(dock)?.Close();
         var from = dock.Slot;
-        var other = (DockTabs)_slots[to].Child!;
+        var other = _homes.Keys.Single(each => each.Slot == to);
         _slots[from].Child = null;
         _slots[to].Child = null;
         _slots[to].Child = dock;
-        _slots[from].Child = other;
+        _slots[from].Child = other.Floats ? null : other;
         dock.Slot = to;
         other.Slot = from;
         Say($"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.");
+    }
+
+    // shortcut: a floating dock's slot stays empty, as a dock with every tab hidden leaves it, and the editor's keys
+    // do not reach the float window. Close the gap and route the keys when floating docks are saved in the layout.
+    void FloatDock(DockTabs dock)
+    {
+        if (_floats.TryGetValue(dock, out var floating))
+        {
+            floating.Close();
+            return;
+        }
+
+        var size = dock.Bounds.Size;
+        var window = new Window
+        {
+            Title = dock.Title,
+            Width = size.Width + 12,
+            Height = size.Height + 12,
+            Padding = new Thickness(6),
+            ShowInTaskbar = false,
+            WindowStartupLocation = WindowStartupLocation.Manual,
+            Position = dock.PointToScreen(new Point(-6, -6)),
+        };
+        _slots[dock.Slot].Child = null;
+        window.Content = dock;
+        window.Closed += (_, _) =>
+        {
+            window.Content = null;
+            _floats.Remove(dock);
+            dock.Floats = false;
+            _slots[dock.Slot].Child = dock;
+        };
+        _floats[dock] = window;
+        dock.Floats = true;
+        window.Show(this);
+        Say($"Floated {dock.Title}. Close its window or choose Dock to put it back.");
     }
 
     // The Reset menu and the snap actions change the selected entity's place, the Collision menu gives a mesh a
