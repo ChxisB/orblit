@@ -41,11 +41,14 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         await Step("the window shows the engine's first frame", ShowsTheFrame);
         await Step("a click on an outline row selects the entity", SelectsOnAClick);
+        await Step("the inspector shows the sections and properties of the entity's engine classes", ShowsTheClassProperties);
         await Step("View, then Focus Selection, puts the pivot in the middle of the frame", FocusesFromTheMenu);
         await Step("a drag along the Move arrow moves the entity along that axis only", MovesAlongAnArrow);
         await Step("a drag on the Scale center handle scales all three axes together", ScalesFromTheCentre);
         await Step("the E key lights Rotate, and a drag on a ring turns the entity about that axis only", TurnsOnARing);
         await Step("Local and Snap by click, then a drag moves the entity by whole steps", SnapsInLocalSpace);
+        await Step("Command Z and Command Shift Z undo and redo a move, and History steps back and forward", UndoesAndRedoes);
+        await Step("the Signals tab lists the engine's signals, Connect links one and Command Z takes the link out", ConnectsASignal);
         await Step("Command and S write the live transform to the scene file", SaveWritesTheTransform);
         await Step("Add Metadata makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
         await Step("the plus opens Add an entity on the engine's classes, and a search lights Timer", ListsTheEngineClasses);
@@ -53,9 +56,11 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("Clear empties the Output panel and a second click on its button shuts it", ClearsAndShutsTheLog);
         await Step("Play starts the game, opens the Output panel and shows the game's own log line", PlayShowsTheGameLog);
         await Step("the Game tab runs and stops the game, and shows a game the user closed as stopped", RunsFromTheGameTab);
+        await Step("a run setting switched on reaches the game as its engine flag", RunsWithAFlag);
         await Step("the Asset Store tab shows the store's kits and the 3D tab brings the viewport back", ShowsTheStore);
         await Step("the Script tab lists the project's C# files, and Save and Command S write an edit to the file", EditsAScript);
         await Step("the Graph tab makes a graph script with File and New, lists it, opens it and closes it again", MakesAGraphScript);
+        await Step("the Import tab shows an image's options, and Reimport makes the engine import it again", SetsImportOptions);
         await Step("the 2D tab draws a 2D scene flat, and a click, a drag on the mark, a pan and the wheel work", WorksIn2D);
         await Step("the operating system shows the editor's windows", ShowsInTheDesktop);
         return !_failed;
@@ -255,9 +260,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     [GeneratedRegex(@"Transform3D\(([^)]*)\)")]
     private static partial Regex TransformOf();
 
-    static async Task Wait(Func<bool> condition, string what)
+    static async Task Wait(Func<bool> condition, string what, int timeout = TimeoutMilliseconds)
     {
-        for (var waited = 0; waited < TimeoutMilliseconds; waited += PollMilliseconds)
+        for (var waited = 0; waited < timeout; waited += PollMilliseconds)
         {
             if (condition())
             {

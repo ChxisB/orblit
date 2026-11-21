@@ -17,6 +17,7 @@ int RunEditor()
     // The run must not reach the network, so the store reads these two invented kits.
     const string storeIndex = """{"formatVersion":1,"kits":[{"name":"Platformer Starter","publisher":"example","slug":"platformer","version":"1.2.0","summary":"A side scroller to start from."},{"name":"Racing Track","publisher":"example","slug":"racing","version":"0.1.0"}]}""";
     EditorRun.WritePlanarScene(project);
+    EditorRun.WriteSwatch(project);
     var options = new EditorOptions(project, "res://main.oscn", true, _ => Task.FromResult(storeIndex));
     // The engine start is the only way in. If it fails the window shows the error and no run starts, so a clock ends it.
     using var starting = new CancellationTokenSource();

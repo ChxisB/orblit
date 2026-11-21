@@ -577,7 +577,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     // shortcut: macOS and Linux file names only. The library liborblit.<tags>.dylib sits beside the
     // program orblit.<tags>. Add the Windows names when the editor runs there.
-    static string PlayerPath(string library)
+    internal static string PlayerPath(string library)
     {
         var name = Path.GetFileNameWithoutExtension(library);
         return Path.Combine(Path.GetDirectoryName(library)!, name["lib".Length..]);
