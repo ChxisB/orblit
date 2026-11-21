@@ -157,7 +157,7 @@ public sealed class StoreViewTests
             var view = Loaded(Two);
             view.Choose(view.Shown.First());
             var waiting = view.GetLogicalDescendants().Concat(view.Drawer.GetLogicalDescendants()).OfType<Button>()
-                .Where(button => button is not RadioButton && button != view.ReloadButton && button != view.CloseButton)
+                .Where(button => button is not RadioButton && button != view.ReloadButton && button != view.CloseButton && button != view.InstallFileButton)
                 .Concat(view.Filter.Choices.Skip(1))
                 .ToList();
 
@@ -166,6 +166,70 @@ public sealed class StoreViewTests
             Assert.All(waiting, button => Assert.False(button.IsEnabled));
             Assert.All(waiting, button => Assert.Equal("Not built yet", (string?)ToolTip.GetTip(button)));
             Assert.True(view.Filter.Choices[0].IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void Install_from_file_waits_for_a_project()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(Answer(Two));
+
+            Assert.False(view.InstallFileButton.IsEnabled);
+            Assert.Equal("Unpack a kit's zip into the project", (string?)ToolTip.GetTip(view.InstallFileButton));
+        });
+    }
+
+    [Fact]
+    public void A_kit_zip_is_unpacked_into_the_project_and_said_in_the_status()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var installed = 0;
+            var view = Open(Answer(Two));
+            view.Installed += () => installed++;
+            view.Show(scene);
+
+            view.InstallFile("/kits/platformer.zip");
+
+            Assert.True(view.InstallFileButton.IsEnabled);
+            Assert.Equal(["/kits/platformer.zip"], scene.Kits);
+            Assert.Equal("Installed platformer.zip into the project.", view.Status.Text);
+            Assert.Equal(1, installed);
+        });
+    }
+
+    [Fact]
+    public void A_refused_kit_says_why_and_tells_no_one_it_installed()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { KitFault = new IOException("player.oscn is in the project already.") };
+            var installed = 0;
+            var view = Open(Answer(Two));
+            view.Installed += () => installed++;
+            view.Show(scene);
+
+            view.InstallFile("/kits/platformer.zip");
+
+            Assert.Equal("platformer.zip was not installed. player.oscn is in the project already.", view.Status.Text);
+            Assert.Equal(0, installed);
+        });
+    }
+
+    [Fact]
+    public void The_window_gives_the_store_its_project()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = ReferenceWindow.OpenAtReferenceSize(scene);
+
+            window.Store.InstallFile("/kits/platformer.zip");
+
+            Assert.Equal(["/kits/platformer.zip"], scene.Kits);
         });
     }
 

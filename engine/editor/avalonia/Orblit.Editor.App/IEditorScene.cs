@@ -6,7 +6,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App;
 
 /// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles
+internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IKitFiles
 {
     // Both script views ask for the classes a new script can extend, so the window names the one list they share.
     new IReadOnlyList<string> AddableClasses();
