@@ -568,14 +568,36 @@ public sealed class EditorSession
         _host.EntitySetName(entity, name.Trim());
     }
 
-    /// <summary>Takes the entity and everything under it out of the open scene. The scene root stays.</summary>
-    public void Remove(nint entity)
+    /// <summary>
+    /// Takes the entity and everything under it out of the open scene and keeps it, so <see cref="Restore"/> can put it
+    /// back. <see cref="Destroy"/> frees it. The scene root stays.
+    /// </summary>
+    public DetachedEntity Detach(nint entity)
     {
         RequireNotRoot(entity, "removed");
-        _host.EntityRemoveChild(_host.EntityGetParent(entity), entity);
-        _host.EntityQueueDestroy(entity);
-        _host.Pump(1);
+        var root = _source.Root();
+        var parent = _host.EntityGetParent(entity);
+        // The engine clears each owner outside the branch it takes out, so the ones the root held are noted first.
+        var owned = Flatten(Describe(entity)).Select(node => node.Handle).Where(handle => _host.EntityGetOwner(handle) == root).ToList();
+        var detached = new DetachedEntity(entity, parent, (int)_host.EntityGetIndex(entity, false), owned);
+        _host.EntityRemoveChild(parent, entity);
+        return detached;
     }
+
+    /// <summary>Puts a detached entity back under its parent at its old place, and gives the scene root back the entities it owned.</summary>
+    public void Restore(DetachedEntity detached)
+    {
+        _host.EntityAddChild(detached.Parent, detached.Entity, true, 0);
+        _host.EntityMoveChild(detached.Parent, detached.Entity, detached.Index);
+        var root = _source.Root();
+        foreach (var handle in detached.Owned)
+        {
+            _host.EntitySetOwner(handle, root);
+        }
+    }
+
+    /// <summary>Frees a detached entity and everything under it.</summary>
+    public void Destroy(nint entity) => _host.Destroy(entity);
 
     /// <summary>Saves the open scene. Throws with the engine's error code when it fails.</summary>
     public void Save() => _source.Save();

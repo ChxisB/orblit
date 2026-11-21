@@ -119,7 +119,14 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles
 
     void Rename(nint entity, string name);
 
-    void Remove(nint entity);
+    /// <summary>Takes the entity and everything under it out of the scene and keeps it. The scene root cannot be taken out.</summary>
+    DetachedEntity Detach(nint entity);
+
+    /// <summary>Puts a detached entity back where it was.</summary>
+    void Restore(DetachedEntity detached);
+
+    /// <summary>Frees a detached entity and everything under it.</summary>
+    void Destroy(nint entity);
 
     void Save();
 

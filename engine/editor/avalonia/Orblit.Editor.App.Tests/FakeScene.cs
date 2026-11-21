@@ -658,11 +658,28 @@ internal sealed class FakeScene : IEditorScene
         _root = Rebuild(_root, entity, node => node with { Name = name.Trim() });
     }
 
-    public void Remove(nint entity)
+    readonly Dictionary<nint, OutlineNode> _detached = [];
+
+    /// <summary>The detached entities the window freed, in order.</summary>
+    public List<nint> Destroyed { get; } = [];
+
+    public DetachedEntity Detach(nint entity)
     {
         RequireNotRoot(entity, "removed");
+        var parent = ParentOf(_root, entity)!;
+        _detached[entity] = _root.Find(entity)!;
         _root = Without(_root, entity);
+        return new DetachedEntity(entity, parent.Handle, parent.Children.ToList().FindIndex(child => child.Handle == entity), []);
     }
+
+    public void Restore(DetachedEntity detached)
+    {
+        var made = _root.Find(detached.Parent)!.Children.ToList();
+        made.Insert(detached.Index, _detached[detached.Entity]);
+        _root = Rebuild(_root, detached.Parent, node => node with { Children = made });
+    }
+
+    public void Destroy(nint entity) => Destroyed.Add(entity);
 
     public void Save()
     {
