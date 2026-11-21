@@ -768,7 +768,9 @@ internal sealed class EditorChecks : IChecks
         using var session = GraphScriptSession.Open(_host, MakeGraphFile("palette"));
 
         var fromFlow = session.FindSteps("", GraphDraggedSide.Output, 0, GraphPortSort.Flow);
-        Assert.Contains(fromFlow, entry => entry.Kind == "branch");
+        var branch = fromFlow.First(entry => entry.Kind == "branch");
+        Assert.Equal(["run", "condition"], branch.Inputs.Select(port => port.Name));
+        Assert.Equal(["then", "else"], branch.Outputs.Select(port => port.Name));
         Assert.DoesNotContain(fromFlow, entry => entry.Kind == "constant");
         Assert.Contains(session.FindSteps("", GraphDraggedSide.None, 0, GraphPortSort.Flow), entry => entry.Kind == "constant");
         Assert.Throws<InvalidDataException>(() => session.FindSteps("", GraphDraggedSide.None, 999, GraphPortSort.Flow));

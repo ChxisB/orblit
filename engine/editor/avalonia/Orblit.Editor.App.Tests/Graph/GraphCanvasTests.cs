@@ -611,6 +611,29 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_value_box_starts_after_a_long_input_name_and_keeps_its_place_after_a_short_one()
+    {
+        UiThread.Run(() =>
+        {
+            var made = FakeGraphSource.MakeStep(
+                1,
+                "branch",
+                0,
+                0,
+                [FakeGraphSource.Data("a", 1, "a"), FakeGraphSource.Data("condition", 1, "condition")],
+                [FakeGraphSource.Flow("then"), FakeGraphSource.Flow("else")]);
+            var step = new StepView(made, new HashSet<PinRef>());
+
+            var near = step.ValueRect("a");
+            var far = step.ValueRect("condition");
+
+            Assert.Equal(StepView.Width * 0.28, near.X, 3);
+            Assert.True(far.X > near.X, $"the box after condition starts at {far.X}, where the box after a starts");
+            Assert.True(far.Width >= 36, $"the box after condition is {far.Width} wide");
+        });
+    }
+
+    [Fact]
     public void A_press_on_a_value_box_opens_the_value_box_and_accepting_a_new_text_sets_the_parameter()
     {
         UiThread.Run(() =>

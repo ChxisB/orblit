@@ -437,6 +437,15 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Settle();
         Shots.Save(window, Path.Combine(output, "graph-created.png"));
 
+        // The palette's preview draws the step from the ports the engine lists, so this shows those ports arrive.
+        var canvas = graph.Canvas!;
+        canvas.OpenPalette(new Point(60, 60), null);
+        canvas.Palette.SearchBox.Text = "branch";
+        await Wait(() => canvas.Palette.PreviewStep is { Kind: "branch", Outputs.Count: 2 }, "the palette to preview Branch with its two outputs");
+        await Settle();
+        Shots.Save(window, Path.Combine(output, "graph-palette.png"));
+        canvas.Palette.Close();
+
         await _input.Click(graph.FileButton);
         await Wait(() => graph.FileMenu.IsOpen && CloseItem(graph).IsAttachedToVisualTree(), "the File menu to open again");
         await _input.Click(CloseItem(graph));

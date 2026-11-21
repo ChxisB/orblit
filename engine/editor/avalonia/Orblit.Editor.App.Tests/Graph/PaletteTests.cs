@@ -113,6 +113,31 @@ public sealed class PaletteTests
     }
 
     [Fact]
+    public void The_preview_draws_the_chosen_step_with_its_pins_and_starting_values()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            canvas.OpenPalette(new Point(100, 100), null);
+
+            var branch = canvas.Palette.PreviewStep!;
+            Assert.Equal("branch", branch.Kind);
+            Assert.Equal(["run", "condition"], branch.Inputs.Select(port => port.Name));
+            Assert.Equal(["true", "false"], branch.Outputs.Select(port => port.Name));
+
+            canvas.Palette.SearchBox.Text = "constant";
+
+            var constant = canvas.Palette.PreviewStep!;
+            Assert.Empty(constant.Inputs);
+            Assert.Equal("0", constant.Parameters["value"]);
+
+            canvas.Palette.SearchBox.Text = "nothing like it";
+
+            Assert.Null(canvas.Palette.PreviewStep);
+        });
+    }
+
+    [Fact]
     public void Shift_enter_adds_the_step_and_wires_it_from_the_selected_step()
     {
         UiThread.Run(() =>

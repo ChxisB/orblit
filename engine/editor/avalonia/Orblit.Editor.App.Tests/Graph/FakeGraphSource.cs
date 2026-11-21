@@ -19,14 +19,12 @@ internal sealed class FakeGraphSource : IGraphFile
     const int Missing = 33;
     const int Exists = 32;
 
-    sealed record Template(GraphStepEntry Entry, GraphPort[] Inputs, GraphPort[] Outputs);
-
-    static readonly Template[] s_catalogue =
+    static readonly GraphStepEntry[] s_catalogue =
     [
-        new(new GraphStepEntry("branch", "Flow", "Branch", new Dictionary<string, string>()), [Flow("run"), Data("condition", 1, "condition")], [Flow("true"), Flow("false")]),
-        new(new GraphStepEntry("translate", "Spatial", "Translate", new Dictionary<string, string>()), [Flow("run"), Data("offset", 5, "offset")], [Flow("then")]),
-        new(new GraphStepEntry("print", "Output", "Print", new Dictionary<string, string> { ["text"] = "\"\"" }), [Flow("run"), Data("text", 4, "text")], [Flow("then")]),
-        new(new GraphStepEntry("constant", "Values", "Constant", new Dictionary<string, string> { ["value"] = "0" }), [], [Data("value", 0)]),
+        new("branch", "Flow", "Branch", new Dictionary<string, string>()) { Inputs = [Flow("run"), Data("condition", 1, "condition")], Outputs = [Flow("true"), Flow("false")] },
+        new("translate", "Spatial", "Translate", new Dictionary<string, string>()) { Inputs = [Flow("run"), Data("offset", 5, "offset")], Outputs = [Flow("then")] },
+        new("print", "Output", "Print", new Dictionary<string, string> { ["text"] = "\"\"" }) { Inputs = [Flow("run"), Data("text", 4, "text")], Outputs = [Flow("then")] },
+        new("constant", "Values", "Constant", new Dictionary<string, string> { ["value"] = "0" }) { Outputs = [Data("value", 0)] },
     ];
 
     // The steps a pin edit adds. They are kept apart from the catalog because the palette tests list the catalog.
@@ -282,17 +280,17 @@ internal sealed class FakeGraphSource : IGraphFile
 
     public GraphEditResult AddStep(int id, string kind)
     {
-        var template = Array.Find(s_catalogue, found => found.Entry.Kind == kind);
+        var template = Array.Find(s_catalogue, found => found.Kind == kind);
         var made = s_kinds.GetValueOrDefault(kind);
-        GraphPort[] inputs = kind == "reroute" ? [Data("value", 0)] : template?.Inputs ?? made.Inputs ?? [Flow("run")];
-        GraphPort[] outputs = kind == "reroute" ? [Data("value", 0)] : template?.Outputs ?? made.Outputs ?? [Flow("then")];
+        GraphPort[] inputs = kind == "reroute" ? [Data("value", 0)] : template is not null ? [.. template.Inputs] : made.Inputs ?? [Flow("run")];
+        GraphPort[] outputs = kind == "reroute" ? [Data("value", 0)] : template is not null ? [.. template.Outputs] : made.Outputs ?? [Flow("then")];
         return Take($"AddStep {id} {kind}", () => _steps.Add(MakeStep(id, kind, 0, 0, inputs, outputs, made.Growth)));
     }
 
     public IReadOnlyList<GraphStepEntry> FindSteps(string text, GraphDraggedSide side, int type, GraphPortSort sort)
     {
         Searches.Add($"{text}|{side}|{type}|{sort}");
-        return [.. s_catalogue.Where(template => template.Entry.Label.Contains(text, StringComparison.OrdinalIgnoreCase) && Fits(template, side, type, sort)).Select(template => template.Entry)];
+        return [.. s_catalogue.Where(entry => entry.Label.Contains(text, StringComparison.OrdinalIgnoreCase) && Fits(entry, side, type, sort))];
     }
 
     public GraphEditResult RemoveStep(int id)
@@ -534,7 +532,7 @@ internal sealed class FakeGraphSource : IGraphFile
     static bool IsIdentifier(string name) => name.Length > 0 && !char.IsDigit(name[0]) && name.All(c => char.IsLetterOrDigit(c) || c == '_');
 
     // A wire dragged from an output needs an input on the step, and the other way round. Flow wires ignore the type.
-    static bool Fits(Template template, GraphDraggedSide side, int type, GraphPortSort sort) =>
+    static bool Fits(GraphStepEntry template, GraphDraggedSide side, int type, GraphPortSort sort) =>
         side == GraphDraggedSide.None
         || (side == GraphDraggedSide.Output ? template.Inputs : template.Outputs)
             .Any(port => port.Sort == sort && (sort == GraphPortSort.Flow || type == 0 || port.Type == 0 || port.Type == type));

@@ -179,11 +179,15 @@ String write(const GraphScript &p_script) {
 String write_entries(const Vector<GraphStepEntry> &p_entries) {
 	Array entries;
 	for (const GraphStepEntry &entry : p_entries) {
+		const GraphStepKind *kind = GraphStepKinds::find(entry.kind);
 		Dictionary shown;
 		shown["kind"] = String(entry.kind);
 		shown["group"] = entry.group;
 		shown["label"] = entry.label;
 		shown["parameters"] = texts_of(entry.parameters);
+		// The ports the new step will have, so the palette can draw it before it is added.
+		shown["inputs"] = kind ? ports_of(*kind, entry.parameters, GraphPinSide::INPUT) : Array();
+		shown["outputs"] = kind ? ports_of(*kind, entry.parameters, GraphPinSide::OUTPUT) : Array();
 		entries.push_back(shown);
 	}
 	return JSON::stringify(entries);

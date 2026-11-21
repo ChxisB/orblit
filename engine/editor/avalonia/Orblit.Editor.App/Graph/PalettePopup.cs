@@ -28,8 +28,7 @@ internal sealed class PalettePopup : Border
     readonly StackPanel _rows = new() { Margin = new Thickness(6) };
     readonly TextBlock _group = new() { FontSize = 11, Foreground = EditorBrushes.Unit };
     readonly TextBlock _label = new() { FontSize = 16, FontWeight = FontWeight.Bold, Foreground = EditorBrushes.Text };
-    readonly TextBlock _chipLabel = new() { FontSize = 12, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.Text, VerticalAlignment = VerticalAlignment.Center };
-    readonly Border _chipHeader = new() { Height = StepView.HeaderHeight, Padding = new Thickness(12, 0), CornerRadius = new CornerRadius(10, 10, 0, 0) };
+    readonly StepPreview _chip = new() { Margin = new Thickness(-6, 6, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
     readonly StackPanel _preview = new() { Spacing = 6, Margin = new Thickness(18) };
     Func<string, IReadOnlyList<GraphStepEntry>> _search = _ => [];
     Action<GraphStepEntry, bool> _pick = (_, _) => { };
@@ -80,6 +79,9 @@ internal sealed class PalettePopup : Border
 
     /// <summary>The words beside the list: the chosen step's group and name.</summary>
     internal string Preview => $"{_group.Text} {_label.Text}";
+
+    /// <summary>The step drawn beside the list, as it will be added.</summary>
+    internal GraphStep? PreviewStep => _chip.Step;
 
     // shortcut: the last search is kept for this graph and not for the whole editor session. Keep it in the shell if people want it across files.
     /// <summary>
@@ -142,18 +144,8 @@ internal sealed class PalettePopup : Border
             BorderThickness = new Thickness(0, 0, 1, 0),
             Child = new DockPanel { Children = { top, new ScrollViewer { Content = _rows } } },
         };
-        _chipHeader.Child = _chipLabel;
-        _preview.Children.AddRange([_group, _label, new Border
-        {
-            Width = StepView.Width,
-            Margin = new Thickness(0, 12, 0, 0),
-            HorizontalAlignment = HorizontalAlignment.Left,
-            Background = EditorBrushes.Raised,
-            BorderBrush = EditorBrushes.LineStrong,
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(10),
-            Child = new StackPanel { Children = { _chipHeader, new Border { Height = 30 } } },
-        }]);
+        // shortcut: the preview has no description, because the engine keeps none for its step kinds. Show one when step kinds carry a description.
+        _preview.Children.AddRange([_group, _label, _chip]);
         var footer = new Border
         {
             Padding = new Thickness(14, 8),
@@ -217,8 +209,7 @@ internal sealed class PalettePopup : Border
         _preview.IsVisible = entry is not null;
         _group.Text = entry?.Group ?? "";
         _label.Text = entry?.Label ?? "";
-        _chipLabel.Text = entry?.Label ?? "";
-        _chipHeader.Background = entry is null ? null : StepView.CategoryBrush(entry.Group);
+        _chip.Show(entry);
     }
 
     // Every group shows its heading and count. Only the group of the chosen step lists its steps.
