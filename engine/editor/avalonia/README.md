@@ -57,18 +57,25 @@ scene. It runs on macOS. Nothing else has run it.
 - The Signals tab lists an entity's signals and connects them. The Import
   tab shows import options and reimports on a change.
 - The class list comes from the engine.
-- Script shows C# build problems in its status line.
+- Script completes C# at the caret on Ctrl+Space or a typed dot. Its status
+  line shows C# build problems, and Roslyn's errors after a pause in typing.
 - 2D has Rotate, Scale, Pan, Snap and a grid. The 3D viewport has a
   ruler, Select from a list and the preview lights.
 - A dock floats in its own window from the dock menu.
+- The Asset Store installs a kit from a zip on disk.
+- Project > Export exports the game with one of its presets, once export
+  templates are installed from a `.tpz` on disk.
 - Game passes its run settings to the game as engine flags, and shows the
-  running game's monitors and live scene tree.
+  running game's monitors and live scene tree. The Debugger panel shows the
+  game's process id for an outside IDE to attach to.
 
 ## What is not built
 
-- C# completion, the C# debugger and kit install. Each waits on a
-  decision, 284 to 286. The script slot's Make Unique waits on 287, and its
-  New Script is not built.
+- A C# debugger in the editor. netcoredbg waits on decision 289. Kits install
+  from a zip on disk, not from the store. The script slot's New Script is not
+  built.
+- Template downloads in Export. Templates install from a `.tpz` on disk, and
+  the download source is decision 288.
 - Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
   hard to hit away from its pivot.
 - Picking several entities in the viewport. Move, Remove and Duplicate act
