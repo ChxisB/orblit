@@ -32,6 +32,9 @@ internal sealed class EditorTheme : Styles
 
     internal const double RowIndent = 16;
 
+    /// <summary>How far a lit row stands in from each side of its tree or list.</summary>
+    internal const double RowInset = 6;
+
     /// <summary>Pixels the theme leaves before the content of a tree row, more than the reference draws.</summary>
     internal const double RowOverhang = 15;
 
@@ -67,6 +70,9 @@ internal sealed class EditorTheme : Styles
 
     /// <summary>A small ghost button inside a segmented choice, 24 high. A checked one is lifted.</summary>
     internal const string Segment = "segment";
+
+    /// <summary>The class of a list whose rows read as tree rows: as high, as round and as far in from each side.</summary>
+    internal const string Rows = "rows";
 
     /// <summary>A text box or a list box drawn as the design's field, 30 high with a ring while it has the keys.</summary>
     internal const string Field = "field";
@@ -182,6 +188,12 @@ internal sealed class EditorTheme : Styles
         ("TreeViewItemForegroundSelected", Colors.White),
         ("TreeViewItemForegroundSelectedPointerOver", Colors.White),
         ("TreeViewItemForegroundSelectedPressed", Colors.White),
+        // A list lights its rows as a tree does.
+        ("SystemControlHighlightListLowBrush", EditorColors.Hover),
+        ("SystemControlHighlightListMediumBrush", EditorColors.Hover),
+        ("SystemControlHighlightListAccentLowBrush", EditorColors.AccentSoft),
+        ("SystemControlHighlightListAccentMediumBrush", EditorColors.AccentSoft),
+        ("SystemControlHighlightListAccentHighBrush", EditorColors.AccentSoft),
         ("MenuFlyoutPresenterBackground", EditorColors.Popover),
         ("MenuFlyoutPresenterBorderBrush", EditorColors.LineStrong),
         ("MenuFlyoutItemBackground", Colors.Transparent),
@@ -235,6 +247,19 @@ internal sealed class EditorTheme : Styles
             {
                 new Setter(Layoutable.MarginProperty, new Thickness(-ArrowShift, 0, ArrowShift, 0)),
                 new Setter(TemplatedControl.TemplateProperty, new FuncControlTemplate<ToggleButton>((button, _) => Arrow(button))),
+            },
+        });
+        Add(new Style(x => x.OfType<ListBox>().Class(Rows).Descendant().OfType<ListBoxItem>())
+        {
+            Setters =
+            {
+                new Setter(Layoutable.HeightProperty, RowHeight),
+                new Setter(Layoutable.MinHeightProperty, 0.0),
+                new Setter(Layoutable.MarginProperty, new Thickness(RowInset, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.CornerRadiusProperty, Corners),
+                // A bare name would sit at the top of the row.
+                new Setter(ContentControl.VerticalContentAlignmentProperty, VerticalAlignment.Center),
             },
         });
         // Clipped, so a viewport or a row highlight inside follows the round corners.
@@ -357,6 +382,9 @@ internal sealed class EditorTheme : Styles
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
                 new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
+                // A bare word would stretch to the full height and draw at the top.
+                new Setter(ContentControl.VerticalContentAlignmentProperty, VerticalAlignment.Center),
+                new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Center),
             },
         };
         foreach (var (kind, fill, lit, edge, text) in ButtonKinds)

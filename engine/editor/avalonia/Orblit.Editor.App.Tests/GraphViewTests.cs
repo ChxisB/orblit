@@ -2,9 +2,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests;
@@ -120,6 +122,23 @@ public sealed class GraphViewTests
     static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
     static void Edit(GraphView view) => view.Canvas!.Edits.MoveSteps([2], new Vector(10, 0));
+
+    [Fact]
+    public void A_listed_graph_script_holds_its_name_in_the_middle_of_its_row()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            view.UpdateLayout();
+
+            var row = view.List.GetVisualDescendants().OfType<ListBoxItem>().Single();
+            var name = row.GetVisualDescendants().OfType<TextBlock>().Single();
+            var box = ReferenceWindow.BoxOf(name, row);
+            Assert.Equal(EditorTheme.RowHeight, row.Bounds.Height);
+            Assert.Equal(name.DesiredSize.Height, box.Height);
+            Assert.Equal(row.Bounds.Height / 2, box.Center.Y, 0.5);
+        });
+    }
 
     [Fact]
     public void It_starts_with_the_graph_scripts_listed_and_none_open()

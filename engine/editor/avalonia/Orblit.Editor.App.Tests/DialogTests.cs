@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
@@ -165,6 +166,22 @@ public sealed class DialogTests
             Assert.Equal(BoxOf(dialog.Card, dialog).X + 1 + 12, BoxOf(drop, dialog).X);
             Assert.Same(EditorBrushes.FaultText, drop.Foreground);
             Assert.False(dialog.CloseButton.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void The_main_action_holds_its_word_in_the_middle()
+    {
+        UiThread.Run(() =>
+        {
+            var dialog = Opened(new Dialog("Add an entity", "", new TextBox()) { CardWidth = 320, MainText = "Add", Hint = "↑ ↓ to move, ↵ to add" });
+
+            var word = dialog.MainButton.GetVisualDescendants().OfType<TextBlock>().Single();
+            var box = BoxOf(word, dialog.MainButton);
+            // A word stretched to the button's height draws at its top, so its box must be only its line.
+            Assert.Equal(word.DesiredSize.Height, box.Height);
+            Assert.Equal(dialog.MainButton.Bounds.Height / 2, box.Center.Y, 0.5);
+            Assert.Equal(dialog.MainButton.Bounds.Width / 2, box.Center.X, 0.5);
         });
     }
 

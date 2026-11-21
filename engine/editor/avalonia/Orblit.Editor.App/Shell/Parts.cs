@@ -112,6 +112,26 @@ internal static class Parts
         Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.TextSoft },
     };
 
+    /// <summary>A worded button that names the key which runs it, on a shade of the button's fill in the button's own text colour.</summary>
+    public static StackPanel Keyed(string word, string key) => new()
+    {
+        Orientation = Orientation.Horizontal,
+        Spacing = 6,
+        Children =
+        {
+            new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center },
+            new Border
+            {
+                Padding = new Thickness(5, 3),
+                CornerRadius = new CornerRadius(4),
+                Background = EditorBrushes.Shade,
+                Opacity = 0.7,
+                VerticalAlignment = VerticalAlignment.Center,
+                Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5 },
+            },
+        },
+    };
+
     /// <summary>A key as the macOS menus write it: the modifiers as marks in their fixed order, then the key.</summary>
     // shortcut: the macOS marks only. Add the Windows and Linux words when the editor ships there.
     public static string KeyText(KeyGesture gesture)

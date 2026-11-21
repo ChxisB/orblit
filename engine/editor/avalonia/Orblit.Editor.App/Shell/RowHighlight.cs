@@ -14,8 +14,6 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class RowHighlight : Control
 {
-    const double Inset = 6;
-
     TreeViewItem? _item;
     Border? _line;
 
@@ -31,7 +29,7 @@ internal sealed class RowHighlight : Control
     {
         var line = _line!.Bounds.Size;
         var origin = _line.TranslatePoint(default, this)!.Value;
-        return new Rect(origin.X + Inset, origin.Y, line.Width - (2 * Inset), line.Height);
+        return new Rect(origin.X + EditorTheme.RowInset, origin.Y, line.Width - (2 * EditorTheme.RowInset), line.Height);
     }
 
     public override void Render(DrawingContext context)

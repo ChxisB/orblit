@@ -52,11 +52,12 @@ internal sealed class ScriptView : Border
     readonly Button _new = Parts.IconButton("ScriptCreate", "New script");
     readonly Button _sort = Parts.IconButton("Sort", SortTip(descending: false));
     readonly Button _find = Parts.IconButton("Search", "Find in the script");
-    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0) };
+    readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
     readonly ListBox _outline = new()
     {
         Background = null,
         BorderThickness = new Thickness(0),
+        Classes = { EditorTheme.Rows },
         // The list builds a row with no member while it recycles one.
         ItemTemplate = new FuncDataTemplate<ScriptMember>((member, _) => member is null ? null : MemberRow(member)),
     };
@@ -78,7 +79,7 @@ internal sealed class ScriptView : Border
     readonly TextBlock _caret = StatusText();
     readonly TextBlock _indent = StatusText();
     readonly Control _empty = Parts.EmptyState("CodeFile", "No script open", "Pick a script on the left to read and edit it.");
-    readonly Button _save = new() { Classes = { EditorTheme.Primary }, IsEnabled = false, VerticalAlignment = VerticalAlignment.Center };
+    readonly Button _save = new() { Classes = { EditorTheme.TextButton, EditorTheme.Primary, EditorTheme.Small }, IsEnabled = false, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _problems = new() { Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _problemsText = StatusText();
     IReadOnlyList<ScriptProblem> _found = [];
@@ -93,7 +94,7 @@ internal sealed class ScriptView : Border
     {
         _finder = new ScriptFind(_code);
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
-        _save.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = "Save", VerticalAlignment = VerticalAlignment.Center }, Parts.Kbd("⌘S") } };
+        _save.Content = Parts.Keyed("Save", "⌘S");
         _tab = new Border
         {
             Height = 26,
@@ -103,6 +104,7 @@ internal sealed class ScriptView : Border
             BorderBrush = EditorBrushes.LineStrong,
             BorderThickness = new Thickness(1),
             VerticalAlignment = VerticalAlignment.Center,
+            HorizontalAlignment = HorizontalAlignment.Left,
             IsVisible = false,
             Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, Children = { Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), _tabName, _tabDot } },
         };
@@ -151,6 +153,9 @@ internal sealed class ScriptView : Border
     internal TextBox Filter => _filter;
 
     internal ListBox Outline => _outline;
+
+    /// <summary>The tab of the open script, over the text.</summary>
+    internal Border Tab => _tab;
 
     internal Dialog CreateDialog => _form.Dialog;
 
