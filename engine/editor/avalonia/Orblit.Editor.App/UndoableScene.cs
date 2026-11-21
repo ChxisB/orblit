@@ -14,6 +14,7 @@ namespace Orblit.Editor.App;
 internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : IEditorScene
 {
     Place? _dragFrom;
+    (nint Entity, PlanarPlace Place)? _planarFrom;
 
     public OutlineNode? Outline() => scene.Outline();
 
@@ -33,8 +34,15 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public Vector2? PlanarPivotOf(nint entity) => scene.PlanarPivotOf(entity);
 
-    // shortcut: a 2D move is not undone, because the 2D view tells no end of a drag. Record it once it does.
-    public void MovePlanar(nint entity, FrameMove move) => scene.MovePlanar(entity, move);
+    public void MovePlanar(nint entity, FrameMove move) => PlanarDragging(entity, () => scene.MovePlanar(entity, move));
+
+    public void RotatePlanar(nint entity, FrameMove move) => PlanarDragging(entity, () => scene.RotatePlanar(entity, move));
+
+    public void ScalePlanar(nint entity, FrameMove move) => PlanarDragging(entity, () => scene.ScalePlanar(entity, move));
+
+    public PlanarPlace PlanarPlaceOf(nint entity) => scene.PlanarPlaceOf(entity);
+
+    public void PlacePlanar(nint entity, PlanarPlace place) => scene.PlacePlanar(entity, place);
 
     public PlanarView PlanarView { get => scene.PlanarView; set => scene.PlanarView = value; }
 
@@ -252,21 +260,29 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
     public void EndDrag()
     {
         scene.EndDrag();
-        if (_dragFrom is not { } from)
-        {
-            return;
-        }
-        _dragFrom = null;
-        var to = PlaceOf(from.Entity);
-        if (to != from)
+        if (_dragFrom is { } from && PlaceOf(from.Entity) is var to && to != from)
         {
             history.Add(new Edit(() => Put(from), () => Put(to)));
         }
+
+        if (_planarFrom is { } planar && scene.PlanarPlaceOf(planar.Entity) is var now && now != planar.Place)
+        {
+            history.Add(new Edit(() => scene.PlacePlanar(planar.Entity, planar.Place), () => scene.PlacePlanar(planar.Entity, now)));
+        }
+
+        _dragFrom = null;
+        _planarFrom = null;
     }
 
     void Dragging(nint entity, Action drag)
     {
         _dragFrom ??= PlaceOf(entity);
+        drag();
+    }
+
+    void PlanarDragging(nint entity, Action drag)
+    {
+        _planarFrom ??= (entity, scene.PlanarPlaceOf(entity));
         drag();
     }
 

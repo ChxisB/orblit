@@ -45,6 +45,9 @@ public sealed class EditorSession
     float _raw;
     float _applied;
 
+    // A snapped 2D move adds up where the pivot would be with no snap, so small moves still reach the next step.
+    Vector2? _planarFree;
+
     public EditorSession(EngineHost host, ISceneSource source)
     {
         _host = host;
@@ -313,6 +316,7 @@ public sealed class EditorSession
     {
         _raw = 0f;
         _applied = 0f;
+        _planarFree = null;
     }
 
     /// <summary>The root of the open scene, or null when none is open.</summary>
@@ -401,11 +405,60 @@ public sealed class EditorSession
     }
 
     /// <summary>
-    /// Moves an Entity2D by a pointer move in the frame, so its pivot ends under the pointer. Its rotation and
-    /// scale stay. shortcut: no snap in 2D and no Keep child transforms, add both when the 2D tools grow.
+    /// Moves an Entity2D by a pointer move in the frame, so its pivot ends under the pointer. With a snap, the pivot
+    /// lands on the nearest multiple of the move step instead. Its rotation and scale stay.
     /// </summary>
-    public void MovePlanar(PlanarCamera camera, nint entity, FrameMove move) =>
-        _host.Entity2DSetGlobalPosition(entity, _host.Entity2DGetGlobalPosition(entity) + camera.Offset(move));
+    // shortcut: no Keep child transforms in 2D, so children move with the parent. Add it when a 2D user asks.
+    public void MovePlanar(PlanarCamera camera, nint entity, FrameMove move)
+    {
+        var step = Snap?.Move ?? 0f;
+        if (step <= 0f)
+        {
+            _planarFree = null;
+            _host.Entity2DSetGlobalPosition(entity, _host.Entity2DGetGlobalPosition(entity) + camera.Offset(move));
+            return;
+        }
+
+        var free = (_planarFree ?? _host.Entity2DGetGlobalPosition(entity)) + camera.Offset(move);
+        _planarFree = free;
+        _host.Entity2DSetGlobalPosition(entity, new Vector2(GizmoMath.Stepped(free.X, step), GizmoMath.Stepped(free.Y, step)));
+    }
+
+    /// <summary>Turns an Entity2D about its pivot by a pointer move round the pivot, held to the turn step. Its place and scale stay.</summary>
+    public void RotatePlanar(PlanarCamera camera, nint entity, FrameMove move)
+    {
+        var pivot = camera.PivotOf(entity);
+        var (from, to) = (move.From - pivot, move.To - pivot);
+        // The frame and the world both point y down, so the angle on screen is the angle in the world.
+        var turn = MathF.Atan2((from.X * to.Y) - (from.Y * to.X), Vector2.Dot(from, to));
+        _host.Entity2DSetGlobalRotation(entity, _host.Entity2DGetGlobalRotation(entity) + Carry(turn, Snap?.TurnRadians ?? 0f));
+    }
+
+    /// <summary>
+    /// Scales an Entity2D evenly by how much nearer or farther the pointer is from its pivot, held to the scale step.
+    /// Its place and rotation stay. A pointer within a pixel of the pivot scales nothing, so the scale never collapses.
+    /// </summary>
+    public void ScalePlanar(PlanarCamera camera, nint entity, FrameMove move)
+    {
+        var pivot = camera.PivotOf(entity);
+        var (from, to) = (Vector2.Distance(move.From, pivot), Vector2.Distance(move.To, pivot));
+        if (from < 1f || to < 1f)
+        {
+            return;
+        }
+
+        _host.Entity2DSetGlobalScale(entity, _host.Entity2DGetGlobalScale(entity) * CarryFactor(to / from));
+    }
+
+    public PlanarPlace PlanarPlaceOf(nint entity) =>
+        new(_host.Entity2DGetGlobalPosition(entity), _host.Entity2DGetGlobalRotation(entity), _host.Entity2DGetGlobalScale(entity));
+
+    public void PlacePlanar(nint entity, PlanarPlace place)
+    {
+        _host.Entity2DSetGlobalPosition(entity, place.Position);
+        _host.Entity2DSetGlobalRotation(entity, place.Rotation);
+        _host.Entity2DSetGlobalScale(entity, place.Scale);
+    }
 
     /// <summary>The rotate gizmo's rings for an Entity3D, or null when its pivot is behind the camera.</summary>
     public GizmoRings? RingsOf(EditorCamera camera, nint entity, GizmoSpace space) =>

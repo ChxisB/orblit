@@ -44,7 +44,7 @@ internal sealed class Ruler : Control
     /// <summary>Each tick as its distance along the ruler, with the value it carries. A minor tick carries none.</summary>
     internal IReadOnlyList<(double At, string? Label)> Marks()
     {
-        var minor = MajorStep(MajorGap * Math.Abs(_perPixel)) / MinorPerMajor;
+        var minor = MinorStep(_perPixel);
         var end = _start + Bounds.Width * _perPixel;
         var first = (long)Math.Ceiling(Math.Min(_start, end) / minor);
         var last = (long)Math.Floor(Math.Max(_start, end) / minor);
@@ -73,6 +73,9 @@ internal sealed class Ruler : Control
             }
         }
     }
+
+    /// <summary>The world units between two minor ticks at this many world units for each pixel.</summary>
+    internal static double MinorStep(double perPixel) => MajorStep(MajorGap * Math.Abs(perPixel)) / MinorPerMajor;
 
     // The smallest of 1, 2 and 5 times a power of ten that spans the world units in the gap.
     static double MajorStep(double span)

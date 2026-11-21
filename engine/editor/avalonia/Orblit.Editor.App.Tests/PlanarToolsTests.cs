@@ -137,9 +137,139 @@ public sealed class PlanarToolsTests
         {
             var (window, _, _) = OpenIn2D();
 
-            ClickOn(ToolOf(window, "Rotate mode"), window);
+            ClickOn(ToolOf(window, "Ruler"), window);
 
-            Assert.Equal("Rotate mode is not built yet.", window.Status);
+            Assert.Equal("Ruler is not built yet.", window.Status);
+        });
+    }
+
+    static void DragFrom(EditorWindow window, Point from, RawInputModifiers keys = RawInputModifiers.None)
+    {
+        window.MouseDown(from, MouseButton.Left, keys);
+        window.MouseMove(from + new Point(10, 0), keys);
+        window.MouseUp(from + new Point(10, 0), MouseButton.Left, keys);
+    }
+
+    [Theory]
+    [InlineData("Rotate mode", "Rotate", "Rotated Lamp. Save keeps the change.")]
+    [InlineData("Scale mode", "Scale", "Scaled Lamp. Save keeps the change.")]
+    public void Rotate_and_Scale_modes_take_a_drag_anywhere(string tip, string verb, string status)
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, viewport) = OpenIn2D();
+
+            ClickOn(ToolOf(window, tip), window);
+            DragFrom(window, InWindow(viewport, window, new Vector2(80, 40)));
+
+            Assert.Equal(verb, Assert.Single(scene.PlanarDrags).Verb);
+            Assert.Equal(FakeScene.Lamp.Handle, scene.PlanarDrags[0].Entity);
+            Assert.Equal(status, window.Status);
+            Assert.False(ToolOf(window, "Select mode").IsChecked);
+        });
+    }
+
+    [Fact]
+    public void In_Pan_mode_a_drag_on_the_mark_pans_and_moves_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, viewport) = OpenIn2D();
+            var pans = 0;
+            viewport.PlanarPanned += _ => pans++;
+
+            ClickOn(window.Center.Planar.PanButton, window);
+            DragFrom(window, InWindow(viewport, window, Pivot));
+
+            Assert.Empty(scene.PlanarMoved);
+            Assert.Equal(1, pans);
+        });
+    }
+
+    [Fact]
+    public void A_2D_drag_is_one_step_to_undo()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, viewport) = OpenIn2D();
+            var onPivot = InWindow(viewport, window, Pivot);
+
+            window.MouseDown(onPivot, MouseButton.Left);
+            window.MouseMove(onPivot + new Point(5, 0));
+            window.MouseMove(onPivot + new Point(10, 0));
+            window.MouseUp(onPivot + new Point(10, 0), MouseButton.Left);
+            Assert.Equal(2, scene.PlanarMoved.Count);
+            Assert.Equal(1, scene.DragsEnded);
+
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Z, KeyModifiers = window.CommandKey });
+
+            Assert.Equal(Pivot, scene.Pivots[FakeScene.Lamp.Handle]);
+            Assert.Equal("Undid Moved Lamp. Save keeps the change.", window.Status);
+        });
+    }
+
+    [Theory]
+    [InlineData(false, RawInputModifiers.None, false)]
+    [InlineData(true, RawInputModifiers.None, true)]
+    [InlineData(false, RawInputModifiers.Meta, true)]
+    [InlineData(true, RawInputModifiers.Control, false)]
+    public void Snap_in_the_2D_pill_lights_with_the_toolbar_and_a_snapped_move_keeps_to_the_grid(bool lit, RawInputModifiers keys, bool snaps)
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, viewport) = OpenIn2D();
+            var snap = ToolOf(window, "Snap to the grid. Hold Ctrl or Command to flip it for one drag.");
+            if (lit)
+            {
+                ClickOn(snap, window);
+            }
+
+            DragFrom(window, InWindow(viewport, window, Pivot), keys);
+
+            Assert.Equal(lit, window.Toolbar.SnapButton.IsChecked);
+            Assert.Equal(lit, snap.IsChecked);
+            var step = (float)window.Center.Planar.GridStep;
+            Assert.Equal(snaps ? new GizmoSnap(step, 15, 0.1f) : null, Assert.Single(scene.SnapsSeen));
+        });
+    }
+
+    [Fact]
+    public void The_grid_button_and_Show_Grid_hide_the_grid_and_stay_in_step()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = OpenIn2D();
+            var planar = window.Center.Planar;
+            Assert.True(planar.Grid.IsVisible);
+            Assert.True(planar.GridButton.IsChecked);
+
+            ClickOn(planar.GridButton, window);
+            Assert.False(planar.Grid.IsVisible);
+            Assert.False(planar.GridItem.IsChecked);
+
+            planar.GridItem.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.True(planar.Grid.IsVisible);
+            Assert.True(planar.GridButton.IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Every_grid_line_falls_on_a_ruler_tick_and_the_axes_cross_at_the_origin()
+    {
+        UiThread.Run(() =>
+        {
+            var grid = new PlanarGrid();
+            grid.Measure(new Size(400, 300));
+            grid.Arrange(new Rect(0, 0, 400, 300));
+            grid.Show(new Vector2(30, -10), 0.5);
+
+            // Half a world unit a pixel gives a minor tick of 5 units, so a line every 10 units, which is 20 pixels.
+            Assert.Equal(10, grid.Step);
+            var across = grid.Across();
+            Assert.All(across.Zip(across.Skip(1)), pair => Assert.Equal(20, pair.Second - pair.First, 6));
+            Assert.Equal(new Point(200 - 60, 150 + 20), grid.Origin);
+            Assert.Contains(grid.Origin.X, across);
+            Assert.Contains(grid.Origin.Y, grid.Down());
         });
     }
 

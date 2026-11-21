@@ -82,6 +82,10 @@ public static unsafe class EngineCalls
     static readonly EngineMethod Entity2DSetPositionMethod = new("Entity2D", "set_position", 743155724);
     static readonly EngineMethod Entity2DGetGlobalPositionMethod = new("Entity2D", "get_global_position", 3341600327);
     static readonly EngineMethod Entity2DSetGlobalPositionMethod = new("Entity2D", "set_global_position", 743155724);
+    static readonly EngineMethod Entity2DGetGlobalRotationMethod = new("Entity2D", "get_global_rotation", 1740695150);
+    static readonly EngineMethod Entity2DSetGlobalRotationMethod = new("Entity2D", "set_global_rotation", 373806689);
+    static readonly EngineMethod Entity2DGetGlobalScaleMethod = new("Entity2D", "get_global_scale", 3341600327);
+    static readonly EngineMethod Entity2DSetGlobalScaleMethod = new("Entity2D", "set_global_scale", 743155724);
     static readonly EngineMethod CanvasLayerSetLayerMethod = new("CanvasLayer", "set_layer", 1286410249);
     static readonly EngineMethod CanvasLayerSetVisibleMethod = new("CanvasLayer", "set_visible", 2586408642);
     static readonly EngineMethod ColorRectSetColorMethod = new("ColorRect", "set_color", 2920490490);
@@ -687,6 +691,34 @@ public static unsafe class EngineCalls
         Vector2 a0 = position;
         void** args = stackalloc void*[] { &a0 };
         host.Call(Entity2DSetGlobalPositionMethod, target, args, null);
+    }
+
+    public static float Entity2DGetGlobalRotation(this EngineHost host, nint target)
+    {
+        double result = default;
+        host.Call(Entity2DGetGlobalRotationMethod, target, null, &result);
+        return (float)result;
+    }
+
+    public static void Entity2DSetGlobalRotation(this EngineHost host, nint target, float radians)
+    {
+        double a0 = radians;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(Entity2DSetGlobalRotationMethod, target, args, null);
+    }
+
+    public static Vector2 Entity2DGetGlobalScale(this EngineHost host, nint target)
+    {
+        Vector2 result = default;
+        host.Call(Entity2DGetGlobalScaleMethod, target, null, &result);
+        return result;
+    }
+
+    public static void Entity2DSetGlobalScale(this EngineHost host, nint target, Vector2 scale)
+    {
+        Vector2 a0 = scale;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(Entity2DSetGlobalScaleMethod, target, args, null);
     }
 
     public static void CanvasLayerSetLayer(this EngineHost host, nint target, long layer)

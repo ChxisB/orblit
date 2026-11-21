@@ -28,8 +28,21 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles
     /// <summary>Where the pivot of an Entity2D lands in the viewport's frame. Null when there is no viewport or the entity is no Entity2D.</summary>
     Vector2? PlanarPivotOf(nint entity);
 
-    /// <summary>Moves an Entity2D by a pointer move in the viewport's frame, so its pivot ends under the pointer. It does nothing when there is no viewport.</summary>
+    /// <summary>
+    /// Moves an Entity2D by a pointer move in the viewport's frame, so its pivot ends under the pointer, or on the
+    /// move step's grid while <see cref="Snap"/> has one. It does nothing when there is no viewport.
+    /// </summary>
     void MovePlanar(nint entity, FrameMove move);
+
+    /// <summary>Turns an Entity2D about its pivot by a pointer move round it in the viewport's frame. It does nothing when there is no viewport.</summary>
+    void RotatePlanar(nint entity, FrameMove move);
+
+    /// <summary>Scales an Entity2D evenly by a pointer move toward or away from its pivot in the viewport's frame. It does nothing when there is no viewport.</summary>
+    void ScalePlanar(nint entity, FrameMove move);
+
+    PlanarPlace PlanarPlaceOf(nint entity);
+
+    void PlacePlanar(nint entity, PlanarPlace place);
 
     /// <summary>Where the 2D camera looks and how far in. It is the start view and a set does nothing when there is no viewport.</summary>
     PlanarView PlanarView { get; set; }

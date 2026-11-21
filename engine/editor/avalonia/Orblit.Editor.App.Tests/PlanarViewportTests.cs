@@ -76,7 +76,7 @@ public sealed class PlanarViewportTests
         };
         rig = new Rig { Window = new Window { Width = 200, Height = 100, Content = viewport }, Viewport = viewport };
         viewport.PlanarPanned += rig.Pans.Add;
-        viewport.PlanarMoved += move => rig.Moves.Add(move.Delta);
+        viewport.PlanarMoved += (move, _) => rig.Moves.Add(move.Delta);
         viewport.Clicked += rig.Clicks.Add;
         viewport.Orbited += (yaw, pitch) => rig.Orbits.Add((yaw, pitch));
         rig.Window.Show();

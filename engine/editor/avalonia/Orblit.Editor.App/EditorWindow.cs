@@ -336,9 +336,9 @@ internal sealed class EditorWindow : Window
         viewport.Clicked += SelectAt;
         viewport.PlanarSource = () => _planar;
         viewport.MarkSource = PivotOfSelected;
-        viewport.PlanarMoved += MoveSelected;
+        viewport.PlanarMoved += DragPlanar;
         viewport.ModeSource = () => _toolbar.Mode;
-        viewport.GripAnywhereSource = () => _center.Planar.MovesAnywhere;
+        viewport.GripSource = () => _center.Planar.Grip;
         viewport.Zoomed += _ => _center.Planar.Refresh();
         viewport.PlanarPanned += _ => _center.Planar.Refresh();
         viewport.TrackballSource = () => _toolbar.Trackball;
@@ -393,15 +393,32 @@ internal sealed class EditorWindow : Window
         _scenePane.Selected is { Locked: false } selected ? _scene?.PlanarPivotOf(selected.Handle) : null;
 
     // A press on the mark of the last tick can land after the selection moved on.
-    void MoveSelected(FrameMove move)
+    void DragPlanar(FrameMove move, bool inverts)
     {
         if (PivotOfSelected() is null)
         {
             return;
         }
 
-        _scene!.MovePlanar(_scenePane.Selected!.Handle, move);
-        ShowDragged("Moved");
+        // A 2D move snaps to the grid lines, so a dragged entity sits on the grid it is shown on.
+        var steps = _toolbar.Steps;
+        _scene!.Snap = _toolbar.Snaps != inverts ? steps with { Move = steps.Move > 0 ? (float)_center.Planar.GridStep : 0 } : null;
+        var entity = _scenePane.Selected!.Handle;
+        switch (_center.Planar.Tool)
+        {
+            case PlanarTool.Rotate:
+                _scene.RotatePlanar(entity, move);
+                ShowDragged("Rotated");
+                break;
+            case PlanarTool.Scale:
+                _scene.ScalePlanar(entity, move);
+                ShowDragged("Scaled");
+                break;
+            default:
+                _scene.MovePlanar(entity, move);
+                ShowDragged("Moved");
+                break;
+        }
     }
 
     void ShowSelection()

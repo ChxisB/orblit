@@ -28,7 +28,7 @@ internal sealed class CenterArea : Grid
         Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
         BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
         Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
-        Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton) { IsVisible = false };
+        Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton, toolbar.SnapButton) { IsVisible = false };
         Output = new OutputPanel();
         Debugger = new DebuggerNote();
         // In the order of the bar's tabs.

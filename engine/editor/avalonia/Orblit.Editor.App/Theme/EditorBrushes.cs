@@ -51,6 +51,9 @@ internal static class EditorBrushes
     public static readonly IBrush RulerEdge = new ImmutableSolidColorBrush(EditorColors.RulerEdge);
     public static readonly IBrush RulerTick = new ImmutableSolidColorBrush(EditorColors.RulerTick);
     public static readonly IBrush RulerMajor = new ImmutableSolidColorBrush(EditorColors.RulerMajor);
+    public static readonly IBrush GridLine = new ImmutableSolidColorBrush(EditorColors.GridLine);
+    public static readonly IBrush GridAxisX = new ImmutableSolidColorBrush(EditorColors.GridAxisX);
+    public static readonly IBrush GridAxisY = new ImmutableSolidColorBrush(EditorColors.GridAxisY);
     public static readonly IBrush Stage = new ImmutableSolidColorBrush(EditorColors.Stage);
     public static readonly IBrush Code = new ImmutableSolidColorBrush(EditorColors.Code);
     public static readonly IBrush CodeLine = new ImmutableSolidColorBrush(EditorColors.CodeLine);

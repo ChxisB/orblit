@@ -456,8 +456,21 @@ internal sealed class FakeScene : IEditorScene
     public void MovePlanar(nint entity, FrameMove move)
     {
         PlanarMoved.Add((entity, move.Delta));
+        SnapsSeen.Add(Snap);
         Pivots[entity] += move.Delta;
     }
+
+    /// <summary>Every 2D rotate and scale drag the window made, in order, as the verb and the entity.</summary>
+    public List<(string Verb, nint Entity)> PlanarDrags { get; } = [];
+
+    public void RotatePlanar(nint entity, FrameMove move) => PlanarDrags.Add(("Rotate", entity));
+
+    public void ScalePlanar(nint entity, FrameMove move) => PlanarDrags.Add(("Scale", entity));
+
+    /// <summary>The pivot stands in for the place, so a 2D move and its undo show in <see cref="Pivots"/>.</summary>
+    public PlanarPlace PlanarPlaceOf(nint entity) => new(Pivots[entity], 0, Vector2.One);
+
+    public void PlacePlanar(nint entity, PlanarPlace place) => Pivots[entity] = place.Position;
 
     /// <summary>The handles the viewport asks for. Null is a pivot behind the camera.</summary>
     public GizmoHandles? Handles { get; set; }
