@@ -250,13 +250,10 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IKitF
     /// <summary>The process id of the game <see cref="Play"/> started, or null when none runs.</summary>
     int? GameId { get; }
 
-    /// <summary>The C# side of the game <see cref="Play"/> started, when it runs under netcoredbg.</summary>
-    IDebugChannel Csharp { get; }
-
     /// <summary>
     /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
     /// each a source and a step id. A project with C# runs under netcoredbg when the person has it, linked to
-    /// <see cref="Csharp"/> and stopping on the code breakpoints, each a script's res:// path and a line. The flags go to
+    /// <see cref="IScriptFiles.Csharp"/> and stopping on the code breakpoints, each a script's res:// path and a line. The flags go to
     /// the engine as they are, such as <c>--debug-collisions</c>. A game already running is stopped first. Throws
     /// <see cref="IOException"/> when a link cannot be opened or netcoredbg does not start.
     /// </summary>

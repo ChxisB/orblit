@@ -7,7 +7,9 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.App.Theme;
+using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -309,7 +311,10 @@ public sealed class BottomBarTests
             debugger.RunButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             debugger.CopyButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-            Assert.Equal("Graph scripts stop at their breakpoints in the Graph workspace. To debug C#, attach VS Code or Rider to process 4242.", debugger.Line.Text);
+            Assert.Equal(
+                "Graph scripts stop at their breakpoints in the Graph workspace. C# stops at its breakpoints when netcoredbg is on PATH "
+                + "or ORBLIT_NETCOREDBG names it. Get it from https://github.com/Samsung/netcoredbg/releases. Or attach VS Code or Rider to process 4242.",
+                debugger.Line.Text);
             Assert.True(debugger.CopyButton.IsVisible);
             Assert.Equal(["4242"], copied);
 
@@ -317,6 +322,34 @@ public sealed class BottomBarTests
 
             Assert.False(debugger.CopyButton.IsVisible);
             Assert.Equal("No game is connected", debugger.Title.Text);
+        });
+    }
+
+    [Fact]
+    public void Play_sends_the_csharp_breakpoints_and_a_csharp_stop_shows_the_script_and_the_session()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            scene.ScriptText["res://spin.cs"] = "class Spin\n{\n}\n";
+            var window = OpenAtReferenceSize(scene);
+            var debugger = window.Center.Debugger;
+            window.Script.Breakpoints.Toggle("res://spin.cs", 2);
+
+            window.PlayButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            scene.CsharpChannel.Next = FakeDebugChannel.Stopped("breakpoint", new DebugFrame("res://spin.cs", 2, "Spin.Run()"));
+            window.Poll();
+
+            Assert.Equal([("res://spin.cs", 2)], scene.PlayedWithCode);
+            Assert.True(window.Script.IsVisible);
+            Assert.True(window.Center.Panels[1].IsVisible);
+            Assert.Same(window.Script.DebugPanel, debugger.Child);
+
+            scene.CsharpChannel.Next = DebugState.None;
+            window.Poll();
+
+            Assert.NotSame(window.Script.DebugPanel, debugger.Child);
+            Assert.Contains(debugger.Line, debugger.GetVisualDescendants());
         });
     }
 

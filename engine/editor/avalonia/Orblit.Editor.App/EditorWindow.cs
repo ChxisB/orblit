@@ -188,6 +188,11 @@ internal sealed class EditorWindow : Window
         _center.Output.CopyRequested += text => Copy(text, "the output");
         _center.Debugger.RunRequested += () => Play();
         _center.Debugger.CopyRequested += id => Copy(id, "the process id");
+        _script.Paused += () =>
+        {
+            _titleBar.Choose(TitleBar.Script);
+            _bottomBar.OpenDebugger();
+        };
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
@@ -343,6 +348,7 @@ internal sealed class EditorWindow : Window
     {
         _scene?.PollOutput();
         _graph.PollDebugger();
+        _script.PollDebugger();
         ShowGame();
     }
 
@@ -944,7 +950,7 @@ internal sealed class EditorWindow : Window
 
         try
         {
-            _scene!.Play(_graph.Breakpoints.All, [], [.. _game.Flags, .. arguments]);
+            _scene!.Play(_graph.Breakpoints.All, _script.Breakpoints.All, [.. _game.Flags, .. arguments]);
         }
         catch (IOException error)
         {
@@ -975,6 +981,7 @@ internal sealed class EditorWindow : Window
         _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
         _game.ShowLive(_scene is { IsPlaying: true } scene ? scene.Debug.State : DebugState.None);
         _center.Debugger.ShowGame(_scene?.GameId, _root is not null);
+        _center.Debugger.ShowSession(_script.IsDebugging ? _script.DebugPanel : null);
     }
 
     // Folds both sides while either shows, so a second press brings both back.

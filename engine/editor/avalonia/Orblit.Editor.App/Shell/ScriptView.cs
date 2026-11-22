@@ -6,7 +6,9 @@ using Avalonia.Controls.Templates;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Theme;
+using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
@@ -36,12 +38,16 @@ internal interface IScriptFiles
     /// name and <see cref="IOException"/> when the file exists or cannot be written.
     /// </summary>
     void CreateScript(string resourcePath, string baseType);
+
+    /// <summary>The C# side of a game Play started under netcoredbg. A breakpoint is a script's res:// path and a line.</summary>
+    IDebugChannel Csharp { get; }
 }
 
 /// <summary>
 /// The Script workspace, on two islands. The left one lists the project's C# files over the outline of the open one.
 /// The right one holds the open file in colour, with a status line under it. It reads and writes the files, and the
-/// status line builds them to list their problems. It does not run them. Graph scripts have their own workspace.
+/// status line builds them to list their problems. A click left of a line number sets a breakpoint, and a game
+/// that stops on one opens its file at the line. Graph scripts have their own workspace.
 /// </summary>
 internal sealed class ScriptView : Border
 {
@@ -93,6 +99,8 @@ internal sealed class ScriptView : Border
     IReadOnlyList<ScriptProblem> _found = [];
     ScriptCompletion? _completion;
     IScriptFiles? _files;
+    GraphDebugger? _debugger;
+    (string Path, int Line)? _paused;
     IReadOnlyList<string> _paths = [];
     string? _open;
     string _saved = "";
@@ -140,6 +148,14 @@ internal sealed class ScriptView : Border
             }
         };
         _code.CaretMoved += ShowCaret;
+        _code.MarkClicked += line =>
+        {
+            if (_open is not null)
+            {
+                Breakpoints.Toggle(_open, line);
+            }
+        };
+        Breakpoints.Changed += (_, _, _) => ShowMarks();
         _filter.PropertyChanged += (_, e) =>
         {
             if (e.Property == TextBox.TextProperty)
@@ -212,6 +228,18 @@ internal sealed class ScriptView : Border
     /// <summary>The first error Roslyn finds in the open text, after a pause in typing.</summary>
     internal TextBlock ErrorsText => _errors;
 
+    // A C# breakpoint is a script's res:// path and a line, the shape of a graph breakpoint, so the graph's set serves.
+    internal GraphBreakpoints Breakpoints { get; } = new();
+
+    /// <summary>The C# session in the graph debugger's panel, for the Debugger tab while a game runs under netcoredbg.</summary>
+    internal DebuggerPanel? DebugPanel { get; private set; }
+
+    /// <summary>Whether a game runs under netcoredbg, so <see cref="DebugPanel"/> has a session to show.</summary>
+    internal bool IsDebugging => _debugger?.State.Connected == true;
+
+    /// <summary>Raised when the game stopped in a script of the project, which this has opened at the line.</summary>
+    public event Action? Paused;
+
     /// <summary>Whether the text in the box differs from what is on disk.</summary>
     public bool IsDirty => _open is not null && _code.Editor.Text != _saved;
 
@@ -221,12 +249,22 @@ internal sealed class ScriptView : Border
         _files = files;
         _open = null;
         _saved = "";
+        // shortcut: C# breakpoints are not saved, so another project starts with none. Save them as the graph's are when asked.
+        Breakpoints.Load(null);
+        _paused = null;
+        _debugger?.Dispose();
+        _debugger = new GraphDebugger(files.Csharp, Breakpoints);
+        _debugger.Changed += ShowStop;
+        DebugPanel = new DebuggerPanel(_debugger, _ => null);
         _code.Editor.Text = "";
         ShowOpen();
         _status.Text = "";
         _errors.Text = "";
         Refresh();
     }
+
+    /// <summary>Takes in what the game under netcoredbg has said since the last poll.</summary>
+    public void PollDebugger() => _debugger?.Poll();
 
     /// <summary>Writes the open script when it has edits. Answers whether the file holds the text now.</summary>
     public bool Save()
@@ -535,7 +573,39 @@ internal sealed class ScriptView : Border
         _tab.IsVisible = _open is not null;
         _tabName.Text = _open is null ? "" : FileName(_open);
         _name.Text = _open ?? "Pick a script.";
+        ShowMarks();
     }
+
+    // A stop in a project script opens it at the line once. Selecting another level opens that one, and going on clears the light.
+    void ShowStop()
+    {
+        var place = PausedPlace(_debugger!.State);
+        if (place == _paused)
+        {
+            return;
+        }
+
+        _paused = place;
+        if (place is { } at)
+        {
+            Choose(at.Path);
+            if (_open == at.Path)
+            {
+                _code.GoTo(IndexOf(_code.Editor.Text ?? "", at.Line, 1));
+            }
+
+            Paused?.Invoke();
+        }
+
+        ShowMarks();
+    }
+
+    static (string Path, int Line)? PausedPlace(DebugState state) =>
+        state.Stopped && state.Level < state.Stack.Count && state.Stack[state.Level] is var frame && frame.Source.StartsWith(FileTree.Root, StringComparison.Ordinal)
+            ? (frame.Source, frame.Line)
+            : null;
+
+    void ShowMarks() => _code.ShowMarks(Breakpoints.Steps(_open ?? ""), _paused is { } at && at.Path == _open ? at.Line : null);
 
     void Say(string text, IBrush tint)
     {

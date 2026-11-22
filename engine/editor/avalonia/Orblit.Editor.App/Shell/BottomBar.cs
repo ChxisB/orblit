@@ -159,6 +159,9 @@ internal sealed class BottomBar : Grid
         }
     }
 
+    /// <summary>Opens the Debugger panel, for a game that stopped. A stop is asked for, so the pin does not hold it back.</summary>
+    internal void OpenDebugger() => Open(1);
+
     // One panel is open at a time. Opening Output reads its errors, so the badge goes.
     void Open(int index)
     {

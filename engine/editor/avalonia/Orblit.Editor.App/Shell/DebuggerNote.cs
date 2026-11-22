@@ -6,8 +6,8 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The Debugger panel's note. The graph debugger lives in the Graph workspace, so this says whether a game is
-/// running for it to join, and offers to run one. C# runs in .NET, so a running game's process id is shown for an
-/// outside IDE to attach to.
+/// running for it to join, and offers to run one. A game that runs under netcoredbg shows its C# session here
+/// instead. Without netcoredbg, the note says where to get it, and shows the process id for an outside IDE.
 /// </summary>
 internal sealed class DebuggerNote : Decorator
 {
@@ -28,19 +28,20 @@ internal sealed class DebuggerNote : Decorator
         },
     };
 
+    readonly StackPanel _note;
     readonly Button _copy = new() { Content = "Copy Process ID", HorizontalAlignment = HorizontalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
     int? _game;
 
     public DebuggerNote()
     {
-        var note = Parts.EmptyState("Debug", "", "");
-        Title = (TextBlock)note.Children[1];
-        Line = (TextBlock)note.Children[2];
-        note.Children.Add(_run);
-        note.Children.Add(_copy);
+        _note = Parts.EmptyState("Debug", "", "");
+        Title = (TextBlock)_note.Children[1];
+        Line = (TextBlock)_note.Children[2];
+        _note.Children.Add(_run);
+        _note.Children.Add(_copy);
         _run.Click += (_, _) => RunRequested?.Invoke();
         _copy.Click += (_, _) => CopyRequested?.Invoke($"{_game}");
-        Child = note;
+        Child = _note;
         ShowGame(null, false);
     }
 
@@ -64,9 +65,13 @@ internal sealed class DebuggerNote : Decorator
         _game = game;
         Title.Text = game is null ? "No game is connected" : "The game is running";
         Line.Text = game is null ? "Run the project and the debugger joins it."
-            : $"Graph scripts stop at their breakpoints in the Graph workspace. To debug C#, attach VS Code or Rider to process {game}.";
+            : "Graph scripts stop at their breakpoints in the Graph workspace. C# stops at its breakpoints when netcoredbg is on "
+                + $"PATH or {Netcoredbg.Setting} names it. Get it from {Netcoredbg.Releases}. Or attach VS Code or Rider to process {game}.";
         _run.IsVisible = game is null;
         _run.IsEnabled = canRun;
         _copy.IsVisible = game is not null;
     }
+
+    /// <summary>Shows a debug session in place of the note, or the note again for null.</summary>
+    public void ShowSession(Control? session) => Child = session ?? _note;
 }

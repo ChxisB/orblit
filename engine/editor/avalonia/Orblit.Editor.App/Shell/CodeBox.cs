@@ -2,8 +2,11 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Media.Immutable;
 using Avalonia.Reactive;
 using Orblit.Editor.App.Theme;
 
@@ -11,6 +14,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The text area of the Script workspace: C# in its colors, line numbers in a gutter, and the caret's line lit.
+/// Breakpoints are dots left of the numbers, and the line a debugged game stopped on is lit too.
 /// The text box draws its text clear. A copy in colour lies over it and takes no clicks, so the caret and the
 /// selection stay the text box's own.
 /// </summary>
@@ -20,12 +24,17 @@ internal sealed class CodeBox : Border
 
     const double TextSize = 12.5;
 
-    // The column a breakpoint mark will take. It stays empty, because C# scripts cannot be debugged yet.
+    // The column the breakpoint marks take. A click in it sets or clears the line's breakpoint.
     const double MarkColumn = 20;
+    const double MarkSize = 10;
     const double NumberWidth = 30;
     const double NumberGap = 14;
     const double NumberSize = 12;
     const double Inset = 10;
+
+    // The graph's breakpoint and current-step colors, so a stop looks the same in both workspaces.
+    static readonly IBrush s_mark = new ImmutableSolidColorBrush(Color.Parse("#FF5C6C"));
+    static readonly IBrush s_paused = new ImmutableSolidColorBrush(Color.Parse("#F2D34F"));
 
     // The colour of each kind, in the order of CodeKind. Plain text keeps the layer's colour.
     static readonly IBrush?[] s_colours =
@@ -79,6 +88,17 @@ internal sealed class CodeBox : Border
         BorderThickness = new Thickness(2, 0, 0, 0),
     };
 
+    readonly Border _pausedLine = new()
+    {
+        Height = LineHeight,
+        VerticalAlignment = VerticalAlignment.Top,
+        Background = new ImmutableSolidColorBrush(Color.Parse("#2EF2D34F")),
+        BorderBrush = s_paused,
+        BorderThickness = new Thickness(2, 0, 0, 0),
+        IsVisible = false,
+    };
+
+    readonly Canvas _marks = new() { Width = MarkColumn, HorizontalAlignment = HorizontalAlignment.Left, Background = Brushes.Transparent, Cursor = new Cursor(StandardCursorType.Hand) };
     readonly ScrollViewer _scroll;
 
     public CodeBox()
@@ -87,9 +107,16 @@ internal sealed class CodeBox : Border
         _number.VerticalAlignment = VerticalAlignment.Top;
         var text = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), Margin = new Thickness(0, Inset) };
         Grid.SetColumnSpan(_band, 2);
+        Grid.SetColumnSpan(_pausedLine, 2);
         Grid.SetColumn(_editor, 1);
         Grid.SetColumn(_colours, 1);
-        text.Children.AddRange([_band, _gutter, _number, _editor, _colours]);
+        text.Children.AddRange([_band, _pausedLine, _gutter, _number, _marks, _editor, _colours]);
+        ToolTip.SetTip(_marks, "Set or clear a breakpoint");
+        _marks.PointerPressed += (_, e) =>
+        {
+            ClickMark(e.GetPosition(_marks).Y);
+            e.Handled = true;
+        };
         _scroll = new ScrollViewer { Content = text, HorizontalScrollBarVisibility = ScrollBarVisibility.Auto };
         // A short file would leave the box narrower than the area, and a click beside it would reach nothing.
         _scroll.GetObservable(ScrollViewer.ViewportProperty).Subscribe(new AnonymousObserver<Size>(viewport => text.MinWidth = viewport.Width));
@@ -100,6 +127,15 @@ internal sealed class CodeBox : Border
 
     /// <summary>Raised when the caret moves, by a key, a click or an edit.</summary>
     public event Action? CaretMoved;
+
+    /// <summary>Raised with the line, counted from one, whose breakpoint mark was clicked.</summary>
+    public event Action<int>? MarkClicked;
+
+    /// <summary>The breakpoint dots, one for each marked line.</summary>
+    internal Canvas Marks => _marks;
+
+    /// <summary>The band that lights the line a debugged game stopped on.</summary>
+    internal Border PausedLine => _pausedLine;
 
     internal TextBox Editor => _editor;
 
@@ -139,6 +175,33 @@ internal sealed class CodeBox : Border
         _editor.SelectionStart = start;
         _editor.SelectionEnd = start + length;
         ShowLineOf(start);
+    }
+
+    /// <summary>Marks the lines that hold a breakpoint, and lights the line the game stopped on. Null lights none.</summary>
+    public void ShowMarks(IReadOnlySet<int> lines, int? paused)
+    {
+        _marks.Children.Clear();
+        _marks.Children.AddRange(lines.Select(Mark));
+        _pausedLine.IsVisible = paused is not null;
+        _pausedLine.Margin = new Thickness(0, ((paused ?? 1) - 1) * LineHeight, 0, 0);
+    }
+
+    /// <summary>A click this far down the mark column, which names the line there. Past the last line names none.</summary>
+    internal void ClickMark(double y)
+    {
+        var line = (int)(y / LineHeight) + 1;
+        if (line >= 1 && line <= (_editor.Text ?? "").Count(c => c == '\n') + 1)
+        {
+            MarkClicked?.Invoke(line);
+        }
+    }
+
+    static Ellipse Mark(int line)
+    {
+        var dot = new Ellipse { Width = MarkSize, Height = MarkSize, Fill = s_mark };
+        Canvas.SetLeft(dot, (MarkColumn - MarkSize) / 2);
+        Canvas.SetTop(dot, ((line - 1) * LineHeight) + ((LineHeight - MarkSize) / 2));
+        return dot;
     }
 
     void ShowLineOf(int index)

@@ -6,8 +6,11 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Microsoft.CodeAnalysis.Completion;
+using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.App.Theme;
+using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -77,6 +80,10 @@ public sealed class ScriptViewTests
         }
 
         public IReadOnlyList<string> ScriptReferences() => [];
+
+        public FakeDebugChannel Channel { get; } = new();
+
+        public IDebugChannel Csharp => Channel;
     }
 
     static ScriptView Open(Files files)
@@ -800,6 +807,84 @@ public sealed class ScriptViewTests
             await view.ShowErrors();
 
             Assert.Equal("", view.ErrorsText.Text);
+        });
+    }
+
+    [Fact]
+    public void A_click_in_the_mark_column_sets_and_clears_the_lines_breakpoint()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+            Pick(view, "res://spin.cs");
+
+            view.Code.ClickMark(1.5 * CodeBox.LineHeight);
+            view.Code.ClickMark(40 * CodeBox.LineHeight);
+
+            Assert.Equal([2], view.Breakpoints.Steps("res://spin.cs"));
+            var mark = Assert.Single(view.Code.Marks.Children);
+            Assert.InRange(Canvas.GetTop(mark), CodeBox.LineHeight, 2 * CodeBox.LineHeight);
+            Pick(view, "res://slime.cs");
+            Assert.Empty(view.Code.Marks.Children);
+
+            Pick(view, "res://spin.cs");
+            view.Code.ClickMark(1.5 * CodeBox.LineHeight);
+
+            Assert.Empty(view.Breakpoints.Steps("res://spin.cs"));
+            Assert.Empty(view.Code.Marks.Children);
+        });
+    }
+
+    [Fact]
+    public void A_stop_in_a_project_script_opens_it_on_the_paused_line_once()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            var view = Open(files);
+            var paused = 0;
+            view.Paused += () => paused++;
+            Assert.False(view.IsDebugging);
+            Assert.NotNull(view.DebugPanel);
+
+            files.Channel.Next = FakeDebugChannel.Stopped("breakpoint", new DebugFrame("res://spin.cs", 2, "Spin.Run()"));
+            view.PollDebugger();
+            view.PollDebugger();
+
+            Assert.Equal(1, paused);
+            Assert.True(view.IsDebugging);
+            Assert.Equal("res://spin.cs", view.List.SelectedItem);
+            Assert.Equal("class Spin\n".Length, view.Editor.CaretIndex);
+            Assert.True(view.Code.PausedLine.IsVisible);
+            Assert.Equal(CodeBox.LineHeight, view.Code.PausedLine.Margin.Top);
+            Pick(view, "res://slime.cs");
+            Assert.False(view.Code.PausedLine.IsVisible);
+
+            Pick(view, "res://spin.cs");
+            files.Channel.Next = FakeDebugChannel.Running();
+            view.PollDebugger();
+
+            Assert.False(view.Code.PausedLine.IsVisible);
+            Assert.True(view.IsDebugging);
+        });
+    }
+
+    [Fact]
+    public void A_stop_outside_the_project_opens_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var files = new Files();
+            var view = Open(files);
+            var paused = 0;
+            view.Paused += () => paused++;
+
+            files.Channel.Next = FakeDebugChannel.Stopped("pause", new DebugFrame("/usr/local/share/dotnet/Thread.cs", 30, "Thread.Sleep()"));
+            view.PollDebugger();
+
+            Assert.Equal(0, paused);
+            Assert.Null(view.List.SelectedItem);
+            Assert.False(view.Code.PausedLine.IsVisible);
         });
     }
 }
