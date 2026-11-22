@@ -125,4 +125,27 @@ public sealed class ExportToolTests
             Assert.Equal("other.tpz was not installed. The file holds no templates/version.txt with a version such as 1.0.stable.", tool.Status.Text);
         });
     }
+
+    [Fact]
+    public void A_download_says_it_installed_the_templates_or_says_why_not()
+    {
+        UiThread.Run(async () =>
+        {
+            var scene = new FakeScene();
+            var tool = Opened(scene);
+
+            Press(tool.DownloadButton);
+            await Task.Yield();
+
+            Assert.Equal(1, scene.Downloads);
+            Assert.Equal("Downloaded and installed the export templates.", tool.Status.Text);
+            Assert.True(tool.DownloadButton.IsEnabled);
+
+            scene.DownloadFault = new IOException("No export templates are published for 1.0.stable. Install a .tpz from a release instead.");
+            Press(tool.DownloadButton);
+            await Task.Yield();
+
+            Assert.Equal("The templates were not downloaded. No export templates are published for 1.0.stable. Install a .tpz from a release instead.", tool.Status.Text);
+        });
+    }
 }

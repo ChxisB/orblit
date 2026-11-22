@@ -19,6 +19,9 @@ internal interface IExportGame
     /// <summary>Unpacks a .tpz of export templates where the engine looks for them.</summary>
     void InstallTemplates(string tpz);
 
+    /// <summary>Downloads the templates for this engine from the site's mirror and unpacks them, and throws <see cref="IOException"/> with the reason when it cannot.</summary>
+    Task DownloadTemplates();
+
     /// <summary>Exports the game with a preset to a path, and throws <see cref="InvalidOperationException"/> with the reason when it fails.</summary>
     Task Export(string preset, string path);
 }
@@ -34,7 +37,8 @@ internal sealed class ExportTool
     readonly ComboBox _presets = new() { HorizontalAlignment = HorizontalAlignment.Stretch };
     readonly TextBox _path = new() { PlaceholderText = "Where the game goes" };
     readonly TextBlock _status = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
-    readonly Button _install = new() { Content = "Install Templates...", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, IsEnabled = false };
+    readonly Button _download = new() { Content = "Download", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, IsEnabled = false };
+    readonly Button _install = new() { Content = "Install from File...", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, IsEnabled = false };
     IReadOnlyList<ExportPreset> _list = [];
     IExportGame? _project;
     bool _exporting;
@@ -42,9 +46,11 @@ internal sealed class ExportTool
     public ExportTool()
     {
         AddPresetButton = new Button { Content = "Add Preset for This Computer", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, HorizontalAlignment = HorizontalAlignment.Left };
+        ToolTip.SetTip(_download, "Download the export templates for this version of the engine from orblitengine.com");
         ToolTip.SetTip(_install, "Unpack a .tpz of export templates for this version of the engine");
-        var body = new StackPanel { Spacing = 10, Children = { Parts.Labeled("Preset", _presets, AddPresetButton), Parts.Labeled("Export to", _path), _status } };
-        Dialog = new Dialog("Export", "Build the game as a program that runs without the editor.", body) { MainText = "Export", LeadButton = _install };
+        var templates = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _download, _install } };
+        var body = new StackPanel { Spacing = 10, Children = { Parts.Labeled("Preset", _presets, AddPresetButton), Parts.Labeled("Export to", _path), Parts.Labeled("Templates", templates), _status } };
+        Dialog = new Dialog("Export", "Build the game as a program that runs without the editor.", body) { MainText = "Export" };
         _presets.SelectionChanged += (_, _) =>
         {
             _path.Text = Picked?.Path ?? "";
@@ -59,6 +65,7 @@ internal sealed class ExportTool
             }
         };
         AddPresetButton.Click += (_, _) => AddPreset();
+        _download.Click += async (_, _) => await DownloadAsync();
         _install.Click += async (_, _) =>
         {
             if (await PickTpzAsync() is { } tpz)
@@ -74,6 +81,8 @@ internal sealed class ExportTool
 
     internal Button AddPresetButton { get; }
 
+    internal Button DownloadButton => _download;
+
     internal ComboBox PresetBox => _presets;
 
     internal TextBox PathBox => _path;
@@ -85,6 +94,7 @@ internal sealed class ExportTool
     public void Show(IExportGame project)
     {
         _project = project;
+        _download.IsEnabled = true;
         _install.IsEnabled = true;
     }
 
@@ -166,6 +176,25 @@ internal sealed class ExportTool
         catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException)
         {
             _status.Text = $"{name} was not installed. {error.Message}";
+        }
+    }
+
+    async Task DownloadAsync()
+    {
+        _download.IsEnabled = false;
+        _status.Text = "Downloading the export templates. They are large, so this can take a few minutes.";
+        try
+        {
+            await _project!.DownloadTemplates();
+            _status.Text = "Downloaded and installed the export templates.";
+        }
+        catch (Exception error) when (error is IOException or InvalidDataException or UnauthorizedAccessException or Win32Exception)
+        {
+            _status.Text = $"The templates were not downloaded. {error.Message}";
+        }
+        finally
+        {
+            _download.IsEnabled = true;
         }
     }
 

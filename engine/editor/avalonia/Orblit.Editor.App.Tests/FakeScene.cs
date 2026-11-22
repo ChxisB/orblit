@@ -342,6 +342,17 @@ internal sealed class FakeScene : IEditorScene
         Templates.Add(tpz);
     }
 
+    public int Downloads { get; private set; }
+
+    /// <summary>When set, a template download fails with this.</summary>
+    public Exception? DownloadFault { get; set; }
+
+    public Task DownloadTemplates()
+    {
+        Downloads++;
+        return DownloadFault is null ? Task.CompletedTask : Task.FromException(DownloadFault);
+    }
+
     public Task Export(string preset, string path)
     {
         Exports.Add((preset, path));

@@ -415,6 +415,28 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void InstallTemplates(string tpz) => ExportTemplates.Install(tpz, ExportTemplates.DataFolder);
 
+    // The engine that exports names the templates it needs, so its own version picks the mirror list.
+    public async Task DownloadTemplates()
+    {
+        var start = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()), "--version") { RedirectStandardOutput = true };
+        string printed;
+        using (var player = Process.Start(start)!)
+        {
+            printed = await player.StandardOutput.ReadToEndAsync();
+            await player.WaitForExitAsync();
+        }
+
+        var tpz = await new TemplateMirror().DownloadAsync(TemplateMirror.FullVersion(printed), CancellationToken.None);
+        try
+        {
+            InstallTemplates(tpz);
+        }
+        finally
+        {
+            File.Delete(tpz);
+        }
+    }
+
     /// <summary>
     /// Exports the game through an engine of its own, which imports and builds the project first. Throws
     /// <see cref="InvalidOperationException"/> with the engine's reason when the export fails.

@@ -141,6 +141,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public void InstallTemplates(string tpz) => scene.InstallTemplates(tpz);
 
+    public Task DownloadTemplates() => scene.DownloadTemplates();
+
     public Task Export(string preset, string path) => scene.Export(preset, path);
 
     public IReadOnlyList<string> AddableClasses() => scene.AddableClasses();
