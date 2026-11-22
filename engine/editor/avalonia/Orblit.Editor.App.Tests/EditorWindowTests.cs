@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -26,6 +27,22 @@ public sealed class EditorWindowTests
         var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers };
         target.RaiseEvent(press);
         return press;
+    }
+
+    // Adds a class under the selected entity, or the root, through the Add an entity dialog.
+    static void AddClass(EditorWindow window, string className)
+    {
+        Click(window.Tools.AddButton);
+        var list = window.Tools.ClassList;
+        Click(list.RowButtons.ElementAt(list.Shown.ToList().FindIndex(choice => choice.Name == className)));
+        Click(window.Tools.AddDialog.MainButton);
+    }
+
+    // Adds a marker under the selected entity and gives it a name. The new entity is selected afterwards.
+    static void AddNamed(EditorWindow window, string name)
+    {
+        AddClass(window, "Marker3D");
+        window.Tools.Rename(name);
     }
 
     static void Commit(TextBox box) => box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
@@ -129,7 +146,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Text_that_is_not_a_number_is_put_back()
+    public void Text_that_is_not_a_number_leaves_the_scene_as_it_was()
     {
         UiThread.Run(() =>
         {
@@ -141,7 +158,7 @@ public sealed class EditorWindowTests
             Commit(window.Inspector.Position.Axes[1]);
 
             Assert.Equal(new Vector3(1, 2, 3), scene.PositionOf(FakeScene.Lamp.Handle));
-            Assert.Equal("2", window.Inspector.Position.Axes[1].Text);
+            Assert.True(window.Inspector.Position.Fault.IsVisible);
         });
     }
 
@@ -202,7 +219,7 @@ public sealed class EditorWindowTests
     [InlineData("NaN")]
     [InlineData("Infinity")]
     [InlineData("-Infinity")]
-    public void A_value_that_is_not_finite_is_put_back(string typed)
+    public void A_value_that_is_not_finite_is_refused(string typed)
     {
         UiThread.Run(() =>
         {
@@ -214,7 +231,7 @@ public sealed class EditorWindowTests
             Commit(window.Inspector.Scale.Axes[0]);
 
             Assert.Equal(new Vector3(4, 5, 6), scene.ScaleOf(FakeScene.Lamp.Handle));
-            Assert.Equal("4", window.Inspector.Scale.Axes[0].Text);
+            Assert.True(window.Inspector.Scale.Fault.IsVisible);
             Assert.Equal("Opened Field.", window.Status);
         });
     }
@@ -335,28 +352,25 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            window.Tools.Class.SelectedItem = "Marker3D";
-            window.Tools.NameBox.Text = " Spawn ";
 
-            Click(window.Tools.AddButton);
+            AddClass(window, "Marker3D");
 
             var lamp = Root(window).Find(FakeScene.Lamp.Handle)!;
             var made = Assert.Single(lamp.Children);
-            Assert.Equal(("Spawn", "Marker3D"), (made.Name, made.ClassName));
+            Assert.Equal(("Marker3D", "Marker3D"), (made.Name, made.ClassName));
             Assert.Equal(made, window.Outline.SelectedItem);
-            Assert.Equal("Added Spawn.", window.Status);
+            Assert.Equal("Added Marker3D.", window.Status);
         });
     }
 
     [Fact]
-    public void Add_with_no_selection_and_no_name_uses_the_root_and_the_class_name()
+    public void Add_with_no_selection_uses_the_root()
     {
         UiThread.Run(() =>
         {
             var window = Open(new FakeScene());
-            window.Tools.Class.SelectedItem = "Camera3D";
 
-            Click(window.Tools.AddButton);
+            AddClass(window, "Camera3D");
 
             var made = Root(window).Children.Last();
             Assert.Equal(("Camera3D", "Camera3D"), (made.Name, made.ClassName));
@@ -458,9 +472,7 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            window.Tools.Class.SelectedItem = "Marker3D";
-            window.Tools.NameBox.Text = "Bulb";
-            Click(window.Tools.AddButton);
+            AddNamed(window, "Bulb");
             window.Outline.SelectedItem = Root(window).Find(FakeScene.Lamp.Handle);
 
             Click(window.Tools.DuplicateButton);
@@ -480,9 +492,8 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            window.Tools.NameBox.Text = "Sun";
 
-            Click(window.Tools.RenameButton);
+            window.Tools.Rename("Sun");
 
             Assert.Equal("Sun", Root(window).Find(FakeScene.Lamp.Handle)!.Name);
             Assert.Equal("Sun", ((OutlineNode)window.Outline.SelectedItem!).Name);
@@ -538,9 +549,8 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            window.Tools.NameBox.Text = "  ";
 
-            Click(window.Tools.RenameButton);
+            window.Tools.Rename("  ");
 
             Assert.Equal("An entity needs a name.", window.Status);
             Assert.Equal("Lamp", Root(window).Find(FakeScene.Lamp.Handle)!.Name);
@@ -577,10 +587,10 @@ public sealed class EditorWindowTests
             window.ShowViewport(viewport);
 
             Assert.Same(viewport, window.Viewport.Content);
-            // The viewport shares a cell with its overlay, and the cell is the third row of the middle area.
+            // The viewport shares a cell with its overlay, and the cell is the second row of the stage island.
             var cell = Assert.IsType<Grid>(window.Viewport.Parent);
-            Assert.Same(window.Center, cell.Parent);
-            Assert.Equal(2, Grid.GetRow(cell));
+            Assert.Same(window.Center.Stage.Child, cell.Parent);
+            Assert.Equal(1, Grid.GetRow(cell));
         });
     }
 
@@ -773,7 +783,7 @@ public sealed class EditorWindowTests
             window.Outline.SelectedItem = Root(window);
             Assert.False(window.Move.UpButton.IsEnabled);
             Assert.False(window.Move.DownButton.IsEnabled);
-            Assert.Empty(window.Move.ParentBox.ItemsSource!.Cast<string>());
+            Assert.False(window.Move.MoveUnderButton.IsEnabled);
         });
     }
 
@@ -817,32 +827,32 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Sound;
-            window.Tools.NameBox.Text = "Deep";
-            Click(window.Tools.AddButton);
+            AddNamed(window, "Deep");
             Assert.Equal("Deep", ((OutlineNode)window.Outline.SelectedItem!).Name);
+            string[] Choices() => [.. window.Move.ParentList.Shown.Where(choice => !choice.Off).Select(choice => choice.Name)];
 
             window.Outline.SelectedItem = Root(window).Find(FakeScene.Sound.Handle);
-            Assert.Equal(["Field/Lamp"], window.Move.ParentBox.ItemsSource!.Cast<string>());
+            Click(window.Move.MoveUnderButton);
+            Assert.Equal(["Lamp"], Choices());
 
             window.Outline.SelectedItem = Root(window).Find(FakeScene.Lamp.Handle);
-            Assert.Equal(["Field/Sound", "Field/Sound/Deep"], window.Move.ParentBox.ItemsSource!.Cast<string>());
+            Click(window.Move.MoveUnderButton);
+            Assert.Equal(["Sound", "Deep"], Choices());
         });
     }
 
     [Fact]
-    public void Move_under_waits_for_a_chosen_parent()
+    public void Move_under_waits_for_a_parent_that_is_on()
     {
         UiThread.Run(() =>
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            Assert.False(window.Move.MoveUnderButton.IsEnabled);
+            Click(window.Move.MoveUnderButton);
+            Assert.True(window.Move.Dialog.MainButton.IsEnabled);
 
-            window.Move.ParentBox.SelectedIndex = 0;
-            Assert.True(window.Move.MoveUnderButton.IsEnabled);
-
-            window.Move.ParentBox.SelectedIndex = -1;
-            Assert.False(window.Move.MoveUnderButton.IsEnabled);
+            window.Move.ParentList.SearchBox.Text = "Field";
+            Assert.False(window.Move.Dialog.MainButton.IsEnabled);
         });
     }
 
@@ -853,9 +863,9 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            window.Move.ParentBox.SelectedIndex = 0;
-
             Click(window.Move.MoveUnderButton);
+
+            Click(window.Move.Dialog.MainButton);
 
             Assert.Equal(["Sound"], Root(window).Children.Select(c => c.Name));
             Assert.Equal(["Lamp"], Root(window).Children.Single().Children.Select(c => c.Name));
@@ -871,12 +881,12 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Sound;
-            window.Tools.NameBox.Text = "Deep";
-            Click(window.Tools.AddButton);
+            AddNamed(window, "Deep");
             window.Outline.SelectedItem = Root(window).Find(FakeScene.Lamp.Handle);
-            window.Move.ParentBox.SelectedIndex = 1;
-
             Click(window.Move.MoveUnderButton);
+            Click(window.Move.ParentList.RowButtons.Last());
+
+            Click(window.Move.Dialog.MainButton);
 
             var deep = Root(window).Find(FakeScene.Sound.Handle)!.Children.Single();
             Assert.Equal(["Lamp"], deep.Children.Select(c => c.Name));
@@ -891,12 +901,11 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Sound;
-            window.Tools.NameBox.Text = "Lamp";
-            Click(window.Tools.AddButton);
+            AddNamed(window, "Lamp");
             window.Outline.SelectedItem = Root(window).Find(FakeScene.Lamp.Handle);
-            window.Move.ParentBox.SelectedIndex = 0;
-
             Click(window.Move.MoveUnderButton);
+
+            Click(window.Move.Dialog.MainButton);
 
             Assert.Equal("Sound already has a child named Lamp.", window.Status);
             Assert.Equal(["Lamp", "Sound"], Root(window).Children.Select(c => c.Name));
@@ -961,6 +970,87 @@ public sealed class EditorWindowTests
 
             Assert.Equal(["Lamp", "Lamp2", "Sound"], Root(window).Children.Select(c => c.Name));
             Assert.Equal("Duplicated Lamp.", window.Status);
+        });
+    }
+
+    [Fact]
+    public void The_scene_dock_keys_open_the_dialogs_rename_move_and_remove()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            var command = window.CommandKey;
+
+            Assert.True(Press(window, Key.A, command).Handled);
+            Assert.True(window.Tools.AddDialog.IsVisible);
+            Assert.True(Press(window, Key.A, command | KeyModifiers.Shift).Handled);
+            Assert.True(window.InstanceScene.Dialog.IsVisible);
+            Assert.True(Press(window, Key.Down, command).Handled);
+            Assert.Equal("Moved Lamp down.", window.Status);
+            Assert.True(Press(window, Key.Up, command).Handled);
+            Assert.Equal("Moved Lamp up.", window.Status);
+            // A row edits its name only once the tree has drawn it.
+            window.UpdateLayout();
+            Assert.True(Press(window, Key.F2).Handled);
+            Assert.NotNull(window.ScenePane.Rows[FakeScene.Lamp.Handle].Editing);
+            Assert.True(Press(window, Key.Back).Handled);
+            Assert.Equal("Removed Lamp.", window.Status);
+        });
+    }
+
+    [Fact]
+    public void The_scene_dock_keys_leave_a_box_that_takes_typing_alone()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            var box = window.ScenePane.FilterBox;
+            window.UpdateLayout();
+
+            Press(box, Key.A, window.CommandKey);
+            Press(box, Key.Back);
+            Press(box, Key.F2);
+
+            Assert.False(window.Tools.AddDialog.IsVisible);
+            Assert.Null(window.ScenePane.Rows[FakeScene.Lamp.Handle].Editing);
+            Assert.Equal(["Lamp", "Sound"], Root(window).Children.Select(c => c.Name));
+        });
+    }
+
+    [Fact]
+    public void Erase_leaves_the_entity_when_the_key_comes_from_the_files_or_another_workspace()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.UpdateLayout();
+
+            Press(window.Scenes.Tree, Key.Back);
+            ClickOn(PlanarViewportTests.TabOf(window, TitleBar.Script), window);
+            Press(window, Key.Delete);
+
+            Assert.Equal(["Lamp", "Sound"], Root(window).Children.Select(c => c.Name));
+        });
+    }
+
+    [Fact]
+    public void A_shortcut_does_nothing_to_the_editor_behind_an_open_dialog()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            MakeAnEdit(window);
+            window.Close();
+            var names = Root(window).Children.Select(c => c.Name).ToArray();
+
+            Press(window.SaveChanges.MainButton, Key.Back);
+            Press(window.SaveChanges.MainButton, Key.N, window.CommandKey);
+
+            Assert.Equal(names, Root(window).Children.Select(c => c.Name));
+            Assert.False(window.NewScene.Dialog.IsVisible);
         });
     }
 
@@ -1204,9 +1294,8 @@ public sealed class EditorWindowTests
         {
             var window = Open(new FakeScene());
             window.Outline.SelectedItem = FakeScene.Lamp;
-            window.Tools.NameBox.Text = " ";
 
-            Click(window.Tools.RenameButton);
+            window.Tools.Rename(" ");
 
             Assert.Equal("Unnamed Project", window.Title);
         });
@@ -1296,7 +1385,7 @@ public sealed class EditorWindowTests
             window.Close();
 
             Assert.True(window.IsVisible);
-            Assert.True(window.CloseBar.IsVisible);
+            Assert.True(window.SaveChanges.IsVisible);
         });
     }
 
@@ -1311,7 +1400,7 @@ public sealed class EditorWindowTests
             window.Close();
 
             Assert.False(window.IsVisible);
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
             Assert.Equal(0, scene.Saves);
         });
     }
@@ -1326,7 +1415,7 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.Equal(1, scene.Saves);
             Assert.False(window.IsVisible);
@@ -1342,7 +1431,7 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.True(window.IsVisible);
             Assert.Contains("Error code 7", window.Status);
@@ -1359,7 +1448,7 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.CloseWithoutButton);
+            Click(window.SaveChanges.LeadButton!);
 
             Assert.Equal(0, scene.Saves);
             Assert.False(window.IsVisible);
@@ -1367,7 +1456,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Keep_editing_hides_the_bar_and_keeps_the_edits()
+    public void Keep_editing_hides_the_dialog_and_keeps_the_edits()
     {
         UiThread.Run(() =>
         {
@@ -1375,16 +1464,16 @@ public sealed class EditorWindowTests
             MakeAnEdit(window);
             window.Close();
 
-            Click(window.CloseBar.KeepEditingButton);
+            Click(window.SaveChanges.CancelButton);
 
             Assert.True(window.IsVisible);
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
             Assert.Equal("(*) Unnamed Project", window.Title);
         });
     }
 
     [Fact]
-    public void A_save_while_the_bar_is_up_hides_it()
+    public void A_save_while_the_dialog_is_up_hides_it()
     {
         UiThread.Run(() =>
         {
@@ -1395,12 +1484,12 @@ public sealed class EditorWindowTests
             Click(window.SaveButton);
 
             Assert.True(window.IsVisible);
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
         });
     }
 
     [Fact]
-    public void The_bar_stays_hidden_until_a_close_is_asked_for()
+    public void The_dialog_stays_hidden_until_a_close_is_asked_for()
     {
         UiThread.Run(() =>
         {
@@ -1408,7 +1497,69 @@ public sealed class EditorWindowTests
 
             MakeAnEdit(window);
 
-            Assert.False(window.CloseBar.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Save_changes_names_the_scene_and_counts_the_edits_since_it_opened()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn" }, time: new ManualTime());
+            MakeAnEdit(window);
+            MakeAnEdit(window);
+
+            window.Close();
+
+            var dialog = window.SaveChanges;
+            Assert.Equal("Save changes to main.oscn?", dialog.Title);
+            Assert.Equal("Closing without saving drops them.", dialog.Why.Text);
+            Assert.Equal("2 changes since 16:33.", window.ChangesLine.Text);
+            Assert.Equal("Save and close", dialog.MainButton.Content);
+            Assert.Equal("Keep editing", dialog.CancelButton.Content);
+            Assert.Equal("Close without saving", dialog.LeadButton!.Content);
+            Assert.False(dialog.CloseButton.IsVisible);
+            Assert.Equal(400, dialog.Card.Width);
+        });
+    }
+
+    [Fact]
+    public void Save_changes_counts_from_the_last_save()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn" }, time: time);
+            MakeAnEdit(window);
+            time.Advance(TimeSpan.FromMinutes(5));
+            Click(window.SaveButton);
+            MakeAnEdit(window);
+
+            window.Close();
+
+            Assert.Equal("1 change since 16:38.", window.ChangesLine.Text);
+        });
+    }
+
+    [Fact]
+    public void Escape_in_Save_changes_keeps_editing_and_Enter_saves_and_closes()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene, time: new ManualTime());
+            MakeAnEdit(window);
+            window.Close();
+
+            window.SaveChanges.MainButton.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Escape });
+            Assert.True(window.IsVisible);
+            Assert.False(window.SaveChanges.IsVisible);
+            window.Close();
+            window.SaveChanges.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
+
+            Assert.Equal(1, scene.Saves);
+            Assert.False(window.IsVisible);
         });
     }
 }

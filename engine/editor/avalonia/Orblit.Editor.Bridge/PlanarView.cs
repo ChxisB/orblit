@@ -25,3 +25,6 @@ public readonly record struct PlanarView(Vector2 Center, float Zoom)
     /// <summary>Where a world point lands in a frame of the given size, in pixels.</summary>
     public Vector2 Project(Vector2 world, Vector2 size) => (world - Center) * Zoom + size / 2;
 }
+
+/// <summary>An Entity2D's place in the world: its pivot, its turn in radians and its scale.</summary>
+public readonly record struct PlanarPlace(Vector2 Position, float Rotation, Vector2 Scale);

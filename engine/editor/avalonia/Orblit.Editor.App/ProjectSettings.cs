@@ -1,24 +1,68 @@
+using System.Text.RegularExpressions;
+
 namespace Orblit.Editor.App;
 
 /// <summary>Reads what the editor shows from the settings file of a project folder.</summary>
-internal static class ProjectSettings
+internal static partial class ProjectSettings
 {
     const string FileName = "project.orblit";
     const string NameKey = "config/name=";
+    const string TagsKey = "config/tags=";
+    const string MainSceneKey = "run/main_scene=";
 
     /// <summary>
     /// The project's name, or an empty string when the file or the key is missing.
     /// shortcut: a name with an escaped quote keeps its backslash. Parse the escapes when a project needs one.
     /// </summary>
-    public static string NameOf(string project)
+    public static string NameOf(string project) => ValueOf(project, NameKey)?.Trim('"') ?? "";
+
+    /// <summary>The quoted values of config/tags, which the file writes as a PackedStringArray, or none.</summary>
+    public static IReadOnlyList<string> TagsOf(string project) =>
+        ValueOf(project, TagsKey) is { } value ? [.. Quoted().Matches(value).Select(match => match.Groups[1].Value)] : [];
+
+    /// <summary>The scene the project runs first, or main.oscn when the file or the key is missing.</summary>
+    public static string MainSceneOf(string project) => ValueOf(project, MainSceneKey)?.Trim('"') ?? "res://main.oscn";
+
+    /// <summary>
+    /// Writes one key=value line into a section of the settings file. A key the file has takes the new value in
+    /// its place. A new key goes under the section's heading, and a section the file lacks is added at the end.
+    /// </summary>
+    public static void SetValue(string project, string section, string line)
+    {
+        var path = Path.Combine(project, FileName);
+        var lines = File.ReadAllLines(path).ToList();
+        var key = line[..(line.IndexOf('=') + 1)];
+        var at = lines.FindIndex(next => next.StartsWith(key, StringComparison.Ordinal));
+        var heading = lines.IndexOf($"[{section}]");
+        if (at >= 0)
+        {
+            lines[at] = line;
+        }
+        else if (heading >= 0)
+        {
+            // The engine writes a blank line under each heading.
+            lines.Insert(Math.Min(heading + 2, lines.Count), line);
+        }
+        else
+        {
+            lines.AddRange(["", $"[{section}]", "", line]);
+        }
+
+        File.WriteAllText(path, string.Join('\n', lines) + "\n");
+    }
+
+    static string? ValueOf(string project, string key)
     {
         var path = Path.Combine(project, FileName);
         if (!File.Exists(path))
         {
-            return "";
+            return null;
         }
 
-        var line = File.ReadLines(path).FirstOrDefault(line => line.StartsWith(NameKey, StringComparison.Ordinal));
-        return line?[NameKey.Length..].Trim().Trim('"') ?? "";
+        var line = File.ReadLines(path).FirstOrDefault(line => line.StartsWith(key, StringComparison.Ordinal));
+        return line?[key.Length..].Trim();
     }
+
+    [GeneratedRegex("\"([^\"]*)\"")]
+    private static partial Regex Quoted();
 }

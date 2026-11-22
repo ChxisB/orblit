@@ -3,6 +3,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Tests.Graph;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -19,6 +20,8 @@ public sealed class InspectorExtrasTests
     }
 
     static MetadataRow[] Rows(EditorWindow window) => [.. window.Inspector.MetadataRows.Rows];
+
+    static readonly string[] SlotItems = ["New Script...", "Load...", "Edit", "Clear"];
 
     static void Choose(MenuFlyout menu, string header) =>
         menu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -247,6 +250,96 @@ public sealed class InspectorExtrasTests
         });
     }
 
+    [Theory]
+    [InlineData(0, "hi there", "hi there")]
+    [InlineData(1, " 42 ", 42L)]
+    [InlineData(2, "-2.5", -2.5)]
+    [InlineData(3, "True", true)]
+    [InlineData(1, "", 0L)]
+    public void A_typed_value_is_read_as_the_chosen_kind(int kind, string typed, object value)
+    {
+        UiThread.Run(() =>
+        {
+            var tool = new MetadataTool();
+            var made = new List<(string Name, object Value)>();
+            tool.Requested += (name, value) => made.Add((name, value));
+
+            tool.NameBox.Text = "tag";
+            tool.Kind.SelectedIndex = kind;
+            tool.ValueBox.Text = typed;
+            tool.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal(("tag", value), Assert.Single(made));
+        });
+    }
+
+    [Fact]
+    public void A_value_the_kind_cannot_read_turns_Add_off_and_says_why_until_the_kind_fits()
+    {
+        UiThread.Run(() =>
+        {
+            var tool = new MetadataTool();
+            tool.NameBox.Text = "tag";
+            tool.Kind.SelectedIndex = 1;
+
+            tool.ValueBox.Text = "2.5";
+            Assert.False(tool.AddButton.IsEnabled);
+            Assert.True(tool.Fault.IsVisible);
+            Assert.Equal("Type a whole number.", tool.Fault.Text);
+            Assert.Contains(EditorTheme.Bad, tool.ValueBox.Classes);
+
+            tool.Kind.SelectedIndex = 2;
+            Assert.True(tool.AddButton.IsEnabled);
+            Assert.False(tool.Fault.IsVisible);
+            Assert.DoesNotContain(EditorTheme.Bad, tool.ValueBox.Classes);
+        });
+    }
+
+    [Fact]
+    public void The_kinds_are_a_segment_row_with_String_chosen_first()
+    {
+        UiThread.Run(() =>
+        {
+            var tool = new MetadataTool();
+
+            Assert.Equal(["String", "Integer", "Float", "Boolean"], tool.Kind.Choices.Select(choice => (string?)choice.Content));
+            Assert.Equal([true, false, false, false], tool.Kind.Choices.Select(choice => choice.IsChecked == true));
+            Assert.Equal(EditorBrushes.Field, tool.Kind.Background);
+            Assert.Equal(320, tool.Width);
+        });
+    }
+
+    [Fact]
+    public void The_popover_names_the_entity_and_its_scene_file_and_Cancel_closes_it()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            scene.SceneFile = "res://levels/field.oscn";
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            window.UpdateLayout();
+            var tool = window.Inspector.MetadataTool;
+            ClickOn(window.Inspector.MetadataButton, window);
+
+            Assert.Equal("Add Metadata", tool.Head.Heading.Text);
+            Assert.Equal("Saved with Lamp in field.oscn.", tool.Head.Why.Text);
+            tool.CancelButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(window.Inspector.MetadataFlyout.IsOpen);
+        });
+    }
+
+    [Fact]
+    public void An_unsaved_scene_is_named_as_this_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(new FakeScene());
+
+            Assert.Equal("Saved with Lamp in this scene.", window.Inspector.MetadataTool.Head.Why.Text);
+        });
+    }
+
     [Fact]
     public void A_typed_edit_keeps_its_row_so_the_box_keeps_the_typing_focus()
     {
@@ -328,7 +421,71 @@ public sealed class InspectorExtrasTests
             ClickOn(window.Inspector.ScriptField, window);
 
             Assert.True(window.Inspector.ScriptMenu.IsOpen);
-            Assert.Equal(["res://spin.cs", "res://enemies/slime.cs", "Clear"], window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
+            Assert.Equal(["res://spin.cs", "res://enemies/slime.cs", .. SlotItems], window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
+        });
+    }
+
+    [Fact]
+    public void Attach_a_script_lists_each_kind_and_names_the_entity_with_nothing_chosen()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            scene.Graphs["res://sum.ograph"] = FakeGraphSource.Sample();
+            var window = Selected(scene);
+            var tool = window.Inspector.ScriptTool;
+
+            ClickOn(window.Inspector.AttachButton, window);
+
+            Assert.True(window.Inspector.AttachFlyout.IsOpen);
+            Assert.Equal(("Attach a script", "Lamp runs it."), (tool.Head.Heading.Text, tool.Head.Why.Text));
+            Assert.Equal(["res://spin.cs", "res://enemies/slime.cs"], tool.List.ItemsSource!.Cast<string>());
+            Assert.False(tool.AttachButton.IsEnabled);
+            tool.Kind.SelectedIndex = 1;
+            Assert.Equal(["res://sum.ograph"], tool.List.ItemsSource!.Cast<string>());
+        });
+    }
+
+    [Fact]
+    public void A_script_chosen_in_the_popover_is_attached_and_the_popover_closes()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = Selected(scene);
+            var tool = window.Inspector.ScriptTool;
+            ClickOn(window.Inspector.AttachButton, window);
+
+            tool.List.SelectedItem = "res://enemies/slime.cs";
+            Assert.True(tool.AttachButton.IsEnabled);
+            tool.AttachButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal("res://enemies/slime.cs", scene.ScriptOf(1));
+            Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "slime.cs");
+            Assert.False(window.Inspector.AttachFlyout.IsOpen);
+            Assert.StartsWith("(*)", window.Title);
+        });
+    }
+
+    [Fact]
+    public void A_kind_with_no_scripts_says_so_and_New_script_is_not_built()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(new FakeScene());
+            var tool = window.Inspector.ScriptTool;
+            ClickOn(window.Inspector.AttachButton, window);
+
+            tool.Kind.SelectedIndex = 1;
+            Assert.False(tool.List.IsVisible);
+            Assert.True(tool.None.IsVisible);
+            Assert.Equal("No graph scripts in the project.", tool.None.Text);
+
+            tool.NewButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.Equal("New script is not built yet.", window.Status);
+
+            tool.CancelButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Assert.False(window.Inspector.AttachFlyout.IsOpen);
         });
     }
 
@@ -343,7 +500,7 @@ public sealed class InspectorExtrasTests
 
             ClickOn(window.Inspector.ScriptField, window);
 
-            Assert.Equal(["res://spin.cs", "res://enemies/slime.cs", "res://sum.ograph", "Clear"], window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
+            Assert.Equal(["res://spin.cs", "res://enemies/slime.cs", "res://sum.ograph", .. SlotItems], window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
             Choose(window.Inspector.ScriptMenu, "res://sum.ograph");
             Assert.Equal("res://sum.ograph", scene.ScriptOf(1));
             Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "sum.ograph");
@@ -364,6 +521,55 @@ public sealed class InspectorExtrasTests
             Assert.Equal("res://spin.cs", scene.ScriptOf(1));
             Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "spin.cs");
             Assert.StartsWith("(*)", window.Title);
+        });
+    }
+
+    [Fact]
+    public void Edit_opens_the_attached_script_in_its_workspace_and_is_off_while_none_is_attached()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { ScriptText = { ["res://spin.cs"] = "class Spin {}" } };
+            var window = Selected(scene);
+            ClickOn(window.Inspector.ScriptField, window);
+            Assert.False(window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "Edit").IsEnabled);
+
+            Choose(window.Inspector.ScriptMenu, "res://spin.cs");
+            window.Inspector.ScriptMenu.Hide();
+            ClickOn(window.Inspector.ScriptField, window);
+            Choose(window.Inspector.ScriptMenu, "Edit");
+
+            Assert.Equal(["Script"], window.Bar.Tabs.Where(tab => tab.IsChecked == true).Select(tab => tab.Label));
+            Assert.Equal("res://spin.cs", window.Script.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void Load_opens_the_attach_popover()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(new FakeScene());
+            ClickOn(window.Inspector.ScriptField, window);
+
+            Choose(window.Inspector.ScriptMenu, "Load...");
+
+            Assert.True(window.Inspector.AttachFlyout.IsOpen);
+            Assert.Equal("Lamp runs it.", window.Inspector.ScriptTool.Head.Why.Text);
+        });
+    }
+
+    [Fact]
+    public void New_script_in_the_slot_menu_says_it_is_not_built()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Selected(new FakeScene());
+            ClickOn(window.Inspector.ScriptField, window);
+
+            Choose(window.Inspector.ScriptMenu, "New Script...");
+
+            Assert.Equal("New Script is not built yet.", window.Status);
         });
     }
 

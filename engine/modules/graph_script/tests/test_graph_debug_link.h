@@ -8,6 +8,7 @@
 #include "core/config/project_settings.h"
 #include "core/io/json.h"
 #include "core/os/os.h"
+#include "startup/performance.h"
 #include "tests/test_macros.h"
 
 namespace TestGraphDebugLink {
@@ -90,6 +91,16 @@ struct Game {
 		say("debug_enter", Array{ true, "Breakpoint", true, STOPPED_THREAD });
 		REQUIRE(wait_for([this]() { return bool(state()["stopped"]); }));
 		hear();
+	}
+
+	// A frame of monitors with each value set to its own index, as numbers.
+	void send_frame() {
+		Array frame;
+		for (int i = 0; i < Performance::MONITOR_MAX; i++) {
+			frame.push_back(double(i));
+		}
+		say("performance:profile_frame", frame);
+		REQUIRE(wait_for([this]() { return state().has("monitors"); }));
 	}
 
 	void send_stack() {
@@ -309,6 +320,69 @@ TEST_CASE("[GraphScript] A game that runs on leaves nothing of the stop behind")
 	CHECK(Dictionary(state["wire"]).is_empty());
 }
 
+TEST_CASE("[GraphScript] A game shows no monitors until it sends a frame, and then each by its name") {
+	Game game;
+	REQUIRE(game.wait_connected());
+	CHECK(!game.state().has("monitors"));
+
+	game.send_frame();
+	Dictionary monitors = game.state()["monitors"];
+	CHECK(double(monitors["fps"]) == double(Performance::TIME_FPS));
+	CHECK(double(monitors["process"]) == double(Performance::TIME_PROCESS));
+	CHECK(double(monitors["physics"]) == double(Performance::TIME_PHYSICS_PROCESS));
+	CHECK(double(monitors["draw_calls"]) == double(Performance::RENDER_TOTAL_DRAW_CALLS_IN_FRAME));
+	CHECK(double(monitors["objects"]) == double(Performance::OBJECT_COUNT));
+	CHECK(double(monitors["video_memory"]) == double(Performance::RENDER_VIDEO_MEM_USED));
+}
+
+TEST_CASE("[GraphScript] A frame of monitors asks the game for its tree") {
+	Game game;
+	REQUIRE(game.wait_connected());
+	game.send_frame();
+
+	Array asked = game.hear();
+	CHECK(asked[0] == Variant("scene:request_scene_tree"));
+	CHECK(asked[1] == Variant(MAIN_THREAD));
+	CHECK(Array(asked[2]).is_empty());
+}
+
+TEST_CASE("[GraphScript] The tree shows each entity with its depth, and leaves the window out") {
+	Game game;
+	REQUIRE(game.wait_connected());
+	CHECK(Array(game.state()["scene"]).is_empty());
+	game.say("scene:scene_tree", Array{ 1, "root", "Window", 1, "", 0, // The game's window holds the level.
+										 2, "Level", "Entity3D", 2, "res://level.oscn", 0, //
+										 1, "Props", "Entity3D", 3, "", 0, //
+										 0, "Crate", "MeshInstance3D", 4, "", 0, //
+										 0, "Sun", "DirectionalLight3D", 5, "", 0 });
+	REQUIRE(game.wait_for([&]() { return !Array(game.state()["scene"]).is_empty(); }));
+
+	Array rows = game.state()["scene"];
+	REQUIRE(rows.size() == 4);
+	const char *names[] = { "Level", "Props", "Crate", "Sun" };
+	const int depths[] = { 0, 1, 2, 1 };
+	for (int i = 0; i < 4; i++) {
+		Dictionary row = rows[i];
+		CHECK(row["name"] == Variant(names[i]));
+		CHECK(int(row["depth"]) == depths[i]);
+	}
+	CHECK(Dictionary(rows[2])["type"] == Variant("MeshInstance3D"));
+}
+
+TEST_CASE("[GraphScript] A stop that ends keeps the monitors and the tree") {
+	Game game;
+	REQUIRE(game.wait_connected());
+	game.send_frame();
+	game.say("scene:scene_tree", Array{ 1, "root", "Window", 1, "", 0, 0, "Level", "Entity3D", 2, "", 0 });
+	REQUIRE(game.wait_for([&]() { return !Array(game.state()["scene"]).is_empty(); }));
+	game.stop_at_breakpoint();
+
+	game.say("debug_exit", Array());
+	REQUIRE(game.wait_for([&]() { return !bool(game.state()["stopped"]); }));
+	CHECK(game.state().has("monitors"));
+	CHECK(Array(game.state()["scene"]).size() == 1);
+}
+
 TEST_CASE("[GraphScript] A game that goes away shows as not connected, and the next game takes its place") {
 	Game game;
 	REQUIRE(game.wait_connected());
@@ -334,6 +408,8 @@ TEST_CASE("[GraphScript] A message that does not fit its command is ignored") {
 	game.say("stack_dump", Array{ 6, "res://a.ograph#go" });
 	game.say("graph_debug:wire", Array{ 0 });
 	game.say("stack_frame_var", Array{ "n" });
+	game.say("performance:profile_frame", Array{ 60.0 });
+	game.say("scene:scene_tree", Array{ 0, "root", "Window" });
 	game.say("unknown_command", Array());
 	game.say("debug_enter", Array{ true, "Breakpoint", true, STOPPED_THREAD });
 	const bool stopped = game.wait_for([&]() { return bool(game.state()["stopped"]); });
@@ -344,6 +420,8 @@ TEST_CASE("[GraphScript] A message that does not fit its command is ignored") {
 	CHECK(state["reason"] == Variant("Breakpoint"));
 	CHECK(Array(state["stack"]).is_empty());
 	CHECK(Dictionary(state["wire"]).is_empty());
+	CHECK(!state.has("monitors"));
+	CHECK(Array(state["scene"]).is_empty());
 }
 
 } // namespace TestGraphDebugLink

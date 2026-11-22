@@ -68,11 +68,17 @@ public sealed class GraphDocumentTests
     [Fact]
     public void ReadsTheListThePaletteGets()
     {
-        var entries = GraphStepEntry.ParseList("""[{"kind": "constant", "group": "Values", "label": "Constant", "parameters": {"value": "0"}}]""");
+        var entries = GraphStepEntry.ParseList("""
+            [{"kind": "constant", "group": "Values", "label": "Constant", "parameters": {"value": "0"}, "inputs": [],
+              "outputs": [{"name": "value", "sort": "data", "type": 0, "parameter": "", "optional": false}]},
+             {"kind": "call_parent", "group": "Calls", "label": "Call parent", "parameters": {}}]
+            """);
 
-        var entry = Assert.Single(entries);
-        Assert.Equal("constant", entry.Kind);
-        Assert.Equal("0", entry.Parameters["value"]);
+        Assert.Equal(2, entries.Count);
+        Assert.Equal("constant", entries[0].Kind);
+        Assert.Equal("0", entries[0].Parameters["value"]);
+        Assert.Equal(new GraphPort("value", GraphPortSort.Data, 0, "", false), Assert.Single(entries[0].Outputs));
+        Assert.Empty(entries[1].Inputs);
     }
 
     [Theory]

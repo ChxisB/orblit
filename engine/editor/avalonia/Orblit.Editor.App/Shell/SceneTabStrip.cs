@@ -1,55 +1,73 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
-using Avalonia.Media;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The strip over the toolbar: one tab for the open scene, a plus, and two menu buttons at the right end.
-/// The tab has the colour of the toolbar, so the two join.
+/// The strip over the viewport: one tab for the open scene, a plus, and two buttons at the right end. The tab is
+/// raised on a fine edge with its icon in the accent colour, like a chosen dock tab. The menu at the right end
+/// makes, runs and closes the scene.
 /// </summary>
 internal sealed class SceneTabStrip : Grid
 {
-    readonly Border _tab = new() { Background = EditorBrushes.Panel, IsVisible = false };
-    readonly ContentControl _icon = new();
-    readonly TextBlock _name = new()
+    readonly Border _tab = new()
     {
-        Foreground = new SolidColorBrush(EditorColors.Accent),
+        Height = 26,
+        CornerRadius = EditorTheme.Corners,
+        Padding = new Thickness(10, 0, 0, 0),
+        Background = EditorBrushes.Raised,
+        BorderBrush = EditorBrushes.LineStrong,
+        BorderThickness = new Thickness(1),
         VerticalAlignment = VerticalAlignment.Center,
-        Margin = new Thickness(0, 0, 4, 0),
+        IsVisible = false,
     };
+    readonly ContentControl _icon = new();
+    readonly TextBlock _name = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", "Close the scene"));
-    readonly Button _add = Parts.Tight(Parts.IconButton("Add", "Make a new scene"));
-    readonly Button _menu = Parts.Tight(Unbuilt.Mark(Parts.IconButton("GuiTabMenuHl", "Scene tab options"), "The scene tab menu is not built yet."));
-    readonly Button _distraction = Parts.Tight(Unbuilt.Mark(Parts.IconButton("DistractionFree", "Distraction free mode"), "Distraction free mode is not built yet."));
+    readonly Button _add = Parts.IconButton("Add", "Make a new scene");
+    readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene tab options");
+    readonly Button _distraction = Parts.IconButton("DistractionFree", "Distraction free mode");
 
-    public SceneTabStrip()
+    public SceneTabStrip(Button runScene, KeyModifiers command)
     {
         ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto");
+        Margin = new Thickness(6, 0);
+        TextElement.SetForeground(_icon, EditorBrushes.Accent);
+        TextElement.SetForeground(_close, EditorBrushes.TextDim);
         _tab.Child = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 5,
-            Margin = new Thickness(16, 0, 12, 0),
-            VerticalAlignment = VerticalAlignment.Center,
+            Spacing = 7,
             Children = { _icon, _name, _close },
         };
-        _add.Margin = new Thickness(8, 0, 0, 0);
+        _add.Margin = new Thickness(4, 0, 0, 0);
+        _add.VerticalAlignment = VerticalAlignment.Center;
         var right = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            Margin = new Thickness(0, 0, 4, 0),
-            Children = { _menu, _distraction },
+            Spacing = 2,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children = { _distraction, _menu },
         };
         Place(_tab, 0);
         Place(_add, 1);
         Place(right, 3);
-        _add.VerticalAlignment = VerticalAlignment.Center;
-        right.VerticalAlignment = VerticalAlignment.Center;
+        _menu.Flyout = new MenuFlyout
+        {
+            Placement = PlacementMode.BottomEdgeAlignedRight,
+            Items =
+            {
+                Parts.PressItem("New Scene", _add, new KeyGesture(Key.N, command)),
+                Parts.PressItem("Run This Scene", runScene, new KeyGesture(Key.R, command)),
+                new Separator(),
+                Parts.PressItem("Close Scene", _close),
+            },
+        };
     }
 
     internal Border Tab => _tab;
@@ -69,7 +87,7 @@ internal sealed class SceneTabStrip : Grid
     /// <summary>Shows the open scene as a tab with its root's icon and this label, or no tab for none.</summary>
     public void Show(OutlineNode? root, string label)
     {
-        _tab.IsVisible = root is not null;
+        _tab.IsVisible = _close.IsEnabled = root is not null;
         if (root is null)
         {
             return;

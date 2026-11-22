@@ -23,7 +23,13 @@ internal sealed class InjectedInput
     public static Point CentreOf(Control control) =>
         control.TranslatePoint(new Point(control.Bounds.Width / 2, control.Bounds.Height / 2), TopLevel.GetTopLevel(control)!)!.Value;
 
-    public Task Click(Control target) => Click(TopLevel.GetTopLevel(target)!, CentreOf(target));
+    // A person scrolls to a control before clicking it, and a tall panel can hold it below the fold.
+    public async Task Click(Control target)
+    {
+        target.BringIntoView();
+        await Pause();
+        await Click(TopLevel.GetTopLevel(target)!, CentreOf(target));
+    }
 
     public async Task Click(TopLevel top, Point at)
     {

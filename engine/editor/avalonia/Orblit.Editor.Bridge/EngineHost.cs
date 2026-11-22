@@ -26,6 +26,10 @@ public sealed unsafe class EngineHost : IDisposable
     readonly nint _instance;
     readonly delegate* unmanaged<nint, void> _destroy;
     bool _disposed;
+    int _frames;
+
+    /// <summary>Raised once the engine is destroyed. A dispose inside a frame puts that off to the frame's end.</summary>
+    public event Action? Destroyed;
 
     EngineHost(nint instance, delegate* unmanaged<nint, void> destroy)
     {
@@ -88,7 +92,23 @@ public sealed unsafe class EngineHost : IDisposable
     public bool IsStarted() => this.OrblitInstanceIsStarted(_instance);
 
     /// <summary>Runs one frame. Returns true when the engine asks to quit.</summary>
-    public bool Iteration() => this.OrblitInstanceIteration(_instance);
+    public bool Iteration()
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        _frames++;
+        try
+        {
+            return this.OrblitInstanceIteration(_instance);
+        }
+        finally
+        {
+            // The engine still used its input after the event that disposed the host.
+            if (--_frames == 0 && _disposed)
+            {
+                End();
+            }
+        }
+    }
 
     public void FocusIn() => this.OrblitInstanceFocusIn(_instance);
 
@@ -151,6 +171,16 @@ public sealed unsafe class EngineHost : IDisposable
             return;
         }
         _disposed = true;
+        // A frame pumps the app's events, so a window closed by one disposes the host inside that frame.
+        if (_frames == 0)
+        {
+            End();
+        }
+    }
+
+    void End()
+    {
         _destroy(_instance);
+        Destroyed?.Invoke();
     }
 }

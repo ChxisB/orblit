@@ -21,6 +21,8 @@ internal sealed class GraphTab : Border
         _choose.Click += (_, _) => Chosen?.Invoke();
         _close.Click += (_, _) => CloseRequested?.Invoke();
         ToolTip.SetTip(this, script);
+        CornerRadius = EditorTheme.Corners;
+        BorderThickness = new Thickness(1);
         Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { _choose, _close } };
         Show(false, false);
     }
@@ -44,7 +46,8 @@ internal sealed class GraphTab : Border
     public void Show(bool selected, bool edited)
     {
         _label.Text = edited ? $"{_name} *" : _name;
-        _label.Foreground = selected ? EditorBrushes.Accent : EditorBrushes.TabInactive;
-        Background = selected ? EditorBrushes.Panel : null;
+        _label.Foreground = selected ? EditorBrushes.Text : EditorBrushes.TextDim;
+        Background = selected ? EditorBrushes.Raised : null;
+        BorderBrush = selected ? EditorBrushes.LineStrong : null;
     }
 }

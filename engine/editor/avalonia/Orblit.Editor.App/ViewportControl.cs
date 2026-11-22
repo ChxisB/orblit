@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -6,10 +7,22 @@ using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Media.Immutable;
 using Avalonia.Platform;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 using Vector2 = System.Numerics.Vector2;
 
 namespace Orblit.Editor.App;
+
+/// <summary>The 3D ruler in the frame's pixels: its first point, its second once one is down, and the distance to show.</summary>
+internal sealed record RulerShown(Vector2 From, Vector2? To, string Label);
+
+/// <summary>Which 2D drags take the mark of the selection.</summary>
+internal enum MarkGrip
+{
+    OnMark,
+    Anywhere,
+    Never,
+}
 
 /// <summary>Reads the engine's latest frame as RGBA bytes. Returns false when there is no frame yet.</summary>
 internal delegate bool FrameReader(out int width, out int height, ref byte[] rgba);
@@ -22,7 +35,8 @@ internal delegate bool FrameReader(out int width, out int height, ref byte[] rgb
 /// <see cref="GizmoReleased"/>. The mode says which parts are there. The caller creates, stops and disposes the
 /// control on the UI thread, and stops it before the engine goes. While <see cref="PlanarSource"/> says yes the
 /// gizmo is gone: a left drag that starts on the mark raises <see cref="PlanarMoved"/>, and any other left drag
-/// raises <see cref="PlanarPanned"/> and does not orbit.
+/// raises <see cref="PlanarPanned"/> and does not orbit. <see cref="GripSource"/> can make a drag anywhere take the
+/// mark, or none take it. The release of a drag that took the mark raises <see cref="GizmoReleased"/> too.
 /// </summary>
 internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Control
 {
@@ -43,6 +57,16 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
 
     // A press this near the mark, in control pixels, takes it.
     const double MarkGrab = 12;
+
+    // The ruler, as the design draws it: a dashed amber line, a dark dot with an amber ring at each end, and the
+    // distance in a dark tag at the middle.
+    const double RulerDot = 5;
+    const double LabelSize = 11;
+    static readonly IPen RulerPen = new Pen(EditorBrushes.Warn, 2, new DashStyle([3, 2], 0)).ToImmutable();
+    static readonly IPen RulerRing = new Pen(EditorBrushes.Warn, 2).ToImmutable();
+    static readonly IBrush RulerDotFill = new ImmutableSolidColorBrush(EditorColors.Window);
+    static readonly IBrush RulerTag = new ImmutableSolidColorBrush(EditorColors.Window, 0.9);
+    static readonly Typeface RulerFace = new(EditorTheme.Mono);
 
     static readonly IBrush CentreBrush = new ImmutableSolidColorBrush(Color.Parse("#e0e0e0"));
     static readonly IPen OuterPen = new Pen(new ImmutableSolidColorBrush(Color.Parse("#b3ffffff")), OuterWidth).ToImmutable();
@@ -76,6 +100,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     GizmoHit? _grab;
     GizmoRings? _rings;
     Vector2? _mark;
+    RulerShown? _ruler;
     bool _markGrab;
 
     /// <summary>Asked for whether the view is the 2D one. It is the 3D one until set.</summary>
@@ -83,6 +108,9 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
 
     /// <summary>Asked on each tick, while the view is 2D, for the pivot to mark in the frame's pixels. Null from it marks none.</summary>
     internal Func<Vector2?>? MarkSource { get; set; }
+
+    /// <summary>Asked on a press in 2D for which drags take the mark. A drag that starts on it until set.</summary>
+    internal Func<MarkGrip> GripSource { get; set; } = () => MarkGrip.OnMark;
 
     /// <summary>Asked for the mode, which says what the gizmo shows and takes presses on. Transform until set.</summary>
     internal Func<GizmoMode> ModeSource { get; set; } = () => GizmoMode.Transform;
@@ -96,6 +124,9 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Asked on each tick for the move handles to draw, in the frame's pixels. Null from it draws none.</summary>
     internal Func<GizmoHandles?>? HandlesSource { get; set; }
 
+    /// <summary>Asked on each tick, while the view is 3D, for the ruler to draw. Null from it draws none.</summary>
+    internal Func<RulerShown?>? RulerSource { get; set; }
+
     /// <summary>The newest frame, or null before the first one.</summary>
     internal WriteableBitmap? Frame { get; private set; }
 
@@ -108,13 +139,13 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Raised while the left button drags, with the yaw and pitch change in radians.</summary>
     public event Action<float, float>? Orbited;
 
-    /// <summary>Raised when the left button goes up near where it went down, with the point in the frame's pixels.</summary>
-    public event Action<Vector2>? Clicked;
+    /// <summary>Raised when the left button goes up near where it went down, with the point in the frame's pixels and the keys held.</summary>
+    public event Action<Vector2, KeyModifiers>? Clicked;
 
     /// <summary>Raised while a part of the gizmo drags, with the pointer move since the last event in the frame's pixels.</summary>
     internal event Action<GizmoDrag>? GizmoDragged;
 
-    /// <summary>Raised when the drag of a gizmo part ends.</summary>
+    /// <summary>Raised when the drag of a gizmo part or of the 2D mark ends.</summary>
     internal event Action? GizmoReleased;
 
     /// <summary>Raised when the frame is not the size of the control, with the size the engine should draw.</summary>
@@ -126,16 +157,25 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
     /// <summary>Raised while a 2D drag pans the view, with the pointer move since the last event in the frame's pixels.</summary>
     internal event Action<Vector2>? PlanarPanned;
 
-    /// <summary>Raised while a drag that started on the mark moves, with the pointer move since the last event in the frame's pixels.</summary>
-    internal event Action<FrameMove>? PlanarMoved;
+    /// <summary>
+    /// Raised while a drag that took the mark moves, with the pointer move since the last event in the frame's pixels
+    /// and whether Ctrl or Command is down.
+    /// </summary>
+    internal event Action<FrameMove, bool>? PlanarMoved;
 
     /// <summary>Runs one engine frame and keeps its pixels. Stops the control when the engine asks to quit.</summary>
     public void Tick()
     {
+        var running = _running;
         if (iterate())
         {
             Stop();
             Ended?.Invoke();
+            return;
+        }
+        // The frame pumps the app's events, and a window closed by one of them has disposed the engine.
+        if (running && !_running)
+        {
             return;
         }
         var mode = ModeSource();
@@ -143,6 +183,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         _handles = !planar && GizmoZones.HasHandles(mode) ? HandlesSource?.Invoke() : null;
         _rings = !planar && GizmoZones.HasRings(mode) ? RingsSource?.Invoke() : null;
         _mark = planar ? MarkSource?.Invoke() : null;
+        _ruler = planar ? null : RulerSource?.Invoke();
         if (read(out var width, out var height, ref _rgba))
         {
             Keep(width, height);
@@ -219,8 +260,12 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         ? new GizmoRings(Control(rings.Origin), Control(rings.X), Control(rings.Y), Control(rings.Z)) { Outer = Control(rings.Outer) }
         : null;
 
-    bool OnMark(Point press) =>
-        _mark is { } mark && Frame is not null && Vector2.Distance(Control(mark), new Vector2((float)press.X, (float)press.Y)) <= MarkGrab;
+    bool OnMark(Point press) => _mark is { } mark && Frame is not null && GripSource() switch
+    {
+        MarkGrip.Anywhere => true,
+        MarkGrip.OnMark => Vector2.Distance(Control(mark), new Vector2((float)press.X, (float)press.Y)) <= MarkGrab,
+        _ => false,
+    };
 
     Vector2 Control(Vector2 framePoint) => ControlAt(framePoint, Frame!.Size, Bounds.Size);
 
@@ -248,7 +293,30 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
             {
                 DrawMark(context, Control(mark));
             }
+
+            if (_ruler is { } ruler)
+            {
+                DrawRuler(context, Control(ruler.From), ruler.To is { } to ? Control(to) : null, ruler.Label);
+            }
         }
+    }
+
+    static void DrawRuler(DrawingContext context, Vector2 from, Vector2? to, string label)
+    {
+        var start = new Point(from.X, from.Y);
+        if (to is { } other)
+        {
+            var end = new Point(other.X, other.Y);
+            context.DrawLine(RulerPen, start, end);
+            context.DrawEllipse(RulerDotFill, RulerRing, end, RulerDot, RulerDot);
+            var text = new FormattedText(label, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, RulerFace, LabelSize, EditorBrushes.Warn);
+            var middle = (start + end) / 2;
+            var tag = new Rect(middle.X - (text.Width / 2) - 8, middle.Y - (text.Height / 2) - 3, text.Width + 16, text.Height + 6);
+            context.DrawRectangle(RulerTag, null, tag, 6, 6);
+            context.DrawText(text, new Point(tag.X + 8, tag.Y + 3));
+        }
+
+        context.DrawEllipse(RulerDotFill, RulerRing, start, RulerDot, RulerDot);
     }
 
     static void DrawMark(DrawingContext context, Vector2 at)
@@ -375,7 +443,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         }
         else
         {
-            PlanarMoved?.Invoke(move);
+            PlanarMoved?.Invoke(move, inverts);
         }
     }
 
@@ -413,7 +481,7 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         if (e.InitialPressMouseButton == MouseButton.Left && _pressedAt is not null
             && Frame is not null && FrameAt(e.GetPosition(this), Frame.Size, Bounds.Size) is { } point)
         {
-            Clicked?.Invoke(point);
+            Clicked?.Invoke(point, e.KeyModifiers);
         }
         _pressedAt = null;
     }
@@ -424,9 +492,10 @@ internal sealed class ViewportControl(Func<bool> iterate, FrameReader read) : Co
         base.OnPointerCaptureLost(e);
         _dragFrom = null;
         _pressedAt = null;
-        if (_grab is not null)
+        if (_grab is not null || _markGrab)
         {
             _grab = null;
+            _markGrab = false;
             GizmoReleased?.Invoke();
         }
     }

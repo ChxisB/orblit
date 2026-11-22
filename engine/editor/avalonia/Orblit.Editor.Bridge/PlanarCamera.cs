@@ -48,18 +48,21 @@ public sealed class PlanarCamera
         _host.CanvasLayerSetVisible(_backdrop, on);
     }
 
-    /// <summary>Moves what is drawn by a pointer move, in frame pixels.</summary>
-    public void Pan(Vector2 pixels)
+    /// <summary>Where the camera looks and how far in. Setting it moves the camera at once.</summary>
+    public PlanarView View
     {
-        _view = _view.Panned(pixels);
-        Place();
+        get => _view;
+        set
+        {
+            _view = value;
+            Place();
+        }
     }
 
-    public void Zoom(float steps)
-    {
-        _view = _view.Zoomed(steps);
-        Place();
-    }
+    /// <summary>Moves what is drawn by a pointer move, in frame pixels.</summary>
+    public void Pan(Vector2 pixels) => View = _view.Panned(pixels);
+
+    public void Zoom(float steps) => View = _view.Zoomed(steps);
 
     /// <summary>The size of the frame in pixels.</summary>
     public Vector2 Size

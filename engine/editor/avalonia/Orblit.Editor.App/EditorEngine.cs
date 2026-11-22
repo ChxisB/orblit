@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Numerics;
 using Orblit.Editor.App.Graph;
@@ -17,12 +18,18 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     // The engine window's first size. The control then asks for its own.
     const string ViewportResolution = "960x540";
 
+    // How long netcoredbg gets to end its game when told to go.
+    const int EndTime = 3000;
+
     readonly EngineHost _host;
     readonly EditorSession _session;
     readonly ViewportParts? _viewport;
     readonly string _project;
     readonly EngineDebugChannel _debug;
+    readonly CsharpDebugChannel _csharp;
     Process? _game;
+    bool _sunPreview = true;
+    bool _skyPreview = true;
 
     EditorEngine(EngineHost host, EditorSession session, ViewportParts? viewport, EditorOptions options)
     {
@@ -31,6 +38,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         _session = session;
         _viewport = viewport;
         _project = options.Project;
+        _csharp = new CsharpDebugChannel(options.Project);
         ProjectName = ProjectSettings.NameOf(options.Project);
         SceneFile = options.HasScene ? options.Scene : "";
     }
@@ -39,7 +47,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     internal required OutputLog Log { get; init; }
 
     // What a windowed engine adds: the frame reader and the camera that moves the view.
-    sealed record ViewportParts(ViewportReadback Readback, EditorCamera Camera, SelectionBox Box, PlanarCamera Planar);
+    sealed record ViewportParts(ViewportReadback Readback, EditorCamera Camera, SelectionBox Box, PlanarCamera Planar, EditorPreviews Previews);
 
     public static EditorEngine Start(EditorOptions options)
     {
@@ -75,9 +83,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
             var session = new EditorSession(host, new RunningScene(host));
             OpenFirstScene(session, options);
             readback = new ViewportReadback(host);
-            EditorWorld.Build(host);
+            var previews = EditorWorld.Build(host);
             var camera = new EditorCamera(host);
-            return new EditorEngine(host, session, new ViewportParts(readback, camera, new SelectionBox(host), new PlanarCamera(host)), options) { Log = log };
+            var engine = new EditorEngine(host, session, new ViewportParts(readback, camera, new SelectionBox(host), new PlanarCamera(host), previews), options) { Log = log };
+            engine.PutPreviews();
+            return engine;
         }
         catch
         {
@@ -125,12 +135,42 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public nint PickAt(Vector2 framePoint) => _viewport is null ? 0 : _session.Pick(_viewport.Camera, framePoint);
 
+    public IReadOnlyList<nint> PickAllAt(Vector2 framePoint) => _viewport is null ? [] : _session.PickAll(_viewport.Camera, framePoint);
+
+    public Vector3? WorldPointAt(Vector2 framePoint) => _viewport is null ? null : _session.PointAt(_viewport.Camera, framePoint);
+
+    public Vector2? FramePointOf(Vector3 world) =>
+        _viewport is null || _viewport.Camera.IsBehind(world) ? null : _viewport.Camera.Project(world);
+
+    public void ShowPreviews(bool sun, bool sky)
+    {
+        (_sunPreview, _skyPreview) = (sun, sky);
+        PutPreviews();
+    }
+
+    // shortcut: the scene is asked for a sun when it opens or a switch flips, so a sun added later shines beside the preview one until then. Ask on each outline change if that shows.
+    void PutPreviews()
+    {
+        if (_viewport is not null)
+        {
+            EditorWorld.Show(_host, _viewport.Previews, _sunPreview && !_session.Holds("DirectionalLight3D"), _skyPreview);
+        }
+    }
+
     public void ShowPlanar(bool on) => _viewport?.Planar.SetOn(on);
 
     public nint PickPlanarAt(Vector2 framePoint) => _viewport is null ? 0 : _session.PickPlanar(_viewport.Planar, framePoint);
 
     public Vector2? PlanarPivotOf(nint entity) =>
         _viewport is null || !_session.IsEntity2D(entity) ? null : _viewport.Planar.PivotOf(entity);
+
+    public PlanarView PlanarView
+    {
+        get => _viewport?.Planar.View ?? PlanarView.Start;
+        set => _viewport?.Planar.View = value;
+    }
+
+    public bool IsCanvasItem(nint entity) => _session.IsCanvasItem(entity);
 
     public void MovePlanar(nint entity, FrameMove move)
     {
@@ -139,6 +179,26 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
             _session.MovePlanar(_viewport.Planar, entity, move);
         }
     }
+
+    public void RotatePlanar(nint entity, FrameMove move)
+    {
+        if (_viewport is not null)
+        {
+            _session.RotatePlanar(_viewport.Planar, entity, move);
+        }
+    }
+
+    public void ScalePlanar(nint entity, FrameMove move)
+    {
+        if (_viewport is not null)
+        {
+            _session.ScalePlanar(_viewport.Planar, entity, move);
+        }
+    }
+
+    public PlanarPlace PlanarPlaceOf(nint entity) => _session.PlanarPlaceOf(entity);
+
+    public void PlacePlanar(nint entity, PlanarPlace place) => _session.PlacePlanar(entity, place);
 
     public GizmoHandles? HandlesOf(nint entity, GizmoSpace space) => _viewport is null ? null : _session.HandlesOf(_viewport.Camera, entity, space);
 
@@ -236,9 +296,13 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void MoveWithinParent(nint entity, int places) => _session.MoveWithinParent(entity, places);
 
-    public void Reparent(nint entity, nint newParent) => _session.Reparent(entity, newParent);
+    public void Reparent(nint entity, nint newParent, bool keepGlobalTransform) => _session.Reparent(entity, newParent, keepGlobalTransform);
 
-    public void Remove(nint entity) => _session.Remove(entity);
+    public DetachedEntity Detach(nint entity) => _session.Detach(entity);
+
+    public void Restore(DetachedEntity detached) => _session.Restore(detached);
+
+    public void Destroy(nint entity) => _session.Destroy(entity);
 
     public void Save() => _session.Save();
 
@@ -252,11 +316,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     public void Open(string resourcePath)
     {
         _session.OpenScene(resourcePath);
-        if (_viewport is not null)
-        {
-            EditorWorld.PutSkyLast(_host);
-        }
-
+        PutPreviews();
         SceneFile = resourcePath;
     }
 
@@ -273,6 +333,22 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     }
 
     public nint Instance(nint parent, string resourcePath) => _session.Instance(parent, resourcePath);
+
+    public IReadOnlyList<string> ClassChainOf(nint entity) => _session.ClassChainOf(entity);
+
+    public IReadOnlyList<string> AddableClasses() => _session.AddableClasses();
+
+    public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) => _session.PropertiesOf(entity);
+
+    public void SetProperty(nint entity, string name, object value) => _session.SetProperty(entity, name, value);
+
+    public void MakeResourcesUnique(nint entity) => _session.MakeResourcesUnique(entity);
+
+    public IReadOnlyList<EntitySignal> SignalsOf(nint entity) => _session.SignalsOf(entity);
+
+    public void Connect(nint entity, string signal, nint target, string method) => _session.Connect(entity, signal, target, method);
+
+    public void Disconnect(nint entity, string signal, nint target, string method) => _session.Disconnect(entity, signal, target, method);
 
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => _session.MetadataOf(entity);
 
@@ -304,6 +380,135 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void WriteScript(string resourcePath, string text) => File.WriteAllText(ProjectScripts.FileOf(_project, resourcePath), text);
 
+    public void CreateScript(string resourcePath, string baseType) => ProjectScripts.Create(_project, resourcePath, baseType);
+
+    public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => ScriptChecker.Check(_project);
+
+    // The engine build writes its C# API beside the library, once for each configuration. Any one has every member.
+    public IReadOnlyList<string> ScriptReferences()
+    {
+        var api = Path.Combine(Path.GetDirectoryName(EngineLibrary.Find())!, "OrblitSharp", "Api");
+        return Directory.Exists(api) ? [.. Directory.GetFiles(api, "OrblitSharp.dll", SearchOption.AllDirectories).Take(1)] : [];
+    }
+
+    public IReadOnlyList<string> ImportedFiles() => ProjectScripts.FindImported(_project);
+
+    public string ReadImport(string resourcePath) => File.ReadAllText(ImportFileOf(resourcePath));
+
+    public void WriteImport(string resourcePath, string text) => File.WriteAllText(ImportFileOf(resourcePath), text);
+
+    // The editor's engine runs the game, which imports nothing, so an engine with --import does it in its own process and quits.
+    public void Reimport()
+    {
+        var import = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
+        foreach (var argument in new[] { "--headless", "--path", _project, "--import", "--log-file", Log.NewFile() })
+        {
+            import.ArgumentList.Add(argument);
+        }
+
+        using var started = Process.Start(import);
+    }
+
+    public void InstallKit(string zipFile)
+    {
+        KitArchive.Install(zipFile, _project);
+        Reimport();
+    }
+
+    public IReadOnlyList<ExportPreset> Presets() => ExportPresets.Read(_project);
+
+    public void AddPreset() => ExportPresets.AddForThisComputer(_project);
+
+    public void InstallTemplates(string tpz) => ExportTemplates.Install(tpz, ExportTemplates.DataFolder);
+
+    // The engine that exports names the templates it needs, so its own version picks the mirror list.
+    public async Task DownloadTemplates()
+    {
+        var start = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()), "--version") { RedirectStandardOutput = true };
+        string printed;
+        using (var player = Process.Start(start)!)
+        {
+            printed = await player.StandardOutput.ReadToEndAsync();
+            await player.WaitForExitAsync();
+        }
+
+        var tpz = await new TemplateMirror().DownloadAsync(TemplateMirror.FullVersion(printed), CancellationToken.None);
+        try
+        {
+            InstallTemplates(tpz);
+        }
+        finally
+        {
+            File.Delete(tpz);
+        }
+    }
+
+    /// <summary>
+    /// Exports the game through an engine of its own, which imports and builds the project first. Throws
+    /// <see cref="InvalidOperationException"/> with the engine's reason when the export fails.
+    /// </summary>
+    public async Task Export(string preset, string path)
+    {
+        var folder = Path.GetDirectoryName(Path.GetFullPath(path))!;
+        Directory.CreateDirectory(folder);
+        // A build folder in the project would go into the next export, so it holds the file that makes the engine skip it.
+        if (folder.StartsWith(Path.GetFullPath(_project) + Path.DirectorySeparatorChar, StringComparison.Ordinal))
+        {
+            File.AppendAllText(Path.Combine(folder, ".oignore"), "");
+        }
+
+        var log = Log.NewFile();
+        var export = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
+        foreach (var argument in ExportArguments(_project, preset, path, log))
+        {
+            export.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(export)!;
+        await process.WaitForExitAsync();
+        if (process.ExitCode != 0)
+        {
+            var reason = File.Exists(log) ? ExportReason(File.ReadLines(log)) : null;
+            throw new InvalidOperationException(reason ?? $"The engine stopped with code {process.ExitCode}. The Output panel has its log.");
+        }
+    }
+
+    internal static IReadOnlyList<string> ExportArguments(string project, string preset, string path, string logFile) =>
+        ["--headless", "--path", project, "--export-release", preset, path, "--log-file", logFile];
+
+    /// <summary>
+    /// Why an export failed: the error the engine printed just before it said the export failed, or its first error
+    /// when it never got that far, or null. An error runs on to the blank or "at:" line that ends it.
+    /// </summary>
+    internal static string? ExportReason(IEnumerable<string> log)
+    {
+        const string Error = "ERROR: ";
+        List<string> errors = [];
+        var open = false;
+        foreach (var line in log)
+        {
+            if (line.StartsWith(Error, StringComparison.Ordinal))
+            {
+                errors.Add(line[Error.Length..]);
+                open = true;
+            }
+            else if (open && line.Length > 0 && !line.TrimStart().StartsWith("at: ", StringComparison.Ordinal))
+            {
+                errors[^1] += " " + line;
+            }
+            else
+            {
+                open = false;
+            }
+        }
+
+        // The engine can print errors of its own as it starts and stops, around the one that stopped the export.
+        var failed = errors.FindIndex(error => error.StartsWith("Project export for preset", StringComparison.Ordinal));
+        return failed > 0 ? errors[failed - 1] : errors.FirstOrDefault();
+    }
+
+    string ImportFileOf(string resourcePath) => ProjectScripts.FileOf(_project, resourcePath + ImportFile.Suffix, ImportFile.Suffix);
+
     public string? ReadBreakpoints() => BreakpointFile.Read(_project);
 
     public void WriteBreakpoints(string text) => BreakpointFile.Write(_project, text);
@@ -322,20 +527,53 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public bool IsPlaying => _game is { HasExited: false };
 
+    // Under netcoredbg the process Play started is netcoredbg, and the game is its child.
+    public int? GameId => _game is { HasExited: false } game ? _csharp.ProcessId ?? game.Id : null;
+
     public IDebugChannel Debug => _debug;
 
-    /// <summary>Runs the project in its own process, because one process holds one engine.</summary>
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
+    public IDebugChannel Csharp => _csharp;
+
+    /// <summary>
+    /// Runs the project in its own process, because one process holds one engine. A project with C# runs under the
+    /// person's netcoredbg when there is one, so its breakpoints hold.
+    /// </summary>
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
     {
         Stop();
         var port = _debug.Listen();
+        var logFile = Log.NewFile();
         var player = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
-        foreach (var argument in GameArguments(_project, Log.NewFile(), port, breakpoints))
+        foreach (var argument in GameArguments(_project, logFile, port, breakpoints).Concat(flags))
         {
             player.ArgumentList.Add(argument);
         }
 
-        _game = Process.Start(player);
+        var debugger = Directory.EnumerateFiles(_project, "*.csproj").Any() ? Netcoredbg.Find() : null;
+        _game = debugger is null ? Process.Start(player) : StartDebugged(debugger, player, logFile, codeBreakpoints);
+    }
+
+    // netcoredbg starts the game itself once the breakpoints are set, so one in OnStart holds.
+    Process StartDebugged(string debugger, ProcessStartInfo player, string logFile, IEnumerable<(string Source, int Line)> breakpoints)
+    {
+        var adapter = new ProcessStartInfo(debugger, "--interpreter=vscode") { RedirectStandardInput = true, RedirectStandardOutput = true };
+        Process? process;
+        try
+        {
+            process = Process.Start(adapter);
+        }
+        catch (Win32Exception error)
+        {
+            throw new IOException($"netcoredbg at {debugger} did not start. {error.Message}", error);
+        }
+
+        if (process is null)
+        {
+            throw new IOException($"netcoredbg at {debugger} did not start.");
+        }
+
+        _csharp.Start(new DapLink(process.StandardInput.BaseStream, process.StandardOutput.BaseStream), player, logFile, breakpoints);
+        return process;
     }
 
     /// <summary>The arguments of a game that links to the editor on this port and stops on these steps, each a source and a step id.</summary>
@@ -358,23 +596,58 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
             return;
         }
 
-        try
+        var child = _csharp.ProcessId;
+        // netcoredbg ends its game when told to go. One that does not go in time is killed with its game.
+        if (!_csharp.End() || !_game.WaitForExit(EndTime))
         {
-            _game.Kill();
-            _game.WaitForExit();
-        }
-        catch (InvalidOperationException)
-        {
-            // The game ended on its own, and a process that has ended cannot be killed.
+            Kill(_game);
+            if (child is { } id)
+            {
+                KillById(id);
+            }
         }
 
         _game.Dispose();
         _game = null;
     }
 
-    // The readback holds a texture the engine owns, so it goes first. A game still running is left to run.
+    static void Kill(Process process)
+    {
+        try
+        {
+            process.Kill();
+            process.WaitForExit();
+        }
+        catch (InvalidOperationException)
+        {
+            // The game ended on its own, and a process that has ended cannot be killed.
+        }
+    }
+
+    static void KillById(int id)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(id);
+            Kill(process);
+        }
+        catch (ArgumentException)
+        {
+            // No process has that id any more, so the game has ended.
+        }
+    }
+
+    public event Action? Destroyed
+    {
+        add => _host.Destroyed += value;
+        remove => _host.Destroyed -= value;
+    }
+
+    // The readback holds a texture the engine owns, so it goes first. A game still running is left to run, but a
+    // game under netcoredbg is ended with it, since a paused one would stay frozen once the editor is gone.
     public void Dispose()
     {
+        _csharp.End();
         _game?.Dispose();
         _debug.Dispose();
         _viewport?.Readback.Dispose();
@@ -392,7 +665,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     // shortcut: macOS and Linux file names only. The library liborblit.<tags>.dylib sits beside the
     // program orblit.<tags>. Add the Windows names when the editor runs there.
-    static string PlayerPath(string library)
+    internal static string PlayerPath(string library)
     {
         var name = Path.GetFileNameWithoutExtension(library);
         return Path.Combine(Path.GetDirectoryName(library)!, name["lib".Length..]);

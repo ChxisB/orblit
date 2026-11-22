@@ -23,6 +23,20 @@ public sealed class EditorSession
     const string LockGroup = "_edit_lock_";
     const string GroupGroup = "_edit_group_";
 
+    // PropertyUsageFlags: the editor shows the property, and these entries head a group, a class or a subgroup.
+    const long UsageEditor = 4;
+    const long UsageGroup = 64;
+    const long UsageCategory = 128;
+    const long UsageSubgroup = 256;
+    const int HintResourceType = 17;
+    // The kinds of class the registry tells apart. A game holds only the core and extension kinds.
+    const long ApiCore = 0;
+    const long ApiExtension = 2;
+    // ConnectFlags: a persistent connection is saved with the scene.
+    const long ConnectPersist = 2;
+
+    static readonly string[] s_propertyKeys = ["name", "type", "hint", "hint_string", "usage"];
+
     readonly EngineHost _host;
     readonly ISceneSource _source;
 
@@ -30,6 +44,9 @@ public sealed class EditorSession
     // it already took, so a snapped drag lands the same for one big move or many small ones.
     float _raw;
     float _applied;
+
+    // A snapped 2D move adds up where the pivot would be with no snap, so small moves still reach the next step.
+    Vector2? _planarFree;
 
     public EditorSession(EngineHost host, ISceneSource source)
     {
@@ -141,6 +158,131 @@ public sealed class EditorSession
         _host.ObjectRemoveMeta(entity, name);
     }
 
+    /// <summary>
+    /// Every class a game can make an entity of, by name. A class that cannot be made, such as an abstract one, and a
+    /// class of the editor itself are left out.
+    /// </summary>
+    public IReadOnlyList<string> AddableClasses()
+    {
+        var registry = _host.Singleton("ClassRegistry");
+        return [.. _host.ClassRegistryGetInheritersFromClass(registry, "Entity").Prepend("Entity")
+            .Where(name => _host.ClassRegistryCanInstantiate(registry, name) && _host.ClassRegistryClassGetApiType(registry, name) is ApiCore or ApiExtension)
+            .Order(StringComparer.Ordinal)];
+    }
+
+    /// <summary>
+    /// The entity's signals by name, each with the class that declares it and the connections a save keeps. A signal of
+    /// the entity's script has an empty class. The signals of Object, which every class has, are left out.
+    /// </summary>
+    public IReadOnlyList<EntitySignal> SignalsOf(nint entity)
+    {
+        var registry = _host.Singleton("ClassRegistry");
+        var owners = ClassChainOf(entity)
+            .SelectMany(name => _host.ClassRegistryClassGetSignalList(registry, name, noInheritance: true).Select(signal => (signal.Name, Class: name)))
+            .DistinctBy(owned => owned.Name)
+            .ToDictionary(owned => owned.Name, owned => owned.Class);
+        var shared = _host.ClassRegistryClassGetSignalList(registry, "Object", noInheritance: true).Select(signal => signal.Name).ToHashSet();
+        return [.. _host.ObjectGetSignalList(entity)
+            .Where(signal => !shared.Contains(signal.Name))
+            .OrderBy(signal => signal.Name, StringComparer.Ordinal)
+            .Select(signal => new EntitySignal(owners.GetValueOrDefault(signal.Name, ""), signal.Name, signal.Arguments, LinksOf(entity, signal.Name)))];
+    }
+
+    IReadOnlyList<SignalConnection> LinksOf(nint entity, string signal) =>
+        [.. _host.ObjectGetSignalConnectionList(entity, signal).Where(link => (link.Flags & ConnectPersist) != 0).Select(link => new SignalConnection(link.Target, link.Method))];
+
+    /// <summary>
+    /// Joins the entity's signal to a method of the target, so a save keeps it. Throws
+    /// <see cref="InvalidOperationException"/> when the engine refuses, as it does for a connection it has already.
+    /// </summary>
+    public void Connect(nint entity, string signal, nint target, string method)
+    {
+        var error = _host.ObjectConnect(entity, signal, target, method, ConnectPersist);
+        if (error != 0)
+        {
+            throw new InvalidOperationException($"The engine could not connect {signal} to {method}, error {error}.");
+        }
+    }
+
+    public void Disconnect(nint entity, string signal, nint target, string method) => _host.ObjectDisconnect(entity, signal, target, method);
+
+    /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
+    public IReadOnlyList<string> ClassChainOf(nint entity)
+    {
+        var registry = _host.Singleton("ClassRegistry");
+        var chain = new List<string>();
+        for (var name = _host.ObjectGetClass(entity); name.Length > 0; name = name == "Entity" ? "" : _host.ClassRegistryGetParentClass(registry, name))
+        {
+            chain.Add(name);
+        }
+        return chain;
+    }
+
+    /// <summary>
+    /// The properties the editor shows for the entity, with their values now, in the engine's order, which is base
+    /// class first. Classes above Entity, the script and metadata are left out, because the inspector has its own
+    /// rows for them. A property that does not start with its group's prefix leaves the group, as in the engine.
+    /// </summary>
+    public IReadOnlyList<EntityProperty> PropertiesOf(nint entity)
+    {
+        var chain = ClassChainOf(entity);
+        var found = new List<EntityProperty>();
+        string? owner = null;
+        var (group, prefix) = ("", "");
+        foreach (var row in _host.ObjectGetPropertyList(entity, s_propertyKeys))
+        {
+            var (name, usage, hintString) = ((string?)row[0] ?? "", (long?)row[4] ?? 0, (string?)row[3] ?? "");
+            if ((usage & UsageCategory) != 0)
+            {
+                owner = chain.Contains(name) ? name : null;
+                (group, prefix) = ("", "");
+            }
+            else if ((usage & UsageGroup) != 0)
+            {
+                (group, prefix) = (name, hintString);
+            }
+            else if (owner is not null && (usage & (UsageEditor | UsageSubgroup)) == UsageEditor && name != "script" && !name.StartsWith("metadata/", StringComparison.Ordinal))
+            {
+                (group, prefix) = name.StartsWith(prefix, StringComparison.Ordinal) ? (group, prefix) : ("", "");
+                found.Add(new EntityProperty(owner, group, name, (int)((long?)row[1] ?? 0), _host.ObjectGet(entity, name))
+                {
+                    Hint = (int)((long?)row[2] ?? 0),
+                    HintString = hintString,
+                });
+            }
+        }
+        return found;
+    }
+
+    /// <summary>Sets one property. The value is a bool, a long, a double, a string, a vector or a Vector4 colour.</summary>
+    public void SetProperty(nint entity, string name, object value) => _host.ObjectSet(entity, name, value);
+
+    /// <summary>
+    /// Gives the entity its own copy of each resource its properties hold, so an edit to one changes no other
+    /// entity. A copy is shallow, so a resource inside it stays shared. Throws <see cref="IOException"/> when the
+    /// engine cannot copy one.
+    /// </summary>
+    public void MakeResourcesUnique(nint entity)
+    {
+        foreach (var property in PropertiesOf(entity).Where(property => property.Hint == HintResourceType && property.Value is nint))
+        {
+            var copy = _host.ResourceDuplicate((nint)property.Value!, false);
+            // A null copy would clear the property.
+            if (copy == 0)
+            {
+                throw new IOException($"The engine could not copy the resource in {property.Name}.");
+            }
+            try
+            {
+                _host.ObjectSet(entity, property.Name, copy);
+            }
+            finally
+            {
+                _host.Release(copy);
+            }
+        }
+    }
+
     /// <summary>The res:// path of the entity's script, an empty string for a script with no file, or null for none.</summary>
     public string? ScriptOf(nint entity) =>
         _host.ObjectGetScript(entity) is nint script ? _host.ResourceGetPath(script) : null;
@@ -174,6 +316,7 @@ public sealed class EditorSession
     {
         _raw = 0f;
         _applied = 0f;
+        _planarFree = null;
     }
 
     /// <summary>The root of the open scene, or null when none is open.</summary>
@@ -186,6 +329,9 @@ public sealed class EditorSession
     public bool IsEntity3D(nint entity) => _host.ObjectIsClass(entity, "Entity3D");
 
     public bool IsEntity2D(nint entity) => _host.ObjectIsClass(entity, "Entity2D");
+
+    /// <summary>Whether the 2D view draws the entity, as it does every 2D and UI entity.</summary>
+    public bool IsCanvasItem(nint entity) => _host.ObjectIsClass(entity, "CanvasItem");
 
     public Vector3 PositionOf(nint entity) => _host.Entity3DGetPosition(entity);
 
@@ -204,15 +350,31 @@ public sealed class EditorSession
     /// </summary>
     public nint PickPlanar(PlanarCamera camera, Vector2 framePoint) => Choose(camera.Pick, IsEntity2D, framePoint);
 
-    // The pick, with a locked entity left out of it and a group's topmost entity standing for what is under it.
-    nint Choose(Func<IEnumerable<nint>, Vector2, nint> pick, Func<nint, bool> isPlaced, Vector2 framePoint)
+    /// <summary>
+    /// Every Entity3D a click at the frame point could pick, nearest first, each once. Locks and groups act as they
+    /// do for <see cref="Pick"/>.
+    /// </summary>
+    public IReadOnlyList<nint> PickAll(EditorCamera camera, Vector2 framePoint) =>
+        Outline() is { } root
+            ? [.. camera.PickAll(Pickable(root, IsEntity3D), framePoint).Select(picked => StandIn(root, picked)).Where(picked => picked != 0).Distinct()]
+            : [];
+
+    /// <summary>The point a click measures from: the pivot it would pick, else where it meets the ground, else null.</summary>
+    public Vector3? PointAt(EditorCamera camera, Vector2 framePoint) =>
+        Pick(camera, framePoint) is not 0 and var picked ? _host.Entity3DGetGlobalPosition(picked) : camera.GroundAt(framePoint);
+
+    /// <summary>Whether any entity of the open scene is of the class or a class that extends it.</summary>
+    public bool Holds(string className) => Outline() is { } root && Flatten(root).Any(node => _host.ObjectIsClass(node.Handle, className));
+
+    nint Choose(Func<IEnumerable<nint>, Vector2, nint> pick, Func<nint, bool> isPlaced, Vector2 framePoint) =>
+        Outline() is { } root ? StandIn(root, pick(Pickable(root, isPlaced), framePoint)) : 0;
+
+    static IEnumerable<nint> Pickable(OutlineNode root, Func<nint, bool> isPlaced) =>
+        Flatten(root).Where(node => !node.Locked).Select(node => node.Handle).Where(isPlaced);
+
+    // A group's topmost entity stands for what is under it, and a locked group for nothing.
+    static nint StandIn(OutlineNode root, nint picked)
     {
-        var root = Outline();
-        if (root is null)
-        {
-            return 0;
-        }
-        var picked = pick(Flatten(root).Where(node => !node.Locked).Select(node => node.Handle).Where(isPlaced), framePoint);
         var group = root.PathTo(picked).FirstOrDefault(node => node.Grouped);
         return group is { Locked: true } ? 0 : group?.Handle ?? picked;
     }
@@ -245,9 +407,21 @@ public sealed class EditorSession
         }
     }
 
-    /// <summary>The move gizmo's handles for an Entity3D, or null when its pivot is behind the camera.</summary>
+    /// <summary>The move gizmo's handles for an Entity3D, or null when its pivot is behind the camera or the open scene does not hold it.</summary>
     public GizmoHandles? HandlesOf(EditorCamera camera, nint entity, GizmoSpace space) =>
-        camera.HandlesAt(_host.Entity3DGetGlobalTransform(entity), space);
+        InOpenScene(entity) ? camera.HandlesAt(_host.Entity3DGetGlobalTransform(entity), space) : null;
+
+    // The viewport asks each frame, and the engine can switch scenes inside a frame before the selection follows.
+    bool InOpenScene(nint entity)
+    {
+        var root = _source.Root();
+        var at = entity;
+        while (at != 0 && at != root)
+        {
+            at = _host.EntityGetParent(at);
+        }
+        return at != 0;
+    }
 
     /// <summary>Moves an Entity3D along an axis by a pointer move in the frame. Its rotation and scale stay.</summary>
     public void Drag(EditorCamera camera, nint entity, GizmoDirection direction, FrameMove move)
@@ -259,15 +433,64 @@ public sealed class EditorSession
     }
 
     /// <summary>
-    /// Moves an Entity2D by a pointer move in the frame, so its pivot ends under the pointer. Its rotation and
-    /// scale stay. shortcut: no snap in 2D and no Keep child transforms, add both when the 2D tools grow.
+    /// Moves an Entity2D by a pointer move in the frame, so its pivot ends under the pointer. With a snap, the pivot
+    /// lands on the nearest multiple of the move step instead. Its rotation and scale stay.
     /// </summary>
-    public void MovePlanar(PlanarCamera camera, nint entity, FrameMove move) =>
-        _host.Entity2DSetGlobalPosition(entity, _host.Entity2DGetGlobalPosition(entity) + camera.Offset(move));
+    // shortcut: no Keep child transforms in 2D, so children move with the parent. Add it when a 2D user asks.
+    public void MovePlanar(PlanarCamera camera, nint entity, FrameMove move)
+    {
+        var step = Snap?.Move ?? 0f;
+        if (step <= 0f)
+        {
+            _planarFree = null;
+            _host.Entity2DSetGlobalPosition(entity, _host.Entity2DGetGlobalPosition(entity) + camera.Offset(move));
+            return;
+        }
 
-    /// <summary>The rotate gizmo's rings for an Entity3D, or null when its pivot is behind the camera.</summary>
+        var free = (_planarFree ?? _host.Entity2DGetGlobalPosition(entity)) + camera.Offset(move);
+        _planarFree = free;
+        _host.Entity2DSetGlobalPosition(entity, new Vector2(GizmoMath.Stepped(free.X, step), GizmoMath.Stepped(free.Y, step)));
+    }
+
+    /// <summary>Turns an Entity2D about its pivot by a pointer move round the pivot, held to the turn step. Its place and scale stay.</summary>
+    public void RotatePlanar(PlanarCamera camera, nint entity, FrameMove move)
+    {
+        var pivot = camera.PivotOf(entity);
+        var (from, to) = (move.From - pivot, move.To - pivot);
+        // The frame and the world both point y down, so the angle on screen is the angle in the world.
+        var turn = MathF.Atan2((from.X * to.Y) - (from.Y * to.X), Vector2.Dot(from, to));
+        _host.Entity2DSetGlobalRotation(entity, _host.Entity2DGetGlobalRotation(entity) + Carry(turn, Snap?.TurnRadians ?? 0f));
+    }
+
+    /// <summary>
+    /// Scales an Entity2D evenly by how much nearer or farther the pointer is from its pivot, held to the scale step.
+    /// Its place and rotation stay. A pointer within a pixel of the pivot scales nothing, so the scale never collapses.
+    /// </summary>
+    public void ScalePlanar(PlanarCamera camera, nint entity, FrameMove move)
+    {
+        var pivot = camera.PivotOf(entity);
+        var (from, to) = (Vector2.Distance(move.From, pivot), Vector2.Distance(move.To, pivot));
+        if (from < 1f || to < 1f)
+        {
+            return;
+        }
+
+        _host.Entity2DSetGlobalScale(entity, _host.Entity2DGetGlobalScale(entity) * CarryFactor(to / from));
+    }
+
+    public PlanarPlace PlanarPlaceOf(nint entity) =>
+        new(_host.Entity2DGetGlobalPosition(entity), _host.Entity2DGetGlobalRotation(entity), _host.Entity2DGetGlobalScale(entity));
+
+    public void PlacePlanar(nint entity, PlanarPlace place)
+    {
+        _host.Entity2DSetGlobalPosition(entity, place.Position);
+        _host.Entity2DSetGlobalRotation(entity, place.Rotation);
+        _host.Entity2DSetGlobalScale(entity, place.Scale);
+    }
+
+    /// <summary>The rotate gizmo's rings for an Entity3D, or null when its pivot is behind the camera or the open scene does not hold it.</summary>
     public GizmoRings? RingsOf(EditorCamera camera, nint entity, GizmoSpace space) =>
-        camera.RingsAt(_host.Entity3DGetGlobalTransform(entity), space);
+        InOpenScene(entity) ? camera.RingsAt(_host.Entity3DGetGlobalTransform(entity), space) : null;
 
     /// <summary>Turns an Entity3D about an axis through its pivot by a pointer move in the frame. Its place and scale stay.</summary>
     public void RotateDrag(EditorCamera camera, nint entity, GizmoDirection direction, FrameMove move) =>
@@ -396,11 +619,12 @@ public sealed class EditorSession
     }
 
     /// <summary>
-    /// Moves an entity and everything under it to the end of another parent, keeping where it is drawn. The
-    /// engine keeps the owner, so a save still holds it. A parent that already has a child of that name is
+    /// Moves an entity and everything under it to the end of another parent. With
+    /// <paramref name="keepGlobalTransform"/> it stays where it is drawn, otherwise it keeps its local transform
+    /// under the new parent. The engine keeps the owner, so a save still holds it. A parent that already has a child of that name is
     /// refused, because the engine would give the mover an unreadable name.
     /// </summary>
-    public void Reparent(nint entity, nint newParent)
+    public void Reparent(nint entity, nint newParent, bool keepGlobalTransform)
     {
         RequireNotRoot(entity, "moved");
         var moving = Describe(entity);
@@ -416,7 +640,7 @@ public sealed class EditorSession
         {
             throw new InvalidOperationException($"{_host.EntityGetName(newParent)} already has a child named {moving.Name}.");
         }
-        _host.EntityReparent(entity, newParent, true);
+        _host.EntityReparent(entity, newParent, keepGlobalTransform);
     }
 
     public void Rename(nint entity, string name)
@@ -425,14 +649,36 @@ public sealed class EditorSession
         _host.EntitySetName(entity, name.Trim());
     }
 
-    /// <summary>Takes the entity and everything under it out of the open scene. The scene root stays.</summary>
-    public void Remove(nint entity)
+    /// <summary>
+    /// Takes the entity and everything under it out of the open scene and keeps it, so <see cref="Restore"/> can put it
+    /// back. <see cref="Destroy"/> frees it. The scene root stays.
+    /// </summary>
+    public DetachedEntity Detach(nint entity)
     {
         RequireNotRoot(entity, "removed");
-        _host.EntityRemoveChild(_host.EntityGetParent(entity), entity);
-        _host.EntityQueueDestroy(entity);
-        _host.Pump(1);
+        var root = _source.Root();
+        var parent = _host.EntityGetParent(entity);
+        // The engine clears each owner outside the branch it takes out, so the ones the root held are noted first.
+        var owned = Flatten(Describe(entity)).Select(node => node.Handle).Where(handle => _host.EntityGetOwner(handle) == root).ToList();
+        var detached = new DetachedEntity(entity, parent, (int)_host.EntityGetIndex(entity, false), owned);
+        _host.EntityRemoveChild(parent, entity);
+        return detached;
     }
+
+    /// <summary>Puts a detached entity back under its parent at its old place, and gives the scene root back the entities it owned.</summary>
+    public void Restore(DetachedEntity detached)
+    {
+        _host.EntityAddChild(detached.Parent, detached.Entity, true, 0);
+        _host.EntityMoveChild(detached.Parent, detached.Entity, detached.Index);
+        var root = _source.Root();
+        foreach (var handle in detached.Owned)
+        {
+            _host.EntitySetOwner(handle, root);
+        }
+    }
+
+    /// <summary>Frees a detached entity and everything under it.</summary>
+    public void Destroy(nint entity) => _host.Destroy(entity);
 
     /// <summary>Saves the open scene. Throws with the engine's error code when it fails.</summary>
     public void Save() => _source.Save();

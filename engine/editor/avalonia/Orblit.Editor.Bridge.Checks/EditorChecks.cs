@@ -48,9 +48,14 @@ internal sealed class EditorChecks : IChecks
         ("a new scene file is written with its root, and an instance of it is saved as a reference and not a copy", NewSceneIsSavedAndInstanced),
         ("an instance reads the scene file as last saved, not as it was first loaded", InstanceReadsTheSavedFile),
         ("a closed scene has no outline, and the next one opens", ClosedSceneHasNoOutline),
+        ("an entity of a scene that is no longer open has no handles and no rings", EntityOfAnotherSceneHasNoGizmo),
         ("a scene path outside res://, an empty name and a class that is no entity are refused, and a file that is no scene does not instance", SceneFileRefusals),
         ("metadata keeps its type through a save and a reopen, an engine name is not listed and a bad name is refused", MetadataIsSaved),
         ("an object value reads back as the same object, and a Variant of another kind reads as nothing", ObjectVariantRoundTrips),
+        ("a Camera3D lists its classes and their properties with values and hints, and a set of each kind reads back", PropertiesAreListedAndSet),
+        ("two entities that share a mesh each hold their own after the second's resources are made unique", ResourcesAreMadeUnique),
+        ("the addable classes are the game's own that can be made, by name", AddableClassesAreTheGamesOwn),
+        ("a signal lists its class and arguments, and a connection to another entity is saved with the scene and removed again", SignalConnectionIsSaved),
         ("a script that cannot load is refused and leaves the entity as it was, and clearing no script changes nothing", ScriptRefusals),
         ("a graph script is edited through the session, and the engine's document and the saved file agree", GraphScriptEditsAreSaved),
         ("a new graph script is saved with its base type and opens empty, and a base that is no class or a path that is no graph file is refused", GraphScriptCreation),
@@ -202,14 +207,29 @@ internal sealed class EditorChecks : IChecks
 
     void RemovedEntityIsGone()
     {
-        var cubes = _editor.Outline()!.Children.Single(c => c.Name == "Cubes");
+        var children = _editor.Outline()!.Children;
+        var cubes = children.Single(c => c.Name == "Cubes");
+        var at = children.ToList().IndexOf(cubes);
 
-        _editor.Remove(cubes.Handle);
+        var detached = _editor.Detach(cubes.Handle);
         _editor.Save();
 
         Assert.DoesNotContain(_editor.Outline()!.Children, c => c.Name == "Cubes");
         Assert.DoesNotContain("name=\"Cubes\"", SavedScene());
         Assert.DoesNotContain("name=\"Cube\"", SavedScene());
+
+        // Undo puts the same entity back at its place, and a save holds it and its children again.
+        _editor.Restore(detached);
+        _editor.Save();
+
+        Assert.Equal(cubes.Handle, _editor.Outline()!.Children[at].Handle);
+        Assert.Contains("name=\"Cubes\"", SavedScene());
+        Assert.Contains("name=\"Cube\"", SavedScene());
+
+        _editor.Destroy(_editor.Detach(cubes.Handle).Entity);
+        _editor.Save();
+
+        Assert.DoesNotContain("name=\"Cubes\"", SavedScene());
     }
 
     void DuplicatedEntityIsSaved()
@@ -260,7 +280,7 @@ internal sealed class EditorChecks : IChecks
         _editor.MoveTo(b, new Vector3(10, 0, 0));
         _editor.MoveTo(c, new Vector3(1, 2, 3));
         var drawnAt = _host.Entity3DGetGlobalPosition(c);
-        _editor.Reparent(c, b);
+        _editor.Reparent(c, b, true);
         _editor.Save();
 
         var moved = _editor.Outline()!.Find(b)!;
@@ -270,11 +290,11 @@ internal sealed class EditorChecks : IChecks
         Assert.Contains("[node name=\"MoveC\" type=\"Marker3D\" parent=\"MoveB\"", SavedScene());
 
         _editor.AddChild(a, "Marker3D", "MoveLeaf");
-        Assert.Equal("MoveB is already under CubeField.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, root)).Message);
-        Assert.Equal("An entity cannot move under itself or its own children.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, leaf)).Message);
-        Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, b));
-        Assert.Equal("MoveA already has a child named MoveLeaf.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(leaf, a)).Message);
-        Assert.Equal("The scene root cannot be moved.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(root, a)).Message);
+        Assert.Equal("MoveB is already under CubeField.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, root, true)).Message);
+        Assert.Equal("An entity cannot move under itself or its own children.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, leaf, true)).Message);
+        Assert.Throws<InvalidOperationException>(() => _editor.Reparent(b, b, true));
+        Assert.Equal("MoveA already has a child named MoveLeaf.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(leaf, a, true)).Message);
+        Assert.Equal("The scene root cannot be moved.", Assert.Throws<InvalidOperationException>(() => _editor.Reparent(root, a, true)).Message);
         Assert.Equal("The scene root cannot be moved.", Assert.Throws<InvalidOperationException>(() => _editor.MoveWithinParent(root, 1)).Message);
         Assert.Equal(["MoveLeaf", "MoveC"], _editor.Outline()!.Find(b)!.Children.Select(child => child.Name));
     }
@@ -375,7 +395,7 @@ internal sealed class EditorChecks : IChecks
         var root = _editor.Outline()!;
         var before = root.Children.Count;
 
-        Assert.Throws<InvalidOperationException>(() => _editor.Remove(root.Handle));
+        Assert.Throws<InvalidOperationException>(() => _editor.Detach(root.Handle));
         Assert.Throws<InvalidOperationException>(() => _editor.Duplicate(root.Handle));
         Assert.Throws<ArgumentException>(() => _editor.AddChild(root.Handle, "Image", "Picture"));
         Assert.Throws<InvalidOperationException>(() => _editor.AddChild(root.Handle, "NoSuchClass", "Nothing"));
@@ -450,6 +470,23 @@ internal sealed class EditorChecks : IChecks
         Assert.Null(_editor.Outline());
         _editor.OpenScene("res://main.oscn");
         Assert.NotNull(_editor.Outline());
+    }
+
+    // The engine can switch scenes inside a frame, and the viewport asks for the gizmo before the selection follows.
+    void EntityOfAnotherSceneHasNoGizmo()
+    {
+        _editor.CreateScene("res://here.oscn", "Entity3D", "Here");
+        _editor.OpenScene("res://here.oscn");
+        var lamp = _editor.AddChild(_editor.Outline()!.Handle, "Marker3D", "Lamp");
+        var camera = new EditorCamera(_host);
+        Assert.NotNull(_editor.HandlesOf(camera, lamp, GizmoSpace.Global));
+
+        _editor.CreateScene("res://away.oscn", "Entity3D", "Away");
+        _editor.OpenScene("res://away.oscn");
+
+        Assert.Null(_editor.HandlesOf(camera, lamp, GizmoSpace.Global));
+        Assert.Null(_editor.RingsOf(camera, lamp, GizmoSpace.Global));
+        _editor.OpenScene("res://main.oscn");
     }
 
     void SceneFileRefusals()
@@ -536,6 +573,97 @@ internal sealed class EditorChecks : IChecks
         // The marshaller takes an object handle, but the editor keeps only the four kinds it lists.
         Assert.Throws<ArgumentException>(() => _editor.SetMetadata(holder, "second", other));
         Assert.Null(_host.ObjectGetMeta(holder, "second", null));
+    }
+
+    void PropertiesAreListedAndSet()
+    {
+        var root = _editor.Outline()!.Handle;
+        var camera = _editor.AddChild(root, "Camera3D", "Eye");
+        var light = _editor.AddChild(root, "DirectionalLight3D", "Sun");
+
+        Assert.Equal(["Camera3D", "Entity3D", "Entity"], _editor.ClassChainOf(camera));
+        Assert.Equal(["DirectionalLight3D", "Light3D", "VisualInstance3D", "Entity3D", "Entity"], _editor.ClassChainOf(light));
+        var listed = _editor.PropertiesOf(camera);
+        // The engine lists the base class first, and the inspector's own rows are not listed.
+        Assert.Equal(["Entity", "Entity3D", "Camera3D"], listed.Select(property => property.Class).Distinct());
+        Assert.DoesNotContain(listed, property => property.Name is "script" or "name" || property.Name.StartsWith("metadata/", StringComparison.Ordinal));
+        EntityProperty Find(IEnumerable<EntityProperty> properties, string name) => properties.Single(property => property.Name == name);
+        var fov = Find(listed, "fov");
+        Assert.Equal(("Camera3D", "", 3, 75.0, 1, "1,179,0.1,degrees"), (fov.Class, fov.Group, fov.Type, fov.Value, fov.Hint, fov.HintString));
+        var projection = Find(listed, "projection");
+        Assert.Equal((2, 0L, 2, "Perspective,Orthogonal,Frustum"), (projection.Type, projection.Value, projection.Hint, projection.HintString));
+        Assert.Equal(("Entity3D", "Transform", 9, Vector3.Zero), (Find(listed, "position").Class, Find(listed, "position").Group, Find(listed, "position").Type, Find(listed, "position").Value));
+        Assert.Equal(("Entity3D", "Visibility", true), (Find(listed, "visible").Class, Find(listed, "visible").Group, Find(listed, "visible").Value));
+        Assert.Equal(("Entity", "Run"), (Find(listed, "run_mode").Class, Find(listed, "run_mode").Group));
+        Assert.Equal(("Entity", "Editor Description", ""), (Find(listed, "editor_description").Class, Find(listed, "editor_description").Group, Find(listed, "editor_description").Value));
+
+        _editor.SetProperty(camera, "far", 500.0);
+        _editor.SetProperty(camera, "current", true);
+        _editor.SetProperty(camera, "projection", 2L);
+        _editor.SetProperty(camera, "frustum_offset", new Vector2(1, 2));
+        _editor.SetProperty(camera, "editor_description", "the eye");
+        _editor.SetProperty(light, "light_color", new Vector4(1, 0.5f, 0.25f, 1));
+        var after = _editor.PropertiesOf(camera);
+        Assert.Equal((500.0, true, 2L, new Vector2(1, 2), "the eye"), (Find(after, "far").Value, Find(after, "current").Value, Find(after, "projection").Value, Find(after, "frustum_offset").Value, Find(after, "editor_description").Value));
+        Assert.Equal((20, new Vector4(1, 0.5f, 0.25f, 1)), (Find(_editor.PropertiesOf(light), "light_color").Type, Find(_editor.PropertiesOf(light), "light_color").Value));
+        Assert.Throws<ArgumentException>(() => _editor.SetProperty(camera, "far", 5));
+    }
+
+    void AddableClassesAreTheGamesOwn()
+    {
+        var classes = _editor.AddableClasses();
+        Console.WriteLine($"  {classes.Count} addable classes");
+        Assert.Contains("Entity", classes);
+        Assert.Contains("Camera3D", classes);
+        Assert.DoesNotContain("CanvasItem", classes);
+        Assert.DoesNotContain("EditorInspector", classes);
+        Assert.Equal(classes.Order(StringComparer.Ordinal), classes);
+    }
+
+    void SignalConnectionIsSaved()
+    {
+        var root = _editor.Outline()!.Handle;
+        var (lamp, cubes) = (_editor.AddChild(root, "Entity3D", "Lamp"), _editor.AddChild(root, "Entity3D", "Cubes"));
+        string Saved() => File.ReadAllText(Path.Combine(_folder, "main.oscn"));
+        EntitySignal Visibility() => _editor.SignalsOf(lamp).Single(signal => signal.Name == "visibility_changed");
+
+        var signals = _editor.SignalsOf(lamp);
+        Assert.Equal(("Entity3D", 0), (Visibility().Class, Visibility().Arguments.Count));
+        Assert.Equal("Entity", signals.Single(signal => signal.Name == "child_entered_stage").Class);
+        Assert.Single(signals.Single(signal => signal.Name == "child_entered_stage").Arguments);
+        Assert.DoesNotContain(signals, signal => signal.Name == "script_changed");
+        Assert.Empty(Visibility().Links);
+
+        _editor.Connect(lamp, "visibility_changed", cubes, "OnLampShown");
+        _editor.Save();
+
+        Assert.Equal([new SignalConnection(cubes, "OnLampShown")], Visibility().Links);
+        Assert.Contains("[connection signal=\"visibility_changed\" from=\"Lamp\" to=\"Cubes\" method=\"OnLampShown\"]", Saved());
+        Assert.Throws<InvalidOperationException>(() => _editor.Connect(lamp, "visibility_changed", cubes, "OnLampShown"));
+
+        _editor.Disconnect(lamp, "visibility_changed", cubes, "OnLampShown");
+        _editor.Save();
+
+        Assert.Empty(Visibility().Links);
+        Assert.DoesNotContain("[connection", Saved());
+    }
+
+    void ResourcesAreMadeUnique()
+    {
+        var root = _editor.Outline()!.Handle;
+        var first = _editor.AddChild(root, "MeshInstance3D", "First");
+        var second = _editor.AddChild(root, "MeshInstance3D", "Second");
+        var mesh = _host.Construct("BoxMesh");
+        _editor.SetProperty(first, "mesh", mesh);
+        _editor.SetProperty(second, "mesh", mesh);
+        _host.Release(mesh);
+        object? MeshOf(nint entity) => _editor.PropertiesOf(entity).Single(property => property.Name == "mesh").Value;
+
+        _editor.MakeResourcesUnique(second);
+
+        Assert.Equal(mesh, MeshOf(first));
+        Assert.IsType<nint>(MeshOf(second));
+        Assert.NotEqual(mesh, MeshOf(second));
     }
 
     void ScriptRefusals()
@@ -658,7 +786,9 @@ internal sealed class EditorChecks : IChecks
         using var session = GraphScriptSession.Open(_host, MakeGraphFile("palette"));
 
         var fromFlow = session.FindSteps("", GraphDraggedSide.Output, 0, GraphPortSort.Flow);
-        Assert.Contains(fromFlow, entry => entry.Kind == "branch");
+        var branch = fromFlow.First(entry => entry.Kind == "branch");
+        Assert.Equal(["run", "condition"], branch.Inputs.Select(port => port.Name));
+        Assert.Equal(["then", "else"], branch.Outputs.Select(port => port.Name));
         Assert.DoesNotContain(fromFlow, entry => entry.Kind == "constant");
         Assert.Contains(session.FindSteps("", GraphDraggedSide.None, 0, GraphPortSort.Flow), entry => entry.Kind == "constant");
         Assert.Throws<InvalidDataException>(() => session.FindSteps("", GraphDraggedSide.None, 999, GraphPortSort.Flow));

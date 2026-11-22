@@ -91,7 +91,7 @@ public sealed class GraphWorkspaceTests
             window.Close();
 
             Assert.True(window.IsVisible);
-            Assert.True(window.CloseBar.IsVisible);
+            Assert.True(window.SaveChanges.IsVisible);
         });
     }
 
@@ -104,7 +104,7 @@ public sealed class GraphWorkspaceTests
             EditAGraph(window);
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.Equal(1, graph.Saves);
             Assert.Equal(0, scene.Saves);
@@ -121,7 +121,7 @@ public sealed class GraphWorkspaceTests
             EditAGraph(window);
             window.Close();
 
-            Click(window.CloseBar.CloseWithoutButton);
+            Click(window.SaveChanges.LeadButton!);
 
             Assert.Equal(0, graph.Saves);
             Assert.False(window.IsVisible);
@@ -138,7 +138,7 @@ public sealed class GraphWorkspaceTests
             graph.SaveFails = true;
             window.Close();
 
-            Click(window.CloseBar.SaveAndCloseButton);
+            Click(window.SaveChanges.MainButton);
 
             Assert.True(window.IsVisible);
             Assert.True(window.Graph.IsDirty);

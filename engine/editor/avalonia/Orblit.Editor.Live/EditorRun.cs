@@ -41,20 +41,26 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         await Step("the window shows the engine's first frame", ShowsTheFrame);
         await Step("a click on an outline row selects the entity", SelectsOnAClick);
+        await Step("the inspector shows the sections and properties of the entity's engine classes", ShowsTheClassProperties);
         await Step("View, then Focus Selection, puts the pivot in the middle of the frame", FocusesFromTheMenu);
         await Step("a drag along the Move arrow moves the entity along that axis only", MovesAlongAnArrow);
         await Step("a drag on the Scale center handle scales all three axes together", ScalesFromTheCentre);
         await Step("the E key lights Rotate, and a drag on a ring turns the entity about that axis only", TurnsOnARing);
         await Step("Local and Snap by click, then a drag moves the entity by whole steps", SnapsInLocalSpace);
+        await Step("Command Z and Command Shift Z undo and redo a move, and History steps back and forward", UndoesAndRedoes);
+        await Step("the Signals tab lists the engine's signals, Connect links one and Command Z takes the link out", ConnectsASignal);
         await Step("Command and S write the live transform to the scene file", SaveWritesTheTransform);
         await Step("Add Metadata makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
+        await Step("the plus opens Add an entity on the engine's classes, and a search lights Timer", ListsTheEngineClasses);
         await Step("the Output button opens the panel with the engine's log lines", OpensTheEngineLog);
         await Step("Clear empties the Output panel and a second click on its button shuts it", ClearsAndShutsTheLog);
         await Step("Play starts the game, opens the Output panel and shows the game's own log line", PlayShowsTheGameLog);
         await Step("the Game tab runs and stops the game, and shows a game the user closed as stopped", RunsFromTheGameTab);
+        await Step("a run setting switched on reaches the game as its engine flag", RunsWithAFlag);
         await Step("the Asset Store tab shows the store's kits and the 3D tab brings the viewport back", ShowsTheStore);
         await Step("the Script tab lists the project's C# files, and Save and Command S write an edit to the file", EditsAScript);
         await Step("the Graph tab makes a graph script with File and New, lists it, opens it and closes it again", MakesAGraphScript);
+        await Step("the Import tab shows an image's options, and Reimport makes the engine import it again", SetsImportOptions);
         await Step("the 2D tab draws a 2D scene flat, and a click, a drag on the mark, a pan and the wheel work", WorksIn2D);
         await Step("the operating system shows the editor's windows", ShowsInTheDesktop);
         return !_failed;
@@ -77,9 +83,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
 
     async Task FocusesFromTheMenu()
     {
-        await _input.Click(window.Toolbar.ViewButton);
-        await Wait(() => window.Toolbar.ViewButton.Flyout?.IsOpen == true && window.Toolbar.FocusItem.IsAttachedToVisualTree(), "the View menu to open");
-        await _input.Click(window.Toolbar.FocusItem);
+        await _input.Click(window.Center.Overlay.ProjectionButton);
+        await Wait(() => window.Center.Overlay.ProjectionButton.Flyout?.IsOpen == true && window.Center.Overlay.FocusItem.IsAttachedToVisualTree(), "the projection menu to open");
+        await _input.Click(window.Center.Overlay.FocusItem);
         await Settle();
         var middle = new Vector2(Viewport.Frame!.PixelSize.Width, Viewport.Frame.PixelSize.Height) / 2;
         var origin = Handles().Origin;
@@ -173,6 +179,24 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         Expect(!Edited, $"the title still shows unsaved edits: {window.Title}");
     }
 
+    // The dialog closes without adding, because the later steps save and play this scene.
+    async Task ListsTheEngineClasses()
+    {
+        var tools = window.Tools;
+        var opening = Stopwatch.StartNew();
+        await _input.Click(tools.AddButton);
+        await Wait(() => tools.AddDialog.IsVisible && tools.ClassList.Shown.Count > 0, "the Add an entity dialog to open");
+        Console.WriteLine($"  the Add dialog listed {tools.ClassList.Shown.Count} classes in {opening.ElapsedMilliseconds} ms");
+        Expect(tools.ClassList.Shown.Count > 200, $"the dialog lists only {tools.ClassList.Shown.Count} classes");
+        // The search box takes text, which this run does not type. Setting it is the only part that is not injected.
+        tools.ClassList.SearchBox.Text = "timer";
+        await Settle();
+        Shots.Save(window, Path.Combine(output, "add-dialog-search.png"));
+        Expect(tools.ClassList.Picked?.Name == "Timer", $"the search lights {tools.ClassList.Picked?.Name ?? "nothing"}");
+        tools.AddDialog.Close();
+        await Settle();
+    }
+
     async Task ShowsInTheDesktop()
     {
         var shots = await Shots.OfProcess(output, "desktop");
@@ -236,9 +260,9 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     [GeneratedRegex(@"Transform3D\(([^)]*)\)")]
     private static partial Regex TransformOf();
 
-    static async Task Wait(Func<bool> condition, string what)
+    static async Task Wait(Func<bool> condition, string what, int timeout = TimeoutMilliseconds)
     {
-        for (var waited = 0; waited < TimeoutMilliseconds; waited += PollMilliseconds)
+        for (var waited = 0; waited < timeout; waited += PollMilliseconds)
         {
             if (condition())
             {
@@ -290,7 +314,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
             await _input.Click(window.PlayButton);
             Expect(window.Status == "Playing in a second window.", $"the status is \"{window.Status}\"");
             Expect(window.Center.Output.IsVisible, "Play did not open the Output panel");
-            await Wait(() => window.Center.Output.List.Items.OfType<string>().Any(line => line.Contains("Metal")), "the game's graphics line in the panel");
+            await Wait(() => window.Center.Output.List.Items.OfType<LogEntry>().Any(entry => entry.Text.Contains("Metal")), "the game's graphics line in the panel");
             await _input.Click(window.StopButton);
             Expect(!engine.IsPlaying, "the Stop button did not end the game");
         }
@@ -310,6 +334,8 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
 
             await _input.Click(window.Game.RunButton);
             await Wait(() => engine.IsPlaying && window.Game.State.Text!.Contains("is running"), "the game to start");
+            // The game sends its monitors once a second and its tree after each, so both come within a few seconds.
+            await Wait(() => window.Game.Rate.Text != "—" && window.Game.LiveRows.Count() == 4, "the game's monitors and its four entities in the live scene");
             await Settle();
             Shots.Save(window, Path.Combine(output, "game-running.png"));
             await _input.Click(window.Game.StopButton);
@@ -348,8 +374,8 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         await _input.Click(Tab("Asset Store"));
         Expect(window.Store.IsVisible && !window.Viewport.IsEffectivelyVisible, "the store did not replace the viewport");
-        await _input.Click(window.Store.LoadButton);
-        await Wait(() => window.Store.Status.Text == "2 kits.", "the two kits of the store");
+        await _input.Click(window.Store.ReloadButton);
+        await Wait(() => window.Store.Status.Text == "2 kits in the index.", "the two kits of the store");
         await Settle();
         Shots.Save(window, Path.Combine(output, "store-loaded.png"));
 
@@ -406,16 +432,26 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await _input.Click(graph.FileButton);
         await Wait(() => graph.FileMenu.IsOpen && NewItem(graph).IsAttachedToVisualTree(), "the File menu to open");
         await _input.Click(NewItem(graph));
-        await Wait(() => graph.CreateFlyout.IsOpen && graph.Form.CreateButton.IsAttachedToVisualTree(), "the Create form to open");
+        // The dialog sits hidden in the window from the start, so its button has a place only after a layout.
+        await Wait(() => graph.Form.CreateButton.IsEffectivelyVisible && graph.Form.CreateButton.Bounds.Width > 0, "the New Graph Script dialog to open");
         // The boxes take text, which this run does not type. Setting it is the only part that is not injected.
-        graph.Form.PathBox.Text = Resource;
+        graph.Form.NameBox.Text = "live";
         await _input.Click(graph.Form.CreateButton);
-        await Wait(() => graph.Current == Resource, $"the new graph to open, the form said {graph.Form.Notice}");
+        await Wait(() => graph.Current == Resource, $"the new graph to open, the dialog said {graph.Form.Fault}");
         Expect(File.Exists(Path.Combine(project, "live.ograph")), "the engine wrote no live.ograph");
         Expect(graph.List.Items.Cast<string>().Contains(Resource), "the list does not show the new graph");
         Expect(graph.Tabs.Select(tab => tab.Label.Text).SequenceEqual(["live.ograph"]), "the tab row does not show live.ograph");
         await Settle();
         Shots.Save(window, Path.Combine(output, "graph-created.png"));
+
+        // The palette's preview draws the step from the ports the engine lists, so this shows those ports arrive.
+        var canvas = graph.Canvas!;
+        canvas.OpenPalette(new Point(60, 60), null);
+        canvas.Palette.SearchBox.Text = "branch";
+        await Wait(() => canvas.Palette.PreviewStep is { Kind: "branch", Outputs.Count: 2 }, "the palette to preview Branch with its two outputs");
+        await Settle();
+        Shots.Save(window, Path.Combine(output, "graph-palette.png"));
+        canvas.Palette.Close();
 
         await _input.Click(graph.FileButton);
         await Wait(() => graph.FileMenu.IsOpen && CloseItem(graph).IsAttachedToVisualTree(), "the File menu to open again");

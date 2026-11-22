@@ -7,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Input.Raw;
 using Avalonia.VisualTree;
 using Orblit.Editor.App;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.Live;
@@ -64,6 +65,16 @@ internal sealed partial class EditorRun
         await Settle();
         Expect(!window.Toolbar.IsEffectivelyVisible, "the toolbar stayed over the 2D view");
         Expect(FrameHas((r, g, b) => g > 200 && r < 80 && b < 80) && FrameHas((r, g, b) => b > 200 && r < 80 && g < 80), "the frame holds no green box and no blue box");
+
+        // The 3D step left Snap on and the 2D pill's Snap mirrors it, so a click puts it out for a free drag.
+        var snap = window.Center.Planar.Tools.GetVisualDescendants().OfType<FixedToggle>().Single(tool => (string?)ToolTip.GetTip(tool) == "Snap to the grid. Hold Ctrl or Command to flip it for one drag.");
+        Expect(snap.IsChecked == window.Toolbar.Snaps, "the 2D Snap does not show the toolbar's Snap");
+        if (snap.IsChecked == true)
+        {
+            await _input.Click(snap);
+        }
+
+        Expect(!window.Toolbar.Snaps, "a click on the 2D Snap left the toolbar's Snap on");
 
         var pivot = engine.PlanarPivotOf(right)!.Value;
         await _input.Click(window, InWindow(Local(pivot)));

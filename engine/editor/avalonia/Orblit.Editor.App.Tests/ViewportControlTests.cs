@@ -201,6 +201,39 @@ public sealed class ViewportControlTests
     }
 
     [Fact]
+    public void A_frame_that_closes_its_window_asks_for_nothing_after_it()
+    {
+        UiThread.Run(() =>
+        {
+            Window? window = null;
+            var asked = 0;
+            var viewport = new ViewportControl(() =>
+            {
+                window!.Close();
+                return false;
+            }, (out int w, out int h, ref byte[] rgba) =>
+            {
+                asked++;
+                w = 0;
+                h = 0;
+                return false;
+            });
+            viewport.ModeSource = () =>
+            {
+                asked++;
+                return GizmoMode.Transform;
+            };
+            window = new Window { Content = viewport };
+            window.Show();
+
+            viewport.Tick();
+
+            Assert.Equal(0, asked);
+            Assert.False(viewport.IsRunning);
+        });
+    }
+
+    [Fact]
     public void Leaving_the_window_stops_the_viewport()
     {
         UiThread.Run(() =>
@@ -390,7 +423,7 @@ public sealed class ViewportControlTests
         var viewport = new ViewportControl(() => false, hasFrame ? Image(width, height, (_, _) => [1, 2, 3, 255]) : NoFrame);
         var clicks = new List<Vector2>();
         var orbits = new List<(float, float)>();
-        viewport.Clicked += clicks.Add;
+        viewport.Clicked += (point, _) => clicks.Add(point);
         viewport.Orbited += (yaw, pitch) => orbits.Add((yaw, pitch));
         var window = new Window { Width = 200, Height = 100, Content = viewport };
         window.Show();

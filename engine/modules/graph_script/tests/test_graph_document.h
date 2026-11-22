@@ -188,6 +188,29 @@ TEST_CASE("[Stage][GraphScript] Find steps offers what fits a dragged flow wire"
 	CHECK(first["parameters"].get_type() == Variant::DICTIONARY);
 }
 
+TEST_CASE("[Stage][GraphScript] Find steps lists the ports each step will have") {
+	Ref<GraphScript> script;
+	script.instantiate();
+
+	const Array entries = JSON::parse_string(script->find_steps("branch", "", Variant::NIL, "flow"));
+	Dictionary branch;
+	for (const Variant &value : entries) {
+		const Dictionary entry = value;
+		if (entry["kind"] == Variant("branch")) {
+			branch = entry;
+		}
+	}
+	REQUIRE_FALSE(branch.is_empty());
+	const Array inputs = branch["inputs"];
+	const Array outputs = branch["outputs"];
+	REQUIRE(inputs.size() == 2);
+	CHECK(Dictionary(inputs[0])["sort"] == Variant("flow"));
+	CHECK(Dictionary(inputs[1])["name"] == Variant("condition"));
+	CHECK(int(Dictionary(inputs[1])["type"]) == Variant::BOOL);
+	REQUIRE(outputs.size() == 2);
+	CHECK(Dictionary(outputs[1])["name"] == Variant("else"));
+}
+
 TEST_CASE("[Stage][GraphScript] Find steps refuses a side or sort it does not know") {
 	Ref<GraphScript> script;
 	script.instantiate();

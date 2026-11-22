@@ -1,4 +1,7 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Theme;
@@ -17,8 +20,12 @@ public sealed class VectorRowTests
 
     static TextBlock[] Texts(VectorRow row) => [.. row.GetVisualDescendants().OfType<TextBlock>().Where(text => text.IsVisible)];
 
+    static Border[] Fields(VectorRow row) => [.. row.GetVisualDescendants().OfType<Border>().Where(border => border.Classes.Contains("num"))];
+
+    static Border TagOf(Border field) => (Border)((DockPanel)field.Child!).Children[0];
+
     [Fact]
-    public void A_row_is_a_label_over_a_dark_field_28_high()
+    public void A_row_is_a_label_beside_three_fields_28_high_and_4_apart()
     {
         UiThread.Run(() =>
         {
@@ -26,53 +33,49 @@ public sealed class VectorRowTests
             var row = Selected(window);
             var rowBox = BoxOf(row, window);
             var label = Texts(row).Single(text => text.Text == "Position");
-            var field = row.GetVisualDescendants().OfType<Border>().Single(border => border.Background == EditorBrushes.Field);
+            var fields = Fields(row).Select(field => BoxOf(field, window)).ToArray();
 
-            AssertBox(rowBox.X, rowBox.Y + 30, rowBox.Width, 28, BoxOf(field, window));
-            Assert.Equal(new Avalonia.CornerRadius(4), field.CornerRadius);
-            Assert.Equal(rowBox.X + 8, BoxOf(label, window).X);
-            Assert.Equal(59, rowBox.Height);
+            Assert.Equal(3, fields.Length);
+            Assert.All(fields, field => Assert.Equal((rowBox.Y + 1, 28d), (field.Y, field.Height)));
+            Assert.Equal(rowBox.X + 96 + 8, fields[0].X);
+            Near(rowBox.Right, fields[2].Right);
+            Near(fields[0].Right + 4, fields[1].X);
+            Near(fields[1].Right + 4, fields[2].X);
+            Assert.All(Fields(row), field => Assert.Equal(
+                (EditorBrushes.Field, EditorBrushes.Line, new Thickness(1), new CornerRadius(6)),
+                (field.Background, field.BorderBrush, field.BorderThickness, field.CornerRadius)));
+            Assert.Equal(rowBox.X, BoxOf(label, window).X);
+            Assert.Equal((12d, EditorBrushes.TextSoft), (label.FontSize, label.Foreground));
+            Assert.Equal(30, rowBox.Height);
         });
     }
 
     [Fact]
-    public void The_field_has_three_cells_with_the_letter_8_in_and_the_value_28_in()
+    public void Each_field_starts_with_an_18_pixel_tag_in_its_axis_colour_at_12_percent()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var row = Selected(window);
-            var field = BoxOf(row.GetVisualDescendants().OfType<Border>().Single(border => border.Background == EditorBrushes.Field), window);
-            var letters = Texts(row).Where(text => text.Text is "x" or "y" or "z").ToArray();
+            Color[] axes = [EditorColors.AxisX, EditorColors.AxisY, EditorColors.AxisZ];
 
-            Assert.Equal(["x", "y", "z"], letters.Select(text => text.Text));
             for (var i = 0; i < 3; i++)
             {
-                var cellX = field.X + field.Width / 3 * i;
-                Near(cellX + 8, BoxOf(letters[i], window).X + letters[i].Padding.Left);
-                Near(cellX + 28, BoxOf(row.Axes[i], window).X);
+                var field = BoxOf(Fields(row)[i], window);
+                var tag = TagOf(Fields(row)[i]);
+                var letter = (TextBlock)tag.Child!;
+
+                AssertBox(field.X + 1, field.Y + 1, 18, 26, BoxOf(tag, window));
+                Assert.Equal(Color.FromArgb(0x1F, axes[i].R, axes[i].G, axes[i].B), ((ISolidColorBrush)tag.Background!).Color);
+                Assert.Equal((new[] { "X", "Y", "Z" }[i], axes[i], FontWeight.Bold), (letter.Text, ((ISolidColorBrush)letter.Foreground!).Color, letter.FontWeight));
+                Assert.Equal(BoxOf(tag, window).Right, BoxOf(row.Axes[i], window).X);
+                Assert.Equal(6, row.Axes[i].Padding.Left);
             }
         });
     }
 
     [Fact]
-    public void The_letters_are_red_green_and_blue_and_the_unit_is_dim()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var row = Selected(window);
-
-            var colors = Texts(row).Where(text => text.Text is "x" or "y" or "z").Select(text => ((ISolidColorBrush)text.Foreground!).Color).ToArray();
-            var unit = Texts(row).First(text => text.Text == "m");
-
-            Assert.Equal([Color.Parse("#7b3d49"), Color.Parse("#6f8341"), Color.Parse("#436488")], colors);
-            Assert.Equal(Color.Parse("#606060"), ((ISolidColorBrush)unit.Foreground!).Color);
-        });
-    }
-
-    [Fact]
-    public void The_unit_follows_the_value_7_pixels_after_it()
+    public void The_unit_is_dim_and_ends_7_pixels_inside_its_field()
     {
         UiThread.Run(() =>
         {
@@ -83,8 +86,43 @@ public sealed class VectorRowTests
             Assert.Equal(3, units.Length);
             for (var i = 0; i < 3; i++)
             {
-                Assert.Equal(BoxOf(row.Axes[i], window).Right + 7, BoxOf(units[i], window).X);
+                Assert.Equal(BoxOf(Fields(row)[i], window).Right - 1 - 7, BoxOf(units[i], window).Right);
+                Assert.Equal(BoxOf(units[i], window).X, BoxOf(row.Axes[i], window).Right);
+                Assert.Equal(EditorColors.Unit, ((ISolidColorBrush)units[i].Foreground!).Color);
             }
+        });
+    }
+
+    [Fact]
+    public void A_long_value_stays_inside_its_field()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+            var before = Fields(row).Select(field => BoxOf(field, window)).ToArray();
+
+            row.Show(new System.Numerics.Vector3(123456789.125f, -0.000123456f, 98765.4321f));
+            window.UpdateLayout();
+
+            Assert.Equal(before, Fields(row).Select(field => BoxOf(field, window)));
+            Assert.All(Enumerable.Range(0, 3), i => Assert.True(BoxOf(row.Axes[i], window).Right <= BoxOf(Fields(row)[i], window).Right));
+        });
+    }
+
+    [Fact]
+    public void A_field_lights_its_edge_while_its_box_has_focus()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+
+            row.Axes[1].Focus();
+            window.UpdateLayout();
+
+            Assert.Equal([EditorBrushes.Line, EditorBrushes.Accent, EditorBrushes.Line], Fields(row).Select(field => field.BorderBrush));
+            Assert.Equal(new Thickness(0), row.Axes[1].GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_BorderElement").BorderThickness);
         });
     }
 
@@ -101,4 +139,149 @@ public sealed class VectorRowTests
             Assert.Equal("Rotation", window.Inspector.Rotation.Label);
         });
     }
+
+    [Fact]
+    public void A_field_rounds_its_value_at_rest_and_shows_it_in_full_with_the_caret()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+
+            row.Show(new System.Numerics.Vector3(0.99960005f, -29.75703f, 2));
+            Assert.Equal(["0.9996", "-29.757", "2"], row.Axes.Select(box => box.Text));
+
+            row.Axes[0].Focus();
+            Assert.Equal("0.99960005", row.Axes[0].Text);
+
+            row.Axes[1].Focus();
+            Assert.Equal(["0.9996", "-29.75703"], row.Axes.Take(2).Select(box => box.Text));
+        });
+    }
+
+    [Fact]
+    public void A_value_that_rounds_to_zero_from_below_shows_no_minus_sign()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var row = Selected(window);
+
+            row.Show(new System.Numerics.Vector3(-0.00001f, -0f, -0.0001f));
+
+            Assert.Equal(["0", "0", "-0.0001"], row.Axes.Select(box => box.Text));
+        });
+    }
+
+    [Fact]
+    public void Leaving_a_field_unchanged_writes_nothing_though_the_others_are_rounded()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var row = Selected(window);
+            row.Show(new System.Numerics.Vector3(0.99960005f, 2, 3));
+            var edited = 0;
+            row.Entered += _ => edited++;
+
+            row.Axes[1].Focus();
+            row.Axes[2].Focus();
+
+            Assert.Equal(0, edited);
+        });
+    }
+
+    [Fact]
+    public void Bad_text_stays_with_a_red_edge_and_the_scene_keeps_its_value()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var row = Selected(window);
+
+            row.Axes[1].Text = "1.0.2";
+            Enter(row.Axes[1]);
+
+            Assert.Equal(new System.Numerics.Vector3(1, 2, 3), scene.PositionOf(FakeScene.Lamp.Handle));
+            Assert.Equal("1.0.2", row.Axes[1].Text);
+            Assert.True(row.Fault.IsVisible);
+            Assert.Equal("Type a number.", row.Fault.Text);
+            Assert.Equal(EditorBrushes.FaultText, row.Fault.Foreground);
+            Assert.Equal([EditorBrushes.Line, EditorBrushes.Fault, EditorBrushes.Line], row.Fields.Select(field => field.BorderBrush));
+        });
+    }
+
+    [Fact]
+    public void A_good_number_clears_the_fault()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            var row = Selected(window);
+            row.Axes[1].Text = "high";
+            Enter(row.Axes[1]);
+
+            row.Axes[1].Text = "7";
+            Enter(row.Axes[1]);
+
+            Assert.Equal(new System.Numerics.Vector3(1, 7, 3), scene.PositionOf(FakeScene.Lamp.Handle));
+            Assert.False(row.Fault.IsVisible);
+            Assert.All(row.Fields, field => Assert.DoesNotContain("bad", field.Classes));
+        });
+    }
+
+    [Fact]
+    public void A_drag_across_a_tag_steps_its_axis_and_enters_the_value_once_when_it_ends()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, row) = Alone();
+            var entered = new List<System.Numerics.Vector3>();
+            row.Entered += entered.Add;
+            var at = BoxOf(TagOf(Fields(row)[0]), window).Center;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseMove(at + new Point(10, 0));
+
+            Assert.Equal("1.5", row.Axes[0].Text);
+            Assert.Empty(entered);
+
+            window.MouseUp(at + new Point(10, 0), MouseButton.Left);
+
+            Assert.Equal([new System.Numerics.Vector3(1.5f, 2, 3)], entered);
+        });
+    }
+
+    [Fact]
+    public void A_click_on_a_tag_with_no_drag_enters_nothing()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, row) = Alone();
+            row.Show(new System.Numerics.Vector3(0.99960005f, 2, 3));
+            var entered = new List<System.Numerics.Vector3>();
+            row.Entered += entered.Add;
+            var at = BoxOf(TagOf(Fields(row)[0]), window).Center;
+
+            window.MouseDown(at, MouseButton.Left);
+            window.MouseUp(at, MouseButton.Left);
+
+            Assert.Empty(entered);
+        });
+    }
+
+    static (Window Window, VectorRow Row) Alone()
+    {
+        var row = new VectorRow("Position", "m");
+        var window = new Window { Content = row, Width = 400, Height = 100 };
+        window.Show();
+        row.Show(new System.Numerics.Vector3(1, 2, 3));
+        window.UpdateLayout();
+        return (window, row);
+    }
+
+    static void Enter(TextBox box) => box.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.Enter });
 }

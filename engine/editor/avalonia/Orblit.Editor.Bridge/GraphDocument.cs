@@ -141,6 +141,12 @@ public sealed record GraphDocument(
 /// <summary>A step the palette offers. Parameters are the values the new step starts with, as Variant text.</summary>
 public sealed record GraphStepEntry(string Kind, string Group, string Label, IReadOnlyDictionary<string, string> Parameters)
 {
+    /// <summary>The inputs the new step will have. An entry the editor makes itself lists none.</summary>
+    public IReadOnlyList<GraphPort> Inputs { get; init; } = [];
+
+    /// <summary>The outputs the new step will have. An entry the editor makes itself lists none.</summary>
+    public IReadOnlyList<GraphPort> Outputs { get; init; } = [];
+
     /// <exception cref="InvalidDataException">The text is not a list the engine writes.</exception>
     public static IReadOnlyList<GraphStepEntry> ParseList(string json) => GraphJson.Read<List<GraphStepEntry>>(json);
 }

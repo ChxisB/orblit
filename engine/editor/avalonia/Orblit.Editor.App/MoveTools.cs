@@ -1,34 +1,41 @@
 using Avalonia;
 using Avalonia.Controls;
-using Avalonia.Layout;
+using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App;
 
-/// <summary>Moves the selected entity up or down among its siblings, or to the end of another parent.</summary>
-internal sealed class MoveTools : StackPanel
+/// <summary>
+/// Moves the selected entity up or down among its siblings, or through the Move under dialog to the end of
+/// another parent. Each command is a button, so the dock, its menus and a key press the same one.
+/// </summary>
+internal sealed class MoveTools
 {
-    readonly Button _up = new() { Content = "Up" };
-    readonly Button _down = new() { Content = "Down" };
-    readonly ComboBox _parent = new() { MinWidth = 160, PlaceholderText = "New parent" };
-    readonly Button _moveUnder = new() { Content = "Move under" };
-    List<(OutlineNode Entity, string Path)> _choices = [];
+    readonly ChoiceList _parents = new("Filter entities");
+    readonly ToggleSwitch _keepGlobal = new()
+    {
+        IsChecked = true,
+        OnContent = "Keep the global transform",
+        OffContent = "Keep the global transform",
+        FontSize = 12,
+        Foreground = EditorBrushes.TextSoft,
+        Margin = new Thickness(0, 10, 0, 0),
+    };
+    List<(Choice Choice, OutlineNode Entity, string Path)> _targets = [];
     IEditorScene? _scene;
+    OutlineNode? _root;
     OutlineNode? _selected;
 
     public MoveTools()
     {
-        Orientation = Orientation.Horizontal;
-        Spacing = 8;
-        Margin = new Thickness(8, 0, 8, 8);
-        Children.Add(_up);
-        Children.Add(_down);
-        Children.Add(_parent);
-        Children.Add(_moveUnder);
-        _up.Click += (_, _) => Run(() => Step(-1, "up"));
-        _down.Click += (_, _) => Run(() => Step(1, "down"));
-        _parent.SelectionChanged += (_, _) => _moveUnder.IsEnabled = _parent.SelectedIndex >= 0;
-        _moveUnder.Click += (_, _) => Run(MoveUnder);
+        Dialog = new Dialog("", "", new StackPanel { Children = { _parents, _keepGlobal } }) { CardWidth = 300, MainText = "Move" };
+        _parents.PickedChanged += () => Dialog.MainButton.IsEnabled = _parents.Picked is not null;
+        _keepGlobal.IsCheckedChanged += (_, _) => SayWhy();
+        UpButton.Click += (_, _) => Run(() => Step(-1, "up"));
+        DownButton.Click += (_, _) => Run(() => Step(1, "down"));
+        MoveUnderButton.Click += (_, _) => OpenMoveUnder();
+        Dialog.MainButton.Click += (_, _) => Run(MoveUnder);
         Show(null, null, null);
     }
 
@@ -38,27 +45,57 @@ internal sealed class MoveTools : StackPanel
     /// <summary>Raised with the reason when the scene refused a move.</summary>
     public event Action<string>? Failed;
 
-    internal Button UpButton => _up;
+    internal Button UpButton { get; } = new();
 
-    internal Button DownButton => _down;
+    internal Button DownButton { get; } = new();
 
-    internal ComboBox ParentBox => _parent;
+    /// <summary>Opens the Move under dialog for the selected entity.</summary>
+    internal Button MoveUnderButton { get; } = new();
 
-    internal Button MoveUnderButton => _moveUnder;
+    internal Dialog Dialog { get; }
+
+    internal ChoiceList ParentList => _parents;
+
+    internal ToggleSwitch KeepGlobal => _keepGlobal;
 
     public void Show(IEditorScene? scene, OutlineNode? root, OutlineNode? selected)
     {
         _scene = scene;
+        _root = root;
         _selected = selected;
         var parent = root is null || selected is null ? null : ParentOf(root, selected);
         var place = parent?.Children.ToList().IndexOf(selected!) ?? -1;
-        _up.IsEnabled = place > 0;
-        _down.IsEnabled = parent is not null && place < parent.Children.Count - 1;
-        _choices = parent is null ? [] : Choices(root!, selected!, parent);
-        _parent.ItemsSource = _choices.Select(choice => choice.Path).ToList();
-        _parent.SelectedIndex = -1;
-        _moveUnder.IsEnabled = false;
+        UpButton.IsEnabled = place > 0;
+        DownButton.IsEnabled = parent is not null && place < parent.Children.Count - 1;
+        MoveUnderButton.IsEnabled = parent is not null;
     }
+
+    static OutlineNode? ParentOf(OutlineNode node, OutlineNode child) =>
+        node.Children.Contains(child) ? node : node.Children.Select(next => ParentOf(next, child)).FirstOrDefault(found => found is not null);
+
+    // The tree without the selected entity and what is under it. The parent it has now is listed but off.
+    void OpenMoveUnder()
+    {
+        var parent = ParentOf(_root!, _selected!);
+        _targets = [.. Tree(_root!, _root!.Name, 0)
+            .Where(target => _selected!.Find(target.Entity.Handle) is null)
+            .Select(target => (new Choice(EditorIcons.ForClass(target.Entity.ClassName), target.Entity.Name)
+            {
+                Tint = EditorBrushes.TreeIcon,
+                Depth = target.Depth,
+                Off = target.Entity == parent,
+            }, target.Entity, target.Path))];
+        Dialog.Title = $"Move {_selected!.Name} under";
+        _keepGlobal.IsChecked = true;
+        SayWhy();
+        _parents.Show([.. _targets.Select(target => target.Choice)]);
+        Dialog.Open();
+        _parents.SearchBox.Focus();
+    }
+
+    void SayWhy() => Dialog.Why.Text = _keepGlobal.IsChecked == true
+        ? $"{_selected?.Name} keeps its place in the world."
+        : $"{_selected?.Name} keeps its local transform under the new parent.";
 
     void Run(Func<EntityEdit> change)
     {
@@ -78,21 +115,17 @@ internal sealed class MoveTools : StackPanel
         return new EntityEdit(_selected.Handle, $"Moved {_selected.Name} {word}.");
     }
 
+    // Two entities can share a name and a depth, so the lit choice is found by reference, not by value.
     EntityEdit MoveUnder()
     {
-        var target = _choices[_parent.SelectedIndex];
-        _scene!.Reparent(_selected!.Handle, target.Entity.Handle);
+        var picked = _parents.Picked!;
+        var target = _targets.Single(target => ReferenceEquals(target.Choice, picked));
+        _scene!.Reparent(_selected!.Handle, target.Entity.Handle, _keepGlobal.IsChecked == true);
+        Dialog.Close();
         return new EntityEdit(_selected.Handle, $"Moved {_selected.Name} under {target.Path}.");
     }
 
-    // Every entity but the selected one, what is under it and where it already is. The path is the names
-    // from the scene root down, for example Field/Lamp.
-    static List<(OutlineNode Entity, string Path)> Choices(OutlineNode root, OutlineNode selected, OutlineNode parent) =>
-        All(root, root.Name).Where(choice => choice.Entity != parent && selected.Find(choice.Entity.Handle) is null).ToList();
-
-    static IEnumerable<(OutlineNode Entity, string Path)> All(OutlineNode node, string path) =>
-        node.Children.SelectMany(child => All(child, $"{path}/{child.Name}")).Prepend((node, path));
-
-    static OutlineNode? ParentOf(OutlineNode node, OutlineNode child) =>
-        node.Children.Contains(child) ? node : node.Children.Select(next => ParentOf(next, child)).FirstOrDefault(found => found is not null);
+    // Every entity from the root down, parents first. The path is the names from the root, for example Field/Lamp.
+    internal static IEnumerable<(OutlineNode Entity, string Path, int Depth)> Tree(OutlineNode node, string path, int depth) =>
+        node.Children.SelectMany(child => Tree(child, $"{path}/{child.Name}", depth + 1)).Prepend((node, path, depth));
 }

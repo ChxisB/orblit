@@ -58,6 +58,18 @@ public sealed class ProjectScriptsTests : IDisposable
         Assert.Equal(["res://enemies/boss.ograph", "res://logic.ograph"], ProjectScripts.FindGraphs(_folder));
     }
 
+    [Fact]
+    public void Imported_files_are_named_by_their_import_file_and_the_cache_is_left_out()
+    {
+        Touch("rock.glb");
+        Touch("rock.glb.import");
+        Touch("art/sky.png.import");
+        Touch(".orblit/imported/rock.glb.import");
+
+        Assert.Equal(["res://art/sky.png", "res://rock.glb"], ProjectScripts.FindImported(_folder));
+        Assert.EndsWith(Path.Combine("art", "sky.png.import"), ProjectScripts.FileOf(_folder, "res://art/sky.png.import", ImportFile.Suffix));
+    }
+
     [Theory]
     [InlineData("res://spin.cs", "spin.cs")]
     [InlineData("res://enemies/deep/boss.cs", "enemies/deep/boss.cs")]
@@ -104,5 +116,35 @@ public sealed class ProjectScriptsTests : IDisposable
     public void A_project_with_no_script_lists_none()
     {
         Assert.Empty(ProjectScripts.Find(_folder));
+    }
+
+    [Fact]
+    public void Create_writes_a_class_of_the_file_name_that_extends_the_base()
+    {
+        ProjectScripts.Create(_folder, "res://enemies/Slime.cs", "Entity3D");
+
+        var text = File.ReadAllText(Path.Combine(_folder, "enemies", "Slime.cs"));
+        Assert.Contains("public partial class Slime : Entity3D", text, StringComparison.Ordinal);
+        Assert.Contains("OnFrame(double delta)", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Create_refuses_a_file_that_exists_and_leaves_it_as_it_was()
+    {
+        Touch("Slime.cs");
+
+        Assert.Throws<IOException>(() => ProjectScripts.Create(_folder, "res://Slime.cs", "Entity"));
+        Assert.Equal("", File.ReadAllText(Path.Combine(_folder, "Slime.cs")));
+    }
+
+    [Theory]
+    [InlineData("res://2fast.cs")]
+    [InlineData("res://my-script.cs")]
+    public void Create_refuses_a_name_that_is_no_class_name(string resourcePath)
+    {
+        var error = Assert.Throws<ArgumentException>(() => ProjectScripts.Create(_folder, resourcePath, "Entity"));
+
+        Assert.Contains("is no C# class name", error.Message, StringComparison.Ordinal);
+        Assert.Empty(Directory.GetFiles(_folder));
     }
 }

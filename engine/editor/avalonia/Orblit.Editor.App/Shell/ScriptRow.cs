@@ -7,7 +7,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The Script row at the foot of the inspector: a label and a field that names the attached script's file. The
-/// field opens a menu of the project's scripts and Clear.
+/// field opens the slot menu: the project's scripts, then New Script, Load, Edit and Clear.
 /// </summary>
 internal sealed class ScriptRow : Grid
 {
@@ -49,6 +49,12 @@ internal sealed class ScriptRow : Grid
 
     public event Action? Cleared;
 
+    /// <summary>Raised by Load, which asks for a script to attach.</summary>
+    public event Action? Loading;
+
+    /// <summary>Raised by Edit with the res:// path of the attached script.</summary>
+    public event Action<string>? Editing;
+
     /// <summary>Lists the scripts the menu offers. It is read each time the menu opens.</summary>
     public Func<IReadOnlyList<string>> Choices { get; set; } = () => [];
 
@@ -74,9 +80,14 @@ internal sealed class ScriptRow : Grid
             _menu.Items.Add(item);
         }
         _menu.Items.Add(new Separator());
-        var clear = new MenuItem { Header = "Clear", IsEnabled = _attached is not null };
-        clear.Click += (_, _) => Cleared?.Invoke();
+        _menu.Items.Add(Parts.SoonItem("New Script...", Field));
+        _menu.Items.Add(Parts.ActionItem("Load...", () => Loading?.Invoke()));
+        var edit = Parts.ActionItem("Edit", () => Editing?.Invoke(_attached!));
+        _menu.Items.Add(edit);
+        var clear = Parts.ActionItem("Clear", () => Cleared?.Invoke());
         _menu.Items.Add(clear);
+        // Edit and Clear need a script, and the menu is filled each time it opens.
+        edit.IsEnabled = clear.IsEnabled = _attached is not null;
     }
 
     // The text, then the load icon and the dropdown arrow 9 pixels apart.

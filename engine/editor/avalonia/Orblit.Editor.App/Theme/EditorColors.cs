@@ -2,36 +2,115 @@ using Avalonia.Media;
 
 namespace Orblit.Editor.App.Theme;
 
-/// <summary>The editor's colors. Each value was measured on the reference editor, see editor-parity REFERENCE.md.</summary>
+/// <summary>The editor's colors. Every brush and style in the shell is made from these.</summary>
 internal static class EditorColors
 {
-    public static readonly Color Window = Color.Parse("#141414");
-    public static readonly Color Panel = Color.Parse("#2a2a2a");
-    public static readonly Color Field = Color.Parse("#1c1c1c");
-    public static readonly Color InspectorField = Color.Parse("#212121");
-    public static readonly Color ActiveTool = Color.Parse("#424242");
-    public static readonly Color SelectedRow = Color.Parse("#494949");
-    public static readonly Color Text = Color.Parse("#c5c5c5");
-    public static readonly Color TextDim = Color.Parse("#7a7a7a");
-    public static readonly Color Accent = Color.Parse("#559eff");
-    // The tree icons keep the colour they are drawn in, and a folder is that colour times the accent.
-    public static readonly Color TreeIcon = Color.Parse("#e0e0e0");
-    public static readonly Color FolderIcon = Color.Parse("#7ea8e1");
-    public static readonly Color TabInactive = Color.Parse("#959595");
-    public static readonly Color BarSeparator = Color.Parse("#191919");
-    public static readonly Color OutputDot = Color.Parse("#9d8d5c");
-    public static readonly Color AxisX = Color.Parse("#7b3d49");
-    public static readonly Color AxisY = Color.Parse("#6f8341");
-    public static readonly Color AxisZ = Color.Parse("#436488");
-    public static readonly Color Unit = Color.Parse("#606060");
-    public static readonly Color ClassBar = Color.Parse("#393939");
-    public static readonly Color Chip = Color.Parse("#3d3d3d");
-    // The lines that join a tree row to its parent. The lit ones follow the path to the selected row.
-    public static readonly Color Guide = Color.Parse("#343434");
-    public static readonly Color GuideStub = Color.Parse("#3f3f3f");
-    public static readonly Color GuideLit = Color.Parse("#545454");
+    // Surfaces, darkest first. The ground shows in the gaps between the islands.
+    public static readonly Color Window = Color.Parse("#0A0C10");
+    public static readonly Color Field = Color.Parse("#0D1015");
+    public static readonly Color ClassBar = Color.Parse("#0F1217");
+    public static readonly Color Panel = Color.Parse("#12151B");
 
-    // Not measured: the reference was captured with the pointer away. Close to the panel so it reads as a nudge.
-    public static readonly Color Hover = Color.Parse("#363636");
-    public static readonly Color Disabled = Color.Parse("#6e6e6e");
+    // The island fill at 90 percent, for the pills that float over the viewport.
+    public static readonly Color Floating = Color.Parse("#E612151B");
+
+    public static readonly Color Popover = Color.Parse("#161A21");
+    public static readonly Color Raised = Color.Parse("#1A1E26");
+    public static readonly Color Lifted = Color.Parse("#242A35");
+
+    // An island's edge and the fill under a pointer are one tone, so a hover reads as the edge coming forward.
+    public static readonly Color Line = Color.Parse("#1E232C");
+    public static readonly Color Hover = Line;
+    public static readonly Color LineStrong = Color.Parse("#262C37");
+
+    public static readonly Color Text = Color.Parse("#E8EBF0");
+    public static readonly Color TextSoft = Color.Parse("#AAB2BF");
+    public static readonly Color TextDim = Color.Parse("#858F9D");
+
+    // A panel tab whose panel is not built yet, a step under the dim text.
+    public static readonly Color Unbuilt = Color.Parse("#5C6573");
+    public static readonly Color Unit = Color.Parse("#6B7482");
+    public static readonly Color Disabled = Color.Parse("#4A525F");
+
+    // The fill of a worded button that is off, a step over the panel, so it reads as a button but not as one to press.
+    public static readonly Color DisabledFill = Color.Parse("#14171D");
+
+    // The one accent. Its soft step fills a lit tool and a chosen row, so accent text on it stays readable.
+    public static readonly Color Accent = Color.Parse("#E5893F");
+    public static readonly Color AccentSoft = Color.Parse("#29E5893F");
+
+    public static readonly Color AxisX = Color.Parse("#FF6B78");
+    public static readonly Color AxisY = Color.Parse("#8BD450");
+    public static readonly Color AxisZ = Color.Parse("#5AA2FF");
+
+    public static readonly Color Warn = Color.Parse("#F2B33D");
+
+    // The fill of a Soon pill, so the warm word reads on it.
+    public static readonly Color WarnSoft = Color.Parse("#1AF2B33D");
+
+    // A job that went through and one that did not. A danger button takes the fault in a lighter text and a faint edge.
+    public static readonly Color Done = Color.Parse("#4CC38A");
+    public static readonly Color DoneSoft = Color.Parse("#1F4CC38A");
+    public static readonly Color Fault = Color.Parse("#FF5C6C");
+    public static readonly Color FaultText = Color.Parse("#FF8A96");
+    public static readonly Color FaultEdge = Color.Parse("#55FF5C6C");
+
+    // The ring round a field with a fault, as the soft accent rings a focused one.
+    public static readonly Color FaultSoft = Color.Parse("#22FF5C6C");
+
+    // The colour of a 3D class and a 2D class where a dialog marks which kind a root or a base is.
+    public static readonly Color Spatial = Color.Parse("#F27D8A");
+    public static readonly Color Planar = Color.Parse("#6FA8FF");
+
+    // A scene file where a list mixes it with other rows, such as the command palette.
+    public static readonly Color SceneIcon = Color.Parse("#F0A365");
+
+    // A C# script and a graph script where a list mixes them with scenes, such as the FileSystem dock.
+    public static readonly Color ScriptIcon = Color.Parse("#8DB8FF");
+    public static readonly Color GraphIcon = Color.Parse("#7FD4C1");
+
+    // Text on an accent fill. White on the orange reads too thin.
+    public static readonly Color OnAccent = Color.Parse("#1B0F06");
+
+    // A key cap on an accent button. A gray cap would dull the orange, so this darkens what is under it.
+    public static readonly Color Shade = Color.Parse("#1F000000");
+
+    // The shade over the editor behind a dialog. The design draws none, so this one is ours.
+    public static readonly Color Veil = Color.Parse("#8C05070A");
+
+    // The tree icons keep the colour they are drawn in, and a folder is that colour times the accent.
+    public static readonly Color TreeIcon = Color.Parse("#C9CFD8");
+    public static readonly Color FolderIcon = Color.Parse("#B56F35");
+
+    // The lines that join a tree row to its parent. The lit ones follow the path to the selected row.
+    public static readonly Color Guide = Line;
+    public static readonly Color GuideStub = LineStrong;
+    public static readonly Color GuideLit = Color.Parse("#3A414C");
+
+    // The rulers of the 2D view. A major tick is as strong as off text, and the labels take the unit colour.
+    public static readonly Color Ruler = Color.Parse("#101318");
+    public static readonly Color RulerEdge = Color.Parse("#232831");
+    public static readonly Color RulerTick = GuideLit;
+    public static readonly Color RulerMajor = Disabled;
+
+    // The grid of the 2D view, with its two world axes in the axis colors at the grid's strength.
+    public static readonly Color GridLine = Color.Parse("#66232933");
+    public static readonly Color GridAxisX = Color.Parse("#66FF6B78");
+    public static readonly Color GridAxisY = Color.Parse("#668BD450");
+
+    // What fills the 2D view while it says the scene has nothing for it.
+    public static readonly Color Stage = Color.Parse("#15181E");
+
+    // The script text area sits deeper than its island, and the line with the caret lifts by a trace of white.
+    public static readonly Color Code = Color.Parse("#0E1116");
+    public static readonly Color CodeLine = Color.Parse("#08FFFFFF");
+
+    // The colors of C# text. A type shares the graph mark's teal and a function the script mark's blue.
+    public static readonly Color CodeKeyword = Color.Parse("#FF9E64");
+    public static readonly Color CodeType = GraphIcon;
+    public static readonly Color CodeString = Color.Parse("#B5D67A");
+    public static readonly Color CodeNumber = Warn;
+    public static readonly Color CodeComment = Unbuilt;
+    public static readonly Color CodeFunction = ScriptIcon;
+    public static readonly Color CodeAttribute = Color.Parse("#C792EA");
 }

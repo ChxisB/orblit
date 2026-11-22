@@ -1,6 +1,6 @@
 namespace Orblit.Editor.App;
 
-/// <summary>Finds the C# script files and the graph script files of a project folder.</summary>
+/// <summary>Finds the C# script files, the graph script files and the imported files of a project folder.</summary>
 internal static class ProjectScripts
 {
     const string Prefix = "res://";
@@ -16,6 +16,10 @@ internal static class ProjectScripts
 
     /// <summary>The res:// path of every graph script under the folder, in order.</summary>
     public static IReadOnlyList<string> FindGraphs(string project) => FindMatching(project, GraphPattern);
+
+    /// <summary>The res:// path of every file the engine imports, found by the .import file beside it, in order.</summary>
+    public static IReadOnlyList<string> FindImported(string project) =>
+        [.. FindMatching(project, "*" + ImportFile.Suffix).Select(path => path[..^ImportFile.Suffix.Length])];
 
     /// <summary>
     /// The file on disk for a res:// path that ends in the extension, which is a C# file unless asked otherwise. Throws
@@ -37,6 +41,43 @@ internal static class ProjectScripts
         }
 
         return file;
+    }
+
+    /// <summary>
+    /// Writes a new C# script whose class takes the file's name and extends the base, with the two methods an entity
+    /// fills most. Throws <see cref="ArgumentException"/> for a name that is no C# class name, and
+    /// <see cref="IOException"/> when the file exists already.
+    /// </summary>
+    public static void Create(string project, string resourcePath, string baseType)
+    {
+        var file = FileOf(project, resourcePath);
+        var name = Path.GetFileNameWithoutExtension(file);
+        if (name.Length == 0 || char.IsDigit(name[0]) || !name.All(letter => char.IsLetterOrDigit(letter) || letter == '_'))
+        {
+            throw new ArgumentException($"{name} is no C# class name. Use letters, digits and _, and start with no digit.", nameof(resourcePath));
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(file) ?? project);
+        // CreateNew refuses a file that is there, so a script made since the list was read keeps its text.
+        using var writer = new StreamWriter(new FileStream(file, FileMode.CreateNew));
+        writer.Write($$"""
+            using Orblit;
+            using System;
+
+            public partial class {{name}} : {{baseType}}
+            {
+                // Called when the entity enters the stage for the first time.
+                public override void OnStart()
+                {
+                }
+
+                // Called every frame. 'delta' is the time since the frame before, in seconds.
+                public override void OnFrame(double delta)
+                {
+                }
+            }
+
+            """);
     }
 
     static List<string> FindMatching(string project, string pattern)

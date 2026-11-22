@@ -65,11 +65,11 @@ cause is unknown. It now counts non-zero exits.
 - **The editor start is the largest fixed cost.** User CPU is about 1.0 s and
   RSS is about 886 MB for an empty project. A dev-build sample puts the most
   time in `Stage::initialize`, which enters and readies the editor UI tree,
-  and then in `Stage::finalize`. Task 17 removes that C++ editor UI, so it is
-  not optimized here.
+  and then in `Stage::finalize`. That C++ editor UI is planned for removal,
+  so it is not optimized here.
 - **A Finder launch adds about 0.6 s.** With `TERM` unset, the editor reads
   the user's shell environment on start. The zsh profile alone takes 0.6 s
-  here, and the editor takes 0.6 to 0.7 s longer without `TERM`. See decision 194.
+  here, and the editor takes 0.6 to 0.7 s longer without `TERM`.
 
 ## Change kept
 
@@ -89,8 +89,8 @@ suite still has 1407 cases and 359,288 assertions, all passing.
 
 | Candidate | Why it stays |
 | --- | --- |
-| Run the shell-environment load on a thread or lazily | `setenv` is not thread-safe, and the gain shows only on a Finder launch, which this machine could not test. Decision 194. |
-| Speed up the C++ editor UI start | Task 17 removes that UI. |
+| Run the shell-environment load on a thread or lazily | `setenv` is not thread-safe, and the gain shows only on a Finder launch, which this machine could not test. |
+| Speed up the C++ editor UI start | That UI is planned for removal. |
 | A clock seam in `RotatedFileLogger` | The counter fixes the cause. A seam adds API only for a test. |
 | Web `optimize=speed` | It costs about 5 MiB of wasm per the note in `detect.py`, and no real-browser frame time exists to show a gain. |
 

@@ -30,7 +30,7 @@ internal sealed class FakeScene : IEditorScene
 
     public int Saves { get; private set; }
 
-    public bool SaveFails { get; init; }
+    public bool SaveFails { get; set; }
 
     public bool OpenFails { get; init; }
 
@@ -111,6 +111,111 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>The metadata of each entity, in the order it was set.</summary>
     public Dictionary<nint, List<MetaEntry>> Metadata { get; } = [];
 
+    // The engine's class tree for the classes the tests add. Any other class comes straight from Entity.
+    static readonly Dictionary<string, string> s_parents = new()
+    {
+        ["Camera3D"] = "Entity3D",
+        ["MeshInstance3D"] = "GeometryInstance3D",
+        ["GeometryInstance3D"] = "VisualInstance3D",
+        ["DirectionalLight3D"] = "Light3D",
+        ["Light3D"] = "VisualInstance3D",
+        ["VisualInstance3D"] = "Entity3D",
+        ["Marker3D"] = "Entity3D",
+        ["Entity3D"] = "Entity",
+        ["Entity2D"] = "CanvasItem",
+        ["ColorRect"] = "Control",
+        ["Control"] = "CanvasItem",
+        ["CanvasItem"] = "Entity",
+    };
+
+    // A few of the engine's properties for each class, with its groups, hints and first values.
+    static readonly Dictionary<string, EntityProperty[]> s_properties = new()
+    {
+        ["Entity"] =
+        [
+            new("Entity", "Run", "run_mode", 2, 0L) { Hint = 2, HintString = "Inherit,Pausable,When Paused,Always,Disabled" },
+            new("Entity", "Run", "run_priority", 2, 0L),
+            new("Entity", "Physics Interpolation", "physics_interpolation_mode", 2, 0L) { Hint = 2, HintString = "Inherit,On,Off" },
+            new("Entity", "Auto Translate", "auto_translate_mode", 2, 0L) { Hint = 2, HintString = "Inherit,Always,Disabled" },
+            new("Entity", "Editor Description", "editor_description", 4, "") { Hint = 18 },
+        ],
+        ["Entity3D"] =
+        [
+            new("Entity3D", "Transform", "position", 9, Vector3.Zero) { HintString = "suffix:m" },
+            new("Entity3D", "Transform", "top_level", 1, false),
+            new("Entity3D", "Visibility", "visible", 1, true),
+        ],
+        ["Light3D"] = [new("Light3D", "Light", "light_color", 20, Vector4.One) { Hint = 21 }],
+        ["Camera3D"] =
+        [
+            new("Camera3D", "", "cull_mask", 2, 1048575L) { Hint = 10 },
+            new("Camera3D", "", "environment", 24, null) { Hint = 17, HintString = "Environment" },
+            new("Camera3D", "", "projection", 2, 0L) { Hint = 2, HintString = "Perspective,Orthogonal,Frustum" },
+            new("Camera3D", "", "current", 1, false),
+            new("Camera3D", "", "fov", 3, 75.0) { Hint = 1, HintString = "1,179,0.1,degrees" },
+            new("Camera3D", "", "frustum_offset", 5, Vector2.Zero) { HintString = "suffix:m" },
+            new("Camera3D", "", "near", 3, 0.05) { Hint = 1, HintString = "0.001,10,0.001,or_greater,exp,suffix:m" },
+            new("Camera3D", "", "far", 3, 4000.0) { Hint = 1, HintString = "0.01,4000,0.01,or_greater,exp,suffix:m" },
+        ],
+    };
+
+    /// <summary>Every property value the window set, by entity and name.</summary>
+    public Dictionary<(nint Entity, string Name), object> PropertyValues { get; } = [];
+
+    public IReadOnlyList<string> ClassChainOf(nint entity)
+    {
+        List<string> chain = [_root.Find(entity)!.ClassName];
+        while (chain[^1] != "Entity")
+        {
+            chain.Add(s_parents.GetValueOrDefault(chain[^1], "Entity"));
+        }
+        return chain;
+    }
+
+    public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) =>
+    [
+        .. ClassChainOf(entity).Reverse()
+            .SelectMany(className => s_properties.GetValueOrDefault(className, []))
+            .Select(property => PropertyValues.TryGetValue((entity, property.Name), out var value) ? property with { Value = value } : property),
+    ];
+
+    public void SetProperty(nint entity, string name, object value) => PropertyValues[(entity, name)] = value;
+
+    /// <summary>Each entity whose resources were made unique, in order.</summary>
+    public List<nint> MadeUnique { get; } = [];
+
+    public void MakeResourcesUnique(nint entity) => MadeUnique.Add(entity);
+
+    // A few signals of each class, as the engine lists them. A script adds one of its own.
+    static readonly Dictionary<string, (string Name, string[] Arguments)[]> s_signals = new()
+    {
+        ["Entity3D"] = [("visibility_changed", [])],
+        ["Entity"] = [("child_entered_stage", ["entity"]), ("renamed", [])],
+    };
+
+    /// <summary>The saved connections, in the order they were made.</summary>
+    public List<(nint Entity, string Signal, nint Target, string Method)> Links { get; } = [];
+
+    public IReadOnlyList<EntitySignal> SignalsOf(nint entity) =>
+    [
+        .. ClassChainOf(entity)
+            .SelectMany(className => s_signals.GetValueOrDefault(className, []).Select(signal => (Class: className, signal.Name, signal.Arguments)))
+            .Concat(Scripted.ContainsKey(entity) ? [("", "hit", ["damage"])] : [])
+            .OrderBy(signal => signal.Name, StringComparer.Ordinal)
+            .Select(signal => new EntitySignal(signal.Class, signal.Name, signal.Arguments, [.. Links.Where(link => link.Entity == entity && link.Signal == signal.Name).Select(link => new SignalConnection(link.Target, link.Method))])),
+    ];
+
+    public void Connect(nint entity, string signal, nint target, string method)
+    {
+        if (Links.Contains((entity, signal, target, method)))
+        {
+            throw new InvalidOperationException($"The engine could not connect {signal} to {method}, error 22.");
+        }
+        Links.Add((entity, signal, target, method));
+    }
+
+    public void Disconnect(nint entity, string signal, nint target, string method) => Links.Remove((entity, signal, target, method));
+
     public bool MetadataFails { get; init; }
 
     public IReadOnlyList<MetaEntry> MetadataOf(nint entity) => Metadata.TryGetValue(entity, out var list) ? [.. list] : [];
@@ -152,6 +257,9 @@ internal sealed class FakeScene : IEditorScene
 
     public IReadOnlyList<string> GraphScripts() => [.. Graphs.Keys];
 
+    /// <summary>The common classes of the Add dialog and one more, by name, as the engine gives them.</summary>
+    public IReadOnlyList<string> AddableClasses() => ["Camera3D", "ColorRect", "DirectionalLight3D", "Entity", "Entity2D", "Entity3D", "Marker3D", "MeshInstance3D", "Timer"];
+
     public IGraphFile OpenGraph(string resourcePath) =>
         Graphs.TryGetValue(resourcePath, out var graph) ? graph : throw new IOException($"No {resourcePath}.");
 
@@ -171,6 +279,90 @@ internal sealed class FakeScene : IEditorScene
 
     public void WriteBreakpoints(string text) => BreakpointText = text;
 
+    /// <summary>The text of each imported file's .import file, by the imported file's path.</summary>
+    public Dictionary<string, string> ImportText { get; } = [];
+
+    public int Reimports { get; private set; }
+
+    public IReadOnlyList<string> ImportedFiles() => [.. ImportText.Keys];
+
+    public string ReadImport(string resourcePath) =>
+        ImportText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.import.");
+
+    public void WriteImport(string resourcePath, string text) => ImportText[resourcePath] = text;
+
+    public void Reimport() => Reimports++;
+
+    /// <summary>The zips Install from File unpacked, in order.</summary>
+    public List<string> Kits { get; } = [];
+
+    /// <summary>When set, an install throws this.</summary>
+    public Exception? KitFault { get; set; }
+
+    public void InstallKit(string zipFile)
+    {
+        if (KitFault is not null)
+        {
+            throw KitFault;
+        }
+        Kits.Add(zipFile);
+    }
+
+    /// <summary>The presets the project's export_presets.cfg holds.</summary>
+    public List<ExportPreset> ExportList { get; } = [];
+
+    public int PresetsAdded { get; private set; }
+
+    /// <summary>The exports run, as preset and path.</summary>
+    public List<(string Preset, string Path)> Exports { get; } = [];
+
+    /// <summary>When set, an export fails with this.</summary>
+    public Exception? ExportFault { get; set; }
+
+    /// <summary>The .tpz files installed, in order.</summary>
+    public List<string> Templates { get; } = [];
+
+    /// <summary>When set, a template install throws this.</summary>
+    public Exception? TemplateFault { get; set; }
+
+    public IReadOnlyList<ExportPreset> Presets() => [.. ExportList];
+
+    public void AddPreset()
+    {
+        PresetsAdded++;
+        ExportList.Add(new ExportPreset(ExportPresets.ThisComputer.Platform, ExportPresets.ThisComputer.Platform, "/games/a/build/Game"));
+    }
+
+    public void InstallTemplates(string tpz)
+    {
+        if (TemplateFault is not null)
+        {
+            throw TemplateFault;
+        }
+        Templates.Add(tpz);
+    }
+
+    public int Downloads { get; private set; }
+
+    /// <summary>When set, a template download fails with this.</summary>
+    public Exception? DownloadFault { get; set; }
+
+    public Task DownloadTemplates()
+    {
+        Downloads++;
+        return DownloadFault is null ? Task.CompletedTask : Task.FromException(DownloadFault);
+    }
+
+    public Task Export(string preset, string path)
+    {
+        Exports.Add((preset, path));
+        return ExportFault is null ? Task.CompletedTask : Task.FromException(ExportFault);
+    }
+
+    public Task<IReadOnlyList<ScriptProblem>> CheckScripts() => Task.FromResult<IReadOnlyList<ScriptProblem>>([]);
+
+    public IReadOnlyList<string> ScriptReferences() => [];
+
     public string ReadScript(string resourcePath) =>
         ScriptText.TryGetValue(resourcePath, out var text) ? text : throw new IOException($"No {resourcePath}.");
 
@@ -184,6 +376,8 @@ internal sealed class FakeScene : IEditorScene
         ScriptsWritten.Add((resourcePath, text));
         ScriptText[resourcePath] = text;
     }
+
+    public void CreateScript(string resourcePath, string baseType) => WriteScript(resourcePath, $"class {baseType}Script : {baseType} {{ }}");
 
     public void AttachScript(nint entity, string resourcePath)
     {
@@ -212,6 +406,8 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>True from a Play until a Stop. A test sets it false for a game that ended on its own.</summary>
     public bool IsPlaying { get; set; }
 
+    public int? GameId => IsPlaying ? 4242 : null;
+
     /// <summary>The breakpoints the last Play was given.</summary>
     public List<(string Source, int Step)> PlayedWith { get; } = [];
 
@@ -223,7 +419,18 @@ internal sealed class FakeScene : IEditorScene
 
     public IDebugChannel Debug => Channel;
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints)
+    /// <summary>What the running game's C# said.</summary>
+    public FakeDebugChannel CsharpChannel { get; } = new();
+
+    public IDebugChannel Csharp => CsharpChannel;
+
+    /// <summary>The code breakpoints the last Play was given.</summary>
+    public List<(string Source, int Line)> PlayedWithCode { get; } = [];
+
+    /// <summary>The engine flags of the last play.</summary>
+    public List<string> PlayedFlags { get; } = [];
+
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
     {
         if (PlayError is not null)
         {
@@ -233,6 +440,10 @@ internal sealed class FakeScene : IEditorScene
         Plays++;
         PlayedWith.Clear();
         PlayedWith.AddRange(breakpoints);
+        PlayedWithCode.Clear();
+        PlayedWithCode.AddRange(codeBreakpoints);
+        PlayedFlags.Clear();
+        PlayedFlags.AddRange(flags);
         IsPlaying = true;
     }
 
@@ -287,6 +498,21 @@ internal sealed class FakeScene : IEditorScene
         return PickResult;
     }
 
+    /// <summary>What a click picks with Select from a list, nearest first.</summary>
+    public List<nint> PickAllResult { get; } = [];
+
+    public IReadOnlyList<nint> PickAllAt(Vector2 framePoint) => PickAllResult;
+
+    /// <summary>A frame point (x, y) lands on the ground at (x, 0, y), so a ruler measures frame pixels.</summary>
+    public Vector3? WorldPointAt(Vector2 framePoint) => new Vector3(framePoint.X, 0, framePoint.Y);
+
+    public Vector2? FramePointOf(Vector3 world) => new Vector2(world.X, world.Z);
+
+    /// <summary>Each time the window switched the preview lights, in order.</summary>
+    public List<(bool Sun, bool Sky)> Previews { get; } = [];
+
+    public void ShowPreviews(bool sun, bool sky) => Previews.Add((sun, sky));
+
     /// <summary>Each time the window turned the 2D view on (true) or off (false), in order.</summary>
     public List<bool> Planar { get; } = [];
 
@@ -316,14 +542,32 @@ internal sealed class FakeScene : IEditorScene
         return Pivots.TryGetValue(entity, out var pivot) ? pivot : null;
     }
 
+    public PlanarView PlanarView { get; set; } = PlanarView.Start;
+
+    /// <summary>An entity with a pivot is an Entity2D, so the 2D view draws it.</summary>
+    public bool IsCanvasItem(nint entity) => Pivots.ContainsKey(entity);
+
     /// <summary>Every 2D move the window made, in order.</summary>
     public List<(nint Entity, Vector2 Pixels)> PlanarMoved { get; } = [];
 
     public void MovePlanar(nint entity, FrameMove move)
     {
         PlanarMoved.Add((entity, move.Delta));
+        SnapsSeen.Add(Snap);
         Pivots[entity] += move.Delta;
     }
+
+    /// <summary>Every 2D rotate and scale drag the window made, in order, as the verb and the entity.</summary>
+    public List<(string Verb, nint Entity)> PlanarDrags { get; } = [];
+
+    public void RotatePlanar(nint entity, FrameMove move) => PlanarDrags.Add(("Rotate", entity));
+
+    public void ScalePlanar(nint entity, FrameMove move) => PlanarDrags.Add(("Scale", entity));
+
+    /// <summary>The pivot stands in for the place, so a 2D move and its undo show in <see cref="Pivots"/>.</summary>
+    public PlanarPlace PlanarPlaceOf(nint entity) => new(Pivots[entity], 0, Vector2.One);
+
+    public void PlacePlanar(nint entity, PlanarPlace place) => Pivots[entity] = place.Position;
 
     /// <summary>The handles the viewport asks for. Null is a pivot behind the camera.</summary>
     public GizmoHandles? Handles { get; set; }
@@ -513,7 +757,10 @@ internal sealed class FakeScene : IEditorScene
         _root = Rebuild(_root, parent.Handle, node => node with { Children = made });
     }
 
-    public void Reparent(nint entity, nint newParent)
+    /// <summary>What the last move under another parent asked for its transform.</summary>
+    public bool? KeptGlobal { get; private set; }
+
+    public void Reparent(nint entity, nint newParent, bool keepGlobalTransform)
     {
         RequireNotRoot(entity, "moved");
         var moved = _root.Find(entity)!;
@@ -526,6 +773,7 @@ internal sealed class FakeScene : IEditorScene
         {
             throw new InvalidOperationException($"{target.Name} already has a child named {moved.Name}.");
         }
+        KeptGlobal = keepGlobalTransform;
         var without = Without(_root, entity);
         _root = Rebuild(without, newParent, node => node with { Children = [.. node.Children, moved] });
     }
@@ -536,11 +784,28 @@ internal sealed class FakeScene : IEditorScene
         _root = Rebuild(_root, entity, node => node with { Name = name.Trim() });
     }
 
-    public void Remove(nint entity)
+    readonly Dictionary<nint, OutlineNode> _detached = [];
+
+    /// <summary>The detached entities the window freed, in order.</summary>
+    public List<nint> Destroyed { get; } = [];
+
+    public DetachedEntity Detach(nint entity)
     {
         RequireNotRoot(entity, "removed");
+        var parent = ParentOf(_root, entity)!;
+        _detached[entity] = _root.Find(entity)!;
         _root = Without(_root, entity);
+        return new DetachedEntity(entity, parent.Handle, parent.Children.ToList().FindIndex(child => child.Handle == entity), []);
     }
+
+    public void Restore(DetachedEntity detached)
+    {
+        var made = _root.Find(detached.Parent)!.Children.ToList();
+        made.Insert(detached.Index, _detached[detached.Entity]);
+        _root = Rebuild(_root, detached.Parent, node => node with { Children = made });
+    }
+
+    public void Destroy(nint entity) => Destroyed.Add(entity);
 
     public void Save()
     {
