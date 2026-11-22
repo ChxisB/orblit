@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Numerics;
 using Orblit.Editor.App.Graph;
@@ -17,11 +18,15 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     // The engine window's first size. The control then asks for its own.
     const string ViewportResolution = "960x540";
 
+    // How long netcoredbg gets to end its game when told to go.
+    const int EndTime = 3000;
+
     readonly EngineHost _host;
     readonly EditorSession _session;
     readonly ViewportParts? _viewport;
     readonly string _project;
     readonly EngineDebugChannel _debug;
+    readonly CsharpDebugChannel _csharp;
     Process? _game;
     bool _sunPreview = true;
     bool _skyPreview = true;
@@ -33,6 +38,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         _session = session;
         _viewport = viewport;
         _project = options.Project;
+        _csharp = new CsharpDebugChannel(options.Project);
         ProjectName = ProjectSettings.NameOf(options.Project);
         SceneFile = options.HasScene ? options.Scene : "";
     }
@@ -521,22 +527,53 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public bool IsPlaying => _game is { HasExited: false };
 
-    public int? GameId => _game is { HasExited: false } game ? game.Id : null;
+    // Under netcoredbg the process Play started is netcoredbg, and the game is its child.
+    public int? GameId => _game is { HasExited: false } game ? _csharp.ProcessId ?? game.Id : null;
 
     public IDebugChannel Debug => _debug;
 
-    /// <summary>Runs the project in its own process, because one process holds one engine.</summary>
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags)
+    public IDebugChannel Csharp => _csharp;
+
+    /// <summary>
+    /// Runs the project in its own process, because one process holds one engine. A project with C# runs under the
+    /// person's netcoredbg when there is one, so its breakpoints hold.
+    /// </summary>
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
     {
         Stop();
         var port = _debug.Listen();
+        var logFile = Log.NewFile();
         var player = new ProcessStartInfo(PlayerPath(EngineLibrary.Find()));
-        foreach (var argument in GameArguments(_project, Log.NewFile(), port, breakpoints).Concat(flags))
+        foreach (var argument in GameArguments(_project, logFile, port, breakpoints).Concat(flags))
         {
             player.ArgumentList.Add(argument);
         }
 
-        _game = Process.Start(player);
+        var debugger = Directory.EnumerateFiles(_project, "*.csproj").Any() ? Netcoredbg.Find() : null;
+        _game = debugger is null ? Process.Start(player) : StartDebugged(debugger, player, logFile, codeBreakpoints);
+    }
+
+    // netcoredbg starts the game itself once the breakpoints are set, so one in OnStart holds.
+    Process StartDebugged(string debugger, ProcessStartInfo player, string logFile, IEnumerable<(string Source, int Line)> breakpoints)
+    {
+        var adapter = new ProcessStartInfo(debugger, "--interpreter=vscode") { RedirectStandardInput = true, RedirectStandardOutput = true };
+        Process? process;
+        try
+        {
+            process = Process.Start(adapter);
+        }
+        catch (Win32Exception error)
+        {
+            throw new IOException($"netcoredbg at {debugger} did not start. {error.Message}", error);
+        }
+
+        if (process is null)
+        {
+            throw new IOException($"netcoredbg at {debugger} did not start.");
+        }
+
+        _csharp.Start(new DapLink(process.StandardInput.BaseStream, process.StandardOutput.BaseStream), player, logFile, breakpoints);
+        return process;
     }
 
     /// <summary>The arguments of a game that links to the editor on this port and stops on these steps, each a source and a step id.</summary>
@@ -559,18 +596,45 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
             return;
         }
 
+        var child = _csharp.ProcessId;
+        // netcoredbg ends its game when told to go. One that does not go in time is killed with its game.
+        if (!_csharp.End() || !_game.WaitForExit(EndTime))
+        {
+            Kill(_game);
+            if (child is { } id)
+            {
+                KillById(id);
+            }
+        }
+
+        _game.Dispose();
+        _game = null;
+    }
+
+    static void Kill(Process process)
+    {
         try
         {
-            _game.Kill();
-            _game.WaitForExit();
+            process.Kill();
+            process.WaitForExit();
         }
         catch (InvalidOperationException)
         {
             // The game ended on its own, and a process that has ended cannot be killed.
         }
+    }
 
-        _game.Dispose();
-        _game = null;
+    static void KillById(int id)
+    {
+        try
+        {
+            using var process = Process.GetProcessById(id);
+            Kill(process);
+        }
+        catch (ArgumentException)
+        {
+            // No process has that id any more, so the game has ended.
+        }
     }
 
     public event Action? Destroyed

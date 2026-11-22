@@ -419,10 +419,18 @@ internal sealed class FakeScene : IEditorScene
 
     public IDebugChannel Debug => Channel;
 
+    /// <summary>What the running game's C# said.</summary>
+    public FakeDebugChannel CsharpChannel { get; } = new();
+
+    public IDebugChannel Csharp => CsharpChannel;
+
+    /// <summary>The code breakpoints the last Play was given.</summary>
+    public List<(string Source, int Line)> PlayedWithCode { get; } = [];
+
     /// <summary>The engine flags of the last play.</summary>
     public List<string> PlayedFlags { get; } = [];
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<string> flags)
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
     {
         if (PlayError is not null)
         {
@@ -432,6 +440,8 @@ internal sealed class FakeScene : IEditorScene
         Plays++;
         PlayedWith.Clear();
         PlayedWith.AddRange(breakpoints);
+        PlayedWithCode.Clear();
+        PlayedWithCode.AddRange(codeBreakpoints);
         PlayedFlags.Clear();
         PlayedFlags.AddRange(flags);
         IsPlaying = true;

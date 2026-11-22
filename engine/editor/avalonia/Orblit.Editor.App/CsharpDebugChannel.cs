@@ -75,11 +75,13 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
         });
     }
 
-    /// <summary>Asks netcoredbg to end the game and then itself. False when no session runs.</summary>
+    /// <summary>Asks netcoredbg to end the game and then itself, and forgets the session. False when none ran.</summary>
     public bool End()
     {
-        _link?.Request("disconnect", new JsonObject { ["terminateDebuggee"] = true });
-        return _link is not null;
+        var link = _link;
+        link?.Request("disconnect", new JsonObject { ["terminateDebuggee"] = true });
+        Forget();
+        return link is not null;
     }
 
     public void Poll()
@@ -98,9 +100,7 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
 
         if (_link?.Closed == true)
         {
-            _link = null;
-            ProcessId = null;
-            State = DebugState.None;
+            Forget();
         }
     }
 
@@ -230,6 +230,13 @@ internal sealed class CsharpDebugChannel(string project) : IDebugChannel
 
         var breakpoints = new JsonArray([.. LinesOf(source).Order().Select(line => new JsonObject { ["line"] = line })]);
         _link?.Request("setBreakpoints", new JsonObject { ["source"] = new JsonObject { ["path"] = file }, ["breakpoints"] = breakpoints });
+    }
+
+    void Forget()
+    {
+        _link = null;
+        ProcessId = null;
+        State = DebugState.None;
     }
 
     HashSet<int> LinesOf(string source)
