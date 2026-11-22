@@ -20,7 +20,7 @@ internal sealed class InspectorPane : Grid
     const double FilterRowHeight = 29;
     const double BoxHeight = 28;
 
-    // The design's chip is 38 high on a row of its own. Here it shares the 36 pixel row with the arrows.
+    // A chip on a row of its own is 38 high. Here it shares the 36 pixel row with the arrows.
     const double ChipHeight = 32;
 
     readonly InspectorPanel _panel;
@@ -186,7 +186,7 @@ internal sealed class InspectorPane : Grid
         },
     };
 
-    // The design's object chip: the icon, the name and the class in a quieter voice on a raised tone, with a
+    // The object chip: the icon, the name and the class in a quieter voice on a raised tone, with a
     // chevron that says it opens the list.
     static Button ObjectChip(Control inspected, MenuFlyout recent)
     {

@@ -108,8 +108,7 @@ scene. It runs on macOS. Nothing else has run it.
 
 ## Look
 
-The look is Ember Graphite, decision 280. Each panel is an island on a
-near-black window. One ember accent marks the choice and the focus.
+Each panel is an island on a near-black window. One orange accent marks the choice and the focus.
 
 - `Orblit.Editor.App/Theme/EditorColors.cs` holds the shell's colors.
   `EditorBrushes.cs` beside it makes the brushes. The graph keeps its pin

@@ -74,7 +74,7 @@ internal sealed class EditorTheme : Styles
     /// <summary>The class of a list whose rows read as tree rows: as high, as round and as far in from each side.</summary>
     internal const string Rows = "rows";
 
-    /// <summary>A text box or a list box drawn as the design's field, 30 high with a ring while it has the keys.</summary>
+    /// <summary>A text box or a list box drawn as the editor's field, 30 high with a ring while it has the keys.</summary>
     internal const string Field = "field";
 
     /// <summary>A field whose value cannot be used. It rings red until the value changes.</summary>
@@ -240,7 +240,7 @@ internal sealed class EditorTheme : Styles
         Add(new FluentTheme { Palettes = { [ThemeVariant.Dark] = new ColorPaletteResources { Accent = EditorColors.Accent } } });
         Resources = Overrides();
         // The theme gives the arrow a 36 pixel box with margins that no style can change. A negative margin
-        // on the arrow brings it back to the reference at 10. A row does the same for its icon.
+        // on the arrow brings it back to 10. A row does the same for its icon.
         Add(new Style(x => x.OfType<TreeViewItem>().Template().Name("PART_ExpandCollapseChevron"))
         {
             Setters =
@@ -475,7 +475,7 @@ internal sealed class EditorTheme : Styles
     // A 3 pixel ring with no blur, as the design draws round a field.
     static BoxShadows Ring(Color color) => new(new BoxShadow { Spread = 3, Color = color });
 
-    // The design's field. The ring sits on the template's border, which the base theme colors by state, so the
+    // The editor's field. The ring sits on the template's border, which the base theme colors by state, so the
     // fault comes after focus and wins while both hold.
     static IEnumerable<Style> FieldStyles()
     {

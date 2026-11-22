@@ -30,7 +30,7 @@ internal sealed class GameView : Border
         ("Debug CanvasItem Redraws", "--debug-canvas-item-redraw"),
     ];
 
-    // The board's other groups of run settings, each row with whether it starts on. They wait on the game link.
+    // The other groups of run settings, each row with whether it starts on. They wait on the game link.
     static readonly (string Group, (string Name, bool On)[] Rows)[] s_waiting =
     [
         ("Live edits", [("Synchronize Scene Changes", true), ("Synchronize Script Changes", true), ("Keep Debug Server Open", false)]),

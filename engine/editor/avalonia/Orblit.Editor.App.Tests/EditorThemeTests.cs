@@ -13,7 +13,7 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class EditorThemeTests
 {
-    // The values on the design canvas, written out so a changed colour fails here.
+    // The theme's values, written out so a changed colour fails here.
     [Theory]
     [InlineData("Window", "#0A0C10")]
     [InlineData("Panel", "#12151B")]

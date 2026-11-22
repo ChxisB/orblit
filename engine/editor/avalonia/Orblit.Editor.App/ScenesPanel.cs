@@ -184,7 +184,7 @@ internal sealed class ScenesPanel : Grid
         }
     }
 
-    // The first row is selected, as in the reference: the project folder, or the first file of a list.
+    // The first row starts selected: the project folder, or the first file of a list.
     void Rebuild()
     {
         var text = (_filter.Text ?? "").Trim();

@@ -5,7 +5,7 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The design's segmented choice: a row of words on the field tone, with the chosen one lifted.</summary>
+/// <summary>A segmented choice: a row of words on the field tone, with the chosen one lifted.</summary>
 internal sealed class Segments : Border
 {
     readonly Choice[] _choices;

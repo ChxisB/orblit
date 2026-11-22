@@ -348,7 +348,7 @@ internal sealed class InspectorPanel : StackPanel
         _metadataFlyout.Content = _metadataTool;
         _metadata.Flyout = _metadataFlyout;
         _metadataTool.Cancelled += _metadataFlyout.Hide;
-        // The board draws Attach a script a little taller and quieter than Add Metadata.
+        // Attach a script sits a little taller and quieter than Add Metadata, so the two read as separate steps.
         _attach.Height = 32;
         _attach.Margin = new Thickness(0, 10, 0, 0);
         _attach.Foreground = EditorBrushes.TextDim;

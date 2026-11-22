@@ -2,7 +2,7 @@ using Avalonia.Media;
 
 namespace Orblit.Editor.App.Theme;
 
-/// <summary>The editor's colors. Each value comes from the Ember Graphite design, decision 280.</summary>
+/// <summary>The editor's colors. Every brush and style in the shell is made from these.</summary>
 internal static class EditorColors
 {
     // Surfaces, darkest first. The ground shows in the gaps between the islands.

@@ -5,7 +5,7 @@ namespace Orblit.Editor.App.Theme;
 /// <summary>The editor's icons by file name, generated from <c>engine/editor/icons</c>.</summary>
 internal static partial class EditorIcons
 {
-    // The toast and dialog marks are drawn on the design's 24 pixel grid, so they are added here and not generated.
+    // The toast and dialog marks are drawn on a 24 pixel grid, so they are added here and not generated.
     // A static constructor runs after the generated table is filled.
     static EditorIcons()
     {

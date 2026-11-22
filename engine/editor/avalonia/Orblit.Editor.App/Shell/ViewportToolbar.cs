@@ -131,7 +131,7 @@ internal sealed class ViewportToolbar : Grid
         Tools.VerticalAlignment = VerticalAlignment.Top;
         _named.Children.AddRange([ClassMark("Entity"), _name, _className]);
         Chip = Parts.Float([_named, Parts.Rule(), _collision, _collisionRule, _focus, _reset]);
-        // The design's chip is 36 high, so it stays that high when the 28 pixel Collision tab is hidden.
+        // The chip keeps its 36 pixel height when the 28 pixel Collision tab is hidden.
         Chip.Height = 36;
         Chip.HorizontalAlignment = HorizontalAlignment.Left;
         Chip.VerticalAlignment = VerticalAlignment.Bottom;
@@ -320,7 +320,7 @@ internal sealed class ViewportToolbar : Grid
         return icon;
     }
 
-    // The design's tab: a dim mark, the word and a chevron, 28 high so it fills the chip.
+    // The Collision tab: a dim mark, the word and a chevron, 28 high so it fills the chip.
     static Button CollisionTab()
     {
         var mark = new EditorIcon("CollisionShape3D") { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center };
