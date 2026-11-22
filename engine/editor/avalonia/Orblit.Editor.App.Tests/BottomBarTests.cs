@@ -343,12 +343,14 @@ public sealed class BottomBarTests
             Assert.Equal([("res://spin.cs", 2)], scene.PlayedWithCode);
             Assert.True(window.Script.IsVisible);
             Assert.True(window.Center.Panels[1].IsVisible);
-            Assert.Same(window.Script.DebugPanel, debugger.Child);
+            Assert.Same(debugger.Session, debugger.Child);
+            Assert.Same(window.Script.DebugPanel, debugger.Session.Content);
 
             scene.CsharpChannel.Next = DebugState.None;
             window.Poll();
 
-            Assert.NotSame(window.Script.DebugPanel, debugger.Child);
+            Assert.NotSame(debugger.Session, debugger.Child);
+            Assert.Null(debugger.Session.Content);
             Assert.Contains(debugger.Line, debugger.GetVisualDescendants());
         });
     }

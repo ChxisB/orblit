@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Orblit.Editor.App.Theme;
 
@@ -72,6 +73,13 @@ internal sealed class DebuggerNote : Decorator
         _copy.IsVisible = game is not null;
     }
 
+    /// <summary>The scroller a debug session sits in, so locals below the panel's height can be reached.</summary>
+    internal ScrollViewer Session { get; } = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
+
     /// <summary>Shows a debug session in place of the note, or the note again for null.</summary>
-    public void ShowSession(Control? session) => Child = session ?? _note;
+    public void ShowSession(Control? session)
+    {
+        Session.Content = session;
+        Child = session is null ? _note : Session;
+    }
 }

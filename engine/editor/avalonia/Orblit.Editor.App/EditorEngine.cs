@@ -643,9 +643,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         remove => _host.Destroyed -= value;
     }
 
-    // The readback holds a texture the engine owns, so it goes first. A game still running is left to run.
+    // The readback holds a texture the engine owns, so it goes first. A game still running is left to run, but a
+    // game under netcoredbg is ended with it, since a paused one would stay frozen once the editor is gone.
     public void Dispose()
     {
+        _csharp.End();
         _game?.Dispose();
         _debug.Dispose();
         _viewport?.Readback.Dispose();
