@@ -64,18 +64,26 @@ scene. It runs on macOS. Nothing else has run it.
 - A dock floats in its own window from the dock menu.
 - The Asset Store installs a kit from a zip on disk.
 - Project > Export exports the game with one of its presets, once export
-  templates are installed from a `.tpz` on disk.
+  templates are installed. Download Templates takes them from the first
+  https mirror in the release's list on orblitengine.com, or they install
+  from a `.tpz` on disk.
 - Game passes its run settings to the game as engine flags, and shows the
   running game's monitors and live scene tree. The Debugger panel shows the
   game's process id for an outside IDE to attach to.
+- A C# game plays under netcoredbg when `ORBLIT_NETCOREDBG` names it or it
+  is on `PATH`. A click in the Script gutter sets a breakpoint. A stop opens
+  the script on the paused line, and the Debugger tab shows the stack and
+  locals with pause, continue and the steps.
 
 ## What is not built
 
-- A C# debugger in the editor. netcoredbg waits on decision 289. Kits install
-  from a zip on disk, not from the store. The script slot's New Script is not
-  built.
-- Template downloads in Export. Templates install from a `.tpz` on disk, and
-  the download source is decision 288.
+- A copy of netcoredbg in the download. The person installs it. C#
+  breakpoints last while the editor is open, and there are no conditions,
+  watches or exception stops.
+- Kits install from a zip on disk, not from the store. The script slot's New
+  Script is not built.
+- Template mirror lists before 1.1.0. An older release says no templates are
+  published for it.
 - Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
   hard to hit away from its pivot.
 - Picking several entities in the viewport. Move, Remove and Duplicate act
