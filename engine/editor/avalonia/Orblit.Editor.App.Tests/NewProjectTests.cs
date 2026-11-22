@@ -1,4 +1,5 @@
 using Orblit.Editor.App.Launcher;
+using Orblit.Editor.App.Shell;
 
 namespace Orblit.Editor.App.Tests;
 
@@ -27,10 +28,10 @@ public sealed class NewProjectTests : IDisposable
         Assert.Equal(["Main.cs", "SpaceRanger.csproj", "SpaceRanger.slnx", "main.oscn", "project.orblit"], Made());
         Assert.Equal(
             "config_version=5\n\n[application]\n\nconfig/name=\"Space \\\"Ranger\\\"\"\nconfig/tags=PackedStringArray(\"3D\", \"C#\")\n"
-            + "run/main_scene=\"res://main.oscn\"\nconfig/features=PackedStringArray(\"1.0\", \"C#\")\n\n[dotnet]\n\nproject/assembly_name=\"SpaceRanger\"\n",
+            + "run/main_scene=\"res://main.oscn\"\nconfig/features=PackedStringArray(\"1.1\", \"C#\")\n\n[dotnet]\n\nproject/assembly_name=\"SpaceRanger\"\n",
             Read("project.orblit"));
         Assert.Contains("public partial class Main : Entity3D", Read("Main.cs"));
-        Assert.Contains("<Project Sdk=\"Orblit.NET.Sdk/1.0.0\">", Read("SpaceRanger.csproj"));
+        Assert.Contains("<Project Sdk=\"Orblit.NET.Sdk/1.1.0\">", Read("SpaceRanger.csproj"));
         Assert.Equal("<Solution>\n  <Project Path=\"SpaceRanger.csproj\" />\n</Solution>\n", Read("SpaceRanger.slnx"));
         var scene = Read("main.oscn");
         Assert.StartsWith("[orb_scene format=3]\n\n[ext_resource type=\"Script\" path=\"res://Main.cs\" id=\"1\"]\n\n[sub_resource type=\"PlaneMesh\"", scene);
@@ -60,7 +61,7 @@ public sealed class NewProjectTests : IDisposable
         new NewProject("Blank", _folder) { Template = ProjectTemplate.Empty, Script = FirstScript.None }.Make(_ => { });
 
         Assert.Equal(["project.orblit"], Made());
-        Assert.Equal("config_version=5\n\n[application]\n\nconfig/name=\"Blank\"\nconfig/features=PackedStringArray(\"1.0\", \"C#\")\n", Read("project.orblit"));
+        Assert.Equal("config_version=5\n\n[application]\n\nconfig/name=\"Blank\"\nconfig/features=PackedStringArray(\"1.1\", \"C#\")\n", Read("project.orblit"));
     }
 
     [Fact]
@@ -135,6 +136,38 @@ public sealed class NewProjectTests : IDisposable
     public void A_blank_name_or_a_folder_that_is_not_a_full_path_is_refused(string name, string folder)
     {
         Assert.Throws<ArgumentException>(() => new NewProject(name, folder));
+    }
+
+    // The editor writes the engine version before any engine runs, so it keeps copies that must follow version.py.
+    [Fact]
+    public void The_editor_copies_of_the_engine_version_match_version_py()
+    {
+        var version = VersionFile();
+        var (major, minor, patch, status) = (version["major"], version["minor"], version["patch"], version["status"]);
+        // A zero patch is left out of the shown version, as core/version.h does.
+        var shown = patch == "0" ? $"{major}.{minor}" : $"{major}.{minor}.{patch}";
+        // shortcut: a numbered status such as beta3 packs as beta.3, handle it when one ships.
+        var sdk = status == "stable" ? $"{major}.{minor}.{patch}" : $"{major}.{minor}.{patch}-{status}";
+
+        new NewProject("Crate", _folder) { Template = ProjectTemplate.Empty, Script = FirstScript.Csharp }.Make(_ => { });
+
+        Assert.Equal(BottomBar.Version, $"{shown}.{status}");
+        Assert.Contains($"config/features=PackedStringArray(\"{major}.{minor}\", ", Read("project.orblit"));
+        Assert.Contains($"<Project Sdk=\"Orblit.NET.Sdk/{sdk}\">", Read("Crate.csproj"));
+    }
+
+    static Dictionary<string, string> VersionFile()
+    {
+        var folder = new DirectoryInfo(AppContext.BaseDirectory);
+        while (!File.Exists(Path.Combine(folder.FullName, "version.py")))
+        {
+            folder = folder.Parent ?? throw new FileNotFoundException("No version.py above the test binary.");
+        }
+
+        return File.ReadLines(Path.Combine(folder.FullName, "version.py"))
+            .Select(line => line.Split(" = ", 2))
+            .Where(parts => parts.Length == 2)
+            .ToDictionary(parts => parts[0], parts => parts[1].Trim('"'));
     }
 
     [Theory]
