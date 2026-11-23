@@ -298,7 +298,6 @@ def generate_scu_files(max_includes_per_scu):
 
     process_folder(["engine/editor"], [], 32)
     process_folder(["engine/editor/animation"])
-    process_folder(["engine/editor/asset_library"])
     process_folder(["engine/editor/audio"])
     process_folder(["engine/editor/debugger"])
     process_folder(["engine/editor/debugger/debug_adapter"])
