@@ -363,28 +363,28 @@ void ExportTemplateManager::_tpz_file_selected(const String &p_file) {
 	}
 }
 
-void ExportTemplateManager::_initialize_template_data() {
-	// Base templates.
+HashMap<ExportTemplateManager::TemplateID, ExportTemplateManager::TemplateInfo> ExportTemplateManager::_make_template_data() {
+	HashMap<TemplateID, TemplateInfo> data;
 	{
 		TemplateInfo info;
 		info.name = "Windows x86_32";
 		info.description = TTRC("32-bit build for Microsoft Windows, including console wrapper.");
 		info.file_list = { "windows_debug_x86_32.exe", "windows_debug_x86_32_console.exe", "windows_release_x86_32.exe", "windows_release_x86_32_console.exe" };
-		template_data[TemplateID::WINDOWS_X86_32] = info;
+		data[TemplateID::WINDOWS_X86_32] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = "Windows x86_64";
-		info.description = TTRC("64-bit build for Microsoft Windows, including console wrapper.");
-		info.file_list = { "windows_debug_x86_64.exe", "windows_debug_x86_64_console.exe", "windows_release_x86_64.exe", "windows_release_x86_64_console.exe" };
-		template_data[TemplateID::WINDOWS_X86_64] = info;
+		info.description = TTRC("64-bit build for Microsoft Windows, including console wrapper and Direct3D 12 libraries.");
+		info.file_list = { "windows_debug_x86_64.exe", "windows_debug_x86_64_console.exe", "windows_release_x86_64.exe", "windows_release_x86_64_console.exe", "D3D12Core.x86_64.dll", "d3d12SDKLayers.x86_64.dll" };
+		data[TemplateID::WINDOWS_X86_64] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = "Windows arm64";
 		info.description = TTRC("64-bit build for Microsoft Windows on ARM architecture, including console wrapper.");
 		info.file_list = { "windows_debug_arm64.exe", "windows_debug_arm64_console.exe", "windows_release_arm64.exe", "windows_release_arm64_console.exe" };
-		template_data[TemplateID::WINDOWS_ARM64] = info;
+		data[TemplateID::WINDOWS_ARM64] = info;
 	}
 
 	{
@@ -392,28 +392,28 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = "Linux x86_32";
 		info.description = TTRC("32-bit build for Linux systems.");
 		info.file_list = { "linux_debug.x86_32", "linux_release.x86_32" };
-		template_data[TemplateID::LINUX_X86_32] = info;
+		data[TemplateID::LINUX_X86_32] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = "Linux x86_64";
 		info.description = TTRC("64-bit build for Linux systems.");
 		info.file_list = { "linux_debug.x86_64", "linux_release.x86_64" };
-		template_data[TemplateID::LINUX_X86_64] = info;
+		data[TemplateID::LINUX_X86_64] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = "Linux arm32";
 		info.description = TTRC("32-bit build for Linux systems on ARM architecture.");
 		info.file_list = { "linux_debug.arm32", "linux_release.arm32" };
-		template_data[TemplateID::LINUX_ARM32] = info;
+		data[TemplateID::LINUX_ARM32] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = "Linux arm64";
 		info.description = TTRC("64-bit build for Linux systems on ARM architecture.");
 		info.file_list = { "linux_debug.arm64", "linux_release.arm64" };
-		template_data[TemplateID::LINUX_ARM64] = info;
+		data[TemplateID::LINUX_ARM64] = info;
 	}
 
 	{
@@ -421,7 +421,7 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = "macOS";
 		info.description = TTRC("Universal build for macOS.");
 		info.file_list = { "macos.zip" };
-		template_data[TemplateID::MACOS] = info;
+		data[TemplateID::MACOS] = info;
 	}
 
 	{
@@ -429,28 +429,28 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = "Web";
 		info.description = TTRC("Regular web build with threading support. Threads improve performance, but require \"cross-origin isolated\" website to run.");
 		info.file_list = { "web_debug.zip", "web_release.zip" };
-		template_data[TemplateID::WEB] = info;
+		data[TemplateID::WEB] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = TTR("Web with Extensions");
 		info.description = TTRC("Web build with support for NativeExtensions. Only useful if you use NativeExtensions, otherwise it only increases build size.");
 		info.file_list = { "web_dlink_debug.zip", "web_dlink_release.zip" };
-		template_data[TemplateID::WEB_EXTENSIONS] = info;
+		data[TemplateID::WEB_EXTENSIONS] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = TTR("Web Single-Threaded");
 		info.description = TTRC("Web build without threading support.");
 		info.file_list = { "web_nothreads_debug.zip", "web_nothreads_release.zip" };
-		template_data[TemplateID::WEB_NOTHREADS] = info;
+		data[TemplateID::WEB_NOTHREADS] = info;
 	}
 	{
 		TemplateInfo info;
 		info.name = TTR("Web with Extensions Single-Threaded");
 		info.description = TTRC("Web build with NativeExtension support and no threading support.");
 		info.file_list = { "web_dlink_nothreads_debug.zip", "web_dlink_nothreads_release.zip" };
-		template_data[TemplateID::WEB_EXTENSIONS_NOTHREADS] = info;
+		data[TemplateID::WEB_EXTENSIONS_NOTHREADS] = info;
 	}
 
 	{
@@ -458,7 +458,7 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = "Android";
 		info.description = TTRC("Android APK template and source for Gradle builds.");
 		info.file_list = { "android_debug.apk", "android_release.apk", "android_source.zip" };
-		template_data[TemplateID::ANDROID] = info;
+		data[TemplateID::ANDROID] = info;
 	}
 
 	{
@@ -466,7 +466,7 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = "iOS";
 		info.description = TTRC("Build for Apple's iOS.");
 		info.file_list = { "ios.zip" };
-		template_data[TemplateID::IOS] = info;
+		data[TemplateID::IOS] = info;
 	}
 
 	{
@@ -474,7 +474,7 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = "visionOS";
 		info.description = TTRC("Build for Apple's visionOS.");
 		info.file_list = { "visionos.zip" };
-		template_data[TemplateID::VISIONOS] = info;
+		data[TemplateID::VISIONOS] = info;
 	}
 
 	{
@@ -482,8 +482,13 @@ void ExportTemplateManager::_initialize_template_data() {
 		info.name = TTR("ICU Data");
 		info.description = TTRC("Line breaking dictionaries for TextServer, used by certain languages.");
 		info.file_list = { "icudt_orblit.dat" };
-		template_data[TemplateID::ICU_DATA] = info;
+		data[TemplateID::ICU_DATA] = info;
 	}
+	return data;
+}
+
+void ExportTemplateManager::_initialize_template_data() {
+	template_data = _make_template_data();
 
 	// Platforms.
 	{
@@ -1560,6 +1565,23 @@ Error ExportTemplateManager::install_android_template_from_file(const String &p_
 	return OK;
 }
 
+PackedStringArray ExportTemplateManager::get_template_files(const String &p_platform_name, const String &p_architecture) {
+	// Only the templates the release archive holds. The key is the platform name, then the
+	// preset's architecture where the file names depend on it.
+	static const HashMap<String, TemplateID> template_ids = {
+		{ "Windows Desktop/x86_64", TemplateID::WINDOWS_X86_64 },
+		{ "Linux/x86_64", TemplateID::LINUX_X86_64 },
+		{ "macOS", TemplateID::MACOS },
+	};
+	static const HashMap<TemplateID, TemplateInfo> data = _make_template_data();
+
+	const TemplateID *id = template_ids.getptr(p_platform_name + "/" + p_architecture);
+	if (!id) {
+		id = template_ids.getptr(p_platform_name);
+	}
+	return id ? data[*id].file_list : PackedStringArray();
+}
+
 void ExportTemplateManager::popup_manager() {
 	if (template_data.is_empty()) {
 		_initialize_template_data();
@@ -2224,4 +2246,119 @@ float TemplateDownloader::get_download_progress() const {
 		return (float)downloaded_size / (float)fragment_size;
 	}
 	return 0.0f;
+}
+
+String PlatformTemplateDownload::find_first_mirror(const PackedByteArray &p_mirror_list) {
+	JSON json;
+	if (json.parse(String::utf8((const char *)p_mirror_list.ptr(), p_mirror_list.size())) != OK) {
+		return String();
+	}
+
+	const Dictionary data = json.get_data();
+	const Array mirrors = data.get("mirrors", Array());
+	for (const Variant &mirror : mirrors) {
+		const Variant url = Dictionary(mirror).get("url", Variant());
+		if (url.get_type() == Variant::STRING && !String(url).is_empty()) {
+			return url;
+		}
+	}
+	return String();
+}
+
+void PlatformTemplateDownload::start(const PackedStringArray &p_files) {
+	ERR_FAIL_COND(is_downloading());
+	ERR_FAIL_COND(p_files.is_empty());
+
+	files = p_files;
+	next_file = 0;
+	const Error err = mirror_request->request(vformat(ORBLIT_VERSION_WEBSITE "/mirrorlist/%s.json", ORBLIT_VERSION_FULL_CONFIG));
+	if (err != OK) {
+		_fail(vformat(TTR("Mirror list request failed: %s."), TTR(error_names[err])));
+	}
+}
+
+void PlatformTemplateDownload::cancel() {
+	mirror_request->cancel_request();
+	downloader->cancel_download();
+	files.clear();
+}
+
+float PlatformTemplateDownload::get_progress() const {
+	if (files.is_empty()) {
+		return 0.0f;
+	}
+	return (next_file + downloader->get_download_progress()) / files.size();
+}
+
+// The parameters follow the request_completed signal, so the headers stay unread.
+void PlatformTemplateDownload::_mirror_request_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body) {
+	if (p_result == HTTPRequest::RESULT_SUCCESS && p_response_code == HTTPClient::RESPONSE_NOT_FOUND) {
+		_fail(TTR("This editor version has no templates online. Install them from a TPZ file in Manage Export Templates."));
+		return;
+	}
+	if (p_result != HTTPRequest::RESULT_SUCCESS || p_response_code != HTTPClient::RESPONSE_OK) {
+		_fail(vformat(TTR("Could not get the list of mirrors. Result: %d. Response code: %d."), p_result, p_response_code));
+		return;
+	}
+
+	mirror_url = find_first_mirror(p_body);
+	if (mirror_url.is_empty()) {
+		_fail(TTR("The list of mirrors has no download for this version."));
+		return;
+	}
+	DirAccess::make_dir_recursive_absolute(EditorPaths::get_singleton()->get_export_templates_dir().path_join(ORBLIT_VERSION_FULL_CONFIG));
+	_download_next();
+}
+
+void PlatformTemplateDownload::_download_next() {
+	// A cancel can land while this call waits a frame.
+	if (!is_downloading()) {
+		return;
+	}
+	if (next_file == files.size()) {
+		files.clear();
+		emit_signal(SNAME("finished"));
+		return;
+	}
+
+	const Error err = downloader->download_template(files[next_file], mirror_url);
+	if (err != OK) {
+		_fail(vformat(TTR("%s: download request failed: %s."), files[next_file], TTR(error_names[err])));
+	}
+}
+
+void PlatformTemplateDownload::_file_downloaded() {
+	next_file++;
+	// The downloader emits from inside its own request handler, so the next request waits a frame.
+	callable_mp(this, &PlatformTemplateDownload::_download_next).call_deferred();
+}
+
+void PlatformTemplateDownload::_file_failed(const String &p_file, const String &p_reason) {
+	// The downloader's thread can still report a request that a cancel cut short.
+	if (!is_downloading()) {
+		return;
+	}
+	_fail(vformat("%s: %s", p_file, p_reason));
+}
+
+void PlatformTemplateDownload::_fail(const String &p_reason) {
+	files.clear();
+	emit_signal(SNAME("failed"), p_reason);
+}
+
+void PlatformTemplateDownload::register_members() {
+	ADD_SIGNAL(MethodInfo("finished"));
+	ADD_SIGNAL(MethodInfo("failed", PropertyInfo(Variant::STRING, "reason")));
+}
+
+PlatformTemplateDownload::PlatformTemplateDownload() {
+	mirror_request = memnew(HTTPRequest);
+	add_child(mirror_request);
+	mirror_request->connect("request_completed", callable_mp(this, &PlatformTemplateDownload::_mirror_request_completed));
+
+	downloader = memnew(TemplateDownloader(EditorPaths::get_singleton()->get_export_templates_dir().path_join(ORBLIT_VERSION_FULL_CONFIG)));
+	downloader->set_use_threads(true);
+	add_child(downloader);
+	downloader->connect("download_completed", callable_mp(this, &PlatformTemplateDownload::_file_downloaded).unbind(1));
+	downloader->connect("download_failed", callable_mp(this, &PlatformTemplateDownload::_file_failed));
 }

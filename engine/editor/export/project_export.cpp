@@ -11,6 +11,7 @@
 #include "editor/editor_node.h"
 #include "editor/editor_string_names.h"
 #include "editor/export/editor_export.h"
+#include "editor/export/export_template_manager.h"
 #include "editor/file_system/editor_file_system.h"
 #include "editor/import/resource_importer_texture_settings.h"
 #include "editor/inspector/editor_properties.h"
@@ -26,6 +27,7 @@
 #include "scene/ui/menu_button.h"
 #include "scene/ui/option_button.h"
 #include "scene/ui/popup_menu.h"
+#include "scene/ui/progress_bar.h"
 #include "scene/ui/rich_text_label.h"
 #include "scene/ui/spin_box.h"
 #include "scene/ui/split_container.h"
@@ -79,12 +81,21 @@ ProjectExportTextureFormatError::ProjectExportTextureFormatError(ProjectExportDi
 	fix_texture_format_button->connect(SceneStringName(pressed), callable_mp(this, &ProjectExportTextureFormatError::_on_fix_texture_format_pressed));
 }
 
+static PackedStringArray _get_preset_template_files(const Ref<EditorExportPreset> &p_preset) {
+	return ExportTemplateManager::get_template_files(p_preset->get_platform()->get_name(), p_preset->get("binary_format/architecture"));
+}
+
 void ProjectExportDialog::_notification(int p_what) {
 	switch (p_what) {
+		case NOTIFICATION_INTERNAL_FRAME: {
+			download_templates_progress->set_value(100.0 * template_download->get_progress());
+		} break;
+
 		case NOTIFICATION_VISIBILITY_CHANGED: {
 			if (!is_visible()) {
 				EditorSettings::get_singleton()->set_project_metadata("dialog_bounds", "export", Rect2(get_position(), get_size()));
 				show_script_key->set_pressed(false);
+				_cancel_template_download();
 			}
 		} break;
 
@@ -357,6 +368,7 @@ void ProjectExportDialog::_edit_preset(int p_index) {
 			export_error->hide();
 		}
 		if (needs_templates) {
+			download_templates->set_visible(!_get_preset_template_files(current).is_empty());
 			export_templates_error->show();
 		} else {
 			export_templates_error->hide();
@@ -1441,6 +1453,52 @@ void ProjectExportDialog::_open_export_template_manager() {
 	EditorNode::get_singleton()->open_export_template_manager();
 }
 
+void ProjectExportDialog::_download_templates() {
+	if ((int)EDITOR_GET("network/connection/network_mode") == EditorSettings::NETWORK_OFFLINE) {
+		go_online_confirm->popup_centered();
+		return;
+	}
+	Ref<EditorExportPreset> current = get_current_preset();
+	ERR_FAIL_COND(current.is_null());
+	const PackedStringArray files = _get_preset_template_files(current);
+	ERR_FAIL_COND(files.is_empty());
+
+	download_templates->set_disabled(true);
+	// The manager writes to the same folder, so it waits until this download ends.
+	manage_templates->set_disabled(true);
+	download_templates_progress->set_value(0);
+	download_templates_progress->show();
+	set_internal_frame_enabled(true);
+	template_download->start(files);
+}
+
+void ProjectExportDialog::_go_online_and_download() {
+	EditorSettings::get_singleton()->set_setting("network/connection/network_mode", EditorSettings::NETWORK_ONLINE);
+	EditorSettings::get_singleton()->notify_changes();
+	EditorSettings::get_singleton()->save();
+	_download_templates();
+}
+
+void ProjectExportDialog::_end_template_download() {
+	set_internal_frame_enabled(false);
+	download_templates->set_disabled(false);
+	manage_templates->set_disabled(false);
+	download_templates_progress->hide();
+	_update_current_preset();
+}
+
+void ProjectExportDialog::_cancel_template_download() {
+	if (template_download->is_downloading()) {
+		template_download->cancel();
+		_end_template_download();
+	}
+}
+
+void ProjectExportDialog::_template_download_failed(const String &p_reason) {
+	_end_template_download();
+	EditorNode::get_singleton()->show_warning(p_reason, TTR("Export Templates Not Downloaded"));
+}
+
 void ProjectExportDialog::_export_project() {
 	Ref<EditorExportPreset> current = get_current_preset();
 	ERR_FAIL_COND(current.is_null());
@@ -2055,11 +2113,36 @@ ProjectExportDialog::ProjectExportDialog() {
 	main_vb->add_child(result_dialog);
 	result_dialog->hide();
 
-	LinkButton *download_templates = memnew(LinkButton);
-	download_templates->set_text(TTRC("Manage Export Templates"));
+	download_templates = memnew(Button);
+	download_templates->set_text(TTRC("Download"));
+	download_templates->set_tooltip_text(TTRC("Download the export templates for this platform."));
 	download_templates->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
 	export_templates_error->add_child(download_templates);
-	download_templates->connect(SceneStringName(pressed), callable_mp(this, &ProjectExportDialog::_open_export_template_manager));
+	download_templates->connect(SceneStringName(pressed), callable_mp(this, &ProjectExportDialog::_download_templates));
+
+	download_templates_progress = memnew(ProgressBar);
+	download_templates_progress->set_accessibility_name(TTRC("Template Download Progress"));
+	download_templates_progress->set_custom_minimum_size(Size2(160, 0) * EDSCALE);
+	download_templates_progress->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
+	download_templates_progress->hide();
+	export_templates_error->add_child(download_templates_progress);
+
+	template_download = memnew(PlatformTemplateDownload);
+	add_child(template_download);
+	template_download->connect("finished", callable_mp(this, &ProjectExportDialog::_end_template_download));
+	template_download->connect("failed", callable_mp(this, &ProjectExportDialog::_template_download_failed));
+
+	go_online_confirm = memnew(ConfirmationDialog);
+	go_online_confirm->set_text(TTRC("The editor is in offline mode. Go online to download the export templates?"));
+	go_online_confirm->set_ok_button_text(TTRC("Go Online"));
+	add_child(go_online_confirm);
+	go_online_confirm->connect(SceneStringName(confirmed), callable_mp(this, &ProjectExportDialog::_go_online_and_download));
+
+	manage_templates = memnew(LinkButton);
+	manage_templates->set_text(TTRC("Manage Export Templates"));
+	manage_templates->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
+	export_templates_error->add_child(manage_templates);
+	manage_templates->connect(SceneStringName(pressed), callable_mp(this, &ProjectExportDialog::_open_export_template_manager));
 
 #ifndef ANDROID_ENABLED
 	// Android SDK errors bottom section.

@@ -1,7 +1,7 @@
 short_name = "orblit"
 name = "Orblit Engine"
 major = 1
-minor = 1
+minor = 2
 patch = 0
 status = "stable"
 module_config = ""
