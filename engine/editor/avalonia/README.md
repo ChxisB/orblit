@@ -1,7 +1,8 @@
 # Orblit editor on Avalonia
 
 This editor opens a project, draws its scene in a viewport and edits the
-scene. It runs on macOS. Nothing else has run it.
+scene. It runs on macOS. On Linux and Windows only the release smoke test
+has started it.
 
 ## What works
 
@@ -97,12 +98,8 @@ scene. It runs on macOS. Nothing else has run it.
 - A menu item with no action carries a Soon tag.
 - The launcher's Templates and Settings places and each card's
   More menu. A listed folder that lost its `project.orblit` is hidden.
-- Windows and Linux runs. The engine builds for them and for iOS, visionOS,
-  Android and Web, but only macOS has run. Play looks for macOS and Linux
-  file names only.
-- The C# module is built, but the editor finds its assemblies only in
-  `OrblitSharp` beside the host executable. A packaged editor has no answer
-  for that yet.
+- Windows and Linux use. The release starts the packaged editor on both
+  with a headless engine, and nothing more has run there.
 
 ## Look
 
@@ -153,6 +150,12 @@ Each panel is an island on a near-black window. One orange accent marks the choi
 
 The engine window opens beside the editor and takes the foreground when it
 starts. One process holds one engine.
+
+A release zip holds the published app, named `Orblit`, beside the engine
+library, the engine program and `OrblitSharp`. The app finds the library in
+its own folder. On macOS that folder is `Orblit.app/Contents/MacOS`, and
+`OrblitSharp` stays in `Contents/Resources`, where the engine looks next.
+`.github/workflows/release.yml` builds it.
 
 ## Test it
 

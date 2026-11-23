@@ -1,7 +1,8 @@
 name: Release
 
 # A tag such as v1.0.0 builds the editor for Linux, Windows and macOS and attaches one zip
-# file for each to a GitHub Release. The same tag builds the export templates for all three
+# file for each to a GitHub Release. Each zip holds the Avalonia editor app with the engine
+# beside it: a shared library the app hosts, and the engine program that Play starts. The same tag builds the export templates for all three
 # and attaches them as one .tpz file, which the editor installs to export a game. A pull
 # request that edits this workflow runs the same builds and publishes nothing. The tag must
 # match version.py.
@@ -14,6 +15,7 @@ on:
       - .github/workflows/release.yml
       - .github/actions/scons-build/action.yml
       - dist/scripts/install_*.py
+      - dist/scripts/check_packaged_editor.sh
   workflow_dispatch:
 
 concurrency:
@@ -89,8 +91,8 @@ jobs:
         timeout-minutes: 10
         run: |
           sudo apt-get update
-          # wayland-scanner generates the Wayland protocol sources.
-          sudo apt-get install -y libwayland-bin
+          # wayland-scanner generates the Wayland protocol sources. Xvfb gives the editor app a display.
+          sudo apt-get install -y libwayland-bin xvfb
 
       - name: Set up SCons
         uses: ./.github/actions/setup-scons
@@ -124,13 +126,34 @@ jobs:
           ${{ env.BIN }} --version
           ${{ env.BIN }} --help > /dev/null
 
-      - name: Package
+      # The library defines LIBORBLIT_ENABLED in every file, so this is a second full build.
+      - name: Build the engine library
+        uses: ./.github/actions/scons-build
+        with:
+          platform: linuxbsd
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} accesskit=yes library_type=shared_library
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Publish the editor app
+        run: |
+          dotnet publish engine/editor/avalonia/Orblit.Editor.App -c Release -r linux-x64 --self-contained false -o bin
+          mv bin/Orblit.Editor.App bin/Orblit
+
+      - name: Lay out the package
         run: |
           rm -rf ./bin/build_deps
           strip ./bin/orblit.*
-          chmod +x ./bin/orblit.*
+          strip --strip-unneeded ./bin/liborblit.*.so
+          chmod +x ./bin/orblit.* ./bin/Orblit
           mv bin "$PACKAGE"
           cp LICENSE.md "$PACKAGE/"
+
+      - name: Start the packaged editor
+        run: xvfb-run -a ./dist/scripts/check_packaged_editor.sh "$PACKAGE/Orblit"
+
+      - name: Zip
+        run: |
           zip -qr "$PACKAGE.zip" "$PACKAGE"
           ls -l "$PACKAGE.zip"
 
@@ -199,12 +222,32 @@ jobs:
           ${{ env.BIN }} --version
           ${{ env.BIN }} --help > /dev/null
 
-      - name: Package
+      # The library defines LIBORBLIT_ENABLED in every file, so this is a second full build.
+      - name: Build the engine library
+        uses: ./.github/actions/scons-build
+        with:
+          platform: windows
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} windows_subsystem=gui d3d12=yes accesskit=yes angle=yes library_type=shared_library
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Publish the editor app
+        run: |
+          dotnet publish engine/editor/avalonia/Orblit.Editor.App -c Release -r win-x64 --self-contained false -o bin
+          mv bin/Orblit.Editor.App.exe bin/Orblit.exe
+
+      - name: Lay out the package
         run: |
           rm -rf ./bin/build_deps
           rm -f ./bin/*.exp ./bin/*.lib ./bin/*.pdb
           mv bin "$PACKAGE"
           cp LICENSE.md "$PACKAGE/"
+
+      - name: Start the packaged editor
+        run: ./dist/scripts/check_packaged_editor.sh "$PACKAGE/Orblit.exe"
+
+      - name: Zip
+        run: |
           7z a -tzip -bso0 "$PACKAGE.zip" "$PACKAGE"
           ls -l "$PACKAGE.zip"
 
@@ -281,18 +324,58 @@ jobs:
           scons-flags: ${{ env.SCONS_FLAGS }} arch=arm64 vulkan=yes accesskit=yes angle=yes generate_bundle=yes
           build-name: ${{ env.BUILD_NAME_INPUT }}
 
-      # Stripping breaks the signature, so the bundle is signed again afterwards.
-      - name: Strip, sign and check the app
+      # The library defines LIBORBLIT_ENABLED in every file, so each is a second full build. They
+      # run after the bundle step, which needs the arm64 program's objects.
+      - name: Build the engine library for x86_64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=x86_64 vulkan=yes accesskit=yes angle=yes metal=no library_type=shared_library
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      - name: Build the engine library for arm64
+        uses: ./.github/actions/scons-build
+        with:
+          platform: macos
+          target: editor
+          scons-flags: ${{ env.SCONS_FLAGS }} arch=arm64 vulkan=yes accesskit=yes angle=yes library_type=shared_library
+          build-name: ${{ env.BUILD_NAME_INPUT }}
+
+      # The two outputs differ only in the apphost. Their native libraries are universal already.
+      - name: Publish the editor app
         run: |
-          app=$(ls -d bin/*.app)
-          test -d "$app/Contents/Resources/OrblitSharp"
-          strip -x "$app/Contents/MacOS/Orblit"
-          codesign --force --deep --sign - --options runtime --entitlements dist/macos/editor.entitlements "$app"
-          codesign --verify --deep --strict "$app"
-          mv "$app" Orblit.app
-          lipo -info Orblit.app/Contents/MacOS/Orblit
-          Orblit.app/Contents/MacOS/Orblit --version
-          Orblit.app/Contents/MacOS/Orblit --help > /dev/null
+          for rid in osx-arm64 osx-x64; do
+            dotnet publish engine/editor/avalonia/Orblit.Editor.App -c Release -r "$rid" --self-contained false -o "app-$rid"
+          done
+
+      # The app takes the bundle's main program name. The engine program moves aside, and Play
+      # starts it by the name a C# build gives it. OrblitSharp stays in Resources, where the
+      # engine looks when no OrblitSharp sits beside the running program.
+      - name: Assemble the app
+        run: |
+          mv "$(ls -d bin/*.app)" Orblit.app
+          macos=Orblit.app/Contents/MacOS
+          test -d Orblit.app/Contents/Resources/OrblitSharp
+          mv "$macos/Orblit" "$macos/orblit.macos.editor.universal.csharp"
+          lipo -create bin/liborblit.macos.editor.x86_64.dylib bin/liborblit.macos.editor.arm64.dylib -output "$macos/liborblit.macos.editor.universal.dylib"
+          cp -R app-osx-arm64/. "$macos/"
+          rm "$macos/Orblit.Editor.App"
+          lipo -create app-osx-arm64/Orblit.Editor.App app-osx-x64/Orblit.Editor.App -output "$macos/Orblit"
+          strip -x "$macos/orblit.macos.editor.universal.csharp" "$macos/liborblit.macos.editor.universal.dylib"
+          lipo -info "$macos/Orblit" "$macos/orblit.macos.editor.universal.csharp" "$macos/liborblit.macos.editor.universal.dylib"
+
+      # Stripping breaks the signature, so the bundle is signed after it. --deep signs each file
+      # in Contents/MacOS, the engine program with the same entitlements as the app.
+      - name: Sign and check the app
+        run: |
+          codesign --force --deep --sign - --options runtime --entitlements dist/macos/editor.entitlements Orblit.app
+          codesign --verify --deep --strict Orblit.app
+          Orblit.app/Contents/MacOS/orblit.macos.editor.universal.csharp --version
+          Orblit.app/Contents/MacOS/orblit.macos.editor.universal.csharp --help > /dev/null
+
+      - name: Start the packaged editor
+        run: ./dist/scripts/check_packaged_editor.sh Orblit.app/Contents/MacOS/Orblit
 
       - name: Package
         run: |
