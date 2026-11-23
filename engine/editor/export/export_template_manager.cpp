@@ -2334,6 +2334,10 @@ void PlatformTemplateDownload::_file_downloaded() {
 }
 
 void PlatformTemplateDownload::_file_failed(const String &p_file, const String &p_reason) {
+	// The downloader's thread can still report a request that a cancel cut short.
+	if (!is_downloading()) {
+		return;
+	}
 	_fail(vformat("%s: %s", p_file, p_reason));
 }
 
