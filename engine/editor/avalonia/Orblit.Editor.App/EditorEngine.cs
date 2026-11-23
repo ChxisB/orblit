@@ -663,11 +663,13 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         }
     }
 
-    // shortcut: macOS and Linux file names only. The library liborblit.<tags>.dylib sits beside the
-    // program orblit.<tags>. Add the Windows names when the editor runs there.
+    // The library liborblit.<tags>.dylib or .so, or orblit.<tags>.dll on Windows, sits beside the program orblit.<tags>.
+    // A build with the C# module tags the program .csharp and leaves the library's name as it is.
     internal static string PlayerPath(string library)
     {
         var name = Path.GetFileNameWithoutExtension(library);
-        return Path.Combine(Path.GetDirectoryName(library)!, name["lib".Length..]);
+        var program = Path.Combine(Path.GetDirectoryName(library)!, name.StartsWith("lib", StringComparison.Ordinal) ? name["lib".Length..] : name);
+        var extension = Path.GetExtension(library) == ".dll" ? ".exe" : "";
+        return File.Exists(program + ".csharp" + extension) ? program + ".csharp" + extension : program + extension;
     }
 }

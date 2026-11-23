@@ -1,7 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <!-- WinExe opens no console window on Windows. Elsewhere it is the same as Exe. -->
+    <OutputType>WinExe</OutputType>
     <RootNamespace>Orblit.Editor.App</RootNamespace>
     <!-- The compiler packages carry their messages in a dozen languages. The editor is in English. -->
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
