@@ -27,7 +27,7 @@ public static class EngineLibrary
             }
         }
         throw new FileNotFoundException(
-            "No engine library found. Build one with: scons platform=macos target=editor dev_build=yes library_type=shared_library, or set ORBLIT_ENGINE_LIBRARY.");
+            "No engine library found beside the app or in a bin folder above it. Build one with: scons target=editor dev_build=yes library_type=shared_library, or set ORBLIT_ENGINE_LIBRARY.");
     }
 
     /// <summary>The editor library in the folder: liborblit.&lt;tags&gt; on macOS and Linux, orblit.&lt;tags&gt;.dll on Windows.</summary>

@@ -2,8 +2,9 @@ name: Release
 
 # A tag such as v1.0.0 builds the editor for Linux, Windows and macOS and attaches one zip
 # file for each to a GitHub Release. Each zip holds the Avalonia editor app with the engine
-# beside it: a shared library the app hosts, and the engine program that Play starts. The same tag builds the export templates for all three
-# and attaches them as one .tpz file, which the editor installs to export a game. A pull
+# beside it. The app hosts the engine as a shared library, and Play starts the engine
+# program. The same tag builds the export templates for all three and attaches them as
+# one .tpz file, which the editor installs to export a game. A pull
 # request that edits this workflow runs the same builds and publishes nothing. The tag must
 # match version.py.
 

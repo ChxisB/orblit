@@ -157,6 +157,10 @@ its own folder. On macOS that folder is `Orblit.app/Contents/MacOS`, and
 `OrblitSharp` stays in `Contents/Resources`, where the engine looks next.
 `.github/workflows/release.yml` builds it.
 
+The app needs the .NET 10 runtime, because the engine's C# module shares
+the runtime the app starts. Without it the app does not open. Windows shows
+a dialog that says so. macOS and Linux say so only in a terminal.
+
 ## Test it
 
 From this folder:

@@ -20,6 +20,8 @@ fi
 # The editor writes the engine log under the temp folder. Windows reads TMP and the others read TMPDIR.
 TMPDIR=$temp TMP=$temp "$editor" --project "$project" --headless &
 pid=$!
+# The editor may have quit already, and a file it still holds open may not delete.
+trap 'kill "$pid" 2> /dev/null || true; rm -rf "$work" 2> /dev/null || true' EXIT
 
 engine_log() {
 	cat "$work"/temp/orblit-output-*/0.log 2> /dev/null || true
@@ -28,7 +30,6 @@ engine_log() {
 fail() {
 	echo "::error::$1"
 	engine_log
-	kill "$pid" 2> /dev/null || true
 	exit 1
 }
 
@@ -48,5 +49,4 @@ if engine_log | grep -q "ERROR: .NET"; then
 	fail "The engine could not start .NET."
 fi
 engine_log
-kill "$pid"
 echo "The packaged editor started its engine."

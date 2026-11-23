@@ -222,7 +222,6 @@ internal sealed class EditorWindow : Window
 
     internal CenterArea Center => _center;
 
-
     internal ExportTool Export => _export;
 
     internal ScriptView Script => _script;
