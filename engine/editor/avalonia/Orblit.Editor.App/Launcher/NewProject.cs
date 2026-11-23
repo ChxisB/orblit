@@ -130,7 +130,7 @@ internal sealed class NewProject
         if (Script == FirstScript.Csharp)
         {
             yield return ("Main.cs", $"using Orblit;\n\npublic partial class Main : {RootType}\n{{\n    public override void OnStart() => Orb.Print(\"Main started\");\n}}\n");
-            yield return ($"{Assembly}.csproj", "<Project Sdk=\"Orblit.NET.Sdk/1.2.0\">\n  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n    <EnableDynamicLoading>true</EnableDynamicLoading>\n  </PropertyGroup>\n</Project>\n");
+            yield return ($"{Assembly}.csproj", "<Project Sdk=\"Orblit.NET.Sdk/1.3.0\">\n  <PropertyGroup>\n    <TargetFramework>net10.0</TargetFramework>\n    <EnableDynamicLoading>true</EnableDynamicLoading>\n  </PropertyGroup>\n</Project>\n");
             // The engine's C# export builds the solution, and refuses a project without one.
             yield return ($"{Assembly}.slnx", $"<Solution>\n  <Project Path=\"{Assembly}.csproj\" />\n</Solution>\n");
         }
@@ -184,7 +184,7 @@ internal sealed class NewProject
             text.Append("run/main_scene=\"res://main.oscn\"\n");
         }
 
-        text.Append("config/features=PackedStringArray(\"1.2\", \"C#\")\n");
+        text.Append("config/features=PackedStringArray(\"1.3\", \"C#\")\n");
         if (Script == FirstScript.Csharp)
         {
             text.Append(CultureInfo.InvariantCulture, $"\n[dotnet]\n\nproject/assembly_name=\"{Assembly}\"\n");
