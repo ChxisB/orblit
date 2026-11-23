@@ -6,7 +6,6 @@
 #include "core/config/engine.h"
 #include "core/config/project_settings.h"
 #include "core/input/input.h"
-#include "core/io/config_file.h"
 #include "core/io/dir_access.h"
 #include "core/io/file_access.h"
 #include "core/object/callable_mp.h"
@@ -16,7 +15,6 @@
 #include "editor/doc/editor_help.h"
 #include "editor/editor_string_names.h"
 #include "editor/inspector/editor_inspector.h"
-#include "editor/project_manager/engine_update_label.h"
 #include "editor/project_manager/project_dialog.h"
 #include "editor/project_manager/project_list.h"
 #include "editor/project_manager/project_tag.h"
@@ -44,6 +42,10 @@
 #include "startup/main.h"
 #include "systems/display/display_system.h"
 #include "systems/navigation_spatial/navigation_system_spatial.h"
+
+#ifdef ENGINE_UPDATE_CHECK_ENABLED
+#include "editor/project_manager/engine_update_label.h"
+#endif
 
 #ifndef PHYSICS_PLANAR_DISABLED
 #include "systems/physics_planar/physics_system_planar.h"

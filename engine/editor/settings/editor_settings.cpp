@@ -20,7 +20,6 @@
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/string/regex.h"
-#include "core/string/translation_system.h"
 #include "core/version.h"
 #include "editor/docks/dock_tab_container.h"
 #include "editor/editor_node.h"
