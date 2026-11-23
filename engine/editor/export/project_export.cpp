@@ -1454,7 +1454,7 @@ void ProjectExportDialog::_open_export_template_manager() {
 
 void ProjectExportDialog::_download_templates() {
 	if ((int)EDITOR_GET("network/connection/network_mode") == EditorSettings::NETWORK_OFFLINE) {
-		_template_download_failed(TTR("The editor is in offline mode. Set Network Mode to Online in the Editor Settings."));
+		go_online_confirm->popup_centered();
 		return;
 	}
 	Ref<EditorExportPreset> current = get_current_preset();
@@ -1465,6 +1465,13 @@ void ProjectExportDialog::_download_templates() {
 	download_templates_progress->show();
 	set_internal_frame_enabled(true);
 	template_download->start(_get_preset_template_files(current));
+}
+
+void ProjectExportDialog::_go_online_and_download() {
+	EditorSettings::get_singleton()->set_setting("network/connection/network_mode", EditorSettings::NETWORK_ONLINE);
+	EditorSettings::get_singleton()->notify_changes();
+	EditorSettings::get_singleton()->save();
+	_download_templates();
 }
 
 void ProjectExportDialog::_end_template_download() {
@@ -2111,6 +2118,12 @@ ProjectExportDialog::ProjectExportDialog() {
 	add_child(template_download);
 	template_download->connect("finished", callable_mp(this, &ProjectExportDialog::_end_template_download));
 	template_download->connect("failed", callable_mp(this, &ProjectExportDialog::_template_download_failed));
+
+	go_online_confirm = memnew(ConfirmationDialog);
+	go_online_confirm->set_text(TTRC("The editor is in offline mode. Go online to download the export templates?"));
+	go_online_confirm->set_ok_button_text(TTRC("Go Online"));
+	add_child(go_online_confirm);
+	go_online_confirm->connect(SceneStringName(confirmed), callable_mp(this, &ProjectExportDialog::_go_online_and_download));
 
 	LinkButton *manage_templates = memnew(LinkButton);
 	manage_templates->set_text(TTRC("Manage Export Templates"));
