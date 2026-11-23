@@ -136,7 +136,6 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public void Reimport() => scene.Reimport();
 
-    public void InstallKit(string zipFile) => scene.InstallKit(zipFile);
 
     public IReadOnlyList<ExportPreset> Presets() => scene.Presets();
 

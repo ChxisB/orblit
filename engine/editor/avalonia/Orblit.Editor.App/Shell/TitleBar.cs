@@ -37,9 +37,6 @@ internal sealed class TitleBar : Grid
     /// <summary>The name of the workspace that runs the project and stops it.</summary>
     internal const string Game = "Game";
 
-    /// <summary>The name of the workspace that lists the kits of the store.</summary>
-    internal const string Store = "Asset Store";
-
     // Name and icon file.
     static readonly (string Name, string Icon)[] Workspaces =
     [
@@ -48,7 +45,6 @@ internal sealed class TitleBar : Grid
         (Script, "Script"),
         (Graph, "GraphEdit"),
         (Game, "Game"),
-        (Store, "AssetStore"),
     ];
 
     readonly WorkspaceTab[] _tabs;

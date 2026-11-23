@@ -19,9 +19,9 @@ internal static class ReferenceWindow
 
     public static EditorWindow OpenAtReferenceSize() => OpenAtReferenceSize(new FakeScene());
 
-    public static EditorWindow OpenAtReferenceSize(FakeScene scene, Func<CancellationToken, Task<string>>? readStore = null, TimeProvider? time = null)
+    public static EditorWindow OpenAtReferenceSize(FakeScene scene, TimeProvider? time = null)
     {
-        var window = new EditorWindow(readStore: readStore, time: time) { Width = Width, Height = Height };
+        var window = new EditorWindow(time: time) { Width = Width, Height = Height };
         window.Show();
         window.Load(scene);
         window.UpdateLayout();

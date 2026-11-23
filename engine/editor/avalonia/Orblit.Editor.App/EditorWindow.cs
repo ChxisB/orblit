@@ -71,7 +71,6 @@ internal sealed class EditorWindow : Window
     readonly DockSide _leftSide;
     readonly DockSide _rightSide;
     readonly CenterArea _center;
-    readonly StoreView _store;
     readonly ExportTool _export = new();
     readonly ScriptView _script = new();
     readonly ImportPane _import = new();
@@ -87,7 +86,6 @@ internal sealed class EditorWindow : Window
         [TitleBar.Script] = (true, true),
         [TitleBar.Graph] = (true, true),
         [TitleBar.Game] = (true, true),
-        [TitleBar.Store] = (true, true),
     };
     IEditorScene? _scene;
     OutlineNode? _root;
@@ -105,7 +103,7 @@ internal sealed class EditorWindow : Window
     string _dragged = "";
 
     // The screen bar of macOS has its own app menu, so a window on any other system also carries Quit and About.
-    public EditorWindow(bool? globalMenu = null, Func<CancellationToken, Task<string>>? readStore = null, TimeProvider? time = null)
+    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null)
     {
         // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
         _time = time ?? TimeProvider.System;
@@ -117,8 +115,6 @@ internal sealed class EditorWindow : Window
         _redo.Click += (_, _) => GoTo(_history.Done + 1);
         _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
         _saveChanges = SaveChangesDialog();
-        _store = new StoreView(readStore ?? new KitIndexSource().ReadAsync);
-        _store.Installed += ShowScenes;
         _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
         _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
         _titleBar.SearchButton.Click += (_, _) => OpenPalette();
@@ -199,8 +195,6 @@ internal sealed class EditorWindow : Window
         _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddBareWorkspace(TitleBar.Game, _game);
-        _center.AddBareWorkspace(TitleBar.Store, _store);
-        _center.AddSide(TitleBar.Store, _store.Drawer);
         _titleBar.WorkspaceChosen += ChooseWorkspace;
         _pollTimer.Tick += (_, _) => Poll();
         Closed += (_, _) =>
@@ -228,7 +222,6 @@ internal sealed class EditorWindow : Window
 
     internal CenterArea Center => _center;
 
-    internal StoreView Store => _store;
 
     internal ExportTool Export => _export;
 
@@ -302,7 +295,6 @@ internal sealed class EditorWindow : Window
         _script.Show(scene);
         _graph.Show(scene);
         _import.Show(scene);
-        _store.Show(scene);
         _export.Show(scene);
         _center.Output.Show(scene.Output, _time);
         _pollTimer.Start();

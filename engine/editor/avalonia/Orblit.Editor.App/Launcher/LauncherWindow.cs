@@ -13,7 +13,7 @@ namespace Orblit.Editor.App.Launcher;
 /// <summary>
 /// The window the editor opens on when no project is named. It shows the projects in projects.cfg as cards,
 /// with a search and a sort over them. Open adds a project folder from disk and New project writes a new one.
-/// Either raises Opening with the folder. Templates, Asset Store, Settings and a card's More menu are not built.
+/// Either raises Opening with the folder. Templates, Settings and a card's More menu are not built.
 /// </summary>
 internal sealed class LauncherWindow : Window
 {
@@ -312,10 +312,9 @@ internal sealed class Nav : DockPanel
         Projects = Place("FolderLine", "Projects");
         Projects.Background = EditorBrushes.Raised;
         Templates = Place("Cube", "Templates");
-        Store = Place("AssetStore", "Asset Store");
         Docs = Place("Book", "Docs");
         Settings = Place("Tools", "Settings");
-        foreach (var unbuilt in new[] { Templates, Store, Settings })
+        foreach (var unbuilt in new[] { Templates, Settings })
         {
             Unbuilt.Disable(unbuilt);
         }
@@ -326,14 +325,12 @@ internal sealed class Nav : DockPanel
         SetDock(version, Dock.Bottom);
         Children.Add(logo);
         Children.Add(version);
-        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Templates, Store, Docs, Settings } });
+        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Templates, Docs, Settings } });
     }
 
     internal Button Projects { get; }
 
     internal Button Templates { get; }
-
-    internal Button Store { get; }
 
     internal Button Docs { get; }
 

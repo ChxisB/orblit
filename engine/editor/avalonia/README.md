@@ -39,11 +39,11 @@ scene. It runs on macOS. Nothing else has run it.
   scene's entities in one list. Shift+Command+O opens a scene by name.
 - New Scene and New Graph Script are dialogs. Toasts stack at the bottom
   right.
-- The workspace tabs are 2D, 3D, Script, Graph, Game and Asset Store. 2D
+- The workspace tabs are 2D, 3D, Script, Graph and Game. 2D
   pans, zooms, picks and moves an `Entity2D`, with rulers and a zoom pill.
   Script edits a project `.cs` file with syntax colors and an outline. Graph
   edits a `.ograph` graph script. Game runs the project and shows whether it
-  runs. Asset Store lists the kits in the store index when Reload is pressed.
+  runs.
 - With no `--project` a launcher opens. It lists recent projects, opens a
   project folder and makes a new project from a template.
 - Undo and redo cover scene edits, and History lists them.
@@ -62,7 +62,6 @@ scene. It runs on macOS. Nothing else has run it.
 - 2D has Rotate, Scale, Pan, Snap and a grid. The 3D viewport has a
   ruler, Select from a list and the preview lights.
 - A dock floats in its own window from the dock menu.
-- The Asset Store installs a kit from a zip on disk.
 - Project > Export exports the game with one of its presets, once export
   templates are installed. Download Templates takes them from the first
   https mirror in the release's list on orblitengine.com, or they install
@@ -80,8 +79,7 @@ scene. It runs on macOS. Nothing else has run it.
 - A copy of netcoredbg in the download. The person installs it. C#
   breakpoints last while the editor is open, and there are no conditions,
   watches or exception stops.
-- Kits install from a zip on disk, not from the store. The script slot's New
-  Script is not built.
+- The script slot's New Script is not built.
 - Template mirror lists before 1.1.0. An older release says no templates are
   published for it.
 - Drag to reparent in the outliner, and a pick by mesh bounds. A big mesh is
@@ -97,7 +95,7 @@ scene. It runs on macOS. Nothing else has run it.
   no run choices. Run a chosen scene, Movie maker mode and Customize Run
   Instances in the run menu.
 - A menu item with no action carries a Soon tag.
-- The launcher's Templates, Asset Store and Settings places and each card's
+- The launcher's Templates and Settings places and each card's
   More menu. A listed folder that lost its `project.orblit` is hidden.
 - Windows and Linux runs. The engine builds for them and for iOS, visionOS,
   Android and Web, but only macOS has run. Play looks for macOS and Linux

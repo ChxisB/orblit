@@ -409,12 +409,6 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         using var started = Process.Start(import);
     }
 
-    public void InstallKit(string zipFile)
-    {
-        KitArchive.Install(zipFile, _project);
-        Reimport();
-    }
-
     public IReadOnlyList<ExportPreset> Presets() => ExportPresets.Read(_project);
 
     public void AddPreset() => ExportPresets.AddForThisComputer(_project);

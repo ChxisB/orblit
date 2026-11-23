@@ -261,7 +261,7 @@ public sealed class LauncherTests : IDisposable
 
             Assert.Equal([HelpMenu.Docs], _links);
             var more = launcher.Cards.Single().GetVisualDescendants().OfType<Button>().Single();
-            Button[] waiting = [launcher.Nav.Templates, launcher.Nav.Store, launcher.Nav.Settings, more];
+            Button[] waiting = [launcher.Nav.Templates, launcher.Nav.Settings, more];
             Assert.All(waiting, button => Assert.False(button.IsEnabled));
             Assert.All(waiting, button => Assert.Equal("Not built yet", (string?)ToolTip.GetTip(button)));
             Assert.True(launcher.Nav.Projects.IsEnabled);
