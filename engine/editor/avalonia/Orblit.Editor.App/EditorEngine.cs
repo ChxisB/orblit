@@ -664,6 +664,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         var name = Path.GetFileNameWithoutExtension(library);
         var program = Path.Combine(Path.GetDirectoryName(library)!, name.StartsWith("lib", StringComparison.Ordinal) ? name["lib".Length..] : name);
         var extension = Path.GetExtension(library) == ".dll" ? ".exe" : "";
-        return File.Exists(program + ".csharp" + extension) ? program + ".csharp" + extension : program + extension;
+        var plain = program + extension;
+        var csharp = program + ".csharp" + extension;
+        // A dev bin can hold both from earlier builds, so the one built last wins. A missing file reads as the year 1601.
+        return File.Exists(csharp) && File.GetLastWriteTimeUtc(csharp) >= File.GetLastWriteTimeUtc(plain) ? csharp : plain;
     }
 }

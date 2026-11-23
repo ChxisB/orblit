@@ -57,4 +57,19 @@ public sealed class EngineFilesTests : IDisposable
 
         Assert.Equal(expected, EditorEngine.PlayerPath(Path.Combine(_folder, library)));
     }
+
+    [Fact]
+    public void The_program_built_last_plays_when_both_programs_are_there()
+    {
+        var library = Path.Combine(_folder, "liborblit.macos.editor.dev.arm64.dylib");
+        var plain = Touch("orblit.macos.editor.dev.arm64");
+        var csharp = Touch("orblit.macos.editor.dev.arm64.csharp");
+
+        File.SetLastWriteTimeUtc(csharp, new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc));
+        File.SetLastWriteTimeUtc(plain, new DateTime(2026, 1, 2, 0, 0, 0, DateTimeKind.Utc));
+        Assert.Equal(plain, EditorEngine.PlayerPath(library));
+
+        File.SetLastWriteTimeUtc(csharp, new DateTime(2026, 1, 3, 0, 0, 0, DateTimeKind.Utc));
+        Assert.Equal(csharp, EditorEngine.PlayerPath(library));
+    }
 }
