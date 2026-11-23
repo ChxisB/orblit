@@ -114,6 +114,7 @@ class ProjectExportDialog : public ConfirmationDialog {
 	HBoxContainer *export_templates_error = nullptr;
 	Button *download_templates = nullptr;
 	ProgressBar *download_templates_progress = nullptr;
+	LinkButton *manage_templates = nullptr;
 	PlatformTemplateDownload *template_download = nullptr;
 	ConfirmationDialog *go_online_confirm = nullptr;
 
@@ -186,6 +187,7 @@ class ProjectExportDialog : public ConfirmationDialog {
 	void _download_templates();
 	void _go_online_and_download();
 	void _end_template_download();
+	void _cancel_template_download();
 	void _template_download_failed(const String &p_reason);
 
 	void _export_pck_zip();

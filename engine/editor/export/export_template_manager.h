@@ -92,10 +92,9 @@ class PlatformTemplateDownload final : public Entity {
 	int next_file = 0;
 	String mirror_url;
 
-	bool _is_downloading() const { return !files.is_empty(); }
 	void _mirror_request_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
 	void _download_next();
-	void _file_downloaded(const String &p_file);
+	void _file_downloaded();
 	void _file_failed(const String &p_file, const String &p_reason);
 	void _fail(const String &p_reason);
 
@@ -106,6 +105,8 @@ public:
 	static String find_first_mirror(const PackedByteArray &p_mirror_list);
 
 	void start(const PackedStringArray &p_files);
+	void cancel();
+	bool is_downloading() const { return !files.is_empty(); }
 	float get_progress() const;
 
 	PlatformTemplateDownload();
@@ -313,7 +314,7 @@ public:
 	static Error install_android_template(const Ref<EditorExportPreset> &p_preset);
 	static Error install_android_template_from_file(const String &p_file, const Ref<EditorExportPreset> &p_preset);
 
-	/// Returns the template files an export platform needs, or none when the platform has no single list.
+	/// Returns the template files an export platform needs, or none when the release archive has none for it.
 	static PackedStringArray get_template_files(const String &p_platform_name, const String &p_architecture);
 
 	void popup_manager();

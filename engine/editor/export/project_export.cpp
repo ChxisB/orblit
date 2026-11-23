@@ -95,6 +95,7 @@ void ProjectExportDialog::_notification(int p_what) {
 			if (!is_visible()) {
 				EditorSettings::get_singleton()->set_project_metadata("dialog_bounds", "export", Rect2(get_position(), get_size()));
 				show_script_key->set_pressed(false);
+				_cancel_template_download();
 			}
 		} break;
 
@@ -1459,12 +1460,16 @@ void ProjectExportDialog::_download_templates() {
 	}
 	Ref<EditorExportPreset> current = get_current_preset();
 	ERR_FAIL_COND(current.is_null());
+	const PackedStringArray files = _get_preset_template_files(current);
+	ERR_FAIL_COND(files.is_empty());
 
 	download_templates->set_disabled(true);
+	// The manager writes to the same folder, so it waits until this download ends.
+	manage_templates->set_disabled(true);
 	download_templates_progress->set_value(0);
 	download_templates_progress->show();
 	set_internal_frame_enabled(true);
-	template_download->start(_get_preset_template_files(current));
+	template_download->start(files);
 }
 
 void ProjectExportDialog::_go_online_and_download() {
@@ -1477,8 +1482,16 @@ void ProjectExportDialog::_go_online_and_download() {
 void ProjectExportDialog::_end_template_download() {
 	set_internal_frame_enabled(false);
 	download_templates->set_disabled(false);
+	manage_templates->set_disabled(false);
 	download_templates_progress->hide();
 	_update_current_preset();
+}
+
+void ProjectExportDialog::_cancel_template_download() {
+	if (template_download->is_downloading()) {
+		template_download->cancel();
+		_end_template_download();
+	}
 }
 
 void ProjectExportDialog::_template_download_failed(const String &p_reason) {
@@ -2125,7 +2138,7 @@ ProjectExportDialog::ProjectExportDialog() {
 	add_child(go_online_confirm);
 	go_online_confirm->connect(SceneStringName(confirmed), callable_mp(this, &ProjectExportDialog::_go_online_and_download));
 
-	LinkButton *manage_templates = memnew(LinkButton);
+	manage_templates = memnew(LinkButton);
 	manage_templates->set_text(TTRC("Manage Export Templates"));
 	manage_templates->set_v_size_flags(Control::SIZE_SHRINK_CENTER);
 	export_templates_error->add_child(manage_templates);

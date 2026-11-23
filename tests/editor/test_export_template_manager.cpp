@@ -21,9 +21,8 @@ TEST_CASE("[Editor][ExportTemplateManager] Windows x86_64 needs its executables 
 	CHECK(files.has("d3d12SDKLayers.x86_64.dll"));
 }
 
-TEST_CASE("[Editor][ExportTemplateManager] Linux file names follow the architecture") {
+TEST_CASE("[Editor][ExportTemplateManager] Linux x86_64 needs its two executables") {
 	CHECK(ExportTemplateManager::get_template_files("Linux", "x86_64") == PackedStringArray{ "linux_debug.x86_64", "linux_release.x86_64" });
-	CHECK(ExportTemplateManager::get_template_files("Linux", "arm64") == PackedStringArray{ "linux_debug.arm64", "linux_release.arm64" });
 }
 
 TEST_CASE("[Editor][ExportTemplateManager] macOS needs one archive for every architecture") {
@@ -31,13 +30,15 @@ TEST_CASE("[Editor][ExportTemplateManager] macOS needs one archive for every arc
 	CHECK(ExportTemplateManager::get_template_files("macOS", "arm64") == PackedStringArray{ "macos.zip" });
 }
 
-TEST_CASE("[Editor][ExportTemplateManager] A platform without a single file list gives none") {
+TEST_CASE("[Editor][ExportTemplateManager] A template the release does not build gives no files") {
 	CHECK(ExportTemplateManager::get_template_files("Web", "").is_empty());
-	CHECK(ExportTemplateManager::get_template_files("Windows Desktop", "rv64").is_empty());
+	CHECK(ExportTemplateManager::get_template_files("Android", "").is_empty());
+	CHECK(ExportTemplateManager::get_template_files("Linux", "arm64").is_empty());
+	CHECK(ExportTemplateManager::get_template_files("Windows Desktop", "arm64").is_empty());
 }
 
 TEST_CASE("[Editor][PlatformTemplateDownload] The first mirror with a URL is the source") {
-	const String list = R"({"mirrors": [{"name": "Empty"}, {"name": "GitHub release", "url": "https://example.com/t.tpz"}]})";
+	const String list = R"({"mirrors": [{"name": "None"}, {"name": "Empty", "url": ""}, {"name": "Number", "url": 5}, {"name": "GitHub release", "url": "https://example.com/t.tpz"}]})";
 	CHECK(PlatformTemplateDownload::find_first_mirror(list.to_utf8_buffer()) == "https://example.com/t.tpz");
 }
 

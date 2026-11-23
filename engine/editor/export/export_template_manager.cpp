@@ -1566,26 +1566,20 @@ Error ExportTemplateManager::install_android_template_from_file(const String &p_
 }
 
 PackedStringArray ExportTemplateManager::get_template_files(const String &p_platform_name, const String &p_architecture) {
-	// The key is the platform name, then the preset's architecture where the file names depend on it.
+	// Only the templates the release archive holds. The key is the platform name, then the
+	// preset's architecture where the file names depend on it.
 	static const HashMap<String, TemplateID> template_ids = {
-		{ "Windows Desktop/x86_32", TemplateID::WINDOWS_X86_32 },
 		{ "Windows Desktop/x86_64", TemplateID::WINDOWS_X86_64 },
-		{ "Windows Desktop/arm64", TemplateID::WINDOWS_ARM64 },
-		{ "Linux/x86_32", TemplateID::LINUX_X86_32 },
 		{ "Linux/x86_64", TemplateID::LINUX_X86_64 },
-		{ "Linux/arm32", TemplateID::LINUX_ARM32 },
-		{ "Linux/arm64", TemplateID::LINUX_ARM64 },
 		{ "macOS", TemplateID::MACOS },
-		{ "Android", TemplateID::ANDROID },
-		{ "iOS", TemplateID::IOS },
-		{ "visionOS", TemplateID::VISIONOS },
 	};
+	static const HashMap<TemplateID, TemplateInfo> data = _make_template_data();
 
 	const TemplateID *id = template_ids.getptr(p_platform_name + "/" + p_architecture);
 	if (!id) {
 		id = template_ids.getptr(p_platform_name);
 	}
-	return id ? _make_template_data()[*id].file_list : PackedStringArray();
+	return id ? data[*id].file_list : PackedStringArray();
 }
 
 void ExportTemplateManager::popup_manager() {
@@ -2263,16 +2257,16 @@ String PlatformTemplateDownload::find_first_mirror(const PackedByteArray &p_mirr
 	const Dictionary data = json.get_data();
 	const Array mirrors = data.get("mirrors", Array());
 	for (const Variant &mirror : mirrors) {
-		const Dictionary m = mirror;
-		if (m.has("url")) {
-			return m["url"];
+		const Variant url = Dictionary(mirror).get("url", Variant());
+		if (url.get_type() == Variant::STRING && !String(url).is_empty()) {
+			return url;
 		}
 	}
 	return String();
 }
 
 void PlatformTemplateDownload::start(const PackedStringArray &p_files) {
-	ERR_FAIL_COND(_is_downloading());
+	ERR_FAIL_COND(is_downloading());
 	ERR_FAIL_COND(p_files.is_empty());
 
 	files = p_files;
@@ -2283,6 +2277,12 @@ void PlatformTemplateDownload::start(const PackedStringArray &p_files) {
 	}
 }
 
+void PlatformTemplateDownload::cancel() {
+	mirror_request->cancel_request();
+	downloader->cancel_download();
+	files.clear();
+}
+
 float PlatformTemplateDownload::get_progress() const {
 	if (files.is_empty()) {
 		return 0.0f;
@@ -2290,6 +2290,7 @@ float PlatformTemplateDownload::get_progress() const {
 	return (next_file + downloader->get_download_progress()) / files.size();
 }
 
+// The parameters follow the request_completed signal, so the headers stay unread.
 void PlatformTemplateDownload::_mirror_request_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body) {
 	if (p_result == HTTPRequest::RESULT_SUCCESS && p_response_code == HTTPClient::RESPONSE_NOT_FOUND) {
 		_fail(TTR("This editor version has no templates online. Install them from a TPZ file in Manage Export Templates."));
@@ -2310,6 +2311,10 @@ void PlatformTemplateDownload::_mirror_request_completed(int p_result, int p_res
 }
 
 void PlatformTemplateDownload::_download_next() {
+	// A cancel can land while this call waits a frame.
+	if (!is_downloading()) {
+		return;
+	}
 	if (next_file == files.size()) {
 		files.clear();
 		emit_signal(SNAME("finished"));
@@ -2322,7 +2327,7 @@ void PlatformTemplateDownload::_download_next() {
 	}
 }
 
-void PlatformTemplateDownload::_file_downloaded(const String &p_file) {
+void PlatformTemplateDownload::_file_downloaded() {
 	next_file++;
 	// The downloader emits from inside its own request handler, so the next request waits a frame.
 	callable_mp(this, &PlatformTemplateDownload::_download_next).call_deferred();
@@ -2350,6 +2355,6 @@ PlatformTemplateDownload::PlatformTemplateDownload() {
 	downloader = memnew(TemplateDownloader(EditorPaths::get_singleton()->get_export_templates_dir().path_join(ORBLIT_VERSION_FULL_CONFIG)));
 	downloader->set_use_threads(true);
 	add_child(downloader);
-	downloader->connect("download_completed", callable_mp(this, &PlatformTemplateDownload::_file_downloaded));
+	downloader->connect("download_completed", callable_mp(this, &PlatformTemplateDownload::_file_downloaded).unbind(1));
 	downloader->connect("download_failed", callable_mp(this, &PlatformTemplateDownload::_file_failed));
 }
