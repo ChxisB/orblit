@@ -81,6 +81,36 @@ public:
 			target_directory(p_template_directory) {}
 };
 
+// Downloads the template files of one export platform, one file at a time,
+// from the first mirror the website lists for this version.
+class PlatformTemplateDownload final : public Entity {
+	ORBLIT_CLASS(PlatformTemplateDownload, Entity);
+
+	HTTPRequest *mirror_request = nullptr;
+	TemplateDownloader *downloader = nullptr;
+	PackedStringArray files;
+	int next_file = 0;
+	String mirror_url;
+
+	bool _is_downloading() const { return !files.is_empty(); }
+	void _mirror_request_completed(int p_result, int p_response_code, const PackedStringArray &p_headers, const PackedByteArray &p_body);
+	void _download_next();
+	void _file_downloaded(const String &p_file);
+	void _file_failed(const String &p_file, const String &p_reason);
+	void _fail(const String &p_reason);
+
+protected:
+	static void register_members();
+
+public:
+	static String find_first_mirror(const PackedByteArray &p_mirror_list);
+
+	void start(const PackedStringArray &p_files);
+	float get_progress() const;
+
+	PlatformTemplateDownload();
+};
+
 class ExportTemplateManager : public AcceptDialog {
 	ORBLIT_CLASS(ExportTemplateManager, AcceptDialog);
 
@@ -209,6 +239,7 @@ class ExportTemplateManager : public AcceptDialog {
 	void _delete_file(const TreeItem *p_item);
 	void _tpz_file_selected(const String &p_file);
 
+	static HashMap<TemplateID, TemplateInfo> _make_template_data();
 	void _initialize_template_data();
 	void _update_version_list();
 	void _update_template_tree();
@@ -281,6 +312,9 @@ public:
 	static Error delete_android_build_directory(const Ref<EditorExportPreset> &p_preset);
 	static Error install_android_template(const Ref<EditorExportPreset> &p_preset);
 	static Error install_android_template_from_file(const String &p_file, const Ref<EditorExportPreset> &p_preset);
+
+	/// Returns the template files an export platform needs, or none when the platform has no single list.
+	static PackedStringArray get_template_files(const String &p_platform_name, const String &p_architecture);
 
 	void popup_manager();
 	bool is_downloading() const;

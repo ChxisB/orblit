@@ -18,7 +18,9 @@ class ItemList;
 class LinkButton;
 class MenuButton;
 class OptionButton;
+class PlatformTemplateDownload;
 class PopupMenu;
+class ProgressBar;
 class ProjectExportDialog;
 class RichTextLabel;
 class SpinBox;
@@ -110,6 +112,9 @@ class ProjectExportDialog : public ConfirmationDialog {
 	Label *export_error2 = nullptr;
 	Label *export_warning = nullptr;
 	HBoxContainer *export_templates_error = nullptr;
+	Button *download_templates = nullptr;
+	ProgressBar *download_templates_progress = nullptr;
+	PlatformTemplateDownload *template_download = nullptr;
 
 #ifndef ANDROID_ENABLED
 	HBoxContainer *android_sdk_error_container = nullptr;
@@ -177,6 +182,9 @@ class ProjectExportDialog : public ConfirmationDialog {
 	LineEdit *seed_input = nullptr;
 
 	void _open_export_template_manager();
+	void _download_templates();
+	void _end_template_download();
+	void _template_download_failed(const String &p_reason);
 
 	void _export_pck_zip();
 	void _export_pck_zip_selected(const String &p_path);
