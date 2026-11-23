@@ -19,7 +19,7 @@ public:
 	enum Feature {
 		FEATURE_3D,
 		FEATURE_SCRIPT,
-		FEATURE_ASSET_LIB,
+		FEATURE_ASSET_LIB, // Does nothing. It keeps its place so the features after it keep their numbers.
 		FEATURE_SCENE_TREE,
 		FEATURE_FILESYSTEM_DOCK,
 		FEATURE_IMPORT_DOCK,

@@ -23,7 +23,6 @@
 #include "core/string/translation_system.h"
 #include "core/version.h"
 #include "editor/animation/animation_player_editor_plugin.h"
-#include "editor/asset_library/asset_library_editor_plugin.h"
 #include "editor/audio/audio_stream_editor_plugin.h"
 #include "editor/audio/audio_stream_preview.h"
 #include "editor/audio/editor_audio_buses.h"
@@ -7969,9 +7968,6 @@ void EditorNode::_feature_profile_changed() {
 		if (!Engine::get_singleton()->is_recovery_mode_hint()) {
 			editor_dock_manager->set_dock_enabled(GameView::get_dock(), !profile->is_feature_disabled(EditorFeatureProfile::FEATURE_GAME));
 		}
-		if (AssetLibraryEditorPlugin::is_available()) {
-			editor_dock_manager->set_dock_enabled(AssetLibraryEditorPlugin::get_library(), !profile->is_feature_disabled(EditorFeatureProfile::FEATURE_ASSET_LIB));
-		}
 	} else {
 		editor_dock_manager->set_dock_enabled(ImportDock::get_singleton(), true);
 		editor_dock_manager->set_dock_enabled(SignalsDock::get_singleton(), true);
@@ -7982,9 +7978,6 @@ void EditorNode::_feature_profile_changed() {
 		editor_dock_manager->set_dock_enabled(ScriptEditor::get_singleton(), true);
 		if (!Engine::get_singleton()->is_recovery_mode_hint() && GameView::get_dock()) {
 			editor_dock_manager->set_dock_enabled(GameView::get_dock(), true);
-		}
-		if (AssetLibraryEditorPlugin::is_available()) {
-			editor_dock_manager->set_dock_enabled(AssetLibraryEditorPlugin::get_library(), true);
 		}
 	}
 
@@ -9166,13 +9159,11 @@ EditorNode::EditorNode() {
 	ED_SHORTCUT_AND_COMMAND("editor/editor_3d", TTRC("Open 3D Workspace"), KeyModifierMask::CTRL | Key::F2);
 	ED_SHORTCUT_AND_COMMAND("editor/editor_script", TTRC("Open Script Editor"), KeyModifierMask::CTRL | Key::F3);
 	ED_SHORTCUT_AND_COMMAND("editor/editor_game", TTRC("Open Game View"), KeyModifierMask::CTRL | Key::F4);
-	ED_SHORTCUT_AND_COMMAND("editor/editor_asset_store", TTRC("Open Asset Store"), KeyModifierMask::CTRL | Key::F5);
 
 	ED_SHORTCUT_OVERRIDE("editor/editor_2d", "macos", KeyModifierMask::META | KeyModifierMask::CTRL | Key::KEY_1);
 	ED_SHORTCUT_OVERRIDE("editor/editor_3d", "macos", KeyModifierMask::META | KeyModifierMask::CTRL | Key::KEY_2);
 	ED_SHORTCUT_OVERRIDE("editor/editor_script", "macos", KeyModifierMask::META | KeyModifierMask::CTRL | Key::KEY_3);
 	ED_SHORTCUT_OVERRIDE("editor/editor_game", "macos", KeyModifierMask::META | KeyModifierMask::CTRL | Key::KEY_4);
-	ED_SHORTCUT_OVERRIDE("editor/editor_asset_store", "macos", KeyModifierMask::META | KeyModifierMask::CTRL | Key::KEY_5);
 
 	ED_SHORTCUT_AND_COMMAND("editor/editor_next", TTRC("Open the next Editor"));
 	ED_SHORTCUT_AND_COMMAND("editor/editor_prev", TTRC("Open the previous Editor"));
@@ -9525,12 +9516,6 @@ EditorNode::EditorNode() {
 	TextEditor::register_editor();
 	ShaderTextEditor::register_editor();
 
-	if (AssetLibraryEditorPlugin::is_available()) {
-		add_editor_plugin(memnew(AssetLibraryEditorPlugin));
-	} else {
-		print_verbose("Asset Store not available (due to using Web editor, or SSL support disabled).");
-	}
-
 	// More visually meaningful to have this later.
 	add_editor_plugin(memnew(AnimationPlayerEditorPlugin));
 	add_editor_plugin(memnew(AnimationTrackKeyEditEditorPlugin));
@@ -9786,11 +9771,7 @@ EditorNode::EditorNode() {
 		if (GameView::get_dock()) {
 			game_key = GameView::get_dock()->get_effective_layout_key();
 		}
-		String asset_lib_key;
-		if (AssetLibraryEditorPlugin::get_library()) {
-			asset_lib_key = AssetLibraryEditorPlugin::get_library()->get_effective_layout_key();
-		}
-		default_layout->set_value(docks_section, DockTabContainer::get_config_key(EditorDock::DOCK_SLOT_MAIN_SCREEN), vformat("%s,%s,%s,%s,%s", _2d_key, _3d_key, script_key, game_key, asset_lib_key));
+		default_layout->set_value(docks_section, DockTabContainer::get_config_key(EditorDock::DOCK_SLOT_MAIN_SCREEN), vformat("%s,%s,%s,%s", _2d_key, _3d_key, script_key, game_key));
 	}
 
 	int hsplits[] = { 0, dock_hsize, -dock_hsize, 0 };

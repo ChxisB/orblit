@@ -759,6 +759,9 @@ void EditorFeatureProfileManager::_update_selected_profile() {
 	TreeItem *last_feature = nullptr;
 	features->set_text(0, TTR("Main Features:"));
 	for (int i = 0; i < EditorFeatureProfile::FEATURE_MAX; i++) {
+		if (i == EditorFeatureProfile::FEATURE_ASSET_LIB) {
+			continue; // The editor has no Asset Store to turn off.
+		}
 		TreeItem *feature;
 		if (i == EditorFeatureProfile::FEATURE_IMPORT_DOCK) {
 			feature = class_list->create_item(last_feature);

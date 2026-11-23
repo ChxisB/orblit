@@ -350,13 +350,6 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 	_initial_set(m_name, m_default_value); \
 	hints[m_name] = PropertyInfo(m_type, m_name, m_property_hint, m_hint_string, m_usage);
 
-	/* Asset Store */
-
-	_initial_set("asset_store/use_threads", true);
-	_initial_set("asset_store/show_incompatible_assets", false);
-
-	_initial_set("asset_store/available_urls", Dictionary(), true);
-
 	/* Interface */
 
 	bool is_android_editor = false;
