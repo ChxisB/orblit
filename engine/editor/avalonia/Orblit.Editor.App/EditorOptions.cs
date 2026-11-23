@@ -1,10 +1,7 @@
 namespace Orblit.Editor.App;
 
-/// <summary>
-/// The project folder to edit, the scene to open first, and whether to show the engine's viewport. A run that
-/// must not reach the network passes a store reader that answers from a file.
-/// </summary>
-internal sealed record EditorOptions(string Project, string Scene, bool Viewport, Func<CancellationToken, Task<string>>? StoreReader = null)
+/// <summary>The project folder to edit, the scene to open first, and whether to show the engine's viewport.</summary>
+internal sealed record EditorOptions(string Project, string Scene, bool Viewport)
 {
     const string Prefix = "res://";
 

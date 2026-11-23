@@ -409,12 +409,6 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         using var started = Process.Start(import);
     }
 
-    public void InstallKit(string zipFile)
-    {
-        KitArchive.Install(zipFile, _project);
-        Reimport();
-    }
-
     public IReadOnlyList<ExportPreset> Presets() => ExportPresets.Read(_project);
 
     public void AddPreset() => ExportPresets.AddForThisComputer(_project);
@@ -663,11 +657,16 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         }
     }
 
-    // shortcut: macOS and Linux file names only. The library liborblit.<tags>.dylib sits beside the
-    // program orblit.<tags>. Add the Windows names when the editor runs there.
+    // The library liborblit.<tags>.dylib or .so, or orblit.<tags>.dll on Windows, sits beside the program orblit.<tags>.
+    // A build with the C# module tags the program .csharp and leaves the library's name as it is.
     internal static string PlayerPath(string library)
     {
         var name = Path.GetFileNameWithoutExtension(library);
-        return Path.Combine(Path.GetDirectoryName(library)!, name["lib".Length..]);
+        var program = Path.Combine(Path.GetDirectoryName(library)!, name.StartsWith("lib", StringComparison.Ordinal) ? name["lib".Length..] : name);
+        var extension = Path.GetExtension(library) == ".dll" ? ".exe" : "";
+        var plain = program + extension;
+        var csharp = program + ".csharp" + extension;
+        // A dev bin can hold both from earlier builds, so the one built last wins. A missing file reads as the year 1601.
+        return File.Exists(csharp) && File.GetLastWriteTimeUtc(csharp) >= File.GetLastWriteTimeUtc(plain) ? csharp : plain;
     }
 }

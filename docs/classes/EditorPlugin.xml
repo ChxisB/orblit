@@ -188,7 +188,7 @@
 			<return type="String" />
 			<description>
 				Override this method in your plugin to provide the name of the plugin when displayed in the Orblit editor.
-				For main screen plugins, this appears at the top of the screen, to the right of the "2D", "3D", "Script", "Game", and "Asset Store" buttons.
+				For main screen plugins, this appears at the top of the screen, to the right of the "2D", "3D", "Script" and "Game" buttons.
 				[b]Note:[/b] Main screen plugins should instead use [member EditorDock.title] of a main screen dock.
 			</description>
 		</method>
@@ -652,7 +652,7 @@
 		<signal name="main_screen_changed">
 			<param index="0" name="screen_name" type="String" />
 			<description>
-				Emitted when user changes the workspace ([b]2D[/b], [b]3D[/b], [b]Script[/b], [b]Game[/b], [b]Asset Store[/b]). Also works with custom screens defined by plugins.
+				Emitted when user changes the workspace ([b]2D[/b], [b]3D[/b], [b]Script[/b], [b]Game[/b]). Also works with custom screens defined by plugins.
 			</description>
 		</signal>
 		<signal name="resource_saved">

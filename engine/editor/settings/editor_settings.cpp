@@ -20,7 +20,6 @@
 #include "core/os/keyboard.h"
 #include "core/os/os.h"
 #include "core/string/regex.h"
-#include "core/string/translation_system.h"
 #include "core/version.h"
 #include "editor/docks/dock_tab_container.h"
 #include "editor/editor_node.h"
@@ -349,13 +348,6 @@ void EditorSettings::_load_defaults(Ref<ConfigFile> p_extra_config) {
 #define EDITOR_SETTING_USAGE(m_type, m_property_hint, m_name, m_default_value, m_hint_string, m_usage) \
 	_initial_set(m_name, m_default_value); \
 	hints[m_name] = PropertyInfo(m_type, m_name, m_property_hint, m_hint_string, m_usage);
-
-	/* Asset Store */
-
-	_initial_set("asset_store/use_threads", true);
-	_initial_set("asset_store/show_incompatible_assets", false);
-
-	_initial_set("asset_store/available_urls", Dictionary(), true);
 
 	/* Interface */
 

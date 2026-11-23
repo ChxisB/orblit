@@ -50,7 +50,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
     // once the engine is destroyed, which is after any frame.
     EditorWindow Edit(IClassicDesktopStyleApplicationLifetime desktop, EditorOptions chosen)
     {
-        var window = new EditorWindow(readStore: chosen.StoreReader);
+        var window = new EditorWindow();
         window.Opened += (_, _) => DispatcherTimer.RunOnce(() => StartEngine(window, chosen), EngineStartDelay);
         desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         desktop.ShutdownRequested += (_, e) =>

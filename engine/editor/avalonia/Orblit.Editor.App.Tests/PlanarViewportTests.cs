@@ -372,7 +372,7 @@ public sealed class PlanarViewportTests
             ClickOn(TabOf(window, "2D"), window);
             Assert.Equal([true], scene.Planar);
 
-            ClickOn(TabOf(window, "Asset Store"), window);
+            ClickOn(TabOf(window, "Game"), window);
             ClickOn(TabOf(window, "2D"), window);
             ClickOn(TabOf(window, "3D"), window);
 

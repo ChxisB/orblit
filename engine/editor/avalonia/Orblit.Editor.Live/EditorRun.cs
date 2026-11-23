@@ -57,7 +57,6 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("Play starts the game, opens the Output panel and shows the game's own log line", PlayShowsTheGameLog);
         await Step("the Game tab runs and stops the game, and shows a game the user closed as stopped", RunsFromTheGameTab);
         await Step("a run setting switched on reaches the game as its engine flag", RunsWithAFlag);
-        await Step("the Asset Store tab shows the store's kits and the 3D tab brings the viewport back", ShowsTheStore);
         await Step("the Script tab lists the project's C# files, and Save and Command S write an edit to the file", EditsAScript);
         await Step("the Graph tab makes a graph script with File and New, lists it, opens it and closes it again", MakesAGraphScript);
         await Step("the Import tab shows an image's options, and Reimport makes the engine import it again", SetsImportOptions);
@@ -368,25 +367,6 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         using var kill = Process.Start("pkill", ["-f", "orblit.macos.editor.dev.arm64 --path"]);
         kill?.WaitForExit();
-    }
-
-    async Task ShowsTheStore()
-    {
-        await _input.Click(Tab("Asset Store"));
-        Expect(window.Store.IsVisible && !window.Viewport.IsEffectivelyVisible, "the store did not replace the viewport");
-        await _input.Click(window.Store.ReloadButton);
-        await Wait(() => window.Store.Status.Text == "2 kits in the index.", "the two kits of the store");
-        await Settle();
-        Shots.Save(window, Path.Combine(output, "store-loaded.png"));
-
-        await _input.Click(Tab("3D"));
-        await Wait(() => window.Viewport.IsEffectivelyVisible && Viewport.Bounds.Width > 0, "the viewport to show again");
-        Expect(!window.Store.IsVisible, "the store stayed over the viewport");
-        // The frame bitmap is reused, so only its pixels show that the engine still draws. An orbit from the empty bottom left changes them.
-        // The top left holds the Perspective button, which would take the press.
-        var before = FrameHash();
-        await DragFrom(new Vector2(60, (float)Viewport.Bounds.Height - 60), new Vector2(120, 0));
-        Expect(FrameHash() != before, "an orbit after the switch did not change the picture");
     }
 
     async Task EditsAScript()

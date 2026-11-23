@@ -1,4 +1,3 @@
-using Avalonia.Threading;
 using Orblit.Editor.App.Shell;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -6,32 +5,9 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class WorkspaceTests
 {
-    const string OneKit = """{"formatVersion":1,"kits":[{"name":"Platformer","publisher":"ada","slug":"platformer","version":"1.2.0"}]}""";
-
     static WorkspaceTab Tab(EditorWindow window, string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
 
     static string[] Lit(EditorWindow window) => [.. window.Bar.Tabs.Where(tab => tab.IsChecked == true).Select(tab => tab.Label)];
-
-    [Fact]
-    public void The_Asset_Store_tab_swaps_the_toolbar_and_viewport_for_the_store()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var before = window.Status;
-            Assert.False(window.Store.IsVisible);
-
-            ClickOn(Tab(window, "Asset Store"), window);
-            window.UpdateLayout();
-
-            Assert.Equal(["Asset Store"], Lit(window));
-            Assert.True(window.Store.IsVisible);
-            Assert.False(window.Center.Toolbar.IsVisible);
-            Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(56, 46, 3328, 1183, BoxOf(window.Store, window));
-            Assert.Equal(before, window.Status);
-        });
-    }
 
     [Fact]
     public void The_3D_tab_brings_the_toolbar_and_viewport_back()
@@ -39,13 +15,13 @@ public sealed class WorkspaceTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            ClickOn(Tab(window, "Asset Store"), window);
+            ClickOn(Tab(window, "Game"), window);
 
             ClickOn(Tab(window, "3D"), window);
             window.UpdateLayout();
 
             Assert.Equal(["3D"], Lit(window));
-            Assert.False(window.Store.IsVisible);
+            Assert.False(window.Game.IsVisible);
             Assert.True(window.Center.Toolbar.IsVisible);
             Assert.True(window.Viewport.IsEffectivelyVisible);
             AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
@@ -53,62 +29,13 @@ public sealed class WorkspaceTests
     }
 
     [Fact]
-    public void The_store_keeps_its_rows_across_a_switch_away_and_back()
+    public void The_workspace_tabs_are_2D_3D_Script_Graph_and_Game()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize(new FakeScene(), _ => Task.FromResult(OneKit));
-            ClickOn(Tab(window, "Asset Store"), window);
-            ClickOn(window.Store.ReloadButton, window);
-            Dispatcher.UIThread.RunJobs();
+            var window = OpenAtReferenceSize();
 
-            ClickOn(Tab(window, "3D"), window);
-            ClickOn(Tab(window, "Asset Store"), window);
-
-            Assert.Equal("1 kit in the index.", window.Store.Status.Text);
-        });
-    }
-
-    [Fact]
-    public void The_kit_drawer_stands_beside_the_bottom_bar_and_leaves_with_the_store()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize(new FakeScene(), _ => Task.FromResult(OneKit));
-            ClickOn(Tab(window, "Asset Store"), window);
-            ClickOn(window.Store.ReloadButton, window);
-            Dispatcher.UIThread.RunJobs();
-
-            window.Store.Choose(window.Store.Shown.Single());
-            window.UpdateLayout();
-            var drawer = BoxOf(window.Store.Drawer, window);
-            var bar = BoxOf(window.Center.BottomBar, window);
-
-            Assert.True(window.Store.Drawer.IsEffectivelyVisible);
-            Assert.Equal(BoxOf(window.Store, window).Top, drawer.Top);
-            Assert.Equal(bar.Bottom, drawer.Bottom);
-            Assert.True(drawer.Left > bar.Right);
-
-            ClickOn(Tab(window, "3D"), window);
-
-            Assert.False(window.Store.Drawer.IsEffectivelyVisible);
-        });
-    }
-
-    [Fact]
-    public void The_window_hands_the_store_the_reader_it_was_given()
-    {
-        UiThread.Run(() =>
-        {
-            var asked = 0;
-            var window = OpenAtReferenceSize(new FakeScene(), _ => { asked++; return Task.FromResult(OneKit); });
-
-            ClickOn(Tab(window, "Asset Store"), window);
-            Assert.Equal(0, asked);
-            ClickOn(window.Store.ReloadButton, window);
-            Dispatcher.UIThread.RunJobs();
-
-            Assert.Equal(1, asked);
+            Assert.Equal(["2D", "3D", "Script", "Graph", "Game"], window.Bar.Tabs.Select(tab => tab.Label));
         });
     }
 
@@ -122,11 +49,11 @@ public sealed class WorkspaceTests
             window.Bar.WorkspaceChosen += chosen.Add;
 
             ClickOn(Tab(window, "2D"), window);
-            ClickOn(Tab(window, "Asset Store"), window);
+            ClickOn(Tab(window, "Graph"), window);
             ClickOn(Tab(window, "Game"), window);
             ClickOn(Tab(window, "3D"), window);
 
-            Assert.Equal(["2D", "Asset Store", "Game", "3D"], chosen);
+            Assert.Equal(["2D", "Graph", "Game", "3D"], chosen);
         });
     }
 }

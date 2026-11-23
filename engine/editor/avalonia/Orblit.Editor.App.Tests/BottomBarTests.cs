@@ -132,7 +132,7 @@ public sealed class BottomBarTests
             var version = BarOf(OpenAtReferenceSize()).VersionButton;
             var text = version.GetVisualDescendants().OfType<TextBlock>().Single();
 
-            Assert.Equal("1.2.stable", text.Text);
+            Assert.Equal("1.3.stable", text.Text);
             Assert.Equal((11d, EditorColors.TextDim, 1d), (text.FontSize, ((ISolidColorBrush)version.Foreground!).Color, version.Opacity));
             Assert.Empty(version.GetVisualDescendants().OfType<EditorIcon>());
         });
@@ -150,8 +150,8 @@ public sealed class BottomBarTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("Copy the version", ToolTip.GetTip(version));
-            Assert.Equal("1.2.stable", await window.Clipboard!.TryGetTextAsync());
-            Assert.Equal(("Copied 1.2.stable.", "Tick"), (window.Status, BarOf(window).StatusIcon.IconName));
+            Assert.Equal("1.3.stable", await window.Clipboard!.TryGetTextAsync());
+            Assert.Equal(("Copied 1.3.stable.", "Tick"), (window.Status, BarOf(window).StatusIcon.IconName));
         });
     }
 
