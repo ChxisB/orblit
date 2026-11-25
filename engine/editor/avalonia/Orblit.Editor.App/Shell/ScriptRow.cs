@@ -12,7 +12,7 @@ namespace Orblit.Editor.App.Shell;
 internal sealed class ScriptRow : Grid
 {
     const double RowHeight = 28;
-    const string Empty = "<empty>";
+    const string Empty = "None";
 
     readonly TextBlock _value = new() { Text = Empty, VerticalAlignment = VerticalAlignment.Center };
     readonly MenuFlyout _menu = new();

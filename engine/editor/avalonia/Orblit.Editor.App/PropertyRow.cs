@@ -198,7 +198,7 @@ internal sealed class PropertyRow : Border
         _show = value => text.Text = (_property.Type, value) switch
         {
             _ when value == Mixed => "Mixed",
-            (Object, null) => "<empty>",
+            (Object, null) => "None",
             (Object, _) => _property.HintString.Split(',')[0],
             (_, long whole) => whole.ToString(CultureInfo.InvariantCulture),
             (_, double real) => VectorRow.AtRestText(real),

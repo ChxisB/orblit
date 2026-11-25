@@ -1,5 +1,6 @@
 using System.Numerics;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -42,7 +43,7 @@ public sealed class InspectorPropertyTests
     }
 
     static void Choose(EditorWindow window, string header) =>
-        ((MenuFlyout)window.InspectorPane.ToolsButton.Flyout!).Items.OfType<MenuItem>().Single(item => (string?)item.Header == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        ((MenuFlyout)window.InspectorPane.MoreButton.Flyout!).Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     [Fact]
     public void Paste_Properties_sets_the_copied_values_on_another_entity_of_the_class_and_leaves_objects_out()
@@ -53,9 +54,9 @@ public sealed class InspectorPropertyTests
             scene.SetProperty(eye, "fov", 90.0);
             scene.SetProperty(eye, "current", true);
 
-            Choose(window, "Copy Properties");
+            Choose(window, "Copy all settings");
             Pick(window, scene, lens);
-            Choose(window, "Paste Properties");
+            Choose(window, "Paste settings");
 
             Assert.Equal((90.0, true), (scene.PropertyValues[(lens, "fov")], scene.PropertyValues[(lens, "current")]));
             Assert.False(scene.PropertyValues.ContainsKey((lens, "environment")));
@@ -70,14 +71,14 @@ public sealed class InspectorPropertyTests
         {
             var (window, scene, _, sun) = Two("Light3D", "Sun");
 
-            Choose(window, "Paste Properties");
-            Assert.Equal("Copy Properties first, then paste them onto an entity of the same class.", window.Status);
+            Choose(window, "Paste settings");
+            Assert.Equal("Copy settings first, then paste them onto a thing of the same kind.", window.Status);
 
-            Choose(window, "Copy Properties");
+            Choose(window, "Copy all settings");
             Pick(window, scene, sun);
-            Choose(window, "Paste Properties");
+            Choose(window, "Paste settings");
 
-            Assert.Equal("The copied properties are a Camera3D's, and Sun is a Light3D.", window.Status);
+            Assert.Equal("The copied settings are a Camera3D's, and Sun is a Light3D.", window.Status);
             Assert.DoesNotContain(scene.PropertyValues.Keys, key => key.Entity == sun);
         });
     }
@@ -89,7 +90,7 @@ public sealed class InspectorPropertyTests
         {
             var (window, scene, eye) = Picked("Camera3D");
 
-            Choose(window, "Make Sub-Resources Unique");
+            Choose(window, "Stop sharing parts");
 
             Assert.Equal([eye], scene.MadeUnique);
         });
@@ -109,15 +110,16 @@ public sealed class InspectorPropertyTests
             var (window, _, _) = Picked("Camera3D");
             var bars = window.Inspector.GetVisualDescendants().OfType<ClassBar>().Where(bar => bar.IsEffectivelyVisible);
 
-            Assert.Equal(["Camera3D", "Entity3D", "Entity"], bars.Select(bar => bar.Title));
-            Assert.Equal("Camera3D › Entity3D › Entity", window.InspectorPane.InspectedClass.Text);
+            Assert.Equal(["Camera", "From any 3D thing", "From any thing"], bars.Select(bar => bar.Title));
+            Assert.Equal(["Camera3D", "Entity3D", "Entity"], bars.Select(bar => bar.Engine));
+            Assert.Equal(("Camera", "Camera3D"), (window.InspectorPane.InspectedKind.Text, window.InspectorPane.InspectedClass.Text));
             Assert.Equal(["Cull Mask", "Environment", "Projection", "Current", "FOV", "Frustum Offset", "Near", "Far"], window.Inspector.Rows.Take(8).Select(row => row.Label));
             Assert.All(window.Inspector.Rows.Take(8), row => Assert.True(row.IsEffectivelyVisible));
         });
     }
 
     [Fact]
-    public void A_long_chain_in_the_chip_ends_before_its_chevron()
+    public void A_long_kind_and_class_in_the_chip_end_before_its_chevron()
     {
         UiThread.Run(() =>
         {
@@ -177,7 +179,7 @@ public sealed class InspectorPropertyTests
         {
             var (window, _, _) = Picked("Camera3D");
 
-            Assert.Equal("<empty>", ((TextBlock)Row(window, "Environment").Editor).Text);
+            Assert.Equal("None", ((TextBlock)Row(window, "Environment").Editor).Text);
             Assert.Equal("1048575", ((TextBlock)Row(window, "Cull Mask").Editor).Text);
         });
     }
@@ -207,8 +209,8 @@ public sealed class InspectorPropertyTests
 
             window.InspectorPane.FilterBox.Text = "fov";
 
-            Assert.Equal(["Camera3D"], window.Inspector.GetVisualDescendants().OfType<ClassBar>().Where(bar => bar.IsEffectivelyVisible).Select(bar => bar.Title));
-            Assert.Equal("1 of 16 properties match.", window.Inspector.FilterCount.Text);
+            Assert.Equal(["Camera"], window.Inspector.GetVisualDescendants().OfType<ClassBar>().Where(bar => bar.IsEffectivelyVisible).Select(bar => bar.Title));
+            Assert.Equal("1 of 16 settings match.", window.Inspector.FilterCount.Text);
         });
     }
 

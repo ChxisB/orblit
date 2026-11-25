@@ -70,4 +70,12 @@ internal static class PlainNames
 
     /// <summary>The plain name of this class, or the class name when it has no row.</summary>
     internal static string NameOf(string className) => Of(className)?.Name ?? className;
+
+    /// <summary>A heading for what a class gives every thing built on it, such as "From any 3D thing".</summary>
+    internal static string FromAny(string className) => className switch
+    {
+        _ when className.EndsWith("3D", StringComparison.Ordinal) => "From any 3D thing",
+        _ when className.EndsWith("2D", StringComparison.Ordinal) => "From any 2D thing",
+        _ => "From any thing",
+    };
 }

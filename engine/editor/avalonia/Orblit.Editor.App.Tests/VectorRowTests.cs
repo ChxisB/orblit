@@ -136,7 +136,7 @@ public sealed class VectorRowTests
 
             Assert.Equal(["°", "°", "°"], Texts(window.Inspector.Rotation).Where(text => text.Text == "°").Select(text => text.Text));
             Assert.DoesNotContain(Texts(window.Inspector.Scale), text => text.Text is "m" or "°");
-            Assert.Equal("Rotation", window.Inspector.Rotation.Label);
+            Assert.Equal("Turn", window.Inspector.Rotation.Label);
         });
     }
 

@@ -50,7 +50,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Step("Command Z and Command Shift Z undo and redo a move, and History steps back and forward", UndoesAndRedoes);
         await Step("the Signals tab lists the engine's signals, Connect links one and Command Z takes the link out", ConnectsASignal);
         await Step("Command and S write the live transform to the scene file", SaveWritesTheTransform);
-        await Step("Add Metadata makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
+        await Step("Add a custom value makes a value on the entity and Command and S writes it to the scene file", KeepsMetadata);
         await Step("the plus opens Add an entity on the engine's classes, and a search lights Timer", ListsTheEngineClasses);
         await Step("the Output button opens the panel with the engine's log lines", OpensTheEngineLog);
         await Step("Clear empties the Output panel and a second click on its button shuts it", ClearsAndShutsTheLog);
@@ -163,7 +163,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
     {
         var tool = window.Inspector.MetadataTool;
         await _input.Click(window.Inspector.MetadataButton);
-        await Wait(() => window.Inspector.MetadataFlyout.IsOpen && tool.AddButton.IsAttachedToVisualTree(), "the Add Metadata flyout to open");
+        await Wait(() => window.Inspector.MetadataFlyout.IsOpen && tool.AddButton.IsAttachedToVisualTree(), "the Add a custom value flyout to open");
         // The name box takes text, which this run does not type. Setting it is the only part that is not injected.
         tool.NameBox.Text = "tag";
         await _input.Click(tool.AddButton);

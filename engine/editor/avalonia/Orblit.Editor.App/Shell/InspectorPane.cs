@@ -1,16 +1,20 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The body of the Inspector tab: a history row, a filter row and the property list. The history row walks back
-/// and forward through the objects shown, and its chip names the one shown and lists the recent ones. Another
-/// scene starts a new history.
+/// The body of the Inspector tab: a history row, a search row and the property list. The history row walks back
+/// and forward through the things shown, and its chip names the one shown, its kind in plain words and its class
+/// in dim mono, and lists the recent ones. Holding Back lists them too. Another scene starts a new history.
 /// </summary>
 internal sealed class InspectorPane : Grid
 {
@@ -23,28 +27,34 @@ internal sealed class InspectorPane : Grid
     // A chip on a row of its own is 38 high. Here it shares the 36 pixel row with the arrows.
     const double ChipHeight = 32;
 
+    // How long Back is held before the list of recent things opens.
+    static readonly TimeSpan s_holdTime = TimeSpan.FromMilliseconds(450);
+
     readonly InspectorPanel _panel;
     readonly ScrollViewer _viewer;
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter properties",
+        PlaceholderText = "Find a setting",
         Height = BoxHeight,
         MinHeight = 0,
         InnerRightContent = Parts.SearchIcon(),
     };
-    readonly Button _back = Parts.Tight(Parts.IconButton("Back", "Inspect the previous object"));
-    readonly Button _forward = Parts.Tight(Parts.IconButton("Forward", "Inspect the next object"));
+    readonly Button _back = Parts.Tight(Parts.IconButton("Back", ""));
+    readonly Button _forward = Parts.Tight(Parts.IconButton("Forward", ""));
+    readonly DispatcherTimer _hold = new() { Interval = s_holdTime };
     readonly ContentControl _icon = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _name = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _class = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-    // The class fills what the icon and the name leave, so a long chain trims before the chevron.
+    readonly TextBlock _kind = new() { FontSize = 11.5, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _class = new() { FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+    // The class fills what the icon, the name and the kind leave, so a long name trims before the chevron.
     readonly DockPanel _inspected = new() { HorizontalSpacing = 6, IsVisible = false };
     readonly MenuFlyout _recent = new();
     readonly Button _chip;
-    readonly Button _tools = Parts.Tight(Parts.IconButton("Tools", "Inspector tools"));
+    readonly Button _more = Parts.Dress(new Button(), "GuiTabMenuHl", new HoverCard("More", "Open or close every section, and copy settings to another thing."));
     readonly List<Inspected> _seen = [];
     int _at = -1;
     string? _file;
+    bool _held;
 
     public InspectorPane(InspectorPanel panel)
     {
@@ -52,12 +62,21 @@ internal sealed class InspectorPane : Grid
         _viewer = new ScrollViewer { Content = panel };
         RowDefinitions = new RowDefinitions($"{HistoryHeight},{FilterRowHeight},*");
         _chip = ObjectChip(_inspected, _recent);
+        var back = new HoverCard("Back", "Look at the thing you inspected before. Hold for the list.");
+        back.SaysWhyOff(back.On(_back), "Nothing was inspected before this.");
+        var forward = new HoverCard("Forward", "Look at the next thing again.");
+        forward.SaysWhyOff(forward.On(_forward), "You are at the newest. Go back first.");
         _back.IsEnabled = false;
         _forward.IsEnabled = false;
-        _back.Click += (_, _) => Step(-1);
+        _back.Click += (_, _) => Back();
         _forward.Click += (_, _) => Step(1);
+        // The button takes the press for its click, so the hold listens on the way down.
+        _back.AddHandler(PointerPressedEvent, (_, _) => Hold(), RoutingStrategies.Tunnel);
+        _back.AddHandler(PointerReleasedEvent, (_, _) => _hold.Stop(), RoutingStrategies.Tunnel);
+        _back.PointerCaptureLost += (_, _) => _hold.Stop();
+        _hold.Tick += (_, _) => ShowHeld();
         _recent.Opening += (_, _) => FillRecent();
-        _tools.Flyout = Tools();
+        _more.Flyout = More();
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
         {
@@ -67,15 +86,15 @@ internal sealed class InspectorPane : Grid
             }
         };
 
-        _inspected.Children.AddRange([_icon, _name, _class]);
+        _inspected.Children.AddRange([_icon, _name, _kind, _class]);
         var history = new Grid { ColumnDefinitions = new ColumnDefinitions("24,4,24,8,*"), Margin = new Thickness(2, 0, 6, 0) };
         Place(history, _back, 0, VerticalAlignment.Center);
         Place(history, _forward, 2, VerticalAlignment.Center);
         Place(history, _chip, 4, VerticalAlignment.Center);
-        var filter = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,24"), Margin = new Thickness(4, 0, 6, 0) };
+        var filter = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,Auto"), Margin = new Thickness(4, 0, 6, 0) };
         Place(filter, _filter, 0, VerticalAlignment.Top);
-        _tools.Margin = new Thickness(0, 2, 0, 0);
-        Place(filter, _tools, 2, VerticalAlignment.Top);
+        _more.Margin = new Thickness(0, 1, 0, 0);
+        Place(filter, _more, 2, VerticalAlignment.Top);
         SetRow(filter, 1);
         SetRow(_viewer, 2);
         SetRow(Empty, 2);
@@ -94,6 +113,10 @@ internal sealed class InspectorPane : Grid
 
     internal EditorIcon InspectedIcon => (EditorIcon)_icon.Content!;
 
+    /// <summary>The kind of the inspected thing in plain words. Empty when its class has none.</summary>
+    internal TextBlock InspectedKind => _kind;
+
+    /// <summary>The class of the inspected thing, the engine's name for its kind.</summary>
     internal TextBlock InspectedClass => _class;
 
     internal Button Chip => _chip;
@@ -106,7 +129,7 @@ internal sealed class InspectorPane : Grid
 
     internal Button ForwardButton => _forward;
 
-    internal Button ToolsButton => _tools;
+    internal Button MoreButton => _more;
 
     /// <summary>Raised with the handle of an object the history goes back to.</summary>
     public event Action<nint>? Picked;
@@ -123,7 +146,10 @@ internal sealed class InspectorPane : Grid
         Empty.IsVisible = node is null;
         _icon.Content = node is null ? null : Parts.RowIcon(EditorIcons.ForClass(node.ClassName));
         _name.Text = picked.Count > 1 ? $"{picked.Count} selected" : node?.Name ?? "";
-        _class.Text = string.Join(" › ", _panel.Chain);
+        var className = _panel.Chain.FirstOrDefault() ?? "";
+        _kind.Text = PlainNames.Of(className)?.Name ?? "";
+        _kind.IsVisible = _kind.Text != "";
+        _class.Text = className;
         Remember(scene?.SceneFile, node);
     }
 
@@ -152,6 +178,34 @@ internal sealed class InspectorPane : Grid
         _forward.IsEnabled = _at < _seen.Count - 1;
     }
 
+    // A press starts the hold over again, since a list that opens can take the release away from the button.
+    void Hold()
+    {
+        _held = false;
+        if (_back.IsEnabled)
+        {
+            _hold.Start();
+        }
+    }
+
+    void ShowHeld()
+    {
+        _hold.Stop();
+        _held = true;
+        _recent.ShowAt(_back);
+    }
+
+    // The release that ends a hold also clicks, and that click only closes the hold.
+    void Back()
+    {
+        if (_held)
+        {
+            _held = false;
+            return;
+        }
+        Step(-1);
+    }
+
     // An object deleted since leaves nothing selected, and the cursor still moves past it.
     void Step(int by)
     {
@@ -160,38 +214,53 @@ internal sealed class InspectorPane : Grid
         Picked?.Invoke(_seen[_at].Handle);
     }
 
-    // Newest first, each object once.
+    // Under a heading, newest first, each thing once with its kind in plain words.
     void FillRecent()
     {
         _recent.Items.Clear();
+        _recent.Items.Add(Parts.MenuHeading("Recently inspected"));
         foreach (var seen in Enumerable.Reverse(_seen).DistinctBy(seen => seen.Handle))
         {
             var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
                 Spacing = 6,
-                Children = { new TextBlock { Text = seen.Name }, new TextBlock { Text = seen.ClassName, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center } },
+                Children = { new TextBlock { Text = seen.Name }, new TextBlock { Text = PlainNames.NameOf(seen.ClassName), FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center } },
             };
             var item = new MenuItem { Header = row, Icon = Parts.RowIcon(EditorIcons.ForClass(seen.ClassName)) };
+            AutomationProperties.SetName(item, seen.Name);
             item.Click += (_, _) => Picked?.Invoke(seen.Handle);
             _recent.Items.Add(item);
         }
     }
 
-    MenuFlyout Tools() => new()
+    // Paste is off until settings are copied, and its note says so.
+    MenuFlyout More()
     {
-        Items =
+        var paste = Parts.ActionItem("Paste settings", _panel.PasteProperties);
+        var unique = Parts.ActionItem("Stop sharing parts", _panel.MakeResourcesUnique);
+        unique.Header = Parts.Noted("Stop sharing parts", "So changing this thing leaves others alone", "Make Sub-Resources Unique");
+        var more = new MenuFlyout
         {
-            Parts.ActionItem("Expand All", () => _panel.FoldAll(true)),
-            Parts.ActionItem("Collapse All", () => _panel.FoldAll(false)),
-            new Separator(),
-            Parts.ActionItem("Copy Properties", _panel.CopyProperties),
-            Parts.ActionItem("Paste Properties", _panel.PasteProperties),
-            Parts.ActionItem("Make Sub-Resources Unique", _panel.MakeResourcesUnique),
-        },
-    };
+            Items =
+            {
+                Parts.ActionItem("Open all sections", () => _panel.FoldAll(true), note: "Shows every setting"),
+                Parts.ActionItem("Close all sections", () => _panel.FoldAll(false), note: "Shows only the headings"),
+                new Separator(),
+                Parts.ActionItem("Copy all settings", _panel.CopyProperties, note: "To paste onto another thing"),
+                paste,
+                unique,
+            },
+        };
+        more.Opening += (_, _) =>
+        {
+            paste.IsEnabled = _panel.HasCopied;
+            paste.Header = Parts.Noted("Paste settings", _panel.HasCopied ? "Onto this thing" : "Copy settings first.");
+        };
+        return more;
+    }
 
-    // The object chip: the icon, the name and the class in a quieter voice on a raised tone, with a
+    // The object chip: the icon, the name, the kind and the class in quieter voices on a raised tone, with a
     // chevron that says it opens the list.
     static Button ObjectChip(Control inspected, MenuFlyout recent)
     {
@@ -213,8 +282,7 @@ internal sealed class InspectorPane : Grid
             Content = new DockPanel { Children = { chevron, inspected } },
             Flyout = recent,
         };
-        ToolTip.SetTip(chip, "Inspected objects");
-        return chip;
+        return new HoverCard("Recently inspected", "Pick one to look at it again.").On(chip);
     }
 
     readonly record struct Inspected(nint Handle, string Name, string ClassName);
