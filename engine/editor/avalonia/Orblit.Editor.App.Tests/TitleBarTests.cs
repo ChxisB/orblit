@@ -79,7 +79,7 @@ public sealed class TitleBarTests
     }
 
     [Fact]
-    public void The_window_bar_lists_the_five_menus_in_soft_26_high_tabs_where_the_system_bar_does_not()
+    public void The_window_bar_lists_the_four_menus_in_soft_26_high_tabs_where_the_system_bar_does_not()
     {
         UiThread.Run(() =>
         {
@@ -87,7 +87,7 @@ public sealed class TitleBarTests
             var menus = window.Bar.Menus.GetVisualDescendants().OfType<MenuItem>().ToArray();
 
             Assert.True(window.Bar.Menus.IsEffectivelyVisible);
-            Assert.Equal(["Scene", "Project", "Debug", "Editor", "Help"], menus.Select(item => item.Header as string));
+            Assert.Equal(["Scene", "Project", "Debug", "Editor"], menus.Select(item => item.Header as string));
             Assert.All(menus, item =>
             {
                 Assert.Equal(26, item.Bounds.Height);
@@ -109,33 +109,8 @@ public sealed class TitleBarTests
                 [
                     ("Run the project", new KeyGesture(Key.B, command)),
                     ("Run the current scene", new KeyGesture(Key.R, command)),
-                    ("Run a chosen scene...", new KeyGesture(Key.R, command | KeyModifiers.Shift)),
-                    ("Movie maker mode", null),
-                    ("Customize Run Instances...", null),
                 ],
                 RunItems(window).Select(item => ((string)item.Header!, item.InputGesture)));
-        });
-    }
-
-    [Fact]
-    public void Lines_split_the_more_menu_into_three_groups()
-    {
-        UiThread.Run(() =>
-        {
-            var items = ((MenuFlyout)OpenAtReferenceSize().Bar.MoreButton.Flyout!).Items;
-
-            Assert.Equal(["Item", "Item", "Item", "Line", "Item", "Line", "Item"], items.Select(item => item is Separator ? "Line" : "Item"));
-        });
-    }
-
-    [Fact]
-    public void Only_the_project_and_the_current_scene_lack_the_soon_mark()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            Assert.Equal(["Run the project", "Run the current scene"], RunItems(window).Where(item => !EditorTheme.IsSoon(item)).Select(item => (string)item.Header!));
         });
     }
 
@@ -214,22 +189,6 @@ public sealed class TitleBarTests
             Assert.True(window.PlayButton.IsEnabled);
             Assert.False(window.PlaySceneButton.IsEnabled);
             Assert.False(RunItem(window, "Run the current scene").IsEnabled);
-        });
-    }
-
-    [Theory]
-    [InlineData("Run a chosen scene...", "Run a chosen scene is not built yet.")]
-    [InlineData("Movie maker mode", "Movie maker mode is not built yet.")]
-    [InlineData("Customize Run Instances...", "Customize Run Instances is not built yet.")]
-    public void A_way_to_run_the_editor_lacks_answers_that_it_is_not_built(string header, string answer)
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            RunItem(window, header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-
-            Assert.Equal(answer, window.Status);
         });
     }
 }

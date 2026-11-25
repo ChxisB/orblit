@@ -1,10 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
-using Avalonia.Controls.Shapes;
-using Avalonia.LogicalTree;
 using Avalonia.Threading;
-using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
@@ -20,33 +17,14 @@ public sealed class ToastTests
         Dispatcher.UIThread.RunJobs();
     }
 
-    const string Movie = "Movie maker mode is not built yet.";
-    const string Instances = "Customize Run Instances is not built yet.";
+    const string First = "Saved first.oscn";
+    const string Second = "Saved second.oscn";
 
-    // The run menu's unbuilt items show in a popup, so the tests raise what they raise from a control in the window.
-    static void Soon(EditorWindow window, string message) => window.SceneTabs.RaiseEvent(new UnbuiltEventArgs(message));
+    static void Say(EditorWindow window, string title) => window.Toasts.Show(ToastKind.Done, title);
 
     static Toast[] Cards(EditorWindow window) => [.. window.Toasts.Cards];
 
     static string[] Titles(EditorWindow window) => [.. window.Toasts.Cards.Select(card => card.Title)];
-
-    [Fact]
-    public void A_click_on_an_unbuilt_control_shows_a_toast_and_the_status_keeps_the_message()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize(new FakeScene(), time: new ManualTime());
-            Assert.Empty(Cards(window));
-
-            Soon(window, Movie);
-
-            var card = Assert.Single(Cards(window));
-            Assert.Equal("Movie maker mode is not built yet", card.Title);
-            Assert.Equal("InfoCircle", card.Icon.IconName);
-            Assert.Same(EditorBrushes.Warn, TextElement.GetForeground(card.Icon));
-            Assert.Equal(Movie, window.Status);
-        });
-    }
 
     [Fact]
     public void Closing_the_window_takes_the_toasts_down_and_drops_their_timers()
@@ -55,8 +33,8 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Soon(window, Movie);
-            Soon(window, Instances);
+            Say(window, First);
+            Say(window, Second);
             Assert.Equal(2, time.Armed);
 
             window.Close();
@@ -67,20 +45,19 @@ public sealed class ToastTests
     }
 
     [Fact]
-    public void A_toast_goes_after_four_seconds_and_the_status_keeps_the_message()
+    public void A_toast_goes_after_four_seconds()
     {
         UiThread.Run(() =>
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Soon(window, Movie);
+            Say(window, First);
 
             Pass(time, 3.9);
             Assert.Single(Cards(window));
             Pass(time, 0.1);
 
             Assert.Empty(Cards(window));
-            Assert.Equal(Movie, window.Status);
         });
     }
 
@@ -91,17 +68,17 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Soon(window, Movie);
+            Say(window, First);
             Pass(time, 3);
 
-            Soon(window, Instances);
+            Say(window, Second);
             window.UpdateLayout();
 
-            Assert.Equal(["Movie maker mode is not built yet", "Customize Run Instances is not built yet"], Titles(window));
+            Assert.Equal([First, Second], Titles(window));
             var cards = Cards(window);
             Assert.Equal(BoxOf(cards[0], window).Bottom + 10, BoxOf(cards[1], window).Y);
             Pass(time, 1);
-            Assert.Equal(["Customize Run Instances is not built yet"], Titles(window));
+            Assert.Equal([Second], Titles(window));
             Pass(time, 3);
             Assert.Empty(Cards(window));
         });
@@ -114,14 +91,14 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Soon(window, Movie);
-            Soon(window, Instances);
+            Say(window, First);
+            Say(window, Second);
             Pass(time, 3);
 
-            Soon(window, Movie);
+            Say(window, First);
             Pass(time, 3);
 
-            Assert.Equal(["Movie maker mode is not built yet"], Titles(window));
+            Assert.Equal([First], Titles(window));
             Assert.Equal(1, time.Armed);
         });
     }
@@ -133,7 +110,7 @@ public sealed class ToastTests
         {
             var time = new ManualTime();
             var window = OpenAtReferenceSize(new FakeScene(), time: time);
-            Soon(window, Movie);
+            Say(window, First);
             var dismiss = Cards(window)[0].DismissButton;
 
             Click(dismiss);
@@ -245,7 +222,7 @@ public sealed class ToastTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene(), time: new ManualTime());
-            Soon(window, Movie);
+            Say(window, First);
             window.UpdateLayout();
 
             var card = Cards(window)[0];
@@ -260,22 +237,6 @@ public sealed class ToastTests
             Assert.Equal(new Thickness(12, 11), card.Padding);
             // The stack has no fill, so a click beside a card reaches the panel under it.
             Assert.Null(window.Toasts.Background);
-        });
-    }
-
-    [Fact]
-    public void An_unbuilt_tool_is_dim_with_a_4_pixel_warn_dot_4_in_from_its_top_right()
-    {
-        UiThread.Run(() =>
-        {
-            var (window, _, _) = PlanarViewportTests.OpenIn2D();
-            var button = window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().Single(tool => (string?)ToolTip.GetTip(tool) == "Ruler");
-
-            var dot = button.GetVisualDescendants().OfType<Ellipse>().Single();
-            var box = BoxOf(button, window);
-            AssertBox(box.Right - 8, box.Top + 4, 4, 4, BoxOf(dot, window));
-            Assert.Same(EditorBrushes.Warn, dot.Fill);
-            Assert.Same(EditorBrushes.Unbuilt, button.Foreground);
         });
     }
 }

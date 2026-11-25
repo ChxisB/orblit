@@ -29,14 +29,11 @@ internal sealed class BottomBar : Grid
     const double TabHeight = 26;
     const double SmallIcon = 13;
 
-    // Name, icon file, and whether the panel does its job yet. The order is the order of the panels.
-    static readonly (string Name, string Icon, bool Built)[] Panels =
+    // Name and icon file. The order is the order of the panels.
+    static readonly (string Name, string Icon)[] Panels =
     [
-        ("Output", "Output", true),
-        ("Debugger", "Debug", true),
-        ("Audio", "AudioStreamPlayer", false),
-        ("Animation", "Animation", false),
-        ("Shader Editor", "ShaderDock", false),
+        ("Output", "Output"),
+        ("Debugger", "Debug"),
     ];
 
     // The mark and its tint for each kind, in the order of StatusKind. A list of cases, so it is data.
@@ -173,7 +170,7 @@ internal sealed class BottomBar : Grid
 
         for (var at = 0; at < _tabs.Length; at++)
         {
-            _tabs[at].Foreground = at == index ? EditorBrushes.Text : Panels[at].Built ? EditorBrushes.TextDim : EditorBrushes.Unbuilt;
+            _tabs[at].Foreground = at == index ? EditorBrushes.Text : EditorBrushes.TextDim;
             _tabs[at].Background = at == index ? EditorBrushes.Hover : Brushes.Transparent;
         }
 
@@ -187,9 +184,9 @@ internal sealed class BottomBar : Grid
         _unread.IsVisible = count > 0;
     }
 
-    static Button Tab((string Name, string Icon, bool Built) panel)
+    static Button Tab((string Name, string Icon) panel)
     {
-        var tab = new Button
+        return new Button
         {
             Height = TabHeight,
             Padding = new Thickness(10, 0),
@@ -211,11 +208,5 @@ internal sealed class BottomBar : Grid
                 },
             },
         };
-        if (!panel.Built)
-        {
-            ToolTip.SetTip(tab, "Not built yet");
-        }
-
-        return tab;
     }
 }

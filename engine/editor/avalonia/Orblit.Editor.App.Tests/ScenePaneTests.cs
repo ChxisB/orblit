@@ -359,7 +359,6 @@ public sealed class ScenePaneTests
             Assert.False(items[0].IsEnabled);
             Assert.False(items[5].IsEnabled);
             Assert.Equal(new KeyGesture(Key.Up, window.CommandKey), items[1].InputGesture);
-            Assert.False(EditorTheme.IsSoon(items[4]));
         });
     }
 

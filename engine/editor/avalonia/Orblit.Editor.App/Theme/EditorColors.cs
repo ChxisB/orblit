@@ -27,8 +27,6 @@ internal static class EditorColors
     public static readonly Color TextSoft = Color.Parse("#AAB2BF");
     public static readonly Color TextDim = Color.Parse("#858F9D");
 
-    // A panel tab whose panel is not built yet, a step under the dim text.
-    public static readonly Color Unbuilt = Color.Parse("#5C6573");
     public static readonly Color Unit = Color.Parse("#6B7482");
     public static readonly Color Disabled = Color.Parse("#4A525F");
 
@@ -44,9 +42,6 @@ internal static class EditorColors
     public static readonly Color AxisZ = Color.Parse("#5AA2FF");
 
     public static readonly Color Warn = Color.Parse("#F2B33D");
-
-    // The fill of a Soon pill, so the warm word reads on it.
-    public static readonly Color WarnSoft = Color.Parse("#1AF2B33D");
 
     // A job that went through and one that did not. A danger button takes the fault in a lighter text and a faint edge.
     public static readonly Color Done = Color.Parse("#4CC38A");
@@ -110,7 +105,7 @@ internal static class EditorColors
     public static readonly Color CodeType = GraphIcon;
     public static readonly Color CodeString = Color.Parse("#B5D67A");
     public static readonly Color CodeNumber = Warn;
-    public static readonly Color CodeComment = Unbuilt;
+    public static readonly Color CodeComment = Color.Parse("#5C6573");
     public static readonly Color CodeFunction = ScriptIcon;
     public static readonly Color CodeAttribute = Color.Parse("#C792EA");
 }

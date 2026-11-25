@@ -69,7 +69,6 @@ public sealed class GameWorkspaceTests
             Assert.Equal(("Running", "view_demo", "00:42"), (window.Game.Status.Text, window.Game.Project.Text, window.Game.Time.Text));
             Assert.False(window.Game.RunButton.IsVisible);
             Assert.True(window.Game.StopButton.IsVisible);
-            Assert.False(window.Game.PauseButton.IsEnabled);
 
             time.Advance(TimeSpan.FromHours(1));
             window.Poll();
@@ -83,7 +82,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void The_run_settings_past_Show_while_running_take_no_input_until_the_game_link_has_them()
+    public void The_run_settings_hold_only_the_run_flags_and_each_takes_input()
     {
         UiThread.Run(() =>
         {
@@ -91,9 +90,8 @@ public sealed class GameWorkspaceTests
             ShowGame(window);
             window.UpdateLayout();
 
-            Assert.All(window.Game.Unbuilts, part => Assert.False(part.IsEnabled));
             Assert.All(GameView.FlagNames, name => Assert.True(window.Game.SwitchOf(name).IsEffectivelyEnabled));
-            Assert.Equal(10, window.Game.GetVisualDescendants().OfType<ToggleSwitch>().Count());
+            Assert.Equal(GameView.FlagNames.Count(), window.Game.GetVisualDescendants().OfType<ToggleSwitch>().Count());
         });
     }
 
@@ -368,20 +366,6 @@ public sealed class GameWorkspaceTests
 
             Assert.Equal(Running, window.Game.State.Text);
             Assert.True(window.StopButton.IsEnabled);
-        });
-    }
-
-    [Fact]
-    public void Pause_stays_off_while_a_game_runs()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize(new FakeScene());
-            Click(window.PlayButton);
-
-            var pause = window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) is "Pause the game");
-
-            Assert.False(pause.IsEnabled);
         });
     }
 

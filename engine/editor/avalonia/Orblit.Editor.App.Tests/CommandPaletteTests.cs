@@ -94,28 +94,11 @@ public sealed class CommandPaletteTests
 
             var commands = Opened(window, ">").Shown;
 
-            var save = commands.Single(row => row.Name == "Save All Scenes");
-            Assert.Equal(Parts.KeyText(new KeyGesture(Key.S, window.CommandKey | KeyModifiers.Shift | KeyModifiers.Alt)), save.Key);
-            Assert.Equal("", save.Note);
+            var quickOpen = commands.Single(row => row.Name == "Quick Open Scene...");
+            Assert.Equal(Parts.KeyText(new KeyGesture(Key.O, window.CommandKey | KeyModifiers.Shift)), quickOpen.Key);
+            Assert.Equal("", quickOpen.Note);
             Assert.Equal("Editor Docks", commands.Single(row => row.Name == "Inspector").Note);
             Assert.DoesNotContain(commands, row => row.Name is "Layouts" or "Recent" or "Scene" && row.Note == "");
-        });
-    }
-
-    [Fact]
-    public void An_unbuilt_command_says_Soon_and_answers_when_run()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var palette = Opened(window, "editor settings.");
-
-            Assert.True(palette.Shown.Single().Soon);
-            Assert.Contains("Soon", Texts(palette.RowButtons.Single()));
-
-            Press(palette.SearchBox, Key.Enter);
-
-            Assert.Equal("Editor Settings is not built yet.", window.Status);
         });
     }
 

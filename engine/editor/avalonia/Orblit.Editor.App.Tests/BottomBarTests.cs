@@ -30,7 +30,7 @@ public sealed class BottomBarTests
         {
             var tabs = BarOf(OpenAtReferenceSize()).Tabs;
 
-            Assert.Equal(["Output", "Debugger", "Audio", "Animation", "Shader Editor"], tabs.Select(tab => Labels(tab).Single()));
+            Assert.Equal(["Output", "Debugger"], tabs.Select(tab => Labels(tab).Single()));
         });
     }
 
@@ -59,7 +59,7 @@ public sealed class BottomBarTests
             var bar = BarOf(OpenAtReferenceSize());
             var icons = bar.Tabs.Select(tab => tab.GetVisualDescendants().OfType<EditorIcon>().Single()).ToArray();
 
-            Assert.Equal(["Output", "Debug", "AudioStreamPlayer", "Animation", "ShaderDock"], icons.Select(icon => icon.IconName));
+            Assert.Equal(["Output", "Debug"], icons.Select(icon => icon.IconName));
             Assert.All(icons, icon => Assert.Equal((13d, 13d), (icon.Bounds.Width, icon.Bounds.Height)));
             Assert.Empty(bar.Tabs.SelectMany(tab => tab.GetVisualDescendants().OfType<Ellipse>()));
         });
@@ -73,7 +73,7 @@ public sealed class BottomBarTests
             var window = OpenAtReferenceSize();
             var texts = BarOf(window).Tabs.SelectMany(Words).ToArray();
 
-            Assert.Equal(5, texts.Length);
+            Assert.Equal(2, texts.Length);
             Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1253.5, 1254.5));
         });
     }
@@ -94,14 +94,13 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_built_tabs_are_dim_and_the_unbuilt_tabs_dimmer_all_rounded_with_no_border()
+    public void The_tabs_are_dim_rounded_and_have_no_border()
     {
         UiThread.Run(() =>
         {
             var tabs = BarOf(OpenAtReferenceSize()).Tabs;
 
-            Assert.All(tabs.Take(2), tab => Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tab.Foreground!).Color));
-            Assert.All(tabs.Skip(2), tab => Assert.Equal((Color.Parse("#5C6573"), "Not built yet"), (((ISolidColorBrush)tab.Foreground!).Color, ToolTip.GetTip(tab))));
+            Assert.All(tabs, tab => Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)tab.Foreground!).Color));
             Assert.All(tabs, tab => Assert.Equal((0d, EditorTheme.Corners), (tab.BorderThickness.Left, tab.CornerRadius)));
         });
     }
@@ -225,11 +224,8 @@ public sealed class BottomBarTests
         });
     }
 
-    [Theory]
-    [InlineData(2, "Audio", "Buses and effects for the project sound.")]
-    [InlineData(3, "Animation", "Tracks and keys for the picked entity.")]
-    [InlineData(4, "Shader Editor", "Shader code and its preview.")]
-    public void Each_unbuilt_tab_opens_a_soon_note_and_leaves_the_status_alone(int index, string name, string line)
+    [Fact]
+    public void The_debugger_tab_lights_while_its_panel_shows_and_dims_when_it_closes()
     {
         UiThread.Run(() =>
         {
@@ -237,21 +233,20 @@ public sealed class BottomBarTests
             var bar = BarOf(window);
             var before = window.Status;
 
-            ClickOn(bar.Tabs[index], window);
+            ClickOn(bar.Tabs[1], window);
             window.UpdateLayout();
 
-            var panel = window.Center.Panels[index];
+            var panel = window.Center.Panels[1];
             Assert.True(panel.IsVisible);
-            Assert.Equal([name, name, "Soon", line], Labels(panel));
-            Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.Tabs[index].Foreground!).Color);
+            Assert.Equal(EditorColors.Text, ((ISolidColorBrush)bar.Tabs[1].Foreground!).Color);
             Assert.False(window.Center.Output.IsVisible);
             Assert.Equal(before, window.Status);
             Assert.Equal(OutputPanel.PanelHeight, panel.Bounds.Height);
 
-            ClickOn(bar.Tabs[index], window);
+            ClickOn(bar.Tabs[1], window);
 
             Assert.False(panel.IsVisible);
-            Assert.Equal(Color.Parse("#5C6573"), ((ISolidColorBrush)bar.Tabs[index].Foreground!).Color);
+            Assert.Equal(EditorColors.TextDim, ((ISolidColorBrush)bar.Tabs[1].Foreground!).Color);
         });
     }
 
@@ -264,9 +259,9 @@ public sealed class BottomBarTests
             var bar = BarOf(window);
 
             ClickOn(bar.OutputTab, window);
-            ClickOn(bar.Tabs[3], window);
+            ClickOn(bar.Tabs[1], window);
 
-            Assert.Equal([false, false, false, true, false], window.Center.Panels.Select(panel => panel.IsVisible));
+            Assert.Equal([false, true], window.Center.Panels.Select(panel => panel.IsVisible));
             Assert.False(bar.OutputOpen);
         });
     }

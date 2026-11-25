@@ -182,7 +182,6 @@ internal sealed class InspectorPane : Grid
             Parts.ActionItem("Copy Properties", _panel.CopyProperties),
             Parts.ActionItem("Paste Properties", _panel.PasteProperties),
             Parts.ActionItem("Make Sub-Resources Unique", _panel.MakeResourcesUnique),
-            Parts.SoonItem("Open Documentation", _tools),
         },
     };
 

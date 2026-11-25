@@ -85,7 +85,6 @@ internal static class CommandPalette
             {
                 Note = note,
                 Key = item.Gesture is { } gesture ? Parts.KeyText(gesture) : "",
-                Soon = EditorTheme.IsSoon(item),
             }],
             _ => [],
         });

@@ -30,13 +30,6 @@ internal sealed class GameView : Border
         ("Debug CanvasItem Redraws", "--debug-canvas-item-redraw"),
     ];
 
-    // The other groups of run settings, each row with whether it starts on. They wait on the game link.
-    static readonly (string Group, (string Name, bool On)[] Rows)[] s_waiting =
-    [
-        ("Live edits", [("Synchronize Scene Changes", true), ("Synchronize Script Changes", true), ("Keep Debug Server Open", false)]),
-        ("Deploy", [("Deploy with Remote Debug", false), ("Small Deploy with Network Filesystem", false)]),
-    ];
-
     const double Mebibyte = 1024 * 1024;
 
     // Each row's value in the unit it shows. The game sends seconds and bytes.
@@ -58,13 +51,9 @@ internal sealed class GameView : Border
     readonly TextBlock _project = new() { FontSize = 12, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _time = new() { FontSize = 12, FontFamily = EditorTheme.Mono, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _run = Worded("MainPlay", "Run");
-    readonly Button _pause = Worded("Pause", "Pause");
     readonly Button _stop = Worded("Stop", "Stop");
-    readonly Button _front = Worded("Window", "Bring to front");
     readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
-    readonly ToggleSwitch[] _shown = [.. s_shown.Select(_ => Switch(false))];
-    readonly StackPanel _choices = new() { Spacing = 10, Margin = new Thickness(12) };
-    readonly StackPanel _waiting = new();
+    readonly ToggleSwitch[] _shown = [.. s_shown.Select(_ => Switch())];
     readonly StackPanel _monitors = new();
     readonly TextBlock _rate = new() { Text = Unknown, FontSize = 30, FontWeight = FontWeight.Medium, FontFamily = EditorTheme.Mono };
     readonly TextBlock[] _values = [.. s_monitors.Select(_ => new TextBlock { Text = Unknown, FontSize = 12, FontFamily = EditorTheme.Mono, VerticalAlignment = VerticalAlignment.Center })];
@@ -77,11 +66,6 @@ internal sealed class GameView : Border
     public GameView()
     {
         _pill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _status } };
-        _front.Classes.Add(EditorTheme.Ghost);
-        foreach (var unbuilt in new Control[] { _pause, _front, _choices, _waiting })
-        {
-            Unbuilt.Disable(unbuilt);
-        }
         _run.Click += (_, _) => RunRequested?.Invoke();
         _stop.Click += (_, _) => StopRequested?.Invoke();
         Child = new Grid
@@ -102,8 +86,6 @@ internal sealed class GameView : Border
 
     internal Button RunButton => _run;
 
-    internal Button PauseButton => _pause;
-
     internal Button StopButton => _stop;
 
     internal TextBlock State => _state;
@@ -113,9 +95,6 @@ internal sealed class GameView : Border
     internal TextBlock Project => _project;
 
     internal TextBlock Time => _time;
-
-    /// <summary>The run settings past Show while running, which take no input yet.</summary>
-    internal IEnumerable<Control> Unbuilts => [_choices, _waiting];
 
     internal TextBlock Rate => _rate;
 
@@ -150,7 +129,6 @@ internal sealed class GameView : Border
         _run.IsVisible = !playing;
         _stop.IsEnabled = playing;
         _stop.IsVisible = playing;
-        _pause.IsVisible = playing;
         _status.Text = playing ? "Running" : "Stopped";
         _status.Foreground = playing ? EditorBrushes.Done : EditorBrushes.TextDim;
         _dot.Fill = _status.Foreground;
@@ -196,22 +174,13 @@ internal sealed class GameView : Border
 
     DockPanel RunSettings()
     {
-        _choices.Children.AddRange([Caps("Scene"), new Segments("Main scene", "Current", "Chosen"), Caps("Instances"), new Segments("1", "2", "3", "4")]);
         var shown = Rows(s_shown.Select((row, at) => Setting(row.Name, _shown[at])));
-        foreach (var (group, rows) in s_waiting)
-        {
-            _waiting.Children.Add(Section(group, Rows(rows.Select(row => Setting(row.Name, Switch(row.On))))));
-        }
-        _waiting.Children.Add(Note("Run uses the project's main scene and one instance."));
-        var settings = new StackPanel { Children = { _choices, Section("Show while running", shown), _waiting } };
-        var instances = Parts.IconButton("GuiTabMenuHl", "Customize Run Instances...");
-        Unbuilt.Disable(instances);
-        return Stack(Parts.Bar(Title("Run"), Parts.Right(instances)), new ScrollViewer { Content = settings });
+        return Stack(Parts.Bar(Title("Run")), new ScrollViewer { Content = Section("Show while running", shown) });
     }
 
     DockPanel RunningGame()
     {
-        var bar = Parts.Bar(_pill, _project, _time, Parts.Right(_front), Parts.Right(Parts.Rule()), Parts.Right(_stop), Parts.Right(_pause), Parts.Right(_run));
+        var bar = Parts.Bar(_pill, _project, _time, Parts.Right(_stop), Parts.Right(_run));
         var footer = new Border
         {
             Height = 30,
@@ -227,7 +196,7 @@ internal sealed class GameView : Border
             Child = new Border
             {
                 VerticalAlignment = VerticalAlignment.Center,
-                Child = Parts.EmptyState("Window", "No live copy yet", "The game draws in a window of its own. A copy of it here is not built yet."),
+                Child = Parts.EmptyState("Window", "The game opens in its own window", "Press Run to play it. This side shows how it runs."),
             },
         };
         return Stack(bar, footer, stage);
@@ -262,9 +231,7 @@ internal sealed class GameView : Border
             };
         }
         var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Children = { _tabs[0], _tabs[1] } };
-        var keepOnTop = Parts.IconButton("Pin", "Keep on top");
-        Unbuilt.Disable(keepOnTop);
-        return Stack(Parts.Bar(tabs, Parts.Right(keepOnTop)), new ScrollViewer { Content = new StackPanel { Children = { _monitors, scene } } });
+        return Stack(Parts.Bar(tabs), new ScrollViewer { Content = new StackPanel { Children = { _monitors, scene } } });
     }
 
     // The last control fills what the ones before it leave.
@@ -321,7 +288,7 @@ internal sealed class GameView : Border
         return list;
     }
 
-    static ToggleSwitch Switch(bool on) => new() { IsChecked = on, OnContent = null, OffContent = null, MinWidth = 0 };
+    static ToggleSwitch Switch() => new() { IsChecked = false, OnContent = null, OffContent = null, MinWidth = 0 };
 
     static Grid Setting(string name, ToggleSwitch toggle)
     {
@@ -354,10 +321,6 @@ internal sealed class GameView : Border
     static string Number(double value, string format) => value.ToString(format, CultureInfo.InvariantCulture);
 
     static TextBlock Title(string text) => new() { Text = text, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
-
-    static TextBlock Caps(string text) => new() { Text = text.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.TextDim };
-
-    static TextBlock Note(string text) => new() { Text = $"{Unbuilt.Soon}. {text}", FontSize = 11, Foreground = EditorBrushes.Disabled, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 6, 12, 12) };
 
     static Button Worded(string icon, string text) => new()
     {

@@ -152,7 +152,7 @@ internal sealed class OutputPanel : Border
                 ErrorsAdded?.Invoke(errors);
             }
 
-            RefreshSoon();
+            QueueRefresh();
         };
         Refresh();
     }
@@ -176,7 +176,7 @@ internal sealed class OutputPanel : Border
     }
 
     // The log grows a line at a time, so one refresh reads a whole batch.
-    void RefreshSoon()
+    void QueueRefresh()
     {
         if (_refreshPending)
         {

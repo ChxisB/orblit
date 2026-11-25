@@ -534,7 +534,6 @@ public sealed class GraphViewTests
             }
 
             Assert.True(Item(view, "New...").IsEnabled);
-            Assert.True(Item(view, "Show in FileSystem").IsEnabled);
 
             Pick(view, Logic);
 
@@ -559,21 +558,6 @@ public sealed class GraphViewTests
 
             Assert.Equal(Logic, clipboard.Text);
             Assert.Equal($"Copied {Logic}.", view.Status.Text);
-        });
-    }
-
-    [Fact]
-    public void Show_in_FileSystem_says_it_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var (_, _, view) = OpenWithGraph();
-            string? said = null;
-            view.AddHandler(Unbuilt.Event, (_, e) => said = e.Message);
-
-            Choose(view, "Show in FileSystem");
-
-            Assert.Equal("The FileSystem dock does not list graph scripts yet.", said);
         });
     }
 

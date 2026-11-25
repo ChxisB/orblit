@@ -18,9 +18,6 @@ internal sealed record PickerRow(string Group, string Icon, string Name, Action 
     public string Note { get; init; } = "";
 
     public string Key { get; init; } = "";
-
-    /// <summary>Not built yet. The key place says Soon, as the menus do.</summary>
-    public bool Soon { get; init; }
 }
 
 /// <summary>
@@ -190,11 +187,10 @@ internal sealed class Picker : Border
         TextElement.SetForeground(icon, row.Tint ?? EditorBrushes.TextDim);
         var key = new TextBlock
         {
-            Text = row.Soon ? "Soon" : row.Key,
-            FontFamily = row.Soon ? EditorTheme.Font : EditorTheme.Mono,
-            FontWeight = row.Soon ? FontWeight.SemiBold : FontWeight.Normal,
+            Text = row.Key,
+            FontFamily = EditorTheme.Mono,
             FontSize = 11,
-            Foreground = row.Soon ? EditorBrushes.Warn : EditorBrushes.Unit,
+            Foreground = EditorBrushes.Unit,
             Margin = new Thickness(10, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
         };
@@ -206,7 +202,7 @@ internal sealed class Picker : Border
             Spacing = 10,
             Children =
             {
-                new TextBlock { Text = row.Name, Foreground = row.Soon ? EditorBrushes.Unbuilt : EditorBrushes.Text, VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = row.Name, Foreground = EditorBrushes.Text, VerticalAlignment = VerticalAlignment.Center },
                 new TextBlock { Text = row.Note, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center },
             },
         };

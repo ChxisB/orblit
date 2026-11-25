@@ -18,7 +18,6 @@ internal sealed class ScriptTool : StackPanel
     readonly Segments _kind = new("C#", "Graph");
     readonly ListBox _list = new() { MaxHeight = 180, Classes = { EditorTheme.Field } };
     readonly TextBlock _none = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(2, 4) };
-    readonly Button _new = new() { Content = "New script...", Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small }, HorizontalAlignment = HorizontalAlignment.Left };
     readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
     readonly Button _attach = new() { Content = "Attach", Classes = { EditorTheme.TextButton, EditorTheme.Primary }, IsEnabled = false };
     IReadOnlyList<string>[] _paths = [[], []];
@@ -33,7 +32,7 @@ internal sealed class ScriptTool : StackPanel
         Children.Add(new Border
         {
             Padding = new Thickness(14, 12),
-            Child = new StackPanel { Spacing = 10, Children = { _kind, _list, _none, _new } },
+            Child = new StackPanel { Spacing = 10, Children = { _kind, _list, _none } },
         });
         Children.Add(new Border
         {
@@ -69,7 +68,6 @@ internal sealed class ScriptTool : StackPanel
 
     internal TextBlock None => _none;
 
-    internal Button NewButton => _new;
 
     internal Button CancelButton => _cancel;
 

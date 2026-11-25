@@ -121,7 +121,6 @@ internal sealed class PlanarOverlay : Grid
             _scale,
             Parts.Rule(),
             _pan,
-            Unbuilt.Tool("Ruler", "Ruler"),
             Parts.Rule(),
             Mirror(snaps, "Snap", "Snap to the grid. Hold Ctrl or Command to flip it for one drag."),
             _gridButton,

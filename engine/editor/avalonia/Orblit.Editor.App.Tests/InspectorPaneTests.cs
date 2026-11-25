@@ -171,20 +171,6 @@ public sealed class InspectorPaneTests
     }
 
     [Fact]
-    public void A_tool_past_the_folds_says_it_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var tools = (MenuFlyout)window.InspectorPane.ToolsButton.Flyout!;
-
-            Choose(tools, "Open Documentation");
-
-            Assert.Equal("Open Documentation is not built yet.", window.Status);
-        });
-    }
-
-    [Fact]
     public void With_nothing_selected_the_list_is_empty()
     {
         UiThread.Run(() =>

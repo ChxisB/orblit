@@ -115,8 +115,6 @@ internal sealed class GraphView : Border
         _menu.Items.Add(_closeAll);
         _menu.Items.Add(new Separator());
         _menu.Items.Add(_copyPath);
-        // The FileSystem dock lists scenes only, so there is nothing for it to select yet.
-        _menu.Items.Add(Item("Show in FileSystem", () => _fileButton.RaiseEvent(new UnbuiltEventArgs("The FileSystem dock does not list graph scripts yet."))));
         _fileButton.Flyout = _menu;
         _saveButton.Content = Parts.Keyed("Save", "⌘S");
         _saveButton.Click += (_, _) => SaveCurrent();

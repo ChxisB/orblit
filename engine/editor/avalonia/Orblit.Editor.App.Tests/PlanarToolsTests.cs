@@ -130,19 +130,6 @@ public sealed class PlanarToolsTests
         });
     }
 
-    [Fact]
-    public void A_tool_that_is_not_built_says_so()
-    {
-        UiThread.Run(() =>
-        {
-            var (window, _, _) = OpenIn2D();
-
-            ClickOn(ToolOf(window, "Ruler"), window);
-
-            Assert.Equal("Ruler is not built yet.", window.Status);
-        });
-    }
-
     static void DragFrom(EditorWindow window, Point from, RawInputModifiers keys = RawInputModifiers.None)
     {
         window.MouseDown(from, MouseButton.Left, keys);

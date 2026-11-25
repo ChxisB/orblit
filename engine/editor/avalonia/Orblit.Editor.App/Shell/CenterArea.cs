@@ -34,9 +34,6 @@ internal sealed class CenterArea : Grid
         [
             Output,
             new NotePanel("Debugger", Debugger),
-            NotePanel.Soon("Audio", "AudioStreamPlayer", "Buses and effects for the project sound."),
-            NotePanel.Soon("Animation", "Animation", "Tracks and keys for the picked entity."),
-            NotePanel.Soon("Shader Editor", "ShaderDock", "Shader code and its preview."),
         ];
         Output.ErrorsAdded += bottom.AddErrors;
         bottom.PanelChanged += open =>

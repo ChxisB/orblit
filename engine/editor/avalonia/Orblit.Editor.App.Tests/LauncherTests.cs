@@ -250,7 +250,7 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
-    public void Docs_opens_the_site_and_the_places_not_built_are_off_and_say_so()
+    public void Docs_opens_the_site_and_the_nav_holds_only_places_that_work()
     {
         UiThread.Run(() =>
         {
@@ -260,11 +260,8 @@ public sealed class LauncherTests : IDisposable
             Click(launcher.Nav.Docs);
 
             Assert.Equal([HelpMenu.Docs], _links);
-            var more = launcher.Cards.Single().GetVisualDescendants().OfType<Button>().Single();
-            Button[] waiting = [launcher.Nav.Templates, launcher.Nav.Settings, more];
-            Assert.All(waiting, button => Assert.False(button.IsEnabled));
-            Assert.All(waiting, button => Assert.Equal("Not built yet", (string?)ToolTip.GetTip(button)));
-            Assert.True(launcher.Nav.Projects.IsEnabled);
+            Assert.Empty(launcher.Cards.Single().GetVisualDescendants().OfType<Button>());
+            Assert.Equal(2, launcher.Nav.GetVisualDescendants().OfType<Button>().Count());
         });
     }
 }

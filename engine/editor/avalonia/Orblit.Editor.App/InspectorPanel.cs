@@ -369,8 +369,6 @@ internal sealed class InspectorPanel : StackPanel
                 _attachFlyout.Hide();
             }
         };
-        // The popover shows in a popup, so the button in the window says it.
-        _scriptTool.NewButton.Click += (_, _) => _attach.RaiseEvent(new UnbuiltEventArgs("New script is not built yet."));
         _metadataTool.Requested += (name, value) =>
         {
             if (TryChange(entity => _scene!.SetMetadata(entity, name, value)))

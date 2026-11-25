@@ -140,15 +140,14 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void Pause_and_stop_are_off_while_no_game_runs()
+    public void Stop_is_off_while_no_game_runs()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var buttons = window.Bar.GetVisualDescendants().OfType<Button>().Where(button => ToolTip.GetTip(button) is "Pause the game" or "Stop the game");
+            var stop = window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) is "Stop the game");
 
-            Assert.Equal(2, buttons.Count());
-            Assert.All(buttons, button => Assert.False(button.IsEnabled));
+            Assert.False(stop.IsEnabled);
         });
     }
 
@@ -180,7 +179,7 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var tips = new[] { "Run the project", "Run the current scene", "Pause the game", "Stop the game", "More ways to run" };
+            var tips = new[] { "Run the project", "Run the current scene", "Stop the game", "More ways to run" };
             var boxes = tips
                 .Select(tip => BoxOf(window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) as string == tip), window))
                 .ToArray();
@@ -188,9 +187,8 @@ public sealed class ShellLayoutTests
             Assert.All(boxes, box => Assert.Equal(new Size(26, 26), box.Size));
             Assert.Equal(boxes[0].Right + 2, boxes[1].X);
             Assert.Equal(boxes[1].Right + 2, boxes[2].X);
-            Assert.Equal(boxes[2].Right + 2, boxes[3].X);
             // The rule is 1 wide with 3 each side, inside the 2 pixel gaps.
-            Assert.Equal(boxes[3].Right + 11, boxes[4].X);
+            Assert.Equal(boxes[2].Right + 11, boxes[3].X);
             Assert.Equal(3440 - 8, BoxOf(window.Bar.Run, window).Right);
         });
     }

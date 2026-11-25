@@ -13,7 +13,7 @@ namespace Orblit.Editor.App.Launcher;
 /// <summary>
 /// The window the editor opens on when no project is named. It shows the projects in projects.cfg as cards,
 /// with a search and a sort over them. Open adds a project folder from disk and New project writes a new one.
-/// Either raises Opening with the folder. Templates, Settings and a card's More menu are not built.
+/// Either raises Opening with the folder.
 /// </summary>
 internal sealed class LauncherWindow : Window
 {
@@ -124,7 +124,7 @@ internal sealed class LauncherWindow : Window
         Opening?.Invoke(folder);
     }
 
-    // shortcut: a listed folder with no project.orblit is hidden and stays in the file. Show it as missing with a Remove once the card's More menu is built.
+    // shortcut: a listed folder with no project.orblit is hidden and stays in the file. Show it as missing with a Remove once the card has a menu.
     void Load()
     {
         try
@@ -244,10 +244,6 @@ internal sealed class LauncherWindow : Window
 
     Border Card(ProjectEntry project)
     {
-        var more = Parts.IconButton("TripleBar", $"More for {project.Name}");
-        more.VerticalAlignment = VerticalAlignment.Center;
-        Unbuilt.Disable(more);
-        DockPanel.SetDock(more, Dock.Right);
         var tags = new WrapPanel();
         foreach (var tag in project.Tags)
         {
@@ -260,7 +256,7 @@ internal sealed class LauncherWindow : Window
             Margin = new Thickness(14, 10, 10, 14),
             Children =
             {
-                new DockPanel { Children = { more, new TextBlock { Text = project.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center } } },
+                new TextBlock { Text = project.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis },
                 new TextBlock { Text = HomeFolder.Shorten(project.Folder), FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis },
                 tags,
             },
@@ -311,13 +307,7 @@ internal sealed class Nav : DockPanel
         };
         Projects = Place("FolderLine", "Projects");
         Projects.Background = EditorBrushes.Raised;
-        Templates = Place("Cube", "Templates");
         Docs = Place("Book", "Docs");
-        Settings = Place("Tools", "Settings");
-        foreach (var unbuilt in new[] { Templates, Settings })
-        {
-            Unbuilt.Disable(unbuilt);
-        }
 
         Docs.Click += (_, _) => openDocs();
         var version = new TextBlock { Text = $"Orblit {BottomBar.Version}", FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(10, 0, 0, 4) };
@@ -325,16 +315,12 @@ internal sealed class Nav : DockPanel
         SetDock(version, Dock.Bottom);
         Children.Add(logo);
         Children.Add(version);
-        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Templates, Docs, Settings } });
+        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Docs } });
     }
 
     internal Button Projects { get; }
 
-    internal Button Templates { get; }
-
     internal Button Docs { get; }
-
-    internal Button Settings { get; }
 
     static Button Place(string icon, string name) => new()
     {

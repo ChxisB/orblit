@@ -165,7 +165,6 @@ internal sealed class EditorWindow : Window
         _game.RunRequested += () => Play();
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
-        AddHandler(Unbuilt.Event, (_, e) => ShowUnbuilt(e.Message));
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
         _fileDock = new DockTabs(("FileSystem", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
         _fileDock.AddTool("History", _historyPane.ClearButton);
@@ -205,7 +204,7 @@ internal sealed class EditorWindow : Window
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
         Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
-        NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions(), ShowUnbuilt));
+        NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions()));
     }
 
     internal TitleBar Bar => _titleBar;
@@ -325,13 +324,6 @@ internal sealed class EditorWindow : Window
         {
             Fail($"Could not copy {what}: {error.Message}");
         }
-    }
-
-    // The status line keeps the answer after the toast goes. A toast title has no full stop.
-    void ShowUnbuilt(string message)
-    {
-        Say(message);
-        _toasts.Show(ToastKind.Unbuilt, message.TrimEnd('.'));
     }
 
     /// <summary>Reads the lines the engine logged since the last call and shows whether the game still runs.</summary>

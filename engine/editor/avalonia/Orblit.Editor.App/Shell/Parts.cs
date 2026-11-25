@@ -171,17 +171,6 @@ internal static class Parts
         return item;
     }
 
-    /// <summary>
-    /// An item for a command that is not built. It says so from the control, because a menu shows in a popup
-    /// and only a control in the window reaches the window.
-    /// </summary>
-    public static MenuItem SoonItem(string header, Control from, KeyGesture? key = null)
-    {
-        var item = ActionItem(header, () => from.RaiseEvent(new UnbuiltEventArgs($"{header.TrimEnd('.')} is not built yet.")), key);
-        EditorTheme.MarkSoon(item);
-        return item;
-    }
-
     /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
     public static Border Bar(params Control[] items)
     {

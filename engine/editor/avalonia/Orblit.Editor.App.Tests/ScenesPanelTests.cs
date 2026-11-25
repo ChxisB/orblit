@@ -513,7 +513,7 @@ public sealed class ScenesPanelTests
 
             // A separator has no header.
             Assert.Equal(
-                ["Open", "Show in Finder", "Copy Path", null, "Rename...", "Duplicate...", "Move To...", null, "New Script...", "New Graph Script...", "New Folder...", null, "Delete"],
+                ["Open", "Copy Path", null, "New Graph Script..."],
                 MenuItems(window).Select(item => (item as MenuItem)?.Header as string));
         });
     }
@@ -564,19 +564,6 @@ public sealed class ScenesPanelTests
             panel.Tree.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.C, KeyModifiers = KeyModifiers.Meta | KeyModifiers.Alt });
 
             Assert.Equal("res://levels/second.oscn", clipboard.Text);
-        });
-    }
-
-    [Fact]
-    public void A_file_command_that_is_not_built_says_so()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-
-            Press(window, "Rename...");
-
-            Assert.Equal("Rename is not built yet.", window.Status);
         });
     }
 

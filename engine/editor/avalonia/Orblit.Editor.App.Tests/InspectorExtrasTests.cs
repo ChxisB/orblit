@@ -21,7 +21,7 @@ public sealed class InspectorExtrasTests
 
     static MetadataRow[] Rows(EditorWindow window) => [.. window.Inspector.MetadataRows.Rows];
 
-    static readonly string[] SlotItems = ["New Script...", "Load...", "Edit", "Clear"];
+    static readonly string[] SlotItems = ["Load...", "Edit", "Clear"];
 
     static void Choose(MenuFlyout menu, string header) =>
         menu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
@@ -468,7 +468,7 @@ public sealed class InspectorExtrasTests
     }
 
     [Fact]
-    public void A_kind_with_no_scripts_says_so_and_New_script_is_not_built()
+    public void A_kind_with_no_scripts_says_so()
     {
         UiThread.Run(() =>
         {
@@ -480,9 +480,6 @@ public sealed class InspectorExtrasTests
             Assert.False(tool.List.IsVisible);
             Assert.True(tool.None.IsVisible);
             Assert.Equal("No graph scripts in the project.", tool.None.Text);
-
-            tool.NewButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
-            Assert.Equal("New script is not built yet.", window.Status);
 
             tool.CancelButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Assert.False(window.Inspector.AttachFlyout.IsOpen);
@@ -556,20 +553,6 @@ public sealed class InspectorExtrasTests
 
             Assert.True(window.Inspector.AttachFlyout.IsOpen);
             Assert.Equal("Lamp runs it.", window.Inspector.ScriptTool.Head.Why.Text);
-        });
-    }
-
-    [Fact]
-    public void New_script_in_the_slot_menu_says_it_is_not_built()
-    {
-        UiThread.Run(() =>
-        {
-            var window = Selected(new FakeScene());
-            ClickOn(window.Inspector.ScriptField, window);
-
-            Choose(window.Inspector.ScriptMenu, "New Script...");
-
-            Assert.Equal("New Script is not built yet.", window.Status);
         });
     }
 

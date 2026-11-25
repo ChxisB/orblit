@@ -206,7 +206,7 @@ internal sealed class ScenesPanel : Grid
         }
     }
 
-    // The file menu acts on the selected row. What the editor cannot do to a file yet says so.
+    // The file menu acts on the selected row.
     ContextMenu FileMenu(KeyModifiers command)
     {
         OpenButton.Click += (_, _) => Activate(_tree.SelectedItem);
@@ -216,18 +216,9 @@ internal sealed class ScenesPanel : Grid
             ItemsSource = new Control[]
             {
                 Parts.PressItem("Open", OpenButton),
-                Parts.SoonItem("Show in Finder", _tree),
                 Parts.PressItem("Copy Path", CopyPathButton, new KeyGesture(Key.C, command | KeyModifiers.Alt)),
                 new Separator(),
-                Parts.SoonItem("Rename...", _tree),
-                Parts.SoonItem("Duplicate...", _tree),
-                Parts.SoonItem("Move To...", _tree),
-                new Separator(),
-                Parts.SoonItem("New Script...", _tree),
                 Parts.ActionItem("New Graph Script...", () => NewGraphRequested?.Invoke()),
-                Parts.SoonItem("New Folder...", _tree),
-                new Separator(),
-                Parts.SoonItem("Delete", _tree),
             },
         };
     }

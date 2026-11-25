@@ -7,7 +7,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The Script row at the foot of the inspector: a label and a field that names the attached script's file. The
-/// field opens the slot menu: the project's scripts, then New Script, Load, Edit and Clear.
+/// field opens the slot menu: the project's scripts, then Load, Edit and Clear.
 /// </summary>
 internal sealed class ScriptRow : Grid
 {
@@ -80,7 +80,6 @@ internal sealed class ScriptRow : Grid
             _menu.Items.Add(item);
         }
         _menu.Items.Add(new Separator());
-        _menu.Items.Add(Parts.SoonItem("New Script...", Field));
         _menu.Items.Add(Parts.ActionItem("Load...", () => Loading?.Invoke()));
         var edit = Parts.ActionItem("Edit", () => Editing?.Invoke(_attached!));
         _menu.Items.Add(edit);

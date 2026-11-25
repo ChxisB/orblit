@@ -132,23 +132,17 @@ internal sealed class TitleBar : Grid
         EditedDot.IsVisible = edited;
     }
 
-    // Pause is off because the game runs in its own process and the editor cannot pause it.
-    static Border RunButtons(Button play, Button playScene, Button stop, Button more)
-    {
-        var pause = Parts.IconButton("Pause", "Pause the game");
-        pause.IsEnabled = false;
-        return Parts.Pill(
-        [
-            play,
-            playScene,
-            pause,
-            stop,
-            Parts.Rule(),
-            more,
-        ]);
-    }
+    // No Pause, because the game runs in its own process and the editor cannot pause it.
+    static Border RunButtons(Button play, Button playScene, Button stop, Button more) => Parts.Pill(
+    [
+        play,
+        playScene,
+        stop,
+        Parts.Rule(),
+        more,
+    ]);
 
-    // The game runs the main scene or the open one, so the other ways answer that they are not built.
+    // The game runs the main scene or the open one.
     MenuFlyout RunMenu(Button play, Button playScene, KeyModifiers command) => new()
     {
         Placement = PlacementMode.BottomEdgeAlignedRight,
@@ -156,11 +150,6 @@ internal sealed class TitleBar : Grid
         {
             Parts.PressItem("Run the project", play, new KeyGesture(Key.B, command)),
             Parts.PressItem("Run the current scene", playScene, new KeyGesture(Key.R, command)),
-            Parts.SoonItem("Run a chosen scene...", MoreButton, new KeyGesture(Key.R, command | KeyModifiers.Shift)),
-            new Separator(),
-            Parts.SoonItem("Movie maker mode", MoreButton),
-            new Separator(),
-            Parts.SoonItem("Customize Run Instances...", MoreButton),
         },
     };
 

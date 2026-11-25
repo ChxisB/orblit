@@ -12,7 +12,6 @@ namespace Orblit.Editor.App.Shell;
 internal enum ToastKind
 {
     Done,
-    Unbuilt,
     Failed,
 }
 
@@ -29,7 +28,6 @@ internal sealed class Toast : Border
         var (mark, tint) = kind switch
         {
             ToastKind.Done => ("Tick", EditorBrushes.Done),
-            ToastKind.Unbuilt => ("InfoCircle", EditorBrushes.Warn),
             ToastKind.Failed => ("FaultCircle", EditorBrushes.Fault),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
