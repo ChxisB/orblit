@@ -28,10 +28,10 @@ public sealed class NewProjectTests : IDisposable
         Assert.Equal(["Main.cs", "SpaceRanger.csproj", "SpaceRanger.slnx", "main.oscn", "project.orblit"], Made());
         Assert.Equal(
             "config_version=5\n\n[application]\n\nconfig/name=\"Space \\\"Ranger\\\"\"\nconfig/tags=PackedStringArray(\"3D\", \"C#\")\n"
-            + "run/main_scene=\"res://main.oscn\"\nconfig/features=PackedStringArray(\"1.3\", \"C#\")\n\n[dotnet]\n\nproject/assembly_name=\"SpaceRanger\"\n",
+            + "run/main_scene=\"res://main.oscn\"\nconfig/features=PackedStringArray(\"1.4\", \"C#\")\n\n[dotnet]\n\nproject/assembly_name=\"SpaceRanger\"\n",
             Read("project.orblit"));
         Assert.Contains("public partial class Main : Entity3D", Read("Main.cs"));
-        Assert.Contains("<Project Sdk=\"Orblit.NET.Sdk/1.3.0\">", Read("SpaceRanger.csproj"));
+        Assert.Contains("<Project Sdk=\"Orblit.NET.Sdk/1.4.0\">", Read("SpaceRanger.csproj"));
         Assert.Equal("<Solution>\n  <Project Path=\"SpaceRanger.csproj\" />\n</Solution>\n", Read("SpaceRanger.slnx"));
         var scene = Read("main.oscn");
         Assert.StartsWith("[orb_scene format=3]\n\n[ext_resource type=\"Script\" path=\"res://Main.cs\" id=\"1\"]\n\n[sub_resource type=\"PlaneMesh\"", scene);
@@ -61,7 +61,7 @@ public sealed class NewProjectTests : IDisposable
         new NewProject("Blank", _folder) { Template = ProjectTemplate.Empty, Script = FirstScript.None }.Make(_ => { });
 
         Assert.Equal(["project.orblit"], Made());
-        Assert.Equal("config_version=5\n\n[application]\n\nconfig/name=\"Blank\"\nconfig/features=PackedStringArray(\"1.3\", \"C#\")\n", Read("project.orblit"));
+        Assert.Equal("config_version=5\n\n[application]\n\nconfig/name=\"Blank\"\nconfig/features=PackedStringArray(\"1.4\", \"C#\")\n", Read("project.orblit"));
     }
 
     [Fact]

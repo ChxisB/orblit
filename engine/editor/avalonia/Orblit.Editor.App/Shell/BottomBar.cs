@@ -24,7 +24,7 @@ internal enum StatusKind
 internal sealed class BottomBar : Grid
 {
     // shortcut: copied from the engine's version file, read it through the bridge when it gains a version call.
-    internal const string Version = "1.3.stable";
+    internal const string Version = "1.4.stable";
 
     const double TabHeight = 26;
     const double SmallIcon = 13;
