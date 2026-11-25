@@ -87,12 +87,25 @@ internal sealed class InstanceTool
         };
     }
 
-    void Run()
+    /// <summary>Puts a copy of the scene at the res:// path inside the selected thing, or inside the top thing when none is picked.</summary>
+    public void Use(string path)
+    {
+        if (_root is null)
+        {
+            Failed?.Invoke("Open a scene first.");
+            return;
+        }
+
+        Put(path);
+    }
+
+    void Run() => Put(_paths[_scenes.Picked!]);
+
+    void Put(string path)
     {
         try
         {
             var parent = (_selected ?? _root)!;
-            var path = _paths[_scenes.Picked!];
             var made = _scene!.Instance(parent.Handle, path);
             Dialog.Close();
             Changed?.Invoke(new EntityEdit(made, $"Put {Path.GetFileNameWithoutExtension(path)} inside {parent.Name}."));

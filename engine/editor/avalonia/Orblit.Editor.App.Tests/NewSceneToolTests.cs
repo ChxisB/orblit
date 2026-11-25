@@ -19,7 +19,7 @@ public sealed class NewSceneToolTests
     {
         var tool = new NewSceneTool();
         new Window { Width = 1000, Height = 700, Content = tool.Dialog }.Show();
-        tool.Open(scenes, planar, Classes);
+        tool.Open(scenes, planar, Classes, FileTree.Root);
         tool.Dialog.UpdateLayout();
         return tool;
     }
@@ -95,7 +95,7 @@ public sealed class NewSceneToolTests
 
             tool.Roots.Last().IsChecked = true;
             tool.Dialog.Close();
-            tool.Open([], planar: false, Classes);
+            tool.Open([], planar: false, Classes, FileTree.Root);
 
             Assert.Equal([true, false, false], tool.Roots.Select(card => card.IsChecked == true));
         });
@@ -173,7 +173,7 @@ public sealed class NewSceneToolTests
             tool.Say("The engine could not save res://arena.oscn. Error code 7.");
             tool.Dialog.Close();
 
-            tool.Open([], planar: false, Classes);
+            tool.Open([], planar: false, Classes, FileTree.Root);
 
             Assert.True(tool.Dialog.IsVisible);
             Assert.Equal("", tool.NameBox.Text);

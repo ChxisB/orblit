@@ -237,7 +237,8 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var icons = window.GetVisualDescendants().OfType<EditorIcon>().Where(icon => icon.IconName == "Search" && icon.FindAncestorOfType<TitleBar>() is null).ToArray();
+            // The Files panel's empty state draws a Search mark too, outside any box.
+            var icons = window.GetVisualDescendants().OfType<EditorIcon>().Where(icon => icon.IconName == "Search" && icon.FindAncestorOfType<TitleBar>() is null && icon.FindAncestorOfType<TextBox>() is not null).ToArray();
 
             Assert.Equal(3, icons.Length);
             foreach (var icon in icons)

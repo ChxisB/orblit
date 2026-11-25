@@ -43,7 +43,7 @@ internal sealed class EditorWindow : Window
     readonly ScenesPanel _scenes;
     readonly TimeProvider _time;
     readonly EditHistory _history;
-    readonly HistoryPane _historyPane = new();
+    readonly HistoryPane _historyPane;
     readonly ToastStack _toasts;
     readonly List<string> _recent = [];
     readonly Dictionary<string, DateTimeOffset> _openedAt = [];
@@ -115,6 +115,7 @@ internal sealed class EditorWindow : Window
         _time = time ?? TimeProvider.System;
         _history = new EditHistory(_time);
         _history.Changed += ShowHistory;
+        _historyPane = new HistoryPane(CommandKey);
         _historyPane.Picked += GoTo;
         _historyPane.ClearButton.Click += (_, _) => _history.Clear();
         _undo.Click += (_, _) => GoTo(_history.Done - 1);
@@ -156,6 +157,9 @@ internal sealed class EditorWindow : Window
         _inspector.Failed += Fail;
         _inspector.Editing += OpenFile;
         _scenes.Chosen += OpenFile;
+        _scenes.NewSceneRequested += OpenNewScene;
+        _scenes.PlayRequested += path => Play("--scene", path);
+        _scenes.UseRequested += _instanceScene.Use;
         _scenes.NewGraphRequested += () =>
         {
             _titleBar.Choose(TitleBar.Graph);
@@ -174,7 +178,7 @@ internal sealed class EditorWindow : Window
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
-        _fileDock = new DockTabs(("FileSystem", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
+        _fileDock = new DockTabs(("Files", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
         _fileDock.AddTool("History", _historyPane.ClearButton);
         _inspectorPane = new InspectorPane(_inspector);
         _inspectorPane.Picked += _scenePane.Select;
@@ -202,7 +206,7 @@ internal sealed class EditorWindow : Window
         _center.Output.CopyRequested += text => Copy(text, "the output");
         _center.Debugger.RunRequested += () => Play();
         _center.Debugger.CopyRequested += id => Copy(id, "the process id");
-        _center.NoScene.NewButton.Click += (_, _) => OpenNewScene();
+        _center.NoScene.NewButton.Click += (_, _) => OpenNewScene(FileTree.Root);
         _center.NoScene.FindButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
         _center.NoScene.OpenRequested += Open;
         _script.Paused += () =>
@@ -670,7 +674,7 @@ internal sealed class EditorWindow : Window
         {
             ["About Orblit"] = new(() => Copy(BottomBar.Version, BottomBar.Version)),
             ["Quit Orblit"] = new(Close),
-            ["New scene…"] = new(OpenNewScene),
+            ["New scene…"] = new(() => OpenNewScene(FileTree.Root)),
             ["Quick Open Scene…"] = new(() => OpenSearch(SearchScope.Scenes)),
             ["Save"] = Pressing(_save),
             ["Export game…"] = new(_export.Open),
@@ -1072,7 +1076,7 @@ internal sealed class EditorWindow : Window
         _keys.Open([.. menus, .. window]);
     }
 
-    void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? []);
+    void OpenNewScene(string folder) => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? [], folder);
 
     // The rows are read at each open, so Search shows the files, things and menu items as they are now. The open
     // scene comes first among the scenes, then the recent ones newest first, then the rest of the project.
@@ -1111,7 +1115,7 @@ internal sealed class EditorWindow : Window
     // The dialog that makes a scene file, the flyout that instances one, and the tab's close button.
     void WireSceneFiles()
     {
-        _sceneTabs.AddButton.Click += (_, _) => OpenNewScene();
+        _sceneTabs.AddButton.Click += (_, _) => OpenNewScene(FileTree.Root);
         _newScene.Requested += (path, className) =>
         {
             var left = Leave(() =>
@@ -1195,7 +1199,7 @@ internal sealed class EditorWindow : Window
     void ShowScenes()
     {
         IReadOnlyList<string> files = [.. _scene!.Scenes(), .. _scene.Scripts(), .. _scene.GraphScripts(), .. _scene.ImportedFiles()];
-        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, _scene.ModifiedOf));
+        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, _scene.ModifiedOf), _scene.SceneKindOf);
     }
 
     // A script opens in its workspace. It is opened before the workspace shows, so the workspace's list shows it chosen.

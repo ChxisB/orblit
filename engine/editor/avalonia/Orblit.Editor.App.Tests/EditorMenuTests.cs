@@ -163,7 +163,6 @@ public sealed class EditorMenuTests
             Assert.Equal(
                 [
                     "Find a scene…=Quick Open Scene…",
-                    "Files=FileSystem",
                     "Collision shapes=Visible Collision Shapes",
                     "Paths=Visible Paths",
                     "Navigation=Visible Navigation",
@@ -616,8 +615,8 @@ public sealed class EditorMenuTests
     [Theory]
     [InlineData("Scene", "Scene", 0)]
     [InlineData("Import", "Scene", 1)]
-    [InlineData("Files", "FileSystem", 0)]
-    [InlineData("History", "FileSystem", 1)]
+    [InlineData("Files", "Files", 0)]
+    [InlineData("History", "Files", 1)]
     [InlineData("Inspector", "Inspector", 0)]
     [InlineData("Signals", "Inspector", 1)]
     public void A_Panels_check_hides_its_own_tab(string label, string dock, int tab)

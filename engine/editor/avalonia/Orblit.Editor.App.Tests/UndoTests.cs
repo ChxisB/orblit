@@ -72,13 +72,14 @@ public sealed class UndoTests
             window.Outline.SelectedItem = window.Outline.ItemsSource!.Cast<Bridge.OutlineNode>().Single().Children[1];
             window.Tools.Rename("Bell");
 
-            Assert.Equal(["16:33", "Opened field.oscn", "16:33", "Renamed Lamp", "16:35", "Renamed Sound"], Rows(window));
+            Assert.Equal(["16:35", "Renamed Sound", "16:33", "Renamed Lamp", "16:33", "Opened field.oscn"], Rows(window));
 
-            Click((Button)window.History.Rows.Children[0]);
+            Click((Button)window.History.Rows.Children[^1]);
 
             Assert.Equal(["Lamp", "Sound"], Names(scene));
             Assert.Equal("Undid 2 steps. Save keeps the change.", window.Status);
-            Assert.Equal([1, 0.45, 0.45], window.History.Rows.Children.Select(row => row.Opacity));
+            Assert.Equal([0.45, 0.45, 1], window.History.Rows.Children.Select(row => row.Opacity));
+            Assert.Equal(["Faded steps are undone.", "⌃⇧Z", "redoes them."], Texts(window.History).Take(3));
         });
     }
 }

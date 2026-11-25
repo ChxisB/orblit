@@ -29,6 +29,7 @@ internal sealed class NewSceneTool : StackPanel
     readonly TextBlock _fault = Parts.FaultLine();
     readonly ChoiceList _others = new("Search classes") { IsVisible = false, Margin = new Thickness(0, 10, 0, 0) };
     IReadOnlyCollection<string> _scenes = [];
+    string _folder = FileTree.Root;
 
     public NewSceneTool()
     {
@@ -102,11 +103,13 @@ internal sealed class NewSceneTool : StackPanel
 
     /// <summary>
     /// Opens the dialog with no name and the keys in the name box, on the 2D root in the 2D workspace and the 3D
-    /// root elsewhere. A new name must not match one of the scenes, and Other... offers the classes.
+    /// root elsewhere. The scene is saved in <paramref name="folder"/>, a res:// path that ends in a slash. A new
+    /// name must not match one of the scenes, and Other... offers the classes.
     /// </summary>
-    public void Open(IReadOnlyCollection<string> scenes, bool planar, IReadOnlyList<string> classes)
+    public void Open(IReadOnlyCollection<string> scenes, bool planar, IReadOnlyList<string> classes, string folder)
     {
         _scenes = scenes;
+        _folder = folder;
         _others.Show([.. classes.Select(name => new Choice(EditorIcons.ForClass(name), name) { Tint = EditorBrushes.TreeIcon })]);
         _roots[planar ? 1 : 0].Card.IsChecked = true;
         _name.Text = "";
@@ -129,7 +132,7 @@ internal sealed class NewSceneTool : StackPanel
     void Check()
     {
         var name = _name.Text?.Trim() ?? "";
-        _path.Text = name == "" ? "" : $"{FileTree.Root}{name}.oscn";
+        _path.Text = name == "" ? "" : $"{_folder}{name}.oscn";
         var taken = _scenes.Contains(_path.Text);
         _name.Classes.Set(EditorTheme.Bad, taken);
         Say(taken ? $"{name}.oscn already exists. Pick another name." : "");

@@ -20,7 +20,7 @@ internal sealed partial class EditorRun
     const int ImportMilliseconds = 60000;
 
     /// <summary>
-    /// Writes an image into the project and imports it. FileSystem lists the imported files only when the editor
+    /// Writes an image into the project and imports it. Files lists the imported files only when the editor
     /// opens, so this runs before it does.
     /// </summary>
     internal static void WriteSwatch(string project)
@@ -109,7 +109,7 @@ internal sealed partial class EditorRun
     // The engine rewrites the imported texture only when it imports the file again, so its time shows the import ran.
     async Task SetsImportOptions()
     {
-        await Wait(() => SwatchRow() is not null, "swatch.png in FileSystem");
+        await Wait(() => SwatchRow() is not null, "swatch.png in Files");
         // Two clicks in a row are the double click that opens a file.
         await _input.Click(SwatchRow()!);
         await _input.Click(SwatchRow()!);

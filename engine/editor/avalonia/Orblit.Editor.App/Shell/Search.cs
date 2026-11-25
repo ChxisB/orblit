@@ -106,12 +106,25 @@ internal sealed class Search
         return new PickerRow(group, ScenesPanel.IconOf(file), Path.GetFileNameWithoutExtension(path), () => open(path)) { Tint = ScenesPanel.TintOf(file), Note = path, Kind = kind };
     }
 
-    /// <summary>What a file is, in words: "3D scene", "2D scene" or "Scene" by <paramref name="sceneKind"/>, or the kind of script.</summary>
+    /// <summary>
+    /// What a file is, in words: "3D scene", "2D scene" or "Scene" by <paramref name="sceneKind"/>, the kind of
+    /// script, or what an imported file holds. An imported file of a kind not named here has no words.
+    /// </summary>
     internal static string KindText(string path, string sceneKind) => FileTree.KindOf(path) switch
     {
         FileKind.Script => "C# script",
         FileKind.Graph => "Graph script",
+        FileKind.Imported => ImportedText(Path.GetExtension(path).ToLowerInvariant()),
         _ => sceneKind == "" ? "Scene" : $"{sceneKind} scene",
+    };
+
+    static string ImportedText(string extension) => extension switch
+    {
+        ".png" or ".jpg" or ".jpeg" or ".webp" or ".svg" or ".bmp" or ".tga" or ".exr" or ".hdr" => "Picture",
+        ".glb" or ".gltf" or ".fbx" or ".obj" or ".blend" or ".dae" => "Model",
+        ".wav" or ".ogg" or ".mp3" => "Sound",
+        ".ttf" or ".otf" or ".woff" or ".woff2" => "Font",
+        _ => "",
     };
 
     /// <summary>The things in the open scene, parents first. Each notes the path to its parent and gives its class as the engine's name.</summary>

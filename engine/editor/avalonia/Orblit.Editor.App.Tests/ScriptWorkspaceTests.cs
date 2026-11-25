@@ -229,7 +229,7 @@ public sealed class ScriptWorkspaceTests
             window.UpdateLayout();
 
             Assert.False(window.Center.Stage.IsVisible);
-            Assert.Equal(["Scene dock", "FileSystem dock"], window.LeftSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
+            Assert.Equal(["Scene dock", "Files dock"], window.LeftSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
             Assert.Equal(["Inspector dock"], window.RightSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
             Assert.False(window.SceneDock.IsEffectivelyVisible);
             Assert.Equal(DockSide.RailWidth, window.LeftSide.Rail.Bounds.Width);

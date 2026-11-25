@@ -588,6 +588,7 @@ public sealed class ScenePaneTests
             Assert.Equal([0, 1], window.Move.ParentList.Shown.Select(choice => choice.Depth));
             Assert.Equal("Sound", window.Move.ParentList.Picked!.Name);
             Assert.Equal(["Move into Sound", "↵"], Texts(window.Move.Dialog.MainButton));
+            Assert.Equal("Moves it to the end of the lit thing.", ((HoverCard)ToolTip.GetTip(window.Move.Dialog.MainButton)!).Line);
             Assert.Equal("Keep where it is in the world", window.Move.KeepGlobal.OnContent);
         });
     }

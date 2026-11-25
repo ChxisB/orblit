@@ -31,7 +31,8 @@ internal sealed class MoveTools
     {
         var jump = new TextBlock { Text = "Off moves it with its new home, so it may jump.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
         Dialog = new Dialog("", "", new StackPanel { Children = { _parents, _keepGlobal, jump } }) { CardWidth = 360, EngineName = "Reparent" };
-        new HoverCard("Move into", "Moves it to the end of the lit thing.", "↵").SaysWhyOff(Dialog.MainButton, "Pick a new home first.");
+        var card = new HoverCard("Move into", "Moves it to the end of the lit thing.", "↵");
+        card.SaysWhyOff(card.On(Dialog.MainButton), "Pick a new home first.");
         _parents.PickedChanged += NamePlace;
         UpButton.Click += (_, _) => Run(() => Step(-1, "up"));
         DownButton.Click += (_, _) => Run(() => Step(1, "down"));

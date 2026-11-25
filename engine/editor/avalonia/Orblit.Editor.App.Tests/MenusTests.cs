@@ -265,7 +265,7 @@ public sealed class MenusTests
             window.UpdateLayout();
             Assert.Equal(upper, BoxOf(window.FileDock, window));
             Assert.Equal(lower, BoxOf(window.SceneDock, window));
-            Assert.Equal("Moved FileSystem to the left column, top. The layout is not saved.", window.Status);
+            Assert.Equal("Moved Files to the left column, top. The layout is not saved.", window.Status);
 
             Press(window.SceneDock.MoveItems[(int)DockSlot.UpperLeft]);
             window.UpdateLayout();
@@ -306,9 +306,9 @@ public sealed class MenusTests
 
             // The map is the item with no text.
             Assert.Equal(
-                ["WHERE THIS PANEL SITS", null, "TABS IN THIS PANEL", "FileSystem", "History", "Left column, top", "Left column, bottom", "Right column", "Pop out into a window", "Put all panels back"],
+                ["WHERE THIS PANEL SITS", null, "TABS IN THIS PANEL", "Files", "History", "Left column, top", "Left column, bottom", "Right column", "Pop out into a window", "Put all panels back"],
                 items.Where(item => item.IsVisible).Select(item => AutomationProperties.GetName(item) ?? (item.Header as TextBlock)?.Text));
-            Assert.Equal("Every file in the project", Note(DockItem(window.FileDock, "FileSystem")));
+            Assert.Equal("Every file in the project", Note(DockItem(window.FileDock, "Files")));
             Assert.Equal("Every change, to undo back to", Note(DockItem(window.FileDock, "History")));
             Assert.Equal("Float it over the editor", Note(window.FileDock.FloatItem));
             Assert.Equal("The layout Orblit started with", Note(DockItem(window.FileDock, "Put all panels back")));
@@ -456,7 +456,7 @@ public sealed class MenusTests
             var sceneBox = BoxOf(window.SceneDock, window);
             Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
             Press(DockItem(window.FileDock, "History"));
-            Press(DockItem(window.FileDock, "FileSystem"));
+            Press(DockItem(window.FileDock, "Files"));
             window.UpdateLayout();
             Assert.False(window.FileDock.IsVisible);
 
@@ -472,8 +472,8 @@ public sealed class MenusTests
     }
 
     [Theory]
-    [InlineData("Scene", "Nothing to import")]
-    [InlineData("FileSystem", "Nothing to undo yet")]
+    [InlineData("Scene", "Pick a file to set how it comes in")]
+    [InlineData("Files", "Nothing to undo yet")]
     [InlineData("Inspector", "Nothing selected")]
     public void The_second_tab_of_each_dock_says_why_it_is_empty(string dock, string title)
     {

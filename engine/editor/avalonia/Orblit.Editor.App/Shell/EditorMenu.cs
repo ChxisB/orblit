@@ -227,7 +227,7 @@ internal static class EditorMenu
     [
         new("Scene", Check: true) { Note = "Things in the open scene" },
         new("Import", Check: true) { Note = "How the picked file comes in" },
-        new("Files", Check: true) { Note = "Every file in the project", Engine = "FileSystem" },
+        new("Files", Check: true) { Note = "Every file in the project" },
         new("History", Check: true) { Note = "Every change, to undo back to" },
         new("Inspector", Check: true) { Note = "Settings for the picked thing" },
         new("Signals", Check: true) { Note = "Messages things send each other" },
