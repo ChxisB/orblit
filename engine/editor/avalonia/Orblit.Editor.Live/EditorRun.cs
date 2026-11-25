@@ -415,7 +415,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Wait(() => graph.FileMenu.IsOpen && NewItem(graph).IsAttachedToVisualTree(), "the File menu to open");
         await _input.Click(NewItem(graph));
         // The dialog sits hidden in the window from the start, so its button has a place only after a layout.
-        await Wait(() => graph.Form.CreateButton.IsEffectivelyVisible && graph.Form.CreateButton.Bounds.Width > 0, "the New graph script dialog to open");
+        await Wait(() => graph.Form.CreateButton.IsEffectivelyVisible && graph.Form.CreateButton.Bounds.Width > 0, "the New graph dialog to open");
         // The boxes take text, which this run does not type. Setting it is the only part that is not injected.
         graph.Form.NameBox.Text = "live";
         await _input.Click(graph.Form.CreateButton);

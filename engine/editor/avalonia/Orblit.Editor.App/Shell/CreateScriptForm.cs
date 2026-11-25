@@ -7,24 +7,40 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The words, the engine's name and the file suffix of one kind of script that the New script dialog makes.</summary>
-internal sealed record ScriptKind(string Title, string Engine, string Lead, string DefaultName, string Suffix)
+/// <summary>
+/// The words, the engine's name and the file suffix of one kind of script that the New script dialog makes. Button is
+/// the word on the main button, and WorksOn is the line under Works on.
+/// </summary>
+internal sealed record ScriptKind(string Title, string Engine, string Lead, string DefaultName, string Suffix, string Button, string WorksOn)
 {
-    public static readonly ScriptKind Graph = new("New graph script", "New Graph Script", "A script made of steps. You pick what it runs on.", "new_graph", ".ograph");
+    public static readonly ScriptKind Graph = new(
+        "New graph",
+        "New GraphScript",
+        "A graph is a script made of steps and wires. It runs on one thing in your scene.",
+        "new_graph",
+        ".ograph",
+        "Make graph",
+        "The kind of thing the graph controls. Its steps can use that thing’s settings.");
 
-    public static readonly ScriptKind Csharp = new("New C# script", "New C# Script", "Code that tells a thing what to do.", "NewScript", ".cs");
+    public static readonly ScriptKind Csharp = new(
+        "New C# script",
+        "New C# Script",
+        "Code that tells a thing what to do.",
+        "NewScript",
+        ".cs",
+        "Create",
+        "The kind of thing it can be added to. Entity works on anything.");
 }
 
 /// <summary>
 /// The New script dialog for one kind of script. It asks for the name of the file, the kind of thing the script
-/// works on and its folder, and shows where the file goes. A name that is a script of the kind already turns Create
-/// off and says so under the field. While Create is off, its card says what to do first.
+/// works on and its folder, and names the file it makes. A name that is a script of the kind already turns the main
+/// button off and says so under the field. While the button is off, its card says what to do first.
 /// </summary>
 internal sealed class CreateScriptForm : StackPanel
 {
     const string DefaultBase = "Entity";
     const string DefaultFolder = "res://";
-    const string WorksOnLine = "The kind of thing it can be added to. Entity works on anything.";
 
     readonly ScriptKind _kind;
     readonly TextBox _name = new()
@@ -58,10 +74,10 @@ internal sealed class CreateScriptForm : StackPanel
         ((TextBlock)_name.InnerRightContent!).Text = kind.Suffix;
         Spacing = 10;
         Children.Add(Parts.Labeled("Name", _name, _fault, _saved));
-        Children.Add(Parts.Labeled("Works on", _extends, new TextBlock { Text = WorksOnLine, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap }));
+        Children.Add(Parts.Labeled("Works on", _extends, new TextBlock { Text = kind.WorksOn, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap }));
         Children.Add(Parts.Labeled("Folder", _folder));
         Dialog = new Dialog(kind.Title, kind.Lead, this) { EngineName = kind.Engine, CardWidth = 380 };
-        Dialog.MainButton.Content = Parts.Keyed("Create", "↵");
+        Dialog.MainButton.Content = Parts.Keyed(kind.Button, "↵");
         // TextChanged waits for a render, so the property is the one that fires at once.
         _name.PropertyChanged += (_, e) => Check(e.Property);
         _folder.PropertyChanged += (_, e) => Check(e.Property);
@@ -69,7 +85,7 @@ internal sealed class CreateScriptForm : StackPanel
         Dialog.MainButton.Click += (_, _) => Requested?.Invoke(PathOf(), (string)_extends.SelectedItem!);
     }
 
-    /// <summary>Raised with the path of the new file and the class to extend when Create is pressed.</summary>
+    /// <summary>Raised with the path of the new file and the class to extend when the main button is pressed.</summary>
     public event Action<string, string>? Requested;
 
     internal Dialog Dialog { get; }
@@ -82,7 +98,7 @@ internal sealed class CreateScriptForm : StackPanel
 
     internal Button CreateButton => Dialog.MainButton;
 
-    /// <summary>The line under the name that says where the script is saved.</summary>
+    /// <summary>The line under the name that names the file the script becomes.</summary>
     internal TextBlock SavedLine => _saved;
 
     /// <summary>The line under the name that says why the script cannot be made, or empty.</summary>
@@ -120,19 +136,19 @@ internal sealed class CreateScriptForm : StackPanel
         }
     }
 
-    // Create waits for a name and a folder, and for a path that is no script yet. Its card says which it waits for.
+    // The main button waits for a name and a folder, and for a path that is no script yet. Its card says which it waits for.
     void Check()
     {
         var name = _name.Text?.Trim() ?? "";
         var blank = string.IsNullOrWhiteSpace(_folder.Text);
         var taken = _scripts.Contains(PathOf());
         _name.Classes.Set(EditorTheme.Bad, taken);
-        var fault = taken ? $"{name}{_kind.Suffix} already exists. Pick another name." : "";
+        var fault = taken ? $"{name}{_kind.Suffix} is already in this folder. Pick another name." : "";
         Say(fault);
-        _saved.Text = name == "" || blank ? "" : $"Saved as {PathOf()}";
+        _saved.Text = name == "" || blank ? "" : $"It becomes {name}{_kind.Suffix}.";
         var why = name == "" ? "Give it a name first." : blank ? "Give it a folder first." : taken ? fault : null;
         Dialog.MainButton.IsEnabled = why is null;
-        new HoverCard("Create", why ?? "Makes the script and opens it.", "↵").On(Dialog.MainButton);
+        new HoverCard(_kind.Button, why ?? "Makes the script and opens it.", "↵").On(Dialog.MainButton);
     }
 
     // A folder without its closing slash gets one, so res://enemies and res://enemies/ give one path.

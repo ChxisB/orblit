@@ -1,8 +1,10 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -46,10 +48,37 @@ internal static class PanelFields
         return box;
     }
 
+    /// <summary>The plain words of a type. A type with no plain words goes by its engine name.</summary>
+    public static string TypeWords(int type) => type switch
+    {
+        1 => "Yes or no",
+        2 => "Whole number",
+        3 => "Number",
+        4 => "Text",
+        _ => VariantTypes.NameOf(type),
+    };
+
+    /// <summary>A list of the Variant types by their plain words, each with its engine name beside it in dim mono.</summary>
+    public static ComboBox TypeList() => new()
+    {
+        ItemsSource = Enumerable.Range(0, VariantTypes.Names.Count).ToList(),
+        ItemTemplate = new FuncDataTemplate<int>((type, _) =>
+        {
+            var words = TypeWords(type);
+            var engine = VariantTypes.NameOf(type);
+            return Parts.Noted(words, null, words == engine ? null : engine);
+        }),
+        SelectedIndex = 0,
+    };
+
     /// <summary>A list of the Variant types, with the type of the id shown. The callback gets the type number.</summary>
     public static ComboBox TypeBox(string id, int type, Action<int> commit)
     {
-        var box = new ComboBox { ItemsSource = VariantTypes.Names, SelectedIndex = type, Tag = id, MinWidth = 90, FontSize = 12 };
+        var box = TypeList();
+        box.SelectedIndex = type;
+        box.Tag = id;
+        box.MinWidth = 90;
+        box.FontSize = 12;
         box.SelectionChanged += (_, _) =>
         {
             if (box.SelectedIndex >= 0 && box.SelectedIndex != type)

@@ -24,7 +24,7 @@ internal sealed class ProblemsList : StackPanel
         var problems = Find(document);
         if (problems.Count == 0)
         {
-            Children.Add(Line("problems:empty", "No problems."));
+            Children.Add(Line("problems:empty", "No problems. A step that needs something shows here."));
         }
 
         for (var at = 0; at < problems.Count; at++)

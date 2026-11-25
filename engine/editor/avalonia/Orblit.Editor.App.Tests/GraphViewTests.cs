@@ -610,7 +610,7 @@ public sealed class GraphViewTests
 
             view.Form.NameBox.Text = "logic";
 
-            Assert.Equal("logic.ograph already exists. Pick another name.", view.Form.Fault);
+            Assert.Equal("logic.ograph is already in this folder. Pick another name.", view.Form.Fault);
             Assert.False(view.Form.CreateButton.IsEnabled);
             Assert.Empty(files.Created);
         });

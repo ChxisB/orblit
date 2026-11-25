@@ -35,13 +35,13 @@ public sealed class CreateScriptFormTests
         {
             var form = Opened();
 
-            Assert.Equal("New graph script", form.Dialog.Title);
-            Assert.Equal("New Graph Script", form.Dialog.EngineName);
-            Assert.Equal("A script made of steps. You pick what it runs on.", form.Dialog.Why.Text);
+            Assert.Equal("New graph", form.Dialog.Title);
+            Assert.Equal("New GraphScript", form.Dialog.EngineName);
+            Assert.Equal("A graph is a script made of steps and wires. It runs on one thing in your scene.", form.Dialog.Why.Text);
             Assert.Equal(380, form.Dialog.CardWidth);
-            Assert.Equal(["Create", "↵"], Texts(form.CreateButton));
+            Assert.Equal(["Make graph", "↵"], Texts(form.CreateButton));
             Assert.Equal("Makes the script and opens it.", ((HoverCard)ToolTip.GetTip(form.CreateButton)!).Line);
-            Assert.Equal("Saved as res://new_graph.ograph", form.SavedLine.Text);
+            Assert.Equal("It becomes new_graph.ograph.", form.SavedLine.Text);
             Assert.Equal("new_graph", form.NameBox.Text);
             Assert.Equal((0, 9), (form.NameBox.SelectionStart, form.NameBox.SelectionEnd));
             Assert.Equal(".ograph", ((TextBlock)form.NameBox.InnerRightContent!).Text);
@@ -109,7 +109,7 @@ public sealed class CreateScriptFormTests
 
             form.NameBox.Text = "player_brain";
 
-            Assert.Equal("player_brain.ograph already exists. Pick another name.", form.Fault);
+            Assert.Equal("player_brain.ograph is already in this folder. Pick another name.", form.Fault);
             Assert.Contains(EditorTheme.Bad, form.NameBox.Classes);
             Assert.False(form.CreateButton.IsEnabled);
 
