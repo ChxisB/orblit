@@ -448,7 +448,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
 
     static MenuItem NewItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "New graph…");
 
-    static MenuItem CloseItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "Close");
+    static MenuItem CloseItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "Close");
 
     WorkspaceTab Tab(string label) => window.Bar.Tabs.Single(tab => tab.Label == label);
 

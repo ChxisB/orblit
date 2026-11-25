@@ -62,12 +62,13 @@ internal sealed partial class EditorRun
         await _input.Click(window.FileDock.Tabs[1]);
         var rows = window.History.Rows.Children;
         Expect(rows.Count >= 5, $"History lists {rows.Count} rows for four edits");
-        await _input.Click(rows[0]);
-        await Settle();
-        Expect(Vector3.Distance(engine.PositionOf(_box), moved) > Close, "a click on the first History row left the entity where it was");
+        // History lists the newest step first, so the scene as it opened is the last row.
         await _input.Click(rows[^1]);
         await Settle();
-        Expect(Vector3.Distance(engine.PositionOf(_box), moved) < Close, "a click on the last History row did not bring the edits back");
+        Expect(Vector3.Distance(engine.PositionOf(_box), moved) > Close, "a click on the opened scene's row left the entity where it was");
+        await _input.Click(rows[0]);
+        await Settle();
+        Expect(Vector3.Distance(engine.PositionOf(_box), moved) < Close, "a click on the newest History row did not bring the edits back");
         Shots.Save(window, Path.Combine(output, "history.png"));
         await _input.Click(window.FileDock.Tabs[0]);
     }
