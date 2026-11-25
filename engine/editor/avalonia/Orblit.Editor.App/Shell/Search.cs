@@ -11,8 +11,9 @@ namespace Orblit.Editor.App.Shell;
 internal enum SearchScope { All, Scenes, Actions }
 
 /// <summary>
-/// Search: one box over the project's scenes and scripts, the open scene's things and the menu's actions. Empty, it
-/// shows the recent scenes and a few things to try. A query that starts with &gt; looks at the actions alone.
+/// Search: one box over the project's scenes and scripts, the open scene's things, the menu's actions, the settings
+/// and the guide's pages. Empty, it shows the recent scenes and a few things to try. A query that starts with &gt;
+/// looks at the actions alone.
 /// </summary>
 internal sealed class Search
 {
@@ -22,11 +23,13 @@ internal sealed class Search
     internal const string Scripts = "Scripts";
     internal const string Things = "Things";
     internal const string Actions = "Actions";
+    internal const string Settings = "Settings";
+    internal const string Help = "Help";
     internal const string InProject = "Scenes in this project";
 
     public Search()
     {
-        var box = new TextBox { PlaceholderText = "Search scenes, scripts, things and actions", FontSize = 15, Padding = new Thickness(0), MinHeight = 0, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.Bare } };
+        var box = new TextBox { PlaceholderText = "Search files, things, settings and actions", FontSize = 15, Padding = new Thickness(0), MinHeight = 0, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.Bare } };
         var icon = new EditorIcon("Lens") { Width = 17, Height = 17, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, EditorBrushes.TextDim);
         ScenesChip = new Border
@@ -75,8 +78,8 @@ internal sealed class Search
     }
 
     /// <summary>
-    /// The rows for a query. Empty, it gives Recent and Try. Typed, it gives the Scenes, Scripts, Things and Actions
-    /// that match. A leading &gt; keeps the actions alone. The Scenes scope keeps the scenes alone, under one heading.
+    /// The rows for a query. Empty, it gives Recent and Try. Typed, it gives the Scenes, Scripts, Things, Actions,
+    /// Settings and Help that match. A leading &gt; keeps the actions alone. The Scenes scope keeps the scenes alone, under one heading.
     /// </summary>
     internal static Func<string, IReadOnlyList<PickerRow>> Finder(IReadOnlyList<PickerRow> rows, SearchScope scope) => query =>
     {
@@ -136,6 +139,25 @@ internal sealed class Search
 
         return Walk(root, "");
     }
+
+    // The guide's pages on the site, with the minutes each takes to read at about 250 words a minute.
+    static readonly (string Title, string Path, string Line, int Minutes)[] s_guide =
+    [
+        ("What Orblit is", "start/what-orblit-is/", "A game engine and an editor in one application", 3),
+        ("Installing", "start/installing/", "Download Orblit, unzip it and open the editor", 2),
+        ("Your first project", "start/your-first-project/", "Make a project with a spinning cube and run it", 2),
+        ("Your first graph script", "start/your-first-graph-script/", "Joins steps with wires to print and send a signal", 5),
+        ("Export a game", "start/export-a-game/", "Build your game as a program for Linux, Windows or macOS", 3),
+        ("Platform support", "reference/platform-support/", "Where the editor runs and where it exports to", 2),
+    ];
+
+    /// <summary>The guide's pages, each opening in the browser through these links.</summary>
+    internal static IEnumerable<PickerRow> HelpOf(ILinkOpener links) =>
+        s_guide.Select(page => new PickerRow(Help, "Book", page.Title, () => links.Open(new Uri(HelpMenu.Docs, page.Path)))
+        {
+            Note = page.Line,
+            Kind = $"The guide · {page.Minutes} minutes",
+        });
 
     static IEnumerable<PickerRow> Leaves(NativeMenu menu, string kind) =>
         menu.Items.OfType<NativeMenuItem>().SelectMany(item => item switch

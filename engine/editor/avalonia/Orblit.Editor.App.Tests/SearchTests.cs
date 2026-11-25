@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.LogicalTree;
+using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -53,7 +54,7 @@ public sealed class SearchTests
     }
 
     [Fact]
-    public void A_typed_query_groups_scenes_scripts_things_and_actions()
+    public void A_typed_query_groups_scenes_scripts_things_actions_settings_and_help()
     {
         UiThread.Run(() =>
         {
@@ -61,7 +62,7 @@ public sealed class SearchTests
 
             var search = Opened(window, "s");
 
-            Assert.Equal([Search.Scenes, Search.Scripts, Search.Things, Search.Actions], search.Shown.Select(row => row.Group).Distinct());
+            Assert.Equal([Search.Scenes, Search.Scripts, Search.Things, Search.Actions, Search.Settings, Search.Help], search.Shown.Select(row => row.Group).Distinct());
             Assert.Contains(search.Shown, row => (row.Group, row.Name, row.Kind) == (Search.Scripts, "slime", "C# script"));
         });
     }
@@ -317,6 +318,64 @@ public sealed class SearchTests
             Assert.Contains("Nothing matches. Try fewer letters, or > for actions.", Texts(search.Card));
             Press(search.SearchBox, Key.Enter);
             Assert.True(search.IsVisible);
+        });
+    }
+
+    sealed class Links(List<Uri> opened) : ILinkOpener
+    {
+        public void Open(Uri link) => opened.Add(link);
+    }
+
+    [Fact]
+    public void A_setting_shows_under_Settings_with_its_value_and_opens_Settings_on_it()
+    {
+        UiThread.Run(() =>
+        {
+            var folder = Path.Combine(Path.GetTempPath(), $"orblit_settings_{Guid.NewGuid():N}");
+            var window = new EditorWindow(globalMenu: false, settings: new EditorSettings(Path.Combine(folder, EditorSettings.FileName)));
+            window.Show();
+            window.Load(FieldScene());
+
+            var search = Opened(window, "projects go");
+
+            var row = Assert.Single(search.Shown);
+            Assert.Equal((Search.Settings, "New projects go in", "~/Games"), (row.Group, row.Name, row.Key));
+            Press(search.SearchBox, Key.Enter);
+            Assert.False(search.IsVisible);
+            Assert.True(window.Settings.Dialog.IsVisible);
+            Assert.True(window.Settings.FolderBox.IsFocused);
+            Assert.False(Directory.Exists(folder));
+        });
+    }
+
+    [Fact]
+    public void Export_shows_the_guide_page_under_Help_after_the_actions_and_opens_its_link()
+    {
+        UiThread.Run(() =>
+        {
+            var opened = new List<Uri>();
+            var window = new EditorWindow(globalMenu: false, links: new Links(opened));
+            window.Show();
+            window.Load(FieldScene());
+
+            var search = Opened(window, "export");
+
+            Assert.Equal(Search.Help, search.Shown.Select(row => row.Group).Distinct().Last());
+            var page = Assert.Single(search.Shown, row => row.Group == Search.Help);
+            Assert.Equal(("Export a game", "The guide · 3 minutes"), (page.Name, page.Kind));
+            page.Run();
+            Assert.Equal([new Uri("https://orblitengine.com/docs/start/export-a-game/")], opened);
+        });
+    }
+
+    [Fact]
+    public void An_empty_box_shows_no_settings_or_help()
+    {
+        UiThread.Run(() =>
+        {
+            var search = Opened(OpenAtReferenceSize(FieldScene()));
+
+            Assert.DoesNotContain(search.Shown, row => row.Group is Search.Settings or Search.Help);
         });
     }
 

@@ -67,6 +67,17 @@ internal sealed class SettingsSheet
         Dialog.Open();
     }
 
+    /// <summary>The rows Search shows for Settings. Each opens Settings on its part, and shows the value it has.</summary>
+    internal IEnumerable<PickerRow> Rows() =>
+    [
+        new(Search.Settings, "Sliders", "New projects go in", () =>
+        {
+            Open();
+            _folder.Focus();
+        })
+        { Note = "Where New project makes each folder", Key = _settings.ProjectsFolder() },
+    ];
+
     // A blank folder saves as blank, which reads back as the default the placeholder shows.
     void Save(Action then)
     {

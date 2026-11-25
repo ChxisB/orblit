@@ -182,7 +182,7 @@ internal sealed class TitleBar : Grid
             VerticalContentAlignment = VerticalAlignment.Center,
             Content = new DockPanel { Children = { icon, key, new TextBlock { Text = "Search", VerticalAlignment = VerticalAlignment.Center } } },
         };
-        return new HoverCard("Search", "Finds a scene, a thing in it or a command.", keys).On(button);
+        return new HoverCard("Search", "Finds any file, thing, setting or action.", keys).On(button);
     }
 
     WorkspaceTab Workspace((string Name, string Icon, string Line, string? Engine) workspace, string key)

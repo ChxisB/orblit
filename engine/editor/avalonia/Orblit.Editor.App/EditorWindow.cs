@@ -64,6 +64,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly KeysSheet _keys = new();
     readonly Button _settingsButton = new();
     readonly SettingsSheet _settings;
+    readonly ILinkOpener _links;
     readonly bool _globalMenu;
     readonly SceneTabStrip _sceneTabs;
     readonly ViewportToolbar _toolbar;
@@ -116,9 +117,10 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     string _dragged = "";
 
     // The screen bar of macOS has its own app menu, so a window on any other system also carries About, Settings
-    // and Quit. Settings is the user's own unless the caller names one.
-    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null, EditorSettings? settings = null)
+    // and Quit. Settings is the user's own unless the caller names one. Links open in the system browser.
+    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null, EditorSettings? settings = null, ILinkOpener? links = null)
     {
+        _links = links ?? new WindowLinks(this);
         // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
         _time = time ?? TimeProvider.System;
         _history = new EditHistory(_time);
@@ -1192,6 +1194,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             .. Files(scripts).Select(path => FileRow(Search.Scripts, path)),
             .. _root is null ? [] : Search.ThingsOf(_root, _scenePane.Select),
             .. actions,
+            .. _settings.Rows(),
+            .. Search.HelpOf(_links),
         ], scope);
 
         static IEnumerable<string> Files(IEnumerable<string> paths) => paths.Where(path => path != "" && !path.EndsWith('/')).Distinct();
