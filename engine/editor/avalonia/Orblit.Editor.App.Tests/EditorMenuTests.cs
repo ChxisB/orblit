@@ -138,7 +138,7 @@ public sealed class EditorMenuTests
                     "Signals: Messages things send each other",
                     "Hide panels: Gives the view the whole window",
                     "Full screen: ",
-                    "Play the game: Starts from the main scene",
+                    "Play the game: Starts the scene Play settings pick",
                     "Play this scene: Starts from the scene you are in",
                     "Stop: Closes the game window",
                     "Show while playing: Draws hidden shapes and paths in the game",

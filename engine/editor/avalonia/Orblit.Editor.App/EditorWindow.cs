@@ -79,7 +79,7 @@ internal sealed class EditorWindow : Window
     readonly ScriptView _script = new();
     readonly ImportPane _import = new();
     readonly GraphView _graph = new();
-    readonly GameView _game = new();
+    readonly GameView _game;
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
     readonly Dictionary<DockTabs, Window> _floats = [];
     readonly Dictionary<DockTabs, DockSlot> _homes = [];
@@ -116,6 +116,7 @@ internal sealed class EditorWindow : Window
         _history = new EditHistory(_time);
         _history.Changed += ShowHistory;
         _historyPane = new HistoryPane(CommandKey);
+        _game = new GameView(CommandKey);
         _historyPane.Picked += GoTo;
         _historyPane.ClearButton.Click += (_, _) => _history.Clear();
         _undo.Click += (_, _) => GoTo(_history.Done - 1);
@@ -171,11 +172,12 @@ internal sealed class EditorWindow : Window
         _playSceneButton.IsEnabled = false;
         _stopButton.IsEnabled = false;
         _save.Click += (_, _) => SaveAll();
-        _playButton.Click += (_, _) => Play();
-        _playSceneButton.Click += (_, _) => Play("--scene", _scene!.SceneFile);
+        _playButton.Click += (_, _) => PlayGame();
+        _playSceneButton.Click += (_, _) => PlayScene();
         _stopButton.Click += (_, _) => Stop();
         _sceneTabs.PanelsButton.Click += (_, _) => TogglePanels();
-        _game.RunRequested += () => Play();
+        _game.RunRequested += PlayGame;
+        _game.RunSceneRequested += PlayScene;
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
@@ -205,7 +207,7 @@ internal sealed class EditorWindow : Window
         _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
         _center.Output.CopyRequested += text => Copy(text, "the output");
-        _center.Debugger.RunRequested += () => Play();
+        _center.Debugger.RunRequested += PlayGame;
         _center.Debugger.CopyRequested += id => Copy(id, "the process id");
         _center.NoScene.NewButton.Click += (_, _) => OpenNewScene(FileTree.Root);
         _center.NoScene.FindButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
@@ -1048,6 +1050,19 @@ internal sealed class EditorWindow : Window
         Say("Playing in a second window.");
     }
 
+    void PlayGame()
+    {
+        if (_game.RunsThisScene)
+        {
+            PlayScene();
+            return;
+        }
+
+        Play();
+    }
+
+    void PlayScene() => Play("--scene", _scene!.SceneFile);
+
     void Stop()
     {
         _scene!.Stop();
@@ -1061,7 +1076,8 @@ internal sealed class EditorWindow : Window
         _playButton.IsEnabled = _root is not null;
         _playSceneButton.IsEnabled = _root is not null && _scene is { SceneFile.Length: > 0 };
         _stopButton.IsEnabled = playing;
-        _game.Show(playing, _root is not null, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
+        _game.Show(playing, _scene?.ProjectName ?? "", _time.GetUtcNow() - _playedAt);
+        _game.Offer(_playButton.IsEnabled, _playSceneButton.IsEnabled);
         _game.ShowLive(_scene is { IsPlaying: true } scene ? scene.Debug.State : DebugState.None);
         _center.Debugger.ShowGame(_scene?.GameId, _root is not null);
         _center.Debugger.ShowSession(_script.IsDebugging ? _script.DebugPanel : null);

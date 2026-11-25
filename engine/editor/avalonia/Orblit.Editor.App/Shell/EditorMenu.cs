@@ -235,7 +235,7 @@ internal static class EditorMenu
 
     static Entry[] Play() =>
     [
-        new("Play the game", Key.B, Cmd) { Note = "Starts from the main scene", WhyOff = "Open a scene first." },
+        new("Play the game", Key.B, Cmd) { Note = "Starts the scene Play settings pick", WhyOff = "Open a scene first." },
         new("Play this scene", Key.R, Cmd) { Note = "Starts from the scene you are in", WhyOff = "Open a saved scene first." },
         new("Stop", Key.OemPeriod, Cmd) { Note = "Closes the game window", WhyOff = "Nothing is playing." },
         Separator,

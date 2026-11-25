@@ -26,7 +26,7 @@ internal sealed class DebuggerNote : Decorator
 
     public DebuggerNote(KeyModifiers command)
     {
-        var card = new HoverCard(Play, "Starts from the main scene.", Parts.KeyText(new KeyGesture(Key.B, command)));
+        var card = new HoverCard(Play, "Starts the scene Play settings pick.", Parts.KeyText(new KeyGesture(Key.B, command)));
         var content = Parts.Keyed(card.Title, card.Key!);
         content.Children.Insert(0, new EditorIcon("MainPlay") { Width = 13, Height = 13, VerticalAlignment = VerticalAlignment.Center });
         _run.Content = content;

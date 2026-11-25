@@ -287,7 +287,7 @@ public sealed class BottomBarTests
                 ],
                 Labels(window.Center.Panels[1]));
             Assert.True(debugger.RunButton.IsEnabled);
-            Assert.Equal("Starts from the main scene.", Assert.IsType<HoverCard>(ToolTip.GetTip(debugger.RunButton)).Line);
+            Assert.Equal("Starts the scene Play settings pick.", Assert.IsType<HoverCard>(ToolTip.GetTip(debugger.RunButton)).Line);
 
             debugger.RunButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 

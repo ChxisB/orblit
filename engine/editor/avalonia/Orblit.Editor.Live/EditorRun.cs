@@ -335,19 +335,19 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
             Expect(window.Game.RunButton.IsEnabled && !window.Game.StopButton.IsEnabled, "the game view offered the wrong buttons");
 
             await _input.Click(window.Game.RunButton);
-            await Wait(() => engine.IsPlaying && window.Game.State.Text!.Contains("is running"), "the game to start");
+            await Wait(() => engine.IsPlaying && window.Game.Status.Text == "Playing", "the game to start");
             // The game sends its monitors once a second and its tree after each, so both come within a few seconds.
-            await Wait(() => window.Game.Rate.Text != "—" && window.Game.LiveRows.Count() == 4, "the game's monitors and its four entities in the live scene");
+            await Wait(() => window.Game.MonitorValues.First() != "—" && window.Game.LiveRows.Count() == 4, "the game's monitors and its four entities in the live scene");
             await Settle();
             Shots.Save(window, Path.Combine(output, "game-running.png"));
             await _input.Click(window.Game.StopButton);
-            Expect(!engine.IsPlaying && window.Game.State.Text!.StartsWith("No game"), "Stop did not end the game");
+            Expect(!engine.IsPlaying && window.Game.Status.Text == "Stopped", "Stop did not end the game");
 
             // The user closes the game's own window, which the editor learns only at its next poll.
             await _input.Click(window.PlayButton);
             await Wait(() => engine.IsPlaying, "a second game to start");
             CloseTheGame();
-            await Wait(() => !window.StopButton.IsEnabled && window.Game.State.Text!.StartsWith("No game"), "the view to show the closed game as stopped");
+            await Wait(() => !window.StopButton.IsEnabled && window.Game.Status.Text == "Stopped", "the view to show the closed game as stopped");
 
             // Play after a game that ended on its own runs Stop on a process that has exited.
             await _input.Click(window.PlayButton);

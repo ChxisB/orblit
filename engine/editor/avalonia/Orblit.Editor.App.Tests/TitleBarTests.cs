@@ -142,7 +142,7 @@ public sealed class TitleBarTests
 
             Assert.Equal(
                 [
-                    ("Play the game", "Starts from the main scene", new KeyGesture(Key.B, command)),
+                    ("Play the game", "Starts the scene Play settings pick", new KeyGesture(Key.B, command)),
                     ("Play this scene", "Starts from the scene you are in", new KeyGesture(Key.R, command)),
                 ],
                 RunItems(window).Select(item => (AutomationProperties.GetName(item), Note(item), item.InputGesture)));

@@ -140,7 +140,7 @@ internal sealed class TitleBar : Grid
     {
         string Keys(Key key) => Parts.KeyText(new KeyGesture(key, command));
 
-        var playCard = new HoverCard("Play", "Starts the game from the main scene.", Keys(Key.B), "Run Project");
+        var playCard = new HoverCard("Play", "Starts the scene Play settings pick, in its own window.", Keys(Key.B), "Run Project");
         playCard.SaysWhyOff(play, "Open a scene first.");
         var stopCard = new HoverCard("Stop", "Closes the game window.", Keys(Key.OemPeriod));
         stopCard.SaysWhyOff(stop, $"Nothing is playing. Press {Keys(Key.B)} first.");
@@ -151,7 +151,7 @@ internal sealed class TitleBar : Grid
             Placement = PlacementMode.BottomEdgeAlignedRight,
             Items =
             {
-                Parts.PressItem("Play the game", play, new KeyGesture(Key.B, command), "Starts from the main scene"),
+                Parts.PressItem("Play the game", play, new KeyGesture(Key.B, command), "Starts the scene Play settings pick"),
                 Parts.PressItem("Play this scene", playScene, new KeyGesture(Key.R, command), "Starts from the scene you are in"),
             },
         };

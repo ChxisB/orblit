@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Tests.Graph;
@@ -9,12 +10,14 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class GameWorkspaceTests
 {
-    const string Idle = "No game is running. Run opens one in its own window.";
-    const string Running = "The game is running in its own window.";
+    const string Idle = "Play settings on the left apply the next time you press Play.";
+    const string Running = "Changes to the scene now count from the next Play.";
 
     static readonly DebugMonitors s_frame = new(Fps: 60, Process: 0.004, Physics: 0.001, DrawCalls: 12, Objects: 340, VideoMemory: 50 * 1024 * 1024);
 
     static readonly LiveEntity[] s_tree = [new("Level", "Entity3D", 0), new("Props", "Entity3D", 1), new("Crate", "MeshInstance3D", 2), new("Sun", "DirectionalLight3D", 1)];
+
+    static string[] Words(Control control) => [.. control.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text!)];
 
     static void ShowGame(EditorWindow window) => ClickOn(window.Bar.Tabs.Single(tab => tab.Label == "Game"), window);
 
@@ -66,7 +69,7 @@ public sealed class GameWorkspaceTests
             time.Advance(TimeSpan.FromSeconds(42));
             window.Poll();
 
-            Assert.Equal(("Running", "view_demo", "00:42"), (window.Game.Status.Text, window.Game.Project.Text, window.Game.Time.Text));
+            Assert.Equal(("Playing", "view_demo", "00:42"), (window.Game.Status.Text, window.Game.Project.Text, window.Game.Time.Text));
             Assert.False(window.Game.RunButton.IsVisible);
             Assert.True(window.Game.StopButton.IsVisible);
 
@@ -82,7 +85,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void The_run_settings_hold_only_the_run_flags_and_each_takes_input()
+    public void The_play_settings_show_each_flag_by_its_plain_name_and_each_takes_input()
     {
         UiThread.Run(() =>
         {
@@ -91,7 +94,10 @@ public sealed class GameWorkspaceTests
             window.UpdateLayout();
 
             Assert.All(GameView.FlagNames, name => Assert.True(window.Game.SwitchOf(name).IsEffectivelyEnabled));
-            Assert.Equal(GameView.FlagNames.Count(), window.Game.GetVisualDescendants().OfType<ToggleSwitch>().Count());
+            Assert.Equal(GameView.FlagNames.Count(), window.Game.GetVisualDescendants().OfType<CheckBox>().Count());
+            var collisions = window.Game.SwitchOf("Visible Collision Shapes");
+            Assert.Equal("Collision shapes", Words(collisions)[0]);
+            Assert.Equal("Visible Collision Shapes", Assert.IsType<HoverCard>(ToolTip.GetTip(collisions)).Engine);
         });
     }
 
@@ -104,7 +110,6 @@ public sealed class GameWorkspaceTests
             ShowGame(window);
             Click(window.Game.RunButton);
 
-            Assert.Equal("—", window.Game.Rate.Text);
             Assert.All(window.Game.MonitorValues, value => Assert.Equal("—", value));
             Assert.Empty(window.Game.LiveRows);
             Assert.True(window.Game.NoScene.IsVisible);
@@ -118,9 +123,9 @@ public sealed class GameWorkspaceTests
         {
             var (window, _) = RunningWithLiveState();
 
-            Assert.Equal("60", window.Game.Rate.Text);
-            Assert.Equal(["Frame time", "Process", "Physics", "Draw calls", "Objects", "Video memory"], GameView.MonitorNames);
-            Assert.Equal(["16.7", "4.0", "1.0", "12", "340", "50"], window.Game.MonitorValues);
+            Assert.Equal(["Frames a second", "Time per frame", "Game code", "Physics", "Draw calls", "Things", "Video memory"], GameView.MonitorNames);
+            Assert.Equal(["60", "16.7 ms", "4.0 ms", "1.0 ms", "12", "340", "50 MB"], window.Game.MonitorValues);
+            Assert.False(window.Game.SpeedHint.IsVisible);
         });
     }
 
@@ -134,7 +139,7 @@ public sealed class GameWorkspaceTests
 
             window.Poll();
 
-            Assert.Equal("—", window.Game.MonitorValues.First());
+            Assert.Equal("—", window.Game.MonitorValues.ElementAt(1));
         });
     }
 
@@ -146,10 +151,12 @@ public sealed class GameWorkspaceTests
             var (window, _) = RunningWithLiveState();
 
             var rows = window.Game.LiveRows.ToList();
-            Assert.Equal(["Level", "Props", "Crate", "Sun"], rows.Select(row => row.GetVisualDescendants().OfType<TextBlock>().Single().Text));
+            Assert.Equal(["Level", "Props", "Crate", "Sun"], rows.Select(row => Words(row)[0]));
             Assert.Equal([6.0, 22, 38, 22], rows.Select(row => row.Margin.Left));
-            Assert.Equal("MeshInstance3D", ToolTip.GetTip(rows[2]));
+            var card = Assert.IsType<HoverCard>(ToolTip.GetTip(rows[2]));
+            Assert.Equal((PlainNames.NameOf("MeshInstance3D"), "MeshInstance3D"), (Words(rows[2])[1], card.Engine));
             Assert.False(window.Game.NoScene.IsVisible);
+            Assert.True(window.Game.LiveMark.IsVisible);
         });
     }
 
@@ -164,7 +171,7 @@ public sealed class GameWorkspaceTests
 
             window.Poll();
 
-            Assert.Equal("59", window.Game.Rate.Text);
+            Assert.Equal("59", window.Game.MonitorValues.First());
             Assert.Same(first, window.Game.LiveRows.First());
         });
     }
@@ -178,34 +185,16 @@ public sealed class GameWorkspaceTests
 
             Click(window.Game.StopButton);
 
-            Assert.Equal("—", window.Game.Rate.Text);
+            Assert.Equal("—", window.Game.MonitorValues.First());
             Assert.Empty(window.Game.LiveRows);
             Assert.True(window.Game.NoScene.IsVisible);
+            Assert.False(window.Game.LiveMark.IsVisible);
+            Assert.True(window.Game.SpeedHint.IsVisible);
         });
     }
 
     [Fact]
-    public void The_Scene_tab_gives_the_island_to_the_live_scene_and_Monitors_brings_the_numbers_back()
-    {
-        UiThread.Run(() =>
-        {
-            var (window, _) = RunningWithLiveState();
-            Assert.True(window.Game.MonitorList.IsVisible);
-
-            ClickOn(window.Game.Tabs[1], window);
-
-            Assert.False(window.Game.MonitorList.IsVisible);
-            Assert.True(window.Game.LiveRows.First().IsEffectivelyVisible);
-
-            window.UpdateLayout();
-            ClickOn(window.Game.Tabs[0], window);
-
-            Assert.True(window.Game.MonitorList.IsVisible);
-        });
-    }
-
-    [Fact]
-    public void The_Show_while_running_switches_that_are_on_go_to_the_game_as_engine_flags()
+    public void The_Show_while_playing_boxes_that_are_on_go_to_the_game_as_engine_flags()
     {
         UiThread.Run(() =>
         {
@@ -222,7 +211,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void An_open_project_offers_Run_and_no_Stop()
+    public void An_open_project_offers_Play_and_no_Stop()
     {
         UiThread.Run(() =>
         {
@@ -250,7 +239,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void Run_in_the_game_view_starts_the_game_and_turns_both_Stops_on()
+    public void Play_in_the_game_view_starts_the_game_and_turns_both_Stops_on()
     {
         UiThread.Run(() =>
         {
@@ -284,7 +273,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void Run_in_the_game_view_saves_the_edits_first()
+    public void Play_in_the_game_view_saves_the_edits_first()
     {
         UiThread.Run(() =>
         {
@@ -370,7 +359,7 @@ public sealed class GameWorkspaceTests
     }
 
     [Fact]
-    public void A_failed_save_keeps_Run_from_starting_a_game()
+    public void A_failed_save_keeps_Play_from_starting_a_game()
     {
         UiThread.Run(() =>
         {
@@ -382,6 +371,100 @@ public sealed class GameWorkspaceTests
 
             Assert.Equal(0, scene.Plays);
             Assert.Equal(Idle, window.Game.State.Text);
+        });
+    }
+
+    [Fact]
+    public void What_Play_runs_set_to_This_scene_plays_the_open_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+            ShowGame(window);
+
+            window.Game.ThisSceneChoice.IsChecked = true;
+            Click(window.Game.RunButton);
+
+            Assert.False(window.Game.MainChoice.IsChecked);
+            Assert.Equal(["--scene", "res://levels/one.oscn"], scene.PlayedFlags.TakeLast(2));
+        });
+    }
+
+    [Fact]
+    public void The_title_bar_Play_follows_What_Play_runs()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+            window.Game.ThisSceneChoice.IsChecked = true;
+
+            Click(window.PlayButton);
+
+            Assert.Equal(["--scene", "res://levels/one.oscn"], scene.PlayedFlags.TakeLast(2));
+        });
+    }
+
+    [Fact]
+    public void Main_scene_plays_with_no_scene_argument()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+
+            Click(window.Game.RunButton);
+
+            Assert.True(window.Game.MainChoice.IsChecked);
+            Assert.DoesNotContain("--scene", scene.PlayedFlags);
+        });
+    }
+
+    [Fact]
+    public void Without_a_saved_scene_This_scene_is_off_and_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+
+            Assert.False(window.Game.ThisSceneChoice.IsEnabled);
+            Assert.False(window.Game.PlaySceneButton.IsEnabled);
+            Assert.Equal("Open a saved scene first.", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Game.ThisSceneChoice)).Line);
+        });
+    }
+
+    [Fact]
+    public void Play_this_scene_in_the_stopped_view_plays_the_open_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
+            var window = OpenAtReferenceSize(scene);
+            ShowGame(window);
+
+            Click(window.Game.PlaySceneButton);
+
+            Assert.Equal(["--scene", "res://levels/one.oscn"], scene.PlayedFlags.TakeLast(2));
+        });
+    }
+
+    [Fact]
+    public void While_the_game_plays_the_settings_wait_and_say_so()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            ShowGame(window);
+            Assert.True(window.Game.Settings.IsEnabled);
+            Assert.False(window.Game.WaitsNote.IsVisible);
+            Assert.True(window.Game.Stopped.IsVisible);
+
+            Click(window.Game.RunButton);
+
+            Assert.False(window.Game.Settings.IsEnabled);
+            Assert.True(window.Game.WaitsNote.IsVisible);
+            Assert.Equal((false, true), (window.Game.Stopped.IsVisible, window.Game.Playing.IsVisible));
         });
     }
 }
