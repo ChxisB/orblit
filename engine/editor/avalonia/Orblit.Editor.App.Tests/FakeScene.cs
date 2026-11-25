@@ -64,6 +64,11 @@ internal sealed class FakeScene : IEditorScene
 
     public DateTime ModifiedOf(string resourcePath) => Times.GetValueOrDefault(resourcePath);
 
+    /// <summary>"2D" or "3D" for each scene file that has one.</summary>
+    public Dictionary<string, string> Kinds { get; } = [];
+
+    public string SceneKindOf(string resourcePath) => Kinds.GetValueOrDefault(resourcePath, "");
+
     public bool CreateFails { get; init; }
 
     /// <summary>Every scene the window made, in order, with its root class.</summary>

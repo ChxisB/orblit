@@ -64,4 +64,23 @@ public sealed class ProjectScenesTests : IDisposable
         Assert.False(new EditorOptions(_folder, "res://levels/missing.oscn", true).HasScene);
         Assert.False(new EditorOptions(_folder, "levels/one.oscn", true).HasScene);
     }
+
+    [Theory]
+    [InlineData("[node name=\"Field\" type=\"Entity3D\"]", "3D")]
+    [InlineData("[node name=\"Light\" type=\"DirectionalLight3D\" parent=\".\"]", "3D")]
+    [InlineData("[node name=\"Menu\" type=\"Sprite2D\"]", "2D")]
+    [InlineData("[node name=\"Probe\" type=\"Entity\"]", "")]
+    [InlineData("[node name=\"Copy\" instance=ExtResource(\"1\")]", "")]
+    public void A_scene_is_2D_or_3D_by_the_class_of_its_root(string root, string kind)
+    {
+        string[] lines = ["[oscn format=3]", "", "[ext_resource type=\"PackedScene\" path=\"res://a.oscn\" id=\"1\"]", root, "[node name=\"Child\" type=\"Entity2D\" parent=\".\"]"];
+
+        Assert.Equal(kind, ProjectScenes.KindOf(lines));
+    }
+
+    [Fact]
+    public void A_scene_with_no_entity_has_no_kind()
+    {
+        Assert.Equal("", ProjectScenes.KindOf(["[oscn format=3]"]));
+    }
 }

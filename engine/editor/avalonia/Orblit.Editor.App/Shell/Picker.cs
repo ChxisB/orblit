@@ -10,7 +10,10 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>One row of a picker: an icon, a name, a dim note and a key at the right. Run is what a pick does.</summary>
+/// <summary>
+/// One row of a picker: an icon, a name with the engine's name beside it, a dim note under them, and what it is and
+/// its key at the right. Run is what a pick does.
+/// </summary>
 internal sealed record PickerRow(string Group, string Icon, string Name, Action Run)
 {
     public IBrush? Tint { get; init; }
@@ -18,6 +21,12 @@ internal sealed record PickerRow(string Group, string Icon, string Name, Action 
     public string Note { get; init; } = "";
 
     public string Key { get; init; } = "";
+
+    /// <summary>What the row is, such as "3D scene" or "C# script".</summary>
+    public string Kind { get; init; } = "";
+
+    /// <summary>The engine's name for it, where that differs. A query finds a row by it too.</summary>
+    public string Engine { get; init; } = "";
 }
 
 /// <summary>
@@ -32,15 +41,10 @@ internal sealed class Picker : Border
     readonly List<Button> _buttons = [];
     Func<string, IReadOnlyList<PickerRow>> _find = _ => [];
 
-    public Picker(string name, TextBox search, Control top, Control? footer = null)
+    public Picker(string name, TextBox search, Control top, Control footer)
     {
         _search = search;
-        var body = new StackPanel { Children = { top, new ScrollViewer { MaxHeight = 360, Content = _rows } } };
-        if (footer is not null)
-        {
-            body.Children.Add(footer);
-        }
-
+        var body = new StackPanel { Children = { top, new ScrollViewer { MaxHeight = 360, Content = _rows }, footer } };
         Card = new Border
         {
             Width = 440,
@@ -87,15 +91,16 @@ internal sealed class Picker : Border
 
     internal int Lit { get; private set; }
 
-    /// <summary>The rows whose name holds the query, in their order.</summary>
+    /// <summary>The rows whose name or engine name holds the query, in their order.</summary>
     internal static IReadOnlyList<PickerRow> Matching(IEnumerable<PickerRow> rows, string query) =>
-        [.. rows.Where(row => row.Name.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase))];
+        [.. rows.Where(row => row.Name.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase) || row.Engine.Contains(query.Trim(), StringComparison.OrdinalIgnoreCase))];
 
-    /// <summary>Shows the card with an empty search and the keys in it. <paramref name="find"/> gives the rows for a query.</summary>
-    public void Open(Func<string, IReadOnlyList<PickerRow>> find)
+    /// <summary>Shows the card with this text in the search, the caret at its end. <paramref name="find"/> gives the rows for a query.</summary>
+    public void Open(Func<string, IReadOnlyList<PickerRow>> find, string text = "")
     {
         _find = find;
-        _search.Text = "";
+        _search.Text = text;
+        _search.CaretIndex = text.Length;
         Show();
         IsVisible = true;
         _search.Focus();
@@ -111,7 +116,7 @@ internal sealed class Picker : Border
         _buttons.Clear();
         if (Shown.Count == 0)
         {
-            _rows.Children.Add(new TextBlock { Text = "Nothing matches.", FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 8) });
+            _rows.Children.Add(new TextBlock { Text = "Nothing matches. Try fewer letters, or > for actions.", FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 8) });
             return;
         }
 
@@ -185,38 +190,33 @@ internal sealed class Picker : Border
     {
         var icon = new EditorIcon(row.Icon) { Width = 15, Height = 15, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, row.Tint ?? EditorBrushes.TextDim);
-        var key = new TextBlock
-        {
-            Text = row.Key,
-            FontFamily = EditorTheme.Mono,
-            FontSize = 11,
-            Foreground = EditorBrushes.Unit,
-            Margin = new Thickness(10, 0, 0, 0),
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        DockPanel.SetDock(icon, Dock.Left);
-        DockPanel.SetDock(key, Dock.Right);
-        var words = new StackPanel
+        var right = new StackPanel
         {
             Orientation = Orientation.Horizontal,
             Spacing = 10,
+            Margin = new Thickness(10, 0, 0, 0),
+            VerticalAlignment = VerticalAlignment.Center,
             Children =
             {
-                new TextBlock { Text = row.Name, Foreground = EditorBrushes.Text, VerticalAlignment = VerticalAlignment.Center },
-                new TextBlock { Text = row.Note, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = row.Kind, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center },
+                new TextBlock { Text = row.Key, FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center },
             },
         };
+        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(right, Dock.Right);
+        var words = Parts.Noted(row.Name, row.Note == "" ? null : row.Note, row.Engine == "" ? null : row.Engine);
+        words.VerticalAlignment = VerticalAlignment.Center;
         var button = new Button
         {
-            Height = 34,
-            Padding = new Thickness(8, 0),
+            MinHeight = 34,
+            Padding = new Thickness(8, 4),
             CornerRadius = new CornerRadius(6),
             Focusable = false,
             Background = Brushes.Transparent,
             HorizontalAlignment = HorizontalAlignment.Stretch,
             HorizontalContentAlignment = HorizontalAlignment.Stretch,
             VerticalContentAlignment = VerticalAlignment.Center,
-            Content = new DockPanel { Children = { icon, key, words } },
+            Content = new DockPanel { Children = { icon, right, words } },
         };
         button.Click += (_, _) => Run(row);
         return button;

@@ -39,7 +39,7 @@ internal static class EditorMenu
 
     static readonly Entry Separator = new("-");
 
-    const string OpenRecent = "Open recent";
+    internal const string OpenRecent = "Open recent";
 
     const string NoRecent = "Scenes you open show here";
 

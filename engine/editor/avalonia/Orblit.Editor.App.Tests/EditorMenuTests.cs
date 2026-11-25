@@ -504,7 +504,7 @@ public sealed class EditorMenuTests
 
             Press(Find(NativeMenu.GetMenu(window)!, "Search"));
 
-            Assert.True(window.Palette.IsVisible);
+            Assert.True(window.Search.Picker.IsVisible);
         });
     }
 

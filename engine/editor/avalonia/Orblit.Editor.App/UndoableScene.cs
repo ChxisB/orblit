@@ -80,6 +80,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public DateTime ModifiedOf(string resourcePath) => scene.ModifiedOf(resourcePath);
 
+    public string SceneKindOf(string resourcePath) => scene.SceneKindOf(resourcePath);
+
     public IReadOnlyList<string> ClassChainOf(nint entity) => scene.ClassChainOf(entity);
 
     public IReadOnlyList<EntityProperty> PropertiesOf(nint entity) => scene.PropertiesOf(entity);

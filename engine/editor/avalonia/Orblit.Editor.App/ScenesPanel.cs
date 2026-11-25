@@ -284,7 +284,7 @@ internal sealed class ScenesPanel : Grid
         return row;
     }
 
-    static string IconOf(FileKind kind) => kind switch
+    internal static string IconOf(FileKind kind) => kind switch
     {
         FileKind.Folder => "Folder",
         FileKind.Scene => "SceneFile",
@@ -293,7 +293,7 @@ internal sealed class ScenesPanel : Grid
         _ => "GraphFile",
     };
 
-    static IBrush TintOf(FileKind kind) => kind switch
+    internal static IBrush TintOf(FileKind kind) => kind switch
     {
         FileKind.Folder => EditorBrushes.FolderIcon,
         FileKind.Scene => EditorBrushes.SceneIcon,

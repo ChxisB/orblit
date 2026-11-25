@@ -47,9 +47,9 @@ internal sealed class EditorWindow : Window
     readonly ToastStack _toasts;
     readonly List<string> _recent = [];
     readonly Dictionary<string, DateTimeOffset> _openedAt = [];
-    readonly Picker _palette = CommandPalette.Build();
-    readonly Picker _quickOpen;
-    readonly Button _quickOpenButton = new();
+    readonly Search _search = new();
+    readonly Button _scenesButton = new();
+    readonly Button _actionsButton = new();
     // Save, Play this scene and Frame are commands without a place of their own on screen. The shortcuts, the
     // menus and the tests press them, and a button off keeps its key unhandled. The title bar draws Play and Stop.
     readonly Button _save = new() { IsEnabled = false };
@@ -121,9 +121,9 @@ internal sealed class EditorWindow : Window
         _saveChanges = SaveChangesDialog();
         _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
         _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
-        _titleBar.SearchButton.Click += (_, _) => OpenPalette();
-        _quickOpen = QuickOpen.Build(CommandKey);
-        _quickOpenButton.Click += (_, _) => OpenQuickOpen();
+        _titleBar.SearchButton.Click += (_, _) => OpenSearch(SearchScope.All);
+        _scenesButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
+        _actionsButton.Click += (_, _) => OpenSearch(SearchScope.Actions);
         _keysButton.Click += (_, _) => OpenKeys();
         _globalMenu = globalMenu ?? OperatingSystem.IsMacOS();
         ShowTitle();
@@ -196,7 +196,7 @@ internal sealed class EditorWindow : Window
         };
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
-        _center.Planar.OpenButton.Click += (_, _) => OpenQuickOpen();
+        _center.Planar.OpenButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
         _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddBareWorkspace(TitleBar.Game, _game);
@@ -209,7 +209,7 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _keys.Dialog, _palette, _quickOpen, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _keys.Dialog, _search.Picker, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(_globalMenu, CommandKey, MenuActions()));
     }
 
@@ -285,9 +285,8 @@ internal sealed class EditorWindow : Window
 
     internal ToastStack Toasts => _toasts;
 
-    internal Picker Palette => _palette;
+    internal Search Search => _search;
 
-    internal Picker QuickOpener => _quickOpen;
 
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
@@ -622,7 +621,7 @@ internal sealed class EditorWindow : Window
             ["About Orblit"] = new(() => Copy(BottomBar.Version, BottomBar.Version)),
             ["Quit Orblit"] = new(Close),
             ["New scene…"] = new(OpenNewScene),
-            ["Quick Open Scene…"] = new(OpenQuickOpen),
+            ["Quick Open Scene…"] = new(() => OpenSearch(SearchScope.Scenes)),
             ["Save"] = Pressing(_save),
             ["Export game…"] = new(_export.Open),
             ["Undo"] = Named(_undo, "Undo"),
@@ -689,8 +688,8 @@ internal sealed class EditorWindow : Window
         (Key.F2, KeyModifiers.None) when e.Source is not TextBox => _tools.RenameButton,
         (Key.Back or Key.Delete, KeyModifiers.None) when e.Source is not TextBox && Erases(e.Source) => _tools.RemoveButton,
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
-        (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
-        (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
+        (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _actionsButton,
+        (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _scenesButton,
         (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.DistractionButton,
         (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
@@ -1015,30 +1014,39 @@ internal sealed class EditorWindow : Window
 
     void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? []);
 
-    // The rows are read at each open, so the palette shows the menus, files and entities as they are now.
-    void OpenPalette()
+    // The rows are read at each open, so Search shows the files, things and menu items as they are now. The open
+    // scene comes first among the scenes, then the recent ones newest first, then the rest of the project.
+    void OpenSearch(SearchScope scope)
     {
-        IEnumerable<PickerRow> entities = _root is null ? [] : CommandPalette.EntitiesOf(_root, _scene!.SceneFile, _scenePane.Select);
-        _palette.Open(CommandPalette.Finder([
-            .. CommandPalette.CommandsOf(NativeMenu.GetMenu(this)!),
-            .. CommandPalette.FilesOf(_scene?.Scenes() ?? [], Open),
-            .. entities,
-        ]));
+        var actions = Search.ActionsOf(NativeMenu.GetMenu(this)!).ToList();
+        var scenes = new[] { _scene?.SceneFile ?? "" }.Concat(_recent).Concat(_scene?.Scenes() ?? []);
+        IEnumerable<string> scripts = _scene is null ? [] : [.. _scene.Scripts(), .. _scene.GraphScripts()];
+        _search.Open([
+            .. _recent.Select(path => FileRow(Search.Recent, path)),
+            .. TryRows(actions),
+            .. Files(scenes).Select(path => FileRow(Search.Scenes, path)),
+            .. Files(scripts).Select(path => FileRow(Search.Scripts, path)),
+            .. _root is null ? [] : Search.ThingsOf(_root, _scenePane.Select),
+            .. actions,
+        ], scope);
+
+        static IEnumerable<string> Files(IEnumerable<string> paths) => paths.Where(path => path != "" && !path.EndsWith('/')).Distinct();
     }
 
-    // The open scene comes first, then the recent ones newest first, then the rest of the project.
-    void OpenQuickOpen()
-    {
-        var files = (_scene?.Scenes() ?? []).Where(path => !path.EndsWith('/'));
-        var scenes = new[] { _scene?.SceneFile ?? "" }.Concat(_recent).Concat(files).Where(path => path != "").Distinct();
-        var rows = QuickOpen.Rows(scenes, OpenedText, Open);
-        _quickOpen.Open(query => Picker.Matching(rows, query));
-    }
+    PickerRow FileRow(string group, string path) =>
+        Search.FileRow(group, path, Search.KindText(path, _scene?.SceneKindOf(path) ?? ""), OpenFile) with { Key = path == _scene?.SceneFile ? "open now" : "" };
 
-    string OpenedText(string path) =>
-        path == _scene?.SceneFile ? "Open now"
-        : _openedAt.TryGetValue(path, out var at) ? $"Opened {at.ToString("HH:mm", CultureInfo.InvariantCulture)}"
-        : "";
+    // First steps for someone new. Each shows only while it can run.
+    IEnumerable<PickerRow> TryRows(IEnumerable<PickerRow> actions)
+    {
+        var add = new PickerRow(Search.Try, "Cube", "Add a thing", () => _tools.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)))
+        {
+            Note = "Puts a camera, light or shape in the scene",
+            Key = Parts.KeyText(new KeyGesture(Key.A, CommandKey)),
+        };
+        IEnumerable<PickerRow> first = _tools.AddButton.IsEnabled ? [add] : [];
+        return first.Concat(actions.Where(row => row.Name is "New scene…" or "Play the game").Select(row => row with { Group = Search.Try }));
+    }
 
     // The dialog that makes a scene file, the flyout that instances one, and the tab's close button.
     void WireSceneFiles()

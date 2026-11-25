@@ -186,6 +186,9 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
     /// <summary>When the project file was last written, in UTC.</summary>
     DateTime ModifiedOf(string resourcePath);
 
+    /// <summary>"2D" or "3D" by the root of the scene file, or empty when the root is neither or the file cannot be read.</summary>
+    string SceneKindOf(string resourcePath);
+
     /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
     IReadOnlyList<string> ClassChainOf(nint entity);
 

@@ -519,6 +519,19 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public DateTime ModifiedOf(string resourcePath) => File.GetLastWriteTimeUtc(Path.Combine(_project, resourcePath[FileTree.Root.Length..]));
 
+    // shortcut: reads the head of each scene file at each Search. Keep the kinds by write time if a project has thousands of scenes.
+    public string SceneKindOf(string resourcePath)
+    {
+        try
+        {
+            return ProjectScenes.KindOf(File.ReadLines(Path.Combine(_project, resourcePath[FileTree.Root.Length..])));
+        }
+        catch (IOException)
+        {
+            return "";
+        }
+    }
+
     public bool IsPlaying => _game is { HasExited: false };
 
     // Under netcoredbg the process Play started is netcoredbg, and the game is its child.
