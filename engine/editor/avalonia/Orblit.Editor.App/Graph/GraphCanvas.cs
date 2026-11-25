@@ -374,8 +374,14 @@ internal sealed class GraphCanvas : Grid
     internal void OpenPalette(Point screen, PinRef? from)
     {
         var (side, type, sort) = DraggedKind(from);
-        _palette.Open(screen, _surface.Bounds.Size, text => _source.FindSteps(text, side, type, sort), (entry, wire) =>
-            _edits.AddStep(entry, _viewport.ToGraph(screen), from ?? (wire ? SelectedFlowOut() : null)));
+        var picked = SelectedFlowOut();
+        var job = new PaletteJob(text => _source.FindSteps(text, side, type, sort), (entry, wire) =>
+            _edits.AddStep(entry, _viewport.ToGraph(screen), from ?? (wire ? picked : null)))
+        {
+            DraggedFrom = from?.Step,
+            Picked = picked?.Step,
+        };
+        _palette.Open(screen, _surface.Bounds.Size, job);
     }
 
     PinRef? SelectedFlowOut()
