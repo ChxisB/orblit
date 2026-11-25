@@ -581,6 +581,23 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public void Settings_from_the_app_menu_waits_while_New_project_is_open()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+
+            Click(launcher.NewButton);
+            launcher.OpenSettings();
+            Assert.False(launcher.Settings.Dialog.IsVisible);
+
+            launcher.NewPanel.Dialog.Cancel();
+            launcher.OpenSettings();
+            Assert.True(launcher.Settings.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
     public void Done_saves_the_folder_and_New_project_starts_there_while_Escape_drops_the_change()
     {
         UiThread.Run(() =>

@@ -62,7 +62,15 @@ internal static class EditorMenu
     /// Orblit menu. An item runs the action that <paramref name="actions"/> holds for its engine name, or for
     /// its label when it has none.
     /// </summary>
-    internal static NativeMenu Build(bool global, KeyModifiers command, IReadOnlyDictionary<string, MenuAction> actions)
+    internal static NativeMenu Build(bool global, KeyModifiers command, IReadOnlyDictionary<string, MenuAction> actions) => Bar(Menus(global), command, actions);
+
+    /// <summary>
+    /// The app menu of macOS, which the system names Orblit: About and Settings. The system adds Services, Hide and
+    /// Quit under them. Its actions are found as Build finds them.
+    /// </summary>
+    internal static NativeMenu AppMenu(IReadOnlyDictionary<string, MenuAction> actions) => Bar(AppItems(), Cmd, actions);
+
+    static NativeMenu Bar(IEnumerable<Entry> menus, KeyModifiers command, IReadOnlyDictionary<string, MenuAction> actions)
     {
         NativeMenu Menu(IEnumerable<Entry> entries)
         {
@@ -107,7 +115,7 @@ internal static class EditorMenu
             return item;
         }
 
-        return Menu(Menus(global));
+        return Menu(menus);
     }
 
     /// <summary>Each keyed item of the bar with its menu, in bar order, for the sheet of every key.</summary>
@@ -117,7 +125,9 @@ internal static class EditorMenu
             ? items.SelectMany(item => Under(menu, item))
             : Gesture(entry, command) is { } gesture ? [(menu, entry.Label, Parts.KeyText(gesture))] : [];
 
-        return Menus(global).SelectMany(menu => menu.Items!.SelectMany(entry => Under(menu.Label, entry)));
+        // The app menu of macOS holds the Orblit menu's keys, so the sheet lists that menu on every system.
+        Entry[] menus = global ? [new("Orblit", Items: Orblit()), .. Menus(global)] : Menus(global);
+        return menus.SelectMany(menu => menu.Items!.SelectMany(entry => Under(menu.Label, entry)));
     }
 
     /// <summary>
@@ -189,11 +199,13 @@ internal static class EditorMenu
         new("Help", Items: Help(global)),
     ];
 
-    static Entry[] Orblit() =>
+    static Entry[] Orblit() => [.. AppItems(), Separator, new("Quit Orblit", Key.Q, Cmd) { Note = "Asks first if anything is unsaved" }];
+
+    static Entry[] AppItems() =>
     [
         new("About Orblit") { Note = $"Version {BottomBar.Version}. Click to copy it for a bug report" },
         Separator,
-        new("Quit Orblit", Key.Q, Cmd) { Note = "Asks first if anything is unsaved" },
+        new("Settings…", Key.OemComma, Cmd) { Note = "Where new projects go, and every key", Engine = "Editor Settings…" },
     ];
 
     static Entry[] File() =>

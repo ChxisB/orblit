@@ -5,6 +5,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Threading;
 using Orblit.Editor.App.Launcher;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App;
@@ -28,9 +29,21 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
             desktop.MainWindow = projects is null ? Edit(desktop, options) : Launch(desktop, projects);
+            if (OperatingSystem.IsMacOS())
+            {
+                ShowAppMenu(desktop);
+            }
         }
         base.OnFrameworkInitializationCompleted();
     }
+
+    // The app menu of macOS outlives each window, so it acts on the one in front. It takes the place of the
+    // About Avalonia item the system menu shows when the app sets none.
+    void ShowAppMenu(IClassicDesktopStyleApplicationLifetime desktop) => NativeMenu.SetMenu(this, EditorMenu.AppMenu(new Dictionary<string, MenuAction>
+    {
+        ["About Orblit"] = new(() => (desktop.MainWindow as IAppMenuTarget)?.CopyVersion()),
+        ["Editor Settings…"] = new(() => (desktop.MainWindow as IAppMenuTarget)?.OpenSettings()),
+    }));
 
     LauncherWindow Launch(IClassicDesktopStyleApplicationLifetime desktop, ProjectList list)
     {
@@ -50,7 +63,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
     // once the engine is destroyed, which is after any frame.
     EditorWindow Edit(IClassicDesktopStyleApplicationLifetime desktop, EditorOptions chosen)
     {
-        var window = new EditorWindow();
+        var window = new EditorWindow(settings: projects?.Settings());
         window.Opened += (_, _) => DispatcherTimer.RunOnce(() => StartEngine(window, chosen), EngineStartDelay);
         desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         desktop.ShutdownRequested += (_, e) =>
@@ -109,4 +122,12 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
             window.Fail(error.Message);
         }
     }
+}
+
+/// <summary>What the app menu of macOS asks of the window in front.</summary>
+internal interface IAppMenuTarget
+{
+    void CopyVersion();
+
+    void OpenSettings();
 }

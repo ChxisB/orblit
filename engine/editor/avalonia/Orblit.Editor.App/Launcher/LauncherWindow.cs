@@ -19,7 +19,7 @@ namespace Orblit.Editor.App.Launcher;
 /// new one. Either raises Opening with the folder. Each card has a menu that opens, shows, copies or removes it.
 /// Settings in the nav names where new projects go and leads to the sheet of every key.
 /// </summary>
-internal sealed class LauncherWindow : Window
+internal sealed class LauncherWindow : Window, IAppMenuTarget
 {
     const double CardWidth = 230;
     // Half the 14 pixel gap between cards, as a margin on every side of each.
@@ -93,7 +93,7 @@ internal sealed class LauncherWindow : Window
         MinWidth = 820;
         MinHeight = 560;
         Background = EditorBrushes.Window;
-        Nav = new Nav(() => _links.Open(HelpMenu.Docs), () => Copy(BottomBar.Version), _settings.Open, Parts.KeyText(new KeyGesture(Key.OemComma, CommandKey)));
+        Nav = new Nav(() => _links.Open(HelpMenu.Docs), CopyVersion, OpenSettings, Parts.KeyText(new KeyGesture(Key.OemComma, CommandKey)));
         var main = new Border
         {
             Classes = { EditorTheme.Island },
@@ -205,7 +205,7 @@ internal sealed class LauncherWindow : Window
     {
         base.OnKeyDown(e);
         // The launcher under a dialog's veil takes no keys until the dialog closes.
-        if (e.Handled || e.KeyModifiers != CommandKey || _panel.Dialog.IsVisible || _settings.Dialog.IsVisible || _keys.Dialog.IsVisible)
+        if (e.Handled || e.KeyModifiers != CommandKey || Veiled)
         {
             return;
         }
@@ -234,6 +234,19 @@ internal sealed class LauncherWindow : Window
         if (await NewProjectPanel.PickFolderAsync(this, "Open a project folder") is { } folder)
         {
             Open(folder);
+        }
+    }
+
+    bool Veiled => _panel.Dialog.IsVisible || _settings.Dialog.IsVisible || _keys.Dialog.IsVisible;
+
+    public void CopyVersion() => Copy(BottomBar.Version);
+
+    // The app menu of macOS stays in reach under a dialog's veil, so Settings waits for the dialog to close.
+    public void OpenSettings()
+    {
+        if (!Veiled)
+        {
+            _settings.Open();
         }
     }
 

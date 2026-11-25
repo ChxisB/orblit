@@ -12,6 +12,7 @@ using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -22,7 +23,7 @@ namespace Orblit.Editor.App;
 /// The editor shell: a title bar over three columns. The scene outline and the project's scenes are on the left,
 /// the viewport in the middle and the inspector on the right.
 /// </summary>
-internal sealed class EditorWindow : Window
+internal sealed class EditorWindow : Window, IAppMenuTarget
 {
     // The engine's log is read by polling a file, and a quarter of a second is fast enough to read a line as it comes.
     // The same tick notices a game that ended on its own.
@@ -61,6 +62,8 @@ internal sealed class EditorWindow : Window
     readonly Button _redo = new() { IsEnabled = false };
     readonly Button _keysButton = new();
     readonly KeysSheet _keys = new();
+    readonly Button _settingsButton = new();
+    readonly SettingsSheet _settings;
     readonly bool _globalMenu;
     readonly SceneTabStrip _sceneTabs;
     readonly ViewportToolbar _toolbar;
@@ -112,8 +115,9 @@ internal sealed class EditorWindow : Window
     // What the drag under way did, such as Moved Box, which names its step in History when it ends.
     string _dragged = "";
 
-    // The screen bar of macOS has its own app menu, so a window on any other system also carries Quit and About.
-    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null)
+    // The screen bar of macOS has its own app menu, so a window on any other system also carries About, Settings
+    // and Quit. Settings is the user's own unless the caller names one.
+    public EditorWindow(bool? globalMenu = null, TimeProvider? time = null, EditorSettings? settings = null)
     {
         // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
         _time = time ?? TimeProvider.System;
@@ -134,6 +138,9 @@ internal sealed class EditorWindow : Window
         _scenesButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
         _actionsButton.Click += (_, _) => OpenSearch(SearchScope.Actions);
         _keysButton.Click += (_, _) => OpenKeys();
+        _settings = new SettingsSheet(settings ?? ProjectList.ForUser().Settings());
+        _settings.KeysAsked += OpenKeys;
+        _settingsButton.Click += (_, _) => OpenSettings();
         _globalMenu = globalMenu ?? OperatingSystem.IsMacOS();
         ShowTitle();
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
@@ -242,13 +249,15 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _keys.Dialog, _search.Picker, _toasts } };
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _settings.Dialog, _keys.Dialog, _search.Picker, _toasts } };
         NativeMenu.SetMenu(this, EditorMenu.Build(_globalMenu, CommandKey, MenuActions()));
     }
 
     internal TitleBar Bar => _titleBar;
 
     internal KeysSheet Keys => _keys;
+
+    internal SettingsSheet Settings => _settings;
 
     internal DockTabs SceneDock => _sceneDock;
 
@@ -685,7 +694,8 @@ internal sealed class EditorWindow : Window
 
         var actions = new Dictionary<string, MenuAction>
         {
-            ["About Orblit"] = new(() => Copy(BottomBar.Version, BottomBar.Version)),
+            ["About Orblit"] = new(CopyVersion),
+            ["Editor Settings…"] = Pressing(_settingsButton),
             ["Quit Orblit"] = new(Close),
             ["New scene…"] = new(() => OpenNewScene(FileTree.Root)),
             ["Quick Open Scene…"] = new(() => OpenSearch(SearchScope.Scenes)),
@@ -767,6 +777,7 @@ internal sealed class EditorWindow : Window
         (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _scenesButton,
         (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.PanelsButton,
         (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
+        (Key.OemComma, var modifiers) when modifiers == CommandKey => _settingsButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
         (Key.B, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && _script.IsEffectivelyVisible => _script.CheckButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
@@ -1149,6 +1160,10 @@ internal sealed class EditorWindow : Window
     }
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
+
+    public void CopyVersion() => Copy(BottomBar.Version, BottomBar.Version);
+
+    public void OpenSettings() => _settings.Open();
 
     // The menu keys come first, by menu. The cards of the window's own buttons add the keys the menus lack.
     void OpenKeys()

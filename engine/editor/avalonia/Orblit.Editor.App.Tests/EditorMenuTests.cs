@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Threading;
+using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -13,7 +14,7 @@ public sealed class EditorMenuTests
     // The built items of each menu. A submenu's items are indented and "-" is a separator.
     static readonly Dictionary<string, string[]> Items = new()
     {
-        ["Orblit"] = ["About Orblit", "-", "Quit Orblit"],
+        ["Orblit"] = ["About Orblit", "-", "Settings…", "-", "Quit Orblit"],
         ["File"] =
         [
             "New scene…", "Find a scene…", "Open recent", "  Scenes you open show here",
@@ -119,6 +120,7 @@ public sealed class EditorMenuTests
             Assert.Equal(
                 [
                     $"About Orblit: Version {BottomBar.Version}. Click to copy it for a bug report",
+                    "Settings…: Where new projects go, and every key",
                     "Quit Orblit: Asks first if anything is unsaved",
                     "New scene…: Pick what it is for and where it goes",
                     "Find a scene…: Type part of a name to open it",
@@ -209,6 +211,7 @@ public sealed class EditorMenuTests
 
             Assert.Equal(
                 [
+                    "Settings…=⌘,",
                     "Quit Orblit=⌘Q",
                     "New scene…=⌘N",
                     "Find a scene…=⇧⌘O",
@@ -246,9 +249,9 @@ public sealed class EditorMenuTests
         {
             var keys = EditorMenu.Keys(global: true, KeyModifiers.Meta).ToList();
 
-            Assert.Equal(("File", "New scene…", "⌘N"), keys[0]);
+            Assert.Equal([("Orblit", "Settings…", "⌘,"), ("Orblit", "Quit Orblit", "⌘Q"), ("File", "New scene…", "⌘N")], keys[..3]);
             Assert.Contains(("Play", "Play the game", "⌘B"), keys);
-            Assert.DoesNotContain(keys, key => key.Menu == "Orblit" || key.Name == "All keys");
+            Assert.DoesNotContain(keys, key => key.Name == "All keys");
             Assert.Contains(("Help", "All keys", "?"), EditorMenu.Keys(global: false, KeyModifiers.Meta));
         });
     }
@@ -535,6 +538,54 @@ public sealed class EditorMenuTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal(BottomBar.Version, await window.Clipboard!.TryGetTextAsync());
+        });
+    }
+
+    [Fact]
+    public void The_app_menu_of_macOS_holds_About_and_Settings_on_the_command_key()
+    {
+        UiThread.Run(() =>
+        {
+            var asked = new List<string>();
+            var menu = EditorMenu.AppMenu(new Dictionary<string, MenuAction>
+            {
+                ["About Orblit"] = new(() => asked.Add("About")),
+                ["Editor Settings…"] = new(() => asked.Add("Settings")),
+            });
+            var settings = Find(menu, "Settings…");
+
+            Assert.Equal(["About Orblit", "-", "Settings…"], Lines(menu, ""));
+            Assert.Equal(("⌘,", "Where new projects go, and every key", "Editor Settings…"), (Parts.KeyText(settings.Gesture!), EditorMenu.NoteOf(settings), EditorMenu.EngineOf(settings)));
+            Press(Find(menu, "About Orblit"));
+            Press(settings);
+            Assert.Equal(["About", "Settings"], asked);
+        });
+    }
+
+    [Fact]
+    public void Settings_opens_from_the_Orblit_menu_and_its_key_and_All_keys_leads_to_the_sheet()
+    {
+        UiThread.Run(() =>
+        {
+            var folder = Path.Combine(Path.GetTempPath(), $"orblit_settings_{Guid.NewGuid():N}");
+            var window = new EditorWindow(globalMenu: false, settings: new EditorSettings(Path.Combine(folder, EditorSettings.FileName)));
+            window.Show();
+            var settings = window.Settings;
+
+            Press(Find(NativeMenu.GetMenu(window)!, "Settings…"));
+            Assert.True(settings.Dialog.IsVisible);
+            Assert.Equal("~/Games", settings.FolderBox.Text);
+            settings.Dialog.Cancel();
+            window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.OemComma, KeyModifiers = window.CommandKey });
+            Assert.True(settings.Dialog.IsVisible);
+
+            settings.FolderBox.Text = "~/Kept";
+            settings.AllKeysButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Assert.False(settings.Dialog.IsVisible);
+            Assert.True(window.Keys.Dialog.IsVisible);
+            Assert.Contains(("Orblit", "Settings…", Parts.KeyText(new KeyGesture(Key.OemComma, window.CommandKey))), window.Keys.Rows);
+            Assert.Equal("~/Kept", new EditorSettings(Path.Combine(folder, EditorSettings.FileName)).ProjectsFolder());
+            Directory.Delete(folder, recursive: true);
         });
     }
 
