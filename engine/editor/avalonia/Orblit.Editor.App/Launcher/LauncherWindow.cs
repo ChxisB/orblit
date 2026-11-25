@@ -16,7 +16,7 @@ namespace Orblit.Editor.App.Launcher;
 /// <summary>
 /// The window the editor opens on when no project is named. It shows the projects in projects.cfg as cards,
 /// with a search and a sort over them. Open a folder… adds a project folder from disk and New project writes a
-/// new one. Either raises Opening with the folder.
+/// new one. Either raises Opening with the folder. Each card has a menu that opens, shows, copies or removes it.
 /// </summary>
 internal sealed class LauncherWindow : Window
 {
@@ -79,7 +79,7 @@ internal sealed class LauncherWindow : Window
         MinWidth = 820;
         MinHeight = 560;
         Background = EditorBrushes.Window;
-        Nav = new Nav(() => _links.Open(HelpMenu.Docs), CopyVersion);
+        Nav = new Nav(() => _links.Open(HelpMenu.Docs), () => Copy(BottomBar.Version));
         var main = new Border
         {
             Classes = { EditorTheme.Island },
@@ -133,7 +133,10 @@ internal sealed class LauncherWindow : Window
     /// <summary>Picks a project folder from disk. It shows while no project matches, as the other way to find one.</summary>
     internal Button NoMatchOpenButton { get; }
 
-    internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+    /// <summary>The card menu's item that opens a project's folder, named for this system's file browser.</summary>
+    internal static string ShowInFolder { get; } = OperatingSystem.IsMacOS() ? "Show in Finder" : OperatingSystem.IsWindows() ? "Show in Explorer" : "Show in file manager";
+
+    internal KeyModifiers CommandKey =>this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
 
     internal TextBlock Fault => _fault;
 
@@ -207,14 +210,14 @@ internal sealed class LauncherWindow : Window
         }
     }
 
-    async void CopyVersion()
+    async void Copy(string text)
     {
         // An async void that throws ends the app, and each platform's clipboard fails with its own type.
         try
         {
             if (Clipboard is { } clipboard)
             {
-                await clipboard.SetTextAsync(BottomBar.Version);
+                await clipboard.SetTextAsync(text);
             }
         }
         catch (Exception error)
@@ -223,7 +226,7 @@ internal sealed class LauncherWindow : Window
         }
     }
 
-    // shortcut: a listed folder with no project.orblit is hidden and stays in the file. Show it as missing with a Remove once the card has a menu.
+    // shortcut: a listed folder with no project.orblit is hidden and stays in the file. Show it as a missing card with Remove from this list if a hidden line gets in the way.
     void Load()
     {
         try
@@ -389,13 +392,16 @@ internal sealed class LauncherWindow : Window
 
     Border Card(ProjectEntry project)
     {
+        var menu = CardMenu(project);
+        var more = new HoverCard("More", "Open, show its folder, copy its path or remove it from this list. A right-click on the card opens the same menu.").On(Parts.IconButton("GuiEllipsis", "More"));
+        var name = new TextBlock { Text = project.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         var body = new StackPanel
         {
             Spacing = 4,
             Margin = new Thickness(14, 10, 10, 14),
             Children =
             {
-                new TextBlock { Text = project.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis },
+                new DockPanel { Children = { Parts.Right(more), name } },
                 new TextBlock { Text = HomeFolder.Shorten(project.Folder), FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis },
                 new TextBlock { Text = OpenedLine(project), FontSize = 11, Foreground = EditorBrushes.TextDim },
             },
@@ -407,11 +413,56 @@ internal sealed class LauncherWindow : Window
             Margin = new Thickness(Half),
             Cursor = new Cursor(StandardCursorType.Hand),
             ClipToBounds = true,
+            Focusable = true,
+            ContextMenu = menu,
             // A project's place in the whole list keeps its banner tone the same under any search or sort.
             Child = new StackPanel { Children = { Parts.Banner(IconOf(project), _projects.IndexOf(project), 136), body } },
         };
         card.Tapped += (_, _) => Open(project.Folder);
+        // A context menu opens only on the control that holds it. It opens at the pointer, so by the button.
+        more.Click += (_, _) => menu.Open(card);
+        // The tap would rise to the card and open the project as well.
+        more.Tapped += (_, e) => e.Handled = true;
+        card.KeyDown += (_, e) => RunKey(menu, e);
         return card;
+    }
+
+    // A focused card takes the keys its menu shows, so each key works where it is written.
+    static void RunKey(ContextMenu menu, KeyEventArgs e)
+    {
+        if (menu.Items.OfType<MenuItem>().FirstOrDefault(item => item.InputGesture?.Matches(e) == true) is { } item)
+        {
+            e.Handled = true;
+            item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        }
+    }
+
+    ContextMenu CardMenu(ProjectEntry project) => new()
+    {
+        Items =
+        {
+            Parts.ActionItem("Open", () => Open(project.Folder), new KeyGesture(Key.Enter), "Opens the project in the editor"),
+            Parts.ActionItem(ShowInFolder, () => _links.Open(new Uri(project.Folder)), note: "Opens its folder"),
+            Parts.ActionItem("Copy folder path", () => Copy(project.Folder), new KeyGesture(Key.C, CommandKey | KeyModifiers.Alt)),
+            new Separator(),
+            Parts.ActionItem("Remove from this list", () => Remove(project), note: "The project stays on disk. Open a folder… brings it back."),
+        },
+    };
+
+    void Remove(ProjectEntry project)
+    {
+        try
+        {
+            _list.Remove(project.Folder);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            ShowFault(error.Message);
+            return;
+        }
+
+        _projects.Remove(project);
+        ShowCards();
     }
 
     // The template's icon, read back from the tags the launcher writes.

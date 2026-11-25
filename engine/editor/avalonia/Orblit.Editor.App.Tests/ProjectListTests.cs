@@ -57,6 +57,24 @@ public sealed class ProjectListTests : IDisposable
     }
 
     [Fact]
+    public void Remove_drops_only_that_folder_and_its_keys()
+    {
+        var list = new ProjectList(File);
+        list.Remove("/games/none");
+        Assert.False(System.IO.File.Exists(File));
+        list.Add("/games/a");
+        list.Add("/games/[b]");
+        list.Add("/games/c");
+
+        list.Remove("/games/[b]");
+        Assert.Equal("[/games/a]\n\nfavorite=false\n\n[/games/c]\n\nfavorite=false\n", System.IO.File.ReadAllText(File));
+        list.Remove("/games/c");
+        Assert.Equal("[/games/a]\n\nfavorite=false\n", System.IO.File.ReadAllText(File));
+        list.Remove("/games/a");
+        Assert.Equal("", System.IO.File.ReadAllText(File));
+    }
+
+    [Fact]
     public void A_bracket_in_a_folder_name_is_escaped_in_the_file_and_read_back_whole()
     {
         var list = new ProjectList(File);

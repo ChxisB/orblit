@@ -76,6 +76,11 @@ public sealed class LauncherTests : IDisposable
     static void SortBy(LauncherWindow launcher, string item) =>
         launcher.SortItems.Single(sort => AutomationProperties.GetName(sort) == item).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
+    static MenuItem[] Menu(Control card) => [.. card.ContextMenu!.Items.OfType<MenuItem>()];
+
+    static void Run(Control card, string item) =>
+        Menu(card).Single(each => AutomationProperties.GetName(each) == item).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
     static void ClickOn(Control control)
     {
         var window = (Window)TopLevel.GetTopLevel(control)!;
@@ -340,6 +345,87 @@ public sealed class LauncherTests : IDisposable
             panel.NameBox.Text = "Space Ranger";
 
             Assert.Equal("~/Work/kept", panel.FolderBox.Text);
+        });
+    }
+
+    [Fact]
+    public void Each_card_menu_names_its_ways_to_use_the_project_and_says_the_files_stay_on_remove()
+    {
+        UiThread.Run(() =>
+        {
+            Project("crate", "config/name=\"Crate\"\n", 5);
+            var launcher = Open();
+            var card = launcher.Cards.Single();
+            var items = Menu(card);
+
+            Assert.Equal(["Open", LauncherWindow.ShowInFolder, "Copy folder path", "Remove from this list"], items.Select(AutomationProperties.GetName));
+            Assert.Equal(["Opens the project in the editor", "Opens its folder", null, "The project stays on disk. Open a folder… brings it back."], items.Select(Note));
+            Assert.Equal([new KeyGesture(Key.Enter), null, new KeyGesture(Key.C, launcher.CommandKey | KeyModifiers.Alt), null], items.Select(item => item.InputGesture));
+            Assert.Single(card.ContextMenu!.Items.OfType<Separator>());
+        });
+    }
+
+    [Fact]
+    public void Remove_from_this_list_drops_the_card_and_its_line_and_leaves_the_files_on_disk()
+    {
+        UiThread.Run(() =>
+        {
+            var crate = Project("crate", "config/name=\"Crate\"\n", 5);
+            var runner = Project("runner", "config/name=\"Runner\"\n", 1);
+            var launcher = Open();
+
+            Run(launcher.Cards.Single(card => card.Tag is ProjectEntry { Name: "Crate" }), "Remove from this list");
+
+            Assert.Equal(["Runner"], Names(launcher));
+            Assert.Equal([runner], List.Folders());
+            Assert.True(File.Exists(Path.Combine(crate, "project.orblit")));
+            Assert.Empty(_opened);
+        });
+    }
+
+    [Fact]
+    public void The_card_menu_opens_the_project_shows_its_folder_and_copies_its_path()
+    {
+        UiThread.Run(async () =>
+        {
+            var crate = Project("crate", "config/name=\"Crate\"\n", 5);
+            var launcher = Open();
+            var card = launcher.Cards.Single();
+
+            Run(card, "Open");
+            Run(card, LauncherWindow.ShowInFolder);
+            Run(card, "Copy folder path");
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal([crate], _opened);
+            Assert.Equal([new Uri(crate)], _links);
+            Assert.Equal(crate, await launcher.Clipboard!.TryGetTextAsync());
+        });
+    }
+
+    [Fact]
+    public void More_opens_the_card_menu_and_a_focused_card_takes_the_keys_its_menu_shows()
+    {
+        UiThread.Run(async () =>
+        {
+            var crate = Project("crate", "config/name=\"Crate\"\n", 5);
+            var launcher = Open();
+            var card = launcher.Cards.Single();
+            var more = card.GetVisualDescendants().OfType<Button>().Single();
+
+            ClickOn(more);
+            Assert.True(card.ContextMenu!.IsOpen);
+            Assert.Empty(_opened);
+            Assert.Equal("More", ((HoverCard)ToolTip.GetTip(more)!).Title);
+            card.ContextMenu.Close();
+
+            Assert.True(card.Focusable);
+            Press(card, Key.C, launcher.CommandKey | KeyModifiers.Alt);
+            Press(card, Key.Enter);
+            Dispatcher.UIThread.RunJobs();
+
+            Assert.Equal(crate, await launcher.Clipboard!.TryGetTextAsync());
+            Assert.Equal([crate], _opened);
         });
     }
 
