@@ -10,7 +10,23 @@ internal sealed class GraphViewport
 
     const double FitPadding = 40;
 
-    public double Zoom { get; private set; } = 1;
+    double _zoom = 1;
+
+    /// <summary>Raised when the zoom changes, so the zoom button can show it.</summary>
+    public event Action? Zoomed;
+
+    public double Zoom
+    {
+        get => _zoom;
+        private set
+        {
+            if (value != _zoom)
+            {
+                _zoom = value;
+                Zoomed?.Invoke();
+            }
+        }
+    }
 
     /// <summary>Where the graph origin falls on the screen.</summary>
     public Vector Pan { get; private set; }
@@ -26,10 +42,13 @@ internal sealed class GraphViewport
     public void PanBy(Vector screenDelta) => Pan += screenDelta;
 
     /// <summary>Zooms by a factor and keeps the graph point under the screen point where it is.</summary>
-    public void ZoomAt(Point screen, double factor)
+    public void ZoomAt(Point screen, double factor) => ZoomTo(screen, Zoom * factor);
+
+    /// <summary>Sets the zoom and keeps the graph point under the screen point where it is.</summary>
+    public void ZoomTo(Point screen, double zoom)
     {
         var anchor = ToGraph(screen);
-        Zoom = Math.Clamp(Zoom * factor, MinZoom, MaxZoom);
+        Zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
         Pan = new Vector(screen.X - (anchor.X * Zoom), screen.Y - (anchor.Y * Zoom));
     }
 

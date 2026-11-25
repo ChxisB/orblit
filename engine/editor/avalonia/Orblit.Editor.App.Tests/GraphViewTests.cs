@@ -168,6 +168,24 @@ public sealed class GraphViewTests
     }
 
     [Fact]
+    public void Find_bookmark_and_pause_name_their_keys_and_say_why_they_are_off()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+            Button[] buttons = [view.FindButton, view.BookmarkButton, view.BreakpointButton];
+
+            Assert.Equal<(string, string?)>([("Find a step", "⌘F"), ("Bookmark", "⌘F2"), ("Pause here", "F9")], buttons.Select(button => (Card(button).Title, Card(button).Key)));
+            Assert.All(buttons, button => Assert.Equal("Open a graph first.", Card(button).Line));
+
+            Pick(view, Logic);
+
+            Assert.Equal("Finds steps by their names and numbers.", Card(view.FindButton).Line);
+        });
+    }
+
+    [Fact]
     public void The_bars_name_the_base_type_and_turn_on_once_a_script_is_open_and_save_once_it_is_edited()
     {
         UiThread.Run(() =>
@@ -1103,7 +1121,7 @@ public sealed class GraphViewTests
             Pick(view, Logic);
 
             ChooseGoto(view, "Bookmark this step");
-            Assert.Equal("Select one step to bookmark.", view.Canvas!.FindBar.Status);
+            Assert.Equal("Pick one step to bookmark.", view.Canvas!.FindBar.Status);
 
             view.Canvas.Select([2]);
             ChooseGoto(view, "Bookmark this step");
@@ -1125,7 +1143,7 @@ public sealed class GraphViewTests
             Pick(view, Logic);
 
             ChooseGoto(view, "Next bookmark");
-            Assert.Equal("No bookmarks.", view.Canvas!.FindBar.Status);
+            Assert.Equal("No bookmarks yet. Bookmark a step with ⌘F2.", view.Canvas!.FindBar.Status);
 
             view.Canvas.Select([3]);
             ChooseGoto(view, "Bookmark this step");
@@ -1146,17 +1164,17 @@ public sealed class GraphViewTests
             Pick(view, Logic);
 
             ChooseGoto(view, "Pause here");
-            Assert.Equal("Select one step for a breakpoint.", view.Canvas!.FindBar.Status);
+            Assert.Equal("Pick one step to pause at.", view.Canvas!.FindBar.Status);
             Assert.Empty(view.Breakpoints.All);
 
             view.Canvas.Select([2]);
             ChooseGoto(view, "Pause here");
             Assert.Contains(2, view.Canvas.Scene.Breakpointed);
-            Assert.Equal("Set a breakpoint on step 2.", view.Canvas.FindBar.Status);
+            Assert.Equal("The game pauses at step 2.", view.Canvas.FindBar.Status);
 
             ChooseGoto(view, "Pause here");
             Assert.DoesNotContain(2, view.Canvas.Scene.Breakpointed);
-            Assert.Equal("Took the breakpoint off step 2.", view.Canvas.FindBar.Status);
+            Assert.Equal("The game no longer pauses at step 2.", view.Canvas.FindBar.Status);
         });
     }
 

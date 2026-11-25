@@ -41,8 +41,21 @@ public sealed class ArrangeTests
             var words = rows.Select(row => string.Join(" ", row.Children.Select(child => child is TextBlock text ? text.Text : (string?)((Button)child).Content)));
             Assert.True(canvas.ArrangeBar.IsVisible);
             Assert.Equal(
-                ["Align Left Center Right Top Middle Bottom", "Lay out Row Column Spread across Spread down", "Tidy Straighten Flow Expand To function"],
+                ["Align Left Center Right Top Middle Bottom", "Lay out Row Column Spread across Spread down", "Tidy Straighten Flow Expand To function Put in a box"],
                 words);
+        });
+    }
+
+    [Fact]
+    public void Put_in_a_box_draws_a_box_round_the_picked_steps()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Open(Uneven(), 2);
+
+            Click(canvas, "box");
+
+            Assert.True(Assert.Single(canvas.Scene.Frames).FullBounds.Contains(canvas.Scene.Find(2)!.Bounds));
         });
     }
 

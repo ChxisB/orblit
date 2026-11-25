@@ -77,10 +77,10 @@ internal sealed class GraphView : Border
     readonly Button _fileButton = MenuButton("File");
     readonly Button _gotoButton = MenuButton("Go to");
     readonly Button _helpButton = MenuButton("Help");
-    readonly Button _findButton = Parts.IconButton("Search", "Find steps");
+    readonly Button _findButton = new();
     readonly Button _saveButton = new() { Classes = { EditorTheme.TextButton, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
-    readonly Button _bookmarkButton = Parts.IconButton("Favorites", "Bookmark");
-    readonly Button _breakpointButton = Parts.IconButton("Breakpoint", "Toggle Breakpoint");
+    readonly Button _bookmarkButton = new();
+    readonly Button _breakpointButton = new();
     readonly GotoMenu _gotoMenu;
     readonly MenuFlyout _menu = new();
     readonly MenuItem _save;
@@ -125,6 +125,9 @@ internal sealed class GraphView : Border
         CloseButton.Click += (_, _) => CloseCurrent();
         _saveButton.Content = Parts.Keyed("Save", "⌘S");
         _saveButton.Click += (_, _) => SaveCurrent();
+        Dress(_findButton, "Search", new HoverCard("Find a step", "Finds steps by their names and numbers.", "⌘F"));
+        Dress(_bookmarkButton, "Favorites", new HoverCard("Bookmark", "Marks the picked step, so F2 can find it again.", "⌘F2"));
+        Dress(_breakpointButton, "Breakpoint", new HoverCard("Pause here", "The game stops at the picked step, so you can look at its values.", "F9"));
         _findButton.Click += (_, _) => Canvas?.FindBar.Open();
         _bookmarkButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBookmark());
         _breakpointButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBreakpoint());
@@ -263,6 +266,9 @@ internal sealed class GraphView : Border
     }
 
     static bool Failed(Exception error) => error is IOException or UnauthorizedAccessException;
+
+    // A graph tool with its word and key, whose card says what to do first while it is off.
+    static void Dress(Button button, string icon, HoverCard card) => card.SaysWhyOff(Parts.Dress(button, icon, card), "Open a graph first.");
 
     static Button MenuButton(string text) => new() { Content = text, Classes = { EditorTheme.TextButton, EditorTheme.Segment } };
 

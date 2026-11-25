@@ -8,8 +8,8 @@ namespace Orblit.Editor.App.Graph;
 
 /// <summary>
 /// The buttons that line up, lay out and tidy the selected steps, in three named rows on a floating pill: align
-/// the edges, lay the steps out in a row, a column or even gaps, then straighten, select a flow, expand a call or
-/// collapse steps to a function.
+/// the edges, lay the steps out in a row, a column or even gaps, then straighten, select a flow, expand a call,
+/// collapse steps to a function or put them in a box.
 /// </summary>
 internal sealed class ArrangeBar : Border
 {
@@ -61,5 +61,6 @@ internal sealed class ArrangeBar : Border
         ("Tidy", "flow", "Flow", "Select every step joined to the selection by flow wires", () => select(arranger.Flow())),
         ("Tidy", "expand", "Expand", "Open the selected Call step out into the steps of its function", edits.Expand),
         ("Tidy", "collapse", "To function", "Move the selected steps into a new function and call it from here", edits.Collapse),
+        ("Tidy", "box", "Put in a box", "Draws a box round the picked steps. ⌘G does the same.", () => edits.FrameSelection()),
     ];
 }
