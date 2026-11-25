@@ -1,5 +1,9 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Orblit.Editor.App.Graph;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests.Graph;
@@ -23,7 +27,33 @@ public sealed class ArrangeTests
         return canvas;
     }
 
-    static void Click(GraphCanvas canvas, string id) => canvas.Find<Button>($"arrange:{id}")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+    // A tool on the bar is a button. A tool in the Line up or Spread menu is an item.
+    static void Click(GraphCanvas canvas, string id)
+    {
+        if (canvas.Find<Button>($"arrange:{id}") is { } button)
+        {
+            button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            return;
+        }
+
+        Item(canvas, id).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+    }
+
+    static MenuItem Item(GraphCanvas canvas, string id) => canvas.ArrangeBar.Items.Single(item => Equals(item.Tag, $"arrange:{id}"));
+
+    static Button Tool(GraphCanvas canvas, string id) => canvas.Find<Button>($"arrange:{id}")!;
+
+    static string Why(GraphCanvas canvas, string id) => ((HoverCard)ToolTip.GetTip(Tool(canvas, id))!).Line;
+
+    static string[] Words(Control control) => [.. control.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "")];
+
+    // A button with a plain word holds the word as a string, not as a text block.
+    static string Said(Control control) => control switch
+    {
+        TextBlock text => text.Text ?? "",
+        Button { Content: string word } => word,
+        _ => string.Join(" ", Words(control)),
+    };
 
     static (double X, double Y) At(FakeGraphSource source, int id)
     {
@@ -32,17 +62,64 @@ public sealed class ArrangeTests
     }
 
     [Fact]
-    public void The_arrange_bar_names_its_rows_and_buttons_in_words()
+    public void The_arrange_bar_names_every_tool_in_words()
     {
         UiThread.Run(() =>
         {
             var canvas = Open(FakeGraphSource.Sample(), 1, 2);
-            var rows = ((StackPanel)canvas.ArrangeBar.Child!).Children.Cast<StackPanel>();
-            var words = rows.Select(row => string.Join(" ", row.Children.Select(child => child is TextBlock text ? text.Text : (string?)((Button)child).Content)));
+            var rows = ((StackPanel)canvas.ArrangeBar.Child!).Children;
             Assert.True(canvas.ArrangeBar.IsVisible);
             Assert.Equal(
-                ["Align Left Center Right Top Middle Bottom", "Lay out Row Column Spread across Spread down", "Tidy Straighten Flow Expand To function Put in a box"],
-                words);
+                ["Line up Spread Put in a box ⌘G", "Tidy up Straighten wires Pick joined steps Open up the call Make an action"],
+                rows.Cast<StackPanel>().Select(row => string.Join(" ", row.Children.Select(Said))));
+            Assert.Equal(
+                ["Left edges", "Centers across", "Right edges", "Top edges", "Centers down", "Bottom edges", "Side by side", "One under another", "Even gaps across", "Even gaps down"],
+                canvas.ArrangeBar.Items.Select(AutomationProperties.GetName));
+            Assert.Equal(["Side by side", "One row, in the order they sit"], Words((Control)Item(canvas, "stack_row").Header!));
+        });
+    }
+
+    [Fact]
+    public void A_tool_that_needs_more_steps_is_off_and_says_what_to_pick_first()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = Open(Uneven(), 2);
+            Assert.False(Tool(canvas, "line_up").IsEnabled);
+            Assert.Equal("Pick two or more steps first.", Why(canvas, "spread"));
+            Assert.Equal("Pick two or more joined steps first.", Why(canvas, "straighten"));
+            Assert.True(Tool(canvas, "flow").IsEnabled);
+
+            canvas.Select([1, 2]);
+            var gaps = Item(canvas, "spread_across");
+            Assert.True(Tool(canvas, "spread").IsEnabled);
+            Assert.Equal("Puts the picked steps in a row or a column, or evens out the gaps.", Why(canvas, "spread"));
+            Assert.False(gaps.IsEnabled);
+            Assert.Equal(["Even gaps across", "Pick three or more steps first."], Words((Control)gaps.Header!));
+
+            canvas.Select([1, 2, 3]);
+            Assert.True(gaps.IsEnabled);
+            Assert.Equal(["Even gaps across", "The same space between each"], Words((Control)gaps.Header!));
+        });
+    }
+
+    [Fact]
+    public void Open_up_the_call_is_on_only_while_one_call_step_is_picked()
+    {
+        UiThread.Run(() =>
+        {
+            var source = FakeGraphSource.Sample();
+            source.AddStep(4, "call_function");
+            var canvas = Open(source, 3);
+            Assert.False(Tool(canvas, "expand").IsEnabled);
+            Assert.Equal("Pick a step that runs an action first.", Why(canvas, "expand"));
+
+            canvas.Select([4]);
+            Assert.True(Tool(canvas, "expand").IsEnabled);
+            Assert.Equal("Puts the steps of the action it runs in its place.", Why(canvas, "expand"));
+
+            canvas.Select([3, 4]);
+            Assert.False(Tool(canvas, "expand").IsEnabled);
         });
     }
 

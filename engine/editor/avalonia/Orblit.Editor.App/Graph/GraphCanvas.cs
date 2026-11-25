@@ -404,13 +404,13 @@ internal sealed class GraphCanvas : Grid
         return (pin.IsInput ? GraphDraggedSide.Input : GraphDraggedSide.Output, port.Type, port.Sort);
     }
 
-    // What the selection switches on: framing, and the bar of arrange buttons.
+    // What the selection switches on: framing, and the bar of arrange tools.
     void SyncTools()
     {
         var any = _scene.SelectedSteps.Count > 0;
         _zoomToPicked.IsEnabled = any;
         _zoomToPicked.Header = Parts.Noted(ZoomToPickedName, any ? "Fills the view with them" : "Pick a step first.");
-        _arrangeBar.IsVisible = any;
+        _arrangeBar.Sync([.. _scene.SelectedSteps.Select(_scene.Find).OfType<StepView>().Select(step => step.Step.Kind)]);
     }
 
     void OnInteracted()
