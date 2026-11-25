@@ -447,6 +447,11 @@ internal sealed class FakeScene : IEditorScene
         IsPlaying = false;
     }
 
+    /// <summary>How many times the game window was asked to come to the front.</summary>
+    public int WindowRaises { get; private set; }
+
+    public void ShowGameWindow() => WindowRaises++;
+
     public void PollOutput()
     {
         Polls++;

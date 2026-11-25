@@ -179,6 +179,7 @@ internal sealed class EditorWindow : Window
         _game.RunRequested += PlayGame;
         _game.RunSceneRequested += PlayScene;
         _game.StopRequested += Stop;
+        _game.ShowWindowRequested += () => _scene?.ShowGameWindow();
         _frame.Click += (_, _) => Frame();
         _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
         _fileDock = new DockTabs(("Files", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };

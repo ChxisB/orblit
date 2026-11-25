@@ -645,6 +645,14 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         _game = null;
     }
 
+    public void ShowGameWindow()
+    {
+        if (GameId is { } id)
+        {
+            GameWindow.Raise(id);
+        }
+    }
+
     static void Kill(Process process)
     {
         try

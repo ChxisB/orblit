@@ -542,4 +542,25 @@ public sealed class GameWorkspaceTests
             Assert.Equal("Run instances", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Game.CopiesChoice)).Engine);
         });
     }
+
+    [Fact]
+    public void Show_game_window_shows_while_playing_and_asks_for_the_game_window()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            ShowGame(window);
+            Assert.False(window.Game.ShowWindowButton.IsVisible);
+
+            Click(window.Game.RunButton);
+            Click(window.Game.ShowWindowButton);
+            Click(window.Game.ShowWindowButtonBelow);
+
+            Assert.True(window.Game.ShowWindowButton.IsVisible);
+            Assert.Equal(2, scene.WindowRaises);
+            Assert.Equal(GameWindow.CanRaise, window.Game.ShowWindowButton.IsEnabled);
+            Assert.Equal("Show game window", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Game.ShowWindowButtonBelow)).Title);
+        });
+    }
 }

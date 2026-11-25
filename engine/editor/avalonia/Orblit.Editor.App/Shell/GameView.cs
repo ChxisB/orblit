@@ -65,8 +65,10 @@ internal sealed class GameView : Border
     readonly Button _play;
     readonly Button _playScene;
     readonly Button _stop;
+    readonly Button _raise = RaiseButton();
+    readonly Button _raiseBelow = RaiseButton();
     readonly StackPanel _stopped = Parts.EmptyState("Window", "The game opens in its own window", "Press Play to start it. Its speed shows on the right and its things show in Live scene.");
-    readonly StackPanel _playing = Parts.EmptyState("Window", "Playing in its own window", "It may be behind this one. Stop closes it.");
+    readonly StackPanel _playing = Parts.EmptyState("Window", "Playing in its own window", "It may be behind this one. Show game window brings it to the front. Stop closes it.");
     readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly RadioButton _main = Choice("Main scene", "The first scene players see.");
     readonly RadioButton _thisScene = Choice("This scene", "The one open in the 3D view");
@@ -95,12 +97,14 @@ internal sealed class GameView : Border
         _play.Click += (_, _) => RunRequested?.Invoke();
         _playScene.Click += (_, _) => RunSceneRequested?.Invoke();
         _stop.Click += (_, _) => StopRequested?.Invoke();
+        _raise.Click += (_, _) => ShowWindowRequested?.Invoke();
+        _raiseBelow.Click += (_, _) => ShowWindowRequested?.Invoke();
         _main.IsChecked = true;
         var thisScene = new HoverCard("This scene", "Play runs the scene open in the 3D view.");
         thisScene.SaysWhyOff(_thisScene, "Open a saved scene first.");
         thisScene.On(_thisScene);
         _stopped.Children.Add(Buttons(_play, _playScene));
-        _playing.Children.Add(Buttons(_stop));
+        _playing.Children.Add(Buttons(_raiseBelow, _stop));
         _waits = Note("Stop the game to change these. They count from the next Play.");
         _liveMark = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, VerticalAlignment = VerticalAlignment.Center, Children = { new Ellipse { Width = 6, Height = 6, Fill = EditorBrushes.Done, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Live", FontSize = 11, Foreground = EditorBrushes.Done } } };
         var side = new Grid { RowDefinitions = new RowDefinitions("Auto,6,*"), Children = { Island(Speed()), At(Island(LiveScene()), 0, 2) } };
@@ -123,6 +127,9 @@ internal sealed class GameView : Border
     /// <summary>Raised when Stop is pressed. The view has not changed, the window shows the new state.</summary>
     public event Action? StopRequested;
 
+    /// <summary>Raised when Show game window is pressed, on the bar or under the playing line.</summary>
+    public event Action? ShowWindowRequested;
+
     /// <summary>The Play on the bar. The one under the middle's title raises the same request.</summary>
     internal Button RunButton => _run;
 
@@ -131,6 +138,11 @@ internal sealed class GameView : Border
     internal Button PlaySceneButton => _playScene;
 
     internal Button StopButton => _stop;
+
+    /// <summary>The Show game window on the bar. The one under the playing line raises the same request.</summary>
+    internal Button ShowWindowButton => _raise;
+
+    internal Button ShowWindowButtonBelow => _raiseBelow;
 
     internal RadioButton MainChoice => _main;
 
@@ -194,6 +206,7 @@ internal sealed class GameView : Border
     public void Show(bool playing, string project, TimeSpan elapsed)
     {
         _run.IsVisible = !playing;
+        _raise.IsVisible = playing;
         _stopped.IsVisible = !playing;
         _playing.IsVisible = playing;
         _stop.IsEnabled = playing;
@@ -273,7 +286,7 @@ internal sealed class GameView : Border
 
     DockPanel TheGame()
     {
-        var bar = Parts.Bar(_pill, _project, _time, Parts.Right(_run));
+        var bar = Parts.Bar(_pill, _project, _time, Parts.Right(_raise), Parts.Right(_run));
         var footer = new Border
         {
             Height = 30,
@@ -363,6 +376,15 @@ internal sealed class GameView : Border
     {
         var button = Keyed("Play", "Starts the scene Play settings pick, in its own window. Press again to start over.", key, EditorTheme.Primary);
         ((HoverCard)ToolTip.GetTip(button)!).SaysWhyOff(button, "Open a project first.");
+        return button;
+    }
+
+    // Off where the system keeps each app's windows to itself, and the card says so.
+    static Button RaiseButton()
+    {
+        var card = new HoverCard("Show game window", "Brings the game window to the front.");
+        var button = card.On(new Button { Classes = { EditorTheme.TextButton, EditorTheme.Small, EditorTheme.Ghost }, VerticalAlignment = VerticalAlignment.Center, Content = "Show game window", IsEnabled = GameWindow.CanRaise });
+        card.SaysWhyOff(button, "This system does not let the editor bring another window to the front.");
         return button;
     }
 

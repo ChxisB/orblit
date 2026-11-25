@@ -112,6 +112,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public void Stop() => scene.Stop();
 
+    public void ShowGameWindow() => scene.ShowGameWindow();
+
     public void Restore(DetachedEntity detached) => scene.Restore(detached);
 
     public void Destroy(nint entity) => scene.Destroy(entity);

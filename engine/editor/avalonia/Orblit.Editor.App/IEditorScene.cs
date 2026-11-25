@@ -265,4 +265,7 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();
+
+    /// <summary>Brings the running game's window to the front. Does nothing when none runs.</summary>
+    void ShowGameWindow();
 }
