@@ -14,7 +14,7 @@ internal sealed class WindowLinks(Control owner) : ILinkOpener
     public void Open(Uri link) => _ = TopLevel.GetTopLevel(owner)?.Launcher.LaunchUriAsync(link);
 }
 
-/// <summary>The Help menu of the Graph workspace: the guide and the class reference on the site.</summary>
+/// <summary>The Help menu of the Graph workspace: the guide and the reference of every step on the site.</summary>
 internal sealed class HelpMenu : MenuFlyout
 {
     internal static readonly Uri Docs = new("https://orblitengine.com/docs/");
@@ -23,14 +23,7 @@ internal sealed class HelpMenu : MenuFlyout
 
     public HelpMenu(ILinkOpener links)
     {
-        Items.Add(Entry("Your First Graph Script", Guide, links));
-        Items.Add(Entry("GraphScript Class Reference", Reference, links));
-    }
-
-    static MenuItem Entry(string header, Uri link, ILinkOpener links)
-    {
-        var item = new MenuItem { Header = header };
-        item.Click += (_, _) => links.Open(link);
-        return item;
+        Items.Add(Parts.ActionItem("Your first graph", () => links.Open(Guide), note: "A five minute walk through"));
+        Items.Add(Parts.ActionItem("Every step explained", () => links.Open(Reference), note: "What each step does, with an example"));
     }
 }

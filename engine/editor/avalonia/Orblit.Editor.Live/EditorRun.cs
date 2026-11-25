@@ -4,6 +4,7 @@ using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.RegularExpressions;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Input.Raw;
@@ -445,7 +446,7 @@ internal sealed partial class EditorRun(EditorWindow window, EditorEngine engine
         await Wait(() => window.Viewport.IsEffectivelyVisible && Viewport.Bounds.Width > 0, "the viewport to show again");
     }
 
-    static MenuItem NewItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "New...");
+    static MenuItem NewItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "New graph…");
 
     static MenuItem CloseItem(GraphView graph) => graph.FileMenu.Items.OfType<MenuItem>().Single(item => (string?)item.Header == "Close");
 

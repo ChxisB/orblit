@@ -1,7 +1,9 @@
 using System.Text.Json;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Graph;
@@ -56,8 +58,8 @@ internal interface IGraphFiles
 /// <summary>
 /// The Graph workspace, as three islands. The left one lists the project's graph scripts with a filter, over the
 /// panels of the script on show. The middle one holds a tab for each open script over its canvas, with the
-/// debugger under it. The right one inspects the selected step. The File menu makes and closes scripts, Goto moves
-/// about the script on show and Help opens the guide.
+/// debugger under it. The right one inspects the selected step. The File menu makes and closes scripts, Go to moves
+/// about the script on show and Help opens the guide. An item that is off says what to do first.
 /// </summary>
 internal sealed class GraphView : Border
 {
@@ -73,7 +75,7 @@ internal sealed class GraphView : Border
     readonly Control _noStep = StepInspector.Empty();
     readonly ScrollViewer _debugHost = new() { MaxHeight = 240, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     readonly Button _fileButton = MenuButton("File");
-    readonly Button _gotoButton = MenuButton("Goto");
+    readonly Button _gotoButton = MenuButton("Go to");
     readonly Button _helpButton = MenuButton("Help");
     readonly Button _findButton = Parts.IconButton("Search", "Find steps");
     readonly Button _saveButton = new() { Classes = { EditorTheme.TextButton, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
@@ -86,6 +88,7 @@ internal sealed class GraphView : Border
     readonly MenuItem _close;
     readonly MenuItem _closeAll;
     readonly MenuItem _copyPath;
+    readonly MenuItem _showInFiles;
     readonly CreateScriptForm _form = new(ScriptKind.Graph);
     readonly ITextClipboard _clipboard;
     readonly List<GraphSheet> _sheets = [];
@@ -101,12 +104,13 @@ internal sealed class GraphView : Border
         _gotoMenu = new GotoMenu(() => Canvas);
         _gotoButton.Flyout = _gotoMenu;
         _helpButton.Flyout = new HelpMenu(links ?? new WindowLinks(this));
-        _save = Item("Save", SaveCurrent);
-        _saveAll = Item("Save All", () => Save());
-        _close = Item("Close", CloseCurrent);
-        _closeAll = Item("Close All", CloseAll);
-        _copyPath = Item("Copy Path", CopyPath);
-        _menu.Items.Add(Item("New...", ShowCreate));
+        _save = Parts.PressItem("Save", _saveButton, new KeyGesture(Key.S, KeyModifiers.Meta));
+        _saveAll = Parts.PressItem("Save all", SaveAllButton, new KeyGesture(Key.S, KeyModifiers.Meta | KeyModifiers.Alt));
+        _close = Parts.PressItem("Close", CloseButton, new KeyGesture(Key.W, KeyModifiers.Meta));
+        _closeAll = Parts.ActionItem("Close all", CloseAll);
+        _copyPath = Parts.ActionItem("Copy path", CopyPath);
+        _showInFiles = Parts.PressItem(SceneTabStrip.ShowInFiles, ShowInFilesButton);
+        _menu.Items.Add(Parts.ActionItem("New graph…", ShowCreate, note: "A script made of steps. You pick what it runs on."));
         _menu.Items.Add(new Separator());
         _menu.Items.Add(_save);
         _menu.Items.Add(_saveAll);
@@ -115,7 +119,10 @@ internal sealed class GraphView : Border
         _menu.Items.Add(_closeAll);
         _menu.Items.Add(new Separator());
         _menu.Items.Add(_copyPath);
+        _menu.Items.Add(_showInFiles);
         _fileButton.Flyout = _menu;
+        SaveAllButton.Click += (_, _) => Save();
+        CloseButton.Click += (_, _) => CloseCurrent();
         _saveButton.Content = Parts.Keyed("Save", "⌘S");
         _saveButton.Click += (_, _) => SaveCurrent();
         _findButton.Click += (_, _) => Canvas?.FindBar.Open();
@@ -156,6 +163,15 @@ internal sealed class GraphView : Border
     internal Button BookmarkButton => _bookmarkButton;
 
     internal Button BreakpointButton => _breakpointButton;
+
+    /// <summary>Saves every open graph. The File menu and a key press it.</summary>
+    internal Button SaveAllButton { get; } = new();
+
+    /// <summary>Closes the graph on show. The File menu and a key press it.</summary>
+    internal Button CloseButton { get; } = new();
+
+    /// <summary>The window picks the graph on show in the Files panel when this is pressed.</summary>
+    internal Button ShowInFilesButton { get; } = new();
 
     /// <summary>The class the script on show extends, as the canvas bar says it.</summary>
     internal TextBlock Extends => _extends;
@@ -247,13 +263,6 @@ internal sealed class GraphView : Border
     }
 
     static bool Failed(Exception error) => error is IOException or UnauthorizedAccessException;
-
-    static MenuItem Item(string header, Action action)
-    {
-        var item = new MenuItem { Header = header };
-        item.Click += (_, _) => action();
-        return item;
-    }
 
     static Button MenuButton(string text) => new() { Content = text, Classes = { EditorTheme.TextButton, EditorTheme.Segment } };
 
@@ -555,11 +564,22 @@ internal sealed class GraphView : Border
         _findButton.IsEnabled = _current is not null;
         _bookmarkButton.IsEnabled = _current is not null;
         _breakpointButton.IsEnabled = _current is not null;
-        _save.IsEnabled = _current?.IsEdited == true;
-        _saveAll.IsEnabled = IsDirty;
-        _close.IsEnabled = _current is not null;
+        SaveAllButton.IsEnabled = IsDirty;
+        CloseButton.IsEnabled = _current is not null;
+        ShowInFilesButton.IsEnabled = _current is not null;
         _closeAll.IsEnabled = _sheets.Count > 0;
         _copyPath.IsEnabled = _current is not null;
+        var name = _current is null ? "" : Path.GetFileNameWithoutExtension(_current.Script);
+        var none = "Open a graph first.";
+        Note(_save, $"Saves {name}", _current is null ? none : "Nothing new to save.");
+        Note(_saveAll, "Saves every open graph", "Nothing new to save.");
+        Note(_close, $"Saves {name} first, then closes it", "Nothing is open.");
+        Note(_copyPath, _current?.Script ?? "", none);
+        Note(_showInFiles, "Picks the file in the Files panel", none);
         _gotoMenu.Show(_current is not null);
     }
+
+    // An item's note says what it does while it is on, and what to do first while it is off.
+    static void Note(MenuItem item, string note, string why) =>
+        item.Header = Parts.Noted(AutomationProperties.GetName(item) ?? "", item.IsEnabled ? note : why);
 }

@@ -729,6 +729,8 @@ internal sealed class EditorWindow : Window
     Button? ShortcutFor(KeyEventArgs e) => (e.Key, e.KeyModifiers) switch
     {
         (Key.N, var modifiers) when modifiers == CommandKey => _sceneTabs.AddButton,
+        (Key.W, var modifiers) when modifiers == CommandKey && _graph.IsEffectivelyVisible => _graph.CloseButton,
+        (Key.S, var modifiers) when modifiers == (CommandKey | KeyModifiers.Alt) && _graph.IsEffectivelyVisible => _graph.SaveAllButton,
         (Key.W, var modifiers) when modifiers == CommandKey => _sceneTabs.CloseButton,
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
         (Key.Z, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _undo,
@@ -1153,6 +1155,13 @@ internal sealed class EditorWindow : Window
         {
             _fileDock.Select(0);
             _scenes.Reveal(_scene!.SceneFile);
+        };
+        // The Graph workspace folds the Files panel away, so it unfolds to show the file.
+        _graph.ShowInFilesButton.Click += (_, _) =>
+        {
+            _leftSide.Fold(false);
+            _fileDock.Select(0);
+            _scenes.Reveal(_graph.Current!);
         };
     }
 

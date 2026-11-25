@@ -281,6 +281,7 @@ internal sealed class GraphCanvas : Grid
         _gestures.ValueEditRequested += (step, parameter) => BeginEdit(step.ValueRect(parameter), step.ValueOf(parameter), text => _edits.SetValue(step.Id, parameter, text));
         _gestures.TitleEditRequested += frame => BeginEdit(frame.TitleRect, frame.Frame.Title, text => _edits.RenameFrame(frame, text));
         _editor.KeyDown += OnEditorKey;
+        KeyDown += OnFunctionKey;
         _editor.LostFocus += (_, _) => EndEdit(accept: true);
         _frame.Click += (_, _) => _edits.FrameSelection();
         _fit.Click += (_, _) => FitView();
@@ -316,7 +317,26 @@ internal sealed class GraphCanvas : Grid
         [(Key.D, false)] = _ => _clipboard.Duplicate(),
         [(Key.G, false)] = _ => _edits.FrameSelection(),
         [(Key.F, false)] = _ => _findBar.Open(),
+        [(Key.L, false)] = _ => _findBar.OpenGoto(),
+        [(Key.F2, false)] = _ => _findBar.Run(search => search.ToggleBookmark()),
     });
+
+    // The function keys work with no Control or Command held, so they sit apart from the shortcut table.
+    void OnFunctionKey(object? sender, KeyEventArgs e)
+    {
+        Action<GraphSearch>? command = (e.Key, e.KeyModifiers) switch
+        {
+            (Key.F2, KeyModifiers.None) => search => search.StepBookmark(true),
+            (Key.F2, KeyModifiers.Shift) => search => search.StepBookmark(false),
+            (Key.F9, KeyModifiers.None) => search => search.ToggleBreakpoint(),
+            _ => null,
+        };
+        if (command is not null)
+        {
+            _findBar.Run(command);
+            e.Handled = true;
+        }
+    }
 
     /// <summary>
     /// Opens the palette at a screen point. A step picked there is added at the point and joined to the pin when

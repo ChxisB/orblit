@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Orblit.Editor.App.Tests.Graph;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -19,6 +20,13 @@ public sealed class GraphWorkspaceTests
         window.Load(scene);
         window.UpdateLayout();
         return (window, scene, graph);
+    }
+
+    static KeyEventArgs Press(InputElement target, Key key, KeyModifiers modifiers)
+    {
+        var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers };
+        target.RaiseEvent(press);
+        return press;
     }
 
     static void ShowGraph(EditorWindow window) => ClickOn(window.Bar.Tabs.Single(tab => tab.Label == "Graph"), window);
@@ -77,6 +85,54 @@ public sealed class GraphWorkspaceTests
             Assert.Equal(1, graph.Saves);
             Assert.Equal(1, scene.Saves);
             Assert.False(window.Graph.IsDirty);
+        });
+    }
+
+    [Fact]
+    public void Command_W_in_the_Graph_tab_closes_the_graph_and_leaves_the_scene_open()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, _) = Open();
+            ShowGraph(window);
+            window.Graph.List.SelectedItem = Logic;
+
+            Assert.True(Press(window, Key.W, window.CommandKey).Handled);
+
+            Assert.Null(window.Graph.Current);
+            Assert.Equal(0, scene.Closed);
+        });
+    }
+
+    [Fact]
+    public void Option_command_S_in_the_Graph_tab_saves_every_open_graph()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, graph) = Open();
+            EditAGraph(window);
+
+            Assert.True(Press(window, Key.S, window.CommandKey | KeyModifiers.Alt).Handled);
+
+            Assert.Equal(1, graph.Saves);
+        });
+    }
+
+    [Fact]
+    public void Show_in_Files_unfolds_the_Files_panel_and_picks_the_graph()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = Open();
+            ShowGraph(window);
+            window.Graph.List.SelectedItem = Logic;
+            Assert.True(window.LeftSide.IsFolded);
+
+            Click(window.Graph.ShowInFilesButton);
+
+            Assert.False(window.LeftSide.IsFolded);
+            Assert.Equal(0, window.FileDock.SelectedIndex);
+            Assert.Equal(Logic, ((FileNode)window.Scenes.Tree.SelectedItem!).Path);
         });
     }
 
