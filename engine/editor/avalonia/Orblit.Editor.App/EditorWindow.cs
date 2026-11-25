@@ -399,7 +399,7 @@ internal sealed class EditorWindow : Window
         _center.NoScene.IsVisible = _root is null;
         _center.NoScene.ShowRecent(RecentScenes());
         ShowGame();
-        _sceneTabs.Show(_root, SceneLabel());
+        _sceneTabs.Show(_root, SceneLabel(), _scene!.SceneFile);
         _center.Planar.ShowScene(_scene!, _root, SceneName());
         ShowTitle();
         ShowSelection();
@@ -727,6 +727,7 @@ internal sealed class EditorWindow : Window
     Button? ShortcutFor(KeyEventArgs e) => (e.Key, e.KeyModifiers) switch
     {
         (Key.N, var modifiers) when modifiers == CommandKey => _sceneTabs.AddButton,
+        (Key.W, var modifiers) when modifiers == CommandKey => _sceneTabs.CloseButton,
         (Key.S, var modifiers) when modifiers == CommandKey => _save,
         (Key.Z, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _undo,
         (Key.Z, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && e.Source is not TextBox => _redo,
@@ -1134,6 +1135,11 @@ internal sealed class EditorWindow : Window
             }
         };
         _sceneTabs.CloseButton.Click += (_, _) => Leave(() => _scene!.Close());
+        _sceneTabs.ShowInFilesButton.Click += (_, _) =>
+        {
+            _fileDock.Select(0);
+            _scenes.Reveal(_scene!.SceneFile);
+        };
     }
 
     // Opening, making or closing a scene drops the open one and its history, so the file takes its edits

@@ -104,16 +104,14 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_two_buttons_at_the_right_end_6_pixels_from_the_edge_with_2_between()
+    public void Hide_panels_sits_at_the_right_end_6_pixels_from_the_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var strip = window.SceneTabs;
 
-            Assert.Equal(3111 - 6, BoxOf(strip.MenuButton, window).Right);
-            Assert.Equal(BoxOf(strip.PanelsButton, window).Right + 2, BoxOf(strip.MenuButton, window).X);
-            Assert.Equal(new Size(26, 26), strip.MenuButton.Bounds.Size);
+            Assert.Equal(3111 - 6, BoxOf(window.SceneTabs.PanelsButton, window).Right);
+            Assert.Equal(26, window.SceneTabs.PanelsButton.Bounds.Height);
         });
     }
 
@@ -636,7 +634,7 @@ public sealed class ViewportAreaTests
         {
             var strip = new SceneTabStrip(new Button(), KeyModifiers.Meta);
 
-            strip.Show(new OutlineNode(1, "Odd", "NoSuchClass", []), "odd");
+            strip.Show(new OutlineNode(1, "Odd", "NoSuchClass", []), "odd", "");
 
             Assert.Equal("Entity", Assert.IsType<EditorIcon>(strip.Icon.Content).IconName);
         });

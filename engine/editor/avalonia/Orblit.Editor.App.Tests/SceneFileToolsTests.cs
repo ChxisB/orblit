@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
@@ -334,27 +335,89 @@ public sealed class SceneFileToolsTests
         });
     }
 
-    static MenuItem TabItem(EditorWindow window, string header) =>
-        ((MenuFlyout)window.SceneTabs.MenuButton.Flyout!).Items.OfType<MenuItem>().Single(item => (string?)item.Header == header);
+    static IEnumerable<MenuItem> TabItems(EditorWindow window) => window.SceneTabs.Tab.ContextMenu!.Items.OfType<MenuItem>();
+
+    static MenuItem TabItem(EditorWindow window, string name) => TabItems(window).Single(item => AutomationProperties.GetName(item) == name);
+
+    static string? Note(MenuItem item) => item.Header is StackPanel { Children: [_, TextBlock note] } ? note.Text : null;
 
     [Fact]
-    public void The_scene_tab_menu_makes_runs_and_closes_the_scene()
+    public void A_right_click_on_the_scene_tab_names_each_item_with_its_key()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://levels/second.oscn" });
+
+            Assert.Equal(
+                [("New scene…", "⌃N"), ("Play this scene", "⌃R"), ("Close", "⌃W"), ("Show in Files", "")],
+                TabItems(window).Select(item => (AutomationProperties.GetName(item), item.InputGesture is { } key ? Parts.KeyText(key) : "")));
+            Assert.Equal("Saves your changes first", Note(TabItem(window, "Close")));
+            Assert.Equal("Finds second.oscn in the Files panel", Note(TabItem(window, "Show in Files")));
+        });
+    }
+
+    [Fact]
+    public void The_scene_tab_menu_makes_plays_and_closes_the_scene()
     {
         UiThread.Run(() =>
         {
             var scene = new FakeScene { SceneFile = "res://levels/one.oscn" };
             var window = OpenAtReferenceSize(scene);
 
-            TabItem(window, "New Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            TabItem(window, "New scene…").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.True(window.NewScene.Dialog.IsVisible);
             window.NewScene.Dialog.Close();
 
-            TabItem(window, "Run This Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            TabItem(window, "Play this scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.Equal("res://levels/one.oscn", scene.PlayedFlags[^1]);
 
-            TabItem(window, "Close Scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            TabItem(window, "Close").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.False(window.SceneTabs.Tab.IsVisible);
-            Assert.False(TabItem(window, "Close Scene").IsEnabled);
+            Assert.False(TabItem(window, "Close").IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void Command_W_closes_the_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+
+            var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.W, KeyModifiers = window.CommandKey };
+            window.RaiseEvent(press);
+
+            Assert.True(press.Handled);
+            Assert.False(window.SceneTabs.Tab.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Show_in_Files_brings_the_Files_tab_forward_and_selects_the_scene()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://levels/second.oscn" });
+            window.Scenes.FilterBox.Text = "spin";
+            window.FileDock.Select(1);
+
+            TabItem(window, "Show in Files").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            Assert.Equal(0, window.FileDock.SelectedIndex);
+            Assert.Equal("", window.Scenes.FilterBox.Text);
+            Assert.Equal("res://levels/second.oscn", ((FileNode)window.Scenes.Tree.SelectedItem!).Path);
+        });
+    }
+
+    [Fact]
+    public void Show_in_Files_is_off_and_says_why_while_the_scene_has_no_file()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+
+            Assert.False(TabItem(window, "Show in Files").IsEnabled);
+            Assert.Equal("Save the scene first. Then it has a file.", Note(TabItem(window, "Show in Files")));
         });
     }
 

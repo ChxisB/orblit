@@ -690,7 +690,7 @@ public sealed class ScenesPanelTests
             window.NewScene.NameBox.Text = "third";
 
             Assert.True(window.NewScene.Dialog.IsVisible);
-            Assert.Equal("res://levels/third.oscn", window.NewScene.PathBox.Text);
+            Assert.Equal("Saved as res://levels/third.oscn", window.NewScene.SavedLine.Text);
         });
     }
 

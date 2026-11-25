@@ -182,6 +182,23 @@ internal sealed class ScenesPanel : Grid
         ShowMenu();
     }
 
+    /// <summary>Selects a file in the tree. The search clears and the folders above the file open.</summary>
+    public void Reveal(string resourcePath)
+    {
+        for (var end = resourcePath.IndexOf('/', FileTree.Root.Length); end > 0; end = resourcePath.IndexOf('/', end + 1))
+        {
+            _opened.Add(resourcePath[..(end + 1)]);
+        }
+
+        _filter.Text = "";
+        _layout.SelectedIndex = 0;
+        Rebuild();
+        _tree.SelectedItem = Find(_tree.ItemsSource as IReadOnlyList<FileNode> ?? [], resourcePath);
+    }
+
+    static FileNode? Find(IEnumerable<FileNode> nodes, string resourcePath) =>
+        nodes.Select(node => node.Path == resourcePath ? node : Find(node.Children, resourcePath)).FirstOrDefault(found => found is not null);
+
     void Lay()
     {
         var pathRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,Auto"), Margin = new Thickness(4, 0, 7, 0) };

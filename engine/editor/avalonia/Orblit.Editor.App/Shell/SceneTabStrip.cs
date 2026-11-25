@@ -9,10 +9,9 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The strip over the viewport: one tab for the open scene, a plus, and two buttons at the right end: Hide panels
-/// and the menu. The tab is
-/// raised on a fine edge with its icon in the accent colour, like a chosen dock tab. The menu at the right end
-/// makes, runs and closes the scene.
+/// The strip over the viewport: one tab for the open scene, a plus, and Hide panels at the right end. The tab is
+/// raised on a fine edge with its icon in the accent, like a chosen dock tab. A right-click on the tab
+/// makes, plays, closes and finds the scene.
 /// </summary>
 internal sealed class SceneTabStrip : Grid
 {
@@ -31,11 +30,11 @@ internal sealed class SceneTabStrip : Grid
     readonly TextBlock _name = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", "Close the scene"));
     readonly Button _add = Parts.IconButton("Add", "Make a new scene");
-    readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene tab options");
     readonly Button _panels = new() { Height = 26, MinHeight = 0, Padding = new Thickness(8, 0), BorderThickness = new Thickness(0) };
     readonly TextBlock _panelsWord;
     readonly HoverCard _hide;
     readonly HoverCard _show;
+    readonly MenuItem _find;
 
     public SceneTabStrip(Button runScene, KeyModifiers command)
     {
@@ -58,25 +57,20 @@ internal sealed class SceneTabStrip : Grid
         };
         _add.Margin = new Thickness(4, 0, 0, 0);
         _add.VerticalAlignment = VerticalAlignment.Center;
-        var right = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 2,
-            VerticalAlignment = VerticalAlignment.Center,
-            Children = { _panels, _menu },
-        };
+        _panels.VerticalAlignment = VerticalAlignment.Center;
         Place(_tab, 0);
         Place(_add, 1);
-        Place(right, 3);
-        _menu.Flyout = new MenuFlyout
+        Place(_panels, 3);
+        _find = Parts.PressItem(ShowInFiles, ShowInFilesButton);
+        _tab.ContextMenu = new ContextMenu
         {
-            Placement = PlacementMode.BottomEdgeAlignedRight,
             Items =
             {
-                Parts.PressItem("New Scene", _add, new KeyGesture(Key.N, command)),
-                Parts.PressItem("Run This Scene", runScene, new KeyGesture(Key.R, command)),
+                Parts.PressItem("New scene…", _add, new KeyGesture(Key.N, command)),
+                Parts.PressItem("Play this scene", runScene, new KeyGesture(Key.R, command)),
+                Parts.PressItem("Close", _close, new KeyGesture(Key.W, command), "Saves your changes first"),
                 new Separator(),
-                Parts.PressItem("Close Scene", _close),
+                _find,
             },
         };
     }
@@ -91,7 +85,10 @@ internal sealed class SceneTabStrip : Grid
 
     internal Button AddButton => _add;
 
-    internal Button MenuButton => _menu;
+    /// <summary>Shows the open scene's file in the Files panel. The window does the finding.</summary>
+    internal Button ShowInFilesButton { get; } = new();
+
+    internal const string ShowInFiles = "Show in Files";
 
     internal const string HidePanels = "Hide panels";
 
@@ -106,10 +103,15 @@ internal sealed class SceneTabStrip : Grid
         (hidden ? _show : _hide).On(_panels);
     }
 
-    /// <summary>Shows the open scene as a tab with its root's icon and this label, or no tab for none.</summary>
-    public void Show(OutlineNode? root, string label)
+    /// <summary>
+    /// Shows the open scene as a tab with its root's icon and this label, or no tab for none. Show in Files is on
+    /// while the scene has a res:// <paramref name="file"/>.
+    /// </summary>
+    public void Show(OutlineNode? root, string label, string file)
     {
         _tab.IsVisible = _close.IsEnabled = root is not null;
+        ShowInFilesButton.IsEnabled = file != "";
+        _find.Header = Parts.Noted(ShowInFiles, file == "" ? "Save the scene first. Then it has a file." : $"Finds {Path.GetFileName(file)} in the Files panel");
         if (root is null)
         {
             return;

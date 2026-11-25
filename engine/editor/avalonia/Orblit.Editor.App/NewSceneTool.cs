@@ -10,36 +10,30 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App;
 
 /// <summary>
-/// The New Scene dialog. It asks what the root of the scene is and the name of its file, and shows where the
-/// file goes. Other... searches every class for the root. A name that is a scene already turns Create off and says
-/// so under the field.
+/// The New scene dialog. It asks what the scene starts with and the name of its file, and shows where the file
+/// goes. Something else… searches every class for the top thing. A name that is a scene already turns Create off
+/// and says so under the field.
 /// </summary>
 internal sealed class NewSceneTool : StackPanel
 {
     readonly (RadioButton Card, string ClassName)[] _roots;
     readonly TextBox _name = new() { PlaceholderText = "Name", Classes = { EditorTheme.Field } };
-    readonly TextBox _path = new()
-    {
-        PlaceholderText = "Path",
-        IsReadOnly = true,
-        FontFamily = EditorTheme.Mono,
-        InnerLeftContent = Parts.FieldIcon("FolderLine", EditorBrushes.TextDim),
-        Classes = { EditorTheme.Field },
-    };
+    readonly TextBlock _saved = new() { FontSize = 11, Foreground = EditorBrushes.TextDim };
     readonly TextBlock _fault = Parts.FaultLine();
     readonly ChoiceList _others = new("Search classes") { IsVisible = false, Margin = new Thickness(0, 10, 0, 0) };
     IReadOnlyCollection<string> _scenes = [];
     string _folder = FileTree.Root;
+    string _path = "";
 
     public NewSceneTool()
     {
         _roots =
         [
-            (Card(new RootCard(), "3D scene", "Root Entity3D", "Cube", EditorBrushes.Spatial), "Entity3D"),
-            (Card(new RootCard(), "2D scene", "Root Entity2D", "Square", EditorBrushes.Planar), "Entity2D"),
-            (Card(new RootCard(), "Empty", "Root Entity", "Ring", EditorBrushes.TextSoft), "Entity"),
+            (Card(new RootCard(), ("3D scene", "Entity3D"), "For a world with depth and a camera.", "Cube", EditorBrushes.Spatial), "Entity3D"),
+            (Card(new RootCard(), ("2D scene", "Entity2D"), "For flat games, menus and buttons.", "Square", EditorBrushes.Planar), "Entity2D"),
+            (Card(new RootCard(), ("Empty", "Entity"), "A plain point. Pick a kind later.", "Ring", EditorBrushes.TextSoft), "Entity"),
         ];
-        OtherCard = Card(new RootCard(), "Other...", "Any class", "Lens", EditorBrushes.TextDim);
+        OtherCard = Card(new RootCard(), ("Something else…", null), "Pick any kind as the top thing", "Lens", EditorBrushes.TextDim);
         OtherCard.IsCheckedChanged += (_, _) =>
         {
             _others.IsVisible = OtherCard.IsChecked == true;
@@ -48,16 +42,13 @@ internal sealed class NewSceneTool : StackPanel
         _others.PickedChanged += Check;
         var cards = new UniformGrid { Columns = 2, RowSpacing = 8, ColumnSpacing = 8 };
         cards.Children.AddRange([.. _roots.Select(root => root.Card), OtherCard]);
-        Children.Add(cards);
+        Children.Add(Parts.Labeled("Start with", cards));
         Children.Add(_others);
-        var name = Parts.Labeled("Name", _name, _fault);
+        var name = Parts.Labeled("Name", _name, _fault, _saved);
         name.Margin = new Thickness(0, 14, 0, 0);
         Children.Add(name);
-        var path = Parts.Labeled("Saved to", _path);
-        path.Margin = new Thickness(0, 10, 0, 0);
-        Children.Add(path);
 
-        Dialog = new Dialog("New Scene", "Pick what the scene is for. You can change its root later.", this);
+        Dialog = new Dialog("New scene", "A scene is a level, a menu or a part you reuse.", this);
         // The key that runs Create sits on a dark cap, so the orange under it stays bright.
         var key = new Border
         {
@@ -70,7 +61,7 @@ internal sealed class NewSceneTool : StackPanel
         };
         Dialog.MainButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new TextBlock { Text = "Create", VerticalAlignment = VerticalAlignment.Center }, key } };
         // Create waits for a root, so a class is there when it is pressed.
-        Dialog.MainButton.Click += (_, _) => Requested?.Invoke(_path.Text ?? "", RootClass()!);
+        Dialog.MainButton.Click += (_, _) => Requested?.Invoke(_path, RootClass()!);
         // TextChanged waits for a render, so the property is the one that fires at once.
         _name.PropertyChanged += (_, e) =>
         {
@@ -94,7 +85,8 @@ internal sealed class NewSceneTool : StackPanel
 
     internal TextBox NameBox => _name;
 
-    internal TextBox PathBox => _path;
+    /// <summary>The line under the name that says where the scene is saved.</summary>
+    internal TextBlock SavedLine => _saved;
 
     internal Button CreateButton => Dialog.MainButton;
 
@@ -104,7 +96,7 @@ internal sealed class NewSceneTool : StackPanel
     /// <summary>
     /// Opens the dialog with no name and the keys in the name box, on the 2D root in the 2D workspace and the 3D
     /// root elsewhere. The scene is saved in <paramref name="folder"/>, a res:// path that ends in a slash. A new
-    /// name must not match one of the scenes, and Other... offers the classes.
+    /// name must not match one of the scenes, and Something else… offers the classes.
     /// </summary>
     public void Open(IReadOnlyCollection<string> scenes, bool planar, IReadOnlyList<string> classes, string folder)
     {
@@ -125,22 +117,28 @@ internal sealed class NewSceneTool : StackPanel
         _fault.IsVisible = message != "";
     }
 
-    // The class of the checked card, or of the class lit under Other.... Before Open checks a card there is none.
+    // The class of the checked card, or of the class lit under Something else…. Before Open checks a card there is none.
     string? RootClass() => OtherCard.IsChecked == true ? _others.Picked?.Name : _roots.FirstOrDefault(root => root.Card.IsChecked == true).ClassName;
 
-    // The path follows the name, and Create waits for a root and for a name that is no scene yet.
+    // The path follows the name, and Create waits for a root and for a name that is no scene yet. Its card says
+    // which of those it waits for.
     void Check()
     {
         var name = _name.Text?.Trim() ?? "";
-        _path.Text = name == "" ? "" : $"{_folder}{name}.oscn";
-        var taken = _scenes.Contains(_path.Text);
+        _path = name == "" ? "" : $"{_folder}{name}.oscn";
+        _saved.Text = name == "" ? "" : $"Saved as {_path}";
+        var taken = _scenes.Contains(_path);
         _name.Classes.Set(EditorTheme.Bad, taken);
-        Say(taken ? $"{name}.oscn already exists. Pick another name." : "");
-        Dialog.MainButton.IsEnabled = name != "" && !taken && RootClass() is not null;
+        var fault = taken ? $"{name}.oscn already exists. Pick another name." : "";
+        Say(fault);
+        var why = name == "" ? "Give it a name first." : taken ? fault : RootClass() is null ? "Pick a kind in the list first." : null;
+        Dialog.MainButton.IsEnabled = why is null;
+        new HoverCard("Create", why ?? "Makes the scene and opens it.", "↵").On(Dialog.MainButton);
     }
 
-    // An icon over a bold name and a dim line, on a worded button tall enough to hold them.
-    static T Card<T>(T card, string label, string line, string icon, IBrush tint) where T : Button
+    // An icon over a name, with the engine's name beside it in dim mono, and a dim line, on a worded button tall
+    // enough to hold them.
+    static T Card<T>(T card, (string Label, string? Engine) name, string line, string icon, IBrush tint) where T : Button
     {
         var mark = new EditorIcon(icon) { Width = 20, Height = 20, HorizontalAlignment = HorizontalAlignment.Left };
         TextElement.SetForeground(mark, tint);
@@ -152,8 +150,7 @@ internal sealed class NewSceneTool : StackPanel
             Children =
             {
                 mark,
-                new TextBlock { Text = label, FontSize = 12, FontWeight = FontWeight.SemiBold },
-                new TextBlock { Text = line, FontSize = 11, Foreground = EditorBrushes.TextDim },
+                Parts.Noted(name.Label, line, name.Engine),
             },
         };
         return card;
