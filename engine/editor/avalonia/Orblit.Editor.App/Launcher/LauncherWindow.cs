@@ -88,8 +88,8 @@ internal sealed class LauncherWindow : Window
             Child = Projects(),
         };
         Grid.SetColumn(main, 1);
-        Grid.SetColumn(_panel, 2);
-        Content = new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*,Auto"), Children = { Nav, main, _panel } };
+        // The dialog lies over the whole window, so its veil covers the projects too.
+        Content = new Panel { Children = { new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog } };
         // The property changes as the text is set. The TextChanged event waits for a render.
         _search.PropertyChanged += (_, e) =>
         {
@@ -185,7 +185,8 @@ internal sealed class LauncherWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Handled || e.KeyModifiers != CommandKey)
+        // The launcher under the dialog's veil takes no keys until the dialog closes.
+        if (e.Handled || e.KeyModifiers != CommandKey || _panel.Dialog.IsVisible)
         {
             return;
         }
@@ -341,24 +342,7 @@ internal sealed class LauncherWindow : Window
             {
                 Margin = new Thickness(Half),
                 Classes = { EditorTheme.TextButton, EditorTheme.Card },
-                Content = new StackPanel
-                {
-                    Orientation = Orientation.Horizontal,
-                    Spacing = 12,
-                    Children =
-                    {
-                        new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(8), Background = EditorBrushes.AccentSoft, Child = Parts.FieldIcon(icon, EditorBrushes.Accent) },
-                        new StackPanel
-                        {
-                            VerticalAlignment = VerticalAlignment.Center,
-                            Children =
-                            {
-                                new TextBlock { Text = name, FontWeight = FontWeight.SemiBold },
-                                new TextBlock { Text = line, FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap },
-                            },
-                        },
-                    },
-                },
+                Content = NewProjectPanel.TemplateFace(icon, name, line),
             };
             button.Click += (_, _) => _panel.Start(template);
             TemplateButtons.Add(button);

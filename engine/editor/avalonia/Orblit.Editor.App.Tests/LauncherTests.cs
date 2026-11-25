@@ -9,6 +9,7 @@ using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Tests;
 
@@ -189,7 +190,7 @@ public sealed class LauncherTests : IDisposable
             Press(launcher, Key.F, launcher.CommandKey);
             Assert.True(launcher.SearchBox.IsFocused);
             Press(launcher, Key.N, launcher.CommandKey);
-            Assert.True(launcher.NewPanel.IsVisible);
+            Assert.True(launcher.NewPanel.Dialog.IsVisible);
         });
     }
 
@@ -264,12 +265,12 @@ public sealed class LauncherTests : IDisposable
             Click(launcher.TemplateButtons[1]);
             panel.NameBox.Text = "Space Ranger";
             panel.ScriptChoice.SelectedIndex = 1;
-            Assert.True(panel.IsVisible);
-            Assert.Equal(1, panel.TemplateChoice.SelectedIndex);
+            Assert.True(panel.Dialog.IsVisible);
+            Assert.True(panel.TemplateCards[1].IsChecked);
             panel.FolderBox.Text = folder;
             Click(panel.CreateButton);
 
-            Assert.False(panel.IsVisible);
+            Assert.False(panel.Dialog.IsVisible);
             Assert.Equal([folder], _opened);
             Assert.Equal([folder], List.Folders());
             Assert.Equal([folder], _gitStarted);
@@ -279,7 +280,7 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
-    public void Git_starts_only_when_the_box_is_ticked()
+    public void Git_starts_only_when_the_switch_is_on()
     {
         UiThread.Run(() =>
         {
@@ -312,7 +313,7 @@ public sealed class LauncherTests : IDisposable
             panel.FolderBox.Text = folder;
             Click(panel.CreateButton);
 
-            Assert.True(panel.IsVisible);
+            Assert.True(panel.Dialog.IsVisible);
             Assert.True(panel.Fault.IsVisible);
             Assert.Equal($"{folder} is not empty. Choose a new folder.", panel.Fault.Text);
             Assert.Equal(["keep.txt"], Directory.GetFiles(folder).Select(Path.GetFileName));
@@ -345,6 +346,93 @@ public sealed class LauncherTests : IDisposable
             panel.NameBox.Text = "Space Ranger";
 
             Assert.Equal("~/Work/kept", panel.FolderBox.Text);
+        });
+    }
+
+    [Fact]
+    public void New_project_says_what_it_makes_and_what_each_choice_gives()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var panel = launcher.NewPanel;
+
+            Press(launcher, Key.N, launcher.CommandKey);
+
+            Assert.Equal("New project", panel.Dialog.Heading.Text);
+            Assert.Equal("Makes a folder with everything a game needs.", panel.Dialog.Why.Text);
+            var texts = Texts(panel.Dialog.Card);
+            Assert.Contains("Shown in your project list.", texts);
+            Assert.Contains("A new, empty folder. Orblit makes it for you.", texts);
+            Assert.Equal(["Change…"], Texts(panel.ChangeButton));
+            Assert.Contains("Start with", texts);
+            Assert.Equal(
+                [["3D game", "An empty 3D scene with a camera view."], ["2D game", "An empty 2D scene. Also good for menus."], ["Empty project", "No scene. Add your own later."]],
+                panel.TemplateCards.Select(Texts));
+            Assert.True(panel.TemplateCards[0].IsChecked);
+            Assert.Contains("Graph joins steps with wires, no code needed. C# is written code. You can add the other later.", texts);
+            Assert.Contains("Keep a history with Git", texts);
+            Assert.Contains($"Lets you go back to any saved point. Needs Git on this {(OperatingSystem.IsMacOS() ? "Mac" : "computer")}.", texts);
+            Assert.True(panel.Git.IsChecked);
+            Assert.Equal(["Create and open", "↵"], Texts(panel.CreateButton));
+            var create = (HoverCard)ToolTip.GetTip(panel.CreateButton)!;
+            Assert.Equal(("Create and open", "↵"), (create.Title, create.Key));
+            Assert.Equal("Makes the folder and its files, then opens the project.", create.Line);
+        });
+    }
+
+    [Fact]
+    public void An_empty_name_turns_Create_off_and_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var panel = launcher.NewPanel;
+            Click(launcher.NewButton);
+            var create = (HoverCard)ToolTip.GetTip(panel.CreateButton)!;
+
+            panel.NameBox.Text = " ";
+
+            Assert.Equal("My game", panel.NameBox.PlaceholderText);
+            Assert.False(panel.CreateButton.IsEnabled);
+            Assert.Contains(EditorTheme.Bad, panel.NameBox.Classes);
+            Assert.True(panel.NameFault.IsVisible);
+            Assert.Equal("Give the project a name.", panel.NameFault.Text);
+            Assert.Equal("Give the project a name first.", create.Line);
+            Press(panel.NameBox, Key.Enter);
+            Assert.Empty(_opened);
+
+            panel.NameBox.Text = "Crate";
+
+            Assert.True(panel.CreateButton.IsEnabled);
+            Assert.DoesNotContain(EditorTheme.Bad, panel.NameBox.Classes);
+            Assert.False(panel.NameFault.IsVisible);
+            Assert.Equal("Makes the folder and its files, then opens the project.", create.Line);
+        });
+    }
+
+    [Fact]
+    public void Enter_creates_Escape_leaves_and_the_launcher_keys_wait_under_the_dialog()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var panel = launcher.NewPanel;
+            var folder = Path.Combine(_root, "entered");
+            Click(launcher.NewButton);
+            panel.FolderBox.Text = folder;
+
+            Press(launcher, Key.F, launcher.CommandKey);
+            Assert.False(launcher.SearchBox.IsFocused);
+            Press(panel.NameBox, Key.Escape);
+            Assert.False(panel.Dialog.IsVisible);
+            Assert.Empty(_opened);
+
+            Click(launcher.NewButton);
+            Press(panel.NameBox, Key.Enter);
+
+            Assert.False(panel.Dialog.IsVisible);
+            Assert.Equal([folder], _opened);
         });
     }
 
