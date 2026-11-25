@@ -28,8 +28,8 @@ internal sealed class SceneTabStrip : Grid
     };
     readonly ContentControl _icon = new();
     readonly TextBlock _name = new() { VerticalAlignment = VerticalAlignment.Center };
-    readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", "Close the scene"));
-    readonly Button _add = Parts.IconButton("Add", "Make a new scene");
+    readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", ""));
+    readonly Button _add = Parts.IconButton("Add", "");
     readonly Button _panels = new() { Height = 26, MinHeight = 0, Padding = new Thickness(8, 0), BorderThickness = new Thickness(0) };
     readonly TextBlock _panelsWord;
     readonly HoverCard _hide;
@@ -44,6 +44,10 @@ internal sealed class SceneTabStrip : Grid
         TextElement.SetForeground(_close, EditorBrushes.TextDim);
         var key = Parts.KeyText(new KeyGesture(Key.OemPipe, command));
         _hide = new HoverCard(HidePanels, "The view fills the window. Panels wait one key away.", key);
+        var newKey = new KeyGesture(Key.N, command);
+        var closeKey = new KeyGesture(Key.W, command);
+        new HoverCard("New scene…", "Makes an empty scene in a new tab.", Parts.KeyText(newKey)).On(_add);
+        new HoverCard("Close", "Saves your changes first, then closes the scene.", Parts.KeyText(closeKey)).On(_close);
         _show = new HoverCard(ShowPanels, "Brings the panels back as they were.", key);
         var keyed = Parts.Keyed(HidePanels, key);
         _panelsWord = (TextBlock)keyed.Children[0];
@@ -66,9 +70,9 @@ internal sealed class SceneTabStrip : Grid
         {
             Items =
             {
-                Parts.PressItem("New scene…", _add, new KeyGesture(Key.N, command)),
+                Parts.PressItem("New scene…", _add, newKey),
                 Parts.PressItem("Play this scene", runScene, new KeyGesture(Key.R, command)),
-                Parts.PressItem("Close", _close, new KeyGesture(Key.W, command), "Saves your changes first"),
+                Parts.PressItem("Close", _close, closeKey, "Saves your changes first"),
                 new Separator(),
                 _find,
             },

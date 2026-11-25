@@ -250,8 +250,8 @@ public sealed class ScriptWorkspaceTests
             window.UpdateLayout();
 
             Assert.False(window.Center.Stage.IsVisible);
-            Assert.Equal(["Scene dock", "Files dock"], window.LeftSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
-            Assert.Equal(["Inspector dock"], window.RightSide.RailButtons.Select(button => ToolTip.GetTip(button) as string));
+            Assert.Equal(["Scene", "Files"], window.LeftSide.RailButtons.Select(button => Assert.IsType<HoverCard>(ToolTip.GetTip(button)).Title));
+            Assert.Equal(["Inspector"], window.RightSide.RailButtons.Select(button => Assert.IsType<HoverCard>(ToolTip.GetTip(button)).Title));
             Assert.False(window.SceneDock.IsEffectivelyVisible);
             Assert.Equal(DockSide.RailWidth, window.LeftSide.Rail.Bounds.Width);
 

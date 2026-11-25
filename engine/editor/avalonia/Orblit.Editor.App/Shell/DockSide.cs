@@ -70,7 +70,7 @@ internal sealed class DockSide : Panel
 
     Button RailButton(DockTabs dock)
     {
-        var button = Parts.IconButton(dock.Icon, $"{dock.Title} dock");
+        var button = new HoverCard(dock.Title, "Folded to make room. Click to open this side.").On(Parts.IconButton(dock.Icon, ""));
         button.Click += (_, _) => Fold(false);
         return button;
     }

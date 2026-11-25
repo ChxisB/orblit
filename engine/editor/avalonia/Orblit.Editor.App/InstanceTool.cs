@@ -40,8 +40,8 @@ internal sealed class InstanceTool
     /// <summary>Raised with the reason when the scene refused the instance.</summary>
     public event Action<string>? Failed;
 
-    /// <summary>The link of the Scene dock. It opens the dialog.</summary>
-    internal Button OpenButton { get; } = Parts.IconButton("Instance", "Put a scene inside the picked thing");
+    /// <summary>The link of the Scene dock. It opens the dialog. The dock gives it a card with its key.</summary>
+    internal Button OpenButton { get; } = Parts.IconButton("Instance", "");
 
     internal Dialog Dialog { get; }
 

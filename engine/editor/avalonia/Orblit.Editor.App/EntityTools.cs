@@ -82,8 +82,8 @@ internal sealed class EntityTools
     /// <summary>Raised with the reason when the scene refused a change.</summary>
     public event Action<string>? Failed;
 
-    /// <summary>The plus of the Scene dock. It opens the Add a thing dialog.</summary>
-    internal Button AddButton { get; } = Parts.IconButton("Add", "Add an entity");
+    /// <summary>The plus of the Scene dock. It opens the Add a thing dialog. The dock gives it a card with its key.</summary>
+    internal Button AddButton { get; } = Parts.IconButton("Add", "");
 
     /// <summary>Opens the Add a thing dialog to put the new entity in the selected one's place, over it.</summary>
     internal Button NewParentButton { get; } = new();

@@ -71,7 +71,7 @@ internal sealed class DockTabs : Border
     /// <summary>Raised when the user asks for every dock back in its first slot.</summary>
     public event Action? ResetRequested;
 
-    internal Button MenuButton { get; } = Parts.IconButton("GuiTabMenuHl", "Dock options");
+    internal Button MenuButton { get; } = new HoverCard("Panel options", "Move this panel, float it, pick its tabs or put every panel back.").On(Parts.IconButton("GuiTabMenuHl", ""));
 
     /// <summary>The title of the first tab, which names the dock.</summary>
     internal string Title { get; }

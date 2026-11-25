@@ -61,7 +61,9 @@ internal sealed class OutlineRow : Grid
         Children.Add(label);
         if (OutlineNode.IsPlaced(entity.ClassName))
         {
-            var eye = Parts.IconButton(entity.Hidden ? "GuiVisibilityHidden" : "GuiVisibilityVisible", "Toggle visibility");
+            var eye = Parts.IconButton(entity.Hidden ? "GuiVisibilityHidden" : "GuiVisibilityVisible", "");
+            var says = entity.Hidden ? "Shows it again, in the view and the game." : "Hides it in the view and the game. It stays in the scene.";
+            new HoverCard(entity.Hidden ? "Show" : "Hide", says).On(eye);
             eye.Click += (_, _) => eyeClicked(entity);
             eye.Padding = new Thickness(EyePadding);
             eye.BorderThickness = new Thickness(0);

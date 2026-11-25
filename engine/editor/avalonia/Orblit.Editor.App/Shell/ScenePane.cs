@@ -38,7 +38,7 @@ internal sealed class ScenePane : Grid
         VerticalAlignment = VerticalAlignment.Center,
         InnerRightContent = Parts.SearchIcon(),
     };
-    readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene options");
+    readonly Button _menu = new HoverCard("Scene options", "Open or close every branch, and pick what the list shows.").On(Parts.IconButton("GuiTabMenuHl", ""));
     readonly Dictionary<nint, OutlineRow> _rows = [];
     readonly TreeGuides _guides;
     readonly ThingItem[] _thingMenu;
@@ -59,10 +59,16 @@ internal sealed class ScenePane : Grid
         _undoKey = Parts.KeyText(new KeyGesture(Key.Z, command));
         tools.RenameButton.Click += (_, _) => Rename(tools);
         _outline.Margin = new Thickness(0, TreeTop, 0, 0);
+        var addKey = new KeyGesture(Key.A, command);
+        var addSceneKey = new KeyGesture(Key.A, command | KeyModifiers.Shift);
+        var add = new HoverCard("Add a thing…", "Puts a camera, light, shape or anything else in the scene.", Parts.KeyText(addKey));
+        add.SaysWhyOff(add.On(tools.AddButton), "Open a scene first.");
+        var addScene = new HoverCard("Add a scene inside…", "Reuse a scene you already made.", Parts.KeyText(addSceneKey));
+        addScene.SaysWhyOff(addScene.On(instance.OpenButton), "Open a scene first.");
         _thingMenu =
         [
-            new(tools.AddButton, new KeyGesture(Key.A, command)),
-            new(instance.OpenButton, new KeyGesture(Key.A, command | KeyModifiers.Shift)),
+            new(tools.AddButton, addKey),
+            new(instance.OpenButton, addSceneKey),
             new(tools.DuplicateButton, new KeyGesture(Key.D, command)),
             new(tools.RenameButton, new KeyGesture(Key.F2)),
             new(move.UpButton, new KeyGesture(Key.Up, command)),

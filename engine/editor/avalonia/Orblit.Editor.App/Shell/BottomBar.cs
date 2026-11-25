@@ -62,7 +62,7 @@ internal sealed class BottomBar : Grid
         Content = new TextBlock { Text = Version },
     };
     // The pin keeps the game run from opening a panel on its own. FixedToggle never flips itself, so a click does it here.
-    readonly FixedToggle _pin = new("Pin", "Pin the bottom panel", false) { Margin = new Thickness(2, 0, 0, 0) };
+    readonly FixedToggle _pin = new HoverCard("Pin", "Keeps the bottom panel as it is when a game starts.").On(new FixedToggle("Pin", "", false) { Margin = new Thickness(2, 0, 0, 0) });
     int _open = -1;
     int _errors;
 

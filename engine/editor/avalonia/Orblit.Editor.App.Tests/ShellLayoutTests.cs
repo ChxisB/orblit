@@ -124,6 +124,27 @@ public sealed class ShellLayoutTests
         });
     }
 
+    // An icon says nothing to someone new, so each one the window shows must open a card on hover.
+    [Fact]
+    public void Every_icon_button_in_every_workspace_has_a_hover_card()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var bare = new List<string>();
+
+            foreach (var tab in window.Bar.Tabs)
+            {
+                ClickOn(tab, window);
+                bare.AddRange(window.GetVisualDescendants().OfType<Button>()
+                    .Where(button => button.IsEffectivelyVisible && button.Content is EditorIcon && ToolTip.GetTip(button) is not HoverCard)
+                    .Select(button => $"{tab.Label}: {ToolTip.GetTip(button) ?? "no tip"} in {button.Parent?.GetType().Name}"));
+            }
+
+            Assert.Empty(bare.Distinct());
+        });
+    }
+
     [Fact]
     public void The_3D_workspace_is_built_so_a_click_says_nothing()
     {
@@ -384,7 +405,7 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var menu = window.SceneDock.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) is "Dock options");
+            var menu = window.SceneDock.MenuButton;
 
             Assert.Equal(PlacementMode.BottomEdgeAlignedRight, Assert.IsType<MenuFlyout>(menu.Flyout).Placement);
         });
