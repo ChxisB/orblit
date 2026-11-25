@@ -63,13 +63,16 @@ public sealed class DapLinkTests
     public void A_request_to_an_adapter_that_has_gone_closes_the_link()
     {
         // A pipe nobody writes to, so only the failed request can close the link.
-        using var silent = new AnonymousPipeServerStream(PipeDirection.Out);
-        using var from = new AnonymousPipeClientStream(PipeDirection.In, silent.ClientSafePipeHandle);
-        var link = new DapLink(new BlockedWrite(), from);
+        var silent = new AnonymousPipeServerStream(PipeDirection.Out);
+        var link = new DapLink(new BlockedWrite(), new AnonymousPipeClientStream(PipeDirection.In, silent.ClientSafePipeHandle));
 
         link.Request("next");
 
         Assert.True(link.Closed);
+
+        // Shutting the write end lets the blocked reader see the end of the stream. Disposing the read end first
+        // waits on that read, and the test never ends.
+        silent.Dispose();
     }
 
     sealed class BlockedWrite : MemoryStream
