@@ -156,12 +156,12 @@ public sealed class SelectionFlagsTests
             Assert.False(scene.KeepChildren);
             Assert.False(window.Toolbar.KeepChildrenButton.IsChecked);
 
-            ClickOn(window.Toolbar.KeepChildrenButton, window);
+            Click(window.Toolbar.KeepChildrenButton);
             Assert.True(scene.KeepChildren);
             Assert.True(window.Toolbar.KeepChildrenButton.IsChecked);
             Assert.DoesNotContain("not built", window.Status);
 
-            ClickOn(window.Toolbar.KeepChildrenButton, window);
+            Click(window.Toolbar.KeepChildrenButton);
             Assert.False(scene.KeepChildren);
         });
     }
@@ -175,7 +175,7 @@ public sealed class SelectionFlagsTests
             window.Show();
             window.UpdateLayout();
 
-            ClickOn(window.Toolbar.KeepChildrenButton, window);
+            Click(window.Toolbar.KeepChildrenButton);
             var scene = new FakeScene();
             window.Load(scene);
 

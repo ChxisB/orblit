@@ -525,7 +525,7 @@ public sealed class MoveGizmoTests
             Assert.Contains(FakeScene.Lamp.Handle, scene.HandlesAsked);
 
             ClickOn(window.Toolbar.SelectButton, window);
-            ClickOn(window.Toolbar.TransformButton, window);
+            Click(window.Toolbar.TransformButton);
             scene.HandlesAsked.Clear();
             viewport.Tick();
             Assert.Contains(FakeScene.Lamp.Handle, scene.HandlesAsked);

@@ -15,8 +15,9 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class PlanarToolsTests
 {
-    static FixedToggle ToolOf(EditorWindow window, string tip) =>
-        window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().Single(tool => (string?)ToolTip.GetTip(tool) == tip);
+    // A tool is found by the plain name its card shows, as a person reads it.
+    static FixedToggle ToolOf(EditorWindow window, string name) =>
+        window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().Single(tool => ToolTip.GetTip(tool) is HoverCard card && card.Title == name);
 
     static double ZeroAt(Ruler ruler) => ruler.Marks().Single(mark => mark.Label == "0").At;
 
@@ -92,7 +93,7 @@ public sealed class PlanarToolsTests
             window.MouseUp(away + new Point(10, 0), MouseButton.Left);
 
             Assert.True(window.Center.Planar.MoveButton.IsChecked);
-            Assert.False(ToolOf(window, "Select mode").IsChecked);
+            Assert.False(ToolOf(window, "Pick").IsChecked);
             Assert.Equal(FakeScene.Lamp.Handle, Assert.Single(scene.PlanarMoved).Entity);
         });
     }
@@ -119,7 +120,7 @@ public sealed class PlanarToolsTests
         UiThread.Run(() =>
         {
             var (window, _, _) = OpenIn2D();
-            var locks = ToolOf(window, "Lock the selection");
+            var locks = ToolOf(window, "Lock");
             Assert.True(locks.IsEnabled);
             Assert.False(locks.IsChecked);
 
@@ -138,8 +139,8 @@ public sealed class PlanarToolsTests
     }
 
     [Theory]
-    [InlineData("Rotate mode", "Rotate", "Rotated Lamp. Save keeps the change.")]
-    [InlineData("Scale mode", "Scale", "Scaled Lamp. Save keeps the change.")]
+    [InlineData("Turn", "Rotate", "Rotated Lamp. Save keeps the change.")]
+    [InlineData("Resize", "Scale", "Scaled Lamp. Save keeps the change.")]
     public void Rotate_and_Scale_modes_take_a_drag_anywhere(string tip, string verb, string status)
     {
         UiThread.Run(() =>
@@ -152,7 +153,7 @@ public sealed class PlanarToolsTests
             Assert.Equal(verb, Assert.Single(scene.PlanarDrags).Verb);
             Assert.Equal(FakeScene.Lamp.Handle, scene.PlanarDrags[0].Entity);
             Assert.Equal(status, window.Status);
-            Assert.False(ToolOf(window, "Select mode").IsChecked);
+            Assert.False(ToolOf(window, "Pick").IsChecked);
         });
     }
 
@@ -205,7 +206,7 @@ public sealed class PlanarToolsTests
         UiThread.Run(() =>
         {
             var (window, scene, viewport) = OpenIn2D();
-            var snap = ToolOf(window, "Snap to the grid. Hold Ctrl or Command to flip it for one drag.");
+            var snap = ToolOf(window, "Snap");
             if (lit)
             {
                 ClickOn(snap, window);
@@ -260,8 +261,90 @@ public sealed class PlanarToolsTests
         });
     }
 
+    static KeyEventArgs Press(EditorWindow window, Key key, KeyModifiers modifiers = KeyModifiers.None)
+    {
+        var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers };
+        window.RaiseEvent(press);
+        return press;
+    }
+
     [Fact]
-    public void A_scene_with_no_2D_entity_gets_the_note_and_Switch_to_3D_leaves_the_2D_view()
+    public void Every_2D_tool_shows_its_word_and_its_key()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = OpenIn2D();
+
+            // Headless runs take Control as the command key.
+            Assert.Equal(
+                ["Pick Q", "Move W", "Turn E", "Resize R", "Pan", "Snap Y", "Grid", "Lock ⌃L", "Group ⌃G"],
+                window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().Select(tool => string.Join(" ", Texts(tool))));
+        });
+    }
+
+    [Fact]
+    public void In_the_2D_view_Q_W_E_and_R_pick_its_tools_and_the_command_key_zooms()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = OpenIn2D();
+            var planar = window.Center.Planar;
+
+            Assert.True(Press(window, Key.R).Handled);
+            Assert.Equal(PlanarTool.Scale, planar.Tool);
+            Assert.False(window.Toolbar.ScaleButton.IsChecked);
+            Press(window, Key.E);
+            Assert.Equal(PlanarTool.Rotate, planar.Tool);
+            Press(window, Key.W);
+            Assert.Equal(PlanarTool.Move, planar.Tool);
+            Press(window, Key.Q);
+            Assert.Equal(PlanarTool.Select, planar.Tool);
+
+            Assert.True(Press(window, Key.OemPlus, window.CommandKey).Handled);
+            Assert.Equal("133%", ZoomShown(window));
+            Press(window, Key.D0, window.CommandKey);
+            Assert.Equal("100%", ZoomShown(window));
+            Press(window, Key.OemMinus, window.CommandKey);
+            Assert.Equal("75%", ZoomShown(window));
+        });
+    }
+
+    [Fact]
+    public void The_view_menu_notes_each_item_and_actual_size_shows_its_key()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = OpenIn2D();
+            var items = window.Center.Planar.ViewMenu.Items;
+
+            Assert.Equal(
+                ["Rulers The pixel rulers at the edges", "Grid Lines to line things up with", "-", "Center the view Puts the point 0, 0 in the middle", "Actual size One pixel on screen is one in the game"],
+                items.Select(item => item is MenuItem menu ? string.Join(" ", Texts(menu)) : "-"));
+            Assert.Equal("⌃0", Parts.KeyText(((MenuItem)items[^1]!).InputGesture!));
+        });
+    }
+
+    [Fact]
+    public void The_note_says_why_the_view_is_empty_and_offers_three_ways_on_with_their_keys()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, _, _) = OpenIn2D(scene => scene.Pivots.Clear());
+            var planar = window.Center.Planar;
+
+            Assert.Equal("This view shows 2D scenes and menus. Field has no 2D things yet.", planar.NoteLine.Text);
+            Assert.Equal(
+                ["Go to 3D ⌃2", "Open a 2D scene… ⌃⇧O", "Add a 2D thing ⌃A"],
+                new[] { planar.SwitchButton, planar.OpenButton, planar.AddButton }.Select(button => string.Join(" ", Texts(button))));
+
+            ClickOn(planar.AddButton, window);
+
+            Assert.True(window.Tools.AddDialog.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_scene_with_no_2D_entity_gets_the_note_and_Go_to_3D_leaves_the_2D_view()
     {
         UiThread.Run(() =>
         {

@@ -197,7 +197,7 @@ internal sealed class EditorWindow : Window
                 }
             };
         }
-        _toolbar = new ViewportToolbar(_frame);
+        _toolbar = new ViewportToolbar(_frame, CommandKey);
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
@@ -217,6 +217,7 @@ internal sealed class EditorWindow : Window
         _bottomBar.VersionCopyRequested += () => Copy(BottomBar.Version, BottomBar.Version);
         _center.Planar.SwitchButton.Click += (_, _) => _titleBar.Choose(TitleBar.Spatial);
         _center.Planar.OpenButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
+        _center.Planar.AddButton.Click += (_, _) => _tools.AddButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
         _center.AddBareWorkspace(TitleBar.Script, _script);
         _center.AddBareWorkspace(TitleBar.Graph, _graph);
         _center.AddBareWorkspace(TitleBar.Game, _game);
@@ -447,7 +448,7 @@ internal sealed class EditorWindow : Window
         }
 
         _ruler.Add(point);
-        Say(_ruler.Length is { } length ? $"Measured {RulerPoints.Label(length)}." : "Click a second point to measure to.");
+        Say(_ruler.Length is { } length ? $"Measured {RulerPoints.Label(length)}." : "Click a second point. Esc stops measuring.");
     }
 
     // One entity or none under the cursor needs no list, so the click picks as usual.
@@ -749,12 +750,23 @@ internal sealed class EditorWindow : Window
         (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
+        (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.SelectButton,
+        (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.MoveButton,
+        (Key.E, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.RotateButton,
+        (Key.R, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.ScaleButton,
+        (Key.OemMinus, var modifiers) when modifiers == CommandKey && _center.Planar.IsVisible => _center.Planar.ZoomOutButton,
+        (Key.D0, var modifiers) when modifiers == CommandKey && _center.Planar.IsVisible => _center.Planar.ZoomButton,
+        (Key.OemPlus, var modifiers) when modifiers == CommandKey && _center.Planar.IsVisible => _center.Planar.ZoomInButton,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SelectButton,
         (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.MoveButton,
         (Key.E, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.RotateButton,
         (Key.R, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.ScaleButton,
         (Key.R, KeyModifiers.Alt) when e.Source is not (TextBox or ComboBox) => _toolbar.ResetAllButton,
         (Key.T, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.LocalButton,
+        (Key.Y, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SnapButton,
+        (Key.L, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _toolbar.LockButton,
+        (Key.G, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _toolbar.GroupButton,
+        (Key.Escape, KeyModifiers.None) when _toolbar.Measures => _toolbar.RulerButton,
         _ => null,
     };
 
@@ -913,7 +925,7 @@ internal sealed class EditorWindow : Window
         _center.Overlay.ProjectionChanged += orthogonal =>
         {
             _scene?.SetOrthogonal(orthogonal);
-            Say(orthogonal ? "Orthogonal projection." : "Perspective projection.");
+            Say(orthogonal ? "Flat projection." : "Perspective projection.");
         };
     }
 

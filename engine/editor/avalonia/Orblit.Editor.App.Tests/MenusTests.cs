@@ -18,11 +18,13 @@ public sealed class MenusTests
 
     static void Press(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
-    // A heading is a text block, a described item a stack with its title first, and a separator a dash.
+    // A heading is a text block, a described item a stack with its title first, and a separator a dash. An item
+    // that also gives the engine's name carries its title as its automation name.
     static string HeaderText(object? item) => item switch
     {
         MenuItem { Header: string text } => text,
         MenuItem { Header: TextBlock block } => block.Text!,
+        MenuItem described when AutomationProperties.GetName(described) is { Length: > 0 } name => name,
         MenuItem { Header: Panel panel } => ((TextBlock)panel.Children[0]).Text!,
         _ => "-",
     };
@@ -43,10 +45,10 @@ public sealed class MenusTests
             var toolbar = OpenOnLamp().Window.Toolbar;
             var resetAll = (MenuItem)toolbar.ResetMenu.Items[^1]!;
 
-            Assert.Equal(["RESET LAMP", "Reset Position", "Reset Rotation", "Reset Scale", "-", "Reset All"], toolbar.ResetMenu.Items.Select(HeaderText));
+            Assert.Equal(["PUT LAMP BACK", "Position to 0, 0, 0", "Turn to 0°", "Size to 1", "-", "Put all back"], toolbar.ResetMenu.Items.Select(HeaderText));
             Assert.Equal("⌥R", Parts.KeyText(resetAll.InputGesture!));
             Assert.Equal(
-                ["ADD COLLISION TO THE MESH", "Create Convex Collision", "Create Trimesh Collision"],
+                ["GIVE LAMP A COLLISION SHAPE", "Simple fit", "Tight fit"],
                 ((MenuFlyout)toolbar.CollisionButton.Flyout!).Items.Select(HeaderText));
         });
     }
@@ -200,9 +202,9 @@ public sealed class MenusTests
             Assert.Equal([true, false], [overlay.PerspectiveItem.IsChecked, overlay.OrthogonalItem.IsChecked]);
 
             Press(overlay.OrthogonalItem);
-            Assert.Equal("Orthogonal", overlay.ProjectionLabel);
+            Assert.Equal("Flat", overlay.ProjectionLabel);
             Assert.Equal([false, true], [overlay.PerspectiveItem.IsChecked, overlay.OrthogonalItem.IsChecked]);
-            Assert.Equal("Orthogonal projection.", window.Status);
+            Assert.Equal("Flat projection.", window.Status);
 
             Press(overlay.PerspectiveItem);
             Assert.Equal("Perspective", overlay.ProjectionLabel);

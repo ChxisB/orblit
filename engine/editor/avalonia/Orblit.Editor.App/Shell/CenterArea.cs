@@ -1,6 +1,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
+using Avalonia.Reactive;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -32,7 +33,9 @@ internal sealed class CenterArea : Grid
         Stage = new Border { Classes = { EditorTheme.Island }, Child = _stage };
         BottomBar = new Border { Classes = { EditorTheme.Island }, Child = bottom };
         Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
-        Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton, toolbar.SnapButton) { IsVisible = false };
+        Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton, toolbar.SnapButton, command) { IsVisible = false };
+        // The tools wrap before they would run under the view pill at the top right.
+        Overlay.View.GetObservable(BoundsProperty).Subscribe(new AnonymousObserver<Rect>(box => toolbar.Tools.Margin = new Thickness(0, 0, box.Width + 20, 0)));
         Output = new OutputPanel();
         Debugger = new DebuggerNote(command);
         NoScene = new NoScene(command) { IsVisible = false };

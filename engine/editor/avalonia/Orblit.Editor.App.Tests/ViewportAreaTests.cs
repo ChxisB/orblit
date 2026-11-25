@@ -40,7 +40,13 @@ public sealed class ViewportAreaTests
 
     static Control[] Items(Border pill) => [.. ((StackPanel)pill.Child!).Children];
 
-    static FixedToggle[] Tools(EditorWindow window) => [.. Items(window.Toolbar.Tools).OfType<FixedToggle>()];
+    static Border[] Pills(EditorWindow window) => [.. window.Toolbar.Tools.Children.Cast<Border>()];
+
+    static FixedToggle[] Tools(EditorWindow window) => [.. Pills(window).SelectMany(Items).OfType<FixedToggle>()];
+
+    static bool[] Lit(EditorWindow window) => [.. Tools(window).Take(5).Select(mode => mode.IsChecked == true)];
+
+    static MenuItem[] MoreItems(EditorWindow window) => [.. ((MenuFlyout)window.Toolbar.MoreButton.Flyout!).Items.Cast<MenuItem>()];
 
     static Color Backing(ToggleButton button) =>
         ((ISolidColorBrush)button.GetVisualDescendants().OfType<ContentPresenter>().Single(presenter => presenter.Name == "PART_ContentPresenter").Background!).Color;
@@ -142,26 +148,27 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_tools_float_in_a_pill_10_pixels_in_from_the_top_left_of_the_viewport()
+    public void The_tools_float_in_two_pills_10_pixels_in_from_the_top_left_of_the_viewport()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var pill = window.Toolbar.Tools;
-            var box = BoxOf(pill, window);
+            var (modes, options) = (Pills(window)[0], Pills(window)[1]);
+            var first = BoxOf(modes, window);
             var floating = EditorColors.Floating;
 
-            Assert.Equal([303.0, 96.0, 34.0], [box.X, box.Y, box.Height]);
-            Assert.Equal(
+            Assert.Equal([303.0, 96.0, 34.0], [first.X, first.Y, first.Height]);
+            Assert.Equal([first.Right + 10, 96.0, 34.0], [BoxOf(options, window).X, BoxOf(options, window).Y, BoxOf(options, window).Height]);
+            Assert.All(Pills(window), pill => Assert.Equal(
                 (EditorBrushes.Floating, EditorBrushes.LineStrong, EditorTheme.IslandCorners),
-                (pill.Background, pill.BorderBrush, pill.CornerRadius));
+                (pill.Background, pill.BorderBrush, pill.CornerRadius)));
             // The island fill at 90 percent.
             Assert.Equal((0xE6, EditorColors.Panel), (floating.A, Color.FromRgb(floating.R, floating.G, floating.B)));
         });
     }
 
     [Fact]
-    public void The_tool_pill_holds_the_modes_options_snap_flags_and_two_tools_to_come_between_rules()
+    public void The_modes_pill_ends_with_more_and_the_options_pill_holds_snap_flags_and_measure_between_rules()
     {
         UiThread.Run(() =>
         {
@@ -174,44 +181,73 @@ public sealed class ViewportAreaTests
                 _ => "|",
             };
 
-            Assert.Equal(
-                ["ToolTransform", "ToolMove", "ToolRotate", "ToolScale", "ToolSelect", "|", "Object", "Trackball", "|", "Snap", "options", "|", "Lock", "Group", "Pin", "|", "ListSelect", "Ruler"],
-                Items(toolbar.Tools).Select(Kind));
-            Assert.All(Tools(window), tool => Assert.Equal(new Size(26, 26), tool.Bounds.Size));
+            Assert.Equal(["ToolSelect", "ToolMove", "ToolRotate", "ToolScale", "GuiTabMenuHl"], Items(Pills(window)[0]).Select(Kind));
+            Assert.Equal(["Object", "|", "Snap", "options", "|", "Lock", "Group", "|", "Ruler"], Items(Pills(window)[1]).Select(Kind));
+            Assert.All(Tools(window), tool => Assert.Equal(26, tool.Bounds.Height));
             Assert.All(Tools(window), tool => Assert.Equal(100, BoxOf(tool, window).Y));
-            Assert.Equal([307, 335, 363, 391, 419], Tools(window).Take(5).Select(tool => BoxOf(tool, window).X));
-            Assert.Equal(BoxOf(toolbar.SelectButton, window).Right + 11, BoxOf(toolbar.LocalButton, window).X);
             Assert.All(new[] { toolbar.LocalButton, toolbar.TrackballButton, toolbar.KeepChildrenButton }, option => Assert.False(option.IsChecked));
         });
     }
 
     [Fact]
-    public void A_lit_tool_has_the_soft_accent_behind_an_accent_icon()
+    public void Every_tool_shows_its_word_and_its_key()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal((EditorColors.AccentSoft, EditorColors.Accent), (Backing(window.Toolbar.TransformButton), IconColor(window.Toolbar.TransformButton)));
-            Assert.Equal((Colors.Transparent, EditorColors.Text), (Backing(window.Toolbar.MoveButton), IconColor(window.Toolbar.MoveButton)));
+            // Headless runs take Control as the command key.
+            Assert.Equal(
+                ["Pick Q", "Move W", "Turn E", "Resize R", "More", "Local T", "Snap Y", "Lock ⌃L", "Group ⌃G", "Measure"],
+                Tools(window).Select(tool => string.Join(" ", Texts(tool))));
         });
     }
 
     [Fact]
-    public void Only_the_transform_mode_is_lit()
+    public void Every_tool_has_a_card_that_says_what_it_does()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var modes = Tools(window).Take(5).ToArray();
+            var cards = Tools(window).Select(tool => Assert.IsType<HoverCard>(ToolTip.GetTip(tool))).ToArray();
 
-            Assert.Equal([true, false, false, false, false], modes.Select(mode => mode.IsChecked == true));
-            Assert.Same(window.Toolbar.TransformButton, modes[0]);
+            Assert.Equal(["Pick", "Move", "Turn", "Resize", "More", "Local", "Snap", "Lock", "Group", "Measure"], cards.Select(card => card.Title));
+            Assert.Contains("Drag an arrow to move the picked thing. Hold ⌃ to snap.", Texts(cards[1]));
+            Assert.Contains("Move mode", Texts(cards[1]));
+            Assert.Contains("Click two points to see how far apart they are.", Texts(cards[9]));
         });
     }
 
     [Fact]
-    public void A_click_on_transform_move_or_select_lights_that_mode_alone()
+    public void Lock_and_group_say_why_they_are_off_until_a_thing_is_picked()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var card = (HoverCard)ToolTip.GetTip(window.Toolbar.LockButton)!;
+
+            Assert.Contains("Pick a thing you can move first. Lock stops it being moved by accident.", Texts(card));
+            Assert.Contains("Pick a thing you can move first. Group makes its parts move as one.", Texts((HoverCard)ToolTip.GetTip(window.Toolbar.GroupButton)!));
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            Assert.Contains("Stops the picked thing being moved by accident.", Texts(card));
+        });
+    }
+
+    [Fact]
+    public void All_handles_is_the_starting_mode_so_more_is_lit()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Assert.Equal([false, false, false, false, true], Lit(window));
+            Assert.True(window.Toolbar.TransformButton.IsChecked);
+            Assert.Same(window.Toolbar.MoreButton, Tools(window)[4]);
+        });
+    }
+
+    [Fact]
+    public void A_click_on_a_mode_lights_it_alone_and_all_handles_in_more_lights_more()
     {
         UiThread.Run(() =>
         {
@@ -219,11 +255,33 @@ public sealed class ViewportAreaTests
             var modes = Tools(window).Take(5).ToArray();
 
             ClickOn(modes[1], window);
-            Assert.Equal([false, true, false, false, false], modes.Select(mode => mode.IsChecked == true));
-            ClickOn(modes[4], window);
-            Assert.Equal([false, false, false, false, true], modes.Select(mode => mode.IsChecked == true));
+            Assert.Equal([false, true, false, false, false], Lit(window));
             ClickOn(modes[0], window);
-            Assert.Equal([true, false, false, false, false], modes.Select(mode => mode.IsChecked == true));
+            Assert.Equal([true, false, false, false, false], Lit(window));
+            Assert.Equal(GizmoMode.Select, window.Toolbar.Mode);
+            MoreItems(window)[1].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal([false, false, false, false, true], Lit(window));
+            Assert.Equal(GizmoMode.Transform, window.Toolbar.Mode);
+        });
+    }
+
+    [Fact]
+    public void More_names_its_four_tools_with_a_note_and_ticks_the_ones_that_are_on()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var items = MoreItems(window);
+
+            Assert.Equal(["MORE TOOLS"], Texts(items[0]));
+            Assert.Equal(["All handles", "Free turn", "Move alone", "Pick from a list"], items[1..].Select(item => Texts(item).First()));
+            Assert.Contains("Moves a parent and leaves the things inside where they are", Texts(items[3]));
+            Assert.Equal([true, false, false, false], items[1..].Select(item => item.IsChecked));
+            items[2].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.True(window.Toolbar.Trackball);
+            Assert.True(items[2].IsChecked);
+            Click(window.Toolbar.TrackballButton);
+            Assert.False(items[2].IsChecked);
         });
     }
 
@@ -259,7 +317,7 @@ public sealed class ViewportAreaTests
             ClickOn(modes[2], window);
 
             Assert.Same(window.Toolbar.RotateButton, modes[2]);
-            Assert.Equal([false, false, true, false, false], modes.Select(mode => mode.IsChecked == true));
+            Assert.Equal([false, false, true, false, false], Lit(window));
             Assert.Equal(GizmoMode.Rotate, window.Toolbar.Mode);
             Assert.DoesNotContain("not built", window.Status);
         });
@@ -276,7 +334,7 @@ public sealed class ViewportAreaTests
             ClickOn(modes[3], window);
 
             Assert.Same(window.Toolbar.ScaleButton, modes[3]);
-            Assert.Equal([false, false, false, true, false], modes.Select(mode => mode.IsChecked == true));
+            Assert.Equal([false, false, false, true, false], Lit(window));
             Assert.Equal(GizmoMode.Scale, window.Toolbar.Mode);
             Assert.DoesNotContain("not built", window.Status);
         });
@@ -316,7 +374,7 @@ public sealed class ViewportAreaTests
     {
         UiThread.Run(() =>
         {
-            var toolbar = new ViewportToolbar(new Button());
+            var toolbar = new ViewportToolbar(new Button(), KeyModifiers.Meta);
 
             Assert.False(toolbar.LockButton.IsEnabled);
             Assert.False(toolbar.GroupButton.IsEnabled);
@@ -338,7 +396,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_view_pill_holds_the_previews_after_a_rule_with_both_lit()
+    public void The_view_pill_holds_the_previews_after_a_rule_with_both_lit_and_ends_with_zoom_to_it()
     {
         UiThread.Run(() =>
         {
@@ -350,6 +408,10 @@ public sealed class ViewportAreaTests
             Assert.IsType<Border>(items[1]);
             Assert.Equal(["PreviewSun", "PreviewEnvironment"], previews.Select(preview => preview.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName));
             Assert.Equal([true, true], previews.Select(preview => preview.IsChecked == true));
+            Assert.Equal(["Sun", "Sky"], previews.Select(preview => string.Join(" ", Texts(preview))));
+            Assert.IsType<Border>(items[^2]);
+            Assert.Same(window.Center.Overlay.ZoomToButton, items[^1]);
+            Assert.Equal(["Zoom to it", "F"], Texts(window.Center.Overlay.ZoomToButton));
         });
     }
 
@@ -366,8 +428,8 @@ public sealed class ViewportAreaTests
             Assert.True(button.Flyout!.IsOpen);
             var body = (Control)((Flyout)button.Flyout).Content!;
             var texts = body.GetLogicalDescendants().OfType<TextBlock>().Where(text => text.IsVisible).Select(text => text.Text ?? "").ToArray();
-            Assert.Equal(["Preview settings", "What the viewport adds when the scene has no light or sky."], texts[..2]);
-            Assert.Equal(["Sun preview", "Environment preview"], texts[2..]);
+            Assert.Equal(["Preview sun and sky", "Used only while your scene has no light or sky of its own. The game never sees them."], texts[..2]);
+            Assert.Equal(["Sun", "A soft light from above, so shapes are easy to see.", "Sky", "A plain sky behind everything."], texts[2..]);
             var switches = body.GetLogicalDescendants().OfType<ToggleSwitch>().ToArray();
             Assert.Equal([window.Center.Overlay.SunSwitch, window.Center.Overlay.EnvironmentSwitch], switches);
             Assert.All(switches, toggle => Assert.True(toggle.IsChecked));
@@ -436,17 +498,19 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_projection_menu_ends_with_focus_selection_under_a_rule()
+    public void The_projection_menu_offers_perspective_and_flat_then_zoom_to_it_under_a_rule()
     {
         UiThread.Run(() =>
         {
             var overlay = OpenAtReferenceSize().Center.Overlay;
             var items = ((MenuFlyout)overlay.ProjectionButton.Flyout!).Items;
 
-            Assert.Equal("PROJECTION", ((TextBlock)((MenuItem)items[0]!).Header!).Text);
-            Assert.Equal([overlay.PerspectiveItem, overlay.OrthogonalItem], items.Skip(1).Take(2));
-            Assert.IsType<Separator>(items[3]);
-            Assert.Same(overlay.FocusItem, items[4]);
+            Assert.Equal([overlay.PerspectiveItem, overlay.OrthogonalItem], items.Take(2));
+            Assert.Equal(["Perspective", "Flat"], items.Take(2).Select(item => Texts((MenuItem)item!).First()));
+            Assert.Contains("Orthogonal", Texts(overlay.OrthogonalItem));
+            Assert.IsType<Separator>(items[2]);
+            Assert.Same(overlay.FocusItem, items[3]);
+            Assert.Equal("Zoom to it", Texts(overlay.FocusItem).First());
         });
     }
 

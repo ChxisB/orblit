@@ -127,19 +127,7 @@ internal static class Parts
     {
         Orientation = Orientation.Horizontal,
         Spacing = 6,
-        Children =
-        {
-            new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center },
-            new Border
-            {
-                Padding = new Thickness(5, 3),
-                CornerRadius = new CornerRadius(4),
-                Background = EditorBrushes.Shade,
-                Opacity = 0.7,
-                VerticalAlignment = VerticalAlignment.Center,
-                Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5 },
-            },
-        },
+        Children = { new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center }, Cap(key) },
     };
 
     /// <summary>A key as the macOS menus write it: the modifiers as marks in their fixed order, then the key.</summary>
@@ -155,6 +143,9 @@ internal static class Parts
             Key.OemQuestion when gesture.KeyModifiers.HasFlag(KeyModifiers.Shift) => "?",
             Key.OemQuestion => "/",
             Key.OemPipe => "\\",
+            Key.OemMinus => "-",
+            Key.OemPlus => "=",
+            Key.None => "",
             >= Key.D0 and <= Key.D9 => $"{gesture.Key - Key.D0}",
             _ => gesture.Key.ToString(),
         };
@@ -321,11 +312,45 @@ internal static class Parts
         },
     };
 
-    /// <summary>An icon and a word, for the content of a text button.</summary>
-    public static StackPanel Worded(string icon, string text) => new()
+    /// <summary>An icon and a word, for the content of a text button, with the key that runs it when there is one.</summary>
+    public static StackPanel Worded(string icon, string text, string? key = null)
     {
-        Orientation = Orientation.Horizontal,
-        Spacing = 6,
-        Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
+        var worded = new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Spacing = 6,
+            Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
+        };
+        if (key is not null)
+        {
+            worded.Children.Add(Cap(key));
+        }
+
+        return worded;
+    }
+
+    /// <summary>
+    /// Gives a tool its icon, the card's title as its word and the card's key, and puts the card on it. The tool
+    /// keeps the 26 pixel height of an icon button.
+    /// </summary>
+    public static T Dress<T>(T button, string icon, HoverCard card) where T : Button
+    {
+        button.Content = Worded(icon, card.Title, card.Key);
+        button.Height = 26;
+        button.MinHeight = 0;
+        button.Padding = new Thickness(8, 0);
+        button.BorderThickness = new Thickness(0);
+        return card.On(button);
+    }
+
+    // The key on a shade of the button's fill, so it reads on a plain button and on the orange one.
+    static Border Cap(string key) => new()
+    {
+        Padding = new Thickness(5, 3),
+        CornerRadius = new CornerRadius(4),
+        Background = EditorBrushes.Shade,
+        Opacity = 0.7,
+        VerticalAlignment = VerticalAlignment.Center,
+        Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5 },
     };
 }

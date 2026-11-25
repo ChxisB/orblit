@@ -173,7 +173,7 @@ public sealed class GizmoModesTests
         return true;
     }
 
-    static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) Open(Func<EditorWindow, Control> mode)
+    static (EditorWindow Window, FakeScene Scene, ViewportControl Viewport) Open(Func<EditorWindow, Button> mode)
     {
         var scene = new FakeScene
         {
@@ -185,7 +185,8 @@ public sealed class GizmoModesTests
         window.ShowViewport(viewport);
         window.UpdateLayout();
         window.Outline.SelectedItem = FakeScene.Lamp;
-        ClickOn(mode(window), window);
+        // All handles sits in the More menu, so the helper presses the mode as the menu does.
+        Click(mode(window));
         viewport.Tick();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
         return (window, scene, viewport);
@@ -294,7 +295,7 @@ public sealed class GizmoModesTests
             Drag(window, viewport, new Vector2(70, 25));
             Assert.Empty(scene.TrackballDragged);
 
-            ClickOn(window.Toolbar.TrackballButton, window);
+            Click(window.Toolbar.TrackballButton);
             Drag(window, viewport, new Vector2(70, 25));
             Assert.Single(scene.TrackballDragged);
             Assert.Single(scene.SpinDragged);
@@ -402,7 +403,7 @@ public sealed class GizmoModesTests
                 (toolbar.TransformButton, GizmoMode.Transform),
             })
             {
-                ClickOn(button, window);
+                Click(button);
                 Assert.Equal(mode, toolbar.Mode);
             }
         });
@@ -422,13 +423,13 @@ public sealed class GizmoModesTests
             var mode = Enum.Parse<GizmoMode>(name);
             var window = OpenAtReferenceSize();
             var toolbar = window.Toolbar;
-            ClickOn(mode switch
+            Click(mode switch
             {
                 GizmoMode.Move => toolbar.MoveButton,
                 GizmoMode.Rotate => toolbar.RotateButton,
                 GizmoMode.Scale => toolbar.ScaleButton,
                 _ => toolbar.TransformButton,
-            }, window);
+            });
             if (local)
             {
                 ClickOn(toolbar.LocalButton, window);
@@ -446,11 +447,11 @@ public sealed class GizmoModesTests
             var window = OpenAtReferenceSize();
             var toolbar = window.Toolbar;
 
-            ClickOn(toolbar.TrackballButton, window);
+            Click(toolbar.TrackballButton);
             ClickOn(toolbar.SnapButton, window);
             Assert.True(toolbar.Trackball);
             Assert.True(toolbar.Snaps);
-            ClickOn(toolbar.TrackballButton, window);
+            Click(toolbar.TrackballButton);
             ClickOn(toolbar.SnapButton, window);
 
             Assert.False(toolbar.Trackball);

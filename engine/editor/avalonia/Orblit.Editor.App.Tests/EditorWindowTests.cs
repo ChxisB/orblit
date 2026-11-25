@@ -1175,6 +1175,42 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
+    public void Y_flips_snap_and_the_command_key_with_L_or_G_locks_or_groups_the_selection()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+
+            Assert.True(Press(window, Key.Y).Handled);
+            Assert.True(window.Toolbar.Snaps);
+            Assert.False(Press(window.ScenePane.FilterBox, Key.Y).Handled);
+            Assert.False(Press(window, Key.L, window.CommandKey).Handled);
+
+            window.Outline.SelectedItem = FakeScene.Lamp;
+            Assert.True(Press(window, Key.L, window.CommandKey).Handled);
+            Assert.True(window.Toolbar.LockButton.IsChecked);
+            Assert.True(Press(window, Key.G, window.CommandKey).Handled);
+            Assert.True(window.Toolbar.GroupButton.IsChecked);
+        });
+    }
+
+    [Fact]
+    public void Esc_stops_measuring_and_is_left_alone_otherwise()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(new FakeScene());
+            Assert.False(Press(window, Key.Escape).Handled);
+
+            Click(window.Toolbar.RulerButton);
+            Assert.True(window.Toolbar.Measures);
+
+            Assert.True(Press(window, Key.Escape).Handled);
+            Assert.False(window.Toolbar.Measures);
+        });
+    }
+
+    [Fact]
     public void Q_W_E_and_R_with_a_modifier_or_typed_into_a_box_change_no_mode()
     {
         UiThread.Run(() =>

@@ -67,7 +67,7 @@ internal sealed partial class EditorRun
         Expect(FrameHas((r, g, b) => g > 200 && r < 80 && b < 80) && FrameHas((r, g, b) => b > 200 && r < 80 && g < 80), "the frame holds no green box and no blue box");
 
         // The 3D step left Snap on and the 2D pill's Snap mirrors it, so a click puts it out for a free drag.
-        var snap = window.Center.Planar.Tools.GetVisualDescendants().OfType<FixedToggle>().Single(tool => (string?)ToolTip.GetTip(tool) == "Snap to the grid. Hold Ctrl or Command to flip it for one drag.");
+        var snap = window.Center.Planar.SnapButton;
         Expect(snap.IsChecked == window.Toolbar.Snaps, "the 2D Snap does not show the toolbar's Snap");
         if (snap.IsChecked == true)
         {

@@ -144,8 +144,8 @@ internal sealed class TitleBar : Grid
         playCard.SaysWhyOff(play, "Open a scene first.");
         var stopCard = new HoverCard("Stop", "Closes the game window.", Keys(Key.OemPeriod));
         stopCard.SaysWhyOff(stop, $"Nothing is playing. Press {Keys(Key.B)} first.");
-        Dress(play, "MainPlay", playCard);
-        Dress(stop, "Stop", stopCard);
+        Parts.Dress(play, "MainPlay", playCard);
+        Parts.Dress(stop, "Stop", stopCard);
         MoreButton.Flyout = new MenuFlyout
         {
             Placement = PlacementMode.BottomEdgeAlignedRight,
@@ -156,20 +156,6 @@ internal sealed class TitleBar : Grid
             },
         };
         return Parts.Pill([play, stop, Parts.Rule(), MoreButton]);
-    }
-
-    // The button carries its icon, its word and its key, and the card says what it does.
-    static void Dress(Button button, string icon, HoverCard card)
-    {
-        // Both run cards have a key.
-        var content = Parts.Keyed(card.Title, card.Key!);
-        content.Children.Insert(0, new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center });
-        button.Content = content;
-        button.Height = 26;
-        button.MinHeight = 0;
-        button.Padding = new Thickness(8, 0);
-        button.BorderThickness = new Thickness(0);
-        card.On(button);
     }
 
     // Drawn as a field with its key, because it opens the command palette's search.
