@@ -60,9 +60,9 @@ internal sealed class ArrangeBar : Border
         Child = new StackPanel { Spacing = 6, Children = { Row(_lineUp, _spread, box), Row(tidy, _straighten, joined, _expand, action) } };
     }
 
-    /// <summary>The items of the Line up and Spread menus, in menu order.</summary>
+    /// <summary>The items of the Line up and Spread menus that run a tool, in menu order.</summary>
     internal IEnumerable<MenuItem> Items =>
-        new[] { _lineUp, _spread }.Select(menu => menu.Flyout).OfType<MenuFlyout>().SelectMany(flyout => flyout.Items.OfType<MenuItem>());
+        new[] { _lineUp, _spread }.Select(menu => menu.Flyout).OfType<MenuFlyout>().SelectMany(flyout => flyout.Items.OfType<MenuItem>()).Where(item => item.Tag is string);
 
     /// <summary>Shows the bar while steps are picked, and turns on the tools that fit the kinds of the picked steps.</summary>
     internal void Sync(IReadOnlyList<string> picked)
@@ -83,6 +83,7 @@ internal sealed class ArrangeBar : Border
 
     static Control[] LineUpItems(GraphArranger arranger) =>
     [
+        Parts.MenuHeading("Line up the picked steps"),
         Item("align_left", "Left edges", () => arranger.Align(Edge.Left)),
         Item("align_center", "Centers across", () => arranger.Align(Edge.Center)),
         Item("align_right", "Right edges", () => arranger.Align(Edge.Right)),

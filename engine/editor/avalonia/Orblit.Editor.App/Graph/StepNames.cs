@@ -58,6 +58,9 @@ internal static class StepNames
     /// <summary>The row for this step, or none.</summary>
     internal static StepName? Of(GraphStepEntry entry) => s_rows.FirstOrDefault(row => row.Kind == entry.Kind && row.Engine == entry.Label);
 
+    /// <summary>The row for a step on the graph, which has a kind and no label. Each kind has one row at most.</summary>
+    internal static StepName? OfKind(string kind) => s_rows.FirstOrDefault(row => row.Kind == kind);
+
     /// <summary>The plain name of a group. A group named after a class takes the class's plain name.</summary>
     internal static string GroupOf(string group) => s_groups.GetValueOrDefault(group) ?? PlainNames.NameOf(group);
 }

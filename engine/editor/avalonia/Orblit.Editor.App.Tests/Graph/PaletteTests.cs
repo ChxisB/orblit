@@ -388,14 +388,16 @@ public sealed class PaletteTests
         });
     }
 
-    [Fact]
-    public void Space_opens_the_palette()
+    [Theory]
+    [InlineData(Avalonia.Input.Key.Space, KeyModifiers.None)]
+    [InlineData(Avalonia.Input.Key.A, KeyModifiers.Shift)]
+    public void Space_or_shift_A_opens_the_palette(Key key, KeyModifiers keys)
     {
         UiThread.Run(() =>
         {
             var (_, canvas) = Open();
 
-            Key(canvas.Surface, Avalonia.Input.Key.Space);
+            Key(canvas.Surface, key, keys);
 
             Assert.True(canvas.Palette.IsOpen);
             Assert.Equal(4, canvas.Palette.Entries.Count);

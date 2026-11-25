@@ -290,7 +290,7 @@ public sealed class GraphViewTests
             var (_, graph, view) = OpenWithGraph();
             graph.PutFunction("helper");
             Pick(view, Logic);
-            Assert.Equal("No step selected.", view.Inspector!.Heading);
+            Assert.Equal("No step picked", view.Inspector!.Heading);
 
             var canvas = view.Canvas!;
             var header = canvas.Scene.Find(3)!.Origin + new Vector(40, 10);
@@ -298,11 +298,11 @@ public sealed class GraphViewTests
             canvas.Gestures.Release(header);
             canvas.Surface.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.F13 });
 
-            Assert.Equal("print", view.Inspector.Heading);
+            Assert.Equal("Print text", view.Inspector.Heading);
 
             Click(view.Panels!.Find<Button>("function:helper:open")!);
 
-            Assert.Equal("No step selected.", view.Inspector.Heading);
+            Assert.Equal("No step picked", view.Inspector.Heading);
         });
     }
 
@@ -321,7 +321,7 @@ public sealed class GraphViewTests
 
             Assert.Same(canvas, view.Canvas);
             Assert.Equal([4], view.Canvas!.Scene.SelectedSteps);
-            Assert.Equal("emit", view.Inspector!.Heading);
+            Assert.Equal("Emit", view.Inspector!.Heading);
         });
     }
 

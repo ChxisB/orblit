@@ -371,6 +371,9 @@ internal sealed class GraphCanvas : Grid
     /// Opens the palette at a screen point. A step picked there is added at the point and joined to the pin when
     /// there is one. With no pin, a step picked to be wired is joined to the first flow output of the one selected step.
     /// </summary>
+    /// <summary>Opens the palette in the middle of the view, with no wire to join to.</summary>
+    internal void AddStep() => OpenPalette(_surface.Bounds.Center - _surface.Bounds.Position, null);
+
     internal void OpenPalette(Point screen, PinRef? from)
     {
         var (side, type, sort) = DraggedKind(from);

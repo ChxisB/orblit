@@ -131,7 +131,7 @@ internal sealed class GraphSurface : Control
         {
             _gestures.Cancel();
         }
-        else if (e.Key == Key.Space && e.KeyModifiers == KeyModifiers.None)
+        else if ((e.Key, e.KeyModifiers) is (Key.Space, KeyModifiers.None) or (Key.A, KeyModifiers.Shift))
         {
             _gestures.RequestPalette(_pointer);
         }

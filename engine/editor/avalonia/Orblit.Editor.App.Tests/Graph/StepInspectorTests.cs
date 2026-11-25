@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.Bridge;
 
@@ -9,11 +10,11 @@ namespace Orblit.Editor.App.Tests.Graph;
 public sealed class StepInspectorTests
 {
     // Step 3 prints a text. The sample wires its run input and leaves the text as a value.
-    static (FakeGraphSource Source, StepInspector Inspector) Open(int? step = 3, Action<FakeGraphSource>? shape = null)
+    static (FakeGraphSource Source, StepInspector Inspector) Open(int? step = 3, Action<FakeGraphSource>? shape = null, Action? addStep = null)
     {
         var source = FakeGraphSource.Sample();
         shape?.Invoke(source);
-        var inspector = new StepInspector(source);
+        var inspector = new StepInspector(source, addStep ?? (() => { }));
         inspector.Show(step);
         return (source, inspector);
     }
@@ -21,7 +22,29 @@ public sealed class StepInspectorTests
     static void Press(Control target, Key key) =>
         target.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key });
 
-    static void Click(StepInspector inspector, string id) => inspector.Find<Button>(id)!.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    // A raised click does not check a radio choice, so a choice is checked the way a real click leaves it.
+    static void Click(StepInspector inspector, string id)
+    {
+        var button = inspector.Find<Button>(id)!;
+        if (button is RadioButton choice)
+        {
+            choice.IsChecked = true;
+            return;
+        }
+
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+    }
+
+    // The words on show. A button or a choice with plain text content has no text block of its own.
+    static string[] Words(StepInspector inspector) =>
+    [
+        .. inspector.GetLogicalDescendants().OfType<Control>().Where(control => control.IsVisible).Select(control => control switch
+        {
+            TextBlock text => text.Text,
+            ContentControl { Content: string said } => said,
+            _ => null,
+        }).OfType<string>(),
+    ];
 
     static GraphStep Step(int id, string kind, GraphPort[] inputs, GraphPort[] outputs, params (string Name, string Value)[] parameters) =>
         FakeGraphSource.MakeStep(id, kind, 100, 40, inputs, outputs, null, parameters);
@@ -33,7 +56,7 @@ public sealed class StepInspectorTests
         {
             var (_, inspector) = Open(null);
 
-            Assert.Equal("No step selected.", inspector.Heading);
+            Assert.Equal("No step picked", inspector.Heading);
             Assert.Null(inspector.Find<TextBox>("input:1:value"));
         });
     }
@@ -45,7 +68,90 @@ public sealed class StepInspectorTests
         {
             var (_, inspector) = Open(99);
 
-            Assert.Equal("No step selected.", inspector.Heading);
+            Assert.Equal("No step picked", inspector.Heading);
+        });
+    }
+
+    [Fact]
+    public void No_step_offers_to_add_one()
+    {
+        UiThread.Run(() =>
+        {
+            var added = 0;
+            var (_, inspector) = Open(null, addStep: () => added++);
+
+            Assert.Contains("Pick a step to see what goes in and where it comes from.", Words(inspector));
+            Click(inspector, "inspector:add_step");
+
+            Assert.Equal(1, added);
+        });
+    }
+
+    [Fact]
+    public void A_step_shows_its_number_its_plain_name_the_engine_name_and_what_it_does()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, inspector) = Open();
+
+            Assert.Equal(["Step 3", "Print text", "print", "Shows text in Output. Good for checking a value, finding out if a step ran."], Words(inspector)[..4]);
+        });
+    }
+
+    [Fact]
+    public void A_step_with_no_plain_name_goes_by_its_kind_alone()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, inspector) = Open(4, s => s.Put(Step(4, "get_position", [], [FakeGraphSource.Data("value", 9)])));
+
+            Assert.Equal("Get position", inspector.Heading);
+            Assert.DoesNotContain("get_position", Words(inspector));
+        });
+    }
+
+    [Fact]
+    public void An_input_says_what_it_gets_and_where_the_value_comes_from()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, inspector) = Open();
+            var words = Words(inspector);
+
+            Assert.Contains("It gets", words);
+            Assert.DoesNotContain("It gives", words);
+            Assert.Contains("String", words);
+            Assert.Contains("Where the text comes from", words);
+            Assert.Equal(["Typed here", "Remembered", "Local"], words.SkipWhile(word => word != "Where the text comes from").Skip(1).Take(3));
+        });
+    }
+
+    [Fact]
+    public void A_wired_input_says_where_it_comes_from()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, inspector) = Open(3, source =>
+            {
+                source.Put(Step(4, "constant", [], [FakeGraphSource.Data("value", 0)]));
+                source.Put(new GraphWire(4, 0, 3, 1));
+            });
+
+            Assert.Equal("Comes from a wire.", inspector.Find<TextBlock>("input:1:wired")!.Text);
+            Assert.DoesNotContain("Where the text comes from", Words(inspector));
+        });
+    }
+
+    [Fact]
+    public void An_output_offers_to_remember_it_keep_it_or_split_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, inspector) = Open(4, s => s.Put(Step(4, "position", [], [FakeGraphSource.Data("value", 9)])));
+            var words = Words(inspector);
+
+            Assert.Contains("It gives", words);
+            Assert.Equal(["Remember it", "Keep as a local", "Split into parts"], words.SkipWhile(word => word != "Remember it").Take(3));
         });
     }
 
@@ -56,7 +162,7 @@ public sealed class StepInspectorTests
         {
             var (_, inspector) = Open();
 
-            Assert.Equal("print", inspector.Heading);
+            Assert.Equal("Print text", inspector.Heading);
             Assert.Equal("\"hi\"", inspector.Find<TextBox>("input:1:value")!.Text);
             Assert.Null(inspector.Find<TextBox>("input:0:value"));
         });

@@ -19,7 +19,7 @@ internal sealed class GraphSheet : IDisposable
         _breakpoints = breakpoints;
         _debugger = debugger;
         Panels = new ScriptPanels(graph);
-        Inspector = new StepInspector(graph);
+        Inspector = new StepInspector(graph, () => Canvas?.AddStep());
         graph.Changed += () =>
         {
             IsEdited = true;
