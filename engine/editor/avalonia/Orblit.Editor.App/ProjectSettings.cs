@@ -10,11 +10,12 @@ internal static partial class ProjectSettings
     const string TagsKey = "config/tags=";
     const string MainSceneKey = "run/main_scene=";
 
-    /// <summary>
-    /// The project's name, or an empty string when the file or the key is missing.
-    /// shortcut: a name with an escaped quote keeps its backslash. Parse the escapes when a project needs one.
-    /// </summary>
-    public static string NameOf(string project) => ValueOf(project, NameKey)?.Trim('"') ?? "";
+    /// <summary>The project's name with its escapes read, or an empty string when the file or the key is missing.</summary>
+    public static string NameOf(string project) => ValueOf(project, NameKey) is { } value ? Escaped().Replace(Unquoted(value), "$1") : "";
+
+    /// <summary>Writes the project's name under [application], quoted, with its quotes and backslashes escaped.</summary>
+    public static void SetName(string project, string name) =>
+        SetValue(project, "application", $"{NameKey}\"{name.Replace("\\", "\\\\").Replace("\"", "\\\"")}\"");
 
     /// <summary>The quoted values of config/tags, which the file writes as a PackedStringArray, or none.</summary>
     public static IReadOnlyList<string> TagsOf(string project) =>
@@ -51,6 +52,8 @@ internal static partial class ProjectSettings
         File.WriteAllText(path, string.Join('\n', lines) + "\n");
     }
 
+    static string Unquoted(string value) => value.Length >= 2 && value[0] == '"' && value[^1] == '"' ? value[1..^1] : value;
+
     static string? ValueOf(string project, string key)
     {
         var path = Path.Combine(project, FileName);
@@ -65,4 +68,8 @@ internal static partial class ProjectSettings
 
     [GeneratedRegex("\"([^\"]*)\"")]
     private static partial Regex Quoted();
+
+    // A backslash and the character it escapes.
+    [GeneratedRegex(@"\\(.)")]
+    private static partial Regex Escaped();
 }

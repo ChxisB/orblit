@@ -463,9 +463,9 @@ public sealed class LauncherTests : IDisposable
             var card = launcher.Cards.Single();
             var items = Menu(card);
 
-            Assert.Equal(["Open", LauncherWindow.ShowInFolder, "Copy folder path", "Remove from this list"], items.Select(AutomationProperties.GetName));
-            Assert.Equal(["Opens the project in the editor", "Opens its folder", null, "The project stays on disk. Open a folder… brings it back."], items.Select(Note));
-            Assert.Equal([new KeyGesture(Key.Enter), null, new KeyGesture(Key.C, launcher.CommandKey | KeyModifiers.Alt), null], items.Select(item => item.InputGesture));
+            Assert.Equal(["Open", LauncherWindow.ShowInFolder, "Copy folder path", "Rename…", "Remove from this list"], items.Select(AutomationProperties.GetName));
+            Assert.Equal(["Opens the project in the editor", "Opens its folder", null, "Changes the project's name. The folder keeps its name.", "The project stays on disk. Open a folder… brings it back."], items.Select(Note));
+            Assert.Equal([new KeyGesture(Key.Enter), null, new KeyGesture(Key.C, launcher.CommandKey | KeyModifiers.Alt), null, null], items.Select(item => item.InputGesture));
             Assert.Single(card.ContextMenu!.Items.OfType<Separator>());
         });
     }
@@ -485,6 +485,52 @@ public sealed class LauncherTests : IDisposable
             Assert.Equal([runner], List.Folders());
             Assert.True(File.Exists(Path.Combine(crate, "project.orblit")));
             Assert.Empty(_opened);
+        });
+    }
+
+    [Fact]
+    public void Rename_changes_the_card_and_the_project_file_and_leaves_the_folder_and_its_time()
+    {
+        UiThread.Run(() =>
+        {
+            var crate = Project("crate", "[application]\n\nconfig/name=\"Crate\"\n", 5);
+            var launcher = Open();
+            var edited = launcher.Shown.Single().Edited;
+
+            Run(launcher.Cards.Single(), "Rename…");
+            var rename = launcher.Rename;
+            Assert.True(rename.Dialog.IsVisible);
+            Assert.Equal("Crate", rename.NameBox.Text);
+            rename.NameBox.Text = "Crate Rush";
+            Press(rename.NameBox, Key.Enter);
+
+            Assert.False(rename.Dialog.IsVisible);
+            Assert.Equal(["Crate Rush"], Names(launcher));
+            Assert.Equal("Crate Rush", ProjectSettings.NameOf(crate));
+            Assert.Equal([crate], List.Folders());
+            Assert.Equal(edited, launcher.Shown.Single().Edited);
+            Assert.Empty(_opened);
+        });
+    }
+
+    [Fact]
+    public void An_empty_name_turns_Rename_off_and_says_why()
+    {
+        UiThread.Run(() =>
+        {
+            var crate = Project("crate", "[application]\n\nconfig/name=\"Crate\"\n", 5);
+            var launcher = Open();
+            Run(launcher.Cards.Single(), "Rename…");
+            var rename = launcher.Rename;
+
+            rename.NameBox.Text = "  ";
+
+            Assert.False(rename.Dialog.MainButton.IsEnabled);
+            Assert.True(rename.NameFault.IsVisible);
+            Assert.Equal("Give the project a name first.", ((HoverCard)ToolTip.GetTip(rename.Dialog.MainButton)!).Line);
+            Press(rename.NameBox, Key.Escape);
+            Assert.False(rename.Dialog.IsVisible);
+            Assert.Equal("Crate", ProjectSettings.NameOf(crate));
         });
     }
 

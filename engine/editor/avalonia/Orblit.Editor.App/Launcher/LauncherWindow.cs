@@ -58,6 +58,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     readonly NewProjectPanel _panel;
     readonly SettingsSheet _settings;
     readonly KeysSheet _keys = new();
+    readonly RenameSheet _rename = new();
     List<ProjectEntry> _projects = [];
     int _order;
 
@@ -103,7 +104,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         };
         Grid.SetColumn(main, 1);
         // The dialogs lie over the whole window, so a veil covers the projects too.
-        Content = new Panel { Children = { new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog, _settings.Dialog, _keys.Dialog } };
+        Content = new Panel { Children = { new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog, _settings.Dialog, _keys.Dialog, _rename.Dialog } };
         // The property changes as the text is set. The TextChanged event waits for a render.
         _search.PropertyChanged += (_, e) =>
         {
@@ -128,6 +129,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         _new.Click += (_, _) => _panel.Start(ProjectTemplate.Spatial);
         _panel.Made += Open;
         _settings.KeysAsked += OpenKeys;
+        _rename.Renamed += Load;
         Load();
     }
 
@@ -164,6 +166,8 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     internal SettingsSheet Settings => _settings;
 
     internal KeysSheet Keys => _keys;
+
+    internal RenameSheet Rename => _rename;
 
     /// <summary>The projects the cards show, in their order.</summary>
     internal IEnumerable<ProjectEntry> Shown => _cards.Children.Select(card => card.Tag).OfType<ProjectEntry>();
@@ -237,7 +241,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         }
     }
 
-    bool Veiled => _panel.Dialog.IsVisible || _settings.Dialog.IsVisible || _keys.Dialog.IsVisible;
+    bool Veiled => _panel.Dialog.IsVisible || _settings.Dialog.IsVisible || _keys.Dialog.IsVisible || _rename.Dialog.IsVisible;
 
     public void CopyVersion() => Copy(BottomBar.Version);
 
@@ -416,7 +420,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     Border Card(ProjectEntry project)
     {
         var menu = CardMenu(project);
-        var more = new HoverCard("More", "Open, show its folder, copy its path or remove it from this list. A right-click on the card opens the same menu.").On(Parts.IconButton("GuiEllipsis", "More"));
+        var more = new HoverCard("More", "Open, rename, show its folder, copy its path or remove it from this list. A right-click on the card opens the same menu.").On(Parts.IconButton("GuiEllipsis", "More"));
         var name = new TextBlock { Text = project.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         var body = new StackPanel
         {
@@ -467,6 +471,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
             Parts.ActionItem("Open", () => Open(project.Folder), new KeyGesture(Key.Enter), "Opens the project in the editor"),
             Parts.ActionItem(ShowInFolder, () => _links.Open(new Uri(project.Folder)), note: "Opens its folder"),
             Parts.ActionItem("Copy folder path", () => Copy(project.Folder), new KeyGesture(Key.C, CommandKey | KeyModifiers.Alt)),
+            Parts.ActionItem("Rename…", () => _rename.Open(project), note: RenameSheet.Does),
             new Separator(),
             Parts.ActionItem("Remove from this list", () => Remove(project), note: "The project stays on disk. Open a folder… brings it back."),
         },
