@@ -743,6 +743,23 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
+    public void Settings_from_the_app_menu_waits_while_the_keys_sheet_is_open()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(Find(NativeMenu.GetMenu(window)!, "All keys"));
+            window.OpenSettings();
+            Assert.False(window.Settings.Dialog.IsVisible);
+
+            window.Keys.Dialog.MainButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            window.OpenSettings();
+            Assert.True(window.Settings.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
     public void A_question_mark_opens_the_keys_sheet_but_not_from_a_text_box()
     {
         UiThread.Run(() =>

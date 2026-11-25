@@ -527,15 +527,17 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         {
             return ProjectScenes.KindOf(File.ReadLines(Path.Combine(_project, resourcePath[FileTree.Root.Length..])));
         }
-        catch (IOException)
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
         {
             return "";
         }
     }
 
-    public bool IsPlaying => _game is { HasExited: false };
+    // A copy keeps Stop on after the first game closes, so no copy runs on out of reach.
+    public bool IsPlaying => _game is { HasExited: false } || _copies.Exists(copy => !copy.HasExited);
 
     // Stop drops the game, so a code read here is one the game chose or a crash gave it.
+    // shortcut: under netcoredbg this is the debugger's code, not the game's. Read the game's from the debug channel if a C# crash must say so.
     public bool EndedWithError => _game is { HasExited: true } game && game.ExitCode != 0;
 
     // Under netcoredbg the process Play started is netcoredbg, and the game is its child.

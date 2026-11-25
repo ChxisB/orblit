@@ -1165,7 +1165,14 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
     public void CopyVersion() => Copy(BottomBar.Version, BottomBar.Version);
 
-    public void OpenSettings() => _settings.Open();
+    // The app menu of macOS stays in reach under a dialog's veil, so Settings waits for the dialog to close.
+    public void OpenSettings()
+    {
+        if (Content is Panel { Children: var layers } && !layers.Any(layer => layer is Dialog or Picker && layer.IsVisible))
+        {
+            _settings.Open();
+        }
+    }
 
     // The menu keys come first, by menu. The cards of the window's own buttons add the keys the menus lack.
     void OpenKeys()
@@ -1202,7 +1209,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     }
 
     PickerRow FileRow(string group, string path) =>
-        Search.FileRow(group, path, Search.KindText(path, _scene?.SceneKindOf(path) ?? ""), OpenFile) with { Key = path == _scene?.SceneFile ? "open now" : "" };
+        Search.FileRow(group, path, Search.KindText(path, scene => _scene?.SceneKindOf(scene) ?? ""), OpenFile) with { Key = path == _scene?.SceneFile ? "open now" : "" };
 
     // First steps for someone new. Each shows only while it can run.
     IEnumerable<PickerRow> TryRows(IEnumerable<PickerRow> actions)

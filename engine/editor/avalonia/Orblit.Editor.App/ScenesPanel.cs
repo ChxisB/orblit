@@ -365,7 +365,7 @@ internal sealed class ScenesPanel : Grid
         var name = new TextBlock { Text = node.Name, Tag = node, VerticalAlignment = VerticalAlignment.Center };
         Tint(name, node);
         var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { name } };
-        if (node.Kind != FileKind.Folder && Search.KindText(node.Path, _sceneKind(node.Path)) is { Length: > 0 } kind)
+        if (node.Kind != FileKind.Folder && Search.KindText(node.Path, _sceneKind) is { Length: > 0 } kind)
         {
             label.Children.Add(new TextBlock { Text = kind, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center });
         }

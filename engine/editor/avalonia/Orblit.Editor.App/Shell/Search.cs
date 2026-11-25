@@ -112,13 +112,14 @@ internal sealed class Search
     /// <summary>
     /// What a file is, in words: "3D scene", "2D scene" or "Scene" by <paramref name="sceneKind"/>, the kind of
     /// script, or what an imported file holds. An imported file of a kind not named here has no words.
+    /// <paramref name="sceneKind"/> reads the file, so only a scene calls it.
     /// </summary>
-    internal static string KindText(string path, string sceneKind) => FileTree.KindOf(path) switch
+    internal static string KindText(string path, Func<string, string> sceneKind) => FileTree.KindOf(path) switch
     {
         FileKind.Script => "C# script",
         FileKind.Graph => "Graph script",
         FileKind.Imported => ImportedText(Path.GetExtension(path).ToLowerInvariant()),
-        _ => sceneKind == "" ? "Scene" : $"{sceneKind} scene",
+        _ => sceneKind(path) is { Length: > 0 } kind ? $"{kind} scene" : "Scene",
     };
 
     static string ImportedText(string extension) => extension switch

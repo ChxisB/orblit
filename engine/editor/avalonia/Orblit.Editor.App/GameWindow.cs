@@ -72,9 +72,9 @@ internal static partial class GameWindow
 
             SetForegroundWindow(window);
         }
-        catch (ArgumentException)
+        catch (Exception error) when (error is ArgumentException or InvalidOperationException)
         {
-            // The game ended between the press and the call, so there is no window to raise.
+            // The game ended before or during the call, so there is no window to raise.
         }
     }
 

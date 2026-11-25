@@ -180,6 +180,14 @@ public sealed class FileTreeTests
     [InlineData("res://grow.ograph", "Graph script")]
     public void An_imported_file_is_named_by_what_it_holds(string path, string words)
     {
-        Assert.Equal(words, Orblit.Editor.App.Shell.Search.KindText(path, ""));
+        Assert.Equal(words, Orblit.Editor.App.Shell.Search.KindText(path, _ => throw new InvalidOperationException("Only a scene reads its file for its kind.")));
+    }
+
+    [Theory]
+    [InlineData("3D", "3D scene")]
+    [InlineData("", "Scene")]
+    public void A_scene_is_named_by_the_kind_its_file_holds(string kind, string words)
+    {
+        Assert.Equal(words, Orblit.Editor.App.Shell.Search.KindText("res://main.oscn", _ => kind));
     }
 }
