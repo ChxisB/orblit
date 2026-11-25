@@ -34,17 +34,24 @@ internal sealed class GameView : Border
 
     const double Mebibyte = 1024 * 1024;
 
+    // Under this many frames a second a game feels slow.
+    const double SlowRate = 30;
+
+    // Over this many seconds a frame the game falls below 60 frames a second.
+    const double FrameBudget = 1.0 / 60;
+
     // Each reading by its plain name, the engine's name where it differs, and what it measures. The game sends
-    // seconds and bytes, and each value shows in the unit people read it in.
-    static readonly (string Name, string? Engine, string Line, Func<DebugMonitors, string> Value)[] s_monitors =
+    // seconds and bytes, and each value shows in the unit people read it in. A reading past its good range
+    // gives the line that says where to look next, in place of what it measures.
+    static readonly (string Name, string? Engine, string Line, Func<DebugMonitors, string> Value, Func<DebugMonitors, Slow?> Slow)[] s_monitors =
     [
-        ("Frames a second", "FPS", "60 or more feels smooth.", game => Number(game.Fps, "0")),
-        ("Time per frame", "Frame time", "Under 16.7 ms keeps 60 a second.", game => game.Fps > 0 ? Ms(1 / game.Fps) : Unknown),
-        ("Game code", "Process", "What your scripts and graphs take each frame.", game => Ms(game.Process)),
-        ("Physics", null, "Moving and bumping things.", game => Ms(game.Physics)),
-        ("Draw calls", null, "Fewer is faster.", game => Number(game.DrawCalls, "0")),
-        ("Things", "Objects", "Everything that exists in the game now.", game => Number(game.Objects, "0")),
-        ("Video memory", null, "Pictures and models on the graphics card.", game => $"{Number(game.VideoMemory / Mebibyte, "0")} MB"),
+        ("Frames a second", "FPS", "60 or more feels smooth.", game => Number(game.Fps, "0"), game => game.Fps is > 0 and < SlowRate ? new("Under 30 feels slow. Time per frame shows why.", EditorBrushes.FaultText) : null),
+        ("Time per frame", "Frame time", "Under 16.7 ms keeps 60 a second.", game => game.Fps > 0 ? Ms(1 / game.Fps) : Unknown, game => SlowFrame(game) ? new($"Over 16.7 ms. {(game.Process >= game.Physics ? "Game code" : "Physics")} takes most of it.", EditorBrushes.Warn) : null),
+        ("Game code", "Process", "What your scripts and graphs take each frame.", game => Ms(game.Process), game => SlowFrame(game) && game.Process >= game.Physics ? new("Look at what runs Every frame.", EditorBrushes.Warn) : null),
+        ("Physics", null, "Moving and bumping things.", game => Ms(game.Physics), game => SlowFrame(game) && game.Physics > game.Process ? new("Fewer moving things or simpler shapes help.", EditorBrushes.Warn) : null),
+        ("Draw calls", null, "Fewer is faster.", game => Number(game.DrawCalls, "0"), _ => null),
+        ("Things", "Objects", "Everything that exists in the game now.", game => Number(game.Objects, "0"), _ => null),
+        ("Video memory", null, "Pictures and models on the graphics card.", game => $"{Number(game.VideoMemory / Mebibyte, "0")} MB", _ => null),
     ];
 
     const double DepthIndent = 16;
@@ -156,6 +163,13 @@ internal sealed class GameView : Border
 
     internal static IEnumerable<string> MonitorNames => s_monitors.Select(row => row.Name);
 
+    /// <summary>The value and the line of the speed row with this plain name, one of <see cref="MonitorNames"/>.</summary>
+    internal (TextBlock Value, TextBlock Line) ReadingOf(string name)
+    {
+        var at = Array.FindIndex(s_monitors, row => row.Name == name);
+        return (_values[at], _lines[at]);
+    }
+
     /// <summary>The rows of the live scene, one for each entity of the running game.</summary>
     internal IEnumerable<Control> LiveRows => _live.Children;
 
@@ -210,7 +224,7 @@ internal sealed class GameView : Border
         _speedHint.IsVisible = state.Monitors is null;
         for (var at = 0; at < _values.Length; at++)
         {
-            _values[at].Text = state.Monitors is { } game ? s_monitors[at].Value(game) : Unknown;
+            ShowReading(at, state.Monitors);
         }
 
         // The state comes again each second with new readings, so the rows are made again only when the tree changes.
@@ -224,6 +238,22 @@ internal sealed class GameView : Border
         _noScene.IsVisible = state.Scene.Count == 0;
         _liveMark.IsVisible = !_noScene.IsVisible;
     }
+
+    void ShowReading(int at, DebugMonitors? game)
+    {
+        var slow = game is null ? null : s_monitors[at].Slow(game);
+        _values[at].Text = game is null ? Unknown : s_monitors[at].Value(game);
+        _lines[at].Text = slow?.Line ?? s_monitors[at].Line;
+        if (slow is null)
+        {
+            _values[at].ClearValue(TextBlock.ForegroundProperty);
+            return;
+        }
+
+        _values[at].Foreground = slow.Tone;
+    }
+
+    static bool SlowFrame(DebugMonitors game) => game.Fps > 0 && 1 / game.Fps > FrameBudget;
 
     DockPanel PlaySettings()
     {
@@ -366,6 +396,9 @@ internal sealed class GameView : Border
     static string Ms(double seconds) => $"{Number(seconds * 1000, "0.0")} ms";
 
     static TextBlock Title(string text) => new() { Text = text, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+
+    // A reading past its good range: where to look next, and the tone its value takes.
+    sealed record Slow(string Line, IBrush Tone);
 
     // A radio choice drawn as a worded button, so the cards share one look and a check moves between them.
     sealed class CardChoice : RadioButton

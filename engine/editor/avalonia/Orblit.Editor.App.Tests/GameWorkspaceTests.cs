@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.App.Tests.Graph;
 using Orblit.Editor.Bridge;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
@@ -465,6 +466,61 @@ public sealed class GameWorkspaceTests
             Assert.False(window.Game.Settings.IsEnabled);
             Assert.True(window.Game.WaitsNote.IsVisible);
             Assert.Equal((false, true), (window.Game.Stopped.IsVisible, window.Game.Playing.IsVisible));
+        });
+    }
+
+    [Fact]
+    public void A_slow_game_turns_its_readings_amber_or_red_and_says_where_to_look()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = RunningWithLiveState();
+            scene.Channel.Next = scene.Channel.State with { Monitors = s_frame with { Fps = 22, Process = 0.0418 } };
+
+            window.Poll();
+
+            var rate = window.Game.ReadingOf("Frames a second");
+            var frame = window.Game.ReadingOf("Time per frame");
+            var code = window.Game.ReadingOf("Game code");
+            Assert.Equal((EditorBrushes.FaultText, "Under 30 feels slow. Time per frame shows why."), (rate.Value.Foreground, rate.Line.Text));
+            Assert.Equal((EditorBrushes.Warn, "Over 16.7 ms. Game code takes most of it."), (frame.Value.Foreground, frame.Line.Text));
+            Assert.Equal((EditorBrushes.Warn, "Look at what runs Every frame."), (code.Value.Foreground, code.Line.Text));
+            Assert.Equal("Moving and bumping things.", window.Game.ReadingOf("Physics").Line.Text);
+        });
+    }
+
+    [Fact]
+    public void A_slow_frame_names_physics_when_physics_takes_most_of_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = RunningWithLiveState();
+            scene.Channel.Next = scene.Channel.State with { Monitors = s_frame with { Fps = 40, Physics = 0.02 } };
+
+            window.Poll();
+
+            Assert.Equal("Over 16.7 ms. Physics takes most of it.", window.Game.ReadingOf("Time per frame").Line.Text);
+            Assert.Equal("What your scripts and graphs take each frame.", window.Game.ReadingOf("Game code").Line.Text);
+            Assert.Equal(EditorBrushes.Warn, window.Game.ReadingOf("Physics").Value.Foreground);
+            Assert.Equal("60 or more feels smooth.", window.Game.ReadingOf("Frames a second").Line.Text);
+        });
+    }
+
+    [Fact]
+    public void A_game_back_in_its_good_range_drops_the_tone_and_the_line()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene) = RunningWithLiveState();
+            var calm = window.Game.ReadingOf("Frames a second").Value.Foreground;
+            scene.Channel.Next = scene.Channel.State with { Monitors = s_frame with { Fps = 22 } };
+            window.Poll();
+
+            scene.Channel.Next = scene.Channel.State with { Monitors = s_frame };
+            window.Poll();
+
+            var rate = window.Game.ReadingOf("Frames a second");
+            Assert.Equal((calm, "60 or more feels smooth."), (rate.Value.Foreground, rate.Line.Text));
         });
     }
 }
