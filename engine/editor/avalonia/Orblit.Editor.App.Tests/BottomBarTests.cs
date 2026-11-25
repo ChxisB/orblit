@@ -1,6 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
+using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Media;
@@ -267,7 +268,7 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_debugger_says_no_game_is_connected_and_runs_the_project()
+    public void The_debugger_says_no_game_is_playing_and_plays_the_game()
     {
         UiThread.Run(() =>
         {
@@ -278,8 +279,15 @@ public sealed class BottomBarTests
             window.UpdateLayout();
 
             Assert.True(window.Center.Panels[1].IsVisible);
-            Assert.Equal(["Debugger", "No game is connected", "Run the project and the debugger joins it.", "Run the project"], Labels(window.Center.Panels[1]));
+            Assert.Equal(
+                [
+                    "Debugger", "No game is playing",
+                    "Press Play and the debugger joins in. It shows errors, pauses and the value of everything while the game runs.",
+                    "Play the game", Parts.KeyText(new KeyGesture(Key.B, window.CommandKey)),
+                ],
+                Labels(window.Center.Panels[1]));
             Assert.True(debugger.RunButton.IsEnabled);
+            Assert.Equal("Starts from the main scene.", Assert.IsType<HoverCard>(ToolTip.GetTip(debugger.RunButton)).Line);
 
             debugger.RunButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
@@ -316,7 +324,7 @@ public sealed class BottomBarTests
             window.Game.StopButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
 
             Assert.False(debugger.CopyButton.IsVisible);
-            Assert.Equal("No game is connected", debugger.Title.Text);
+            Assert.Equal("No game is playing", debugger.Title.Text);
         });
     }
 
@@ -360,7 +368,8 @@ public sealed class BottomBarTests
 
             Assert.Equal("Starting the engine.", window.Status);
             Assert.False(window.Center.Debugger.RunButton.IsEnabled);
-            Assert.Equal("No game is connected", window.Center.Debugger.Title.Text);
+            Assert.Equal("Open a scene first.", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Center.Debugger.RunButton)).Line);
+            Assert.Equal("No game is playing", window.Center.Debugger.Title.Text);
         });
     }
 

@@ -12,8 +12,8 @@ internal static class DockSlotNames
 {
     public static string Label(this DockSlot slot) => slot switch
     {
-        DockSlot.UpperLeft => "top",
-        DockSlot.LowerLeft => "bottom",
-        _ => "right",
+        DockSlot.UpperLeft => "Left column, top",
+        DockSlot.LowerLeft => "Left column, bottom",
+        _ => "Right column",
     };
 }

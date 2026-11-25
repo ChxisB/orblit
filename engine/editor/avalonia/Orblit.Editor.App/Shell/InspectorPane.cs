@@ -78,12 +78,17 @@ internal sealed class InspectorPane : Grid
         Place(filter, _tools, 2, VerticalAlignment.Top);
         SetRow(filter, 1);
         SetRow(_viewer, 2);
+        SetRow(Empty, 2);
         Children.Add(history);
         Children.Add(filter);
         Children.Add(_viewer);
+        Children.Add(Empty);
     }
 
     internal ScrollViewer Viewer => _viewer;
+
+    /// <summary>What the pane says while nothing is picked.</summary>
+    internal StackPanel Empty { get; } = Parts.EmptyState("ListSelect", "Nothing selected", "Click a thing in the view or the Scene panel to change its settings here.");
 
     internal TextBlock InspectedName => _name;
 
@@ -115,6 +120,7 @@ internal sealed class InspectorPane : Grid
         var node = picked.Count == 0 ? null : picked[^1];
         _panel.Show(scene, picked);
         _inspected.IsVisible = node is not null;
+        Empty.IsVisible = node is null;
         _icon.Content = node is null ? null : Parts.RowIcon(EditorIcons.ForClass(node.ClassName));
         _name.Text = picked.Count > 1 ? $"{picked.Count} selected" : node?.Name ?? "";
         _class.Text = string.Join(" › ", _panel.Chain);

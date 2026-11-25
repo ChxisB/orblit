@@ -230,7 +230,8 @@ public sealed class OutputPanelTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal("Copy all", ToolTip.GetTip(window.Center.Output.CopyButton));
+            Assert.Equal(["Copy all"], Texts(window.Center.Output.CopyButton));
+            Assert.Equal("Copies every line, to paste in a bug report.", ((HoverCard)ToolTip.GetTip(window.Center.Output.CopyButton)!).Line);
             Assert.Equal("one\nERROR: two", await window.Clipboard!.TryGetTextAsync());
             Assert.Equal("Copied the output.", window.Status);
         });
@@ -271,7 +272,9 @@ public sealed class OutputPanelTests
             Write(window, scene, "ERROR: broke", "WARNING: slow", "plain", "also plain");
 
             Assert.Equal(["1", "1", "2"], output.Chips.Select(chip => chip.Count.Text));
-            Assert.Equal(["Errors", "Warnings", "Messages"], output.Chips.Select(chip => ToolTip.GetTip(chip)));
+            Assert.Equal(["Errors", "1", "Warnings", "1", "Messages", "2"], output.Chips.SelectMany(Texts));
+            Assert.Equal(["Errors", "Warnings", "Messages"], output.Chips.Select(chip => ((HoverCard)ToolTip.GetTip(chip)!).Title));
+            Assert.Equal("Lines where something failed. Click to hide or show them.", ((HoverCard)ToolTip.GetTip(output.Chips[0])!).Line);
 
             ClickOn(output.Chips[2], window);
             window.UpdateLayout();
@@ -295,7 +298,7 @@ public sealed class OutputPanelTests
             window.UpdateLayout();
 
             Assert.Equal(["alpha", "Alphabet"], Shown(window));
-            Assert.Equal("Filter messages", window.Center.Output.FilterBox.PlaceholderText);
+            Assert.Equal("Find in messages", window.Center.Output.FilterBox.PlaceholderText);
         });
     }
 
@@ -357,7 +360,7 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
-    public void The_clear_button_has_the_clear_icon_and_a_tip()
+    public void The_clear_button_has_the_clear_icon_a_word_and_a_card()
     {
         UiThread.Run(() =>
         {
@@ -366,7 +369,8 @@ public sealed class OutputPanelTests
             var button = window.Center.Output.ClearButton;
 
             Assert.Equal("Clear", button.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal("Clear Output", ToolTip.GetTip(button));
+            Assert.Equal(["Clear"], Texts(button));
+            Assert.Equal("Empties the list. New lines still come in.", ((HoverCard)ToolTip.GetTip(button)!).Line);
         });
     }
 

@@ -24,7 +24,6 @@ public sealed class NewSceneToolTests
         return tool;
     }
 
-    static IEnumerable<string> Texts(Control control) => control.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text ?? "");
 
     static ContentPresenter Presenter(Button button) =>
         button.GetVisualDescendants().OfType<ContentPresenter>().Single(presenter => presenter.Name == "PART_ContentPresenter");

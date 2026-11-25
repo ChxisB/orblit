@@ -16,7 +16,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The log of the engine and of the games it ran, on an island of its own. The strip holds the title, a filter, a
-/// chip for each level with its count, Copy all and Clear. Each line shows the time it came, its level and, for a
+/// worded chip for each level with its count, Copy all and Clear. Each line shows the time it came, its level and, for a
 /// fault, the file it came from. The panel only shows the lines it is given and asks the window to copy or clear them.
 /// </summary>
 internal sealed class OutputPanel : Border
@@ -34,13 +34,13 @@ internal sealed class OutputPanel : Border
     /// <summary>The class of the time on each line.</summary>
     internal const string Stamp = "stamp";
 
-    // The mark, its tint, the text's tint and the chip's tip of each level, in the order of LogLevel. A list of
-    // cases, so it is data. Plain messages keep the panel's text colour.
-    static readonly (string Icon, IBrush Tint, IBrush? Text, string Tip)[] s_levels =
+    // The mark, its tint, the text's tint, the chip's word and the line of its card for each level, in the order of
+    // LogLevel. A list of cases, so it is data. Plain messages keep the panel's text colour.
+    static readonly (string Icon, IBrush Tint, IBrush? Text, string Word, string Line)[] s_levels =
     [
-        ("FaultCircle", EditorBrushes.Fault, EditorBrushes.FaultText, "Errors"),
-        ("WarnTriangle", EditorBrushes.Warn, EditorBrushes.Warn, "Warnings"),
-        ("InfoCircle", EditorBrushes.TextDim, null, "Messages"),
+        ("FaultCircle", EditorBrushes.Fault, EditorBrushes.FaultText, "Errors", "Lines where something failed. Click to hide or show them."),
+        ("WarnTriangle", EditorBrushes.Warn, EditorBrushes.Warn, "Warnings", "Lines on something that may go wrong. Click to hide or show them."),
+        ("InfoCircle", EditorBrushes.TextDim, null, "Messages", "Every other line. Click to hide or show them."),
     ];
 
     readonly ListBox _list = new()
@@ -60,16 +60,16 @@ internal sealed class OutputPanel : Border
     };
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter messages",
+        PlaceholderText = "Find in messages",
         Width = FilterWidth,
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
         InnerRightContent = Parts.SearchIcon(),
     };
-    readonly Chip[] _chips = [.. s_levels.Select(level => new Chip(level.Icon, level.Tint, level.Text, level.Tip))];
-    readonly Button _copy = Parts.IconButton("ActionCopy", "Copy all");
-    readonly Button _clear = Parts.IconButton("Clear", "Clear Output");
+    readonly Chip[] _chips = [.. s_levels.Select(level => new Chip(level.Icon, level.Tint, level.Text, new HoverCard(level.Word, level.Line)))];
+    readonly Button _copy = new HoverCard("Copy all", "Copies every line, to paste in a bug report.").On(Worded("ActionCopy", "Copy all"));
+    readonly Button _clear = new HoverCard("Clear", "Empties the list. New lines still come in.").On(Worded("Clear", "Clear"));
     // The time each line came, kept in step with the lines. The engine writes no time of its own.
     readonly List<DateTimeOffset> _times = [];
     IReadOnlyList<string> _lines = [];
@@ -219,7 +219,7 @@ internal sealed class OutputPanel : Border
     // The time, the level's mark, the text, and the place the engine named on the right. A long line wraps.
     static DockPanel Row(LogEntry entry)
     {
-        var (icon, tint, text, _) = s_levels[(int)entry.Level];
+        var (icon, tint, text, _, _) = s_levels[(int)entry.Level];
         var stamp = new TextBlock
         {
             Text = entry.Time.ToString("HH:mm:ss", CultureInfo.InvariantCulture),
@@ -250,12 +250,19 @@ internal sealed class OutputPanel : Border
     }
 
     /// <summary>A level's switch: its mark and how many lines it has. It is lit while the level's lines show.</summary>
+    static Button Worded(string icon, string word) => new()
+    {
+        Classes = { EditorTheme.TextButton, EditorTheme.Small },
+        VerticalAlignment = VerticalAlignment.Center,
+        Content = Parts.Worded(icon, word),
+    };
+
     internal sealed class Chip : ToggleButton
     {
         const double ChipHeight = 24;
         const double ChipIcon = 12;
 
-        public Chip(string icon, IBrush tint, IBrush? text, string tip)
+        public Chip(string icon, IBrush tint, IBrush? text, HoverCard card)
         {
             var mark = new EditorIcon(icon) { Width = ChipIcon, Height = ChipIcon, VerticalAlignment = VerticalAlignment.Center };
             TextElement.SetForeground(mark, tint);
@@ -271,11 +278,14 @@ internal sealed class OutputPanel : Border
             MinWidth = 0;
             Padding = new Thickness(9, 0);
             VerticalAlignment = VerticalAlignment.Center;
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { mark, Count } };
+            Word = card.Title;
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { mark, new TextBlock { Text = Word, FontSize = 11, VerticalAlignment = VerticalAlignment.Center }, Count } };
             IsChecked = true;
             IsCheckedChanged += (_, _) => Opacity = IsChecked == true ? 1 : 0.4;
-            ToolTip.SetTip(this, tip);
+            card.On(this);
         }
+
+        internal string Word { get; }
 
         internal TextBlock Count { get; }
 

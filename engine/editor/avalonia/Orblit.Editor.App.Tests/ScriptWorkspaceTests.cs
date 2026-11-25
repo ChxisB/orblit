@@ -192,7 +192,7 @@ public sealed class ScriptWorkspaceTests
 
             Assert.Equal(0, scene.Plays);
             var card = Assert.Single(window.Toasts.Cards);
-            Assert.Equal("The script could not be saved", card.Title);
+            Assert.Equal("Couldn't save the script", card.Title);
             Assert.Equal("The disk is full.", card.Line.Text);
             scene.ScriptWriteFails = false;
             Click(card.ActionButton!);

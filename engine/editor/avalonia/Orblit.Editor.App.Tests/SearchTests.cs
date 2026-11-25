@@ -23,7 +23,6 @@ public sealed class SearchTests
     }
 
     // Logical, because the rows sit in a scroll viewer that has no visual children before a layout pass.
-    static IEnumerable<string> Texts(Control control) => control.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "");
 
     // Field opens first and second after it. Arena was never opened.
     static (EditorWindow Window, FakeScene Scene) TwoOpened()

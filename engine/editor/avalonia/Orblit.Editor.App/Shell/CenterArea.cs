@@ -1,12 +1,17 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
+/// <summary>What the window hands the middle column: the scene tabs, the 3D tools, the viewport, the bar and the command key.</summary>
+internal sealed record CenterParts(Control Tabs, ViewportToolbar Toolbar, Control Viewport, BottomBar Bottom, KeyModifiers Command);
+
 /// <summary>
 /// The middle column. One island holds the scene tabs and the viewport, with the viewport's tools floating over it.
-/// The bar's panels open under it one at a time, and the bottom bar is an island of its own.
+/// With no scene open, the middle says so and offers the next steps. The bar's panels open under it one at a time,
+/// and the bottom bar is an island of its own.
 /// </summary>
 internal sealed class CenterArea : Grid
 {
@@ -18,8 +23,9 @@ internal sealed class CenterArea : Grid
     readonly Grid _stage = new() { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},*") };
     readonly Grid _main = new();
 
-    public CenterArea(Control tabs, ViewportToolbar toolbar, Control viewport, BottomBar bottom)
+    public CenterArea(CenterParts parts)
     {
+        var (tabs, toolbar, viewport, bottom, command) = parts;
         RowDefinitions = new RowDefinitions($"*,Auto,{GapHeight},{BottomBarHeight}");
         SceneTabs = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Child = tabs };
         Toolbar = toolbar;
@@ -28,7 +34,8 @@ internal sealed class CenterArea : Grid
         Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
         Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton, toolbar.SnapButton) { IsVisible = false };
         Output = new OutputPanel();
-        Debugger = new DebuggerNote();
+        Debugger = new DebuggerNote(command);
+        NoScene = new NoScene(command) { IsVisible = false };
         // In the order of the bar's tabs.
         Panels =
         [
@@ -47,6 +54,7 @@ internal sealed class CenterArea : Grid
         _main.Children.Add(Overlay);
         _main.Children.Add(toolbar);
         _main.Children.Add(Planar);
+        _main.Children.Add(NoScene);
         Place(_stage, SceneTabs, 0);
         Place(_stage, _main, 1);
         Place(this, Stage, 0);
@@ -74,6 +82,9 @@ internal sealed class CenterArea : Grid
     internal OutputPanel Output { get; }
 
     internal DebuggerNote Debugger { get; }
+
+    /// <summary>Covers the viewport while no scene is open.</summary>
+    internal NoScene NoScene { get; }
 
     /// <summary>The panels the bar's tabs open, in the order of the tabs. One shows at a time.</summary>
     internal IReadOnlyList<Border> Panels { get; }

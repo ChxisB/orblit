@@ -102,10 +102,15 @@ internal sealed class ScenePane : Grid
         SetRow(_outline, 1);
         _guides = new TreeGuides(_outline);
         SetRow(_guides, 1);
+        SetRow(Empty, 1);
         Children.Add(bar);
         Children.Add(_outline);
         Children.Add(_guides);
+        Children.Add(Empty);
     }
+
+    /// <summary>What the pane says while no scene is open.</summary>
+    internal StackPanel Empty { get; } = Parts.EmptyState("SceneFile", "No scene is open", "Open a scene to list the things in it here.");
 
     /// <summary>Raised when the selected entity changes, also when a new tree clears it.</summary>
     public event Action? SelectionChanged;
@@ -134,6 +139,7 @@ internal sealed class ScenePane : Grid
     public void Show(OutlineNode? root, nint select)
     {
         _full = root;
+        Empty.IsVisible = root is null;
         _shown = OutlineFilter.Apply(root, _filter.Text ?? "");
         Choose(select, () =>
         {

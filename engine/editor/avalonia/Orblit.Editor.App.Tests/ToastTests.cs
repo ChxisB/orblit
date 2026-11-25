@@ -143,7 +143,7 @@ public sealed class ToastTests
     }
 
     [Fact]
-    public void A_save_shows_a_green_tick_toast_that_names_the_file()
+    public void A_save_shows_a_green_tick_toast_that_names_the_scene_the_time_and_the_changes()
     {
         UiThread.Run(() =>
         {
@@ -153,8 +153,8 @@ public sealed class ToastTests
             Click(window.SaveButton);
 
             var card = Assert.Single(Cards(window));
-            Assert.Equal("Saved main.oscn", card.Title);
-            Assert.False(card.Line.IsVisible);
+            Assert.Equal("Saved main", card.Title);
+            Assert.Equal("At 16:33. 1 change saved.", card.Line.Text);
             Assert.Equal("Tick", card.Icon.IconName);
             Assert.Same(EditorBrushes.Done, TextElement.GetForeground(card.Icon));
             Assert.Null(card.ActionButton);
@@ -172,7 +172,7 @@ public sealed class ToastTests
             Click(window.SaveButton);
 
             var card = Assert.Single(Cards(window));
-            Assert.Equal("The scene could not be saved", card.Title);
+            Assert.Equal("Couldn't save main", card.Title);
             Assert.Equal("The engine could not save the scene. Error code 7.", card.Line.Text);
             Assert.Equal("FaultCircle", card.Icon.IconName);
             Assert.Same(EditorBrushes.Fault, TextElement.GetForeground(card.Icon));
@@ -180,7 +180,7 @@ public sealed class ToastTests
             Click(card.ActionButton!);
 
             Assert.Equal(1, scene.Saves);
-            Assert.Equal(["Saved main.oscn"], Titles(window));
+            Assert.Equal(["Saved main"], Titles(window));
         });
     }
 
@@ -196,7 +196,7 @@ public sealed class ToastTests
             Click(window.PlayButton);
 
             Assert.Equal(1, scene.Saves);
-            Assert.Equal(["Saved main.oscn"], Titles(window));
+            Assert.Equal(["Saved main"], Titles(window));
         });
     }
 

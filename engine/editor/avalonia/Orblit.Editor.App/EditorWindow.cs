@@ -101,6 +101,8 @@ internal sealed class EditorWindow : Window
     // When the game last started, for the time the Game view shows.
     DateTimeOffset _playedAt;
     bool _planar;
+    // The bottom panel Hide panels shut, which Show panels opens again, or -1 for none.
+    int _shutPanel = -1;
     // The Entity3D the gizmo drags, or zero when the selection has none.
     nint _gizmoTarget;
     // What the drag under way did, such as Moved Box, which names its step in History when it ends.
@@ -167,7 +169,7 @@ internal sealed class EditorWindow : Window
         _playButton.Click += (_, _) => Play();
         _playSceneButton.Click += (_, _) => Play("--scene", _scene!.SceneFile);
         _stopButton.Click += (_, _) => Stop();
-        _sceneTabs.DistractionButton.Click += (_, _) => ToggleDistractionFree();
+        _sceneTabs.PanelsButton.Click += (_, _) => TogglePanels();
         _game.RunRequested += () => Play();
         _game.StopRequested += Stop;
         _frame.Click += (_, _) => Frame();
@@ -180,15 +182,29 @@ internal sealed class EditorWindow : Window
         WireDocks();
         _leftSide = new DockSide(LeftColumn(), () => DocksIn(DockSlot.UpperLeft, DockSlot.LowerLeft));
         _rightSide = new DockSide(_slots[DockSlot.Right], () => DocksIn(DockSlot.Right));
+        foreach (var side in new[] { _leftSide, _rightSide })
+        {
+            // A side folds from Hide panels, its own button or a workspace, so the label follows the rails.
+            side.Rail.PropertyChanged += (_, e) =>
+            {
+                if (e.Property == IsVisibleProperty)
+                {
+                    _sceneTabs.ShowPanelsHidden(_leftSide.IsFolded && _rightSide.IsFolded);
+                }
+            };
+        }
         _toolbar = new ViewportToolbar(_frame);
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
-        _center = new CenterArea(_sceneTabs, _toolbar, _viewport, _bottomBar);
+        _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
         _center.Output.ClearRequested += () => _scene?.ClearOutput();
         _center.Output.CopyRequested += text => Copy(text, "the output");
         _center.Debugger.RunRequested += () => Play();
         _center.Debugger.CopyRequested += id => Copy(id, "the process id");
+        _center.NoScene.NewButton.Click += (_, _) => OpenNewScene();
+        _center.NoScene.FindButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
+        _center.NoScene.OpenRequested += Open;
         _script.Paused += () =>
         {
             _titleBar.Choose(TitleBar.Script);
@@ -375,6 +391,8 @@ internal sealed class EditorWindow : Window
         _scenePane.Show(_root, select);
         _scenes.MarkOpen(_scene!.SceneFile);
         _save.IsEnabled = _root is not null;
+        _center.NoScene.IsVisible = _root is null;
+        _center.NoScene.ShowRecent(RecentScenes());
         ShowGame();
         _sceneTabs.Show(_root, SceneLabel());
         _center.Planar.ShowScene(_scene!, _root, SceneName());
@@ -627,7 +645,7 @@ internal sealed class EditorWindow : Window
             ["Undo"] = Named(_undo, "Undo"),
             ["Redo"] = Named(_redo, "Redo"),
             ["Search"] = Pressing(_titleBar.SearchButton),
-            ["Hide panels"] = Pressing(_sceneTabs.DistractionButton),
+            ["Hide panels"] = Pressing(_sceneTabs.PanelsButton),
             ["Full screen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
             ["Play the game"] = Pressing(_playButton),
             ["Play this scene"] = Pressing(_playSceneButton),
@@ -690,7 +708,7 @@ internal sealed class EditorWindow : Window
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
         (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _actionsButton,
         (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _scenesButton,
-        (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.DistractionButton,
+        (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.PanelsButton,
         (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
@@ -751,7 +769,7 @@ internal sealed class EditorWindow : Window
     }
 
     // The docks sit in three slots. A dock sent to a slot trades places with the dock that sits there. The slot each
-    // starts in is its home, where Reset Layout puts it back.
+    // starts in is its home, where Put all panels back puts it.
     void WireDocks()
     {
         foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
@@ -799,7 +817,7 @@ internal sealed class EditorWindow : Window
         _slots[from].Child = other.Floats ? null : other;
         dock.Slot = to;
         other.Slot = from;
-        Say($"Moved {dock.Title} to the {to.Label()} slot. The layout is not saved.");
+        Say($"Moved {dock.Title} to the {to.Label().ToLowerInvariant()}. The layout is not saved.");
     }
 
     // shortcut: a floating dock's slot stays empty, as a dock with every tab hidden leaves it, and the editor's keys
@@ -835,7 +853,7 @@ internal sealed class EditorWindow : Window
         _floats[dock] = window;
         dock.Floats = true;
         window.Show(this);
-        Say($"Floated {dock.Title}. Close its window or choose Dock to put it back.");
+        Say($"{dock.Title} is in a window of its own. Close it, or choose {DockTabs.PutBack} in its menu.");
     }
 
     // The Reset menu and the snap actions change the selected entity's place, the Collision menu gives a mesh a
@@ -897,7 +915,7 @@ internal sealed class EditorWindow : Window
     // The tab is named for the scene file. A scene with no file takes the name of its root.
     string SceneLabel() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileNameWithoutExtension(file) : _root?.Name ?? "";
 
-    // The file name the toasts and the Save changes dialog give. A scene with no file takes the name of its root.
+    // The file name the Save changes dialog gives. A scene with no file takes the name of its root.
     string SceneName() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : _root?.Name ?? "";
 
     void ShowEdited(bool edited)
@@ -991,12 +1009,22 @@ internal sealed class EditorWindow : Window
         _center.Debugger.ShowSession(_script.IsDebugging ? _script.DebugPanel : null);
     }
 
-    // Folds both sides while either shows, so a second press brings both back.
-    void ToggleDistractionFree()
+    // Folds both sides while either shows, so a second press brings both back. The bottom panel shuts with them
+    // and the one that was open comes back with them.
+    void TogglePanels()
     {
         var fold = !_leftSide.IsFolded || !_rightSide.IsFolded;
         _leftSide.Fold(fold);
         _rightSide.Fold(fold);
+        if (fold)
+        {
+            _shutPanel = _bottomBar.OpenPanel;
+            _bottomBar.Open(-1);
+        }
+        else if (_shutPanel >= 0)
+        {
+            _bottomBar.Open(_shutPanel);
+        }
     }
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
@@ -1113,12 +1141,23 @@ internal sealed class EditorWindow : Window
         ShowRecent();
     }
 
-    void ShowRecent() => EditorMenu.ShowRecent(NativeMenu.GetMenu(this)!, _recent, Open, () =>
+    void ShowRecent()
     {
-        _recent.Clear();
-        _openedAt.Clear();
-        ShowRecent();
-    });
+        EditorMenu.ShowRecent(NativeMenu.GetMenu(this)!, _recent, Open, () =>
+        {
+            _recent.Clear();
+            _openedAt.Clear();
+            ShowRecent();
+        });
+        _center.NoScene.ShowRecent(RecentScenes());
+    }
+
+    // Read at each call, so the times say how long ago from now.
+    IEnumerable<(string, string)> RecentScenes()
+    {
+        var now = _time.GetLocalNow();
+        return _recent.Select(path => (path, NoScene.Opened(_openedAt[path], now)));
+    }
 
     // shortcut: one file stat per scene on each refresh. Read the times only for a newest first sort when a project has thousands.
     void ShowScenes()
@@ -1188,7 +1227,7 @@ internal sealed class EditorWindow : Window
     void FailScript(string why)
     {
         Fail(why);
-        _toasts.Show(ToastKind.Failed, "The script could not be saved", why, new ToastAction("Try again", SaveAll));
+        _toasts.Show(ToastKind.Failed, "Couldn't save the script", why, new ToastAction("Try again", SaveAll));
     }
 
     bool Save()
@@ -1196,16 +1235,18 @@ internal sealed class EditorWindow : Window
         try
         {
             _scene!.Save();
+            var count = _edits;
             ShowEdited(false);
             _since = _time.GetLocalNow();
             Say("Saved.", StatusKind.Done);
-            _toasts.Show(ToastKind.Done, $"Saved {SceneName()}");
+            var at = $"At {_since.ToString("HH:mm", CultureInfo.InvariantCulture)}.";
+            _toasts.Show(ToastKind.Done, $"Saved {SceneLabel()}", count == 0 ? at : $"{at} {count} {(count == 1 ? "change" : "changes")} saved.");
             return true;
         }
         catch (IOException error)
         {
             Fail(error.Message);
-            _toasts.Show(ToastKind.Failed, "The scene could not be saved", error.Message, new ToastAction("Try again", SaveAll));
+            _toasts.Show(ToastKind.Failed, $"Couldn't save {SceneLabel()}", error.Message, new ToastAction("Try again", SaveAll));
             return false;
         }
     }

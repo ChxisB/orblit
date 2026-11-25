@@ -350,19 +350,19 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void Distraction_free_folds_both_sides_and_a_second_press_brings_both_back()
+    public void Hide_panels_folds_both_sides_and_a_second_press_brings_both_back()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene());
             window.RightSide.Fold(true);
 
-            Click(window.SceneTabs.DistractionButton);
+            Click(window.SceneTabs.PanelsButton);
 
             Assert.True(window.LeftSide.IsFolded);
             Assert.True(window.RightSide.IsFolded);
 
-            Click(window.SceneTabs.DistractionButton);
+            Click(window.SceneTabs.PanelsButton);
 
             Assert.False(window.LeftSide.IsFolded);
             Assert.False(window.RightSide.IsFolded);

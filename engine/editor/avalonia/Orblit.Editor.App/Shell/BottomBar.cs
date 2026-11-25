@@ -159,8 +159,11 @@ internal sealed class BottomBar : Grid
     /// <summary>Opens the Debugger panel, for a game that stopped. A stop is asked for, so the pin does not hold it back.</summary>
     internal void OpenDebugger() => Open(1);
 
-    // One panel is open at a time. Opening Output reads its errors, so the badge goes.
-    void Open(int index)
+    /// <summary>The index of the panel now open, or -1 when every panel is shut.</summary>
+    internal int OpenPanel => _open;
+
+    /// <summary>Opens the panel at this index, or shuts every panel for -1. One panel is open at a time. Opening Output reads its errors, so the badge goes.</summary>
+    internal void Open(int index)
     {
         _open = index;
         if (index == 0)

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
@@ -10,8 +11,8 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// A dock: an island with a strip of tabs over a body that shows the chosen tab's content. The menu at the end of the
-/// strip maps where the dock sits, shows and hides its tabs, and offers every other slot. The window moves the dock,
-/// so the menu only asks.
+/// strip maps where the dock sits, shows and hides its tabs, and names every slot. The window moves the dock, so the
+/// menu only asks.
 /// </summary>
 internal sealed class DockTabs : Border
 {
@@ -29,7 +30,7 @@ internal sealed class DockTabs : Border
     readonly Control?[] _tools;
     readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly MenuItem[] _moves;
-    readonly MenuItem _float = new() { Header = "Float" };
+    readonly MenuItem _float = new();
     readonly Border[] _map;
     DockSlot _slot;
 
@@ -47,6 +48,7 @@ internal sealed class DockTabs : Border
         _moves = [.. Enum.GetValues<DockSlot>().Select(slot => MoveItem(slot))];
         _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
         _float.Click += (_, _) => FloatRequested?.Invoke();
+        Floats = false;
         MenuButton.Flyout = Options();
         DockPanel.SetDock(MenuButton, Dock.Right);
         DockPanel.SetDock(_tool, Dock.Right);
@@ -63,7 +65,7 @@ internal sealed class DockTabs : Border
     /// <summary>Raised with the slot the user chose in the dock menu. The dock has not moved.</summary>
     public event Action<DockSlot>? MoveRequested;
 
-    /// <summary>Raised when the user chose Float, or Dock on a dock that floats. The dock has not moved.</summary>
+    /// <summary>Raised when the user chose to pop the dock out, or to put a floating one back. The dock has not moved.</summary>
     public event Action? FloatRequested;
 
     /// <summary>Raised when the user asks for every dock back in its first slot.</summary>
@@ -77,7 +79,7 @@ internal sealed class DockTabs : Border
     /// <summary>The mark of the dock's button on a folded side's rail.</summary>
     internal required string Icon { get; init; }
 
-    /// <summary>The slot the dock sits in, which the map lights and the menu leaves out as a choice.</summary>
+    /// <summary>The slot the dock sits in, which the map lights and the menu shows as off.</summary>
     internal DockSlot Slot
     {
         get => _slot;
@@ -86,19 +88,30 @@ internal sealed class DockTabs : Border
             _slot = value;
             for (var i = 0; i < _moves.Length; i++)
             {
-                _moves[i].IsVisible = (DockSlot)i != value;
+                var here = (DockSlot)i == value;
+                _moves[i].IsEnabled = !here;
+                _moves[i].Header = Parts.Noted(((DockSlot)i).Label(), here ? "It is here now" : "Trades places with the panel there");
                 // The design draws the free slots in the tone of a lit guide.
-                _map[i].Background = (DockSlot)i == value ? EditorBrushes.Accent : EditorBrushes.GuideLit;
+                _map[i].Background = here ? EditorBrushes.Accent : EditorBrushes.GuideLit;
             }
         }
     }
 
-    /// <summary>True while the dock sits in a window of its own, so the menu offers Dock in place of Float.</summary>
+    /// <summary>True while the dock sits in a window of its own, so the menu offers to put it back.</summary>
     internal bool Floats
     {
-        get => (string?)_float.Header == "Dock";
-        set => _float.Header = value ? "Dock" : "Float";
+        get => AutomationProperties.GetName(_float) == PutBack;
+        set
+        {
+            var name = value ? PutBack : PopOut;
+            AutomationProperties.SetName(_float, name);
+            _float.Header = Parts.Noted(name, value ? "Docks it where it sat" : "Float it over the editor");
+        }
     }
+
+    internal const string PopOut = "Pop out into a window";
+
+    internal const string PutBack = "Put it back";
 
     internal MenuItem FloatItem => _float;
 
@@ -171,12 +184,12 @@ internal sealed class DockTabs : Border
     MenuFlyout Options()
     {
         var flyout = new MenuFlyout { Placement = PlacementMode.BottomEdgeAlignedRight };
-        flyout.Items.Add(Parts.MenuHeading($"{Title} dock sits at"));
+        flyout.Items.Add(Parts.MenuHeading("Where this panel sits"));
         flyout.Items.Add(new MenuItem { IsEnabled = false, MinHeight = 0, Header = Map() });
-        flyout.Items.Add(Parts.MenuHeading("Show tabs"));
+        flyout.Items.Add(Parts.MenuHeading("Tabs in this panel"));
         foreach (var title in _titles)
         {
-            var item = Parts.ActionItem(title, () => ToggleTab(title));
+            var item = Parts.ActionItem(title, () => ToggleTab(title), note: EditorMenu.PanelNote(title));
             item.ToggleType = MenuItemToggleType.CheckBox;
             item.Bind(MenuItem.IsCheckedProperty, Shown(title));
             flyout.Items.Add(item);
@@ -190,7 +203,7 @@ internal sealed class DockTabs : Border
 
         flyout.Items.Add(_float);
         flyout.Items.Add(new Separator());
-        flyout.Items.Add(Parts.ActionItem("Reset Layout", () => ResetRequested?.Invoke()));
+        flyout.Items.Add(Parts.ActionItem("Put all panels back", () => ResetRequested?.Invoke(), note: "The layout Orblit started with"));
         return flyout;
     }
 
@@ -218,7 +231,8 @@ internal sealed class DockTabs : Border
 
     MenuItem MoveItem(DockSlot slot)
     {
-        var item = new MenuItem { Header = $"Move to the {slot.Label()}" };
+        var item = new MenuItem();
+        AutomationProperties.SetName(item, slot.Label());
         item.Click += (_, _) => MoveRequested?.Invoke(slot);
         return item;
     }

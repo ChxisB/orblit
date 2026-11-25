@@ -54,6 +54,9 @@ internal static class EditorMenu
 
     internal static string? EngineOf(NativeMenuItem item) => item.GetValue(EngineProperty);
 
+    /// <summary>The note of the panel with this title, as the View menu gives it, so a dock's menu says the same.</summary>
+    internal static string? PanelNote(string title) => Panels().FirstOrDefault(entry => (entry.Engine ?? entry.Label) == title)?.Note;
+
     /// <summary>
     /// Builds the bar. The screen bar of macOS sits beside the system's own app menu, so it leaves out the
     /// Orblit menu. An item runs the action that <paramref name="actions"/> holds for its engine name, or for

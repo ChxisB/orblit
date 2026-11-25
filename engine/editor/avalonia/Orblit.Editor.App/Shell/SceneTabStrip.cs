@@ -9,7 +9,8 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The strip over the viewport: one tab for the open scene, a plus, and two buttons at the right end. The tab is
+/// The strip over the viewport: one tab for the open scene, a plus, and two buttons at the right end: Hide panels
+/// and the menu. The tab is
 /// raised on a fine edge with its icon in the accent colour, like a chosen dock tab. The menu at the right end
 /// makes, runs and closes the scene.
 /// </summary>
@@ -31,7 +32,10 @@ internal sealed class SceneTabStrip : Grid
     readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", "Close the scene"));
     readonly Button _add = Parts.IconButton("Add", "Make a new scene");
     readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene tab options");
-    readonly Button _distraction = Parts.IconButton("DistractionFree", "Distraction free mode");
+    readonly Button _panels = new() { Height = 26, MinHeight = 0, Padding = new Thickness(8, 0), BorderThickness = new Thickness(0) };
+    readonly TextBlock _panelsWord;
+    readonly HoverCard _hide;
+    readonly HoverCard _show;
 
     public SceneTabStrip(Button runScene, KeyModifiers command)
     {
@@ -39,6 +43,13 @@ internal sealed class SceneTabStrip : Grid
         Margin = new Thickness(6, 0);
         TextElement.SetForeground(_icon, EditorBrushes.Accent);
         TextElement.SetForeground(_close, EditorBrushes.TextDim);
+        var key = Parts.KeyText(new KeyGesture(Key.OemPipe, command));
+        _hide = new HoverCard(HidePanels, "The view fills the window. Panels wait one key away.", key);
+        _show = new HoverCard(ShowPanels, "Brings the panels back as they were.", key);
+        var keyed = Parts.Keyed(HidePanels, key);
+        _panelsWord = (TextBlock)keyed.Children[0];
+        _panels.Content = keyed;
+        _hide.On(_panels);
         _tab.Child = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -52,7 +63,7 @@ internal sealed class SceneTabStrip : Grid
             Orientation = Orientation.Horizontal,
             Spacing = 2,
             VerticalAlignment = VerticalAlignment.Center,
-            Children = { _distraction, _menu },
+            Children = { _panels, _menu },
         };
         Place(_tab, 0);
         Place(_add, 1);
@@ -82,7 +93,18 @@ internal sealed class SceneTabStrip : Grid
 
     internal Button MenuButton => _menu;
 
-    internal Button DistractionButton => _distraction;
+    internal const string HidePanels = "Hide panels";
+
+    internal const string ShowPanels = "Show panels";
+
+    internal Button PanelsButton => _panels;
+
+    /// <summary>Names the panels button for what a press does: Show panels while every side is folded, else Hide panels.</summary>
+    internal void ShowPanelsHidden(bool hidden)
+    {
+        _panelsWord.Text = hidden ? ShowPanels : HidePanels;
+        (hidden ? _show : _hide).On(_panels);
+    }
 
     /// <summary>Shows the open scene as a tab with its root's icon and this label, or no tab for none.</summary>
     public void Show(OutlineNode? root, string label)

@@ -112,7 +112,7 @@ public sealed class ViewportAreaTests
             var strip = window.SceneTabs;
 
             Assert.Equal(3111 - 6, BoxOf(strip.MenuButton, window).Right);
-            Assert.Equal(BoxOf(strip.DistractionButton, window).Right + 2, BoxOf(strip.MenuButton, window).X);
+            Assert.Equal(BoxOf(strip.PanelsButton, window).Right + 2, BoxOf(strip.MenuButton, window).X);
             Assert.Equal(new Size(26, 26), strip.MenuButton.Bounds.Size);
         });
     }
