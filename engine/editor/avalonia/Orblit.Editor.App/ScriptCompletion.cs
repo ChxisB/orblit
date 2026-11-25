@@ -20,6 +20,16 @@ internal sealed class CompletionSet(Document document, CompletionService service
 
     /// <summary>What picking the item does to the text as it was asked: the span it replaces, the new text and the caret after.</summary>
     public Task<CompletionChange> ChangeOf(CompletionItem item) => service.GetChangeAsync(document, item);
+
+    /// <summary>
+    /// One line on what the item is: the summary of its documentation, or its signature when it has none. The
+    /// signature is the first line of Roslyn's description and the summary follows it.
+    /// </summary>
+    public async Task<string> LineOf(CompletionItem item)
+    {
+        var lines = ((await service.GetDescriptionAsync(document, item))?.Text ?? "").Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return lines.Length > 1 ? string.Join(" ", lines[1..]) : lines.FirstOrDefault() ?? "";
+    }
 }
 
 /// <summary>
@@ -74,7 +84,7 @@ internal sealed class ScriptCompletion
         var info = ProjectInfo.Create(_project, VersionStamp.Create(), "Scripts", "Scripts", LanguageNames.CSharp,
             compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable),
             parseOptions: new CSharpParseOptions(LanguageVersion.Latest),
-            metadataReferences: references.Select(path => s_references.GetOrAdd(path, each => MetadataReference.CreateFromFile(each))));
+            metadataReferences: references.Select(path => s_references.GetOrAdd(path, Reference)));
         var solution = new AdhocWorkspace().CurrentSolution.AddProject(info);
         foreach (var (path, text) in scripts)
         {
@@ -82,6 +92,13 @@ internal sealed class ScriptCompletion
         }
 
         return solution;
+    }
+
+    // The documentation beside an assembly gives its members their summaries. The runtime's folder ships none.
+    static MetadataReference Reference(string path)
+    {
+        var xml = Path.ChangeExtension(path, ".xml");
+        return MetadataReference.CreateFromFile(path, documentation: File.Exists(xml) ? XmlDocumentationProvider.CreateFromFile(xml) : null);
     }
 
     /// <summary>The completions at the caret in the script's text, or none when Roslyn offers nothing there.</summary>

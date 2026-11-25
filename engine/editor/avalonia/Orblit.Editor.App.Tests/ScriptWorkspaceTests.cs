@@ -202,6 +202,27 @@ public sealed class ScriptWorkspaceTests
     }
 
     [Fact]
+    public void Shift_Command_B_checks_the_scripts_and_Find_a_script_opens_Search()
+    {
+        UiThread.Run(() =>
+        {
+            var window = Open(SceneWithScripts());
+            ShowScript(window);
+            var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.B, KeyModifiers = window.CommandKey | KeyModifiers.Shift };
+
+            window.RaiseEvent(press);
+
+            Assert.True(press.Handled);
+            Assert.Equal("No problems", window.Script.ProblemsText);
+
+            Click(window.Script.FindScriptButton);
+
+            Assert.True(window.Search.Picker.IsVisible);
+            Assert.False(window.Search.ScenesChip.IsVisible);
+        });
+    }
+
+    [Fact]
     public void A_tool_letter_typed_in_the_script_box_is_left_for_the_box()
     {
         UiThread.Run(() =>

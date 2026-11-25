@@ -1,8 +1,10 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Shapes;
 using Avalonia.Controls.Templates;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
@@ -44,9 +46,9 @@ internal interface IScriptFiles
 }
 
 /// <summary>
-/// The Script workspace, on two islands. The left one lists the project's C# files over the outline of the open one.
-/// The right one holds the open file in colour, with a status line under it. It reads and writes the files, and the
-/// status line builds them to list their problems. A click left of a line number sets a breakpoint, and a game
+/// The Script workspace, on two islands. The left one lists the project's C# files over the members of the open
+/// one. The right one holds the open file in color, with a status line under it. It reads and writes the files, and
+/// Check for problems builds them to list what is wrong. A click left of a line number sets a breakpoint, and a game
 /// that stops on one opens its file at the line. Graph scripts have their own workspace.
 /// </summary>
 internal sealed class ScriptView : Border
@@ -59,9 +61,14 @@ internal sealed class ScriptView : Border
     readonly CodeBox _code = new();
     readonly ScriptFind _finder;
     readonly CreateScriptForm _form = new(ScriptKind.Csharp);
-    readonly Button _new = Parts.IconButton("ScriptCreate", "New script");
-    readonly Button _sort = Parts.IconButton("Sort", SortTip(descending: false));
-    readonly Button _find = Parts.IconButton("Search", "Find in the script");
+    readonly Button _new = Parts.Dress(new Button(), "ScriptCreate", new HoverCard("New script", NewLine));
+    // The column is too narrow for a third word, so Sort keeps its icon alone.
+    readonly Button _sort = SortCard(descending: false).On(Parts.IconButton("Sort", ""));
+    readonly Button _find = new();
+    readonly Button _check = new();
+    readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", ""));
+    readonly Button _start = Choice("New script", null, EditorTheme.Primary, NewLine);
+    readonly Button _findScript = Choice("Find a script", "⌘K", EditorTheme.Ghost, "Type part of a name to open it.");
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
     readonly ListBox _outline = new()
     {
@@ -74,7 +81,7 @@ internal sealed class ScriptView : Border
 
     readonly TextBox _filter = new()
     {
-        PlaceholderText = "Filter scripts",
+        PlaceholderText = "Find a script",
         Height = BoxHeight,
         MinHeight = 0,
         Margin = new Thickness(8),
@@ -88,7 +95,7 @@ internal sealed class ScriptView : Border
     readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _caret = StatusText();
     readonly TextBlock _indent = StatusText();
-    readonly Control _empty = Parts.EmptyState("CodeFile", "No script open", "Pick a script on the left to read and edit it.");
+    readonly Control _empty;
     readonly Button _save = new() { Classes = { EditorTheme.TextButton, EditorTheme.Primary, EditorTheme.Small }, IsEnabled = false, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _problems = new() { Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _problemsText = StatusText();
@@ -109,6 +116,7 @@ internal sealed class ScriptView : Border
 
     public ScriptView()
     {
+        _empty = NoScript();
         _finder = new ScriptFind(_code);
         _completions = new CompletionPopup(_code, Complete);
         _errorsAfter.Tick += async (_, _) =>
@@ -125,6 +133,14 @@ internal sealed class ScriptView : Border
         };
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
         _save.Content = Parts.Keyed("Save", "⌘S");
+        var save = new HoverCard("Save", "Writes the script to its file.", "⌘S");
+        save.SaysWhyOff(save.On(_save), "Nothing new to save.");
+        var find = new HoverCard("Find", "Finds words in this script.", "⌘F");
+        find.SaysWhyOff(Parts.Dress(_find, "Search", find), "Open a script first.");
+        var check = new HoverCard("Check for problems", "Saves, then builds the project's C# and lists what is wrong.", "⇧⌘B");
+        check.SaysWhyOff(Parts.Dress(_check, "ImportCheck", check), "A check is running.");
+        new HoverCard("Close", "Saves the script, then closes it.").On(_close);
+        new HoverCard("Problems", "Lists what the last check found. With nothing found, it checks again.").On(_problems);
         _tab = new Border
         {
             Height = 26,
@@ -136,7 +152,7 @@ internal sealed class ScriptView : Border
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
             IsVisible = false,
-            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, Children = { Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), _tabName, _tabDot } },
+            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, Children = { Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), _tabName, _tabDot, _close } },
         };
         _code.Editor.IsEnabled = false;
         _find.IsEnabled = false;
@@ -167,12 +183,15 @@ internal sealed class ScriptView : Border
         _outline.SelectionChanged += (_, _) => GoToMember();
         _save.Click += (_, _) => Save();
         _new.Click += (_, _) => _form.Open(_paths, _files?.AddableClasses() ?? []);
+        _start.Click += (_, _) => _form.Open(_paths, _files?.AddableClasses() ?? []);
+        _check.Click += async (_, _) => await Check();
+        _close.Click += (_, _) => Close();
         _form.Requested += Create;
         _sort.Click += (_, _) => Sort();
         _find.Click += (_, _) => _finder.Open();
         _problems.Click += async (_, _) => await ListOrCheck();
-        ToolTip.SetTip(_problems, "Build the project's C# and list its errors and warnings");
-        ShowProblems("Check problems", null, EditorBrushes.TextDim);
+        // The count shows once a check has run.
+        _problems.IsVisible = false;
         var lists = Lists();
         var editor = EditorIsland();
         Grid.SetColumn(editor, 2);
@@ -204,6 +223,20 @@ internal sealed class ScriptView : Border
     internal Button SortButton => _sort;
 
     internal Button FindButton => _find;
+
+    internal Button CheckButton => _check;
+
+    /// <summary>The cross on the tab of the open script.</summary>
+    internal Button CloseButton => _close;
+
+    /// <summary>New script in the middle while no script is open.</summary>
+    internal Button StartButton => _start;
+
+    /// <summary>Find a script in the middle while no script is open. The window opens Search.</summary>
+    internal Button FindScriptButton => _findScript;
+
+    /// <summary>What the middle shows while no script is open.</summary>
+    internal Control Empty => _empty;
 
     internal ScriptFind Finder => _finder;
 
@@ -338,7 +371,13 @@ internal sealed class ScriptView : Border
 
     static bool Failed(Exception error) => error is IOException or UnauthorizedAccessException;
 
-    static string SortTip(bool descending) => descending ? "Sort the scripts A to Z" : "Sort the scripts Z to A";
+    const string NewLine = "Makes a C# script in this project.";
+
+    static HoverCard SortCard(bool descending) => new(descending ? "Sort the scripts A to Z" : "Sort the scripts Z to A", "Turns the order of the list round.");
+
+    // A worded button for the middle, with its key when it has one.
+    static Button Choice(string word, string? key, string look, string line) =>
+        new HoverCard(word, line, key).On(new Button { Classes = { EditorTheme.TextButton, look }, Content = key is null ? word : Parts.Keyed(word, key) });
 
     static string FileName(string path) => path.StartsWith("res://", StringComparison.Ordinal) ? path["res://".Length..] : path;
 
@@ -352,7 +391,7 @@ internal sealed class ScriptView : Border
         }
 
         var widths = lines.Select(line => line.Length - line.TrimStart(' ').Length).Where(width => width > 0).ToList();
-        return $"Spaces: {(widths.Count > 0 ? widths.Min() : 4)}";
+        return $"Spaces {(widths.Count > 0 ? widths.Min() : 4)}";
     }
 
     static Ellipse Dot() => new() { Width = DotSize, Height = DotSize, Fill = EditorBrushes.Accent, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
@@ -410,7 +449,7 @@ internal sealed class ScriptView : Border
             Padding = new Thickness(14, 14, 14, 6),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new TextBlock { Text = "Outline", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim },
+            Child = new TextBlock { Text = "In this script", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim },
         };
         var grid = new Grid { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},Auto,*,Auto,*") };
         Place(grid, Bar(tab, tools), 0);
@@ -431,7 +470,7 @@ internal sealed class ScriptView : Border
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = "C#", FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
         };
-        var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, _find, new Border { Width = 4 }, _save);
+        var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, _find, new Border { Width = 4 }, _save, new Border { Width = 4 }, _check);
         DockPanel.SetDock(_problems, Dock.Right);
         var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status, _errors } };
         var status = new Border
@@ -453,6 +492,33 @@ internal sealed class ScriptView : Border
         Place(grid, status, 2);
         // The text area's corners would square off the island's lower ones.
         return new Border { Classes = { EditorTheme.Island }, ClipToBounds = true, Child = grid };
+    }
+
+    // What scripts are, and two ways in.
+    StackPanel NoScript()
+    {
+        var mark = new EditorIcon("CodeFile") { Width = 28, Height = 28, HorizontalAlignment = HorizontalAlignment.Center };
+        TextElement.SetForeground(mark, EditorBrushes.Disabled);
+        return new StackPanel
+        {
+            Width = 360,
+            Spacing = 10,
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
+            {
+                mark,
+                new TextBlock { Text = "No script is open", FontSize = 15, FontWeight = FontWeight.SemiBold, HorizontalAlignment = HorizontalAlignment.Center },
+                new TextBlock
+                {
+                    Text = "Scripts tell things what to do. Pick one from the list, or make one.",
+                    Foreground = EditorBrushes.TextSoft,
+                    TextWrapping = TextWrapping.Wrap,
+                    TextAlignment = TextAlignment.Center,
+                },
+                new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center, Children = { _start, _findScript } },
+            },
+        };
     }
 
     static void Place(Grid grid, Control child, int row)
@@ -563,7 +629,23 @@ internal sealed class ScriptView : Border
     void Sort()
     {
         _descending = !_descending;
-        ToolTip.SetTip(_sort, SortTip(_descending));
+        SortCard(_descending).On(_sort);
+        ShowList();
+    }
+
+    /// <summary>Writes the open script, then closes it. A script that cannot be written stays open.</summary>
+    internal void Close()
+    {
+        if (_open is null || !Save())
+        {
+            return;
+        }
+
+        _open = null;
+        _saved = "";
+        _errors.Text = "";
+        _code.Editor.Text = "";
+        ShowOpen();
         ShowList();
     }
 
@@ -688,6 +770,8 @@ internal sealed class ScriptView : Border
         }
 
         _problems.IsEnabled = false;
+        _check.IsEnabled = false;
+        _problems.IsVisible = true;
         ShowProblems("Checking…", null, EditorBrushes.TextDim);
         try
         {
@@ -697,37 +781,42 @@ internal sealed class ScriptView : Border
         catch (Exception error) when (Failed(error))
         {
             _found = [];
-            ShowProblems("Check problems", null, EditorBrushes.TextDim);
+            ShowProblems("Not checked", null, EditorBrushes.TextDim);
             Say(error.Message, EditorBrushes.FaultText);
         }
 
         _problems.IsEnabled = true;
+        _check.IsEnabled = true;
     }
 
-    /// <summary>The list of what the last check found, with Check again under it.</summary>
+    /// <summary>
+    /// The list of what the last check found under a count of each kind, with Check again under it. Each problem
+    /// says what is wrong, then where, with the compiler's code beside it in dim mono.
+    /// </summary>
     internal MenuFlyout ProblemList()
     {
         var list = new MenuFlyout { Placement = PlacementMode.TopEdgeAlignedRight };
+        list.Items.Add(Parts.MenuHeading(Counts()));
         foreach (var problem in _found)
         {
-            var place = problem.Line > 0 ? $"{FileName(problem.Path)}:{problem.Line}  " : "";
             var icon = new EditorIcon(problem.IsError ? "FaultCircle" : "WarnTriangle") { Width = 14, Height = 14 };
             TextElement.SetForeground(icon, problem.IsError ? EditorBrushes.Fault : EditorBrushes.Warn);
+            var header = Parts.Noted(problem.Words, problem.Line > 0 ? $"{FileName(problem.Path)}, line {problem.Line}." : null, problem.Code == "" ? null : problem.Code);
+            header.MaxWidth = 560;
             var item = new MenuItem
             {
-                Header = new TextBlock { Text = place + problem.Text, MaxWidth = 560, TextWrapping = TextWrapping.Wrap },
+                Header = header,
                 Icon = icon,
                 // A problem with no place in a project file has nowhere to go.
                 IsEnabled = problem.Line > 0 && problem.Path.StartsWith(FileTree.Root, StringComparison.Ordinal),
             };
+            AutomationProperties.SetName(item, problem.Words);
             item.Click += (_, _) => GoTo(problem);
             list.Items.Add(item);
         }
 
         list.Items.Add(new Separator());
-        var again = new MenuItem { Header = "Check again" };
-        again.Click += async (_, _) => await Check();
-        list.Items.Add(again);
+        list.Items.Add(Parts.PressItem("Check again", _check, new KeyGesture(Key.B, KeyModifiers.Meta | KeyModifiers.Shift), "Saves, then builds again."));
         return list;
     }
 
@@ -773,16 +862,20 @@ internal sealed class ScriptView : Border
 
     void ShowFound()
     {
-        var errors = _found.Count(problem => problem.IsError);
-        var warnings = _found.Count - errors;
         if (_found.Count == 0)
         {
             ShowProblems("No problems", "Tick", EditorBrushes.Done);
             return;
         }
 
-        var text = $"{Count(errors, "error")}, {Count(warnings, "warning")}";
-        ShowProblems(text, errors > 0 ? "FaultCircle" : "WarnTriangle", errors > 0 ? EditorBrushes.FaultText : EditorBrushes.Warn);
+        var errors = _found.Any(problem => problem.IsError);
+        ShowProblems(Count(_found.Count, "problem"), errors ? "FaultCircle" : "WarnTriangle", errors ? EditorBrushes.FaultText : EditorBrushes.Warn);
+    }
+
+    string Counts()
+    {
+        var errors = _found.Count(problem => problem.IsError);
+        return $"{Count(errors, "error")}, {Count(_found.Count - errors, "warning")}";
     }
 
     static string Count(int count, string word) => count == 1 ? $"1 {word}" : $"{count} {word}s";
@@ -810,11 +903,14 @@ internal sealed class ScriptView : Border
         dot.IsVisible = path == _open && IsDirty;
         dot.Margin = new Thickness(8, 0, 0, 0);
         DockPanel.SetDock(dot, Dock.Right);
+        var kind = new TextBlock { Text = "C#", FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(kind, Dock.Right);
         return new DockPanel
         {
             Children =
             {
                 dot,
+                kind,
                 Row(Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), new TextBlock { Text = FileName(path), TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }),
             },
         };

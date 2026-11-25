@@ -6,7 +6,14 @@ using System.Text.RegularExpressions;
 namespace Orblit.Editor.App;
 
 /// <summary>One error or warning from a build. Line is zero when the build named no place in a file.</summary>
-internal sealed record ScriptProblem(string Path, int Line, int Column, bool IsError, string Text);
+internal sealed record ScriptProblem(string Path, int Line, int Column, bool IsError, string Text)
+{
+    /// <summary>The compiler's code that starts the text, such as CS1002, or empty when it has none.</summary>
+    public string Code => Text.IndexOf(": ", StringComparison.Ordinal) is > 0 and var at && Text[..at].All(char.IsAsciiLetterOrDigit) ? Text[..at] : "";
+
+    /// <summary>The text after its code.</summary>
+    public string Words => Code == "" ? Text : Text[(Code.Length + 2)..];
+}
 
 /// <summary>Builds a project's C# with dotnet and reads each error and warning the build prints.</summary>
 internal static partial class ScriptChecker

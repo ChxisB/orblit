@@ -4,7 +4,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// A member a script declares, as its outline lists it: the name, the word beside it, the icon, and where the name
-/// starts in the text.
+/// starts in the text. A method's word is step, and a value's word is its type.
 /// </summary>
 internal sealed partial record ScriptMember(string Name, string Detail, string Icon, int Index)
 {
@@ -36,8 +36,8 @@ internal sealed partial record ScriptMember(string Name, string Detail, string I
         var name = match.Groups["name"];
         var (icon, detail) = match.Groups["end"].Value switch
         {
-            "(" when mods.Contains("override") => ("MethodOverride", "override"),
-            "(" => ("MemberMethod", type),
+            "(" when mods.Contains("override") => ("MethodOverride", "step"),
+            "(" => ("MemberMethod", "step"),
             _ when mods.Contains("const") => ("MemberConstant", type),
             _ => ("MemberProperty", type),
         };

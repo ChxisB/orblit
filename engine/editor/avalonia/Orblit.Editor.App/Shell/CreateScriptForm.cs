@@ -7,22 +7,24 @@ using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The words and the file suffix of one kind of script that the New Script dialog makes.</summary>
-internal sealed record ScriptKind(string Title, string Lead, string DefaultName, string Suffix)
+/// <summary>The words, the engine's name and the file suffix of one kind of script that the New script dialog makes.</summary>
+internal sealed record ScriptKind(string Title, string Engine, string Lead, string DefaultName, string Suffix)
 {
-    public static readonly ScriptKind Graph = new("New Graph Script", "A script made of steps.", "new_graph", ".ograph");
+    public static readonly ScriptKind Graph = new("New graph script", "New Graph Script", "A script made of steps. You pick what it runs on.", "new_graph", ".ograph");
 
-    public static readonly ScriptKind Csharp = new("New C# Script", "A class written in C#.", "NewScript", ".cs");
+    public static readonly ScriptKind Csharp = new("New C# script", "New C# Script", "Code that tells a thing what to do.", "NewScript", ".cs");
 }
 
 /// <summary>
-/// The New Script dialog for one kind of script. It asks for the name of the file, the class the script extends
-/// and its folder. A name that is a script of the kind already turns Create off and says so under the field.
+/// The New script dialog for one kind of script. It asks for the name of the file, the kind of thing the script
+/// works on and its folder, and shows where the file goes. A name that is a script of the kind already turns Create
+/// off and says so under the field. While Create is off, its card says what to do first.
 /// </summary>
 internal sealed class CreateScriptForm : StackPanel
 {
     const string DefaultBase = "Entity";
     const string DefaultFolder = "res://";
+    const string WorksOnLine = "The kind of thing it can be added to. Entity works on anything.";
 
     readonly ScriptKind _kind;
     readonly TextBox _name = new()
@@ -47,6 +49,7 @@ internal sealed class CreateScriptForm : StackPanel
         Classes = { EditorTheme.Field },
     };
     readonly TextBlock _fault = Parts.FaultLine();
+    readonly TextBlock _saved = new() { FontSize = 11, Foreground = EditorBrushes.TextDim };
     IReadOnlyCollection<string> _scripts = [];
 
     public CreateScriptForm(ScriptKind kind)
@@ -54,10 +57,11 @@ internal sealed class CreateScriptForm : StackPanel
         _kind = kind;
         ((TextBlock)_name.InnerRightContent!).Text = kind.Suffix;
         Spacing = 10;
-        Children.Add(Parts.Labeled("Name", _name, _fault));
-        Children.Add(Parts.Labeled("Extends", _extends));
+        Children.Add(Parts.Labeled("Name", _name, _fault, _saved));
+        Children.Add(Parts.Labeled("Works on", _extends, new TextBlock { Text = WorksOnLine, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap }));
         Children.Add(Parts.Labeled("Folder", _folder));
-        Dialog = new Dialog(kind.Title, kind.Lead, this) { MainText = "Create", CardWidth = 380 };
+        Dialog = new Dialog(kind.Title, kind.Lead, this) { EngineName = kind.Engine, CardWidth = 380 };
+        Dialog.MainButton.Content = Parts.Keyed("Create", "↵");
         // TextChanged waits for a render, so the property is the one that fires at once.
         _name.PropertyChanged += (_, e) => Check(e.Property);
         _folder.PropertyChanged += (_, e) => Check(e.Property);
@@ -77,6 +81,9 @@ internal sealed class CreateScriptForm : StackPanel
     internal TextBox FolderBox => _folder;
 
     internal Button CreateButton => Dialog.MainButton;
+
+    /// <summary>The line under the name that says where the script is saved.</summary>
+    internal TextBlock SavedLine => _saved;
 
     /// <summary>The line under the name that says why the script cannot be made, or empty.</summary>
     internal string Fault => _fault.IsVisible ? _fault.Text ?? "" : "";
@@ -113,14 +120,19 @@ internal sealed class CreateScriptForm : StackPanel
         }
     }
 
-    // Create waits for a name and a folder, and for a path that is no script yet.
+    // Create waits for a name and a folder, and for a path that is no script yet. Its card says which it waits for.
     void Check()
     {
         var name = _name.Text?.Trim() ?? "";
+        var blank = string.IsNullOrWhiteSpace(_folder.Text);
         var taken = _scripts.Contains(PathOf());
         _name.Classes.Set(EditorTheme.Bad, taken);
-        Say(taken ? $"{name}{_kind.Suffix} already exists. Pick another name." : "");
-        Dialog.MainButton.IsEnabled = name != "" && !string.IsNullOrWhiteSpace(_folder.Text) && !taken;
+        var fault = taken ? $"{name}{_kind.Suffix} already exists. Pick another name." : "";
+        Say(fault);
+        _saved.Text = name == "" || blank ? "" : $"Saved as {PathOf()}";
+        var why = name == "" ? "Give it a name first." : blank ? "Give it a folder first." : taken ? fault : null;
+        Dialog.MainButton.IsEnabled = why is null;
+        new HoverCard("Create", why ?? "Makes the script and opens it.", "↵").On(Dialog.MainButton);
     }
 
     // A folder without its closing slash gets one, so res://enemies and res://enemies/ give one path.
@@ -130,7 +142,7 @@ internal sealed class CreateScriptForm : StackPanel
         return $"{(folder.EndsWith('/') ? folder : folder + "/")}{_name.Text?.Trim()}{_kind.Suffix}";
     }
 
-    // A 3D base is marked in the 3D colour and a 2D base in the 2D colour, as the roots of New Scene are.
+    // A 3D base is marked in the 3D color and a 2D base in the 2D color, as the roots of New scene are.
     static StackPanel BaseRow(string name)
     {
         var tint = name switch

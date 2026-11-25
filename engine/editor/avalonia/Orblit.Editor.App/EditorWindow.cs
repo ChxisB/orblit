@@ -125,6 +125,7 @@ internal sealed class EditorWindow : Window
         _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
         _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
         _titleBar.SearchButton.Click += (_, _) => OpenSearch(SearchScope.All);
+        _script.FindScriptButton.Click += (_, _) => OpenSearch(SearchScope.All);
         _scenesButton.Click += (_, _) => OpenSearch(SearchScope.Scenes);
         _actionsButton.Click += (_, _) => OpenSearch(SearchScope.Actions);
         _keysButton.Click += (_, _) => OpenKeys();
@@ -749,6 +750,7 @@ internal sealed class EditorWindow : Window
         (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.PanelsButton,
         (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
+        (Key.B, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && _script.IsEffectivelyVisible => _script.CheckButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.SelectButton,
         (Key.W, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) && _center.Planar.IsVisible => _center.Planar.MoveButton,
