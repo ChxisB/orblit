@@ -8,6 +8,7 @@ using Avalonia.Input;
 using Avalonia.Input.Platform;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
@@ -58,6 +59,9 @@ internal sealed class EditorWindow : Window
     readonly Button _frame = new() { IsEnabled = false };
     readonly Button _undo = new() { IsEnabled = false };
     readonly Button _redo = new() { IsEnabled = false };
+    readonly Button _keysButton = new();
+    readonly KeysSheet _keys = new();
+    readonly bool _globalMenu;
     readonly SceneTabStrip _sceneTabs;
     readonly ViewportToolbar _toolbar;
     readonly TitleBar _titleBar;
@@ -120,6 +124,8 @@ internal sealed class EditorWindow : Window
         _titleBar.SearchButton.Click += (_, _) => OpenPalette();
         _quickOpen = QuickOpen.Build(CommandKey);
         _quickOpenButton.Click += (_, _) => OpenQuickOpen();
+        _keysButton.Click += (_, _) => OpenKeys();
+        _globalMenu = globalMenu ?? OperatingSystem.IsMacOS();
         ShowTitle();
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1440;
@@ -203,11 +209,13 @@ internal sealed class EditorWindow : Window
         };
         WireMenus();
         // The toasts go over the veil, so Try again on a failed save stays in reach while the dialog asks.
-        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _palette, _quickOpen, _toasts } };
-        NativeMenu.SetMenu(this, EditorMenu.Build(globalMenu ?? OperatingSystem.IsMacOS(), CommandKey, MenuActions()));
+        Content = new Panel { Children = { Layout(), _newScene.Dialog, _graph.CreateDialog, _script.CreateDialog, _tools.AddDialog, _instanceScene.Dialog, _move.Dialog, _signals.Dialog, _export.Dialog, _saveChanges, _keys.Dialog, _palette, _quickOpen, _toasts } };
+        NativeMenu.SetMenu(this, EditorMenu.Build(_globalMenu, CommandKey, MenuActions()));
     }
 
     internal TitleBar Bar => _titleBar;
+
+    internal KeysSheet Keys => _keys;
 
     internal DockTabs SceneDock => _sceneDock;
 
@@ -600,21 +608,32 @@ internal sealed class EditorWindow : Window
         _saveChanges.Open();
     }
 
-    // Save is on while the Save button is. Quit and fullscreen are the other menu items the editor can do.
-    // Each Editor Docks item shows and hides its tab. Each run flag in the Debug menu flips the Game tab's switch.
+    // An item with a button presses it, so the item is on while the button is. Undo and Redo take the button's
+    // words as their name. Each Panels item shows and hides its tab. Each Show while playing item flips the
+    // Game tab's switch.
     Dictionary<string, MenuAction> MenuActions()
     {
+        static MenuAction Pressing(Button button) => new(() => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), button.GetObservable(IsEnabledProperty));
+
+        static MenuAction Named(Button button, string word) => Pressing(button) with { Name = button.GetObservable(ContentProperty, content => content as string ?? word) };
+
         var actions = new Dictionary<string, MenuAction>
         {
-            ["New Scene"] = new(OpenNewScene),
-            ["Command Palette..."] = new(OpenPalette),
-            ["Quick Open Scene..."] = new(OpenQuickOpen),
-            ["Export..."] = new(_export.Open),
-            ["Save Scene"] = new(() => _save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _save.GetObservable(IsEnabledProperty)),
-            ["Undo"] = new(() => _undo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _undo.GetObservable(IsEnabledProperty)),
-            ["Redo"] = new(() => _redo.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), _redo.GetObservable(IsEnabledProperty)),
-            ["Quit"] = new(Close),
-            ["Toggle Fullscreen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
+            ["About Orblit"] = new(() => Copy(BottomBar.Version, BottomBar.Version)),
+            ["Quit Orblit"] = new(Close),
+            ["New scene…"] = new(OpenNewScene),
+            ["Quick Open Scene…"] = new(OpenQuickOpen),
+            ["Save"] = Pressing(_save),
+            ["Export game…"] = new(_export.Open),
+            ["Undo"] = Named(_undo, "Undo"),
+            ["Redo"] = Named(_redo, "Redo"),
+            ["Search"] = Pressing(_titleBar.SearchButton),
+            ["Hide panels"] = Pressing(_sceneTabs.DistractionButton),
+            ["Full screen"] = new(() => WindowState = WindowState == WindowState.FullScreen ? WindowState.Normal : WindowState.FullScreen),
+            ["Play the game"] = Pressing(_playButton),
+            ["Play this scene"] = Pressing(_playSceneButton),
+            ["Stop"] = Pressing(_stopButton),
+            ["All keys"] = Pressing(_keysButton),
         };
         foreach (var name in GameView.FlagNames)
         {
@@ -672,6 +691,8 @@ internal sealed class EditorWindow : Window
         (Key.K, var modifiers) when modifiers == CommandKey => _titleBar.SearchButton,
         (Key.P, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _titleBar.SearchButton,
         (Key.O, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _quickOpenButton,
+        (Key.OemPipe, var modifiers) when modifiers == CommandKey => _sceneTabs.DistractionButton,
+        (Key.OemQuestion, KeyModifiers.Shift) when e.Source is not (TextBox or ComboBox) => _keysButton,
         (Key.F, var modifiers) when modifiers == CommandKey && _script.IsEffectivelyVisible => _script.FindButton,
         (Key.F, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _frame,
         (Key.Q, KeyModifiers.None) when e.Source is not (TextBox or ComboBox) => _toolbar.SelectButton,
@@ -919,6 +940,8 @@ internal sealed class EditorWindow : Window
     {
         _undo.IsEnabled = _history.CanUndo;
         _redo.IsEnabled = _history.CanRedo;
+        _undo.Content = _history.CanUndo ? $"Undo {_history.Steps[_history.Done - 1].Label}" : "Undo";
+        _redo.Content = _history.CanRedo ? $"Redo {_history.Steps[_history.Done].Label}" : "Redo";
         var file = _scene?.SceneFile ?? "";
         _historyPane.Show(_history, $"Opened {(_scene is null ? "" : SceneName())}", _openedAt.GetValueOrDefault(file, _time.GetLocalNow()));
     }
@@ -978,6 +1001,17 @@ internal sealed class EditorWindow : Window
     }
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
+
+    // The menu keys come first, by menu. The cards of the window's own buttons add the keys the menus lack.
+    void OpenKeys()
+    {
+        var menus = EditorMenu.Keys(_globalMenu, CommandKey).ToList();
+        var shown = menus.Select(row => row.Key).ToHashSet();
+        var cards = this.GetLogicalDescendants().OfType<Control>().Select(ToolTip.GetTip).OfType<HoverCard>();
+        // The Where keeps only cards that have a key.
+        var window = cards.Where(card => card.Key is not null && !shown.Contains(card.Key)).Select(card => ("In the window", card.Title, card.Key!)).Distinct();
+        _keys.Open([.. menus, .. window]);
+    }
 
     void OpenNewScene() => _newScene.Open(_scene?.Scenes() ?? [], _planar, _scene?.AddableClasses() ?? []);
 

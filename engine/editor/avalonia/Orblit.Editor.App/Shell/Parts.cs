@@ -143,10 +143,15 @@ internal static class Parts
         {
             Key.OemComma => ",",
             Key.OemPeriod => ".",
+            Key.OemQuestion when gesture.KeyModifiers.HasFlag(KeyModifiers.Shift) => "?",
+            Key.OemQuestion => "/",
+            Key.OemPipe => "\\",
             >= Key.D0 and <= Key.D9 => $"{gesture.Key - Key.D0}",
             _ => gesture.Key.ToString(),
         };
-        return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + Mark(KeyModifiers.Shift, "⇧") + Mark(KeyModifiers.Meta, "⌘") + key;
+        // A question mark already holds its shift.
+        var shift = key == "?" ? "" : Mark(KeyModifiers.Shift, "⇧");
+        return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + shift + Mark(KeyModifiers.Meta, "⌘") + key;
     }
 
     /// <summary>The line under a field that says why its value cannot be used. It waits hidden until there is something to say.</summary>
@@ -156,7 +161,6 @@ internal static class Parts
     public static MenuItem MenuHeading(string group) => new()
     {
         IsEnabled = false,
-        MinHeight = 0,
         Header = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.Unit },
     };
 
@@ -183,15 +187,26 @@ internal static class Parts
         return item;
     }
 
-    static StackPanel Noted(string name, string note) => new()
+    /// <summary>
+    /// A menu item's header: its name with the engine's name beside it in small dim mono, and its note in a dim
+    /// line under them. Each part shows only when it is given.
+    /// </summary>
+    internal static StackPanel Noted(string name, string? note, string? engine = null)
     {
-        Spacing = 1,
-        Children =
+        var top = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = name } } };
+        if (engine is not null)
         {
-            new TextBlock { Text = name },
-            new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim },
-        },
-    };
+            top.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        }
+
+        var header = new StackPanel { Spacing = 1, Children = { top } };
+        if (note is not null)
+        {
+            header.Children.Add(new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim });
+        }
+
+        return header;
+    }
 
     /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
     public static Border Bar(params Control[] items)

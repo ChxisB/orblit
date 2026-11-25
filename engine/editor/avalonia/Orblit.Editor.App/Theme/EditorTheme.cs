@@ -314,8 +314,9 @@ internal sealed class EditorTheme : Styles
         {
             Setters =
             {
-                new Setter(Layoutable.HeightProperty, 28.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(8, 0)),
+                // A floor, not a height, so an item with a note under its name grows to hold it.
+                new Setter(Layoutable.MinHeightProperty, 28.0),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(8, 4)),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
         },
@@ -327,6 +328,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, 26.0),
+                new Setter(Layoutable.MinHeightProperty, 0.0),
                 new Setter(TemplatedControl.ForegroundProperty, EditorBrushes.TextSoft),
                 new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
             },

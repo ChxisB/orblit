@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Avalonia.Media;
+using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
@@ -93,21 +94,41 @@ public sealed class TitleBarTests
     }
 
     [Fact]
-    public void The_window_bar_lists_the_four_menus_in_soft_26_high_tabs_where_the_system_bar_does_not()
+    public void The_window_bar_lists_the_menus_in_soft_26_high_tabs_where_the_system_bar_does_not()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var menus = window.Bar.Menus.GetVisualDescendants().OfType<MenuItem>().ToArray();
+            string[] orblit = OperatingSystem.IsMacOS() ? [] : ["Orblit"];
 
             Assert.True(window.Bar.Menus.IsEffectivelyVisible);
-            Assert.Equal(["Scene", "Project", "Debug", "Editor"], menus.Select(item => item.Header as string));
+            Assert.Equal([.. orblit, "File", "Edit", "View", "Play", "Help"], menus.Select(item => item.Header as string));
             Assert.All(menus, item =>
             {
                 Assert.Equal(26, item.Bounds.Height);
                 Assert.Equal(EditorColors.TextSoft, ((ISolidColorBrush)item.Foreground!).Color);
             });
             Assert.True(BoxOf(window.Bar.Menus, window).X > BoxOf(window.Bar.EditedDot, window).Right);
+        });
+    }
+
+    [Fact]
+    public void An_item_of_the_window_bar_shows_its_engine_name_and_its_note_under_its_name()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var file = window.Bar.Menus.GetVisualDescendants().OfType<MenuItem>().Single(item => item.Header as string == "File");
+
+            file.Open();
+            Dispatcher.UIThread.RunJobs();
+            var find = file.GetRealizedContainers().OfType<MenuItem>().Single(item => item.Header as string == "Find a scene…");
+
+            // The key at the right of the item is the menu's own, so only the header's words count here.
+            var words = find.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).Take(3);
+
+            Assert.Equal(["Find a scene…", "Quick Open Scene…", "Type part of a name to open it"], words);
         });
     }
 

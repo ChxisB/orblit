@@ -28,7 +28,7 @@ public sealed class SceneFileToolsTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var menuItem = Items(NativeMenu.GetMenu(window)!).Single(item => item.Header == "New Scene");
+            var menuItem = Items(NativeMenu.GetMenu(window)!).Single(item => item.Header == "New scene…");
             Action[] ways =
             [
                 () => ClickOn(window.SceneTabs.AddButton, window),

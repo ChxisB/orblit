@@ -5,6 +5,7 @@ using Avalonia.Controls.Shapes;
 using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Styling;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -53,6 +54,8 @@ internal sealed class TitleBar : Grid
     {
         Height = BarHeight;
         Background = EditorBrushes.Window;
+        // The system bar of macOS puts a note in the item's tip. This bar has room to show it under the name.
+        Menus.Styles.Add(new Style(x => x.OfType<MenuItem>()) { Setters = { new Setter(HeaderedSelectingItemsControl.HeaderTemplateProperty, EditorMenu.BarHeader) } });
         ColumnDefinitions = new ColumnDefinitions("*,Auto,*");
         Heading = new StackPanel
         {

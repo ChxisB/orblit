@@ -54,7 +54,7 @@ public sealed class CommandPaletteTests
             Press(window.Palette.SearchBox, Key.Escape);
             Assert.False(window.Palette.IsVisible);
 
-            var item = MenuItems(NativeMenu.GetMenu(window)!).Single(item => item.Header == "Command Palette...");
+            var item = MenuItems(NativeMenu.GetMenu(window)!).Single(item => item.Header == "Search");
             item.Command!.Execute(item.CommandParameter);
             Assert.True(window.Palette.IsVisible);
         });
@@ -81,7 +81,7 @@ public sealed class CommandPaletteTests
             var palette = Opened(window, "> s");
 
             Assert.All(palette.Shown, row => Assert.Equal("Commands", row.Group));
-            Assert.Contains(palette.Shown, row => row.Name == "Save Scene");
+            Assert.Contains(palette.Shown, row => row.Name == "Save");
         });
     }
 
@@ -94,11 +94,11 @@ public sealed class CommandPaletteTests
 
             var commands = Opened(window, ">").Shown;
 
-            var quickOpen = commands.Single(row => row.Name == "Quick Open Scene...");
+            var quickOpen = commands.Single(row => row.Name == "Find a scene…");
             Assert.Equal(Parts.KeyText(new KeyGesture(Key.O, window.CommandKey | KeyModifiers.Shift)), quickOpen.Key);
             Assert.Equal("", quickOpen.Note);
-            Assert.Equal("Editor Docks", commands.Single(row => row.Name == "Inspector").Note);
-            Assert.DoesNotContain(commands, row => row.Name is "Layouts" or "Recent" or "Scene" && row.Note == "");
+            Assert.Equal("Panels", commands.Single(row => row.Name == "Inspector").Note);
+            Assert.DoesNotContain(commands, row => row.Name is "Panels" or "Open recent" or "Show while playing" && row.Note == "");
         });
     }
 
@@ -112,7 +112,7 @@ public sealed class CommandPaletteTests
             MakeAnEdit(window);
             var palette = Opened(window, "save");
 
-            Assert.Equal("Save Scene", palette.Shown[palette.Lit].Name);
+            Assert.Equal("Save", palette.Shown[palette.Lit].Name);
             Press(palette.SearchBox, Key.Enter);
 
             Assert.Equal(1, scene.Saves);

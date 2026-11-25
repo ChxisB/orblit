@@ -345,11 +345,8 @@ internal sealed class ViewportToolbar : Grid
         };
     }
 
-    // A collision item says when to use it under its name, so the row grows past the menu's 28 pixels.
     static MenuItem DescribedItem(string header, string line) => new()
     {
-        Height = double.NaN,
-        Padding = new Thickness(8),
         Header = new StackPanel
         {
             Spacing = 2,
