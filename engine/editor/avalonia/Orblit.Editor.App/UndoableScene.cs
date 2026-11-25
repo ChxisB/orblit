@@ -103,6 +103,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public bool IsPlaying => scene.IsPlaying;
 
+    public bool EndedWithError => scene.EndedWithError;
+
     public int? GameId => scene.GameId;
 
     public IDebugChannel Csharp => scene.Csharp;

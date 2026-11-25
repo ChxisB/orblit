@@ -250,6 +250,9 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
     /// <summary>Whether the game <see cref="Play"/> started is still running.</summary>
     bool IsPlaying { get; }
 
+    /// <summary>Whether the game <see cref="Play"/> started closed by itself with an error code. False while it runs and after <see cref="Stop"/>.</summary>
+    bool EndedWithError { get; }
+
     /// <summary>The process id of the game <see cref="Play"/> started, or null when none runs.</summary>
     int? GameId { get; }
 

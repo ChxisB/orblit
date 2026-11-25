@@ -396,6 +396,8 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>True from a Play until a Stop. A test sets it false for a game that ended on its own.</summary>
     public bool IsPlaying { get; set; }
 
+    public bool EndedWithError { get; set; }
+
     public int? GameId => IsPlaying ? 4242 : null;
 
     /// <summary>The breakpoints the last Play was given.</summary>
@@ -439,12 +441,21 @@ internal sealed class FakeScene : IEditorScene
         PlayedFlags.AddRange(flags);
         PlayedCopies = copies;
         IsPlaying = true;
+        EndedWithError = false;
     }
 
     public void Stop()
     {
         Stops++;
         IsPlaying = false;
+        EndedWithError = false;
+    }
+
+    /// <summary>Ends the game as a crash does, with nothing asked of the editor.</summary>
+    public void Crash()
+    {
+        IsPlaying = false;
+        EndedWithError = true;
     }
 
     /// <summary>How many times the game window was asked to come to the front.</summary>

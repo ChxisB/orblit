@@ -100,6 +100,10 @@ internal sealed class EditorWindow : Window
     DateTimeOffset _since;
     // When the game last started, for the time the Game view shows.
     DateTimeOffset _playedAt;
+    // The Output lines before the game started, so the error a crash toast names is the game's.
+    int _outputAtPlay;
+    // Whether the game ran at the last look, so its end gets one toast.
+    bool _wasPlaying;
     bool _planar;
     // The bottom panel Hide panels shut, which Show panels opens again, or -1 for none.
     int _shutPanel = -1;
@@ -206,7 +210,11 @@ internal sealed class EditorWindow : Window
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
         _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
-        _center.Output.ClearRequested += () => _scene?.ClearOutput();
+        _center.Output.ClearRequested += () =>
+        {
+            _scene?.ClearOutput();
+            _outputAtPlay = 0;
+        };
         _center.Output.CopyRequested += text => Copy(text, "the output");
         _center.Debugger.RunRequested += PlayGame;
         _center.Debugger.CopyRequested += id => Copy(id, "the process id");
@@ -1046,6 +1054,7 @@ internal sealed class EditorWindow : Window
         }
 
         _playedAt = _time.GetUtcNow();
+        _outputAtPlay = _scene.Output.Count;
         ShowGame();
         _bottomBar.OpenOutputUnlessPinned();
         Say("Playing in a second window.");
@@ -1074,6 +1083,12 @@ internal sealed class EditorWindow : Window
     void ShowGame()
     {
         var playing = _scene?.IsPlaying == true;
+        if (_wasPlaying && !playing && _scene is not null)
+        {
+            ShowGameEnded(_scene);
+        }
+
+        _wasPlaying = playing;
         _playButton.IsEnabled = _root is not null;
         _playSceneButton.IsEnabled = _root is not null && _scene is { SceneFile.Length: > 0 };
         _stopButton.IsEnabled = playing;
@@ -1082,6 +1097,37 @@ internal sealed class EditorWindow : Window
         _game.ShowLive(_scene is { IsPlaying: true } scene ? scene.Debug.State : DebugState.None);
         _center.Debugger.ShowGame(_scene?.GameId, _root is not null);
         _center.Debugger.ShowSession(_script.IsDebugging ? _script.DebugPanel : null);
+    }
+
+    void ShowGameEnded(IEditorScene scene)
+    {
+        if (!scene.EndedWithError)
+        {
+            _toasts.Show(ToastKind.Done, "The game stopped", $"Played {scene.ProjectName} for {Took(_time.GetUtcNow() - _playedAt)}.");
+            return;
+        }
+
+        var lines = scene.Output.Skip(Math.Min(_outputAtPlay, scene.Output.Count)).ToList();
+        _toasts.Show(
+            ToastKind.Failed,
+            "The game closed with an error",
+            $"{LastError(lines)}Output has the full message.",
+            new ToastAction("Show in Output", () => _bottomBar.Open(0)),
+            new ToastAction("Play again", PlayGame, Parts.KeyText(new KeyGesture(Key.B, CommandKey))));
+    }
+
+    static string Took(TimeSpan time) => time.TotalMinutes >= 1 ? $"{(int)time.TotalMinutes} min {time.Seconds} s" : $"{time.Seconds} s";
+
+    // The last error the game logged, with the file and line when the log gave them.
+    static string LastError(IReadOnlyList<string> lines)
+    {
+        if (LogEntry.Read(lines).LastOrDefault(entry => entry.Level == LogLevel.Error) is not { } error)
+        {
+            return "";
+        }
+
+        var where = error.Source.Length > 0 ? $"{error.Source}: " : "";
+        return $"{where}{error.Text.TrimEnd('.')}. ";
     }
 
     // Folds both sides while either shows, so a second press brings both back. The bottom panel shuts with them

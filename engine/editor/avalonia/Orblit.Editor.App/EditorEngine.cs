@@ -535,6 +535,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public bool IsPlaying => _game is { HasExited: false };
 
+    // Stop drops the game, so a code read here is one the game chose or a crash gave it.
+    public bool EndedWithError => _game is { HasExited: true } game && game.ExitCode != 0;
+
     // Under netcoredbg the process Play started is netcoredbg, and the game is its child.
     public int? GameId => _game is { HasExited: false } game ? _csharp.ProcessId ?? game.Id : null;
 

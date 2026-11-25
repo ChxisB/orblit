@@ -196,7 +196,7 @@ public sealed class ScriptWorkspaceTests
             Assert.Equal("Couldn't save the script", card.Title);
             Assert.Equal("The disk is full.", card.Line.Text);
             scene.ScriptWriteFails = false;
-            Click(card.ActionButton!);
+            Click(card.ActionButtons[0]);
             Assert.Equal([(Spin, "class Spin { int turns; }")], scene.ScriptsWritten);
         });
     }

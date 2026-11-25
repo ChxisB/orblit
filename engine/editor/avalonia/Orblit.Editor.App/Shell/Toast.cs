@@ -15,15 +15,15 @@ internal enum ToastKind
     Failed,
 }
 
-/// <summary>The one thing a toast offers to do, such as Try again.</summary>
-internal sealed record ToastAction(string Label, Action Run);
+/// <summary>A next step a toast offers, such as Try again, with the key that also runs it when there is one.</summary>
+internal sealed record ToastAction(string Label, Action Run, string? Key = null);
 
-/// <summary>A raised card that says what just happened: a mark, a title, an optional line on why, an action and Dismiss.</summary>
+/// <summary>A raised card that says what just happened: a mark, a title, an optional line on why, the next steps and Dismiss.</summary>
 internal sealed class Toast : Border
 {
     readonly TextBlock _title;
 
-    public Toast(ToastKind kind, string title, string? line, ToastAction? action)
+    public Toast(ToastKind kind, string title, string? line, IReadOnlyList<ToastAction> actions)
     {
         var (mark, tint) = kind switch
         {
@@ -42,16 +42,12 @@ internal sealed class Toast : Border
         DismissButton.Margin = new Thickness(10, 0, 0, 0);
         DismissButton.VerticalAlignment = VerticalAlignment.Top;
         DockPanel.SetDock(DismissButton, Dock.Right);
-        var row = new DockPanel { Children = { Icon, DismissButton } };
-        if (action is not null)
-        {
-            ActionButton = new Button { Content = action.Label, Classes = { EditorTheme.TextButton, EditorTheme.Small }, Margin = new Thickness(10, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
-            DockPanel.SetDock(ActionButton, Dock.Right);
-            row.Children.Add(ActionButton);
-        }
+        ActionButtons = [.. actions.Select(ActionButton)];
+        var steps = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 10, 0, 0), IsVisible = ActionButtons.Count > 0 };
+        steps.Children.AddRange(ActionButtons);
 
-        // Last, so the words fill what the mark and the buttons leave and wrap in it.
-        row.Children.Add(new StackPanel { Children = { _title, Line } });
+        // Last, so the words fill what the mark and Dismiss leave and wrap in it.
+        var row = new DockPanel { Children = { Icon, DismissButton, new StackPanel { Children = { _title, Line, steps } } } };
         Padding = new Thickness(12, 11);
         CornerRadius = EditorTheme.IslandCorners;
         Background = EditorBrushes.Raised;
@@ -69,12 +65,19 @@ internal sealed class Toast : Border
 
     internal Button DismissButton { get; }
 
-    internal Button? ActionButton { get; }
+    /// <summary>The next steps, in the order given, under the line.</summary>
+    internal IReadOnlyList<Button> ActionButtons { get; }
+
+    static Button ActionButton(ToastAction action) => new()
+    {
+        Content = action.Key is null ? action.Label : Parts.Keyed(action.Label, action.Key),
+        Classes = { EditorTheme.Small },
+    };
 }
 
 /// <summary>
 /// The toasts at the bottom right of the window, newest at the bottom. A toast goes after four seconds unless it
-/// holds an action, which waits for the person. The stack has no fill, so a click beside a card reaches the panel
+/// offers a next step, which waits for the person. The stack has no fill, so a click beside a card reaches the panel
 /// under it.
 /// </summary>
 internal sealed class ToastStack : StackPanel
@@ -96,24 +99,25 @@ internal sealed class ToastStack : StackPanel
     internal IEnumerable<Toast> Cards => Children.OfType<Toast>();
 
     /// <summary>Shows a toast at the bottom. One with the same title goes first, so a repeat moves down and starts again.</summary>
-    public void Show(ToastKind kind, string title, string? line = null, ToastAction? action = null)
+    public void Show(ToastKind kind, string title, string? line = null, params ToastAction[] actions)
     {
         if (Cards.FirstOrDefault(card => card.Title == title) is { } repeat)
         {
             Remove(repeat);
         }
 
-        var card = new Toast(kind, title, line, action);
+        var card = new Toast(kind, title, line, actions);
         card.DismissButton.Click += (_, _) => Remove(card);
-        if (action is not null)
+        foreach (var (button, action) in card.ActionButtons.Zip(actions))
         {
-            card.ActionButton!.Click += (_, _) =>
+            button.Click += (_, _) =>
             {
                 Remove(card);
                 action.Run();
             };
         }
-        else
+
+        if (actions.Length == 0)
         {
             // The timer fires on a pool thread, so the removal goes back to the UI thread.
             _timers[card] = _time.CreateTimer(_ => Dispatcher.UIThread.Post(() => Remove(card)), null, Shown, Timeout.InfiniteTimeSpan);

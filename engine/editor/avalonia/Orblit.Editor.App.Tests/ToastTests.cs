@@ -134,8 +134,8 @@ public sealed class ToastTests
             Pass(time, 60);
             var card = Assert.Single(stack.Cards);
             Assert.Equal("No main scene is set.", card.Line.Text);
-            Assert.Equal("Use main.oscn", card.ActionButton!.Content);
-            Click(card.ActionButton);
+            Assert.Equal("Use main.oscn", card.ActionButtons[0].Content);
+            Click(card.ActionButtons[0]);
 
             Assert.Equal(1, runs);
             Assert.Empty(stack.Cards);
@@ -157,7 +157,7 @@ public sealed class ToastTests
             Assert.Equal("At 16:33. 1 change saved.", card.Line.Text);
             Assert.Equal("Tick", card.Icon.IconName);
             Assert.Same(EditorBrushes.Done, TextElement.GetForeground(card.Icon));
-            Assert.Null(card.ActionButton);
+            Assert.Empty(card.ActionButtons);
         });
     }
 
@@ -177,7 +177,7 @@ public sealed class ToastTests
             Assert.Equal("FaultCircle", card.Icon.IconName);
             Assert.Same(EditorBrushes.Fault, TextElement.GetForeground(card.Icon));
             scene.SaveFails = false;
-            Click(card.ActionButton!);
+            Click(card.ActionButtons[0]);
 
             Assert.Equal(1, scene.Saves);
             Assert.Equal(["Saved main"], Titles(window));

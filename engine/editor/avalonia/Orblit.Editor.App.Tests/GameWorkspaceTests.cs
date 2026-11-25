@@ -1,4 +1,6 @@
 using Avalonia.Controls;
+using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Shell;
@@ -561,6 +563,75 @@ public sealed class GameWorkspaceTests
             Assert.Equal(2, scene.WindowRaises);
             Assert.Equal(GameWindow.CanRaise, window.Game.ShowWindowButton.IsEnabled);
             Assert.Equal("Show game window", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Game.ShowWindowButtonBelow)).Title);
+        });
+    }
+
+    [Fact]
+    public void Stopping_the_game_says_how_long_it_played()
+    {
+        UiThread.Run(() =>
+        {
+            var time = new ManualTime();
+            var window = OpenAtReferenceSize(new FakeScene { ProjectName = "view_demo" }, time: time);
+            Click(window.Game.RunButton);
+            time.Advance(TimeSpan.FromSeconds(72));
+
+            Click(window.Game.StopButton);
+
+            var card = Assert.Single(window.Toasts.Cards);
+            Assert.Equal(("The game stopped", "Played view_demo for 1 min 12 s."), (card.Title, card.Line.Text));
+            Assert.Same(EditorBrushes.Done, TextElement.GetForeground(card.Icon));
+            Assert.Empty(card.ActionButtons);
+        });
+    }
+
+    [Fact]
+    public void A_game_that_closes_with_an_error_names_its_last_error_and_offers_the_next_two_steps()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            scene.Unread.Enqueue("ERROR: Before the game.");
+            window.Poll();
+            Click(window.Game.RunButton);
+            scene.Unread.Enqueue("SCRIPT ERROR: Used a value that was never set.");
+            scene.Unread.Enqueue("   at: _Process (res://Mover.cs:14)");
+            scene.Crash();
+            window.Poll();
+
+            var card = Assert.Single(window.Toasts.Cards);
+            Assert.Equal("The game closed with an error", card.Title);
+            Assert.Equal("Mover.cs:14: Used a value that was never set. Output has the full message.", card.Line.Text);
+            Assert.Equal("Show in Output", card.ActionButtons[0].Content);
+            Assert.Equal(["Play again", Parts.KeyText(new KeyGesture(Key.B, window.CommandKey))], Words(card.ActionButtons[1]));
+            var bar = Assert.IsType<BottomBar>(window.Center.BottomBar.Child);
+            bar.Open(-1);
+            Click(card.ActionButtons[0]);
+            Assert.Equal(0, bar.OpenPanel);
+
+            Click(window.Game.RunButton);
+            scene.Crash();
+            window.Poll();
+            Click(Assert.Single(window.Toasts.Cards).ActionButtons[1]);
+
+            Assert.Equal(3, scene.Plays);
+            Assert.True(scene.IsPlaying);
+        });
+    }
+
+    [Fact]
+    public void A_crash_with_nothing_logged_points_to_Output()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            Click(window.Game.RunButton);
+            scene.Crash();
+            window.Poll();
+
+            Assert.Equal("Output has the full message.", Assert.Single(window.Toasts.Cards).Line.Text);
         });
     }
 }
