@@ -57,7 +57,7 @@ internal sealed class Search
             Padding = new Thickness(14, 8),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { Hint("move", "↑", "↓"), Hint("use it", "↵"), Hint("actions only", ">") } },
+            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { Parts.KeyHint("move", "↑", "↓"), Parts.KeyHint("use it", "↵"), Parts.KeyHint("actions only", ">") } },
         };
         Picker = new Picker("Search", box, top, footer);
     }
@@ -138,12 +138,4 @@ internal sealed class Search
             }],
             _ => [],
         });
-
-    static StackPanel Hint(string what, params string[] keys)
-    {
-        var hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
-        hint.Children.AddRange(keys.Select(Parts.Kbd));
-        hint.Children.Add(new TextBlock { Text = what, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
-        return hint;
-    }
 }

@@ -1,5 +1,8 @@
+using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Interactivity;
+using Avalonia.Layout;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
@@ -10,25 +13,31 @@ namespace Orblit.Editor.App;
 internal sealed record EntityEdit(nint Select, string Message);
 
 /// <summary>
-/// Adds an entity under the selected one, or over it as its new parent, through the Add an entity dialog, and
+/// Adds an entity inside the selected one, or over it as its new parent, through the Add a thing dialog, and
 /// copies, renames and removes the selected entity. Each command is a button, so the dock, its menus and a key press the same one.
 /// </summary>
 internal sealed class EntityTools
 {
-    // The classes most scenes start with come first, each with a line on what it is for.
-    internal static readonly (string ClassName, string Line)[] Common =
-    [
-        ("Entity", "The base of every entity."),
-        ("Entity3D", "A point in 3D space."),
-        ("MeshInstance3D", "Draws a mesh."),
-        ("Camera3D", "Looks at the world."),
-        ("DirectionalLight3D", "Light from far away, like the sun."),
-        ("Marker3D", "A point to place things at."),
-        ("Entity2D", "A point in 2D space."),
-        ("ColorRect", "A filled rectangle for UI."),
-    ];
+    internal const string AddTitle = "Add a thing";
+    internal const string ParentTitle = "Add a parent";
 
-    readonly ChoiceList _classes = new("Search classes");
+    // The kinds most scenes start with lead the list, in this order. Every other kind waits in a folded group.
+    internal static readonly string[] MostUsed = ["Entity3D", "MeshInstance3D", "Camera3D", "DirectionalLight3D", "Marker3D", "Entity2D", "ColorRect"];
+
+    readonly ComboBox _inside = new()
+    {
+        MinWidth = 150,
+        MinHeight = 0,
+        VerticalAlignment = VerticalAlignment.Center,
+        ItemTemplate = new FuncDataTemplate<OutlineNode>((node, _) => new StackPanel
+        {
+            Orientation = Orientation.Horizontal,
+            Children = { Parts.RowIcon(EditorIcons.ForClass(node.ClassName)), new TextBlock { Text = node.Name, VerticalAlignment = VerticalAlignment.Center } },
+        }),
+    };
+
+    readonly ChoiceList _classes;
+    readonly KindPreview _preview = new();
     IEditorScene? _scene;
     OutlineNode? _root;
     OutlineNode? _selected;
@@ -36,12 +45,23 @@ internal sealed class EntityTools
 
     public EntityTools()
     {
-        AddDialog = new Dialog("Add an entity", "", _classes) { CardWidth = 320, MainText = "Add", Hint = "↑ ↓ to move, ↵ to add" };
-        AddDialog.CancelButton.IsVisible = false;
-        _classes.PickedChanged += () => AddDialog.MainButton.IsEnabled = _classes.Picked is not null;
+        var inside = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(10, 0, 0, 0), Children = { new TextBlock { Text = "Inside", Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center }, _inside } };
+        var where = new HoverCard("Inside", "The new thing goes inside this one. Pick another to change it.");
+        where.SaysWhyOff(_inside, "A new parent goes where the picked thing is.");
+        where.On(_inside);
+        _classes = new ChoiceList("Find a thing to add, like light or camera") { Beside = inside, Aside = _preview };
+        AddDialog = new Dialog(AddTitle, "", _classes)
+        {
+            CardWidth = 720,
+            Hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { Parts.KeyHint("move", "↑", "↓"), Parts.KeyHint("add", "↵") } },
+        };
+        var add = new HoverCard("Add", "Puts the lit thing in the scene.", "↵");
+        add.SaysWhyOff(AddDialog.MainButton, "Pick a thing to add first.");
+        add.On(AddDialog.MainButton);
+        _classes.PickedChanged += ShowPicked;
         _adding = Add;
-        AddButton.Click += (_, _) => OpenAdd(Add, $"As a child of {(_selected ?? _root)!.Name}");
-        NewParentButton.Click += (_, _) => OpenAdd(AddParent, $"As the parent of {_selected!.Name}");
+        AddButton.Click += (_, _) => OpenAddChild();
+        NewParentButton.Click += (_, _) => OpenAddParent();
         AddDialog.MainButton.Click += (_, _) =>
         {
             Run(_adding);
@@ -62,15 +82,20 @@ internal sealed class EntityTools
     /// <summary>Raised with the reason when the scene refused a change.</summary>
     public event Action<string>? Failed;
 
-    /// <summary>The plus of the Scene dock. It opens the Add an entity dialog.</summary>
+    /// <summary>The plus of the Scene dock. It opens the Add a thing dialog.</summary>
     internal Button AddButton { get; } = Parts.IconButton("Add", "Add an entity");
 
-    /// <summary>Opens the Add an entity dialog to put the new entity in the selected one's place, over it.</summary>
+    /// <summary>Opens the Add a thing dialog to put the new entity in the selected one's place, over it.</summary>
     internal Button NewParentButton { get; } = new();
 
     internal Dialog AddDialog { get; }
 
     internal ChoiceList ClassList => _classes;
+
+    /// <summary>Where the new thing goes. A new parent goes where the selected entity is, so it is off then.</summary>
+    internal ComboBox Inside => _inside;
+
+    internal KindPreview Preview => _preview;
 
     internal Button DuplicateButton { get; } = new();
 
@@ -98,17 +123,58 @@ internal sealed class EntityTools
         return new EntityEdit(_selected.Handle, $"Renamed {_selected.Name}.");
     });
 
+    /// <summary>The class a choice adds. A kind with a plain name keeps its class as the engine's name.</summary>
+    internal static string ClassOf(Choice choice) => choice.Engine ?? choice.Name;
+
+    void OpenAddChild()
+    {
+        AddDialog.Title = AddTitle;
+        AddDialog.EngineName = "Add Child Entity";
+        AddDialog.Why.Text = "Pick what to add. It goes inside the thing you had picked.";
+        OpenAdd(Add, _selected ?? _root!);
+        _inside.IsEnabled = true;
+    }
+
+    void OpenAddParent()
+    {
+        AddDialog.Title = ParentTitle;
+        AddDialog.EngineName = "Reparent to New Entity";
+        AddDialog.Why.Text = $"Pick what to add. It takes the place of {_selected!.Name}, and {_selected.Name} goes inside it.";
+        OpenAdd(AddParent, _root!.PathTo(_selected.Handle)[^2]);
+        _inside.IsEnabled = false;
+    }
+
     // The keys go to the search, so the arrows and Enter work at once.
-    void OpenAdd(Func<EntityEdit> adding, string why)
+    void OpenAdd(Func<EntityEdit> adding, OutlineNode inside)
     {
         _adding = adding;
-        AddDialog.Why.Text = why;
+        _inside.ItemsSource = Flatten(_root!).ToList();
+        _inside.SelectedItem = inside;
         var classes = _scene!.AddableClasses();
-        var lined = Common.Where(entry => classes.Contains(entry.ClassName));
-        var rest = classes.Except(Common.Select(entry => entry.ClassName)).Select(name => (ClassName: name, Line: ""));
-        _classes.Show([.. lined.Concat(rest).Select(entry => new Choice(EditorIcons.ForClass(entry.ClassName), entry.ClassName) { Line = entry.Line, Tint = EditorBrushes.TreeIcon })]);
+        var most = new ChoiceGroup("Most used");
+        var rest = classes.Except(MostUsed).ToList();
+        var all = new ChoiceGroup("All kinds, A to Z") { Folded = true, Note = $"{rest.Count} more, for experts" };
+        _classes.Show([
+            .. MostUsed.Where(classes.Contains).Select(name => KindChoice(name, most)),
+            .. rest.Select(name => KindChoice(name, all)).OrderBy(choice => choice.Name, StringComparer.OrdinalIgnoreCase),
+        ]);
         AddDialog.Open();
         _classes.SearchBox.Focus();
+    }
+
+    static IEnumerable<OutlineNode> Flatten(OutlineNode node) => node.Children.SelectMany(Flatten).Prepend(node);
+
+    static Choice KindChoice(string className, ChoiceGroup group) => PlainNames.Of(className) is { } row
+        ? new Choice(EditorIcons.ForClass(className), row.Name) { Line = row.Line, Engine = row.Name == className ? null : className, Group = group, Tint = EditorBrushes.TreeIcon }
+        : new Choice(EditorIcons.ForClass(className), className) { Group = group, Tint = EditorBrushes.TreeIcon };
+
+    // The main button names the lit thing, so it says what Enter will add.
+    void ShowPicked()
+    {
+        var picked = _classes.Picked;
+        AddDialog.MainButton.IsEnabled = picked is not null;
+        AddDialog.MainButton.Content = Parts.Keyed(picked is null ? "Add" : $"Add {picked.Name}", "↵");
+        _preview.Show(picked is null ? null : ClassOf(picked), picked?.Name ?? "");
     }
 
     void Run(Func<EntityEdit> change)
@@ -126,8 +192,8 @@ internal sealed class EntityTools
     // The engine makes the name unique among the new entity's siblings.
     EntityEdit Add()
     {
-        var className = _classes.Picked!.Name;
-        var made = _scene!.AddChild((_selected ?? _root)!.Handle, className, className);
+        var className = ClassOf(_classes.Picked!);
+        var made = _scene!.AddChild(((OutlineNode)_inside.SelectedItem!).Handle, className, className);
         AddDialog.Close();
         return new EntityEdit(made, $"Added {className}.");
     }
@@ -136,7 +202,7 @@ internal sealed class EntityTools
     // The selected entity keeps where it is drawn, because the new parent sits where the old one does.
     EntityEdit AddParent()
     {
-        var className = _classes.Picked!.Name;
+        var className = ClassOf(_classes.Picked!);
         var parent = _root!.PathTo(_selected!.Handle)[^2];
         var at = parent.Children.ToList().FindIndex(child => child.Handle == _selected.Handle);
         var made = _scene!.AddChild(parent.Handle, className, className);

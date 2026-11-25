@@ -16,10 +16,11 @@ namespace Orblit.Editor.App.Shell;
 internal sealed class Dialog : Border
 {
     readonly DockPanel _footer;
+    readonly CardHead _head;
 
     public Dialog(string title, string why, Control body)
     {
-        var heading = new CardHead(title, why);
+        var heading = _head = new CardHead(title, why);
         Heading = heading.Heading;
         Why = heading.Why;
         CloseButton = heading.CloseButton;
@@ -80,6 +81,13 @@ internal sealed class Dialog : Border
         set => Heading.Text = value;
     }
 
+    /// <summary>The engine's name for what the dialog does, beside the title. Empty shows none.</summary>
+    public string EngineName
+    {
+        get => _head.EngineName;
+        set => _head.EngineName = value;
+    }
+
     public string MainText
     {
         get => MainButton.Content as string ?? "";
@@ -118,16 +126,19 @@ internal sealed class Dialog : Border
         }
     }
 
-    /// <summary>Dim words at the far left of the footer, such as the keys the body takes.</summary>
-    public string Hint
+    /// <summary>Hints at the far left of the footer, such as the keys the body takes.</summary>
+    public Control? Hint
     {
         get;
         init
         {
             field = value;
-            _footer.Children.Add(new TextBlock { Text = value, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+            if (value is not null)
+            {
+                _footer.Children.Add(value);
+            }
         }
-    } = "";
+    }
 
     /// <summary>Shows the dialog with the keys on the main action, so Enter runs it and Escape leaves.</summary>
     public void Open()

@@ -113,6 +113,15 @@ internal static class Parts
         Child = new TextBlock { Text = key, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.TextSoft },
     };
 
+    /// <summary>Keys on caps and then the word for what they do, as a footer hint such as "↑ ↓ move".</summary>
+    public static StackPanel KeyHint(string what, params string[] keys)
+    {
+        var hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        hint.Children.AddRange(keys.Select(Kbd));
+        hint.Children.Add(new TextBlock { Text = what, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+        return hint;
+    }
+
     /// <summary>A worded button that names the key which runs it, on a shade of the button's fill in the button's own text colour.</summary>
     public static StackPanel Keyed(string word, string key) => new()
     {

@@ -175,7 +175,7 @@ internal sealed class Picker : Border
         row.Run();
     }
 
-    static TextBlock Heading(string group) => new()
+    internal static TextBlock Heading(string group) => new()
     {
         Text = group.ToUpperInvariant(),
         FontSize = 10.5,

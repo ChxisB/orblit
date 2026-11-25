@@ -29,12 +29,12 @@ public sealed class EditorWindowTests
         return press;
     }
 
-    // Adds a class under the selected entity, or the root, through the Add an entity dialog.
+    // Adds a class under the selected entity, or the root, through the Add a thing dialog.
     static void AddClass(EditorWindow window, string className)
     {
         Click(window.Tools.AddButton);
         var list = window.Tools.ClassList;
-        Click(list.RowButtons.ElementAt(list.Shown.ToList().FindIndex(choice => choice.Name == className)));
+        Click(list.RowButtons.ElementAt(list.Shown.ToList().FindIndex(choice => EntityTools.ClassOf(choice) == className)));
         Click(window.Tools.AddDialog.MainButton);
     }
 

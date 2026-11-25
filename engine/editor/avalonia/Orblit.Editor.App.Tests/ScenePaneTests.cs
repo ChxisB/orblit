@@ -214,7 +214,7 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
-    public void The_add_button_opens_the_add_dialog_on_the_search_with_one_line_per_class()
+    public void The_add_button_opens_add_a_thing_with_the_most_used_kinds_by_their_plain_names()
     {
         UiThread.Run(() =>
         {
@@ -223,14 +223,86 @@ public sealed class ScenePaneTests
 
             Click(window.Tools.AddButton);
 
-            Assert.True(window.Tools.AddDialog.IsVisible);
-            Assert.Equal("Add an entity", window.Tools.AddDialog.Title);
-            Assert.Equal("As a child of Lamp", window.Tools.AddDialog.Why.Text);
-            Assert.Equal([.. EntityTools.Common.Select(entry => entry.ClassName), "Timer"], window.Tools.ClassList.Shown.Select(choice => choice.Name));
-            Assert.Equal("", window.Tools.ClassList.Shown[^1].Line);
-            Assert.Equal("Light from far away, like the sun.", window.Tools.ClassList.Shown.Single(choice => choice.Name == "DirectionalLight3D").Line);
-            Assert.Equal(0, window.Tools.ClassList.Lit);
-            Assert.True(window.Tools.ClassList.SearchBox.IsFocused);
+            var tools = window.Tools;
+            Assert.True(tools.AddDialog.IsVisible);
+            Assert.Equal("Add a thing", tools.AddDialog.Title);
+            Assert.Equal("Add Child Entity", tools.AddDialog.EngineName);
+            Assert.Equal("Pick what to add. It goes inside the thing you had picked.", tools.AddDialog.Why.Text);
+            Assert.Equal("Lamp", ((OutlineNode)tools.Inside.SelectedItem!).Name);
+            Assert.True(tools.Inside.IsEnabled);
+            Assert.Equal(["Empty 3D point", "Shape you can see", "Camera", "Sun light", "Marker", "Empty 2D point", "Filled box"], tools.ClassList.Shown.Select(choice => choice.Name));
+            Assert.Equal(EntityTools.MostUsed, tools.ClassList.Shown.Select(EntityTools.ClassOf));
+            Assert.Equal("Light from far away, like the sun.", tools.ClassList.Shown[3].Line);
+            Assert.Single(Texts(tools.ClassList), "MOST USED");
+            Assert.Equal(["All kinds, A to Z", "5 more, for experts"], Texts(tools.ClassList.FoldRows.Single()));
+            Assert.Equal(0, tools.ClassList.Lit);
+            Assert.True(tools.ClassList.SearchBox.IsFocused);
+        });
+    }
+
+    [Fact]
+    public void The_add_button_names_the_lit_thing_and_the_side_tells_what_it_is_good_for()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Click(window.Tools.AddButton);
+            var tools = window.Tools;
+
+            Press(tools.ClassList.SearchBox, Key.Down);
+            Press(tools.ClassList.SearchBox, Key.Down);
+
+            Assert.Equal("Add Camera", Texts(tools.AddDialog.MainButton).First());
+            Assert.Equal("Camera", tools.Preview.Title.Text);
+            Assert.Equal("Shows the world from where it sits. The game draws what the current camera sees.", tools.Preview.About.Text);
+            Assert.Equal("Good for: the player's view, a cutscene, a security screen.", tools.Preview.GoodFor.Text);
+            Assert.Contains("Camera3D", Texts(tools.Preview));
+        });
+    }
+
+    [Fact]
+    public void All_kinds_unfolds_a_to_z_and_a_class_with_no_plain_name_goes_by_its_class_name()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Click(window.Tools.AddButton);
+            var list = window.Tools.ClassList;
+
+            Click(list.FoldRows.Single());
+
+            Assert.Equal(["Empty thing", "Lamp", "Skeleton3D", "Spotlight", "Timer"], list.Shown.Skip(EntityTools.MostUsed.Length).Select(choice => choice.Name));
+            Assert.Equal("Empty thing", list.Picked!.Name);
+            Assert.Empty(list.FoldRows);
+            var skeleton = list.Shown.Single(choice => choice.Name == "Skeleton3D");
+            Assert.Null(skeleton.Engine);
+            Assert.Equal("", skeleton.Line);
+
+            Click(list.RowButtons.ElementAt(list.Shown.ToList().IndexOf(skeleton)));
+
+            Assert.Equal("Add Skeleton3D", Texts(window.Tools.AddDialog.MainButton).First());
+            Assert.Equal(KindPreview.NoRow, window.Tools.Preview.About.Text);
+            Assert.False(window.Tools.Preview.GoodFor.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void A_search_for_light_finds_sun_light_lamp_and_spotlight_under_matches()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Click(window.Tools.AddButton);
+            var list = window.Tools.ClassList;
+
+            list.SearchBox.Text = "light";
+
+            Assert.Equal(["Sun light", "Lamp", "Spotlight"], list.Shown.Select(choice => choice.Name));
+            Assert.Contains("MATCHES", Texts(list));
+            Assert.DoesNotContain("MOST USED", Texts(list));
+            Press(list.SearchBox, Key.Down);
+            Press(list.SearchBox, Key.Enter);
+            Assert.Equal("Added OmniLight3D.", window.Status);
         });
     }
 
@@ -256,6 +328,25 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
+    public void Inside_says_where_the_new_thing_goes_and_can_change_it()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            window.ScenePane.Select(FakeScene.Lamp.Handle);
+            Click(window.Tools.AddButton);
+            var inside = window.Tools.Inside;
+            Assert.Equal(["Field", "Lamp", "Sound"], inside.Items.Cast<OutlineNode>().Select(node => node.Name));
+
+            inside.SelectedItem = inside.Items.Cast<OutlineNode>().Single(node => node.Name == "Sound");
+            Click(window.Tools.AddDialog.MainButton);
+
+            Assert.Equal(["Entity3D"], scene.Outline()!.Children.Single(child => child.Name == "Sound").Children.Select(child => child.Name));
+        });
+    }
+
+    [Fact]
     public void A_new_parent_takes_the_selected_entitys_place_and_holds_it_where_it_was_drawn()
     {
         UiThread.Run(() =>
@@ -264,7 +355,11 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize(scene);
             window.ScenePane.Select(FakeScene.Lamp.Handle);
             OptionItems(window).Single(item => HeaderOf(item) == "Add a New Parent...").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            Assert.Equal("As the parent of Lamp", window.Tools.AddDialog.Why.Text);
+            Assert.Equal("Add a parent", window.Tools.AddDialog.Title);
+            Assert.Equal("Reparent to New Entity", window.Tools.AddDialog.EngineName);
+            Assert.Equal("Pick what to add. It takes the place of Lamp, and Lamp goes inside it.", window.Tools.AddDialog.Why.Text);
+            Assert.False(window.Tools.Inside.IsEnabled);
+            Assert.Equal("Field", ((OutlineNode)window.Tools.Inside.SelectedItem!).Name);
 
             window.Tools.ClassList.SearchBox.Text = "Marker3D";
             Click(window.Tools.AddDialog.MainButton);
@@ -342,6 +437,8 @@ public sealed class ScenePaneTests
             Assert.Empty(window.Tools.ClassList.Shown);
             Assert.False(window.Tools.AddDialog.MainButton.IsEnabled);
             Assert.Contains(window.Tools.ClassList.GetLogicalDescendants().OfType<TextBlock>(), text => text.Text == "Nothing matches.");
+            Assert.Equal("Pick a thing to add first.", ((HoverCard)ToolTip.GetTip(window.Tools.AddDialog.MainButton)!).Line);
+            Assert.Equal(KindPreview.NothingLit, window.Tools.Preview.About.Text);
         });
     }
 

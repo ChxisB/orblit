@@ -367,7 +367,7 @@ public sealed class ViewportAreaTests
 
             Assert.True(button.Flyout!.IsOpen);
             var body = (Control)((Flyout)button.Flyout).Content!;
-            var texts = body.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "").ToArray();
+            var texts = body.GetLogicalDescendants().OfType<TextBlock>().Where(text => text.IsVisible).Select(text => text.Text ?? "").ToArray();
             Assert.Equal(["Preview settings", "What the viewport adds when the scene has no light or sky."], texts[..2]);
             Assert.Equal(["Sun preview", "Environment preview"], texts[2..]);
             var switches = body.GetLogicalDescendants().OfType<ToggleSwitch>().ToArray();

@@ -174,7 +174,7 @@ public sealed class DialogTests
     {
         UiThread.Run(() =>
         {
-            var dialog = Opened(new Dialog("Add an entity", "", new TextBox()) { CardWidth = 320, MainText = "Add", Hint = "↑ ↓ to move, ↵ to add" });
+            var dialog = Opened(new Dialog("Add an entity", "", new TextBox()) { CardWidth = 320, MainText = "Add", Hint = Parts.KeyHint("add", "↵") });
 
             var word = dialog.MainButton.GetVisualDescendants().OfType<TextBlock>().Single();
             var box = BoxOf(word, dialog.MainButton);
