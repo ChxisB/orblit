@@ -203,6 +203,9 @@ internal sealed class GraphView : Border
     /// <summary>The panels of the graph script on show, or null when none is open.</summary>
     internal ScriptPanels? Panels => _current?.Panels;
 
+    /// <summary>The card that reads the graph script on show as sentences, or null when none is open.</summary>
+    internal SentencesCard? Sentences => _current?.Sentences;
+
     /// <summary>The inspector of the selected step of the graph script on show, or null when none is open.</summary>
     internal StepInspector? Inspector => _current?.Inspector;
 

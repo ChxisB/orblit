@@ -92,7 +92,7 @@ internal sealed class StepInspector : Border
     {
         var name = StepNames.OfKind(step.Kind);
         _number.Text = $"Step {step.Id}";
-        _heading.Text = name?.Name ?? char.ToUpperInvariant(step.Kind[0]) + step.Kind[1..].Replace('_', ' ');
+        _heading.Text = StepNames.NameOf(step.Kind);
         _engine.Text = step.Kind;
         _engine.IsVisible = name is not null;
         _about.Text = name is null ? "" : $"{name.Line} Good for {name.GoodFor}";

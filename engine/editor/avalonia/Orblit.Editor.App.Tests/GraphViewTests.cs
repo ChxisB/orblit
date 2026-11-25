@@ -1199,4 +1199,57 @@ public sealed class GraphViewTests
                 links.Opened);
         });
     }
+
+    static GraphView OpenStarted(FakeGraphSource graph)
+    {
+        graph.Overrides.Add(new GraphStepEntry("override", "", "main", new Dictionary<string, string>()));
+        var files = new Files();
+        files.Graphs[Logic] = graph;
+        var view = Open(files);
+        Pick(view, Logic);
+        return view;
+    }
+
+    [Fact]
+    public void What_this_graph_does_reads_the_graph_on_show_and_reads_it_again_after_an_edit()
+    {
+        UiThread.Run(() =>
+        {
+            var graph = FakeGraphSource.Sample();
+            var view = OpenStarted(graph);
+            Assert.Equal(["main", "2 If", "true 3 Print text"], view.Sentences!.Lines);
+
+            graph.AddStep(4, "print");
+            graph.Connect(new GraphWire(3, 0, 4, 0));
+
+            Assert.Equal(["main", "2 If", "true 3 Print text", "4 Print text"], view.Sentences.Lines);
+        });
+    }
+
+    [Fact]
+    public void What_this_graph_does_says_to_add_a_start_while_nothing_starts_the_graph()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, _, view) = OpenWithGraph();
+            Pick(view, Logic);
+
+            Assert.Equal([SentencesCard.NoStart], view.Sentences!.Lines);
+        });
+    }
+
+    [Fact]
+    public void A_step_number_in_what_this_graph_does_picks_that_step_on_the_canvas()
+    {
+        UiThread.Run(() =>
+        {
+            var view = OpenStarted(FakeGraphSource.Sample());
+            var number = view.Sentences!.NumberOf("main", 3)!;
+
+            number.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+            Assert.Equal([3], view.Canvas!.Scene.SelectedSteps);
+            Assert.Equal("Step 3", ((HoverCard)ToolTip.GetTip(number)!).Title);
+        });
+    }
 }

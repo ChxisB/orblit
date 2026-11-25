@@ -4,8 +4,8 @@ using Orblit.Editor.App.Graph;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// One graph script open in the Graph workspace: its file, its side panels and the canvas of the function on show.
-/// Disposing it lets the engine drop its copy, so an unsaved edit is gone.
+/// One graph script open in the Graph workspace: its file, its side panels, the canvas of the function on show and
+/// the card over it that reads the graph out. Disposing it lets the engine drop its copy, so an unsaved edit is gone.
 /// </summary>
 internal sealed class GraphSheet : IDisposable
 {
@@ -28,6 +28,8 @@ internal sealed class GraphSheet : IDisposable
         // The canvas shows the function it is given when it is made, so another function needs a new canvas.
         Panels.FunctionOpened += _ => ShowCanvas();
         Panels.StepRevealed += id => Canvas?.Reveal(id);
+        Sentences = new SentencesCard(graph);
+        Sentences.StepPicked += Panels.Reveal;
         ShowCanvas();
     }
 
@@ -42,6 +44,9 @@ internal sealed class GraphSheet : IDisposable
     public ScriptPanels Panels { get; }
 
     public StepInspector Inspector { get; }
+
+    /// <summary>The graph read out as sentences, on a card over the canvas.</summary>
+    public SentencesCard Sentences { get; }
 
     /// <summary>Holds the canvas, which is replaced when another function opens.</summary>
     public Border Host { get; } = new();
@@ -78,6 +83,9 @@ internal sealed class GraphSheet : IDisposable
         canvas.Probe(_debugger);
         canvas.ShowStop(_debugger.Current);
         canvas.SelectionChanged += Inspector.Show;
+        // The card outlives each canvas, and a control has one parent at a time.
+        (Sentences.Parent as Panel)?.Children.Remove(Sentences);
+        canvas.Carry(Sentences);
         Host.Child = canvas;
         // A new canvas has nothing selected, so the inspector is cleared with it.
         Inspector.Show(null);

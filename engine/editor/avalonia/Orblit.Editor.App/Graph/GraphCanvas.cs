@@ -251,6 +251,9 @@ internal sealed class GraphCanvas : Grid
         _surface.Focus();
     }
 
+    /// <summary>Shows a card over the steps and under the canvas's own bars, so a bar the person needs now stays on top.</summary>
+    internal void Carry(Control card) => Children.Insert(1, card);
+
     void Build()
     {
         var tools = Parts.Float([_showAll, Parts.Rule(), _zoom]);
