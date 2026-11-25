@@ -1,5 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
+using Orblit.Editor.App.Shell;
+using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
 
@@ -28,6 +30,11 @@ public sealed class ExportToolTests
             var tool = Opened(scene);
 
             Assert.True(tool.Dialog.IsVisible);
+            Assert.Equal("Export game", tool.Dialog.Title);
+            Assert.Equal("Export", tool.Dialog.EngineName);
+            Assert.Equal("Builds your game as an app that runs without Orblit.", tool.Dialog.Why.Text);
+            Assert.False(tool.NoneYet.IsVisible);
+            Assert.False(tool.WhyOff.IsVisible);
             Assert.Equal(["Desktop", "Web"], tool.PresetBox.Items.Cast<string>());
             Assert.Equal("/games/a/build/Game", tool.PathBox.Text);
             Assert.True(tool.Dialog.MainButton.IsEnabled);
@@ -44,14 +51,22 @@ public sealed class ExportToolTests
             var tool = Opened(scene);
 
             Assert.False(tool.Dialog.MainButton.IsEnabled);
-            Assert.Equal("The project has no export presets. Add one for this computer.", tool.Status.Text);
+            Assert.True(tool.NoneYet.IsVisible);
+            Assert.Equal(["Nowhere to export to yet", $"Add a place the game will run, like {ExportTool.ThisMachine}. Each one keeps its own settings."], Texts(tool.NoneYet));
+            Assert.Equal(ExportTool.NoPlace, tool.WhyOff.Text);
+            Assert.True(tool.WhyOff.IsVisible);
+            Assert.Equal($"Add {ExportTool.ThisMachine}", tool.AddPresetButton.Content);
 
             Press(tool.AddPresetButton);
 
             Assert.Equal(1, scene.PresetsAdded);
             Assert.Equal([Here], tool.PresetBox.Items.Cast<string>());
+            Assert.False(tool.NoneYet.IsVisible);
+            Assert.False(tool.WhyOff.IsVisible);
+            Assert.Equal($"Added {ExportTool.ThisMachine}. It keeps its own settings.", tool.Status.Text);
             Assert.True(tool.Dialog.MainButton.IsEnabled);
             Assert.False(tool.AddPresetButton.IsEnabled);
+            Assert.EndsWith("already has one.", ((HoverCard)ToolTip.GetTip(tool.AddPresetButton)!).Line);
         });
     }
 
@@ -99,10 +114,12 @@ public sealed class ExportToolTests
             var tool = Opened(scene);
 
             Assert.False(tool.Dialog.MainButton.IsEnabled);
+            Assert.Equal(ExportTool.NoPath, tool.WhyOff.Text);
 
             tool.PathBox.Text = "/games/out/Game";
 
             Assert.True(tool.Dialog.MainButton.IsEnabled);
+            Assert.False(tool.WhyOff.IsVisible);
         });
     }
 
@@ -117,7 +134,7 @@ public sealed class ExportToolTests
             tool.InstallFile("/downloads/orblit-1.0.0-export-templates.tpz");
 
             Assert.Equal(["/downloads/orblit-1.0.0-export-templates.tpz"], scene.Templates);
-            Assert.Equal("Installed the templates from orblit-1.0.0-export-templates.tpz.", tool.Status.Text);
+            Assert.Equal("Installed the build parts from orblit-1.0.0-export-templates.tpz.", tool.Status.Text);
 
             scene.TemplateFault = new InvalidDataException("The file holds no templates/version.txt with a version such as 1.0.stable.");
             tool.InstallFile("/downloads/other.tpz");
@@ -138,14 +155,14 @@ public sealed class ExportToolTests
             await Task.Yield();
 
             Assert.Equal(1, scene.Downloads);
-            Assert.Equal("Downloaded and installed the export templates.", tool.Status.Text);
+            Assert.Equal("Downloaded and installed the build parts.", tool.Status.Text);
             Assert.True(tool.DownloadButton.IsEnabled);
 
             scene.DownloadFault = new IOException("No export templates are published for 1.0.stable. Install a .tpz from a release instead.");
             Press(tool.DownloadButton);
             await Task.Yield();
 
-            Assert.Equal("The templates were not downloaded. No export templates are published for 1.0.stable. Install a .tpz from a release instead.", tool.Status.Text);
+            Assert.Equal("The build parts were not downloaded. No export templates are published for 1.0.stable. Install a .tpz from a release instead.", tool.Status.Text);
         });
     }
 }

@@ -92,6 +92,30 @@ public sealed class GraphWorkspaceTests
 
             Assert.True(window.IsVisible);
             Assert.True(window.SaveChanges.IsVisible);
+            Assert.Equal("Save logic.ograph?", window.SaveChanges.Title);
+            Assert.Equal(["logic.ograph", "res://logic.ograph · Changes not saved"], Texts(window.ChangesList));
+        });
+    }
+
+    [Fact]
+    public void Save_changes_lists_an_edited_script_and_graph_and_saves_both_on_one_button()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, _) = Open();
+            scene.ScriptText["res://spin.cs"] = "class Spin\n{\n}";
+            EditAGraph(window);
+            ClickOn(window.Bar.Tabs.Single(tab => tab.Label == "Script"), window);
+            window.Script.List.SelectedItem = "res://spin.cs";
+            window.Script.Editor.Text = "class Spin\n{\n  int turns;\n  int speed;\n}";
+
+            window.Close();
+
+            var dialog = window.SaveChanges;
+            Assert.Equal("Save 2 scripts?", dialog.Title);
+            Assert.Equal("They have changes that are not saved.", dialog.Why.Text);
+            Assert.Equal(["spin.cs", "res://spin.cs · 2 lines changed", "logic.ograph", "res://logic.ograph · Changes not saved"], Texts(window.ChangesList));
+            Assert.Equal(["Save 2 and close", "↵"], Texts(dialog.MainButton));
         });
     }
 

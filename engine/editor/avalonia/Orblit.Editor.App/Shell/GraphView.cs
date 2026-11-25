@@ -190,6 +190,9 @@ internal sealed class GraphView : Border
     /// <summary>Whether an open graph script has edits that the file does not hold.</summary>
     public bool IsDirty => _sheets.Any(sheet => sheet.IsEdited);
 
+    /// <summary>The res:// path of each graph script with edits.</summary>
+    internal IEnumerable<string> EditedScripts => _sheets.Where(sheet => sheet.IsEdited).Select(sheet => sheet.Script);
+
     /// <summary>Starts from this project's files, with no script open.</summary>
     public void Show(IGraphFiles files)
     {

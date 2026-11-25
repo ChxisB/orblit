@@ -96,6 +96,15 @@ public sealed class ScriptViewTests
 
     static void Pick(ScriptView view, string path) => view.List.SelectedItem = path;
 
+    [Theory]
+    [InlineData("a\nb\nc", "a\nb\nc", 0)]
+    [InlineData("a\nb\nc", "a\nB\nc", 1)]
+    [InlineData("a\nb", "a\nb\nc\nd", 2)]
+    [InlineData("a\nb\nc\nd", "a", 3)]
+    [InlineData("a\nb\nc", "c\nb\na", 0)]
+    public void A_changed_line_counts_once_and_a_moved_line_not_at_all(string saved, string text, int changed) =>
+        Assert.Equal(changed, ScriptView.LinesChanged(saved, text));
+
     [Fact]
     public void It_starts_with_the_files_listed_and_none_open()
     {

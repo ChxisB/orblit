@@ -1502,7 +1502,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Save_changes_names_the_scene_and_counts_the_edits_since_it_opened()
+    public void Save_changes_names_the_scene_and_lists_the_edits_since_it_opened()
     {
         UiThread.Run(() =>
         {
@@ -1513,14 +1513,14 @@ public sealed class EditorWindowTests
             window.Close();
 
             var dialog = window.SaveChanges;
-            Assert.Equal("Save changes to main.oscn?", dialog.Title);
-            Assert.Equal("Closing without saving drops them.", dialog.Why.Text);
-            Assert.Equal("2 changes since 16:33.", window.ChangesLine.Text);
-            Assert.Equal("Save and close", dialog.MainButton.Content);
-            Assert.Equal("Keep editing", dialog.CancelButton.Content);
-            Assert.Equal("Close without saving", dialog.LeadButton!.Content);
+            Assert.Equal("Save changes to main?", dialog.Title);
+            Assert.Equal("You made 2 changes since 16:33. Close without saving and they are gone.", dialog.Why.Text);
+            Assert.Equal(["16:33", "Duplicated Lamp", "16:33", "Duplicated Lamp"], Texts(window.ChangesList));
+            Assert.Equal(["Save and close", "↵"], Texts(dialog.MainButton));
+            Assert.Equal(["Cancel", "esc"], Texts(dialog.CancelButton));
+            Assert.Equal("Don't save", dialog.LeadButton!.Content);
+            Assert.Equal("Closes and drops every change listed here.", ((HoverCard)ToolTip.GetTip(dialog.LeadButton)!).Line);
             Assert.False(dialog.CloseButton.IsVisible);
-            Assert.Equal(400, dialog.Card.Width);
         });
     }
 
@@ -1538,7 +1538,8 @@ public sealed class EditorWindowTests
 
             window.Close();
 
-            Assert.Equal("1 change since 16:38.", window.ChangesLine.Text);
+            Assert.Equal("You made 1 change since 16:38. Close without saving and they are gone.", window.SaveChanges.Why.Text);
+            Assert.Equal(["16:38", "Duplicated Lamp"], Texts(window.ChangesList));
         });
     }
 

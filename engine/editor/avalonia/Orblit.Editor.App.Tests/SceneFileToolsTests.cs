@@ -204,23 +204,31 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void The_instance_button_opens_a_dialog_that_turns_off_the_open_scene_and_leaves_out_folders()
+    public void Put_a_scene_inside_says_what_a_copy_is_and_why_the_open_scene_is_off()
     {
         UiThread.Run(() =>
         {
             var scene = new FakeScene { SceneFile = "res://field.oscn" };
             scene.ScenePaths.Add("res://levels/");
+            scene.ScenePaths.Add("res://planar.oscn");
+            scene.Kinds["res://levels/second.oscn"] = "3D";
+            scene.Kinds["res://planar.oscn"] = "2D";
             var window = OpenAtReferenceSize(scene);
+            var dialog = window.InstanceScene.Dialog;
             var list = window.InstanceScene.SceneList;
 
             ClickOn(window.InstanceScene.OpenButton, window);
 
-            Assert.True(window.InstanceScene.Dialog.IsVisible);
-            Assert.Equal("As a child of Field", window.InstanceScene.Dialog.Why.Text);
-            Assert.Equal(["field.oscn", "second.oscn"], list.Shown.Select(choice => choice.Name));
-            Assert.Equal([true, false], list.Shown.Select(choice => choice.Off));
-            Assert.Equal(["This scene. It cannot hold itself.", "res://levels/"], list.Shown.Select(choice => choice.Line));
-            Assert.Equal("second.oscn", list.Picked!.Name);
+            Assert.True(dialog.IsVisible);
+            Assert.Equal("Put a scene inside Field", dialog.Title);
+            Assert.Equal("Instance Scene", dialog.EngineName);
+            Assert.Equal(InstanceTool.WhatACopyIs, dialog.Why.Text);
+            Assert.Equal("Find a scene", list.SearchBox.PlaceholderText);
+            Assert.Equal(["field", "second", "planar"], list.Shown.Select(choice => choice.Name));
+            Assert.Equal([true, false, false], list.Shown.Select(choice => choice.Off));
+            Assert.Equal(["You are in field. A scene can't hold itself.", "3D · levels/", "2D"], list.Shown.Select(choice => choice.Line));
+            Assert.Equal("second", list.Picked!.Name);
+            Assert.Equal(["Put it in", "↵"], Texts(dialog.MainButton));
         });
     }
 
@@ -251,6 +259,7 @@ public sealed class SceneFileToolsTests
 
             window.InstanceScene.SceneList.SearchBox.Text = "zzz";
             Assert.False(instance.IsEnabled);
+            Assert.Equal("Pick a scene first.", ((HoverCard)ToolTip.GetTip(instance)!).Line);
 
             var empty = OpenAtReferenceSize(new FakeScene { StartsEmpty = true });
             Assert.False(empty.InstanceScene.OpenButton.IsEnabled);
@@ -288,7 +297,7 @@ public sealed class SceneFileToolsTests
 
             Assert.Equal([(FakeScene.Lamp.Handle, "res://field.oscn")], scene.Instanced);
             Assert.Equal("field", window.ScenePane.Selected!.Name);
-            Assert.Equal("Instanced field under Lamp.", window.Status);
+            Assert.Equal("Put field inside Lamp.", window.Status);
             Assert.StartsWith("(*)", window.Title);
             Assert.False(window.InstanceScene.Dialog.IsVisible);
         });
@@ -306,7 +315,7 @@ public sealed class SceneFileToolsTests
             Click(window.InstanceScene.Dialog.MainButton);
 
             Assert.Equal([(FakeScene.Field.Handle, "res://field.oscn")], scene.Instanced);
-            Assert.Equal("Instanced field under Field.", window.Status);
+            Assert.Equal("Put field inside Field.", window.Status);
         });
     }
 

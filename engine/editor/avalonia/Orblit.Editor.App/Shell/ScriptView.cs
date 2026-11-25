@@ -243,6 +243,35 @@ internal sealed class ScriptView : Border
     /// <summary>Whether the text in the box differs from what is on disk.</summary>
     public bool IsDirty => _open is not null && _code.Editor.Text != _saved;
 
+    /// <summary>The res:// path of the open script, or none.</summary>
+    internal string? OpenPath => _open;
+
+    /// <summary>How many lines of the open script differ from the file.</summary>
+    internal int ChangedLines => LinesChanged(_saved, _code.Editor.Text ?? "");
+
+    /// <summary>
+    /// The lines one text adds or drops against the other, whichever is more, so an edited line counts once.
+    /// shortcut: lines are matched as a bag, so a moved line does not count. Diff in order if that misleads.
+    /// </summary>
+    internal static int LinesChanged(string saved, string text)
+    {
+        var left = saved.Split('\n').GroupBy(line => line).ToDictionary(group => group.Key, group => group.Count());
+        var added = 0;
+        foreach (var line in text.Split('\n'))
+        {
+            if (left.GetValueOrDefault(line) > 0)
+            {
+                left[line]--;
+            }
+            else
+            {
+                added++;
+            }
+        }
+
+        return Math.Max(added, left.Values.Sum());
+    }
+
     /// <summary>Starts from this project's files, with no script open.</summary>
     public void Show(IScriptFiles files)
     {

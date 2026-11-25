@@ -38,7 +38,7 @@ internal sealed class EditorWindow : Window
     readonly SignalsPane _signals = new();
     readonly NewSceneTool _newScene = new();
     readonly InstanceTool _instanceScene = new();
-    readonly TextBlock _changesLine = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
+    readonly StackPanel _changes = new() { Spacing = 2 };
     readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes;
     readonly TimeProvider _time;
@@ -277,7 +277,8 @@ internal sealed class EditorWindow : Window
 
     internal Dialog SaveChanges => _saveChanges;
 
-    internal TextBlock ChangesLine => _changesLine;
+    /// <summary>The rows of the Save changes dialog: each change since the save, then each script with edits.</summary>
+    internal StackPanel ChangesList => _changes;
 
     internal ContentControl Viewport => _viewport;
 
@@ -588,18 +589,18 @@ internal sealed class EditorWindow : Window
     // Closing without saving drops the edits, so that action sits at the far left, away from Save and close.
     Dialog SaveChangesDialog()
     {
-        var warn = new EditorIcon("WarnTriangle") { Width = 15, Height = 15, Margin = new Thickness(0, 0, 10, 0) };
-        TextElement.SetForeground(warn, EditorBrushes.Warn);
-        var drop = new Button { Content = "Close without saving", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
-        var body = new StackPanel { Orientation = Orientation.Horizontal, Children = { warn, _changesLine } };
-        var dialog = new Dialog("", "Closing without saving drops them.", body)
+        var drop = new Button { Content = "Don't save", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
+        new HoverCard("Don't save", "Closes and drops every change listed here.").On(drop);
+        var body = new ScrollViewer { MaxHeight = 220, Content = _changes };
+        var dialog = new Dialog("", "", body)
         {
-            MainText = "Save and close",
-            CancelText = "Keep editing",
             Closable = false,
-            CardWidth = 400,
+            CardWidth = 440,
             LeadButton = drop,
         };
+        dialog.CancelButton.Content = Parts.Keyed("Cancel", "esc");
+        new HoverCard("Cancel", "Keeps the window open, with the changes.", "esc").On(dialog.CancelButton);
+        new HoverCard("Save and close", "Saves everything listed here, then closes.", "↵").On(dialog.MainButton);
         // A failed save leaves the edits, so the close asks again.
         dialog.MainButton.Click += (_, _) =>
         {
@@ -616,13 +617,44 @@ internal sealed class EditorWindow : Window
         return dialog;
     }
 
-    // An open script that was typed in counts as one change, as the scene does not count its keys.
+    // The scene's changes come from History, newest first. An undo back past the save leaves none to list, so
+    // the line then says only that the scene changed.
     void AskToSave()
     {
-        _saveChanges.Title = $"Save changes to {(_edited ? SceneName() : "the open scripts")}?";
-        var count = _edits + (_script.IsDirty ? 1 : 0) + (_graph.IsDirty ? 1 : 0);
-        _changesLine.Text = $"{count} {(count == 1 ? "change" : "changes")} since {_since.ToString("HH:mm", CultureInfo.InvariantCulture)}.";
+        var scripts = (_script.IsDirty ? [(_script.OpenPath!, Count(_script.ChangedLines, "line") + " changed")] : Array.Empty<(string, string)>())
+            .Concat(_graph.EditedScripts.Select(path => (path, "Changes not saved")))
+            .ToList();
+        var steps = _edited ? _history.Steps.Take(_history.Done).Where(step => step.At >= _since).Reverse().ToList() : [];
+        var since = _since.ToString("HH:mm", CultureInfo.InvariantCulture);
+        _changes.Children.Clear();
+        _changes.Children.AddRange(steps.Select(step => ChangeRow(step.At.ToString("HH:mm", CultureInfo.InvariantCulture), step.Label, null)));
+        _changes.Children.AddRange(scripts.Select(script => ChangeRow(null, $"{Path.GetFileName(script.Item1)}", $"{script.Item1} · {script.Item2}")));
+        var main = _edited || scripts.Count == 1 ? "Save and close" : $"Save {scripts.Count} and close";
+        _saveChanges.MainButton.Content = Parts.Keyed(main, "↵");
+        _saveChanges.Title = _edited ? $"Save changes to {SceneLabel()}?"
+            : scripts.Count == 1 ? $"Save {Path.GetFileName(scripts[0].Item1)}?"
+            : $"Save {scripts.Count} scripts?";
+        _saveChanges.Why.Text = !_edited ? $"{(scripts.Count == 1 ? "It has" : "They have")} changes that are not saved."
+            : steps.Count > 0 ? $"You made {Count(steps.Count, "change")} since {since}. Close without saving and they are gone."
+            : $"It changed since {since}. Close without saving and the changes are gone.";
         _saveChanges.Open();
+    }
+
+    static string Count(int count, string unit) => count == 1 ? $"1 {unit}" : $"{count} {unit}s";
+
+    // A change shows its time in dim mono at the left. A script shows its path and how much changed under its name.
+    static Control ChangeRow(string? at, string name, string? line)
+    {
+        var row = new DockPanel { Margin = new Thickness(0, 3) };
+        if (at is not null)
+        {
+            var time = new TextBlock { Text = at, Width = 48, FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+            DockPanel.SetDock(time, Dock.Left);
+            row.Children.Add(time);
+        }
+
+        row.Children.Add(Parts.Noted(name, line));
+        return row;
     }
 
     // An item with a button presses it, so the item is on while the button is. Undo and Redo take the button's
@@ -915,7 +947,7 @@ internal sealed class EditorWindow : Window
     // The tab is named for the scene file. A scene with no file takes the name of its root.
     string SceneLabel() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileNameWithoutExtension(file) : _root?.Name ?? "";
 
-    // The file name the Save changes dialog gives. A scene with no file takes the name of its root.
+    // The file name History and the 2D view give. A scene with no file takes the name of its root.
     string SceneName() => _scene!.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : _root?.Name ?? "";
 
     void ShowEdited(bool edited)

@@ -85,8 +85,9 @@ public sealed class ScriptWorkspaceTests
             Assert.True(window.IsVisible);
             Assert.True(window.SaveChanges.IsVisible);
             // The scene has no edits, so the scene's name would point at the wrong file.
-            Assert.Equal("Save changes to the open scripts?", window.SaveChanges.Title);
-            Assert.StartsWith("1 change since ", window.ChangesLine.Text);
+            Assert.Equal("Save spin.cs?", window.SaveChanges.Title);
+            Assert.Equal("It has changes that are not saved.", window.SaveChanges.Why.Text);
+            Assert.Equal(["spin.cs", "res://spin.cs · 1 line changed"], Texts(window.ChangesList));
         });
     }
 
