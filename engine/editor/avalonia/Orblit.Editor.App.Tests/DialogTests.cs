@@ -121,6 +121,23 @@ public sealed class DialogTests
     }
 
     [Fact]
+    public void A_body_taller_than_the_window_scrolls_and_the_footer_stays_in_view()
+    {
+        UiThread.Run(() =>
+        {
+            var dialog = new Dialog("New Scene", "Pick what the scene is for.", new Border { Height = 2000 }) { MainText = "Create" };
+            var window = new Window { Width = 1000, Height = 500, Content = dialog };
+            window.Show();
+            dialog.Open();
+            window.UpdateLayout();
+
+            Assert.InRange(BoxOf(dialog.Card, dialog).Top, 0, 500);
+            Assert.InRange(BoxOf(dialog.MainButton, dialog).Bottom, 0, 500);
+            Assert.NotNull(dialog.Card.FindDescendantOfType<ScrollViewer>());
+        });
+    }
+
+    [Fact]
     public void The_title_is_bold_with_a_dim_line_on_why_under_it()
     {
         UiThread.Run(() =>

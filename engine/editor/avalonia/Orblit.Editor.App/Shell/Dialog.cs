@@ -38,9 +38,15 @@ internal sealed class Dialog : Border
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = _footer,
         };
+        // On a short window the body scrolls between the heading and the footer, so the main action stays in reach.
+        // The grid keeps them in reading order, so Tab reaches the body before the footer.
+        var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(14, 12), Child = body } };
+        Grid.SetRow(scroll, 1);
+        Grid.SetRow(footer, 2);
         Card = new Border
         {
             Width = 420,
+            Margin = new Thickness(16),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Background = EditorBrushes.Popover,
@@ -48,7 +54,7 @@ internal sealed class Dialog : Border
             BorderThickness = new Thickness(1),
             CornerRadius = EditorTheme.PopoverCorners,
             BoxShadow = BoxShadows.Parse("0 20 50 0 #8C000000, 0 2 6 0 #59000000"),
-            Child = new StackPanel { Children = { heading, new Border { Padding = new Thickness(14, 12), Child = body }, footer } },
+            Child = new Grid { RowDefinitions = new RowDefinitions("Auto,*,Auto"), Children = { heading, scroll, footer } },
         };
         // Tab goes round the card and never reaches the editor under the veil.
         KeyboardNavigation.SetTabNavigation(Card, KeyboardNavigationMode.Cycle);
@@ -144,6 +150,9 @@ internal sealed class Dialog : Border
     public void Open()
     {
         IsVisible = true;
+        // The scroll lays out its body only once it shows. Until then the body is off the visual tree, so focus and
+        // keys could not reach it.
+        UpdateLayout();
         MainButton.Focus();
     }
 
