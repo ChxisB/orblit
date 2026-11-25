@@ -1035,7 +1035,7 @@ internal sealed class EditorWindow : Window
 
         try
         {
-            _scene!.Play(_graph.Breakpoints.All, _script.Breakpoints.All, [.. _game.Flags, .. arguments]);
+            _scene!.Play(_graph.Breakpoints.All, _script.Breakpoints.All, [.. _game.Flags, .. arguments], _game.Copies);
         }
         catch (IOException error)
         {

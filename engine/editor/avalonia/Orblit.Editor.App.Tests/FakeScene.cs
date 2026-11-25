@@ -420,7 +420,10 @@ internal sealed class FakeScene : IEditorScene
     /// <summary>The engine flags of the last play.</summary>
     public List<string> PlayedFlags { get; } = [];
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
+    /// <summary>How many copies of the game the last play opened.</summary>
+    public int PlayedCopies { get; private set; }
+
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies)
     {
         if (PlayError is not null)
         {
@@ -434,6 +437,7 @@ internal sealed class FakeScene : IEditorScene
         PlayedWithCode.AddRange(codeBreakpoints);
         PlayedFlags.Clear();
         PlayedFlags.AddRange(flags);
+        PlayedCopies = copies;
         IsPlaying = true;
     }
 

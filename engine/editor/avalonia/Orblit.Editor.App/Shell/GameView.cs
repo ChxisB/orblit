@@ -70,6 +70,7 @@ internal sealed class GameView : Border
     readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly RadioButton _main = Choice("Main scene", "The first scene players see.");
     readonly RadioButton _thisScene = Choice("This scene", "The one open in the 3D view");
+    readonly Segments _copies = new("1", "2", "3", "4");
     readonly CheckBox[] _shown = [.. s_shown.Select(row => new HoverCard(row.Name, row.Line, engine: row.Engine).On(new CheckBox { Content = Parts.Noted(row.Name, row.Line) }))];
     readonly StackPanel _settings = new() { Spacing = 4, Margin = new Thickness(10, 4, 10, 12) };
     readonly StackPanel _waits;
@@ -134,6 +135,11 @@ internal sealed class GameView : Border
     internal RadioButton MainChoice => _main;
 
     internal RadioButton ThisSceneChoice => _thisScene;
+
+    /// <summary>How many games Play opens at once. Each one is a player.</summary>
+    internal int Copies => _copies.SelectedIndex + 1;
+
+    internal Segments CopiesChoice => _copies;
 
     /// <summary>Whether Play runs the scene open in the 3D view in place of the main scene.</summary>
     internal bool RunsThisScene => _thisScene.IsChecked == true;
@@ -258,7 +264,9 @@ internal sealed class GameView : Border
     DockPanel PlaySettings()
     {
         _settings.Children.Add(Heading("What Play runs"));
-        _settings.Children.AddRange([_main, _thisScene, Heading("Show while playing"), .. _shown]);
+        new HoverCard("Copies", "Opens this many game windows at once. Each one is a player.", engine: "Run instances").On(_copies);
+        var copies = new TextBlock { Text = "More than one opens extra windows, for testing online play.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 4, 0, 0) };
+        _settings.Children.AddRange([_main, _thisScene, Heading("Copies"), _copies, copies, Heading("Show while playing"), .. _shown]);
         var body = new StackPanel { Children = { _waits, _settings } };
         return Stack(Parts.Bar(Title("Play settings")), new ScrollViewer { Content = body });
     }

@@ -107,8 +107,8 @@ internal sealed class UndoableScene(IEditorScene scene, EditHistory history) : I
 
     public IDebugChannel Csharp => scene.Csharp;
 
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags) =>
-        scene.Play(breakpoints, codeBreakpoints, flags);
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies) =>
+        scene.Play(breakpoints, codeBreakpoints, flags, copies);
 
     public void Stop() => scene.Stop();
 

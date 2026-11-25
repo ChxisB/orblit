@@ -523,4 +523,23 @@ public sealed class GameWorkspaceTests
             Assert.Equal((calm, "60 or more feels smooth."), (rate.Value.Foreground, rate.Line.Text));
         });
     }
+
+    [Fact]
+    public void Copies_opens_that_many_games_and_one_is_the_default()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            Click(window.Game.RunButton);
+            Assert.Equal(1, scene.PlayedCopies);
+            Click(window.Game.StopButton);
+
+            window.Game.CopiesChoice.SelectedIndex = 2;
+            Click(window.Game.RunButton);
+
+            Assert.Equal(3, scene.PlayedCopies);
+            Assert.Equal("Run instances", Assert.IsType<HoverCard>(ToolTip.GetTip(window.Game.CopiesChoice)).Engine);
+        });
+    }
 }

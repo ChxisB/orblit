@@ -28,6 +28,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     readonly EngineDebugChannel _debug;
     readonly CsharpDebugChannel _csharp;
     Process? _game;
+    readonly List<Process> _copies = [];
     bool _sunPreview = true;
     bool _skyPreview = true;
 
@@ -545,7 +546,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     /// Runs the project in its own process, because one process holds one engine. A project with C# runs under the
     /// person's netcoredbg when there is one, so its breakpoints hold.
     /// </summary>
-    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags)
+    public void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies)
     {
         Stop();
         var port = _debug.Listen();
@@ -558,6 +559,25 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
         var debugger = Directory.EnumerateFiles(_project, "*.csproj").Any() ? Netcoredbg.Find() : null;
         _game = debugger is null ? Process.Start(player) : StartDebugged(debugger, player, logFile, codeBreakpoints);
+        for (var copy = 1; copy < copies; copy++)
+        {
+            StartCopy(player.FileName, flags);
+        }
+    }
+
+    // A copy has no link, so the debugger, the log and the live scene follow the first game only.
+    void StartCopy(string playerPath, IEnumerable<string> flags)
+    {
+        var copy = new ProcessStartInfo(playerPath) { ArgumentList = { "--path", _project } };
+        foreach (var flag in flags)
+        {
+            copy.ArgumentList.Add(flag);
+        }
+
+        if (Process.Start(copy) is { } started)
+        {
+            _copies.Add(started);
+        }
     }
 
     // netcoredbg starts the game itself once the breakpoints are set, so one in OnStart holds.
@@ -598,6 +618,13 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void Stop()
     {
+        foreach (var copy in _copies)
+        {
+            Kill(copy);
+            copy.Dispose();
+        }
+
+        _copies.Clear();
         if (_game is null)
         {
             return;
@@ -656,6 +683,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     {
         _csharp.End();
         _game?.Dispose();
+        _copies.ForEach(copy => copy.Dispose());
         _debug.Dispose();
         _viewport?.Readback.Dispose();
         _host.Dispose();

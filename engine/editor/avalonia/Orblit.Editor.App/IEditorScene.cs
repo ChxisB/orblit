@@ -257,10 +257,11 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
     /// Runs the project in its own process, linked to <see cref="IGraphFiles.Debug"/>, and stopping on the breakpoints given,
     /// each a source and a step id. A project with C# runs under netcoredbg when the person has it, linked to
     /// <see cref="IScriptFiles.Csharp"/> and stopping on the code breakpoints, each a script's res:// path and a line. The flags go to
-    /// the engine as they are, such as <c>--debug-collisions</c>. A game already running is stopped first. Throws
+    /// the engine as they are, such as <c>--debug-collisions</c>. Past the first, each copy is another game with the same
+    /// flags and no link, for testing online play. A game already running is stopped first, with its copies. Throws
     /// <see cref="IOException"/> when a link cannot be opened or netcoredbg does not start.
     /// </summary>
-    void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags);
+    void Play(IEnumerable<(string Source, int Step)> breakpoints, IEnumerable<(string Source, int Line)> codeBreakpoints, IEnumerable<string> flags, int copies);
 
     /// <summary>Ends the running game. Does nothing when none runs.</summary>
     void Stop();
