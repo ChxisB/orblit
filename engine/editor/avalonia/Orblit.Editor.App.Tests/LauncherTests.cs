@@ -1,7 +1,10 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Input.Platform;
+using Avalonia.Interactivity;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Launcher;
@@ -15,6 +18,7 @@ public sealed class LauncherTests : IDisposable
     readonly List<string> _opened = [];
     readonly List<string> _gitStarted = [];
     readonly List<Uri> _links = [];
+    readonly ManualTime _time = new();
 
     ProjectList List => new(Path.Combine(_root, "data", "projects.cfg"));
 
@@ -31,21 +35,21 @@ public sealed class LauncherTests : IDisposable
         public void Open(Uri link) => opened.Add(link);
     }
 
-    // A project folder with these settings, listed, and last edited this many hours ago.
+    // A project folder with these settings, listed, and last opened this many hours before the clock's start.
     string Project(string folderName, string settings, int hoursAgo)
     {
         var folder = Path.Combine(_root, folderName);
         Directory.CreateDirectory(folder);
         var file = Path.Combine(folder, "project.orblit");
         File.WriteAllText(file, settings);
-        File.SetLastWriteTimeUtc(file, DateTime.UtcNow.AddHours(-hoursAgo));
+        File.SetLastWriteTimeUtc(file, ManualTime.Start.UtcDateTime.AddHours(-hoursAgo));
         List.Add(folder);
         return folder;
     }
 
     LauncherWindow Open()
     {
-        var launcher = new LauncherWindow(List, _gitStarted.Add, new Links(_links));
+        var launcher = new LauncherWindow(List, _gitStarted.Add, new Links(_links), _time);
         launcher.Opening += _opened.Add;
         launcher.Show();
         Dispatcher.UIThread.RunJobs();
@@ -60,7 +64,17 @@ public sealed class LauncherTests : IDisposable
         return [.. control.GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text).OfType<string>()];
     }
 
-    static void Click(Button button) => button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+    static void Click(Button button) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+
+    static void Press(Control control, Key key, KeyModifiers modifiers = KeyModifiers.None) =>
+        control.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = modifiers });
+
+    static string KeyOf(LauncherWindow launcher, Key key) => Parts.KeyText(new KeyGesture(key, launcher.CommandKey));
+
+    static string? Note(MenuItem item) => item.Header is StackPanel { Children: [_, TextBlock note] } ? note.Text : null;
+
+    static void SortBy(LauncherWindow launcher, string item) =>
+        launcher.SortItems.Single(sort => AutomationProperties.GetName(sort) == item).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     static void ClickOn(Control control)
     {
@@ -72,7 +86,7 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
-    public void It_shows_each_listed_project_newest_first_with_its_folder_and_tags_and_hides_a_missing_one()
+    public void It_shows_each_listed_project_newest_first_with_its_folder_and_when_it_was_opened_and_hides_a_missing_one()
     {
         UiThread.Run(() =>
         {
@@ -84,7 +98,7 @@ public sealed class LauncherTests : IDisposable
 
             Assert.Equal(["Runner", "Crate"], Names(launcher));
             var crate = launcher.Cards.Single(card => card.Tag is ProjectEntry { Name: "Crate" });
-            Assert.Equal(["Crate", Path.Combine(_root, "crate"), "3D", "C#"], Texts(crate)[^4..]);
+            Assert.Equal(["Crate", Path.Combine(_root, "crate"), "Opened 5 hours ago"], Texts(crate)[^3..]);
         });
     }
 
@@ -101,11 +115,90 @@ public sealed class LauncherTests : IDisposable
             launcher.SearchBox.Text = "BOX";
             Assert.Equal(["Alpha"], Names(launcher));
             launcher.SearchBox.Text = "";
-            launcher.SortBox.SelectedIndex = 1;
+            SortBy(launcher, "Name");
             Assert.Equal(["Alpha", "Crate", "Runner"], Names(launcher));
-            launcher.SearchBox.Text = "nothing";
+            SortBy(launcher, "Folder");
+            Assert.Equal(["Alpha", "Crate", "Runner"], Names(launcher));
+            SortBy(launcher, "Last opened");
+            Assert.Equal(["Runner", "Alpha", "Crate"], Names(launcher));
+        });
+    }
+
+    [Fact]
+    public void The_sort_button_names_the_order_in_use_and_each_choice_says_which_way_it_sorts()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var items = launcher.SortItems;
+            Assert.Equal(["Last opened", "Name", "Folder"], items.Select(AutomationProperties.GetName));
+            Assert.Equal(["Newest first", "A to Z", "A to Z, by where it lives"], items.Select(Note));
+            Assert.Equal(["Last opened"], Texts(launcher.SortButton));
+
+            SortBy(launcher, "Folder");
+
+            Assert.Equal([false, false, true], items.Select(item => item.IsChecked));
+            Assert.Equal(["Folder"], Texts(launcher.SortButton));
+        });
+    }
+
+    [Fact]
+    public void A_search_with_no_match_repeats_the_words_and_offers_the_two_ways_forward()
+    {
+        UiThread.Run(() =>
+        {
+            Project("crate", "config/name=\"Crate\"\n", 1);
+            var launcher = Open();
+
+            launcher.SearchBox.Text = "spaceship";
+
             Assert.Empty(launcher.Shown);
-            Assert.Contains("Nothing matches", Texts(launcher));
+            var texts = Texts(launcher);
+            Assert.Contains("No project matches \"spaceship\"", texts);
+            Assert.Contains("Search looks at project names and folders. Check the spelling, or open the folder if it is not in the list.", texts);
+            Assert.Equal(["Clear the search", "esc"], Texts(launcher.ClearSearchButton));
+            Assert.Equal(["Open a folder…", KeyOf(launcher, Key.O)], Texts(launcher.NoMatchOpenButton));
+
+            Click(launcher.ClearSearchButton);
+            Assert.Equal(["Crate"], Names(launcher));
+            launcher.SearchBox.Text = "spaceship";
+            Press(launcher.SearchBox, Key.Escape);
+            Assert.Equal("", launcher.SearchBox.Text);
+        });
+    }
+
+    [Fact]
+    public void The_head_says_what_the_window_is_for_and_each_button_carries_the_key_that_runs_it()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+
+            var texts = Texts(launcher);
+            Assert.Contains("Your projects", texts);
+            Assert.Contains("Pick one to keep working, or start a new one below.", texts);
+            Assert.Equal(["Open a folder…", KeyOf(launcher, Key.O)], Texts(launcher.OpenButton));
+            Assert.Equal(["New project", KeyOf(launcher, Key.N)], Texts(launcher.NewButton));
+            Assert.Equal("Find a project by name or folder", launcher.SearchBox.PlaceholderText);
+
+            Press(launcher, Key.F, launcher.CommandKey);
+            Assert.True(launcher.SearchBox.IsFocused);
+            Press(launcher, Key.N, launcher.CommandKey);
+            Assert.True(launcher.NewPanel.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Start_something_new_says_what_each_start_opens_with()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+
+            Assert.Contains("Each one makes a new project folder.", Texts(launcher));
+            Assert.Equal(
+                [["3D game", "Opens with an empty 3D scene."], ["2D game", "Opens with an empty 2D scene."], ["Empty project", "No scene yet. Add your own."]],
+                launcher.TemplateButtons.Select(Texts));
         });
     }
 
@@ -122,16 +215,17 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
-    public void A_click_on_a_card_opens_its_project()
+    public void A_click_on_a_card_opens_its_project_and_marks_it_opened_now()
     {
         UiThread.Run(() =>
         {
-            var crate = Project("crate", "config/name=\"Crate\"\n", 1);
+            var crate = Project("crate", "config/name=\"Crate\"\n", 30);
             var launcher = Open();
 
             ClickOn(launcher.Cards.Single());
 
             Assert.Equal([crate], _opened);
+            Assert.Equal(ManualTime.Start.UtcDateTime, File.GetLastWriteTimeUtc(Path.Combine(crate, "project.orblit")));
         });
     }
 
@@ -250,18 +344,22 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
-    public void Docs_opens_the_site_and_the_nav_holds_only_places_that_work()
+    public void Learn_opens_the_guide_in_the_browser_and_the_version_card_copies_the_version()
     {
-        UiThread.Run(() =>
+        UiThread.Run(async () =>
         {
-            Project("crate", "config/name=\"Crate\"\n", 1);
             var launcher = Open();
+            var learn = (HoverCard)ToolTip.GetTip(launcher.Nav.Learn)!;
 
-            Click(launcher.Nav.Docs);
+            Click(launcher.Nav.Learn);
+            Click(launcher.Nav.Version);
+            Dispatcher.UIThread.RunJobs();
 
+            Assert.Equal(("Learn", "Opens the guide on orblitengine.com in your browser."), (learn.Title, learn.Line));
             Assert.Equal([HelpMenu.Docs], _links);
-            Assert.Empty(launcher.Cards.Single().GetVisualDescendants().OfType<Button>());
-            Assert.Equal(2, launcher.Nav.GetVisualDescendants().OfType<Button>().Count());
+            Assert.Equal([$"Orblit {BottomBar.Version}", "Click to copy the version for a bug report."], Texts(launcher.Nav.Version));
+            Assert.Equal(BottomBar.Version, await launcher.Clipboard!.TryGetTextAsync());
+            Assert.Equal([launcher.Nav.Version, launcher.Nav.Projects, launcher.Nav.Learn], launcher.Nav.GetVisualDescendants().OfType<Button>());
         });
     }
 }
