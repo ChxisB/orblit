@@ -550,7 +550,86 @@ public sealed class LauncherTests : IDisposable
             Assert.Equal([HelpMenu.Docs], _links);
             Assert.Equal([$"Orblit {BottomBar.Version}", "Click to copy the version for a bug report."], Texts(launcher.Nav.Version));
             Assert.Equal(BottomBar.Version, await launcher.Clipboard!.TryGetTextAsync());
-            Assert.Equal([launcher.Nav.Version, launcher.Nav.Projects, launcher.Nav.Learn], launcher.Nav.GetVisualDescendants().OfType<Button>());
+            Assert.Equal([launcher.Nav.Version, launcher.Nav.Projects, launcher.Nav.Learn, launcher.Nav.Settings], launcher.Nav.GetVisualDescendants().OfType<Button>());
+        });
+    }
+
+    [Fact]
+    public void Settings_in_the_nav_says_what_it_holds_and_opens_on_its_key()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var key = KeyOf(launcher, Key.OemComma);
+            var card = (HoverCard)ToolTip.GetTip(launcher.Nav.Settings)!;
+            var settings = launcher.Settings;
+
+            Assert.Equal(("Settings", "Where new projects go, and every key.", key), (card.Title, card.Line, card.Key));
+            Assert.Equal(["Settings", key], Texts(launcher.Nav.Settings));
+            Click(launcher.Nav.Settings);
+            Assert.True(settings.Dialog.IsVisible);
+            Assert.Equal(("Settings", "Where new projects go, and every key."), (settings.Dialog.Title, settings.Dialog.Why.Text));
+            Assert.Contains("New projects go in", Texts(settings.Dialog.Card));
+            Assert.Contains("New project puts each new folder here. Orblit makes the folder if it is not there yet.", Texts(settings.Dialog.Card));
+            Assert.Equal("Done", settings.Dialog.MainText);
+
+            Press(settings.FolderBox, Key.Escape);
+            Assert.False(settings.Dialog.IsVisible);
+            Press(launcher, Key.OemComma, launcher.CommandKey);
+            Assert.True(settings.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
+    public void Done_saves_the_folder_and_New_project_starts_there_while_Escape_drops_the_change()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var settings = launcher.Settings;
+            Click(launcher.Nav.Settings);
+
+            Assert.Equal("~/Games", settings.FolderBox.Text);
+            settings.FolderBox.Text = "~/Not/made/yet";
+            Press(launcher, Key.N, launcher.CommandKey);
+            Assert.False(launcher.NewPanel.Dialog.IsVisible);
+            Click(settings.Dialog.MainButton);
+
+            Assert.False(settings.Dialog.IsVisible);
+            Assert.Equal("~/Not/made/yet", List.Settings().ProjectsFolder());
+            Click(launcher.NewButton);
+            Assert.Equal(Path.Combine("~/Not/made/yet", "my-game"), launcher.NewPanel.FolderBox.Text);
+            Press(launcher.NewPanel.NameBox, Key.Escape);
+
+            Click(launcher.Nav.Settings);
+            settings.FolderBox.Text = "~/Dropped";
+            Press(settings.FolderBox, Key.Escape);
+            Assert.Equal("~/Not/made/yet", List.Settings().ProjectsFolder());
+        });
+    }
+
+    [Fact]
+    public void All_keys_saves_then_shows_the_launcher_keys_and_the_editor_menus()
+    {
+        UiThread.Run(() =>
+        {
+            var launcher = Open();
+            var settings = launcher.Settings;
+            var card = (HoverCard)ToolTip.GetTip(settings.AllKeysButton)!;
+            Click(launcher.Nav.Settings);
+            settings.FolderBox.Text = "~/Kept";
+
+            Click(settings.AllKeysButton);
+
+            Assert.Equal(("All keys", "Every shortcut on one sheet."), (card.Title, card.Line));
+            Assert.False(settings.Dialog.IsVisible);
+            Assert.Equal("~/Kept", List.Settings().ProjectsFolder());
+            Assert.True(launcher.Keys.Dialog.IsVisible);
+            var rows = launcher.Keys.Rows.ToList();
+            Assert.Equal(
+                [("Open a folder…", KeyOf(launcher, Key.O)), ("New project", KeyOf(launcher, Key.N)), ("Find a project", KeyOf(launcher, Key.F)), ("Settings", KeyOf(launcher, Key.OemComma))],
+                rows.Where(row => row.Group == "In the launcher").Select(row => (row.Name, row.Key)));
+            Assert.Contains(rows, row => row.Group == "File");
         });
     }
 }

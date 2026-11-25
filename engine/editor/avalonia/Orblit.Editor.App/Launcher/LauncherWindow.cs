@@ -17,6 +17,7 @@ namespace Orblit.Editor.App.Launcher;
 /// The window the editor opens on when no project is named. It shows the projects in projects.cfg as cards,
 /// with a search and a sort over them. Open a folder… adds a project folder from disk and New project writes a
 /// new one. Either raises Opening with the folder. Each card has a menu that opens, shows, copies or removes it.
+/// Settings in the nav names where new projects go and leads to the sheet of every key.
 /// </summary>
 internal sealed class LauncherWindow : Window
 {
@@ -30,6 +31,15 @@ internal sealed class LauncherWindow : Window
         ("Last opened", "Newest first"),
         ("Name", "A to Z"),
         ("Folder", "A to Z, by where it lives"),
+    ];
+
+    // The launcher's own keys, each with the command key, as the sheet of every key lists them.
+    static readonly (string Name, Key Key)[] s_keys =
+    [
+        ("Open a folder…", Key.O),
+        ("New project", Key.N),
+        ("Find a project", Key.F),
+        ("Settings", Key.OemComma),
     ];
 
     readonly ProjectList _list;
@@ -46,6 +56,8 @@ internal sealed class LauncherWindow : Window
     readonly Button _open;
     readonly Button _new;
     readonly NewProjectPanel _panel;
+    readonly SettingsSheet _settings;
+    readonly KeysSheet _keys = new();
     List<ProjectEntry> _projects = [];
     int _order;
 
@@ -54,7 +66,9 @@ internal sealed class LauncherWindow : Window
         _list = list;
         _links = links ?? new WindowLinks(this);
         _time = time ?? TimeProvider.System;
-        _panel = new NewProjectPanel(initGit, list.Settings());
+        var settings = list.Settings();
+        _panel = new NewProjectPanel(initGit, settings);
+        _settings = new SettingsSheet(settings);
         var openKey = Parts.KeyText(new KeyGesture(Key.O, CommandKey));
         _open = new HoverCard("Open a folder…", "Adds a project folder from disk to this list, then opens it.", openKey).On(new Button
         {
@@ -79,7 +93,7 @@ internal sealed class LauncherWindow : Window
         MinWidth = 820;
         MinHeight = 560;
         Background = EditorBrushes.Window;
-        Nav = new Nav(() => _links.Open(HelpMenu.Docs), () => Copy(BottomBar.Version));
+        Nav = new Nav(() => _links.Open(HelpMenu.Docs), () => Copy(BottomBar.Version), _settings.Open, Parts.KeyText(new KeyGesture(Key.OemComma, CommandKey)));
         var main = new Border
         {
             Classes = { EditorTheme.Island },
@@ -88,8 +102,8 @@ internal sealed class LauncherWindow : Window
             Child = Projects(),
         };
         Grid.SetColumn(main, 1);
-        // The dialog lies over the whole window, so its veil covers the projects too.
-        Content = new Panel { Children = { new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog } };
+        // The dialogs lie over the whole window, so a veil covers the projects too.
+        Content = new Panel { Children = { new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog, _settings.Dialog, _keys.Dialog } };
         // The property changes as the text is set. The TextChanged event waits for a render.
         _search.PropertyChanged += (_, e) =>
         {
@@ -113,6 +127,7 @@ internal sealed class LauncherWindow : Window
         NoMatchOpenButton.Click += (_, _) => PickAndOpen();
         _new.Click += (_, _) => _panel.Start(ProjectTemplate.Spatial);
         _panel.Made += Open;
+        _settings.KeysAsked += OpenKeys;
         Load();
     }
 
@@ -145,6 +160,10 @@ internal sealed class LauncherWindow : Window
     internal Button NewButton => _new;
 
     internal NewProjectPanel NewPanel => _panel;
+
+    internal SettingsSheet Settings => _settings;
+
+    internal KeysSheet Keys => _keys;
 
     /// <summary>The projects the cards show, in their order.</summary>
     internal IEnumerable<ProjectEntry> Shown => _cards.Children.Select(card => card.Tag).OfType<ProjectEntry>();
@@ -185,8 +204,8 @@ internal sealed class LauncherWindow : Window
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        // The launcher under the dialog's veil takes no keys until the dialog closes.
-        if (e.Handled || e.KeyModifiers != CommandKey || _panel.Dialog.IsVisible)
+        // The launcher under a dialog's veil takes no keys until the dialog closes.
+        if (e.Handled || e.KeyModifiers != CommandKey || _panel.Dialog.IsVisible || _settings.Dialog.IsVisible || _keys.Dialog.IsVisible)
         {
             return;
         }
@@ -196,12 +215,19 @@ internal sealed class LauncherWindow : Window
             _search.Focus();
             e.Handled = true;
         }
-        else if ((e.Key switch { Key.O => _open, Key.N => _new, _ => null }) is { } button)
+        else if ((e.Key switch { Key.O => _open, Key.N => _new, Key.OemComma => Nav.Settings, _ => null }) is { } button)
         {
             button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             e.Handled = true;
         }
     }
+
+    // The editor's menu keys follow, so the sheet shows what waits once a project opens.
+    void OpenKeys() => _keys.Open(
+    [
+        .. s_keys.Select(key => ("In the launcher", key.Name, Parts.KeyText(new KeyGesture(key.Key, CommandKey)))),
+        .. EditorMenu.Keys(OperatingSystem.IsMacOS(), CommandKey),
+    ]);
 
     async void PickAndOpen()
     {
@@ -464,7 +490,7 @@ internal sealed class LauncherWindow : Window
 /// <summary>The launcher's left column: the logo, the places it can show, and the version at the foot.</summary>
 internal sealed class Nav : DockPanel
 {
-    public Nav(Action openLearn, Action copyVersion)
+    public Nav(Action openLearn, Action copyVersion, Action openSettings, string settingsKey)
     {
         var logo = new StackPanel
         {
@@ -484,6 +510,8 @@ internal sealed class Nav : DockPanel
         TextElement.SetForeground(arrow, EditorBrushes.TextDim);
         Learn = new HoverCard("Learn", "Opens the guide on orblitengine.com in your browser.").On(Place(new DockPanel { Children = { Parts.Right(arrow), Parts.Worded("Book", "Learn") } }));
         Learn.Click += (_, _) => openLearn();
+        Settings = new HoverCard("Settings", SettingsSheet.Holds, settingsKey).On(Place(Parts.Worded("Sliders", "Settings", settingsKey)));
+        Settings.Click += (_, _) => openSettings();
         Version = new Button
         {
             HorizontalAlignment = HorizontalAlignment.Stretch,
@@ -511,12 +539,15 @@ internal sealed class Nav : DockPanel
         SetDock(Version, Dock.Bottom);
         Children.Add(logo);
         Children.Add(Version);
-        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Learn } });
+        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Learn, Settings } });
     }
 
     internal Button Projects { get; }
 
     internal Button Learn { get; }
+
+    /// <summary>Opens Settings, which holds where new projects go and the sheet of every key.</summary>
+    internal Button Settings { get; }
 
     /// <summary>The version card. A click copies the version.</summary>
     internal Button Version { get; }

@@ -47,10 +47,10 @@ internal sealed class NewProjectPanel : StackPanel
         Spacing = 14;
         Children.AddRange(
         [
-            Parts.Labeled("Name", _name, _nameFault, Hint("Shown in your project list.")),
-            Parts.Labeled("Folder", _folder, _fault, Hint("A new, empty folder. Orblit makes it for you.")),
+            Parts.Labeled("Name", _name, _nameFault, Parts.Hint("Shown in your project list.")),
+            Parts.Labeled("Folder", _folder, _fault, Parts.Hint("A new, empty folder. Orblit makes it for you.")),
             Parts.Labeled("Start with", starts),
-            Parts.Labeled("First script", _script, Hint("Graph joins steps with wires, no code needed. C# is written code. You can add the other later.")),
+            Parts.Labeled("First script", _script, Parts.Hint("Graph joins steps with wires, no code needed. C# is written code. You can add the other later.")),
             GitRow(),
         ]);
 
@@ -149,14 +149,12 @@ internal sealed class NewProjectPanel : StackPanel
         return picked.Count > 0 ? picked[0].TryGetLocalPath() : null;
     }
 
-    static TextBlock Hint(string text) => new() { Text = text, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
-
     // The switch sits at the right of the words that say what it does.
     DockPanel GitRow()
     {
         DockPanel.SetDock(_git, Dock.Right);
         var needs = $"Lets you go back to any saved point. Needs Git on this {(OperatingSystem.IsMacOS() ? "Mac" : "computer")}.";
-        var words = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "Keep a history with Git" }, Hint(needs) } };
+        var words = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "Keep a history with Git" }, Parts.Hint(needs) } };
         return new DockPanel { Children = { _git, words } };
     }
 

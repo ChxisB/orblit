@@ -154,6 +154,9 @@ internal static class Parts
         return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + shift + Mark(KeyModifiers.Meta, "⌘") + key;
     }
 
+    /// <summary>A dim line under a field that says what it does.</summary>
+    public static TextBlock Hint(string text) => new() { Text = text, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
+
     /// <summary>The line under a field that says why its value cannot be used. It waits hidden until there is something to say.</summary>
     public static TextBlock FaultLine() => new() { FontSize = 11, Foreground = EditorBrushes.FaultText, TextWrapping = TextWrapping.Wrap, IsVisible = false };
 

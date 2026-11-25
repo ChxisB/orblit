@@ -32,6 +32,7 @@ internal static partial class EditorIcons
         s_icons["Past"] = Line("M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4M12 8v4l3 2");
         s_icons["Bin"] = Line("M5 7h14M10 7V4.5h4V7M7 7l1 13h8l1-13");
         s_icons["StepArrow"] = Line("M5 12h14M13 6l6 6-6 6");
+        s_icons["Sliders"] = Line("M4 7h9M17 7h3M15 5v4M4 17h3M11 17h9M9 15v4");
     }
 
     static IconDrawing Line(string path) =>
