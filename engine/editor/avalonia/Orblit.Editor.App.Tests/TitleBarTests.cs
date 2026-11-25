@@ -1,9 +1,12 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Media;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -16,7 +19,18 @@ public sealed class TitleBarTests
 
     static MenuItem[] RunItems(EditorWindow window) => [.. ((MenuFlyout)window.Bar.MoreButton.Flyout!).Items.OfType<MenuItem>()];
 
-    static MenuItem RunItem(EditorWindow window, string header) => RunItems(window).Single(item => (string?)item.Header == header);
+    static MenuItem RunItem(EditorWindow window, string header) => RunItems(window).Single(item => AutomationProperties.GetName(item) == header);
+
+    static string? Note(MenuItem item) => ((Panel)item.Header!).Children.OfType<TextBlock>().Last().Text;
+
+    static string[] Words(Control control) => [.. control.GetLogicalDescendants().OfType<TextBlock>().Select(text => text.Text ?? "")];
+
+    static HoverCard CardOf(Control control) => Assert.IsType<HoverCard>(ToolTip.GetTip(control));
+
+    static string Keys(EditorWindow window, Key key) => Parts.KeyText(new KeyGesture(key, window.CommandKey));
+
+    static void Press(EditorWindow window, Key key) =>
+        window.RaiseEvent(new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = key, KeyModifiers = window.CommandKey });
 
     [Fact]
     public void The_bar_shows_project_slash_scene_and_an_orange_dot_while_the_scene_has_edits()
@@ -107,10 +121,10 @@ public sealed class TitleBarTests
 
             Assert.Equal(
                 [
-                    ("Run the project", new KeyGesture(Key.B, command)),
-                    ("Run the current scene", new KeyGesture(Key.R, command)),
+                    ("Play the game", "Starts from the main scene", new KeyGesture(Key.B, command)),
+                    ("Play this scene", "Starts from the scene you are in", new KeyGesture(Key.R, command)),
                 ],
-                RunItems(window).Select(item => ((string)item.Header!, item.InputGesture)));
+                RunItems(window).Select(item => (AutomationProperties.GetName(item), Note(item), item.InputGesture)));
         });
     }
 
@@ -122,7 +136,7 @@ public sealed class TitleBarTests
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
 
-            RunItem(window, "Run the project").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            RunItem(window, "Play the game").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.Equal(1, scene.Plays);
         });
@@ -171,7 +185,7 @@ public sealed class TitleBarTests
 
             var press = new KeyEventArgs { RoutedEvent = InputElement.KeyDownEvent, Key = Key.R, KeyModifiers = window.CommandKey };
             window.RaiseEvent(press);
-            RunItem(window, "Run the current scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            RunItem(window, "Play this scene").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
             Assert.True(press.Handled);
             Assert.Equal(2, scene.Plays);
@@ -188,7 +202,95 @@ public sealed class TitleBarTests
 
             Assert.True(window.PlayButton.IsEnabled);
             Assert.False(window.PlaySceneButton.IsEnabled);
-            Assert.False(RunItem(window, "Run the current scene").IsEnabled);
+            Assert.False(RunItem(window, "Play this scene").IsEnabled);
+        });
+    }
+
+    [Fact]
+    public void Play_and_Stop_show_their_icon_word_and_key()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Assert.Equal(["Play", Keys(window, Key.B)], Words(window.PlayButton));
+            Assert.Equal(["Stop", Keys(window, Key.OemPeriod)], Words(window.StopButton));
+            Assert.Equal("MainPlay", window.PlayButton.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName);
+        });
+    }
+
+    [Fact]
+    public void Every_control_of_the_bar_has_a_card()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Control[] controls = [.. window.Bar.Tabs, window.PlayButton, window.StopButton, window.Bar.MoreButton, window.Bar.SearchButton];
+
+            Assert.All(controls, control => Assert.False(string.IsNullOrEmpty(CardOf(control).Line)));
+            Assert.Equal(Keys(window, Key.K), CardOf(window.Bar.SearchButton).Key);
+        });
+    }
+
+    [Fact]
+    public void Each_workspace_card_gives_its_name_and_its_number_key()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Assert.Equal(
+                [("2D", Keys(window, Key.D1)), ("3D", Keys(window, Key.D2)), ("Script", Keys(window, Key.D3)), ("Graph", Keys(window, Key.D4)), ("Game", Keys(window, Key.D5))],
+                window.Bar.Tabs.Select(tab => (CardOf(tab).Title, CardOf(tab).Key)));
+            Assert.Equal("Visual script editor", CardOf(window.Bar.Tabs[3]).Engine);
+        });
+    }
+
+    [Theory]
+    [InlineData(Key.D1, "2D")]
+    [InlineData(Key.D2, "3D")]
+    [InlineData(Key.D3, "Script")]
+    [InlineData(Key.D4, "Graph")]
+    [InlineData(Key.D5, "Game")]
+    public void Command_and_a_number_switch_the_workspace(Key key, string workspace)
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            Press(window, key);
+
+            Assert.Equal(workspace, window.Bar.Tabs.Single(tab => tab.IsChecked == true).Label);
+        });
+    }
+
+    [Fact]
+    public void Stop_says_why_it_is_off_until_the_game_plays()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize(new FakeScene());
+            var card = CardOf(window.StopButton);
+
+            Assert.Equal($"Nothing is playing. Press {Keys(window, Key.B)} first.", card.Line);
+            Click(window.PlayButton);
+
+            Assert.Equal("Closes the game window.", card.Line);
+        });
+    }
+
+    [Fact]
+    public void Command_and_full_stop_stops_the_game()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = OpenAtReferenceSize(scene);
+            Click(window.PlayButton);
+
+            Press(window, Key.OemPeriod);
+
+            Assert.Equal(1, scene.Stops);
         });
     }
 }

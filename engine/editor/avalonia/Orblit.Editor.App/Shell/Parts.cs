@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
@@ -138,7 +139,13 @@ internal static class Parts
     {
         string Mark(KeyModifiers modifier, string mark) => gesture.KeyModifiers.HasFlag(modifier) ? mark : "";
 
-        var key = gesture.Key == Key.OemComma ? "," : gesture.Key.ToString();
+        var key = gesture.Key switch
+        {
+            Key.OemComma => ",",
+            Key.OemPeriod => ".",
+            >= Key.D0 and <= Key.D9 => $"{gesture.Key - Key.D0}",
+            _ => gesture.Key.ToString(),
+        };
         return Mark(KeyModifiers.Control, "⌃") + Mark(KeyModifiers.Alt, "⌥") + Mark(KeyModifiers.Shift, "⇧") + Mark(KeyModifiers.Meta, "⌘") + key;
     }
 
@@ -153,9 +160,14 @@ internal static class Parts
         Header = new TextBlock { Text = group.ToUpperInvariant(), FontSize = 10.5, FontWeight = FontWeight.SemiBold, LetterSpacing = 0.6, Foreground = EditorBrushes.Unit },
     };
 
-    public static MenuItem ActionItem(string header, Action run, KeyGesture? key = null)
+    /// <summary>
+    /// A menu item with its key. A note puts a dim line under the name that says what the item does. The item
+    /// carries its name for a screen reader, because a noted header is not plain text.
+    /// </summary>
+    public static MenuItem ActionItem(string header, Action run, KeyGesture? key = null, string? note = null)
     {
-        var item = new MenuItem { Header = header, InputGesture = key };
+        var item = new MenuItem { Header = note is null ? header : Noted(header, note), InputGesture = key };
+        AutomationProperties.SetName(item, header);
         item.Click += (_, _) => run();
         return item;
     }
@@ -164,12 +176,22 @@ internal static class Parts
     /// An item that presses the button it stands for, so the menus and a key run the same code. The item is on
     /// while the button is on.
     /// </summary>
-    public static MenuItem PressItem(string header, Button button, KeyGesture? key = null)
+    public static MenuItem PressItem(string header, Button button, KeyGesture? key = null, string? note = null)
     {
-        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), key);
+        var item = ActionItem(header, () => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)), key, note);
         item.Bind(InputElement.IsEnabledProperty, button.GetObservable(InputElement.IsEnabledProperty));
         return item;
     }
+
+    static StackPanel Noted(string name, string note) => new()
+    {
+        Spacing = 1,
+        Children =
+        {
+            new TextBlock { Text = name },
+            new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim },
+        },
+    };
 
     /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
     public static Border Bar(params Control[] items)

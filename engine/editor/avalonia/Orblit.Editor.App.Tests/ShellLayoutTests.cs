@@ -145,9 +145,8 @@ public sealed class ShellLayoutTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var stop = window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) is "Stop the game");
 
-            Assert.False(stop.IsEnabled);
+            Assert.False(window.StopButton.IsEnabled);
         });
     }
 
@@ -163,32 +162,20 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_play_button_draws_the_run_triangle_not_a_word()
+    public void The_run_buttons_are_26_high_with_a_rule_before_the_more_menu_and_the_pill_8_from_the_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var play = BoxOf(window.PlayButton, window);
+            var stop = BoxOf(window.StopButton, window);
+            var more = BoxOf(window.Bar.MoreButton, window);
 
-            Assert.Equal("MainPlay", ((EditorIcon)window.PlayButton.Content!).IconName);
-        });
-    }
-
-    [Fact]
-    public void The_run_buttons_are_26_square_with_a_rule_before_the_more_menu_and_the_pill_8_from_the_edge()
-    {
-        UiThread.Run(() =>
-        {
-            var window = OpenAtReferenceSize();
-            var tips = new[] { "Run the project", "Run the current scene", "Stop the game", "More ways to run" };
-            var boxes = tips
-                .Select(tip => BoxOf(window.Bar.GetVisualDescendants().OfType<Button>().Single(button => ToolTip.GetTip(button) as string == tip), window))
-                .ToArray();
-
-            Assert.All(boxes, box => Assert.Equal(new Size(26, 26), box.Size));
-            Assert.Equal(boxes[0].Right + 2, boxes[1].X);
-            Assert.Equal(boxes[1].Right + 2, boxes[2].X);
+            Assert.Equal((26d, 26d), (play.Height, stop.Height));
+            Assert.Equal(new Size(26, 26), more.Size);
+            Assert.Equal(play.Right + 2, stop.X);
             // The rule is 1 wide with 3 each side, inside the 2 pixel gaps.
-            Assert.Equal(boxes[2].Right + 11, boxes[3].X);
+            Assert.Equal(stop.Right + 11, more.X);
             Assert.Equal(3440 - 8, BoxOf(window.Bar.Run, window).Right);
         });
     }

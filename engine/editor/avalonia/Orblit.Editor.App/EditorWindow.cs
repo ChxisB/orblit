@@ -49,12 +49,12 @@ internal sealed class EditorWindow : Window
     readonly Picker _palette = CommandPalette.Build();
     readonly Picker _quickOpen;
     readonly Button _quickOpenButton = new();
-    // Save and Frame are commands without a place of their own on screen. The shortcuts, the menus and the
-    // tests press them, and a button off keeps its key unhandled.
+    // Save, Play this scene and Frame are commands without a place of their own on screen. The shortcuts, the
+    // menus and the tests press them, and a button off keeps its key unhandled. The title bar draws Play and Stop.
     readonly Button _save = new() { IsEnabled = false };
-    readonly Button _playButton = Parts.IconButton("MainPlay", "Run the project");
-    readonly Button _playSceneButton = Parts.IconButton("PlayScene", "Run the current scene");
-    readonly Button _stopButton = Parts.IconButton("Stop", "Stop the game");
+    readonly Button _playButton = new();
+    readonly Button _playSceneButton = new();
+    readonly Button _stopButton = new();
     readonly Button _frame = new() { IsEnabled = false };
     readonly Button _undo = new() { IsEnabled = false };
     readonly Button _redo = new() { IsEnabled = false };
@@ -660,6 +660,8 @@ internal sealed class EditorWindow : Window
         (Key.Z, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) && e.Source is not TextBox => _redo,
         (Key.B, var modifiers) when modifiers == CommandKey => _playButton,
         (Key.R, var modifiers) when modifiers == CommandKey => _playSceneButton,
+        (Key.OemPeriod, var modifiers) when modifiers == CommandKey => _stopButton,
+        ( >= Key.D1 and <= Key.D5, var modifiers) when modifiers == CommandKey => _titleBar.Tabs[e.Key - Key.D1],
         (Key.D, var modifiers) when modifiers == CommandKey => _tools.DuplicateButton,
         (Key.A, var modifiers) when modifiers == CommandKey && e.Source is not TextBox => _tools.AddButton,
         (Key.A, var modifiers) when modifiers == (CommandKey | KeyModifiers.Shift) => _instanceScene.OpenButton,
