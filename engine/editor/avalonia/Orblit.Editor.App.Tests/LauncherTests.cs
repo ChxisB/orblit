@@ -336,6 +336,23 @@ public sealed class LauncherTests : IDisposable
     }
 
     [Fact]
+    public void The_first_folder_sits_in_the_folder_Settings_names()
+    {
+        UiThread.Run(() =>
+        {
+            List.Settings().SetProjectsFolder("~/Work");
+            var panel = Open().NewPanel;
+
+            Assert.Equal(Path.Combine("~/Work", "my-game"), panel.FolderBox.Text);
+
+            List.Settings().SetProjectsFolder("~/Later");
+            panel.Start(ProjectTemplate.Spatial);
+
+            Assert.Equal(Path.Combine("~/Later", "my-game"), panel.FolderBox.Text);
+        });
+    }
+
+    [Fact]
     public void A_folder_typed_by_hand_is_kept_when_the_name_changes()
     {
         UiThread.Run(() =>

@@ -15,8 +15,6 @@ namespace Orblit.Editor.App.Launcher;
 /// </summary>
 internal sealed class NewProjectPanel : StackPanel
 {
-    const string FirstFolder = "~/Games/my-game";
-
     static readonly (string Icon, string Name, string Line)[] s_starts =
     [
         ("Cube", "3D game", "An empty 3D scene with a camera view."),
@@ -25,19 +23,21 @@ internal sealed class NewProjectPanel : StackPanel
     ];
 
     readonly Action<string> _initGit;
+    readonly EditorSettings _settings;
     readonly TextBox _name = new() { Text = "My game", PlaceholderText = "My game", Classes = { EditorTheme.Field } };
     readonly TextBlock _nameFault = Parts.FaultLine();
-    readonly TextBox _folder = new() { Text = FirstFolder, FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
+    readonly TextBox _folder = new() { FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
     readonly Button _change = new() { Content = "Change…", Margin = new Thickness(0, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
     readonly TextBlock _fault = Parts.FaultLine();
     readonly TemplateCard[] _cards;
     readonly Segments _script = new("C#", "Graph", "None");
     readonly ToggleSwitch _git = new() { IsChecked = true, OnContent = null, OffContent = null, MinWidth = 0, VerticalAlignment = VerticalAlignment.Center };
-    string? _written = FirstFolder;
+    string? _written;
 
-    public NewProjectPanel(Action<string> initGit)
+    public NewProjectPanel(Action<string> initGit, EditorSettings settings)
     {
         _initGit = initGit;
+        _settings = settings;
         _cards = [.. s_starts.Select(start => new TemplateCard { Content = TemplateFace(start.Icon, start.Name, start.Line), Classes = { EditorTheme.TextButton, EditorTheme.Card } })];
         _cards[0].IsChecked = true;
         _nameFault.Text = "Give the project a name.";
@@ -75,6 +75,7 @@ internal sealed class NewProjectPanel : StackPanel
                 WriteFolder(HomeFolder.Shorten(parent));
             }
         };
+        WriteFolder(settings.ProjectsFolder());
         Named();
     }
 
@@ -103,9 +104,14 @@ internal sealed class NewProjectPanel : StackPanel
 
     internal Button CreateButton => Dialog.MainButton;
 
-    /// <summary>Opens the dialog on this template, with no fault.</summary>
+    /// <summary>Opens the dialog on this template, with no fault. A folder the dialog wrote moves to the folder Settings names.</summary>
     public void Start(ProjectTemplate template)
     {
+        if (_folder.Text == _written)
+        {
+            WriteFolder(_settings.ProjectsFolder());
+        }
+
         _cards[(int)template].IsChecked = true;
         _fault.IsVisible = false;
         Dialog.Open();

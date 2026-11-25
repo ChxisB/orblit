@@ -54,7 +54,7 @@ internal sealed class LauncherWindow : Window
         _list = list;
         _links = links ?? new WindowLinks(this);
         _time = time ?? TimeProvider.System;
-        _panel = new NewProjectPanel(initGit);
+        _panel = new NewProjectPanel(initGit, list.Settings());
         var openKey = Parts.KeyText(new KeyGesture(Key.O, CommandKey));
         _open = new HoverCard("Open a folder…", "Adds a project folder from disk to this list, then opens it.", openKey).On(new Button
         {
