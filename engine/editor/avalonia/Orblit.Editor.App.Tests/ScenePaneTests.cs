@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Primitives;
@@ -28,7 +29,7 @@ public sealed class ScenePaneTests
         window.ScenePane.Outline.ContextMenu!.Items.OfType<MenuItem>().ToArray();
 
     static void ClickItem(EditorWindow window, string header) =>
-        MenuItems(window).Single(item => (string)item.Header! == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+        MenuItems(window).Single(item => HeaderOf(item) == header).RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
 
     static string[] Names(EditorWindow window) => [.. Rows(window).Select(NameOf)];
 
@@ -45,7 +46,7 @@ public sealed class ScenePaneTests
     static MenuItem[] OptionItems(EditorWindow window) =>
         [.. ((MenuFlyout)window.ScenePane.MenuButton.Flyout!).Items.OfType<MenuItem>()];
 
-    static string HeaderOf(MenuItem item) => item.Header as string ?? ((TextBlock)item.Header!).Text!;
+    static string HeaderOf(MenuItem item) => AutomationProperties.GetName(item) ?? (string)item.Header!;
 
     [Fact]
     public void Each_row_has_a_highlight_6_pixels_in_from_each_side_of_its_line_at_every_depth()
@@ -139,9 +140,9 @@ public sealed class ScenePaneTests
 
             Assert.Equal(13, BoxOf(arrow, window).X);
             Assert.Equal(29, BoxOf(RowIconOf(rows[0]), window).X);
-            Assert.Equal(52, BoxOf(rows[0].GetVisualDescendants().OfType<TextBlock>().Single(), window).X);
+            Assert.Equal(52, BoxOf(rows[0].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
             Assert.Equal(45, BoxOf(RowIconOf(rows[1]), window).X);
-            Assert.Equal(68, BoxOf(rows[1].GetVisualDescendants().OfType<TextBlock>().Single(), window).X);
+            Assert.Equal(68, BoxOf(rows[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
         });
     }
 
@@ -354,7 +355,7 @@ public sealed class ScenePaneTests
             var scene = new FakeScene();
             var window = OpenAtReferenceSize(scene);
             window.ScenePane.Select(FakeScene.Lamp.Handle);
-            OptionItems(window).Single(item => HeaderOf(item) == "Add a New Parent...").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            ClickItem(window, "Wrap in a new thing…");
             Assert.Equal("Add a parent", window.Tools.AddDialog.Title);
             Assert.Equal("Reparent to New Entity", window.Tools.AddDialog.EngineName);
             Assert.Equal("Pick what to add. It takes the place of Lamp, and Lamp goes inside it.", window.Tools.AddDialog.Why.Text);
@@ -443,19 +444,33 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
-    public void The_scene_options_menu_groups_order_and_tree_commands_under_headings()
+    public void The_scene_options_menu_says_what_each_item_does_and_starts_with_plain_names()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var items = OptionItems(window);
 
+            Assert.Equal(["Open all", "Close all", "Show engine names", "Show only what matches the search"], items.Select(HeaderOf));
             Assert.Equal(
-                ["ORDER", "Move Up", "Move Down", "Move Under...", "Add a New Parent...", "TREE", "Expand All", "Collapse All", "Show Class Names"],
-                items.Select(HeaderOf));
-            Assert.False(items[0].IsEnabled);
-            Assert.False(items[5].IsEnabled);
-            Assert.Equal(new KeyGesture(Key.Up, window.CommandKey), items[1].InputGesture);
+                ["Open all", "Shows every thing inside every other", "Close all", "Shows only the top level", "Show engine names", "Adds the engine's kind, like MeshInstance3D, beside each name", "Show only what matches the search", "Hides the rest while you type"],
+                items.SelectMany(Texts));
+            Assert.Equal([false, true], items.Skip(2).Select(item => item.IsChecked));
+        });
+    }
+
+    [Fact]
+    public void With_only_matches_off_the_filter_marks_matches_and_keeps_every_row()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            OptionItems(window).Single(item => HeaderOf(item) == "Show only what matches the search").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+            window.ScenePane.FilterBox.Text = "lam";
+
+            Assert.Equal(["Field", "Lamp", "Sound"], Names(window));
+            Assert.NotEmpty(Rows(window)[1].GetVisualDescendants().OfType<TextBlock>().First().Inlines!);
         });
     }
 
@@ -468,10 +483,10 @@ public sealed class ScenePaneTests
             var items = OptionItems(window);
             TreeViewItem Field() => window.Outline.GetVisualDescendants().OfType<TreeViewItem>().First();
 
-            items.Single(item => HeaderOf(item) == "Collapse All").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            items.Single(item => HeaderOf(item) == "Close all").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.False(Field().IsExpanded);
 
-            items.Single(item => HeaderOf(item) == "Expand All").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            items.Single(item => HeaderOf(item) == "Open all").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
             Assert.True(Field().IsExpanded);
         });
     }
@@ -482,15 +497,15 @@ public sealed class ScenePaneTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            var toggle = OptionItems(window).Single(item => HeaderOf(item) == "Show Class Names");
+            var toggle = OptionItems(window).Single(item => HeaderOf(item) == "Show engine names");
             string[] Words() => [.. Rows(window)[1].GetVisualDescendants().OfType<TextBlock>().Select(text => text.Text!)];
 
             toggle.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            Assert.Equal(["Lamp", "Entity3D"], Words());
+            Assert.Equal(["Lamp", "Empty 3D point", "Entity3D"], Words());
             Assert.True(toggle.IsChecked);
 
             toggle.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
-            Assert.Equal(["Lamp"], Words());
+            Assert.Equal(["Lamp", "Empty 3D point"], Words());
             Assert.False(toggle.IsChecked);
         });
     }
@@ -525,6 +540,7 @@ public sealed class ScenePaneTests
             var box = window.ScenePane.Rows[FakeScene.Lamp.Handle].Editing!;
             Assert.Equal("Lamp", box.Text);
             Assert.True(box.IsFocused);
+            Assert.Equal(["↵", "keep", "esc", "cancel"], Texts((Control)box.Parent!));
             box.Text = "Bulb";
             Press(box, Key.Enter);
 
@@ -563,19 +579,23 @@ public sealed class ScenePaneTests
             Click(window.Move.MoveUnderButton);
 
             Assert.True(window.Move.Dialog.IsVisible);
-            Assert.Equal("Move Lamp under", window.Move.Dialog.Title);
+            Assert.Equal("Move Lamp into…", window.Move.Dialog.Title);
+            Assert.Equal("Reparent", window.Move.Dialog.EngineName);
+            Assert.Equal("Pick the new home for Lamp. It keeps its place in the world unless you turn that off.", window.Move.Dialog.Why.Text);
             Assert.Equal(["Field", "Sound"], window.Move.ParentList.Shown.Select(choice => choice.Name));
             Assert.Equal([true, false], window.Move.ParentList.Shown.Select(choice => choice.Off));
+            Assert.Equal(["Lamp is already here.", "Audio"], window.Move.ParentList.Shown.Select(choice => choice.Line));
             Assert.Equal([0, 1], window.Move.ParentList.Shown.Select(choice => choice.Depth));
             Assert.Equal("Sound", window.Move.ParentList.Picked!.Name);
-            Assert.Equal("Lamp keeps its place in the world.", window.Move.Dialog.Why.Text);
+            Assert.Equal(["Move into Sound", "↵"], Texts(window.Move.Dialog.MainButton));
+            Assert.Equal("Keep where it is in the world", window.Move.KeepGlobal.OnContent);
         });
     }
 
     [Theory]
-    [InlineData(true, "Lamp keeps its place in the world.")]
-    [InlineData(false, "Lamp keeps its local transform under the new parent.")]
-    public void Move_under_passes_the_keep_global_switch_to_the_scene(bool keepGlobal, string why)
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Move_into_passes_the_keep_global_switch_to_the_scene(bool keepGlobal)
     {
         UiThread.Run(() =>
         {
@@ -585,12 +605,11 @@ public sealed class ScenePaneTests
             Click(window.Move.MoveUnderButton);
 
             window.Move.KeepGlobal.IsChecked = keepGlobal;
-            Assert.Equal(why, window.Move.Dialog.Why.Text);
             Click(window.Move.Dialog.MainButton);
 
             Assert.Equal(keepGlobal, scene.KeptGlobal);
             Assert.False(window.Move.Dialog.IsVisible);
-            Assert.Equal("Moved Lamp under Field/Sound.", window.Status);
+            Assert.Equal("Moved Lamp into Field/Sound.", window.Status);
         });
     }
 
@@ -802,13 +821,38 @@ public sealed class ScenePaneTests
         {
             var window = OpenAtReferenceSize();
 
+            window.ScenePane.Select(FakeScene.Sound.Handle);
+
             Assert.Equal(
-                ["Add Child Entity...", "Instance Scene...", "Duplicate", "Rename...", "Move Up", "Move Down", "Move Under...", "Remove"],
-                MenuItems(window).Select(item => (string)item.Header!));
+                ["Add inside Sound…", "Add a scene inside…", "Duplicate", "Rename", "Move up", "Move down", "Move into…", "Wrap in a new thing…", "Delete"],
+                MenuItems(window).Select(HeaderOf));
+            Assert.Equal(
+                ["A camera, light, shape or anything else", "Reuse a scene you already made", "Makes a copy right below it", "", "", "Sound is already last.", "Put Sound inside another thing", "Puts Sound inside a new empty point", $"Undo with {Parts.KeyText(new KeyGesture(Key.Z, window.CommandKey))}"],
+                window.ScenePane.ThingMenu.Select(item => ((StackPanel)item.Header!).Children[1] is TextBlock { IsVisible: true } note ? note.Text : ""));
             var command = window.CommandKey;
             Assert.Equal(
-                [new KeyGesture(Key.A, command), new KeyGesture(Key.A, command | KeyModifiers.Shift), new KeyGesture(Key.D, command), new KeyGesture(Key.F2), new KeyGesture(Key.Up, command), new KeyGesture(Key.Down, command), null, new KeyGesture(Key.Back)],
+                [new KeyGesture(Key.A, command), new KeyGesture(Key.A, command | KeyModifiers.Shift), new KeyGesture(Key.D, command), new KeyGesture(Key.F2), new KeyGesture(Key.Up, command), new KeyGesture(Key.Down, command), null, null, new KeyGesture(Key.Back)],
                 MenuItems(window).Select(item => item.InputGesture));
+        });
+    }
+
+    [Fact]
+    public void The_top_things_menu_says_why_each_item_is_off()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+
+            window.ScenePane.Select(FakeScene.Field.Handle);
+
+            string Note(string item) => Texts(MenuItems(window).Single(menu => HeaderOf(menu) == item)).ElementAtOrDefault(1) ?? "";
+            Assert.Equal("Add inside Field…", HeaderOf(MenuItems(window)[0]));
+            Assert.Equal("Field is the whole scene. Copy the scene file in Files instead.", Note("Duplicate"));
+            Assert.Equal("The top thing has nothing above it.", Note("Move up"));
+            Assert.Equal("The top thing can't go inside another.", Note("Move into…"));
+            Assert.Equal("A scene always needs a top thing.", Note("Delete"));
+            window.ScenePane.Select(FakeScene.Lamp.Handle);
+            Assert.Equal("Lamp is already first.", Note("Move up"));
         });
     }
 
@@ -818,17 +862,17 @@ public sealed class ScenePaneTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            // In menu order: add, instance, duplicate, rename, up, down, under, remove.
+            // In menu order: add, instance, duplicate, rename, up, down, into, wrap, delete.
             bool[] On() => MenuItems(window).Select(item => item.IsEnabled).ToArray();
 
             window.ScenePane.Select(0);
-            Assert.Equal([true, true, false, false, false, false, false, false], On());
+            Assert.Equal([true, true, false, false, false, false, false, false, false], On());
             window.ScenePane.Select(FakeScene.Field.Handle);
-            Assert.Equal([true, true, false, true, false, false, false, false], On());
+            Assert.Equal([true, true, false, true, false, false, false, false, false], On());
             window.ScenePane.Select(FakeScene.Lamp.Handle);
-            Assert.Equal([true, true, true, true, false, true, true, true], On());
+            Assert.Equal([true, true, true, true, false, true, true, true, true], On());
             window.ScenePane.Select(FakeScene.Sound.Handle);
-            Assert.Equal([true, true, true, true, true, false, true, true], On());
+            Assert.Equal([true, true, true, true, true, false, true, true, true], On());
         });
     }
 
@@ -840,16 +884,16 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize();
             window.ScenePane.Select(FakeScene.Lamp.Handle);
 
-            ClickItem(window, "Move Down");
+            ClickItem(window, "Move down");
             Assert.Equal("Moved Lamp down.", window.Status);
 
-            ClickItem(window, "Move Up");
+            ClickItem(window, "Move up");
             Assert.Equal("Moved Lamp up.", window.Status);
 
             ClickItem(window, "Duplicate");
             Assert.Equal("Duplicated Lamp.", window.Status);
 
-            ClickItem(window, "Remove");
+            ClickItem(window, "Delete");
             Assert.Equal("Removed Lamp2.", window.Status);
         });
     }
@@ -862,13 +906,13 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize();
             window.ScenePane.Select(FakeScene.Lamp.Handle);
 
-            ClickItem(window, "Add Child Entity...");
+            ClickItem(window, "Add inside Lamp…");
             Assert.True(window.Tools.AddDialog.IsVisible);
-            ClickItem(window, "Instance Scene...");
+            ClickItem(window, "Add a scene inside…");
             Assert.True(window.InstanceScene.Dialog.IsVisible);
-            ClickItem(window, "Move Under...");
+            ClickItem(window, "Move into…");
             Assert.True(window.Move.Dialog.IsVisible);
-            ClickItem(window, "Rename...");
+            ClickItem(window, "Rename");
             Assert.NotNull(window.ScenePane.Rows[FakeScene.Lamp.Handle].Editing);
         });
     }

@@ -9,8 +9,8 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// One row of the scene tree: the class icon, the name with the filter's match marked, the class name when the
-/// pane shows it, a lock and a group mark when the entity has those flags, and, for a planar or spatial entity,
+/// One row of the scene tree: the class icon, the name with the filter's match marked, its kind in plain words,
+/// the class name when the pane shows it, a lock and a group mark when the entity has those flags, and, for a planar or spatial entity,
 /// an eye. A hidden entity is dimmed and shows a closed eye. The name can be edited in the row.
 /// </summary>
 internal sealed class OutlineRow : Grid
@@ -36,9 +36,14 @@ internal sealed class OutlineRow : Grid
         var name = MarkedName(entity.Name, filter.Trim());
         var label = _label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         label.Children.Add(name);
+        if (PlainNames.Of(entity.ClassName) is { } kind)
+        {
+            label.Children.Add(new TextBlock { Text = kind.Name, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center });
+        }
+
         if (showClassName)
         {
-            label.Children.Add(new TextBlock { Text = entity.ClassName, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
+            label.Children.Add(new TextBlock { Text = entity.ClassName, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
         }
 
         AddMark(label, entity.Locked, "Lock");
@@ -70,8 +75,8 @@ internal sealed class OutlineRow : Grid
     internal TextBox? Editing { get; private set; }
 
     /// <summary>
-    /// Swaps the name for a box holding it. Enter or leaving the box keeps the new name, Escape keeps the old one.
-    /// An unchanged name is not passed on.
+    /// Swaps the name for a box holding it, with the keys that keep or cancel beside it. Enter or leaving the box
+    /// keeps the new name, Escape keeps the old one. An unchanged name is not passed on.
     /// </summary>
     public void Rename(Action<string> keep)
     {
@@ -85,6 +90,9 @@ internal sealed class OutlineRow : Grid
             FontSize = 12,
             VerticalContentAlignment = VerticalAlignment.Center,
         };
+        var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(6, 0), Children = { Parts.KeyHint("keep", "↵"), Parts.KeyHint("cancel", "esc") } };
+        DockPanel.SetDock(keys, Dock.Right);
+        var editor = new DockPanel { Children = { keys, box } };
         var done = false;
         void Finish(bool keepIt)
         {
@@ -94,7 +102,7 @@ internal sealed class OutlineRow : Grid
             }
 
             done = true;
-            Children.Remove(box);
+            Children.Remove(editor);
             Editing = null;
             _label.IsVisible = true;
             if (keepIt && box.Text is { Length: > 0 } text && text != _entity.Name)
@@ -113,8 +121,9 @@ internal sealed class OutlineRow : Grid
         };
         box.LostFocus += (_, _) => Finish(true);
         _label.IsVisible = false;
-        SetColumn(box, 1);
-        Children.Add(box);
+        SetColumn(editor, 1);
+        SetColumnSpan(editor, 2);
+        Children.Add(editor);
         box.Focus();
         box.SelectAll();
     }

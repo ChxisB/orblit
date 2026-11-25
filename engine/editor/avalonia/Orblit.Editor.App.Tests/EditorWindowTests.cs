@@ -870,7 +870,7 @@ public sealed class EditorWindowTests
             Assert.Equal(["Sound"], Root(window).Children.Select(c => c.Name));
             Assert.Equal(["Lamp"], Root(window).Children.Single().Children.Select(c => c.Name));
             Assert.Equal("Lamp", ((OutlineNode)window.Outline.SelectedItem!).Name);
-            Assert.Equal("Moved Lamp under Field/Sound.", window.Status);
+            Assert.Equal("Moved Lamp into Field/Sound.", window.Status);
         });
     }
 
@@ -890,7 +890,7 @@ public sealed class EditorWindowTests
 
             var deep = Root(window).Find(FakeScene.Sound.Handle)!.Children.Single();
             Assert.Equal(["Lamp"], deep.Children.Select(c => c.Name));
-            Assert.Equal("Moved Lamp under Field/Sound/Deep.", window.Status);
+            Assert.Equal("Moved Lamp into Field/Sound/Deep.", window.Status);
         });
     }
 

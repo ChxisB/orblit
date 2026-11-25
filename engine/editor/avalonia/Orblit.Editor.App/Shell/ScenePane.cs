@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Controls.Templates;
@@ -6,6 +7,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Reactive;
 using Avalonia.Styling;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Theme;
@@ -15,7 +17,8 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The body of the Scene tab: a row with the add and instance buttons, the filter box and the Scene options
-/// menu, over the entity tree. A row's menu holds every command with its key, and F2 renames in the row.
+/// menu, over the entity tree. A row's menu holds every command with its key and a note on what it does to the
+/// picked thing, or why it is off. F2 renames in the row.
 /// Command click adds or drops an entity and Shift click picks a range. The entity picked last is the selected
 /// one, which the gizmo and the row commands act on.
 /// </summary>
@@ -36,10 +39,12 @@ internal sealed class ScenePane : Grid
         InnerRightContent = Parts.SearchIcon(),
     };
     readonly Button _menu = Parts.IconButton("GuiTabMenuHl", "Scene options");
-    readonly MenuItem _classNames = new() { Header = "Show Class Names", ToggleType = MenuItemToggleType.CheckBox };
     readonly Dictionary<nint, OutlineRow> _rows = [];
     readonly TreeGuides _guides;
+    readonly ThingItem[] _thingMenu;
+    readonly string _undoKey;
     bool _showClassNames;
+    bool _onlyMatches = true;
     OutlineNode? _full;
     OutlineNode? _shown;
     nint _selected;
@@ -50,23 +55,23 @@ internal sealed class ScenePane : Grid
     public ScenePane(EntityTools tools, MoveTools move, InstanceTool instance, KeyModifiers command)
     {
         RowDefinitions = new RowDefinitions($"{RowHeight},*");
-        _menu.Flyout = Options(tools, move, command);
+        _menu.Flyout = Options();
+        _undoKey = Parts.KeyText(new KeyGesture(Key.Z, command));
         tools.RenameButton.Click += (_, _) => Rename(tools);
         _outline.Margin = new Thickness(0, TreeTop, 0, 0);
-        _outline.ContextMenu = new ContextMenu
-        {
-            ItemsSource = new[]
-            {
-                Parts.PressItem("Add Child Entity...", tools.AddButton, new KeyGesture(Key.A, command)),
-                Parts.PressItem("Instance Scene...", instance.OpenButton, new KeyGesture(Key.A, command | KeyModifiers.Shift)),
-                Parts.PressItem("Duplicate", tools.DuplicateButton, new KeyGesture(Key.D, command)),
-                Parts.PressItem("Rename...", tools.RenameButton, new KeyGesture(Key.F2)),
-                Parts.PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
-                Parts.PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
-                Parts.PressItem("Move Under...", move.MoveUnderButton),
-                Parts.PressItem("Remove", tools.RemoveButton, new KeyGesture(Key.Back)),
-            },
-        };
+        _thingMenu =
+        [
+            new(tools.AddButton, new KeyGesture(Key.A, command)),
+            new(instance.OpenButton, new KeyGesture(Key.A, command | KeyModifiers.Shift)),
+            new(tools.DuplicateButton, new KeyGesture(Key.D, command)),
+            new(tools.RenameButton, new KeyGesture(Key.F2)),
+            new(move.UpButton, new KeyGesture(Key.Up, command)),
+            new(move.DownButton, new KeyGesture(Key.Down, command)),
+            new(move.MoveUnderButton, null),
+            new(tools.NewParentButton, null),
+            new(tools.RemoveButton, new KeyGesture(Key.Back)),
+        ];
+        _outline.ContextMenu = new ContextMenu { ItemsSource = _thingMenu };
         _outline.Styles.Add(new Style(x => x.OfType<TreeViewItem>())
         {
             Setters =
@@ -83,6 +88,7 @@ internal sealed class ScenePane : Grid
             if (!_mirroring)
             {
                 Pick(e.AddedItems.OfType<OutlineNode>().LastOrDefault());
+                DescribeMenu();
                 SelectionChanged?.Invoke();
             }
         };
@@ -129,6 +135,9 @@ internal sealed class ScenePane : Grid
     /// <summary>The row of each entity the tree has drawn, by handle.</summary>
     internal IReadOnlyDictionary<nint, OutlineRow> Rows => _rows;
 
+    /// <summary>The items of a row's right-click menu, in order.</summary>
+    internal IReadOnlyList<MenuItem> ThingMenu => _thingMenu;
+
     /// <summary>The selected entity of the whole tree, also while the filter hides its row. Null for none.</summary>
     public OutlineNode? Selected => _selected == 0 ? null : _full?.Find(_selected);
 
@@ -140,7 +149,7 @@ internal sealed class ScenePane : Grid
     {
         _full = root;
         Empty.IsVisible = root is null;
-        _shown = OutlineFilter.Apply(root, _filter.Text ?? "");
+        _shown = _onlyMatches ? OutlineFilter.Apply(root, _filter.Text ?? "") : root;
         Choose(select, () =>
         {
             _rows.Clear();
@@ -182,6 +191,7 @@ internal sealed class ScenePane : Grid
         _mirroring = true;
         showInTree();
         _mirroring = false;
+        DescribeMenu();
         if (changed)
         {
             SelectionChanged?.Invoke();
@@ -203,32 +213,53 @@ internal sealed class ScenePane : Grid
         }
     }
 
-    MenuFlyout Options(EntityTools tools, MoveTools move, KeyModifiers command)
+    // The menu names the picked thing. Add goes into the top thing when nothing is picked, so it names that.
+    void DescribeMenu()
     {
-        // The pane keeps the flag, so the tick is right whether or not the item flips itself before this runs.
-        _classNames.Click += (_, _) =>
+        var picked = Selected;
+        var name = picked?.Name ?? "";
+        var top = picked is not null && picked == _full;
+        var parent = picked is null || top ? null : MoveTools.ParentOf(_full!, picked);
+        var pickFirst = _full is null ? "Open a scene first." : "Pick a thing first.";
+        var whole = top ? "The top thing can't go inside another." : pickFirst;
+        _thingMenu[0].Say($"Add inside {(picked ?? _full)?.Name}…", "A camera, light, shape or anything else", "Open a scene first.");
+        _thingMenu[1].Say("Add a scene inside…", "Reuse a scene you already made", "Open a scene first.");
+        _thingMenu[2].Say("Duplicate", "Makes a copy right below it", top ? $"{name} is the whole scene. Copy the scene file in Files instead." : pickFirst);
+        _thingMenu[3].Say("Rename", null, pickFirst);
+        _thingMenu[4].Say("Move up", null, top ? "The top thing has nothing above it." : parent is null ? pickFirst : $"{name} is already first.");
+        _thingMenu[5].Say("Move down", null, top ? "The top thing has nothing below it." : parent is null ? pickFirst : $"{name} is already last.");
+        _thingMenu[6].Say("Move into…", $"Put {name} inside another thing", whole);
+        _thingMenu[7].Say("Wrap in a new thing…", $"Puts {name} inside a new empty point", whole);
+        _thingMenu[8].Say("Delete", $"Undo with {_undoKey}", top ? "A scene always needs a top thing." : pickFirst);
+    }
+
+    MenuFlyout Options() => new()
+    {
+        Placement = PlacementMode.BottomEdgeAlignedRight,
+        Items =
         {
-            _showClassNames = !_showClassNames;
-            _classNames.IsChecked = _showClassNames;
+            Parts.ActionItem("Open all", () => SetExpanded(true), note: "Shows every thing inside every other"),
+            Parts.ActionItem("Close all", () => SetExpanded(false), note: "Shows only the top level"),
+            new Separator(),
+            Toggle("Show engine names", "Adds the engine's kind, like MeshInstance3D, beside each name", false, on => _showClassNames = on),
+            Toggle("Show only what matches the search", "Hides the rest while you type", true, on => _onlyMatches = on),
+        },
+    };
+
+    // The pane keeps the flag, so the tick is right whether or not the item flips itself before this runs.
+    MenuItem Toggle(string name, string note, bool on, Action<bool> set)
+    {
+        var item = Parts.ActionItem(name, () => { }, note: note);
+        item.ToggleType = MenuItemToggleType.CheckBox;
+        item.IsChecked = on;
+        item.Click += (_, _) =>
+        {
+            on = !on;
+            item.IsChecked = on;
+            set(on);
             Show(_full, _selected);
         };
-        return new MenuFlyout
-        {
-            Placement = PlacementMode.BottomEdgeAlignedRight,
-            Items =
-            {
-                Parts.MenuHeading("Order"),
-                Parts.PressItem("Move Up", move.UpButton, new KeyGesture(Key.Up, command)),
-                Parts.PressItem("Move Down", move.DownButton, new KeyGesture(Key.Down, command)),
-                Parts.PressItem("Move Under...", move.MoveUnderButton),
-                Parts.PressItem("Add a New Parent...", tools.NewParentButton),
-                new Separator(),
-                Parts.MenuHeading("Tree"),
-                Parts.ActionItem("Expand All", () => SetExpanded(true)),
-                Parts.ActionItem("Collapse All", () => SetExpanded(false)),
-                _classNames,
-            },
-        };
+        return item;
     }
 
     // Expanding clears what the arrows set, so the pane's style opens every row again, also rows not drawn yet.
@@ -251,5 +282,46 @@ internal sealed class ScenePane : Grid
     {
         SetColumn(child, column);
         grid.Children.Add(child);
+    }
+
+    // An item that presses its button, so a key and the menu run the same code. Its name and note follow the
+    // picked thing, and while the button is off the note says why.
+    sealed class ThingItem : MenuItem
+    {
+        readonly TextBlock _name = new();
+        readonly TextBlock _note = new() { FontSize = 11, Foreground = EditorBrushes.TextDim };
+        string? _does;
+        string _why = "";
+
+        public ThingItem(Button button, KeyGesture? key)
+        {
+            Header = new StackPanel { Spacing = 1, Children = { _name, _note } };
+            InputGesture = key;
+            Click += (_, _) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            this.Bind(IsEnabledProperty, button.GetObservable(IsEnabledProperty));
+            this.GetObservable(IsEnabledProperty).Subscribe(new AnonymousObserver<bool>(_ => ShowNote()));
+        }
+
+        protected override Type StyleKeyOverride => typeof(MenuItem);
+
+        internal string Label => _name.Text ?? "";
+
+        /// <summary>What the item does, or why it is off.</summary>
+        internal string Note => _note.Text ?? "";
+
+        public void Say(string name, string? does, string why)
+        {
+            _name.Text = name;
+            AutomationProperties.SetName(this, name);
+            _does = does;
+            _why = why;
+            ShowNote();
+        }
+
+        void ShowNote()
+        {
+            _note.Text = IsEnabled ? _does : _why;
+            _note.IsVisible = !string.IsNullOrEmpty(_note.Text);
+        }
     }
 }

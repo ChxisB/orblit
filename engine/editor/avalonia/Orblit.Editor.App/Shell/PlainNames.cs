@@ -67,4 +67,7 @@ internal static class PlainNames
 
     /// <summary>The row for this class, or none.</summary>
     internal static PlainName? Of(string className) => s_rows.GetValueOrDefault(className);
+
+    /// <summary>The plain name of this class, or the class name when it has no row.</summary>
+    internal static string NameOf(string className) => Of(className)?.Name ?? className;
 }

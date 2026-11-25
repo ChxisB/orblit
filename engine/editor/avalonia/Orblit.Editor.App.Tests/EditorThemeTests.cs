@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Media;
@@ -184,12 +185,16 @@ public sealed class EditorThemeTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            window.ScenePane.Select(FakeScene.Lamp.Handle);
             var menu = window.ScenePane.Outline.ContextMenu!;
             menu.Open(window.ScenePane.Outline);
             var item = menu.Items.OfType<MenuItem>().First(item => item.IsVisible);
 
+            // A row with a note under its name grows to fit it. Rename on a picked thing has none.
+            var plain = menu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "Rename");
+
             Assert.Equal((EditorTheme.PopoverCorners, new Thickness(5)), (menu.CornerRadius, menu.Padding));
-            Assert.Equal((28.0, EditorTheme.Corners), (item.Bounds.Height, item.CornerRadius));
+            Assert.Equal((28.0, EditorTheme.Corners), (plain.Bounds.Height, item.CornerRadius));
             Assert.Equal(new Point(6, 6), item.TranslatePoint(new Point(0, 0), menu));
             Assert.Equal(EditorColors.Popover, ((ISolidColorBrush)menu.Background!).Color);
         });
