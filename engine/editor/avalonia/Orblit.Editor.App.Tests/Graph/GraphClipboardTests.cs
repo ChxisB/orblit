@@ -272,7 +272,7 @@ public sealed class GraphClipboardTests
             Assert.Equal(3, source.Function.Steps.Count);
             Press(canvas, Key.Z, KeyModifiers.Meta | KeyModifiers.Shift);
             Assert.Equal(5, source.Function.Steps.Count);
-            Press(canvas, Key.Y, KeyModifiers.Control);
+            Press(canvas, Key.Z, KeyModifiers.Control | KeyModifiers.Shift);
             Assert.Equal(7, source.Function.Steps.Count);
         });
     }

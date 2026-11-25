@@ -332,7 +332,6 @@ internal sealed class GraphCanvas : Grid
     {
         [(Key.Z, false)] = _ => _edits.Undo(),
         [(Key.Z, true)] = _ => _edits.Redo(),
-        [(Key.Y, false)] = _ => _edits.Redo(),
         [(Key.C, false)] = at => { _ = _clipboard.Copy(); },
         [(Key.X, false)] = at => { _ = _clipboard.Cut(); },
         [(Key.V, false)] = at => { _ = _clipboard.Paste(at); },

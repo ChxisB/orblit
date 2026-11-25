@@ -239,4 +239,26 @@ public sealed class GraphWorkspaceTests
             Assert.Equal(labels.IndexOf("Script") + 1, labels.IndexOf("Graph"));
         });
     }
+
+    [Fact]
+    public void The_run_keys_press_the_run_bar_buttons()
+    {
+        UiThread.Run(() =>
+        {
+            var (window, scene, _) = Open();
+            ShowGraph(window);
+            scene.Channel.Next = FakeDebugChannel.Running();
+            window.Graph.PollDebugger();
+
+            Assert.True(Press(window, Key.Y, window.CommandKey).Handled);
+            scene.Channel.Next = FakeDebugChannel.Stopped("breakpoint", FakeDebugChannel.Frame(Logic, "main", 2));
+            window.Graph.PollDebugger();
+            Press(window, Key.F10, KeyModifiers.None);
+            Press(window, Key.F11, KeyModifiers.None);
+            Press(window, Key.F11, KeyModifiers.Shift);
+            Press(window, Key.F12, KeyModifiers.None);
+
+            Assert.Equal(["break", "next", "step", "out", "continue"], scene.Channel.Sent);
+        });
+    }
 }

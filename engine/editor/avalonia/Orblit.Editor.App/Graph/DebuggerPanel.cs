@@ -10,19 +10,23 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// What a debug session shows: a bar with the state of the game and the buttons that move it on, then while the
-/// game is stopped the stack with the selected level marked, and the locals and members of that level. It is
-/// built again from the debugger after every change.
+/// What a debug session shows: a bar with the state of the game and the worded buttons that move it on, then while
+/// the game is stopped the stack with the selected level marked, and the locals and members of that level. With no
+/// game, a line says how to start one. A button that is off says why on its card. It is built again from the
+/// debugger after every change.
 /// </summary>
 internal sealed class DebuggerPanel : StackPanel
 {
-    static readonly (string Id, string Icon, string Tip, DebugCommand Command)[] s_buttons =
+    const string NotPlaying = "Nothing is playing. Press ⌘B first.";
+
+    // A list of cases, so it is data. The keys are the ones the window gives each button.
+    static readonly (string Id, string Word, string Does, string Key, DebugCommand Command)[] s_buttons =
     [
-        ("pause", "Pause", "Pause", DebugCommand.Break),
-        ("continue", "DebugContinue", "Continue", DebugCommand.Continue),
-        ("step", "DebugStep", "Step into", DebugCommand.Step),
-        ("next", "DebugNext", "Step over", DebugCommand.Next),
-        ("out", "DebugOut", "Step out", DebugCommand.Out),
+        ("pause", "Pause", "Stops the game at the next step it runs.", "⌘Y", DebugCommand.Break),
+        ("continue", "Carry on", "Lets the game run until a step marked Pause here.", "F12", DebugCommand.Continue),
+        ("next", "Next step", "Runs this step and stops at the next one.", "F10", DebugCommand.Next),
+        ("step", "Go into", "Goes into the action this step runs and stops at its first step.", "F11", DebugCommand.Step),
+        ("out", "Come out", "Finishes this action and stops where it was run from.", "⇧F11", DebugCommand.Out),
     ];
 
     readonly GraphDebugger _debugger;
@@ -47,6 +51,11 @@ internal sealed class DebuggerPanel : StackPanel
         Children.Clear();
         _details.Children.Clear();
         Children.Add(Bar(state));
+        if (!state.Connected)
+        {
+            _details.Children.Add(Line("debugger:hint", "Nothing is playing. Press ⌘B, and these step through the graph one step at a time.", EditorBrushes.TextDim));
+        }
+
         AddStack(state);
         AddValues("Locals", "local", state.Locals);
         AddValues("Members", "member", state.Members);
@@ -58,10 +67,15 @@ internal sealed class DebuggerPanel : StackPanel
 
     // The game pauses at the top of the stack, whichever level the person has selected.
     string Describe(DebugState state) =>
-        !state.Connected ? "No game is connected."
+        !state.Connected ? "The game is not running"
         : !state.Stopped ? "The game is running."
-        : _debugger.PlaceAt(0) is { } place && _stepTitle(place) is { } title ? $"Paused at {title}."
+        : _debugger.PlaceAt(0) is { } place && _stepTitle(place) is { } title ? $"Paused at step {place.Step}, {title}."
         : $"Paused: {state.Reason}.";
+
+    static string WhyOff(DebugState state, DebugCommand command) =>
+        !state.Connected ? NotPlaying
+        : command == DebugCommand.Break ? "The game is paused already."
+        : "Pause the game first.";
 
     Grid Bar(DebugState state)
     {
@@ -77,13 +91,19 @@ internal sealed class DebuggerPanel : StackPanel
             VerticalAlignment = VerticalAlignment.Center,
         };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var (id, name, tip, command) in s_buttons)
+        foreach (var (id, word, does, key, command) in s_buttons)
         {
-            var button = Parts.IconButton(name, tip);
-            button.Tag = $"debugger:{id}";
-            button.IsEnabled = command == DebugCommand.Break ? _debugger.CanPause : _debugger.CanResume;
+            var card = new HoverCard(word, does, key);
+            var button = new Button
+            {
+                Tag = $"debugger:{id}",
+                Content = Parts.Keyed(word, key),
+                IsEnabled = command == DebugCommand.Break ? _debugger.CanPause : _debugger.CanResume,
+                Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
+            };
+            card.SaysWhyOff(button, WhyOff(state, command));
             button.Click += (_, _) => _debugger.Send(command);
-            buttons.Children.Add(button);
+            buttons.Children.Add(card.On(button));
         }
         Grid.SetColumn(status, 1);
         Grid.SetColumn(buttons, 2);
@@ -130,5 +150,5 @@ internal sealed class DebuggerPanel : StackPanel
 
     static TextBlock Heading(string text) => new() { Text = text, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 6, 0, 0) };
 
-    static TextBlock Line(string id, string text) => new() { Text = text, Tag = id, FontSize = 12, TextWrapping = TextWrapping.Wrap };
+    static TextBlock Line(string id, string text, IBrush? brush = null) => new() { Text = text, Tag = id, FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = brush };
 }
