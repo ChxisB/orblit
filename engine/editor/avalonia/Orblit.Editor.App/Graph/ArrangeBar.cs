@@ -37,8 +37,7 @@ internal sealed class ArrangeBar : Border
         BoxShadow = BoxShadows.Parse("0 6 20 0 #59000000");
         Padding = new Thickness(8);
         HorizontalAlignment = HorizontalAlignment.Left;
-        VerticalAlignment = VerticalAlignment.Top;
-        Margin = new Thickness(12, 8, 0, 0);
+        Margin = new Thickness(12, 0, 12, 0);
         _gaps =
         [
             Item("spread_across", "Even gaps across", () => arranger.Distribute(Axis.Horizontal), EvenGaps),
@@ -141,9 +140,9 @@ internal sealed class ArrangeBar : Border
         return card.On(button);
     }
 
-    static StackPanel Row(params Control[] tools)
+    static WrapPanel Row(params Control[] tools)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };
+        var row = new WrapPanel { ItemSpacing = 4, LineSpacing = 4 };
         row.Children.AddRange(tools);
         return row;
     }

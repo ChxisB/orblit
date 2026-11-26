@@ -94,6 +94,27 @@ public sealed class GraphClipboardTests
     }
 
     [Fact]
+    public void The_paste_question_keeps_its_answers_inside_a_narrow_graph()
+    {
+        UiThread.Run(() =>
+        {
+            var clipboard = new MemoryClipboard();
+            var from = Open(Reader(), clipboard);
+            var target = Open(Reader(totalType: 3), clipboard);
+            new Window { Width = 280, Height = 400, Content = target }.Show();
+            Pick(from, 2, 3);
+            from.Clipboard.Copy().GetAwaiter().GetResult();
+
+            target.Clipboard.Paste(new Point(0, 0)).GetAwaiter().GetResult();
+            target.UpdateLayout();
+
+            Assert.All(
+                ["paste:keep_both", "paste:reuse", "paste:cancel"],
+                id => Assert.InRange(target.Find<Button>(id)!.TranslatePoint(new Point(target.Find<Button>(id)!.Bounds.Width, 0), target)!.Value.X, 1, target.Bounds.Width));
+        });
+    }
+
+    [Fact]
     public void A_variable_with_another_type_raises_the_choice_and_changes_nothing()
     {
         UiThread.Run(() =>

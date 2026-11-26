@@ -37,6 +37,10 @@ internal static class EditorViews
         ("Output, middle narrow", Narrow((window, _) => BarOf(window).Open(0))),
         ("Debugger, middle narrow", Narrow((window, _) => BarOf(window).Open(1))),
         ("Long status, middle narrow", Narrow((window, _) => window.Fail("Could not save res://levels/a/very/long/path/to/something/deep/inside/the/project/folder.oscn because the disk is full."))),
+        ("Script find, middle narrow", Narrow((window, _) => Then(window, OpenScript, w => w.Script.Finder.Open()))),
+        ("Graph step picked, middle narrow", Narrow((window, _) => Then(window, OpenGraph, w => w.Graph.Canvas!.Select([2])))),
+        ("Graph find, middle narrow", Narrow((window, _) => Then(window, OpenGraph, w => w.Graph.Canvas!.FindBar.Open()))),
+        ("Toasts", (window, _) => ShowToasts(window)),
         ("Add a thing", (window, _) => Then(window, Select, w => Click(w.Tools.AddButton))),
         ("Move under", (window, _) => Then(window, Select, w => Click(w.Move.MoveUnderButton))),
         ("Instance a scene", (window, _) => Then(window, Select, w => Click(w.InstanceScene.OpenButton))),
@@ -187,6 +191,13 @@ internal static class EditorViews
     {
         Tab(window, "Script");
         window.Script.List.SelectedItem = "res://spin.cs";
+    }
+
+    static void ShowToasts(EditorWindow window)
+    {
+        var why = "res://levels/a/very/long/path/to/something/deep/inside/the/project/folder.oscn is read only.";
+        window.Toasts.Show(ToastKind.Failed, "Couldn't save the script", why, new ToastAction("Try again", () => { }));
+        window.Toasts.Show(ToastKind.Done, "Saved a scene with a very long name that keeps going on and on", why);
     }
 
     static void OpenGraph(EditorWindow window)

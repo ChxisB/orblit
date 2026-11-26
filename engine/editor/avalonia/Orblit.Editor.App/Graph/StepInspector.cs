@@ -211,7 +211,7 @@ internal sealed class StepInspector : Border
         new HoverCard("Remembered", "Makes a remembered value and wires it here. The whole script can use it.").On(choice.Choices[1]);
         new HoverCard("Local", "Makes a local and wires it here. It lasts while this function runs.").On(choice.Choices[2]);
         choice.Changed += () => Apply(_edits.Promote(pin, choice.SelectedIndex == 2));
-        var heading = new TextBlock { Text = $"Where the {pin.Port.Name.ToLowerInvariant()} comes from", FontSize = 11, Foreground = EditorBrushes.TextDim };
+        var heading = new TextBlock { Text = $"Where the {pin.Port.Name.ToLowerInvariant()} comes from", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
         return new StackPanel { Spacing = 3, Children = { heading, choice } };
     }
 

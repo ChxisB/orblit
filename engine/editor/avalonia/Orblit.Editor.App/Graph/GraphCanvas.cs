@@ -284,7 +284,9 @@ internal sealed class GraphCanvas : Grid
         tools.VerticalAlignment = VerticalAlignment.Top;
         new HoverCard("Show all", "Fits every step in the view.", "F").On(_showAll);
         ToolTip.SetTip(_editor, ValueHint);
-        foreach (var control in new Control[] { _surface, _empty, _minimap, tools, _arrangeBar, _findBar, _pasteBar, _noticeBar, _offer, _palette, _editor })
+        // One column, so the zoom tools, the arrange bar and a paste question never cover each other.
+        var top = new StackPanel { VerticalAlignment = VerticalAlignment.Top, Children = { tools, _arrangeBar, _pasteBar } };
+        foreach (var control in new Control[] { _surface, _empty, _minimap, top, _findBar, _noticeBar, _offer, _palette, _editor })
         {
             Children.Add(control);
         }

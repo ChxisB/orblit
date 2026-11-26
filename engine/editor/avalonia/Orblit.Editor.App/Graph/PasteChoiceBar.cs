@@ -23,9 +23,8 @@ internal sealed class PasteChoiceBar : Border
         CornerRadius = new CornerRadius(4);
         Padding = new Thickness(10, 4);
         HorizontalAlignment = HorizontalAlignment.Center;
-        VerticalAlignment = VerticalAlignment.Top;
         Margin = new Thickness(12);
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6 };
+        var row = new WrapPanel { ItemSpacing = 8, LineSpacing = 8 };
         row.Children.Add(_text);
         row.Children.Add(PanelFields.Small("paste:keep_both", "Keep both", () => clipboard.Resolve(GraphPasteChoice.KeepBoth)));
         row.Children.Add(PanelFields.Small("paste:reuse", "Reuse", () => clipboard.Resolve(GraphPasteChoice.Reuse)));
