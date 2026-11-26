@@ -27,6 +27,7 @@ internal sealed class OutputPanel : Border
     internal const double StripHeight = 36;
 
     const double FilterWidth = 180;
+    const double LeastFilterWidth = 120;
     const double BoxHeight = 28;
     const double LineIcon = 13;
     const double StampWidth = 64;
@@ -61,7 +62,9 @@ internal sealed class OutputPanel : Border
     readonly TextBox _filter = new()
     {
         PlaceholderText = "Find in messages",
-        Width = FilterWidth,
+        MinWidth = LeastFilterWidth,
+        MaxWidth = FilterWidth,
+        Margin = new Thickness(0, 0, 4, 0),
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
@@ -95,22 +98,18 @@ internal sealed class OutputPanel : Border
             chip.IsCheckedChanged += (_, _) => ShowEntries();
         }
 
-        var tools = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
-        tools.Children.Add(_filter);
-        tools.Children.AddRange(_chips);
-        tools.Children.Add(Parts.Rule());
-        tools.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, _clear } });
-        DockPanel.SetDock(tools, Dock.Right);
+        var rule = Parts.Rule();
+        rule.Margin = new Thickness(4, 0);
+        var tools = new OverflowBar([_filter, .. _chips, rule, _copy, _clear]) { HorizontalAlignment = HorizontalAlignment.Right };
+        var title = new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+        DockPanel.SetDock(title, Dock.Left);
         Strip = new Border
         {
             Height = StripHeight,
             Padding = new Thickness(12, 0, 6, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
-            Child = new DockPanel
-            {
-                Children = { tools, new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center } },
-            },
+            Child = new DockPanel { Children = { title, tools } },
         };
         DockPanel.SetDock(Strip, Dock.Top);
         Child = new DockPanel { Children = { Strip, _list } };

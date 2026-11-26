@@ -196,7 +196,8 @@ internal static class Parts
     /// </summary>
     internal static StackPanel Noted(string name, string? note, string? engine = null)
     {
-        var top = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = name } } };
+        // The engine's name goes under the plain one where there is no room beside it.
+        var top = new WrapPanel { ItemSpacing = 8, Children = { new TextBlock { Text = name, TextWrapping = TextWrapping.Wrap } } };
         if (engine is not null)
         {
             top.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
@@ -209,6 +210,14 @@ internal static class Parts
         }
 
         return header;
+    }
+
+    /// <summary>A name that is cut when its room runs out, with the whole of it on its hover card.</summary>
+    public static TextBlock Trimmed(string words, string whole)
+    {
+        var text = new TextBlock { Text = words, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        ToolTip.SetTip(text, whole);
+        return text;
     }
 
     /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>

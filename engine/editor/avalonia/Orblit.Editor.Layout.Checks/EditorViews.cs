@@ -18,8 +18,8 @@ internal static class EditorViews
     static readonly (string Name, Action<EditorWindow, FakeScene> Show)[] s_views =
     [
         ("3D", (window, _) => Select(window)),
-        ("3D, sides narrow", (window, _) => Sides(window, wide: false)),
-        ("3D, sides wide", (window, _) => Sides(window, wide: true)),
+        ("3D, sides narrow", (window, _) => Then(window, Select, w => Sides(w, wide: false))),
+        ("3D, sides wide", (window, _) => Then(window, Select, w => Sides(w, wide: true))),
         ("3D, sides folded", (window, _) => Fold(window)),
         ("2D", (window, _) => Tab(window, "2D")),
         ("Script", (window, _) => Tab(window, "Script")),
@@ -30,6 +30,13 @@ internal static class EditorViews
         ("Game running", RunGame),
         ("Output", (window, _) => BarOf(window).Open(0)),
         ("Debugger", (window, _) => BarOf(window).Open(1)),
+        ("2D, middle narrow", Narrow((window, _) => Tab(window, "2D"))),
+        ("Script open, middle narrow", Narrow((window, _) => OpenScript(window))),
+        ("Graph open, middle narrow", Narrow((window, _) => OpenGraph(window))),
+        ("Game running, middle narrow", Narrow(RunGame)),
+        ("Output, middle narrow", Narrow((window, _) => BarOf(window).Open(0))),
+        ("Debugger, middle narrow", Narrow((window, _) => BarOf(window).Open(1))),
+        ("Long status, middle narrow", Narrow((window, _) => window.Fail("Could not save res://levels/a/very/long/path/to/something/deep/inside/the/project/folder.oscn because the disk is full."))),
         ("Add a thing", (window, _) => Then(window, Select, w => Click(w.Tools.AddButton))),
         ("Move under", (window, _) => Then(window, Select, w => Click(w.Move.MoveUnderButton))),
         ("Instance a scene", (window, _) => Then(window, Select, w => Click(w.InstanceScene.OpenButton))),
@@ -54,14 +61,23 @@ internal static class EditorViews
         ("No scene, Game", (window, _) => Tab(window, "Game")),
     ];
 
+    // Views of a project with many files open and long names.
+    static readonly (string Name, Action<EditorWindow, FakeScene> Show)[] s_crowdedViews =
+    [
+        ("Long names, 3D", (window, _) => Select(window)),
+        ("Many scripts open", Narrow((window, scene) => OpenAll(window, "Script", scene.ScriptText.Keys, path => window.Script.List.SelectedItem = path))),
+        ("Many graphs open", Narrow((window, scene) => OpenAll(window, "Graph", scene.Graphs.Keys, path => window.Graph.List.SelectedItem = path))),
+    ];
+
     public static IEnumerable<(string Name, IReadOnlyList<string> Faults)> All(Look look) =>
         from size in s_sizes
-        from view in s_views.Select(view => (view, Empty: false)).Concat(s_emptyViews.Select(view => (view, Empty: true)))
-        select Run(look, size, view.view, view.Empty);
+        from view in s_views.Select(view => (view, Scene: (Func<FakeScene>)(() => Filled(false))))
+            .Concat(s_emptyViews.Select(view => (view, Scene: (Func<FakeScene>)(() => Filled(true)))))
+            .Concat(s_crowdedViews.Select(view => (view, Scene: (Func<FakeScene>)Crowded)))
+        select Run(look, size, view.view, view.Scene());
 
-    static (string, IReadOnlyList<string>) Run(Look look, (int Width, int Height) size, (string Name, Action<EditorWindow, FakeScene> Show) view, bool empty)
+    static (string, IReadOnlyList<string>) Run(Look look, (int Width, int Height) size, (string Name, Action<EditorWindow, FakeScene> Show) view, FakeScene scene)
     {
-        var scene = Filled(empty);
         var window = new EditorWindow { Width = size.Width, Height = size.Height };
         window.Show();
         window.Load(scene);
@@ -73,9 +89,29 @@ internal static class EditorViews
     }
 
     // A script, a graph and more output than fits, so every list and every line is long.
-    static FakeScene Filled(bool empty)
+    static FakeScene Filled(bool empty) => Fill(new FakeScene { StartsEmpty = empty });
+
+    // A long project name and scene name, and more scripts and graphs than their tab rows hold.
+    static FakeScene Crowded()
     {
-        var scene = new FakeScene { StartsEmpty = empty };
+        var scene = Fill(new FakeScene
+        {
+            ProjectName = "A project with a very long name that keeps going on and on",
+            SceneFile = "res://levels/a_scene_with_a_very_long_name_that_keeps_going_on_and_on.oscn",
+        });
+        foreach (var word in new[] { "player", "enemy", "pickup", "door", "camera", "menu" })
+        {
+            var script = $"res://{word}_behaviour_with_a_very_long_name_that_keeps_going.cs";
+            scene.ScriptPaths.Add(script);
+            scene.ScriptText[script] = "class Part\n{\n    public void A_method_with_a_very_long_name_that_keeps_going_and_going() { }\n}";
+            scene.Graphs[$"res://{word}_behaviour_with_a_very_long_name_that_keeps_going.ograph"] = FakeGraphSource.Sample();
+        }
+
+        return scene;
+    }
+
+    static FakeScene Fill(FakeScene scene)
+    {
         scene.ScriptText["res://spin.cs"] = "class Spin\n{\n    public override void _Process(double delta) { Rotation += new Vector3(0, (float)delta, 0); }\n}";
         scene.Graphs["res://logic.ograph"] = FakeGraphSource.Sample();
         for (var line = 0; line < 40; line++)
@@ -110,6 +146,15 @@ internal static class EditorViews
         window.Graph.List.SelectedItem = "res://logic.ograph";
     }
 
+    static void OpenAll(EditorWindow window, string workspace, IEnumerable<string> paths, Action<string> open)
+    {
+        Tab(window, workspace);
+        foreach (var path in paths.ToList())
+        {
+            open(path);
+        }
+    }
+
     static void RunGame(EditorWindow window, FakeScene scene)
     {
         Tab(window, "Game");
@@ -122,10 +167,19 @@ internal static class EditorViews
         window.Poll();
     }
 
+    // The view with both sides as wide as they go.
+    static Action<EditorWindow, FakeScene> Narrow(Action<EditorWindow, FakeScene> show) => (window, scene) =>
+    {
+        show(window, scene);
+        Sides(window, wide: true);
+    };
+
     // Both sides at the least width a splitter allows, or both as wide as they go with the middle at its least.
     static void Sides(EditorWindow window, bool wide)
     {
-        Select(window);
+        window.LeftSide.Fold(false);
+        window.RightSide.Fold(false);
+        window.UpdateLayout();
         var body = (Grid)window.LeftSide.Parent!;
         var (left, middle, right) = (body.ColumnDefinitions[0], body.ColumnDefinitions[2], body.ColumnDefinitions[4]);
         var spare = body.Bounds.Width - body.ColumnDefinitions[1].ActualWidth - body.ColumnDefinitions[3].ActualWidth - middle.MinWidth;

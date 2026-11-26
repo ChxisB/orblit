@@ -35,6 +35,10 @@ internal sealed class GraphCanvas : Grid
     readonly PasteChoiceBar _pasteBar;
     readonly ArrangeBar _arrangeBar;
     readonly FindBar _findBar;
+    // The least width the sentences card is read at.
+    const double LeastCard = 280;
+
+    Control? _card;
     readonly GraphMinimap _minimap;
     readonly PalettePopup _palette = new();
     readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
@@ -253,7 +257,25 @@ internal sealed class GraphCanvas : Grid
     }
 
     /// <summary>Shows a card over the steps and under the canvas's own bars, so a bar the person needs now stays on top.</summary>
-    internal void Carry(Control card) => Children.Insert(1, card);
+    internal void Carry(Control card)
+    {
+        Children.Insert(1, card);
+        _card = card;
+        PlaceCard();
+    }
+
+    // Beside the map when the card has room there, above the map when it does not.
+    void PlaceCard()
+    {
+        if (_card is null)
+        {
+            return;
+        }
+
+        var map = _minimap.IsVisible ? GraphMinimap.MapWidth + 8 : 0;
+        var above = map > 0 && Bounds.Width - map - 24 < LeastCard;
+        _card.Margin = above ? new Thickness(12, 12, 12, GraphMinimap.MapHeight + 20) : new Thickness(12, 12, 12 + map, 12);
+    }
 
     void Build()
     {
@@ -299,6 +321,7 @@ internal sealed class GraphCanvas : Grid
         _palette.Closed += () => _surface.Focus();
         _surface.SizeChanged += (_, _) => FitOnce();
         _minimap.Moved += _surface.InvalidateVisual;
+        SizeChanged += (_, _) => PlaceCard();
         _gestures.ValueEditRequested += (step, parameter) => BeginEdit(step.ValueRect(parameter), step.ValueOf(parameter), text => _edits.SetValue(step.Id, parameter, text));
         _gestures.TitleEditRequested += frame => BeginEdit(frame.TitleRect, frame.Frame.Title, text => _edits.RenameFrame(frame, text));
         _editor.KeyDown += OnEditorKey;
@@ -311,6 +334,7 @@ internal sealed class GraphCanvas : Grid
         {
             _minimap.IsVisible = !_minimap.IsVisible;
             _map.IsChecked = _minimap.IsVisible;
+            PlaceCard();
         };
         _viewport.Zoomed += () => _zoomWord.Text = $"{Math.Round(_viewport.Zoom * 100)}%";
     }

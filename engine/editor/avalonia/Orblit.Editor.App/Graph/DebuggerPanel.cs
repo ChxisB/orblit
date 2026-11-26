@@ -93,6 +93,7 @@ internal sealed class DebuggerPanel : StackPanel
             TextTrimming = TextTrimming.CharacterEllipsis,
             VerticalAlignment = VerticalAlignment.Center,
         };
+        ToolTip.SetTip(status, status.Text);
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         foreach (var (id, mark, word, does, key, command) in _buttons)
         {

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Controls.Templates;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Layout;
@@ -65,8 +66,8 @@ internal sealed class GraphView : Border
 {
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
     readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(8, 8, 8, 6), Classes = { EditorTheme.Field } };
-    readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.Joined } };
-    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
+    readonly OverflowBar _tabs = new() { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0), MaxWidth = 200 };
     readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
     readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _canvasSlot = new();
@@ -135,7 +136,9 @@ internal sealed class GraphView : Border
         _bookmarkButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBookmark());
         _breakpointButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBreakpoint());
         _form.Requested += Create;
+        _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : Parts.Trimmed(path, path));
         _list.SelectionChanged += (_, _) => Open(_list.SelectedItem as string);
+        _status[!ToolTip.TipProperty] = _status[!TextBlock.TextProperty];
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
         {
@@ -189,7 +192,7 @@ internal sealed class GraphView : Border
     internal Dialog CreateDialog => _form.Dialog;
 
     /// <summary>One tab for each open graph script, in the order they were opened.</summary>
-    internal IEnumerable<GraphTab> Tabs => _tabs.Children.Cast<GraphTab>();
+    internal IEnumerable<GraphTab> Tabs => _tabs.Tools.Cast<GraphTab>();
 
     /// <summary>The breakpoints of every graph script opened here. They outlive the canvas that shows them, and the project keeps them.</summary>
     internal GraphBreakpoints Breakpoints { get; } = new();
@@ -229,7 +232,7 @@ internal sealed class GraphView : Border
         }
 
         _sheets.Clear();
-        _tabs.Children.Clear();
+        _tabs.Clear();
         Select(null);
         LoadBreakpoints(files);
         Refresh();
@@ -298,7 +301,9 @@ internal sealed class GraphView : Border
         list.Children.Add(_panelsSlot);
 
         var canvas = new DockPanel();
-        var canvasBar = Parts.Bar(_tabs, _extends, Parts.Right(_saveButton), Parts.Right(_status));
+        // The save button and the status are measured first, so the tabs get what is left.
+        var open = new DockPanel { Children = { Parts.Right(_extends), _tabs } };
+        var canvasBar = Parts.Bar(Parts.Right(_saveButton), Parts.Right(_status), open);
         DockPanel.SetDock(canvasBar, Dock.Top);
         canvas.Children.Add(canvasBar);
         canvas.Children.Add(new Grid { Children = { _hint, _canvasSlot } });
@@ -324,7 +329,7 @@ internal sealed class GraphView : Border
         {
             ColumnDefinitions =
             [
-                new(248, GridUnitType.Star) { MinWidth = 140, MaxWidth = 248 },
+                new(248, GridUnitType.Star) { MinWidth = 200, MaxWidth = 248 },
                 new(6, GridUnitType.Pixel),
                 new(616, GridUnitType.Star) { MinWidth = 156 },
                 new(6, GridUnitType.Pixel),
@@ -454,12 +459,13 @@ internal sealed class GraphView : Border
         tab.CloseRequested += () => Close(sheet);
         sheet.Edited += ShowState;
         _sheets.Add(sheet);
-        _tabs.Children.Add(tab);
+        _tabs.Add(tab);
     }
 
     void Select(GraphSheet? sheet)
     {
         _current = sheet;
+        _tabs.Pinned = sheet is null ? null : Tabs.ElementAt(_sheets.IndexOf(sheet));
         _list.SelectedItem = sheet?.Script;
         _canvasSlot.Child = sheet?.Host;
         _panelsSlot.Child = sheet?.Panels;
@@ -507,7 +513,7 @@ internal sealed class GraphView : Border
 
         var index = _sheets.IndexOf(sheet);
         _sheets.Remove(sheet);
-        _tabs.Children.RemoveAt(index);
+        _tabs.RemoveAt(index);
         if (_current == sheet)
         {
             Select(_sheets.Count == 0 ? null : _sheets[Math.Min(index, _sheets.Count - 1)]);

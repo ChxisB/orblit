@@ -32,7 +32,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly InspectorPanel _inspector = new();
     readonly ContentControl _viewport = new()
     {
-        Content = new TextBlock { Margin = new Thickness(8), TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = "No viewport. The editor was started with --headless." },
+        // In the middle, clear of the tools over the top of the view.
+        Content = new TextBlock { Margin = new Thickness(16), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = "No viewport. The editor was started with --headless." },
     };
     readonly EntityTools _tools = new();
     readonly MoveTools _move = new();
@@ -76,6 +77,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly DockTabs _fileDock;
     readonly InspectorPane _inspectorPane;
     readonly DockTabs _inspectorDock;
+    readonly SideColumns _columns = new() { Margin = new Thickness(6, 0, 6, 6), LeastMiddle = ViewportMiddle };
     readonly DockSide _leftSide;
     readonly DockSide _rightSide;
     readonly CenterArea _center;
@@ -95,6 +97,10 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         [TitleBar.Graph] = (true, true),
         [TitleBar.Game] = (true, true),
     };
+    // The middle's least width. A workspace that folds the sides lays its own columns out in the middle, so it needs
+    // more of it when a side is opened again.
+    const double ViewportMiddle = 480;
+    const double WorkspaceMiddle = 700;
     IEditorScene? _scene;
     OutlineNode? _root;
     readonly RulerPoints _ruler = new();
@@ -440,6 +446,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     void ChooseWorkspace(string name)
     {
         var (left, right) = s_folds.GetValueOrDefault(name);
+        _columns.LeastMiddle = s_folds.ContainsKey(name) ? WorkspaceMiddle : ViewportMiddle;
         _leftSide.Fold(left);
         _rightSide.Fold(right);
         _center.ShowWorkspace(name);
@@ -1464,27 +1471,14 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
     Control Layout()
     {
-        // The least widths of the three columns fit the smallest window together.
-        var body = new SideColumns
-        {
-            Margin = new Thickness(6, 0, 6, 6),
-            ColumnDefinitions =
-            [
-                new(280, GridUnitType.Pixel) { MinWidth = 220 },
-                new(6, GridUnitType.Pixel),
-                new(GridLength.Star) { MinWidth = 480 },
-                new(6, GridUnitType.Pixel),
-                new(316, GridUnitType.Pixel) { MinWidth = 260 },
-            ],
-        };
-        Fill(body, _leftSide, 0);
-        Fill(body, _leftSide.Splitter, 1);
-        Fill(body, _center, 2);
-        Fill(body, _rightSide.Splitter, 3);
-        Fill(body, _rightSide, 4);
+        Fill(_columns, _leftSide, 0);
+        Fill(_columns, _leftSide.Splitter, 1);
+        Fill(_columns, _center, 2);
+        Fill(_columns, _rightSide.Splitter, 3);
+        Fill(_columns, _rightSide, 4);
         var root = new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*") };
         Fill(root, _titleBar, 0);
-        Fill(root, body, 1);
+        Fill(root, _columns, 1);
         return root;
     }
 

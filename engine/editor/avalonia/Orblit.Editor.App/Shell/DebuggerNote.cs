@@ -21,6 +21,8 @@ internal sealed class DebuggerNote : Decorator
     };
 
     readonly StackPanel _note;
+    // A panel too short for the note scrolls it.
+    readonly ScrollViewer _scroll = new() { HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
     readonly Button _copy = new() { Content = "Copy Process ID", HorizontalAlignment = HorizontalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
     int? _game;
 
@@ -38,7 +40,8 @@ internal sealed class DebuggerNote : Decorator
         _note.Children.Add(_copy);
         _run.Click += (_, _) => RunRequested?.Invoke();
         _copy.Click += (_, _) => CopyRequested?.Invoke($"{_game}");
-        Child = _note;
+        _scroll.Content = _note;
+        Child = _scroll;
         ShowGame(null, false);
     }
 
@@ -78,6 +81,6 @@ internal sealed class DebuggerNote : Decorator
     public void ShowSession(Control? session)
     {
         Session.Content = session;
-        Child = session is null ? _note : Session;
+        Child = session is null ? _scroll : Session;
     }
 }

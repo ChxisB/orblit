@@ -58,6 +58,9 @@ internal sealed class ScriptView : Border
     const double BoxHeight = 28;
     const double DotSize = 6;
 
+    // Wide enough for most file names. A longer one is cut, and the path beside the tab gives it whole.
+    const double WidestTab = 240;
+
     readonly CodeBox _code = new();
     readonly ScriptFind _finder;
     readonly CreateScriptForm _form = new(ScriptKind.Csharp);
@@ -89,8 +92,8 @@ internal sealed class ScriptView : Border
         InnerRightContent = Parts.SearchIcon(),
     };
 
-    readonly TextBlock _name = new() { Text = "Pick a script.", FontFamily = EditorTheme.Mono, FontSize = 11.5, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _tabName = new() { FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _name = new() { Text = "Pick a script.", FontFamily = EditorTheme.Mono, FontSize = 11.5, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0) };
+    readonly TextBlock _tabName = new() { FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly Ellipse _tabDot = Dot();
     readonly Border _tab;
     readonly TextBlock _status = new() { VerticalAlignment = VerticalAlignment.Center };
@@ -154,8 +157,10 @@ internal sealed class ScriptView : Border
             VerticalAlignment = VerticalAlignment.Center,
             HorizontalAlignment = HorizontalAlignment.Left,
             IsVisible = false,
-            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 7, Children = { Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), _tabName, _tabDot, _close } },
+            MaxWidth = WidestTab,
+            Child = TabParts(),
         };
+        _name[!ToolTip.TipProperty] = _name[!TextBlock.TextProperty];
         _code.Editor.IsEnabled = false;
         _find.IsEnabled = false;
         _code.Editor.PropertyChanged += (_, e) =>
@@ -398,6 +403,37 @@ internal sealed class ScriptView : Border
 
     static Ellipse Dot() => new() { Width = DotSize, Height = DotSize, Fill = EditorBrushes.Accent, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
 
+    // The close button and the dot keep their places, and a long file name is cut between them.
+    DockPanel TabParts()
+    {
+        var icon = Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon);
+        icon.Margin = new Thickness(0, 0, 4, 0);
+        _tabDot.Margin = _close.Margin = new Thickness(8, 0, 0, 0);
+        DockPanel.SetDock(icon, Dock.Left);
+        DockPanel.SetDock(_close, Dock.Right);
+        DockPanel.SetDock(_tabDot, Dock.Right);
+        return new DockPanel { Children = { icon, _close, _tabDot, _tabName } };
+    }
+
+    // The place in the file comes first. What was said and what the check found share the rest, and are cut.
+    DockPanel StatusLine()
+    {
+        Control[] parts = [_caret, _indent, StatusText("UTF-8"), _status, _errors];
+        foreach (var part in parts)
+        {
+            part.Margin = new Thickness(part == _caret ? 0 : 12, 0, 0, 0);
+            DockPanel.SetDock(part, Dock.Left);
+        }
+
+        _status.MaxWidth = 240;
+        _status.TextTrimming = TextTrimming.CharacterEllipsis;
+        _status[!ToolTip.TipProperty] = _status[!TextBlock.TextProperty];
+        _errors.HorizontalAlignment = HorizontalAlignment.Left;
+        var line = new DockPanel();
+        line.Children.AddRange(parts);
+        return line;
+    }
+
     static TextBlock StatusText(string text = "") => new() { Text = text, VerticalAlignment = VerticalAlignment.Center };
 
     // A strip like a dock's: a 26 pixel row with 6 pixels around it and a line under it.
@@ -425,14 +461,11 @@ internal sealed class ScriptView : Border
     {
         var detail = new TextBlock { Text = member.Detail, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(detail, Dock.Right);
-        return new DockPanel
-        {
-            Children =
-            {
-                detail,
-                Row(Parts.RowIcon(member.Icon), new TextBlock { Text = member.Name, FontFamily = EditorTheme.Mono, FontSize = 12, VerticalAlignment = VerticalAlignment.Center }),
-            },
-        };
+        var icon = Parts.RowIcon(member.Icon);
+        DockPanel.SetDock(icon, Dock.Left);
+        var name = Parts.Trimmed(member.Name, member.Name);
+        (name.FontFamily, name.FontSize) = (EditorTheme.Mono, 12);
+        return new DockPanel { Children = { detail, icon, name } };
     }
 
     Border Lists()
@@ -474,22 +507,23 @@ internal sealed class ScriptView : Border
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = "C#", FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
         };
-        var tools = Row(_name, badge, _find, _save, _check);
+        // The buttons are measured first, then the tab, and the path gets what is left.
+        var tools = Row(badge, _find, _save, _check);
         tools.Spacing = 8;
+        DockPanel.SetDock(_tab, Dock.Left);
         DockPanel.SetDock(_problems, Dock.Right);
-        var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status, _errors } };
         var status = new Border
         {
             Height = 28,
             Padding = new Thickness(12, 0, 4, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new DockPanel { Children = { _problems, line } },
+            Child = new DockPanel { Children = { _problems, StatusLine() } },
         };
         TextElement.SetFontSize(status, 11);
         TextElement.SetForeground(status, EditorBrushes.TextDim);
         var grid = new Grid { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},*,Auto") };
-        Place(grid, Bar(_tab, tools), 0);
+        Place(grid, Bar(new DockPanel { Children = { _tab, _name } }, tools), 0);
         Place(grid, _code, 1);
         Place(grid, _empty, 1);
         Place(grid, _finder, 1);
@@ -688,6 +722,7 @@ internal sealed class ScriptView : Border
         _empty.IsVisible = _open is null;
         _tab.IsVisible = _open is not null;
         _tabName.Text = _open is null ? "" : FileName(_open);
+        ToolTip.SetTip(_tab, _open);
         _name.Text = _open ?? "Pick a script.";
         ShowMarks();
     }
@@ -918,7 +953,8 @@ internal sealed class ScriptView : Border
             {
                 dot,
                 kind,
-                Row(Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon), new TextBlock { Text = FileName(path), TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center }),
+                Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon),
+                Parts.Trimmed(FileName(path), path),
             },
         };
     }

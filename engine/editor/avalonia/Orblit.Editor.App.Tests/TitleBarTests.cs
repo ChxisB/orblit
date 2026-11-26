@@ -15,8 +15,10 @@ namespace Orblit.Editor.App.Tests;
 
 public sealed class TitleBarTests
 {
+    static IEnumerable<TextBlock> HeadingParts(EditorWindow window) => window.Bar.Heading.GetLogicalDescendants().OfType<TextBlock>();
+
     static string Heading(EditorWindow window) =>
-        string.Join(" ", window.Bar.Heading.Children.OfType<TextBlock>().Where(text => text.IsVisible).Select(text => text.Text));
+        string.Join(" ", HeadingParts(window).Where(text => text.IsVisible).Select(text => text.Text));
 
     static MenuItem[] RunItems(EditorWindow window) => [.. ((MenuFlyout)window.Bar.MoreButton.Flyout!).Items.OfType<MenuItem>()];
 
@@ -69,7 +71,7 @@ public sealed class TitleBarTests
     {
         UiThread.Run(() =>
         {
-            var parts = OpenAtReferenceSize().Bar.Heading.Children.OfType<TextBlock>().ToArray();
+            var parts = HeadingParts(OpenAtReferenceSize()).ToArray();
 
             Assert.Equal(FontWeight.SemiBold, parts[0].FontWeight);
             Assert.Equal(EditorColors.Disabled, ((ISolidColorBrush)parts[1].Foreground!).Color);

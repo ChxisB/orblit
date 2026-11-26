@@ -48,7 +48,7 @@ internal sealed class BottomBar : Grid
     readonly TextBlock _unreadCount = new() { FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.FaultText };
     readonly Border _unread;
     readonly ContentControl _statusIcon = new() { Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _status = new() { Text = "Starting the engine.", FontSize = 12, Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { Text = "Starting the engine.", FontSize = 12, Foreground = EditorBrushes.TextSoft, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _separator = Parts.Rule();
     readonly Button _version = new()
     {
@@ -68,7 +68,7 @@ internal sealed class BottomBar : Grid
 
     public BottomBar()
     {
-        ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
+        ColumnDefinitions = new ColumnDefinitions("Auto,*");
         _unread = new Border
         {
             Padding = new Thickness(6, 1),
@@ -91,11 +91,18 @@ internal sealed class BottomBar : Grid
         var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         left.Classes.Add(EditorTheme.Joined);
         left.Children.AddRange(_tabs);
-        var right = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        // The message comes last, so a long one trims and the version and the pin keep their room.
+        var right = new DockPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         _separator.Margin = new Thickness(8, 0);
         _pin.Margin = new Thickness(4, 0, 0, 0);
-        right.Children.AddRange([_statusIcon, _status, _separator, _version, _pin]);
-        SetColumn(right, 2);
+        foreach (var (control, side) in new (Control, Dock)[] { (_pin, Dock.Right), (_version, Dock.Right), (_separator, Dock.Right), (_statusIcon, Dock.Left) })
+        {
+            DockPanel.SetDock(control, side);
+            right.Children.Add(control);
+        }
+
+        right.Children.Add(_status);
+        SetColumn(right, 1);
         Children.Add(left);
         Children.Add(right);
         Say(_status.Text, StatusKind.Info);
@@ -135,6 +142,7 @@ internal sealed class BottomBar : Grid
         TextElement.SetForeground(mark, tint);
         _statusIcon.Content = mark;
         _status.Text = text;
+        ToolTip.SetTip(_status, text);
     }
 
     /// <summary>Counts errors logged while Output is shut. An open Output shows them already.</summary>

@@ -96,7 +96,7 @@ internal sealed class TitleBar : Grid
     public event Action<string>? WorkspaceChosen;
 
     /// <summary>The logo, then the project, a slash and the scene, then the dot for edits.</summary>
-    internal Grid Heading { get; }
+    internal DockPanel Heading { get; }
 
     internal Ellipse Logo { get; } = Parts.LogoMark(15);
 
@@ -133,25 +133,20 @@ internal sealed class TitleBar : Grid
         ToolTip.SetTip(Heading, scene is null ? project : $"{project} / {scene}");
     }
 
-    // The project's name is the one part that gives way. Each part keeps its own gap, so a hidden one leaves none.
-    Grid ProjectHeading()
+    // A short window cuts both names, and the heading's hover card gives them whole. Each part keeps its own gap, so a
+    // hidden one leaves none.
+    DockPanel ProjectHeading()
     {
-        var heading = new Grid
+        _project.Margin = _slash.Margin = _scene.Margin = EditedDot.Margin = new Thickness(8, 0, 0, 0);
+        DockPanel.SetDock(EditedDot, Dock.Right);
+        DockPanel.SetDock(Logo, Dock.Left);
+        return new DockPanel
         {
-            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"),
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Center,
             Background = Brushes.Transparent,
+            Children = { Logo, EditedDot, new NamePair(_project, _slash, _scene) },
         };
-        Control[] parts = [Logo, _project, _slash, _scene, EditedDot];
-        for (var at = 0; at < parts.Length; at++)
-        {
-            parts[at].Margin = new Thickness(at == 0 ? 0 : 8, 0, 0, 0);
-            SetColumn(parts[at], at);
-        }
-
-        heading.Children.AddRange(parts);
-        return heading;
     }
 
     // Play and Stop keep their words, as the one action every user looks for. Their keys are on their cards.

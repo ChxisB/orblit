@@ -80,7 +80,8 @@ internal sealed class ScriptPanels : Border
     // under them, and its add button on the right.
     static Grid Header(string title, string? engine, string line, Button? add = null)
     {
-        var name = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { new TextBlock { Text = title, FontWeight = FontWeight.Bold } } };
+        // The engine's name goes under the plain one in a narrow list.
+        var name = new WrapPanel { ItemSpacing = 8, Children = { new TextBlock { Text = title, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap } } };
         if (engine is not null)
         {
             name.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });

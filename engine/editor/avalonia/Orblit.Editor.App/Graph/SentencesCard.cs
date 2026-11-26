@@ -37,10 +37,9 @@ internal sealed class SentencesCard : Border
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Bottom;
         Margin = new Thickness(12);
-        var header = new DockPanel { Margin = new Thickness(0, 0, 0, 6) };
-        var updates = new TextBlock { Text = "Updates as you edit", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(16, 0, 0, 0) };
-        DockPanel.SetDock(updates, Dock.Right);
-        header.Children.AddRange([updates, new TextBlock { Text = "What this graph does", FontWeight = FontWeight.Bold }]);
+        var title = new TextBlock { Text = "What this graph does", FontWeight = FontWeight.Bold };
+        var updates = new TextBlock { Text = "Updates as you edit", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+        var header = new WrapPanel { ItemSpacing = 16, Margin = new Thickness(0, 0, 0, 6), Children = { title, updates } };
         Child = new DockPanel { Children = { Top(header), new ScrollViewer { MaxHeight = 180, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = _body } } };
         _script.Changed += Read;
         Read();

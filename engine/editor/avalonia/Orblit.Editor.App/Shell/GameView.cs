@@ -56,26 +56,31 @@ internal sealed class GameView : Border
 
     const double DepthIndent = 16;
 
+    // The least the live scene keeps of the right column.
+    const double LeastLiveScene = 140;
+
+    const string RaiseOff = "This system does not let the editor bring another window to the front.";
+
     readonly Ellipse _dot = new() { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { FontSize = 12, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _pill = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 3), Margin = new Thickness(6, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _project = new() { FontSize = 12, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _time = new() { FontSize = 12, FontFamily = EditorTheme.Mono, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _project = new() { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _time = new() { FontSize = 12, FontFamily = EditorTheme.Mono, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly Button _run;
     readonly Button _play;
     readonly Button _playScene;
     readonly Button _stop;
-    readonly Button _raise = RaiseButton();
+    readonly Button _raise = RaiseIcon();
     readonly Button _raiseBelow = RaiseButton();
     readonly StackPanel _stopped = Parts.EmptyState("Window", "The game opens in its own window", "Press Play to start it. Its speed shows on the right and its things show in Live scene.");
     readonly StackPanel _playing = Parts.EmptyState("Window", "Playing in its own window", "It may be behind this one. Show game window brings it to the front. Stop closes it.");
-    readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _state = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     readonly RadioButton _main = Choice("Main scene", "The first scene players see.");
     readonly RadioButton _thisScene = Choice("This scene", "The one open in the 3D view");
     readonly Segments _copies = new("1", "2", "3", "4");
     readonly CheckBox[] _shown = [.. s_shown.Select(row => new HoverCard(row.Name, row.Line, engine: row.Engine).On(new CheckBox { Content = Parts.Noted(row.Name, row.Line) }))];
     readonly StackPanel _settings = new() { Spacing = 4, Margin = new Thickness(10, 4, 10, 12) };
-    readonly StackPanel _waits;
+    readonly DockPanel _waits;
     readonly TextBlock _speedHint = new() { Text = "Numbers show while the game plays.", FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 10, 12, 2) };
     readonly TextBlock[] _values = [.. s_monitors.Select(_ => new TextBlock { Text = Unknown, FontSize = 12, FontFamily = EditorTheme.Mono, VerticalAlignment = VerticalAlignment.Top })];
     readonly TextBlock[] _lines = [.. s_monitors.Select(row => new TextBlock { Text = row.Line, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap })];
@@ -107,10 +112,21 @@ internal sealed class GameView : Border
         _playing.Children.Add(Buttons(_raiseBelow, _stop));
         _waits = Note("Stop the game to change these. They count from the next Play.");
         _liveMark = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, VerticalAlignment = VerticalAlignment.Center, Children = { new Ellipse { Width = 6, Height = 6, Fill = EditorBrushes.Done, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Live", FontSize = 11, Foreground = EditorBrushes.Done } } };
-        var side = new Grid { RowDefinitions = new RowDefinitions("Auto,6,*"), Children = { Island(Speed()), At(Island(LiveScene()), 0, 2) } };
+        var speed = Island(Speed());
+        var side = new Grid { RowDefinitions = new RowDefinitions("Auto,6,*"), Children = { speed, At(Island(LiveScene()), 0, 2) } };
+        // The numbers scroll in a short window, so the live scene keeps room under them.
+        side.SizeChanged += (_, e) => speed.MaxHeight = Math.Max(0, e.NewSize.Height - 6 - LeastLiveScene);
         Child = new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("288,6,*,6,300"),
+            // The settings and the numbers give way together, so the game keeps room in a narrow window.
+            ColumnDefinitions =
+            [
+                new(288, GridUnitType.Star) { MinWidth = 200, MaxWidth = 288 },
+                new(6, GridUnitType.Pixel),
+                new(616, GridUnitType.Star) { MinWidth = 260 },
+                new(6, GridUnitType.Pixel),
+                new(300, GridUnitType.Star) { MinWidth = 220, MaxWidth = 300 },
+            ],
             Children = { At(Island(PlaySettings()), 0), At(Island(TheGame()), 2), At(side, 4) },
         };
         Show(false, "", TimeSpan.Zero);
@@ -217,6 +233,7 @@ internal sealed class GameView : Border
         _dot.Fill = _status.Foreground;
         _pill.Background = playing ? EditorBrushes.DoneSoft : EditorBrushes.Line;
         _project.Text = project;
+        ToolTip.SetTip(_project, project);
         _time.Text = playing ? elapsed.ToString(elapsed.TotalHours >= 1 ? @"h\:mm\:ss" : @"mm\:ss", CultureInfo.InvariantCulture) : "";
         _state.Text = playing ? "Changes to the scene now count from the next Play." : "Play settings on the left apply the next time you press Play.";
     }
@@ -286,11 +303,12 @@ internal sealed class GameView : Border
 
     DockPanel TheGame()
     {
-        var bar = Parts.Bar(_pill, _project, _time, Parts.Right(_raise), Parts.Right(_run));
+        // The project's name comes last, so it is the part that gives way in a narrow window.
+        var bar = Parts.Bar(Parts.Right(_raise), Parts.Right(_run), _pill, _time, _project);
         var footer = new Border
         {
-            Height = 30,
-            Padding = new Thickness(12, 0),
+            MinHeight = 30,
+            Padding = new Thickness(12, 4),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = _state,
@@ -309,7 +327,7 @@ internal sealed class GameView : Border
         var rows = new StackPanel { Margin = new Thickness(0, 4, 0, 8), Children = { _speedHint } };
         rows.Children.AddRange(s_monitors.Select((_, at) => Reading(at)));
         new HoverCard("Frames a second", "How many pictures the game draws each second. Under 30 feels slow. 60 or more feels smooth.", engine: "FPS monitor").On(rows.Children[1]);
-        return Stack(Parts.Bar(Title("Speed")), rows);
+        return Stack(Parts.Bar(Title("Speed")), new ScrollViewer { Content = rows });
     }
 
     DockPanel LiveScene() => Stack(Parts.Bar(Title("Live scene"), Parts.Right(_liveMark)), new ScrollViewer { Content = new StackPanel { Children = { _live, _noScene } } });
@@ -383,31 +401,39 @@ internal sealed class GameView : Border
     static Button RaiseButton()
     {
         var card = new HoverCard("Show game window", "Brings the game window to the front.");
-        var button = card.On(new Button { Classes = { EditorTheme.TextButton, EditorTheme.Small, EditorTheme.Ghost }, VerticalAlignment = VerticalAlignment.Center, Content = "Show game window", IsEnabled = GameWindow.CanRaise });
-        card.SaysWhyOff(button, "This system does not let the editor bring another window to the front.");
+        var button = card.On(new Button { Classes = { EditorTheme.TextButton, EditorTheme.Small, EditorTheme.Ghost }, VerticalAlignment = VerticalAlignment.Center, Content = card.Title, IsEnabled = GameWindow.CanRaise });
+        card.SaysWhyOff(button, RaiseOff);
+        return button;
+    }
+
+    // The bar's is an icon, to leave room for the project's name.
+    static Button RaiseIcon()
+    {
+        var card = new HoverCard("Show game window", "Brings the game window to the front.");
+        var button = Parts.Dress(new Button { VerticalAlignment = VerticalAlignment.Center, IsEnabled = GameWindow.CanRaise }, "Window", card);
+        card.SaysWhyOff(button, RaiseOff);
         return button;
     }
 
     static Button Worded(string word, string line, string key, string look) =>
         new HoverCard(word, line, key).On(new Button { Classes = { EditorTheme.TextButton, EditorTheme.Small, look }, VerticalAlignment = VerticalAlignment.Center, Content = word });
 
-    static StackPanel Buttons(params Button[] buttons)
+    static WrapPanel Buttons(params Button[] buttons)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0) };
+        var row = new WrapPanel { ItemSpacing = 8, LineSpacing = 8, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0) };
         row.Children.AddRange(buttons);
         return row;
     }
 
-    static StackPanel Note(string text)
+    static DockPanel Note(string text)
     {
-        var mark = new EditorIcon("NodeInfo") { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Top };
+        var mark = new EditorIcon("NodeInfo") { Width = 14, Height = 14, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Top };
         TextElement.SetForeground(mark, EditorBrushes.TextDim);
-        return new StackPanel
+        DockPanel.SetDock(mark, Dock.Left);
+        return new DockPanel
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 6,
             Margin = new Thickness(10, 10, 10, 0),
-            Children = { mark, new TextBlock { Text = text, FontSize = 11, Foreground = EditorBrushes.TextSoft, TextWrapping = TextWrapping.Wrap, MaxWidth = 240 } },
+            Children = { mark, new TextBlock { Text = text, FontSize = 11, Foreground = EditorBrushes.TextSoft, TextWrapping = TextWrapping.Wrap } },
         };
     }
 

@@ -351,6 +351,7 @@ public sealed class BottomBarTests
 
             scene.CsharpChannel.Next = DebugState.None;
             window.Poll();
+            window.UpdateLayout();
 
             Assert.NotSame(debugger.Session, debugger.Child);
             Assert.Null(debugger.Session.Content);

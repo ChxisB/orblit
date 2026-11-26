@@ -9,6 +9,23 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class SideColumns : Grid
 {
+    // The least widths of the three columns fit the smallest window together.
+    public SideColumns() =>
+        ColumnDefinitions =
+        [
+            new(280, GridUnitType.Pixel) { MinWidth = 220 },
+            new(6, GridUnitType.Pixel),
+            new(GridLength.Star),
+            new(6, GridUnitType.Pixel),
+            new(316, GridUnitType.Pixel) { MinWidth = 260 },
+        ];
+
+    /// <summary>The narrowest the middle may get, as what it shows needs.</summary>
+    public double LeastMiddle
+    {
+        set => ColumnDefinitions[2].MinWidth = value;
+    }
+
     protected override Size MeasureOverride(Size constraint)
     {
         var over = ColumnDefinitions.Sum(column => column.Width.IsAbsolute ? column.Width.Value : column.MinWidth) - constraint.Width;

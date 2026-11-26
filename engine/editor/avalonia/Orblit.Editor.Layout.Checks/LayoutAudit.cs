@@ -6,6 +6,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.LogicalTree;
 using Avalonia.VisualTree;
+using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
@@ -50,9 +51,13 @@ internal static class LayoutAudit
     static bool IsShown(Control control) => control.IsEffectivelyVisible && control.Bounds.Width > 0 && control.Bounds.Height > 0;
 
     // A scroll bar lays its parts over the content on purpose. A popup draws its child in a layer of its own. A
-    // turned or scaled child keeps its own box, so its box says nothing about where it draws.
+    // turned or scaled child keeps its own box, so its box says nothing about where it draws. A tool in a More menu is
+    // placed out of view on purpose.
     static bool IsExempt(Control control) =>
-        control is Popup || control.GetSelfAndVisualAncestors().Any(visual => visual is ScrollBar || visual is Viewbox or LayoutTransformControl { LayoutTransform: not null } && visual != control);
+        control is Popup || control.GetSelfAndVisualAncestors().Any(visual =>
+            visual is ScrollBar ||
+            (visual is Control tool && tool.Classes.Contains(OverflowBar.Moved)) ||
+            (visual is Viewbox or LayoutTransformControl { LayoutTransform: not null } && visual != control));
 
     static string? Overflow(Control control, Visual window)
     {
@@ -139,7 +144,7 @@ internal static class LayoutAudit
         }
 
         var box = BoxOf(control, window);
-        var other = panel.Children.FirstOrDefault(other => other != control && other is not Popup && IsShown(other) && !(panel is Grid && SharesCell(control, other)) && Covers(box.Intersect(BoxOf(other, window))));
+        var other = panel.Children.FirstOrDefault(other => other != control && other is not Popup && IsShown(other) && !IsExempt(other) && !(panel is Grid && SharesCell(control, other)) && Covers(box.Intersect(BoxOf(other, window))));
         return other is null ? null : $"sits on {Describe(other)}";
     }
 

@@ -780,6 +780,28 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_card_sits_beside_the_map_or_above_it_when_the_canvas_is_narrow()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var card = new Border();
+            canvas.Carry(card);
+            canvas.Width = 900;
+            new Window { Width = 1000, Height = 500, Content = canvas }.Show();
+            canvas.UpdateLayout();
+            Assert.Equal(new Thickness(12, 12, GraphMinimap.MapWidth + 20, 12), card.Margin);
+
+            canvas.Width = 400;
+            canvas.UpdateLayout();
+            Assert.Equal(new Thickness(12, 12, 12, GraphMinimap.MapHeight + 20), card.Margin);
+
+            ZoomItem(canvas, "Map of the graph").RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            Assert.Equal(new Thickness(12), card.Margin);
+        });
+    }
+
+    [Fact]
     public void The_zoom_menu_names_each_command_with_its_key_and_its_ticks_set_the_wires_and_the_map()
     {
         UiThread.Run(() =>
