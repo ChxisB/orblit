@@ -139,31 +139,25 @@ internal sealed class ScriptPanels : Border
         var id = $"variable:{variable.Name}";
         var name = variable.Name;
         var detail = new StackPanel { Spacing = 4, Margin = new Thickness(16, 0, 0, 4) };
+        // The type has its own line, because a narrow column cannot hold it beside the name.
+        var type = PanelFields.TypeBox($"{id}:type", variable.Type, picked => Apply(_script.SetVariableType(name, picked)));
+        type.HorizontalAlignment = HorizontalAlignment.Stretch;
+        detail.Children.Add(type);
         detail.Children.Add(PanelFields.Box($"{id}:default", variable.Default, text => Apply(_script.SetVariableDefault(name, text)), "starts as nothing"));
         detail.Children.Add(PanelFields.Check($"{id}:exported", "Show in the Inspector", variable.Exported, on => Apply(_script.SetVariableExported(name, on))));
         detail.Children.Add(PanelFields.Box($"{id}:category", variable.Category, text => Apply(_script.SetVariableInfo(name, text, variable.Description)), "group in the Inspector"));
         detail.Children.Add(PanelFields.Box($"{id}:description", variable.Description, text => Apply(_script.SetVariableInfo(name, variable.Category, text)), "what it is for"));
-        return Row(id, new GraphDrop(GraphDropKind.Variable, name), name, variable.Type, detail, text => _script.RenameVariable(name, text), type => _script.SetVariableType(name, type), () => _script.RemoveVariable(name));
+        return Row(id, new GraphDrop(GraphDropKind.Variable, name), detail, text => _script.RenameVariable(name, text), () => _script.RemoveVariable(name));
     }
 
-    // A named thing with a grip, a name, a type and a remove button, and the lines that edit the rest of it.
-    StackPanel Row(string id, GraphDrop drop, string name, int? type, Control? detail, Func<string, GraphEditResult> rename, Func<int, GraphEditResult>? retype, Func<GraphEditResult> remove)
+    // A named thing with a grip, a name and a remove button, and the lines that edit the rest of it.
+    StackPanel Row(string id, GraphDrop drop, Control? detail, Func<string, GraphEditResult> rename, Func<GraphEditResult> remove)
     {
-        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), ColumnSpacing = 4 };
-        var cells = new List<Control>
+        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 4 };
+        Control[] cells = [PanelFields.Handle($"{id}:drag", drop), PanelFields.Box($"{id}:name", drop.Value, text => Apply(rename(text))), RemoveButton(id, drop.Value, remove)];
+        for (var at = 0; at < cells.Length; at++)
         {
-            PanelFields.Handle($"{id}:drag", drop),
-            PanelFields.Box($"{id}:name", name, text => Apply(rename(text))),
-        };
-        if (type is { } current && retype is not null)
-        {
-            cells.Add(PanelFields.TypeBox($"{id}:type", current, picked => Apply(retype(picked))));
-        }
-
-        cells.Add(RemoveButton(id, name, remove));
-        for (var at = 0; at < cells.Count; at++)
-        {
-            Grid.SetColumn(cells[at], at == cells.Count - 1 ? 3 : at);
+            Grid.SetColumn(cells[at], at);
             top.Children.Add(cells[at]);
         }
 
@@ -290,7 +284,7 @@ internal sealed class ScriptPanels : Border
 
     Control ActionRow(string name)
     {
-        var row = Row($"function:{name}", new GraphDrop(GraphDropKind.Function, name), name, null, null, text => _script.RenameFunction(name, text), null, () => _script.RemoveFunction(name));
+        var row = Row($"function:{name}", new GraphDrop(GraphDropKind.Function, name), null, text => _script.RenameFunction(name, text), () => _script.RemoveFunction(name));
         row.Children.Add(ShowButton(name));
         return row;
     }
@@ -384,7 +378,7 @@ internal sealed class ScriptPanels : Border
             var name = signal.Name;
             var arguments = new TypedListEditor($"signal:{name}:arguments", signal.Arguments, null, list => Apply(_script.SetSignalArguments(name, list)));
             arguments.Margin = new Thickness(16, 0, 0, 4);
-            var row = Row($"signal:{name}", new GraphDrop(GraphDropKind.Signal, name), name, null, arguments, text => _script.RenameSignal(name, text), null, () => _script.RemoveSignal(name));
+            var row = Row($"signal:{name}", new GraphDrop(GraphDropKind.Signal, name), arguments, text => _script.RenameSignal(name, text), () => _script.RemoveSignal(name));
             _body.Children.Add(row);
         }
     }

@@ -69,11 +69,24 @@ internal static class EditorViews
         ("Many graphs open", Narrow((window, scene) => OpenAll(window, "Graph", scene.Graphs.Keys, path => window.Graph.List.SelectedItem = path))),
     ];
 
+    // Panels with far more rows than fit, so every panel body has to scroll.
+    static readonly (string Name, Action<EditorWindow, FakeScene> Show)[] s_fullViews =
+    [
+        ("Full, Scene and Inspector", (window, _) => Select(window)),
+        ("Full, Signals and History", (window, _) => Then(window, Select, SecondTabs)),
+        ("Full, Import", (window, _) => Pick(window, "res://rock.glb")),
+        ("Full, Graph", (window, _) => OpenGraph(window)),
+        ("Full, Game running", RunGame),
+        ("Full, Export", (window, _) => Menu(window, "Export game…")),
+        ("Full, Settings", (window, _) => window.OpenSettings()),
+    ];
+
     public static IEnumerable<(string Name, IReadOnlyList<string> Faults)> All(Look look) =>
         from size in s_sizes
         from view in s_views.Select(view => (view, Scene: (Func<FakeScene>)(() => Filled(false))))
             .Concat(s_emptyViews.Select(view => (view, Scene: (Func<FakeScene>)(() => Filled(true)))))
             .Concat(s_crowdedViews.Select(view => (view, Scene: (Func<FakeScene>)Crowded)))
+            .Concat(s_fullViews.Select(view => (view, Scene: (Func<FakeScene>)Full)))
         select Run(look, size, view.view, view.Scene());
 
     static (string, IReadOnlyList<string>) Run(Look look, (int Width, int Height) size, (string Name, Action<EditorWindow, FakeScene> Show) view, FakeScene scene)
@@ -110,6 +123,26 @@ internal static class EditorViews
         return scene;
     }
 
+    static FakeScene Full()
+    {
+        var scene = Fill(new FakeScene());
+        scene.ImportText["res://rock.glb"] = "[remap]\nimporter=\"scene\"\ntype=\"PackedScene\"\n\n[params]\n" +
+            string.Concat(Enumerable.Range(0, 40).Select(at => $"meshes/option_{at}_with_a_long_name_that_keeps_going=true\n"));
+        var graph = FakeGraphSource.Sample();
+        scene.Graphs["res://logic.ograph"] = graph;
+        for (var at = 0; at < 30; at++)
+        {
+            scene.AddChild(FakeScene.Field.Handle, "Entity3D", $"Crate {at}");
+            scene.SetMetadata(FakeScene.Lamp.Handle, $"value_{at}", at);
+            scene.ExportList.Add(new ExportPreset($"Preset {at}", "macOS", $"build/preset_{at}.zip"));
+            graph.AddVariable($"count_{at}", 2);
+            graph.AddSignal($"message_{at}");
+            graph.AddFunction($"action_{at}");
+        }
+
+        return scene;
+    }
+
     static FakeScene Fill(FakeScene scene)
     {
         scene.ScriptText["res://spin.cs"] = "class Spin\n{\n    public override void _Process(double delta) { Rotation += new Vector3(0, (float)delta, 0); }\n}";
@@ -129,6 +162,22 @@ internal static class EditorViews
     }
 
     static void Select(EditorWindow window) => window.Outline.SelectedItem = window.Outline.ItemsSource!.Cast<OutlineNode>().Single().Children[0];
+
+    // The second tab of every dock, with thirty edits behind it for the History tab.
+    static void SecondTabs(EditorWindow window)
+    {
+        for (var edit = 0; edit < 30; edit++)
+        {
+            Click(window.Tools.DuplicateButton);
+        }
+
+        foreach (var dock in new[] { window.FileDock, window.InspectorDock })
+        {
+            dock.Select(1);
+        }
+    }
+
+    static void Pick(EditorWindow window, string path) => window.Scenes.Tree.SelectedItem = FileNodes(window).Single(node => node.Path == path);
 
     static void Tab(EditorWindow window, string workspace) => ClickOn(window.Bar.Tabs.Single(tab => tab.Label == workspace), window);
 
@@ -194,7 +243,7 @@ internal static class EditorViews
     }
 
     static Button ConnectButton(EditorWindow window) =>
-        window.Signals.List.GetLogicalDescendants().OfType<DockPanel>().First().Children.OfType<Button>().First();
+        window.Signals.List.GetLogicalDescendants().OfType<Button>().First(button => button.Content is "Connect…");
 
     static void Menu(EditorWindow window, string header)
     {

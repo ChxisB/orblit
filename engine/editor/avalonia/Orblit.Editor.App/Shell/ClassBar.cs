@@ -32,12 +32,11 @@ internal sealed class ClassBar : Border
         _title.Text = title ?? className;
         _engine.Text = className;
         _engine.IsVisible = _title.Text != className;
+        _title.TextTrimming = TextTrimming.CharacterEllipsis;
+        ToolTip.SetTip(this, _title.Text);
         _icon = Parts.RowIcon(EditorIcons.ForClass(className));
-        Child = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Children = { _icon, _title, _engine },
-        };
+        DockPanel.SetDock(_icon, Dock.Left);
+        Child = new DockPanel { Children = { _icon, new NamePair(_title, new Panel(), _engine) } };
     }
 
     internal string Title => _title.Text ?? "";

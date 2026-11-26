@@ -181,15 +181,11 @@ internal sealed class SignalsPane : DockPanel
             SetDock(words, Dock.Left);
             row.Children.Add(words);
         }
-        row.Children.Add(new TextBlock
-        {
-            Text = $"{signal.Name}({string.Join(", ", signal.Arguments)})",
-            FontFamily = EditorTheme.Mono,
-            FontSize = plain == signal.Name ? 12 : 10.5,
-            Foreground = plain == signal.Name ? EditorBrushes.Text : EditorBrushes.Unit,
-            VerticalAlignment = VerticalAlignment.Center,
-            TextTrimming = TextTrimming.CharacterEllipsis,
-        });
+        var engine = Parts.Trimmed($"{signal.Name}({string.Join(", ", signal.Arguments)})", $"{signal.Name}({string.Join(", ", signal.Arguments)})");
+        engine.FontFamily = EditorTheme.Mono;
+        engine.FontSize = plain == signal.Name ? 12 : 10.5;
+        engine.Foreground = plain == signal.Name ? EditorBrushes.Text : EditorBrushes.Unit;
+        row.Children.Add(engine);
         return row;
     }
 

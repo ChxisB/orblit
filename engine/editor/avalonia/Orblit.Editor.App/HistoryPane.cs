@@ -20,7 +20,7 @@ internal sealed class HistoryPane : DockPanel
     // Every time is five mono figures, so a fixed width keeps the names in one column.
     const double TimeWidth = 40;
 
-    readonly StackPanel _rows = new() { Spacing = 2, Margin = new Thickness(0, 6) };
+    readonly StackPanel _rows = new() { Spacing = 2, Margin = new Thickness(0, 6), Classes = { EditorTheme.Joined } };
     readonly StackPanel _empty = Parts.EmptyState("Past", "Nothing to undo yet", "Each change you make shows here. Click one to go back to it.");
     readonly WrapPanel _hint = new() { Margin = new Thickness(12, 4, 12, 12) };
 

@@ -66,6 +66,7 @@ internal sealed class PropertyRow : Border
             _ => ReadOnly(),
         };
         var label = new TextBlock { Text = Label, FontSize = 12, Foreground = EditorBrushes.TextSoft, Background = Brushes.Transparent, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
+        ToolTip.SetTip(label, Label);
         // A vector row has its own label.
         Child = Editor is VectorRow ? Editor : Labeled(label, Editor);
         if (property.Type is Int or Float && Editor is TextBox box)
