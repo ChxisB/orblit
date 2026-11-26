@@ -11,7 +11,7 @@ using Orblit.Editor.Bridge;
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
-/// What a debug session shows: a bar with the state of the game and the worded buttons that move it on, then while
+/// What a debug session shows: a bar with the state of the game and the icon buttons that move it on, then while
 /// the game is stopped the stack with the selected level marked, and the locals and members of that level. With no
 /// game, a line says how to start one. A button that is off says why on its card. It is built again from the
 /// debugger after every change.
@@ -21,7 +21,7 @@ internal sealed class DebuggerPanel : StackPanel
     readonly GraphDebugger _debugger;
     readonly Func<DebugPlace, string?> _stepTitle;
     readonly string _playKey;
-    readonly (string Id, string Word, string Does, string Key, DebugCommand Command)[] _buttons;
+    readonly (string Id, string Icon, string Word, string Does, string Key, DebugCommand Command)[] _buttons;
     readonly StackPanel _details = new() { Spacing = 4, Margin = new Thickness(12, 0, 12, 10) };
 
     /// <summary>The step title gives the name of a step on show, or null when the canvas does not show it.</summary>
@@ -36,13 +36,13 @@ internal sealed class DebuggerPanel : StackPanel
     }
 
     // A list of cases, so it is data. The keys are the ones the window gives each button.
-    static (string Id, string Word, string Does, string Key, DebugCommand Command)[] Buttons(KeyModifiers command) =>
+    static (string Id, string Icon, string Word, string Does, string Key, DebugCommand Command)[] Buttons(KeyModifiers command) =>
     [
-        ("pause", "Pause", "Stops the game at the next step it runs.", Parts.KeyText(new KeyGesture(Key.Y, command)), DebugCommand.Break),
-        ("continue", "Carry on", "Lets the game run until a step marked Pause here.", "F12", DebugCommand.Continue),
-        ("next", "Next step", "Runs this step and stops at the next one.", "F10", DebugCommand.Next),
-        ("step", "Go into", "Goes into the action this step runs and stops at its first step.", "F11", DebugCommand.Step),
-        ("out", "Come out", "Finishes this action and stops where it was run from.", "⇧F11", DebugCommand.Out),
+        ("pause", "Pause", "Pause", "Stops the game at the next step it runs.", Parts.KeyText(new KeyGesture(Key.Y, command)), DebugCommand.Break),
+        ("continue", "DebugContinue", "Carry on", "Lets the game run until a step marked Pause here.", "F12", DebugCommand.Continue),
+        ("next", "DebugNext", "Next step", "Runs this step and stops at the next one.", "F10", DebugCommand.Next),
+        ("step", "DebugStep", "Go into", "Goes into the action this step runs and stops at its first step.", "F11", DebugCommand.Step),
+        ("out", "DebugOut", "Come out", "Finishes this action and stops where it was run from.", "⇧F11", DebugCommand.Out),
     ];
 
     /// <summary>The control with this id, such as <c>debugger:frame:0</c>. Null when the panel has none.</summary>
@@ -94,19 +94,17 @@ internal sealed class DebuggerPanel : StackPanel
             VerticalAlignment = VerticalAlignment.Center,
         };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var (id, word, does, key, command) in _buttons)
+        foreach (var (id, mark, word, does, key, command) in _buttons)
         {
             var card = new HoverCard(word, does, key);
             var button = new Button
             {
                 Tag = $"debugger:{id}",
-                Content = Parts.Keyed(word, key),
                 IsEnabled = command == DebugCommand.Break ? _debugger.CanPause : _debugger.CanResume,
-                Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
             };
-            card.SaysWhyOff(button, WhyOff(state, command));
+            card.SaysWhyOff(Parts.Dress(button, mark, card), WhyOff(state, command));
             button.Click += (_, _) => _debugger.Send(command);
-            buttons.Children.Add(card.On(button));
+            buttons.Children.Add(button);
         }
         Grid.SetColumn(status, 1);
         Grid.SetColumn(buttons, 2);

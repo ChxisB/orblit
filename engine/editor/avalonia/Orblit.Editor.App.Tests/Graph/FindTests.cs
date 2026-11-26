@@ -1,6 +1,8 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Orblit.Editor.App.Graph;
+using Orblit.Editor.App.Shell;
 
 namespace Orblit.Editor.App.Tests.Graph;
 
@@ -256,16 +258,15 @@ public sealed class FindTests
     }
 
     [Fact]
-    public void The_find_bar_names_each_button_with_its_key_and_labels_the_bookmark_pair()
+    public void The_find_bar_names_each_button_puts_its_key_on_its_card_and_labels_the_bookmark_pair()
     {
         UiThread.Run(() =>
         {
             var canvas = Open();
-            string Words(string id) => string.Join(" ", ReferenceWindow.Texts(canvas.Find<Button>($"find:{id}")!));
+            var buttons = new[] { "previous", "next", "open_goto", "bookmark", "bookmark_previous", "bookmark_next", "close" }.Select(id => canvas.Find<Button>($"find:{id}")!).ToArray();
 
-            Assert.Equal(
-                ["Back ⇧↵", "Next ↵", "Go to number ⌘L", "Bookmark ⌘F2", "Back ⇧F2", "Next F2", "Close Esc"],
-                new[] { "previous", "next", "open_goto", "bookmark", "bookmark_previous", "bookmark_next", "close" }.Select(Words));
+            Assert.Equal(["Back", "Next", "Go to number", "Bookmark", "Back", "Next", "Close"], buttons.Select(button => button.Content));
+            Assert.Equal(["⇧↵", "↵", "⌘L", "⌘F2", "⇧F2", "F2", "Esc"], buttons.Select(button => ((HoverCard)ToolTip.GetTip(button)!).Key));
             Assert.Contains("Bookmarks", ReferenceWindow.Texts(canvas.FindBar));
             Assert.Equal("Find a step, like print", canvas.Find<TextBox>("find:text")!.PlaceholderText);
         });

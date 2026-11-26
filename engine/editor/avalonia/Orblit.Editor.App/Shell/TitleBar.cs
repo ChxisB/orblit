@@ -134,6 +134,17 @@ internal sealed class TitleBar : Grid
         EditedDot.IsVisible = edited;
     }
 
+    // Play and Stop keep their words, as the one action every user looks for. Their keys are on their cards.
+    static void Worded(Button button, string icon, HoverCard card)
+    {
+        button.Content = Parts.Worded(icon, card.Title);
+        button.Height = 26;
+        button.MinHeight = 0;
+        button.Padding = new Thickness(8, 0);
+        button.BorderThickness = new Thickness(0);
+        card.On(button);
+    }
+
     // Play this scene lives in the menu alone. No Pause, because the game runs in its own process and the editor
     // cannot pause it.
     Border RunButtons(Button play, Button playScene, Button stop, KeyModifiers command)
@@ -144,8 +155,8 @@ internal sealed class TitleBar : Grid
         playCard.SaysWhyOff(play, "Open a scene first.");
         var stopCard = new HoverCard("Stop", "Closes the game window.", Keys(Key.OemPeriod));
         stopCard.SaysWhyOff(stop, $"Nothing is playing. Press {Keys(Key.B)} first.");
-        Parts.Dress(play, "MainPlay", playCard);
-        Parts.Dress(stop, "Stop", stopCard);
+        Worded(play, "MainPlay", playCard);
+        Worded(stop, "Stop", stopCard);
         MoreButton.Flyout = new MenuFlyout
         {
             Placement = PlacementMode.BottomEdgeAlignedRight,

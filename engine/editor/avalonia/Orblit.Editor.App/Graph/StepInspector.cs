@@ -239,7 +239,7 @@ internal sealed class StepInspector : Border
         var button = new Button
         {
             Tag = id,
-            Content = card.Key is null ? card.Title : Parts.Keyed(card.Title, card.Key),
+            Content = card.Title,
             HorizontalAlignment = HorizontalAlignment.Left,
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
         };

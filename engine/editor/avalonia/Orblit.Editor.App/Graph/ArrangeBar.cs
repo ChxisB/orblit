@@ -128,7 +128,7 @@ internal sealed class ArrangeBar : Border
         var button = new Button
         {
             Tag = $"arrange:{id}",
-            Content = card.Key is null ? card.Title : Parts.Keyed(card.Title, card.Key),
+            Content = card.Title,
             VerticalAlignment = VerticalAlignment.Center,
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
         };

@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Orblit.Editor.App.Shell;
@@ -12,14 +13,17 @@ public sealed class HidePanelsTests
     static HoverCard CardOf(Control control) => Assert.IsType<HoverCard>(ToolTip.GetTip(control));
 
     [Fact]
-    public void The_button_says_hide_panels_with_its_key_and_a_card_that_says_what_happens()
+    public void The_button_is_its_icon_named_hide_panels_and_its_card_gives_the_key_and_what_happens()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var button = window.SceneTabs.PanelsButton;
 
-            Assert.Equal([SceneTabStrip.HidePanels, Parts.KeyText(new KeyGesture(Key.OemPipe, window.CommandKey))], Texts(button));
+            Assert.Empty(Texts(button));
+            Assert.Equal(SceneTabStrip.HidePanels, AutomationProperties.GetName(button));
+            Assert.Equal(SceneTabStrip.HidePanels, CardOf(button).Title);
+            Assert.Equal(Parts.KeyText(new KeyGesture(Key.OemPipe, window.CommandKey)), CardOf(button).Key);
             Assert.Equal("The view fills the window. Panels wait one key away.", CardOf(button).Line);
         });
     }
@@ -35,12 +39,12 @@ public sealed class HidePanelsTests
 
             Assert.True(window.LeftSide.IsFolded);
             Assert.True(window.RightSide.IsFolded);
-            Assert.Equal(SceneTabStrip.ShowPanels, Texts(window.SceneTabs.PanelsButton).First());
+            Assert.Equal(SceneTabStrip.ShowPanels, AutomationProperties.GetName(window.SceneTabs.PanelsButton));
             Assert.Equal("Brings the panels back as they were.", CardOf(window.SceneTabs.PanelsButton).Line);
 
             Click(window.SceneTabs.PanelsButton);
 
-            Assert.Equal(SceneTabStrip.HidePanels, Texts(window.SceneTabs.PanelsButton).First());
+            Assert.Equal(SceneTabStrip.HidePanels, AutomationProperties.GetName(window.SceneTabs.PanelsButton));
         });
     }
 
@@ -69,10 +73,10 @@ public sealed class HidePanelsTests
             var window = OpenAtReferenceSize();
 
             ClickOn(window.Bar.Tabs.Single(tab => tab.Label == TitleBar.Script), window);
-            Assert.Equal(SceneTabStrip.ShowPanels, Texts(window.SceneTabs.PanelsButton).First());
+            Assert.Equal(SceneTabStrip.ShowPanels, AutomationProperties.GetName(window.SceneTabs.PanelsButton));
 
             ClickOn(window.Bar.Tabs.Single(tab => tab.Label == TitleBar.Spatial), window);
-            Assert.Equal(SceneTabStrip.HidePanels, Texts(window.SceneTabs.PanelsButton).First());
+            Assert.Equal(SceneTabStrip.HidePanels, AutomationProperties.GetName(window.SceneTabs.PanelsButton));
         });
     }
 }

@@ -1,5 +1,6 @@
 using System.Numerics;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Controls.Presenters;
@@ -190,16 +191,17 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void Every_tool_shows_its_word_and_its_key()
+    public void Every_tool_is_its_icon_alone_with_its_name_and_key_on_its_card()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
+            var tools = Tools(window).ToArray();
 
+            Assert.All(tools, tool => Assert.Empty(Texts(tool)));
+            Assert.Equal(["Pick", "Move", "Turn", "Resize", "More", "Local", "Snap", "Lock", "Group", "Measure"], tools.Select(AutomationProperties.GetName));
             // Headless runs take Control as the command key.
-            Assert.Equal(
-                ["Pick Q", "Move W", "Turn E", "Resize R", "More", "Local T", "Snap Y", "Lock ⌃L", "Group ⌃G", "Measure"],
-                Tools(window).Select(tool => string.Join(" ", Texts(tool))));
+            Assert.Equal(["Q", "W", "E", "R", null, "T", "Y", "⌃L", "⌃G", null], tools.Select(tool => ((HoverCard)ToolTip.GetTip(tool)!).Key));
         });
     }
 
@@ -408,10 +410,11 @@ public sealed class ViewportAreaTests
             Assert.IsType<Border>(items[1]);
             Assert.Equal(["PreviewSun", "PreviewEnvironment"], previews.Select(preview => preview.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName));
             Assert.Equal([true, true], previews.Select(preview => preview.IsChecked == true));
-            Assert.Equal(["Sun", "Sky"], previews.Select(preview => string.Join(" ", Texts(preview))));
+            Assert.Equal(["Sun", "Sky"], previews.Select(AutomationProperties.GetName));
             Assert.IsType<Border>(items[^2]);
             Assert.Same(window.Center.Overlay.ZoomToButton, items[^1]);
-            Assert.Equal(["Zoom to it", "F"], Texts(window.Center.Overlay.ZoomToButton));
+            Assert.Equal("Zoom to it", AutomationProperties.GetName(window.Center.Overlay.ZoomToButton));
+            Assert.Equal("F", ((HoverCard)ToolTip.GetTip(window.Center.Overlay.ZoomToButton)!).Key);
         });
     }
 

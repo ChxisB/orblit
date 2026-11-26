@@ -135,10 +135,8 @@ internal sealed class ScriptView : Border
             }
         };
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
-        var saveKey = Parts.KeyText(new KeyGesture(Key.S, command));
-        _save.Content = Parts.Keyed("Save", saveKey);
-        var save = new HoverCard("Save", "Writes the script to its file.", saveKey);
-        save.SaysWhyOff(save.On(_save), "Nothing new to save.");
+        var save = new HoverCard("Save", "Writes the script to its file.", Parts.KeyText(new KeyGesture(Key.S, command)));
+        save.SaysWhyOff(Parts.Dress(_save, "Save", save), "Nothing new to save.");
         var find = new HoverCard("Find", "Finds words in this script.", Parts.KeyText(new KeyGesture(Key.F, command)));
         find.SaysWhyOff(Parts.Dress(_find, "Search", find), "Open a script first.");
         var check = new HoverCard("Check for problems", "Saves, then builds the project's C# and lists what is wrong.", Parts.KeyText(CheckKey));

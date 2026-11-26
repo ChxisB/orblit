@@ -90,8 +90,8 @@ internal sealed class GameView : Border
 
         _run = PlayButton(Keys(Key.B));
         _play = PlayButton(Keys(Key.B));
-        _playScene = Keyed("Play this scene", "Starts the scene open in the 3D view, in its own window.", Keys(Key.R), EditorTheme.Ghost);
-        _stop = Keyed("Stop", "Closes the game window. Your scene stays as it was.", Keys(Key.OemPeriod), EditorTheme.Ghost);
+        _playScene = Worded("Play this scene", "Starts the scene open in the 3D view, in its own window.", Keys(Key.R), EditorTheme.Ghost);
+        _stop = Worded("Stop", "Closes the game window. Your scene stays as it was.", Keys(Key.OemPeriod), EditorTheme.Ghost);
         _pill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _status } };
         _run.Click += (_, _) => RunRequested?.Invoke();
         _play.Click += (_, _) => RunRequested?.Invoke();
@@ -374,7 +374,7 @@ internal sealed class GameView : Border
 
     static Button PlayButton(string key)
     {
-        var button = Keyed("Play", "Starts the scene Play settings pick, in its own window. Press again to start over.", key, EditorTheme.Primary);
+        var button = Worded("Play", "Starts the scene Play settings pick, in its own window. Press again to start over.", key, EditorTheme.Primary);
         ((HoverCard)ToolTip.GetTip(button)!).SaysWhyOff(button, "Open a project first.");
         return button;
     }
@@ -388,8 +388,8 @@ internal sealed class GameView : Border
         return button;
     }
 
-    static Button Keyed(string word, string line, string key, string look) =>
-        new HoverCard(word, line, key).On(new Button { Classes = { EditorTheme.TextButton, EditorTheme.Small, look }, VerticalAlignment = VerticalAlignment.Center, Content = Parts.Keyed(word, key) });
+    static Button Worded(string word, string line, string key, string look) =>
+        new HoverCard(word, line, key).On(new Button { Classes = { EditorTheme.TextButton, EditorTheme.Small, look }, VerticalAlignment = VerticalAlignment.Center, Content = word });
 
     static StackPanel Buttons(params Button[] buttons)
     {

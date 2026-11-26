@@ -123,7 +123,7 @@ public sealed class ScriptViewTests
     }
 
     [Fact]
-    public void Save_is_a_small_primary_button_that_holds_its_whole_key()
+    public void Save_is_a_small_primary_icon_with_its_key_on_its_card()
     {
         UiThread.Run(() =>
         {
@@ -133,10 +133,10 @@ public sealed class ScriptViewTests
             view.UpdateLayout();
 
             Assert.Same(EditorBrushes.Accent, view.SaveButton.Background);
-            Assert.Equal(26, view.SaveButton.Bounds.Height);
-            var key = view.SaveButton.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "⌘S");
-            var box = BoxOf(key, view.SaveButton);
-            Assert.True(box.Top >= 1 && box.Bottom <= view.SaveButton.Bounds.Height - 1, $"the key lies at {box} in a button {view.SaveButton.Bounds.Height} high");
+            Assert.Equal((26, 26), (view.SaveButton.Bounds.Width, view.SaveButton.Bounds.Height));
+            Assert.Equal("Save", view.SaveButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
+            Assert.Equal("Save", AutomationProperties.GetName(view.SaveButton));
+            Assert.Equal("⌘S", ((HoverCard)ToolTip.GetTip(view.SaveButton)!).Key);
         });
     }
 

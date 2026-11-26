@@ -333,16 +333,19 @@ internal static class Parts
     }
 
     /// <summary>
-    /// Gives a tool its icon, the card's title as its word and the card's key, and puts the card on it. The tool
-    /// keeps the 26 pixel height of an icon button.
+    /// Gives a tool its icon alone and puts the card on it. The card gives the tool's name and key on hover, so a
+    /// bar keeps its room. The tool is the 26 pixel square of an icon button, and screen readers read the card's
+    /// title.
     /// </summary>
     public static T Dress<T>(T button, string icon, HoverCard card) where T : Button
     {
-        button.Content = Worded(icon, card.Title, card.Key);
+        button.Content = new EditorIcon(icon);
         button.Height = 26;
+        button.MinWidth = 0;
         button.MinHeight = 0;
-        button.Padding = new Thickness(8, 0);
+        button.Padding = new Thickness(5);
         button.BorderThickness = new Thickness(0);
+        AutomationProperties.SetName(button, card.Title);
         return card.On(button);
     }
 

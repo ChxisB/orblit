@@ -125,7 +125,8 @@ internal sealed class GraphView : Border
         _fileButton.Flyout = _menu;
         SaveAllButton.Click += (_, _) => Save();
         CloseButton.Click += (_, _) => CloseCurrent();
-        _saveButton.Content = Parts.Keyed("Save", Parts.KeyText(new KeyGesture(Key.S, command)));
+        var save = new HoverCard("Save", "Writes the graph to its file.", Parts.KeyText(new KeyGesture(Key.S, command)));
+        save.SaysWhyOff(Parts.Dress(_saveButton, "Save", save), "Nothing new to save.");
         _saveButton.Click += (_, _) => SaveCurrent();
         Dress(_findButton, "Search", new HoverCard("Find a step", "Finds steps by their names and numbers.", Parts.KeyText(new KeyGesture(Key.F, command))));
         Dress(_bookmarkButton, "Favorites", new HoverCard("Bookmark", "Marks the picked step, so F2 can find it again.", Parts.KeyText(new KeyGesture(Key.F2, command))));
@@ -272,7 +273,7 @@ internal sealed class GraphView : Border
 
     static bool Failed(Exception error) => error is IOException or UnauthorizedAccessException;
 
-    // A graph tool with its word and key, whose card says what to do first while it is off.
+    // A graph tool as its icon. Its card gives its name and key, and says what to do first while it is off.
     static void Dress(Button button, string icon, HoverCard card) => card.SaysWhyOff(Parts.Dress(button, icon, card), "Open a graph first.");
 
     static Button MenuButton(string text) => new() { Content = text, Classes = { EditorTheme.TextButton, EditorTheme.Segment } };

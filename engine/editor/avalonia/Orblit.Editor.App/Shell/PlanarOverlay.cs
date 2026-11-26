@@ -20,7 +20,7 @@ internal enum PlanarTool { Select, Move, Rotate, Scale, Pan, }
 /// <summary>
 /// What floats over the viewport in the 2D workspace: the grid, rulers on the top and left that follow the view,
 /// the tool pill at the top left, the View menu at the top right and the zoom pill at the bottom right. Each tool
-/// shows its word and its key as the 3D bar does. In Pick a drag on the mark moves the selection. In Move, Turn and
+/// shows its icon, with its name and key on its card, as the 3D bar does. In Pick a drag on the mark moves the selection. In Move, Turn and
 /// Resize a drag anywhere moves, turns or resizes it, and in Pan every drag pans. Snap, Lock and Group press the 3D
 /// toolbar's buttons and show what they show. A scene that has nothing the 2D view draws gets a note over the whole
 /// view that says why and offers Go to 3D, Open a 2D scene and Add a 2D thing. The overlay has no fill, so a press
@@ -249,7 +249,7 @@ internal sealed class PlanarOverlay : Grid
 
     static bool Draws(IEditorScene scene, OutlineNode node) => scene.IsCanvasItem(node.Handle) || node.Children.Any(child => Draws(scene, child));
 
-    // The four modes and Pan, each with its word, its key and what a drag does in it.
+    // The four modes and Pan, each card with its name, its key and what a drag does in it.
     Control[] DressTools(string hold) =>
     [
         Parts.Dress(_select, "ToolSelect", new HoverCard("Pick", "Click a thing to pick it. Drag its mark to move it.", "Q", "Select mode")),
@@ -260,7 +260,7 @@ internal sealed class PlanarOverlay : Grid
         Parts.Dress(_pan, "ToolPan", new HoverCard("Pan", "Drag to look around. Nothing in the scene moves.", engine: "Pan mode")),
     ];
 
-    // The View pill at the top right and the zoom pill at the bottom right. Each zoom button shows its key.
+    // The View pill at the top right and the zoom pill at the bottom right. Each zoom button's card gives its key.
     Border[] ViewPills(KeyModifiers command)
     {
         var actual = new KeyGesture(Key.D0, command);

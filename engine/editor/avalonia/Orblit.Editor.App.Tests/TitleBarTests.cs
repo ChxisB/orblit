@@ -228,14 +228,16 @@ public sealed class TitleBarTests
     }
 
     [Fact]
-    public void Play_and_Stop_show_their_icon_word_and_key()
+    public void Play_and_Stop_show_their_icon_and_word_with_the_key_on_the_card()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(["Play", Keys(window, Key.B)], Words(window.PlayButton));
-            Assert.Equal(["Stop", Keys(window, Key.OemPeriod)], Words(window.StopButton));
+            Assert.Equal(["Play"], Words(window.PlayButton));
+            Assert.Equal(["Stop"], Words(window.StopButton));
+            Assert.Equal(Keys(window, Key.B), CardOf(window.PlayButton).Key);
+            Assert.Equal(Keys(window, Key.OemPeriod), CardOf(window.StopButton).Key);
             Assert.Equal("MainPlay", window.PlayButton.GetLogicalDescendants().OfType<EditorIcon>().Single().IconName);
         });
     }

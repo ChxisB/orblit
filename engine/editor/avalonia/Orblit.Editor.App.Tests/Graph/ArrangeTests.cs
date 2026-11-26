@@ -71,7 +71,7 @@ public sealed class ArrangeTests
             var rows = ((StackPanel)canvas.ArrangeBar.Child!).Children;
             Assert.True(canvas.ArrangeBar.IsVisible);
             Assert.Equal(
-                ["Line up Spread Put in a box ⌘G", "Tidy up Straighten wires Pick joined steps Open up the call Make an action"],
+                ["Line up Spread Put in a box", "Tidy up Straighten wires Pick joined steps Open up the call Make an action"],
                 rows.Cast<StackPanel>().Select(row => string.Join(" ", row.Children.Select(Said))));
             Assert.Equal(
                 ["Left edges", "Centers across", "Right edges", "Top edges", "Centers down", "Bottom edges", "Side by side", "One under another", "Even gaps across", "Even gaps down"],

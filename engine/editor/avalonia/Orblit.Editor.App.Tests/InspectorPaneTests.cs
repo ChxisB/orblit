@@ -53,18 +53,19 @@ public sealed class InspectorPaneTests
     }
 
     [Fact]
-    public void The_search_row_holds_the_box_and_the_worded_more_button()
+    public void The_search_row_holds_the_box_and_the_more_icon()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var pane = window.InspectorPane;
 
-            AssertBox(3123, 122, 231, 28, BoxOf(pane.FilterBox, window));
-            AssertBox(3360, 123, 67, 26, BoxOf(pane.MoreButton, window));
+            AssertBox(3123, 122, 272, 28, BoxOf(pane.FilterBox, window));
+            AssertBox(3401, 123, 26, 26, BoxOf(pane.MoreButton, window));
             Assert.Equal("Find a setting", pane.FilterBox.PlaceholderText);
             Assert.Equal("More", Card(pane.MoreButton).Title);
-            Assert.Contains(pane.MoreButton.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "More");
+            Assert.Equal("More", AutomationProperties.GetName(pane.MoreButton));
+            Assert.Empty(pane.MoreButton.GetVisualDescendants().OfType<TextBlock>());
         });
     }
 

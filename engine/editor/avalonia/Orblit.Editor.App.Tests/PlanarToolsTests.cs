@@ -1,5 +1,6 @@
 using System.Numerics;
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Headless;
 using Avalonia.Input;
@@ -269,16 +270,17 @@ public sealed class PlanarToolsTests
     }
 
     [Fact]
-    public void Every_2D_tool_shows_its_word_and_its_key()
+    public void Every_2D_tool_is_its_icon_alone_with_its_name_and_key_on_its_card()
     {
         UiThread.Run(() =>
         {
             var (window, _, _) = OpenIn2D();
+            var tools = window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().ToArray();
 
+            Assert.All(tools, tool => Assert.Empty(Texts(tool)));
+            Assert.Equal(["Pick", "Move", "Turn", "Resize", "Pan", "Snap", "Grid", "Lock", "Group"], tools.Select(AutomationProperties.GetName));
             // Headless runs take Control as the command key.
-            Assert.Equal(
-                ["Pick Q", "Move W", "Turn E", "Resize R", "Pan", "Snap Y", "Grid", "Lock ⌃L", "Group ⌃G"],
-                window.Center.Planar.Tools.GetLogicalDescendants().OfType<FixedToggle>().Select(tool => string.Join(" ", Texts(tool))));
+            Assert.Equal(["Q", "W", "E", "R", null, "Y", null, "⌃L", "⌃G"], tools.Select(tool => ((HoverCard)ToolTip.GetTip(tool)!).Key));
         });
     }
 

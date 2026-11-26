@@ -45,7 +45,7 @@ internal sealed class GraphCanvas : Grid
     readonly Border _offer;
     (PinRef A, PinRef B) _offered;
     readonly TextBlock _empty = new() { Text = "This script has no function yet.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
-    readonly Button _showAll = new() { Content = Parts.Keyed("Show all", "F"), Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small } };
+    readonly Button _showAll = new() { Content = "Show all", Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small } };
     readonly TextBlock _zoomWord = new() { Text = "100%", VerticalAlignment = VerticalAlignment.Center };
     readonly Button _zoom;
     readonly MenuItem _zoomToPicked;

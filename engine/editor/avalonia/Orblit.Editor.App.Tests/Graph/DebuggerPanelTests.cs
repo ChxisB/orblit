@@ -1,9 +1,11 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Tests.Graph;
@@ -49,12 +51,15 @@ public sealed class DebuggerPanelTests
     }
 
     [Fact]
-    public void Every_run_button_has_a_word_and_its_key_in_the_order_a_pause_is_stepped_through()
+    public void Every_run_button_is_its_icon_with_its_name_and_key_on_its_card_in_the_order_a_pause_is_stepped_through()
     {
         UiThread.Run(() =>
         {
             var (_, _, panel) = Open();
-            var buttons = panel.GetVisualDescendants().OfType<Button>().Where(button => button.Tag is string id && !id.StartsWith("debugger:frame:", StringComparison.Ordinal));
+            var buttons = panel.GetVisualDescendants().OfType<Button>().Where(button => button.Tag is string id && !id.StartsWith("debugger:frame:", StringComparison.Ordinal)).ToArray();
+
+            Assert.Equal(["Pause", "DebugContinue", "DebugNext", "DebugStep", "DebugOut"], buttons.Select(button => ((EditorIcon)button.Content!).IconName));
+            Assert.Equal(["Pause", "Carry on", "Next step", "Go into", "Come out"], buttons.Select(AutomationProperties.GetName));
 
             Assert.Equal(
                 [("Pause", "⌘Y"), ("Carry on", "F12"), ("Next step", "F10"), ("Go into", "F11"), ("Come out", "⇧F11")],

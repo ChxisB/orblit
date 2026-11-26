@@ -10,7 +10,7 @@ namespace Orblit.Editor.App.Graph;
 
 /// <summary>
 /// The bar that finds steps by their names and numbers, goes to a step by its number and walks the bookmarks. Each
-/// button shows its key. Enter in the find box shows the next match and Shift and Enter the previous one. Escape
+/// button's card gives its key. Enter in the find box shows the next match and Shift and Enter the previous one. Escape
 /// closes the bar.
 /// </summary>
 internal sealed class FindBar : Border
@@ -103,7 +103,7 @@ internal sealed class FindBar : Border
         var button = new Button
         {
             Tag = $"find:{name.Id}",
-            Content = Parts.Keyed(name.Word, name.Key),
+            Content = name.Word,
             VerticalAlignment = VerticalAlignment.Center,
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
         };

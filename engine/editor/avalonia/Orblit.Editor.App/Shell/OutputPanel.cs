@@ -68,8 +68,8 @@ internal sealed class OutputPanel : Border
         InnerRightContent = Parts.SearchIcon(),
     };
     readonly Chip[] _chips = [.. s_levels.Select(level => new Chip(level.Icon, level.Tint, level.Text, new HoverCard(level.Word, level.Line)))];
-    readonly Button _copy = new HoverCard("Copy all", "Copies every line, to paste in a bug report.").On(Worded("ActionCopy", "Copy all"));
-    readonly Button _clear = new HoverCard("Clear", "Empties the list. New lines still come in.").On(Worded("Clear", "Clear"));
+    readonly Button _copy = Parts.Dress(new Button { VerticalAlignment = VerticalAlignment.Center }, "ActionCopy", new HoverCard("Copy all", "Copies every line, to paste in a bug report."));
+    readonly Button _clear = Parts.Dress(new Button { VerticalAlignment = VerticalAlignment.Center }, "Clear", new HoverCard("Clear", "Empties the list. New lines still come in."));
     // The time each line came, kept in step with the lines. The engine writes no time of its own.
     readonly List<DateTimeOffset> _times = [];
     IReadOnlyList<string> _lines = [];
@@ -250,13 +250,6 @@ internal sealed class OutputPanel : Border
     }
 
     /// <summary>A level's switch: its mark and how many lines it has. It is lit while the level's lines show.</summary>
-    static Button Worded(string icon, string word) => new()
-    {
-        Classes = { EditorTheme.TextButton, EditorTheme.Small },
-        VerticalAlignment = VerticalAlignment.Center,
-        Content = Parts.Worded(icon, word),
-    };
-
     internal sealed class Chip : ToggleButton
     {
         const double ChipHeight = 24;

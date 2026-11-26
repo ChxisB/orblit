@@ -16,8 +16,8 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>
 /// The tools that float over the viewport. Two pills at the top left wrap onto a second line in a narrow view. The
 /// first holds the Pick, Move, Turn and Resize modes and the More menu of All handles, Free turn, Move alone and
-/// Pick from a list. The second holds Local, Snap and its steps, Lock, Group and Measure. Each tool shows its word
-/// and its key, and its card says what it does. A chip at the bottom left names the selection and holds what acts
+/// Pick from a list. The second holds Local, Snap and its steps, Lock, Group and Measure. Each tool shows its icon,
+/// and its card gives its name, its key and what it does. A chip at the bottom left names the selection and holds what acts
 /// on it: Make it solid for a mesh, Zoom to it and Put it back. The modes light one at a time, and More is lit while
 /// All handles is the mode. Pick from a list and Measure change what a click does, so they light one at a time and
 /// a press on the lit one puts it out. The pills have no fill between them, so a press there goes to the viewport.

@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
 using Avalonia.Input;
@@ -30,8 +31,7 @@ internal sealed class SceneTabStrip : Grid
     readonly TextBlock _name = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", ""));
     readonly Button _add = Parts.IconButton("Add", "");
-    readonly Button _panels = new() { Height = 26, MinHeight = 0, Padding = new Thickness(8, 0), BorderThickness = new Thickness(0) };
-    readonly TextBlock _panelsWord;
+    readonly Button _panels = new();
     readonly HoverCard _hide;
     readonly HoverCard _show;
     readonly MenuItem _find;
@@ -49,10 +49,7 @@ internal sealed class SceneTabStrip : Grid
         new HoverCard("New scene…", "Makes an empty scene in a new tab.", Parts.KeyText(newKey)).On(_add);
         new HoverCard("Close", "Asks first if there are unsaved changes.", Parts.KeyText(closeKey)).On(_close);
         _show = new HoverCard(ShowPanels, "Brings the panels back as they were.", key);
-        var keyed = Parts.Keyed(HidePanels, key);
-        _panelsWord = (TextBlock)keyed.Children[0];
-        _panels.Content = keyed;
-        _hide.On(_panels);
+        Parts.Dress(_panels, "DistractionFree", _hide);
         _tab.Child = new StackPanel
         {
             Orientation = Orientation.Horizontal,
@@ -103,7 +100,7 @@ internal sealed class SceneTabStrip : Grid
     /// <summary>Names the panels button for what a press does: Show panels while every side is folded, else Hide panels.</summary>
     internal void ShowPanelsHidden(bool hidden)
     {
-        _panelsWord.Text = hidden ? ShowPanels : HidePanels;
+        AutomationProperties.SetName(_panels, hidden ? ShowPanels : HidePanels);
         (hidden ? _show : _hide).On(_panels);
     }
 

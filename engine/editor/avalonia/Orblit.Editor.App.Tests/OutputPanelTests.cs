@@ -1,3 +1,4 @@
+using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input.Platform;
@@ -230,7 +231,8 @@ public sealed class OutputPanelTests
             Dispatcher.UIThread.RunJobs();
 
             Assert.Equal("ActionCopy", window.Center.Output.CopyButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal(["Copy all"], Texts(window.Center.Output.CopyButton));
+            Assert.Empty(Texts(window.Center.Output.CopyButton));
+            Assert.Equal("Copy all", AutomationProperties.GetName(window.Center.Output.CopyButton));
             Assert.Equal("Copies every line, to paste in a bug report.", ((HoverCard)ToolTip.GetTip(window.Center.Output.CopyButton)!).Line);
             Assert.Equal("one\nERROR: two", await window.Clipboard!.TryGetTextAsync());
             Assert.Equal("Copied the output.", window.Status);
@@ -360,7 +362,7 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
-    public void The_clear_button_has_the_clear_icon_a_word_and_a_card()
+    public void The_clear_button_is_the_clear_icon_alone_with_its_name_on_a_card()
     {
         UiThread.Run(() =>
         {
@@ -369,7 +371,9 @@ public sealed class OutputPanelTests
             var button = window.Center.Output.ClearButton;
 
             Assert.Equal("Clear", button.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
-            Assert.Equal(["Clear"], Texts(button));
+            Assert.Empty(Texts(button));
+            Assert.Equal("Clear", AutomationProperties.GetName(button));
+            Assert.Equal("Clear", ((HoverCard)ToolTip.GetTip(button)!).Title);
             Assert.Equal("Empties the list. New lines still come in.", ((HoverCard)ToolTip.GetTip(button)!).Line);
         });
     }
