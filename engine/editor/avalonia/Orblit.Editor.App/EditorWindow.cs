@@ -729,8 +729,26 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             }
         }
 
+        // The menu bar stays in reach above a dialog's veil, so its items wait for the dialog as the keys do. Quit
+        // still closes, as the window's close button does.
+        foreach (var (name, action) in actions.Where(pair => pair.Key != "Quit Orblit").ToList())
+        {
+            actions[name] = action with { Run = () => RunUnveiled(action.Run) };
+        }
+
         return actions;
     }
+
+    void RunUnveiled(Action run)
+    {
+        if (!Veiled)
+        {
+            run();
+        }
+    }
+
+    // An open dialog or picker covers the window, and nothing behind it may act.
+    bool Veiled => Content is Panel { Children: var layers } && layers.Any(layer => layer is Dialog or Picker && layer.IsVisible);
 
     // A shortcut presses the button it stands for, so a key and a click run the same code. A button that is
     // off leaves the key unhandled.
@@ -1165,16 +1183,10 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
     void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
 
-    public void CopyVersion() => Copy(BottomBar.Version, BottomBar.Version);
+    // The app menu of macOS stays in reach under a dialog's veil, so its items wait for the dialog to close.
+    public void CopyVersion() => RunUnveiled(() => Copy(BottomBar.Version, BottomBar.Version));
 
-    // The app menu of macOS stays in reach under a dialog's veil, so Settings waits for the dialog to close.
-    public void OpenSettings()
-    {
-        if (Content is Panel { Children: var layers } && !layers.Any(layer => layer is Dialog or Picker && layer.IsVisible))
-        {
-            _settings.Open();
-        }
-    }
+    public void OpenSettings() => RunUnveiled(_settings.Open);
 
     // The menu keys come first, by menu. The cards of the window's own buttons add the keys the menus lack.
     void OpenKeys()

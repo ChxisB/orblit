@@ -243,9 +243,15 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
 
     bool Veiled => _panel.Dialog.IsVisible || _settings.Dialog.IsVisible || _keys.Dialog.IsVisible || _rename.Dialog.IsVisible;
 
-    public void CopyVersion() => Copy(BottomBar.Version);
+    // The app menu of macOS stays in reach under a dialog's veil, so its items wait for the dialog to close.
+    public void CopyVersion()
+    {
+        if (!Veiled)
+        {
+            Copy(BottomBar.Version);
+        }
+    }
 
-    // The app menu of macOS stays in reach under a dialog's veil, so Settings waits for the dialog to close.
     public void OpenSettings()
     {
         if (!Veiled)

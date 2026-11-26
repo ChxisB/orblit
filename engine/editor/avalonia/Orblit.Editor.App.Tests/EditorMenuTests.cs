@@ -760,6 +760,25 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
+    public void Menu_items_wait_while_the_keys_sheet_is_open()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var bar = NativeMenu.GetMenu(window)!;
+
+            Press(Find(bar, "All keys"));
+            Press(Find(bar, "New scene…"));
+            Press(Find(bar, "Search"));
+            Assert.False(window.NewScene.Dialog.IsVisible || window.Search.Picker.IsVisible);
+
+            window.Keys.Dialog.MainButton.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Press(Find(bar, "New scene…"));
+            Assert.True(window.NewScene.Dialog.IsVisible);
+        });
+    }
+
+    [Fact]
     public void A_question_mark_opens_the_keys_sheet_but_not_from_a_text_box()
     {
         UiThread.Run(() =>
