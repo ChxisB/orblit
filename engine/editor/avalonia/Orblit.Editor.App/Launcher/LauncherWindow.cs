@@ -153,7 +153,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     /// <summary>The card menu's item that opens a project's folder, named for this system's file browser.</summary>
     internal static string ShowInFolder { get; } = OperatingSystem.IsMacOS() ? "Show in Finder" : OperatingSystem.IsWindows() ? "Show in Explorer" : "Show in file manager";
 
-    internal KeyModifiers CommandKey =>this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
+    internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
 
     internal TextBlock Fault => _fault;
 
