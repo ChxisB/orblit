@@ -371,6 +371,34 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
+    public void A_widened_side_gets_its_width_back_after_a_small_window_and_a_fold()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            var right = ((Grid)window.RightSide.Parent!).ColumnDefinitions[4];
+            double WidthAt(double windowWidth)
+            {
+                window.Width = windowWidth;
+                window.UpdateLayout();
+                return right.Width.Value;
+            }
+
+            // What a drag on the splitter does.
+            right.Width = new GridLength(900);
+            window.UpdateLayout();
+            Assert.True(WidthAt(1280) < 900);
+
+            window.RightSide.Fold(true);
+            window.UpdateLayout();
+            window.RightSide.Fold(false);
+            window.UpdateLayout();
+
+            Assert.Equal(900, WidthAt(3440));
+        });
+    }
+
+    [Fact]
     public void The_inspector_scrolls_inside_its_dock()
     {
         UiThread.Run(() =>
