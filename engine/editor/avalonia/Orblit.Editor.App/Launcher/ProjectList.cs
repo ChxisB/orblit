@@ -15,7 +15,7 @@ internal sealed class ProjectList(string file)
 
     // The engine's data folder on each system. .NET maps LocalApplicationData to Application Support on macOS
     // and to the XDG data folder on Linux, where the engine names its folder in lower case.
-    static string DataFolder() => OperatingSystem.IsWindows()
+    public static string DataFolder() => OperatingSystem.IsWindows()
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Orblit")
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), OperatingSystem.IsMacOS() ? "Orblit" : "orblit");
 

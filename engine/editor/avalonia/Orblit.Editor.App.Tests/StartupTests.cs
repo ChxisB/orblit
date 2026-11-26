@@ -86,6 +86,20 @@ public sealed class StartupTests
     }
 
     [Fact]
+    public void A_record_folder_that_cannot_be_made_does_not_stop_the_start()
+    {
+        var file = Path.GetTempFileName();
+        try
+        {
+            StartupProfile.Start(Path.Combine(file, "inside"));
+        }
+        finally
+        {
+            File.Delete(file);
+        }
+    }
+
+    [Fact]
     public void A_project_on_disk_lists_its_name_files_and_kinds()
     {
         var folder = Directory.CreateTempSubdirectory().FullName;
