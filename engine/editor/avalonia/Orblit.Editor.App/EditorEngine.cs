@@ -536,9 +536,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     // A copy keeps Stop on after the first game closes, so no copy runs on out of reach.
     public bool IsPlaying => _game is { HasExited: false } || _copies.Exists(copy => !copy.HasExited);
 
-    // Stop drops the game, so a code read here is one the game chose or a crash gave it.
-    // shortcut: under netcoredbg this is the debugger's code, not the game's. Read the game's from the debug channel if a C# crash must say so.
-    public bool EndedWithError => _game is { HasExited: true } game && game.ExitCode != 0;
+    // Stop drops the game, so a code read here is one the game chose or a crash gave it. Under netcoredbg the process
+    // is the debugger, so the game's own code comes from the debug channel. A debugger that dies first gives its own.
+    public bool EndedWithError => _game is { HasExited: true } game && (_csharp.ExitCode ?? game.ExitCode) != 0;
 
     // Under netcoredbg the process Play started is netcoredbg, and the game is its child.
     public int? GameId => _game is { HasExited: false } game ? _csharp.ProcessId ?? game.Id : null;
