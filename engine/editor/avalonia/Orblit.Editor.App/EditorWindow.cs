@@ -258,6 +258,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
     internal DockTabs InspectorDock => _inspectorDock;
 
+    internal DockArea Docks => _docks;
+
     internal DockSide LeftSide => _docks.Left;
 
     internal DockSide RightSide => _docks.Right;
@@ -783,12 +785,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             actions[name] = new(() => toggle.IsChecked = toggle.IsChecked != true, Checked: toggle.GetObservable(ToggleButton.IsCheckedProperty, on => on == true));
         }
 
-        foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
+        foreach (var title in new[] { _sceneDock, _fileDock, _inspectorDock }.SelectMany(dock => dock.Titles))
         {
-            foreach (var title in dock.Titles)
-            {
-                actions[title] = new(() => _docks.ToggleTab(dock, title), Checked: dock.Shown(title));
-            }
+            actions[title] = new(() => _docks.ToggleTab(title), Checked: _docks.Shown(title));
         }
 
         // The menu bar stays in reach above a dialog's veil, so its items wait for the dialog as the keys do. Quit
@@ -1236,12 +1235,12 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _sceneTabs.CloseButton.Click += (_, _) => Leave("close", () => Change(() => _scene!.Close()));
         _sceneTabs.ShowInFilesButton.Click += (_, _) =>
         {
-            _docks.Show(_fileDock, 0);
+            _docks.Show("Files");
             _scenes.Reveal(_scene!.SceneFile);
         };
         _graph.ShowInFilesButton.Click += (_, _) =>
         {
-            _docks.Show(_fileDock, 0);
+            _docks.Show("Files");
             _scenes.Reveal(_graph.Current!);
         };
     }
@@ -1337,7 +1336,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
                 break;
             case FileKind.Imported:
                 _import.Open(resourcePath);
-                _docks.Show(_sceneDock, 1);
+                _docks.Show("Import");
                 break;
             default:
                 Open(resourcePath);

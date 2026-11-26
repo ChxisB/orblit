@@ -6,12 +6,13 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The body under the title bar: the middle, with groups of panels in four places round it and a rail at each edge.
-/// A group moves, floats and collapses here. The place each group is made with is its home.
+/// A group moves, floats and collapses here, and a panel moves from group to group. The groups it is made with, and
+/// their tabs and places, are the layout Reset gives back.
 /// </summary>
 internal sealed class DockArea : Grid
 {
-    readonly DockTabs[] _groups;
-    readonly Dictionary<DockTabs, DockSlot> _homes;
+    readonly List<DockTabs> _groups;
+    readonly (DockTabs Group, DockTab[] Tabs, DockSlot Slot)[] _homes;
     readonly Dictionary<DockTabs, Window> _floats = [];
     readonly Dictionary<DockSlot, Border> _places = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
     readonly SideColumns _columns = new();
@@ -22,9 +23,10 @@ internal sealed class DockArea : Grid
 
     public DockArea(Control center, params DockTabs[] groups)
     {
-        _groups = groups;
-        _homes = groups.ToDictionary(group => group, group => group.Slot);
+        _groups = [.. groups];
+        _homes = [.. groups.Select(group => (group, group.Tabs.ToArray(), group.Slot))];
         _collapsed = _users;
+        Middle = center;
         Margin = new Thickness(Gaps.Item, 0, Gaps.Item, Gaps.Item);
         ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto");
         Left = new DockSide(_places[DockSlot.UpperLeft], _places[DockSlot.LowerLeft]);
@@ -41,6 +43,11 @@ internal sealed class DockArea : Grid
         SetColumn(_columns, 1);
         SetColumn(Right.Rail, 2);
         Children.AddRange([Left.Rail, _columns, Right.Rail]);
+        foreach (var tab in groups.SelectMany(group => group.Tabs))
+        {
+            TabDrag.Follow(tab, this);
+        }
+
         Wire();
         Refresh();
     }
@@ -54,6 +61,8 @@ internal sealed class DockArea : Grid
     internal DockSide Left { get; }
 
     internal DockSide Right { get; }
+
+    internal Control Middle { get; }
 
     /// <summary>The narrowest the middle may get, as what it shows needs.</summary>
     internal double LeastMiddle
@@ -90,23 +99,73 @@ internal sealed class DockArea : Grid
         Refresh();
     }
 
-    /// <summary>Brings a group into view on one of its tabs.</summary>
-    internal void Show(DockTabs group, int tab)
+    /// <summary>The group that holds the panel with this title now.</summary>
+    internal DockTabs GroupOf(string title) => TabOf(title).Owner;
+
+    /// <summary>Brings the panel with this title into view.</summary>
+    internal void Show(string title)
     {
-        group.Select(tab);
-        _floats.GetValueOrDefault(group)?.Activate();
-        Open(group.Slot);
+        var tab = TabOf(title);
+        tab.Owner.Select(tab);
+        Uncover(tab.Owner);
     }
 
-    /// <summary>Shows or hides a tab. A tab turned on comes into view.</summary>
-    internal void ToggleTab(DockTabs group, string title)
+    /// <summary>Shows or hides a panel's tab. A tab turned on comes into view.</summary>
+    internal void ToggleTab(string title)
     {
+        var group = GroupOf(title);
         group.ToggleTab(title);
         if (group.IsShown(title))
         {
-            Open(group.Slot);
+            Uncover(group);
         }
     }
+
+    /// <summary>Whether the panel's tab shows, now and after each change.</summary>
+    internal IObservable<bool> Shown(string title) => GroupOf(title).Shown(title);
+
+    /// <summary>Carries out the drop of a dragged tab.</summary>
+    /// <param name="tab">The tab dropped.</param>
+    /// <param name="target">Where it goes.</param>
+    /// <param name="at">The pointer on the screen, where a new window starts.</param>
+    internal void Drop(DockTab tab, DropTarget target, PixelPoint at)
+    {
+        switch (target)
+        {
+            case DropTarget.Join join:
+                Join(tab, join.Group);
+                break;
+            case DropTarget.Place place:
+                Place(tab, place.Slot);
+                break;
+            default:
+                FloatOut(tab, at);
+                break;
+        }
+    }
+
+    internal bool IsFloating(DockTabs group) => _floats.ContainsKey(group);
+
+    /// <summary>The group whose window is under this point of the screen, if any.</summary>
+    internal DockTabs? FloatingAt(PixelPoint screen) =>
+        _floats.FirstOrDefault(each => new Rect(each.Value.ClientSize).Contains(each.Value.PointToClient(screen))).Key;
+
+    /// <summary>The rail button under this point of the area, if any.</summary>
+    internal Button? RailButtonAt(Point at) =>
+        Left.RailButtons.Concat(Right.RailButtons).FirstOrDefault(button => button.IsEffectivelyVisible && Box(button).Contains(at));
+
+    /// <summary>The docked group shown under this point of the area, if any.</summary>
+    internal DockTabs? ShownGroupAt(Point at) =>
+        _groups.FirstOrDefault(group => !IsFloating(group) && group.IsEffectivelyVisible && Box(group).Contains(at));
+
+    /// <summary>Whether a group would still sit in a place once this tab has left where it is.</summary>
+    internal bool IsTaken(DockSlot slot, DockTab tab) =>
+        _groups.Any(group => group.Slot == slot && !IsFloating(group) && !(group == tab.Owner && group.Tabs.Count == 1));
+
+    /// <summary>Where a control of the area sits in it.</summary>
+    internal Rect Box(Control control) => new(control.TranslatePoint(default, this)!.Value, control.Bounds.Size);
+
+    DockTab TabOf(string title) => _homes.SelectMany(home => home.Tabs).Single(tab => tab.Page.Title == title);
 
     void Wire()
     {
@@ -117,22 +176,27 @@ internal sealed class DockArea : Grid
 
         foreach (var group in _groups)
         {
-            group.MoveRequested += to => Move(group, to);
-            group.FloatRequested += () => Float(group);
-            group.ResetRequested += Reset;
-            group.CollapseRequested += () =>
-            {
-                _collapsed.Collapse(group.Slot);
-                Refresh();
-            };
-            group.PropertyChanged += (_, e) =>
-            {
-                if (e.Property == IsVisibleProperty)
-                {
-                    Refresh();
-                }
-            };
+            Wire(group);
         }
+    }
+
+    void Wire(DockTabs group)
+    {
+        group.MoveRequested += to => Move(group, to);
+        group.FloatRequested += () => Float(group);
+        group.ResetRequested += Reset;
+        group.CollapseRequested += () =>
+        {
+            _collapsed.Collapse(group.Slot);
+            Refresh();
+        };
+        group.PropertyChanged += (_, e) =>
+        {
+            if (e.Property == IsVisibleProperty)
+            {
+                Refresh();
+            }
+        };
     }
 
     // Puts each group in its place, then lays out the sides.
@@ -141,7 +205,7 @@ internal sealed class DockArea : Grid
         // Every place lets go before any takes a group, as a control has one parent.
         foreach (var (slot, place) in _places)
         {
-            if (place.Child != DockedAt(slot))
+            if (place.Child != Docked(slot))
             {
                 place.Child = null;
             }
@@ -149,7 +213,7 @@ internal sealed class DockArea : Grid
 
         foreach (var (slot, place) in _places)
         {
-            place.Child ??= DockedAt(slot);
+            place.Child ??= Docked(slot);
         }
 
         var taken = _groups.Select(group => group.Slot).ToHashSet();
@@ -158,15 +222,21 @@ internal sealed class DockArea : Grid
             group.ShowPlaces(taken);
         }
 
+        foreach (var (group, window) in _floats)
+        {
+            window.Title = group.Title;
+        }
+
         Left.Show(ShownAt(DockSlot.UpperLeft), ShownAt(DockSlot.LowerLeft), group => _collapsed.Has(group.Slot));
         Right.Show(ShownAt(DockSlot.UpperRight), ShownAt(DockSlot.LowerRight), group => _collapsed.Has(group.Slot));
         Changed?.Invoke();
     }
 
-    DockTabs? DockedAt(DockSlot slot) => _groups.FirstOrDefault(group => group.Slot == slot && !_floats.ContainsKey(group));
+    DockTabs? Docked(DockSlot slot, DockTabs? except = null) =>
+        _groups.FirstOrDefault(group => group.Slot == slot && group != except && !IsFloating(group));
 
     // A group with every tab hidden takes no room.
-    DockTabs? ShownAt(DockSlot slot) => DockedAt(slot) is { IsVisible: true } group ? group : null;
+    DockTabs? ShownAt(DockSlot slot) => Docked(slot) is { IsVisible: true } group ? group : null;
 
     IEnumerable<DockSlot> Taken() => Enum.GetValues<DockSlot>().Where(slot => ShownAt(slot) is not null);
 
@@ -176,40 +246,172 @@ internal sealed class DockArea : Grid
         Refresh();
     }
 
+    void Uncover(DockTabs group)
+    {
+        if (_floats.TryGetValue(group, out var window))
+        {
+            window.Activate();
+        }
+        else
+        {
+            Open(group.Slot);
+        }
+    }
+
     void Reset()
     {
-        foreach (var floating in _floats.Values.ToList())
+        foreach (var floating in _floats.Keys.ToList())
         {
-            floating.Close();
+            Detach(floating);
         }
 
-        foreach (var (group, home) in _homes)
+        foreach (var (group, tabs, slot) in _homes)
         {
-            group.Slot = home;
+            foreach (var tab in tabs)
+            {
+                tab.Owner.Remove(tab);
+                group.Add(tab);
+            }
+
+            group.Slot = slot;
             group.ShowAllTabs();
+            group.Select(tabs[0]);
         }
 
+        _groups.Clear();
+        _groups.AddRange(_homes.Select(home => home.Group));
         _users.OpenAll();
         _collapsed.OpenAll();
         Refresh();
         Said?.Invoke("Reset the layout. Every dock is back in its place with all its tabs.");
     }
 
-    // A floating group docks before it moves. A group sent to a taken place trades with the group there, which may be
-    // floating, and that one comes back to the place it traded for.
+    // A floating group docks before it moves. A group sent to a taken place trades with the group there, and a floating
+    // group that held the place comes back to the one traded for it. With nothing to trade, the two become one.
     void Move(DockTabs group, DockSlot to)
     {
-        _floats.GetValueOrDefault(group)?.Close();
         var from = group.Slot;
-        if (_groups.FirstOrDefault(each => each.Slot == to) is { } other)
+        Detach(group);
+        if (Docked(to, group) is { } there)
         {
-            other.Slot = from;
+            if (Docked(from, group) is not null)
+            {
+                var moved = group.Chosen.Title;
+                Merge(group, there);
+                Open(to);
+                Said?.Invoke($"Moved {moved} in with {there.Title}.");
+                return;
+            }
+
+            there.Slot = from;
+        }
+
+        foreach (var floating in _floats.Keys.Where(each => each.Slot == to))
+        {
+            floating.Slot = from;
         }
 
         group.Slot = to;
         _collapsed.Open(from);
         Open(to);
         Said?.Invoke($"Moved {group.Title} to the {to.Label().ToLowerInvariant()}.");
+    }
+
+    void Join(DockTab tab, DockTabs into)
+    {
+        var from = tab.Owner;
+        from.Remove(tab);
+        into.Add(tab);
+        into.Select(tab);
+        if (from.Tabs.Count == 0)
+        {
+            Detach(from);
+            _groups.Remove(from);
+        }
+
+        Uncover(into);
+        Refresh();
+        Said?.Invoke($"Moved {tab.Page.Title} in with {into.Title}.");
+    }
+
+    // The group in the place moves to the other place of the side, and the tab takes the one it asked for.
+    void Place(DockTab tab, DockSlot slot)
+    {
+        var group = Alone(tab);
+        Detach(group);
+        if (Docked(slot, group) is { } there)
+        {
+            there.Slot = slot.Sibling();
+            _collapsed.Open(there.Slot);
+        }
+
+        group.Slot = slot;
+        group.Select(tab);
+        Open(slot);
+        Said?.Invoke($"Moved {tab.Page.Title} to the {slot.Label().ToLowerInvariant()}.");
+    }
+
+    void FloatOut(DockTab tab, PixelPoint at)
+    {
+        var size = tab.Owner.Bounds.Size;
+        OpenWindow(Alone(tab), size, at);
+    }
+
+    // The tab's group when it is the only one there, or a new group for it.
+    DockTabs Alone(DockTab tab)
+    {
+        var from = tab.Owner;
+        if (from.Tabs.Count == 1)
+        {
+            return from;
+        }
+
+        from.Remove(tab);
+        var group = new DockTabs { Slot = from.Slot };
+        group.Add(tab);
+        Wire(group);
+        _groups.Add(group);
+        return group;
+    }
+
+    // Every tab of one group moves into another, with the chosen one still chosen. The empty group goes.
+    void Merge(DockTabs from, DockTabs into)
+    {
+        var chosen = from.Tabs[from.SelectedIndex];
+        foreach (var tab in from.Tabs.ToList())
+        {
+            from.Remove(tab);
+            into.Add(tab);
+        }
+
+        if (chosen.IsVisible)
+        {
+            into.Select(chosen);
+        }
+
+        _groups.Remove(from);
+    }
+
+    // Takes a group out of its window without putting it back, for a caller that places it.
+    void Detach(DockTabs group)
+    {
+        if (_floats.Remove(group, out var window))
+        {
+            window.Content = null;
+            group.Floats = false;
+            window.Close();
+        }
+    }
+
+    // A window that closes puts its group back, in with the group that has taken its place meanwhile.
+    void PutBack(DockTabs group)
+    {
+        if (Docked(group.Slot, group) is { } there)
+        {
+            Merge(group, there);
+        }
+
+        Open(group.Slot);
     }
 
     // shortcut: the editor's keys do not reach the float window. Route them when floating groups are saved in the
@@ -223,8 +425,12 @@ internal sealed class DockArea : Grid
         }
 
         // The window is larger than the group by its edge, and starts that far up and left, so the group stays put.
+        OpenWindow(group, group.Bounds.Size, group.PointToScreen(new Point(-Gaps.Item, -Gaps.Item)));
+    }
+
+    void OpenWindow(DockTabs group, Size size, PixelPoint at)
+    {
         const double Edge = Gaps.Item;
-        var size = group.Bounds.Size;
         var window = new Window
         {
             Title = group.Title,
@@ -233,14 +439,18 @@ internal sealed class DockArea : Grid
             Padding = new Thickness(Edge),
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.Manual,
-            Position = group.PointToScreen(new Point(-Edge, -Edge)),
+            Position = at,
         };
         window.Closed += (_, _) =>
         {
-            window.Content = null;
-            _floats.Remove(group);
-            group.Floats = false;
-            Open(group.Slot);
+            // A window that Detach closed holds nothing any more.
+            if (_floats.GetValueOrDefault(group) == window)
+            {
+                _floats.Remove(group);
+                window.Content = null;
+                group.Floats = false;
+                PutBack(group);
+            }
         };
         _floats[group] = window;
         group.Floats = true;

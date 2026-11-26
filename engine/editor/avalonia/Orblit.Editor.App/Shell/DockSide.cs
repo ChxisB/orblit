@@ -47,7 +47,7 @@ internal sealed class DockSide : Grid
     /// <summary>True while every group on the side is collapsed.</summary>
     internal bool IsFolded { get; private set; }
 
-    /// <summary>The rail's buttons, one for each collapsed group on the side, in order.</summary>
+    /// <summary>The rail's buttons, one for each collapsed group on the side, in order. Each one's tag is its group.</summary>
     internal IEnumerable<Button> RailButtons => _buttons.Children.OfType<Button>();
 
     /// <summary>Lays out the side for the groups it has now.</summary>
@@ -114,6 +114,7 @@ internal sealed class DockSide : Grid
     Button RailButton(DockTabs group)
     {
         var button = Parts.Dress(new Button(), group.Chosen.Icon, new HoverCard(group.Chosen.Title, "Click to bring this panel back."));
+        button.Tag = group;
         button.Click += (_, _) => RailPressed?.Invoke(group);
         return button;
     }

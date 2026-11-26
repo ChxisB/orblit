@@ -2,7 +2,6 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
-using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Theme;
@@ -12,40 +11,38 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>
 /// A group of panels: an island with a strip of tabs over a body that shows the chosen panel. The strip ends with a
 /// button that collapses the group and a menu that maps where it sits, shows and hides its tabs, and names every
-/// place. <see cref="DockArea"/> moves, floats and collapses the group, so the buttons only ask.
+/// place. <see cref="DockArea"/> moves, floats and collapses the group, so the buttons only ask, and it moves tabs
+/// from group to group.
 /// </summary>
 internal sealed class DockTabs : Border
 {
     /// <summary>A 26 pixel row of tabs, the room around it, and the line under it.</summary>
     internal const double StripHeight = 39;
 
-    const double TabHeight = 26;
-
     // Centers a tab in the strip, above the line under it.
-    internal const double StripInset = (StripHeight - 1 - TabHeight) / 2;
+    internal const double StripInset = (StripHeight - 1 - DockTab.TabHeight) / 2;
 
-    const double TabPadding = Gaps.Item;
+    // The tabs' items in the menu follow its first heading, its map and its second heading.
+    const int FirstTabItem = 3;
 
-    readonly DockPage[] _pages;
-    readonly DockTab[] _tabs;
+    readonly List<DockTab> _tabs = [];
     readonly Border _body = new();
     readonly Border _tool = new() { VerticalAlignment = VerticalAlignment.Center };
     readonly MenuItem[] _moves;
     readonly MenuItem _float = new();
     readonly Border[] _map;
+    readonly MenuFlyout _options;
+    DockTab? _chosen;
 
     public DockTabs(params DockPage[] pages)
     {
-        Title = pages[0].Title;
         Classes.Add(EditorTheme.Island);
-        _pages = pages;
-        _tabs = [.. pages.Select((page, index) => new DockTab(page.Title, () => Select(index)))];
-        Strip = new OverflowBar(_tabs) { Spacing = Gaps.Joined };
+        Strip = new OverflowBar { Spacing = Gaps.Joined };
         _moves = [.. Enum.GetValues<DockSlot>().Select(MoveItem)];
         _map = [.. Enum.GetValues<DockSlot>().Select(_ => new Border { CornerRadius = new CornerRadius(3) })];
         _float.Click += (_, _) => FloatRequested?.Invoke();
         Floats = false;
-        MenuButton.Flyout = Options();
+        MenuButton.Flyout = _options = Options();
         CollapseButton.Click += (_, _) => CollapseRequested?.Invoke();
         DockPanel.SetDock(MenuButton, Dock.Right);
         DockPanel.SetDock(CollapseButton, Dock.Right);
@@ -54,7 +51,10 @@ internal sealed class DockTabs : Border
         var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(Gaps.Item, StripInset), Child = strip };
         Grid.SetRow(_body, 1);
         Child = new Grid { RowDefinitions = new RowDefinitions($"{StripHeight},*"), Children = { bar, _body } };
-        Select(0);
+        foreach (var page in pages)
+        {
+            Add(new DockTab(page));
+        }
     }
 
     /// <summary>Raised with the place the user chose in the menu. The group has not moved.</summary>
@@ -75,11 +75,11 @@ internal sealed class DockTabs : Border
 
     internal OverflowBar Strip { get; }
 
-    /// <summary>The title of the first tab, which names the group.</summary>
-    internal string Title { get; }
+    /// <summary>The title of the first tab, which names the group. A group that has lost its last tab has none.</summary>
+    internal string Title => _tabs.Count > 0 ? _tabs[0].Page.Title : "";
 
     /// <summary>The page on show, whose name and mark a collapsed group's rail button takes.</summary>
-    internal DockPage Chosen => _pages[SelectedIndex];
+    internal DockPage Chosen => _chosen!.Page;
 
     /// <summary>The place the group sits in, or comes back to from a window of its own.</summary>
     internal DockSlot Slot { get; set; }
@@ -126,38 +126,62 @@ internal sealed class DockTabs : Border
     /// <summary>The cell of each place on the map in the menu, by place.</summary>
     internal IReadOnlyList<Border> MapCells => _map;
 
-    internal int SelectedIndex { get; private set; }
+    internal int SelectedIndex => _tabs.IndexOf(_chosen!);
 
-    internal IReadOnlyList<Border> Tabs => _tabs;
+    internal IReadOnlyList<DockTab> Tabs => _tabs;
 
     internal Control Content => Chosen.Content;
 
-    internal void Select(int index)
+    /// <summary>Takes a tab at the end of the strip, with its menu item.</summary>
+    internal void Add(DockTab tab)
     {
-        SelectedIndex = index;
+        tab.Owner = this;
+        _tabs.Add(tab);
+        Strip.Add(tab);
+        _options.Items.Insert(FirstTabItem + _tabs.Count - 1, tab.Item);
+        _chosen ??= tab;
+        ShowTabs();
+    }
+
+    /// <summary>Lets a tab go, and its panel with it, for another group to take.</summary>
+    internal void Remove(DockTab tab)
+    {
+        _tabs.Remove(tab);
+        Strip.Children.Remove(tab);
+        _options.Items.Remove(tab.Item);
+        if (tab == _chosen)
+        {
+            _body.Child = null;
+            _tool.Child = null;
+            _chosen = _tabs.FirstOrDefault();
+        }
+
+        ShowTabs();
+    }
+
+    internal void Select(int index) => Select(_tabs[index]);
+
+    internal void Select(DockTab tab)
+    {
+        _chosen = tab;
         _body.Child = Chosen.Content;
         _tool.Child = Chosen.Tool;
-        Strip.Pinned = _tabs[index];
-        for (var i = 0; i < _tabs.Length; i++)
+        Strip.Pinned = tab;
+        foreach (var each in _tabs)
         {
-            _tabs[i].Light(i == index);
+            each.Light(each == tab);
         }
     }
 
-    /// <summary>
-    /// Shows the tab with this title if it is hidden, and hides it if it shows. A group with no tab left hides and
-    /// keeps its place. A hidden tab hands the body to the first tab that shows.
-    /// </summary>
-    internal void ToggleTab(string title)
+    /// <summary>Shows the tab if it is hidden, and hides it if it shows.</summary>
+    internal void Toggle(DockTab tab)
     {
-        var tab = _tabs[IndexOf(title)];
         tab.IsVisible = !tab.IsVisible;
-        IsVisible = _tabs.Any(each => each.IsVisible);
-        if (IsVisible && !_tabs[SelectedIndex].IsVisible)
-        {
-            Select(Array.FindIndex(_tabs, each => each.IsVisible));
-        }
+        ShowTabs();
     }
+
+    /// <summary>Toggles the tab with this title.</summary>
+    internal void ToggleTab(string title) => Toggle(Tab(title));
 
     /// <summary>Shows every tab, and the group with them.</summary>
     internal void ShowAllTabs()
@@ -167,18 +191,28 @@ internal sealed class DockTabs : Border
             tab.IsVisible = true;
         }
 
-        IsVisible = true;
+        ShowTabs();
     }
 
-    internal bool IsShown(string title) => _tabs[IndexOf(title)].IsVisible;
+    internal bool IsShown(string title) => Tab(title).IsVisible;
 
     /// <summary>Whether the tab with this title shows, now and after each change.</summary>
-    internal IObservable<bool> Shown(string title) => _tabs[IndexOf(title)].GetObservable(IsVisibleProperty);
+    internal IObservable<bool> Shown(string title) => Tab(title).GetObservable(IsVisibleProperty);
 
     /// <summary>The titles of the tabs, in order.</summary>
-    internal IReadOnlyList<string> Titles => [.. _pages.Select(page => page.Title)];
+    internal IReadOnlyList<string> Titles => [.. _tabs.Select(tab => tab.Page.Title)];
 
-    int IndexOf(string title) => Array.FindIndex(_pages, page => page.Title == title);
+    DockTab Tab(string title) => _tabs.Single(tab => tab.Page.Title == title);
+
+    // A group with no tab to show hides and keeps its place. A hidden chosen tab hands the body to the first that shows.
+    void ShowTabs()
+    {
+        IsVisible = _tabs.Exists(tab => tab.IsVisible);
+        if (_chosen is not null)
+        {
+            Select(_chosen.IsVisible ? _chosen : _tabs.Find(tab => tab.IsVisible) ?? _chosen);
+        }
+    }
 
     // Under the button and right aligned, so the menu never covers the tabs.
     MenuFlyout Options()
@@ -187,13 +221,6 @@ internal sealed class DockTabs : Border
         flyout.Items.Add(Parts.MenuHeading("Where this panel sits"));
         flyout.Items.Add(new MenuItem { IsEnabled = false, MinHeight = 0, Header = Map() });
         flyout.Items.Add(Parts.MenuHeading("Tabs in this panel"));
-        foreach (var title in Titles)
-        {
-            var item = Parts.ActionItem(title, () => ToggleTab(title), note: EditorMenu.PanelNote(title));
-            item.ToggleType = MenuItemToggleType.CheckBox;
-            item.Bind(MenuItem.IsCheckedProperty, Shown(title));
-            flyout.Items.Add(item);
-        }
 
         flyout.Items.Add(new Separator());
         foreach (var move in _moves)
@@ -241,39 +268,5 @@ internal sealed class DockTabs : Border
         AutomationProperties.SetName(item, slot.Label());
         item.Click += (_, _) => MoveRequested?.Invoke(slot);
         return item;
-    }
-
-    // A tab. In a group too narrow for it, the strip's More menu holds it, and its menu item chooses it.
-    sealed class DockTab : Border, IOverflowTool
-    {
-        readonly TextBlock _title;
-        readonly Button _choose = new();
-
-        public DockTab(string title, Action choose)
-        {
-            _title = new TextBlock { Text = title, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
-            Height = TabHeight;
-            CornerRadius = EditorTheme.Corners;
-            Padding = new Thickness(TabPadding, 0);
-            Child = _title;
-            _choose.Click += (_, _) => choose();
-            PointerPressed += (_, e) =>
-            {
-                if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)
-                {
-                    choose();
-                }
-            };
-        }
-
-        string IOverflowTool.MenuWords => _title.Text!;
-
-        Button IOverflowTool.MenuButton => _choose;
-
-        public void Light(bool chosen)
-        {
-            Background = chosen ? EditorBrushes.Line : Brushes.Transparent;
-            _title.Foreground = chosen ? EditorBrushes.Text : EditorBrushes.TextDim;
-        }
     }
 }
