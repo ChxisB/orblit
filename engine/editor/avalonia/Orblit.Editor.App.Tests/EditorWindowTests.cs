@@ -702,7 +702,7 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Choosing_a_scene_saves_the_edits_and_shows_the_new_scene()
+    public void Choosing_a_scene_with_edits_asks_and_Save_and_open_saves_them_then_shows_it()
     {
         UiThread.Run(() =>
         {
@@ -712,6 +712,15 @@ public sealed class EditorWindowTests
 
             OpenScene(window, "res://levels/second.oscn");
 
+            var dialog = window.SaveChanges;
+            Assert.True(dialog.IsVisible);
+            Assert.Empty(scene.Opened);
+            Assert.Equal(["Save and open", "↵"], Texts(dialog.MainButton));
+            Assert.EndsWith("Open without saving and they are gone.", dialog.Why.Text);
+            Assert.Equal("Opens and drops every change listed here.", ((HoverCard)ToolTip.GetTip(dialog.LeadButton!)!).Line);
+            Click(dialog.MainButton);
+
+            Assert.False(dialog.IsVisible);
             Assert.Equal(1, scene.Saves);
             Assert.Equal(["res://levels/second.oscn"], scene.Opened);
             Assert.Equal("second", Root(window).Name);
@@ -728,7 +737,9 @@ public sealed class EditorWindowTests
             var window = Open(scene);
             MakeAnEdit(window);
             OpenScene(window, "res://field.oscn");
+            Click(window.SaveChanges.MainButton);
 
+            Assert.True(window.SaveChanges.IsVisible);
             Assert.Empty(scene.Opened);
             Assert.Equal("Field", Root(window).Name);
             Assert.Equal("The engine could not save the scene. Error code 7.", window.Status);
@@ -1383,15 +1394,38 @@ public sealed class EditorWindowTests
     }
 
     [Fact]
-    public void Opening_another_scene_starts_without_a_star()
+    public void Don_t_save_opens_another_scene_without_a_save_or_a_star()
     {
         UiThread.Run(() =>
         {
-            var window = Open(new FakeScene());
+            var scene = new FakeScene();
+            var window = Open(scene);
             MakeAnEdit(window);
             OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.LeadButton!);
 
+            Assert.False(window.SaveChanges.IsVisible);
+            Assert.Equal(0, scene.Saves);
+            Assert.Equal(["res://levels/second.oscn"], scene.Opened);
             Assert.Equal("second.oscn - Unnamed Project", window.Title);
+        });
+    }
+
+    [Fact]
+    public void Cancel_keeps_the_scene_and_its_edits_when_another_is_chosen()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            var window = Open(scene);
+            MakeAnEdit(window);
+            OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.CancelButton);
+
+            Assert.False(window.SaveChanges.IsVisible);
+            Assert.Equal(0, scene.Saves);
+            Assert.Empty(scene.Opened);
+            Assert.Contains("(*)", window.Title);
         });
     }
 
@@ -1404,9 +1438,26 @@ public sealed class EditorWindowTests
             var window = Open(scene);
             MakeAnEdit(window);
             OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.MainButton);
 
             Assert.Equal(1, scene.Saves);
             Assert.Equal("Unnamed Project", window.Title);
+        });
+    }
+
+    [Fact]
+    public void Don_t_save_then_a_scene_that_cannot_open_keeps_the_edits_and_the_star()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene { OpenFails = true };
+            var window = Open(scene);
+            MakeAnEdit(window);
+            OpenScene(window, "res://levels/second.oscn");
+            Click(window.SaveChanges.LeadButton!);
+
+            Assert.Equal(0, scene.Saves);
+            Assert.Contains("(*)", window.Title);
         });
     }
 

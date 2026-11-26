@@ -102,6 +102,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // The edits since the scene opened or was last saved, and when that was, for the Save changes dialog.
     int _edits;
     DateTimeOffset _since;
+
+    // What the open Save changes dialog does once the edits are saved or dropped, and the word its buttons give it.
+    (string Verb, Action Then) _afterAsk = ("", () => { });
     // When the game last started, for the time the Game view shows.
     DateTimeOffset _playedAt;
     // The Output lines before the game started, so the error a crash toast names is the game's.
@@ -612,15 +615,18 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         if (HasEdits)
         {
             e.Cancel = true;
-            AskToSave();
+            AskToSave("close", () =>
+            {
+                ShowEdited(false);
+                Close();
+            });
         }
     }
 
-    // Closing without saving drops the edits, so that action sits at the far left, away from Save and close.
+    // Going on without saving drops the edits, so that action sits at the far left, away from Save.
     Dialog SaveChangesDialog()
     {
         var drop = new Button { Content = "Don't save", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
-        new HoverCard("Don't save", "Closes and drops every change listed here.").On(drop);
         var body = new ScrollViewer { MaxHeight = 220, Content = _changes };
         var dialog = new Dialog("", "", body)
         {
@@ -629,28 +635,35 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             LeadButton = drop,
         };
         dialog.CancelButton.Content = Parts.Keyed("Cancel", "esc");
-        new HoverCard("Cancel", "Keeps the window open, with the changes.", "esc").On(dialog.CancelButton);
-        new HoverCard("Save and close", "Saves everything listed here, then closes.", "↵").On(dialog.MainButton);
-        // A failed save leaves the edits, so the close asks again.
+        new HoverCard("Cancel", "Goes back to editing, with the changes.", "esc").On(dialog.CancelButton);
+        // A failed save leaves the edits, so the dialog asks again with what is still not saved.
         dialog.MainButton.Click += (_, _) =>
         {
-            SaveEdits();
-            Close();
+            if (!SaveEdits())
+            {
+                AskToSave(_afterAsk.Verb, _afterAsk.Then);
+                return;
+            }
+
+            dialog.Close();
+            _afterAsk.Then();
         };
         drop.Click += (_, _) =>
         {
             _script.Discard();
             _graph.Discard();
-            ShowEdited(false);
-            Close();
+            dialog.Close();
+            _afterAsk.Then();
         };
         return dialog;
     }
 
     // The scene's changes come from History, newest first. An undo back past the save leaves none to list, so
-    // the line then says only that the scene changed.
-    void AskToSave()
+    // the line then says only that the scene changed. The verb names what the buttons do after the save or drop.
+    void AskToSave(string verb, Action then)
     {
+        _afterAsk = (verb, then);
+        var going = char.ToUpperInvariant(verb[0]) + verb[1..];
         var scripts = (_script.IsDirty ? [(_script.OpenPath!, Count(_script.ChangedLines, "line") + " changed")] : Array.Empty<(string, string)>())
             .Concat(_graph.EditedScripts.Select(path => (path, "Changes not saved")))
             .ToList();
@@ -659,14 +672,16 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _changes.Children.Clear();
         _changes.Children.AddRange(steps.Select(step => ChangeRow(step.At.ToString("HH:mm", CultureInfo.InvariantCulture), step.Label, null)));
         _changes.Children.AddRange(scripts.Select(script => ChangeRow(null, $"{Path.GetFileName(script.Item1)}", $"{script.Item1} · {script.Item2}")));
-        var main = _edited || scripts.Count == 1 ? "Save and close" : $"Save {scripts.Count} and close";
+        var main = _edited || scripts.Count == 1 ? $"Save and {verb}" : $"Save {scripts.Count} and {verb}";
         _saveChanges.MainButton.Content = Parts.Keyed(main, "↵");
+        new HoverCard(main, $"Saves everything listed here, then {verb}s.", "↵").On(_saveChanges.MainButton);
+        new HoverCard("Don't save", $"{going}s and drops every change listed here.").On(_saveChanges.LeadButton!);
         _saveChanges.Title = _edited ? $"Save changes to {SceneLabel()}?"
             : scripts.Count == 1 ? $"Save {Path.GetFileName(scripts[0].Item1)}?"
             : $"Save {scripts.Count} scripts?";
         _saveChanges.Why.Text = !_edited ? $"{(scripts.Count == 1 ? "It has" : "They have")} changes that are not saved."
-            : steps.Count > 0 ? $"You made {Count(steps.Count, "change")} since {since}. Close without saving and they are gone."
-            : $"It changed since {since}. Close without saving and the changes are gone.";
+            : steps.Count > 0 ? $"You made {Count(steps.Count, "change")} since {since}. {going} without saving and they are gone."
+            : $"It changed since {since}. {going} without saving and the changes are gone.";
         _saveChanges.Open();
     }
 
@@ -1181,7 +1196,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         }
     }
 
-    void Open(string resourcePath) => Leave(() => _scene!.Open(resourcePath));
+    void Open(string resourcePath) => Leave("open", () => Change(() => _scene!.Open(resourcePath)));
 
     // The app menu of macOS stays in reach under a dialog's veil, so its items wait for the dialog to close.
     public void CopyVersion() => RunUnveiled(() => Copy(BottomBar.Version, BottomBar.Version));
@@ -1241,15 +1256,15 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     void WireSceneFiles()
     {
         _sceneTabs.AddButton.Click += (_, _) => OpenNewScene(FileTree.Root);
-        _newScene.Requested += (path, className) =>
+        _newScene.Requested += (path, className) => Leave("create", () =>
         {
-            var left = Leave(() =>
+            var made = Change(() =>
             {
                 _scene!.Create(path, className);
                 ShowScenes();
             });
-            // A failed save or create says why in the status line, and the dialog stays open with the same words.
-            if (left)
+            // A failed create says why in the status line, and the dialog stays open with the same words.
+            if (made)
             {
                 _newScene.Dialog.Close();
             }
@@ -1257,8 +1272,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             {
                 _newScene.Say(Status);
             }
-        };
-        _sceneTabs.CloseButton.Click += (_, _) => Leave(() => _scene!.Close());
+        });
+        _sceneTabs.CloseButton.Click += (_, _) => Leave("close", () => Change(() => _scene!.Close()));
         _sceneTabs.ShowInFilesButton.Click += (_, _) =>
         {
             _fileDock.Select(0);
@@ -1273,15 +1288,23 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         };
     }
 
-    // Opening, making or closing a scene drops the open one and its history, so the file takes its edits
-    // first, as in a play. Answers whether the change was made.
-    bool Leave(Action change)
+    // Opening, making or closing a scene drops the open one and its history, so edits that no save holds ask
+    // first, as a close of the window does. Open scripts are asked about too, as the list matches the quit one.
+    void Leave(string verb, Action leave)
     {
-        if (!SaveEdits())
+        if (HasEdits)
         {
-            return false;
+            AskToSave(verb, leave);
         }
+        else
+        {
+            leave();
+        }
+    }
 
+    // Answers whether the change was made. A scene that opens has no edits yet, even when Don't save left some behind.
+    bool Change(Action change)
+    {
         try
         {
             change();
@@ -1292,6 +1315,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             return false;
         }
 
+        ShowEdited(false);
         Reload(0);
         Remember(_scene!.SceneFile);
         _since = _time.GetLocalNow();
@@ -1396,7 +1420,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         return true;
     }
 
-    // A save from Play or Leave happens where the script view may be hidden, so the toast says it too.
+    // A save from Play or the Save changes dialog happens where the script view may be hidden, so the toast says it too.
     void FailScript(string why)
     {
         Fail(why);

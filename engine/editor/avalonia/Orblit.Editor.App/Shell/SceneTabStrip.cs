@@ -47,7 +47,7 @@ internal sealed class SceneTabStrip : Grid
         var newKey = new KeyGesture(Key.N, command);
         var closeKey = new KeyGesture(Key.W, command);
         new HoverCard("New scene…", "Makes an empty scene in a new tab.", Parts.KeyText(newKey)).On(_add);
-        new HoverCard("Close", "Saves your changes first, then closes the scene.", Parts.KeyText(closeKey)).On(_close);
+        new HoverCard("Close", "Asks first if there are unsaved changes.", Parts.KeyText(closeKey)).On(_close);
         _show = new HoverCard(ShowPanels, "Brings the panels back as they were.", key);
         var keyed = Parts.Keyed(HidePanels, key);
         _panelsWord = (TextBlock)keyed.Children[0];
@@ -72,7 +72,7 @@ internal sealed class SceneTabStrip : Grid
             {
                 Parts.PressItem("New scene…", _add, newKey),
                 Parts.PressItem("Play this scene", runScene, new KeyGesture(Key.R, command)),
-                Parts.PressItem("Close", _close, closeKey, "Saves your changes first"),
+                Parts.PressItem("Close", _close, closeKey, "Asks first if there are unsaved changes"),
                 new Separator(),
                 _find,
             },

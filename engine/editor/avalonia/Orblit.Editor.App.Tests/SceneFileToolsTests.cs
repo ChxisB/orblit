@@ -85,7 +85,7 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void A_new_scene_saves_the_open_one_first()
+    public void A_new_scene_asks_and_Save_saves_the_open_one_first()
     {
         UiThread.Run(() =>
         {
@@ -95,13 +95,18 @@ public sealed class SceneFileToolsTests
 
             CreateScene(window, "arena");
 
+            Assert.True(window.SaveChanges.IsVisible);
+            Assert.Empty(scene.Created);
+            Click(window.SaveChanges.MainButton);
+
             Assert.Equal(1, scene.Saves);
             Assert.Single(scene.Created);
+            Assert.False(window.NewScene.Dialog.IsVisible);
         });
     }
 
     [Fact]
-    public void A_failed_save_stops_the_new_scene_and_the_dialog_says_why()
+    public void A_failed_save_makes_no_new_scene_and_keeps_asking()
     {
         UiThread.Run(() =>
         {
@@ -110,10 +115,11 @@ public sealed class SceneFileToolsTests
             MakeAnEdit(window);
 
             CreateScene(window, "arena");
+            Click(window.SaveChanges.MainButton);
 
             Assert.Empty(scene.Created);
             Assert.Equal("The engine could not save the scene. Error code 7.", window.Status);
-            Assert.Equal("The engine could not save the scene. Error code 7.", window.NewScene.Fault);
+            Assert.True(window.SaveChanges.IsVisible);
             Assert.True(window.NewScene.Dialog.IsVisible);
         });
     }
@@ -152,7 +158,7 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void Close_saves_edits_then_leaves_no_scene_open()
+    public void Close_with_edits_asks_and_Save_and_close_saves_then_leaves_no_scene_open()
     {
         UiThread.Run(() =>
         {
@@ -162,6 +168,12 @@ public sealed class SceneFileToolsTests
 
             ClickOn(window.SceneTabs.CloseButton, window);
 
+            Assert.True(window.SaveChanges.IsVisible);
+            Assert.Equal((0, 0), (scene.Saves, scene.Closed));
+            Assert.Equal(["Save and close", "↵"], Texts(window.SaveChanges.MainButton));
+            Click(window.SaveChanges.MainButton);
+
+            Assert.False(window.SaveChanges.IsVisible);
             Assert.Equal(1, scene.Saves);
             Assert.Equal(1, scene.Closed);
             Assert.False(window.SceneTabs.Tab.IsVisible);
@@ -351,7 +363,7 @@ public sealed class SceneFileToolsTests
             Assert.Equal(
                 [("New scene…", "⌃N"), ("Play this scene", "⌃R"), ("Close", "⌃W"), ("Show in Files", "")],
                 TabItems(window).Select(item => (AutomationProperties.GetName(item), item.InputGesture is { } key ? Parts.KeyText(key) : "")));
-            Assert.Equal("Saves your changes first", Note(TabItem(window, "Close")));
+            Assert.Equal("Asks first if there are unsaved changes", Note(TabItem(window, "Close")));
             Assert.Equal("Finds second.oscn in the Files panel", Note(TabItem(window, "Show in Files")));
         });
     }
