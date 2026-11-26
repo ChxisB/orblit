@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Orblit.Editor.App.Graph;
 
 namespace Orblit.Editor.App.Tests.Graph;
@@ -8,7 +9,7 @@ public sealed class FoldTests
     static GraphCanvas Open(FakeGraphSource source, params int[] selected)
     {
         _ = source.History;
-        var canvas = new GraphCanvas(source);
+        var canvas = new GraphCanvas(source, KeyModifiers.Meta);
         canvas.Select(selected);
         return canvas;
     }

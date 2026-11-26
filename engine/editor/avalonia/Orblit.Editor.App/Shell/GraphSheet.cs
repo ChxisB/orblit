@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Orblit.Editor.App.Graph;
 
 namespace Orblit.Editor.App.Shell;
@@ -9,15 +10,13 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class GraphSheet : IDisposable
 {
-    readonly GraphBreakpoints _breakpoints;
-    readonly GraphDebugger _debugger;
+    readonly SheetShared _shared;
 
-    public GraphSheet(string script, IGraphFile graph, GraphBreakpoints breakpoints, GraphDebugger debugger)
+    public GraphSheet(string script, IGraphFile graph, SheetShared shared)
     {
         Script = script;
         Graph = graph;
-        _breakpoints = breakpoints;
-        _debugger = debugger;
+        _shared = shared;
         Panels = new ScriptPanels(graph);
         Inspector = new StepInspector(graph, () => Canvas?.AddStep());
         graph.Changed += () =>
@@ -76,12 +75,12 @@ internal sealed class GraphSheet : IDisposable
 
     void ShowCanvas()
     {
-        var canvas = new GraphCanvas(Graph);
+        var canvas = new GraphCanvas(Graph, _shared.Command);
         canvas.Scene.Script = Script;
-        canvas.Scene.Breakpoints = _breakpoints;
+        canvas.Scene.Breakpoints = _shared.Breakpoints;
         canvas.Reload();
-        canvas.Probe(_debugger);
-        canvas.ShowStop(_debugger.Current);
+        canvas.Probe(_shared.Debugger);
+        canvas.ShowStop(_shared.Debugger.Current);
         canvas.SelectionChanged += Inspector.Show;
         // The card outlives each canvas, and a control has one parent at a time.
         (Sentences.Parent as Panel)?.Children.Remove(Sentences);
@@ -91,3 +90,6 @@ internal sealed class GraphSheet : IDisposable
         Inspector.Show(null);
     }
 }
+
+/// <summary>What every open graph uses: the breakpoints, the debugger and the platform's command key.</summary>
+internal sealed record SheetShared(GraphBreakpoints Breakpoints, GraphDebugger Debugger, KeyModifiers Command);

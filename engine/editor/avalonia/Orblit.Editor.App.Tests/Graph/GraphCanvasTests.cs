@@ -14,7 +14,7 @@ public sealed class GraphCanvasTests
     static (FakeGraphSource Source, GraphCanvas Canvas) Open(FakeGraphSource? source = null)
     {
         source ??= FakeGraphSource.Sample();
-        return (source, new GraphCanvas(source));
+        return (source, new GraphCanvas(source, KeyModifiers.Meta));
     }
 
     // Step 4 has an input nothing is wired to, so a drag to it is a wire the engine takes.
@@ -767,6 +767,17 @@ public sealed class GraphCanvasTests
 
     static MenuItem ZoomItem(GraphCanvas canvas, string name) =>
         canvas.ZoomItems.Single(item => AutomationProperties.GetName(item) == name);
+
+    [Fact]
+    public void Zoom_keys_are_the_command_key_the_canvas_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var canvas = new GraphCanvas(FakeGraphSource.Sample(), KeyModifiers.Control);
+
+            Assert.Equal(["⌃=", "⌃-", "⌃0"], canvas.ZoomItems.Take(3).Select(item => Shell.Parts.KeyText(item.InputGesture!)));
+        });
+    }
 
     [Fact]
     public void The_zoom_menu_names_each_command_with_its_key_and_its_ticks_set_the_wires_and_the_map()

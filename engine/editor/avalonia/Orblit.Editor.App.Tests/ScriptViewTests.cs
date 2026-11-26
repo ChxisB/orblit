@@ -89,7 +89,7 @@ public sealed class ScriptViewTests
 
     static ScriptView Open(Files files)
     {
-        var view = new ScriptView();
+        var view = new ScriptView(KeyModifiers.Meta);
         new Window { Content = view, Width = 800, Height = 600 }.Show();
         view.Show(files);
         return view;
@@ -696,6 +696,19 @@ public sealed class ScriptViewTests
             Pick(view, "res://spin.cs");
 
             Assert.Equal("res://spin.cs", view.Heading.Text);
+        });
+    }
+
+    [Fact]
+    public void The_keys_are_the_command_key_the_view_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var view = new ScriptView(KeyModifiers.Control);
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+
+            Assert.Equal(["Find a script", "⌃K"], Texts(view.FindScriptButton));
+            Assert.Equal(("⌃F", "⌃⇧B"), (Card(view.FindButton).Key, Card(view.CheckButton).Key));
         });
     }
 

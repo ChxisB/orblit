@@ -1,4 +1,5 @@
 using Avalonia;
+using Avalonia.Input;
 using Orblit.Editor.App.Graph;
 using Orblit.Editor.Bridge;
 
@@ -208,7 +209,7 @@ public sealed class GraphHistoryTests
         UiThread.Run(() =>
         {
             var source = FakeGraphSource.Sample();
-            var canvas = new GraphCanvas(source);
+            var canvas = new GraphCanvas(source, KeyModifiers.Meta);
 
             canvas.Edits.MoveSteps([2, 3], new Vector(30, 10));
             Assert.Equal(290, source.Function!.Steps.Single(step => step.Id == 2).X);
@@ -227,7 +228,7 @@ public sealed class GraphHistoryTests
         UiThread.Run(() =>
         {
             var source = FakeGraphSource.Sample();
-            var canvas = new GraphCanvas(source);
+            var canvas = new GraphCanvas(source, KeyModifiers.Meta);
             canvas.Scene.SelectStep(2, false);
             canvas.Scene.SelectStep(3, true);
 

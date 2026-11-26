@@ -1,10 +1,13 @@
+using Avalonia.Input;
+using Orblit.Editor.App.Shell;
+
 namespace Orblit.Editor.App.Graph;
 
 /// <summary>
 /// Moves the view to a step by a search, an id or a bookmark, and keeps the bookmarks. Each answer is reported as
 /// a line of text for the find bar. Moving the view is not an edit, so nothing here reaches the engine.
 /// </summary>
-internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action redraw)
+internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action redraw, KeyModifiers command)
 {
     /// <summary>Raised with a line that says what the last command found, or empty after one that needs no words.</summary>
     public event Action<string>? Reported;
@@ -75,7 +78,7 @@ internal sealed class GraphSearch(GraphScene scene, Action<int> reveal, Action r
         var ids = StepSearch.InReadingOrder(scene.Steps.Where(step => scene.Bookmarked.Contains(step.Id)));
         if (StepSearch.Cycle(ids, Current(), forward) is not { } id)
         {
-            Reported?.Invoke("No bookmarks yet. Bookmark a step with ⌘F2.");
+            Reported?.Invoke($"No bookmarks yet. Bookmark a step with {Parts.KeyText(new KeyGesture(Key.F2, command))}.");
             return;
         }
 

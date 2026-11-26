@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.VisualTree;
@@ -17,30 +18,32 @@ namespace Orblit.Editor.App.Graph;
 /// </summary>
 internal sealed class DebuggerPanel : StackPanel
 {
-    const string NotPlaying = "Nothing is playing. Press ⌘B first.";
+    readonly GraphDebugger _debugger;
+    readonly Func<DebugPlace, string?> _stepTitle;
+    readonly string _playKey;
+    readonly (string Id, string Word, string Does, string Key, DebugCommand Command)[] _buttons;
+    readonly StackPanel _details = new() { Spacing = 4, Margin = new Thickness(12, 0, 12, 10) };
+
+    /// <summary>The step title gives the name of a step on show, or null when the canvas does not show it.</summary>
+    public DebuggerPanel(GraphDebugger debugger, Func<DebugPlace, string?> stepTitle, KeyModifiers command)
+    {
+        _debugger = debugger;
+        _stepTitle = stepTitle;
+        _playKey = Parts.KeyText(new KeyGesture(Key.B, command));
+        _buttons = Buttons(command);
+        _debugger.Changed += Rebuild;
+        Rebuild();
+    }
 
     // A list of cases, so it is data. The keys are the ones the window gives each button.
-    static readonly (string Id, string Word, string Does, string Key, DebugCommand Command)[] s_buttons =
+    static (string Id, string Word, string Does, string Key, DebugCommand Command)[] Buttons(KeyModifiers command) =>
     [
-        ("pause", "Pause", "Stops the game at the next step it runs.", "⌘Y", DebugCommand.Break),
+        ("pause", "Pause", "Stops the game at the next step it runs.", Parts.KeyText(new KeyGesture(Key.Y, command)), DebugCommand.Break),
         ("continue", "Carry on", "Lets the game run until a step marked Pause here.", "F12", DebugCommand.Continue),
         ("next", "Next step", "Runs this step and stops at the next one.", "F10", DebugCommand.Next),
         ("step", "Go into", "Goes into the action this step runs and stops at its first step.", "F11", DebugCommand.Step),
         ("out", "Come out", "Finishes this action and stops where it was run from.", "⇧F11", DebugCommand.Out),
     ];
-
-    readonly GraphDebugger _debugger;
-    readonly Func<DebugPlace, string?> _stepTitle;
-    readonly StackPanel _details = new() { Spacing = 4, Margin = new Thickness(12, 0, 12, 10) };
-
-    /// <summary>The step title gives the name of a step on show, or null when the canvas does not show it.</summary>
-    public DebuggerPanel(GraphDebugger debugger, Func<DebugPlace, string?> stepTitle)
-    {
-        _debugger = debugger;
-        _stepTitle = stepTitle;
-        _debugger.Changed += Rebuild;
-        Rebuild();
-    }
 
     /// <summary>The control with this id, such as <c>debugger:frame:0</c>. Null when the panel has none.</summary>
     internal T? Find<T>(string id) where T : Control => this.GetVisualDescendants().OfType<T>().FirstOrDefault(control => (control.Tag as string) == id);
@@ -53,7 +56,7 @@ internal sealed class DebuggerPanel : StackPanel
         Children.Add(Bar(state));
         if (!state.Connected)
         {
-            _details.Children.Add(Line("debugger:hint", "Nothing is playing. Press ⌘B, and these step through the graph one step at a time.", EditorBrushes.TextDim));
+            _details.Children.Add(Line("debugger:hint", $"Nothing is playing. Press {_playKey}, and these step through the graph one step at a time.", EditorBrushes.TextDim));
         }
 
         AddStack(state);
@@ -72,8 +75,8 @@ internal sealed class DebuggerPanel : StackPanel
         : _debugger.PlaceAt(0) is { } place && _stepTitle(place) is { } title ? $"Paused at step {place.Step}, {title}."
         : $"Paused: {state.Reason}.";
 
-    static string WhyOff(DebugState state, DebugCommand command) =>
-        !state.Connected ? NotPlaying
+    string WhyOff(DebugState state, DebugCommand command) =>
+        !state.Connected ? $"Nothing is playing. Press {_playKey} first."
         : command == DebugCommand.Break ? "The game is paused already."
         : "Pause the game first.";
 
@@ -91,7 +94,7 @@ internal sealed class DebuggerPanel : StackPanel
             VerticalAlignment = VerticalAlignment.Center,
         };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
-        foreach (var (id, word, does, key, command) in s_buttons)
+        foreach (var (id, word, does, key, command) in _buttons)
         {
             var card = new HoverCard(word, does, key);
             var button = new Button

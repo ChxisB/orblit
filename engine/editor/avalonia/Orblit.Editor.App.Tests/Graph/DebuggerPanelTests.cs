@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
 using Orblit.Editor.App.Graph;
@@ -15,7 +16,7 @@ public sealed class DebuggerPanelTests
     {
         var channel = new FakeDebugChannel();
         var debugger = new GraphDebugger(channel, new GraphBreakpoints());
-        return (channel, debugger, new DebuggerPanel(debugger, _ => null));
+        return (channel, debugger, new DebuggerPanel(debugger, _ => null, KeyModifiers.Meta));
     }
 
     static void Hear(FakeDebugChannel channel, GraphDebugger debugger, DebugState state)
@@ -58,6 +59,17 @@ public sealed class DebuggerPanelTests
             Assert.Equal(
                 [("Pause", "⌘Y"), ("Carry on", "F12"), ("Next step", "F10"), ("Go into", "F11"), ("Come out", "⇧F11")],
                 buttons.Select(button => (HoverCard)ToolTip.GetTip(button)!).Select(card => (card.Title, card.Key)));
+        });
+    }
+
+    [Fact]
+    public void The_keys_are_the_command_key_the_panel_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var panel = new DebuggerPanel(new GraphDebugger(new FakeDebugChannel(), new GraphBreakpoints()), _ => null, KeyModifiers.Control);
+
+            Assert.Equal(("⌃Y", "Nothing is playing. Press ⌃B first."), (Card(panel, "pause").Key, Card(panel, "pause").Line));
         });
     }
 
@@ -135,7 +147,7 @@ public sealed class DebuggerPanelTests
         {
             var channel = new FakeDebugChannel();
             var debugger = new GraphDebugger(channel, new GraphBreakpoints());
-            var panel = new DebuggerPanel(debugger, place => place == new DebugPlace(Script, "helper", 7) ? "Rotate y" : null);
+            var panel = new DebuggerPanel(debugger, place => place == new DebugPlace(Script, "helper", 7) ? "Rotate y" : null, KeyModifiers.Meta);
 
             Hear(channel, debugger, Stopped());
             Assert.Equal("Paused at step 7, Rotate y.", Status(panel));

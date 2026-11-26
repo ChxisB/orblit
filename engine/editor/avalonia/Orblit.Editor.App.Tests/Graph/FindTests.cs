@@ -6,7 +6,7 @@ namespace Orblit.Editor.App.Tests.Graph;
 
 public sealed class FindTests
 {
-    static GraphCanvas Open(FakeGraphSource? source = null) => new(source ?? FakeGraphSource.Sample());
+    static GraphCanvas Open(FakeGraphSource? source = null) => new(source ?? FakeGraphSource.Sample(), KeyModifiers.Meta);
 
     static void Click(GraphCanvas canvas, string id) => canvas.Find<Button>($"find:{id}")!.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 

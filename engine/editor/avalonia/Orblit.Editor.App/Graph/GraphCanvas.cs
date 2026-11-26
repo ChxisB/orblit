@@ -59,8 +59,9 @@ internal sealed class GraphCanvas : Grid
     int? _revealed;
 
     /// <param name="source">What the canvas shows and edits.</param>
+    /// <param name="command">The platform's command key, which the zoom items and the bars show.</param>
     /// <param name="clipboard">Where copied steps go. The window's clipboard when none is given.</param>
-    public GraphCanvas(IGraphSource source, ITextClipboard? clipboard = null)
+    public GraphCanvas(IGraphSource source, KeyModifiers command, ITextClipboard? clipboard = null)
     {
         _source = source;
         _edits = new GraphEdits(source, _scene);
@@ -68,15 +69,15 @@ internal sealed class GraphCanvas : Grid
         _surface = new GraphSurface(_scene, _viewport, _gestures, _edits);
         _clipboard = new GraphClipboard(source, _scene, _edits, clipboard ?? new WindowClipboard(this));
         _pasteBar = new PasteChoiceBar(_clipboard);
-        _arrangeBar = new ArrangeBar(new GraphArranger(_scene, _edits), Select, _edits);
-        _findBar = new FindBar(new GraphSearch(_scene, Reveal, Redraw), () => _surface.Focus());
+        _arrangeBar = new ArrangeBar(new GraphArranger(_scene, _edits), Select, _edits, command);
+        _findBar = new FindBar(new GraphSearch(_scene, Reveal, Redraw, command), () => _surface.Focus(), command);
         _surface.Shortcuts = Shortcuts();
         _zoomToPicked = Parts.ActionItem(ZoomToPickedName, ZoomToPicked, new KeyGesture(Key.F, KeyModifiers.Alt));
         _zoomItems =
         [
-            Parts.ActionItem("Zoom in", () => ZoomBy(ZoomStep), new KeyGesture(Key.OemPlus, KeyModifiers.Meta)),
-            Parts.ActionItem("Zoom out", () => ZoomBy(1 / ZoomStep), new KeyGesture(Key.OemMinus, KeyModifiers.Meta)),
-            Parts.ActionItem("Actual size", () => ZoomTo(1), new KeyGesture(Key.D0, KeyModifiers.Meta)),
+            Parts.ActionItem("Zoom in", () => ZoomBy(ZoomStep), new KeyGesture(Key.OemPlus, command)),
+            Parts.ActionItem("Zoom out", () => ZoomBy(1 / ZoomStep), new KeyGesture(Key.OemMinus, command)),
+            Parts.ActionItem("Actual size", () => ZoomTo(1), new KeyGesture(Key.D0, command)),
             Parts.ActionItem("Show all", FitView, new KeyGesture(Key.F), "Fits every step in the view"),
             _zoomToPicked,
             _curved,

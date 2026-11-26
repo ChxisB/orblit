@@ -91,6 +91,7 @@ internal sealed class GraphView : Border
     readonly MenuItem _showInFiles;
     readonly CreateScriptForm _form = new(ScriptKind.Graph);
     readonly ITextClipboard _clipboard;
+    readonly KeyModifiers _command;
     readonly List<GraphSheet> _sheets = [];
     IReadOnlyList<string> _all = [];
     IGraphFiles? _files;
@@ -98,15 +99,16 @@ internal sealed class GraphView : Border
     DebugPlace? _shownStop;
     GraphSheet? _current;
 
-    public GraphView(ITextClipboard? clipboard = null, ILinkOpener? links = null)
+    public GraphView(KeyModifiers command, ITextClipboard? clipboard = null, ILinkOpener? links = null)
     {
+        _command = command;
         _clipboard = clipboard ?? new WindowClipboard(this);
-        _gotoMenu = new GotoMenu(() => Canvas);
+        _gotoMenu = new GotoMenu(() => Canvas, command);
         _gotoButton.Flyout = _gotoMenu;
         _helpButton.Flyout = new HelpMenu(links ?? new WindowLinks(this));
-        _save = Parts.PressItem("Save", _saveButton, new KeyGesture(Key.S, KeyModifiers.Meta));
-        _saveAll = Parts.PressItem("Save all", SaveAllButton, new KeyGesture(Key.S, KeyModifiers.Meta | KeyModifiers.Alt));
-        _close = Parts.PressItem("Close", CloseButton, new KeyGesture(Key.W, KeyModifiers.Meta));
+        _save = Parts.PressItem("Save", _saveButton, new KeyGesture(Key.S, command));
+        _saveAll = Parts.PressItem("Save all", SaveAllButton, new KeyGesture(Key.S, command | KeyModifiers.Alt));
+        _close = Parts.PressItem("Close", CloseButton, new KeyGesture(Key.W, command));
         _closeAll = Parts.ActionItem("Close all", CloseAll);
         _copyPath = Parts.ActionItem("Copy path", CopyPath);
         _showInFiles = Parts.PressItem(SceneTabStrip.ShowInFiles, ShowInFilesButton);
@@ -123,10 +125,10 @@ internal sealed class GraphView : Border
         _fileButton.Flyout = _menu;
         SaveAllButton.Click += (_, _) => Save();
         CloseButton.Click += (_, _) => CloseCurrent();
-        _saveButton.Content = Parts.Keyed("Save", "⌘S");
+        _saveButton.Content = Parts.Keyed("Save", Parts.KeyText(new KeyGesture(Key.S, command)));
         _saveButton.Click += (_, _) => SaveCurrent();
-        Dress(_findButton, "Search", new HoverCard("Find a step", "Finds steps by their names and numbers.", "⌘F"));
-        Dress(_bookmarkButton, "Favorites", new HoverCard("Bookmark", "Marks the picked step, so F2 can find it again.", "⌘F2"));
+        Dress(_findButton, "Search", new HoverCard("Find a step", "Finds steps by their names and numbers.", Parts.KeyText(new KeyGesture(Key.F, command))));
+        Dress(_bookmarkButton, "Favorites", new HoverCard("Bookmark", "Marks the picked step, so F2 can find it again.", Parts.KeyText(new KeyGesture(Key.F2, command))));
         Dress(_breakpointButton, "Breakpoint", new HoverCard("Pause here", "The game stops at the picked step, so you can look at its values.", "F9"));
         _findButton.Click += (_, _) => Canvas?.FindBar.Open();
         _bookmarkButton.Click += (_, _) => Canvas?.FindBar.Run(search => search.ToggleBookmark());
@@ -362,7 +364,7 @@ internal sealed class GraphView : Border
         _shownStop = null;
         _debugger = new GraphDebugger(files.Debug, Breakpoints);
         _debugger.Changed += ShowStop;
-        _debugHost.Content = new DebuggerPanel(_debugger, place => _current?.StepTitle(place));
+        _debugHost.Content = new DebuggerPanel(_debugger, place => _current?.StepTitle(place), _command);
     }
 
     // The view moves to a stop once. A poll that only brings values leaves the view where the person put it.
@@ -421,7 +423,7 @@ internal sealed class GraphView : Border
         {
             try
             {
-                sheet = new GraphSheet(script, _files.OpenGraph(script), Breakpoints, _debugger!);
+                sheet = new GraphSheet(script, _files.OpenGraph(script), new SheetShared(Breakpoints, _debugger!, _command));
             }
             catch (Exception error) when (Failed(error))
             {

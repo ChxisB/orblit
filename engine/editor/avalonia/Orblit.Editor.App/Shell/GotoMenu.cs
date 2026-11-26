@@ -16,13 +16,13 @@ internal sealed class GotoMenu : MenuFlyout
     readonly Func<GraphCanvas?> _canvas;
     readonly List<(MenuItem Item, string? Note)> _entries = [];
 
-    public GotoMenu(Func<GraphCanvas?> canvas)
+    public GotoMenu(Func<GraphCanvas?> canvas, KeyModifiers command)
     {
         _canvas = canvas;
-        Add("Find a step…", "By name, like print, or by number", new KeyGesture(Key.F, KeyModifiers.Meta), bar => bar.Open());
-        Add("Go to step number…", "Every step shows its number", new KeyGesture(Key.L, KeyModifiers.Meta), bar => bar.OpenGoto());
+        Add("Find a step…", "By name, like print, or by number", new KeyGesture(Key.F, command), bar => bar.Open());
+        Add("Go to step number…", "Every step shows its number", new KeyGesture(Key.L, command), bar => bar.OpenGoto());
         Items.Add(new Separator());
-        Add("Bookmark this step", "Marks a step to come back to", new KeyGesture(Key.F2, KeyModifiers.Meta), bar => bar.Run(search => search.ToggleBookmark()));
+        Add("Bookmark this step", "Marks a step to come back to", new KeyGesture(Key.F2, command), bar => bar.Run(search => search.ToggleBookmark()));
         Add("Next bookmark", null, new KeyGesture(Key.F2), bar => bar.Run(search => search.StepBookmark(true)));
         Add("Previous bookmark", null, new KeyGesture(Key.F2, KeyModifiers.Shift), bar => bar.Run(search => search.StepBookmark(false)));
         Items.Add(new Separator());

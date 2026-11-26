@@ -37,7 +37,7 @@ public sealed class GraphClipboardTests
     static GraphCanvas Open(FakeGraphSource source, MemoryClipboard clipboard)
     {
         _ = source.History;
-        return new GraphCanvas(source, clipboard);
+        return new GraphCanvas(source, KeyModifiers.Meta, clipboard);
     }
 
     static void Pick(GraphCanvas canvas, params int[] ids) => canvas.Select(ids);

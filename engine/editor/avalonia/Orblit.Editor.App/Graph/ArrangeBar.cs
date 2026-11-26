@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Documents;
+using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Orblit.Editor.App.Shell;
@@ -27,7 +28,7 @@ internal sealed class ArrangeBar : Border
     readonly Button _expand;
     readonly MenuItem[] _gaps;
 
-    public ArrangeBar(GraphArranger arranger, Action<IEnumerable<int>> select, GraphEdits edits)
+    public ArrangeBar(GraphArranger arranger, Action<IEnumerable<int>> select, GraphEdits edits, KeyModifiers command)
     {
         IsVisible = false;
         Classes.Add(EditorTheme.Island);
@@ -53,7 +54,7 @@ internal sealed class ArrangeBar : Border
         ]);
         _straighten = Tool("straighten", new HoverCard("Straighten wires", "Moves steps up or down until the wires between them are level."), arranger.Straighten, "Pick two or more joined steps first.");
         _expand = Tool("expand", new HoverCard("Open up the call", "Puts the steps of the action it runs in its place."), edits.Expand, "Pick a step that runs an action first.");
-        var box = Tool("box", new HoverCard("Put in a box", "Draws a box round the picked steps.", "⌘G"), () => edits.FrameSelection());
+        var box = Tool("box", new HoverCard("Put in a box", "Draws a box round the picked steps.", Parts.KeyText(new KeyGesture(Key.G, command))), () => edits.FrameSelection());
         var joined = Tool("flow", new HoverCard("Pick joined steps", "Adds every step joined by a run wire to what is picked."), () => select(arranger.Flow()));
         var action = Tool("collapse", new HoverCard("Make an action", "Moves the picked steps into a new action and runs it from here."), edits.Collapse);
         var tidy = new TextBlock { Text = "Tidy up", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 4, 0) };

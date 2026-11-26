@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Automation;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
+using Avalonia.Input;
 using Avalonia.Media;
 using Avalonia.Platform;
 using Avalonia.VisualTree;
@@ -97,7 +98,7 @@ public sealed class EditorThemeTests
     {
         UiThread.Run(() =>
         {
-            var script = new ScriptView();
+            var script = new ScriptView(KeyModifiers.Meta);
 
             Assert.All(new VectorRow("Position").Axes, box => Assert.Equal(EditorTheme.Mono, box.FontFamily));
             Assert.Equal(EditorTheme.Mono, script.Editor.FontFamily);

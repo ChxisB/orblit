@@ -93,7 +93,7 @@ public sealed class GraphViewTests
 
     static GraphView Open(Files files, ITextClipboard? clipboard = null, ILinkOpener? links = null)
     {
-        var view = new GraphView(clipboard, links);
+        var view = new GraphView(KeyModifiers.Meta, clipboard, links);
         new Window { Content = view, Width = 1000, Height = 600 }.Show();
         view.Show(files);
         return view;
@@ -164,6 +164,18 @@ public sealed class GraphViewTests
             Assert.True(view.Hint.IsVisible);
             Assert.False(view.IsDirty);
             Assert.True(view.Save());
+        });
+    }
+
+    [Fact]
+    public void The_keys_are_the_command_key_the_view_is_given()
+    {
+        UiThread.Run(() =>
+        {
+            var view = new GraphView(KeyModifiers.Control);
+            HoverCard Card(Control control) => (HoverCard)ToolTip.GetTip(control)!;
+
+            Assert.Equal(("⌃F", "⌃F2"), (Card(view.FindButton).Key, Card(view.BookmarkButton).Key));
         });
     }
 

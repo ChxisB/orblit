@@ -14,7 +14,7 @@ public sealed class GraphMarksTests
     {
         var source = FakeGraphSource.Sample();
         var marks = new GraphBreakpoints();
-        var canvas = new GraphCanvas(source);
+        var canvas = new GraphCanvas(source, KeyModifiers.Meta);
         canvas.Scene.Script = Script;
         canvas.Scene.Breakpoints = marks;
         return (source, marks, canvas);
@@ -142,7 +142,7 @@ public sealed class GraphMarksTests
             source.Put(new GraphWarning("unreachable_step", "other", 2, "", "Nothing runs this step."));
             source.Put(new GraphWarning("unused_variable", "", 0, "total", "Nothing reads total."));
 
-            var canvas = new GraphCanvas(source);
+            var canvas = new GraphCanvas(source, KeyModifiers.Meta);
 
             Assert.Equal([3], canvas.Scene.Warned);
         });
@@ -154,7 +154,7 @@ public sealed class GraphMarksTests
         UiThread.Run(() =>
         {
             var source = FakeGraphSource.Sample();
-            var canvas = new GraphCanvas(source);
+            var canvas = new GraphCanvas(source, KeyModifiers.Meta);
             Assert.Empty(canvas.Scene.Warned);
 
             source.Put(new GraphWarning("unreachable_step", "main", 2, "", "Nothing runs this step."));

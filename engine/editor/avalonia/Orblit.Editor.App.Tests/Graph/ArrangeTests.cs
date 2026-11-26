@@ -1,5 +1,6 @@
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Orblit.Editor.App.Graph;
@@ -22,7 +23,7 @@ public sealed class ArrangeTests
     static GraphCanvas Open(FakeGraphSource source, params int[] selected)
     {
         _ = source.History;
-        var canvas = new GraphCanvas(source);
+        var canvas = new GraphCanvas(source, KeyModifiers.Meta);
         canvas.Select(selected);
         return canvas;
     }

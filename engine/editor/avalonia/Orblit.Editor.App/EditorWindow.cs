@@ -80,9 +80,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly DockSide _rightSide;
     readonly CenterArea _center;
     readonly ExportTool _export = new();
-    readonly ScriptView _script = new();
+    readonly ScriptView _script;
     readonly ImportPane _import = new();
-    readonly GraphView _graph = new();
+    readonly GraphView _graph;
     readonly GameView _game;
     readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
     readonly Dictionary<DockTabs, Window> _floats = [];
@@ -127,6 +127,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _history.Changed += ShowHistory;
         _historyPane = new HistoryPane(CommandKey);
         _game = new GameView(CommandKey);
+        _script = new ScriptView(CommandKey);
+        _graph = new GraphView(CommandKey);
         _historyPane.Picked += GoTo;
         _historyPane.ClearButton.Click += (_, _) => _history.Clear();
         _undo.Click += (_, _) => GoTo(_history.Done - 1);

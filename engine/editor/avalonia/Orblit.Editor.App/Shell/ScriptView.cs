@@ -68,7 +68,8 @@ internal sealed class ScriptView : Border
     readonly Button _check = new();
     readonly Button _close = Parts.Tight(Parts.IconButton("GuiClose", ""));
     readonly Button _start = Choice("New script", null, EditorTheme.Primary, NewLine);
-    readonly Button _findScript = Choice("Find a script", "⌘K", EditorTheme.Ghost, "Type part of a name to open it.");
+    readonly Button _findScript;
+    readonly KeyModifiers _command;
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
     readonly ListBox _outline = new()
     {
@@ -114,8 +115,10 @@ internal sealed class ScriptView : Border
     bool _shownDirty;
     bool _descending;
 
-    public ScriptView()
+    public ScriptView(KeyModifiers command)
     {
+        _command = command;
+        _findScript = Choice("Find a script", Parts.KeyText(new KeyGesture(Key.K, command)), EditorTheme.Ghost, "Type part of a name to open it.");
         _empty = NoScript();
         _finder = new ScriptFind(_code);
         _completions = new CompletionPopup(_code, Complete);
@@ -132,12 +135,13 @@ internal sealed class ScriptView : Border
             }
         };
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : ScriptRow(path));
-        _save.Content = Parts.Keyed("Save", "⌘S");
-        var save = new HoverCard("Save", "Writes the script to its file.", "⌘S");
+        var saveKey = Parts.KeyText(new KeyGesture(Key.S, command));
+        _save.Content = Parts.Keyed("Save", saveKey);
+        var save = new HoverCard("Save", "Writes the script to its file.", saveKey);
         save.SaysWhyOff(save.On(_save), "Nothing new to save.");
-        var find = new HoverCard("Find", "Finds words in this script.", "⌘F");
+        var find = new HoverCard("Find", "Finds words in this script.", Parts.KeyText(new KeyGesture(Key.F, command)));
         find.SaysWhyOff(Parts.Dress(_find, "Search", find), "Open a script first.");
-        var check = new HoverCard("Check for problems", "Saves, then builds the project's C# and lists what is wrong.", "⇧⌘B");
+        var check = new HoverCard("Check for problems", "Saves, then builds the project's C# and lists what is wrong.", Parts.KeyText(CheckKey));
         check.SaysWhyOff(Parts.Dress(_check, "ImportCheck", check), "A check is running.");
         new HoverCard("Close", "Saves the script, then closes it.").On(_close);
         new HoverCard("Problems", "Lists what the last check found. With nothing found, it checks again.").On(_problems);
@@ -317,7 +321,7 @@ internal sealed class ScriptView : Border
         _debugger?.Dispose();
         _debugger = new GraphDebugger(files.Csharp, Breakpoints);
         _debugger.Changed += ShowStop;
-        DebugPanel = new DebuggerPanel(_debugger, _ => null);
+        DebugPanel = new DebuggerPanel(_debugger, _ => null, _command);
         _code.Editor.Text = "";
         ShowOpen();
         _status.Text = "";
@@ -793,6 +797,8 @@ internal sealed class ScriptView : Border
     /// The list of what the last check found under a count of each kind, with Check again under it. Each problem
     /// says what is wrong, then where, with the compiler's code beside it in dim mono.
     /// </summary>
+    KeyGesture CheckKey => new(Key.B, _command | KeyModifiers.Shift);
+
     internal MenuFlyout ProblemList()
     {
         var list = new MenuFlyout { Placement = PlacementMode.TopEdgeAlignedRight };
@@ -816,7 +822,7 @@ internal sealed class ScriptView : Border
         }
 
         list.Items.Add(new Separator());
-        list.Items.Add(Parts.PressItem("Check again", _check, new KeyGesture(Key.B, KeyModifiers.Meta | KeyModifiers.Shift), "Saves, then builds again."));
+        list.Items.Add(Parts.PressItem("Check again", _check, CheckKey, "Saves, then builds again."));
         return list;
     }
 

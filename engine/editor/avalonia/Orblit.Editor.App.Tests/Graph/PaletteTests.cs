@@ -13,7 +13,7 @@ public sealed class PaletteTests
     static (FakeGraphSource Source, GraphCanvas Canvas) Open(FakeGraphSource? source = null)
     {
         source ??= FakeGraphSource.Sample();
-        return (source, new GraphCanvas(source));
+        return (source, new GraphCanvas(source, KeyModifiers.Meta));
     }
 
     static void Drag(GraphCanvas canvas, Point from, Point to)

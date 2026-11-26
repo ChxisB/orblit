@@ -24,7 +24,7 @@ internal sealed class FindBar : Border
     readonly TextBlock _status = new() { Tag = "find:status", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0) };
     readonly StackPanel _gotoRow;
 
-    public FindBar(GraphSearch search, Action closed)
+    public FindBar(GraphSearch search, Action closed, KeyModifiers command)
     {
         _search = search;
         _closed = closed;
@@ -43,9 +43,9 @@ internal sealed class FindBar : Border
         AddButton(row, ("previous", "Back", "⇧↵"), "Shows the match before the picked step.", () => Find(false));
         AddButton(row, ("next", "Next", "↵"), "Shows the match after the picked step.", () => Find(true));
         row.Children.Add(Parts.Rule());
-        AddButton(row, ("open_goto", "Go to number", "⌘L"), "Shows the step with the number you type.", OpenGoto);
+        AddButton(row, ("open_goto", "Go to number", Parts.KeyText(new KeyGesture(Key.L, command))), "Shows the step with the number you type.", OpenGoto);
         row.Children.Add(Parts.Rule());
-        AddButton(row, ("bookmark", "Bookmark", "⌘F2"), "Marks the picked step, or takes its mark off.", search.ToggleBookmark);
+        AddButton(row, ("bookmark", "Bookmark", Parts.KeyText(new KeyGesture(Key.F2, command))), "Marks the picked step, or takes its mark off.", search.ToggleBookmark);
         row.Children.Add(new TextBlock { Text = "Bookmarks", FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 2, 0) });
         AddButton(row, ("bookmark_previous", "Back", "⇧F2"), "Shows the bookmarked step before the picked one.", () => search.StepBookmark(false));
         AddButton(row, ("bookmark_next", "Next", "F2"), "Shows the bookmarked step after the picked one.", () => search.StepBookmark(true));
