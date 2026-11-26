@@ -31,7 +31,7 @@ internal sealed class MetadataTool : StackPanel
     readonly Segments _kind = new([.. s_kinds.Select(kind => kind.Name)]);
     readonly TextBox _value = new() { Classes = { EditorTheme.Field } };
     readonly TextBlock _fault = Parts.FaultLine();
-    readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
+    readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, Gaps.Item, 0) };
     readonly Button _add = new() { Content = Parts.Keyed("Add", "↵"), Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
 
     public MetadataTool()
@@ -47,12 +47,12 @@ internal sealed class MetadataTool : StackPanel
         Children.Add(Head);
         Children.Add(new Border
         {
-            Padding = new Thickness(14, 12),
-            Child = new StackPanel { Spacing = 10, Children = { Parts.Labeled("Name", _name, _nameRule), Parts.Labeled("Type", _kind), Parts.Labeled("Value", _value, _fault) } },
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
+            Child = new StackPanel { Spacing = Gaps.Group, Children = { Parts.Labeled("Name", _name, _nameRule), Parts.Labeled("Type", _kind), Parts.Labeled("Value", _value, _fault) } },
         });
         Children.Add(new Border
         {
-            Padding = new Thickness(12, 10),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new DockPanel { LastChildFill = false, Children = { _add, _cancel } },

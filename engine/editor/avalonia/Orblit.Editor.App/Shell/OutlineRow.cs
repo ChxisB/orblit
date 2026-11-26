@@ -15,10 +15,10 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class OutlineRow : Grid
 {
-    // A row is 23 pixels high, so the eye button is tighter than a toolbar one. Its icon ends 9 pixels
-    // in from the right edge of the dock: 2 pixels of padding and 6 of margin, and the tree item adds 1.
-    const double EyePadding = 2;
-    const double EyeMargin = 6;
+    // A row is 23 pixels high, so the eye button is tighter than a toolbar one. Its icon ends 7 pixels
+    // in from the right edge of the dock: 2 pixels of padding and 4 of margin, and the tree item adds 1.
+    const double EyePadding = Gaps.Joined;
+    const double EyeMargin = Gaps.Tight;
 
     // A hidden row is dimmed, not grayed out, so the name stays readable.
     const double HiddenOpacity = 0.5;
@@ -34,7 +34,7 @@ internal sealed class OutlineRow : Grid
         Margin = new Thickness(-EditorTheme.RowOverhang, 0, 0, 0);
         var icon = Parts.RowIcon(EditorIcons.ForClass(entity.ClassName));
         var name = MarkedName(entity.Name, filter.Trim());
-        var label = _label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        var label = _label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center };
         label.Children.Add(name);
         if (PlainNames.Of(entity.ClassName) is { } kind)
         {
@@ -87,12 +87,12 @@ internal sealed class OutlineRow : Grid
             Text = _entity.Name,
             Height = 22,
             MinHeight = 0,
-            Padding = new Thickness(6, 0),
+            Padding = new Thickness(Gaps.Tight, 0),
             FontFamily = EditorTheme.Mono,
             FontSize = 12,
             VerticalContentAlignment = VerticalAlignment.Center,
         };
-        var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(6, 0), Children = { Parts.KeyHint("keep", "↵"), Parts.KeyHint("cancel", "esc") } };
+        var keys = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Margin = new Thickness(Gaps.Tight, 0), Children = { Parts.KeyHint("keep", "↵"), Parts.KeyHint("cancel", "esc") } };
         DockPanel.SetDock(keys, Dock.Right);
         var editor = new DockPanel { Children = { keys, box } };
         var done = false;

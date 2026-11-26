@@ -20,7 +20,7 @@ namespace Orblit.Editor.App.Graph;
 internal sealed class ScriptPanels : Border
 {
     readonly IScriptDeclarations _script;
-    readonly StackPanel _body = new() { Spacing = 10, Margin = new Thickness(10) };
+    readonly StackPanel _body = new() { Spacing = Gaps.Group, Margin = new Thickness(Gaps.Group) };
     IReadOnlyList<GraphStepEntry>? _overrides;
     readonly TextBlock _notice = new() { Foreground = Brushes.IndianRed, TextWrapping = TextWrapping.Wrap, IsVisible = false, FontSize = 12 };
     readonly VariableTool _variableTool = new();
@@ -81,14 +81,14 @@ internal sealed class ScriptPanels : Border
     static Grid Header(string title, string? engine, string line, Button? add = null)
     {
         // The engine's name goes under the plain one in a narrow list.
-        var name = new WrapPanel { ItemSpacing = 8, Children = { new TextBlock { Text = title, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap } } };
+        var name = new WrapPanel { ItemSpacing = Gaps.Item, Children = { new TextBlock { Text = title, FontWeight = FontWeight.Bold, TextWrapping = TextWrapping.Wrap } } };
         if (engine is not null)
         {
             name.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
         }
 
-        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, 6, 0, 0) };
-        header.Children.Add(new StackPanel { Spacing = 1, Children = { name, Dim(line) } });
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto"), Margin = new Thickness(0, Gaps.Item, 0, 0) };
+        header.Children.Add(new StackPanel { Spacing = Gaps.Joined, Children = { name, Dim(line) } });
         if (add is not null)
         {
             add.VerticalAlignment = VerticalAlignment.Top;
@@ -138,7 +138,7 @@ internal sealed class ScriptPanels : Border
     {
         var id = $"variable:{variable.Name}";
         var name = variable.Name;
-        var detail = new StackPanel { Spacing = 4, Margin = new Thickness(16, 0, 0, 4) };
+        var detail = new StackPanel { Spacing = Gaps.Tight, Margin = new Thickness(Gaps.Dialog, 0, 0, Gaps.Tight) };
         // The type has its own line, because a narrow column cannot hold it beside the name.
         var type = PanelFields.TypeBox($"{id}:type", variable.Type, picked => Apply(_script.SetVariableType(name, picked)));
         type.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -153,7 +153,7 @@ internal sealed class ScriptPanels : Border
     // A named thing with a grip, a name and a remove button, and the lines that edit the rest of it.
     StackPanel Row(string id, GraphDrop drop, Control? detail, Func<string, GraphEditResult> rename, Func<GraphEditResult> remove)
     {
-        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = 4 };
+        var top = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), ColumnSpacing = Gaps.Tight };
         Control[] cells = [PanelFields.Handle($"{id}:drag", drop), PanelFields.Box($"{id}:name", drop.Value, text => Apply(rename(text))), RemoveButton(id, drop.Value, remove)];
         for (var at = 0; at < cells.Length; at++)
         {
@@ -161,7 +161,7 @@ internal sealed class ScriptPanels : Border
             top.Children.Add(cells[at]);
         }
 
-        var row = new StackPanel { Spacing = 2 };
+        var row = new StackPanel { Spacing = Gaps.Joined };
         row.Children.Add(top);
         if (detail is not null)
         {
@@ -261,7 +261,7 @@ internal sealed class ScriptPanels : Border
         var remove = RemoveButton($"function:{name}", plain?.Sentence ?? name, () => _script.RemoveFunction(name));
         Grid.SetColumn(show, 1);
         Grid.SetColumn(remove, 2);
-        return new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = 4, Children = { label, show, remove } };
+        return new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto"), ColumnSpacing = Gaps.Tight, Children = { label, show, remove } };
     }
 
     void AddActions()
@@ -322,7 +322,7 @@ internal sealed class ScriptPanels : Border
     // The arguments, the type returned and the description live on the Entry step of the function on show.
     Control SignatureEditor(FunctionSignature signature)
     {
-        var stack = new StackPanel { Spacing = 4, Margin = new Thickness(16, 0, 0, 4) };
+        var stack = new StackPanel { Spacing = Gaps.Tight, Margin = new Thickness(Gaps.Dialog, 0, 0, Gaps.Tight) };
         stack.Children.Add(new TextBlock { Text = "It gets", FontSize = 12 });
         stack.Children.Add(new TypedListEditor("function:arguments", signature.Arguments, null, list => Apply(Set(signature, "arguments", GraphTyped.WriteList(list)))));
         stack.Children.Add(new TextBlock { Text = "It gives back", FontSize = 12 });
@@ -377,7 +377,7 @@ internal sealed class ScriptPanels : Border
         {
             var name = signal.Name;
             var arguments = new TypedListEditor($"signal:{name}:arguments", signal.Arguments, null, list => Apply(_script.SetSignalArguments(name, list)));
-            arguments.Margin = new Thickness(16, 0, 0, 4);
+            arguments.Margin = new Thickness(Gaps.Dialog, 0, 0, Gaps.Tight);
             var row = Row($"signal:{name}", new GraphDrop(GraphDropKind.Signal, name), arguments, text => _script.RenameSignal(name, text), () => _script.RemoveSignal(name));
             _body.Children.Add(row);
         }

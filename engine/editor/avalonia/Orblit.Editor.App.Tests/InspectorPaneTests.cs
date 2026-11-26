@@ -45,9 +45,9 @@ public sealed class InspectorPaneTests
             var window = OpenAtReferenceSize();
             var pane = window.InspectorPane;
 
-            AssertBox(3121, 92, 24, 24, BoxOf(pane.BackButton, window));
-            AssertBox(3149, 92, 24, 24, BoxOf(pane.ForwardButton, window));
-            AssertBox(3181, 88, 246, 32, BoxOf(pane.Chip, window));
+            AssertBox(3125, 92, 24, 24, BoxOf(pane.BackButton, window));
+            AssertBox(3153, 92, 24, 24, BoxOf(pane.ForwardButton, window));
+            AssertBox(3185, 88, 238, 32, BoxOf(pane.Chip, window));
             Assert.Equal(("Recently inspected", "Pick one to look at it again."), (Card(pane.Chip).Title, Card(pane.Chip).Line));
         });
     }
@@ -60,8 +60,8 @@ public sealed class InspectorPaneTests
             var window = OpenAtReferenceSize();
             var pane = window.InspectorPane;
 
-            AssertBox(3123, 122, 272, 28, BoxOf(pane.FilterBox, window));
-            AssertBox(3401, 123, 26, 26, BoxOf(pane.MoreButton, window));
+            AssertBox(3125, 122, 264, 28, BoxOf(pane.FilterBox, window));
+            AssertBox(3397, 123, 26, 26, BoxOf(pane.MoreButton, window));
             Assert.Equal("Find a setting", pane.FilterBox.PlaceholderText);
             Assert.Equal("More", Card(pane.MoreButton).Title);
             Assert.Equal("More", AutomationProperties.GetName(pane.MoreButton));
@@ -76,7 +76,7 @@ public sealed class InspectorPaneTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(3119, 151, 314, 1121, BoxOf(window.InspectorPane.Viewer, window));
+            AssertBox(3117, 151, 314, 1119, BoxOf(window.InspectorPane.Viewer, window));
             Assert.Same(window.Inspector, window.InspectorPane.Viewer.Content);
         });
     }

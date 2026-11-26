@@ -22,7 +22,7 @@ internal sealed class SentencesCard : Border
     const double Indent = 16;
 
     readonly IScriptDeclarations _script;
-    readonly StackPanel _body = new() { Spacing = 4 };
+    readonly StackPanel _body = new() { Spacing = Gaps.Tight };
     HashSet<string>? _starts;
 
     public SentencesCard(IScriptDeclarations script)
@@ -32,14 +32,14 @@ internal sealed class SentencesCard : Border
         BorderBrush = EditorBrushes.Line;
         BorderThickness = new Thickness(1);
         CornerRadius = EditorTheme.PopoverCorners;
-        Padding = new Thickness(14, 10);
+        Padding = new Thickness(Gaps.Group);
         MaxWidth = 420;
         HorizontalAlignment = HorizontalAlignment.Left;
         VerticalAlignment = VerticalAlignment.Bottom;
-        Margin = new Thickness(12);
+        Margin = new Thickness(Gaps.Group);
         var title = new TextBlock { Text = "What this graph does", FontWeight = FontWeight.Bold };
         var updates = new TextBlock { Text = "Updates as you edit", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
-        var header = new WrapPanel { ItemSpacing = 16, Margin = new Thickness(0, 0, 0, 6), Children = { title, updates } };
+        var header = new WrapPanel { ItemSpacing = Gaps.Dialog, Margin = new Thickness(0, 0, 0, Gaps.Item), Children = { title, updates } };
         Child = new DockPanel { Children = { Top(header), new ScrollViewer { MaxHeight = 180, HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled, Content = _body } } };
         _script.Changed += Read;
         Read();
@@ -76,7 +76,7 @@ internal sealed class SentencesCard : Border
 
         foreach (var block in blocks)
         {
-            _body.Children.Add(new TextBlock { Text = block.Start, Tag = block.Start, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 4, 0, 0) });
+            _body.Children.Add(new TextBlock { Text = block.Start, Tag = block.Start, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, Gaps.Tight, 0, 0) });
             if (block.Lines.Count == 0)
             {
                 _body.Children.Add(new TextBlock { Text = NoStep, Tag = NoStep, FontSize = 12, Foreground = EditorBrushes.TextDim });
@@ -92,7 +92,7 @@ internal sealed class SentencesCard : Border
     // The lead in dim, then the number, then the step's plain name. A way back names no step, so it says where it goes.
     StackPanel Line(string function, SentenceLine line)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(line.Depth * Indent, 0, 0, 0), Tag = line.Text };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Margin = new Thickness(line.Depth * Indent, 0, 0, 0), Tag = line.Text };
         if (line.Again)
         {
             row.Children.AddRange([Dim(line.Lead == "" ? "Back to step" : $"{line.Lead} back to step"), Number(function, line.Step)]);
@@ -121,7 +121,7 @@ internal sealed class SentencesCard : Border
             {
                 MinWidth = 20,
                 Height = 20,
-                Padding = new Thickness(5, 0),
+                Padding = new Thickness(Gaps.Tight, 0),
                 CornerRadius = new CornerRadius(10),
                 Background = EditorBrushes.AccentSoft,
                 Child = new TextBlock { Text = $"{step}", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.Accent, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center },

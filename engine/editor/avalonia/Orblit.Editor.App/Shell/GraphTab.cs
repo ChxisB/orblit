@@ -21,14 +21,14 @@ internal sealed class GraphTab : Border, IOverflowTool
     {
         Script = script;
         _name = Path.GetFileName(script);
-        _choose = new Button { Content = _label, Padding = new Thickness(8, 4), MinHeight = 0, BorderThickness = new Thickness(0), Background = null };
+        _choose = new Button { Content = _label, Padding = new Thickness(Gaps.Item, Gaps.Tight), MinHeight = 0, BorderThickness = new Thickness(0), Background = null };
         _choose.Click += (_, _) => Chosen?.Invoke();
         _close.Click += (_, _) => CloseRequested?.Invoke();
         ToolTip.SetTip(this, script);
         MaxWidth = Widest;
         CornerRadius = EditorTheme.Corners;
         BorderThickness = new Thickness(1);
-        _close.Margin = new Thickness(2, 0, 0, 0);
+        _close.Margin = new Thickness(Gaps.Joined, 0, 0, 0);
         DockPanel.SetDock(_close, Dock.Right);
         Child = new DockPanel { Children = { _close, _choose } };
         Show(false, false);

@@ -34,9 +34,9 @@ internal sealed class ImportPane : DockPanel
     readonly StackPanel _empty = Parts.EmptyState("ImportArrow", "Pick a file to set how it comes in", "Models, pictures and sounds have import settings. Click one in Files and they show here.");
     readonly TextBlock _name = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly Border _badge = Parts.Badge("");
-    readonly StackPanel _groups = new() { Spacing = 4 };
+    readonly StackPanel _groups = new() { Spacing = Gaps.Tight };
     readonly TextBlock _status = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
-    readonly DockPanel _form = new() { Margin = new Thickness(12) };
+    readonly DockPanel _form = new() { Margin = new Thickness(Gaps.Group) };
     IImportFiles? _files;
     string? _open;
     ImportFile? _read;
@@ -44,13 +44,13 @@ internal sealed class ImportPane : DockPanel
 
     public ImportPane()
     {
-        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 0, 0, 8) };
+        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto"), Margin = new Thickness(0, 0, 0, Gaps.Item) };
         var icon = Parts.RowIcon("ImportArrow", EditorBrushes.TreeIcon);
         Grid.SetColumn(_name, 1);
         Grid.SetColumn(_badge, 2);
         head.Children.AddRange([icon, _name, _badge]);
-        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, 10, 0, 0), Children = { ResetButton, ReimportButton } };
-        _status.Margin = new Thickness(0, 6, 0, 0);
+        var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, Gaps.Group, 0, 0), Children = { ResetButton, ReimportButton } };
+        _status.Margin = new Thickness(0, Gaps.Item, 0, 0);
         SetDock(head, Dock.Top);
         SetDock(_status, Dock.Bottom);
         SetDock(actions, Dock.Bottom);

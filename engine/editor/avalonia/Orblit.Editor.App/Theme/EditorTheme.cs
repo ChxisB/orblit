@@ -33,7 +33,7 @@ internal sealed class EditorTheme : Styles
     internal const double RowIndent = 16;
 
     /// <summary>How far a lit row stands in from each side of its tree or list.</summary>
-    internal const double RowInset = 6;
+    internal const double RowInset = Gaps.Tight;
 
     /// <summary>Pixels the theme leaves before the content of a tree row, more than the reference draws.</summary>
     internal const double RowOverhang = 15;
@@ -249,7 +249,7 @@ internal sealed class EditorTheme : Styles
                 new Setter(Layoutable.HeightProperty, RowHeight),
                 new Setter(Layoutable.MinHeightProperty, 0.0),
                 new Setter(Layoutable.MarginProperty, new Thickness(RowInset, 0)),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
                 // A bare name would sit at the top of the row.
                 new Setter(ContentControl.VerticalContentAlignmentProperty, VerticalAlignment.Center),
@@ -301,7 +301,7 @@ internal sealed class EditorTheme : Styles
         return overrides;
     }
 
-    // A menu is a popover: a 5 pixel inset round rows that have round corners of their own. A flyout holds a
+    // A menu is a popover: a 4 pixel inset round rows that have round corners of their own. A flyout holds a
     // form, so it keeps the base theme's room inside and takes only the popover's corners.
     static Style[] PopoverStyles() =>
     [
@@ -310,7 +310,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(TemplatedControl.CornerRadiusProperty, PopoverCorners),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(5)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Tight)),
             },
         },
         new(x => x.OfType<MenuItem>())
@@ -319,7 +319,7 @@ internal sealed class EditorTheme : Styles
             {
                 // A floor, not a height, so an item with a note under its name grows to hold it.
                 new Setter(Layoutable.MinHeightProperty, 28.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(8, 4)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, Gaps.Tight)),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
         },
@@ -357,7 +357,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, 30.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(12, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Group, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(TemplatedControl.BorderThicknessProperty, new Thickness(1)),
                 new Setter(TemplatedControl.FontWeightProperty, FontWeight.Medium),
@@ -398,7 +398,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, 26.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0)),
                 new Setter(TemplatedControl.FontSizeProperty, 12.0),
                 new Setter(TemplatedControl.CornerRadiusProperty, Corners),
             },
@@ -408,7 +408,7 @@ internal sealed class EditorTheme : Styles
             Setters =
             {
                 new Setter(Layoutable.HeightProperty, double.NaN),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(12)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Group)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(10)),
                 new Setter(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
                 new Setter(ContentControl.HorizontalContentAlignmentProperty, HorizontalAlignment.Left),
@@ -464,7 +464,7 @@ internal sealed class EditorTheme : Styles
             {
                 new Setter(Layoutable.HeightProperty, 30.0),
                 new Setter(Layoutable.MinHeightProperty, 0.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(TextBox.VerticalContentAlignmentProperty, VerticalAlignment.Center),
             },
@@ -475,7 +475,7 @@ internal sealed class EditorTheme : Styles
             {
                 new Setter(Layoutable.HeightProperty, 30.0),
                 new Setter(Layoutable.MinHeightProperty, 0.0),
-                new Setter(TemplatedControl.PaddingProperty, new Thickness(10, 0, 0, 0)),
+                new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Item, 0, 0, 0)),
                 new Setter(TemplatedControl.CornerRadiusProperty, new CornerRadius(7)),
                 new Setter(Layoutable.HorizontalAlignmentProperty, HorizontalAlignment.Stretch),
             },

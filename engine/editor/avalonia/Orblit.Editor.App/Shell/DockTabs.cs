@@ -16,12 +16,15 @@ namespace Orblit.Editor.App.Shell;
 /// </summary>
 internal sealed class DockTabs : Border
 {
-    /// <summary>A 26 pixel row of tabs, 6 pixels of padding around it, and the line under it.</summary>
+    /// <summary>A 26 pixel row of tabs, the room around it, and the line under it.</summary>
     internal const double StripHeight = 39;
 
     const double TabHeight = 26;
 
-    const double TabPadding = 10;
+    // Centers a tab in the strip, above the line under it.
+    internal const double StripInset = (StripHeight - 1 - TabHeight) / 2;
+
+    const double TabPadding = Gaps.Item;
 
     readonly string[] _titles;
     readonly Border[] _tabs;
@@ -42,7 +45,7 @@ internal sealed class DockTabs : Border
         _contents = tabs.Select(tab => tab.Content).ToArray();
         _tools = new Control?[tabs.Length];
         _tabs = tabs.Select((tab, index) => MakeTab(tab.Title, index)).ToArray();
-        var headers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var headers = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Joined };
         headers.Children.AddRange(_tabs);
         var strip = new DockPanel();
         _moves = [.. Enum.GetValues<DockSlot>().Select(slot => MoveItem(slot))];
@@ -55,7 +58,7 @@ internal sealed class DockTabs : Border
         strip.Children.Add(MenuButton);
         strip.Children.Add(_tool);
         strip.Children.Add(headers);
-        var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(6), Child = strip };
+        var bar = new Border { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 0, 0, 1), Padding = new Thickness(Gaps.Item, StripInset), Child = strip };
         Grid.SetRow(_body, 1);
         Child = new Grid { RowDefinitions = new RowDefinitions($"{StripHeight},*"), Children = { bar, _body } };
         Select(0);
@@ -222,7 +225,7 @@ internal sealed class DockTabs : Border
         {
             Width = 118,
             Height = 62,
-            Margin = new Thickness(0, 2, 0, 6),
+            Margin = new Thickness(0, Gaps.Joined, 0, Gaps.Item),
             ColumnDefinitions = new ColumnDefinitions("34,*,40"),
             RowDefinitions = new RowDefinitions("*,*"),
             Children = { _map[0], _map[1], viewport, _map[2] },

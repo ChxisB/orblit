@@ -42,11 +42,11 @@ internal sealed class ViewportOverlay : Grid
         TextElement.SetForeground(chevron, EditorBrushes.TextDim);
         _projection = new Button
         {
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { _label, chevron } },
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { _label, chevron } },
             Height = 26,
             MinWidth = 0,
             MinHeight = 0,
-            Padding = new Thickness(10, 0, 6, 0),
+            Padding = new Thickness(Gaps.Item, 0, Gaps.Tight, 0),
             BorderThickness = new Thickness(0),
             VerticalContentAlignment = VerticalAlignment.Center,
             Flyout = new MenuFlyout { Items = { _perspective, _orthogonal, new Separator(), _focus } },
@@ -131,7 +131,7 @@ internal sealed class ViewportOverlay : Grid
         new HoverCard("Preview sun and sky", "Turn the preview light and sky on or off.").On(_previewSettings);
         _previewSettings.Flyout = CardHead.Popover("Preview sun and sky", "Used only while your scene has no light or sky of its own. The game never sees them.", 380, new StackPanel
         {
-            Spacing = 14,
+            Spacing = Gaps.Group,
             Children =
             {
                 SwitchRow("PreviewSun", ("Sun", "A soft light from above, so shapes are easy to see."), _sunSwitch),
@@ -149,7 +149,7 @@ internal sealed class ViewportOverlay : Grid
     // An icon, the name over a dim line, and the switch at the right.
     static DockPanel SwitchRow(string icon, (string Name, string Line) label, ToggleSwitch toggle)
     {
-        var mark = new EditorIcon(icon) { Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        var mark = new EditorIcon(icon) { Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(toggle, Dock.Right);
         DockPanel.SetDock(mark, Dock.Left);
         AutomationProperties.SetName(toggle, label.Name);

@@ -64,7 +64,7 @@ internal sealed class TitleBar : Grid
         var start = new Grid
         {
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
-            ColumnSpacing = 12,
+            ColumnSpacing = Gaps.Group,
             HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(TitleLeft, 0, 0, 0),
             Children = { Heading, Menus },
@@ -79,10 +79,10 @@ internal sealed class TitleBar : Grid
         var end = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 12,
+            Spacing = Gaps.Group,
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(0, 0, 8, 0),
+            Margin = new Thickness(0, 0, Gaps.Item, 0),
             Children = { SearchButton, Run },
         };
         SetColumn(end, 2);
@@ -137,7 +137,7 @@ internal sealed class TitleBar : Grid
     // hidden one leaves none.
     DockPanel ProjectHeading()
     {
-        _project.Margin = _slash.Margin = _scene.Margin = EditedDot.Margin = new Thickness(8, 0, 0, 0);
+        _project.Margin = _slash.Margin = _scene.Margin = EditedDot.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         DockPanel.SetDock(EditedDot, Dock.Right);
         DockPanel.SetDock(Logo, Dock.Left);
         return new DockPanel
@@ -155,7 +155,7 @@ internal sealed class TitleBar : Grid
         button.Content = Parts.Worded(icon, card.Title);
         button.Height = 26;
         button.MinHeight = 0;
-        button.Padding = new Thickness(8, 0);
+        button.Padding = new Thickness(Gaps.Item, 0);
         button.BorderThickness = new Thickness(0);
         card.On(button);
     }
@@ -188,17 +188,17 @@ internal sealed class TitleBar : Grid
     static Button Search(KeyModifiers command)
     {
         var icon = Parts.SearchIcon();
-        icon.Margin = new Thickness(0, 0, 8, 0);
+        icon.Margin = new Thickness(0, 0, Gaps.Item, 0);
         DockPanel.SetDock(icon, Dock.Left);
         var keys = Parts.KeyText(new KeyGesture(Key.K, command));
         var key = Parts.Kbd(keys);
-        key.Margin = new Thickness(8, 0, 0, 0);
+        key.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         DockPanel.SetDock(key, Dock.Right);
         var button = new Button
         {
             Width = SearchWidth,
             Height = 30,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             Background = EditorBrushes.Field,
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(1),

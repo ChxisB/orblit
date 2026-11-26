@@ -153,7 +153,7 @@ public sealed class ScriptViewTests
             var fill = row.GetVisualDescendants().OfType<ContentPresenter>().First().Background;
             Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)fill!).Color);
             Assert.Equal((26.0, EditorTheme.Corners), (row.Bounds.Height, ((ListBoxItem)row).CornerRadius));
-            Assert.Equal(6, BoxOf(row, view.List).X);
+            Assert.Equal(4, BoxOf(row, view.List).X);
         });
     }
 

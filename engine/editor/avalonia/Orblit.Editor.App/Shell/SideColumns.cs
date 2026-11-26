@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
 
@@ -14,9 +15,9 @@ internal sealed class SideColumns : Grid
         ColumnDefinitions =
         [
             new(280, GridUnitType.Pixel) { MinWidth = 220 },
-            new(6, GridUnitType.Pixel),
+            new(Gaps.Item, GridUnitType.Pixel),
             new(GridLength.Star),
-            new(6, GridUnitType.Pixel),
+            new(Gaps.Item, GridUnitType.Pixel),
             new(316, GridUnitType.Pixel) { MinWidth = 260 },
         ];
 

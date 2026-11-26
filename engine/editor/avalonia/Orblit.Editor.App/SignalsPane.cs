@@ -43,10 +43,11 @@ internal sealed class SignalsPane : DockPanel
         Height = 28,
         MinHeight = 0,
         InnerRightContent = Parts.SearchIcon(),
-        Margin = new Thickness(10, 8, 10, 2),
+        Margin = new Thickness(Gaps.Group, Gaps.Item, Gaps.Group, Gaps.Joined),
     };
-    readonly TextBlock _lead = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(12, 4, 12, 4) };
-    readonly StackPanel _list = new() { Margin = new Thickness(6, 0, 6, 8) };
+    readonly TextBlock _lead = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Group, Gaps.Tight) };
+    // The class bars run past this gutter, as they do in the inspector.
+    readonly StackPanel _list = new() { Margin = new Thickness(Gaps.Item, 0, Gaps.Item, Gaps.Item) };
     readonly StackPanel _empty = Parts.EmptyState("Signals", "Nothing selected", "Select an entity to see its signals and where they go.");
     readonly ChoiceList _targets = new("Filter entities");
     readonly TextBox _method = new() { MinHeight = 0, Height = 28, FontFamily = EditorTheme.Mono, FontSize = 12 };
@@ -66,7 +67,7 @@ internal sealed class SignalsPane : DockPanel
 
     public SignalsPane()
     {
-        Dialog = new Dialog("", "Pick who hears about it, and what they do.", new StackPanel { Spacing = 10, Children = { Parts.Labeled("Tell", _targets), Parts.Labeled("Run", _method, _methodLine) } })
+        Dialog = new Dialog("", "Pick who hears about it, and what they do.", new StackPanel { Spacing = Gaps.Group, Children = { Parts.Labeled("Tell", _targets), Parts.Labeled("Run", _method, _methodLine) } })
         {
             CardWidth = 320,
             EngineName = "Connect a Signal to a Method",
@@ -144,7 +145,7 @@ internal sealed class SignalsPane : DockPanel
             {
                 continue;
             }
-            var rows = new StackPanel { Spacing = 2, Margin = new Thickness(0, 2, 0, 8) };
+            var rows = new StackPanel { Spacing = Gaps.Joined, Margin = new Thickness(0, Gaps.Joined, 0, Gaps.Item) };
             foreach (var signal in own)
             {
                 rows.Children.Add(SignalRow(signal));
@@ -152,7 +153,7 @@ internal sealed class SignalsPane : DockPanel
             }
             if (own.Count == 0)
             {
-                rows.Children.Add(new TextBlock { Text = $"{name} has no signals of its own.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(6, 2) });
+                rows.Children.Add(new TextBlock { Text = $"{name} has no signals of its own.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Tight, Gaps.Joined) });
             }
             _list.Children.Add(bar);
             _list.Children.Add(rows);
@@ -169,15 +170,15 @@ internal sealed class SignalsPane : DockPanel
             new Button { Content = "Connect…", Classes = { EditorTheme.TextButton, EditorTheme.Small }, VerticalAlignment = VerticalAlignment.Center });
         connect.Click += (_, _) => OpenConnect(signal);
         var plain = PlainOf(signal.Name);
-        var row = new DockPanel { Height = RowHeight, Margin = new Thickness(6, 0), Children = { Parts.Right(connect) } };
+        var row = new DockPanel { Height = RowHeight, Margin = new Thickness(Gaps.Tight, 0), Children = { Parts.Right(connect) } };
         if (signal.Links.Count > 0)
         {
-            row.Children.Add(Parts.Right(new TextBlock { Text = $"{signal.Links.Count} joined", FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0), VerticalAlignment = VerticalAlignment.Center }));
+            row.Children.Add(Parts.Right(new TextBlock { Text = $"{signal.Links.Count} joined", FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center }));
         }
         row.Children.Add(Parts.RowIcon("Signals"));
         if (plain != signal.Name)
         {
-            var words = new TextBlock { Text = plain, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+            var words = new TextBlock { Text = plain, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
             SetDock(words, Dock.Left);
             row.Children.Add(words);
         }
@@ -202,7 +203,7 @@ internal sealed class SignalsPane : DockPanel
         return new DockPanel
         {
             Height = 24,
-            Margin = new Thickness(26, 0, 6, 0),
+            Margin = new Thickness(Gaps.Section, 0, Gaps.Tight, 0),
             Children =
             {
                 Parts.Right(remove),

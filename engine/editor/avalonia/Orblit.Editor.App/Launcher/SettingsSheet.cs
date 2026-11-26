@@ -17,7 +17,7 @@ internal sealed class SettingsSheet
 
     readonly EditorSettings _settings;
     readonly TextBox _folder = new() { PlaceholderText = EditorSettings.DefaultProjectsFolder, FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
-    readonly Button _choose = new() { Content = "Choose…", Margin = new Thickness(0, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
+    readonly Button _choose = new() { Content = "Choose…", Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
     readonly TextBlock _fault = Parts.FaultLine();
 
     public SettingsSheet(EditorSettings settings)
@@ -27,11 +27,11 @@ internal sealed class SettingsSheet
         AllKeysButton = new HoverCard("All keys", "Every shortcut on one sheet.").On(new Button { Content = "All keys", Classes = { EditorTheme.TextButton } });
         var body = new StackPanel
         {
-            Spacing = 14,
+            Spacing = Gaps.Dialog,
             Children =
             {
                 Parts.Labeled("New projects go in", _folder, _fault, Parts.Hint("New project puts each new folder here. Orblit makes the folder if it is not there yet.")),
-                Parts.Labeled("Keys", new StackPanel { Spacing = 6, Children = { new Border { HorizontalAlignment = HorizontalAlignment.Left, Child = AllKeysButton }, Parts.Hint("Every shortcut in the editor, on one sheet.") } }),
+                Parts.Labeled("Keys", new StackPanel { Spacing = Gaps.Item, Children = { new Border { HorizontalAlignment = HorizontalAlignment.Left, Child = AllKeysButton }, Parts.Hint("Every shortcut in the editor, on one sheet.") } }),
             },
         };
         Dialog = new Dialog("Settings", Holds, body) { MainText = "Done" };

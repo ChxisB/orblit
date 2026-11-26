@@ -55,7 +55,7 @@ internal sealed class OutputPanel : Border
         {
             new Style(x => x.OfType<ListBoxItem>())
             {
-                Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(12, 3)), new Setter(Layoutable.MinHeightProperty, 0.0) },
+                Setters = { new Setter(TemplatedControl.PaddingProperty, new Thickness(Gaps.Group, Gaps.Joined)), new Setter(Layoutable.MinHeightProperty, 0.0) },
             },
         },
     };
@@ -64,7 +64,7 @@ internal sealed class OutputPanel : Border
         PlaceholderText = "Find in messages",
         MinWidth = LeastFilterWidth,
         MaxWidth = FilterWidth,
-        Margin = new Thickness(0, 0, 4, 0),
+        Margin = new Thickness(0, 0, Gaps.Tight, 0),
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Center,
@@ -99,14 +99,14 @@ internal sealed class OutputPanel : Border
         }
 
         var rule = Parts.Rule();
-        rule.Margin = new Thickness(4, 0);
+        rule.Margin = new Thickness(Gaps.Tight, 0);
         var tools = new OverflowBar([_filter, .. _chips, rule, _copy, _clear]) { HorizontalAlignment = HorizontalAlignment.Right };
-        var title = new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, 12, 0), VerticalAlignment = VerticalAlignment.Center };
+        var title = new TextBlock { Text = "Output", FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(0, 0, Gaps.Group, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(title, Dock.Left);
         Strip = new Border
         {
             Height = StripHeight,
-            Padding = new Thickness(12, 0, 6, 0),
+            Padding = new Thickness(Gaps.Group, 0, Gaps.Tight, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new DockPanel { Children = { title, tools } },
@@ -226,14 +226,14 @@ internal sealed class OutputPanel : Border
             Foreground = EditorBrushes.Disabled,
             Classes = { Stamp },
         };
-        var mark = new EditorIcon(icon) { Width = LineIcon, Height = LineIcon, Margin = new Thickness(0, 2, 8, 0), VerticalAlignment = VerticalAlignment.Top };
+        var mark = new EditorIcon(icon) { Width = LineIcon, Height = LineIcon, Margin = new Thickness(0, Gaps.Joined, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Top };
         TextElement.SetForeground(mark, tint);
         DockPanel.SetDock(stamp, Dock.Left);
         DockPanel.SetDock(mark, Dock.Left);
         var row = new DockPanel { Children = { stamp, mark } };
         if (entry.Source != "")
         {
-            var source = new TextBlock { Text = entry.Source, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
+            var source = new TextBlock { Text = entry.Source, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Group, 0, 0, 0), VerticalAlignment = VerticalAlignment.Top };
             DockPanel.SetDock(source, Dock.Right);
             row.Children.Add(source);
         }
@@ -268,10 +268,10 @@ internal sealed class OutputPanel : Border
             Height = ChipHeight;
             MinHeight = 0;
             MinWidth = 0;
-            Padding = new Thickness(9, 0);
+            Padding = new Thickness(Gaps.Item, 0);
             VerticalAlignment = VerticalAlignment.Center;
             Word = card.Title;
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, Children = { mark, new TextBlock { Text = Word, FontSize = 11, VerticalAlignment = VerticalAlignment.Center }, Count } };
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { mark, new TextBlock { Text = Word, FontSize = 11, VerticalAlignment = VerticalAlignment.Center }, Count } };
             IsChecked = true;
             IsCheckedChanged += (_, _) => Opacity = IsChecked == true ? 1 : 0.4;
             card.On(this);

@@ -22,7 +22,7 @@ internal sealed class WorkspaceTab : ToggleButton
         Label = name;
         Height = TabHeight;
         MinHeight = 0;
-        Padding = new Thickness(10, 0);
+        Padding = new Thickness(Gaps.Item, 0);
         Resources["ToggleButtonForeground"] = EditorBrushes.TextDim;
         Resources["ToggleButtonBackgroundChecked"] = EditorBrushes.Lifted;
         Resources["ToggleButtonBackgroundCheckedPointerOver"] = EditorBrushes.Lifted;
@@ -35,7 +35,7 @@ internal sealed class WorkspaceTab : ToggleButton
         Content = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
+            Spacing = Gaps.Tight,
             Children =
             {
                 new EditorIcon(icon),

@@ -24,7 +24,7 @@ internal sealed class Dialog : Border
         Heading = heading.Heading;
         Why = heading.Why;
         CloseButton = heading.CloseButton;
-        CancelButton = new Button { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
+        CancelButton = new Button { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, Gaps.Item, 0) };
         MainButton = new Button { Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
         DockPanel.SetDock(MainButton, Dock.Right);
         DockPanel.SetDock(CancelButton, Dock.Right);
@@ -32,21 +32,21 @@ internal sealed class Dialog : Border
 
         var footer = new Border
         {
-            Padding = new Thickness(12, 10),
-            Margin = new Thickness(0, 4, 0, 0),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
+            Margin = new Thickness(0, Gaps.Tight, 0, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = _footer,
         };
         // On a short window the body scrolls between the heading and the footer, so the main action stays in reach.
         // The grid keeps them in reading order, so Tab reaches the body before the footer.
-        var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(14, 12), Child = body } };
+        var scroll = new ScrollViewer { Content = new Border { Padding = new Thickness(Gaps.Dialog, Gaps.Group), Child = body } };
         Grid.SetRow(scroll, 1);
         Grid.SetRow(footer, 2);
         Card = new Border
         {
             Width = 420,
-            Margin = new Thickness(16),
+            Margin = new Thickness(Gaps.Dialog),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Background = EditorBrushes.Popover,

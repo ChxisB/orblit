@@ -196,7 +196,7 @@ public sealed class OutputPanelTests
     }
 
     [Fact]
-    public void The_panel_is_an_island_6_pixels_under_the_viewport_with_a_36_pixel_strip_for_the_title_copy_and_clear()
+    public void The_panel_is_an_island_8_pixels_under_the_viewport_with_a_36_pixel_strip_for_the_title_copy_and_clear()
     {
         UiThread.Run(() =>
         {
@@ -212,7 +212,7 @@ public sealed class OutputPanelTests
             Assert.Equal(36, strip.Height);
             Assert.Equal(EditorBrushes.Line, panel.Strip.BorderBrush);
             Assert.Equal(("Output", FontWeight.SemiBold, strip.X + 12), (title.Text, title.FontWeight, BoxOf(title, window).X));
-            Assert.Equal(strip.Right - 6, BoxOf(panel.ClearButton, window).Right);
+            Assert.Equal(strip.Right - 4, BoxOf(panel.ClearButton, window).Right);
             Assert.Equal(BoxOf(panel.ClearButton, window).X - 4, BoxOf(panel.CopyButton, window).Right);
             Assert.Equal(strip.Bottom, BoxOf(panel.List, window).Y);
         });

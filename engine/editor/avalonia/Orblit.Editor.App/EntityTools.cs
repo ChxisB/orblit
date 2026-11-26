@@ -45,7 +45,7 @@ internal sealed class EntityTools
 
     public EntityTools()
     {
-        var inside = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(10, 0, 0, 0), Children = { new TextBlock { Text = "Inside", Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center }, _inside } };
+        var inside = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Margin = new Thickness(Gaps.Item, 0, 0, 0), Children = { new TextBlock { Text = "Inside", Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center }, _inside } };
         var where = new HoverCard("Inside", "The new thing goes inside this one. Pick another to change it.");
         where.SaysWhyOff(_inside, "A new parent goes where the picked thing is.");
         where.On(_inside);
@@ -53,7 +53,7 @@ internal sealed class EntityTools
         AddDialog = new Dialog(AddTitle, "", _classes)
         {
             CardWidth = 720,
-            Hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { Parts.KeyHint("move", "↑", "↓"), Parts.KeyHint("add", "↵") } },
+            Hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Group, Children = { Parts.KeyHint("move", "↑", "↓"), Parts.KeyHint("add", "↵") } },
         };
         var add = new HoverCard("Add", "Puts the lit thing in the scene.", "↵");
         add.SaysWhyOff(AddDialog.MainButton, "Pick a thing to add first.");

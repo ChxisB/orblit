@@ -181,7 +181,7 @@ public sealed class EditorThemeTests
     }
 
     [Fact]
-    public void A_menu_is_a_popover_with_a_5_pixel_inset_round_28_pixel_rows()
+    public void A_menu_is_a_popover_with_a_4_pixel_inset_round_28_pixel_rows()
     {
         UiThread.Run(() =>
         {
@@ -194,9 +194,9 @@ public sealed class EditorThemeTests
             // A row with a note under its name grows to fit it. Rename on a picked thing has none.
             var plain = menu.Items.OfType<MenuItem>().Single(item => AutomationProperties.GetName(item) == "Rename");
 
-            Assert.Equal((EditorTheme.PopoverCorners, new Thickness(5)), (menu.CornerRadius, menu.Padding));
+            Assert.Equal((EditorTheme.PopoverCorners, new Thickness(4)), (menu.CornerRadius, menu.Padding));
             Assert.Equal((28.0, EditorTheme.Corners), (plain.Bounds.Height, item.CornerRadius));
-            Assert.Equal(new Point(6, 6), item.TranslatePoint(new Point(0, 0), menu));
+            Assert.Equal(new Point(5, 5), item.TranslatePoint(new Point(0, 0), menu));
             Assert.Equal(EditorColors.Popover, ((ISolidColorBrush)menu.Background!).Color);
         });
     }

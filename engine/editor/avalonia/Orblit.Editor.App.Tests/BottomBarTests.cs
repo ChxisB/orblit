@@ -36,7 +36,7 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_first_tab_starts_six_pixels_in_with_ten_before_its_icon_and_six_after_it()
+    public void The_first_tab_starts_eight_pixels_in_with_eight_before_its_icon_and_four_after_it()
     {
         UiThread.Run(() =>
         {
@@ -45,10 +45,10 @@ public sealed class BottomBarTests
             var icon = bar.Tabs[0].GetVisualDescendants().OfType<EditorIcon>().Single();
             var text = Words(bar.Tabs[0]).Single();
 
-            AssertBox(293 + 6, 1241, BoxOf(bar.Tabs[0], window).Width, 26, BoxOf(bar.Tabs[0], window));
+            AssertBox(297 + 8, 1239, BoxOf(bar.Tabs[0], window).Width, 26, BoxOf(bar.Tabs[0], window));
             // A 13 pixel icon in a 26 pixel tab is half a pixel off center. Geist's line box rounds it up.
-            AssertBox(309, 1247, 13, 13, BoxOf(icon, window));
-            Assert.Equal(309 + 13 + 6, BoxOf(text, window).X);
+            AssertBox(313, 1245, 13, 13, BoxOf(icon, window));
+            Assert.Equal(313 + 13 + 4, BoxOf(text, window).X);
         });
     }
 
@@ -75,7 +75,7 @@ public sealed class BottomBarTests
             var texts = BarOf(window).Tabs.SelectMany(Words).ToArray();
 
             Assert.Equal(2, texts.Length);
-            Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1253.5, 1254.5));
+            Assert.All(texts, text => Assert.InRange(BoxOf(text, window).Y + text.Bounds.Height / 2, 1251, 1252));
         });
     }
 
@@ -118,7 +118,7 @@ public sealed class BottomBarTests
             var status = bar.GetVisualDescendants().OfType<TextBlock>().Single(text => text.Text == "Saved.");
             var separator = BoxOf(bar.Separator, window);
 
-            AssertBox(BoxOf(status, window).Right + 8, 1245, 1, 18, separator);
+            AssertBox(BoxOf(status, window).Right + 8, 1243, 1, 18, separator);
             Assert.Equal(separator.Right + 8, BoxOf(bar.VersionButton, window).X);
             Assert.Equal(Color.Parse("#262C37"), ((ISolidColorBrush)bar.Separator.Background!).Color);
         });
@@ -156,7 +156,7 @@ public sealed class BottomBarTests
     }
 
     [Fact]
-    public void The_pin_icon_ends_eleven_pixels_from_the_bar_edge_and_follows_the_version_by_thirteen()
+    public void The_pin_icon_ends_thirteen_pixels_from_the_bar_edge_and_follows_the_version_by_thirteen()
     {
         UiThread.Run(() =>
         {
@@ -165,11 +165,11 @@ public sealed class BottomBarTests
             var icon = BoxOf(bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
             var text = BoxOf(bar.VersionButton.GetVisualDescendants().OfType<TextBlock>().Single(), window);
 
-            Assert.Equal(293 + 2818 - 11, icon.Right);
+            Assert.Equal(297 + 2810 - 13, icon.Right);
             Assert.Equal("Pin", bar.PinButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);
             Assert.Equal(16, icon.Width);
             Assert.InRange(icon.X - text.Right, 12.5, 13.5);
-            AssertBox(3079, 1241, 26, 26, BoxOf(bar.PinButton, window));
+            AssertBox(3073, 1239, 26, 26, BoxOf(bar.PinButton, window));
         });
     }
 
@@ -184,10 +184,10 @@ public sealed class BottomBarTests
             var icon = bar.StatusIcon;
 
             Assert.Equal("Info", icon.IconName);
-            Assert.Equal(BoxOf(icon, window).Right + 6, BoxOf(status, window).X);
+            Assert.Equal(BoxOf(icon, window).Right + 4, BoxOf(status, window).X);
             Assert.Equal((13d, EditorColors.TextDim), (icon.Bounds.Width, ((ISolidColorBrush)TextElement.GetForeground(icon)!).Color));
             Assert.Equal((12d, EditorColors.TextSoft), (status.FontSize, ((ISolidColorBrush)status.Foreground!).Color));
-            Assert.InRange(BoxOf(status, window).Y + status.Bounds.Height / 2, 1253.5, 1254.5);
+            Assert.InRange(BoxOf(status, window).Y + status.Bounds.Height / 2, 1251, 1252);
         });
     }
 
@@ -398,7 +398,7 @@ public sealed class BottomBarTests
             var window = OpenAtReferenceSize();
 
             Assert.IsType<BottomBar>(window.Center.BottomBar.Child);
-            AssertBox(293, 1236, 2818, 36, BoxOf(BarOf(window), window));
+            AssertBox(297, 1234, 2810, 36, BoxOf(BarOf(window), window));
         });
     }
 }

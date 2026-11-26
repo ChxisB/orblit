@@ -50,7 +50,7 @@ public sealed class ScriptWorkspaceTests
             Assert.True(window.Script.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(56, 46, 3328, 1183, BoxOf(window.Script, window));
+            AssertBox(60, 46, 3320, 1179, BoxOf(window.Script, window));
             Assert.Equal(["res://spin.cs", "res://enemies/slime.cs"], (IEnumerable<string>)window.Script.List.ItemsSource!);
         });
     }

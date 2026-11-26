@@ -31,24 +31,22 @@ internal sealed class Toast : Border
             ToastKind.Failed => ("FaultCircle", EditorBrushes.Fault),
             _ => throw new ArgumentOutOfRangeException(nameof(kind)),
         };
-        Icon = new EditorIcon(mark) { Margin = new Thickness(0, 1, 10, 0), VerticalAlignment = VerticalAlignment.Top };
+        // A pixel down, so the mark shares the middle of the title's line.
+        Icon = new EditorIcon(mark) { Margin = new Thickness(0, 1, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Top };
         TextElement.SetForeground(Icon, tint);
         _title = new TextBlock { Text = title, FontSize = 12, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap };
-        Line = new TextBlock { Text = line, FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 0), IsVisible = line is not null };
-        // The design draws this cross at 13 in the usual 26 pixel button.
-        DismissButton = Parts.IconButton("Close", "Dismiss");
-        DismissButton.Content = new EditorIcon("Close") { Width = 13, Height = 13 };
-        DismissButton.Padding = new Thickness(6.5);
-        DismissButton.Margin = new Thickness(10, 0, 0, 0);
+        Line = new TextBlock { Text = line, FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, Gaps.Joined, 0, 0), IsVisible = line is not null };
+        DismissButton = Parts.IconButton("Close", "Dismiss", 13);
+        DismissButton.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         DismissButton.VerticalAlignment = VerticalAlignment.Top;
         DockPanel.SetDock(DismissButton, Dock.Right);
         ActionButtons = [.. actions.Select(ActionButton)];
-        var steps = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(0, 10, 0, 0), IsVisible = ActionButtons.Count > 0 };
+        var steps = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Margin = new Thickness(0, Gaps.Group, 0, 0), IsVisible = ActionButtons.Count > 0 };
         steps.Children.AddRange(ActionButtons);
 
         // Last, so the words fill what the mark and Dismiss leave and wrap in it.
         var row = new DockPanel { Children = { Icon, DismissButton, new StackPanel { Children = { _title, Line, steps } } } };
-        Padding = new Thickness(12, 11);
+        Padding = new Thickness(Gaps.Group);
         CornerRadius = EditorTheme.IslandCorners;
         Background = EditorBrushes.Raised;
         BorderBrush = EditorBrushes.LineStrong;
@@ -91,7 +89,7 @@ internal sealed class ToastStack : StackPanel
     {
         _time = time;
         Width = 380;
-        Spacing = 10;
+        Spacing = Gaps.Item;
         HorizontalAlignment = HorizontalAlignment.Right;
         VerticalAlignment = VerticalAlignment.Bottom;
     }

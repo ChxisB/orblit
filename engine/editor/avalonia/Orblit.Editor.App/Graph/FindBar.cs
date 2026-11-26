@@ -19,9 +19,9 @@ internal sealed class FindBar : Border
 
     readonly GraphSearch _search;
     readonly Action _closed;
-    readonly TextBox _text = new() { Tag = "find:text", PlaceholderText = "Find a step, like print", MinWidth = 170, MinHeight = 0, Padding = new Thickness(4, 2) };
-    readonly TextBox _goto = new() { Tag = "find:goto", PlaceholderText = "Step number", MinWidth = 100, MinHeight = 0, Padding = new Thickness(4, 2) };
-    readonly TextBlock _status = new() { Tag = "find:status", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0) };
+    readonly TextBox _text = new() { Tag = "find:text", PlaceholderText = "Find a step, like print", MinWidth = 170, MinHeight = 0, Padding = new Thickness(Gaps.Tight, Gaps.Joined) };
+    readonly TextBox _goto = new() { Tag = "find:goto", PlaceholderText = "Step number", MinWidth = 100, MinHeight = 0, Padding = new Thickness(Gaps.Tight, Gaps.Joined) };
+    readonly TextBlock _status = new() { Tag = "find:status", FontSize = 12, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Item, 0) };
     readonly StackPanel _gotoRow;
 
     public FindBar(GraphSearch search, Action closed, KeyModifiers command)
@@ -33,10 +33,10 @@ internal sealed class FindBar : Border
         BorderBrush = EditorBrushes.Accent;
         BorderThickness = new Thickness(1);
         CornerRadius = new CornerRadius(4);
-        Padding = new Thickness(8, 4);
+        Padding = new Thickness(Gaps.Item, Gaps.Tight);
         HorizontalAlignment = HorizontalAlignment.Center;
         VerticalAlignment = VerticalAlignment.Bottom;
-        Margin = new Thickness(12);
+        Margin = new Thickness(Gaps.Group);
         var row = new WrapPanel { MaxWidth = 760 };
         row.Children.Add(_text);
         row.Children.Add(_status);
@@ -46,13 +46,13 @@ internal sealed class FindBar : Border
         AddButton(row, ("open_goto", "Go to number", Parts.KeyText(new KeyGesture(Key.L, command))), "Shows the step with the number you type.", OpenGoto);
         row.Children.Add(Parts.Rule());
         AddButton(row, ("bookmark", "Bookmark", Parts.KeyText(new KeyGesture(Key.F2, command))), "Marks the picked step, or takes its mark off.", search.ToggleBookmark);
-        row.Children.Add(new TextBlock { Text = "Bookmarks", FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(6, 0, 2, 0) });
+        row.Children.Add(new TextBlock { Text = "Bookmarks", FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Item, 0, Gaps.Joined, 0) });
         AddButton(row, ("bookmark_previous", "Back", "⇧F2"), "Shows the bookmarked step before the picked one.", () => search.StepBookmark(false));
         AddButton(row, ("bookmark_next", "Next", "F2"), "Shows the bookmarked step after the picked one.", () => search.StepBookmark(true));
         row.Children.Add(Parts.Rule());
         AddButton(row, ("close", "Close", "Esc"), "Hides the bar.", Close);
         var hint = new TextBlock { Text = GotoHint, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, MaxWidth = 420, VerticalAlignment = VerticalAlignment.Center };
-        _gotoRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, IsVisible = false, Margin = new Thickness(0, 4, 0, 0), Children = { _goto, hint } };
+        _gotoRow = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, IsVisible = false, Margin = new Thickness(0, Gaps.Tight, 0, 0), Children = { _goto, hint } };
         Child = new StackPanel { Children = { row, _gotoRow } };
         search.Reported += line => _status.Text = line;
         _text.KeyDown += OnTextKey;

@@ -49,7 +49,7 @@ public sealed class ScenePaneTests
     static string HeaderOf(MenuItem item) => AutomationProperties.GetName(item) ?? (string)item.Header!;
 
     [Fact]
-    public void Each_row_has_a_highlight_6_pixels_in_from_each_side_of_its_line_at_every_depth()
+    public void Each_row_has_a_highlight_4_pixels_in_from_each_side_of_its_line_at_every_depth()
     {
         UiThread.Run(() =>
         {
@@ -61,8 +61,8 @@ public sealed class ScenePaneTests
                 var line = BoxOf(row.GetVisualAncestors().OfType<TreeViewItem>().First().GetVisualDescendants().OfType<Border>().First(border => border.Name == "PART_LayoutRoot"), window);
                 var area = highlight.Area();
 
-                Assert.Equal(new Point(line.X + 6, line.Y), highlight.TranslatePoint(area.TopLeft, window));
-                Assert.Equal(new Size(line.Width - 12, 26), area.Size);
+                Assert.Equal(new Point(line.X + 4, line.Y), highlight.TranslatePoint(area.TopLeft, window));
+                Assert.Equal(new Size(line.Width - 8, 26), area.Size);
             }
         });
     }
@@ -105,10 +105,10 @@ public sealed class ScenePaneTests
             var window = OpenAtReferenceSize();
             var pane = window.ScenePane;
 
-            AssertBox(75, 90, 173, 28, BoxOf(pane.FilterBox, window));
-            Assert.Equal(9, BoxOf(window.Tools.AddButton, window).X);
-            Assert.Equal(41, BoxOf(window.InstanceScene.OpenButton, window).X);
-            Assert.Equal(250, BoxOf(pane.MenuButton, window).X);
+            AssertBox(83, 90, 168, 28, BoxOf(pane.FilterBox, window));
+            Assert.Equal(17, BoxOf(window.Tools.AddButton, window).X);
+            Assert.Equal(49, BoxOf(window.InstanceScene.OpenButton, window).X);
+            Assert.Equal(253, BoxOf(pane.MenuButton, window).X);
             Assert.Equal("Filter entities", pane.FilterBox.PlaceholderText);
         });
     }
@@ -123,7 +123,7 @@ public sealed class ScenePaneTests
             var items = window.Outline.GetVisualDescendants().OfType<TreeViewItem>().ToArray();
 
             Assert.Equal(3, items.Length);
-            Assert.Equal(132, BoxOf(items[0], window).Y);
+            Assert.Equal(130, BoxOf(items[0], window).Y);
             Assert.Equal(26, BoxOf(items[1], window).Y - BoxOf(items[0], window).Y);
             Assert.Equal(26, BoxOf(items[2], window).Y - BoxOf(items[1], window).Y);
         });
@@ -138,11 +138,11 @@ public sealed class ScenePaneTests
             var rows = Rows(window);
             var arrow = window.Outline.GetVisualDescendants().OfType<ToggleButton>().First();
 
-            Assert.Equal(13, BoxOf(arrow, window).X);
-            Assert.Equal(29, BoxOf(RowIconOf(rows[0]), window).X);
-            Assert.Equal(52, BoxOf(rows[0].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
-            Assert.Equal(45, BoxOf(RowIconOf(rows[1]), window).X);
-            Assert.Equal(68, BoxOf(rows[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(15, BoxOf(arrow, window).X);
+            Assert.Equal(31, BoxOf(RowIconOf(rows[0]), window).X);
+            Assert.Equal(51, BoxOf(rows[0].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(47, BoxOf(RowIconOf(rows[1]), window).X);
+            Assert.Equal(67, BoxOf(rows[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
         });
     }
 
@@ -157,7 +157,7 @@ public sealed class ScenePaneTests
 
             Assert.Equal(["GuiTreeArrowRight", "GuiTreeArrowDown"], icons.Select(icon => icon.IconName));
             Assert.Equal([false, true], icons.Select(icon => icon.IsVisible));
-            AssertBox(13, BoxOf(arrow, window).Y, 12, 12, BoxOf(icons[1], window));
+            AssertBox(15, BoxOf(arrow, window).Y, 12, 12, BoxOf(icons[1], window));
         });
     }
 
@@ -192,14 +192,14 @@ public sealed class ScenePaneTests
     }
 
     [Fact]
-    public void The_eye_ends_nine_pixels_from_the_right_edge_of_the_dock()
+    public void The_eye_ends_seven_pixels_inside_the_edge_of_the_dock()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var eye = Rows(window)[1].GetVisualDescendants().OfType<Button>().Single();
 
-            Assert.Equal(285 - 9, BoxOf(eye.GetVisualDescendants().OfType<EditorIcon>().Single(), window).Right);
+            Assert.Equal(287 - 7, BoxOf(eye.GetVisualDescendants().OfType<EditorIcon>().Single(), window).Right);
         });
     }
 

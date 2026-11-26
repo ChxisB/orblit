@@ -37,7 +37,7 @@ internal sealed record PickerRow(string Group, string Icon, string Name, Action 
 internal sealed class Picker : Border
 {
     readonly TextBox _search;
-    readonly StackPanel _rows = new() { Margin = new Thickness(6), Spacing = 2, Classes = { EditorTheme.Joined } };
+    readonly StackPanel _rows = new() { Margin = new Thickness(Gaps.Item), Spacing = Gaps.Joined, Classes = { EditorTheme.Joined } };
     readonly List<Button> _buttons = [];
     Func<string, IReadOnlyList<PickerRow>> _find = _ => [];
 
@@ -48,6 +48,7 @@ internal sealed class Picker : Border
         Card = new Border
         {
             Width = 440,
+            // Hangs below the title bar, over the work and not on it.
             Margin = new Thickness(0, 72, 0, 0),
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Top,
@@ -116,7 +117,7 @@ internal sealed class Picker : Border
         _buttons.Clear();
         if (Shown.Count == 0)
         {
-            _rows.Children.Add(new TextBlock { Text = "Nothing matches. Try fewer letters, or > for actions.", FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 8) });
+            _rows.Children.Add(new TextBlock { Text = "Nothing matches. Try fewer letters, or > for actions.", FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Item) });
             return;
         }
 
@@ -182,19 +183,19 @@ internal sealed class Picker : Border
         FontWeight = FontWeight.SemiBold,
         LetterSpacing = 0.6,
         Foreground = EditorBrushes.Unit,
-        Margin = new Thickness(8, 7, 8, 4),
+        Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Tight),
     };
 
     // Rows never take the keys, so the search box keeps typing while the pointer picks.
     Button Row(PickerRow row)
     {
-        var icon = new EditorIcon(row.Icon) { Width = 15, Height = 15, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(row.Icon) { Width = 15, Height = 15, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, row.Tint ?? EditorBrushes.TextDim);
         var right = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 10,
-            Margin = new Thickness(10, 0, 0, 0),
+            Spacing = Gaps.Item,
+            Margin = new Thickness(Gaps.Item, 0, 0, 0),
             VerticalAlignment = VerticalAlignment.Center,
             Children =
             {
@@ -209,7 +210,7 @@ internal sealed class Picker : Border
         var button = new Button
         {
             MinHeight = 34,
-            Padding = new Thickness(8, 4),
+            Padding = new Thickness(Gaps.Item, Gaps.Tight),
             CornerRadius = new CornerRadius(6),
             Focusable = false,
             Background = Brushes.Transparent,

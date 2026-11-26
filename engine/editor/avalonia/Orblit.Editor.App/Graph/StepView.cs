@@ -48,6 +48,7 @@ internal sealed class StepView
     const double PinRadius = 5;
     const double PinGrab = 9;
     const double Corner = 10;
+    // The card is drawn, not laid out, so these place its text, buttons and marks by geometry.
     const double TextInset = 14;
     const double NumberGap = 6;
     const double ValueInset = 8;

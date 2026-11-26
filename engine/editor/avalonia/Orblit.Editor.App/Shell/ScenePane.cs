@@ -26,9 +26,6 @@ internal sealed class ScenePane : Grid
 {
     internal const double RowHeight = 36;
 
-    // The tree starts 10 pixels under the button row in the reference.
-    const double TreeTop = 10;
-
     readonly TreeView _outline = new() { SelectionMode = SelectionMode.Multiple };
     readonly TextBox _filter = new()
     {
@@ -58,7 +55,7 @@ internal sealed class ScenePane : Grid
         _menu.Flyout = Options();
         _undoKey = Parts.KeyText(new KeyGesture(Key.Z, command));
         tools.RenameButton.Click += (_, _) => Rename(tools);
-        _outline.Margin = new Thickness(0, TreeTop, 0, 0);
+        _outline.Margin = new Thickness(0, Gaps.Item, 0, 0);
         var addKey = new KeyGesture(Key.A, command);
         var addSceneKey = new KeyGesture(Key.A, command | KeyModifiers.Shift);
         var add = new HoverCard("Add a thing…", "Puts a camera, light, shape or anything else in the scene.", Parts.KeyText(addKey));
@@ -106,7 +103,8 @@ internal sealed class ScenePane : Grid
                 Show(_full, _selected);
             }
         };
-        var bar = new Grid { ColumnDefinitions = new ColumnDefinitions("32,32,2,*,2,32"), Margin = new Thickness(2, 0, 3, 0) };
+        // A button sits at the left of its column, 6 short of it, so the smaller right margin leaves both ends the same.
+        var bar = new Grid { ColumnDefinitions = new ColumnDefinitions("32,32,2,*,2,32"), Margin = new Thickness(Gaps.Item, 0, Gaps.Joined, 0) };
         Place(bar, tools.AddButton, 0);
         Place(bar, instance.OpenButton, 1);
         Place(bar, _filter, 3);
@@ -301,7 +299,7 @@ internal sealed class ScenePane : Grid
 
         public ThingItem(Button button, KeyGesture? key)
         {
-            Header = new StackPanel { Spacing = 1, Children = { _name, _note } };
+            Header = new StackPanel { Spacing = Gaps.Joined, Children = { _name, _note } };
             InputGesture = key;
             Click += (_, _) => button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             this.Bind(IsEnabledProperty, button.GetObservable(IsEnabledProperty));

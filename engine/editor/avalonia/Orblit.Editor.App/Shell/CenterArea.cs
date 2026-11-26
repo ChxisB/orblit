@@ -18,7 +18,7 @@ internal sealed class CenterArea : Grid
 {
     internal const double BottomBarHeight = 38;
 
-    internal const double GapHeight = 6;
+    internal const double GapHeight = Gaps.Item;
 
     readonly Dictionary<string, Control> _views = [];
     readonly Grid _stage = new() { RowDefinitions = new RowDefinitions($"{DockTabs.StripHeight},*") };
@@ -35,7 +35,7 @@ internal sealed class CenterArea : Grid
         Overlay = new ViewportOverlay(toolbar.FrameButton) { IsVisible = false };
         Planar = new PlanarOverlay(toolbar.LockButton, toolbar.GroupButton, toolbar.SnapButton, command) { IsVisible = false };
         // The tools wrap before they would run under the view pill at the top right.
-        Overlay.View.GetObservable(BoundsProperty).Subscribe(new AnonymousObserver<Rect>(box => toolbar.Tools.Margin = new Thickness(0, 0, box.Width + 20, 0)));
+        Overlay.View.GetObservable(BoundsProperty).Subscribe(new AnonymousObserver<Rect>(box => toolbar.Tools.Margin = new Thickness(0, 0, box.Width + Gaps.Section, 0)));
         Output = new OutputPanel();
         Debugger = new DebuggerNote(command);
         NoScene = new NoScene(command) { IsVisible = false };

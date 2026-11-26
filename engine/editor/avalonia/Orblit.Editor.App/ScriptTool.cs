@@ -36,7 +36,7 @@ internal sealed class ScriptTool : StackPanel
     readonly TextBlock _noneLine = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _makeInstead = new() { Content = "Make a new one", Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small } };
     readonly StackPanel _none;
-    readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
+    readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, Gaps.Item, 0) };
     readonly Button _add = new() { Content = Parts.Keyed("Add the script", "↵"), Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
     IReadOnlyList<string>[] _paths = [[], []];
     string _entity = "";
@@ -47,22 +47,22 @@ internal sealed class ScriptTool : StackPanel
         Width = 340;
         Head = new CardHead("Add a script", "") { EngineName = "Attach Script" };
         _make = Parts.Labeled("Name", _name, _fault, _saved);
-        _none = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _noneLine, _makeInstead } };
+        _none = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Children = { _noneLine, _makeInstead } };
         DockPanel.SetDock(_add, Dock.Right);
         DockPanel.SetDock(_cancel, Dock.Right);
         Children.Add(Head);
         Children.Add(new Border
         {
-            Padding = new Thickness(14, 12),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
             Child = new StackPanel
             {
-                Spacing = 10,
+                Spacing = Gaps.Group,
                 Children = { Parts.Labeled("Kind", _kind, _kindLine), Parts.Labeled("Script", _source), _make, _list, _none },
             },
         });
         Children.Add(new Border
         {
-            Padding = new Thickness(12, 10),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new DockPanel { LastChildFill = false, Children = { _add, _cancel } },

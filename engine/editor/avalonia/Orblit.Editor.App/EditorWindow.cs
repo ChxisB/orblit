@@ -33,14 +33,14 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly ContentControl _viewport = new()
     {
         // In the middle, clear of the tools over the top of the view.
-        Content = new TextBlock { Margin = new Thickness(16), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = "No viewport. The editor was started with --headless." },
+        Content = new TextBlock { Margin = new Thickness(Gaps.Dialog), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = "No viewport. The editor was started with --headless." },
     };
     readonly EntityTools _tools = new();
     readonly MoveTools _move = new();
     readonly SignalsPane _signals = new();
     readonly NewSceneTool _newScene = new();
     readonly InstanceTool _instanceScene = new();
-    readonly StackPanel _changes = new() { Spacing = 2 };
+    readonly StackPanel _changes = new() { Spacing = Gaps.Joined };
     readonly Dialog _saveChanges;
     readonly ScenesPanel _scenes;
     readonly TimeProvider _time;
@@ -77,7 +77,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly DockTabs _fileDock;
     readonly InspectorPane _inspectorPane;
     readonly DockTabs _inspectorDock;
-    readonly SideColumns _columns = new() { Margin = new Thickness(6, 0, 6, 6), LeastMiddle = ViewportMiddle };
+    readonly SideColumns _columns = new() { Margin = new Thickness(Gaps.Item, 0, Gaps.Item, Gaps.Item), LeastMiddle = ViewportMiddle };
     readonly DockSide _leftSide;
     readonly DockSide _rightSide;
     readonly CenterArea _center;
@@ -130,7 +130,6 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     public EditorWindow(bool? globalMenu = null, TimeProvider? time = null, EditorSettings? settings = null, ILinkOpener? links = null)
     {
         _links = links ?? new WindowLinks(this);
-        // 16 in from the right, and 10 clear of the bottom bar, which sits on the body's 6 pixel margin.
         _time = time ?? TimeProvider.System;
         _history = new EditHistory(_time);
         _history.Changed += ShowHistory;
@@ -142,7 +141,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _historyPane.ClearButton.Click += (_, _) => _history.Clear();
         _undo.Click += (_, _) => GoTo(_history.Done - 1);
         _redo.Click += (_, _) => GoTo(_history.Done + 1);
-        _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, 16, CenterArea.BottomBarHeight + 16) };
+        // 16 in from the right, and 8 clear of the bottom bar, which sits on the body's 8 pixel margin.
+        _toasts = new ToastStack(_time) { Margin = new Thickness(0, 0, Gaps.Dialog, CenterArea.BottomBarHeight + Gaps.Dialog) };
         _saveChanges = SaveChangesDialog();
         _titleBar = new TitleBar(_playButton, _playSceneButton, _stopButton, CommandKey);
         _sceneTabs = new SceneTabStrip(_playSceneButton, CommandKey);
@@ -699,7 +699,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // A change shows its time in dim mono at the left. A script shows its path and how much changed under its name.
     static Control ChangeRow(string? at, string name, string? line)
     {
-        var row = new DockPanel { Margin = new Thickness(0, 3) };
+        var row = new DockPanel { Margin = new Thickness(0, Gaps.Tight) };
         if (at is not null)
         {
             var time = new TextBlock { Text = at, Width = 48, FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
@@ -956,16 +956,18 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
             return;
         }
 
+        // The window is larger than the dock by its edge, and starts that far up and left, so the dock stays put.
+        const double Edge = Gaps.Item;
         var size = dock.Bounds.Size;
         var window = new Window
         {
             Title = dock.Title,
-            Width = size.Width + 12,
-            Height = size.Height + 12,
-            Padding = new Thickness(6),
+            Width = size.Width + 2 * Edge,
+            Height = size.Height + 2 * Edge,
+            Padding = new Thickness(Edge),
             ShowInTaskbar = false,
             WindowStartupLocation = WindowStartupLocation.Manual,
-            Position = dock.PointToScreen(new Point(-6, -6)),
+            Position = dock.PointToScreen(new Point(-Edge, -Edge)),
         };
         _slots[dock.Slot].Child = null;
         window.Content = dock;
@@ -1457,10 +1459,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         }
     }
 
-    // The title bar on top, then the columns with the 4 pixel margin and the 3 pixel gaps of the reference.
     Grid LeftColumn()
     {
-        var left = new Grid { RowDefinitions = [new(GridLength.Star) { MinHeight = 120 }, new(6, GridUnitType.Pixel), new(GridLength.Star) { MinHeight = 120 }] };
+        var left = new Grid { RowDefinitions = [new(GridLength.Star) { MinHeight = 120 }, new(Gaps.Item, GridUnitType.Pixel), new(GridLength.Star) { MinHeight = 120 }] };
         Fill(left, _slots[DockSlot.UpperLeft], 0);
         Fill(left, RowSplitter(), 1);
         Fill(left, _slots[DockSlot.LowerLeft], 2);

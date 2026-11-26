@@ -19,7 +19,7 @@ internal sealed class VariableTool : StackPanel
     readonly ComboBox _type = PanelFields.TypeList();
     readonly TextBox _default = new() { PlaceholderText = "Nothing", FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
     readonly ToggleSwitch _shown = new() { OnContent = "Show in the Inspector", OffContent = "Show in the Inspector", FontSize = 12, Foreground = EditorBrushes.TextSoft };
-    readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, 8, 0) };
+    readonly Button _cancel = new() { Content = "Cancel", Classes = { EditorTheme.TextButton, EditorTheme.Ghost }, Margin = new Thickness(0, 0, Gaps.Item, 0) };
     readonly Button _add = new() { Content = Parts.Keyed("Add", "↵"), Classes = { EditorTheme.TextButton, EditorTheme.Primary } };
 
     public VariableTool()
@@ -36,10 +36,10 @@ internal sealed class VariableTool : StackPanel
         Children.Add(Head);
         Children.Add(new Border
         {
-            Padding = new Thickness(14, 12),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
             Child = new StackPanel
             {
-                Spacing = 10,
+                Spacing = Gaps.Group,
                 Children =
                 {
                     Parts.Labeled("Name", _name, Dim("Letters, numbers and _ only.")),
@@ -51,7 +51,7 @@ internal sealed class VariableTool : StackPanel
         });
         Children.Add(new Border
         {
-            Padding = new Thickness(12, 10),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Group),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new DockPanel { LastChildFill = false, Children = { _add, _cancel } },

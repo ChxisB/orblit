@@ -17,7 +17,7 @@ internal sealed class NoScene : Border
 {
     internal const string Title = "No scene is open";
 
-    readonly StackPanel _rows = new() { Spacing = 2 };
+    readonly StackPanel _rows = new() { Spacing = Gaps.Joined };
     readonly StackPanel _again;
 
     public NoScene(KeyModifiers command)
@@ -27,11 +27,11 @@ internal sealed class NoScene : Border
         FindButton = Keyed("Find a scene", new KeyGesture(Key.O, command | KeyModifiers.Shift), EditorTheme.Ghost, "Type part of a name to open it.");
         var mark = new EditorIcon("SceneFile") { Width = 28, Height = 28, HorizontalAlignment = HorizontalAlignment.Center };
         TextElement.SetForeground(mark, EditorBrushes.Disabled);
-        _again = new StackPanel { Spacing = 4, Margin = new Thickness(0, 14, 0, 0), Children = { Heading("Open again"), _rows } };
+        _again = new StackPanel { Spacing = Gaps.Tight, Margin = new Thickness(0, Gaps.Group, 0, 0), Children = { Heading("Open again"), _rows } };
         Child = new StackPanel
         {
             Width = 360,
-            Spacing = 10,
+            Spacing = Gaps.Group,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Children =
@@ -45,7 +45,7 @@ internal sealed class NoScene : Border
                     TextWrapping = TextWrapping.Wrap,
                     TextAlignment = TextAlignment.Center,
                 },
-                new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center, Children = { NewButton, FindButton } },
+                new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, HorizontalAlignment = HorizontalAlignment.Center, Children = { NewButton, FindButton } },
                 _again,
             },
         };

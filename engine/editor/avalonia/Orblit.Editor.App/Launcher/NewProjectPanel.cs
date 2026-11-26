@@ -27,7 +27,7 @@ internal sealed class NewProjectPanel : StackPanel
     readonly TextBox _name = new() { Text = "My game", PlaceholderText = "My game", Classes = { EditorTheme.Field } };
     readonly TextBlock _nameFault = Parts.FaultLine();
     readonly TextBox _folder = new() { FontFamily = EditorTheme.Mono, Classes = { EditorTheme.Field } };
-    readonly Button _change = new() { Content = "Change…", Margin = new Thickness(0, 0, 3, 0), VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
+    readonly Button _change = new() { Content = "Change…", Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.TextButton, EditorTheme.Small } };
     readonly TextBlock _fault = Parts.FaultLine();
     readonly TemplateCard[] _cards;
     readonly Segments _script = new("C#", "Graph", "None");
@@ -42,9 +42,9 @@ internal sealed class NewProjectPanel : StackPanel
         _cards[0].IsChecked = true;
         _nameFault.Text = "Give the project a name.";
         _folder.InnerRightContent = new HoverCard("Change…", "Picks where the project goes. It gets its own folder there, named after the project.").On(_change);
-        var starts = new StackPanel { Spacing = 8 };
+        var starts = new StackPanel { Spacing = Gaps.Item };
         starts.Children.AddRange(_cards);
-        Spacing = 14;
+        Spacing = Gaps.Group;
         Children.AddRange(
         [
             Parts.Labeled("Name", _name, _nameFault, Parts.Hint("Shown in your project list.")),
@@ -132,7 +132,7 @@ internal sealed class NewProjectPanel : StackPanel
         };
         Grid.SetColumn(words, 1);
         // The words take what the tile leaves, so they wrap on a narrow card.
-        return new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 12, Children = { tile, words } };
+        return new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = Gaps.Group, Children = { tile, words } };
     }
 
     /// <summary>The local folder chosen in the system's folder picker, or null when none is chosen.</summary>
@@ -152,7 +152,7 @@ internal sealed class NewProjectPanel : StackPanel
     {
         DockPanel.SetDock(_git, Dock.Right);
         var needs = $"Lets you go back to any saved point. Needs Git on this {(OperatingSystem.IsMacOS() ? "Mac" : "computer")}.";
-        var words = new StackPanel { Spacing = 2, Children = { new TextBlock { Text = "Keep a history with Git" }, Parts.Hint(needs) } };
+        var words = new StackPanel { Spacing = Gaps.Joined, Children = { new TextBlock { Text = "Keep a history with Git" }, Parts.Hint(needs) } };
         return new DockPanel { Children = { _git, words } };
     }
 

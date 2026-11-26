@@ -14,7 +14,7 @@ public sealed class InspectorStructureTests
 {
     // The bars and rows sit 6 pixels inside the dock, which starts at 3156.
     const double BarX = 3125;
-    const double BarWidth = 302;
+    const double BarWidth = 298;
 
     static readonly string[] s_entityGroups = ["Run", "Physics Interpolation", "Auto Translate", "Editor Description"];
 
@@ -70,11 +70,11 @@ public sealed class InspectorStructureTests
             var window = Selected(FakeScene.Lamp);
             var bars = Bars(window);
 
-            AssertBox(BarX - 6, 161, BarWidth + 12, 34, BoxOf(bars[0], window));
+            AssertBox(BarX - 8, 163, BarWidth + 16, 34, BoxOf(bars[0], window));
             Assert.Equal(
                 (EditorBrushes.ClassBar, EditorBrushes.Line, new Thickness(0, 1, 0, 0), default(CornerRadius)),
                 (bars[0].Background, bars[0].BorderBrush, bars[0].BorderThickness, bars[0].CornerRadius));
-            Assert.All(bars, bar => Assert.Equal((BarX - 6, BarWidth + 12, 34d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
+            Assert.All(bars, bar => Assert.Equal((BarX - 8, BarWidth + 16, 34d), (BoxOf(bar, window).X, BoxOf(bar, window).Width, BoxOf(bar, window).Height)));
         });
     }
 
@@ -88,7 +88,7 @@ public sealed class InspectorStructureTests
             // The title comes before the engine's name in dim mono.
             var title = bar.GetVisualDescendants().OfType<TextBlock>().First();
 
-            Assert.Equal(BarX - 6 + 12, BoxOf(bar.GetVisualDescendants().OfType<EditorIcon>().Single(), window).X);
+            Assert.Equal(BarX - 8 + 12, BoxOf(bar.GetVisualDescendants().OfType<EditorIcon>().Single(), window).X);
             Assert.Equal((FontWeight.SemiBold, 12.5), (title.FontWeight, title.FontSize));
         });
     }
@@ -237,7 +237,7 @@ public sealed class InspectorStructureTests
 
             Assert.Equal((BarX + BarWidth / 2, BarWidth / 2, 28d), (field.X, field.Width, field.Height));
             Near(last.Bottom + 4, field.Y);
-            Near(BarX + 10, BoxOf(label, window).X);
+            Near(BarX + 8, BoxOf(label, window).X);
             Assert.Contains(window.Inspector.ScriptField.GetVisualDescendants().OfType<TextBlock>(), text => text.Text == "None");
             Assert.Equal(["Load", "GuiDropdown"], window.Inspector.ScriptField.GetVisualDescendants().OfType<EditorIcon>().Select(icon => icon.IconName));
         });
@@ -264,7 +264,7 @@ public sealed class InspectorStructureTests
     }
 
     [Fact]
-    public void Attach_a_script_is_a_quieter_dashed_button_10_under_the_script_row()
+    public void Attach_a_script_is_a_quieter_dashed_button_12_under_the_script_row()
     {
         UiThread.Run(() =>
         {
@@ -273,7 +273,7 @@ public sealed class InspectorStructureTests
             var button = BoxOf(window.Inspector.AttachButton, window);
 
             Assert.Equal((BarX, BarWidth, 32d), (button.X, button.Width, button.Height));
-            Near(field.Bottom + 10, button.Y);
+            Near(field.Bottom + 12, button.Y);
             Assert.Equal(EditorBrushes.TextDim, window.Inspector.AttachButton.Foreground);
             Assert.NotEmpty(window.Inspector.AttachButton.GetVisualDescendants().OfType<Rectangle>().Single().StrokeDashArray!);
             Assert.Equal("ScriptCreate", window.Inspector.AttachButton.GetVisualDescendants().OfType<EditorIcon>().Single().IconName);

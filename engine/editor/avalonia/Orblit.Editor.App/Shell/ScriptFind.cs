@@ -17,7 +17,7 @@ internal sealed class ScriptFind : Border
     readonly CodeBox _code;
     readonly TextBox _text = new() { PlaceholderText = "Find", Width = 200, Classes = { EditorTheme.Field } };
     readonly TextBlock _count = new() { MinWidth = 64, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
-    readonly ToggleButton _case = new() { Content = "Aa", FontSize = 11.5, Padding = new Thickness(6, 3), MinWidth = 0, MinHeight = 0, BorderThickness = new Thickness(0) };
+    readonly ToggleButton _case = new() { Content = "Aa", FontSize = 11.5, Padding = new Thickness(Gaps.Tight, Gaps.Joined), MinWidth = 0, MinHeight = 0, BorderThickness = new Thickness(0) };
 
     public ScriptFind(CodeBox code)
     {
@@ -27,13 +27,13 @@ internal sealed class ScriptFind : Border
         BorderBrush = EditorBrushes.LineStrong;
         BorderThickness = new Thickness(1);
         CornerRadius = EditorTheme.Corners;
-        Padding = new Thickness(6, 4);
-        Margin = new Thickness(0, 8, 16, 0);
+        Padding = new Thickness(Gaps.Item, Gaps.Tight);
+        Margin = new Thickness(0, Gaps.Item, Gaps.Dialog, 0);
         HorizontalAlignment = HorizontalAlignment.Right;
         VerticalAlignment = VerticalAlignment.Top;
         var previous = new HoverCard("Previous match", "Selects the match before this one.", "⇧↵").On(Parts.IconButton("ArrowUp", ""));
         var next = new HoverCard("Next match", "Selects the match after this one.", "↵").On(Parts.IconButton("ArrowDown", ""));
-        var close = new HoverCard("Close", "Hides the find bar and goes back to the code.", "esc").On(new Button { Content = Parts.Kbd("esc"), Padding = new Thickness(2), MinWidth = 0, MinHeight = 0, BorderThickness = new Thickness(0), Background = null });
+        var close = new HoverCard("Close", "Hides the find bar and goes back to the code.", "esc").On(new Button { Content = Parts.Kbd("esc"), Padding = new Thickness(Gaps.Joined), MinWidth = 0, MinHeight = 0, BorderThickness = new Thickness(0), Background = null });
         new HoverCard("Match case", "Speed and speed count as different.", "⌥C").On(_case);
         previous.Click += (_, _) => Find(false);
         next.Click += (_, _) => Find(true);
@@ -42,7 +42,7 @@ internal sealed class ScriptFind : Border
         Child = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 4,
+            Spacing = Gaps.Tight,
             Children = { _text, _count, _case, previous, next, close },
         };
         _text.KeyDown += OnKey;

@@ -20,9 +20,9 @@ internal sealed class HistoryPane : DockPanel
     // Every time is five mono figures, so a fixed width keeps the names in one column.
     const double TimeWidth = 40;
 
-    readonly StackPanel _rows = new() { Spacing = 2, Margin = new Thickness(0, 6), Classes = { EditorTheme.Joined } };
+    readonly StackPanel _rows = new() { Spacing = Gaps.Joined, Margin = new Thickness(0, Gaps.Tight), Classes = { EditorTheme.Joined } };
     readonly StackPanel _empty = Parts.EmptyState("Past", "Nothing to undo yet", "Each change you make shows here. Click one to go back to it.");
-    readonly WrapPanel _hint = new() { Margin = new Thickness(12, 4, 12, 12) };
+    readonly WrapPanel _hint = new() { Margin = new Thickness(Gaps.Group, Gaps.Tight, Gaps.Group, Gaps.Group) };
 
     public HistoryPane(KeyModifiers command)
     {
@@ -31,7 +31,7 @@ internal sealed class HistoryPane : DockPanel
             Parts.Kbd(Parts.KeyText(new KeyGesture(Key.Z, command | KeyModifiers.Shift))),
             HintText("redoes them."),
         ]);
-        _hint.Children[1].Margin = new Thickness(4, 0);
+        _hint.Children[1].Margin = new Thickness(Gaps.Tight, 0);
         SetDock(_hint, Dock.Bottom);
         Children.Add(_hint);
         Children.Add(_empty);
@@ -74,7 +74,7 @@ internal sealed class HistoryPane : DockPanel
     Button Row(int done, string label, DateTimeOffset at, int current)
     {
         var lit = done == current;
-        var icon = new EditorIcon(lit ? "StepArrow" : "Past") { Width = 13, Height = 13, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(lit ? "StepArrow" : "Past") { Width = 13, Height = 13, Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, lit ? EditorBrushes.Accent : EditorBrushes.TreeIcon);
         var time = new TextBlock
         {
@@ -90,8 +90,8 @@ internal sealed class HistoryPane : DockPanel
         var row = new Button
         {
             Height = 26,
-            Margin = new Thickness(6, 0),
-            Padding = new Thickness(10, 0, 6, 0),
+            Margin = new Thickness(Gaps.Tight, 0),
+            Padding = new Thickness(Gaps.Item, 0, Gaps.Tight, 0),
             CornerRadius = new CornerRadius(6),
             Focusable = false,
             Opacity = done > current ? 0.45 : 1,

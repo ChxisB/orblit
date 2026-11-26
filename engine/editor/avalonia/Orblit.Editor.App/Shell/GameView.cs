@@ -63,9 +63,9 @@ internal sealed class GameView : Border
 
     readonly Ellipse _dot = new() { Width = 7, Height = 7, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { FontSize = 12, FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center };
-    readonly Border _pill = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(9, 3), Margin = new Thickness(6, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _project = new() { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _time = new() { FontSize = 12, FontFamily = EditorTheme.Mono, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly Border _pill = new() { CornerRadius = new CornerRadius(999), Padding = new Thickness(Gaps.Item, Gaps.Tight), Margin = new Thickness(Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _project = new() { FontSize = 12, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _time = new() { FontSize = 12, FontFamily = EditorTheme.Mono, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly Button _run;
     readonly Button _play;
     readonly Button _playScene;
@@ -79,12 +79,12 @@ internal sealed class GameView : Border
     readonly RadioButton _thisScene = Choice("This scene", "The one open in the 3D view");
     readonly Segments _copies = new("1", "2", "3", "4");
     readonly CheckBox[] _shown = [.. s_shown.Select(row => new HoverCard(row.Name, row.Line, engine: row.Engine).On(new CheckBox { Content = Parts.Noted(row.Name, row.Line) }))];
-    readonly StackPanel _settings = new() { Spacing = 4, Margin = new Thickness(10, 4, 10, 12) };
+    readonly StackPanel _settings = new() { Spacing = Gaps.Tight, Margin = new Thickness(Gaps.Group, Gaps.Tight, Gaps.Group, Gaps.Group) };
     readonly DockPanel _waits;
-    readonly TextBlock _speedHint = new() { Text = "Numbers show while the game plays.", FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 10, 12, 2) };
+    readonly TextBlock _speedHint = new() { Text = "Numbers show while the game plays.", FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Group, Gaps.Group, Gaps.Group, Gaps.Joined) };
     readonly TextBlock[] _values = [.. s_monitors.Select(_ => new TextBlock { Text = Unknown, FontSize = 12, FontFamily = EditorTheme.Mono, VerticalAlignment = VerticalAlignment.Top })];
     readonly TextBlock[] _lines = [.. s_monitors.Select(row => new TextBlock { Text = row.Line, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap })];
-    readonly StackPanel _live = new() { Margin = new Thickness(6, 4, 6, 10) };
+    readonly StackPanel _live = new() { Margin = new Thickness(Gaps.Item, Gaps.Tight, Gaps.Item, Gaps.Item) };
     readonly StackPanel _noScene = Parts.EmptyState("Tree", "Nothing running", "The things in the running game show here, so you can check them while it plays.");
     readonly StackPanel _liveMark;
     IReadOnlyList<LiveEntity> _shownScene = [];
@@ -97,7 +97,7 @@ internal sealed class GameView : Border
         _play = PlayButton(Keys(Key.B));
         _playScene = Worded("Play this scene", "Starts the scene open in the 3D view, in its own window.", Keys(Key.R), EditorTheme.Ghost);
         _stop = Worded("Stop", "Closes the game window. Your scene stays as it was.", Keys(Key.OemPeriod), EditorTheme.Ghost);
-        _pill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _dot, _status } };
+        _pill.Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { _dot, _status } };
         _run.Click += (_, _) => RunRequested?.Invoke();
         _play.Click += (_, _) => RunRequested?.Invoke();
         _playScene.Click += (_, _) => RunSceneRequested?.Invoke();
@@ -111,20 +111,20 @@ internal sealed class GameView : Border
         _stopped.Children.Add(Buttons(_play, _playScene));
         _playing.Children.Add(Buttons(_raiseBelow, _stop));
         _waits = Note("Stop the game to change these. They count from the next Play.");
-        _liveMark = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5, VerticalAlignment = VerticalAlignment.Center, Children = { new Ellipse { Width = 6, Height = 6, Fill = EditorBrushes.Done, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Live", FontSize = 11, Foreground = EditorBrushes.Done } } };
+        _liveMark = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center, Children = { new Ellipse { Width = 6, Height = 6, Fill = EditorBrushes.Done, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = "Live", FontSize = 11, Foreground = EditorBrushes.Done } } };
         var speed = Island(Speed());
-        var side = new Grid { RowDefinitions = new RowDefinitions("Auto,6,*"), Children = { speed, At(Island(LiveScene()), 0, 2) } };
+        var side = new Grid { RowDefinitions = new RowDefinitions($"Auto,{Gaps.Item},*"), Children = { speed, At(Island(LiveScene()), 0, 2) } };
         // The numbers scroll in a short window, so the live scene keeps room under them.
-        side.SizeChanged += (_, e) => speed.MaxHeight = Math.Max(0, e.NewSize.Height - 6 - LeastLiveScene);
+        side.SizeChanged += (_, e) => speed.MaxHeight = Math.Max(0, e.NewSize.Height - Gaps.Item - LeastLiveScene);
         Child = new Grid
         {
             // The settings and the numbers give way together, so the game keeps room in a narrow window.
             ColumnDefinitions =
             [
                 new(288, GridUnitType.Star) { MinWidth = 200, MaxWidth = 288 },
-                new(6, GridUnitType.Pixel),
+                new(Gaps.Item, GridUnitType.Pixel),
                 new(616, GridUnitType.Star) { MinWidth = 260 },
-                new(6, GridUnitType.Pixel),
+                new(Gaps.Item, GridUnitType.Pixel),
                 new(300, GridUnitType.Star) { MinWidth = 220, MaxWidth = 300 },
             ],
             Children = { At(Island(PlaySettings()), 0), At(Island(TheGame()), 2), At(side, 4) },
@@ -295,7 +295,7 @@ internal sealed class GameView : Border
     {
         _settings.Children.Add(Heading("What Play runs"));
         new HoverCard("Copies", "Opens this many game windows at once. Each one is a player.", engine: "Run instances").On(_copies);
-        var copies = new TextBlock { Text = "More than one opens extra windows, for testing online play.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(2, 4, 0, 0) };
+        var copies = new TextBlock { Text = "More than one opens extra windows, for testing online play.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Joined, Gaps.Tight, 0, 0) };
         _settings.Children.AddRange([_main, _thisScene, Heading("Copies"), _copies, copies, Heading("Show while playing"), .. _shown]);
         var body = new StackPanel { Children = { _waits, _settings } };
         return Stack(Parts.Bar(Title("Play settings")), new ScrollViewer { Content = body });
@@ -308,7 +308,7 @@ internal sealed class GameView : Border
         var footer = new Border
         {
             MinHeight = 30,
-            Padding = new Thickness(12, 4),
+            Padding = new Thickness(Gaps.Group, Gaps.Tight),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = _state,
@@ -324,7 +324,7 @@ internal sealed class GameView : Border
 
     DockPanel Speed()
     {
-        var rows = new StackPanel { Margin = new Thickness(0, 4, 0, 8), Children = { _speedHint } };
+        var rows = new StackPanel { Margin = new Thickness(0, Gaps.Tight, 0, Gaps.Item), Children = { _speedHint } };
         rows.Children.AddRange(s_monitors.Select((_, at) => Reading(at)));
         new HoverCard("Frames a second", "How many pictures the game draws each second. Under 30 feels slow. 60 or more feels smooth.", engine: "FPS monitor").On(rows.Children[1]);
         return Stack(Parts.Bar(Title("Speed")), new ScrollViewer { Content = rows });
@@ -339,7 +339,7 @@ internal sealed class GameView : Border
         words.Children.Add(_lines[at]);
         return new Grid
         {
-            Margin = new Thickness(12, 5),
+            Margin = new Thickness(Gaps.Group, Gaps.Tight),
             Background = Brushes.Transparent,
             ColumnDefinitions = new ColumnDefinitions("*,Auto"),
             Children = { words, At(_values[at], 1) },
@@ -370,7 +370,7 @@ internal sealed class GameView : Border
     static Grid LiveRow(LiveEntity entity)
     {
         var plain = PlainNames.NameOf(entity.Type);
-        var words = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, VerticalAlignment = VerticalAlignment.Center, Children = { new TextBlock { Text = entity.Name, FontSize = 12 } } };
+        var words = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, VerticalAlignment = VerticalAlignment.Center, Children = { new TextBlock { Text = entity.Name, FontSize = 12 } } };
         if (plain != entity.Name)
         {
             words.Children.Add(new TextBlock { Text = plain, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center });
@@ -379,7 +379,8 @@ internal sealed class GameView : Border
         var row = new Grid
         {
             Height = 26,
-            Margin = new Thickness(6 + (entity.Depth * DepthIndent), 0, 0, 0),
+            // The first level lines up with the heading above.
+            Margin = new Thickness(Gaps.Tight + (entity.Depth * DepthIndent), 0, 0, 0),
             Background = Brushes.Transparent,
             ColumnDefinitions = new ColumnDefinitions("Auto,*"),
             Children = { Parts.RowIcon(EditorIcons.ForClass(entity.Type)), At(words, 1) },
@@ -420,19 +421,19 @@ internal sealed class GameView : Border
 
     static WrapPanel Buttons(params Button[] buttons)
     {
-        var row = new WrapPanel { ItemSpacing = 8, LineSpacing = 8, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 6, 0, 0) };
+        var row = new WrapPanel { ItemSpacing = Gaps.Item, LineSpacing = Gaps.Item, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, Gaps.Item, 0, 0) };
         row.Children.AddRange(buttons);
         return row;
     }
 
     static DockPanel Note(string text)
     {
-        var mark = new EditorIcon("NodeInfo") { Width = 14, Height = 14, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Top };
+        var mark = new EditorIcon("NodeInfo") { Width = 14, Height = 14, Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Top };
         TextElement.SetForeground(mark, EditorBrushes.TextDim);
         DockPanel.SetDock(mark, Dock.Left);
         return new DockPanel
         {
-            Margin = new Thickness(10, 10, 10, 0),
+            Margin = new Thickness(Gaps.Group, Gaps.Group, Gaps.Group, 0),
             Children = { mark, new TextBlock { Text = text, FontSize = 11, Foreground = EditorBrushes.TextSoft, TextWrapping = TextWrapping.Wrap } },
         };
     }
@@ -444,14 +445,14 @@ internal sealed class GameView : Border
         FontWeight = FontWeight.SemiBold,
         LetterSpacing = 0.6,
         Foreground = EditorBrushes.Unit,
-        Margin = new Thickness(2, 10, 0, 2),
+        Margin = new Thickness(Gaps.Joined, Gaps.Item, 0, Gaps.Joined),
     };
 
     static string Number(double value, string format) => value.ToString(format, CultureInfo.InvariantCulture);
 
     static string Ms(double seconds) => $"{Number(seconds * 1000, "0.0")} ms";
 
-    static TextBlock Title(string text) => new() { Text = text, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+    static TextBlock Title(string text) => new() { Text = text, FontSize = 12, FontWeight = FontWeight.SemiBold, Margin = new Thickness(Gaps.Tight, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
 
     // A reading past its good range: where to look next, and the tone its value takes.
     sealed record Slow(string Line, IBrush Tone);

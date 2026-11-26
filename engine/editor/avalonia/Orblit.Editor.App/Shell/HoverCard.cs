@@ -23,13 +23,13 @@ internal sealed class HoverCard : StackPanel
         Key = key;
         Engine = engine;
         _does = line;
-        Spacing = 3;
+        Spacing = Gaps.Tight;
         MaxWidth = 260;
         var top = new DockPanel();
         if (key is not null)
         {
             var chip = Parts.Kbd(key);
-            chip.Margin = new Thickness(12, 0, 0, 0);
+            chip.Margin = new Thickness(Gaps.Group, 0, 0, 0);
             DockPanel.SetDock(chip, Dock.Right);
             top.Children.Add(chip);
         }
@@ -40,7 +40,7 @@ internal sealed class HoverCard : StackPanel
         Children.Add(_line);
         if (engine is not null)
         {
-            Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(0, 2, 0, 0) });
+            Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(0, Gaps.Joined, 0, 0) });
         }
     }
 

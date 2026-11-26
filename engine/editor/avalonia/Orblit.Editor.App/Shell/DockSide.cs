@@ -17,7 +17,7 @@ internal sealed class DockSide : Panel
 
     readonly Control _docks;
     readonly Func<IEnumerable<DockTabs>> _onSide;
-    readonly StackPanel _buttons = new() { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
+    readonly StackPanel _buttons = new() { Spacing = Gaps.Tight, HorizontalAlignment = HorizontalAlignment.Center };
     GridLength _width;
     double _least;
 
@@ -27,7 +27,7 @@ internal sealed class DockSide : Panel
     {
         _docks = docks;
         _onSide = onSide;
-        Rail = new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(0, 8), IsVisible = false, Child = _buttons };
+        Rail = new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(0, Gaps.Item), IsVisible = false, Child = _buttons };
         Children.Add(_docks);
         Children.Add(Rail);
     }

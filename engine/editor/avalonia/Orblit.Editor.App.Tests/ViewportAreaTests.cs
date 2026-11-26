@@ -65,7 +65,7 @@ public sealed class ViewportAreaTests
             var tab = BoxOf(strip.Tab, window);
 
             Assert.True(strip.Tab.IsVisible);
-            Assert.Equal([299.0, 53.0, 26.0], [tab.X, tab.Y, tab.Height]);
+            Assert.Equal([305.0, 53.0, 26.0], [tab.X, tab.Y, tab.Height]);
             Assert.Equal(
                 (EditorBrushes.Raised, EditorBrushes.LineStrong, new Thickness(1), EditorTheme.Corners),
                 (strip.Tab.Background, strip.Tab.BorderBrush, strip.Tab.BorderThickness, strip.Tab.CornerRadius));
@@ -77,7 +77,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_icon_sits_10_inside_the_tab_and_the_name_7_after_it()
+    public void The_icon_sits_8_inside_the_tab_and_the_name_4_after_it()
     {
         UiThread.Run(() =>
         {
@@ -85,8 +85,8 @@ public sealed class ViewportAreaTests
             var strip = window.SceneTabs;
             var icon = BoxOf(strip.Icon.GetVisualDescendants().OfType<EditorIcon>().Single(), window);
 
-            AssertBox(BoxOf(strip.Tab, window).X + 11, 58, 16, 16, icon);
-            Assert.Equal(icon.Right + 7, BoxOf(strip.Label, window).X);
+            AssertBox(BoxOf(strip.Tab, window).X + 9, 58, 16, 16, icon);
+            Assert.Equal(icon.Right + 4, BoxOf(strip.Label, window).X);
         });
     }
 
@@ -103,7 +103,7 @@ public sealed class ViewportAreaTests
             Assert.Equal(new Size(24, 24), close.Size);
             Assert.Equal(tab.Right - 1, close.Right);
             // The name's width follows the font, so its end can fall on a part pixel.
-            Assert.InRange(close.X - BoxOf(strip.Label, window).Right, 6.5, 7.5);
+            Assert.InRange(close.X - BoxOf(strip.Label, window).Right, 3.5, 4.5);
             Assert.Equal(EditorColors.TextDim, IconColor(strip.CloseButton));
             Assert.Equal(tab.Right + 4, BoxOf(strip.AddButton, window).X);
             Assert.Equal(new Size(26, 26), strip.AddButton.Bounds.Size);
@@ -111,13 +111,13 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void Hide_panels_sits_at_the_right_end_6_pixels_from_the_edge()
+    public void Hide_panels_sits_at_the_right_end_8_pixels_from_the_edge()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(3111 - 6, BoxOf(window.SceneTabs.PanelsButton, window).Right);
+            Assert.Equal(3107 - 8, BoxOf(window.SceneTabs.PanelsButton, window).Right);
             Assert.Equal(26, window.SceneTabs.PanelsButton.Bounds.Height);
         });
     }
@@ -149,7 +149,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_tools_float_in_two_pills_10_pixels_in_from_the_top_left_of_the_viewport()
+    public void The_tools_float_in_two_pills_12_pixels_in_from_the_top_left_of_the_viewport()
     {
         UiThread.Run(() =>
         {
@@ -158,8 +158,8 @@ public sealed class ViewportAreaTests
             var first = BoxOf(modes, window);
             var floating = EditorColors.Floating;
 
-            Assert.Equal([303.0, 96.0, 34.0], [first.X, first.Y, first.Height]);
-            Assert.Equal([first.Right + 10, 96.0, 34.0], [BoxOf(options, window).X, BoxOf(options, window).Y, BoxOf(options, window).Height]);
+            Assert.Equal([309.0, 98.0, 36.0], [first.X, first.Y, first.Height]);
+            Assert.Equal([first.Right + 12, 98.0, 36.0], [BoxOf(options, window).X, BoxOf(options, window).Y, BoxOf(options, window).Height]);
             Assert.All(Pills(window), pill => Assert.Equal(
                 (EditorBrushes.Floating, EditorBrushes.LineStrong, EditorTheme.IslandCorners),
                 (pill.Background, pill.BorderBrush, pill.CornerRadius)));
@@ -185,7 +185,7 @@ public sealed class ViewportAreaTests
             Assert.Equal(["ToolSelect", "ToolMove", "ToolRotate", "ToolScale", "GuiTabMenuHl"], Items(Pills(window)[0]).Select(Kind));
             Assert.Equal(["Object", "|", "Snap", "options", "|", "Lock", "Group", "|", "Ruler"], Items(Pills(window)[1]).Select(Kind));
             Assert.All(Tools(window), tool => Assert.Equal(26, tool.Bounds.Height));
-            Assert.All(Tools(window), tool => Assert.Equal(100, BoxOf(tool, window).Y));
+            Assert.All(Tools(window), tool => Assert.Equal(103, BoxOf(tool, window).Y));
             Assert.All(new[] { toolbar.LocalButton, toolbar.TrackballButton, toolbar.KeepChildrenButton }, option => Assert.False(option.IsChecked));
         });
     }
@@ -467,7 +467,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_chip_floats_36_high_10_pixels_in_from_the_bottom_left_of_the_viewport()
+    public void The_chip_floats_36_high_12_pixels_in_from_the_bottom_left_of_the_viewport()
     {
         UiThread.Run(() =>
         {
@@ -476,7 +476,7 @@ public sealed class ViewportAreaTests
             window.UpdateLayout();
             var chip = BoxOf(window.Toolbar.Chip, window);
 
-            Assert.Equal([303.0, 1218.0, 36.0], [chip.X, chip.Bottom, chip.Height]);
+            Assert.Equal([309.0, 1212.0, 36.0], [chip.X, chip.Bottom, chip.Height]);
             Assert.Equal(EditorBrushes.Floating, window.Toolbar.Chip.Background);
         });
     }
@@ -577,7 +577,7 @@ public sealed class ViewportAreaTests
     }
 
     [Fact]
-    public void The_view_pill_floats_10_pixels_in_from_the_top_right_of_the_viewport()
+    public void The_view_pill_floats_12_pixels_in_from_the_top_right_of_the_viewport()
     {
         UiThread.Run(() =>
         {
@@ -586,7 +586,7 @@ public sealed class ViewportAreaTests
             var pill = BoxOf(overlay.View, window);
             var chevron = overlay.ProjectionButton.GetVisualDescendants().OfType<EditorIcon>().Single();
 
-            Assert.Equal([3101.0, 96.0, 34.0], [pill.Right, pill.Y, pill.Height]);
+            Assert.Equal([3095.0, 98.0, 36.0], [pill.Right, pill.Y, pill.Height]);
             Assert.Equal(EditorBrushes.Floating, overlay.View.Background);
             Assert.Equal(26, overlay.ProjectionButton.Bounds.Height);
             Assert.Equal("Perspective", overlay.ProjectionLabel);
@@ -602,7 +602,7 @@ public sealed class ViewportAreaTests
         {
             var (window, _) = OpenWithViewport();
 
-            AssertBox(3011, 140, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
+            AssertBox(3007, 146, 100, 100, BoxOf(window.Center.Overlay.Axes, window));
         });
     }
 

@@ -22,10 +22,6 @@ internal static class LayoutAudit
     const double Rounding = 1;
     const double Slack = 0.5;
 
-    // The spacing scale's smallest steps: 2 inside a joined group such as tabs, 4 between anything else.
-    const double Joined = 2;
-    const double Apart = 4;
-
     public static List<string> Faults(Visual window)
     {
         var faults = new List<string>();
@@ -170,7 +166,7 @@ internal static class LayoutAudit
         var before = shown[at - 1];
         var (a, b) = (BoxOf(before, window), BoxOf(control, window));
         var gap = panel.Orientation == Orientation.Horizontal ? b.X - a.Right : b.Y - a.Bottom;
-        var least = panel.Classes.Contains(EditorTheme.Joined) ? Joined : Apart;
+        var least = panel.Classes.Contains(EditorTheme.Joined) ? Gaps.Joined : Gaps.Tight;
         return gap < least - Slack ? $"{gap:0} from {Describe(before)}, needs {least}" : null;
     }
 

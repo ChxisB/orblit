@@ -27,7 +27,7 @@ internal sealed class StepInspector : Border
     readonly IGraphFile _file;
     readonly PinEdits _edits;
     readonly Button _addStep;
-    readonly StackPanel _body = new() { Spacing = 6, Margin = new Thickness(12) };
+    readonly StackPanel _body = new() { Spacing = Gaps.Item, Margin = new Thickness(Gaps.Group) };
     readonly TextBlock _number = new() { FontSize = 11, Foreground = EditorBrushes.TextDim };
     readonly TextBlock _heading = new() { FontSize = 15, FontWeight = FontWeight.SemiBold };
     readonly TextBlock _engine = new() { FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center };
@@ -41,7 +41,7 @@ internal sealed class StepInspector : Border
     {
         _file = file;
         _edits = new PinEdits(file);
-        _title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _heading, _engine } };
+        _title = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Children = { _heading, _engine } };
         _addStep = Tool("inspector:add_step", new HoverCard("Add a step", "Opens the list of steps to add to the graph.", "⇧A"), addStep);
         _addStep.HorizontalAlignment = HorizontalAlignment.Center;
         Child = new ScrollViewer { Content = _body, HorizontalScrollBarVisibility = ScrollBarVisibility.Disabled };
@@ -106,7 +106,7 @@ internal sealed class StepInspector : Border
             return;
         }
 
-        _body.Children.Add(new TextBlock { Text = title, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 8, 0, 0) });
+        _body.Children.Add(new TextBlock { Text = title, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, Gaps.Item, 0, 0) });
         _body.Children.AddRange(rows);
     }
 
@@ -197,7 +197,7 @@ internal sealed class StepInspector : Border
         }
 
         var reset = Tool($"{id}:reset", new HoverCard("Reset", "Sets it back to zero or empty."), () => Apply(_edits.Reset(pin)));
-        reset.Margin = new Thickness(4, 0, 0, 0);
+        reset.Margin = new Thickness(Gaps.Tight, 0, 0, 0);
         DockPanel.SetDock(reset, Dock.Right);
         return new DockPanel { Children = { reset, box } };
     }
@@ -212,7 +212,7 @@ internal sealed class StepInspector : Border
         new HoverCard("Local", "Makes a local and wires it here. It lasts while this function runs.").On(choice.Choices[2]);
         choice.Changed += () => Apply(_edits.Promote(pin, choice.SelectedIndex == 2));
         var heading = new TextBlock { Text = $"Where the {pin.Port.Name.ToLowerInvariant()} comes from", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
-        return new StackPanel { Spacing = 3, Children = { heading, choice } };
+        return new StackPanel { Spacing = Gaps.Tight, Children = { heading, choice } };
     }
 
     static StackPanel PinRow(Pin pin, params Control[] body)
@@ -221,14 +221,14 @@ internal sealed class StepInspector : Border
         var type = new TextBlock { Text = VariantTypes.NameOf(port.Type), FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(type, Dock.Right);
         var name = new TextBlock { Text = char.ToUpperInvariant(port.Name[0]) + port.Name[1..], FontSize = 12 };
-        var row = new StackPanel { Spacing = 4, Margin = new Thickness(0, 4, 0, 0), Children = { new DockPanel { Children = { type, name } } } };
+        var row = new StackPanel { Spacing = Gaps.Tight, Margin = new Thickness(0, Gaps.Tight, 0, 0), Children = { new DockPanel { Children = { type, name } } } };
         row.Children.AddRange(body);
         return row;
     }
 
     static StackPanel Labeled(string label, Control box)
     {
-        var row = new StackPanel { Spacing = 4 };
+        var row = new StackPanel { Spacing = Gaps.Tight };
         row.Children.Add(new TextBlock { Text = label, FontSize = 12 });
         row.Children.Add(box);
         return row;

@@ -20,7 +20,7 @@ internal sealed class MoveTools
         OffContent = "Keep where it is in the world",
         FontSize = 12,
         Foreground = EditorBrushes.TextSoft,
-        Margin = new Thickness(0, 10, 0, 0),
+        Margin = new Thickness(0, Gaps.Item, 0, 0),
     };
     List<(Choice Choice, OutlineNode Entity, string Path)> _targets = [];
     IEditorScene? _scene;
@@ -29,7 +29,7 @@ internal sealed class MoveTools
 
     public MoveTools()
     {
-        var jump = new TextBlock { Text = "Off moves it with its new home, so it may jump.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
+        var jump = new TextBlock { Text = "Off moves it with its new home, so it may jump.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(0, Gaps.Tight, 0, 0) };
         Dialog = new Dialog("", "", new StackPanel { Children = { _parents, _keepGlobal, jump } }) { CardWidth = 360, EngineName = "Reparent" };
         var card = new HoverCard("Move into", "Moves it to the end of the lit thing.", "↵");
         card.SaysWhyOff(card.On(Dialog.MainButton), "Pick a new home first.");

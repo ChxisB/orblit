@@ -22,7 +22,7 @@ internal sealed class DebuggerPanel : StackPanel
     readonly Func<DebugPlace, string?> _stepTitle;
     readonly string _playKey;
     readonly (string Id, string Icon, string Word, string Does, string Key, DebugCommand Command)[] _buttons;
-    readonly StackPanel _details = new() { Spacing = 4, Margin = new Thickness(12, 0, 12, 10) };
+    readonly StackPanel _details = new() { Spacing = Gaps.Tight, Margin = new Thickness(Gaps.Group, 0, Gaps.Group, Gaps.Group) };
 
     /// <summary>The step title gives the name of a step on show, or null when the canvas does not show it.</summary>
     public DebuggerPanel(GraphDebugger debugger, Func<DebugPlace, string?> stepTitle, KeyModifiers command)
@@ -82,7 +82,7 @@ internal sealed class DebuggerPanel : StackPanel
 
     Grid Bar(DebugState state)
     {
-        var bar = new Grid { Height = 44, Margin = new Thickness(12, 0, 8, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        var bar = new Grid { Height = 44, Margin = new Thickness(Gaps.Group, 0, Gaps.Item, 0), ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
         var icon = Parts.RowIcon("Debug", EditorBrushes.TextDim);
         var status = new TextBlock
         {
@@ -94,7 +94,7 @@ internal sealed class DebuggerPanel : StackPanel
             VerticalAlignment = VerticalAlignment.Center,
         };
         ToolTip.SetTip(status, status.Text);
-        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center };
         foreach (var (id, mark, word, does, key, command) in _buttons)
         {
             var card = new HoverCard(word, does, key);
@@ -150,7 +150,7 @@ internal sealed class DebuggerPanel : StackPanel
         }
     }
 
-    static TextBlock Heading(string text) => new() { Text = text, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 6, 0, 0) };
+    static TextBlock Heading(string text) => new() { Text = text, FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, Gaps.Item, 0, 0) };
 
     static TextBlock Line(string id, string text, IBrush? brush = null) => new() { Text = text, Tag = id, FontSize = 12, TextWrapping = TextWrapping.Wrap, Foreground = brush };
 }

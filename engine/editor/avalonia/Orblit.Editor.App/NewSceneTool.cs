@@ -20,7 +20,7 @@ internal sealed class NewSceneTool : StackPanel
     readonly TextBox _name = new() { PlaceholderText = "Name", Classes = { EditorTheme.Field } };
     readonly TextBlock _saved = new() { FontSize = 11, Foreground = EditorBrushes.TextDim };
     readonly TextBlock _fault = Parts.FaultLine();
-    readonly ChoiceList _others = new("Search classes") { IsVisible = false, Margin = new Thickness(0, 10, 0, 0) };
+    readonly ChoiceList _others = new("Search classes") { IsVisible = false, Margin = new Thickness(0, Gaps.Item, 0, 0) };
     IReadOnlyCollection<string> _scenes = [];
     string _folder = FileTree.Root;
     string _path = "";
@@ -40,26 +40,26 @@ internal sealed class NewSceneTool : StackPanel
             Check();
         };
         _others.PickedChanged += Check;
-        var cards = new UniformGrid { Columns = 2, RowSpacing = 8, ColumnSpacing = 8 };
+        var cards = new UniformGrid { Columns = 2, RowSpacing = Gaps.Item, ColumnSpacing = Gaps.Item };
         cards.Children.AddRange([.. _roots.Select(root => root.Card), OtherCard]);
         Children.Add(Parts.Labeled("Start with", cards));
         Children.Add(_others);
         var name = Parts.Labeled("Name", _name, _fault, _saved);
-        name.Margin = new Thickness(0, 14, 0, 0);
+        name.Margin = new Thickness(0, Gaps.Group, 0, 0);
         Children.Add(name);
 
         Dialog = new Dialog("New scene", "A scene is a level, a menu or a part you reuse.", this);
         // The key that runs Create sits on a dark cap, so the orange under it stays bright.
         var key = new Border
         {
-            Padding = new Thickness(5, 3),
+            Padding = new Thickness(Gaps.Tight, Gaps.Joined),
             CornerRadius = new CornerRadius(4),
             Background = EditorBrushes.Shade,
             Opacity = 0.7,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = "↵", FontFamily = EditorTheme.Mono, FontSize = 10.5 },
         };
-        Dialog.MainButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new TextBlock { Text = "Create", VerticalAlignment = VerticalAlignment.Center }, key } };
+        Dialog.MainButton.Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Children = { new TextBlock { Text = "Create", VerticalAlignment = VerticalAlignment.Center }, key } };
         // Create waits for a root, so a class is there when it is pressed.
         Dialog.MainButton.Click += (_, _) => Requested?.Invoke(_path, RootClass()!);
         // TextChanged waits for a render, so the property is the one that fires at once.
@@ -146,7 +146,7 @@ internal sealed class NewSceneTool : StackPanel
         card.Classes.Add(EditorTheme.Card);
         card.Content = new StackPanel
         {
-            Spacing = 6,
+            Spacing = Gaps.Item,
             Children =
             {
                 mark,

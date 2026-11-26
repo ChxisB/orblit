@@ -16,6 +16,10 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>The small controls that more than one area of the shell uses.</summary>
 internal static class Parts
 {
+    // An icon button is a square this wide, with the icon in its middle.
+    internal const double IconButtonSize = 26;
+    internal const double IconInset = (IconButtonSize - EditorIcon.DefaultSize) / 2;
+
     // A glow and a deep tone for each banner, taken in turn so an item keeps its colour as a search narrows the list.
     static readonly (Color Glow, Color Deep)[] s_banners =
     [
@@ -26,18 +30,27 @@ internal static class Parts
 
     public static Button IconButton(string icon, string tip) => Flat(new Button(), icon, tip);
 
+    /// <summary>An icon button with an icon this wide, in the same square as the others.</summary>
+    public static Button IconButton(string icon, string tip, double side)
+    {
+        var button = IconButton(icon, tip);
+        button.Content = new EditorIcon(icon) { Width = side, Height = side };
+        button.Padding = new Thickness((IconButtonSize - side) / 2);
+        return button;
+    }
+
     public static ToggleButton IconToggle(string icon, string tip) => Flat(new ToggleButton(), icon, tip);
 
     /// <summary>The magnifier at the right of a filter box. Centered, because a stretched icon draws squashed.</summary>
-    public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+    public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
 
     /// <summary>
-    /// The icon of a tree row: pale, 7 pixels clear of the name, and a tint where the row has one. It is
+    /// The icon of a tree row: pale, beside its name, and a tint where the row has one. It is
     /// centered, because a row with an eye button is taller than the icon and a stretched icon draws squashed.
     /// </summary>
     public static EditorIcon RowIcon(string name, IBrush? tint = null)
     {
-        var icon = new EditorIcon(name) { Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(name) { Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, tint ?? EditorBrushes.TreeIcon);
         return icon;
     }
@@ -45,29 +58,29 @@ internal static class Parts
     /// <summary>A small rounded tag in mono type, such as a version or a kind.</summary>
     public static Border Badge(string text) => new()
     {
-        Padding = new Thickness(6, 2),
+        Padding = new Thickness(Gaps.Item, Gaps.Joined),
         CornerRadius = new CornerRadius(999),
         Background = EditorBrushes.Line,
         VerticalAlignment = VerticalAlignment.Center,
         Child = new TextBlock { Text = text, FontFamily = EditorTheme.Mono, FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
     };
 
-    /// <summary>A row of controls on a small island of its own, 2 pixels apart with 3 pixels around them.</summary>
+    /// <summary>A row of controls on a small island of its own, 2 pixels apart with 4 pixels around them.</summary>
     public static Border Pill(IEnumerable<Control> items)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Classes = { EditorTheme.Joined } };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Joined, Classes = { EditorTheme.Joined } };
         row.Children.AddRange(items);
-        return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(3), VerticalAlignment = VerticalAlignment.Center, Child = row };
+        return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(Gaps.Tight), VerticalAlignment = VerticalAlignment.Center, Child = row };
     }
 
     /// <summary>
-    /// A pill that floats 10 pixels in from an edge of the viewport, on a see-through fill with a stronger edge and
+    /// A pill that floats 12 pixels in from an edge of the viewport, on a see-through fill with a stronger edge and
     /// a shadow. It does not clip, so the shadow shows.
     /// </summary>
     public static Border Float(IEnumerable<Control> items)
     {
         var pill = Pill(items);
-        pill.Margin = new Thickness(10);
+        pill.Margin = new Thickness(Gaps.Group);
         pill.Background = EditorBrushes.Floating;
         pill.BorderBrush = EditorBrushes.LineStrong;
         pill.BoxShadow = BoxShadows.Parse("0 6 20 0 #59000000");
@@ -75,13 +88,13 @@ internal static class Parts
         return pill;
     }
 
-    /// <summary>A thin upright line between groups in a pill, 18 high and 3 pixels clear on each side.</summary>
-    public static Border Rule() => new() { Width = 1, Height = 18, Margin = new Thickness(3, 0), Background = EditorBrushes.LineStrong };
+    /// <summary>A thin upright line between groups in a pill, 18 high and 4 pixels clear on each side.</summary>
+    public static Border Rule() => new() { Width = 1, Height = 18, Margin = new Thickness(Gaps.Tight, 0), Background = EditorBrushes.LineStrong };
 
     /// <summary>A button 24 pixels square: the icon and 4 pixels of padding, no border.</summary>
     public static Button Tight(Button button)
     {
-        button.Padding = new Thickness(4);
+        button.Padding = new Thickness(Gaps.Tight);
         button.BorderThickness = new Thickness(0);
         return button;
     }
@@ -89,7 +102,7 @@ internal static class Parts
     /// <summary>A field with its name over it in small dim text, and the lines that go under it, such as a fault.</summary>
     public static StackPanel Labeled(string label, params Control[] rows)
     {
-        var group = new StackPanel { Spacing = 4 };
+        var group = new StackPanel { Spacing = Gaps.Tight };
         group.Children.Add(new TextBlock { Text = label, FontSize = 11, Foreground = EditorBrushes.TextDim });
         group.Children.AddRange(rows);
         return group;
@@ -98,15 +111,23 @@ internal static class Parts
     /// <summary>The 14 pixel mark at the left of a field, such as a folder.</summary>
     public static EditorIcon FieldIcon(string name, IBrush tint)
     {
-        var icon = new EditorIcon(name) { Width = 14, Height = 14, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(name) { Width = 14, Height = 14, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, tint);
+        return icon;
+    }
+
+    /// <summary>An icon at the start of a text box. The box's own padding parts it from the words.</summary>
+    public static EditorIcon LeadIcon(string name)
+    {
+        var icon = FieldIcon(name, EditorBrushes.TextDim);
+        icon.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         return icon;
     }
 
     /// <summary>A key on a small gray cap, as a hint beside the thing it runs.</summary>
     public static Border Kbd(string key) => new()
     {
-        Padding = new Thickness(5, 3),
+        Padding = new Thickness(Gaps.Tight, Gaps.Joined),
         CornerRadius = new CornerRadius(4),
         Background = EditorBrushes.Line,
         VerticalAlignment = VerticalAlignment.Center,
@@ -116,7 +137,7 @@ internal static class Parts
     /// <summary>Keys on caps and then the word for what they do, as a footer hint such as "↑ ↓ move".</summary>
     public static StackPanel KeyHint(string what, params string[] keys)
     {
-        var hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        var hint = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center };
         hint.Children.AddRange(keys.Select(Kbd));
         hint.Children.Add(new TextBlock { Text = what, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
         return hint;
@@ -126,7 +147,7 @@ internal static class Parts
     public static StackPanel Keyed(string word, string key) => new()
     {
         Orientation = Orientation.Horizontal,
-        Spacing = 6,
+        Spacing = Gaps.Item,
         Children = { new TextBlock { Text = word, VerticalAlignment = VerticalAlignment.Center }, Cap(key) },
     };
 
@@ -197,13 +218,13 @@ internal static class Parts
     internal static StackPanel Noted(string name, string? note, string? engine = null)
     {
         // The engine's name goes under the plain one where there is no room beside it.
-        var top = new WrapPanel { ItemSpacing = 8, Children = { new TextBlock { Text = name, TextWrapping = TextWrapping.Wrap } } };
+        var top = new WrapPanel { ItemSpacing = Gaps.Item, Children = { new TextBlock { Text = name, TextWrapping = TextWrapping.Wrap } } };
         if (engine is not null)
         {
             top.Children.Add(new TextBlock { Text = engine, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
         }
 
-        var header = new StackPanel { Spacing = 1, Children = { top } };
+        var header = new StackPanel { Spacing = Gaps.Joined, Children = { top } };
         if (note is not null)
         {
             header.Children.Add(new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap });
@@ -220,7 +241,7 @@ internal static class Parts
         return text;
     }
 
-    /// <summary>An island's top strip, like a dock's: a row with 6 pixels around it and a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
+    /// <summary>An island's top strip, like a dock's: a row with a line under it. Items dock left unless <see cref="Right"/> docked them.</summary>
     public static Border Bar(params Control[] items)
     {
         var row = new DockPanel { LastChildFill = false };
@@ -232,7 +253,7 @@ internal static class Parts
         return new Border
         {
             Height = DockTabs.StripHeight,
-            Padding = new Thickness(6),
+            Padding = new Thickness(Gaps.Item, DockTabs.StripInset),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = row,
@@ -253,8 +274,8 @@ internal static class Parts
         TextElement.SetForeground(mark, EditorBrushes.Disabled);
         return new StackPanel
         {
-            Spacing = 8,
-            Margin = new Thickness(18, 26),
+            Spacing = Gaps.Item,
+            Margin = new Thickness(Gaps.Dialog, Gaps.Section),
             HorizontalAlignment = HorizontalAlignment.Center,
             Children =
             {
@@ -269,7 +290,7 @@ internal static class Parts
     static T Flat<T>(T button, string icon, string tip) where T : ContentControl
     {
         button.Content = new EditorIcon(icon);
-        button.Padding = new Thickness(5);
+        button.Padding = new Thickness(IconInset);
         button.BorderThickness = new Thickness(0);
         button.MinWidth = 0;
         button.MinHeight = 0;
@@ -330,7 +351,7 @@ internal static class Parts
         var worded = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 6,
+            Spacing = Gaps.Tight,
             Children = { new EditorIcon(icon) { Width = 14, Height = 14, VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
         };
         if (key is not null)
@@ -349,10 +370,10 @@ internal static class Parts
     public static T Dress<T>(T button, string icon, HoverCard card) where T : Button
     {
         button.Content = new EditorIcon(icon);
-        button.Height = 26;
+        button.Height = IconButtonSize;
         button.MinWidth = 0;
         button.MinHeight = 0;
-        button.Padding = new Thickness(5);
+        button.Padding = new Thickness(IconInset);
         button.BorderThickness = new Thickness(0);
         AutomationProperties.SetName(button, card.Title);
         return card.On(button);
@@ -361,7 +382,7 @@ internal static class Parts
     // The key on a shade of the button's fill, so it reads on a plain button and on the orange one.
     static Border Cap(string key) => new()
     {
-        Padding = new Thickness(5, 3),
+        Padding = new Thickness(Gaps.Tight, Gaps.Joined),
         CornerRadius = new CornerRadius(4),
         Background = EditorBrushes.Shade,
         Opacity = 0.7,

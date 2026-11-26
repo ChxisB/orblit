@@ -52,7 +52,7 @@ internal sealed class CreateScriptForm : StackPanel
             FontSize = 11,
             Foreground = EditorBrushes.TextDim,
             VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(8, 0, 0, 0),
+            Margin = new Thickness(Gaps.Item, 0, 0, 0),
         },
         Classes = { EditorTheme.Field },
     };
@@ -61,7 +61,7 @@ internal sealed class CreateScriptForm : StackPanel
     {
         PlaceholderText = "Folder",
         FontFamily = EditorTheme.Mono,
-        InnerLeftContent = Parts.FieldIcon("FolderLine", EditorBrushes.TextDim),
+        InnerLeftContent = Parts.LeadIcon("FolderLine"),
         Classes = { EditorTheme.Field },
     };
     readonly TextBlock _fault = Parts.FaultLine();
@@ -72,7 +72,7 @@ internal sealed class CreateScriptForm : StackPanel
     {
         _kind = kind;
         ((TextBlock)_name.InnerRightContent!).Text = kind.Suffix;
-        Spacing = 10;
+        Spacing = Gaps.Group;
         Children.Add(Parts.Labeled("Name", _name, _fault, _saved));
         Children.Add(Parts.Labeled("Works on", _extends, new TextBlock { Text = kind.WorksOn, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap }));
         Children.Add(Parts.Labeled("Folder", _folder));

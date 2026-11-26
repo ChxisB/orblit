@@ -9,7 +9,7 @@ namespace Orblit.Editor.App.Shell;
 /// <summary>A sheet of every key, a row a key under a heading for its group. Done closes it.</summary>
 internal sealed class KeysSheet
 {
-    readonly StackPanel _rows = new() { Spacing = 2 };
+    readonly StackPanel _rows = new() { Spacing = Gaps.Joined };
 
     public KeysSheet()
     {
@@ -36,7 +36,7 @@ internal sealed class KeysSheet
                 FontWeight = FontWeight.SemiBold,
                 LetterSpacing = 0.6,
                 Foreground = EditorBrushes.Unit,
-                Margin = new Thickness(0, _rows.Children.Count == 0 ? 0 : 10, 0, 4),
+                Margin = new Thickness(0, _rows.Children.Count == 0 ? 0 : Gaps.Group, 0, Gaps.Tight),
             });
             foreach (var (_, name, key) in group)
             {

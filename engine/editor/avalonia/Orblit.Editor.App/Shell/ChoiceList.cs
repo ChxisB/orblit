@@ -62,7 +62,7 @@ internal sealed class ChoiceList : StackPanel
 
     internal const string Matches = "Matches";
 
-    readonly StackPanel _rows = new() { Spacing = 2, Classes = { EditorTheme.Joined } };
+    readonly StackPanel _rows = new() { Spacing = Gaps.Joined, Classes = { EditorTheme.Joined } };
     readonly List<(Button Row, EditorIcon Icon)> _drawn = [];
     readonly List<Button> _folds = [];
     readonly HashSet<ChoiceGroup> _unfolded = [];
@@ -72,9 +72,9 @@ internal sealed class ChoiceList : StackPanel
 
     public ChoiceList(string placeholder)
     {
-        SearchBox = new TextBox { PlaceholderText = placeholder, InnerLeftContent = Parts.FieldIcon("Lens", EditorBrushes.TextDim), Classes = { EditorTheme.Field } };
+        SearchBox = new TextBox { PlaceholderText = placeholder, InnerLeftContent = Parts.LeadIcon("Lens"), Classes = { EditorTheme.Field } };
         _top = new DockPanel { Children = { SearchBox } };
-        _body = new DockPanel { Margin = new Thickness(0, 8, 0, 0), Children = { new ScrollViewer { MaxHeight = 320, Content = _rows } } };
+        _body = new DockPanel { Margin = new Thickness(0, Gaps.Item, 0, 0), Children = { new ScrollViewer { MaxHeight = 320, Content = _rows } } };
         Children.Add(_top);
         Children.Add(_body);
         // TextChanged waits for a render, so the property is the one that fires at once.
@@ -158,7 +158,7 @@ internal sealed class ChoiceList : StackPanel
         Lit = -1;
         if (matching.Count == 0)
         {
-            _rows.Children.Add(new TextBlock { Text = "Nothing matches.", FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8) });
+            _rows.Children.Add(new TextBlock { Text = "Nothing matches.", FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Item) });
         }
 
         Shown = Draw(matching, matches);
@@ -203,8 +203,8 @@ internal sealed class ChoiceList : StackPanel
         var row = new Button
         {
             Height = LinedRow,
-            Margin = new Thickness(0, 4, 0, 0),
-            Padding = new Thickness(8, 0),
+            Margin = new Thickness(0, Gaps.Tight, 0, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             CornerRadius = new CornerRadius(6),
             Focusable = false,
             Background = Brushes.Transparent,
@@ -285,7 +285,7 @@ internal sealed class ChoiceList : StackPanel
     // Rows never take the keys, so the search box keeps typing while the pointer picks.
     (Button Row, EditorIcon Icon) Row(Choice choice, int index)
     {
-        var icon = new EditorIcon(choice.Icon) { Width = 14, Height = 14, Margin = new Thickness(0, 0, 8, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon(choice.Icon) { Width = 14, Height = 14, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, choice.Tint ?? EditorBrushes.TextDim);
         var words = Parts.Noted(choice.Name, choice.Line == "" ? null : choice.Line, choice.Engine);
         words.VerticalAlignment = VerticalAlignment.Center;
@@ -293,7 +293,7 @@ internal sealed class ChoiceList : StackPanel
         var row = new Button
         {
             Height = choice.Line == "" ? TreeRow : LinedRow,
-            Padding = new Thickness(6 + (Step * choice.Depth), 0, 8, 0),
+            Padding = new Thickness(Gaps.Item + (Step * choice.Depth), 0, Gaps.Item, 0),
             CornerRadius = new CornerRadius(6),
             Focusable = false,
             IsEnabled = !choice.Off,

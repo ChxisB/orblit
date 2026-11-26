@@ -62,7 +62,7 @@ internal sealed class ExportTool
         new HoverCard("Change…", "Pick the folder and name of the app.").On(_change);
         _none = new StackPanel
         {
-            Spacing = 4,
+            Spacing = Gaps.Tight,
             Children =
             {
                 new TextBlock { Text = "Nowhere to export to yet", FontWeight = FontWeight.SemiBold },
@@ -71,11 +71,11 @@ internal sealed class ExportTool
         };
         _places = Parts.Labeled("Runs on", _presets);
         DockPanel.SetDock(_change, Dock.Right);
-        _change.Margin = new Thickness(6, 0, 0, 0);
+        _change.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         var saveTo = new DockPanel { Children = { _change, _path } };
-        var parts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { _download, _install } };
+        var parts = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Children = { _download, _install } };
         var partsLine = new TextBlock { Text = "Orblit needs these once per version to build apps. Called export templates.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
-        var body = new StackPanel { Spacing = 10, Children = { _none, _places, AddPresetButton, Parts.Labeled("Save the app to", saveTo), Parts.Labeled("Build parts", parts, partsLine), _status } };
+        var body = new StackPanel { Spacing = Gaps.Group, Children = { _none, _places, AddPresetButton, Parts.Labeled("Save the app to", saveTo), Parts.Labeled("Build parts", parts, partsLine), _status } };
         Dialog = new Dialog("Export game", "Builds your game as an app that runs without Orblit.", body) { MainText = "Export", EngineName = "Export", Hint = _why };
         new HoverCard("Export", "Builds the app in the place you picked.").On(Dialog.MainButton);
         _presets.SelectionChanged += (_, _) =>

@@ -88,11 +88,11 @@ internal sealed class ScriptView : Border
         PlaceholderText = "Find a script",
         Height = BoxHeight,
         MinHeight = 0,
-        Margin = new Thickness(8),
+        Margin = new Thickness(Gaps.Item),
         InnerRightContent = Parts.SearchIcon(),
     };
 
-    readonly TextBlock _name = new() { Text = "Pick a script.", FontFamily = EditorTheme.Mono, FontSize = 11.5, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0) };
+    readonly TextBlock _name = new() { Text = "Pick a script.", FontFamily = EditorTheme.Mono, FontSize = 11.5, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(Gaps.Item, 0) };
     readonly TextBlock _tabName = new() { FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     readonly Ellipse _tabDot = Dot();
     readonly Border _tab;
@@ -149,7 +149,7 @@ internal sealed class ScriptView : Border
         _tab = new Border
         {
             Height = 26,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             CornerRadius = EditorTheme.Corners,
             Background = EditorBrushes.Raised,
             BorderBrush = EditorBrushes.LineStrong,
@@ -407,8 +407,8 @@ internal sealed class ScriptView : Border
     DockPanel TabParts()
     {
         var icon = Parts.RowIcon("CodeFile", EditorBrushes.ScriptIcon);
-        icon.Margin = new Thickness(0, 0, 4, 0);
-        _tabDot.Margin = _close.Margin = new Thickness(8, 0, 0, 0);
+        icon.Margin = new Thickness(0, 0, Gaps.Tight, 0);
+        _tabDot.Margin = _close.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         DockPanel.SetDock(icon, Dock.Left);
         DockPanel.SetDock(_close, Dock.Right);
         DockPanel.SetDock(_tabDot, Dock.Right);
@@ -421,7 +421,7 @@ internal sealed class ScriptView : Border
         Control[] parts = [_caret, _indent, StatusText("UTF-8"), _status, _errors];
         foreach (var part in parts)
         {
-            part.Margin = new Thickness(part == _caret ? 0 : 12, 0, 0, 0);
+            part.Margin = new Thickness(part == _caret ? 0 : Gaps.Group, 0, 0, 0);
             DockPanel.SetDock(part, Dock.Left);
         }
 
@@ -436,14 +436,14 @@ internal sealed class ScriptView : Border
 
     static TextBlock StatusText(string text = "") => new() { Text = text, VerticalAlignment = VerticalAlignment.Center };
 
-    // A strip like a dock's: a 26 pixel row with 6 pixels around it and a line under it.
+    // A strip like a dock's: the same height as one, with a line under it.
     static Border Bar(Control left, Control right)
     {
         DockPanel.SetDock(right, Dock.Right);
         return new Border
         {
             Height = DockTabs.StripHeight,
-            Padding = new Thickness(6),
+            Padding = new Thickness(Gaps.Item, DockTabs.StripInset),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new DockPanel { Children = { right, left } },
@@ -452,14 +452,14 @@ internal sealed class ScriptView : Border
 
     static StackPanel Row(params Control[] items)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, VerticalAlignment = VerticalAlignment.Center };
         row.Children.AddRange(items);
         return row;
     }
 
     static DockPanel MemberRow(ScriptMember member)
     {
-        var detail = new TextBlock { Text = member.Detail, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var detail = new TextBlock { Text = member.Detail, FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(detail, Dock.Right);
         var icon = Parts.RowIcon(member.Icon);
         DockPanel.SetDock(icon, Dock.Left);
@@ -473,17 +473,17 @@ internal sealed class ScriptView : Border
         var tab = new Border
         {
             Height = 26,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             CornerRadius = EditorTheme.Corners,
             Background = EditorBrushes.Line,
             Child = new TextBlock { Text = "Scripts", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
         };
         var tools = Row(_new, _sort);
-        tools.Spacing = 2;
+        tools.Spacing = Gaps.Joined;
         tools.Classes.Add(EditorTheme.Joined);
         var heading = new Border
         {
-            Padding = new Thickness(14, 14, 14, 6),
+            Padding = new Thickness(Gaps.Group, Gaps.Group, Gaps.Group, Gaps.Item),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new TextBlock { Text = "In this script", FontSize = 11, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextDim },
@@ -501,7 +501,7 @@ internal sealed class ScriptView : Border
     {
         var badge = new Border
         {
-            Padding = new Thickness(6, 2),
+            Padding = new Thickness(Gaps.Item, Gaps.Joined),
             CornerRadius = new CornerRadius(4),
             Background = EditorBrushes.Line,
             VerticalAlignment = VerticalAlignment.Center,
@@ -509,13 +509,13 @@ internal sealed class ScriptView : Border
         };
         // The buttons are measured first, then the tab, and the path gets what is left.
         var tools = Row(badge, _find, _save, _check);
-        tools.Spacing = 8;
+        tools.Spacing = Gaps.Item;
         DockPanel.SetDock(_tab, Dock.Left);
         DockPanel.SetDock(_problems, Dock.Right);
         var status = new Border
         {
             Height = 28,
-            Padding = new Thickness(12, 0, 4, 0),
+            Padding = new Thickness(Gaps.Group, 0, Gaps.Tight, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = new DockPanel { Children = { _problems, StatusLine() } },
@@ -541,7 +541,7 @@ internal sealed class ScriptView : Border
         return new StackPanel
         {
             Width = 360,
-            Spacing = 10,
+            Spacing = Gaps.Group,
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Children =
@@ -555,7 +555,7 @@ internal sealed class ScriptView : Border
                     TextWrapping = TextWrapping.Wrap,
                     TextAlignment = TextAlignment.Center,
                 },
-                new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, HorizontalAlignment = HorizontalAlignment.Center, Children = { _start, _findScript } },
+                new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, HorizontalAlignment = HorizontalAlignment.Center, Children = { _start, _findScript } },
             },
         };
     }
@@ -925,7 +925,7 @@ internal sealed class ScriptView : Border
     void ShowProblems(string text, string? icon, IBrush tint)
     {
         _problemsText.Text = text;
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 5 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight };
         if (icon is not null)
         {
             row.Children.Add(new EditorIcon(icon) { Width = 13, Height = 13, VerticalAlignment = VerticalAlignment.Center });
@@ -943,9 +943,9 @@ internal sealed class ScriptView : Border
     {
         var dot = Dot();
         dot.IsVisible = path == _open && IsDirty;
-        dot.Margin = new Thickness(8, 0, 0, 0);
+        dot.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         DockPanel.SetDock(dot, Dock.Right);
-        var kind = new TextBlock { Text = "C#", FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var kind = new TextBlock { Text = "C#", FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(kind, Dock.Right);
         return new DockPanel
         {

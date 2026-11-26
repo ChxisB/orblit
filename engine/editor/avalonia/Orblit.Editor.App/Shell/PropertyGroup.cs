@@ -34,7 +34,7 @@ internal sealed class PropertyGroup : StackPanel
             Content = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 2,
+                Spacing = Gaps.Joined,
                 Children =
                 {
                     new Grid { Children = { _right, _down } },

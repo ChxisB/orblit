@@ -31,10 +31,10 @@ internal sealed class KindPreview : Border
     public KindPreview()
     {
         Width = 250;
-        Padding = new Thickness(18);
+        Padding = new Thickness(Gaps.Dialog);
         BorderBrush = EditorBrushes.Line;
         BorderThickness = new Thickness(1, 0, 0, 0);
-        Child = new StackPanel { Spacing = 8, Children = { _picture, Title, _engine, About, GoodFor } };
+        Child = new StackPanel { Spacing = Gaps.Item, Children = { _picture, Title, _engine, About, GoodFor } };
     }
 
     internal TextBlock Title { get; } = new() { FontSize = 16, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap };

@@ -154,6 +154,17 @@ public sealed class DialogTests
     }
 
     [Fact]
+    public void The_close_button_is_as_big_as_the_other_icon_buttons()
+    {
+        UiThread.Run(() =>
+        {
+            var close = Opened(NewDialog()).CloseButton;
+
+            Assert.Equal((26d, 26d), (close.Bounds.Width, close.Bounds.Height));
+        });
+    }
+
+    [Fact]
     public void The_main_action_is_orange_at_the_right_with_a_quiet_Cancel_before_it()
     {
         UiThread.Run(() =>
@@ -167,7 +178,7 @@ public sealed class DialogTests
             Assert.Equal(EditorColors.Accent, ((ISolidColorBrush)main.Background!).Color);
             Assert.Equal(30, main.Bounds.Height);
             Assert.Same(EditorBrushes.TextSoft, cancel.Foreground);
-            Assert.Equal(BoxOf(dialog.Card, dialog).Right - 1 - 12, BoxOf(main, dialog).Right);
+            Assert.Equal(BoxOf(dialog.Card, dialog).Right - 1 - 16, BoxOf(main, dialog).Right);
             Assert.Equal(BoxOf(cancel, dialog).Right + 8, BoxOf(main, dialog).X);
         });
     }
@@ -180,7 +191,7 @@ public sealed class DialogTests
             var drop = new Button { Content = "Close without saving", Classes = { EditorTheme.TextButton, EditorTheme.Danger } };
             var dialog = Opened(new Dialog("Save changes?", "Closing without saving drops them.", new TextBlock()) { LeadButton = drop, Closable = false });
 
-            Assert.Equal(BoxOf(dialog.Card, dialog).X + 1 + 12, BoxOf(drop, dialog).X);
+            Assert.Equal(BoxOf(dialog.Card, dialog).X + 1 + 16, BoxOf(drop, dialog).X);
             Assert.Same(EditorBrushes.FaultText, drop.Foreground);
             Assert.False(dialog.CloseButton.IsVisible);
         });

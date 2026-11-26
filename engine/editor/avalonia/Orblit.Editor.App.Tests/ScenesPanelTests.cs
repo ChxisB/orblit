@@ -44,8 +44,8 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(11, 706, 163, 28, BoxOf(panel.PathBox, window));
-            AssertBox(180, 705, 98, 30, BoxOf(panel.LayoutChoice, window));
+            AssertBox(17, 707, 164, 28, BoxOf(panel.PathBox, window));
+            AssertBox(189, 705, 90, 30, BoxOf(panel.LayoutChoice, window));
             Assert.Equal(["Tree", "List"], panel.LayoutChoice.Choices.Select(choice => choice.Content as string));
         });
     }
@@ -100,8 +100,8 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var panel = window.Scenes;
 
-            AssertBox(11, 739, 186, 28, BoxOf(panel.FilterBox, window));
-            AssertBox(203, 740, 75, 26, BoxOf(panel.SortButton, window));
+            AssertBox(17, 739, 183, 28, BoxOf(panel.FilterBox, window));
+            AssertBox(208, 740, 71, 26, BoxOf(panel.SortButton, window));
             Assert.Equal("Find a file", panel.FilterBox.PlaceholderText);
             Assert.Equal(["Name"], Texts(panel.SortButton));
             Assert.Equal("Picks the order of the files in each folder. Folders stay on top.", ((HoverCard)ToolTip.GetTip(panel.SortButton)!).Line);
@@ -267,7 +267,7 @@ public sealed class ScenesPanelTests
     }
 
     [Fact]
-    public void The_rows_start_14_pixels_under_the_filter_and_are_26_high()
+    public void The_rows_start_12_pixels_under_the_filter_and_are_26_high()
     {
         UiThread.Run(() =>
         {
@@ -275,7 +275,7 @@ public sealed class ScenesPanelTests
             var items = Items(window);
 
             Assert.Equal(["res://", "enemies", "levels", "field.oscn", "spin.cs"], Names(window));
-            Assert.Equal([781.0, 807.0, 833.0, 859.0], items.Take(4).Select(item => BoxOf(item, window).Y));
+            Assert.Equal([779.0, 805.0, 831.0, 857.0], items.Take(4).Select(item => BoxOf(item, window).Y));
         });
     }
 
@@ -302,9 +302,9 @@ public sealed class ScenesPanelTests
             var window = OpenAtReferenceSize();
             var items = Items(window);
 
-            Assert.Equal(29, BoxOf(RowIconOf(items[0]), window).X);
-            Assert.Equal(52, BoxOf(items[0].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
-            Assert.Equal(68, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(31, BoxOf(RowIconOf(items[0]), window).X);
+            Assert.Equal(51, BoxOf(items[0].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
+            Assert.Equal(67, BoxOf(items[1].GetVisualDescendants().OfType<TextBlock>().First(), window).X);
         });
     }
 
@@ -321,7 +321,7 @@ public sealed class ScenesPanelTests
     }
 
     [Fact]
-    public void The_selected_row_is_a_soft_accent_block_6_pixels_in_from_each_side()
+    public void The_selected_row_is_a_soft_accent_block_4_pixels_in_from_each_side()
     {
         UiThread.Run(() =>
         {
@@ -333,8 +333,8 @@ public sealed class ScenesPanelTests
             var area = highlight.Area();
             var corner = highlight.TranslatePoint(area.TopLeft, window)!.Value;
 
-            Assert.Equal(new Point(BoxOf(line, window).X + 6, BoxOf(line, window).Y), corner);
-            Assert.Equal(new Size(BoxOf(line, window).Width - 12, 26), area.Size);
+            Assert.Equal(new Point(BoxOf(line, window).X + 4, BoxOf(line, window).Y), corner);
+            Assert.Equal(new Size(BoxOf(line, window).Width - 8, 26), area.Size);
             Assert.Equal(EditorColors.AccentSoft, ((ISolidColorBrush)highlight.Fill!).Color);
             Assert.Null(items[1].GetVisualDescendants().OfType<RowHighlight>().First().Fill);
         });

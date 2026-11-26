@@ -22,8 +22,8 @@ namespace Orblit.Editor.App.Launcher;
 internal sealed class LauncherWindow : Window, IAppMenuTarget
 {
     const double CardWidth = 230;
-    // Half the 14 pixel gap between cards, as a margin on every side of each.
-    const double Half = 7;
+    // Half the gap between cards, as a margin on every side of each.
+    const double Half = Gaps.Group / 2;
 
     // The sorts the menu offers: the name of each, which the button shows while it is in use, and its note.
     static readonly (string Name, string Note)[] s_sorts =
@@ -45,7 +45,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     readonly ProjectList _list;
     readonly ILinkOpener _links;
     readonly TimeProvider _time;
-    readonly TextBox _search = new() { PlaceholderText = "Find a project by name or folder", InnerLeftContent = Parts.FieldIcon("Lens", EditorBrushes.TextDim), Height = 36, Classes = { EditorTheme.Field } };
+    readonly TextBox _search = new() { PlaceholderText = "Find a project by name or folder", InnerLeftContent = Parts.LeadIcon("Lens"), Height = 36, Classes = { EditorTheme.Field } };
     readonly TextBlock _sortWord = new() { Text = s_sorts[0].Name, VerticalAlignment = VerticalAlignment.Center };
     readonly MenuItem[] _sorts;
     readonly Button _sort;
@@ -74,7 +74,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         _open = new HoverCard("Open a folder…", "Adds a project folder from disk to this list, then opens it.", openKey).On(new Button
         {
             Content = Parts.Worded("FolderLine", "Open a folder…", openKey),
-            Margin = new Thickness(0, 0, 8, 0),
+            Margin = new Thickness(0, 0, Gaps.Item, 0),
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost },
         });
         var newKey = Parts.KeyText(new KeyGesture(Key.N, CommandKey));
@@ -84,7 +84,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
             Classes = { EditorTheme.TextButton, EditorTheme.Primary },
         });
         NoMatchOpenButton = new Button { Content = Parts.Keyed("Open a folder…", openKey), Classes = { EditorTheme.TextButton, EditorTheme.Small } };
-        _search.InnerRightContent = new Border { Margin = new Thickness(0, 0, 8, 0), Child = Parts.Kbd(Parts.KeyText(new KeyGesture(Key.F, CommandKey))) };
+        _search.InnerRightContent = new Border { Margin = new Thickness(0, 0, Gaps.Item, 0), Child = Parts.Kbd(Parts.KeyText(new KeyGesture(Key.F, CommandKey))) };
         _sorts = [.. s_sorts.Select((sort, at) => Parts.ActionItem(sort.Name, () => SortBy(at), note: sort.Note))];
         _sort = SortMenu(_sortWord, _sorts);
         Title = "Orblit";
@@ -98,13 +98,13 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         var main = new Border
         {
             Classes = { EditorTheme.Island },
-            Margin = new Thickness(12, 0, 0, 0),
+            Margin = new Thickness(Gaps.Group, 0, 0, 0),
             ClipToBounds = true,
             Child = Projects(),
         };
         Grid.SetColumn(main, 1);
         // The dialogs lie over the whole window, so a veil covers the projects too.
-        Content = new Panel { Children = { new Grid { Margin = new Thickness(12), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog, _settings.Dialog, _keys.Dialog, _rename.Dialog } };
+        Content = new Panel { Children = { new Grid { Margin = new Thickness(Gaps.Group), ColumnDefinitions = new ColumnDefinitions("200,*"), Children = { Nav, main } }, _panel.Dialog, _settings.Dialog, _keys.Dialog, _rename.Dialog } };
         // The property changes as the text is set. The TextChanged event waits for a render.
         _search.PropertyChanged += (_, e) =>
         {
@@ -122,7 +122,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
             }
         };
         ClearSearchButton.Click += (_, _) => _search.Text = "";
-        var ways = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(0, 6, 0, 0), HorizontalAlignment = HorizontalAlignment.Center, Children = { ClearSearchButton, NoMatchOpenButton } };
+        var ways = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Margin = new Thickness(0, Gaps.Item, 0, 0), HorizontalAlignment = HorizontalAlignment.Center, Children = { ClearSearchButton, NoMatchOpenButton } };
         _noMatch.Children.Add(ways);
         _open.Click += (_, _) => PickAndOpen();
         NoMatchOpenButton.Click += (_, _) => PickAndOpen();
@@ -301,7 +301,7 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     {
         var title = new StackPanel
         {
-            Spacing = 4,
+            Spacing = Gaps.Tight,
             Children =
             {
                 new TextBlock { Text = "Your projects", FontSize = 26, FontWeight = FontWeight.SemiBold },
@@ -313,15 +313,15 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         DockPanel.SetDock(_sort, Dock.Right);
         var head = new StackPanel
         {
-            Spacing = 18,
-            Margin = new Thickness(28, 28, 28, 14),
+            Spacing = Gaps.Dialog,
+            Margin = new Thickness(Gaps.Section, Gaps.Section, Gaps.Section, Gaps.Group),
             Children = { new DockPanel { Children = { actions, title } }, new DockPanel { Children = { _sort, _search } }, _fault },
         };
         DockPanel.SetDock(head, Dock.Top);
         var body = new StackPanel
         {
-            Spacing = 12,
-            Margin = new Thickness(28, 4, 28, 32),
+            Spacing = Gaps.Group,
+            Margin = new Thickness(Gaps.Section, Gaps.Tight, Gaps.Section, Gaps.Section),
             Children = { _cards, _note, StartsHead(), Templates() },
         };
         var scroll = new ScrollViewer { Content = body };
@@ -333,8 +333,8 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
     static StackPanel StartsHead() => new()
     {
         Orientation = Orientation.Horizontal,
-        Spacing = 10,
-        Margin = new Thickness(0, 16, 0, 0),
+        Spacing = Gaps.Group,
+        Margin = new Thickness(0, Gaps.Dialog, 0, 0),
         Children =
         {
             new TextBlock { Text = "Start something new", FontSize = 13, FontWeight = FontWeight.SemiBold },
@@ -356,8 +356,8 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         var button = new Button
         {
             Height = 36,
-            Margin = new Thickness(8, 0, 0, 0),
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { new EditorIcon("Sort") { VerticalAlignment = VerticalAlignment.Center }, word, chevron } },
+            Margin = new Thickness(Gaps.Item, 0, 0, 0),
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { new EditorIcon("Sort") { VerticalAlignment = VerticalAlignment.Center }, word, chevron } },
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost },
             Flyout = new MenuFlyout { ItemsSource = sorts },
         };
@@ -430,8 +430,8 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
         var name = new TextBlock { Text = project.Name, FontSize = 15, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
         var body = new StackPanel
         {
-            Spacing = 4,
-            Margin = new Thickness(14, 10, 10, 14),
+            Spacing = Gaps.Tight,
+            Margin = new Thickness(Gaps.Group, Gaps.Item, Gaps.Item, Gaps.Group),
             Children =
             {
                 new DockPanel { Children = { Parts.Right(more), name } },
@@ -521,8 +521,8 @@ internal sealed class Nav : DockPanel
         var logo = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 9,
-            Margin = new Thickness(10, 6, 0, 22),
+            Spacing = Gaps.Item,
+            Margin = new Thickness(Gaps.Item, Gaps.Item, 0, Gaps.Section),
             Children =
             {
                 Parts.LogoMark(22),
@@ -550,7 +550,7 @@ internal sealed class Nav : DockPanel
                     Parts.Right(Parts.FieldIcon("ActionCopy", EditorBrushes.TextDim)),
                     new StackPanel
                     {
-                        Spacing = 2,
+                        Spacing = Gaps.Joined,
                         Children =
                         {
                             new TextBlock { Text = $"Orblit {BottomBar.Version}", FontSize = 12, FontWeight = FontWeight.SemiBold },
@@ -565,7 +565,7 @@ internal sealed class Nav : DockPanel
         SetDock(Version, Dock.Bottom);
         Children.Add(logo);
         Children.Add(Version);
-        Children.Add(new StackPanel { Spacing = 4, Children = { Projects, Learn, Settings } });
+        Children.Add(new StackPanel { Spacing = Gaps.Tight, Children = { Projects, Learn, Settings } });
     }
 
     internal Button Projects { get; }

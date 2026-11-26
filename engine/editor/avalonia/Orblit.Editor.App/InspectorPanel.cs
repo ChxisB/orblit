@@ -24,7 +24,7 @@ internal sealed class InspectorPanel : StackPanel
 {
     // The engine's Transform group holds these, and the vector rows edit them through the transform calls.
     static readonly string[] s_vectorNames = ["position", "rotation", "scale"];
-    static readonly Thickness s_groupIndent = new(12, 0, 0, 0);
+    static readonly Thickness s_groupIndent = new(Gaps.Group, 0, 0, 0);
 
     readonly VectorRow _position = new("Position", "m");
     readonly VectorRow _rotation = new("Turn", "°");
@@ -43,8 +43,8 @@ internal sealed class InspectorPanel : StackPanel
     readonly ScriptTool _scriptTool = new();
     readonly Flyout _attachFlyout = new() { FlyoutPresenterClasses = { EditorTheme.Flush } };
     readonly Button _attach = new HoverCard("Add a script", "Tell this thing what to do while the game runs.", engine: "Attach Script").On(Dashed("ScriptCreate", "Add a script"));
-    readonly TextBlock _rootLine = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(6, 2, 6, 6) };
-    readonly TextBlock _count = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(6, 8, 6, 14) };
+    readonly TextBlock _rootLine = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Item, Gaps.Joined, Gaps.Item, Gaps.Item) };
+    readonly TextBlock _count = new() { FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Group) };
     readonly Control[] _entityParts;
     IEditorScene? _scene;
     IReadOnlyList<OutlineNode> _picked = [];
@@ -59,7 +59,7 @@ internal sealed class InspectorPanel : StackPanel
 
     public InspectorPanel()
     {
-        Margin = new Thickness(6);
+        Margin = new Thickness(Gaps.Item);
         _transform = new PropertyGroup("Where it is", _transformRows);
         Add(_position, entity => _scene!.PositionOf(entity), (entity, value) => _scene!.MoveTo(entity, value));
         Add(_rotation, entity => _scene!.RotationOf(entity), (entity, value) => _scene!.RotateTo(entity, value));
@@ -368,7 +368,7 @@ internal sealed class InspectorPanel : StackPanel
         _metadataTool.Cancelled += _metadataFlyout.Hide;
         // Add a script sits a little taller and quieter than Add a custom value, so the two read as separate steps.
         _attach.Height = 32;
-        _attach.Margin = new Thickness(0, 10, 0, 0);
+        _attach.Margin = new Thickness(0, Gaps.Group, 0, 0);
         _attach.Foreground = EditorBrushes.TextDim;
         _attachFlyout.Content = _scriptTool;
         _attach.Flyout = _attachFlyout;
@@ -473,7 +473,7 @@ internal sealed class InspectorPanel : StackPanel
         MinWidth = 0,
         Padding = new Thickness(0),
         BorderThickness = new Thickness(0),
-        Margin = new Thickness(0, 13, 0, 0),
+        Margin = new Thickness(0, Gaps.Group, 0, 0),
         HorizontalAlignment = HorizontalAlignment.Stretch,
         HorizontalContentAlignment = HorizontalAlignment.Stretch,
         VerticalContentAlignment = VerticalAlignment.Stretch,
@@ -487,8 +487,8 @@ internal sealed class InspectorPanel : StackPanel
                 new StackPanel
                 {
                     Orientation = Orientation.Horizontal,
-                    Spacing = 6,
-                    Margin = new Thickness(12, 0),
+                    Spacing = Gaps.Tight,
+                    Margin = new Thickness(Gaps.Group, 0),
                     VerticalAlignment = VerticalAlignment.Center,
                     Children = { new EditorIcon(icon) { VerticalAlignment = VerticalAlignment.Center }, new TextBlock { Text = text, VerticalAlignment = VerticalAlignment.Center } },
                 },

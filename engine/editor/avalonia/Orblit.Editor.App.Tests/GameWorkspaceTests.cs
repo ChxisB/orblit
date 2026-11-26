@@ -52,7 +52,7 @@ public sealed class GameWorkspaceTests
             Assert.True(window.Game.IsVisible);
             Assert.False(window.Center.Toolbar.IsVisible);
             Assert.False(window.Viewport.IsEffectivelyVisible);
-            AssertBox(56, 46, 3328, 1183, BoxOf(window.Game, window));
+            AssertBox(60, 46, 3320, 1179, BoxOf(window.Game, window));
             Assert.Equal(before, window.Status);
         });
     }
@@ -155,7 +155,7 @@ public sealed class GameWorkspaceTests
 
             var rows = window.Game.LiveRows.ToList();
             Assert.Equal(["Level", "Props", "Crate", "Sun"], rows.Select(row => Words(row)[0]));
-            Assert.Equal([6.0, 22, 38, 22], rows.Select(row => row.Margin.Left));
+            Assert.Equal([4.0, 20, 36, 20], rows.Select(row => row.Margin.Left));
             var card = Assert.IsType<HoverCard>(ToolTip.GetTip(rows[2]));
             Assert.Equal((PlainNames.NameOf("MeshInstance3D"), "MeshInstance3D"), (Words(rows[2])[1], card.Engine));
             Assert.False(window.Game.NoScene.IsVisible);

@@ -42,16 +42,16 @@ internal sealed class PalettePopup : Border
     const string PinnedGroup = "Pinned";
 
     readonly TextBox _text = new() { PlaceholderText = "Find a step, like wait or if", FontSize = 13, Padding = new Thickness(0), MinHeight = 0, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.Bare } };
-    readonly StackPanel _rows = new() { Margin = new Thickness(6) };
+    readonly StackPanel _rows = new() { Margin = new Thickness(Gaps.Item) };
     readonly TextBlock _group = new() { FontSize = 11, Foreground = EditorBrushes.Unit };
     readonly TextBlock _label = new() { FontSize = 16, FontWeight = FontWeight.Bold, Foreground = EditorBrushes.Text };
     readonly TextBlock _engine = new() { FontFamily = EditorTheme.Mono, FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center };
-    readonly StepPreview _chip = new() { Margin = new Thickness(-6, 6, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
+    readonly StepPreview _chip = new() { Margin = new Thickness(-StepPreview.Pad, Gaps.Item, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
     readonly TextBlock _about = new() { FontSize = 12, Foreground = EditorBrushes.TextSoft, TextWrapping = TextWrapping.Wrap };
     readonly TextBlock _good = new() { FontSize = 11.5, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap };
     readonly Button _pin = new() { Tag = "palette:pin", Focusable = false, HorizontalAlignment = HorizontalAlignment.Left, Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small } };
-    readonly StackPanel _preview = new() { Spacing = 6, Margin = new Thickness(18) };
-    readonly StackPanel _footer = new() { Orientation = Orientation.Horizontal, Spacing = 14 };
+    readonly StackPanel _preview = new() { Spacing = Gaps.Item, Margin = new Thickness(Gaps.Dialog) };
+    readonly StackPanel _footer = new() { Orientation = Orientation.Horizontal, Spacing = Gaps.Group };
 
     // shortcut: pins are kept for this graph while it is open, like the last search. Keep them in the editor settings if people want them everywhere.
     readonly List<(string Kind, string Label)> _pinned = [];
@@ -161,7 +161,7 @@ internal sealed class PalettePopup : Border
         var top = new Border
         {
             Height = 44,
-            Padding = new Thickness(12, 0),
+            Padding = new Thickness(Gaps.Group, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new DockPanel { Children = { icon, _text } },
@@ -173,11 +173,11 @@ internal sealed class PalettePopup : Border
             BorderThickness = new Thickness(0, 0, 1, 0),
             Child = new DockPanel { Children = { top, new ScrollViewer { Content = _rows } } },
         };
-        var names = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { _label, _engine } };
+        var names = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Children = { _label, _engine } };
         _preview.Children.AddRange([_group, names, _chip, _about, _good, _pin]);
         var footer = new Border
         {
-            Padding = new Thickness(14, 8),
+            Padding = new Thickness(Gaps.Group, Gaps.Item),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
             Child = _footer,
@@ -332,23 +332,23 @@ internal sealed class PalettePopup : Border
         }
     }
 
-    static TextBlock Dim(string text) => new() { Text = text, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(8) };
+    static TextBlock Dim(string text) => new() { Text = text, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(Gaps.Item) };
 
     // Rows never take the keys, so the search box keeps typing while the pointer picks.
     static Button Heading(string group, int count, bool open, Action choose)
     {
-        var chevron = new EditorIcon(open ? "GuiTreeArrowDown" : "GuiTreeArrowRight") { Width = 12, Height = 12, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+        var chevron = new EditorIcon(open ? "GuiTreeArrowDown" : "GuiTreeArrowRight") { Width = 12, Height = 12, Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center };
         var number = new TextBlock { Text = count.ToString(System.Globalization.CultureInfo.InvariantCulture), FontSize = 11, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(chevron, Dock.Left);
         DockPanel.SetDock(number, Dock.Right);
         var plain = StepNames.GroupOf(group);
-        var names = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, VerticalAlignment = VerticalAlignment.Center };
+        var names = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, VerticalAlignment = VerticalAlignment.Center };
         names.Children.Add(new TextBlock { Text = plain, FontSize = 12, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft });
         if (plain != group)
         {
             names.Children.Add(new TextBlock { Text = group, FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center });
         }
-        var button = Flat($"palette:group:{group}", new DockPanel { Children = { chevron, number, names } }, new Thickness(6, 0, 8, 0));
+        var button = Flat($"palette:group:{group}", new DockPanel { Children = { chevron, number, names } }, new Thickness(Gaps.Item, 0));
         button.Click += (_, _) => choose();
         return button;
     }
@@ -357,7 +357,7 @@ internal sealed class PalettePopup : Border
     {
         var entry = _entries[index];
         var row = StepNames.Of(entry);
-        var button = Flat($"palette:step:{index}", Parts.Noted(row?.Name ?? entry.Label, row?.Line, row?.EngineBeside), new Thickness(22, 3, 8, 3));
+        var button = Flat($"palette:step:{index}", Parts.Noted(row?.Name ?? entry.Label, row?.Line, row?.EngineBeside), new Thickness(Gaps.Section, Gaps.Tight, Gaps.Item, Gaps.Tight));
         if (index == _selected)
         {
             button.Background = EditorBrushes.AccentSoft;

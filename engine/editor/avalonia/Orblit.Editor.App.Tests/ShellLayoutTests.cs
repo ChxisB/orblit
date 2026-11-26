@@ -34,8 +34,8 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(6, 46, 280, 611, BoxOf(window.SceneDock, window));
-            AssertBox(6, 663, 280, 610, BoxOf(window.FileDock, window));
+            AssertBox(8, 46, 280, 609, BoxOf(window.SceneDock, window));
+            AssertBox(8, 663, 280, 608, BoxOf(window.FileDock, window));
         });
     }
 
@@ -46,10 +46,10 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(293, 47, 2818, 39, BoxOf(window.Center.SceneTabs, window));
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Center.Toolbar, window));
-            AssertBox(293, 86, 2818, 1142, BoxOf(window.Viewport, window));
-            AssertBox(292, 1235, 2820, 38, BoxOf(window.Center.BottomBar, window));
+            AssertBox(297, 47, 2810, 39, BoxOf(window.Center.SceneTabs, window));
+            AssertBox(297, 86, 2810, 1138, BoxOf(window.Center.Toolbar, window));
+            AssertBox(297, 86, 2810, 1138, BoxOf(window.Viewport, window));
+            AssertBox(296, 1233, 2812, 38, BoxOf(window.Center.BottomBar, window));
         });
     }
 
@@ -60,7 +60,7 @@ public sealed class ShellLayoutTests
         {
             var window = OpenAtReferenceSize();
 
-            AssertBox(3118, 46, 316, 1227, BoxOf(window.InspectorDock, window));
+            AssertBox(3116, 46, 316, 1225, BoxOf(window.InspectorDock, window));
         });
     }
 
@@ -100,7 +100,7 @@ public sealed class ShellLayoutTests
             foreach (var pill in new[] { window.Bar.Switcher, window.Bar.Run })
             {
                 Assert.Contains(EditorTheme.Island, pill.Classes);
-                Assert.Equal(new Thickness(3), pill.Padding);
+                Assert.Equal(new Thickness(4), pill.Padding);
                 Assert.Equal(23, BoxOf(pill, window).Center.Y, 0.5);
             }
 
@@ -195,8 +195,8 @@ public sealed class ShellLayoutTests
             Assert.Equal((26d, 26d), (play.Height, stop.Height));
             Assert.Equal(new Size(26, 26), more.Size);
             Assert.Equal(play.Right + 2, stop.X);
-            // The rule is 1 wide with 3 each side, inside the 2 pixel gaps.
-            Assert.Equal(stop.Right + 11, more.X);
+            // The rule is 1 wide with 4 each side, inside the 2 pixel gaps.
+            Assert.Equal(stop.Right + 13, more.X);
             Assert.Equal(3440 - 8, BoxOf(window.Bar.Run, window).Right);
         });
     }
@@ -221,7 +221,7 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void Each_workspace_name_is_medium_weight_and_sits_10_pixels_inside_its_tab()
+    public void Each_workspace_name_is_medium_weight_and_sits_8_pixels_inside_its_tab()
     {
         UiThread.Run(() =>
         {
@@ -231,7 +231,7 @@ public sealed class ShellLayoutTests
             {
                 var content = (StackPanel)tab.Content!;
                 Assert.Equal(FontWeight.Medium, content.Children.OfType<TextBlock>().Single().FontWeight);
-                Assert.Equal(BoxOf(tab, window).X + 10 + tab.BorderThickness.Left, BoxOf(content, window).X);
+                Assert.Equal(BoxOf(tab, window).X + 8 + tab.BorderThickness.Left, BoxOf(content, window).X);
             }
         });
     }
@@ -422,7 +422,7 @@ public sealed class ShellLayoutTests
             var tab = BoxOf(window.SceneDock.Tabs[0], window);
 
             Assert.Equal(26, tab.Height);
-            Assert.Equal(dock.X + 1 + 6, tab.X);
+            Assert.Equal(dock.X + 1 + 8, tab.X);
             Assert.Equal(dock.Y + 1 + 6, tab.Y);
             Assert.Equal(new CornerRadius(6), window.SceneDock.Tabs[0].CornerRadius);
         });

@@ -30,37 +30,37 @@ internal sealed class Search
     public Search()
     {
         var box = new TextBox { PlaceholderText = "Search files, things, settings and actions", FontSize = 15, Padding = new Thickness(0), MinHeight = 0, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.Bare } };
-        var icon = new EditorIcon("Lens") { Width = 17, Height = 17, Margin = new Thickness(0, 0, 10, 0), VerticalAlignment = VerticalAlignment.Center };
+        var icon = new EditorIcon("Lens") { Width = 17, Height = 17, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
         TextElement.SetForeground(icon, EditorBrushes.TextDim);
         ScenesChip = new Border
         {
             IsVisible = false,
-            Padding = new Thickness(7, 2),
-            Margin = new Thickness(0, 0, 8, 0),
+            Padding = new Thickness(Gaps.Item, Gaps.Joined),
+            Margin = new Thickness(0, 0, Gaps.Item, 0),
             CornerRadius = new CornerRadius(4),
             Background = EditorBrushes.AccentSoft,
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = Scenes, FontSize = 12, Foreground = EditorBrushes.Text },
         };
         var escape = Parts.Kbd("esc");
-        escape.Margin = new Thickness(10, 0, 0, 0);
+        escape.Margin = new Thickness(Gaps.Item, 0, 0, 0);
         DockPanel.SetDock(icon, Dock.Left);
         DockPanel.SetDock(ScenesChip, Dock.Left);
         DockPanel.SetDock(escape, Dock.Right);
         var top = new Border
         {
             Height = 48,
-            Padding = new Thickness(14, 0),
+            Padding = new Thickness(Gaps.Dialog, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new DockPanel { Children = { icon, ScenesChip, escape, box } },
         };
         var footer = new Border
         {
-            Padding = new Thickness(14, 8),
+            Padding = new Thickness(Gaps.Dialog, Gaps.Item),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 1, 0, 0),
-            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { Parts.KeyHint("move", "↑", "↓"), Parts.KeyHint("use it", "↵"), Parts.KeyHint("actions only", ">") } },
+            Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Group, Children = { Parts.KeyHint("move", "↑", "↓"), Parts.KeyHint("use it", "↵"), Parts.KeyHint("actions only", ">") } },
         };
         Picker = new Picker("Search", box, top, footer);
     }

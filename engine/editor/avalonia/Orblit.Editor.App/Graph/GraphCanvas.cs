@@ -41,7 +41,7 @@ internal sealed class GraphCanvas : Grid
     Control? _card;
     readonly GraphMinimap _minimap;
     readonly PalettePopup _palette = new();
-    readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(4, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
+    readonly TextBox _editor = new() { IsVisible = false, MinHeight = 0, Padding = new Thickness(Gaps.Tight, 0), FontSize = 11, VerticalContentAlignment = VerticalAlignment.Center, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top };
     readonly TextBlock _notice = new() { Foreground = Brushes.White, TextWrapping = TextWrapping.Wrap, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _noticeBar;
     readonly TextBlock _offerText = new() { FontSize = 12, Foreground = EditorBrushes.Text, TextWrapping = TextWrapping.Wrap, MaxWidth = 260 };
@@ -88,19 +88,19 @@ internal sealed class GraphCanvas : Grid
             _map,
         ];
         _zoom = ZoomMenu(_zoomWord, _zoomItems);
-        _minimap = new GraphMinimap(_scene, _viewport, _surface) { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, 12, 12) };
-        _noticeBar = new Border { Background = new SolidColorBrush(Color.Parse("#c04a3a")), Padding = new Thickness(10, 4), CornerRadius = new CornerRadius(4), IsVisible = false, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(12), Child = _notice };
+        _minimap = new GraphMinimap(_scene, _viewport, _surface) { HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(0, 0, Gaps.Group, Gaps.Group) };
+        _noticeBar = new Border { Background = new SolidColorBrush(Color.Parse("#c04a3a")), Padding = new Thickness(Gaps.Group, Gaps.Tight), CornerRadius = new CornerRadius(4), IsVisible = false, HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Bottom, Margin = new Thickness(Gaps.Group), Child = _notice };
         _offer = new Border
         {
             Background = EditorBrushes.Popover,
             BorderBrush = EditorBrushes.Fault,
             BorderThickness = new Thickness(1),
             CornerRadius = EditorTheme.PopoverCorners,
-            Padding = new Thickness(12, 10),
+            Padding = new Thickness(Gaps.Group),
             IsVisible = false,
             HorizontalAlignment = HorizontalAlignment.Left,
             VerticalAlignment = VerticalAlignment.Top,
-            Child = new StackPanel { Spacing = 8, Children = { _offerText, _offerButton } },
+            Child = new StackPanel { Spacing = Gaps.Item, Children = { _offerText, _offerButton } },
         };
         Build();
         Wire();
@@ -272,9 +272,10 @@ internal sealed class GraphCanvas : Grid
             return;
         }
 
-        var map = _minimap.IsVisible ? GraphMinimap.MapWidth + 8 : 0;
-        var above = map > 0 && Bounds.Width - map - 24 < LeastCard;
-        _card.Margin = above ? new Thickness(12, 12, 12, GraphMinimap.MapHeight + 20) : new Thickness(12, 12, 12 + map, 12);
+        var map = _minimap.IsVisible ? GraphMinimap.MapWidth + Gaps.Item : 0;
+        var above = map > 0 && Bounds.Width - map - (2 * Gaps.Group) < LeastCard;
+        var edge = Gaps.Group;
+        _card.Margin = above ? new Thickness(edge, edge, edge, GraphMinimap.MapHeight + edge + Gaps.Item) : new Thickness(edge, edge, edge + map, edge);
     }
 
     void Build()
@@ -353,7 +354,7 @@ internal sealed class GraphCanvas : Grid
         var type = _scene.PortOf(output)?.Type ?? 0;
         _offerText.Text = $"{VariantTypes.NameOf(type)} cannot plug into {_scene.PortOf(input)?.Name}.";
         _offered = (a, b);
-        _offer.Margin = new Thickness(screen.X + 12, screen.Y + 12, 0, 0);
+        _offer.Margin = new Thickness(screen.X + Gaps.Group, screen.Y + Gaps.Group, 0, 0);
         _offer.IsVisible = true;
     }
 
@@ -534,7 +535,7 @@ internal sealed class GraphCanvas : Grid
         TextElement.SetForeground(chevron, EditorBrushes.TextDim);
         var button = new Button
         {
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { word, chevron } },
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { word, chevron } },
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
             Flyout = new MenuFlyout { Items = { items[0], items[1], items[2], new Separator(), items[3], items[4], new Separator(), items[5], items[6] } },
         };

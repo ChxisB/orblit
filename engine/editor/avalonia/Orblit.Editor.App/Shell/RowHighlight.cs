@@ -9,7 +9,7 @@ using Orblit.Editor.App.Theme;
 namespace Orblit.Editor.App.Shell;
 
 /// <summary>
-/// The rounded block behind a selected or hovered tree row, 6 pixels in from each side of the tree at every depth.
+/// The rounded block behind a selected or hovered tree row, 4 pixels in from each side of the tree at every depth.
 /// The theme paints the whole line, so its own row colors are clear and a row lays this under its content instead.
 /// </summary>
 internal sealed class RowHighlight : Control

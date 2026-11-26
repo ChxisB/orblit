@@ -65,10 +65,10 @@ internal interface IGraphFiles
 internal sealed class GraphView : Border
 {
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
-    readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(8, 8, 8, 6), Classes = { EditorTheme.Field } };
-    readonly OverflowBar _tabs = new() { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
-    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0), MaxWidth = 200 };
-    readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
+    readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Tight), Classes = { EditorTheme.Field } };
+    readonly OverflowBar _tabs = new() { Spacing = Gaps.Joined, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Group, 0), MaxWidth = 200 };
+    readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Item, 0, 0, 0) };
     readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _canvasSlot = new();
     readonly Border _panelsSlot = new() { BorderBrush = EditorBrushes.Line, BorderThickness = new Thickness(0, 1, 0, 0) };
@@ -307,14 +307,14 @@ internal sealed class GraphView : Border
         DockPanel.SetDock(canvasBar, Dock.Top);
         canvas.Children.Add(canvasBar);
         canvas.Children.Add(new Grid { Children = { _hint, _canvasSlot } });
-        var middle = new Grid { RowDefinitions = new RowDefinitions("*,6,Auto") };
+        var middle = new Grid { RowDefinitions = new RowDefinitions($"*,{Gaps.Item},Auto") };
         middle.Children.Add(Island(canvas, 0));
         middle.Children.Add(Place(new Border { Classes = { EditorTheme.Island }, Child = _debugHost }, 0, 2));
 
         var tab = new Border
         {
             Height = 26,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             CornerRadius = EditorTheme.Corners,
             Background = EditorBrushes.Line,
             Child = new TextBlock { Text = "Step", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
@@ -330,9 +330,9 @@ internal sealed class GraphView : Border
             ColumnDefinitions =
             [
                 new(248, GridUnitType.Star) { MinWidth = 200, MaxWidth = 248 },
-                new(6, GridUnitType.Pixel),
+                new(Gaps.Item, GridUnitType.Pixel),
                 new(616, GridUnitType.Star) { MinWidth = 156 },
-                new(6, GridUnitType.Pixel),
+                new(Gaps.Item, GridUnitType.Pixel),
                 new(292, GridUnitType.Star) { MinWidth = 170, MaxWidth = 292 },
             ],
             Children = { Island(list, 0), Place(middle, 2), Island(inspector, 4) },

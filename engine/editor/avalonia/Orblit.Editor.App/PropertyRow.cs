@@ -35,7 +35,7 @@ internal sealed class PropertyRow : Border
     const int HintColorNoAlpha = 21;
 
     const double LabelWidth = 96;
-    const double LabelGap = 8;
+    const double LabelGap = Gaps.Item;
     const double RowHeight = 30;
     const double FieldHeight = 28;
 
@@ -177,7 +177,7 @@ internal sealed class PropertyRow : Border
     // when the alpha is not full, as the engine writes it.
     Control Swatch()
     {
-        var swatch = new Border { Width = 18, Height = 18, CornerRadius = new CornerRadius(4), BorderBrush = EditorBrushes.LineStrong, BorderThickness = new Thickness(1), Margin = new Thickness(6, 0, 0, 0) };
+        var swatch = new Border { Width = 18, Height = 18, CornerRadius = new CornerRadius(4), BorderBrush = EditorBrushes.LineStrong, BorderThickness = new Thickness(1), Margin = new Thickness(Gaps.Item, 0, 0, 0) };
         var box = Box(
             value => value is Vector4 color ? Hex(color) : "",
             ParseHex,
@@ -219,7 +219,7 @@ internal sealed class PropertyRow : Border
             MinHeight = 0,
             VerticalContentAlignment = VerticalAlignment.Center,
             FontFamily = _property.Type == Text ? FontFamily.Default : EditorTheme.Mono,
-            InnerRightContent = unit.Length == 0 ? null : new TextBlock { Text = unit, Foreground = EditorBrushes.Unit, FontSize = 11, Margin = new Thickness(0, 0, 7, 0), VerticalAlignment = VerticalAlignment.Center },
+            InnerRightContent = unit.Length == 0 ? null : new TextBlock { Text = unit, Foreground = EditorBrushes.Unit, FontSize = 11, Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center },
             Classes = { EditorTheme.Field },
         };
         void Commit()

@@ -24,9 +24,6 @@ internal sealed class ScenesPanel : Grid
     const double PathRowHeight = 36;
     const double BoxHeight = 28;
 
-    // The tree starts 14 pixels under the filter in the reference.
-    const double TreeTop = 14;
-
     // The sorts the menu offers: the word the button shows, the name of the item and its note.
     static readonly (string Word, string Item, string Note)[] s_sorts =
     [
@@ -35,7 +32,7 @@ internal sealed class ScenesPanel : Grid
         ("Kind", "Kind", "Scenes, then scripts, then the rest"),
     ];
 
-    readonly TreeView _tree = new() { Margin = new Thickness(0, TreeTop, 0, 0) };
+    readonly TreeView _tree = new() { Margin = new Thickness(0, Gaps.Group, 0, 0) };
     readonly HashSet<string> _opened = [];
     readonly TextBox _path = new()
     {
@@ -44,7 +41,7 @@ internal sealed class ScenesPanel : Grid
         Height = BoxHeight,
         MinHeight = 0,
         VerticalAlignment = VerticalAlignment.Top,
-        Margin = new Thickness(0, 3, 0, 0),
+        Margin = new Thickness(0, Gaps.Tight, 0, 0),
     };
     readonly TextBox _filter = new()
     {
@@ -55,7 +52,7 @@ internal sealed class ScenesPanel : Grid
         InnerRightContent = Parts.SearchIcon(),
     };
     // The switch is two pixels taller than the path box, so it sits a pixel higher to share its middle.
-    readonly Segments _layout = new("Tree", "List") { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, 2, 0, 0) };
+    readonly Segments _layout = new("Tree", "List") { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(0, Gaps.Joined, 0, 0) };
     readonly TextBlock _sortWord = new() { Text = s_sorts[0].Word, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _sort;
     readonly MenuItem[] _sorts;
@@ -201,10 +198,10 @@ internal sealed class ScenesPanel : Grid
 
     void Lay()
     {
-        var pathRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,Auto"), Margin = new Thickness(4, 0, 7, 0) };
+        var pathRow = new Grid { ColumnDefinitions = new ColumnDefinitions($"*,{Gaps.Item},Auto"), Margin = new Thickness(Gaps.Item, 0) };
         Place(pathRow, _path, 0);
         Place(pathRow, _layout, 2);
-        var filterRow = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,Auto"), Margin = new Thickness(4, 0, 7, 0) };
+        var filterRow = new Grid { ColumnDefinitions = new ColumnDefinitions($"*,{Gaps.Item},Auto"), Margin = new Thickness(Gaps.Item, 0) };
         Place(filterRow, _filter, 0);
         Place(filterRow, _sort, 2);
         SetRow(filterRow, 1);
@@ -228,7 +225,7 @@ internal sealed class ScenesPanel : Grid
         Control[] items = [Parts.MenuHeading("Sort by"), .. sorts];
         var button = new Button
         {
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { word, chevron } },
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { word, chevron } },
             VerticalAlignment = VerticalAlignment.Center,
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
             Flyout = new MenuFlyout { ItemsSource = items },
@@ -364,7 +361,7 @@ internal sealed class ScenesPanel : Grid
     {
         var name = new TextBlock { Text = node.Name, Tag = node, VerticalAlignment = VerticalAlignment.Center };
         Tint(name, node);
-        var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { name } };
+        var label = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { name } };
         if (node.Kind != FileKind.Folder && Search.KindText(node.Path, _sceneKind) is { Length: > 0 } kind)
         {
             label.Children.Add(new TextBlock { Text = kind, FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center });

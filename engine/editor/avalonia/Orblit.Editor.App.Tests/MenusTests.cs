@@ -374,6 +374,8 @@ public sealed class MenusTests
             Press(dock.FloatItem);
 
             var floating = FloatOf(dock, window)!;
+            floating.UpdateLayout();
+            Assert.Equal(box.Size, dock.Bounds.Size);
             Assert.Equal("Scene", floating.Title);
             Assert.Same(window, floating.Owner);
             Assert.Equal("Put it back", AutomationProperties.GetName(dock.FloatItem));

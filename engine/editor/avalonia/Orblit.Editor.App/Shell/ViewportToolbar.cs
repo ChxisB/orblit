@@ -47,7 +47,7 @@ internal sealed class ViewportToolbar : Grid
     readonly FixedToggle _keep = new("Pin", "Keep child transforms", lit: false);
     readonly FixedToggle _listSelect = new("ListSelect", "Select from a list", lit: false);
     readonly FixedToggle _ruler = new("Ruler", "Measure", lit: false);
-    readonly StackPanel _named = new() { Orientation = Orientation.Horizontal, Spacing = 8, Margin = new Thickness(8, 0) };
+    readonly StackPanel _named = new() { Orientation = Orientation.Horizontal, Spacing = Gaps.Item, Margin = new Thickness(Gaps.Item, 0) };
     readonly TextBlock _name = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _className = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly Button _collision = SolidTab();
@@ -99,8 +99,8 @@ internal sealed class ViewportToolbar : Grid
         _snapOptions.Flyout = SnapSteps(hold);
         var modes = Parts.Float([_select, _move, _rotate, _scale, _more]);
         var options = Parts.Float([_local, Parts.Rule(), _snap, _snapOptions, Parts.Rule(), _lock, _group, Parts.Rule(), _ruler]);
-        modes.Margin = new Thickness(10, 10, 0, 0);
-        options.Margin = new Thickness(10, 10, 0, 0);
+        modes.Margin = new Thickness(Gaps.Group, Gaps.Group, 0, 0);
+        options.Margin = new Thickness(Gaps.Group, Gaps.Group, 0, 0);
         Tools = new WrapPanel { HorizontalAlignment = HorizontalAlignment.Left, VerticalAlignment = VerticalAlignment.Top, Children = { modes, options } };
         Chip = ChipFor(focus);
         Children.Add(Tools);
@@ -270,7 +270,7 @@ internal sealed class ViewportToolbar : Grid
         var list = new MenuFlyout { Items = { Parts.MenuHeading("Pick from what is under the cursor") } };
         foreach (var node in under)
         {
-            var className = new TextBlock { Text = node.ClassName, FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(16, 0, 0, 0) };
+            var className = new TextBlock { Text = node.ClassName, FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Dialog, 0, 0, 0) };
             DockPanel.SetDock(className, Dock.Right);
             var item = new MenuItem { Icon = ClassMark(node.ClassName), Header = new DockPanel { MinWidth = 220, Children = { className, new TextBlock { Text = node.Name } } } };
             item.Click += (_, _) => choose(node.Handle);
@@ -317,12 +317,12 @@ internal sealed class ViewportToolbar : Grid
         var done = new Button { Classes = { EditorTheme.Ghost }, Content = Parts.Keyed("Done", "esc"), HorizontalAlignment = HorizontalAlignment.Right };
         var popover = CardHead.Popover("Snap steps", "Moves, turns and resizes go in these steps while Snap is on.", 300, new StackPanel
         {
-            Spacing = 8,
+            Spacing = Gaps.Item,
             Children =
             {
                 SwitchRow("Snap moving", _snapPosition),
                 SwitchRow("Snap turning", _snapRotation),
-                new Border { Height = 1, Margin = new Thickness(0, 4), Background = EditorBrushes.Line },
+                new Border { Height = 1, Margin = new Thickness(0, Gaps.Tight), Background = EditorBrushes.Line },
                 StepRow("Move by", _snapMove),
                 StepRow("Turn by", _snapTurn),
                 StepRow("Resize by", _snapScale),
@@ -381,13 +381,13 @@ internal sealed class ViewportToolbar : Grid
             Content = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 6,
+                Spacing = Gaps.Tight,
                 Children = { mark, new TextBlock { Text = "Make it solid", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center }, chevron },
             },
             Height = 28,
             MinWidth = 0,
             MinHeight = 0,
-            Padding = new Thickness(8, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             BorderThickness = new Thickness(0),
             VerticalContentAlignment = VerticalAlignment.Center,
             IsVisible = false,
@@ -445,7 +445,7 @@ internal sealed class ViewportToolbar : Grid
             Text = unit,
             FontSize = 11,
             Foreground = EditorBrushes.Unit,
-            Margin = new Thickness(0, 0, 7, 0),
+            Margin = new Thickness(0, 0, Gaps.Item, 0),
             VerticalAlignment = VerticalAlignment.Center,
         },
     };

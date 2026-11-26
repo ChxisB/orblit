@@ -45,7 +45,7 @@ internal sealed class PlanarOverlay : Grid
     readonly Grid _rulers = new();
     readonly MenuItem _rulersItem = Shown("Rulers", "The pixel rulers at the edges");
     readonly Button _view = ViewButton();
-    readonly Button _center = SizedIcon("CenterView", "Center the view", 15);
+    readonly Button _center = Parts.IconButton("CenterView", "Center the view", 15);
     readonly Button _zoomOut = new();
     readonly Button _zoomIn = new();
     readonly Button _zoom = new()
@@ -112,8 +112,8 @@ internal sealed class PlanarOverlay : Grid
             Mirror(locks, "Lock", new HoverCard("Lock", "Stops the picked thing being moved by accident.", Parts.KeyText(new KeyGesture(Key.L, command)), "Lock"), "Lock stops it being moved by accident."),
             Mirror(groups, "Group", new HoverCard("Group", "A click on a part picks this thing, so the parts move as one.", Parts.KeyText(new KeyGesture(Key.G, command)), "Group"), "Group makes its parts move as one."),
         ]);
-        // The pill sits 10 pixels clear of the rulers.
-        Tools.Margin = new Thickness(Ruler.Thickness + 10, Ruler.Thickness + 10, 0, 0);
+        // The pill sits 12 pixels clear of the rulers.
+        Tools.Margin = new Thickness(Ruler.Thickness + Gaps.Group, Ruler.Thickness + Gaps.Group, 0, 0);
         Tools.HorizontalAlignment = HorizontalAlignment.Left;
         Tools.VerticalAlignment = VerticalAlignment.Top;
         Children.AddRange([_grid, _rulers, Tools, .. ViewPills(command)]);
@@ -281,7 +281,7 @@ internal sealed class PlanarOverlay : Grid
         Parts.Dress(_zoomOut, "ZoomLess", new HoverCard("Zoom out", "See more of the scene.", Parts.KeyText(new KeyGesture(Key.OemMinus, command))));
         Parts.Dress(_zoomIn, "ZoomMore", new HoverCard("Zoom in", "See the scene closer.", Parts.KeyText(new KeyGesture(Key.OemPlus, command))));
         var viewPill = Parts.Float([_view, _center]);
-        viewPill.Margin = new Thickness(0, Ruler.Thickness + 10, 10, 0);
+        viewPill.Margin = new Thickness(0, Ruler.Thickness + Gaps.Group, Gaps.Group, 0);
         viewPill.HorizontalAlignment = HorizontalAlignment.Right;
         viewPill.VerticalAlignment = VerticalAlignment.Top;
         var zoomPill = Parts.Float([_zoomOut, _zoom, _zoomIn]);
@@ -320,15 +320,6 @@ internal sealed class PlanarOverlay : Grid
         return button;
     }
 
-    // The design draws these icons smaller than 16 in the usual 26 pixel button.
-    static Button SizedIcon(string icon, string tip, double side)
-    {
-        var button = Parts.IconButton(icon, tip);
-        button.Content = new EditorIcon(icon) { Width = side, Height = side };
-        button.Padding = new Thickness((26 - side) / 2);
-        return button;
-    }
-
     static Button ViewButton()
     {
         var chevron = new EditorIcon("GuiDropdown") { Width = 12, Height = 12, VerticalAlignment = VerticalAlignment.Center };
@@ -338,13 +329,13 @@ internal sealed class PlanarOverlay : Grid
             Content = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 4,
+                Spacing = Gaps.Tight,
                 Children = { new TextBlock { Text = "View", VerticalAlignment = VerticalAlignment.Center }, chevron },
             },
             Height = 26,
             MinWidth = 0,
             MinHeight = 0,
-            Padding = new Thickness(10, 0, 6, 0),
+            Padding = new Thickness(Gaps.Item, 0, Gaps.Tight, 0),
             BorderThickness = new Thickness(0),
             VerticalContentAlignment = VerticalAlignment.Center,
         };
@@ -366,10 +357,10 @@ internal sealed class PlanarOverlay : Grid
     {
         var mark = new EditorIcon("Cube") { Width = 26, Height = 26, HorizontalAlignment = HorizontalAlignment.Center };
         TextElement.SetForeground(mark, EditorBrushes.Spatial);
-        var buttons = new WrapPanel { Margin = new Thickness(0, 4, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
+        var buttons = new WrapPanel { Margin = new Thickness(0, Gaps.Tight, 0, 0), HorizontalAlignment = HorizontalAlignment.Center };
         foreach (var way in ways)
         {
-            way.Margin = new Thickness(4);
+            way.Margin = new Thickness(Gaps.Tight);
             buttons.Children.Add(way);
         }
 
@@ -380,7 +371,7 @@ internal sealed class PlanarOverlay : Grid
             Child = new StackPanel
             {
                 MaxWidth = 460,
-                Spacing = 8,
+                Spacing = Gaps.Item,
                 HorizontalAlignment = HorizontalAlignment.Center,
                 VerticalAlignment = VerticalAlignment.Center,
                 Children = { mark, title, line, buttons },

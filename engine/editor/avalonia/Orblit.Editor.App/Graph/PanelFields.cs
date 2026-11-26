@@ -5,6 +5,7 @@ using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.Layout;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -98,7 +99,7 @@ internal static class PanelFields
 
     public static Button Small(string id, string label, Action click)
     {
-        var button = new Button { Content = label, Tag = id, Padding = new Thickness(6, 1), MinHeight = 0, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
+        var button = new Button { Content = label, Tag = id, Padding = new Thickness(Gaps.Item, Gaps.Joined), MinHeight = 0, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
         button.Click += (_, _) => click();
         return button;
     }
@@ -106,7 +107,7 @@ internal static class PanelFields
     /// <summary>A grip a person drags onto the canvas. The drop carries the kind and the name.</summary>
     public static TextBlock Handle(string id, GraphDrop drop)
     {
-        var handle = new TextBlock { Text = "::", Tag = id, Cursor = new Cursor(StandardCursorType.SizeAll), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 6, 0) };
+        var handle = new TextBlock { Text = "::", Tag = id, Cursor = new Cursor(StandardCursorType.SizeAll), VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, Gaps.Tight, 0) };
         ToolTip.SetTip(handle, "Drag onto the graph.");
         // The drag runs until the drop, so the call is not awaited here. A drag that fails has nothing to report.
         handle.PointerPressed += (_, e) => _ = DragDrop.DoDragDropAsync(e, drop.ToTransfer(), DragDropEffects.Copy);

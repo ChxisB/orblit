@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Orblit.Editor.App.Theme;
 using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App.Graph;
@@ -19,7 +20,7 @@ internal sealed class TypedListEditor : StackPanel
         _id = id;
         _items = items;
         _commit = commit;
-        Spacing = 2;
+        Spacing = Gaps.Joined;
         for (var at = 0; at < items.Count; at++)
         {
             Children.Add(Row(at, drag));
@@ -31,7 +32,7 @@ internal sealed class TypedListEditor : StackPanel
     Grid Row(int at, GraphDropKind? drag)
     {
         var item = _items[at];
-        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), ColumnSpacing = 4 };
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto"), ColumnSpacing = Gaps.Tight };
         var cells = new List<Control>();
         if (drag is { } kind)
         {

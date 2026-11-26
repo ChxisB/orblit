@@ -18,6 +18,7 @@ internal sealed class GraphSurface : Control
     const double MinGridZoom = 0.4;
     const double WheelZoom = 1.1;
     const double LabelSize = 12;
+    // The wire label is drawn beside the pointer, so these place it by geometry.
     const double LabelPad = 4;
     const double LabelGap = 14;
     const int LabelChars = 60;

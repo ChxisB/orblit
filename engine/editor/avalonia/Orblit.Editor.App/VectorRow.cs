@@ -21,16 +21,15 @@ namespace Orblit.Editor.App;
 /// </summary>
 internal sealed class VectorRow : Grid
 {
-    // The label column is 96 wide and 8 from the fields. The row is 30 high and its fields 28, 4 apart. The tag is
-    // 18 wide, the value starts 6 after it, and the unit ends 7 short of the field's edge.
+    // The label column is 96 wide. The row is 30 high and its fields 28. The tag is 18 wide.
     const double LabelWidth = 96;
-    const double LabelGap = 8;
+    const double LabelGap = Gaps.Item;
     const double RowHeight = 30;
     const double FieldHeight = 28;
-    const double FieldGap = 4;
+    const double FieldGap = Gaps.Tight;
     const double TagWidth = 18;
-    const double ValueIndent = 6;
-    const double UnitGap = 7;
+    const double ValueIndent = Gaps.Tight;
+    const double UnitGap = Gaps.Item;
 
     // The axis colour at 12 percent, so the tag reads as a tint and the letter on it in full colour.
     const byte TagAlpha = 0x1F;
@@ -89,7 +88,7 @@ internal sealed class VectorRow : Grid
         }
         SetColumn(cells, 2);
         _fault.Text = "Type a number.";
-        _fault.Margin = new Thickness(0, 0, 0, 4);
+        _fault.Margin = new Thickness(0, 0, 0, Gaps.Tight);
         SetColumn(_fault, 2);
         SetRow(_fault, 1);
         Children.AddRange([cells, _fault]);

@@ -20,7 +20,7 @@ internal sealed class SceneTabStrip : Grid
     {
         Height = 26,
         CornerRadius = EditorTheme.Corners,
-        Padding = new Thickness(10, 0, 0, 0),
+        Padding = new Thickness(Gaps.Item, 0, 0, 0),
         Background = EditorBrushes.Raised,
         BorderBrush = EditorBrushes.LineStrong,
         BorderThickness = new Thickness(1),
@@ -39,7 +39,7 @@ internal sealed class SceneTabStrip : Grid
     public SceneTabStrip(Button runScene, KeyModifiers command)
     {
         ColumnDefinitions = new ColumnDefinitions("Auto,Auto,*,Auto");
-        Margin = new Thickness(6, 0);
+        Margin = new Thickness(Gaps.Item, 0);
         TextElement.SetForeground(_icon, EditorBrushes.Accent);
         TextElement.SetForeground(_close, EditorBrushes.TextDim);
         var key = Parts.KeyText(new KeyGesture(Key.OemPipe, command));
@@ -53,10 +53,10 @@ internal sealed class SceneTabStrip : Grid
         _tab.Child = new StackPanel
         {
             Orientation = Orientation.Horizontal,
-            Spacing = 7,
+            Spacing = Gaps.Tight,
             Children = { _icon, _name, _close },
         };
-        _add.Margin = new Thickness(4, 0, 0, 0);
+        _add.Margin = new Thickness(Gaps.Tight, 0, 0, 0);
         _add.VerticalAlignment = VerticalAlignment.Center;
         _panels.VerticalAlignment = VerticalAlignment.Center;
         Place(_tab, 0);

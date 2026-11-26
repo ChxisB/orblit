@@ -19,7 +19,7 @@ internal sealed class NotePanel : Border
         var strip = new Border
         {
             Height = OutputPanel.StripHeight,
-            Padding = new Thickness(12, 0, 6, 0),
+            Padding = new Thickness(Gaps.Group, 0, Gaps.Item, 0),
             BorderBrush = EditorBrushes.Line,
             BorderThickness = new Thickness(0, 0, 0, 1),
             Child = new TextBlock { Text = title, FontSize = 12, FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center },

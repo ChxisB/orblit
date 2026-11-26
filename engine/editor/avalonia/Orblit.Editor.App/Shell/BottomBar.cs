@@ -47,12 +47,12 @@ internal sealed class BottomBar : Grid
     readonly Button[] _tabs;
     readonly TextBlock _unreadCount = new() { FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.FaultText };
     readonly Border _unread;
-    readonly ContentControl _statusIcon = new() { Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
+    readonly ContentControl _statusIcon = new() { Margin = new Thickness(0, 0, Gaps.Tight, 0), VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _status = new() { Text = "Starting the engine.", FontSize = 12, Foreground = EditorBrushes.TextSoft, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center };
     readonly Border _separator = Parts.Rule();
     readonly Button _version = new()
     {
-        Padding = new Thickness(4, 0),
+        Padding = new Thickness(Gaps.Tight, 0),
         BorderThickness = new Thickness(0),
         MinWidth = 0,
         MinHeight = 0,
@@ -62,7 +62,7 @@ internal sealed class BottomBar : Grid
         Content = new TextBlock { Text = Version },
     };
     // The pin keeps the game run from opening a panel on its own. FixedToggle never flips itself, so a click does it here.
-    readonly FixedToggle _pin = new HoverCard("Pin", "Keeps the bottom panel as it is when a game starts.").On(new FixedToggle("Pin", "", false) { Margin = new Thickness(2, 0, 0, 0) });
+    readonly FixedToggle _pin = new HoverCard("Pin", "Keeps the bottom panel as it is when a game starts.").On(new FixedToggle("Pin", "", false));
     int _open = -1;
     int _errors;
 
@@ -71,7 +71,7 @@ internal sealed class BottomBar : Grid
         ColumnDefinitions = new ColumnDefinitions("Auto,*");
         _unread = new Border
         {
-            Padding = new Thickness(6, 1),
+            Padding = new Thickness(Gaps.Tight, Gaps.Joined),
             CornerRadius = new CornerRadius(999),
             Background = EditorBrushes.FaultSoft,
             VerticalAlignment = VerticalAlignment.Center,
@@ -88,13 +88,13 @@ internal sealed class BottomBar : Grid
         ToolTip.SetTip(_version, "Copy the version");
         _version.Click += (_, _) => VersionCopyRequested?.Invoke();
         _pin.Click += (_, _) => _pin.IsChecked = _pin.IsChecked != true;
-        var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Joined, Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         left.Classes.Add(EditorTheme.Joined);
         left.Children.AddRange(_tabs);
         // The message comes last, so a long one trims and the version and the pin keep their room.
-        var right = new DockPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(8, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
-        _separator.Margin = new Thickness(8, 0);
-        _pin.Margin = new Thickness(4, 0, 0, 0);
+        var right = new DockPanel { HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
+        _separator.Margin = new Thickness(Gaps.Item, 0);
+        _pin.Margin = new Thickness(Gaps.Tight, 0, 0, 0);
         foreach (var (control, side) in new (Control, Dock)[] { (_pin, Dock.Right), (_version, Dock.Right), (_separator, Dock.Right), (_statusIcon, Dock.Left) })
         {
             DockPanel.SetDock(control, side);
@@ -202,7 +202,7 @@ internal sealed class BottomBar : Grid
         return new Button
         {
             Height = TabHeight,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             BorderThickness = new Thickness(0),
             CornerRadius = EditorTheme.Corners,
             MinWidth = 0,
@@ -213,7 +213,7 @@ internal sealed class BottomBar : Grid
             Content = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 6,
+                Spacing = Gaps.Tight,
                 Children =
                 {
                     new EditorIcon(panel.Icon) { Width = SmallIcon, Height = SmallIcon, VerticalAlignment = VerticalAlignment.Center },

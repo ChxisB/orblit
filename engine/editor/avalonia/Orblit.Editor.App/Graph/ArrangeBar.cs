@@ -35,9 +35,9 @@ internal sealed class ArrangeBar : Border
         Background = EditorBrushes.Floating;
         BorderBrush = EditorBrushes.LineStrong;
         BoxShadow = BoxShadows.Parse("0 6 20 0 #59000000");
-        Padding = new Thickness(8);
+        Padding = new Thickness(Gaps.Item);
         HorizontalAlignment = HorizontalAlignment.Left;
-        Margin = new Thickness(12, 0, 12, 0);
+        Margin = new Thickness(Gaps.Group, 0);
         _gaps =
         [
             Item("spread_across", "Even gaps across", () => arranger.Distribute(Axis.Horizontal), EvenGaps),
@@ -56,8 +56,8 @@ internal sealed class ArrangeBar : Border
         var box = Tool("box", new HoverCard("Put in a box", "Draws a box round the picked steps.", Parts.KeyText(new KeyGesture(Key.G, command))), () => edits.FrameSelection());
         var joined = Tool("flow", new HoverCard("Pick joined steps", "Adds every step joined by a run wire to what is picked."), () => select(arranger.Flow()));
         var action = Tool("collapse", new HoverCard("Make an action", "Moves the picked steps into a new action and runs it from here."), edits.Collapse);
-        var tidy = new TextBlock { Text = "Tidy up", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(2, 0, 4, 0) };
-        Child = new StackPanel { Spacing = 6, Children = { Row(_lineUp, _spread, box), Row(tidy, _straighten, joined, _expand, action) } };
+        var tidy = new TextBlock { Text = "Tidy up", FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(Gaps.Joined, 0, Gaps.Tight, 0) };
+        Child = new StackPanel { Spacing = Gaps.Item, Children = { Row(_lineUp, _spread, box), Row(tidy, _straighten, joined, _expand, action) } };
     }
 
     /// <summary>The items of the Line up and Spread menus that run a tool, in menu order.</summary>
@@ -114,7 +114,7 @@ internal sealed class ArrangeBar : Border
         var button = new Button
         {
             Tag = $"arrange:{id}",
-            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, Children = { new TextBlock { Text = card.Title, VerticalAlignment = VerticalAlignment.Center }, chevron } },
+            Content = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { new TextBlock { Text = card.Title, VerticalAlignment = VerticalAlignment.Center }, chevron } },
             Classes = { EditorTheme.TextButton, EditorTheme.Ghost, EditorTheme.Small },
             Flyout = flyout,
         };
@@ -142,7 +142,7 @@ internal sealed class ArrangeBar : Border
 
     static WrapPanel Row(params Control[] tools)
     {
-        var row = new WrapPanel { ItemSpacing = 4, LineSpacing = 4 };
+        var row = new WrapPanel { ItemSpacing = Gaps.Tight, LineSpacing = Gaps.Tight };
         row.Children.AddRange(tools);
         return row;
     }

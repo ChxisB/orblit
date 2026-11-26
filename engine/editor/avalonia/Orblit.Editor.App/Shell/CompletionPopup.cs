@@ -50,7 +50,7 @@ internal sealed class CompletionPopup
             IsLightDismissEnabled = true,
             Child = new Border
             {
-                Padding = new Thickness(4),
+                Padding = new Thickness(Gaps.Tight),
                 CornerRadius = EditorTheme.Corners,
                 Background = EditorBrushes.Raised,
                 BorderBrush = EditorBrushes.LineStrong,
@@ -60,7 +60,7 @@ internal sealed class CompletionPopup
                     Children =
                     {
                         _list,
-                        new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Margin = new Thickness(6, 6, 6, 2), Children = { Parts.KeyHint("insert", "↵"), Parts.KeyHint("close", "esc") } },
+                        new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Group, Margin = new Thickness(Gaps.Item, Gaps.Item, Gaps.Item, Gaps.Joined), Children = { Parts.KeyHint("insert", "↵"), Parts.KeyHint("close", "esc") } },
                     },
                 },
             },
@@ -92,12 +92,12 @@ internal sealed class CompletionPopup
     static DockPanel Row(CompletionSet set, CompletionItem item)
     {
         var kind = item.Tags.FirstOrDefault() ?? "";
-        var detail = new TextBlock { Text = kind.ToLowerInvariant(), FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        var detail = new TextBlock { Text = kind.ToLowerInvariant(), FontSize = 11, Foreground = EditorBrushes.TextDim, Margin = new Thickness(Gaps.Group, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
         DockPanel.SetDock(detail, Dock.Right);
         var name = new TextBlock { Text = item.DisplayText + item.DisplayTextSuffix, FontFamily = EditorTheme.Mono, FontSize = 12, VerticalAlignment = VerticalAlignment.Center };
-        var line = new TextBlock { FontSize = 11, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(28, 0, 0, 0) };
+        var line = new TextBlock { FontSize = 11, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, Margin = new Thickness(Gaps.Section, 0, 0, 0) };
         line.AttachedToVisualTree += async (_, _) => line.Text = await Task.Run(() => set.LineOf(item));
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Children = { Parts.RowIcon(IconOf(kind)), name } };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = Gaps.Tight, Children = { Parts.RowIcon(IconOf(kind)), name } };
         return new DockPanel { Children = { detail, new StackPanel { Children = { row, line } } } };
     }
 

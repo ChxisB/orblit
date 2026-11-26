@@ -76,7 +76,7 @@ public sealed class ToastTests
 
             Assert.Equal([First, Second], Titles(window));
             var cards = Cards(window);
-            Assert.Equal(BoxOf(cards[0], window).Bottom + 10, BoxOf(cards[1], window).Y);
+            Assert.Equal(BoxOf(cards[0], window).Bottom + 8, BoxOf(cards[1], window).Y);
             Pass(time, 1);
             Assert.Equal([Second], Titles(window));
             Pass(time, 3);
@@ -217,7 +217,7 @@ public sealed class ToastTests
     }
 
     [Fact]
-    public void The_stack_is_380_wide_16_in_from_the_right_and_10_clear_of_the_bottom_bar()
+    public void The_stack_is_380_wide_16_in_from_the_right_and_8_clear_of_the_bottom_bar()
     {
         UiThread.Run(() =>
         {
@@ -230,11 +230,11 @@ public sealed class ToastTests
             var bar = BoxOf(window.Center.BottomBar, window);
             Assert.Equal(3440 - 16, box.Right);
             Assert.Equal(380, box.Width);
-            Assert.Equal(bar.Top - 10, box.Bottom);
+            Assert.Equal(bar.Top - 8, box.Bottom);
             Assert.Same(EditorBrushes.Raised, card.Background);
             Assert.Same(EditorBrushes.LineStrong, card.BorderBrush);
             Assert.Equal(EditorTheme.IslandCorners, card.CornerRadius);
-            Assert.Equal(new Thickness(12, 11), card.Padding);
+            Assert.Equal(new Thickness(12), card.Padding);
             // The stack has no fill, so a click beside a card reaches the panel under it.
             Assert.Null(window.Toasts.Background);
         });

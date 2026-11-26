@@ -8,7 +8,7 @@ namespace Orblit.Editor.App.Shell;
 
 /// <summary>
 /// The strip that heads a class in the inspector: the class icon, a title in plain words and the class name beside
-/// it in small dim mono, on a tone under the panel with a line over it. It runs past the 6 pixel gutter to both
+/// it in small dim mono, on a tone under the panel with a line over it. It runs past the panel's gutter to both
 /// edges of the dock, so it reads as a heading and not a button.
 /// </summary>
 internal sealed class ClassBar : Border
@@ -17,15 +17,15 @@ internal sealed class ClassBar : Border
 
     readonly TextBlock _title = new() { FontWeight = FontWeight.SemiBold, FontSize = 12.5, VerticalAlignment = VerticalAlignment.Center };
     readonly EditorIcon _icon;
-    readonly TextBlock _engine = new() { FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(8, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
+    readonly TextBlock _engine = new() { FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, Margin = new Thickness(Gaps.Item, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
 
     /// <summary>A bar for the class, titled in plain words. A title that is the class name shows it once.</summary>
     public ClassBar(string className, string? title = null)
     {
         Height = BarHeight;
         // The bar sits 4 pixels under what came before and 2 over its first group.
-        Margin = new Thickness(-6, 4, -6, 2);
-        Padding = new Thickness(12, 0);
+        Margin = new Thickness(-Gaps.Item, Gaps.Tight, -Gaps.Item, Gaps.Joined);
+        Padding = new Thickness(Gaps.Group, 0);
         Background = EditorBrushes.ClassBar;
         BorderBrush = EditorBrushes.Line;
         BorderThickness = new Thickness(0, 1, 0, 0);

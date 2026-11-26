@@ -47,7 +47,7 @@ internal sealed class InspectorPane : Grid
     readonly TextBlock _kind = new() { FontSize = 11.5, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center };
     readonly TextBlock _class = new() { FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
     // The class fills what the icon, the name and the kind leave, so a long name trims before the chevron.
-    readonly DockPanel _inspected = new() { HorizontalSpacing = 6, IsVisible = false };
+    readonly DockPanel _inspected = new() { HorizontalSpacing = Gaps.Tight, IsVisible = false };
     readonly MenuFlyout _recent = new();
     readonly Button _chip;
     readonly Button _more = Parts.Dress(new Button(), "GuiTabMenuHl", new HoverCard("More", "Open or close every section, and copy settings to another thing."));
@@ -87,12 +87,13 @@ internal sealed class InspectorPane : Grid
         };
 
         _inspected.Children.AddRange([_icon, _name, _kind, _class]);
-        var history = new Grid { ColumnDefinitions = new ColumnDefinitions("24,4,24,8,*"), Margin = new Thickness(2, 0, 6, 0) };
+        var history = new Grid { ColumnDefinitions = new ColumnDefinitions("24,4,24,8,*"), Margin = new Thickness(Gaps.Item, 0) };
         Place(history, _back, 0, VerticalAlignment.Center);
         Place(history, _forward, 2, VerticalAlignment.Center);
         Place(history, _chip, 4, VerticalAlignment.Center);
-        var filter = new Grid { ColumnDefinitions = new ColumnDefinitions("*,6,Auto"), Margin = new Thickness(4, 0, 6, 0) };
+        var filter = new Grid { ColumnDefinitions = new ColumnDefinitions($"*,{Gaps.Item},Auto"), Margin = new Thickness(Gaps.Item, 0) };
         Place(filter, _filter, 0, VerticalAlignment.Top);
+        // A pixel down, so the 26 pixel button shares the middle of the 28 pixel box.
         _more.Margin = new Thickness(0, 1, 0, 0);
         Place(filter, _more, 2, VerticalAlignment.Top);
         SetRow(filter, 1);
@@ -224,7 +225,7 @@ internal sealed class InspectorPane : Grid
             var row = new StackPanel
             {
                 Orientation = Orientation.Horizontal,
-                Spacing = 6,
+                Spacing = Gaps.Tight,
                 Children = { new TextBlock { Text = seen.Name }, new TextBlock { Text = PlainNames.NameOf(seen.ClassName), FontSize = 11, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center } },
             };
             var item = new MenuItem { Header = row, Icon = Parts.RowIcon(EditorIcons.ForClass(seen.ClassName)) };
@@ -271,7 +272,7 @@ internal sealed class InspectorPane : Grid
             Height = ChipHeight,
             MinHeight = 0,
             MinWidth = 0,
-            Padding = new Thickness(10, 0),
+            Padding = new Thickness(Gaps.Item, 0),
             Background = EditorBrushes.Raised,
             BorderBrush = EditorBrushes.LineStrong,
             BorderThickness = new Thickness(1),
