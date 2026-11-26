@@ -99,7 +99,7 @@ internal sealed class OutputPanel : Border
         tools.Children.Add(_filter);
         tools.Children.AddRange(_chips);
         tools.Children.Add(Parts.Rule());
-        tools.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, _clear } });
+        tools.Children.Add(new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center, Children = { _copy, _clear } });
         DockPanel.SetDock(tools, Dock.Right);
         Strip = new Border
         {

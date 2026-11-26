@@ -29,7 +29,7 @@ internal sealed class MoveTools
 
     public MoveTools()
     {
-        var jump = new TextBlock { Text = "Off moves it with its new home, so it may jump.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = Avalonia.Media.TextWrapping.Wrap };
+        var jump = new TextBlock { Text = "Off moves it with its new home, so it may jump.", FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) };
         Dialog = new Dialog("", "", new StackPanel { Children = { _parents, _keepGlobal, jump } }) { CardWidth = 360, EngineName = "Reparent" };
         var card = new HoverCard("Move into", "Moves it to the end of the lit thing.", "↵");
         card.SaysWhyOff(card.On(Dialog.MainButton), "Pick a new home first.");

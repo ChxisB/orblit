@@ -343,14 +343,15 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_heading_starts_after_the_traffic_lights_and_lets_a_press_through()
+    public void The_heading_starts_after_the_traffic_lights_and_its_card_gives_the_names_in_full()
     {
         UiThread.Run(() =>
         {
-            var window = OpenAtReferenceSize();
+            var window = OpenAtReferenceSize(new FakeScene { SceneFile = "res://main.oscn", ProjectName = "view_demo" });
+            window.Poll();
 
             Assert.Equal(92, BoxOf(window.Bar.Heading, window).X);
-            Assert.False(window.Bar.Heading.IsHitTestVisible);
+            Assert.Equal("view_demo / main.oscn", ToolTip.GetTip(window.Bar.Heading));
         });
     }
 

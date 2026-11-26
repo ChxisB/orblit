@@ -65,7 +65,7 @@ internal sealed class GraphView : Border
 {
     readonly ListBox _list = new() { Background = null, BorderThickness = new Thickness(0), Classes = { EditorTheme.Rows } };
     readonly TextBox _filter = new() { PlaceholderText = "Filter graph scripts", Margin = new Thickness(8, 8, 8, 6), Classes = { EditorTheme.Field } };
-    readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+    readonly StackPanel _tabs = new() { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center, Classes = { EditorTheme.Joined } };
     readonly TextBlock _status = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, TextTrimming = TextTrimming.CharacterEllipsis, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(12, 0) };
     readonly TextBlock _extends = new() { FontSize = 12, Foreground = EditorBrushes.TextDim, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(8, 0, 0, 0) };
     readonly TextBlock _hint = new() { Text = "Open a graph script, or choose File, New.", Foreground = EditorBrushes.TextDim, HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center };
@@ -322,7 +322,14 @@ internal sealed class GraphView : Border
 
         return new Grid
         {
-            ColumnDefinitions = new ColumnDefinitions("248,6,*,6,292"),
+            ColumnDefinitions =
+            [
+                new(248, GridUnitType.Star) { MinWidth = 140, MaxWidth = 248 },
+                new(6, GridUnitType.Pixel),
+                new(616, GridUnitType.Star) { MinWidth = 156 },
+                new(6, GridUnitType.Pixel),
+                new(292, GridUnitType.Star) { MinWidth = 170, MaxWidth = 292 },
+            ],
             Children = { Island(list, 0), Place(middle, 2), Island(inspector, 4) },
         };
     }

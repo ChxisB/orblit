@@ -34,7 +34,7 @@ internal sealed class Segments : Border
         CornerRadius = new CornerRadius(8);
         HorizontalAlignment = HorizontalAlignment.Left;
         // Radio buttons with one parent and no group name turn each other off.
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Classes = { EditorTheme.Joined } };
         row.Children.AddRange(_choices);
         Child = row;
     }

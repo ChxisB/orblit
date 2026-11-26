@@ -86,6 +86,9 @@ internal sealed class EditorTheme : Styles
     /// <summary>A flyout whose card sets its own room, so the presenter adds none.</summary>
     internal const string Flush = "flush";
 
+    /// <summary>A panel whose parts read as one control, such as a button and its drop-down, so they sit closer.</summary>
+    internal const string Joined = "joined";
+
     // Fluent resource key and the colour that replaces it. A list of cases, so it is data.
     static readonly (string Key, Color Color)[] BrushOverrides =
     [

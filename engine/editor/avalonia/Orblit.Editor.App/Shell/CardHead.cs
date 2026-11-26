@@ -16,7 +16,7 @@ internal sealed class CardHead : DockPanel
 
     public CardHead(string title, string why)
     {
-        Heading = new TextBlock { Text = title, FontWeight = FontWeight.SemiBold };
+        Heading = new TextBlock { Text = title, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap };
         _engine = new TextBlock { FontFamily = EditorTheme.Mono, FontSize = 10.5, Foreground = EditorBrushes.Unit, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
         Why = new TextBlock { Text = why, FontSize = 12, Foreground = EditorBrushes.TextDim, Margin = new Thickness(0, 2, 0, 0), TextWrapping = TextWrapping.Wrap };
         // The design draws this cross at 14 in the usual 26 pixel button.
@@ -27,7 +27,7 @@ internal sealed class CardHead : DockPanel
         Margin = new Thickness(14, 12, 12, 0);
         SetDock(CloseButton, Dock.Right);
         Children.Add(CloseButton);
-        Children.Add(new StackPanel { Children = { new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8, Children = { Heading, _engine } }, Why } });
+        Children.Add(new StackPanel { Children = { new WrapPanel { ItemSpacing = 8, Children = { Heading, _engine } }, Why } });
     }
 
     /// <summary>The engine's name for what the card does. Empty shows none.</summary>

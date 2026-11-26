@@ -228,7 +228,7 @@ internal sealed class StepInspector : Border
 
     static StackPanel Labeled(string label, Control box)
     {
-        var row = new StackPanel { Spacing = 2 };
+        var row = new StackPanel { Spacing = 4 };
         row.Children.Add(new TextBlock { Text = label, FontSize = 12 });
         row.Children.Add(box);
         return row;

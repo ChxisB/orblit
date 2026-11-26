@@ -134,7 +134,7 @@ public sealed class InspectorStructureTests
             var scale = BoxOf(window.Inspector.Scale, window);
 
             Assert.Equal((BarX + 12, BarWidth - 12), (position.X, position.Width));
-            Near(header.Bottom - 2, position.Y);
+            Near(header.Bottom, position.Y);
             Near(position.Y + 60, scale.Y);
             Near(scale.Bottom, BoxOf(window.Inspector.Rows.Single(row => row.Label == "Top Level"), window).Y);
             Near(BoxOf(Group(window, "Where it is").Body, window).Bottom, BoxOf(Group(window, "Visibility").Header, window).Y);

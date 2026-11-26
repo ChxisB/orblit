@@ -37,7 +37,7 @@ internal sealed record PickerRow(string Group, string Icon, string Name, Action 
 internal sealed class Picker : Border
 {
     readonly TextBox _search;
-    readonly StackPanel _rows = new() { Margin = new Thickness(6) };
+    readonly StackPanel _rows = new() { Margin = new Thickness(6), Spacing = 2, Classes = { EditorTheme.Joined } };
     readonly List<Button> _buttons = [];
     Func<string, IReadOnlyList<PickerRow>> _find = _ => [];
 

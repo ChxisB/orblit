@@ -153,6 +153,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         Icon = EditorIcon.ToWindowIcon("Orblit", 64);
         Width = 1440;
         Height = 900;
+        MinWidth = 1280;
+        MinHeight = 720;
         ExtendClientAreaToDecorationsHint = true;
         ExtendClientAreaTitleBarHeightHint = TitleBar.BarHeight;
         _scenePane = new ScenePane(_tools, _move, _instanceScene, CommandKey);
@@ -1451,7 +1453,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // The title bar on top, then the columns with the 4 pixel margin and the 3 pixel gaps of the reference.
     Grid LeftColumn()
     {
-        var left = new Grid { RowDefinitions = new RowDefinitions("*,6,*") };
+        var left = new Grid { RowDefinitions = [new(GridLength.Star) { MinHeight = 120 }, new(6, GridUnitType.Pixel), new(GridLength.Star) { MinHeight = 120 }] };
         Fill(left, _slots[DockSlot.UpperLeft], 0);
         Fill(left, RowSplitter(), 1);
         Fill(left, _slots[DockSlot.LowerLeft], 2);
@@ -1462,7 +1464,19 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
     Control Layout()
     {
-        var body = new Grid { Margin = new Thickness(6, 0, 6, 6), ColumnDefinitions = new ColumnDefinitions("280,6,*,6,316") };
+        // The least widths of the three columns fit the smallest window together.
+        var body = new SideColumns
+        {
+            Margin = new Thickness(6, 0, 6, 6),
+            ColumnDefinitions =
+            [
+                new(280, GridUnitType.Pixel) { MinWidth = 220 },
+                new(6, GridUnitType.Pixel),
+                new(GridLength.Star) { MinWidth = 480 },
+                new(6, GridUnitType.Pixel),
+                new(316, GridUnitType.Pixel) { MinWidth = 260 },
+            ],
+        };
         Fill(body, _leftSide, 0);
         Fill(body, _leftSide.Splitter, 1);
         Fill(body, _center, 2);

@@ -89,9 +89,11 @@ internal sealed class BottomBar : Grid
         _version.Click += (_, _) => VersionCopyRequested?.Invoke();
         _pin.Click += (_, _) => _pin.IsChecked = _pin.IsChecked != true;
         var left = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Margin = new Thickness(6, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+        left.Classes.Add(EditorTheme.Joined);
         left.Children.AddRange(_tabs);
         var right = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 6, 0), VerticalAlignment = VerticalAlignment.Center };
         _separator.Margin = new Thickness(8, 0);
+        _pin.Margin = new Thickness(4, 0, 0, 0);
         right.Children.AddRange([_statusIcon, _status, _separator, _version, _pin]);
         SetColumn(right, 2);
         Children.Add(left);

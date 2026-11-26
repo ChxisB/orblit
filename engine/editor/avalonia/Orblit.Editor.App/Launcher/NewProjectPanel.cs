@@ -118,24 +118,22 @@ internal sealed class NewProjectPanel : StackPanel
     }
 
     /// <summary>A template's icon on a soft accent tile, beside its name and a dim line on what it starts with.</summary>
-    internal static StackPanel TemplateFace(string icon, string name, string line) => new()
+    internal static Grid TemplateFace(string icon, string name, string line)
     {
-        Orientation = Orientation.Horizontal,
-        Spacing = 12,
-        Children =
+        var tile = new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(8), Background = EditorBrushes.AccentSoft, Child = Parts.FieldIcon(icon, EditorBrushes.Accent) };
+        var words = new StackPanel
         {
-            new Border { Width = 36, Height = 36, CornerRadius = new CornerRadius(8), Background = EditorBrushes.AccentSoft, Child = Parts.FieldIcon(icon, EditorBrushes.Accent) },
-            new StackPanel
+            VerticalAlignment = VerticalAlignment.Center,
+            Children =
             {
-                VerticalAlignment = VerticalAlignment.Center,
-                Children =
-                {
-                    new TextBlock { Text = name, FontWeight = FontWeight.SemiBold },
-                    new TextBlock { Text = line, FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap },
-                },
+                new TextBlock { Text = name, FontWeight = FontWeight.SemiBold, TextWrapping = TextWrapping.Wrap },
+                new TextBlock { Text = line, FontSize = 12, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap },
             },
-        },
-    };
+        };
+        Grid.SetColumn(words, 1);
+        // The words take what the tile leaves, so they wrap on a narrow card.
+        return new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*"), ColumnSpacing = 12, Children = { tile, words } };
+    }
 
     /// <summary>The local folder chosen in the system's folder picker, or null when none is chosen.</summary>
     internal static async Task<string?> PickFolderAsync(Control owner, string title)

@@ -416,7 +416,7 @@ internal sealed class ScriptView : Border
 
     static StackPanel Row(params Control[] items)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4, VerticalAlignment = VerticalAlignment.Center };
         row.Children.AddRange(items);
         return row;
     }
@@ -446,6 +446,8 @@ internal sealed class ScriptView : Border
             Child = new TextBlock { Text = "Scripts", FontWeight = FontWeight.Medium, VerticalAlignment = VerticalAlignment.Center },
         };
         var tools = Row(_new, _sort);
+        tools.Spacing = 2;
+        tools.Classes.Add(EditorTheme.Joined);
         var heading = new Border
         {
             Padding = new Thickness(14, 14, 14, 6),
@@ -472,7 +474,8 @@ internal sealed class ScriptView : Border
             VerticalAlignment = VerticalAlignment.Center,
             Child = new TextBlock { Text = "C#", FontSize = 10.5, FontWeight = FontWeight.SemiBold, Foreground = EditorBrushes.TextSoft },
         };
-        var tools = Row(_name, new Border { Width = 8 }, badge, new Border { Width = 4 }, _find, new Border { Width = 4 }, _save, new Border { Width = 4 }, _check);
+        var tools = Row(_name, badge, _find, _save, _check);
+        tools.Spacing = 8;
         DockPanel.SetDock(_problems, Dock.Right);
         var line = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 12, Children = { _caret, _indent, StatusText("UTF-8"), _status, _errors } };
         var status = new Border

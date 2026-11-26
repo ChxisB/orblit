@@ -24,7 +24,7 @@ internal sealed class InspectorPanel : StackPanel
 {
     // The engine's Transform group holds these, and the vector rows edit them through the transform calls.
     static readonly string[] s_vectorNames = ["position", "rotation", "scale"];
-    static readonly Thickness s_groupIndent = new(12, -2, 0, 0);
+    static readonly Thickness s_groupIndent = new(12, 0, 0, 0);
 
     readonly VectorRow _position = new("Position", "m");
     readonly VectorRow _rotation = new("Turn", "°");

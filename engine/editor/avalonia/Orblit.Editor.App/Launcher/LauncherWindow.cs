@@ -452,6 +452,8 @@ internal sealed class LauncherWindow : Window, IAppMenuTarget
             Child = new StackPanel { Children = { Parts.Banner(IconOf(project), _projects.IndexOf(project), 136), body } },
         };
         card.Tapped += (_, _) => Open(project.Folder);
+        // A long name or folder is cut short on the card, so its hover card gives both in full.
+        new HoverCard(project.Name, HomeFolder.Shorten(project.Folder)).On(card);
         // A context menu opens only on the control that holds it. It opens at the pointer, so by the button.
         more.Click += (_, _) => menu.Open(card);
         // The tap would rise to the card and open the project as well.
@@ -563,7 +565,7 @@ internal sealed class Nav : DockPanel
         SetDock(Version, Dock.Bottom);
         Children.Add(logo);
         Children.Add(Version);
-        Children.Add(new StackPanel { Spacing = 2, Children = { Projects, Learn, Settings } });
+        Children.Add(new StackPanel { Spacing = 4, Children = { Projects, Learn, Settings } });
     }
 
     internal Button Projects { get; }

@@ -23,7 +23,7 @@ internal sealed class GraphTab : Border
         ToolTip.SetTip(this, script);
         CornerRadius = EditorTheme.Corners;
         BorderThickness = new Thickness(1);
-        Child = new StackPanel { Orientation = Orientation.Horizontal, Children = { _choose, _close } };
+        Child = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Classes = { EditorTheme.Joined }, Children = { _choose, _close } };
         Show(false, false);
     }
 

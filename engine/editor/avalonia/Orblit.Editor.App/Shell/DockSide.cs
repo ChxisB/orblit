@@ -19,6 +19,7 @@ internal sealed class DockSide : Panel
     readonly Func<IEnumerable<DockTabs>> _onSide;
     readonly StackPanel _buttons = new() { Spacing = 4, HorizontalAlignment = HorizontalAlignment.Center };
     GridLength _width;
+    double _least;
 
     /// <param name="docks">What the side shows when it is open.</param>
     /// <param name="onSide">The docks on the side now, because a dock can move to the other side.</param>
@@ -53,13 +54,15 @@ internal sealed class DockSide : Panel
         var column = ((Grid)Parent!).ColumnDefinitions[Grid.GetColumn(this)];
         if (fold)
         {
-            _width = column.Width;
+            (_width, _least) = (column.Width, column.MinWidth);
+            column.MinWidth = RailWidth;
             column.Width = new GridLength(RailWidth);
             _buttons.Children.Clear();
             _buttons.Children.AddRange(_onSide().Where(dock => dock.IsVisible).Select(RailButton));
         }
         else
         {
+            column.MinWidth = _least;
             column.Width = _width;
         }
 

@@ -6,6 +6,7 @@ using Avalonia.Input;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Styling;
+using Avalonia.VisualTree;
 using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.App.Shell;
@@ -57,22 +58,18 @@ internal sealed class TitleBar : Grid
         // The system bar of macOS puts a note in the item's tip. This bar has room to show it under the name.
         Menus.Styles.Add(new Style(x => x.OfType<MenuItem>()) { Setters = { new Setter(HeaderedSelectingItemsControl.HeaderTemplateProperty, EditorMenu.BarHeader) } });
         ColumnDefinitions = new ColumnDefinitions("*,Auto,*");
-        Heading = new StackPanel
+        Heading = ProjectHeading();
+        // The system bar of macOS shows the window's menu, and this bar hides itself there. A short window cuts
+        // the project's name and keeps the menus whole.
+        var start = new Grid
         {
-            Orientation = Orientation.Horizontal,
-            Spacing = 8,
-            VerticalAlignment = VerticalAlignment.Center,
-            IsHitTestVisible = false,
-            Children = { Logo, _project, _slash, _scene, EditedDot },
-        };
-        // The system bar of macOS shows the window's menu, and this bar hides itself there.
-        var start = new StackPanel
-        {
-            Orientation = Orientation.Horizontal,
-            Spacing = 12,
+            ColumnDefinitions = new ColumnDefinitions("*,Auto"),
+            ColumnSpacing = 12,
+            HorizontalAlignment = HorizontalAlignment.Left,
             Margin = new Thickness(TitleLeft, 0, 0, 0),
             Children = { Heading, Menus },
         };
+        SetColumn(Menus, 1);
         _tabs = [.. Workspaces.Select((workspace, at) => Workspace(workspace, Parts.KeyText(new KeyGesture(Key.D1 + at, command))))];
         _tabs.Single(tab => tab.Label == Spatial).IsChecked = true;
         Switcher = Parts.Pill(_tabs);
@@ -99,15 +96,15 @@ internal sealed class TitleBar : Grid
     public event Action<string>? WorkspaceChosen;
 
     /// <summary>The logo, then the project, a slash and the scene, then the dot for edits.</summary>
-    internal StackPanel Heading { get; }
+    internal Grid Heading { get; }
 
     internal Ellipse Logo { get; } = Parts.LogoMark(15);
 
-    readonly TextBlock _project = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _project = new() { FontWeight = FontWeight.SemiBold, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis };
 
     readonly TextBlock _slash = new() { Text = "/", Foreground = EditorBrushes.Disabled, VerticalAlignment = VerticalAlignment.Center };
 
-    readonly TextBlock _scene = new() { Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center };
+    readonly TextBlock _scene = new() { Foreground = EditorBrushes.TextSoft, VerticalAlignment = VerticalAlignment.Center, MaxWidth = 200, TextTrimming = TextTrimming.CharacterEllipsis };
 
     /// <summary>Shown while the scene has edits that are not saved.</summary>
     internal Ellipse EditedDot { get; } = new() { Width = 7, Height = 7, Fill = EditorBrushes.Accent, VerticalAlignment = VerticalAlignment.Center, IsVisible = false };
@@ -132,6 +129,29 @@ internal sealed class TitleBar : Grid
         _scene.Text = scene;
         _slash.IsVisible = _scene.IsVisible = scene is not null;
         EditedDot.IsVisible = edited;
+        // Either name may be cut short, so the heading's hover card gives both.
+        ToolTip.SetTip(Heading, scene is null ? project : $"{project} / {scene}");
+    }
+
+    // The project's name is the one part that gives way. Each part keeps its own gap, so a hidden one leaves none.
+    Grid ProjectHeading()
+    {
+        var heading = new Grid
+        {
+            ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto,Auto"),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            VerticalAlignment = VerticalAlignment.Center,
+            Background = Brushes.Transparent,
+        };
+        Control[] parts = [Logo, _project, _slash, _scene, EditedDot];
+        for (var at = 0; at < parts.Length; at++)
+        {
+            parts[at].Margin = new Thickness(at == 0 ? 0 : 8, 0, 0, 0);
+            SetColumn(parts[at], at);
+        }
+
+        heading.Children.AddRange(parts);
+        return heading;
     }
 
     // Play and Stop keep their words, as the one action every user looks for. Their keys are on their cards.
@@ -216,7 +236,9 @@ internal sealed class TitleBar : Grid
     // A bar with nothing under the pointer is the place to take hold of the window.
     void BeginMove(object? sender, PointerPressedEventArgs e)
     {
-        if (e.Source == this && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && TopLevel.GetTopLevel(this) is Window window)
+        // The heading takes the pointer for its hover card, so a press on it moves the window too.
+        var onBar = e.Source == this || e.Source is Visual part && (part == Heading || Heading.IsVisualAncestorOf(part));
+        if (onBar && e.GetCurrentPoint(this).Properties.IsLeftButtonPressed && TopLevel.GetTopLevel(this) is Window window)
         {
             window.BeginMoveDrag(e);
         }

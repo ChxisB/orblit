@@ -62,7 +62,7 @@ internal sealed class ChoiceList : StackPanel
 
     internal const string Matches = "Matches";
 
-    readonly StackPanel _rows = new();
+    readonly StackPanel _rows = new() { Spacing = 2, Classes = { EditorTheme.Joined } };
     readonly List<(Button Row, EditorIcon Icon)> _drawn = [];
     readonly List<Button> _folds = [];
     readonly HashSet<ChoiceGroup> _unfolded = [];

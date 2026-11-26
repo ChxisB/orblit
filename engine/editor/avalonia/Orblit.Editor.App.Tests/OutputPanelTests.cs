@@ -213,7 +213,7 @@ public sealed class OutputPanelTests
             Assert.Equal(EditorBrushes.Line, panel.Strip.BorderBrush);
             Assert.Equal(("Output", FontWeight.SemiBold, strip.X + 12), (title.Text, title.FontWeight, BoxOf(title, window).X));
             Assert.Equal(strip.Right - 6, BoxOf(panel.ClearButton, window).Right);
-            Assert.Equal(BoxOf(panel.ClearButton, window).X - 2, BoxOf(panel.CopyButton, window).Right);
+            Assert.Equal(BoxOf(panel.ClearButton, window).X - 4, BoxOf(panel.CopyButton, window).Right);
             Assert.Equal(strip.Bottom, BoxOf(panel.List, window).Y);
         });
     }

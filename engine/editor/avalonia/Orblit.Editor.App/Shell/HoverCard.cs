@@ -34,7 +34,7 @@ internal sealed class HoverCard : StackPanel
             top.Children.Add(chip);
         }
 
-        top.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.Medium, Foreground = EditorBrushes.Text, VerticalAlignment = VerticalAlignment.Center });
+        top.Children.Add(new TextBlock { Text = title, FontWeight = FontWeight.Medium, Foreground = EditorBrushes.Text, VerticalAlignment = VerticalAlignment.Center, TextWrapping = TextWrapping.Wrap });
         _line = new TextBlock { Text = line, FontSize = 12, Foreground = EditorBrushes.TextSoft, TextWrapping = TextWrapping.Wrap };
         Children.Add(top);
         Children.Add(_line);

@@ -55,7 +55,7 @@ internal static class Parts
     /// <summary>A row of controls on a small island of its own, 2 pixels apart with 3 pixels around them.</summary>
     public static Border Pill(IEnumerable<Control> items)
     {
-        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2 };
+        var row = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 2, Classes = { EditorTheme.Joined } };
         row.Children.AddRange(items);
         return new Border { Classes = { EditorTheme.Island }, Padding = new Thickness(3), VerticalAlignment = VerticalAlignment.Center, Child = row };
     }
@@ -205,7 +205,7 @@ internal static class Parts
         var header = new StackPanel { Spacing = 1, Children = { top } };
         if (note is not null)
         {
-            header.Children.Add(new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim });
+            header.Children.Add(new TextBlock { Text = note, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap });
         }
 
         return header;

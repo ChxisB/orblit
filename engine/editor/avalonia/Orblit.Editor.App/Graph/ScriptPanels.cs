@@ -137,7 +137,7 @@ internal sealed class ScriptPanels : Border
     {
         var id = $"variable:{variable.Name}";
         var name = variable.Name;
-        var detail = new StackPanel { Spacing = 2, Margin = new Thickness(16, 0, 0, 4) };
+        var detail = new StackPanel { Spacing = 4, Margin = new Thickness(16, 0, 0, 4) };
         detail.Children.Add(PanelFields.Box($"{id}:default", variable.Default, text => Apply(_script.SetVariableDefault(name, text)), "starts as nothing"));
         detail.Children.Add(PanelFields.Check($"{id}:exported", "Show in the Inspector", variable.Exported, on => Apply(_script.SetVariableExported(name, on))));
         detail.Children.Add(PanelFields.Box($"{id}:category", variable.Category, text => Apply(_script.SetVariableInfo(name, text, variable.Description)), "group in the Inspector"));
@@ -327,7 +327,7 @@ internal sealed class ScriptPanels : Border
     // The arguments, the type returned and the description live on the Entry step of the function on show.
     Control SignatureEditor(FunctionSignature signature)
     {
-        var stack = new StackPanel { Spacing = 2, Margin = new Thickness(16, 0, 0, 4) };
+        var stack = new StackPanel { Spacing = 4, Margin = new Thickness(16, 0, 0, 4) };
         stack.Children.Add(new TextBlock { Text = "It gets", FontSize = 12 });
         stack.Children.Add(new TypedListEditor("function:arguments", signature.Arguments, null, list => Apply(Set(signature, "arguments", GraphTyped.WriteList(list)))));
         stack.Children.Add(new TextBlock { Text = "It gives back", FontSize = 12 });
