@@ -160,7 +160,6 @@ internal sealed class ScriptView : Border
             MaxWidth = WidestTab,
             Child = TabParts(),
         };
-        _name[!ToolTip.TipProperty] = _name[!TextBlock.TextProperty];
         _code.Editor.IsEnabled = false;
         _find.IsEnabled = false;
         _code.Editor.PropertyChanged += (_, e) =>
@@ -427,7 +426,7 @@ internal sealed class ScriptView : Border
 
         _status.MaxWidth = 240;
         _status.TextTrimming = TextTrimming.CharacterEllipsis;
-        _status[!ToolTip.TipProperty] = _status[!TextBlock.TextProperty];
+        Parts.TipItsText(_status);
         _errors.HorizontalAlignment = HorizontalAlignment.Left;
         var line = new DockPanel();
         line.Children.AddRange(parts);
@@ -724,6 +723,7 @@ internal sealed class ScriptView : Border
         _tabName.Text = _open is null ? "" : FileName(_open);
         ToolTip.SetTip(_tab, _open);
         _name.Text = _open ?? "Pick a script.";
+        ToolTip.SetTip(_name, _open);
         ShowMarks();
     }
 

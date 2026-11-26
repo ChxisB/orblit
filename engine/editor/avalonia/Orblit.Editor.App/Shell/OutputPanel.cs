@@ -249,7 +249,7 @@ internal sealed class OutputPanel : Border
     }
 
     /// <summary>A level's switch: its mark and how many lines it has. It is lit while the level's lines show.</summary>
-    internal sealed class Chip : ToggleButton
+    internal sealed class Chip : ToggleButton, IOverflowTool
     {
         const double ChipHeight = 24;
         const double ChipIcon = 12;
@@ -280,6 +280,10 @@ internal sealed class OutputPanel : Border
         internal string Word { get; }
 
         internal TextBlock Count { get; }
+
+        string IOverflowTool.MenuWords => $"{Word} {Count.Text}";
+
+        Button IOverflowTool.MenuButton => this;
 
         // Drawn as a worded button, so the chip shares the raised look of the other buttons.
         protected override Type StyleKeyOverride => typeof(Button);

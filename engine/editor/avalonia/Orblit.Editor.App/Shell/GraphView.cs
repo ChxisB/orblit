@@ -138,7 +138,7 @@ internal sealed class GraphView : Border
         _form.Requested += Create;
         _list.ItemTemplate = new FuncDataTemplate<string>((path, _) => path is null ? null : Parts.Trimmed(path, path));
         _list.SelectionChanged += (_, _) => Open(_list.SelectedItem as string);
-        _status[!ToolTip.TipProperty] = _status[!TextBlock.TextProperty];
+        Parts.TipItsText(_status);
         // TextChanged waits for a render, so the property is the one that fires at once.
         _filter.PropertyChanged += (_, e) =>
         {

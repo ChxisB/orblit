@@ -125,7 +125,7 @@ internal sealed class ScenePane : Grid
     /// <summary>What the pane says while no scene is open.</summary>
     internal StackPanel Empty { get; } = Parts.EmptyState("SceneFile", "No scene is open", "Open a scene to list the things in it here.");
 
-    /// <summary>What the pane says while the engine starts.</summary>
+    /// <summary>What the pane says while the engine starts, and after it fails to.</summary>
     internal StackPanel Loading { get; } = Parts.EmptyState("SceneFile", "Loading", "The engine is starting.");
 
     /// <summary>Raised when the selected entity changes, also when a new tree clears it.</summary>

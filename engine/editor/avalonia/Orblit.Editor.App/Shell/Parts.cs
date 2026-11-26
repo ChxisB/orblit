@@ -260,6 +260,18 @@ internal static class Parts
         };
     }
 
+    /// <summary>Words for a menu item's header that show as they are. A header reads one underscore as an access key.</summary>
+    public static string? Literal(string? words) => words?.Replace("_", "__", StringComparison.Ordinal);
+
+    /// <summary>Gives a trimmed line its whole text as a tip, and no tip while it says nothing.</summary>
+    public static void TipItsText(TextBlock line) => line.PropertyChanged += (_, change) =>
+    {
+        if (change.Property == TextBlock.TextProperty)
+        {
+            ToolTip.SetTip(line, string.IsNullOrEmpty(line.Text) ? null : line.Text);
+        }
+    };
+
     /// <summary>Docks an item of a <see cref="Bar"/> at its right end.</summary>
     public static Control Right(Control control)
     {
@@ -284,6 +296,13 @@ internal static class Parts
                 new TextBlock { Text = line, FontSize = 11, Foreground = EditorBrushes.TextDim, TextWrapping = TextWrapping.Wrap, TextAlignment = TextAlignment.Center },
             },
         };
+    }
+
+    /// <summary>Gives an <see cref="EmptyState"/> new words.</summary>
+    public static void Reword(StackPanel state, string title, string line)
+    {
+        ((TextBlock)state.Children[1]).Text = title;
+        ((TextBlock)state.Children[2]).Text = line;
     }
 
     // No border, so the box is the icon and its padding: 26 pixels square.

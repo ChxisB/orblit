@@ -108,7 +108,7 @@ internal sealed class InspectorPane : Grid
         Children.Add(Loading);
     }
 
-    /// <summary>What the pane says while the engine starts.</summary>
+    /// <summary>What the pane says while the engine starts, and after it fails to.</summary>
     internal StackPanel Loading { get; } = Parts.EmptyState("ListSelect", "Loading", "The engine is starting.");
 
     internal ScrollViewer Viewer => _viewer;

@@ -439,6 +439,21 @@ public sealed class InspectorExtrasTests
     }
 
     [Fact]
+    public void The_script_menu_keeps_the_underscores_of_a_file_name()
+    {
+        UiThread.Run(() =>
+        {
+            var scene = new FakeScene();
+            scene.ScriptPaths.Add("res://player_move.cs");
+            var window = Selected(scene);
+
+            ClickOn(window.Inspector.ScriptField, window);
+
+            Assert.Contains("res://player__move.cs", window.Inspector.ScriptMenu.Items.OfType<MenuItem>().Select(item => (string?)item.Header));
+        });
+    }
+
+    [Fact]
     public void The_script_field_opens_a_menu_of_the_project_scripts_and_Clear()
     {
         UiThread.Run(() =>

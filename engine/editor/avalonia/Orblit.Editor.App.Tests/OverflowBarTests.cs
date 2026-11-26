@@ -2,6 +2,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Interactivity;
 using Orblit.Editor.App.Shell;
+using Orblit.Editor.App.Theme;
 using static Orblit.Editor.App.Tests.ReferenceWindow;
 
 namespace Orblit.Editor.App.Tests;
@@ -50,6 +51,31 @@ public sealed class OverflowBarTests
     }
 
     static void Choose(MenuItem item) => item.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+
+    [Fact]
+    public void A_file_name_keeps_its_underscores_in_the_menu()
+    {
+        UiThread.Run(() =>
+        {
+            var bar = Show(40, new OverflowBar(Tool<Button>("Copy"), new Named("player_move.ograph")));
+
+            // A menu item drops a single underscore as the mark of an access key, and shows a doubled one once.
+            Assert.Equal("player__move.ograph", Menu(bar)[^1].Header);
+        });
+    }
+
+    [Fact]
+    public void A_filter_chip_in_the_menu_keeps_its_count()
+    {
+        UiThread.Run(() =>
+        {
+            var chip = new OutputPanel.Chip("FaultCircle", EditorBrushes.Fault, null, new HoverCard("Errors", ""));
+            chip.Count.Text = "3";
+            var bar = Show(40, new OverflowBar(Tool<Button>("Copy"), chip));
+
+            Assert.Equal("Errors 3", Menu(bar)[^1].Header);
+        });
+    }
 
     [Fact]
     public void A_bar_with_room_keeps_every_tool_and_hides_the_more_button()

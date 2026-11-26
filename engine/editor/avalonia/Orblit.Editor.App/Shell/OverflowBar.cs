@@ -170,7 +170,7 @@ internal sealed class OverflowBar : Panel
         var toggle = button as ToggleButton;
         var item = new MenuItem
         {
-            Header = words,
+            Header = Parts.Literal(words),
             IsEnabled = button.IsEnabled,
             ToggleType = toggle is null ? MenuItemToggleType.None : MenuItemToggleType.CheckBox,
             IsChecked = toggle?.IsChecked == true,

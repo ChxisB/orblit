@@ -523,7 +523,6 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public string SceneKindOf(string resourcePath) => _disk.SceneKindOf(resourcePath);
 
-
     // A copy keeps Stop on after the first game closes, so no copy runs on out of reach.
     public bool IsPlaying => _game is { HasExited: false } || _copies.Exists(copy => !copy.HasExited);
 

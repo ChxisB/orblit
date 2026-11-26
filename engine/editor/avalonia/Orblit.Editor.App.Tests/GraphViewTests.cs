@@ -1018,6 +1018,7 @@ public sealed class GraphViewTests
             Assert.True(view.Breakpoints.Has($"{Logic}#main", 2));
             Assert.Equal([2], view.Canvas!.Scene.Breakpointed);
             Assert.Equal("", view.Status.Text);
+            Assert.Null(ToolTip.GetTip(view.Status));
         });
     }
 

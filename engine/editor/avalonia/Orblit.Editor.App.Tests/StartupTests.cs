@@ -79,9 +79,17 @@ public sealed class StartupTests
             window.FailToStart("No engine library.");
 
             Assert.Equal("No engine library.", window.Status);
-            Assert.False(window.ScenePane.Loading.IsVisible);
-            Assert.False(window.InspectorPane.Loading.IsVisible);
             Assert.Equal("No engine library.", ViewportText(window));
+            foreach (var pane in new[] { window.ScenePane.Loading, window.InspectorPane.Loading })
+            {
+                Assert.True(pane.IsVisible);
+                Assert.Contains("The engine did not start", ReferenceWindow.Texts(pane));
+            }
+
+            Assert.False(window.ScenePane.Empty.IsVisible);
+            Assert.False(window.InspectorPane.Empty.IsVisible);
+            Assert.False(window.SceneTabs.Tab.IsVisible);
+            Assert.False(window.Scenes.IsEnabled);
         });
     }
 

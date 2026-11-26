@@ -123,6 +123,26 @@ public sealed class ScriptViewTests
     }
 
     [Fact]
+    public void The_name_and_status_have_a_tip_only_when_they_say_something()
+    {
+        UiThread.Run(() =>
+        {
+            var view = Open(new Files());
+
+            Assert.Null(ToolTip.GetTip(view.Heading));
+            Assert.Null(ToolTip.GetTip(view.Status));
+
+            Pick(view, "res://spin.cs");
+            view.Editor.Text += "// edit\n";
+            view.Save();
+
+            Assert.Equal("res://spin.cs", ToolTip.GetTip(view.Heading));
+            Assert.NotEqual("", view.Status.Text);
+            Assert.Equal(view.Status.Text, ToolTip.GetTip(view.Status));
+        });
+    }
+
+    [Fact]
     public void Save_is_a_small_primary_icon_with_its_key_on_its_card()
     {
         UiThread.Run(() =>

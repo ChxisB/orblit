@@ -75,7 +75,7 @@ internal sealed class ScriptRow : Grid
         _menu.Items.Clear();
         foreach (var path in Choices())
         {
-            var item = new MenuItem { Header = path };
+            var item = new MenuItem { Header = Parts.Literal(path) };
             item.Click += (_, _) => Chosen?.Invoke(path);
             _menu.Items.Add(item);
         }

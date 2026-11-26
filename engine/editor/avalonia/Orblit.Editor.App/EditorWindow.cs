@@ -367,11 +367,19 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         TakeFilePresses(false);
     }
 
-    /// <summary>The engine did not start. Nothing says loading any more, and the view says why.</summary>
+    /// <summary>The engine did not start. The view says why, the panes point to it, and the Files panel is off.</summary>
     public void FailToStart(string message)
     {
-        _scenePane.ShowStarting(false);
-        _inspectorPane.ShowStarting(false);
+        // The panes keep the places they said loading in, so neither asks for a scene that cannot be opened.
+        _scenePane.ShowStarting(true);
+        _inspectorPane.ShowStarting(true);
+        foreach (var waiting in new[] { _scenePane.Loading, _inspectorPane.Loading })
+        {
+            Parts.Reword(waiting, "The engine did not start", "The view says why.");
+        }
+
+        _sceneTabs.ShowStarting("");
+        _scenes.IsEnabled = false;
         _viewport.Content = ViewportNote(message);
         Fail(message);
     }
