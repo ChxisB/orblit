@@ -189,11 +189,17 @@ dotnet test Orblit.Editor.App.Tests
 dotnet run --project Orblit.Editor.Bridge.Checks
 dotnet run --project Orblit.Editor.Bridge.Checks -- --windowed
 dotnet run --project Orblit.Editor.Bridge.Checks -- --csharp
+dotnet run --project Orblit.Editor.Layout.Checks
 ```
 
-The window tests run on a scene held in memory, with no engine. The headless
-checks run a real engine with no window and read the scene back from the
-file. The windowed checks open their own window and read frames back.
+The window tests run on a scene held in memory, with no engine. The layout
+checks draw every workspace, panel and dialog with the real fonts, at the
+smallest window and a large one. A part that is cut, spills out of its box,
+sits on another or touches one fails the view. The run first checks that each
+of these rules finds a broken layout made for it. Pass `--shots <folder>` to
+save a picture of each. The headless checks run a real engine with no window
+and read the scene back from the file. The windowed checks open their own
+window and read frames back.
 
 The `--csharp` checks attach a script through the bridge with the C# module on.
 They need a library built with `module_csharp_enabled=yes` and `dotnet` on the
@@ -242,5 +248,5 @@ The cause is not known.
   `calls.json` lists the engine calls the editor uses. `EngineCalls.g.cs`
   holds the matching call table.
 - `Orblit.Editor.App` is the Avalonia window and its panels.
-- `Orblit.Editor.App.Tests` and `Orblit.Editor.Bridge.Checks` hold the
-  tests and the checks.
+- `Orblit.Editor.App.Tests`, `Orblit.Editor.Bridge.Checks` and
+  `Orblit.Editor.Layout.Checks` hold the tests and the checks.

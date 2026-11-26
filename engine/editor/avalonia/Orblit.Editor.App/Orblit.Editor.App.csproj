@@ -26,6 +26,7 @@
     <ProjectReference Include="../Orblit.Editor.Bridge/Orblit.Editor.Bridge.csproj" />
     <InternalsVisibleTo Include="Orblit.Editor.App.Tests" />
     <InternalsVisibleTo Include="Orblit.Editor.Live" />
+    <InternalsVisibleTo Include="Orblit.Editor.Layout.Checks" />
   </ItemGroup>
 
 </Project>
