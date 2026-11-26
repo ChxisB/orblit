@@ -17,7 +17,7 @@ if (missed.Count > 0)
 
 var failed = 0;
 var count = 0;
-foreach (var (name, faults) in EditorViews.All(look).Concat(LauncherViews.All(look)))
+foreach (var (name, faults) in EditorViews.All(look).Concat(LauncherViews.All(look)).Append(ViewportDraws.Check()))
 {
     count++;
     if (faults.Count == 0)

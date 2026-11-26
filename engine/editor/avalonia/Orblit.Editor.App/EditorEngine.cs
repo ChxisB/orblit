@@ -79,7 +79,8 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         ViewportReadback? readback = null;
         try
         {
-            host = EngineHost.Create(EngineLibrary.Find(), ["--path", options.Project, "--resolution", ViewportResolution, "--log-file", log.NewFile()]);
+            // The viewport is read from the rendering device, which only the render thread may do.
+            host = EngineHost.Create(EngineLibrary.Find(), ["--path", options.Project, "--resolution", ViewportResolution, "--render-thread", "safe", "--log-file", log.NewFile()]);
             host.Start();
             var session = new EditorSession(host, new RunningScene(host));
             OpenFirstScene(session, options);

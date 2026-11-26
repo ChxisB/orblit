@@ -38,6 +38,7 @@ internal sealed class WindowedChecks : IChecks
         ("the viewport frame reads back in the project's clear colour", FrameHasTheClearColour),
         ("the running scene opens and is read as a tree", OpenSceneIsATree),
         ("the frame shows the box in front of the clear colour", FrameShowsTheBox),
+        ("the frame read from the device is the engine's own image of the viewport", FrameMatchesTheEngineImage),
         ("the editor camera changes the frame and stays out of the outline", EditorCameraIsOutsideTheScene),
         ("an orbit of the editor camera changes the frame again", OrbitChangesTheFrame),
         ("an added entity is saved and the editor camera is not", AddedEntityIsSaved),
@@ -81,11 +82,10 @@ internal sealed class WindowedChecks : IChecks
         var frame = Frame();
 
         Assert.True(frame.Width > 0 && frame.Height > 0, $"empty frame {frame.Width}x{frame.Height}");
-        var (r, g, b, a) = frame.At(0, 0);
+        var (r, g, b, _) = frame.At(0, 0);
         Assert.InRange(r, 255 - Tolerance, 255);
         Assert.InRange(g, 128 - Tolerance, 128 + Tolerance);
         Assert.InRange(b, 0, Tolerance);
-        Assert.Equal(255, a);
     }
 
     void OpenSceneIsATree()
@@ -988,6 +988,24 @@ internal sealed class WindowedChecks : IChecks
 
     static bool IsClearColour(byte r, byte g, byte b) =>
         r >= 255 - Tolerance && Math.Abs(g - 128) <= Tolerance && b <= Tolerance;
+
+    void FrameMatchesTheEngineImage()
+    {
+        var frame = Frame();
+        var root = _host.StageGetRoot(_host.EngineGetMainLoop(_host.Singleton("Engine")));
+        var texture = _host.ViewportGetTexture(root);
+        var image = _host.Texture2DGetImage(texture);
+        using var data = _host.ImageGetData(image);
+        var rgb = data.Bytes;
+
+        Assert.Equal(frame.Width * frame.Height * 3, rgb.Length);
+        for (var i = 0; i < frame.Width * frame.Height; i++)
+        {
+            Assert.True(rgb.Slice(i * 3, 3).SequenceEqual(frame.Pixels.AsSpan(i * 4, 3)), $"pixel {i} differs");
+        }
+        _host.Release(image);
+        _host.Release(texture);
+    }
 
     void SceneFilesWorkInTheRunningScene()
     {

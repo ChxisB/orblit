@@ -33,6 +33,14 @@ public static unsafe class EngineCalls
     static readonly EngineMethod WindowSetSizeMethod = new("Window", "set_size", 1130785943);
     static readonly EngineMethod WindowGetSizeMethod = new("Window", "get_size", 3690982128);
     static readonly EngineMethod ViewportGetTextureMethod = new("Viewport", "get_texture", 1746695840);
+    static readonly EngineMethod ViewportGetViewportRidMethod = new("Viewport", "get_viewport_rid", 2944877500);
+    static readonly EngineMethod RenderingSystemGetRenderingDeviceMethod = new("RenderingSystem", "get_rendering_device", 1405107940);
+    static readonly EngineMethod RenderingSystemViewportGetTextureMethod = new("RenderingSystem", "viewport_get_texture", 3814569979);
+    static readonly EngineMethod RenderingSystemTextureGetRdTextureMethod = new("RenderingSystem", "texture_get_rd_texture", 2790148051);
+    static readonly EngineMethod RenderingDeviceTextureGetFormatMethod = new("RenderingDevice", "texture_get_format", 1374471690);
+    static readonly EngineMethod RenderingDeviceTextureGetDataMethod = new("RenderingDevice", "texture_get_data", 1859412099);
+    static readonly EngineMethod RdTextureFormatGetWidthMethod = new("RDTextureFormat", "get_width", 3905245786);
+    static readonly EngineMethod RdTextureFormatGetHeightMethod = new("RDTextureFormat", "get_height", 3905245786);
     static readonly EngineMethod Texture2DGetImageMethod = new("Texture2D", "get_image", 4190603485);
     static readonly EngineMethod ImageGetWidthMethod = new("Image", "get_width", 3905245786);
     static readonly EngineMethod ImageGetHeightMethod = new("Image", "get_height", 3905245786);
@@ -315,6 +323,72 @@ public static unsafe class EngineCalls
         nint result = 0;
         host.Call(ViewportGetTextureMethod, target, null, &result);
         return result;
+    }
+
+    public static ulong ViewportGetViewportRid(this EngineHost host, nint target)
+    {
+        ulong result = 0;
+        host.Call(ViewportGetViewportRidMethod, target, null, &result);
+        return result;
+    }
+
+    public static nint RenderingSystemGetRenderingDevice(this EngineHost host, nint target)
+    {
+        nint result = 0;
+        host.Call(RenderingSystemGetRenderingDeviceMethod, target, null, &result);
+        return result;
+    }
+
+    public static ulong RenderingSystemViewportGetTexture(this EngineHost host, nint target, ulong viewport)
+    {
+        ulong a0 = viewport;
+        ulong result = 0;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(RenderingSystemViewportGetTextureMethod, target, args, &result);
+        return result;
+    }
+
+    public static ulong RenderingSystemTextureGetRdTexture(this EngineHost host, nint target, ulong texture, bool srgb)
+    {
+        ulong a0 = texture;
+        byte a1 = (byte)(srgb ? 1 : 0);
+        ulong result = 0;
+        void** args = stackalloc void*[] { &a0, &a1 };
+        host.Call(RenderingSystemTextureGetRdTextureMethod, target, args, &result);
+        return result;
+    }
+
+    public static nint RenderingDeviceTextureGetFormat(this EngineHost host, nint target, ulong texture)
+    {
+        ulong a0 = texture;
+        nint result = 0;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(RenderingDeviceTextureGetFormatMethod, target, args, &result);
+        return result;
+    }
+
+    public static NativeBytes RenderingDeviceTextureGetData(this EngineHost host, nint target, ulong texture, long layer)
+    {
+        ulong a0 = texture;
+        long a1 = layer;
+        var result = NativeBytes.Create();
+        void** args = stackalloc void*[] { &a0, &a1 };
+        host.Call(RenderingDeviceTextureGetDataMethod, target, args, result.Slot);
+        return result;
+    }
+
+    public static long RdTextureFormatGetWidth(this EngineHost host, nint target)
+    {
+        long result = 0;
+        host.Call(RdTextureFormatGetWidthMethod, target, null, &result);
+        return (int)result;
+    }
+
+    public static long RdTextureFormatGetHeight(this EngineHost host, nint target)
+    {
+        long result = 0;
+        host.Call(RdTextureFormatGetHeightMethod, target, null, &result);
+        return (int)result;
     }
 
     public static nint Texture2DGetImage(this EngineHost host, nint target)
