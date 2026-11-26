@@ -10,13 +10,15 @@ public sealed class ViewportReadback : IDisposable
 {
     const long FormatRgb8 = 4;
     const long FormatRgba8 = 5;
+    const long FormatRgbHalf = 14;
+    const long FormatRgbaHalf = 15;
 
     readonly EngineHost _host;
     readonly nint _root;
     readonly nint _texture;
     readonly nint _server;
-    // Zero with the OpenGL renderer, which has no rendering device.
-    readonly nint _device;
+    // Zero with the OpenGL renderer, which has no rendering device, and once the target turns out to be HDR.
+    nint _device;
     readonly ulong _target;
 
     public ViewportReadback(EngineHost host)
@@ -55,10 +57,12 @@ public sealed class ViewportReadback : IDisposable
         height = (int)_host.RdTextureFormatGetHeight(format);
         _host.Release(format);
         using var data = _host.RenderingDeviceTextureGetData(_device, texture, 0);
-        // An HDR target holds eight bytes a pixel and is left to the engine.
+        // An HDR target holds eight bytes a pixel. The engine's image reads it from then on, so a frame
+        // does not wait for the GPU twice.
         var length = data.Length;
         if (length != width * height * 4)
         {
+            _device = 0;
             return false;
         }
         Fit(ref rgba, length);
@@ -76,7 +80,7 @@ public sealed class ViewportReadback : IDisposable
         }
         try
         {
-            var format = _host.ImageGetFormat(image);
+            var format = ToEightBits(image);
             if (format != FormatRgb8 && format != FormatRgba8)
             {
                 throw new InvalidOperationException($"Unexpected image format {format}.");
@@ -91,6 +95,20 @@ public sealed class ViewportReadback : IDisposable
         {
             _host.Release(image);
         }
+    }
+
+    // An HDR viewport's image is linear half floats, which the engine's own screenshots convert the same way.
+    // shortcut: two conversions a frame; read the half floats from the device if an HDR project needs the speed.
+    long ToEightBits(nint image)
+    {
+        var format = _host.ImageGetFormat(image);
+        if (format != FormatRgbHalf && format != FormatRgbaHalf)
+        {
+            return format;
+        }
+        _host.ImageLinearToSrgb(image);
+        _host.ImageConvert(image, FormatRgba8);
+        return FormatRgba8;
     }
 
     static void ToRgba(ReadOnlySpan<byte> source, bool hasAlpha, int pixels, ref byte[] rgba)

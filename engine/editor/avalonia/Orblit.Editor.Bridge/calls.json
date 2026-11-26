@@ -29,6 +29,8 @@
   "Image.get_height",
   "Image.get_format",
   "Image.get_data",
+  "Image.linear_to_srgb",
+  "Image.convert",
   "Entity.get_name",
   "Entity.set_name",
   "Entity.add_child",

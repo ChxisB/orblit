@@ -46,6 +46,8 @@ public static unsafe class EngineCalls
     static readonly EngineMethod ImageGetHeightMethod = new("Image", "get_height", 3905245786);
     static readonly EngineMethod ImageGetFormatMethod = new("Image", "get_format", 3847873762);
     static readonly EngineMethod ImageGetDataMethod = new("Image", "get_data", 2362200018);
+    static readonly EngineMethod ImageLinearToSrgbMethod = new("Image", "linear_to_srgb", 3218959716);
+    static readonly EngineMethod ImageConvertMethod = new("Image", "convert", 2120693146);
     static readonly EngineMethod EntityGetNameMethod = new("Entity", "get_name", 2002593661);
     static readonly EngineMethod EntitySetNameMethod = new("Entity", "set_name", 3304788590);
     static readonly EngineMethod EntityAddChildMethod = new("Entity", "add_child", 2868581257);
@@ -424,6 +426,18 @@ public static unsafe class EngineCalls
         var result = NativeBytes.Create();
         host.Call(ImageGetDataMethod, target, null, result.Slot);
         return result;
+    }
+
+    public static void ImageLinearToSrgb(this EngineHost host, nint target)
+    {
+        host.Call(ImageLinearToSrgbMethod, target, null, null);
+    }
+
+    public static void ImageConvert(this EngineHost host, nint target, long format)
+    {
+        long a0 = format;
+        void** args = stackalloc void*[] { &a0 };
+        host.Call(ImageConvertMethod, target, args, null);
     }
 
     public static string EntityGetName(this EngineHost host, nint target)

@@ -39,6 +39,7 @@ internal sealed class WindowedChecks : IChecks
         ("the running scene opens and is read as a tree", OpenSceneIsATree),
         ("the frame shows the box in front of the clear colour", FrameShowsTheBox),
         ("the frame read from the device is the engine's own image of the viewport", FrameMatchesTheEngineImage),
+        ("an HDR viewport reads back in the same colors", HdrFrameHasTheSameColors),
         ("the editor camera changes the frame and stays out of the outline", EditorCameraIsOutsideTheScene),
         ("an orbit of the editor camera changes the frame again", OrbitChangesTheFrame),
         ("an added entity is saved and the editor camera is not", AddedEntityIsSaved),
@@ -1005,6 +1006,22 @@ internal sealed class WindowedChecks : IChecks
         }
         _host.Release(image);
         _host.Release(texture);
+    }
+
+    void HdrFrameHasTheSameColors()
+    {
+        var root = _host.StageGetRoot(_host.EngineGetMainLoop(_host.Singleton("Engine")));
+        _host.ObjectSet(root, "use_hdr_2d", true);
+        try
+        {
+            _host.Pump(FramesToSettle);
+            FrameHasTheClearColour();
+        }
+        finally
+        {
+            _host.ObjectSet(root, "use_hdr_2d", false);
+            _host.Pump(FramesToSettle);
+        }
     }
 
     void SceneFilesWorkInTheRunningScene()
