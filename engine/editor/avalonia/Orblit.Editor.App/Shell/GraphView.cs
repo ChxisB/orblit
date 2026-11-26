@@ -329,7 +329,7 @@ internal sealed class GraphView : Border
         {
             ColumnDefinitions =
             [
-                new(248, GridUnitType.Star) { MinWidth = 200, MaxWidth = 248 },
+                new(248, GridUnitType.Star) { MinWidth = 208, MaxWidth = 248 },
                 new(Gaps.Item, GridUnitType.Pixel),
                 new(616, GridUnitType.Star) { MinWidth = 156 },
                 new(Gaps.Item, GridUnitType.Pixel),

@@ -41,8 +41,8 @@ internal static class Parts
 
     public static ToggleButton IconToggle(string icon, string tip) => Flat(new ToggleButton(), icon, tip);
 
-    /// <summary>The magnifier at the right of a filter box. Centered, because a stretched icon draws squashed.</summary>
-    public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, Gaps.Item, 0), VerticalAlignment = VerticalAlignment.Center };
+    /// <summary>The magnifier at the right of a filter box.</summary>
+    public static EditorIcon SearchIcon() => new("Search") { Margin = new Thickness(0, 0, Gaps.Item, 0) };
 
     /// <summary>
     /// The icon of a tree row: pale, beside its name, and a tint where the row has one. It is

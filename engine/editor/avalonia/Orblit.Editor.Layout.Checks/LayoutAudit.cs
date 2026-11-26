@@ -33,7 +33,7 @@ internal static class LayoutAudit
                 continue;
             }
 
-            var fault = Overflow(control, window) ?? Clipped(control, window) ?? Squeezed(control) ?? TextCut(control) ?? Overlap(control, window) ?? Tight(control, window);
+            var fault = Overflow(control, window) ?? Clipped(control, window) ?? SmallIcon(control) ?? Squeezed(control) ?? TextCut(control) ?? Overlap(control, window) ?? Tight(control, window);
             if (fault is not null)
             {
                 reported.Add(control);
@@ -110,6 +110,19 @@ internal static class LayoutAudit
         var wide = control.DesiredSize.Width - control.Margin.Left - control.Margin.Right - control.Bounds.Width;
         var tall = control.DesiredSize.Height - control.Margin.Top - control.Margin.Bottom - control.Bounds.Height;
         return wide > Rounding || tall > Rounding ? $"squeezed {Math.Max(0, wide):0}x{Math.Max(0, tall):0}" : null;
+    }
+
+    // An icon given less room than its size shrinks to fit, which no other rule sees.
+    static string? SmallIcon(Control control)
+    {
+        if (control is not EditorIcon icon)
+        {
+            return null;
+        }
+
+        var wide = double.IsNaN(icon.Width) ? EditorIcon.DefaultSize : icon.Width;
+        var tall = double.IsNaN(icon.Height) ? EditorIcon.DefaultSize : icon.Height;
+        return wide - icon.Bounds.Width > Slack || tall - icon.Bounds.Height > Slack ? $"icon drawn small, {icon.IconName}" : null;
     }
 
     // Words cut short with "…" pass only when a hover card on the words or a box around them gives them in full.

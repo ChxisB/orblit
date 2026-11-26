@@ -497,8 +497,8 @@ internal sealed class EditorTheme : Styles
     // The theme draws a thin, wide chevron. The reference draws its own 12 pixel arrow icons.
     static Border Arrow(ToggleButton button)
     {
-        var right = new EditorIcon("GuiTreeArrowRight");
-        var down = new EditorIcon("GuiTreeArrowDown");
+        var right = new EditorIcon("GuiTreeArrowRight") { Width = 12, Height = 12 };
+        var down = new EditorIcon("GuiTreeArrowDown") { Width = 12, Height = 12 };
         void Point()
         {
             down.IsVisible = button.IsChecked == true;

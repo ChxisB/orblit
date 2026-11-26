@@ -4,6 +4,7 @@ using Avalonia.Controls.Primitives;
 using Avalonia.Layout;
 using Avalonia.Media;
 using Avalonia.Threading;
+using Orblit.Editor.App.Theme;
 
 namespace Orblit.Editor.Layout.Checks;
 
@@ -18,6 +19,7 @@ internal static class SelfCheck
         ("cut words", "cut short", () => new TextBlock { Width = 40, Text = "More words than fit", TextTrimming = TextTrimming.CharacterEllipsis }),
         ("overlap", "sits on", () => new StackPanel { Children = { Box(20), Box(20, new Thickness(0, -10, 0, 0)) } }),
         ("tight", "needs 4", () => new StackPanel { Children = { new Button { Content = "One" }, new Button { Content = "Two" } } }),
+        ("small icon", "icon drawn small", () => new Border { Width = 10, Child = new EditorIcon("Add") }),
     ];
 
     public static IEnumerable<string> Missed() => s_cases.Where(one => !Finds(one.Broken(), one.Mark)).Select(one => one.Rule);
