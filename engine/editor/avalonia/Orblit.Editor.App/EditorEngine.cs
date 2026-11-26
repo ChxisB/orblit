@@ -25,6 +25,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
     readonly EditorSession _session;
     readonly ViewportParts? _viewport;
     readonly string _project;
+    readonly DiskProject _disk;
     readonly EngineDebugChannel _debug;
     readonly CsharpDebugChannel _csharp;
     Process? _game;
@@ -39,9 +40,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         _session = session;
         _viewport = viewport;
         _project = options.Project;
+        _disk = new DiskProject(options);
         _csharp = new CsharpDebugChannel(options.Project);
-        ProjectName = ProjectSettings.NameOf(options.Project);
-        SceneFile = options.HasScene ? options.Scene : "";
+        SceneFile = _disk.SceneFile;
     }
 
     /// <summary>Follows the log files of this engine and of every game Play starts.</summary>
@@ -308,12 +309,11 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void Save() => _session.Save();
 
-    public IReadOnlyList<string> Scenes() => ProjectScenes.Find(_project);
+    public IReadOnlyList<string> Scenes() => _disk.Scenes();
 
     public string SceneFile { get; private set; }
 
-    /// <summary>Read once, because the title asks for it on every edit and the name does not change while the editor runs.</summary>
-    public string ProjectName { get; }
+    public string ProjectName => _disk.ProjectName;
 
     public void Open(string resourcePath)
     {
@@ -360,9 +360,9 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public string? ScriptOf(nint entity) => _session.ScriptOf(entity);
 
-    public IReadOnlyList<string> Scripts() => ProjectScripts.Find(_project);
+    public IReadOnlyList<string> Scripts() => _disk.Scripts();
 
-    public IReadOnlyList<string> GraphScripts() => ProjectScripts.FindGraphs(_project);
+    public IReadOnlyList<string> GraphScripts() => _disk.GraphScripts();
 
     public IGraphFile OpenGraph(string resourcePath) => new SessionGraphFile(GraphScriptSession.Open(_host, resourcePath));
 
@@ -393,7 +393,7 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
         return Directory.Exists(api) ? [.. Directory.GetFiles(api, "OrblitSharp.dll", SearchOption.AllDirectories).Take(1)] : [];
     }
 
-    public IReadOnlyList<string> ImportedFiles() => ProjectScripts.FindImported(_project);
+    public IReadOnlyList<string> ImportedFiles() => _disk.ImportedFiles();
 
     public string ReadImport(string resourcePath) => File.ReadAllText(ImportFileOf(resourcePath));
 
@@ -519,20 +519,10 @@ internal sealed class EditorEngine : IEditorScene, IDisposable
 
     public void ClearOutput() => Log.Clear();
 
-    public DateTime ModifiedOf(string resourcePath) => File.GetLastWriteTimeUtc(Path.Combine(_project, resourcePath[FileTree.Root.Length..]));
+    public DateTime ModifiedOf(string resourcePath) => _disk.ModifiedOf(resourcePath);
 
-    // shortcut: reads the head of each scene file at each Search. Keep the kinds by write time if a project has thousands of scenes.
-    public string SceneKindOf(string resourcePath)
-    {
-        try
-        {
-            return ProjectScenes.KindOf(File.ReadLines(Path.Combine(_project, resourcePath[FileTree.Root.Length..])));
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
-        {
-            return "";
-        }
-    }
+    public string SceneKindOf(string resourcePath) => _disk.SceneKindOf(resourcePath);
+
 
     // A copy keeps Stop on after the first game closes, so no copy runs on out of reach.
     public bool IsPlaying => _game is { HasExited: false } || _copies.Exists(copy => !copy.HasExited);

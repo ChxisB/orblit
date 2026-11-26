@@ -104,6 +104,17 @@ internal sealed class SceneTabStrip : Grid
         (hidden ? _show : _hide).On(_panels);
     }
 
+    /// <summary>Shows the scene file's tab before the engine can say what its root is, or no tab for no file.</summary>
+    public void ShowStarting(string file)
+    {
+        _tab.IsVisible = file != "";
+        _close.IsEnabled = ShowInFilesButton.IsEnabled = false;
+        // The close mark has its own color, so the disabled state alone does not dim it.
+        _close.Opacity = 0.4;
+        _icon.Content = new EditorIcon("SceneFile") { VerticalAlignment = VerticalAlignment.Center };
+        _name.Text = Path.GetFileNameWithoutExtension(file);
+    }
+
     /// <summary>
     /// Shows the open scene as a tab with its root's icon and this label, or no tab for none. Show in Files is on
     /// while the scene has a res:// <paramref name="file"/>.
@@ -111,6 +122,7 @@ internal sealed class SceneTabStrip : Grid
     public void Show(OutlineNode? root, string label, string file)
     {
         _tab.IsVisible = _close.IsEnabled = root is not null;
+        _close.Opacity = 1;
         ShowInFilesButton.IsEnabled = file != "";
         _find.Header = Parts.Noted(ShowInFiles, file == "" ? "Save the scene first. Then it has a file." : $"Finds {Path.GetFileName(file)} in the Files panel");
         if (root is null)

@@ -6,9 +6,47 @@ using Orblit.Editor.Bridge;
 
 namespace Orblit.Editor.App;
 
-/// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
-internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExportGame
+/// <summary>
+/// What the window shows of a project from its folder alone, so it can fill those parts before the engine
+/// starts. The window owns this interface.
+/// </summary>
+internal interface IProjectFiles
 {
+    /// <summary>The res:// path of the open scene, or an empty string when it has no file.</summary>
+    string SceneFile { get; }
+
+    /// <summary>The project's name, or an empty string when it has none.</summary>
+    string ProjectName { get; }
+
+    /// <summary>The res:// paths of the project's scene files and, with a slash on the end, of its folders.</summary>
+    IReadOnlyList<string> Scenes();
+
+    /// <summary>The res:// paths of the project's C# files.</summary>
+    IReadOnlyList<string> Scripts();
+
+    /// <summary>The res:// paths of the project's graph scripts.</summary>
+    IReadOnlyList<string> GraphScripts();
+
+    /// <summary>The res:// paths of the files the engine imports.</summary>
+    IReadOnlyList<string> ImportedFiles();
+
+    /// <summary>When the project file was last written, in UTC.</summary>
+    DateTime ModifiedOf(string resourcePath);
+
+    /// <summary>"2D" or "3D" by the root of the scene file, or empty when the root is neither or the file cannot be read.</summary>
+    string SceneKindOf(string resourcePath);
+}
+
+/// <summary>What the editor window needs from the open scene. The window owns this interface.</summary>
+internal interface IEditorScene : IProjectFiles, IScriptFiles, IGraphFiles, IImportFiles, IExportGame
+{
+    // The script, graph and import views each name one of these lists too, so the scene names each once.
+    new IReadOnlyList<string> Scripts();
+
+    new IReadOnlyList<string> GraphScripts();
+
+    new IReadOnlyList<string> ImportedFiles();
+
     // Both script views ask for the classes a new script can extend, so the window names the one list they share.
     new IReadOnlyList<string> AddableClasses();
 
@@ -159,15 +197,6 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
 
     void Save();
 
-    /// <summary>The res:// path of the open scene, or an empty string when it has no file.</summary>
-    string SceneFile { get; }
-
-    /// <summary>The project's name, or an empty string when it has none.</summary>
-    string ProjectName { get; }
-
-    /// <summary>The res:// paths of the project's scene files and, with a slash on the end, of its folders.</summary>
-    IReadOnlyList<string> Scenes();
-
     /// <summary>Replaces the open scene with this one. Throws <see cref="IOException"/> when it cannot.</summary>
     void Open(string resourcePath);
 
@@ -182,12 +211,6 @@ internal interface IEditorScene : IScriptFiles, IGraphFiles, IImportFiles, IExpo
 
     /// <summary>Adds the scene file under the entity as a reference and not a copy, and returns the new entity.</summary>
     nint Instance(nint parent, string resourcePath);
-
-    /// <summary>When the project file was last written, in UTC.</summary>
-    DateTime ModifiedOf(string resourcePath);
-
-    /// <summary>"2D" or "3D" by the root of the scene file, or empty when the root is neither or the file cannot be read.</summary>
-    string SceneKindOf(string resourcePath);
 
     /// <summary>The entity's class and each class it comes from, its own first, down to Entity.</summary>
     IReadOnlyList<string> ClassChainOf(nint entity);

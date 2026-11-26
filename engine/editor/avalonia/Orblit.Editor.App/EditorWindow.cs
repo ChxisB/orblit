@@ -29,12 +29,10 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // The same tick notices a game that ended on its own.
     static readonly TimeSpan PollInterval = TimeSpan.FromMilliseconds(250);
 
+    const string NoViewport = "No viewport. The editor was started with --headless.";
+
     readonly InspectorPanel _inspector = new();
-    readonly ContentControl _viewport = new()
-    {
-        // In the middle, clear of the tools over the top of the view.
-        Content = new TextBlock { Margin = new Thickness(Gaps.Dialog), HorizontalAlignment = HorizontalAlignment.Center, VerticalAlignment = VerticalAlignment.Center, TextWrapping = Avalonia.Media.TextWrapping.Wrap, Text = "No viewport. The editor was started with --headless." },
-    };
+    readonly ContentControl _viewport = new() { Content = ViewportNote(NoViewport) };
     readonly EntityTools _tools = new();
     readonly MoveTools _move = new();
     readonly SignalsPane _signals = new();
@@ -102,6 +100,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     const double ViewportMiddle = 480;
     const double WorkspaceMiddle = 700;
     IEditorScene? _scene;
+    // The scene once it loads, and the project's folder before that.
+    IProjectFiles? _files;
     OutlineNode? _root;
     readonly RulerPoints _ruler = new();
     bool _edited;
@@ -349,10 +349,63 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     /// <summary>The modifier that makes a shortcut: Command on macOS, Control elsewhere.</summary>
     internal KeyModifiers CommandKey => this.GetPlatformSettings()?.HotkeyConfiguration.CommandModifiers ?? KeyModifiers.Control;
 
+    /// <summary>
+    /// Shows what the project's folder tells while the engine starts. The parts that wait for the engine say so,
+    /// and the Files panel takes no press, since no scene is there to open a file in.
+    /// </summary>
+    public void ShowProject(IProjectFiles project)
+    {
+        _files = project;
+        ShowTitle();
+        ShowScenes();
+        _scenes.MarkOpen(project.SceneFile);
+        _sceneTabs.ShowStarting(project.SceneFile);
+        _scenePane.ShowStarting(true);
+        _inspectorPane.ShowStarting(true);
+        _toolbar.IsVisible = false;
+        _viewport.Content = ViewportNote("Loading the view…");
+        TakeFilePresses(false);
+    }
+
+    /// <summary>The engine did not start. Nothing says loading any more, and the view says why.</summary>
+    public void FailToStart(string message)
+    {
+        _scenePane.ShowStarting(false);
+        _inspectorPane.ShowStarting(false);
+        _viewport.Content = ViewportNote(message);
+        Fail(message);
+    }
+
+    void TakeFilePresses(bool take)
+    {
+        _scenes.IsHitTestVisible = take;
+        KeyboardNavigation.SetTabNavigation(_scenes, take ? KeyboardNavigationMode.Continue : KeyboardNavigationMode.None);
+    }
+
+    // In the middle, clear of the tools over the top of the view.
+    static TextBlock ViewportNote(string text) => new()
+    {
+        Margin = new Thickness(Gaps.Dialog),
+        HorizontalAlignment = HorizontalAlignment.Center,
+        VerticalAlignment = VerticalAlignment.Center,
+        TextWrapping = TextWrapping.Wrap,
+        Text = text,
+    };
+
     public void Load(IEditorScene editorScene)
     {
         var scene = new UndoableScene(editorScene, _history);
         _scene = scene;
+        _files = scene;
+        _scenePane.ShowStarting(false);
+        _inspectorPane.ShowStarting(false);
+        _toolbar.IsVisible = !_planar;
+        TakeFilePresses(true);
+        if (_viewport.Content is not ViewportControl)
+        {
+            _viewport.Content = ViewportNote(NoViewport);
+        }
+
         // The button can be pressed while the engine starts, before there is a scene to tell.
         scene.KeepChildren = _toolbar.KeepChildren;
         _script.Show(scene);
@@ -1033,8 +1086,8 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // not hold yet. The bar draws a dot for those edits, so the mark goes in the window title alone.
     void ShowTitle()
     {
-        var project = _scene?.ProjectName is { Length: > 0 } name ? name : "Unnamed Project";
-        var scene = _scene?.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : null;
+        var project = _files?.ProjectName is { Length: > 0 } name ? name : "Unnamed Project";
+        var scene = _files?.SceneFile is { Length: > 0 } file ? Path.GetFileName(file) : null;
         var title = scene is null ? project : $"{scene} - {project}";
         Title = _edited ? $"(*) {title}" : title;
         _titleBar.Show(project, scene, _edited);
@@ -1370,8 +1423,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // shortcut: one file stat per scene on each refresh. Read the times only for a newest first sort when a project has thousands.
     void ShowScenes()
     {
-        IReadOnlyList<string> files = [.. _scene!.Scenes(), .. _scene.Scripts(), .. _scene.GraphScripts(), .. _scene.ImportedFiles()];
-        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, _scene.ModifiedOf), _scene.SceneKindOf);
+        var project = _files!;
+        IReadOnlyList<string> files = [.. project.Scenes(), .. project.Scripts(), .. project.GraphScripts(), .. project.ImportedFiles()];
+        _scenes.Show(files, files.Where(path => !path.EndsWith('/')).Distinct().ToDictionary(path => path, project.ModifiedOf), project.SceneKindOf);
     }
 
     // A script opens in its workspace. It is opened before the workspace shows, so the workspace's list shows it chosen.

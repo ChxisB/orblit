@@ -99,11 +99,17 @@ internal sealed class InspectorPane : Grid
         SetRow(filter, 1);
         SetRow(_viewer, 2);
         SetRow(Empty, 2);
+        SetRow(Loading, 2);
+        Loading.IsVisible = false;
         Children.Add(history);
         Children.Add(filter);
         Children.Add(_viewer);
         Children.Add(Empty);
+        Children.Add(Loading);
     }
+
+    /// <summary>What the pane says while the engine starts.</summary>
+    internal StackPanel Loading { get; } = Parts.EmptyState("ListSelect", "Loading", "The engine is starting.");
 
     internal ScrollViewer Viewer => _viewer;
 
@@ -134,6 +140,13 @@ internal sealed class InspectorPane : Grid
 
     /// <summary>Raised with the handle of an object the history goes back to.</summary>
     public event Action<nint>? Picked;
+
+    /// <summary>Says the editor is loading in place of saying nothing is selected.</summary>
+    public void ShowStarting(bool starting)
+    {
+        Loading.IsVisible = starting;
+        Empty.IsVisible = !starting && !_inspected.IsVisible;
+    }
 
     /// <summary>
     /// Shows the picked entities in the property list, names the selected one, which is last, or counts them in the

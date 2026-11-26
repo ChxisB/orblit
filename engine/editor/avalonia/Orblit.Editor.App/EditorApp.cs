@@ -3,7 +3,7 @@ using System.Diagnostics;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Threading;
+using Avalonia.Rendering.Composition;
 using Orblit.Editor.App.Launcher;
 using Orblit.Editor.App.Shell;
 using Orblit.Editor.App.Theme;
@@ -16,10 +16,6 @@ namespace Orblit.Editor.App;
 /// </summary>
 internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, EditorEngine>? loaded = null, ProjectList? projects = null) : Application
 {
-    // The engine takes over NSApplication when it starts. Started before Avalonia finishes launching,
-    // it runs the app setup twice, so the first window must be open for a second first.
-    static readonly TimeSpan EngineStartDelay = TimeSpan.FromSeconds(1);
-
     EditorEngine? _engine;
 
     public override void Initialize() => EditorTheme.Apply(this);
@@ -64,7 +60,13 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
     EditorWindow Edit(IClassicDesktopStyleApplicationLifetime desktop, EditorOptions chosen)
     {
         var window = new EditorWindow(settings: projects?.Settings());
-        window.Opened += (_, _) => DispatcherTimer.RunOnce(() => StartEngine(window, chosen), EngineStartDelay);
+        ShowFromDisk(window, chosen);
+        // The engine start holds the UI thread for about a second, so the first frame is drawn before it.
+        window.Opened += async (_, _) =>
+        {
+            await ElementComposition.GetElementVisual(window)!.Compositor.RequestCompositionBatchCommitAsync().Rendered;
+            StartEngine(window, chosen);
+        };
         desktop.ShutdownMode = ShutdownMode.OnExplicitShutdown;
         desktop.ShutdownRequested += (_, e) =>
         {
@@ -82,6 +84,19 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
             _engine.Dispose();
         };
         return window;
+    }
+
+    // The engine reports a folder it cannot read too, so the window only says why and carries on.
+    static void ShowFromDisk(EditorWindow window, EditorOptions chosen)
+    {
+        try
+        {
+            window.ShowProject(new DiskProject(chosen));
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException)
+        {
+            window.Fail(error.Message);
+        }
     }
 
     // Git is the user's own install. Its message says why it failed, so it is passed on as it is.
@@ -119,7 +134,7 @@ internal sealed class EditorApp(EditorOptions options, Action<EditorWindow, Edit
         // The window is the only place an error can be shown, so it reports every start failure.
         catch (Exception error) when (error is IOException or InvalidOperationException or TimeoutException or DllNotFoundException)
         {
-            window.Fail(error.Message);
+            window.FailToStart(error.Message);
         }
     }
 }
