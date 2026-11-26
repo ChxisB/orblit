@@ -1062,6 +1062,7 @@ OS_MacOS::OS_MacOS(const char *p_execpath, int p_argc, char **p_argv) {
 // MARK: - OS_MacOS_NSApp
 
 void OS_MacOS_NSApp::run() {
+	runs_app = true;
 	[NSApp run]; // Note: this call will never return. Use `OS_MacOS_NSApp::cleanup()` for cleanup.
 }
 

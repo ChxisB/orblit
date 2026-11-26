@@ -27,12 +27,14 @@
 	bool reduce_transparency;
 	bool voice_over;
 	OS_MacOS_NSApp *os_mac;
+	id<NSApplicationDelegate> host_delegate;
 }
 
 - (OrblitApplicationDelegate *)initWithOS:(OS_MacOS_NSApp *)os {
 	self = [super init];
 	if (self) {
 		os_mac = os;
+		host_delegate = NSApp.delegate; // This delegate has not taken its place yet.
 	}
 
 	[[NSWorkspace sharedWorkspace] addObserver:self forKeyPath:@"voiceOverEnabled" options:(NSKeyValueObservingOptionNew | NSKeyValueObservingOptionOld) context:(void *)orblit_ac_ctx];
@@ -113,7 +115,12 @@
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
-	os_mac->start_main();
+	// A host that loads the engine as a library sets it up and runs it itself, so the launch is the host's.
+	if (os_mac->is_running_app()) {
+		os_mac->start_main();
+	} else if ([host_delegate respondsToSelector:@selector(applicationDidFinishLaunching:)]) {
+		[host_delegate applicationDidFinishLaunching:notification];
+	}
 }
 
 static const char *orblit_ac_ctx = "gd_accessibility_observer_ctx";
