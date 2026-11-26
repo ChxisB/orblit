@@ -8,7 +8,7 @@ using Avalonia.Media.Immutable;
 
 namespace Orblit.Editor.App.Theme;
 
-/// <summary>Draws one editor icon inside the control, in its own proportions. The themed colour is the inherited text foreground.</summary>
+/// <summary>Draws one editor icon inside the control, in its own proportions. The themed color is the inherited text foreground.</summary>
 internal sealed class EditorIcon : Control
 {
     public const double DefaultSize = 16;

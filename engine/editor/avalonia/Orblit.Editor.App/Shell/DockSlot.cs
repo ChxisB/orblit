@@ -1,19 +1,23 @@
 namespace Orblit.Editor.App.Shell;
 
-/// <summary>The three places a dock can sit: the left column over and under, and the right column.</summary>
+/// <summary>The four places a group of panels can sit: the left and right columns, each over and under.</summary>
 internal enum DockSlot
 {
     UpperLeft,
     LowerLeft,
-    Right,
+    UpperRight,
+    LowerRight,
 }
 
 internal static class DockSlotNames
 {
+    public static bool IsLeft(this DockSlot slot) => slot is DockSlot.UpperLeft or DockSlot.LowerLeft;
+
     public static string Label(this DockSlot slot) => slot switch
     {
         DockSlot.UpperLeft => "Left column, top",
         DockSlot.LowerLeft => "Left column, bottom",
-        _ => "Right column",
+        DockSlot.UpperRight => "Right column, top",
+        _ => "Right column, bottom",
     };
 }

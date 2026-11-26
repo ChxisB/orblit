@@ -43,8 +43,8 @@ internal sealed class SideColumns : Grid
 
     protected override Size MeasureOverride(Size constraint)
     {
-        // A folded side is as narrow as its rail, and keeps what it asked for until it opens.
-        var open = new[] { Left, Right }.Where(side => ColumnDefinitions[side].MinWidth > DockSide.RailWidth).ToArray();
+        // A side with nothing open takes no width, and keeps what it asked for until something opens.
+        var open = new[] { Left, Right }.Where(side => ColumnDefinitions[side].MinWidth > 0).ToArray();
         foreach (var side in open.Where(side => ColumnDefinitions[side].Width.Value != _got[side]))
         {
             _asked[side] = ColumnDefinitions[side].Width.Value;

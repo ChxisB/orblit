@@ -725,6 +725,23 @@ public sealed class EditorMenuTests
     }
 
     [Fact]
+    public void A_Panels_check_turned_on_opens_its_collapsed_group()
+    {
+        UiThread.Run(() =>
+        {
+            var window = OpenAtReferenceSize();
+            Click(window.SceneDock.CollapseButton);
+
+            Press(Panel(window, "Import"));
+            Assert.False(window.SceneDock.IsEffectivelyVisible);
+            Press(Panel(window, "Import"));
+            window.UpdateLayout();
+
+            Assert.True(window.SceneDock.IsEffectivelyVisible);
+        });
+    }
+
+    [Fact]
     public void All_keys_opens_a_sheet_of_the_menu_keys_and_the_keys_of_the_window_s_own_buttons()
     {
         UiThread.Run(() =>

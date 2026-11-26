@@ -75,26 +75,16 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     readonly DockTabs _fileDock;
     readonly InspectorPane _inspectorPane;
     readonly DockTabs _inspectorDock;
-    readonly SideColumns _columns = new() { Margin = new Thickness(Gaps.Item, 0, Gaps.Item, Gaps.Item), LeastMiddle = ViewportMiddle };
-    readonly DockSide _leftSide;
-    readonly DockSide _rightSide;
+    readonly DockArea _docks;
     readonly CenterArea _center;
     readonly ExportTool _export = new();
     readonly ScriptView _script;
     readonly ImportPane _import = new();
     readonly GraphView _graph;
     readonly GameView _game;
-    readonly Dictionary<DockSlot, Border> _slots = Enum.GetValues<DockSlot>().ToDictionary(slot => slot, _ => new Border());
-    readonly Dictionary<DockTabs, Window> _floats = [];
-    readonly Dictionary<DockTabs, DockSlot> _homes = [];
 
-    // The sides a workspace folds to their rails, by workspace. A workspace not listed keeps both open.
-    static readonly Dictionary<string, (bool Left, bool Right)> s_folds = new()
-    {
-        [TitleBar.Script] = (true, true),
-        [TitleBar.Graph] = (true, true),
-        [TitleBar.Game] = (true, true),
-    };
+    // The workspaces that start with every panel group collapsed. A workspace not listed shows what the user left open.
+    static readonly string[] s_folding = [TitleBar.Script, TitleBar.Graph, TitleBar.Game];
     // The middle's least width. A workspace that folds the sides lays its own columns out in the middle, so it needs
     // more of it when a side is opened again.
     const double ViewportMiddle = 480;
@@ -207,31 +197,19 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _game.StopRequested += Stop;
         _game.ShowWindowRequested += () => _scene?.ShowGameWindow();
         _frame.Click += (_, _) => Frame();
-        _sceneDock = new DockTabs(("Scene", _scenePane), ("Import", _import)) { Slot = DockSlot.UpperLeft, Icon = "SceneFile" };
-        _fileDock = new DockTabs(("Files", _scenes), ("History", _historyPane)) { Slot = DockSlot.LowerLeft, Icon = "Filesystem" };
-        _fileDock.AddTool("History", _historyPane.ClearButton);
         _inspectorPane = new InspectorPane(_inspector);
         _inspectorPane.Picked += _scenePane.Select;
-        _inspectorDock = new DockTabs(("Inspector", _inspectorPane), ("Signals", _signals)) { Slot = DockSlot.Right, Icon = "ListSelect" };
-        WireDocks();
-        _leftSide = new DockSide(LeftColumn(), () => DocksIn(DockSlot.UpperLeft, DockSlot.LowerLeft));
-        _rightSide = new DockSide(_slots[DockSlot.Right], () => DocksIn(DockSlot.Right));
-        foreach (var side in new[] { _leftSide, _rightSide })
-        {
-            // A side folds from Hide panels, its own button or a workspace, so the label follows the rails.
-            side.Rail.PropertyChanged += (_, e) =>
-            {
-                if (e.Property == IsVisibleProperty)
-                {
-                    _sceneTabs.ShowPanelsHidden(_leftSide.IsFolded && _rightSide.IsFolded);
-                }
-            };
-        }
+        _sceneDock = new DockTabs(new DockPage("Scene", "SceneFile", _scenePane), new DockPage("Import", "Load", _import)) { Slot = DockSlot.UpperLeft };
+        _fileDock = new DockTabs(new DockPage("Files", "Filesystem", _scenes), new DockPage("History", "History", _historyPane, _historyPane.ClearButton)) { Slot = DockSlot.LowerLeft };
+        _inspectorDock = new DockTabs(new DockPage("Inspector", "ListSelect", _inspectorPane), new DockPage("Signals", "Signals", _signals)) { Slot = DockSlot.UpperRight };
         _toolbar = new ViewportToolbar(_frame, CommandKey);
         _toolbar.LockButton.Click += (_, _) => ToggleFlag(_scene!.SetLocked, selected => selected.Locked, "Locked", "Unlocked");
         _toolbar.GroupButton.Click += (_, _) => ToggleFlag(_scene!.SetGrouped, selected => selected.Grouped, "Grouped", "Ungrouped");
         _toolbar.KeepChildrenButton.IsCheckedChanged += (_, _) => _scene?.KeepChildren = _toolbar.KeepChildren;
         _center = new CenterArea(new CenterParts(_sceneTabs, _toolbar, _viewport, _bottomBar, CommandKey));
+        _docks = new DockArea(_center, _sceneDock, _fileDock, _inspectorDock) { LeastMiddle = ViewportMiddle };
+        _docks.Said += message => Say(message);
+        _docks.Changed += () => _sceneTabs.ShowPanelsHidden(_docks.AllCollapsed);
         _center.Output.ClearRequested += () =>
         {
             _scene?.ClearOutput();
@@ -280,9 +258,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
 
     internal DockTabs InspectorDock => _inspectorDock;
 
-    internal DockSide LeftSide => _leftSide;
+    internal DockSide LeftSide => _docks.Left;
 
-    internal DockSide RightSide => _rightSide;
+    internal DockSide RightSide => _docks.Right;
 
     internal CenterArea Center => _center;
 
@@ -506,10 +484,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
     // The 2D view is on for the 2D workspace alone, so any other workspace gives the viewport back to 3D.
     void ChooseWorkspace(string name)
     {
-        var (left, right) = s_folds.GetValueOrDefault(name);
-        _columns.LeastMiddle = s_folds.ContainsKey(name) ? WorkspaceMiddle : ViewportMiddle;
-        _leftSide.Fold(left);
-        _rightSide.Fold(right);
+        var folds = s_folding.Contains(name);
+        _docks.LeastMiddle = folds ? WorkspaceMiddle : ViewportMiddle;
+        _docks.UseWorkspaceFolds(folds);
         _center.ShowWorkspace(name);
         _planar = name == TitleBar.Planar;
         _center.Overlay.Planar = _planar;
@@ -810,7 +787,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         {
             foreach (var title in dock.Titles)
             {
-                actions[title] = new(() => dock.ToggleTab(title), Checked: dock.Shown(title));
+                actions[title] = new(() => _docks.ToggleTab(dock, title), Checked: dock.Shown(title));
             }
         }
 
@@ -953,96 +930,6 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         {
             Fail(error.Message);
         }
-    }
-
-    // The docks sit in three slots. A dock sent to a slot trades places with the dock that sits there. The slot each
-    // starts in is its home, where Put all panels back puts it.
-    void WireDocks()
-    {
-        foreach (var dock in new[] { _sceneDock, _fileDock, _inspectorDock })
-        {
-            _slots[dock.Slot].Child = dock;
-            _homes[dock] = dock.Slot;
-            dock.MoveRequested += to => MoveDock(dock, to);
-            dock.FloatRequested += () => FloatDock(dock);
-            dock.ResetRequested += ResetLayout;
-        }
-    }
-
-    void ResetLayout()
-    {
-        foreach (var floating in _floats.Values.ToList())
-        {
-            floating.Close();
-        }
-
-        foreach (var slot in _slots.Values)
-        {
-            slot.Child = null;
-        }
-
-        foreach (var (dock, home) in _homes)
-        {
-            _slots[home].Child = dock;
-            dock.Slot = home;
-            dock.ShowAllTabs();
-        }
-
-        Say("Reset the layout. Every dock is back in its place with all its tabs.");
-    }
-
-    // A floating dock docks before it moves. A dock that floats keeps a slot, so a move can trade with it, and it
-    // docks in the slot it traded for.
-    void MoveDock(DockTabs dock, DockSlot to)
-    {
-        _floats.GetValueOrDefault(dock)?.Close();
-        var from = dock.Slot;
-        var other = _homes.Keys.Single(each => each.Slot == to);
-        _slots[from].Child = null;
-        _slots[to].Child = null;
-        _slots[to].Child = dock;
-        _slots[from].Child = other.Floats ? null : other;
-        dock.Slot = to;
-        other.Slot = from;
-        Say($"Moved {dock.Title} to the {to.Label().ToLowerInvariant()}. The layout is not saved.");
-    }
-
-    // shortcut: a floating dock's slot stays empty, as a dock with every tab hidden leaves it, and the editor's keys
-    // do not reach the float window. Close the gap and route the keys when floating docks are saved in the layout.
-    void FloatDock(DockTabs dock)
-    {
-        if (_floats.TryGetValue(dock, out var floating))
-        {
-            floating.Close();
-            return;
-        }
-
-        // The window is larger than the dock by its edge, and starts that far up and left, so the dock stays put.
-        const double Edge = Gaps.Item;
-        var size = dock.Bounds.Size;
-        var window = new Window
-        {
-            Title = dock.Title,
-            Width = size.Width + 2 * Edge,
-            Height = size.Height + 2 * Edge,
-            Padding = new Thickness(Edge),
-            ShowInTaskbar = false,
-            WindowStartupLocation = WindowStartupLocation.Manual,
-            Position = dock.PointToScreen(new Point(-Edge, -Edge)),
-        };
-        _slots[dock.Slot].Child = null;
-        window.Content = dock;
-        window.Closed += (_, _) =>
-        {
-            window.Content = null;
-            _floats.Remove(dock);
-            dock.Floats = false;
-            _slots[dock.Slot].Child = dock;
-        };
-        _floats[dock] = window;
-        dock.Floats = true;
-        window.Show(this);
-        Say($"{dock.Title} is in a window of its own. Close it, or choose {DockTabs.PutBack} in its menu.");
     }
 
     // The Reset menu and the snap actions change the selected entity's place, the Collision menu gives a mesh a
@@ -1250,19 +1137,20 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         return $"{where}{error.Text.TrimEnd('.')}. ";
     }
 
-    // Folds both sides while either shows, so a second press brings both back. The bottom panel shuts with them
-    // and the one that was open comes back with them.
+    // Collapses every panel group while any shows, so a second press brings back what was open. The bottom panel
+    // shuts with them and the one that was open comes back with them.
     void TogglePanels()
     {
-        var fold = !_leftSide.IsFolded || !_rightSide.IsFolded;
-        _leftSide.Fold(fold);
-        _rightSide.Fold(fold);
-        if (fold)
+        if (!_docks.AllCollapsed)
         {
+            _docks.HidePanels();
             _shutPanel = _bottomBar.OpenPanel;
             _bottomBar.Open(-1);
+            return;
         }
-        else if (_shutPanel >= 0)
+
+        _docks.ShowPanels();
+        if (_shutPanel >= 0)
         {
             _bottomBar.Open(_shutPanel);
         }
@@ -1348,14 +1236,12 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         _sceneTabs.CloseButton.Click += (_, _) => Leave("close", () => Change(() => _scene!.Close()));
         _sceneTabs.ShowInFilesButton.Click += (_, _) =>
         {
-            _fileDock.Select(0);
+            _docks.Show(_fileDock, 0);
             _scenes.Reveal(_scene!.SceneFile);
         };
-        // The Graph workspace folds the Files panel away, so it unfolds to show the file.
         _graph.ShowInFilesButton.Click += (_, _) =>
         {
-            _leftSide.Fold(false);
-            _fileDock.Select(0);
+            _docks.Show(_fileDock, 0);
             _scenes.Reveal(_graph.Current!);
         };
     }
@@ -1451,7 +1337,7 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
                 break;
             case FileKind.Imported:
                 _import.Open(resourcePath);
-                _sceneDock.Select(1);
+                _docks.Show(_sceneDock, 1);
                 break;
             default:
                 Open(resourcePath);
@@ -1521,45 +1407,9 @@ internal sealed class EditorWindow : Window, IAppMenuTarget
         }
     }
 
-    Grid LeftColumn()
+    Grid Layout()
     {
-        var left = new Grid { RowDefinitions = [new(GridLength.Star) { MinHeight = 120 }, new(Gaps.Item, GridUnitType.Pixel), new(GridLength.Star) { MinHeight = 120 }] };
-        Fill(left, _slots[DockSlot.UpperLeft], 0);
-        Fill(left, RowSplitter(), 1);
-        Fill(left, _slots[DockSlot.LowerLeft], 2);
-        return left;
-    }
-
-    IEnumerable<DockTabs> DocksIn(params DockSlot[] slots) => slots.Select(slot => _slots[slot].Child).OfType<DockTabs>();
-
-    Control Layout()
-    {
-        Fill(_columns, _leftSide, 0);
-        Fill(_columns, _leftSide.Splitter, 1);
-        Fill(_columns, _center, 2);
-        Fill(_columns, _rightSide.Splitter, 3);
-        Fill(_columns, _rightSide, 4);
-        var root = new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*") };
-        Fill(root, _titleBar, 0);
-        Fill(root, _columns, 1);
-        return root;
-    }
-
-    // Between the left side's two docks. Each side has its own splitter to the middle.
-    static GridSplitter RowSplitter() => new() { Background = Brushes.Transparent, ResizeDirection = GridResizeDirection.Rows };
-
-    // Puts the child in the next row of a vertical grid, or the next column of a horizontal one.
-    static void Fill(Grid grid, Control child, int slot)
-    {
-        if (grid.ColumnDefinitions.Count > 0)
-        {
-            Grid.SetColumn(child, slot);
-        }
-        else
-        {
-            Grid.SetRow(child, slot);
-        }
-
-        grid.Children.Add(child);
+        Grid.SetRow(_docks, 1);
+        return new Grid { RowDefinitions = new RowDefinitions($"{TitleBar.BarHeight},*"), Children = { _titleBar, _docks } };
     }
 }

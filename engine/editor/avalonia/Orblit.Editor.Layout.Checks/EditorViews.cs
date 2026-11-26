@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using Avalonia.Interactivity;
 using Avalonia.LogicalTree;
 using Orblit.Editor.App;
 using Orblit.Editor.App.Shell;
@@ -21,6 +22,9 @@ internal static class EditorViews
         ("3D, sides narrow", (window, _) => Then(window, Select, w => Sides(w, wide: false))),
         ("3D, sides wide", (window, _) => Then(window, Select, w => Sides(w, wide: true))),
         ("3D, sides folded", (window, _) => Fold(window)),
+        ("3D, one panel collapsed", (window, _) => Then(window, Select, w => Click(w.SceneDock.CollapseButton))),
+        ("3D, a panel on each rail", (window, _) => Then(window, Select, CollapseOneEachSide)),
+        ("3D, a panel moved under the Inspector", (window, _) => Then(window, Select, w => w.SceneDock.MoveItems[(int)DockSlot.LowerRight].RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent)))),
         ("2D", (window, _) => Tab(window, "2D")),
         ("Script", (window, _) => Tab(window, "Script")),
         ("Script open", (window, _) => OpenScript(window)),
@@ -237,8 +241,11 @@ internal static class EditorViews
     // Both sides at the least width a splitter allows, or both as wide as they go with the middle at its least.
     static void Sides(EditorWindow window, bool wide)
     {
-        window.LeftSide.Fold(false);
-        window.RightSide.Fold(false);
+        foreach (var button in window.LeftSide.RailButtons.Concat(window.RightSide.RailButtons).ToList())
+        {
+            Click(button);
+        }
+
         window.UpdateLayout();
         var body = (Grid)window.LeftSide.Parent!;
         var (left, middle, right) = (body.ColumnDefinitions[0], body.ColumnDefinitions[2], body.ColumnDefinitions[4]);
@@ -249,8 +256,16 @@ internal static class EditorViews
 
     static void Fold(EditorWindow window)
     {
-        window.LeftSide.Fold(true);
-        window.RightSide.Fold(true);
+        foreach (var group in new[] { window.SceneDock, window.FileDock, window.InspectorDock })
+        {
+            Click(group.CollapseButton);
+        }
+    }
+
+    static void CollapseOneEachSide(EditorWindow window)
+    {
+        Click(window.SceneDock.CollapseButton);
+        Click(window.InspectorDock.CollapseButton);
     }
 
     static Button ConnectButton(EditorWindow window) =>

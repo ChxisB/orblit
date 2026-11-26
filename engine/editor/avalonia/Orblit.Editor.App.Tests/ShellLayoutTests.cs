@@ -356,16 +356,18 @@ public sealed class ShellLayoutTests
     }
 
     [Fact]
-    public void The_two_side_gaps_resize_columns_and_the_left_gap_resizes_rows()
+    public void The_gaps_resize_the_side_columns_and_the_groups_in_a_side()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
             var splitters = window.GetVisualDescendants().OfType<GridSplitter>().ToArray();
 
-            Assert.Equal(3, splitters.Length);
+            Assert.Equal(4, splitters.Length);
             Assert.Equal(2, splitters.Count(splitter => splitter.ResizeDirection == GridResizeDirection.Columns));
-            Assert.Equal(1, splitters.Count(splitter => splitter.ResizeDirection == GridResizeDirection.Rows));
+            // The right side has one group, so only the left side's gap between groups shows.
+            Assert.Equal(2, splitters.Count(splitter => splitter.ResizeDirection == GridResizeDirection.Rows));
+            Assert.Single(splitters, splitter => splitter.ResizeDirection == GridResizeDirection.Rows && splitter.IsEffectivelyVisible);
             Assert.All(splitters, splitter => Assert.Equal(Colors.Transparent, ((ISolidColorBrush)splitter.Background!).Color));
         });
     }
@@ -389,9 +391,9 @@ public sealed class ShellLayoutTests
             window.UpdateLayout();
             Assert.True(WidthAt(1280) < 900);
 
-            window.RightSide.Fold(true);
+            Click(window.InspectorDock.CollapseButton);
             window.UpdateLayout();
-            window.RightSide.Fold(false);
+            Click(window.RightSide.RailButtons.Single());
             window.UpdateLayout();
 
             Assert.Equal(900, WidthAt(3440));

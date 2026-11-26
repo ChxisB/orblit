@@ -54,12 +54,12 @@ internal sealed class OverflowBar : Panel
         }
     }
 
-    /// <summary>The tools in their order, without the More button.</summary>
-    public IEnumerable<Control> Tools => Children.Take(Children.Count - 1);
+    /// <summary>The tools that show, in their order, without the More button.</summary>
+    public IEnumerable<Control> Tools => Children.Take(Children.Count - 1).Where(tool => tool.IsVisible);
 
     internal Button MoreButton => _more;
 
-    private bool Hides => _shown.Count < Children.Count - 1;
+    private bool Hides => _shown.Count < Tools.Count();
 
     public void Add(Control tool) => Children.Insert(Children.Count - 1, tool);
 
@@ -75,7 +75,7 @@ internal sealed class OverflowBar : Panel
             child.Measure(endless);
         }
 
-        var count = Children.Count - 1;
+        var count = Tools.Count();
         _shown = Pick(count);
         while (_shown.Count > 1 && Wanted(Least(_shown[0])) > availableSize.Width)
         {

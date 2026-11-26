@@ -221,11 +221,11 @@ public sealed class MenusTests
         {
             var window = OpenAtReferenceSize();
 
-            Assert.Equal(["Left column, top", "Left column, bottom", "Right column"], window.SceneDock.MoveItems.Select(item => AutomationProperties.GetName(item)));
-            Assert.Equal(["It is here now", "Trades places with the panel there", "Trades places with the panel there"], window.SceneDock.MoveItems.Select(Note));
-            Assert.Equal([false, true, true], window.SceneDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal([true, false, true], window.FileDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal([true, true, false], window.InspectorDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal(["Left column, top", "Left column, bottom", "Right column, top", "Right column, bottom"], window.SceneDock.MoveItems.Select(item => AutomationProperties.GetName(item)));
+            Assert.Equal(["It is here now", "Trades places with the panel there", "Trades places with the panel there", "Nothing is there yet"], window.SceneDock.MoveItems.Select(Note));
+            Assert.Equal([false, true, true, true], window.SceneDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal([true, false, true, true], window.FileDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal([true, true, false, true], window.InspectorDock.MoveItems.Select(item => item.IsEnabled));
         });
     }
 
@@ -242,15 +242,15 @@ public sealed class MenusTests
             var inspectorBox = BoxOf(window.InspectorDock, window);
             Assert.NotEqual(sceneBox, inspectorBox);
 
-            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            Press(window.SceneDock.MoveItems[(int)DockSlot.UpperRight]);
             window.UpdateLayout();
 
             Assert.Equal(inspectorBox, BoxOf(window.SceneDock, window));
             Assert.Equal(sceneBox, BoxOf(window.InspectorDock, window));
-            Assert.Equal([DockSlot.Right, DockSlot.LowerLeft, DockSlot.UpperLeft], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
-            Assert.Equal([true, true, false], window.SceneDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal([false, true, true], window.InspectorDock.MoveItems.Select(item => item.IsEnabled));
-            Assert.Equal("Moved Scene to the right column. The layout is not saved.", window.Status);
+            Assert.Equal([DockSlot.UpperRight, DockSlot.LowerLeft, DockSlot.UpperLeft], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
+            Assert.Equal([true, true, false, true], window.SceneDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal([false, true, true, true], window.InspectorDock.MoveItems.Select(item => item.IsEnabled));
+            Assert.Equal("Moved Scene to the right column, top.", window.Status);
         });
     }
 
@@ -267,13 +267,13 @@ public sealed class MenusTests
             window.UpdateLayout();
             Assert.Equal(upper, BoxOf(window.FileDock, window));
             Assert.Equal(lower, BoxOf(window.SceneDock, window));
-            Assert.Equal("Moved Files to the left column, top. The layout is not saved.", window.Status);
+            Assert.Equal("Moved Files to the left column, top.", window.Status);
 
             Press(window.SceneDock.MoveItems[(int)DockSlot.UpperLeft]);
             window.UpdateLayout();
             Assert.Equal(upper, BoxOf(window.SceneDock, window));
             Assert.Equal(lower, BoxOf(window.FileDock, window));
-            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.Right], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
+            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.UpperRight], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
         });
     }
 
@@ -308,7 +308,7 @@ public sealed class MenusTests
 
             // The map is the item with no text.
             Assert.Equal(
-                ["WHERE THIS PANEL SITS", null, "TABS IN THIS PANEL", "Files", "History", "Left column, top", "Left column, bottom", "Right column", "Pop out into a window", "Put all panels back"],
+                ["WHERE THIS PANEL SITS", null, "TABS IN THIS PANEL", "Files", "History", "Left column, top", "Left column, bottom", "Right column, top", "Right column, bottom", "Pop out into a window", "Put all panels back"],
                 items.Where(item => item.IsVisible).Select(item => AutomationProperties.GetName(item) ?? (item.Header as TextBlock)?.Text));
             Assert.Equal("Every file in the project", Note(DockItem(window.FileDock, "Files")));
             Assert.Equal("Every change, to undo back to", Note(DockItem(window.FileDock, "History")));
@@ -323,12 +323,12 @@ public sealed class MenusTests
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize();
-            Assert.Equal([EditorBrushes.Accent, EditorBrushes.GuideLit, EditorBrushes.GuideLit], window.SceneDock.MapCells.Select(cell => cell.Background));
+            Assert.Equal([EditorBrushes.Accent, EditorBrushes.GuideLit, EditorBrushes.GuideLit, EditorBrushes.GuideLit], window.SceneDock.MapCells.Select(cell => cell.Background));
 
-            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            Press(window.SceneDock.MoveItems[(int)DockSlot.UpperRight]);
 
-            Assert.Equal([EditorBrushes.GuideLit, EditorBrushes.GuideLit, EditorBrushes.Accent], window.SceneDock.MapCells.Select(cell => cell.Background));
-            Assert.Equal([EditorBrushes.Accent, EditorBrushes.GuideLit, EditorBrushes.GuideLit], window.InspectorDock.MapCells.Select(cell => cell.Background));
+            Assert.Equal([EditorBrushes.GuideLit, EditorBrushes.GuideLit, EditorBrushes.Accent, EditorBrushes.GuideLit], window.SceneDock.MapCells.Select(cell => cell.Background));
+            Assert.Equal([EditorBrushes.Accent, EditorBrushes.GuideLit, EditorBrushes.GuideLit, EditorBrushes.GuideLit], window.InspectorDock.MapCells.Select(cell => cell.Background));
         });
     }
 
@@ -437,7 +437,7 @@ public sealed class MenusTests
             var right = BoxOf(window.InspectorDock, window);
             Press(window.SceneDock.FloatItem);
 
-            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            Press(window.SceneDock.MoveItems[(int)DockSlot.UpperRight]);
             window.UpdateLayout();
 
             Assert.Null(FloatOf(window.SceneDock, window));
@@ -447,7 +447,7 @@ public sealed class MenusTests
             Press(DockItem(window.InspectorDock, "Put all panels back"));
 
             Assert.Null(FloatOf(window.FileDock, window));
-            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.Right], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
+            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.UpperRight], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
         });
     }
 
@@ -458,7 +458,7 @@ public sealed class MenusTests
         {
             var window = OpenAtReferenceSize();
             var sceneBox = BoxOf(window.SceneDock, window);
-            Press(window.SceneDock.MoveItems[(int)DockSlot.Right]);
+            Press(window.SceneDock.MoveItems[(int)DockSlot.UpperRight]);
             Press(DockItem(window.FileDock, "History"));
             Press(DockItem(window.FileDock, "Files"));
             window.UpdateLayout();
@@ -467,7 +467,7 @@ public sealed class MenusTests
             Press(DockItem(window.InspectorDock, "Put all panels back"));
             window.UpdateLayout();
 
-            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.Right], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
+            Assert.Equal([DockSlot.UpperLeft, DockSlot.LowerLeft, DockSlot.UpperRight], [window.SceneDock.Slot, window.FileDock.Slot, window.InspectorDock.Slot]);
             Assert.Equal(sceneBox, BoxOf(window.SceneDock, window));
             Assert.True(window.FileDock.IsVisible);
             Assert.All(window.FileDock.Tabs, tab => Assert.True(tab.IsVisible));

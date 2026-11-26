@@ -97,7 +97,7 @@ internal sealed class SceneTabStrip : Grid
 
     internal Button PanelsButton => _panels;
 
-    /// <summary>Names the panels button for what a press does: Show panels while every side is folded, else Hide panels.</summary>
+    /// <summary>Names the panels button for what a press does: Show panels while every panel group is collapsed, else Hide panels.</summary>
     internal void ShowPanelsHidden(bool hidden)
     {
         AutomationProperties.SetName(_panels, hidden ? ShowPanels : HidePanels);

@@ -434,12 +434,12 @@ public sealed class SceneFileToolsTests
     }
 
     [Fact]
-    public void Hide_panels_folds_both_sides_and_a_second_press_brings_both_back()
+    public void Hide_panels_folds_both_sides_and_a_second_press_brings_back_what_was_open()
     {
         UiThread.Run(() =>
         {
             var window = OpenAtReferenceSize(new FakeScene());
-            window.RightSide.Fold(true);
+            Click(window.InspectorDock.CollapseButton);
 
             Click(window.SceneTabs.PanelsButton);
 
@@ -449,7 +449,7 @@ public sealed class SceneFileToolsTests
             Click(window.SceneTabs.PanelsButton);
 
             Assert.False(window.LeftSide.IsFolded);
-            Assert.False(window.RightSide.IsFolded);
+            Assert.True(window.RightSide.IsFolded);
         });
     }
 }
