@@ -15,7 +15,7 @@ internal static class Gaps
     /// <summary>Between items.</summary>
     public const double Item = 8;
 
-    /// <summary>Between groups, and inside panels.</summary>
+    /// <summary>Between groups, and inside panels. The narrow side docks pad Item, so names keep their room.</summary>
     public const double Group = 12;
 
     /// <summary>Inside dialogs.</summary>
