@@ -598,6 +598,23 @@ public sealed class GraphCanvasTests
     }
 
     [Fact]
+    public void A_reroute_put_beside_a_straight_wire_sits_on_it()
+    {
+        UiThread.Run(() =>
+        {
+            var (_, canvas) = Open();
+            var shape = canvas.Scene.VisibleWires().First();
+            var beside = new Point((shape.From.X + shape.To.X) / 2, shape.From.Y - 4);
+
+            Click(canvas, beside, clicks: 2);
+
+            var reroute = canvas.Scene.Find(4)!;
+            Assert.Equal(shape.From.Y, reroute.PinCenter(true, 0).Y);
+            Assert.Equal(shape.From.Y, reroute.PinCenter(false, 0).Y);
+        });
+    }
+
+    [Fact]
     public void A_reroute_on_a_data_wire_is_a_data_reroute()
     {
         UiThread.Run(() =>

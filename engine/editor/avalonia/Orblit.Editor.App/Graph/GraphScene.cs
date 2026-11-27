@@ -173,6 +173,10 @@ internal sealed class GraphScene
     public GraphWire? WireAt(Point point) =>
         VisibleWires().Where(shape => WireLayer.Near(shape.From, shape.To, Style, point, WireGrab)).Select(shape => (GraphWire?)shape.Wire).FirstOrDefault();
 
+    /// <summary>The point on a shown wire nearest to the given one. A wire that is not shown keeps the point.</summary>
+    public Point OnWire(GraphWire wire, Point point) =>
+        VisibleWires().Where(shape => shape.Wire == wire).Select(shape => WireLayer.Nearest(shape.From, shape.To, Style, point)).DefaultIfEmpty(point).First();
+
     public IEnumerable<WireShape> VisibleWires()
     {
         foreach (var wire in _wires)

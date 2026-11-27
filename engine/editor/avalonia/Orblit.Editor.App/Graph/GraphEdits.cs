@@ -101,18 +101,19 @@ internal sealed class GraphEdits
         _scene.Find(step) is { } view && Report(_source.SetStepPins(step, view.Step.Growth.Count + change));
 
     /// <summary>
-    /// Puts a reroute on a wire where the point is. The engine has no call for it, so it adds the reroute, then
-    /// swaps the wire for two. A refused call leaves the graph in the state of the calls that went before it.
-    /// The batch is one entry in the history.
+    /// Puts a reroute on a wire at the point of the wire nearest to the given one, so a straight wire stays
+    /// straight. The engine has no call for it, so it adds the reroute, then swaps the wire for two. A refused
+    /// call leaves the graph in the state of the calls that went before it. The batch is one entry in the history.
     /// </summary>
     public void InsertReroute(GraphWire wire, Point at) => Batch(() =>
     {
         var kind = RerouteKindFor(wire);
         var id = _source.NextStepId();
+        var on = _scene.OnWire(wire, at);
         var steps = new[]
         {
             _source.AddStep(id, kind),
-            _source.MoveStep(id, Math.Round(at.X - (StepView.RerouteSize / 2)), Math.Round(at.Y - (StepView.RerouteSize / 2))),
+            _source.MoveStep(id, Math.Round(on.X - (StepView.RerouteSize / 2)), Math.Round(on.Y - (StepView.RerouteSize / 2))),
             _source.Disconnect(wire),
             _source.Connect(new GraphWire(wire.FromStep, wire.FromPort, id, 0)),
             _source.Connect(new GraphWire(id, 0, wire.ToStep, wire.ToPort)),
